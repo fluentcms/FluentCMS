@@ -85,6 +85,13 @@ internal static class AuthorizationServerRegistration
 
                 server.AddEventHandler(PublicOriginDiscoveryHandler.Descriptor);
 
+                // The resource parameter (RFC 8707) is held to the protected resources of the host by a handler of core's,
+                // since their URLs may follow the request. It grants nothing, so no client needs a permission for it: the
+                // scope of the resource, which a client does need a permission for, is what a token is held to.
+                server.DisableResourceValidation().IgnoreResourcePermissions();
+                server.AddEventHandler(ResourceIndicatorHandler.AuthorizationDescriptor);
+                server.AddEventHandler(ResourceIndicatorHandler.TokenDescriptor);
+
                 // An error of authorize or logout that cannot go back to the client reaches the endpoint, which shows the error page.
                 server.UseAspNetCore()
                     .EnableAuthorizationEndpointPassthrough()

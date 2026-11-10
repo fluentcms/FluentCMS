@@ -329,7 +329,7 @@ internal static class ContentResolvers
 
     private static void Report(IResolverContext context, Exception exception)
     {
-        var problem = Surface(context).Describe(exception);
+        var problem = context.RequestServices.GetRequiredService<IProblemDescriber>().Describe(exception);
         if (problem.Status >= 500)
         {
             var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger<GraphQLPlugin>();
@@ -344,9 +344,10 @@ internal static class ContentResolvers
                 .ToList());
         }
 
-        if (problem.Current is not null)
+        // The entry a stale write would have changed, as the 412 of REST carries it.
+        if (exception is VersionConflictException { Current: { } current })
         {
-            error.SetExtension("current", Plain(problem.Current));
+            error.SetExtension("current", Plain(Surface(context).ToJson(current)));
         }
 
         context.ReportError(error.Build());

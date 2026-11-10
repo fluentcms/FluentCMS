@@ -3,8 +3,10 @@ using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Api.OpenApi;
+using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
+using FluentCMS.Plugins;
 using FluentCMS.Schema;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -153,7 +155,71 @@ public static class FluentCmsEndpointRouteBuilderExtensions
             plugin);
     }
 
-    private static string PrefixOf(FluentCmsEndpointGroup group) => FluentCmsEndpointGroups.Prefixes.Single(item => item.Group == group).Prefix;
+    // A plugin's own group that is an OAuth protected resource (RFC 9728), as /mcp is: what MapPluginGroup gives, with the
+    // origin the plugin names, the Management limits, since it takes writes, and the scope of the resource asked of a bearer
+    // token. Its metadata is a document of core's /.well-known group, which a plugin maps nothing under, and the registry
+    // is what the authorization server reads to take the resource parameter.
+    internal static RouteGroupBuilder MapPluginProtectedResource(RouteGroupBuilder cms, RegisteredPlugin plugin, string prefix, ProtectedResourceOptions options, ProtectedResources resources)
+    {
+        CheckPrefix(plugin, prefix, "MapProtectedResource");
+
+        // The URL of the group names the resource, so it has no parameter anywhere.
+        if (prefix.Contains('{', StringComparison.Ordinal) || prefix.Contains('*', StringComparison.Ordinal))
+        {
+            throw new FluentCmsConfigurationException(
+                PluginErrorCodes.InvalidEndpointPrefix,
+                $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) calls MapProtectedResource with '{prefix}', which has a route parameter; the URL of a protected resource is fixed, such as '/{plugin.Name}'.");
+        }
+
+        if (FluentCmsEndpointGroups.Prefixes.FirstOrDefault(group => Covers(group.Prefix, prefix)) is { Prefix: { } core })
+        {
+            throw new FluentCmsConfigurationException(
+                PluginErrorCodes.InvalidEndpointPrefix,
+                $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) calls MapProtectedResource with '{prefix}', which is under {core} of core.");
+        }
+
+        var problem = !AuthorizationServer.ResourceScopes.Contains(options.Scope, StringComparer.Ordinal)
+                ? $"names the scope '{options.Scope}'; the scopes a protected resource may ask for are {string.Join(", ", AuthorizationServer.ResourceScopes)}"
+            : options.Origin is not (Origin.Api or Origin.Mcp)
+                ? $"names the origin {options.Origin}; a protected resource enters as {Origin.Api} or {Origin.Mcp}"
+            : resources.All.FirstOrDefault(resource => string.Equals(resource.Prefix, prefix, StringComparison.OrdinalIgnoreCase)) is { } taken
+                ? $"is a protected resource of the plugin '{taken.Plugin}' already"
+            : null;
+        if (problem is not null)
+        {
+            throw new FluentCmsConfigurationException(
+                PluginErrorCodes.InvalidProtectedResource,
+                $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) calls MapProtectedResource with '{prefix}', which {problem}.");
+        }
+
+        var resource = new ProtectedResource(plugin.Name, prefix, options.Scope, options.Name);
+        var wellKnown = Protect(cms.MapGroup(PrefixOf(FluentCmsEndpointGroup.WellKnown)), FluentCmsEndpointGroup.WellKnown);
+        wellKnown.MapGet(ProtectedResources.MetadataPath + prefix, (HttpContext context) => Results.Json(resources.Document(context.Request, resource))).ExcludeFromDescription();
+
+        // The document without a path is the one a client tries when it does not know the path of the resource. It answers
+        // while the host has one protected resource, since it could describe no more than one.
+        if (resources.All.Count == 0)
+        {
+            wellKnown.MapGet(ProtectedResources.MetadataPath, async (HttpContext context) =>
+            {
+                if (resources.All is [var only])
+                {
+                    await Results.Json(resources.Document(context.Request, only)).ExecuteAsync(context);
+                    return;
+                }
+
+                await ProblemWriter.WriteAsync(context, ProblemMapper.Known(ApiErrorCodes.NotFound, "The host has several protected resources; the metadata of each is under its own path."), cancellationToken: context.RequestAborted);
+            }).ExcludeFromDescription();
+        }
+
+        resources.Add(resource);
+
+        var routes = cms.MapGroup(prefix).WithMetadata(new FluentCmsSurfaceMetadata(plugin.Name), new ProtectedResourceMetadata(resource));
+        routes.CacheOutput(policy => policy.NoCache()).RequireRateLimiting(RateLimitPolicyNames.Management).RequireCors(CorsPolicies.Management);
+        return WhenEnabled(routes.WithFluentCmsOperation(options.Origin).RequireResourceScope(options.Scope), plugin);
+    }
+
+    private static string PrefixOf(FluentCmsEndpointGroup group) => FluentCmsEndpointGroups.PrefixOf(group);
 
     // After the filter of the operation, whose site it reads, so that a plugin disabled in that site answers 404 there.
     private static RouteGroupBuilder WhenEnabled(RouteGroupBuilder routes, RegisteredPlugin plugin)

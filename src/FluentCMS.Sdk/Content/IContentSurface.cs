@@ -4,8 +4,8 @@ namespace FluentCMS.Content;
 
 /// <summary>
 /// What the REST APIs settle around <see cref="IContentService"/>, for another surface over content, such as GraphQL, to
-/// answer as they do: their limits, the JSON of an entry, the problem of an exception and what the principal may read.
-/// Every answer is about the principal of the current <see cref="OperationContext"/>.
+/// answer as they do: their limits, the JSON of an entry and what the principal may read. Every answer is about the
+/// principal of the current <see cref="OperationContext"/>. The problem of an exception is <c>IProblemDescriber</c>'s.
 /// </summary>
 public interface IContentSurface
 {
@@ -32,23 +32,4 @@ public interface IContentSurface
     /// <param name="entry">The entry, as the content service returned it.</param>
     /// <returns>The JSON object.</returns>
     JsonObject ToJson(ContentDocument entry);
-
-    /// <summary>Describes an exception as the problem the REST APIs answer it with.</summary>
-    /// <param name="exception">The exception, usually one the content service threw.</param>
-    /// <returns>The problem. An exception that is none of the engine's refusals is a 500 with a detail that names no cause.</returns>
-    ContentProblem Describe(Exception exception);
-}
-
-/// <summary>The problem the REST APIs answer an exception with.</summary>
-/// <param name="Code">The <c>FCMS</c> code.</param>
-/// <param name="Status">The HTTP status.</param>
-/// <param name="Title">The title of the code.</param>
-/// <param name="Detail">What went wrong, for the client.</param>
-public sealed record ContentProblem(string Code, int Status, string Title, string Detail)
-{
-    /// <summary>The validation errors, each with the path of its field; empty for a problem that has none.</summary>
-    public IReadOnlyList<ValidationError> Errors { get; init; } = [];
-
-    /// <summary>The current entry of a version conflict, as JSON, or <see langword="null"/>.</summary>
-    public JsonObject? Current { get; init; }
 }

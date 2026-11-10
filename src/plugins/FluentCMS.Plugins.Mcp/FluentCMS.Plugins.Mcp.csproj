@@ -1,7 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <Description>The Model Context Protocol server of FluentCMS: Streamable HTTP at /mcp, with the tools, resources and prompts that plugins offer, run as the caller.</Description>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
+    <ProjectReference Include="../../FluentCMS.Plugins.Abstractions/FluentCMS.Plugins.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FluentCMS.Plugins.Mcp.Tests" />
   </ItemGroup>
 
 </Project>

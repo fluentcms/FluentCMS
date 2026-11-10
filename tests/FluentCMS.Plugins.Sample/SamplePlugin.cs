@@ -37,7 +37,10 @@ public sealed class SamplePlugin : IPlugin
                 TargetId = added.NoteId.ToString(),
                 TargetLabel = added.Text,
             })
-            .AddErrorCode(NoteExists, 409, "Note exists");
+            .AddErrorCode(NoteExists, 409, "Note exists")
+            .AddMcpTools<SampleTools>()
+            .AddMcpResources<SampleResources>()
+            .AddMcpPrompts<SamplePrompts>();
 
         if (PluginCalls.In(plugin.Services) is { } calls)
         {

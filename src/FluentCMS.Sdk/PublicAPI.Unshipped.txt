@@ -82,6 +82,167 @@ FluentCMS.Activity.IActivityLog.WriteAsync(FluentCMS.Activity.ActivityEntry! ent
 FluentCMS.Activity.IActivityLog.WriteAsync(FluentCMS.Activity.ActivityEntry! entry, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Activity.IActivityQuery
 FluentCMS.Activity.IActivityQuery.QueryAsync(FluentCMS.Activity.ActivityFilter? filter = null, FluentCMS.Content.PageRequest? page = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<FluentCMS.Activity.ActivityItem!>!>!
+FluentCMS.Agents.IMcpPromptProvider
+FluentCMS.Agents.IMcpPromptProvider.GetPromptAsync(FluentCMS.Agents.McpPromptGet! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Agents.McpPromptResult?>
+FluentCMS.Agents.IMcpPromptProvider.ListPromptsAsync(FluentCMS.Agents.McpListRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<FluentCMS.Agents.McpPromptDescriptor!>!>
+FluentCMS.Agents.IMcpProviders
+FluentCMS.Agents.IMcpProviders.Prompts.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Agents.McpProviderRegistration!>!
+FluentCMS.Agents.IMcpProviders.Resources.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Agents.McpProviderRegistration!>!
+FluentCMS.Agents.IMcpProviders.Tools.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Agents.McpProviderRegistration!>!
+FluentCMS.Agents.IMcpResourceProvider
+FluentCMS.Agents.IMcpResourceProvider.ListResourcesAsync(FluentCMS.Agents.McpListRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<FluentCMS.Agents.McpResourceDescriptor!>!>
+FluentCMS.Agents.IMcpResourceProvider.ReadResourceAsync(FluentCMS.Agents.McpResourceRead! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<FluentCMS.Agents.McpResourceContent!>?>
+FluentCMS.Agents.IMcpToolProvider
+FluentCMS.Agents.IMcpToolProvider.CallToolAsync(FluentCMS.Agents.McpToolCall! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Agents.McpToolResult?>
+FluentCMS.Agents.IMcpToolProvider.ListToolsAsync(FluentCMS.Agents.McpListRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<FluentCMS.Agents.McpToolDescriptor!>!>
+FluentCMS.Agents.McpListRequest
+FluentCMS.Agents.McpListRequest.<Clone>$() -> FluentCMS.Agents.McpListRequest!
+FluentCMS.Agents.McpListRequest.Deconstruct(out FluentCMS.Content.OperationContext! Operation) -> void
+FluentCMS.Agents.McpListRequest.Equals(FluentCMS.Agents.McpListRequest? other) -> bool
+FluentCMS.Agents.McpListRequest.McpListRequest(FluentCMS.Content.OperationContext! Operation) -> void
+FluentCMS.Agents.McpListRequest.Operation.get -> FluentCMS.Content.OperationContext!
+FluentCMS.Agents.McpListRequest.Operation.init -> void
+FluentCMS.Agents.McpPromptArgument
+FluentCMS.Agents.McpPromptArgument.<Clone>$() -> FluentCMS.Agents.McpPromptArgument!
+FluentCMS.Agents.McpPromptArgument.Deconstruct(out string! Name) -> void
+FluentCMS.Agents.McpPromptArgument.Description.get -> string?
+FluentCMS.Agents.McpPromptArgument.Description.init -> void
+FluentCMS.Agents.McpPromptArgument.Equals(FluentCMS.Agents.McpPromptArgument? other) -> bool
+FluentCMS.Agents.McpPromptArgument.McpPromptArgument(string! Name) -> void
+FluentCMS.Agents.McpPromptArgument.Name.get -> string!
+FluentCMS.Agents.McpPromptArgument.Name.init -> void
+FluentCMS.Agents.McpPromptArgument.Required.get -> bool
+FluentCMS.Agents.McpPromptArgument.Required.init -> void
+FluentCMS.Agents.McpPromptDescriptor
+FluentCMS.Agents.McpPromptDescriptor.<Clone>$() -> FluentCMS.Agents.McpPromptDescriptor!
+FluentCMS.Agents.McpPromptDescriptor.Arguments.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Agents.McpPromptArgument!>!
+FluentCMS.Agents.McpPromptDescriptor.Arguments.init -> void
+FluentCMS.Agents.McpPromptDescriptor.Description.get -> string?
+FluentCMS.Agents.McpPromptDescriptor.Description.init -> void
+FluentCMS.Agents.McpPromptDescriptor.Equals(FluentCMS.Agents.McpPromptDescriptor? other) -> bool
+FluentCMS.Agents.McpPromptDescriptor.McpPromptDescriptor(string! name) -> void
+FluentCMS.Agents.McpPromptDescriptor.Name.get -> string!
+FluentCMS.Agents.McpPromptDescriptor.Title.get -> string?
+FluentCMS.Agents.McpPromptDescriptor.Title.init -> void
+FluentCMS.Agents.McpPromptGet
+FluentCMS.Agents.McpPromptGet.<Clone>$() -> FluentCMS.Agents.McpPromptGet!
+FluentCMS.Agents.McpPromptGet.Arguments.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+FluentCMS.Agents.McpPromptGet.Arguments.init -> void
+FluentCMS.Agents.McpPromptGet.Deconstruct(out FluentCMS.Content.OperationContext! Operation, out string! Name, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Arguments) -> void
+FluentCMS.Agents.McpPromptGet.Equals(FluentCMS.Agents.McpPromptGet? other) -> bool
+FluentCMS.Agents.McpPromptGet.McpPromptGet(FluentCMS.Content.OperationContext! Operation, string! Name, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Arguments) -> void
+FluentCMS.Agents.McpPromptGet.Name.get -> string!
+FluentCMS.Agents.McpPromptGet.Name.init -> void
+FluentCMS.Agents.McpPromptGet.Operation.get -> FluentCMS.Content.OperationContext!
+FluentCMS.Agents.McpPromptGet.Operation.init -> void
+FluentCMS.Agents.McpPromptMessage
+FluentCMS.Agents.McpPromptMessage.<Clone>$() -> FluentCMS.Agents.McpPromptMessage!
+FluentCMS.Agents.McpPromptMessage.Deconstruct(out FluentCMS.Agents.McpPromptRole Role, out string! Text) -> void
+FluentCMS.Agents.McpPromptMessage.Equals(FluentCMS.Agents.McpPromptMessage? other) -> bool
+FluentCMS.Agents.McpPromptMessage.McpPromptMessage(FluentCMS.Agents.McpPromptRole Role, string! Text) -> void
+FluentCMS.Agents.McpPromptMessage.Role.get -> FluentCMS.Agents.McpPromptRole
+FluentCMS.Agents.McpPromptMessage.Role.init -> void
+FluentCMS.Agents.McpPromptMessage.Text.get -> string!
+FluentCMS.Agents.McpPromptMessage.Text.init -> void
+FluentCMS.Agents.McpPromptResult
+FluentCMS.Agents.McpPromptResult.<Clone>$() -> FluentCMS.Agents.McpPromptResult!
+FluentCMS.Agents.McpPromptResult.Deconstruct(out System.Collections.Generic.IReadOnlyList<FluentCMS.Agents.McpPromptMessage!>! Messages) -> void
+FluentCMS.Agents.McpPromptResult.Description.get -> string?
+FluentCMS.Agents.McpPromptResult.Description.init -> void
+FluentCMS.Agents.McpPromptResult.Equals(FluentCMS.Agents.McpPromptResult? other) -> bool
+FluentCMS.Agents.McpPromptResult.McpPromptResult(System.Collections.Generic.IReadOnlyList<FluentCMS.Agents.McpPromptMessage!>! Messages) -> void
+FluentCMS.Agents.McpPromptResult.Messages.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Agents.McpPromptMessage!>!
+FluentCMS.Agents.McpPromptResult.Messages.init -> void
+FluentCMS.Agents.McpPromptRole
+FluentCMS.Agents.McpPromptRole.Assistant = 2 -> FluentCMS.Agents.McpPromptRole
+FluentCMS.Agents.McpPromptRole.User = 1 -> FluentCMS.Agents.McpPromptRole
+FluentCMS.Agents.McpProviderRegistration
+FluentCMS.Agents.McpProviderRegistration.<Clone>$() -> FluentCMS.Agents.McpProviderRegistration!
+FluentCMS.Agents.McpProviderRegistration.Deconstruct(out string! Plugin, out System.Type! Provider) -> void
+FluentCMS.Agents.McpProviderRegistration.Equals(FluentCMS.Agents.McpProviderRegistration? other) -> bool
+FluentCMS.Agents.McpProviderRegistration.McpProviderRegistration(string! Plugin, System.Type! Provider) -> void
+FluentCMS.Agents.McpProviderRegistration.Plugin.get -> string!
+FluentCMS.Agents.McpProviderRegistration.Plugin.init -> void
+FluentCMS.Agents.McpProviderRegistration.Provider.get -> System.Type!
+FluentCMS.Agents.McpProviderRegistration.Provider.init -> void
+FluentCMS.Agents.McpResourceContent
+FluentCMS.Agents.McpResourceContent.<Clone>$() -> FluentCMS.Agents.McpResourceContent!
+FluentCMS.Agents.McpResourceContent.Data.get -> System.ReadOnlyMemory<byte>
+FluentCMS.Agents.McpResourceContent.Equals(FluentCMS.Agents.McpResourceContent? other) -> bool
+FluentCMS.Agents.McpResourceContent.MimeType.get -> string?
+FluentCMS.Agents.McpResourceContent.Text.get -> string?
+FluentCMS.Agents.McpResourceContent.Uri.get -> string!
+FluentCMS.Agents.McpResourceDescriptor
+FluentCMS.Agents.McpResourceDescriptor.<Clone>$() -> FluentCMS.Agents.McpResourceDescriptor!
+FluentCMS.Agents.McpResourceDescriptor.Description.get -> string?
+FluentCMS.Agents.McpResourceDescriptor.Description.init -> void
+FluentCMS.Agents.McpResourceDescriptor.Equals(FluentCMS.Agents.McpResourceDescriptor? other) -> bool
+FluentCMS.Agents.McpResourceDescriptor.IsTemplate.get -> bool
+FluentCMS.Agents.McpResourceDescriptor.McpResourceDescriptor(string! uri, string! name) -> void
+FluentCMS.Agents.McpResourceDescriptor.MimeType.get -> string?
+FluentCMS.Agents.McpResourceDescriptor.MimeType.init -> void
+FluentCMS.Agents.McpResourceDescriptor.Name.get -> string!
+FluentCMS.Agents.McpResourceDescriptor.Title.get -> string?
+FluentCMS.Agents.McpResourceDescriptor.Title.init -> void
+FluentCMS.Agents.McpResourceDescriptor.Uri.get -> string!
+FluentCMS.Agents.McpResourceRead
+FluentCMS.Agents.McpResourceRead.<Clone>$() -> FluentCMS.Agents.McpResourceRead!
+FluentCMS.Agents.McpResourceRead.Deconstruct(out FluentCMS.Content.OperationContext! Operation, out string! Uri) -> void
+FluentCMS.Agents.McpResourceRead.Equals(FluentCMS.Agents.McpResourceRead? other) -> bool
+FluentCMS.Agents.McpResourceRead.McpResourceRead(FluentCMS.Content.OperationContext! Operation, string! Uri) -> void
+FluentCMS.Agents.McpResourceRead.Operation.get -> FluentCMS.Content.OperationContext!
+FluentCMS.Agents.McpResourceRead.Operation.init -> void
+FluentCMS.Agents.McpResourceRead.Uri.get -> string!
+FluentCMS.Agents.McpResourceRead.Uri.init -> void
+FluentCMS.Agents.McpToolAnnotations
+FluentCMS.Agents.McpToolAnnotations.<Clone>$() -> FluentCMS.Agents.McpToolAnnotations!
+FluentCMS.Agents.McpToolAnnotations.Destructive.get -> bool
+FluentCMS.Agents.McpToolAnnotations.Destructive.init -> void
+FluentCMS.Agents.McpToolAnnotations.Equals(FluentCMS.Agents.McpToolAnnotations? other) -> bool
+FluentCMS.Agents.McpToolAnnotations.Idempotent.get -> bool
+FluentCMS.Agents.McpToolAnnotations.Idempotent.init -> void
+FluentCMS.Agents.McpToolAnnotations.McpToolAnnotations() -> void
+FluentCMS.Agents.McpToolAnnotations.OpenWorld.get -> bool
+FluentCMS.Agents.McpToolAnnotations.OpenWorld.init -> void
+FluentCMS.Agents.McpToolAnnotations.ReadOnly.get -> bool
+FluentCMS.Agents.McpToolAnnotations.ReadOnly.init -> void
+FluentCMS.Agents.McpToolCall
+FluentCMS.Agents.McpToolCall.<Clone>$() -> FluentCMS.Agents.McpToolCall!
+FluentCMS.Agents.McpToolCall.Arguments.get -> System.Text.Json.JsonElement
+FluentCMS.Agents.McpToolCall.Arguments.init -> void
+FluentCMS.Agents.McpToolCall.Deconstruct(out FluentCMS.Content.OperationContext! Operation, out string! Name, out System.Text.Json.JsonElement Arguments) -> void
+FluentCMS.Agents.McpToolCall.Equals(FluentCMS.Agents.McpToolCall? other) -> bool
+FluentCMS.Agents.McpToolCall.McpToolCall(FluentCMS.Content.OperationContext! Operation, string! Name, System.Text.Json.JsonElement Arguments) -> void
+FluentCMS.Agents.McpToolCall.Name.get -> string!
+FluentCMS.Agents.McpToolCall.Name.init -> void
+FluentCMS.Agents.McpToolCall.Operation.get -> FluentCMS.Content.OperationContext!
+FluentCMS.Agents.McpToolCall.Operation.init -> void
+FluentCMS.Agents.McpToolDescriptor
+FluentCMS.Agents.McpToolDescriptor.<Clone>$() -> FluentCMS.Agents.McpToolDescriptor!
+FluentCMS.Agents.McpToolDescriptor.Annotations.get -> FluentCMS.Agents.McpToolAnnotations!
+FluentCMS.Agents.McpToolDescriptor.Annotations.init -> void
+FluentCMS.Agents.McpToolDescriptor.Description.get -> string!
+FluentCMS.Agents.McpToolDescriptor.Description.init -> void
+FluentCMS.Agents.McpToolDescriptor.Equals(FluentCMS.Agents.McpToolDescriptor? other) -> bool
+FluentCMS.Agents.McpToolDescriptor.InputSchema.get -> System.Text.Json.JsonElement
+FluentCMS.Agents.McpToolDescriptor.McpToolDescriptor(string! name, string! description, System.Text.Json.JsonElement inputSchema) -> void
+FluentCMS.Agents.McpToolDescriptor.Name.get -> string!
+FluentCMS.Agents.McpToolDescriptor.OutputSchema.get -> System.Text.Json.JsonElement?
+FluentCMS.Agents.McpToolDescriptor.OutputSchema.init -> void
+FluentCMS.Agents.McpToolDescriptor.Title.get -> string?
+FluentCMS.Agents.McpToolDescriptor.Title.init -> void
+FluentCMS.Agents.McpToolResult
+FluentCMS.Agents.McpToolResult.<Clone>$() -> FluentCMS.Agents.McpToolResult!
+FluentCMS.Agents.McpToolResult.Equals(FluentCMS.Agents.McpToolResult? other) -> bool
+FluentCMS.Agents.McpToolResult.ErrorCode.get -> string?
+FluentCMS.Agents.McpToolResult.ErrorCode.init -> void
+FluentCMS.Agents.McpToolResult.IsError.get -> bool
+FluentCMS.Agents.McpToolResult.IsError.init -> void
+FluentCMS.Agents.McpToolResult.McpToolResult() -> void
+FluentCMS.Agents.McpToolResult.StructuredContent.get -> System.Text.Json.JsonElement?
+FluentCMS.Agents.McpToolResult.StructuredContent.init -> void
+FluentCMS.Agents.McpToolResult.Text.get -> string!
+FluentCMS.Agents.McpToolResult.Text.init -> void
 FluentCMS.Authorization.IPermissionChecker
 FluentCMS.Authorization.IPermissionChecker.AllowsAsync(string! permission, FluentCMS.Sites.SiteId? site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
 FluentCMS.Authorization.IPermissionChecker.RequireAsync(string! permission, FluentCMS.Sites.SiteId? site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
@@ -203,23 +364,6 @@ FluentCMS.Content.ContentDocument.this[string! name].get -> object?
 FluentCMS.Content.ContentDocument.this[string! name].set -> void
 FluentCMS.Content.ContentFilter
 FluentCMS.Content.ContentFilter.ContentFilter(FluentCMS.Content.ContentFilter! original) -> void
-FluentCMS.Content.ContentProblem
-FluentCMS.Content.ContentProblem.<Clone>$() -> FluentCMS.Content.ContentProblem!
-FluentCMS.Content.ContentProblem.Code.get -> string!
-FluentCMS.Content.ContentProblem.Code.init -> void
-FluentCMS.Content.ContentProblem.ContentProblem(string! Code, int Status, string! Title, string! Detail) -> void
-FluentCMS.Content.ContentProblem.Current.get -> System.Text.Json.Nodes.JsonObject?
-FluentCMS.Content.ContentProblem.Current.init -> void
-FluentCMS.Content.ContentProblem.Deconstruct(out string! Code, out int Status, out string! Title, out string! Detail) -> void
-FluentCMS.Content.ContentProblem.Detail.get -> string!
-FluentCMS.Content.ContentProblem.Detail.init -> void
-FluentCMS.Content.ContentProblem.Equals(FluentCMS.Content.ContentProblem? other) -> bool
-FluentCMS.Content.ContentProblem.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ValidationError!>!
-FluentCMS.Content.ContentProblem.Errors.init -> void
-FluentCMS.Content.ContentProblem.Status.get -> int
-FluentCMS.Content.ContentProblem.Status.init -> void
-FluentCMS.Content.ContentProblem.Title.get -> string!
-FluentCMS.Content.ContentProblem.Title.init -> void
 FluentCMS.Content.ContentQuery
 FluentCMS.Content.ContentQuery.<Clone>$() -> FluentCMS.Content.ContentQuery!
 FluentCMS.Content.ContentQuery.ContentQuery() -> void
@@ -370,7 +514,6 @@ FluentCMS.Content.IContentService<T>.UnpublishAsync(System.Guid id, FluentCMS.Co
 FluentCMS.Content.IContentService<T>.UpdateAsync(System.Guid id, T! entry, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
 FluentCMS.Content.IContentSurface
 FluentCMS.Content.IContentSurface.DefaultPageSize.get -> int
-FluentCMS.Content.IContentSurface.Describe(System.Exception! exception) -> FluentCMS.Content.ContentProblem!
 FluentCMS.Content.IContentSurface.MaxPageSize.get -> int
 FluentCMS.Content.IContentSurface.MaxPopulateDepth.get -> int
 FluentCMS.Content.IContentSurface.ReadableFieldsAsync(string! type, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlySet<string!>?>
@@ -1422,6 +1565,9 @@ FluentCMS.Plugins.IPlugin.ConfigureServices(FluentCMS.Plugins.IPluginServiceBuil
 FluentCMS.Plugins.IPluginAppBuilder
 FluentCMS.Plugins.IPluginAppBuilder.Name.get -> string!
 FluentCMS.Plugins.IPluginAppBuilder.Services.get -> System.IServiceProvider!
+FluentCMS.Plugins.IPluginServiceBuilder.AddMcpPrompts<TProvider>() -> FluentCMS.Plugins.IPluginServiceBuilder!
+FluentCMS.Plugins.IPluginServiceBuilder.AddMcpResources<TProvider>() -> FluentCMS.Plugins.IPluginServiceBuilder!
+FluentCMS.Plugins.IPluginServiceBuilder.AddMcpTools<TProvider>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddProviderSlot<TSlot, TDefault>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddJob<TJob, TPayload>(string! type) -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddJob<TJob, TPayload>(string! type, System.TimeSpan? attemptTimeout) -> FluentCMS.Plugins.IPluginServiceBuilder!
@@ -1439,9 +1585,26 @@ FluentCMS.Plugins.IPluginServiceBuilder.AddSettings<TSettings>() -> FluentCMS.Pl
 FluentCMS.Plugins.IPluginServiceBuilder.Name.get -> string!
 FluentCMS.Plugins.IPluginServiceBuilder.Providers.get -> FluentCMS.Providers.IProviderSlots!
 FluentCMS.Plugins.IPluginServiceBuilder.Services.get -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+FluentCMS.Plugins.IProblemDescriber
+FluentCMS.Plugins.IProblemDescriber.Describe(System.Exception! exception) -> FluentCMS.Plugins.ProblemDescription!
 FluentCMS.Plugins.PluginException
 FluentCMS.Plugins.PluginException.Code.get -> string!
 FluentCMS.Plugins.PluginException.PluginException(string! code, string! message) -> void
+FluentCMS.Plugins.ProblemDescription
+FluentCMS.Plugins.ProblemDescription.<Clone>$() -> FluentCMS.Plugins.ProblemDescription!
+FluentCMS.Plugins.ProblemDescription.Code.get -> string!
+FluentCMS.Plugins.ProblemDescription.Code.init -> void
+FluentCMS.Plugins.ProblemDescription.Deconstruct(out string! Code, out int Status, out string! Title, out string! Detail) -> void
+FluentCMS.Plugins.ProblemDescription.Detail.get -> string!
+FluentCMS.Plugins.ProblemDescription.Detail.init -> void
+FluentCMS.Plugins.ProblemDescription.Equals(FluentCMS.Plugins.ProblemDescription? other) -> bool
+FluentCMS.Plugins.ProblemDescription.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ValidationError!>!
+FluentCMS.Plugins.ProblemDescription.Errors.init -> void
+FluentCMS.Plugins.ProblemDescription.ProblemDescription(string! Code, int Status, string! Title, string! Detail) -> void
+FluentCMS.Plugins.ProblemDescription.Status.get -> int
+FluentCMS.Plugins.ProblemDescription.Status.init -> void
+FluentCMS.Plugins.ProblemDescription.Title.get -> string!
+FluentCMS.Plugins.ProblemDescription.Title.init -> void
 FluentCMS.Providers.EmailMessage
 FluentCMS.Providers.EmailMessage.<Clone>$() -> FluentCMS.Providers.EmailMessage!
 FluentCMS.Providers.EmailMessage.Deconstruct(out string! To, out string! Subject, out string! TextBody) -> void
@@ -2187,9 +2350,48 @@ const FluentCMS.Schema.FieldSettings.Scale = "scale" -> string!
 const FluentCMS.Schema.FieldSettings.Source = "source" -> string!
 const FluentCMS.Schema.RichTextFormats.Html = "html" -> string!
 const FluentCMS.Schema.RichTextFormats.Markdown = "markdown" -> string!
-override FluentCMS.Content.ContentProblem.Equals(object? obj) -> bool
-override FluentCMS.Content.ContentProblem.GetHashCode() -> int
-override FluentCMS.Content.ContentProblem.ToString() -> string!
+override FluentCMS.Agents.McpListRequest.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpListRequest.GetHashCode() -> int
+override FluentCMS.Agents.McpListRequest.ToString() -> string!
+override FluentCMS.Agents.McpPromptArgument.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpPromptArgument.GetHashCode() -> int
+override FluentCMS.Agents.McpPromptArgument.ToString() -> string!
+override FluentCMS.Agents.McpPromptDescriptor.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpPromptDescriptor.GetHashCode() -> int
+override FluentCMS.Agents.McpPromptDescriptor.ToString() -> string!
+override FluentCMS.Agents.McpPromptGet.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpPromptGet.GetHashCode() -> int
+override FluentCMS.Agents.McpPromptGet.ToString() -> string!
+override FluentCMS.Agents.McpPromptMessage.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpPromptMessage.GetHashCode() -> int
+override FluentCMS.Agents.McpPromptMessage.ToString() -> string!
+override FluentCMS.Agents.McpPromptResult.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpPromptResult.GetHashCode() -> int
+override FluentCMS.Agents.McpPromptResult.ToString() -> string!
+override FluentCMS.Agents.McpProviderRegistration.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpProviderRegistration.GetHashCode() -> int
+override FluentCMS.Agents.McpProviderRegistration.ToString() -> string!
+override FluentCMS.Agents.McpResourceContent.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpResourceContent.GetHashCode() -> int
+override FluentCMS.Agents.McpResourceContent.ToString() -> string!
+override FluentCMS.Agents.McpResourceDescriptor.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpResourceDescriptor.GetHashCode() -> int
+override FluentCMS.Agents.McpResourceDescriptor.ToString() -> string!
+override FluentCMS.Agents.McpResourceRead.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpResourceRead.GetHashCode() -> int
+override FluentCMS.Agents.McpResourceRead.ToString() -> string!
+override FluentCMS.Agents.McpToolAnnotations.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpToolAnnotations.GetHashCode() -> int
+override FluentCMS.Agents.McpToolAnnotations.ToString() -> string!
+override FluentCMS.Agents.McpToolCall.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpToolCall.GetHashCode() -> int
+override FluentCMS.Agents.McpToolCall.ToString() -> string!
+override FluentCMS.Agents.McpToolDescriptor.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpToolDescriptor.GetHashCode() -> int
+override FluentCMS.Agents.McpToolDescriptor.ToString() -> string!
+override FluentCMS.Agents.McpToolResult.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpToolResult.GetHashCode() -> int
+override FluentCMS.Agents.McpToolResult.ToString() -> string!
 override FluentCMS.Content.ContentReference.Equals(object? obj) -> bool
 override FluentCMS.Content.ContentReference.GetHashCode() -> int
 override FluentCMS.Content.ContentReference.ToString() -> string!
@@ -2218,6 +2420,9 @@ override FluentCMS.Media.MediaPreset.ToString() -> string!
 override FluentCMS.Media.MediaUrls.Equals(object? obj) -> bool
 override FluentCMS.Media.MediaUrls.GetHashCode() -> int
 override FluentCMS.Media.MediaUrls.ToString() -> string!
+override FluentCMS.Plugins.ProblemDescription.Equals(object? obj) -> bool
+override FluentCMS.Plugins.ProblemDescription.GetHashCode() -> int
+override FluentCMS.Plugins.ProblemDescription.ToString() -> string!
 override abstract FluentCMS.Events.MediaAssetEvent.<Clone>$() -> FluentCMS.Events.MediaAssetEvent!
 override FluentCMS.Activity.ActivityEntry.Equals(object? obj) -> bool
 override FluentCMS.Activity.ActivityEntry.GetHashCode() -> int
@@ -2633,6 +2838,40 @@ static FluentCMS.Activity.ActivityFilter.operator !=(FluentCMS.Activity.Activity
 static FluentCMS.Activity.ActivityFilter.operator ==(FluentCMS.Activity.ActivityFilter? left, FluentCMS.Activity.ActivityFilter? right) -> bool
 static FluentCMS.Activity.ActivityItem.operator !=(FluentCMS.Activity.ActivityItem? left, FluentCMS.Activity.ActivityItem? right) -> bool
 static FluentCMS.Activity.ActivityItem.operator ==(FluentCMS.Activity.ActivityItem? left, FluentCMS.Activity.ActivityItem? right) -> bool
+static FluentCMS.Agents.McpListRequest.operator !=(FluentCMS.Agents.McpListRequest? left, FluentCMS.Agents.McpListRequest? right) -> bool
+static FluentCMS.Agents.McpListRequest.operator ==(FluentCMS.Agents.McpListRequest? left, FluentCMS.Agents.McpListRequest? right) -> bool
+static FluentCMS.Agents.McpPromptArgument.operator !=(FluentCMS.Agents.McpPromptArgument? left, FluentCMS.Agents.McpPromptArgument? right) -> bool
+static FluentCMS.Agents.McpPromptArgument.operator ==(FluentCMS.Agents.McpPromptArgument? left, FluentCMS.Agents.McpPromptArgument? right) -> bool
+static FluentCMS.Agents.McpPromptDescriptor.operator !=(FluentCMS.Agents.McpPromptDescriptor? left, FluentCMS.Agents.McpPromptDescriptor? right) -> bool
+static FluentCMS.Agents.McpPromptDescriptor.operator ==(FluentCMS.Agents.McpPromptDescriptor? left, FluentCMS.Agents.McpPromptDescriptor? right) -> bool
+static FluentCMS.Agents.McpPromptGet.operator !=(FluentCMS.Agents.McpPromptGet? left, FluentCMS.Agents.McpPromptGet? right) -> bool
+static FluentCMS.Agents.McpPromptGet.operator ==(FluentCMS.Agents.McpPromptGet? left, FluentCMS.Agents.McpPromptGet? right) -> bool
+static FluentCMS.Agents.McpPromptMessage.operator !=(FluentCMS.Agents.McpPromptMessage? left, FluentCMS.Agents.McpPromptMessage? right) -> bool
+static FluentCMS.Agents.McpPromptMessage.operator ==(FluentCMS.Agents.McpPromptMessage? left, FluentCMS.Agents.McpPromptMessage? right) -> bool
+static FluentCMS.Agents.McpPromptResult.operator !=(FluentCMS.Agents.McpPromptResult? left, FluentCMS.Agents.McpPromptResult? right) -> bool
+static FluentCMS.Agents.McpPromptResult.operator ==(FluentCMS.Agents.McpPromptResult? left, FluentCMS.Agents.McpPromptResult? right) -> bool
+static FluentCMS.Agents.McpProviderRegistration.operator !=(FluentCMS.Agents.McpProviderRegistration? left, FluentCMS.Agents.McpProviderRegistration? right) -> bool
+static FluentCMS.Agents.McpProviderRegistration.operator ==(FluentCMS.Agents.McpProviderRegistration? left, FluentCMS.Agents.McpProviderRegistration? right) -> bool
+static FluentCMS.Agents.McpResourceContent.FromBytes(string! uri, System.ReadOnlyMemory<byte> data, string! mimeType = "application/octet-stream") -> FluentCMS.Agents.McpResourceContent!
+static FluentCMS.Agents.McpResourceContent.FromText(string! uri, string! text, string! mimeType = "text/plain") -> FluentCMS.Agents.McpResourceContent!
+static FluentCMS.Agents.McpResourceContent.operator !=(FluentCMS.Agents.McpResourceContent? left, FluentCMS.Agents.McpResourceContent? right) -> bool
+static FluentCMS.Agents.McpResourceContent.operator ==(FluentCMS.Agents.McpResourceContent? left, FluentCMS.Agents.McpResourceContent? right) -> bool
+static FluentCMS.Agents.McpResourceDescriptor.operator !=(FluentCMS.Agents.McpResourceDescriptor? left, FluentCMS.Agents.McpResourceDescriptor? right) -> bool
+static FluentCMS.Agents.McpResourceDescriptor.operator ==(FluentCMS.Agents.McpResourceDescriptor? left, FluentCMS.Agents.McpResourceDescriptor? right) -> bool
+static FluentCMS.Agents.McpResourceRead.operator !=(FluentCMS.Agents.McpResourceRead? left, FluentCMS.Agents.McpResourceRead? right) -> bool
+static FluentCMS.Agents.McpResourceRead.operator ==(FluentCMS.Agents.McpResourceRead? left, FluentCMS.Agents.McpResourceRead? right) -> bool
+static FluentCMS.Agents.McpToolAnnotations.operator !=(FluentCMS.Agents.McpToolAnnotations? left, FluentCMS.Agents.McpToolAnnotations? right) -> bool
+static FluentCMS.Agents.McpToolAnnotations.operator ==(FluentCMS.Agents.McpToolAnnotations? left, FluentCMS.Agents.McpToolAnnotations? right) -> bool
+static FluentCMS.Agents.McpToolCall.operator !=(FluentCMS.Agents.McpToolCall? left, FluentCMS.Agents.McpToolCall? right) -> bool
+static FluentCMS.Agents.McpToolCall.operator ==(FluentCMS.Agents.McpToolCall? left, FluentCMS.Agents.McpToolCall? right) -> bool
+static FluentCMS.Agents.McpToolDescriptor.IsValidName(string? name) -> bool
+static FluentCMS.Agents.McpToolDescriptor.operator !=(FluentCMS.Agents.McpToolDescriptor? left, FluentCMS.Agents.McpToolDescriptor? right) -> bool
+static FluentCMS.Agents.McpToolDescriptor.operator ==(FluentCMS.Agents.McpToolDescriptor? left, FluentCMS.Agents.McpToolDescriptor? right) -> bool
+static FluentCMS.Agents.McpToolResult.Error(string! code, string! message) -> FluentCMS.Agents.McpToolResult!
+static FluentCMS.Agents.McpToolResult.FromJson(System.Text.Json.JsonElement content) -> FluentCMS.Agents.McpToolResult!
+static FluentCMS.Agents.McpToolResult.FromText(string! text) -> FluentCMS.Agents.McpToolResult!
+static FluentCMS.Agents.McpToolResult.operator !=(FluentCMS.Agents.McpToolResult? left, FluentCMS.Agents.McpToolResult? right) -> bool
+static FluentCMS.Agents.McpToolResult.operator ==(FluentCMS.Agents.McpToolResult? left, FluentCMS.Agents.McpToolResult? right) -> bool
 static FluentCMS.Authorization.Permission.IsValidName(string? name) -> bool
 static FluentCMS.Content.And.operator !=(FluentCMS.Content.And? left, FluentCMS.Content.And? right) -> bool
 static FluentCMS.Content.And.operator ==(FluentCMS.Content.And? left, FluentCMS.Content.And? right) -> bool
@@ -2648,8 +2887,6 @@ static FluentCMS.Content.BulkResult.operator !=(FluentCMS.Content.BulkResult? le
 static FluentCMS.Content.BulkResult.operator ==(FluentCMS.Content.BulkResult? left, FluentCMS.Content.BulkResult? right) -> bool
 static FluentCMS.Content.ContentFilter.operator !=(FluentCMS.Content.ContentFilter? left, FluentCMS.Content.ContentFilter? right) -> bool
 static FluentCMS.Content.ContentFilter.operator ==(FluentCMS.Content.ContentFilter? left, FluentCMS.Content.ContentFilter? right) -> bool
-static FluentCMS.Content.ContentProblem.operator !=(FluentCMS.Content.ContentProblem? left, FluentCMS.Content.ContentProblem? right) -> bool
-static FluentCMS.Content.ContentProblem.operator ==(FluentCMS.Content.ContentProblem? left, FluentCMS.Content.ContentProblem? right) -> bool
 static FluentCMS.Content.ContentQuery.operator !=(FluentCMS.Content.ContentQuery? left, FluentCMS.Content.ContentQuery? right) -> bool
 static FluentCMS.Content.ContentQuery.operator ==(FluentCMS.Content.ContentQuery? left, FluentCMS.Content.ContentQuery? right) -> bool
 static FluentCMS.Content.ContentReference.operator !=(FluentCMS.Content.ContentReference? left, FluentCMS.Content.ContentReference? right) -> bool
@@ -2827,6 +3064,8 @@ static FluentCMS.Media.MediaUploadFile.operator !=(FluentCMS.Media.MediaUploadFi
 static FluentCMS.Media.MediaUploadFile.operator ==(FluentCMS.Media.MediaUploadFile? left, FluentCMS.Media.MediaUploadFile? right) -> bool
 static FluentCMS.Media.MediaUrls.operator !=(FluentCMS.Media.MediaUrls? left, FluentCMS.Media.MediaUrls? right) -> bool
 static FluentCMS.Media.MediaUrls.operator ==(FluentCMS.Media.MediaUrls? left, FluentCMS.Media.MediaUrls? right) -> bool
+static FluentCMS.Plugins.ProblemDescription.operator !=(FluentCMS.Plugins.ProblemDescription? left, FluentCMS.Plugins.ProblemDescription? right) -> bool
+static FluentCMS.Plugins.ProblemDescription.operator ==(FluentCMS.Plugins.ProblemDescription? left, FluentCMS.Plugins.ProblemDescription? right) -> bool
 static FluentCMS.Providers.EmailMessage.operator !=(FluentCMS.Providers.EmailMessage? left, FluentCMS.Providers.EmailMessage? right) -> bool
 static FluentCMS.Providers.EmailMessage.operator ==(FluentCMS.Providers.EmailMessage? left, FluentCMS.Providers.EmailMessage? right) -> bool
 static FluentCMS.Providers.SearchRequest.operator !=(FluentCMS.Providers.SearchRequest? left, FluentCMS.Providers.SearchRequest? right) -> bool

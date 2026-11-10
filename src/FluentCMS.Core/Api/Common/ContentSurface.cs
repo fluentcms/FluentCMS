@@ -5,14 +5,13 @@ using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Api.Common;
 
-// The SDK's seam for a surface over content that is not REST, such as the GraphQL plugin: it answers with the mapper, the
-// JSON, the limits and the access questions the REST APIs use, so that the two cannot drift apart.
+// The SDK's seam for a surface over content that is not REST, such as the GraphQL plugin: it answers with the JSON, the
+// limits and the access questions the REST APIs use, so that the two cannot drift apart.
 internal sealed class ContentSurface(
     SchemaModel schema,
     ContentQueryOptions options,
     IContentQueryAccess access,
-    IOperationContextAccessor operations,
-    ErrorCodeCatalogue codes) : IContentSurface
+    IOperationContextAccessor operations) : IContentSurface
 {
     public int DefaultPageSize => options.DefaultPageSize;
 
@@ -43,16 +42,4 @@ internal sealed class ContentSurface(
     }
 
     public JsonObject ToJson(ContentDocument entry) => ContentJson.Entry(entry);
-
-    public ContentProblem Describe(Exception exception)
-    {
-        ArgumentNullException.ThrowIfNull(exception);
-
-        var problem = ProblemMapper.Map(exception, operations.Current is { Principal.IsAnonymous: false }, codes);
-        return new ContentProblem(problem.Code, problem.Status, problem.Title, problem.Detail)
-        {
-            Errors = [.. (problem.Errors ?? []).Select(error => new ValidationError(error.Path, error.Code, error.Message))],
-            Current = problem.Current is { } current ? ContentJson.Entry(current) : null,
-        };
-    }
 }

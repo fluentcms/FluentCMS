@@ -10,8 +10,8 @@ using Xunit;
 
 namespace FluentCMS.Core.IntegrationTests.Api;
 
-// The SDK's seam for a surface over content that is not REST: it answers with the limits, the JSON, the problems and the
-// access answers of the REST APIs.
+// The SDK's seam for a surface over content that is not REST: it answers with the limits, the JSON and the access
+// answers of the REST APIs.
 public sealed class ContentSurfaceTests : IAsyncDisposable
 {
     private readonly FluentCmsTestHost _host = new FluentCmsTestHost().WithContentTypes<Note>();
@@ -73,34 +73,5 @@ public sealed class ContentSurfaceTests : IAsyncDisposable
         json["status"]!.GetValue<string>().ShouldBe("draft");
         json["title"]!.GetValue<string>().ShouldBe("Shown");
         json["views"]!.GetValue<long>().ShouldBe(3);
-    }
-
-    [Fact]
-    public async Task AnExceptionIsDescribedAsTheProblemRestAnswers()
-    {
-        var signedIn = _host.As(await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token));
-
-        var conflict = await DescribeAsync(signedIn, new VersionConflictException(1, 2, new ContentDocument { ["id"] = Guid.Empty, ["version"] = 2 }));
-        (conflict.Code, conflict.Status).ShouldBe(("FCMS3105", 412));
-        conflict.Current!["version"]!.GetValue<int>().ShouldBe(2);
-
-        var invalid = await DescribeAsync(signedIn, new ValidationException([new ValidationError("title", "FCMS2101", "Required."), new ValidationError("views", "FCMS2104", "Too low.")]));
-        (invalid.Code, invalid.Status).ShouldBe(("FCMS2100", 422));
-        invalid.Errors.Select(error => (error.Path, error.Code)).ShouldBe([("title", "FCMS2101"), ("views", "FCMS2104")]);
-
-        var query = await DescribeAsync(signedIn, new ValidationException([new ValidationError("pageSize", "FCMS2207", "Too large.")]));
-        (query.Code, query.Status, query.Detail).ShouldBe(("FCMS2207", 400, "Too large."));
-
-        // Whether the caller is signed in is what the operation says, not the request.
-        var denied = new ContentAccessDeniedException("note", "create");
-        ((await DescribeAsync(signedIn, denied)).Code, (await DescribeAsync(signedIn, denied)).Status).ShouldBe(("FCMS3103", 403));
-        ((await DescribeAsync(_host.Anonymous, denied)).Code, (await DescribeAsync(_host.Anonymous, denied)).Status).ShouldBe(("FCMS3102", 401));
-
-        var unexpected = await DescribeAsync(signedIn, new InvalidOperationException("The connection string is Server=secret."));
-        (unexpected.Code, unexpected.Status).ShouldBe(("FCMS3199", 500));
-        unexpected.Detail.ShouldNotContain("secret");
-
-        static Task<ContentProblem> DescribeAsync(TestActor actor, Exception exception) =>
-            actor.RunAsync<IContentSurface, ContentProblem>(surface => Task.FromResult(surface.Describe(exception)));
     }
 }

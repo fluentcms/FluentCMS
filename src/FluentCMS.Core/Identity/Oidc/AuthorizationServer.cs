@@ -15,11 +15,15 @@ internal static class AuthorizationServer
     // Marks a client cms.Clients registered, which is deleted once the options no longer list it.
     public const string FromOptionsProperty = "fcms_from_options";
 
+    // The scopes that say which surface a token is for, one of which a protected resource of a plugin asks for.
+    public static readonly string[] ResourceScopes = [TokenScopes.Mcp];
+
     public static readonly string[] KnownScopes =
     [
         TokenScopes.Draft,
         Scopes.Email,
         TokenScopes.Management,
+        TokenScopes.Mcp,
         Scopes.OfflineAccess,
         Scopes.OpenId,
         Scopes.Profile,

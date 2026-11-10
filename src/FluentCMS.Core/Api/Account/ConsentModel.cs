@@ -27,6 +27,7 @@ public sealed class ConsentModel : AccountPageModel
         OpenIddict.Abstractions.OpenIddictConstants.Scopes.OfflineAccess => "Stay connected while you are away",
         TokenScopes.Management => "Manage content and settings, as far as your roles allow",
         TokenScopes.Draft => "Read drafts, as far as your roles allow",
+        TokenScopes.Mcp => "Read and change content as an AI agent or tool, as far as your roles allow",
         _ => scope,
     };
 

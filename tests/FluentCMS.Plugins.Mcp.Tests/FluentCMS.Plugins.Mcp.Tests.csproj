@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+  <!-- The protocol's own client comes with the plugin's package. The sample plugin offers the tools, resources and prompts. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj" />
+    <ProjectReference Include="../FluentCMS.Plugins.Sample/FluentCMS.Plugins.Sample.csproj" />
+  </ItemGroup>
+
+</Project>

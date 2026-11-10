@@ -1,5 +1,6 @@
 using System.Reflection;
 using FluentCMS.Activity;
+using FluentCMS.Agents;
 using FluentCMS.Authorization;
 using FluentCMS.Content;
 using FluentCMS.Core.ActivityLog;
@@ -88,6 +89,9 @@ public static class FluentCmsServiceCollectionExtensions
         }
 
         services.AddSingleton(new ErrorCodeCatalogue(plugins.Contributions.ErrorCodes));
+        services.AddSingleton<IMcpProviders>(plugins.Contributions);
+        services.AddSingleton<ProtectedResources>();
+        services.TryAddSingleton<IProblemDescriber, ProblemDescriber>();
 
         services.AddProductionStartupChecks();
         services.AddFluentCmsOptions(DatabaseOptions.Section, StorageErrorCodes.InvalidDatabaseSetting, new DatabaseOptions { SchemaSyncOutsideDevelopment = builder.SchemaSyncOutsideDevelopment });
