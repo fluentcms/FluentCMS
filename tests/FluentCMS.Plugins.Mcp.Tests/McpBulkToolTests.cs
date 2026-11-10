@@ -132,6 +132,32 @@ public sealed class McpBulkToolTests(McpToolsFixture fixture) : IClassFixture<Mc
         published.GetProperty("references").GetArrayLength().ShouldBe(0);
     }
 
+    // An unpublish takes the entry from the readers of what is published, so its plan names the published entries.
+    [Fact]
+    public async Task ThePlanOfABulkUnpublishNamesThePublishedEntriesThatPointToTheEntry()
+    {
+        using var http = await KeyAsync(fixture.Host);
+        await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+        var writer = (await OkAsync(client, "writer_create_draft", new { fields = new { name = "Ada" } })).GetProperty("id").GetGuid();
+        var published = (await OkAsync(client, "post_create_draft", new { fields = new { title = "Out", author = writer } })).GetProperty("id").GetGuid();
+        await OkAsync(client, "post_create_draft", new { fields = new { title = "Not out", author = writer } });
+        await OkAsync(client, McpContentTools.Publish, new { type = "writer", id = writer });
+        await OkAsync(client, McpContentTools.Publish, new { type = "post", id = published });
+        var arguments = new { type = "writer", action = "unpublish", ids = new[] { writer }, limit = 1 };
+
+        var plan = await OkAsync(client, McpContentTools.Bulk, arguments);
+        var ran = await OkAsync(client, McpContentTools.Bulk, Confirmed(arguments, TokenOf(plan)));
+        var replayed = await CallAsync(client, McpContentTools.Bulk, Confirmed(arguments, TokenOf(plan)));
+
+        plan.GetProperty("entries")[0].GetProperty("status").GetString().ShouldBe("published");
+        plan.GetProperty("references").EnumerateArray().Select(reference => reference.GetProperty("id").GetGuid()).ShouldBe([published]);
+        ran.GetProperty("items")[0].GetProperty("status").GetString().ShouldBe("succeeded");
+        (await OkAsync(client, "writer_get", new { id = writer })).GetProperty("status").GetString().ShouldBe("unpublished");
+
+        // The status of the entry is part of the plan, so the run ended its own token.
+        Code(replayed).ShouldBe("FCMS1633");
+    }
+
     [Fact]
     public async Task BulkRefusesArgumentsItDoesNotTake()
     {
