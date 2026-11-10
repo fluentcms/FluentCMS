@@ -1,9 +1,14 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Agents;
+using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Events;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Diagnostics;
 using FluentCMS.Plugins.Sample;
+using FluentCMS.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
@@ -209,6 +214,62 @@ public sealed class McpClientRegistrationTests(McpClientFixture fixture) : IClas
         }
     }
 
+    // The tool list says what a call would allow (#2979), so for a client that registered itself it holds the tools and
+    // the fields that the user's roles and the client's role both give, which is what a user of that role alone is listed.
+    [Fact]
+    public async Task TheToolListOfARegisteredClientHoldsOnlyTheToolsAndFieldsBothTheUserAndTheClientsRoleAllow()
+    {
+        await using var host = new FluentCmsTestHost()
+            .WithContentTypes<Article, Page>()
+            .WithServices(services => services.PostConfigure<RateLimitOptions>(limits => limits.Auth.PermitLimit = 10_000))
+            .Configure(cms =>
+            {
+                cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
+                cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
+            });
+        await SetPolicyAsync(host, McpClientRegistrationMode.Approval);
+        using var agent = new McpAgent(host, "10.2.0.13");
+        using var admin = await KeyAsync(host);
+        var drafter = "Drafter " + Guid.NewGuid().ToString("N")[..6];
+        using var role = await admin.PostAsJsonAsync(
+            new Uri(McpToolsTesting.Roles, UriKind.Relative),
+            new { name = drafter, grants = new[] { McpToolsTesting.Grant("content.page.read"), McpToolsTesting.Grant("content.page.update", "title"), McpToolsTesting.Grant("content.article.read") } },
+            Token);
+        role.StatusCode.ShouldBe(HttpStatusCode.Created, await role.Content.ReadAsStringAsync(Token));
+        var superAdmin = await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token);
+        var (clientId, _) = await ApprovedAsync(agent, admin, drafter, "Drafting agent");
+        var tokens = await agent.TokensAsync(clientId, superAdmin);
+
+        using var throughClient = agent.Bearer(tokens["access_token"]!.GetValue<string>());
+        using var asSuperAdmin = await host.AsUserAsync(superAdmin, "openid", McpScope);
+        using var asDrafter = await host.AsUserAsync(await host.CreateUserAsync(drafter, cancellationToken: Token), "openid", McpScope);
+        await using var limitedClient = await ConnectAsync(throughClient, protocolVersion: InitializeProtocol);
+        await using var ownClient = await ConnectAsync(asSuperAdmin, protocolVersion: InitializeProtocol);
+        await using var drafterClient = await ConnectAsync(asDrafter, protocolVersion: InitializeProtocol);
+        var limited = await McpToolsTesting.ToolsAsync(limitedClient);
+        var own = await McpToolsTesting.ToolsAsync(ownClient);
+        var ofDrafter = await McpToolsTesting.ToolsAsync(drafterClient);
+
+        // Without the client, the Super Admin publishes, deletes and writes every field.
+        own.Keys.ShouldContain(McpContentTools.Publish);
+        own.Keys.ShouldContain("page_delete");
+        own.Keys.ShouldContain("article_create_draft");
+        UpdatableFields(own["page_update_draft"]).ShouldBe(["title", "notes"], ignoreOrder: true);
+
+        // Through the client, whose role has no publish permission and updates the title of a page only.
+        limited.Keys.ShouldNotContain(McpContentTools.Publish);
+        limited.Keys.ShouldNotContain(McpContentTools.Unpublish);
+        limited.Keys.ShouldNotContain(McpContentTools.Schedule);
+        limited.Keys.ShouldNotContain("page_delete");
+        limited.Keys.ShouldNotContain("page_create_draft");
+        limited.Keys.ShouldNotContain("article_update_draft");
+        limited.Keys.ShouldContain("page_update_draft");
+        limited.Keys.ShouldContain("article_get");
+        limited.Keys.ShouldContain(McpContentTools.Query);
+        UpdatableFields(limited["page_update_draft"]).ShouldBe(["title"]);
+        limited.Keys.ShouldBe(ofDrafter.Keys, ignoreOrder: true);
+    }
+
     // The role of a client that is deleted afterwards leaves its tokens nothing, rather than the user's own reach.
     [Fact]
     public async Task AClientWhoseRoleIsGoneReachesNothing()
@@ -406,6 +467,9 @@ public sealed class McpClientRegistrationTests(McpClientFixture fixture) : IClas
         settings.MaxPendingClients.ShouldBe(100);
         settings.RegistrationsPerHour.ShouldBe(10);
     }
+
+    private static IEnumerable<string> UpdatableFields(ModelContextProtocol.Protocol.Tool tool) =>
+        tool.InputSchema.GetProperty("properties").GetProperty("fields").GetProperty("properties").EnumerateObject().Select(property => property.Name);
 
     // A write of settings names the version it read, as the admin does.
     private static async Task<HttpResponseMessage> PutSettingsAsync(HttpClient admin, string path, string json)
