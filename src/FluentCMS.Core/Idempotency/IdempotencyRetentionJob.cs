@@ -31,7 +31,7 @@ internal sealed class IdempotencyRetentionJob(SystemDbContext context, TimeProvi
 
         while (true)
         {
-            var ids = await rows.AsNoTracking().Where(row => row.ExpiresAt <= now).Select(row => row.Id).Take(BatchSize).ToListAsync(cancellationToken);
+            var ids = await rows.AsNoTracking().Where(row => row.ExpiresAt <= now).OrderBy(row => row.ExpiresAt).Select(row => row.Id).Take(BatchSize).ToListAsync(cancellationToken);
             if (ids.Count == 0)
             {
                 return;
