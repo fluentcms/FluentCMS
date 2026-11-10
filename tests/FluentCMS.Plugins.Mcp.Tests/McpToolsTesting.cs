@@ -113,6 +113,21 @@ internal static class McpToolsTesting
         return result.StructuredContent.ShouldNotBeNull();
     }
 
+    // The arguments of a dry run as its run sends them: the same, with dryRun false and the token the dry run gave.
+    public static Dictionary<string, object?> Confirmed(object arguments, string? token)
+    {
+        var sent = JsonSerializer.SerializeToElement(arguments).EnumerateObject().ToDictionary(property => property.Name, property => (object?)property.Value, StringComparer.Ordinal);
+        sent["dryRun"] = false;
+        sent["confirmationToken"] = token;
+        return sent;
+    }
+
+    public static string TokenOf(JsonElement plan) => plan.GetProperty("confirmationToken").GetString().ShouldNotBeNull();
+
+    // A tool with a dry run, run: the dry run, then the same call with its token.
+    public static async Task<JsonElement> ConfirmedAsync(McpClient client, string tool, object arguments) =>
+        await OkAsync(client, tool, Confirmed(arguments, TokenOf(await OkAsync(client, tool, arguments))));
+
     public static async Task<Dictionary<string, Tool>> ToolsAsync(McpClient client) =>
         (await client.ListToolsAsync(cancellationToken: Token)).ToDictionary(tool => tool.Name, tool => tool.ProtocolTool, StringComparer.Ordinal);
 

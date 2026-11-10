@@ -23,4 +23,12 @@ internal static class McpErrorCodes
     public const string PromptNameReserved = "FCMS1626";
     public const string UndeclaredPromptArgument = "FCMS1627";
     public const string MissingPromptArgument = "FCMS1628";
+
+    // FCMS1630 to 1639: the dry runs, the bulk tool and the call limits.
+    public const string ConfirmationRequired = "FCMS1630";
+    public const string ConfirmationInvalid = "FCMS1631";
+    public const string ConfirmationExpired = "FCMS1632";
+    public const string PlanChanged = "FCMS1633";
+    public const string CallLimitExceeded = "FCMS1634";
+    public const string BulkLimitExceeded = "FCMS1635";
 }

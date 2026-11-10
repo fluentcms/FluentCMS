@@ -20,12 +20,16 @@ internal sealed class McpRequests(
     IPluginState plugins,
     IProblemDescriber problems,
     McpInstructions instructions,
+    McpCallLimits limits,
     IServiceProvider services,
     TimeProvider time,
     ILogger<McpRequests> logger)
 {
     // The key of a tool result's _meta that holds the FCMS code of a failure.
     public const string CodeMeta = "fluentcms/code";
+
+    // The key that holds the seconds until a client over its call limit is served again.
+    public const string RetryAfterMeta = "fluentcms/retryAfter";
 
     private const string InvalidParamsForMissingResource = "2026-07-28";
 
@@ -65,6 +69,10 @@ internal sealed class McpRequests(
         var call = new McpToolCall(operation, parameters.Name, JsonSerializer.SerializeToElement(parameters.Arguments ?? new Dictionary<string, JsonElement>()));
         var started = time.GetTimestamp();
         using var span = McpTelemetry.StartToolCall(operation);
+        if (await LimitedAsync(operation, parameters.Name, span, cancellationToken) is { } limited)
+        {
+            return limited;
+        }
 
         McpToolResult? result = null;
         try
@@ -284,6 +292,68 @@ internal sealed class McpRequests(
         IsError = result.IsError,
         Meta = result is { IsError: true, ErrorCode: { } named } ? new JsonObject { [CodeMeta] = named } : null,
     };
+
+    // The calls of a client are counted before a provider is asked (spec 5.4, "Safety"): every call, and the calls of
+    // tools that change data against a lower limit of their own. A call over a limit is a tool error that says when to
+    // retry, and its span keeps no name, since no tool answered for the name the client sent.
+    private async ValueTask<CallToolResult?> LimitedAsync(OperationContext operation, string name, System.Diagnostics.Activity? span, CancellationToken cancellationToken)
+    {
+        var client = McpCallLimits.ClientOf(operation);
+        if ((limits.Call(client) ?? (await ChangesAsync(operation, name, cancellationToken) ? limits.Write(client) : null)) is not { } refused)
+        {
+            return null;
+        }
+
+        var seconds = refused.RetryAfterSeconds;
+        var kind = refused.Write ? "calls of tools that change data" : "tool calls";
+        if (refused.Report)
+        {
+            McpLog.CallLimitExceeded(logger, operation.ClientId, operation.Principal.Kind, operation.Principal.Id, refused.Limit, kind, operation.Site.Value, seconds);
+        }
+
+        McpTelemetry.Fail(span, McpErrorCodes.CallLimitExceeded);
+        var result = ResultOf(McpToolResult.Error(McpErrorCodes.CallLimitExceeded, $"The client is over its limit of {refused.Limit} {kind} a minute. Retry in {seconds} seconds."));
+        result.Meta![RetryAfterMeta] = seconds;
+        return result;
+    }
+
+    // Whether the tool may change data, which is how its provider lists it for the caller. A tool that no provider
+    // lists counts as one that does. A provider that fails to list is passed over, as a list passes over it.
+    private async ValueTask<bool> ChangesAsync(OperationContext operation, string name, CancellationToken cancellationToken)
+    {
+        if (limits.IsKnownRead(operation, name))
+        {
+            return false;
+        }
+
+        var request = new McpListRequest(operation);
+        foreach (var provider in await EnabledAsync<IMcpToolProvider>(providers.Tools, operation, cancellationToken))
+        {
+            IReadOnlyList<McpToolDescriptor> tools;
+            try
+            {
+                tools = await provider.ListToolsAsync(request, cancellationToken);
+            }
+            catch (Exception exception) when (!Cancelled(exception, cancellationToken))
+            {
+                continue;
+            }
+
+            if (tools.FirstOrDefault(tool => tool.Name == name) is not { } listed)
+            {
+                continue;
+            }
+
+            if (listed.Annotations.ReadOnly)
+            {
+                limits.RememberRead(operation, name);
+            }
+
+            return !listed.Annotations.ReadOnly;
+        }
+
+        return true;
+    }
 
     // The operation the request bridge of core opened for the request, which every provider call runs in.
     private OperationContext Operation() =>

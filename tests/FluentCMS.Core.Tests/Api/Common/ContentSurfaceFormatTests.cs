@@ -14,7 +14,7 @@ namespace FluentCMS.Core.Tests.Api.Common;
 // The REST forms of content as another surface gets them (spec 4.4, 5.4): the same query and the same JSON as the routes.
 public class ContentSurfaceFormatTests
 {
-    private static readonly ContentSurface Surface = new(new SchemaBuilder().Build(), new ContentQueryOptions(), new ContentQueryAccess.Closed(), new OperationContextAccessor());
+    private static readonly ContentSurface Surface = new(new SchemaBuilder().Build(), new ContentQueryOptions(), new ContentQueryAccess.Closed(), new OperationContextAccessor(), ErrorCodeCatalogue.Core);
 
     [Fact]
     public void TheParametersOfAListAreTheQueryTheRoutesParse()
@@ -65,6 +65,26 @@ public class ContentSurfaceFormatTests
         Surface.ToJson(published)["warnings"]![0]!["code"]!.GetValue<string>().ShouldBe(PublishWarningCodes.UnpublishedReference);
         Surface.ToJson(schedule)["runAt"]!.GetValue<string>().ShouldBe("2027-03-01T09:00:00Z");
         Surface.ToJson(schedule)["action"]!.GetValue<string>().ShouldBe("publish");
+    }
+
+    [Fact]
+    public void ABulkResultIsWrittenAsTheBulkRouteWritesIt()
+    {
+        var id = Guid.NewGuid();
+        var result = new BulkResult(
+            [
+                new BulkItemResult(0, id, BulkItemStatus.Succeeded) { Version = 2 },
+                new BulkItemResult(1, Guid.NewGuid(), BulkItemStatus.Failed) { Problem = new BulkProblem("FCMS3104", "There is no article.") },
+            ],
+            Cancelled: false);
+
+        var json = Surface.ToJson(result);
+
+        json.ToJsonString().ShouldBe(ManagementJson.Bulk(result, authenticated: false).ToJsonString());
+        json["items"]![0]!["status"]!.GetValue<string>().ShouldBe("succeeded");
+        json["items"]![0]!["version"]!.GetValue<int>().ShouldBe(2);
+        json["items"]![1]!["problem"]!["code"]!.GetValue<string>().ShouldBe("FCMS3104");
+        json["cancelled"]!.GetValue<bool>().ShouldBeFalse();
     }
 
     [Fact]

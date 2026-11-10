@@ -15,7 +15,8 @@ internal sealed class ContentSurface(
     SchemaModel schema,
     ContentQueryOptions options,
     IContentQueryAccess access,
-    IOperationContextAccessor operations) : IContentSurface
+    IOperationContextAccessor operations,
+    ErrorCodeCatalogue codes) : IContentSurface
 {
     public int DefaultPageSize => options.DefaultPageSize;
 
@@ -61,6 +62,14 @@ internal sealed class ContentSurface(
         ArgumentNullException.ThrowIfNull(schedule);
 
         return ManagementJson.Schedule(schedule);
+    }
+
+    // A principal that is not signed in is told to sign in, as the bulk route tells it.
+    public JsonObject ToJson(BulkResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        return ManagementJson.Bulk(result, operations.Current?.Principal.IsAnonymous == false, codes);
     }
 
     public ContentQuery ParseQuery(IEnumerable<KeyValuePair<string, string>> parameters) => BracketQueryParser.Parse(parameters);

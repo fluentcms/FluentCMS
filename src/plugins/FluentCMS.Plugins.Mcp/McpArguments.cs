@@ -19,6 +19,9 @@ internal static class McpArguments
 
     public static JsonElement Element(JsonNode node) => JsonSerializer.SerializeToElement(node, Json);
 
+    // The bytes a result takes as it is sent.
+    public static int Size(JsonNode node) => JsonSerializer.SerializeToUtf8Bytes(node, Json).Length;
+
     // A key the tool does not take is refused rather than ignored, as a body of the Management API is.
     public static void Only(JsonElement arguments, params ReadOnlySpan<string> names)
     {

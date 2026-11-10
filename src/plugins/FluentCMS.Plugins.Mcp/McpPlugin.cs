@@ -37,6 +37,7 @@ public sealed class McpPlugin : IPlugin
         McpTools.Add(plugin);
         McpServerSetup.Add(plugin.Services);
         McpSiteSetup.Add(plugin);
+        McpSafety.Add(plugin);
 
         plugin
             .AddPermissions<McpPermissions>()
@@ -54,7 +55,7 @@ public sealed class McpPlugin : IPlugin
         ArgumentNullException.ThrowIfNull(app);
 
         var options = app.Services.GetRequiredService<IOptions<McpOptions>>().Value;
-        app.MapProtectedResource(Prefix, new ProtectedResourceOptions { Scope = Scope, Origin = Origin.Mcp, Name = options.Title }).MapMcp();
+        app.MapProtectedResource(Prefix, new ProtectedResourceOptions { Scope = Scope, Origin = Origin.Mcp, Name = options.Title }).LimitBody(options.MaxRequestBytes).MapMcp();
         McpSiteSetup.Map(app);
     }
 }

@@ -31,7 +31,7 @@ internal sealed class McpTypeCap
 
 // The content tools of spec 5.4. Each exposed type the caller may read gets {type}_list, _get, _search, _create_draft,
 // _update_draft, _discard_draft and _delete, a singleton _get, _update_draft and _discard_draft, and the shared tools
-// publish, unpublish, schedule and query take a type. The list holds a tool only when core says a grant of the caller
+// publish, unpublish, schedule, query and bulk take a type. The list holds a tool only when core says a grant of the caller
 // gives its permission, and a write tool only the fields the caller may write. A call goes to the content service as the
 // caller, whatever the list held, so a tool called by name without its permission is refused there; the plugin asks no
 // permission and reads no table itself.
@@ -41,6 +41,7 @@ internal sealed class McpContentTools(
     IContentSurface surface,
     IFieldTypeRegistry fieldTypes,
     IOptions<McpOptions> options,
+    McpDryRuns dryRuns,
     McpTypeCap cap,
     ILogger<McpContentTools> logger) : IMcpToolProvider
 {
@@ -48,6 +49,7 @@ internal sealed class McpContentTools(
     public const string Unpublish = "unpublish";
     public const string Schedule = "schedule";
     public const string Query = "query";
+    public const string Bulk = "bulk";
 
     public const string List = "list";
     public const string Get = "get";
@@ -68,7 +70,7 @@ internal sealed class McpContentTools(
     public async ValueTask<IReadOnlyList<McpToolDescriptor>> ListToolsAsync(McpListRequest request, CancellationToken cancellationToken = default)
     {
         var described = await access.ContentAsync(cancellationToken);
-        var exposed = described.Schema.ContentTypes.Where(type => IsExposed(type.Name)).ToList();
+        var exposed = Exposed(described).ToList();
         var max = options.Value.MaxExposedTypes;
         foreach (var type in exposed.Skip(max).Where(type => cap.Name(type.Name)))
         {
@@ -76,13 +78,13 @@ internal sealed class McpContentTools(
         }
 
         List<McpToolDescriptor> tools = [];
-        var schemas = new McpToolSchemas(described.Schema, fieldTypes);
+        var schemas = new McpToolSchemas(described.Schema, fieldTypes, surface.DefaultPageSize, surface.MaxPageSize);
         foreach (var type in exposed.Take(max))
         {
             AddTypeTools(tools, schemas, type, described.Types[type.Name], described.Search);
         }
 
-        AddSharedTools(tools, exposed, described);
+        AddSharedTools(tools, schemas, exposed, described, options.Value.MaxBulkItems);
         return tools;
     }
 
@@ -99,6 +101,8 @@ internal sealed class McpContentTools(
                 return await ScheduleAsync(arguments, cancellationToken);
             case Query:
                 return await QueryAsync(arguments, cancellationToken);
+            case Bulk:
+                return await BulkAsync(request, cancellationToken);
         }
 
         if (Split(request.Name) is not var (typeName, verb))
@@ -127,13 +131,13 @@ internal sealed class McpContentTools(
 
         return verb switch
         {
-            List => await ListAsync(type.Name, arguments, McpQueryArguments.List, drafts, cancellationToken),
+            List => await ListAsync(type, arguments, McpQueryArguments.List, drafts, cancellationToken),
             Get => await GetAsync(type.Name, arguments, drafts, cancellationToken),
-            Search => await SearchAsync(type.Name, arguments, drafts, cancellationToken),
+            Search => await SearchAsync(type, arguments, drafts, cancellationToken),
             CreateDraft => await CreateAsync(type.Name, arguments, cancellationToken),
             UpdateDraft => await UpdateAsync(type.Name, arguments, cancellationToken),
             DiscardDraft => await DiscardAsync(type.Name, McpArguments.Id(arguments), arguments, ["id", "expectedVersion", "locale"], cancellationToken),
-            Delete => await DeleteAsync(type.Name, arguments, cancellationToken),
+            Delete => await dryRuns.DeleteAsync(request, type, Reach(described), cancellationToken),
             _ => null,
         };
     }
@@ -163,14 +167,14 @@ internal sealed class McpContentTools(
         tools.Add(Tool(
             name,
             List,
-            $"Lists the entries of the content type {name}{(may.Drafts ? " as drafts, or as published" : " that are published")}, with filters, sorting and paging. Fields: {fields}.",
-            McpToolSchemas.List(type, may.Drafts, search: false),
+            $"Lists the entries of the content type {name}{(may.Drafts ? " as drafts, or as published" : " that are published")}, with filters, sorting and paging. {LongAnswers(name)} Fields: {fields}.",
+            schemas.List(type, may.Drafts, search: false),
             Reads,
             $"List {name}"));
         tools.Add(Tool(name, Get, $"Reads one {name} entry by its id.", McpToolSchemas.Get(type, may.Drafts), Reads, $"Get {name}"));
         if (search)
         {
-            tools.Add(Tool(name, Search, $"Searches the {name} entries by text, with the filters, sorting and paging of {Name(name, List)}.", McpToolSchemas.List(type, may.Drafts, search: true), Reads, $"Search {name}"));
+            tools.Add(Tool(name, Search, $"Searches the {name} entries by text, with the filters, sorting and paging of {Name(name, List)}.", schemas.List(type, may.Drafts, search: true), Reads, $"Search {name}"));
         }
 
         if (may.Create)
@@ -198,12 +202,18 @@ internal sealed class McpContentTools(
 
         if (may.Delete)
         {
-            tools.Add(Tool(name, Delete, $"Moves a {name} entry to the trash, in every locale.", McpToolSchemas.Delete(type), Changes, $"Delete {name}"));
+            tools.Add(Tool(
+                name,
+                Delete,
+                $"Moves a {name} entry to the trash, in every locale. A confirmation is needed: a call answers the plan first, which is the entry and the references that would break, with a confirmationToken, and deletes nothing. The same call with dryRun false and that token, within five minutes, deletes the entry.",
+                McpToolSchemas.Delete(type),
+                Changes,
+                $"Delete {name}"));
         }
     }
 
     // A shared tool is listed when the caller holds its permission for some exposed type, and names those types.
-    private static void AddSharedTools(List<McpToolDescriptor> tools, List<SchemaType> exposed, ContentAccess described)
+    private static void AddSharedTools(List<McpToolDescriptor> tools, McpToolSchemas schemas, List<SchemaType> exposed, ContentAccess described, int maxBulkItems)
     {
         List<string> Types(Func<ContentTypeAccess, bool> may) => [.. exposed.Where(type => may(described.Types[type.Name])).Select(type => type.Name)];
 
@@ -244,26 +254,92 @@ internal sealed class McpContentTools(
         {
             tools.Add(new McpToolDescriptor(
                 Query,
-                "Lists the entries of any content type the caller may read, with the filters, sorting and paging of the REST APIs. It reaches the types that have no tools of their own.",
-                McpToolSchemas.Query([.. exposed.Select(type => type.Name)], described.Search))
+                "Lists the entries of any content type the caller may read, with the filters, sorting and paging of the REST APIs. It reaches the types that have no tools of their own. An answer that would be too long ends early with truncated true and the nextCursor to go on from.",
+                schemas.Query([.. exposed.Select(type => type.Name)], described.Search))
             {
                 Title = "Query",
                 Annotations = Reads,
             });
         }
+
+        // Listed for a caller that holds the permission of one of its actions at least, with those actions.
+        List<string> bulkActions = [];
+        HashSet<string> bulkTypes = new(StringComparer.Ordinal);
+        foreach (var (action, types) in (ReadOnlySpan<(string, List<string>)>)[(Publish, publishable), (Unpublish, unpublishable), (McpDryRuns.Delete, Types(may => may.Delete))])
+        {
+            if (types.Count > 0)
+            {
+                bulkActions.Add(action);
+                bulkTypes.UnionWith(types);
+            }
+        }
+
+        if (bulkActions.Count > 0)
+        {
+            tools.Add(new McpToolDescriptor(
+                Bulk,
+                $"Publishes, unpublishes or deletes several entries of a content type at once, named by ids or by a filter, up to a limit of {maxBulkItems} at most. A confirmation is needed: a call answers the plan first, which is the entries it would touch and the references that would break, with a confirmationToken, and changes nothing. The same call with dryRun false and that token, within five minutes, runs it and answers what became of each entry.",
+                McpToolSchemas.Bulk([.. exposed.Select(type => type.Name).Where(bulkTypes.Contains)], bulkActions, maxBulkItems))
+            {
+                Title = "Bulk",
+                Annotations = Changes,
+            });
+        }
     }
+
+    private static string LongAnswers(string type) =>
+        $"An answer that would be too long ends early with truncated true and the nextCursor to go on from, and a long text is shortened, which {Name(type, Get)} reads whole.";
 
     private static McpToolDescriptor Tool(string type, string verb, string description, JsonElement inputSchema, McpToolAnnotations annotations, string title) =>
         new(Name(type, verb), description, inputSchema) { Title = title, ContentType = type, Annotations = annotations };
 
-    private async Task<McpToolResult> ListAsync(string type, JsonElement arguments, string[] names, bool drafts, CancellationToken cancellationToken)
+    private Task<McpToolResult> ListAsync(SchemaType type, JsonElement arguments, string[] names, bool drafts, CancellationToken cancellationToken)
     {
         McpArguments.Only(arguments, names);
         var query = surface.ParseQuery(McpQueryArguments.Parameters(arguments, names));
-        return McpArguments.Result(surface.ToJson(await content.QueryAsync(type, WithStatus(query, drafts), cancellationToken)));
+        return PageAsync(type.Name, WithStatus(query, drafts), Name(type.Name, Get), cancellationToken);
     }
 
-    private Task<McpToolResult> SearchAsync(string type, JsonElement arguments, bool drafts, CancellationToken cancellationToken)
+    // A list an agent can take in (spec 5.4, "Safety"). A long text is shortened where a tool reads it whole. A list over
+    // the size limit ends at an entry: the cursor of that entry is the engine's to make, so the page is read again at the
+    // size that fits, by its offset or its cursor, and answered with the cursor of the rest.
+    private async Task<McpToolResult> PageAsync(string type, ContentQuery query, string? whole, CancellationToken cancellationToken)
+    {
+        var limits = options.Value;
+        var page = await content.QueryAsync(type, query, cancellationToken);
+        int? offset = query.Cursor is null ? ((query.Page?.Number ?? 1) - 1) * page.PageSize : null;
+        var total = page.Total;
+        var cut = false;
+        while (true)
+        {
+            var list = surface.ToJson(page);
+            if (whole is not null)
+            {
+                McpListResults.Shorten(list, limits.MaxListTextLength, whole);
+            }
+
+            var fit = McpListResults.Fit(list, limits.MaxResultBytes);
+            if (fit >= page.Items.Count)
+            {
+                if (cut && total is { } counted)
+                {
+                    list["total"] = counted;
+                }
+
+                if (cut && page.NextCursor is not null)
+                {
+                    list[McpListResults.Truncated] = true;
+                }
+
+                return McpArguments.Result(list);
+            }
+
+            cut = true;
+            page = await content.QueryAsync(type, query with { Page = new PageRequest { Offset = offset, Size = fit, WithTotal = false } }, cancellationToken);
+        }
+    }
+
+    private Task<McpToolResult> SearchAsync(SchemaType type, JsonElement arguments, bool drafts, CancellationToken cancellationToken)
     {
         McpArguments.RequiredText(arguments, McpQueryArguments.Search);
         return ListAsync(type, arguments, [McpQueryArguments.Search, .. McpQueryArguments.List], drafts, cancellationToken);
@@ -300,15 +376,6 @@ internal sealed class McpContentTools(
         McpArguments.Only(arguments, names);
         var options = new LocaleWriteOptions { Locale = McpArguments.Text(arguments, "locale"), ExpectedVersion = McpArguments.Integer(arguments, "expectedVersion") };
         return McpArguments.Result(surface.ToJson(await content.DiscardDraftAsync(type, id, options, cancellationToken)));
-    }
-
-    // The entry goes to the trash at once. What a delete takes before it runs, such as a dry run, is read here.
-    private async Task<McpToolResult> DeleteAsync(string type, JsonElement arguments, CancellationToken cancellationToken)
-    {
-        McpArguments.Only(arguments, "id");
-        var id = McpArguments.Id(arguments);
-        await content.DeleteAsync(type, id, cancellationToken);
-        return McpArguments.Result(new JsonObject { ["type"] = type, ["id"] = id, ["deleted"] = true });
     }
 
     private async Task<McpToolResult> GetSingletonAsync(SchemaType type, JsonElement arguments, bool drafts, CancellationToken cancellationToken)
@@ -411,8 +478,24 @@ internal sealed class McpContentTools(
 
         string[] names = [McpQueryArguments.Search, .. McpQueryArguments.List];
         var query = surface.ParseQuery(McpQueryArguments.Parameters(arguments, names));
-        return McpArguments.Result(surface.ToJson(await content.QueryAsync(type.Name, WithStatus(query, described.Types[type.Name].Drafts), cancellationToken)));
+
+        // A type over the cap has no {type}_get to read a text whole, so its texts stay as they are.
+        var own = Exposed(described).Take(options.Value.MaxExposedTypes).Any(exposed => exposed.Name == type.Name);
+        return await PageAsync(type.Name, WithStatus(query, described.Types[type.Name].Drafts), own ? Name(type.Name, Get) : null, cancellationToken);
     }
+
+    private async Task<McpToolResult> BulkAsync(McpToolCall request, CancellationToken cancellationToken)
+    {
+        McpArguments.Only(request.Arguments, McpDryRuns.BulkArguments);
+        var described = await access.ContentAsync(cancellationToken);
+        return Available(described, request.Arguments) is { } type
+            ? await dryRuns.BulkAsync(request, type, Reach(described), cancellationToken)
+            : NotAvailable(request.Arguments);
+    }
+
+    private McpReach Reach(ContentAccess described) => new(described, [.. Exposed(described)]);
+
+    private IEnumerable<SchemaType> Exposed(ContentAccess described) => described.Schema.ContentTypes.Where(type => IsExposed(type.Name));
 
     // The type a shared tool names, when it is exposed and the caller may read it. One that is not is answered alike
     // whether it exists or not.
