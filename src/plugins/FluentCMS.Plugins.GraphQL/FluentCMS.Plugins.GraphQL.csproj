@@ -1,7 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <Description>GraphQL for FluentCMS: queries, mutations and limits generated from the content schema, over the same services as REST.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HotChocolate.AspNetCore" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
+    <ProjectReference Include="../../FluentCMS.Plugins.Abstractions/FluentCMS.Plugins.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FluentCMS.Plugins.GraphQL.Tests" />
   </ItemGroup>
 
 </Project>
