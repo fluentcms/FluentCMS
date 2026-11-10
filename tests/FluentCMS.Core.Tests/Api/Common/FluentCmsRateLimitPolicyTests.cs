@@ -88,6 +88,41 @@ public sealed class FluentCmsRateLimitPolicyTests
         request.Header("RateLimit-Limit").ShouldBeEmpty();
     }
 
+    // The endpoint's limiter keeps the first limiter it gets for a key, so a request counted before authentication and one
+    // the endpoint counts itself, from the same address, must not share a key in either order.
+    [Fact]
+    public async Task ARequestCountedBeforeAuthenticationLeavesTheCallersBucketToTheNextRequest()
+    {
+        var policy = new AuthRateLimitPolicy(Limits(auth: 1), new FixedClock());
+        using var limiter = PartitionedRateLimiter.Create<HttpContext, string>(policy.GetPartition);
+        var counted = new Request();
+        policy.MarkCounted(counted.Context);
+
+        (await limiter.AcquireAsync(counted.Context, cancellationToken: TestContext.Current.CancellationToken)).Dispose();
+        using var first = await limiter.AcquireAsync(new Request().Context, cancellationToken: TestContext.Current.CancellationToken);
+        using var second = await limiter.AcquireAsync(new Request().Context, cancellationToken: TestContext.Current.CancellationToken);
+
+        first.IsAcquired.ShouldBeTrue();
+        second.IsAcquired.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ARequestCountedBeforeAuthenticationIsNotCountedAgainInTheCallersBucket()
+    {
+        var policy = new AuthRateLimitPolicy(Limits(auth: 1), new FixedClock());
+        using var limiter = PartitionedRateLimiter.Create<HttpContext, string>(policy.GetPartition);
+        var counted = new Request();
+        policy.MarkCounted(counted.Context);
+
+        using var first = await limiter.AcquireAsync(new Request().Context, cancellationToken: TestContext.Current.CancellationToken);
+        using var passed = await limiter.AcquireAsync(counted.Context, cancellationToken: TestContext.Current.CancellationToken);
+        await counted.StartAsync();
+
+        first.IsAcquired.ShouldBeTrue();
+        passed.IsAcquired.ShouldBeTrue();
+        counted.Starting.ShouldBe(0);
+    }
+
     private static RateLimitOptions Limits(int auth)
     {
         var options = new RateLimitOptions();
