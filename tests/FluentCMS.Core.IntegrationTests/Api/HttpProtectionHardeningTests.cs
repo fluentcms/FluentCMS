@@ -379,6 +379,44 @@ public sealed class HttpProtectionHardeningTests(CmsWebHosts hosts) : IClassFixt
         (await Status(client, path, ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.TooManyRequests);
     }
 
+    // A /connect request is counted before authentication and passes the endpoint's limiter; a hosted page elsewhere is
+    // counted by the endpoint's. Each keeps its own count, whichever comes first from an address.
+    [Fact]
+    public async Task AHostedPageAfterAConnectRequestIsStillLimited()
+    {
+        var client = await Start(Limits(auth: 2));
+        (string, string) address = ("X-Test-Ip", "10.0.0.1");
+
+        using var connect = await Send(client, "/connect/probe", address);
+        using var first = await Send(client, "/page", address);
+        using var second = await Send(client, "/page", address);
+
+        Header(connect, "RateLimit-Remaining").ShouldBe("1");
+        Header(first, "RateLimit-Remaining").ShouldBe("1");
+        Header(second, "RateLimit-Remaining").ShouldBe("0");
+        (await Status(client, "/page", address)).ShouldBe(HttpStatusCode.TooManyRequests);
+    }
+
+    [Fact]
+    public async Task AConnectRequestAfterAHostedPageIsCountedOnce()
+    {
+        var client = await Start(Limits(auth: 2));
+        (string, string) address = ("X-Test-Ip", "10.0.0.1");
+
+        using var page = await Send(client, "/page", address);
+        using var first = await Send(client, "/connect/probe", address);
+        using var second = await Send(client, "/connect/probe", address);
+
+        Header(page, "RateLimit-Remaining").ShouldBe("1");
+        first.StatusCode.ShouldBe(HttpStatusCode.OK);
+        Header(first, "RateLimit-Remaining").ShouldBe("1");
+        second.StatusCode.ShouldBe(HttpStatusCode.OK);
+        Header(second, "RateLimit-Remaining").ShouldBe("0");
+        (await Status(client, "/connect/probe", address)).ShouldBe(HttpStatusCode.TooManyRequests);
+        using var lastPage = await Send(client, "/page", address);
+        Header(lastPage, "RateLimit-Remaining").ShouldBe("0");
+    }
+
     [Fact]
     public async Task AKeyLimitAboveTheCoarseLimitStopsTheHost()
     {
