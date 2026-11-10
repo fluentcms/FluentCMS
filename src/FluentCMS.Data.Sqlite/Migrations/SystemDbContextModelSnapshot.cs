@@ -24,6 +24,10 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
+                    b.Property<string>("AllowedAddresses")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("allowed_addresses");
+
                     b.Property<string>("Class")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -64,6 +68,20 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("name");
 
+                    b.Property<long?>("PreviousKeyExpiresAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("previous_key_expires_at");
+
+                    b.Property<string>("PreviousKeyHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("previous_key_hash");
+
+                    b.Property<string>("PreviousKeyPrefix")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("previous_key_prefix");
+
                     b.Property<int?>("RateLimit")
                         .HasColumnType("INTEGER")
                         .HasColumnName("rate_limit");
@@ -93,11 +111,16 @@ namespace FluentCMS.Data.Sqlite.Migrations
                     b.HasIndex("KeyPrefix")
                         .HasDatabaseName("ix_cms_api_key_key_prefix");
 
+                    b.HasIndex("PreviousKeyPrefix")
+                        .HasDatabaseName("ix_cms_api_key_previous_key_prefix");
+
                     b.HasIndex("RoleId")
                         .HasDatabaseName("ix_cms_api_key_role");
 
                     b.ToTable("cms_api_key", null, t =>
                         {
+                            t.HasCheckConstraint("ck_cms_api_key_allowed_addresses_json", "json_valid(\"allowed_addresses\")");
+
                             t.HasCheckConstraint("ck_cms_api_key_site_ids_json", "json_valid(\"site_ids\")");
 
                             t.HasCheckConstraint("ck_cms_api_key_type_names_json", "json_valid(\"type_names\")");

@@ -46,7 +46,7 @@ public sealed class ApiKeyTests : IDisposable
         AuthenticateAsync(request => request.Headers.Authorization = $"ApiKey {secret}");
 
     private Task<ApiKeyCheck> CheckAsync(string secret) =>
-        _fixture.WithAsync(services => services.GetRequiredService<ApiKeyService>().AuthenticateAsync(secret, Token));
+        _fixture.WithAsync(services => services.GetRequiredService<ApiKeyService>().AuthenticateAsync(secret, null, Token));
 
     // What the API layer builds from the handler's claims (#2783): the kind, id and name from their claims, the rest as they are.
     private static Principal PrincipalOf(ClaimsPrincipal user)

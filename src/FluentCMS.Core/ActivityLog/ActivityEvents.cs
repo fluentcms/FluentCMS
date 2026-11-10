@@ -1,6 +1,7 @@
 using System.Globalization;
 using FluentCMS.Activity;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Events;
 
 namespace FluentCMS.Core.ActivityLog;
@@ -96,6 +97,21 @@ internal static class ActivityEvents
         {
             ["expiresAt"] = message.ExpiresAt.UtcDateTime.ToString("O", CultureInfo.InvariantCulture),
         }));
+        events.AddActivity<ApiKeyRotatedEvent>("api_key.rotated", message => Key("api_key.rotated", message.KeyId, message.Name, new Dictionary<string, string?>
+        {
+            ["overlapEndsAt"] = message.PreviousKeyExpiresAt?.UtcDateTime.ToString("O", CultureInfo.InvariantCulture),
+        }));
+        events.AddActivity<ApiKeyAllowedAddressesChangedEvent>("api_key.allowed_addresses_changed", message => Key("api_key.allowed_addresses_changed", message.KeyId, message.Name, new Dictionary<string, string?>
+        {
+            ["allowedAddresses"] = message.AllowedAddresses is { } addresses ? string.Join(' ', addresses) : null,
+        }));
+        events.AddActivity<ApiKeyAddressRefusedEvent>("api_key.address_refused", message => Key("api_key.address_refused", message.KeyId, message.Name, new Dictionary<string, string?>
+        {
+            ["code"] = ApiKeyErrorCodes.AddressRefused,
+        }) with
+        {
+            Ip = message.Ip,
+        });
 
         events.AddActivity<CacheInvalidatedEvent>("cache.invalidated", message => new ActivityEntry("cache.invalidated")
         {

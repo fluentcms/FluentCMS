@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
@@ -20,6 +21,9 @@ internal sealed record ApiKeyRequest(string Name, ApiKeyClass Class, Guid RoleId
     public DateTimeOffset? ExpiresAt { get; init; }
 
     public int? RateLimit { get; init; }
+
+    // Addresses and CIDR ranges; null for any address, and an empty list is refused as above.
+    public IReadOnlyCollection<string>? AllowedAddresses { get; init; }
 }
 
 internal sealed record ApiKeyInfo(
@@ -35,10 +39,14 @@ internal sealed record ApiKeyInfo(
     int? RateLimit,
     DateTimeOffset? RevokedAt,
     DateTimeOffset CreatedAt,
-    Guid CreatedBy)
+    Guid CreatedBy,
+    IReadOnlyList<string>? AllowedAddresses,
+    DateTimeOffset? PreviousKeyExpiresAt)
 {
-    public static ApiKeyInfo From(ApiKey key) =>
-        new(key.Id, key.Name, key.Class, key.KeyPrefix, key.RoleId, ApiKeyClaims.SitesOf(key), ApiKeyClaims.TypesOf(key), key.ExpiresAt, key.LastUsedAt, key.RateLimit, key.RevokedAt, key.CreatedAt, key.CreatedBy);
+    // PreviousKeyExpiresAt only while the secret a rotation replaced is still accepted.
+    public static ApiKeyInfo From(ApiKey key, DateTimeOffset now) =>
+        new(key.Id, key.Name, key.Class, key.KeyPrefix, key.RoleId, ApiKeyClaims.SitesOf(key), ApiKeyClaims.TypesOf(key), key.ExpiresAt, key.LastUsedAt, key.RateLimit, key.RevokedAt, key.CreatedAt, key.CreatedBy,
+            ApiKeyAddresses.Of(key), key.PreviousKeyHash is not null && key.PreviousKeyExpiresAt > now && key.IsActive(now) ? key.PreviousKeyExpiresAt : null);
 }
 
 // The only place the secret is, and only on the call that created it. It is kept out of ToString, so a log of this cannot show it.
@@ -47,8 +55,11 @@ internal sealed record CreatedApiKey(ApiKeyInfo Key, string Secret)
     public override string ToString() => $"CreatedApiKey {{ Key = {Key} }}";
 }
 
-// The key a request presented, or why it is refused: for the server's log only, with the id of a key that was found.
-internal sealed record ApiKeyCheck(ApiKey? Key, string? Failure, Guid? RefusedKeyId = null);
+// The key a request presented, or why it is refused: for the server's log only, with the key that was found.
+internal sealed record ApiKeyCheck(ApiKey? Key, string? Failure, ApiKey? Refused = null)
+{
+    public Guid? RefusedKeyId => Refused?.Id;
+}
 
 // A key is managed with apikeys.manage where it reaches: for the instance when it is bound to no site, and in each of its
 // sites otherwise, so a caller limited to some sites, a key bound to them included, never makes or touches a key that reaches
@@ -60,6 +71,8 @@ internal sealed class ApiKeyService(
     IOperationContextAccessor accessor,
     ManagementAuthority authority,
     RoleService roles,
+    ApiKeyOptions options,
+    ApiKeyRefusals refusals,
     TimeProvider time)
 {
     // last_used_at says whether a key is still in use, which needs minutes, not every request.
@@ -119,6 +132,8 @@ internal sealed class ApiKeyService(
             errors.Add(new ValidationError("rateLimit", ApiKeyErrorCodes.InvalidRateLimit, "A rate limit is at least one request a minute."));
         }
 
+        var addresses = ApiKeyAddresses.Normalize(request.AllowedAddresses, errors);
+
         if (errors.Count > 0)
         {
             throw new ValidationException(errors);
@@ -140,6 +155,7 @@ internal sealed class ApiKeyService(
             TypeNames = types is null ? null : JsonSerializer.Serialize(types),
             ExpiresAt = request.ExpiresAt,
             RateLimit = request.RateLimit,
+            AllowedAddresses = addresses is null ? null : JsonSerializer.Serialize(addresses),
             CreatedAt = now,
             CreatedBy = (accessor.Current?.AuditPrincipal ?? Principal.System).Id,
         };
@@ -154,7 +170,7 @@ internal sealed class ApiKeyService(
             },
             cancellationToken);
 
-        return new CreatedApiKey(ApiKeyInfo.From(key), secret);
+        return new CreatedApiKey(ApiKeyInfo.From(key, now), secret);
     }
 
     // The keys the caller manages. One with no permission for any of them is refused rather than shown an empty list.
@@ -162,8 +178,9 @@ internal sealed class ApiKeyService(
     {
         var keys = await context.Set<ApiKey>().AsNoTracking().OrderBy(key => key.CreatedAt).ThenBy(key => key.Id).ToListAsync(cancellationToken);
 
+        var now = time.GetUtcNow();
         List<ApiKeyInfo> managed = [];
-        foreach (var key in keys.Select(ApiKeyInfo.From))
+        foreach (var key in keys.Select(key => ApiKeyInfo.From(key, now)))
         {
             if (await ManagesAsync(key.SiteIds, cancellationToken))
             {
@@ -185,7 +202,7 @@ internal sealed class ApiKeyService(
         await RequireAnyAsync(cancellationToken);
         return await context.Set<ApiKey>().AsNoTracking().FirstOrDefaultAsync(key => key.Id == id, cancellationToken) is { } key
             && await ManagesAsync(ApiKeyClaims.SitesOf(key), cancellationToken)
-                ? ApiKeyInfo.From(key)
+                ? ApiKeyInfo.From(key, time.GetUtcNow())
                 : null;
     }
 
@@ -235,9 +252,108 @@ internal sealed class ApiKeyService(
             cancellationToken);
     }
 
+    // A new secret for the key, which keeps its id, role and binding. The secret it replaces is still accepted for the overlap,
+    // the configured one unless the caller asks for a shorter one, so that clients can change over; a second rotation within
+    // it replaces that secret, so a key has at most two. The update is conditional on the secret that was read, so of two
+    // rotations at once one wins and the other is refused rather than losing the secret it returned.
+    public async Task<CreatedApiKey> RotateAsync(Guid id, TimeSpan? overlap = null, CancellationToken cancellationToken = default)
+    {
+        var window = overlap ?? options.RotationOverlap;
+        if (window < TimeSpan.Zero || window > options.RotationOverlap)
+        {
+            throw new ValidationException([new ValidationError("overlapSeconds", ApiKeyErrorCodes.InvalidOverlap,
+                $"The overlap is from 0 to {(long)options.RotationOverlap.TotalSeconds} seconds, the configured RotationOverlap.")]);
+        }
+
+        await ManagedAsync(id, cancellationToken);
+        return await changes.RunAsync(
+            async () =>
+            {
+                var key = await StoredAsync(id, cancellationToken);
+                var now = time.GetUtcNow();
+                if (!key.IsActive(now))
+                {
+                    throw NotRotatable("A revoked or expired key is not rotated; create a new one.");
+                }
+
+                var secret = ApiKeyFormat.Generate(key.Class);
+                var prefix = ApiKeyFormat.LookupPrefix(secret);
+                var hash = ApiKeyFormat.Hash(secret);
+                var keeps = window > TimeSpan.Zero;
+                var previousPrefix = keeps ? key.KeyPrefix : null;
+                var previousHash = keeps ? key.KeyHash : null;
+                DateTimeOffset? previousExpires = keeps ? now + window : null;
+                var changed = await context.Set<ApiKey>()
+                    .Where(row => row.Id == id && row.KeyHash == key.KeyHash && row.RevokedAt == null)
+                    .ExecuteUpdateAsync(
+                        setters => setters
+                            .SetProperty(row => row.KeyPrefix, prefix)
+                            .SetProperty(row => row.KeyHash, hash)
+                            .SetProperty(row => row.PreviousKeyPrefix, previousPrefix)
+                            .SetProperty(row => row.PreviousKeyHash, previousHash)
+                            .SetProperty(row => row.PreviousKeyExpiresAt, previousExpires),
+                        cancellationToken);
+                if (changed == 0)
+                {
+                    throw NotRotatable("The key was rotated or revoked at the same time; read it again.");
+                }
+
+                key.KeyPrefix = prefix;
+                key.KeyHash = hash;
+                key.PreviousKeyPrefix = previousPrefix;
+                key.PreviousKeyHash = previousHash;
+                key.PreviousKeyExpiresAt = previousExpires;
+                await changes.RaiseAsync(new ApiKeyRotatedEvent(key.Id, key.Name, previousExpires), cancellationToken);
+                return new CreatedApiKey(ApiKeyInfo.From(key, now), secret);
+            },
+            cancellationToken);
+    }
+
+    // Null lets the key in from any address. Widening where a key is accepted is a decision like a new key's, so the caller
+    // needs what creating this key would need, its role's grants included, and narrowing it is held to the same rule.
+    public async Task<ApiKeyInfo> SetAllowedAddressesAsync(Guid id, IReadOnlyCollection<string>? allowedAddresses, CancellationToken cancellationToken = default)
+    {
+        List<ValidationError> errors = [];
+        var addresses = ApiKeyAddresses.Normalize(allowedAddresses, errors);
+        if (errors.Count > 0)
+        {
+            throw new ValidationException(errors);
+        }
+
+        await ManagedAsync(id, cancellationToken);
+        var stored = await StoredAsync(id, cancellationToken);
+        if (stored.RevokedAt is not null)
+        {
+            throw new ValidationException([new ValidationError("id", ApiKeyErrorCodes.NotRotatable, "A revoked key is not changed.")]);
+        }
+
+        await roles.RequireKeyRoleAsync(stored.RoleId, ApiKeyClaims.SitesOf(stored), ApiKeyClaims.TypesOf(stored), cancellationToken);
+
+        var json = addresses is null ? null : JsonSerializer.Serialize(addresses);
+        return await changes.RunAsync(
+            async () =>
+            {
+                var key = await StoredAsync(id, cancellationToken);
+                var changed = await context.Set<ApiKey>()
+                    .Where(row => row.Id == id && row.RevokedAt == null)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.AllowedAddresses, json), cancellationToken);
+                if (changed == 0)
+                {
+                    throw new ValidationException([new ValidationError("id", ApiKeyErrorCodes.NotRotatable, "A revoked key is not changed.")]);
+                }
+
+                key.AllowedAddresses = json;
+                await changes.RaiseAsync(new ApiKeyAllowedAddressesChangedEvent(key.Id, key.Name, addresses), cancellationToken);
+                return ApiKeyInfo.From(key, time.GetUtcNow());
+            },
+            cancellationToken);
+    }
+
     // For the authentication handler. The prefix finds the candidates, and the hash of the presented key is compared in
     // constant time with each, so the time taken does not tell how much of a key was right.
-    public async Task<ApiKeyCheck> AuthenticateAsync(string secret, CancellationToken cancellationToken = default)
+    // The secret a rotation replaced is found by its own prefix, and matches only until its overlap ends. The client address
+    // is checked last, so that only a holder of a valid key is refused for it.
+    public async Task<ApiKeyCheck> AuthenticateAsync(string secret, IPAddress? client, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(secret);
 
@@ -246,18 +362,25 @@ internal sealed class ApiKeyService(
             return new ApiKeyCheck(null, ApiKeyErrorCodes.InvalidKey);
         }
 
+        var now = time.GetUtcNow();
         var prefix = ApiKeyFormat.LookupPrefix(secret);
-        var candidates = await context.Set<ApiKey>().AsNoTracking().Where(key => key.KeyPrefix == prefix).ToListAsync(cancellationToken);
+        var candidates = await context.Set<ApiKey>().AsNoTracking()
+            .Where(key => key.KeyPrefix == prefix || key.PreviousKeyPrefix == prefix)
+            .ToListAsync(cancellationToken);
         ApiKey? found = null;
         foreach (var candidate in candidates)
         {
-            if (ApiKeyFormat.Matches(secret, candidate.KeyHash))
+            var current = candidate.KeyPrefix == prefix && ApiKeyFormat.Matches(secret, candidate.KeyHash);
+            var previous = candidate.PreviousKeyPrefix == prefix
+                && candidate.PreviousKeyHash is { } previousHash
+                && ApiKeyFormat.Matches(secret, previousHash)
+                && candidate.PreviousKeyExpiresAt > now;
+            if (current || previous)
             {
                 found = candidate;
             }
         }
 
-        var now = time.GetUtcNow();
         if (found is null)
         {
             return new ApiKeyCheck(null, ApiKeyErrorCodes.InvalidKey);
@@ -265,16 +388,38 @@ internal sealed class ApiKeyService(
 
         if (found.RevokedAt is not null)
         {
-            return new ApiKeyCheck(null, ApiKeyErrorCodes.Revoked, found.Id);
+            return new ApiKeyCheck(null, ApiKeyErrorCodes.Revoked, found);
         }
 
         if (!found.IsActive(now))
         {
-            return new ApiKeyCheck(null, ApiKeyErrorCodes.Expired, found.Id);
+            return new ApiKeyCheck(null, ApiKeyErrorCodes.Expired, found);
+        }
+
+        if (!ApiKeyAddresses.Allows(found, client))
+        {
+            return new ApiKeyCheck(null, ApiKeyErrorCodes.AddressRefused, found);
         }
 
         await TouchAsync(found, now, cancellationToken);
         return new ApiKeyCheck(found, null);
+    }
+
+    // The activity row of a valid key sent from an address it is not allowed from: anonymous, since the request is refused,
+    // of no site, and written even when the client goes away. Only a holder of the key can cause one, and ApiKeyRefusals
+    // keeps a client that retries from writing one per request.
+    public Task RecordAddressRefusedAsync(ApiKey key, IPAddress? client, string correlationId)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+
+        var address = client is null ? null : (client.IsIPv4MappedToIPv6 ? client.MapToIPv4() : client).ToString();
+        if (!refusals.ShouldRecord(key.Id, address ?? ""))
+        {
+            return Task.CompletedTask;
+        }
+
+        var source = new EventSource(time.GetUtcNow(), Guid.Empty, Principal.Anonymous.Id, Principal.Anonymous.Name, PrincipalKind.Anonymous, Origin.Api, correlationId);
+        return changes.RecordAsync(new ApiKeyAddressRefusedEvent(key.Id, key.Name, address) { Source = source }, CancellationToken.None);
     }
 
     // At most one write per key per interval: the row read says whether one is due, and the condition on the update keeps
@@ -342,6 +487,9 @@ internal sealed class ApiKeyService(
                 : $"A key needs {CorePermissions.ApiKeysManage} in every site it is bound to.");
         }
     }
+
+    private static ValidationException NotRotatable(string message) =>
+        new([new ValidationError("id", ApiKeyErrorCodes.NotRotatable, message)]);
 
     private static ValidationException NotFound(Guid id) =>
         new([new ValidationError("id", ApiKeyErrorCodes.NotFound, $"There is no API key {id:D}.")]);

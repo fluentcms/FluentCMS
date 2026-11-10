@@ -191,6 +191,14 @@ A setting that is lifted rather than fixed stays in the startup report, as `gene
 
 A wrong, expired or revoked key gets the same 401, `FCMS3016`, so the answer does not tell that a secret was ever a key. The log says why: each refused key is event id 9010 (`ApiKeyRefused`, Information) with its code (`FCMS3016` wrong, `FCMS3017` expired, `FCMS3018` revoked, `FCMS3019` sent with another credential), the client address and the id of the key when one was found, never the key. The meter `FluentCMS` counts them in `fluentcms.api_keys.refused`, tagged `fluentcms.code`; alert on it to see keys being probed. A refused key writes no activity row, since a row per failed key would let a flood of keys write to the database as fast as it is sent; the [rate limit](#rate-limits) before authentication bounds it instead.
 
+A key can be limited to IP addresses and CIDR ranges with `allowedAddresses`, on create or with `PUT /api/management/v1/api-keys/{id}/allowed-addresses`. The address checked is the one the host trusts, so behind a proxy configure the [forwarded headers](reverse-proxy.md) first, or every request comes from the proxy's address. A valid key sent from another address gets `FCMS3016` too; the log says `FCMS3023`, and the activity log has `api_key.address_refused` with the address, at most once per key and address, and for ten addresses per key, every five minutes.
+
+`POST /api/management/v1/api-keys/{id}/rotate` gives a key a new secret and keeps the old one working for an overlap, so clients can change over without a gap. The body `{ "overlapSeconds": n }` asks for a shorter overlap, and `0` ends the old secret at once, as for a leaked key.
+
+| `FluentCms:ApiKeys:` | Default | Meaning |
+| --- | --- | --- |
+| `RotationOverlap` | `1.00:00:00` | How long the secret a rotation replaces is still accepted beside the new one, at most 30 days. `00:00:00` ends it at the rotation. |
+
 ## Authorization server
 
 `AddFluentCms()` adds the OpenIddict server at `/connect/authorize`, `/connect/token`, `/connect/userinfo`, `/connect/introspect`, `/connect/revoke` and `/connect/logout`, with discovery at `/.well-known/openid-configuration` and the keys at `/.well-known/jwks`. It answers HTTPS only; behind a proxy that ends TLS, forward the scheme. Under `FluentCms:ReverseProxy:PathBase` these endpoints, the issuer and the discovery URLs carry the path base, and the endpoints are not answered without it. The issuer and the discovery URLs are built from the [public origin](#public-origin) when it is set, and from the request otherwise. The flows are the authorization code flow with PKCE (`S256`, for every client), refresh tokens that rotate, and client credentials. A used refresh token still works for OpenIddict's 30 seconds of leeway, so two refreshes that cross, as two tabs of one application make, both succeed; used after that, it ends the session and its tokens. Access tokens are signed JWTs with the audience `fluentcms:management`.

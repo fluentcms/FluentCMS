@@ -63,6 +63,8 @@ internal static class IdentityEndpoints
         keys.MapGet("/{id}", GetKeyAsync).Produces<ApiKeyInfo>();
         keys.MapDelete("/{id}", RevokeKeyAsync).Produces(StatusCodes.Status204NoContent);
         keys.MapPost("/{id}/expire", ExpireKeyAsync).Takes<ApiKeyExpireRequest>(optional: true).Produces<ApiKeyInfo>();
+        keys.MapPost("/{id}/rotate", RotateKeyAsync).Takes<ApiKeyRotateRequest>(optional: true).Produces<CreatedApiKeyResponse>();
+        keys.MapPut("/{id}/allowed-addresses", SetKeyAddressesAsync).Takes<ApiKeyAllowedAddressesRequest>().Produces<ApiKeyInfo>();
     }
 
     private static async Task<IResult> ListUsersAsync(HttpContext httpContext, [FromServices] UserAdministration users)
@@ -242,7 +244,7 @@ internal static class IdentityEndpoints
     private static async Task<IResult> CreateKeyAsync(HttpContext httpContext, [FromServices] ApiKeyService keys)
     {
         ManagementQuery.Only(httpContext.Request);
-        var body = await BodyReader.ReadAsync(httpContext.Request, "name", "class", "roleId", "siteIds", "typeNames", "expiresAt", "rateLimit");
+        var body = await BodyReader.ReadAsync(httpContext.Request, "name", "class", "roleId", "siteIds", "typeNames", "expiresAt", "rateLimit", "allowedAddresses");
         var name = body.String("name", required: true);
         var keyClass = ClassOf(body);
         var roleId = body.Id("roleId", required: true);
@@ -252,6 +254,7 @@ internal static class IdentityEndpoints
             TypeNames = body.Strings("typeNames"),
             ExpiresAt = body.Moment("expiresAt"),
             RateLimit = body.Integer("rateLimit"),
+            AllowedAddresses = body.Strings("allowedAddresses"),
         };
         body.ThrowIfInvalid();
 
@@ -280,6 +283,32 @@ internal static class IdentityEndpoints
 
         await keys.ExpireAsync(keyId, at, httpContext.RequestAborted);
         return AdminJson.Ok(await keys.FindAsync(keyId, httpContext.RequestAborted) ?? throw KeyNotFound(keyId));
+    }
+
+    // The new secret is in this answer only, as on create.
+    private static async Task<IResult> RotateKeyAsync(string id, HttpContext httpContext, [FromServices] ApiKeyService keys)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        var keyId = ManagementQuery.RouteId(id, nameof(id));
+        var body = httpContext.Request.ContentLength is 0 or null && !httpContext.Request.HasJsonContentType()
+            ? null
+            : await BodyReader.ReadAsync(httpContext.Request, "overlapSeconds");
+        var seconds = body?.Integer("overlapSeconds");
+        body?.ThrowIfInvalid();
+
+        var rotated = await keys.RotateAsync(keyId, seconds is { } value ? TimeSpan.FromSeconds(value) : null, httpContext.RequestAborted);
+        return AdminJson.Ok(CreatedApiKeyResponse.From(rotated));
+    }
+
+    private static async Task<IResult> SetKeyAddressesAsync(string id, HttpContext httpContext, [FromServices] ApiKeyService keys)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        var keyId = ManagementQuery.RouteId(id, nameof(id));
+        var body = await BodyReader.ReadAsync(httpContext.Request, "allowedAddresses");
+        var addresses = body.Element("allowedAddresses", required: true) is { ValueKind: not JsonValueKind.Null } ? body.Strings("allowedAddresses") : null;
+        body.ThrowIfInvalid();
+
+        return AdminJson.Ok(await keys.SetAllowedAddressesAsync(keyId, addresses, httpContext.RequestAborted));
     }
 
     private static RoleRequest RoleRequest(BodyReader body)
