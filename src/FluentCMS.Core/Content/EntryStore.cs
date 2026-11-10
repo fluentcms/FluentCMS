@@ -83,7 +83,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         ContentDocument entry = [];
         ApplySystem(entry, row);
         FillFields(type, type, "", entry, shared, localized, byField, locale);
-        return new StoredDraft(entry, new StoredRows(shared, localized));
+        return new StoredDraft(entry, new StoredRows(shared, localized)) { References = references };
     }
 
     public static void ApplySystem(ContentDocument entry, Document row)
@@ -227,8 +227,11 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
     // Saves the draft of one locale: the document when it is new, the shared row, the locale row, the references and the
     // version, in one save, and prunes the versions over the cap of the type. over holds the draft rows this transaction
     // read, which are the rows written over, and fields is EntryJson.Fields of the entry.
-    public Task WriteDraftAsync(SchemaType type, Document row, bool isNewDocument, StoredRows over, ContentDocument entry, JsonObject fields, Origin origin, string? clientId, CancellationToken cancellationToken, string? message = null) =>
-        SaveOwnRowsAsync(
+    // Returns the references written, in position order within each field.
+    public async Task<IReadOnlyList<Reference>> WriteDraftAsync(SchemaType type, Document row, bool isNewDocument, StoredRows over, ContentDocument entry, JsonObject fields, Origin origin, string? clientId, CancellationToken cancellationToken, string? message = null)
+    {
+        List<Reference> written = [];
+        await SaveOwnRowsAsync(
             async () =>
             {
                 if (isNewDocument)
@@ -243,7 +246,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
                     WriteRow(StorageNames.LocaleTable(type), type, row, row.Locale, stored.Where(item => item.Localized), entry, over.Localized);
                 }
 
-                await ReplaceReferencesAsync(type, row, stored, entry, cancellationToken);
+                written.AddRange(await ReplaceReferencesAsync(type, row, stored, entry, cancellationToken));
 
                 context.Versions.Add(new ContentVersion
                 {
@@ -261,6 +264,8 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
             },
             () => PruneVersionsAsync(type, row, cancellationToken),
             cancellationToken);
+        return written;
+    }
 
     // Copies the draft rows of one locale, and the shared row they sit on, over the published ones.
     public Task CopyDraftToPublishedAsync(SchemaType type, Document row, CancellationToken cancellationToken) =>
@@ -681,13 +686,14 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
 
     // A reference inside JSON or rich text has no output of its own: it is stored under the field that holds it, which
     // the query engine does not read for a relation, so that "what references X" and integrity on publish see it too.
-    private async Task ReplaceReferencesAsync(SchemaType type, Document row, IReadOnlyList<StoredField> stored, ContentDocument entry, CancellationToken cancellationToken)
+    private async Task<List<Reference>> ReplaceReferencesAsync(SchemaType type, Document row, IReadOnlyList<StoredField> stored, ContentDocument entry, CancellationToken cancellationToken)
     {
         var typeName = type.Name;
         var id = row.DocumentId;
         var locale = row.Locale;
         await DeleteReferencesAsync(type, row, ContentState.Draft, includingShared: true, cancellationToken);
 
+        List<Reference> written = [];
         foreach (var item in stored)
         {
             var value = EntryPaths.ValueAt(entry, item, type);
@@ -697,7 +703,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
             var position = 0;
             foreach (var (target, targetId) in targets)
             {
-                context.References.Add(new Reference
+                written.Add(new Reference
                 {
                     SourceType = typeName,
                     SourceDocumentId = id,
@@ -710,6 +716,9 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
                 });
             }
         }
+
+        context.References.AddRange(written);
+        return written;
     }
 
     private void Collect(SchemaField field, object? value, List<(string Target, Guid Id)> into)
@@ -863,7 +872,11 @@ internal sealed record StoredRows(Dictionary<string, object>? Shared, Dictionary
     public static readonly StoredRows None = new(null, null);
 }
 
-internal sealed record StoredDraft(ContentDocument Entry, StoredRows Rows);
+// References are those of the draft in its locale and the shared ones, in position order.
+internal sealed record StoredDraft(ContentDocument Entry, StoredRows Rows)
+{
+    public IReadOnlyList<Reference> References { get; init; } = [];
+}
 
 // One reference of an entry. Path is the stored field, Field the top-level field that holds it.
 internal sealed record EntryTarget(string Path, string Field, string TargetType, Guid Id, bool IsShown);
