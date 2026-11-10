@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
@@ -79,6 +80,36 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         webhooks.StatusCode.ShouldBe(HttpStatusCode.OK);
         report["plugins"]!.AsArray().Select(plugin => plugin!["name"]!.GetValue<string>()).ShouldContain("webhooks");
         Operator.InsecureDefaults(report).ShouldContain("webhooks-private-networks");
+    }
+
+    // A service account whose client may ask for the mcp scope reaches /mcp, and anyone else is led to the metadata.
+    [Fact]
+    public async Task TheHostRunsTheMcpPluginAndNamesItsResourceMetadata()
+    {
+        var settings = Operator.Settings();
+        settings[$"FluentCms:Clients:Applications:{Operator.ClientId}:Scopes:1"] = "mcp";
+        await _host.StartAsync(settings);
+
+        using var anonymous = _host.Client();
+        using var refused = await anonymous.SendAsync(McpPing(), Token);
+        using var metadata = await anonymous.GetAsync(new Uri("/.well-known/oauth-protected-resource", UriKind.Relative), Token);
+        using var agent = await Operator.BearerAsync(_host, new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials",
+            ["client_id"] = Operator.ClientId,
+            ["client_secret"] = Operator.Secret,
+            ["scope"] = "mcp",
+        });
+        using var served = await agent.SendAsync(McpPing(), Token);
+        var report = await Operator.ReportAsync(_host);
+
+        refused.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        refused.Headers.WwwAuthenticate.ShouldHaveSingleItem().Parameter!.ShouldContain("resource_metadata=\"https://localhost/.well-known/oauth-protected-resource/mcp\"");
+        var (status, body) = await HostUnderTest.ReadAsync(metadata);
+        status.ShouldBe(HttpStatusCode.OK);
+        body!["resource"]!.GetValue<string>().ShouldBe("https://localhost/mcp");
+        served.StatusCode.ShouldBe(HttpStatusCode.OK, await served.Content.ReadAsStringAsync(Token));
+        report["plugins"]!.AsArray().Select(plugin => plugin!["name"]!.GetValue<string>()).ShouldContain("mcp");
     }
 
     [Fact]
@@ -416,6 +447,17 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         message.Subject.ShouldBe("Hello");
         message.TextBody.ShouldNotBeNull().Trim().ShouldBe("Plain words.");
         message.HtmlBody.ShouldNotBeNull().Trim().ShouldBe("<p>Rich words.</p>");
+    }
+
+    private static HttpRequestMessage McpPing()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, new Uri("/mcp", UriKind.Relative))
+        {
+            Content = new StringContent("""{ "jsonrpc": "2.0", "id": 1, "method": "ping" }""", Encoding.UTF8, "application/json"),
+        };
+        request.Headers.Accept.ParseAdd("application/json");
+        request.Headers.Accept.ParseAdd("text/event-stream");
+        return request;
     }
 
     private string WriteCertificate(string name, string password)

@@ -13,6 +13,7 @@
     <InternalsVisibleTo Include="FluentCMS.Plugins.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Plugins.Webhooks.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Plugins.Media.Tests" />
+    <InternalsVisibleTo Include="FluentCMS.Plugins.Mcp.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Host.Tests" />
   </ItemGroup>
 

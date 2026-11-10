@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Api.Common;
@@ -26,6 +27,12 @@ internal sealed partial class ProblemDetailsExceptionHandler(ILogger<ProblemDeta
         {
             await WritePageAsync(httpContext, problem, cancellationToken);
             return true;
+        }
+
+        // A refusal of a plugin's protected resource tells the client where to get a token for it.
+        if (endpoint?.Metadata.GetMetadata<ProtectedResourceMetadata>() is { } protectedResource)
+        {
+            httpContext.RequestServices.GetRequiredService<ProtectedResources>().Challenge(httpContext, protectedResource.Resource, problem, exception);
         }
 
         await ProblemWriter.WriteAsync(httpContext, problem, exception, cancellationToken);

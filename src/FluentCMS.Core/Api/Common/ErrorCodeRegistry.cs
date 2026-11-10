@@ -93,6 +93,7 @@ public static class ErrorCodeRegistry
         Startup(PluginErrorCodes.InvalidEndpointPrefix, "Invalid plugin endpoint prefix"),
         Startup(PluginErrorCodes.SecondMigrations, "Plugin migrations added twice"),
         Startup(PluginErrorCodes.RequiredFieldReference, "Required field reference"),
+        Startup(PluginErrorCodes.InvalidProtectedResource, "Invalid protected resource"),
         new(PluginErrorCodes.PluginDisabled, StatusCodes.Status404NotFound, "Plugin not enabled"),
         new(PluginErrorCodes.PluginNotFound, StatusCodes.Status404NotFound, "Plugin not found"),
 
