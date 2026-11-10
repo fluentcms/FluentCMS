@@ -381,6 +381,9 @@ The MCP plugin (`FluentCMS.Plugins.Mcp`, which the reference host adds) serves t
 | --- | --- | --- |
 | `Name` | `fluentcms` | What the server calls itself to a client: 1 to 64 letters, digits, hyphens, underscores and dots. |
 | `Title` | `FluentCMS` | Its name for people, which the resource metadata carries too. |
+| `ExposedTypes` | empty | The content types the tools reach, by name. Empty is every type the caller may read. A name the schema does not have stops the host. |
+| `MaxExposedTypes` | `10` | How many of those types get tools of their own, from 0 to 100. A type over it is reached through the `query` tool, and the log names it once. |
+| `UploadTimeout` | `00:00:30` | The longest the `media_upload` tool waits for a URL, up to 10 minutes. |
 
 An MCP client finds the authorization server through `/.well-known/oauth-protected-resource/mcp`, which the 401 of `/mcp` names. That document and the `resource` parameter the client then sends are built from the [public origin](#public-origin), so set it, and give the client a registration under `FluentCms:Clients:Applications` whose `Scopes` include `mcp`. The endpoint is stateless, so it needs no session affinity behind a load balancer.
 

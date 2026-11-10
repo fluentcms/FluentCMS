@@ -92,6 +92,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddSingleton<IMcpProviders>(plugins.Contributions);
         services.AddSingleton<ProtectedResources>();
         services.TryAddSingleton<IProblemDescriber, ProblemDescriber>();
+        services.TryAddSingleton<IContentApiFormat, ContentApiFormat>();
 
         services.AddProductionStartupChecks();
         services.AddFluentCmsOptions(DatabaseOptions.Section, StorageErrorCodes.InvalidDatabaseSetting, new DatabaseOptions { SchemaSyncOutsideDevelopment = builder.SchemaSyncOutsideDevelopment });
@@ -169,6 +170,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.TryAddScoped<IAuthorizationEvaluator, AuthorizationEvaluator>();
         services.AddScoped<ManagementAuthority>();
         services.TryAddScoped<IPermissionChecker, PermissionChecker>();
+        services.TryAddScoped<IEffectiveAccess, EffectiveAccess>();
         services.AddScoped<RoleService>();
         services.AddScoped<SuperAdminGuard>();
         services.TryAddScoped<IContentQueryAccess, ContentQueryAccess>();

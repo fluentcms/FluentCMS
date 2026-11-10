@@ -88,6 +88,31 @@ public sealed class MediaMetadataTests(MediaHost media) : IClassFixture<MediaHos
         (await OwnAsync("")).ShouldBe([inSummer, root]);
     }
 
+    [Fact]
+    public async Task TheListSearchesTheTitleTheFileNameAndTheTagsWhateverTheCase()
+    {
+        using var client = await media.AdminAsync();
+        var mark = Guid.NewGuid().ToString("N")[..12];
+        var byName = Id((await UploadedAsync(client, null, ($"Quay-{mark}.png", Files.Png(1, 1)))).Single()!);
+        var byTitle = Id((await UploadedAsync(client, null, ("a.png", Files.Png(1, 1)))).Single()!);
+        var byTag = Id((await UploadedAsync(client, null, ("b.pdf", Files.Pdf()))).Single()!);
+        await PatchAsync(client, $"{Root}/{byTitle:D}", new { title = $"Harbour {mark} at dusk" });
+        await PatchAsync(client, $"{Root}/{byTag:D}", new { tags = new[] { "boats", $"sea-{mark}" } });
+
+        (await IdsAsync(client, $"?search={mark}")).ShouldBe([byTag, byTitle, byName]);
+        (await IdsAsync(client, $"?search={mark.ToUpperInvariant()}&type=image/*")).ShouldBe([byTitle, byName]);
+        (await IdsAsync(client, $"?search=QUAY-{mark}")).ShouldBe([byName]);
+        (await IdsAsync(client, $"?search=harbour%20{mark}%20at")).ShouldBe([byTitle]);
+        (await IdsAsync(client, $"?search=sea-{mark}")).ShouldBe([byTag]);
+        (await IdsAsync(client, $"?search=%22sea-{mark}")).ShouldBeEmpty();
+        (await IdsAsync(client, $"?search=boats%22,%22sea-{mark}")).ShouldBeEmpty();
+
+        using var blank = await client.GetAsync(new Uri($"{Root}?search=%20", UriKind.Relative), Token);
+        using var tooLong = await client.GetAsync(new Uri($"{Root}?search={new string('x', 257)}", UriKind.Relative), Token);
+        blank.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        tooLong.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+    }
+
     private static async Task<List<Guid>> IdsAsync(HttpClient client, string query) =>
         [.. (await GetAsync(client, Root + query))["items"]!.AsArray().Select(item => Id(item!))];
 

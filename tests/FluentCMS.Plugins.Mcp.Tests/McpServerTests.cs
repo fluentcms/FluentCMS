@@ -40,7 +40,7 @@ public sealed class McpServerTests(McpFixture fixture) : IClassFixture<McpFixtur
 
         client.ServerInfo!.Name.ShouldBe("fluentcms");
         await client.PingAsync(cancellationToken: Token);
-        (await client.ListToolsAsync(cancellationToken: Token)).Select(tool => tool.Name)
+        (await client.ListToolsAsync(cancellationToken: Token)).Select(tool => tool.Name).Where(name => name.StartsWith("sample_", StringComparison.Ordinal))
             .ShouldBe([SampleTools.WhoAmI, SampleTools.EntryCreate, SampleTools.EntryTitles, SampleTools.NoteAdd]);
     }
 

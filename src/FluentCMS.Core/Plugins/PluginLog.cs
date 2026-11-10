@@ -22,4 +22,7 @@ internal static partial class PluginLog
 
     [LoggerMessage(EventId = 9235, Level = LogLevel.Error, Message = "Could not read which plugins are disabled per site, so job {JobId} ({Type}) did not run; it waits for a later run without using an attempt.")]
     public static partial void JobDeferred(ILogger logger, Exception exception, Guid jobId, string type);
+
+    [LoggerMessage(EventId = 9236, Level = LogLevel.Error, Message = "The MCP provider {Provider} of the plugin {Plugin} failed to list its tools, so the plugin list names none of them.")]
+    public static partial void ToolsNotListed(ILogger logger, Exception exception, string provider, string plugin);
 }

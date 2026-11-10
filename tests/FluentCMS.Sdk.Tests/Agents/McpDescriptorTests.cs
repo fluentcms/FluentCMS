@@ -60,6 +60,18 @@ public class McpDescriptorTests
         tool.Description.ShouldBe("Lists articles.");
     }
 
+    // The server finds the instructions of a type by the type a tool names.
+    [Fact]
+    public void AToolNamesTheContentTypeItBelongsToOrNone()
+    {
+        var shared = new McpToolDescriptor("publish", "Publishes an entry.", ObjectSchema);
+        var ofType = new McpToolDescriptor("article_list", "Lists articles.", ObjectSchema) { ContentType = "article" };
+
+        shared.ContentType.ShouldBeNull();
+        ofType.ContentType.ShouldBe("article");
+        (ofType with { Description = "Lists articles as drafts." }).ContentType.ShouldBe("article");
+    }
+
     [Fact]
     public void AToolThatSaysNothingOfItselfIsTakenAsOneThatMayDestroy()
     {

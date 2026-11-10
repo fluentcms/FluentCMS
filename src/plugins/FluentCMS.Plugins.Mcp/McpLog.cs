@@ -17,4 +17,10 @@ internal static partial class McpLog
 
     [LoggerMessage(EventId = 9283, Level = LogLevel.Warning, Message = "The MCP provider {Provider} of the plugin {Plugin} lists {Name}, which is left out: {Reason}")]
     public static partial void Skipped(ILogger logger, string provider, string plugin, string name, string reason);
+
+    [LoggerMessage(EventId = 9288, Level = LogLevel.Warning, Message = "The content type {Type} gets no MCP tools of its own, since more types are exposed than FluentCms:Mcp:MaxExposedTypes ({Max}) allows; it is reached through the query tool.")]
+    public static partial void TypeOverCap(ILogger logger, string type, int max);
+
+    [LoggerMessage(EventId = 9289, Level = LogLevel.Warning, Message = "MCP media_upload did not fetch from the host {Host}: {Reason}")]
+    public static partial void UploadSourceRefused(ILogger logger, string host, string reason);
 }
