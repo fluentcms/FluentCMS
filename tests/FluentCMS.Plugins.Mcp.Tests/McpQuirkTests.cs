@@ -22,7 +22,8 @@ public sealed class McpQuirkTests
         using var http = await KeyAsync(host);
         await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
 
-        var tools = (await client.ListToolsAsync(cancellationToken: Token)).Select(tool => tool.Name).ToList();
+        var tools = (await client.ListToolsAsync(cancellationToken: Token)).Select(tool => tool.Name)
+            .Where(name => name.StartsWith("sample_", StringComparison.Ordinal) || name.StartsWith("quirky_", StringComparison.Ordinal)).ToList();
         var whoAmI = await client.CallToolAsync(SampleTools.WhoAmI, cancellationToken: Token);
 
         tools.ShouldBe([SampleTools.WhoAmI, SampleTools.EntryCreate, SampleTools.EntryTitles, SampleTools.NoteAdd, QuirkyTools.Fine]);

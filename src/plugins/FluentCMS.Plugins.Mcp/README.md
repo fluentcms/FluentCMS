@@ -1,6 +1,6 @@
 # FluentCMS.Plugins.Mcp
 
-The Model Context Protocol server of FluentCMS: an agent or an IDE connects to `/mcp` and works as the user or key it signed in with. The server has no tools of its own yet. It serves the tools, resources and prompts that plugins add through the contracts of `FluentCMS.Agents`. Section 5.4 of the [backend technical specification](../../../docs/planning/backend-technical-spec.md) has the full design.
+The Model Context Protocol server of FluentCMS: an agent or an IDE connects to `/mcp` and works as the user or key it signed in with. It has tools for content and media, and serves the tools, resources and prompts that plugins add through the contracts of `FluentCMS.Agents`. Section 5.4 of the [backend technical specification](../../../docs/planning/backend-technical-spec.md) has the full design.
 
 ## Connecting
 
@@ -28,6 +28,61 @@ The options are in `FluentCms:Mcp`:
 
 The permission `mcp.manage` is for managing the MCP clients, instructions and prompts of a site.
 
+## Content and media tools
+
+The plugin's own tools reach content and media through the services, as the caller. A tool list holds a tool only where a grant of the caller's role gives its permission, so the list never offers more than a call would allow. A call is checked by the service again, whatever the list held, so a tool called by name without its permission is refused with the code of the REST APIs (`FCMS3103`). The list needs no `schema.read`: it shows the types and fields the caller may read, which every entry it reads shows too.
+
+Each exposed content type the caller may read has tools of its own:
+
+| Tool | Permission | What it does |
+| --- | --- | --- |
+| `{type}_list` | `content.{type}.read` | Lists entries, with `filter`, `sort`, `page` and `pageSize` or `cursor`, `withTotal`, `fields`, `populate`, `depth`, `status` and `locale`. |
+| `{type}_get` | `content.{type}.read` | Reads one entry by `id`. |
+| `{type}_search` | `content.{type}.read` | Lists the entries that match the text `q`. It is listed only while the `ISearchIndex` slot is filled, since core refuses a search without an index (`FCMS2211`). |
+| `{type}_create_draft` | `content.{type}.create` | Creates a draft from `fields`. |
+| `{type}_update_draft` | `content.{type}.update` | Changes the `fields` it is sent on the draft of `id` and keeps the others, as a merge patch does; `null` clears a field. It needs `expectedVersion`, and a draft changed since is a conflict (`FCMS3105`). |
+| `{type}_discard_draft` | `content.{type}.update` | Goes back to what is published. |
+| `{type}_delete` | `content.{type}.delete` | Moves the entry to the trash, at once. |
+
+A singleton has `{type}_get`, `{type}_update_draft` and `{type}_discard_draft` only, without an `id`. Its `{type}_update_draft` creates the entry when it has none and `expectedVersion` is 0, and `FCMS1613` says that it has none.
+
+The shared tools take a `type`:
+
+- `publish`, `unpublish` and `schedule`, listed for a caller that holds `content.{type}.publish` or `content.{type}.unpublish` for some exposed type. They are apart from the draft tools, so an agent role with `create` and `update` and without `publish` drafts an entry and cannot publish it. `schedule` takes `action`, `at` and `timeZone` as the schedule route of the Management API does.
+- `query`, which lists the entries of any exposed type the caller may read, with the arguments of `{type}_list`.
+
+`filter` is the filter of the REST APIs as JSON, and builds the same query: `{ "category": { "eq": "news" }, "or": [{ "title": { "startsWith": "A" } }, { "rating": { "in": [4, 5] } }] }` reads what `filter[category][eq]=news&filter[or][0][title][startsWith]=A&filter[or][1][rating][in]=4,5` reads. `sort`, `fields` and `populate` are arrays. A read answers the draft by default for a caller that may read drafts, as the Management API does, and what is published for any other, such as a Delivery key. A write runs in the locale of the connection (`X-Cms-Locale` or `?locale=`).
+
+The input schema of a write tool is generated from the schema as the caller may read it. `fields` holds the fields the caller may write, each as its field type describes it for the OpenAPI document, so the lengths, ranges and patterns, the options of a select, the ids of a relation, and the components and blocks (under `$defs`) follow the schema. A field the caller may not read or write, a hidden one and a read-only one are left out. A required field is marked in its description and not in `required`, since a draft may leave it out. The server does not check the arguments against the schema: the service validates them.
+
+The answers are the JSON of the Management API: an entry, `{ "items", "total", "page", "pageSize", "nextCursor" }` for a list, `{ "entry", "warnings" }` for a publish, the schedule for `schedule`, and `{ "type", "id", "deleted" }` for a delete. A validation failure is an error result with its code and each error by field path.
+
+Which types the tools reach is set in `FluentCms:Mcp`:
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `ExposedTypes` | empty | The content types the tools reach, by name. Empty is every type the caller may read. A name the schema does not have stops the host. |
+| `MaxExposedTypes` | `10` | How many of those types get tools of their own, in the order of the schema, which is by name. A type over it is reached through `query`, and a warning (event 9288) names it once. |
+| `UploadTimeout` | `00:00:30` | The longest `media_upload` waits for a URL, connection and body together. |
+
+A type that is not exposed, that does not exist or that the caller may not read is answered alike: its own tools are unknown (`FCMS1600`), and a shared tool answers `FCMS1612`.
+
+The media tools work through `IMediaService`. They are listed only in a host that has the media plugin, for a site where it is enabled, to a caller that holds the permission, a grant limited to folders included:
+
+| Tool | Permission | What it does |
+| --- | --- | --- |
+| `media_list` | `media.read` | Lists assets by `folder`, `subfolders`, `type` and `tag`, with `page` and `pageSize`. |
+| `media_search` | `media.read` | Lists the assets whose title, file name or tags contain `q`, with the filters of `media_list`. |
+| `media_get` | `media.read` | Reads an asset by `id`. |
+| `media_upload` | `media.upload` | Stores a file from `url` or from `data` in base64, under `fileName`, in `folderId` or the root. |
+| `media_update` | `media.update` | Changes `title`, `alt`, `caption`, `credit`, `tags`, `focalPoint` and `isPrivate`. |
+
+An upload from a URL never reaches the host's own network. The URL must use `https`, carry no user name or password, and resolve to public addresses only: every address the name resolves to is checked on the connection itself, which is then made to one of them. A redirect is followed up to three times and held to the same rules. No proxy, cookie or credential is used. A URL that breaks a rule is refused with `FCMS1614` before anything is sent to it, and one that does not answer with a file fails with `FCMS1615`. The media service checks the caller's permission before it reads the file, and the URL is fetched only then. The service reads the type from the bytes and stops at the upload limits of the site's media settings, so a file over them is refused with the media plugin's code (`FCMS1582`). The log names the host of a refused URL and never the URL (event 9289).
+
+Every tool carries its hints. The read tools are read-only. `{type}_create_draft` and `media_upload` add and are not destructive, and `media_upload` is open world. The others change or remove what is there and are destructive.
+
+The Management plugin list (`GET /api/management/v1/plugins`) names, under `contributions.tools`, the tools each plugin offers its caller in the site of the request.
+
 ## Adding tools, resources and prompts
 
 A plugin implements `IMcpToolProvider`, `IMcpResourceProvider` or `IMcpPromptProvider` and adds it in `ConfigureServices`:
@@ -38,7 +93,7 @@ plugin.AddMcpResources<NoteResources>();
 plugin.AddMcpPrompts<NotePrompts>();
 ```
 
-A provider is a scoped service. Every call runs inside the operation of its request, with the `Mcp` origin, the client and the principal, which every version and activity row it writes records. The provider reaches content through the services, such as `IContentService`, which enforce what the caller may do. It lists only what the caller may use, asking `IPermissionChecker` where a tool needs a permission of the plugin's own.
+A provider is a scoped service. Every call runs inside the operation of its request, with the `Mcp` origin, the client and the principal, which every version and activity row it writes records. The provider reaches content through the services, such as `IContentService`, which enforce what the caller may do. It lists only what the caller may use, asking `IPermissionChecker` where a tool needs a permission of the plugin's own. A tool of one content type sets `ContentType` on its descriptor.
 
 - A tool has a name, a description, the JSON Schema of its arguments and hints: read-only, destructive, idempotent, open world. A tool that says nothing is listed as destructive.
 - A call answers `McpToolResult.FromText`, `McpToolResult.FromJson` or `McpToolResult.Error(code, message)`, or `null` when the name is not the provider's, so that the server asks the next one.
@@ -62,7 +117,7 @@ The server offers these resources itself:
 
 The schema is what the caller may read: a type it may not read is left out and answers as an unknown resource (`FCMS1601`), and a field it may not read is left out. A caller without `schema.read` is refused the schema (`FCMS3103`) and is not listed it. The guidelines are for every agent of the site, and a request reads those of its own site only. The instructions of a type are served to a caller that reads the type. The guidelines and the instructions that are saved are listed as resources, and the two forms with `{type}` as resource templates.
 
-The guidelines are also the `instructions` of the server's answer to `initialize`. The text is data shown to an agent and is never run.
+The guidelines are also the `instructions` of the server's answer to `initialize`. The instructions of a type also follow the description of each tool of that type in the tool list, such as `article_list` and `article_create_draft`, and of a plugin's tool whose descriptor names the type in `ContentType`; a tool that is not listed for a caller, a tool of another type and a shared tool such as `publish` carry none. The text is data shown to an agent and is never run.
 
 An administrator with `mcp.manage` in the site keeps them through the Management API:
 

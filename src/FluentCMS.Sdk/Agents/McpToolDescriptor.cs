@@ -42,6 +42,12 @@ public sealed partial record McpToolDescriptor
     /// <summary>A name for people, or <see langword="null"/>.</summary>
     public string? Title { get; init; }
 
+    /// <summary>
+    /// The name of the content type the tool belongs to, such as <c>article</c> for <c>article_list</c>, or
+    /// <see langword="null"/> for a tool that is not of one type. The server adds the instructions of that type to the description.
+    /// </summary>
+    public string? ContentType { get; init; }
+
     /// <summary>The JSON Schema of <see cref="McpToolResult.StructuredContent"/>, or <see langword="null"/> when the tool has none.</summary>
     public JsonElement? OutputSchema { get; init; }
 

@@ -221,6 +221,8 @@ FluentCMS.Agents.McpToolDescriptor
 FluentCMS.Agents.McpToolDescriptor.<Clone>$() -> FluentCMS.Agents.McpToolDescriptor!
 FluentCMS.Agents.McpToolDescriptor.Annotations.get -> FluentCMS.Agents.McpToolAnnotations!
 FluentCMS.Agents.McpToolDescriptor.Annotations.init -> void
+FluentCMS.Agents.McpToolDescriptor.ContentType.get -> string?
+FluentCMS.Agents.McpToolDescriptor.ContentType.init -> void
 FluentCMS.Agents.McpToolDescriptor.Description.get -> string!
 FluentCMS.Agents.McpToolDescriptor.Description.init -> void
 FluentCMS.Agents.McpToolDescriptor.Equals(FluentCMS.Agents.McpToolDescriptor? other) -> bool
@@ -243,6 +245,39 @@ FluentCMS.Agents.McpToolResult.StructuredContent.get -> System.Text.Json.JsonEle
 FluentCMS.Agents.McpToolResult.StructuredContent.init -> void
 FluentCMS.Agents.McpToolResult.Text.get -> string!
 FluentCMS.Agents.McpToolResult.Text.init -> void
+FluentCMS.Authorization.ContentAccess
+FluentCMS.Authorization.ContentAccess.<Clone>$() -> FluentCMS.Authorization.ContentAccess!
+FluentCMS.Authorization.ContentAccess.ContentAccess() -> void
+FluentCMS.Authorization.ContentAccess.Equals(FluentCMS.Authorization.ContentAccess? other) -> bool
+FluentCMS.Authorization.ContentAccess.Schema.get -> FluentCMS.Schema.SchemaModel!
+FluentCMS.Authorization.ContentAccess.Schema.init -> void
+FluentCMS.Authorization.ContentAccess.Search.get -> bool
+FluentCMS.Authorization.ContentAccess.Search.init -> void
+FluentCMS.Authorization.ContentAccess.Types.get -> System.Collections.Generic.IReadOnlyDictionary<string!, FluentCMS.Authorization.ContentTypeAccess!>!
+FluentCMS.Authorization.ContentAccess.Types.init -> void
+FluentCMS.Authorization.ContentTypeAccess
+FluentCMS.Authorization.ContentTypeAccess.<Clone>$() -> FluentCMS.Authorization.ContentTypeAccess!
+FluentCMS.Authorization.ContentTypeAccess.ContentTypeAccess() -> void
+FluentCMS.Authorization.ContentTypeAccess.CreatableFields.get -> System.Collections.Generic.IReadOnlySet<string!>!
+FluentCMS.Authorization.ContentTypeAccess.CreatableFields.init -> void
+FluentCMS.Authorization.ContentTypeAccess.Create.get -> bool
+FluentCMS.Authorization.ContentTypeAccess.Create.init -> void
+FluentCMS.Authorization.ContentTypeAccess.Delete.get -> bool
+FluentCMS.Authorization.ContentTypeAccess.Delete.init -> void
+FluentCMS.Authorization.ContentTypeAccess.Drafts.get -> bool
+FluentCMS.Authorization.ContentTypeAccess.Drafts.init -> void
+FluentCMS.Authorization.ContentTypeAccess.Equals(FluentCMS.Authorization.ContentTypeAccess? other) -> bool
+FluentCMS.Authorization.ContentTypeAccess.Publish.get -> bool
+FluentCMS.Authorization.ContentTypeAccess.Publish.init -> void
+FluentCMS.Authorization.ContentTypeAccess.Unpublish.get -> bool
+FluentCMS.Authorization.ContentTypeAccess.Unpublish.init -> void
+FluentCMS.Authorization.ContentTypeAccess.UpdatableFields.get -> System.Collections.Generic.IReadOnlySet<string!>!
+FluentCMS.Authorization.ContentTypeAccess.UpdatableFields.init -> void
+FluentCMS.Authorization.ContentTypeAccess.Update.get -> bool
+FluentCMS.Authorization.ContentTypeAccess.Update.init -> void
+FluentCMS.Authorization.IEffectiveAccess
+FluentCMS.Authorization.IEffectiveAccess.ContentAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Authorization.ContentAccess!>
+FluentCMS.Authorization.IEffectiveAccess.HeldAsync(System.Collections.Generic.IEnumerable<string!>! permissions, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlySet<string!>!>
 FluentCMS.Authorization.IPermissionChecker
 FluentCMS.Authorization.IPermissionChecker.AllowsAsync(string! permission, FluentCMS.Sites.SiteId? site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
 FluentCMS.Authorization.IPermissionChecker.RequireAsync(string! permission, FluentCMS.Sites.SiteId? site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
@@ -516,8 +551,13 @@ FluentCMS.Content.IContentSurface
 FluentCMS.Content.IContentSurface.DefaultPageSize.get -> int
 FluentCMS.Content.IContentSurface.MaxPageSize.get -> int
 FluentCMS.Content.IContentSurface.MaxPopulateDepth.get -> int
+FluentCMS.Content.IContentSurface.ParseQuery(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, string!>>! parameters) -> FluentCMS.Content.ContentQuery!
+FluentCMS.Content.IContentSurface.ParseSchedule(System.Text.Json.JsonElement body) -> FluentCMS.Publishing.ScheduleRequest!
 FluentCMS.Content.IContentSurface.ReadableFieldsAsync(string! type, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlySet<string!>?>
 FluentCMS.Content.IContentSurface.ToJson(FluentCMS.Content.ContentDocument! entry) -> System.Text.Json.Nodes.JsonObject!
+FluentCMS.Content.IContentSurface.ToJson(FluentCMS.Content.PagedResult<FluentCMS.Content.ContentDocument!>! page) -> System.Text.Json.Nodes.JsonObject!
+FluentCMS.Content.IContentSurface.ToJson(FluentCMS.Publishing.PublishResult<FluentCMS.Content.ContentDocument!>! result) -> System.Text.Json.Nodes.JsonObject!
+FluentCMS.Content.IContentSurface.ToJson(FluentCMS.Publishing.ScheduleInfo! schedule) -> System.Text.Json.Nodes.JsonObject!
 FluentCMS.Content.IEntryValidator<T>
 FluentCMS.Content.IEntryValidator<T>.ValidateAsync(T entry, FluentCMS.Content.ValidationContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Content.IFieldValidator<TField>
@@ -1501,6 +1541,8 @@ FluentCMS.Media.MediaQuery.PageSize.get -> int
 FluentCMS.Media.MediaQuery.PageSize.init -> void
 FluentCMS.Media.MediaQuery.RootOnly.get -> bool
 FluentCMS.Media.MediaQuery.RootOnly.init -> void
+FluentCMS.Media.MediaQuery.Search.get -> string?
+FluentCMS.Media.MediaQuery.Search.init -> void
 FluentCMS.Media.MediaQuery.Tag.get -> string?
 FluentCMS.Media.MediaQuery.Tag.init -> void
 FluentCMS.Media.MediaRef
@@ -2433,6 +2475,12 @@ override FluentCMS.Activity.ActivityFilter.ToString() -> string!
 override FluentCMS.Activity.ActivityItem.Equals(object? obj) -> bool
 override FluentCMS.Activity.ActivityItem.GetHashCode() -> int
 override FluentCMS.Activity.ActivityItem.ToString() -> string!
+override FluentCMS.Authorization.ContentAccess.Equals(object? obj) -> bool
+override FluentCMS.Authorization.ContentAccess.GetHashCode() -> int
+override FluentCMS.Authorization.ContentAccess.ToString() -> string!
+override FluentCMS.Authorization.ContentTypeAccess.Equals(object? obj) -> bool
+override FluentCMS.Authorization.ContentTypeAccess.GetHashCode() -> int
+override FluentCMS.Authorization.ContentTypeAccess.ToString() -> string!
 override FluentCMS.Authorization.Permission.ToString() -> string!
 override FluentCMS.Content.And.<Clone>$() -> FluentCMS.Content.And!
 override FluentCMS.Content.And.Equals(object? obj) -> bool
@@ -2872,6 +2920,10 @@ static FluentCMS.Agents.McpToolResult.FromJson(System.Text.Json.JsonElement cont
 static FluentCMS.Agents.McpToolResult.FromText(string! text) -> FluentCMS.Agents.McpToolResult!
 static FluentCMS.Agents.McpToolResult.operator !=(FluentCMS.Agents.McpToolResult? left, FluentCMS.Agents.McpToolResult? right) -> bool
 static FluentCMS.Agents.McpToolResult.operator ==(FluentCMS.Agents.McpToolResult? left, FluentCMS.Agents.McpToolResult? right) -> bool
+static FluentCMS.Authorization.ContentAccess.operator !=(FluentCMS.Authorization.ContentAccess? left, FluentCMS.Authorization.ContentAccess? right) -> bool
+static FluentCMS.Authorization.ContentAccess.operator ==(FluentCMS.Authorization.ContentAccess? left, FluentCMS.Authorization.ContentAccess? right) -> bool
+static FluentCMS.Authorization.ContentTypeAccess.operator !=(FluentCMS.Authorization.ContentTypeAccess? left, FluentCMS.Authorization.ContentTypeAccess? right) -> bool
+static FluentCMS.Authorization.ContentTypeAccess.operator ==(FluentCMS.Authorization.ContentTypeAccess? left, FluentCMS.Authorization.ContentTypeAccess? right) -> bool
 static FluentCMS.Authorization.Permission.IsValidName(string? name) -> bool
 static FluentCMS.Content.And.operator !=(FluentCMS.Content.And? left, FluentCMS.Content.And? right) -> bool
 static FluentCMS.Content.And.operator ==(FluentCMS.Content.And? left, FluentCMS.Content.And? right) -> bool

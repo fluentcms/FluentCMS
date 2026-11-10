@@ -36,7 +36,7 @@ internal static class MediaEndpoints
 
     public static RouteGroupBuilder MapMediaEndpoints(this RouteGroupBuilder group)
     {
-        group.MapGet("", async (string? folder, bool? subfolders, string? type, string? tag, int? page, int? pageSize, IMediaService media, CancellationToken cancellationToken) =>
+        group.MapGet("", async (string? folder, bool? subfolders, string? type, string? tag, string? search, int? page, int? pageSize, IMediaService media, CancellationToken cancellationToken) =>
         {
             var query = new MediaQuery
             {
@@ -45,6 +45,7 @@ internal static class MediaEndpoints
                 IncludeSubfolders = subfolders ?? false,
                 MimeType = type,
                 Tag = tag,
+                Search = search,
                 Page = page ?? 1,
                 PageSize = pageSize ?? 50,
             };

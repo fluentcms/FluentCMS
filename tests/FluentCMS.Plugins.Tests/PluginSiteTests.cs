@@ -228,6 +228,7 @@ public sealed class PluginSiteTests(PluginSiteFixture fixture) : IClassFixture<P
         Strings(contributions["fieldTypes"]!).ShouldBe([ExcerptFieldType.TypeName]);
         Strings(contributions["permissions"]!).ShouldBe([SamplePermissions.NotesManage]);
         Strings(contributions["jobs"]!).ShouldBe([SampleNoteJob.Type]);
+        Strings(contributions["tools"]!).ShouldBe([SampleTools.WhoAmI, SampleTools.EntryCreate, SampleTools.EntryTitles, SampleTools.NoteAdd]);
         contributions["endpoints"]!.AsArray().Select(endpoint => $"{endpoint!["method"]!.GetValue<string>()} {endpoint["route"]!.GetValue<string>()}")
             .ShouldBe(["GET /api/delivery/v1/sample/fresh", "GET /api/delivery/v1/sample/greeting", "GET /api/management/v1/sample/notes", "POST /api/management/v1/sample/notes", "GET /sample/banner", "GET /sample/greeting"]);
         // The sites of the other tests are listed too.

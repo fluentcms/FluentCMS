@@ -22,7 +22,7 @@ public sealed class McpSiteTests(McpFixture fixture) : IClassFixture<McpFixture>
         await using var inDocs = await ConnectAsync(http, docs, InitializeProtocol);
         await using var inDefault = await ConnectAsync(http, protocolVersion: InitializeProtocol);
 
-        (await inDocs.ListToolsAsync(cancellationToken: Token)).ShouldBeEmpty();
+        (await inDocs.ListToolsAsync(cancellationToken: Token)).ShouldNotContain(tool => tool.Name.StartsWith("sample_", StringComparison.Ordinal));
         (await inDocs.ListResourcesAsync(cancellationToken: Token)).ShouldAllBe(resource => !resource.Uri.StartsWith("sample:", StringComparison.Ordinal));
         (await inDocs.ListResourceTemplatesAsync(cancellationToken: Token)).ShouldAllBe(template => !template.UriTemplate.StartsWith("sample:", StringComparison.Ordinal));
         (await inDocs.ListPromptsAsync(cancellationToken: Token)).ShouldBeEmpty();

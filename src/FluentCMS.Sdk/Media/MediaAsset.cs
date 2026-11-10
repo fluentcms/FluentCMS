@@ -157,6 +157,9 @@ public sealed record MediaQuery
     /// <summary>A tag that the assets carry.</summary>
     public string? Tag { get; init; }
 
+    /// <summary>A text of 1 to 256 characters that the title, the file name or a tag of the assets contains, whatever its case.</summary>
+    public string? Search { get; init; }
+
     /// <summary>The page, from 1.</summary>
     public int Page { get; init; } = 1;
 
