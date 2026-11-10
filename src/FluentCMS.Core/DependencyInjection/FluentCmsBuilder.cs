@@ -6,6 +6,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
+using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Seeding;
 using FluentCMS.Core.Settings;
@@ -44,6 +45,8 @@ public sealed class FluentCmsBuilder
     public AdminUserOptions Users { get; } = new();
 
     public ApiKeyOptions ApiKeys { get; } = new();
+
+    public PreviewTokenOptions PreviewTokens { get; } = new();
 
     public ClientOptions Clients { get; } = new();
 

@@ -88,6 +88,35 @@ internal static class SharedComponents
             ["additionalProperties"] = false,
         });
 
+        yield return ("preview-token-request", new JsonObject
+        {
+            ["type"] = "object",
+            ["description"] = "Both may be left out, and so may the body.",
+            ["properties"] = new JsonObject
+            {
+                ["minutes"] = new JsonObject { ["type"] = "integer", ["format"] = "int32", ["minimum"] = 1, ["description"] = "How long the token lasts, up to FluentCms:PreviewTokens:MaximumLifetime; DefaultLifetime when left out." },
+                ["locale"] = String("The one locale the token reads, such as fr-CA. Left out, it reads any locale of the entry."),
+            },
+            ["additionalProperties"] = false,
+        });
+
+        yield return ("preview-token", new JsonObject
+        {
+            ["type"] = "object",
+            ["description"] = "Send the token as Authorization: Preview <token> to GET the entry on the Delivery API with status=draft. It reads nothing else and cannot be revoked; it ends at expiresAt.",
+            ["properties"] = new JsonObject
+            {
+                ["token"] = String(),
+                ["scheme"] = String("The Authorization scheme to send the token with: Preview."),
+                ["expiresAt"] = DateTime(),
+                ["type"] = String(),
+                ["id"] = Uuid(),
+                ["site"] = Uuid(),
+                ["locale"] = new JsonObject { ["type"] = new JsonArray("string", "null") },
+            },
+            ["required"] = new JsonArray("token", "scheme", "expiresAt", "type", "id", "site"),
+        });
+
         yield return ("versions", new JsonObject
         {
             ["type"] = "object",

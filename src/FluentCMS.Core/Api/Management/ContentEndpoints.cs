@@ -3,6 +3,7 @@ using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Localization;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
@@ -61,6 +62,9 @@ internal static class ContentEndpoints
             .Describe(new("schedule", "Schedules a publish or an unpublish") { Request = ContentPayload.Schedule, Response = ContentPayload.Schedule });
         content.MapDelete("/{id}/schedule/{action}", CancelScheduleAsync)
             .Describe(new("cancelSchedule", "Cancels a scheduled publish or unpublish") { Response = ContentPayload.None, Status = StatusCodes.Status204NoContent });
+
+        content.MapPost("/{id}/preview-token", PreviewTokenAsync)
+            .Describe(new("previewToken", "Mints a short-lived token that reads this entry's draft on the Delivery API") { Request = ContentPayload.PreviewToken, Response = ContentPayload.PreviewToken });
 
         content.MapGet("/{id}/versions", VersionsAsync)
             .Describe(new("listVersions", "Lists the versions of one locale, newest first") { Response = ContentPayload.Versions });
@@ -161,6 +165,19 @@ internal static class ContentEndpoints
             await content.CancelScheduleAsync(type, entryId, ContentRequests.Action(action), cancellationToken: httpContext.RequestAborted);
             return Results.NoContent();
         });
+
+    // The body is optional. The token reads the site the request is in.
+    private static async Task<IResult> PreviewTokenAsync(string type, string id, HttpContext httpContext, [FromServices] PreviewTokenService tokens)
+    {
+        await TypeAccess.EnsureReadableAsync(httpContext, type);
+        ContentRequests.OnlyParameters(httpContext.Request, filter: false);
+        var body = httpContext.Request.ContentLength == 0 || (httpContext.Request.ContentLength is null && string.IsNullOrEmpty(httpContext.Request.ContentType))
+            ? (System.Text.Json.JsonElement?)null
+            : await RequestBody.ObjectAsync(httpContext.Request);
+        var issued = await tokens.MintAsync(type, EntryId(id), ContentRequests.PreviewToken(body), httpContext.RequestAborted);
+        httpContext.Response.Headers.CacheControl = "no-store";
+        return Results.Json(ManagementJson.PreviewToken(issued));
+    }
 
     private static Task<IResult> VersionsAsync(string type, string id, HttpContext httpContext, [FromServices] IContentService content) =>
         VersionReadAsync(httpContext, type, async () =>

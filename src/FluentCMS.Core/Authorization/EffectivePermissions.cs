@@ -289,7 +289,7 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
         var asked = new Asked(type, operation, target);
         if (!_rowRules.TryGetValue(asked, out var rule))
         {
-            rule = RowRuleOfGrants(type, GrantsOf(type, operation, target));
+            rule = OnlyBoundEntry(RowRuleOfGrants(type, GrantsOf(type, operation, target)));
             _rowRules[asked] = rule;
         }
 
@@ -325,6 +325,18 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
             1 => filters[0],
             _ => new Or(filters),
         };
+    }
+
+    // A principal bound to one entry reaches no other row, whatever its grants' rules let through.
+    private ContentFilter? OnlyBoundEntry(ContentFilter? rule)
+    {
+        if (_binding.Entry is not { } entry || ReferenceEquals(rule, RowRule.NoRows))
+        {
+            return rule;
+        }
+
+        var only = entry == Guid.Empty ? RowRule.NoRows : new FieldFilter("id", FilterOperator.Equal, entry);
+        return rule is null ? only : new And(rule, only);
     }
 
     // One rule for this operation, or null when it can match no row.

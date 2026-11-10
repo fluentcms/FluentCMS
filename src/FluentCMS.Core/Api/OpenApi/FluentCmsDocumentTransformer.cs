@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity.ApiKeys;
+using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Schema;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.OpenApi;
@@ -15,6 +16,7 @@ internal sealed class FluentCmsDocumentTransformer(SchemaModel schema, OpenApiDo
 {
     public const string OAuth = "oauth2";
     public const string ApiKey = "apiKey";
+    public const string PreviewToken = "previewToken";
 
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
@@ -40,6 +42,7 @@ internal sealed class FluentCmsDocumentTransformer(SchemaModel schema, OpenApiDo
         document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>(StringComparer.Ordinal);
         document.Components.SecuritySchemes[OAuth] = OpenApiFragments.Read<OpenApiSecurityScheme>(OAuthScheme(document), document, "the oauth2 scheme");
         document.Components.SecuritySchemes[ApiKey] = OpenApiFragments.Read<OpenApiSecurityScheme>(ApiKeyScheme(), document, "the apiKey scheme");
+        document.Components.SecuritySchemes[PreviewToken] = OpenApiFragments.Read<OpenApiSecurityScheme>(PreviewTokenScheme(), document, "the previewToken scheme");
 
         document.Components.Schemas ??= new Dictionary<string, IOpenApiSchema>(StringComparer.Ordinal);
         foreach (var (name, json) in SharedComponents.Schemas().Concat(schemas.All()))
@@ -126,6 +129,13 @@ internal sealed class FluentCmsDocumentTransformer(SchemaModel schema, OpenApiDo
             },
         };
     }
+
+    private static JsonObject PreviewTokenScheme() => new()
+    {
+        ["type"] = "http",
+        ["scheme"] = PreviewTokenAuthentication.Scheme,
+        ["description"] = "Authorization: Preview <token>, a token the Management API mints for one entry. It reads that entry's draft with status=draft, in its locale when it names one, until it expires.",
+    };
 
     private static JsonObject ApiKeyScheme() => new()
     {

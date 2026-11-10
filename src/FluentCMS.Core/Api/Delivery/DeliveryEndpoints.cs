@@ -14,8 +14,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FluentCMS.Core.Api.Delivery;
 
 // The read-only routes of spec 4.10. Everything a principal may see is the engine's decision: an anonymous request is
-// the Public role of its site. Drafts are the one rule of this API's own: only the preview and draft scopes read them
-// here, where the engine would also let a managing principal.
+// the Public role of its site. Drafts are this API's own rule: only the preview and draft scopes read them here, where
+// the engine would also let a managing principal, and a preview token reads its one entry (PreviewReach).
 internal static class DeliveryEndpoints
 {
     // Minimal APIs do not answer HEAD with a GET route, and CDNs and uptime checks send it.
@@ -57,9 +57,10 @@ internal static class DeliveryEndpoints
         });
 
     private static Task<IResult> GetAsync(string type, string id, HttpContext httpContext, [FromServices] IContentService content) =>
-        RunAsync(httpContext, type, byField: null, async found =>
+        RunAsync(httpContext, type, byField: null, id: id, handler: async found =>
         {
             var query = Parse(httpContext, ApiRequest.Of(httpContext), single: true);
+            PreviewReach.EnsureDraft(httpContext, query.Status);
             if (!Guid.TryParseExact(id, "D", out var entryId))
             {
                 throw new ValidationException([new ValidationError("id", QueryErrorCodes.InvalidValue, $"'{id}' is not an entry id.")]);
@@ -86,8 +87,9 @@ internal static class DeliveryEndpoints
                 : throw NotFound(RequestErrors.Value, $"There is no {type} whose {field} is '{value}'.");
         });
 
-    private static async Task<IResult> RunAsync(HttpContext httpContext, string type, string? byField, Func<SchemaType, Task<IResult>> handler)
+    private static async Task<IResult> RunAsync(HttpContext httpContext, string type, string? byField, Func<SchemaType, Task<IResult>> handler, string? id = null)
     {
+        PreviewReach.Ensure(httpContext, type, id);
         var (found, access) = await TypeAccess.ReadableAsync(httpContext, type);
         try
         {

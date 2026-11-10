@@ -199,6 +199,15 @@ A key can be limited to IP addresses and CIDR ranges with `allowedAddresses`, on
 | --- | --- | --- |
 | `RotationOverlap` | `1.00:00:00` | How long the secret a rotation replaces is still accepted beside the new one, at most 30 days. `00:00:00` ends it at the rotation. |
 
+### Preview tokens
+
+`POST /api/management/v1/content/{type}/{id}/preview-token` mints a token that reads the draft of that one entry, optionally of one locale (`{ "minutes", "locale" }`, both optional). The caller needs the `management` scope and the permission to read that draft. A front end sends it as `Authorization: Preview <token>` to `GET /api/delivery/v1/{type}/{id}?status=draft`, and every other read with it is refused with `FCMS3028`. It is signed with the authorization server's key and nothing is stored, so it cannot be revoked: keep the lifetimes short. It stops working at once if its user is deactivated, its key revoked or its role loses the read.
+
+| `FluentCms:PreviewTokens:` | Default | Meaning |
+| --- | --- | --- |
+| `DefaultLifetime` | `00:10:00` | How long a token lasts when the request names no `minutes`, in whole minutes from one minute to `MaximumLifetime`. |
+| `MaximumLifetime` | `01:00:00` | The most `minutes` may ask for, in whole minutes from one minute to one day. |
+
 ## Authorization server
 
 `AddFluentCms()` adds the OpenIddict server at `/connect/authorize`, `/connect/token`, `/connect/userinfo`, `/connect/introspect`, `/connect/revoke` and `/connect/logout`, with discovery at `/.well-known/openid-configuration` and the keys at `/.well-known/jwks`. It answers HTTPS only; behind a proxy that ends TLS, forward the scheme. Under `FluentCms:ReverseProxy:PathBase` these endpoints, the issuer and the discovery URLs carry the path base, and the endpoints are not answered without it. The issuer and the discovery URLs are built from the [public origin](#public-origin) when it is set, and from the request otherwise. The flows are the authorization code flow with PKCE (`S256`, for every client), refresh tokens that rotate, and client credentials. A used refresh token still works for OpenIddict's 30 seconds of leeway, so two refreshes that cross, as two tabs of one application make, both succeed; used after that, it ends the session and its tokens. Access tokens are signed JWTs with the audience `fluentcms:management`.

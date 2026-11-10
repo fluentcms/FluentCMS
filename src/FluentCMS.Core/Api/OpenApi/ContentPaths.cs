@@ -109,7 +109,7 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
             ["operationId"] = (route.Surface == Delivery ? Delivery + Pascal(described.Name) : described.Name) + Pascal(type.Name),
             ["parameters"] = parameters,
             ["security"] = route.Surface == Delivery
-                ? new JsonArray(new JsonObject(), Requirement(FluentCmsDocumentTransformer.OAuth), Requirement(FluentCmsDocumentTransformer.ApiKey))
+                ? DeliverySecurity(described)
                 : new JsonArray(Requirement(FluentCmsDocumentTransformer.OAuth, TokenScopes.Management), Requirement(FluentCmsDocumentTransformer.ApiKey)),
         };
 
@@ -117,7 +117,7 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
         {
             operation["requestBody"] = new JsonObject
             {
-                ["required"] = true,
+                ["required"] = described.Request != ContentPayload.PreviewToken,
                 ["content"] = new JsonObject { ["application/json"] = new JsonObject { ["schema"] = request } },
             };
         }
@@ -148,6 +148,18 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
             ["default"] = new JsonObject { ["$ref"] = $"#/components/responses/{SharedComponents.ProblemResponse}" },
         };
         return operation;
+    }
+
+    // A preview token reads one entry by id, so only that route lists it.
+    private static JsonArray DeliverySecurity(ContentOperation described)
+    {
+        var security = new JsonArray(new JsonObject(), Requirement(FluentCmsDocumentTransformer.OAuth), Requirement(FluentCmsDocumentTransformer.ApiKey));
+        if (described.Name == "get")
+        {
+            security.Add(Requirement(FluentCmsDocumentTransformer.PreviewToken));
+        }
+
+        return security;
     }
 
     private static JsonObject Requirement(string scheme, params string[] scopes) =>
@@ -227,6 +239,7 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
             ContentPayload.Diff => SharedComponents.Ref("diff"),
             ContentPayload.Bulk when request => BulkRequest(input),
             ContentPayload.Bulk => SharedComponents.Ref("bulk-result"),
+            ContentPayload.PreviewToken => SharedComponents.Ref(request ? "preview-token-request" : "preview-token"),
             _ => null,
         };
     }
