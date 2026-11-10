@@ -48,6 +48,9 @@ internal sealed record ContentOperation(string Name, string Summary)
 
     public ContentPrecondition IfMatch { get; init; }
 
+    // Whether the route takes an Idempotency-Key.
+    public bool Idempotent { get; init; }
+
     // Whether a Management response that holds the draft gives its version as ETag.
     public bool ETag { get; init; } = true;
 }

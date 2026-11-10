@@ -279,6 +279,18 @@ public sealed class HttpProtectionTests(CmsWebHosts hosts) : IClassFixture<CmsWe
         AllowedHeaders(preflight).ShouldContain("x-cms-locale");
     }
 
+    // A browser client retries a create safely with Idempotency-Key and can tell a replayed answer.
+    [Fact]
+    public async Task APreflightThatNamesTheIdempotencyKeyIsAnsweredOnManagement()
+    {
+        var client = await Start(Origins(management: "https://admin.example.com"));
+
+        using var preflight = await Preflight(client, "/api/management/v1/echo", "https://admin.example.com", "POST", "Idempotency-Key");
+
+        preflight.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        AllowedHeaders(preflight).ShouldContain("idempotency-key");
+    }
+
     // An admin application reads where a 201 put the entry.
     [Fact]
     public async Task ABrowserMayReadTheLocationOfAResponse()
