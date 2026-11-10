@@ -38,7 +38,7 @@ internal sealed class McpTypeCap
 internal sealed class McpContentTools(
     IContentService content,
     IEffectiveAccess access,
-    IContentApiFormat format,
+    IContentSurface surface,
     IFieldTypeRegistry fieldTypes,
     IOptions<McpOptions> options,
     McpTypeCap cap,
@@ -259,8 +259,8 @@ internal sealed class McpContentTools(
     private async Task<McpToolResult> ListAsync(string type, JsonElement arguments, string[] names, bool drafts, CancellationToken cancellationToken)
     {
         McpArguments.Only(arguments, names);
-        var query = format.ParseQuery(McpQueryArguments.Parameters(arguments, names));
-        return McpArguments.Result(format.List(await content.QueryAsync(type, WithStatus(query, drafts), cancellationToken)));
+        var query = surface.ParseQuery(McpQueryArguments.Parameters(arguments, names));
+        return McpArguments.Result(surface.ToJson(await content.QueryAsync(type, WithStatus(query, drafts), cancellationToken)));
     }
 
     private Task<McpToolResult> SearchAsync(string type, JsonElement arguments, bool drafts, CancellationToken cancellationToken)
@@ -273,16 +273,16 @@ internal sealed class McpContentTools(
     {
         McpArguments.Only(arguments, ["id", .. McpQueryArguments.Single]);
         var id = McpArguments.Id(arguments);
-        var query = WithStatus(format.ParseQuery(McpQueryArguments.Parameters(arguments, McpQueryArguments.Single)), drafts);
+        var query = WithStatus(surface.ParseQuery(McpQueryArguments.Parameters(arguments, McpQueryArguments.Single)), drafts);
         var entry = await content.GetAsync(type, id, OptionsOf(query), cancellationToken) ?? throw new EntryNotFoundException(type, id);
-        return McpArguments.Result(format.Entry(entry));
+        return McpArguments.Result(surface.ToJson(entry));
     }
 
     private async Task<McpToolResult> CreateAsync(string type, JsonElement arguments, CancellationToken cancellationToken)
     {
         McpArguments.Only(arguments, "fields");
         var fields = McpArguments.Object(arguments, "fields") ?? throw McpArguments.Required("fields");
-        return McpArguments.Result(format.Entry(await content.CreateAsync(type, McpArguments.Document(fields), cancellationToken)));
+        return McpArguments.Result(surface.ToJson(await content.CreateAsync(type, McpArguments.Document(fields), cancellationToken)));
     }
 
     // A merge patch: a tool that replaced the draft would clear every field the caller left out.
@@ -292,14 +292,14 @@ internal sealed class McpContentTools(
         var id = McpArguments.Id(arguments);
         var expected = McpArguments.Integer(arguments, "expectedVersion") ?? throw McpArguments.Required("expectedVersion");
         var fields = McpArguments.Object(arguments, "fields") ?? throw McpArguments.Required("fields");
-        return McpArguments.Result(format.Entry(await content.PatchAsync(type, id, McpArguments.Document(fields), expected, cancellationToken)));
+        return McpArguments.Result(surface.ToJson(await content.PatchAsync(type, id, McpArguments.Document(fields), expected, cancellationToken)));
     }
 
     private async Task<McpToolResult> DiscardAsync(string type, Guid id, JsonElement arguments, string[] names, CancellationToken cancellationToken)
     {
         McpArguments.Only(arguments, names);
         var options = new LocaleWriteOptions { Locale = McpArguments.Text(arguments, "locale"), ExpectedVersion = McpArguments.Integer(arguments, "expectedVersion") };
-        return McpArguments.Result(format.Entry(await content.DiscardDraftAsync(type, id, options, cancellationToken)));
+        return McpArguments.Result(surface.ToJson(await content.DiscardDraftAsync(type, id, options, cancellationToken)));
     }
 
     // The entry goes to the trash at once. What a delete takes before it runs, such as a dry run, is read here.
@@ -314,10 +314,10 @@ internal sealed class McpContentTools(
     private async Task<McpToolResult> GetSingletonAsync(SchemaType type, JsonElement arguments, bool drafts, CancellationToken cancellationToken)
     {
         McpArguments.Only(arguments, McpQueryArguments.Single);
-        var query = WithStatus(format.ParseQuery(McpQueryArguments.Parameters(arguments, McpQueryArguments.Single)), drafts);
+        var query = WithStatus(surface.ParseQuery(McpQueryArguments.Parameters(arguments, McpQueryArguments.Single)), drafts);
         var entries = await content.QueryAsync(type.Name, query with { Page = new PageRequest { Size = 1, WithTotal = false } }, cancellationToken);
         return entries.Items.Count > 0
-            ? McpArguments.Result(format.Entry(entries.Items[0]))
+            ? McpArguments.Result(surface.ToJson(entries.Items[0]))
             : McpToolResult.Error(McpErrorCodes.SingletonEmpty, $"The {type.Name} singleton has no entry{(query.Status == QueryStatus.Published ? " that is published" : "")}.");
     }
 
@@ -328,11 +328,11 @@ internal sealed class McpContentTools(
         var fields = McpArguments.Document(McpArguments.Object(arguments, "fields") ?? throw McpArguments.Required("fields"));
         if (await SingletonIdAsync(type, cancellationToken) is { } id)
         {
-            return McpArguments.Result(format.Entry(await content.PatchAsync(type.Name, id, fields, expected, cancellationToken)));
+            return McpArguments.Result(surface.ToJson(await content.PatchAsync(type.Name, id, fields, expected, cancellationToken)));
         }
 
         return expected == 0
-            ? McpArguments.Result(format.Entry(await content.CreateAsync(type.Name, fields, cancellationToken)))
+            ? McpArguments.Result(surface.ToJson(await content.CreateAsync(type.Name, fields, cancellationToken)))
             : McpToolResult.Error(McpErrorCodes.SingletonEmpty, $"The {type.Name} singleton has no entry; send expectedVersion 0 to create it.");
     }
 
@@ -361,7 +361,7 @@ internal sealed class McpContentTools(
         }
 
         var options = new LocaleWriteOptions { Locale = McpArguments.Text(arguments, "locale"), ExpectedVersion = McpArguments.Integer(arguments, "expectedVersion") };
-        return McpArguments.Result(format.Published(await content.PublishAsync(type.Name, McpArguments.Id(arguments), options, cancellationToken)));
+        return McpArguments.Result(surface.ToJson(await content.PublishAsync(type.Name, McpArguments.Id(arguments), options, cancellationToken)));
     }
 
     private async Task<McpToolResult> UnpublishAsync(JsonElement arguments, CancellationToken cancellationToken)
@@ -373,7 +373,7 @@ internal sealed class McpContentTools(
         }
 
         var options = new LocaleOptions { Locale = McpArguments.Text(arguments, "locale") };
-        return McpArguments.Result(format.Entry(await content.UnpublishAsync(type.Name, McpArguments.Id(arguments), options, cancellationToken)));
+        return McpArguments.Result(surface.ToJson(await content.UnpublishAsync(type.Name, McpArguments.Id(arguments), options, cancellationToken)));
     }
 
     private async Task<McpToolResult> ScheduleAsync(JsonElement arguments, CancellationToken cancellationToken)
@@ -395,9 +395,9 @@ internal sealed class McpContentTools(
         }
 
         var id = McpArguments.Id(arguments);
-        var schedule = format.ParseSchedule(McpArguments.Element(body));
+        var schedule = surface.ParseSchedule(McpArguments.Element(body));
         var options = new LocaleOptions { Locale = McpArguments.Text(arguments, "locale") };
-        return McpArguments.Result(format.Schedule(await content.ScheduleAsync(type.Name, id, schedule, options, cancellationToken)));
+        return McpArguments.Result(surface.ToJson(await content.ScheduleAsync(type.Name, id, schedule, options, cancellationToken)));
     }
 
     private async Task<McpToolResult> QueryAsync(JsonElement arguments, CancellationToken cancellationToken)
@@ -410,8 +410,8 @@ internal sealed class McpContentTools(
         }
 
         string[] names = [McpQueryArguments.Search, .. McpQueryArguments.List];
-        var query = format.ParseQuery(McpQueryArguments.Parameters(arguments, names));
-        return McpArguments.Result(format.List(await content.QueryAsync(type.Name, WithStatus(query, described.Types[type.Name].Drafts), cancellationToken)));
+        var query = surface.ParseQuery(McpQueryArguments.Parameters(arguments, names));
+        return McpArguments.Result(surface.ToJson(await content.QueryAsync(type.Name, WithStatus(query, described.Types[type.Name].Drafts), cancellationToken)));
     }
 
     // The type a shared tool names, when it is exposed and the caller may read it. One that is not is answered alike

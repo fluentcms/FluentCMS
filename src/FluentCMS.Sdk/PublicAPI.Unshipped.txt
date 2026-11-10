@@ -499,13 +499,6 @@ FluentCMS.Content.GetOptions.Select.get -> System.Collections.Generic.IReadOnlyL
 FluentCMS.Content.GetOptions.Select.init -> void
 FluentCMS.Content.GetOptions.Status.get -> FluentCMS.Content.QueryStatus
 FluentCMS.Content.GetOptions.Status.init -> void
-FluentCMS.Content.IContentApiFormat
-FluentCMS.Content.IContentApiFormat.Entry(FluentCMS.Content.ContentDocument! entry) -> System.Text.Json.Nodes.JsonObject!
-FluentCMS.Content.IContentApiFormat.List(FluentCMS.Content.PagedResult<FluentCMS.Content.ContentDocument!>! result) -> System.Text.Json.Nodes.JsonObject!
-FluentCMS.Content.IContentApiFormat.ParseQuery(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, string!>>! parameters) -> FluentCMS.Content.ContentQuery!
-FluentCMS.Content.IContentApiFormat.ParseSchedule(System.Text.Json.JsonElement body) -> FluentCMS.Publishing.ScheduleRequest!
-FluentCMS.Content.IContentApiFormat.Published(FluentCMS.Publishing.PublishResult<FluentCMS.Content.ContentDocument!>! result) -> System.Text.Json.Nodes.JsonObject!
-FluentCMS.Content.IContentApiFormat.Schedule(FluentCMS.Publishing.ScheduleInfo! schedule) -> System.Text.Json.Nodes.JsonObject!
 FluentCMS.Content.IContentReferences
 FluentCMS.Content.IContentReferences.CountAsync(string! targetType, System.Guid targetId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
 FluentCMS.Content.IContentReferences.FindAsync(string! targetType, System.Guid targetId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ContentReference!>!>!
@@ -558,8 +551,13 @@ FluentCMS.Content.IContentSurface
 FluentCMS.Content.IContentSurface.DefaultPageSize.get -> int
 FluentCMS.Content.IContentSurface.MaxPageSize.get -> int
 FluentCMS.Content.IContentSurface.MaxPopulateDepth.get -> int
+FluentCMS.Content.IContentSurface.ParseQuery(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, string!>>! parameters) -> FluentCMS.Content.ContentQuery!
+FluentCMS.Content.IContentSurface.ParseSchedule(System.Text.Json.JsonElement body) -> FluentCMS.Publishing.ScheduleRequest!
 FluentCMS.Content.IContentSurface.ReadableFieldsAsync(string! type, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlySet<string!>?>
 FluentCMS.Content.IContentSurface.ToJson(FluentCMS.Content.ContentDocument! entry) -> System.Text.Json.Nodes.JsonObject!
+FluentCMS.Content.IContentSurface.ToJson(FluentCMS.Content.PagedResult<FluentCMS.Content.ContentDocument!>! page) -> System.Text.Json.Nodes.JsonObject!
+FluentCMS.Content.IContentSurface.ToJson(FluentCMS.Publishing.PublishResult<FluentCMS.Content.ContentDocument!>! result) -> System.Text.Json.Nodes.JsonObject!
+FluentCMS.Content.IContentSurface.ToJson(FluentCMS.Publishing.ScheduleInfo! schedule) -> System.Text.Json.Nodes.JsonObject!
 FluentCMS.Content.IEntryValidator<T>
 FluentCMS.Content.IEntryValidator<T>.ValidateAsync(T entry, FluentCMS.Content.ValidationContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Content.IFieldValidator<TField>

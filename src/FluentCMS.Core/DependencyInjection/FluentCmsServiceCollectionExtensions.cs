@@ -92,7 +92,6 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddSingleton<IMcpProviders>(plugins.Contributions);
         services.AddSingleton<ProtectedResources>();
         services.TryAddSingleton<IProblemDescriber, ProblemDescriber>();
-        services.TryAddSingleton<IContentApiFormat, ContentApiFormat>();
 
         services.AddProductionStartupChecks();
         services.AddFluentCmsOptions(DatabaseOptions.Section, StorageErrorCodes.InvalidDatabaseSetting, new DatabaseOptions { SchemaSyncOutsideDevelopment = builder.SchemaSyncOutsideDevelopment });
