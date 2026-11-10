@@ -11,6 +11,12 @@ internal interface IPluginStorageBuilder
     void AddMigrations(Assembly assembly);
 }
 
+// The name of the rate limit policy that RequireCallerRateLimit names and core registers.
+internal static class PluginRateLimits
+{
+    public const string CallerPolicy = "caller";
+}
+
 internal interface IPluginEndpointBuilder
 {
     RouteGroupBuilder MapGroup(string prefix);

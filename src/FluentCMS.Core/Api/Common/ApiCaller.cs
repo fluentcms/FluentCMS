@@ -29,6 +29,9 @@ internal sealed class ApiCaller
         {
             switch (claim.Type)
             {
+                case TokenScopes.Claim:
+                    Manages |= claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(TokenScopes.Management, StringComparer.Ordinal);
+                    break;
                 case CmsClaimTypes.Kind:
                     kind ??= claim.Value;
                     break;
@@ -50,6 +53,9 @@ internal sealed class ApiCaller
     public bool IsAuthenticated { get; }
 
     public bool IsApiKey { get; }
+
+    // A bearer token or a key with the management scope, which is who the Management API is for.
+    public bool Manages { get; }
 
     public string? Subject { get; }
 

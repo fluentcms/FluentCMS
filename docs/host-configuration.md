@@ -101,6 +101,8 @@ ASP.NET Core's rate limiter runs three policies, each a token bucket per caller 
 
 An API key whose principal has an `fcms_rate_limit` claim gets that many requests per minute instead of the `delivery` default, at most `Delivery:MaxKeyLimit` (5000), which must not be below `Delivery:PermitLimit` nor above `PreAuth:PermitLimit`, the coarse limit that holds every caller behind one address together. `/health` has no policy of the endpoints, only its own limit.
 
+An endpoint a plugin puts under the `caller` policy with `RequireCallerRateLimit()`, such as `/graphql`, serves both kinds of caller: one with the `management` scope is counted as the `management` policy counts it, and any other as `delivery` does, a key's own limit included. Its buckets are apart from those of the REST APIs.
+
 The coarse limit is checked before authentication on every endpoint that `MapFluentCms()` maps, those of plugins included, and on every path under the groups of core, so it also covers requests that no endpoint answers, such as `/connect/token` from the authorization server. A flood of API keys sent to a plugin's route is turned away there too, before any key is looked up. It adds no `RateLimit-*` headers, and neither does the `Health` limit; a refusal is the same 429 problem. The strict `auth` limit is checked there too, for every path under `/connect` and `/account`, because the authorization server answers `/connect/token`, `/connect/introspect` and `/connect/revoke` without routing; the endpoints of those groups do not count a request a second time.
 
 A caller that has been quiet may send the whole limit at once, and then one request per minute divided by the limit (every tenth of a second at 600), so a burst at the turn of a minute is not let through twice, as a fixed window of one minute would let it. A response carries `RateLimit-Limit`, `RateLimit-Remaining` (the requests that may be sent now) and `RateLimit-Reset` (seconds until the bucket is full again), from the IETF draft. A refused request is a 429 `application/problem+json` with code `FCMS3110` and a `Retry-After` in seconds until the next request is let through.
@@ -400,3 +402,20 @@ The media plugin (`FluentCMS.Plugins.Media`, which the reference host adds) keep
 New uploads go to the local disk unless a storage package replaces it: `media.UseS3(section)` from `FluentCMS.Plugins.Media.S3` (AWS or an S3-compatible service such as MinIO) or `media.UseAzureBlob(section)` from `FluentCMS.Plugins.Media.AzureBlob` (a connection string, or a container URL with a SAS), in `cms.AddPlugin<MediaPlugin>(media => ...)`. The section's keys are in the plugin's [README](../src/plugins/FluentCMS.Plugins.Media/README.md#storage-on-s3-or-azure-blob). Objects stay private and are served through `/media` only, and assets written on the local disk before the move are still served from `Local:Root`. `/health/ready` includes `media-storage`, which is Unhealthy while the bucket or container cannot be reached.
 
 The limits of uploads and transforms are each site's, in the settings area `media`. The default image processor is [SkiaSharp](https://github.com/mono/SkiaSharp) (MIT), with its Linux assets that need no fontconfig, for containers. A host replaces it with `cms.Providers.Use<IImageProcessor, T>()`, for example to use ImageSharp under its own Six Labors license. The plugin's [README](../src/plugins/FluentCMS.Plugins.Media/README.md#image-transforms) has the parameters and the signing.
+
+## GraphQL
+
+The GraphQL plugin (`FluentCMS.Plugins.GraphQL`, which the reference host adds) serves the content schema at `/graphql`, over the same content service, permissions and query model as the REST APIs. Its options are in `FluentCms:GraphQL`:
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `MaxDepth` | `12` | The deepest a query may nest its fields. |
+| `MaxFieldCost` | `1000` | The most a query may cost by HotChocolate's cost analysis: 10 for a root field, and 1 for a populated relation or media field for each entry of the page above it. |
+| `MaxTypeCost` | `1000` | The most objects a query may return, by the same analysis. |
+| `MaxRequestSize` | `262144` | The body of a request, in bytes, refused with 413 and `FCMS3111` when larger. `FluentCms:Limits:MaxBodySize` still caps it. |
+| `ExecutionTimeout` | `00:00:30` | How long a request may run. |
+| `OpenIntrospection` | unset | Whether any caller may introspect the schema. Unset, it is open in Development, and elsewhere needs a signed-in caller with `schema.read`. |
+| `PersistedQueries` | unset | A folder of query files, each named `{id}.graphql`, that a request names by `id`. A relative path is under the content root. |
+| `OnlyPersisted` | `false` | Refuses every query that is not in the folder. |
+
+The page size and populate depth limits are those of `FluentCms:Query`. A Delivery key or an anonymous caller reads published entries and runs no mutation; a caller with the `management` scope runs the mutations its roles allow. Introspection names every type and field of the schema, whatever the caller may read, which is why it is closed outside Development ([ADR 0006](decisions/0006-one-graphql-schema-per-instance.md)). A browser on another origin can send `GET` only, since the endpoint answers the Delivery CORS policy. The plugin's [README](../src/plugins/FluentCMS.Plugins.GraphQL/README.md) has the schema, the queries, the mutations and the error codes.

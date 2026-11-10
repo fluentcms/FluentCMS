@@ -25,8 +25,11 @@ internal static class ApiProtectionServiceCollectionExtensions
         services.AddRateLimiter(options => options.RejectionStatusCode = StatusCodes.Status429TooManyRequests);
         services.AddOptions<RateLimiterOptions>().Configure<RateLimitOptions, TimeProvider, AuthRateLimitPolicy>((options, limits, time, auth) =>
         {
-            options.AddPolicy<string>(RateLimitPolicyNames.Delivery, new DeliveryRateLimitPolicy(limits, time));
-            options.AddPolicy<string>(RateLimitPolicyNames.Management, new ManagementRateLimitPolicy(limits, time));
+            var delivery = new DeliveryRateLimitPolicy(limits, time);
+            var management = new ManagementRateLimitPolicy(limits, time);
+            options.AddPolicy<string>(RateLimitPolicyNames.Delivery, delivery);
+            options.AddPolicy<string>(RateLimitPolicyNames.Management, management);
+            options.AddPolicy<string>(RateLimitPolicyNames.Caller, new CallerRateLimitPolicy(delivery, management));
             options.AddPolicy<string>(RateLimitPolicyNames.Auth, auth);
         });
 
