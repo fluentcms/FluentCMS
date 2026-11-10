@@ -82,6 +82,14 @@ FluentCMS.Activity.IActivityLog.WriteAsync(FluentCMS.Activity.ActivityEntry! ent
 FluentCMS.Activity.IActivityLog.WriteAsync(FluentCMS.Activity.ActivityEntry! entry, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Activity.IActivityQuery
 FluentCMS.Activity.IActivityQuery.QueryAsync(FluentCMS.Activity.ActivityFilter? filter = null, FluentCMS.Content.PageRequest? page = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<FluentCMS.Activity.ActivityItem!>!>!
+FluentCMS.Agents.IMcpClientRegistrationPolicy
+FluentCMS.Agents.IMcpClientRegistrationPolicy.GetAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Agents.McpClientRegistrationPolicy!>
+FluentCMS.Agents.IMcpClients
+FluentCMS.Agents.IMcpClients.ApproveAsync(System.Guid id, string! role, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Agents.McpClientChange!>!
+FluentCMS.Agents.IMcpClients.ListAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Agents.McpClient!>!>!
+FluentCMS.Agents.IMcpClients.RejectAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Agents.McpClientChange!>!
+FluentCMS.Agents.IMcpClients.RemoveUnapprovedAsync(System.DateTimeOffset registeredBefore, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+FluentCMS.Agents.IMcpClients.RevokeAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Agents.McpClientChange!>!
 FluentCMS.Agents.IMcpPromptProvider
 FluentCMS.Agents.IMcpPromptProvider.GetPromptAsync(FluentCMS.Agents.McpPromptGet! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Agents.McpPromptResult?>
 FluentCMS.Agents.IMcpPromptProvider.ListPromptsAsync(FluentCMS.Agents.McpListRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<FluentCMS.Agents.McpPromptDescriptor!>!>
@@ -95,6 +103,70 @@ FluentCMS.Agents.IMcpResourceProvider.ReadResourceAsync(FluentCMS.Agents.McpReso
 FluentCMS.Agents.IMcpToolProvider
 FluentCMS.Agents.IMcpToolProvider.CallToolAsync(FluentCMS.Agents.McpToolCall! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Agents.McpToolResult?>
 FluentCMS.Agents.IMcpToolProvider.ListToolsAsync(FluentCMS.Agents.McpListRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlyList<FluentCMS.Agents.McpToolDescriptor!>!>
+FluentCMS.Agents.McpClient
+FluentCMS.Agents.McpClient.<Clone>$() -> FluentCMS.Agents.McpClient!
+FluentCMS.Agents.McpClient.ApprovedAt.get -> System.DateTimeOffset?
+FluentCMS.Agents.McpClient.ApprovedAt.init -> void
+FluentCMS.Agents.McpClient.ApprovedBy.get -> System.Guid?
+FluentCMS.Agents.McpClient.ApprovedBy.init -> void
+FluentCMS.Agents.McpClient.ClientId.get -> string!
+FluentCMS.Agents.McpClient.ClientId.init -> void
+FluentCMS.Agents.McpClient.Deconstruct(out System.Guid Id, out string! ClientId, out string! Name, out FluentCMS.Agents.McpClientStatus Status, out System.Collections.Generic.IReadOnlyList<string!>! RedirectUris, out System.DateTimeOffset RegisteredAt) -> void
+FluentCMS.Agents.McpClient.Equals(FluentCMS.Agents.McpClient? other) -> bool
+FluentCMS.Agents.McpClient.Id.get -> System.Guid
+FluentCMS.Agents.McpClient.Id.init -> void
+FluentCMS.Agents.McpClient.LastActivityAt.get -> System.DateTimeOffset?
+FluentCMS.Agents.McpClient.LastActivityAt.init -> void
+FluentCMS.Agents.McpClient.McpClient(System.Guid Id, string! ClientId, string! Name, FluentCMS.Agents.McpClientStatus Status, System.Collections.Generic.IReadOnlyList<string!>! RedirectUris, System.DateTimeOffset RegisteredAt) -> void
+FluentCMS.Agents.McpClient.Name.get -> string!
+FluentCMS.Agents.McpClient.Name.init -> void
+FluentCMS.Agents.McpClient.RedirectUris.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Agents.McpClient.RedirectUris.init -> void
+FluentCMS.Agents.McpClient.RegisteredAt.get -> System.DateTimeOffset
+FluentCMS.Agents.McpClient.RegisteredAt.init -> void
+FluentCMS.Agents.McpClient.RoleId.get -> System.Guid?
+FluentCMS.Agents.McpClient.RoleId.init -> void
+FluentCMS.Agents.McpClient.RoleName.get -> string?
+FluentCMS.Agents.McpClient.RoleName.init -> void
+FluentCMS.Agents.McpClient.Scopes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Agents.McpClient.Scopes.init -> void
+FluentCMS.Agents.McpClient.Status.get -> FluentCMS.Agents.McpClientStatus
+FluentCMS.Agents.McpClient.Status.init -> void
+FluentCMS.Agents.McpClientChange
+FluentCMS.Agents.McpClientChange.<Clone>$() -> FluentCMS.Agents.McpClientChange!
+FluentCMS.Agents.McpClientChange.Client.get -> FluentCMS.Agents.McpClient?
+FluentCMS.Agents.McpClientChange.Client.init -> void
+FluentCMS.Agents.McpClientChange.Deconstruct(out FluentCMS.Agents.McpClientChangeOutcome Outcome, out FluentCMS.Agents.McpClient? Client) -> void
+FluentCMS.Agents.McpClientChange.Equals(FluentCMS.Agents.McpClientChange? other) -> bool
+FluentCMS.Agents.McpClientChange.McpClientChange(FluentCMS.Agents.McpClientChangeOutcome Outcome, FluentCMS.Agents.McpClient? Client) -> void
+FluentCMS.Agents.McpClientChange.Outcome.get -> FluentCMS.Agents.McpClientChangeOutcome
+FluentCMS.Agents.McpClientChange.Outcome.init -> void
+FluentCMS.Agents.McpClientChangeOutcome
+FluentCMS.Agents.McpClientChangeOutcome.Done = 0 -> FluentCMS.Agents.McpClientChangeOutcome
+FluentCMS.Agents.McpClientChangeOutcome.NotFound = 1 -> FluentCMS.Agents.McpClientChangeOutcome
+FluentCMS.Agents.McpClientChangeOutcome.NotPending = 2 -> FluentCMS.Agents.McpClientChangeOutcome
+FluentCMS.Agents.McpClientChangeOutcome.UnknownRole = 3 -> FluentCMS.Agents.McpClientChangeOutcome
+FluentCMS.Agents.McpClientRegistrationMode
+FluentCMS.Agents.McpClientRegistrationMode.Approval = 1 -> FluentCMS.Agents.McpClientRegistrationMode
+FluentCMS.Agents.McpClientRegistrationMode.Off = 0 -> FluentCMS.Agents.McpClientRegistrationMode
+FluentCMS.Agents.McpClientRegistrationMode.Open = 2 -> FluentCMS.Agents.McpClientRegistrationMode
+FluentCMS.Agents.McpClientRegistrationPolicy
+FluentCMS.Agents.McpClientRegistrationPolicy.<Clone>$() -> FluentCMS.Agents.McpClientRegistrationPolicy!
+FluentCMS.Agents.McpClientRegistrationPolicy.Deconstruct(out FluentCMS.Agents.McpClientRegistrationMode Mode) -> void
+FluentCMS.Agents.McpClientRegistrationPolicy.DefaultRole.get -> string?
+FluentCMS.Agents.McpClientRegistrationPolicy.DefaultRole.init -> void
+FluentCMS.Agents.McpClientRegistrationPolicy.Equals(FluentCMS.Agents.McpClientRegistrationPolicy? other) -> bool
+FluentCMS.Agents.McpClientRegistrationPolicy.MaxPendingClients.get -> int
+FluentCMS.Agents.McpClientRegistrationPolicy.MaxPendingClients.init -> void
+FluentCMS.Agents.McpClientRegistrationPolicy.McpClientRegistrationPolicy(FluentCMS.Agents.McpClientRegistrationMode Mode) -> void
+FluentCMS.Agents.McpClientRegistrationPolicy.Mode.get -> FluentCMS.Agents.McpClientRegistrationMode
+FluentCMS.Agents.McpClientRegistrationPolicy.Mode.init -> void
+FluentCMS.Agents.McpClientRegistrationPolicy.RegistrationsPerHour.get -> int
+FluentCMS.Agents.McpClientRegistrationPolicy.RegistrationsPerHour.init -> void
+FluentCMS.Agents.McpClientStatus
+FluentCMS.Agents.McpClientStatus.Approved = 1 -> FluentCMS.Agents.McpClientStatus
+FluentCMS.Agents.McpClientStatus.Pending = 0 -> FluentCMS.Agents.McpClientStatus
+FluentCMS.Agents.McpClientStatus.Rejected = 2 -> FluentCMS.Agents.McpClientStatus
 FluentCMS.Agents.McpListRequest
 FluentCMS.Agents.McpListRequest.<Clone>$() -> FluentCMS.Agents.McpListRequest!
 FluentCMS.Agents.McpListRequest.Deconstruct(out FluentCMS.Content.OperationContext! Operation) -> void
@@ -1045,6 +1117,56 @@ FluentCMS.Events.LoginSucceededEvent.UserId.get -> System.Guid
 FluentCMS.Events.LoginSucceededEvent.UserId.init -> void
 FluentCMS.Events.LoginSucceededEvent.UserName.get -> string!
 FluentCMS.Events.LoginSucceededEvent.UserName.init -> void
+FluentCMS.Events.McpClientApprovedEvent
+FluentCMS.Events.McpClientApprovedEvent.ClientId.get -> string!
+FluentCMS.Events.McpClientApprovedEvent.ClientId.init -> void
+FluentCMS.Events.McpClientApprovedEvent.Deconstruct(out System.Guid Id, out string! ClientId, out string! Name, out System.Guid RoleId, out string! RoleName) -> void
+FluentCMS.Events.McpClientApprovedEvent.Equals(FluentCMS.Events.McpClientApprovedEvent? other) -> bool
+FluentCMS.Events.McpClientApprovedEvent.Id.get -> System.Guid
+FluentCMS.Events.McpClientApprovedEvent.Id.init -> void
+FluentCMS.Events.McpClientApprovedEvent.McpClientApprovedEvent(System.Guid Id, string! ClientId, string! Name, System.Guid RoleId, string! RoleName) -> void
+FluentCMS.Events.McpClientApprovedEvent.Name.get -> string!
+FluentCMS.Events.McpClientApprovedEvent.Name.init -> void
+FluentCMS.Events.McpClientApprovedEvent.RoleId.get -> System.Guid
+FluentCMS.Events.McpClientApprovedEvent.RoleId.init -> void
+FluentCMS.Events.McpClientApprovedEvent.RoleName.get -> string!
+FluentCMS.Events.McpClientApprovedEvent.RoleName.init -> void
+FluentCMS.Events.McpClientRegisteredEvent
+FluentCMS.Events.McpClientRegisteredEvent.ClientId.get -> string!
+FluentCMS.Events.McpClientRegisteredEvent.ClientId.init -> void
+FluentCMS.Events.McpClientRegisteredEvent.Deconstruct(out System.Guid Id, out string! ClientId, out string! Name, out string! Status, out System.Guid? RoleId, out string? Ip) -> void
+FluentCMS.Events.McpClientRegisteredEvent.Equals(FluentCMS.Events.McpClientRegisteredEvent? other) -> bool
+FluentCMS.Events.McpClientRegisteredEvent.Id.get -> System.Guid
+FluentCMS.Events.McpClientRegisteredEvent.Id.init -> void
+FluentCMS.Events.McpClientRegisteredEvent.Ip.get -> string?
+FluentCMS.Events.McpClientRegisteredEvent.Ip.init -> void
+FluentCMS.Events.McpClientRegisteredEvent.McpClientRegisteredEvent(System.Guid Id, string! ClientId, string! Name, string! Status, System.Guid? RoleId, string? Ip) -> void
+FluentCMS.Events.McpClientRegisteredEvent.Name.get -> string!
+FluentCMS.Events.McpClientRegisteredEvent.Name.init -> void
+FluentCMS.Events.McpClientRegisteredEvent.RoleId.get -> System.Guid?
+FluentCMS.Events.McpClientRegisteredEvent.RoleId.init -> void
+FluentCMS.Events.McpClientRegisteredEvent.Status.get -> string!
+FluentCMS.Events.McpClientRegisteredEvent.Status.init -> void
+FluentCMS.Events.McpClientRejectedEvent
+FluentCMS.Events.McpClientRejectedEvent.ClientId.get -> string!
+FluentCMS.Events.McpClientRejectedEvent.ClientId.init -> void
+FluentCMS.Events.McpClientRejectedEvent.Deconstruct(out System.Guid Id, out string! ClientId, out string! Name) -> void
+FluentCMS.Events.McpClientRejectedEvent.Equals(FluentCMS.Events.McpClientRejectedEvent? other) -> bool
+FluentCMS.Events.McpClientRejectedEvent.Id.get -> System.Guid
+FluentCMS.Events.McpClientRejectedEvent.Id.init -> void
+FluentCMS.Events.McpClientRejectedEvent.McpClientRejectedEvent(System.Guid Id, string! ClientId, string! Name) -> void
+FluentCMS.Events.McpClientRejectedEvent.Name.get -> string!
+FluentCMS.Events.McpClientRejectedEvent.Name.init -> void
+FluentCMS.Events.McpClientRevokedEvent
+FluentCMS.Events.McpClientRevokedEvent.ClientId.get -> string!
+FluentCMS.Events.McpClientRevokedEvent.ClientId.init -> void
+FluentCMS.Events.McpClientRevokedEvent.Deconstruct(out System.Guid Id, out string! ClientId, out string! Name) -> void
+FluentCMS.Events.McpClientRevokedEvent.Equals(FluentCMS.Events.McpClientRevokedEvent? other) -> bool
+FluentCMS.Events.McpClientRevokedEvent.Id.get -> System.Guid
+FluentCMS.Events.McpClientRevokedEvent.Id.init -> void
+FluentCMS.Events.McpClientRevokedEvent.McpClientRevokedEvent(System.Guid Id, string! ClientId, string! Name) -> void
+FluentCMS.Events.McpClientRevokedEvent.Name.get -> string!
+FluentCMS.Events.McpClientRevokedEvent.Name.init -> void
 FluentCMS.Events.MediaAssetDeletedEvent
 FluentCMS.Events.MediaAssetDeletedEvent.Deconstruct(out System.Guid AssetId, out System.Guid? FolderId, out string! FileName) -> void
 FluentCMS.Events.MediaAssetDeletedEvent.Equals(FluentCMS.Events.MediaAssetDeletedEvent? other) -> bool
@@ -2393,6 +2515,15 @@ const FluentCMS.Schema.FieldSettings.Scale = "scale" -> string!
 const FluentCMS.Schema.FieldSettings.Source = "source" -> string!
 const FluentCMS.Schema.RichTextFormats.Html = "html" -> string!
 const FluentCMS.Schema.RichTextFormats.Markdown = "markdown" -> string!
+override FluentCMS.Agents.McpClient.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpClient.GetHashCode() -> int
+override FluentCMS.Agents.McpClient.ToString() -> string!
+override FluentCMS.Agents.McpClientChange.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpClientChange.GetHashCode() -> int
+override FluentCMS.Agents.McpClientChange.ToString() -> string!
+override FluentCMS.Agents.McpClientRegistrationPolicy.Equals(object? obj) -> bool
+override FluentCMS.Agents.McpClientRegistrationPolicy.GetHashCode() -> int
+override FluentCMS.Agents.McpClientRegistrationPolicy.ToString() -> string!
 override FluentCMS.Agents.McpListRequest.Equals(object? obj) -> bool
 override FluentCMS.Agents.McpListRequest.GetHashCode() -> int
 override FluentCMS.Agents.McpListRequest.ToString() -> string!
@@ -2438,6 +2569,22 @@ override FluentCMS.Agents.McpToolResult.ToString() -> string!
 override FluentCMS.Content.ContentReference.Equals(object? obj) -> bool
 override FluentCMS.Content.ContentReference.GetHashCode() -> int
 override FluentCMS.Content.ContentReference.ToString() -> string!
+override FluentCMS.Events.McpClientApprovedEvent.<Clone>$() -> FluentCMS.Events.McpClientApprovedEvent!
+override FluentCMS.Events.McpClientApprovedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.McpClientApprovedEvent.GetHashCode() -> int
+override FluentCMS.Events.McpClientApprovedEvent.ToString() -> string!
+override FluentCMS.Events.McpClientRegisteredEvent.<Clone>$() -> FluentCMS.Events.McpClientRegisteredEvent!
+override FluentCMS.Events.McpClientRegisteredEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.McpClientRegisteredEvent.GetHashCode() -> int
+override FluentCMS.Events.McpClientRegisteredEvent.ToString() -> string!
+override FluentCMS.Events.McpClientRejectedEvent.<Clone>$() -> FluentCMS.Events.McpClientRejectedEvent!
+override FluentCMS.Events.McpClientRejectedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.McpClientRejectedEvent.GetHashCode() -> int
+override FluentCMS.Events.McpClientRejectedEvent.ToString() -> string!
+override FluentCMS.Events.McpClientRevokedEvent.<Clone>$() -> FluentCMS.Events.McpClientRevokedEvent!
+override FluentCMS.Events.McpClientRevokedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.McpClientRevokedEvent.GetHashCode() -> int
+override FluentCMS.Events.McpClientRevokedEvent.ToString() -> string!
 override FluentCMS.Events.MediaAssetReplacedEvent.<Clone>$() -> FluentCMS.Events.MediaAssetReplacedEvent!
 override FluentCMS.Events.MediaAssetReplacedEvent.Equals(object? obj) -> bool
 override FluentCMS.Events.MediaAssetReplacedEvent.GetHashCode() -> int
@@ -2863,6 +3010,10 @@ override sealed FluentCMS.Events.JobDeadLetteredEvent.Equals(FluentCMS.Events.Cm
 override sealed FluentCMS.Events.JobFailedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.LoginFailedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.LoginSucceededEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.McpClientApprovedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.McpClientRegisteredEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.McpClientRejectedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.McpClientRevokedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.MediaAssetDeletedEvent.Equals(FluentCMS.Events.MediaAssetEvent? other) -> bool
 override sealed FluentCMS.Events.MediaAssetEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.MediaAssetMovedEvent.Equals(FluentCMS.Events.MediaAssetEvent? other) -> bool
@@ -2887,6 +3038,12 @@ static FluentCMS.Activity.ActivityFilter.operator !=(FluentCMS.Activity.Activity
 static FluentCMS.Activity.ActivityFilter.operator ==(FluentCMS.Activity.ActivityFilter? left, FluentCMS.Activity.ActivityFilter? right) -> bool
 static FluentCMS.Activity.ActivityItem.operator !=(FluentCMS.Activity.ActivityItem? left, FluentCMS.Activity.ActivityItem? right) -> bool
 static FluentCMS.Activity.ActivityItem.operator ==(FluentCMS.Activity.ActivityItem? left, FluentCMS.Activity.ActivityItem? right) -> bool
+static FluentCMS.Agents.McpClient.operator !=(FluentCMS.Agents.McpClient? left, FluentCMS.Agents.McpClient? right) -> bool
+static FluentCMS.Agents.McpClient.operator ==(FluentCMS.Agents.McpClient? left, FluentCMS.Agents.McpClient? right) -> bool
+static FluentCMS.Agents.McpClientChange.operator !=(FluentCMS.Agents.McpClientChange? left, FluentCMS.Agents.McpClientChange? right) -> bool
+static FluentCMS.Agents.McpClientChange.operator ==(FluentCMS.Agents.McpClientChange? left, FluentCMS.Agents.McpClientChange? right) -> bool
+static FluentCMS.Agents.McpClientRegistrationPolicy.operator !=(FluentCMS.Agents.McpClientRegistrationPolicy? left, FluentCMS.Agents.McpClientRegistrationPolicy? right) -> bool
+static FluentCMS.Agents.McpClientRegistrationPolicy.operator ==(FluentCMS.Agents.McpClientRegistrationPolicy? left, FluentCMS.Agents.McpClientRegistrationPolicy? right) -> bool
 static FluentCMS.Agents.McpListRequest.operator !=(FluentCMS.Agents.McpListRequest? left, FluentCMS.Agents.McpListRequest? right) -> bool
 static FluentCMS.Agents.McpListRequest.operator ==(FluentCMS.Agents.McpListRequest? left, FluentCMS.Agents.McpListRequest? right) -> bool
 static FluentCMS.Agents.McpPromptArgument.operator !=(FluentCMS.Agents.McpPromptArgument? left, FluentCMS.Agents.McpPromptArgument? right) -> bool
@@ -3037,6 +3194,14 @@ static FluentCMS.Events.LoginFailedEvent.operator !=(FluentCMS.Events.LoginFaile
 static FluentCMS.Events.LoginFailedEvent.operator ==(FluentCMS.Events.LoginFailedEvent? left, FluentCMS.Events.LoginFailedEvent? right) -> bool
 static FluentCMS.Events.LoginSucceededEvent.operator !=(FluentCMS.Events.LoginSucceededEvent? left, FluentCMS.Events.LoginSucceededEvent? right) -> bool
 static FluentCMS.Events.LoginSucceededEvent.operator ==(FluentCMS.Events.LoginSucceededEvent? left, FluentCMS.Events.LoginSucceededEvent? right) -> bool
+static FluentCMS.Events.McpClientApprovedEvent.operator !=(FluentCMS.Events.McpClientApprovedEvent? left, FluentCMS.Events.McpClientApprovedEvent? right) -> bool
+static FluentCMS.Events.McpClientApprovedEvent.operator ==(FluentCMS.Events.McpClientApprovedEvent? left, FluentCMS.Events.McpClientApprovedEvent? right) -> bool
+static FluentCMS.Events.McpClientRegisteredEvent.operator !=(FluentCMS.Events.McpClientRegisteredEvent? left, FluentCMS.Events.McpClientRegisteredEvent? right) -> bool
+static FluentCMS.Events.McpClientRegisteredEvent.operator ==(FluentCMS.Events.McpClientRegisteredEvent? left, FluentCMS.Events.McpClientRegisteredEvent? right) -> bool
+static FluentCMS.Events.McpClientRejectedEvent.operator !=(FluentCMS.Events.McpClientRejectedEvent? left, FluentCMS.Events.McpClientRejectedEvent? right) -> bool
+static FluentCMS.Events.McpClientRejectedEvent.operator ==(FluentCMS.Events.McpClientRejectedEvent? left, FluentCMS.Events.McpClientRejectedEvent? right) -> bool
+static FluentCMS.Events.McpClientRevokedEvent.operator !=(FluentCMS.Events.McpClientRevokedEvent? left, FluentCMS.Events.McpClientRevokedEvent? right) -> bool
+static FluentCMS.Events.McpClientRevokedEvent.operator ==(FluentCMS.Events.McpClientRevokedEvent? left, FluentCMS.Events.McpClientRevokedEvent? right) -> bool
 static FluentCMS.Events.MediaAssetDeletedEvent.operator !=(FluentCMS.Events.MediaAssetDeletedEvent? left, FluentCMS.Events.MediaAssetDeletedEvent? right) -> bool
 static FluentCMS.Events.MediaAssetDeletedEvent.operator ==(FluentCMS.Events.MediaAssetDeletedEvent? left, FluentCMS.Events.MediaAssetDeletedEvent? right) -> bool
 static FluentCMS.Events.MediaAssetEvent.operator !=(FluentCMS.Events.MediaAssetEvent? left, FluentCMS.Events.MediaAssetEvent? right) -> bool

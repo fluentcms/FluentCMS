@@ -57,23 +57,28 @@ internal sealed class EffectiveAccess(
             .ToHashSet(StringComparer.Ordinal);
     }
 
-    // The readable fields that a grant behind the operation lets through: all of them when one has no field list.
+    // The readable fields that a grant behind the operation lets through: all of them when one has no field list. A
+    // principal that came through an MCP client that registered itself is held to the role of its client too (spec 4.8,
+    // "Client roles as built"), so a field counts when the grants of the principal let it through and those of that role
+    // do, as the evaluator decides a write.
     private static HashSet<string> Writable(EffectivePermissions permissions, SchemaType type, SchemaType shown, ContentOperation operation, AccessTarget target)
     {
-        var readable = shown.Fields.Select(field => field.Name);
+        var writable = shown.Fields.Select(field => field.Name).ToHashSet(StringComparer.Ordinal);
         if (permissions.IsSystem)
         {
-            return readable.ToHashSet(StringComparer.Ordinal);
+            return writable;
         }
 
-        var grants = permissions.GrantsOf(type, operation, target);
-        if (grants.Any(grant => grant.Constraints.Fields is null))
+        for (var set = permissions; set is not null; set = set.Limit)
         {
-            return readable.ToHashSet(StringComparer.Ordinal);
+            var grants = set.GrantsOf(type, operation, target);
+            if (!grants.Any(grant => grant.Constraints.Fields is null))
+            {
+                writable.IntersectWith(grants.SelectMany(grant => grant.Constraints.Fields!));
+            }
         }
 
-        var listed = grants.SelectMany(grant => grant.Constraints.Fields!).ToHashSet(StringComparer.Ordinal);
-        return readable.Where(listed.Contains).ToHashSet(StringComparer.Ordinal);
+        return writable;
     }
 
     // Thrown rather than answered empty, as ManagementAuthority does: code that forgot its operation fails where it runs.

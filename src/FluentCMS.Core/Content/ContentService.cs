@@ -879,7 +879,7 @@ internal sealed partial class ContentService(
     private async Task<List<Guid>> KeptTargetsAsync(WriteScope write, string targetName, List<Guid> ids, CancellationToken cancellationToken)
     {
         if (schema.FindContentType(targetName) is not { } target
-            || !write.Permissions.GrantsOf(target, ContentOperation.Read, write.Target).Any(grant => grant.Constraints.RowRule is null && grant.Constraints.Locales is null))
+            || !write.Permissions.ReadsEveryRow(target, write.Target))
         {
             return ids;
         }

@@ -95,6 +95,89 @@ public class EffectiveAccessTests
         held.ShouldBe(["media.read", "media.upload"], ignoreOrder: true);
     }
 
+    // A token of an MCP client that registered itself is held to the role of its client (spec 4.8, "Client roles as
+    // built"): the description is what both the principal's grants and that role's give, as a call would be decided.
+    [Fact]
+    public async Task ThroughAClientWithARoleOnlyWhatBothThePrincipalAndThatRoleAllowIsDescribed()
+    {
+        var access = Through(
+            [new EffectiveGrant("*", PermissionConstraints.None, null)],
+            [
+                new EffectiveGrant("content.article.read", new PermissionConstraints { Fields = ["title", "body"] }, null),
+                new EffectiveGrant("content.article.create", new PermissionConstraints { Fields = ["title"] }, null),
+                new EffectiveGrant("content.article.update", PermissionConstraints.None, null),
+                new EffectiveGrant("media.read", PermissionConstraints.None, null),
+            ]);
+
+        var content = await access.ContentAsync(Token);
+        var held = await access.HeldAsync(["media.read", "media.upload"], Token);
+
+        content.Schema.ContentTypes.Select(type => type.Name).ShouldBe(["article"]);
+        content.Schema.FindContentType("article")!.Fields.Select(field => field.Name).ShouldBe(["title", "body"]);
+        content.Types.ShouldHaveSingleItem().Value.ShouldSatisfyAllConditions(
+            may => may.Drafts.ShouldBeTrue(),
+            may => may.Create.ShouldBeTrue(),
+            may => may.Update.ShouldBeTrue(),
+            may => may.Delete.ShouldBeFalse(),
+            may => may.Publish.ShouldBeFalse(),
+            may => may.Unpublish.ShouldBeFalse(),
+            may => may.CreatableFields.ShouldBe(["title"]),
+            may => may.UpdatableFields.ShouldBe(["title", "body"], ignoreOrder: true));
+        held.ShouldBe(["media.read"]);
+    }
+
+    [Fact]
+    public async Task TheWritableFieldsThroughAClientAreTheOnesBothFieldListsHold()
+    {
+        var read = new EffectiveGrant("content.article.read", PermissionConstraints.None, null);
+        var access = Through(
+            [read, new EffectiveGrant("content.article.update", new PermissionConstraints { Fields = ["title", "body"] }, null), new EffectiveGrant("content.article.create", new PermissionConstraints { Fields = ["title"] }, null)],
+            [read, new EffectiveGrant("content.article.update", new PermissionConstraints { Fields = ["body", "note"] }, null), new EffectiveGrant("content.article.create", new PermissionConstraints { Fields = ["note"] }, null)]);
+
+        var article = (await access.ContentAsync(Token)).Types["article"];
+
+        article.Update.ShouldBeTrue();
+        article.UpdatableFields.ShouldBe(["body"]);
+        article.Create.ShouldBeTrue();
+        article.CreatableFields.ShouldBeEmpty();
+    }
+
+    // The role of the client only removes: a wide one gives the principal no operation and no field of its own.
+    [Fact]
+    public async Task AClientWithAWideRoleAddsNothingToWhatThePrincipalMayDo()
+    {
+        var access = Through(
+            [
+                new EffectiveGrant("content.article.read", PermissionConstraints.None, null),
+                new EffectiveGrant("content.article.update", new PermissionConstraints { Fields = ["title"] }, null),
+            ],
+            [new EffectiveGrant("*", PermissionConstraints.None, null)]);
+
+        var content = await access.ContentAsync(Token);
+
+        content.Types.Keys.ShouldBe(["article"]);
+        var article = content.Types["article"];
+        article.Update.ShouldBeTrue();
+        article.UpdatableFields.ShouldBe(["title"]);
+        article.Create.ShouldBeFalse();
+        article.CreatableFields.ShouldBeEmpty();
+        article.Publish.ShouldBeFalse();
+        (await access.HeldAsync(["media.read"], Token)).ShouldBeEmpty();
+    }
+
+    // A client whose role is gone has no grant, which leaves nothing to describe.
+    [Fact]
+    public async Task AClientRoleWithNoGrantDescribesNothing()
+    {
+        var access = Through([new EffectiveGrant("*", PermissionConstraints.None, null)], []);
+
+        var content = await access.ContentAsync(Token);
+
+        content.Types.ShouldBeEmpty();
+        content.Schema.ContentTypes.ShouldBeEmpty();
+        (await access.HeldAsync(["media.read"], Token)).ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task SearchIsOfferedOnlyWhileTheSearchSlotIsFilled()
     {
@@ -138,17 +221,24 @@ public class EffectiveAccessTests
         return new EffectiveAccess(Model, new Evaluator(grants), accessor, search);
     }
 
+    // The principal with its own grants, through a client whose role has the others.
+    private static EffectiveAccess Through(EffectiveGrant[] grants, EffectiveGrant[] clientRole)
+    {
+        var accessor = new OperationContextAccessor { Current = new OperationContext(Managing(), Origin.Mcp, Site, "en", null, "test", DateTimeOffset.UtcNow) };
+        return new EffectiveAccess(Model, new Evaluator(grants, clientRole), accessor, new NoSearchIndex());
+    }
+
     private sealed class SearchIndex : ISearchIndex
     {
         public Task<IReadOnlyList<Guid>> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<Guid>>([]);
     }
 
-    private sealed class Evaluator(IReadOnlyList<EffectiveGrant> grants) : IAuthorizationEvaluator
+    private sealed class Evaluator(IReadOnlyList<EffectiveGrant> grants, IReadOnlyList<EffectiveGrant>? clientRole = null) : IAuthorizationEvaluator
     {
         private static readonly RowRuleRegistry Rules = new(Model, new ContentQueryOptions(), []);
 
         public ValueTask<EffectivePermissions> ResolveAsync(OperationContext context, CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(new EffectivePermissions(context, grants, Rules));
+            ValueTask.FromResult(new EffectivePermissions(context, grants, Rules, clientRole is null ? null : new EffectivePermissions(context, clientRole, Rules)));
 
         public ValueTask<bool> CanAccessEntryAsync(OperationContext context, SchemaType type, ContentOperation operation, Guid entry, AccessTarget target, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();

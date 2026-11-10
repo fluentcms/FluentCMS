@@ -7,6 +7,12 @@ internal static class McpErrorCodes
     public const string UnknownResource = "FCMS1601";
     public const string UnknownPrompt = "FCMS1602";
 
+    // FCMS1603 to 1611: the MCP clients of the Management API. Added in McpClientSetup.
+    public const string ClientNotFound = "FCMS1603";
+    public const string ClientNotPending = "FCMS1604";
+    public const string ClientRoleRequired = "FCMS1605";
+    public const string ClientRoleUnknown = "FCMS1606";
+
     // FCMS1612 to 1619: the content and media tools.
     public const string TypeNotAvailable = "FCMS1612";
     public const string SingletonEmpty = "FCMS1613";

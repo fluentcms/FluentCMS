@@ -28,6 +28,69 @@ The options are in `FluentCms:Mcp`:
 
 The permission `mcp.manage` is for managing the MCP clients, instructions and prompts of a site.
 
+## Clients that register themselves
+
+An MCP client such as an IDE registers itself with dynamic client registration (RFC 7591) and then sends the user through the authorization code flow. It finds the endpoint, `POST /connect/register`, as `registration_endpoint` in `/.well-known/openid-configuration`, which the resource metadata of `/mcp` leads it to. The authorization server of core serves the endpoint while this plugin is registered.
+
+```http
+POST /connect/register
+Content-Type: application/json
+
+{
+  "client_name": "Desk agent",
+  "redirect_uris": ["http://127.0.0.1:33418/callback"],
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"],
+  "token_endpoint_auth_method": "none",
+  "scope": "openid mcp offline_access"
+}
+```
+
+The answer is a 201 with `client_id`, `client_id_issued_at` and the metadata as registered. A registered client is public and gets no secret. It uses the code flow with PKCE (`S256`) and refresh tokens, and the user is asked for consent. What it may send:
+
+- `redirect_uris`, 1 to 10: `https`, or `http` on `localhost`, `127.0.0.1` or `[::1]`, with no wildcard, fragment or user information. The authorize endpoint compares a redirect URI exactly, the port included.
+- `token_endpoint_auth_method`: `none`, which is also what a registration without it gets.
+- `grant_types`: `authorization_code`, and `refresh_token` when the client refreshes.
+- `response_types`: `code`.
+- `scope`: any of `mcp`, `openid`, `profile`, `email` and `offline_access`, and all of them when it is left out. Never `management`.
+- `client_name`: up to 128 characters, shown on the consent page and in the client list.
+
+Anything else it asks for is refused with a 400 and the error body of RFC 7591, `invalid_redirect_uri` or `invalid_client_metadata`. Members the server has no use for, such as `client_uri`, are ignored.
+
+### Policy
+
+The policy is the settings area `mcp`, changed with `PUT /api/management/v1/settings/mcp/defaults` by a caller with `settings.mcp.manage` for the instance. The instance defaults are what counts, since the instance has one authorization server: what a site sets for itself in this area changes nothing of it.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `clientRegistration` | `approval` | `approval`, `open` or `off`. |
+| `defaultClientRole` | unset | The role a client gets under `open`: the id of a role, or the name of an instance-wide role. |
+| `maxPendingClients` | `100` | How many clients may wait for approval at once. A registration beyond it is answered 503 with `temporarily_unavailable`. |
+| `registrationsPerHour` | `10` | How many clients one client address registers in an hour, on each instance. One beyond it is answered 429 (`FCMS3110`). |
+
+- **`approval`**: a registration creates a pending client. The authorize endpoint refuses it with a hosted error page that says it waits for approval, and no token is issued until an administrator approves it with a role.
+- **`open`**: a registration is approved at once with `defaultClientRole`. While that is unset or names no role, the client waits for approval instead. The startup report lists `mcp-open-client-registration` in Production. Use it only where every client that reaches the instance is trusted.
+- **`off`**: `/connect/register` answers 404 and the discovery document does not name it.
+
+### The role of a client
+
+A call through a client is allowed what both the user's roles and the client's role allow. A Super Admin who signs in through a client approved with a reading role reads and nothing more, and a client approved with Super Admin gives an author nothing an author does not have. Core's evaluator applies it, so it holds for every tool and for every other surface that takes the token. A client whose role was deleted reaches nothing.
+
+### Managing clients
+
+The endpoints need `mcp.manage` for the instance, from a grant with no site limit, since clients belong to no site.
+
+| Endpoint | Does |
+| --- | --- |
+| `GET /api/management/v1/mcp/clients` | Lists the clients: `id`, `clientId`, `name`, `status` (`pending`, `approved` or `rejected`), `roleId`, `roleName`, `redirectUris`, `scopes`, `registeredAt`, `approvedBy`, `approvedAt` and `lastActivityAt`, the time of the newest token issued to the client. |
+| `POST /api/management/v1/mcp/clients/{id}/approve` | Approves a pending client with `{ "role" }`: the id of a role, or the name of an instance-wide role. |
+| `POST /api/management/v1/mcp/clients/{id}/reject` | Rejects a pending client, which is then refused for good. |
+| `DELETE /api/management/v1/mcp/clients/{id}` | Removes a client with its sessions and tokens. Its access tokens are refused from the next request on. |
+
+`{id}` is the `id` of the list, not the OAuth client id. The codes are `FCMS1603` for an unknown client, `FCMS1604` for a client that is not pending, `FCMS1605` for an approval without a role and `FCMS1606` for an unknown role.
+
+A client registered, approved, rejected and removed are the events `McpClientRegisteredEvent`, `McpClientApprovedEvent`, `McpClientRejectedEvent` and `McpClientRevokedEvent`, and the activity rows `mcp.client_registered`, `mcp.client_approved`, `mcp.client_rejected` and `mcp.client_revoked`. A client that is not approved within 7 days, a rejected one included, is removed by the daily job `mcp.client-cleanup`.
+
 ## Content and media tools
 
 The plugin's own tools reach content and media through the services, as the caller. A tool list holds a tool only where a grant of the caller's role gives its permission, so the list never offers more than a call would allow. A call is checked by the service again, whatever the list held, so a tool called by name without its permission is refused with the code of the REST APIs (`FCMS3103`). The list needs no `schema.read`: it shows the types and fields the caller may read, which every entry it reads shows too.
