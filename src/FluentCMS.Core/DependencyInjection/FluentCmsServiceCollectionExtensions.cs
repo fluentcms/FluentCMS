@@ -277,7 +277,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddOutputCache();
         builder.Providers.Default(MemoryOutputCacheStore());
         builder.Providers.Default<ISearchIndex, NoSearchIndex>();
-        OutputCacheEviction.Register(builder.Events, () => builder.DeliveryCache.OutputCache);
+        OutputCacheEviction.Register(builder.Events, () => builder.DeliveryCache.Invalidates);
 
         services.AddSingleton(builder.Seeding);
         services.AddScoped<SeedStateStore>();

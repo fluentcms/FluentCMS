@@ -41,6 +41,7 @@ public sealed class DeliveryCacheHostTests : IAsyncDisposable
             ["FluentCms:Delivery:Cache:CacheControl"] = "public, max-age=5",
             ["FluentCms:Delivery:Cache:OutputCache"] = "false",
             ["FluentCms:Delivery:Cache:OutputCacheDuration"] = "00:00:30",
+            ["FluentCms:Delivery:Cache:CacheTagHeader"] = "Surrogate-Key",
         });
         await app.StartAsync(Token);
 
@@ -48,12 +49,15 @@ public sealed class DeliveryCacheHostTests : IAsyncDisposable
         options.CacheControl.ShouldBe("public, max-age=5");
         options.OutputCache.ShouldBeFalse();
         options.OutputCacheDuration.ShouldBe(TimeSpan.FromSeconds(30));
+        options.CacheTagHeader.ShouldBe("Surrogate-Key");
     }
 
     [Theory]
     [InlineData("CacheControl", "max-age=soon")]
     [InlineData("CacheControl", " ")]
     [InlineData("OutputCacheDuration", "00:00:00")]
+    [InlineData("CacheTagHeader", "Cache Tag")]
+    [InlineData("CacheTagHeader", "Cache-Control")]
     public async Task ABadOptionStopsTheHost(string key, string value)
     {
         var app = _host.Build(Environments.Development, new Dictionary<string, string?> { [$"FluentCms:Delivery:Cache:{key}"] = value });

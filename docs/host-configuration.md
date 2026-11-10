@@ -53,7 +53,7 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | `FluentCms:ReverseProxy` | `PathBase`, `ForwardedHeaders`, `HttpsRedirection`, `Hsts` (see [reverse proxy](reverse-proxy.md)) |
 | `FluentCms:RateLimits` | `Delivery:PermitLimit`, `Delivery:MaxKeyLimit`, `Management:PermitLimit`, `Auth:PermitLimit`, `PreAuth:PermitLimit`, `Health:PermitLimit` |
 | `FluentCms:Limits` | `MaxBodySize` |
-| `FluentCms:Delivery:Cache` | `CacheControl`, `OutputCache`, `OutputCacheDuration` (see [Delivery caching](#delivery-caching)) |
+| `FluentCms:Delivery:Cache` | `CacheControl`, `OutputCache`, `OutputCacheDuration`, `CacheTagHeader` (see [Delivery caching](#delivery-caching)) |
 | `FluentCms:OpenApi` | `Enabled` (see [OpenAPI and the Scalar UI](#openapi-and-the-scalar-ui)) |
 | `FluentCms:Query` | `DefaultPageSize`, `MaxPageSize`, `MaxOffset` (10,000 entries a page or offset may skip; read further by cursor), `MaxPopulateDepth`, `MaxFilterNodes`, `MaxPopulatedEntries` |
 | `FluentCms:Jobs` | the job runner: `Queues`, `PollInterval`, `LeaseDuration`, retries, retention |
@@ -125,10 +125,27 @@ The options are `FluentCms:Delivery:Cache` (`cms.DeliveryCache` in code). A Deli
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `CacheControl` | `public, max-age=60, stale-while-revalidate=300` | What browsers and CDNs are told for a published read without credentials. A read with an API key or a token gets the same value as `private`, a draft read gets `no-store`, and an error gets `no-cache,no-store`. |
-| `OutputCache` | `true` | Whether the server keeps published reads in the ASP.NET Core output cache. Off, nothing is evicted and no `CacheInvalidatedEvent` is raised. |
+| `OutputCache` | `true` | Whether the server keeps published reads in the ASP.NET Core output cache. Off, nothing is kept, and no `CacheInvalidatedEvent` is raised unless `CacheTagHeader` is set. |
 | `OutputCacheDuration` | `00:01:00` | How long it keeps one, at most. |
+| `CacheTagHeader` | unset | The header that carries a published read's cache tags for a CDN, such as `Cache-Tag` or `Surrogate-Key`. Unset or empty, none is sent. A name that is not an HTTP token, or one the response writes itself such as `Cache-Control` or `Vary`, stops the host with `FCMS1101`. |
 
 The server keeps one copy for every request without credentials and one per API key, and keeps nothing for a bearer token, a draft read, credentials it refuses or an error. Publishing, unpublishing, trashing and restoring an entry evict the tags `entry:{id}` and `type:{site}:{type}` (`type:global:{type}` for a global type) through the outbox and raise `CacheInvalidatedEvent` with them, so a CDN can purge the same; a change to a site or its locales evicts `site:{id}` the same way, and so does a change to a role or its grants, since the Public role decides what the shared copy holds and a key's role what its own copy holds: a role of a site evicts that site, and a role of the instance every site. Disabling a plugin in a site evicts the site too, since the answers of its Delivery groups are cached with it. Every read is tagged with its site, its type and every entry in it, populated ones included. A newly published target of a relation shows when the copy expires.
+
+### Purging a CDN by tag
+
+With `CacheTagHeader` set, every published Delivery read, from an API key too, carries its tags in that header: `site:{id}`, `type:{site}:{type}` (`type:global:{type}`) and `entry:{id}` for every entry in the body, and the media route's `site:{id}`, `media:{id}` and `media-presets:{site}`. A draft read carries none. The tags are listed apart by a space for `Surrogate-Key`, as Fastly reads it, and by a comma for any other name, as Cloudflare's `Cache-Tag` and Akamai's `Edge-Cache-Tag` are read. Each `CacheInvalidatedEvent` names tags from the same set, so a CDN that purges by them drops every copy the change made stale. The event is raised while `CacheTagHeader` is set even with `OutputCache` off. CDNs cap the header (16 KB at Cloudflare and Fastly), so a long list page with many populated entries may need a smaller page size. The media plugin reads the option from configuration, as it reads `CacheControl`, so set it there rather than in code when the plugin is added.
+
+The purge goes through the webhooks plugin: a webhook on `cache.invalidated` receives `data.tags`, and a small receiver checks the signature and calls the CDN's purge API with them. With Cloudflare, set `CacheTagHeader` to `Cache-Tag` and have the receiver, a Worker for example, send:
+
+```http
+POST https://api.cloudflare.com/client/v4/zones/{zone_id}/purge_cache
+Authorization: Bearer {api_token}
+Content-Type: application/json
+
+{ "tags": ["entry:0190…", "type:0190…:article"] }
+```
+
+Cloudflare takes the `Cache-Tag` header off the response before it reaches a visitor. Fastly's equivalent is `Surrogate-Key` and its purge by key.
 
 `UseFluentCms()` adds the output cache middleware, so a host that caches its own endpoints does not call `UseOutputCache()` again. FluentCMS routes other than Delivery are never cached, even under a base policy of the host's. The store is the [provider slot](#provider-slots) `IOutputCacheStore`, in memory by default, and an eviction reaches only the store of the instance that delivers the outbox event: with several instances on the in-memory store, the others serve their copies until `OutputCacheDuration` runs out. A shared store removes that lag, such as the Redis one of `Microsoft.AspNetCore.OutputCaching.StackExchangeRedis`, which `AddStackExchangeRedisOutputCache()` registers when it is called before `AddFluentCms()`. The key of a copy holds the schema hash, so a shared store never serves an instance a copy made for another schema, during a rolling deployment or after a restart with a new one.
 

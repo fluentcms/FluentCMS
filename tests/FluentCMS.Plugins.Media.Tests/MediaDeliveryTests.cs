@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
+using FluentCMS.Core.Sites;
 using FluentCMS.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -86,6 +87,32 @@ public sealed class MediaDeliveryTests(MediaHost media) : IClassFixture<MediaHos
         await media.DrainOutboxAsync();
 
         (await GetAsync(admin, "/api/management/v1/activity?action=cache.invalidated"))["items"]!.AsArray().ShouldBeEmpty();
+    }
+
+    // With the output cache off a CDN still holds what the header tagged, so each eviction is still raised, with those tags.
+    [Fact]
+    public async Task TheTagHeaderCarriesTheTagsThatTheEvictionsName()
+    {
+        await using var media = new MediaHost();
+        media.Host.WithServices(services => services.PostConfigure<DeliveryCacheControl>(options =>
+        {
+            options.OutputCache = false;
+            options.CacheTagHeader = "Cache-Tag";
+        }));
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var asset = await UploadAsync(admin, Bands(8, 8), "bands.png");
+
+        using var response = await anonymous.GetAsync(new Uri($"{Delivery}/{asset.Id:D}", UriKind.Relative), Token);
+        var sent = response.Headers.GetValues("Cache-Tag").ShouldHaveSingleItem().Split(',');
+        (await admin.PatchAsJsonAsync(new Uri($"{Root}/{asset.Id:D}", UriKind.Relative), new { title = "Changed" }, Token)).Dispose();
+        (await admin.PutAsJsonAsync(new Uri($"{Root}/presets/hero", UriKind.Relative), new { width = 4 }, Token)).Dispose();
+        await media.DrainOutboxAsync();
+        var evicted = (await GetAsync(admin, "/api/management/v1/activity?action=cache.invalidated"))["items"]!.AsArray()
+            .Select(row => row!["details"]!["tags"]!.GetValue<string>()).ToList();
+
+        sent.ShouldBe([$"site:{DefaultSite.Id:D}", $"media:{asset.Id:D}", $"media-presets:{DefaultSite.Id:D}"], ignoreOrder: true);
+        evicted.ShouldBe([$"media:{asset.Id:D}", $"media-presets:{DefaultSite.Id:D}"], ignoreOrder: true);
     }
 
     [Fact]

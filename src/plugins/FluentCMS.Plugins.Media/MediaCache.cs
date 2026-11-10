@@ -15,7 +15,7 @@ namespace FluentCMS.Plugins.Media;
 // The output cache tags of GET /api/delivery/v1/media/{id}: one per asset, which the events that change what the route
 // answers evict through the outbox, and one per site for its presets, whose URLs the answers carry, which a preset's change
 // evicts. Each eviction raises CacheInvalidatedEvent with its tags, as core's does, for a CDN to purge the same. An upload
-// evicts nothing, since only a 200 is kept.
+// evicts nothing, since only a 200 is kept. Site is core's tag of the site, which core's policy adds to the stored copy.
 internal sealed class MediaCache(IOutputCacheStore store, IEventBus events, IOptions<DeliveryCacheControl> delivery)
     : IOutboxEventHandler<MediaAssetUpdatedEvent>,
       IOutboxEventHandler<MediaAssetMovedEvent>,
@@ -25,6 +25,8 @@ internal sealed class MediaCache(IOutputCacheStore store, IEventBus events, IOpt
     public static string Asset(Guid id) => $"media:{id:D}";
 
     public static string Presets(Guid site) => $"media-presets:{site:D}";
+
+    public static string Site(Guid site) => $"site:{site:D}";
 
     public ValueTask HandleAsync(MediaAssetUpdatedEvent message, EventDelivery delivery, CancellationToken cancellationToken) => EvictAsync(message, cancellationToken);
 
@@ -36,7 +38,7 @@ internal sealed class MediaCache(IOutputCacheStore store, IEventBus events, IOpt
 
     public async ValueTask EvictAsync(string[] tags, CancellationToken cancellationToken)
     {
-        if (!delivery.Value.OutputCache)
+        if (!delivery.Value.Invalidates)
         {
             return;
         }
@@ -54,8 +56,9 @@ internal sealed class MediaCache(IOutputCacheStore store, IEventBus events, IOpt
 
 // The answer of the Delivery route, with the cache headers of a content read (4.10): an ETag that hashes the body, no
 // Last-Modified, the Cache-Control of the Delivery API, shared only for a public asset read without credentials, and the
-// Vary of content. The tags go on a copy the output cache keeps, beside the site's that core adds. A response the output
-// cache is about to store is sent whole even to a matching If-None-Match, so that the copy exists for the next request.
+// Vary of content. The tags go on a copy the output cache keeps, beside the site's that core adds, and with the site's in
+// the tag header when one is configured. A response the output cache is about to store is sent whole even to a matching
+// If-None-Match, so that the copy exists for the next request.
 internal sealed class MediaDeliveryResponse(MediaDelivery delivered, Guid site, bool shared) : IResult
 {
     public const string Vary = "Authorization, X-Api-Key, X-Cms-Site, X-Cms-Locale";
@@ -83,6 +86,11 @@ internal sealed class MediaDeliveryResponse(MediaDelivery delivered, Guid site, 
         {
             cache.Tags.Add(MediaCache.Asset(asset.Id));
             cache.Tags.Add(MediaCache.Presets(site));
+        }
+
+        if (cacheControl.TagHeader is { } header)
+        {
+            response.Headers[header] = cacheControl.TagHeaderValue([MediaCache.Site(site), MediaCache.Asset(asset.Id), MediaCache.Presets(site)]);
         }
 
         if (cache is not { EnableOutputCaching: true, AllowCacheStorage: true } && Matches(httpContext.Request, etag))

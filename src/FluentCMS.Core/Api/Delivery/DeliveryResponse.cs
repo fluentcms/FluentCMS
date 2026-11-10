@@ -18,7 +18,8 @@ namespace FluentCMS.Core.Api.Delivery;
 // it, populated ones included, and follows from the query, so it changes whenever what the caller reads does. There is no
 // Last-Modified: no date in the body moves when an entry leaves a list, a populated target is unpublished or a role
 // changes what the caller reads, so a 304 by date would keep a stale copy. A response the output cache is about to store
-// is sent whole even to a matching If-None-Match, so that the copy exists for the next request.
+// is sent whole even to a matching If-None-Match, so that the copy exists for the next request. A published read sends
+// its tags in the configured tag header, the site's included, for a CDN to purge by the CacheInvalidatedEvent.
 internal sealed class DeliveryResponse : IResult
 {
     public const string Vary = "Authorization, X-Api-Key, X-Cms-Site, X-Cms-Locale";
@@ -55,12 +56,23 @@ internal sealed class DeliveryResponse : IResult
         response.Headers.Vary = Vary;
 
         var cache = httpContext.Features.Get<IOutputCacheFeature>()?.Context;
-        if (cache is { EnableOutputCaching: true })
+        var header = _draft ? null : options.TagHeader;
+        if (cache is { EnableOutputCaching: true } || header is not null)
         {
-            cache.Tags.Add(CacheTags.Type(_type, api.Operation.Site.Value));
-            foreach (var entry in EntryIds(_body))
+            var site = api.Operation.Site.Value;
+            string[] tags = [CacheTags.Type(_type, site), .. EntryIds(_body).Select(CacheTags.Entry)];
+            if (cache is { EnableOutputCaching: true })
             {
-                cache.Tags.Add(CacheTags.Entry(entry));
+                foreach (var tag in tags)
+                {
+                    cache.Tags.Add(tag);
+                }
+            }
+
+            // The site's tag is the one the output cache policy adds.
+            if (header is not null)
+            {
+                response.Headers[header] = CacheTags.HeaderValue(header, [CacheTags.Site(site), .. tags]);
             }
         }
 
