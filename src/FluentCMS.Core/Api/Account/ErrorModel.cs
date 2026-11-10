@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using FluentCMS.Core.Identity.Oidc;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -20,6 +21,8 @@ public sealed partial class ErrorModel : AccountPageModel
         Errors.InvalidClient or Errors.UnauthorizedClient => "The application that sent you here is not one this server knows.",
         Errors.InvalidRequest or Errors.InvalidScope or Errors.UnsupportedResponseType => "The application that sent you here asked for something this server does not allow.",
         Errors.AccessDenied => "You did not allow the application what it asked for.",
+        ConnectEndpoints.ClientPendingApproval => "The application that sent you here registered itself and waits for an administrator to approve it. Try again once it is approved.",
+        ConnectEndpoints.ClientRejected => "An administrator did not approve the application that sent you here.",
         _ => "Something went wrong. Go back to the application and try again.",
     };
 

@@ -28,6 +28,9 @@ public class LayeringRulesTests
 
     private static readonly string[] McpSiteData = ["McpModel", "McpInstructions", "McpStoredPrompts", "McpInstructionService", "McpPromptService"];
 
+    // The service of the Management endpoints of the MCP clients, which checks mcp.manage.
+    private static readonly string[] McpClientServices = ["McpClientService"];
+
     private static readonly Lazy<ArchUnitNET.Domain.Architecture> core = new(
         () => new ArchLoader().LoadAssemblies(Assembly.Load("FluentCMS.Core")).Build());
 
@@ -124,12 +127,17 @@ public class LayeringRulesTests
     // which do both. The webhooks plugin, whose service does both, shows that the rule sees what it forbids. What a site
     // keeps for its agents (B-73) is the plugin's own data and not content: the model and the migrations of its two tables,
     // the two readers of them, and the two Management services, which check mcp.manage as the webhooks service checks its
-    // permission. The rest of the plugin is held to the rule, and none of it reaches the content context.
+    // permission. The service of the MCP clients (B-71) checks mcp.manage too, and keeps no data: core does. The rest of
+    // the plugin is held to the rule, and none of it reaches the content context.
     [Fact]
     public void TheMcpPluginReachesContentThroughTheServicesAndEvaluatesNoPermission()
     {
-        SurfaceRule(McpPlugin, McpSiteData).Check(everything.Value);
+        SurfaceRule(McpPlugin, [.. McpSiteData, .. McpClientServices]).Check(everything.Value);
         Types().That().ResideInNamespaceOrBelow(McpPlugin).Should().NotDependOnAnyTypesThat().HaveName("CmsDbContext").Check(everything.Value);
+
+        // Each exception is needed: without the clients' service, or without the site's data, the rule is broken.
+        Should.Throw<Exception>(() => SurfaceRule(McpPlugin, McpSiteData).Check(everything.Value));
+        Should.Throw<Exception>(() => SurfaceRule(McpPlugin, McpClientServices).Check(everything.Value));
 
         Should.Throw<Exception>(() => SurfaceRule(McpPlugin).Check(everything.Value));
         Should.Throw<Exception>(() => SurfaceRule(WebhooksPlugin).Check(everything.Value));
@@ -240,7 +248,7 @@ public class LayeringRulesTests
         found.ShouldContain(violation => violation.Contains("FromSqlRaw", StringComparison.Ordinal));
     }
 
-    // The types named keep data of the plugin's own, as its migrations do.
+    // The types named keep data of the plugin's own, as its migrations do, or check the plugin's permission.
     private static ArchUnitNET.Fluent.Syntax.Elements.Types.TypesShouldConjunction SurfaceRule(string plugin, params string[] ownData)
     {
         var types = Types().That().ResideInNamespaceOrBelow(plugin);

@@ -19,6 +19,10 @@ internal static class CmsClaimTypes
     // The OAuth client a bearer token was issued to; the request's OperationContext.ClientId.
     public const string ClientId = "client_id";
 
+    // The role of an MCP client that registered itself, on the tokens issued to it: a call through the client is allowed
+    // what both the user's roles and this role allow. A claim that names no role leaves the token nothing.
+    public const string ClientRole = "fcms_client_role";
+
     // How a user's bearer token was signed in to, such as "mfa"; a key or a service account has none.
     public const string AuthenticationMethods = "amr";
 }

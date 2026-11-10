@@ -27,14 +27,16 @@ internal static class TokenClaims
     public static ClaimsIdentity Identity(ClaimsPrincipal? from = null) =>
         new(from?.Claims, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, Claims.Name, CmsClaimTypes.Roles);
 
-    // Without methods, a code or refresh token keeps those it carried.
-    public static ClaimsIdentity ForUser(ClaimsIdentity identity, CmsUser user, string? securityStamp, IEnumerable<string> scopes, IEnumerable<string>? methods = null)
+    // Without methods, a code or refresh token keeps those it carried. clientRole is the role of an MCP client that
+    // registered itself, which the evaluator holds the token to, and null for any other client.
+    public static ClaimsIdentity ForUser(ClaimsIdentity identity, CmsUser user, string? securityStamp, IEnumerable<string> scopes, Guid? clientRole, IEnumerable<string>? methods = null)
     {
         identity.SetClaim(Claims.Subject, user.Id.ToString("D"))
             .SetClaim(Claims.Name, user.UserName)
             .SetClaim(Claims.Email, user.Email)
             .SetClaim(SecurityStamp, securityStamp)
-            .SetClaim(CmsClaimTypes.Kind, nameof(PrincipalKind.AdminUser));
+            .SetClaim(CmsClaimTypes.Kind, nameof(PrincipalKind.AdminUser))
+            .SetClaim(CmsClaimTypes.ClientRole, clientRole?.ToString("D"));
         if (methods is not null)
         {
             identity.SetClaims(Claims.AuthenticationMethodReference, [.. methods.Distinct(StringComparer.Ordinal)]);
@@ -70,6 +72,7 @@ internal static class TokenClaims
         Add(identity, CmsClaimTypes.Name, token.GetClaim(Claims.Name));
         Add(identity, CmsClaimTypes.Kind, token.GetClaim(CmsClaimTypes.Kind));
         Add(identity, CmsClaimTypes.ClientId, token.GetClaim(Claims.ClientId) ?? token.GetPresenters().FirstOrDefault());
+        Add(identity, CmsClaimTypes.ClientRole, token.GetClaim(CmsClaimTypes.ClientRole));
 
         var scopes = token.GetScopes();
         Add(identity, CmsClaimTypes.Scope, scopes.IsDefaultOrEmpty ? null : string.Join(' ', scopes));
@@ -97,7 +100,7 @@ internal static class TokenClaims
         Claims.Email when claim.Subject?.HasScope(Scopes.Email) == true => [OpenIddictConstants.Destinations.IdentityToken],
         Claims.AuthenticationMethodReference => [OpenIddictConstants.Destinations.AccessToken, OpenIddictConstants.Destinations.IdentityToken],
         Claims.AuthenticationTime => [OpenIddictConstants.Destinations.IdentityToken],
-        Claims.Name or CmsClaimTypes.Kind or CmsClaimTypes.Roles => [OpenIddictConstants.Destinations.AccessToken],
+        Claims.Name or CmsClaimTypes.Kind or CmsClaimTypes.Roles or CmsClaimTypes.ClientRole => [OpenIddictConstants.Destinations.AccessToken],
         _ => [],
     };
 

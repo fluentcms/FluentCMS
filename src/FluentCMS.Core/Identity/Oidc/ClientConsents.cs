@@ -16,14 +16,17 @@ internal sealed class ClientConsents(IOpenIddictApplicationManager applications,
     public const string DecisionParameter = "fcms_consent";
     public const string Denied = "denied";
 
-    // Null for a client that does not ask for consent, or does not exist.
+    // Null for a client that does not ask for consent, or does not exist, or registered itself and is not approved, so
+    // that no consent is recorded for a client before an administrator has let it in.
     public async Task<ConsentRequest?> DescribeAsync(string clientId, IEnumerable<string> scopes, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(clientId);
         ArgumentNullException.ThrowIfNull(scopes);
 
         var application = await applications.FindByClientIdAsync(clientId, cancellationToken);
-        if (application is null || !await applications.HasConsentTypeAsync(application, ConsentTypes.Explicit, cancellationToken))
+        if (application is null
+            || !await applications.HasConsentTypeAsync(application, ConsentTypes.Explicit, cancellationToken)
+            || McpClientState.Of(await applications.GetPropertiesAsync(application, cancellationToken)) is { IsApproved: false })
         {
             return null;
         }
