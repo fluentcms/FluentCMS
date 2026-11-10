@@ -41,8 +41,9 @@ public sealed class MediaOptions
 }
 
 // The Cache-Control of the Delivery API, FluentCms:Delivery:Cache:CacheControl, which core checks, so that the media route
-// says what content says: as written to a caller without credentials, private to one with them. With the output cache off,
-// nothing is evicted, as nothing was stored.
+// says what content says: as written to a caller without credentials, private to one with them. With the output cache off
+// and no tag header, nothing is evicted, as nothing was stored or sent. Core checks CacheTagHeader too, and lists the tags
+// apart as it does.
 internal sealed class DeliveryCacheControl
 {
     public const string Section = "FluentCms:Delivery:Cache";
@@ -52,6 +53,15 @@ internal sealed class DeliveryCacheControl
     public string CacheControl { get; set; } = "public, max-age=60, stale-while-revalidate=300";
 
     public bool OutputCache { get; set; } = true;
+
+    public string? CacheTagHeader { get; set; }
+
+    public string? TagHeader => string.IsNullOrEmpty(CacheTagHeader) ? null : CacheTagHeader;
+
+    public bool Invalidates => OutputCache || TagHeader is not null;
+
+    public string TagHeaderValue(IEnumerable<string> tags) =>
+        string.Join(string.Equals(TagHeader, "Surrogate-Key", StringComparison.OrdinalIgnoreCase) ? ' ' : ',', tags);
 
     public string Shared => CacheControl.Trim();
 
