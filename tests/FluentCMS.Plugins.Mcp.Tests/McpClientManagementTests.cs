@@ -150,25 +150,25 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         var ofKept = await RowsAsync(administrator, keptId);
         var ofRefused = await RowsAsync(administrator, refusedId);
 
-        ofKept.Select(row => row.Action).ShouldBe(["mcp_client.registered", "mcp_client.approved", "mcp_client.revoked"], ignoreOrder: true);
-        ofRefused.Select(row => row.Action).ShouldBe(["mcp_client.registered", "mcp_client.rejected"], ignoreOrder: true);
+        ofKept.Select(row => row.Action).ShouldBe(["mcp.client_registered", "mcp.client_approved", "mcp.client_revoked"], ignoreOrder: true);
+        ofRefused.Select(row => row.Action).ShouldBe(["mcp.client_registered", "mcp.client_rejected"], ignoreOrder: true);
         ofKept.Concat(ofRefused).ShouldAllBe(row => row.SiteId == null && row.TargetType == "mcp_client");
         ofKept.ShouldAllBe(row => row.TargetLabel == "Kept agent" && row.Details["clientId"] == kept);
 
-        var registered = ofKept.Single(row => row.Action == "mcp_client.registered");
+        var registered = ofKept.Single(row => row.Action == "mcp.client_registered");
         registered.ActorKind.ShouldBe(PrincipalKind.Anonymous);
         registered.Origin.ShouldBe(Origin.Mcp);
         registered.ClientId.ShouldBe(kept);
         registered.Ip.ShouldBe("10.3.0.3");
         registered.Details["status"].ShouldBe("pending");
 
-        var approval = ofKept.Single(row => row.Action == "mcp_client.approved");
+        var approval = ofKept.Single(row => row.Action == "mcp.client_approved");
         approval.ActorId.ShouldBe(administrator.Id);
         approval.ActorKind.ShouldBe(PrincipalKind.AdminUser);
         approval.Details["role"].ShouldBe(BuiltInRoles.Author.ToString("D"));
         approval.Details["roleName"].ShouldBe(BuiltInRoles.AuthorName);
-        ofKept.Single(row => row.Action == "mcp_client.revoked").ActorId.ShouldBe(administrator.Id);
-        ofRefused.Single(row => row.Action == "mcp_client.rejected").ActorId.ShouldBe(administrator.Id);
+        ofKept.Single(row => row.Action == "mcp.client_revoked").ActorId.ShouldBe(administrator.Id);
+        ofRefused.Single(row => row.Action == "mcp.client_rejected").ActorId.ShouldBe(administrator.Id);
     }
 
     [Fact]
@@ -184,7 +184,7 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         await DrainOutboxAsync(host);
         var row = (await RowsAsync(administrator, id)).ShouldHaveSingleItem();
 
-        row.Action.ShouldBe("mcp_client.registered");
+        row.Action.ShouldBe("mcp.client_registered");
         row.Details["status"].ShouldBe("approved");
         row.Details["role"].ShouldBe(BuiltInRoles.Editor.ToString("D"));
     }

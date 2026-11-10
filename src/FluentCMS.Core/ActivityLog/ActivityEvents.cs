@@ -113,7 +113,7 @@ internal static class ActivityEvents
             Ip = message.Ip,
         });
 
-        events.AddActivity<McpClientRegisteredEvent>("mcp_client.registered", message => McpClient("mcp_client.registered", message.Id, message.ClientId, message.Name, new Dictionary<string, string?>
+        events.AddActivity<McpClientRegisteredEvent>("mcp.client_registered", message => McpClient("mcp.client_registered", message.Id, message.ClientId, message.Name, new Dictionary<string, string?>
         {
             ["status"] = message.Status,
             ["role"] = message.RoleId?.ToString("D"),
@@ -121,13 +121,13 @@ internal static class ActivityEvents
         {
             Ip = message.Ip,
         });
-        events.AddActivity<McpClientApprovedEvent>("mcp_client.approved", message => McpClient("mcp_client.approved", message.Id, message.ClientId, message.Name, new Dictionary<string, string?>
+        events.AddActivity<McpClientApprovedEvent>("mcp.client_approved", message => McpClient("mcp.client_approved", message.Id, message.ClientId, message.Name, new Dictionary<string, string?>
         {
             ["role"] = message.RoleId.ToString("D"),
             ["roleName"] = message.RoleName,
         }));
-        events.AddActivity<McpClientRejectedEvent>("mcp_client.rejected", message => McpClient("mcp_client.rejected", message.Id, message.ClientId, message.Name, []));
-        events.AddActivity<McpClientRevokedEvent>("mcp_client.revoked", message => McpClient("mcp_client.revoked", message.Id, message.ClientId, message.Name, []));
+        events.AddActivity<McpClientRejectedEvent>("mcp.client_rejected", message => McpClient("mcp.client_rejected", message.Id, message.ClientId, message.Name, []));
+        events.AddActivity<McpClientRevokedEvent>("mcp.client_revoked", message => McpClient("mcp.client_revoked", message.Id, message.ClientId, message.Name, []));
 
         events.AddActivity<CacheInvalidatedEvent>("cache.invalidated", message => new ActivityEntry("cache.invalidated")
         {

@@ -19,3 +19,4 @@ static FluentCMS.Plugins.PluginAppBuilderExtensions.MapManagement(this FluentCMS
 static FluentCMS.Plugins.PluginAppBuilderExtensions.MapProtectedResource(this FluentCMS.Plugins.IPluginAppBuilder! app, string! prefix, FluentCMS.Plugins.ProtectedResourceOptions! resource) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
 static FluentCMS.Plugins.PluginServiceBuilderExtensions.AddMigrations(this FluentCMS.Plugins.IPluginServiceBuilder! plugin, System.Reflection.Assembly! assembly) -> FluentCMS.Plugins.IPluginServiceBuilder!
 static FluentCMS.Plugins.PluginServiceBuilderExtensions.AddModel<TContributor>(this FluentCMS.Plugins.IPluginServiceBuilder! plugin) -> FluentCMS.Plugins.IPluginServiceBuilder!
+static FluentCMS.Plugins.PluginAppBuilderExtensions.RequireCallerRateLimit<TBuilder>(this TBuilder builder) -> TBuilder

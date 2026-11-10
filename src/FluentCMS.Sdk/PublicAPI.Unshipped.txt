@@ -584,6 +584,12 @@ FluentCMS.Content.IContentService<T>.ScheduleAsync(System.Guid id, FluentCMS.Pub
 FluentCMS.Content.IContentService<T>.Type.get -> string!
 FluentCMS.Content.IContentService<T>.UnpublishAsync(System.Guid id, FluentCMS.Content.LocaleOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
 FluentCMS.Content.IContentService<T>.UpdateAsync(System.Guid id, T! entry, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Content.IContentSurface
+FluentCMS.Content.IContentSurface.DefaultPageSize.get -> int
+FluentCMS.Content.IContentSurface.MaxPageSize.get -> int
+FluentCMS.Content.IContentSurface.MaxPopulateDepth.get -> int
+FluentCMS.Content.IContentSurface.ReadableFieldsAsync(string! type, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlySet<string!>?>
+FluentCMS.Content.IContentSurface.ToJson(FluentCMS.Content.ContentDocument! entry) -> System.Text.Json.Nodes.JsonObject!
 FluentCMS.Content.IEntryValidator<T>
 FluentCMS.Content.IEntryValidator<T>.ValidateAsync(T entry, FluentCMS.Content.ValidationContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Content.IFieldValidator<TField>

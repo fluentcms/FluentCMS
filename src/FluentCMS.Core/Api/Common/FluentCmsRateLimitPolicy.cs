@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.RateLimiting;
+using FluentCMS.Plugins;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -12,6 +13,7 @@ internal static class RateLimitPolicyNames
     public const string Delivery = "delivery";
     public const string Management = "management";
     public const string Auth = "auth";
+    public const string Caller = PluginRateLimits.CallerPolicy;
 }
 
 // One policy of the ASP.NET Core rate limiter, a token bucket per caller. Responses carry the IETF draft fields
@@ -133,6 +135,17 @@ internal sealed class ManagementRateLimitPolicy(RateLimitOptions options, TimePr
 {
     protected override (string Key, int Limit) Partition(HttpContext context) =>
         ApiCaller.Of(context).Subject is { } subject ? ("sub:" + subject, DefaultLimit) : (Address(context), DefaultLimit);
+}
+
+// For an endpoint that serves both kinds of caller, such as a plugin's GraphQL endpoint: a caller with the management scope
+// is counted as the Management API counts it and any other as Delivery does, each at that API's limit. The buckets are the
+// endpoint's own, since the rate limiter keeps them per policy.
+internal sealed class CallerRateLimitPolicy(DeliveryRateLimitPolicy delivery, ManagementRateLimitPolicy management) : IRateLimiterPolicy<string>
+{
+    public Func<OnRejectedContext, CancellationToken, ValueTask>? OnRejected => delivery.OnRejected;
+
+    public RateLimitPartition<string> GetPartition(HttpContext httpContext) =>
+        ApiCaller.Of(httpContext).Manages ? management.GetPartition(httpContext) : delivery.GetPartition(httpContext);
 }
 
 internal sealed class AuthRateLimitPolicy(RateLimitOptions options, TimeProvider time) : FluentCmsRateLimitPolicy(options.Auth.PermitLimit, time)
