@@ -161,7 +161,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddHostedService<RowRuleStartupCheck>();
         // Before the identity registration, which takes out the Data Protection hosted service that the pages' antiforgery adds.
         HostedPages.Add(services);
-        IdentityRegistration.Add(services, builder.Users, builder.ApiKeys, builder.Clients, builder.Sso, builder.Providers);
+        IdentityRegistration.Add(services, builder.Users, builder.ApiKeys, builder.PreviewTokens, builder.Clients, builder.Sso, builder.Providers);
         services.TryAddScoped<IAuthorizationEvaluator, AuthorizationEvaluator>();
         services.AddScoped<ManagementAuthority>();
         services.TryAddScoped<IPermissionChecker, PermissionChecker>();

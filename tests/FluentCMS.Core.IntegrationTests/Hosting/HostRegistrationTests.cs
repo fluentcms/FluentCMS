@@ -99,6 +99,10 @@ public sealed class HostRegistrationTests : IAsyncDisposable
     [InlineData("FluentCms:Idempotency:Window", "00:00:00", "FCMS1101")]
     [InlineData("FluentCms:Idempotency:Window", "31.00:00:00", "FCMS1101")]
     [InlineData("FluentCms:Idempotency:InProgressTimeout", "1.00:00:01", "FCMS1101")]
+    [InlineData("FluentCms:PreviewTokens:MaximumLifetime", "2.00:00:00", "FCMS3001")]
+    [InlineData("FluentCms:PreviewTokens:DefaultLifetime", "00:10:30", "FCMS3001")]
+    [InlineData("FluentCms:PreviewTokens:DefaultLifetime", "02:00:00", "FCMS3001")]
+    [InlineData("FluentCms:PreviewTokens:DefaultLifetime", "00:00:30", "FCMS3001")]
     public async Task AnInvalidOptionStopsTheHostAndNamesTheKey(string key, string value, string code)
     {
         var app = _host.Build(Environments.Production, new Dictionary<string, string?> { [key] = value });

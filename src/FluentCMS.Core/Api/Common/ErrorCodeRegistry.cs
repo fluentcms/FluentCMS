@@ -11,6 +11,7 @@ using FluentCMS.Core.Idempotency;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Identity.Oidc;
+using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.Plugins;
@@ -212,6 +213,10 @@ public static class ErrorCodeRegistry
         Invalid(ApiKeyErrorCodes.InvalidAddress, "Invalid allowed address"),
         new(ApiKeyErrorCodes.NotRotatable, StatusCodes.Status409Conflict, "API key cannot be rotated"),
         Invalid(ApiKeyErrorCodes.InvalidOverlap, "Invalid rotation overlap"),
+        Invalid(PreviewTokenErrorCodes.InvalidLifetime, "Invalid preview token lifetime"),
+        new(PreviewTokenErrorCodes.OutsideToken, StatusCodes.Status403Forbidden, "Outside the preview token"),
+        new(PreviewTokenErrorCodes.InvalidToken, StatusCodes.Status401Unauthorized, "Preview token not valid"),
+        new(PreviewTokenErrorCodes.Expired, StatusCodes.Status401Unauthorized, "Preview token expired"),
         new(RoleErrorCodes.RoleNotFound, StatusCodes.Status404NotFound, "Role not found"),
         Invalid(RoleErrorCodes.InvalidRole, "Invalid role"),
         Invalid(RoleErrorCodes.InvalidGrant, "Invalid grant"),

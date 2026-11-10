@@ -2,6 +2,7 @@ using System.Text.Json;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Publishing;
 using Microsoft.AspNetCore.Http;
 
@@ -12,6 +13,7 @@ namespace FluentCMS.Core.Api.Management;
 internal static class ContentRequests
 {
     private static readonly string[] ScheduleKeys = ["action", "at", "timeZone"];
+    private static readonly string[] PreviewTokenKeys = ["minutes", "locale"];
     private static readonly string[] BulkKeys = ["operation", "entries", "items", "cap", "patch"];
     private static readonly string[] ItemKeys = ["id", "patch", "expectedVersion"];
 
@@ -33,6 +35,24 @@ internal static class ContentRequests
         }
 
         return zone is null ? ScheduleRequest.At(action, instant) : ScheduleRequest.AtLocalTime(action, localTime, zone);
+    }
+
+    // Every key may be left out, and so may the body.
+    public static PreviewTokenRequest PreviewToken(JsonElement? body)
+    {
+        if (body is not { } json)
+        {
+            return new PreviewTokenRequest(null, null);
+        }
+
+        List<ValidationError> errors = [];
+        Unknown(json, PreviewTokenKeys, "", errors);
+        var minutes = json.TryGetProperty("minutes", out var minutesValue) ? Integer(minutesValue, "minutes", errors) : null;
+        var locale = json.TryGetProperty("locale", out var localeValue) && localeValue.ValueKind != JsonValueKind.Null
+            ? localeValue.ValueKind == JsonValueKind.String ? localeValue.GetString() : Invalid<string>("locale", "The locale is a string, such as fr-CA.", errors)
+            : null;
+
+        return errors.Count > 0 ? throw new ValidationException(errors) : new PreviewTokenRequest(minutes, locale);
     }
 
     public static ScheduleAction Action(string action) =>

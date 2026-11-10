@@ -189,6 +189,26 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
             .ShouldBe("""[{"oauth2":["management"]},{"apiKey":[]}]""");
         Paths["/api/delivery/v1/article"]!["get"]!["security"]!.ToJsonString()
             .ShouldBe("""[{},{"oauth2":[]},{"apiKey":[]}]""");
+
+        schemes["previewToken"]!["type"]!.GetValue<string>().ShouldBe("http");
+        schemes["previewToken"]!["scheme"]!.GetValue<string>().ShouldBe("Preview");
+        Paths["/api/delivery/v1/article/{id}"]!["get"]!["security"]!.ToJsonString()
+            .ShouldBe("""[{},{"oauth2":[]},{"apiKey":[]},{"previewToken":[]}]""");
+    }
+
+    [Fact]
+    public void ThePreviewTokenRouteHasItsBodies()
+    {
+        var mint = Paths["/api/management/v1/content/article/{id}/preview-token"]!["post"]!;
+
+        mint["operationId"]!.GetValue<string>().ShouldBe("previewTokenArticle");
+        (mint["requestBody"]!["required"]?.GetValue<bool>() ?? false).ShouldBeFalse();
+        mint["requestBody"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/preview-token-request");
+        mint["responses"]!["200"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/preview-token");
+
+        var schemas = Document["components"]!["schemas"]!;
+        schemas["preview-token-request"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["minutes", "locale"]);
+        schemas["preview-token"]!["required"]!.ToJsonString().ShouldBe("""["token","scheme","expiresAt","type","id","site"]""");
     }
 
     [Fact]

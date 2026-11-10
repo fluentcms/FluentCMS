@@ -2,6 +2,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Identity.Oidc;
+using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Core.Identity.Sso;
 using FluentCMS.Providers;
 using Microsoft.AspNetCore.Authentication;
@@ -15,14 +16,16 @@ namespace FluentCMS.Core.Identity;
 
 internal static class IdentityRegistration
 {
-    public static void Add(IServiceCollection services, AdminUserOptions options, ApiKeyOptions apiKeys, ClientOptions clients, SsoOptions sso, ProvidersBuilder providers)
+    public static void Add(IServiceCollection services, AdminUserOptions options, ApiKeyOptions apiKeys, PreviewTokenOptions previewTokens, ClientOptions clients, SsoOptions sso, ProvidersBuilder providers)
     {
         services.AddFluentCmsOptions(AdminUserOptions.Section, IdentityErrorCodes.InvalidOptions, options, users => users.Validate());
         services.AddFluentCmsOptions(ApiKeyOptions.Section, IdentityErrorCodes.InvalidOptions, apiKeys, keys => keys.Validate());
+        services.AddFluentCmsOptions(PreviewTokenOptions.Section, IdentityErrorCodes.InvalidOptions, previewTokens, tokens => tokens.Validate());
 
         // The sign-in manager reads the schemes; the authorization server adds its own beside the API key's.
         services.AddAuthentication()
             .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthentication.Scheme, configureOptions: null)
+            .AddScheme<AuthenticationSchemeOptions, PreviewTokenAuthenticationHandler>(PreviewTokenAuthentication.Scheme, configureOptions: null)
             .AddScheme<FluentCmsAuthenticationOptions, FluentCmsAuthenticationHandler>(FluentCmsAuthentication.Scheme, configureOptions: null);
         services.AddOptions<IdentityOptions>().Configure<AdminUserOptions>((identity, users) => users.Apply(identity));
         // The authenticator provider checks the codes of the two-factor page and of /me/two-factor.
@@ -48,6 +51,8 @@ internal static class IdentityRegistration
         services.AddScoped<TwoFactorService>();
         services.AddScoped<ApiKeyService>();
         services.AddScoped<ApiKeyPrincipals>();
+        services.AddSingleton<PreviewTokenIssuer>();
+        services.AddScoped<PreviewTokenService>();
         services.AddSingleton<ApiKeyRefusals>();
         services.AddHttpContextAccessor();
         services.TryAddScoped<IPrincipalRoles, UserPrincipalRoles>();

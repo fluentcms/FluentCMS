@@ -24,6 +24,7 @@ internal enum ContentPayload
     Versions,
     Diff,
     Bulk,
+    PreviewToken,
 }
 
 internal enum ContentPrecondition

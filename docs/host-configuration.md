@@ -200,6 +200,15 @@ A key can be limited to IP addresses and CIDR ranges with `allowedAddresses`, on
 | --- | --- | --- |
 | `RotationOverlap` | `1.00:00:00` | How long the secret a rotation replaces is still accepted beside the new one, at most 30 days. `00:00:00` ends it at the rotation. |
 
+### Preview tokens
+
+`POST /api/management/v1/content/{type}/{id}/preview-token` mints a token that reads the draft of that one entry, optionally of one locale (`{ "minutes", "locale" }`, both optional). The caller needs the `management` scope and the permission to read that draft. A front end sends it as `Authorization: Preview <token>` to `GET /api/delivery/v1/{type}/{id}?status=draft`, and every other read with it is refused with `FCMS3028`. It is signed with the authorization server's key and nothing is stored, so it cannot be revoked: keep the lifetimes short. It stops working at once if its user is deactivated, its key revoked or its role loses the read.
+
+| `FluentCms:PreviewTokens:` | Default | Meaning |
+| --- | --- | --- |
+| `DefaultLifetime` | `00:10:00` | How long a token lasts when the request names no `minutes`, in whole minutes from one minute to `MaximumLifetime`. |
+| `MaximumLifetime` | `01:00:00` | The most `minutes` may ask for, in whole minutes from one minute to one day. |
+
 ## Idempotency keys
 
 A client that retries `POST /api/management/v1/content/{type}` or `.../bulk` after a timeout sends the same `Idempotency-Key` (such as a UUID) each time. A repeat of the same request answers the first response, with `Idempotent-Replayed: true`, and creates nothing; the same key with another request is `FCMS3141` (422), and a repeat while the first still runs is `FCMS3142` (409). Keys belong to the caller and the site, and are kept for `FluentCms:Idempotency:Window` (24 hours, at most 30 days); the hourly job `idempotency.retention` removes them. A request whose instance stopped before it answered holds its key for `InProgressTimeout` (5 minutes, at most the window), after which a repeat runs. A refused or failed request keeps nothing, so a retry runs again.
