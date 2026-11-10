@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 
 namespace FluentCMS.Plugins;
@@ -43,6 +44,18 @@ public static class PluginAppBuilderExtensions
     /// <param name="prefix">The prefix, starting with a slash.</param>
     /// <returns>The group.</returns>
     public static RouteGroupBuilder MapDelivery(this IPluginAppBuilder app, string prefix) => Endpoints(app).MapDelivery(prefix);
+
+    /// <summary>
+    /// Limits the endpoints by the class of the caller, in place of the Delivery limit of <see cref="MapGroup"/>: a caller
+    /// with the <c>management</c> scope is counted per principal at the Management rate, and any other per API key or
+    /// client address at the Delivery rate. It is for an endpoint that serves both, such as a GraphQL endpoint. The
+    /// endpoints count apart from the REST APIs.
+    /// </summary>
+    /// <typeparam name="TBuilder">The type of the endpoint or group builder.</typeparam>
+    /// <param name="builder">An endpoint or a group of a plugin.</param>
+    /// <returns>The builder.</returns>
+    public static TBuilder RequireCallerRateLimit<TBuilder>(this TBuilder builder)
+        where TBuilder : IEndpointConventionBuilder => builder.RequireRateLimiting(PluginRateLimits.CallerPolicy);
 
     private static IPluginEndpointBuilder Endpoints(IPluginAppBuilder app)
     {

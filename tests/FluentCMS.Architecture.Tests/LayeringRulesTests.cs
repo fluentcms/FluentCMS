@@ -13,6 +13,7 @@ public class LayeringRulesTests
     private const string Sdk = "FluentCMS.Sdk";
     private const string PluginAbstractions = "FluentCMS.Plugins.Abstractions";
     private const string PluginPrefix = "FluentCMS.Plugins.";
+    private const string GraphQLPlugin = "FluentCMS.Plugins.GraphQL";
 
     private const string ApiNamespace = "FluentCMS.Core.Api";
     private const string StorageNamespace = "FluentCMS.Core.Storage";
@@ -56,6 +57,37 @@ public class LayeringRulesTests
             .ToList();
 
         violations.ShouldBeEmpty();
+    }
+
+    // Spec 2.1: the GraphQL layer carries identity and intent only. It reaches content through IContentService, so it has
+    // no context of its own and none of EF Core.
+    [Fact]
+    public void TheGraphQLPluginNeverTouchesADbContext()
+    {
+        Types().That().ResideInNamespaceOrBelow(GraphQLPlugin)
+            .Should().NotDependOnAnyTypesThat().HaveFullNameContaining("Microsoft.EntityFrameworkCore")
+            .AndShould().NotDependOnAnyTypesThat().HaveFullNameContaining("DbContext")
+            .Check(everything.Value);
+
+        // The rule finds a plugin that does have one: the webhooks plugin keeps its webhooks in tables of its own.
+        Types().That().ResideInNamespaceOrBelow("FluentCMS.Plugins.Webhooks")
+            .Should().NotDependOnAnyTypesThat().HaveFullNameContaining("DbContext")
+            .HasNoViolations(everything.Value).ShouldBeFalse();
+    }
+
+    // What a caller may read or write is the content service's to decide. The one permission the plugin asks about is
+    // whether the caller may introspect the schema, and IPermissionChecker answers it for the request interceptor.
+    [Fact]
+    public void TheGraphQLPluginNeverEvaluatesAPermissionItself()
+    {
+        Types().That().ResideInNamespaceOrBelow(GraphQLPlugin)
+            .And().DoNotHaveFullNameContaining("GraphQLRequestInterceptor")
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceOrBelow("FluentCMS.Authorization")
+            .Check(everything.Value);
+
+        Types().That().HaveFullNameContaining("GraphQLRequestInterceptor")
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceOrBelow("FluentCMS.Authorization")
+            .HasNoViolations(everything.Value).ShouldBeFalse();
     }
 
     [Fact]
@@ -183,11 +215,17 @@ public class LayeringRulesTests
             .Concat(project.PackageReferences.Select(package => package.Name))
             .Where(name => name.StartsWith("FluentCMS.", StringComparison.Ordinal));
 
-    // A provider plugin such as Media.S3 builds on the plugin it provides for, per the package map (2.4).
+    // A provider plugin such as Media.S3 builds on the plugin it provides for, per the package map (2.4). A plugin that adds
+    // types to the GraphQL schema implements IGraphQLSchemaContributor, which is in the GraphQL plugin, since the SDK takes
+    // no HotChocolate dependency.
     private static IEnumerable<string> AllowedPluginReferences(ProjectFile plugin, IReadOnlyList<ProjectFile> plugins)
     {
         yield return Sdk;
         yield return PluginAbstractions;
+        if (plugin.Name != GraphQLPlugin)
+        {
+            yield return GraphQLPlugin;
+        }
 
         var parent = plugin.Name[..plugin.Name.LastIndexOf('.')];
         if (plugins.Any(other => other.Name == parent))

@@ -10,3 +10,4 @@ static FluentCMS.Plugins.PluginAppBuilderExtensions.MapGroup(this FluentCMS.Plug
 static FluentCMS.Plugins.PluginAppBuilderExtensions.MapManagement(this FluentCMS.Plugins.IPluginAppBuilder! app, string! prefix) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
 static FluentCMS.Plugins.PluginServiceBuilderExtensions.AddMigrations(this FluentCMS.Plugins.IPluginServiceBuilder! plugin, System.Reflection.Assembly! assembly) -> FluentCMS.Plugins.IPluginServiceBuilder!
 static FluentCMS.Plugins.PluginServiceBuilderExtensions.AddModel<TContributor>(this FluentCMS.Plugins.IPluginServiceBuilder! plugin) -> FluentCMS.Plugins.IPluginServiceBuilder!
+static FluentCMS.Plugins.PluginAppBuilderExtensions.RequireCallerRateLimit<TBuilder>(this TBuilder builder) -> TBuilder

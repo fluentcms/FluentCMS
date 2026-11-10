@@ -5,6 +5,7 @@ using FluentCMS.Core.Schema;
 using FluentCMS.Data.PostgreSql;
 using FluentCMS.Data.Sqlite;
 using FluentCMS.Data.SqlServer;
+using FluentCMS.Plugins.GraphQL;
 using FluentCMS.Plugins.Media;
 using FluentCMS.Plugins.Webhooks;
 using FluentCMS.Samples.Blog;
@@ -41,6 +42,7 @@ public static class ReferenceHost
             cms.UseContentMigrations(typeof(ReferenceHost).Assembly);
             cms.AddPlugin<MediaPlugin>();
             cms.AddPlugin<WebhooksPlugin>();
+            cms.AddPlugin<GraphQLPlugin>();
 
             // Types that are data have no compiled migrations, so their tables follow the schema at start (Q2, until the
             // CLI generates migrations from a schema file). Core refuses this on a provider without schema sync.

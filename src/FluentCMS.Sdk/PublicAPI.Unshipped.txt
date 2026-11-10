@@ -203,6 +203,23 @@ FluentCMS.Content.ContentDocument.this[string! name].get -> object?
 FluentCMS.Content.ContentDocument.this[string! name].set -> void
 FluentCMS.Content.ContentFilter
 FluentCMS.Content.ContentFilter.ContentFilter(FluentCMS.Content.ContentFilter! original) -> void
+FluentCMS.Content.ContentProblem
+FluentCMS.Content.ContentProblem.<Clone>$() -> FluentCMS.Content.ContentProblem!
+FluentCMS.Content.ContentProblem.Code.get -> string!
+FluentCMS.Content.ContentProblem.Code.init -> void
+FluentCMS.Content.ContentProblem.ContentProblem(string! Code, int Status, string! Title, string! Detail) -> void
+FluentCMS.Content.ContentProblem.Current.get -> System.Text.Json.Nodes.JsonObject?
+FluentCMS.Content.ContentProblem.Current.init -> void
+FluentCMS.Content.ContentProblem.Deconstruct(out string! Code, out int Status, out string! Title, out string! Detail) -> void
+FluentCMS.Content.ContentProblem.Detail.get -> string!
+FluentCMS.Content.ContentProblem.Detail.init -> void
+FluentCMS.Content.ContentProblem.Equals(FluentCMS.Content.ContentProblem? other) -> bool
+FluentCMS.Content.ContentProblem.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ValidationError!>!
+FluentCMS.Content.ContentProblem.Errors.init -> void
+FluentCMS.Content.ContentProblem.Status.get -> int
+FluentCMS.Content.ContentProblem.Status.init -> void
+FluentCMS.Content.ContentProblem.Title.get -> string!
+FluentCMS.Content.ContentProblem.Title.init -> void
 FluentCMS.Content.ContentQuery
 FluentCMS.Content.ContentQuery.<Clone>$() -> FluentCMS.Content.ContentQuery!
 FluentCMS.Content.ContentQuery.ContentQuery() -> void
@@ -351,6 +368,13 @@ FluentCMS.Content.IContentService<T>.ScheduleAsync(System.Guid id, FluentCMS.Pub
 FluentCMS.Content.IContentService<T>.Type.get -> string!
 FluentCMS.Content.IContentService<T>.UnpublishAsync(System.Guid id, FluentCMS.Content.LocaleOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
 FluentCMS.Content.IContentService<T>.UpdateAsync(System.Guid id, T! entry, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Content.IContentSurface
+FluentCMS.Content.IContentSurface.DefaultPageSize.get -> int
+FluentCMS.Content.IContentSurface.Describe(System.Exception! exception) -> FluentCMS.Content.ContentProblem!
+FluentCMS.Content.IContentSurface.MaxPageSize.get -> int
+FluentCMS.Content.IContentSurface.MaxPopulateDepth.get -> int
+FluentCMS.Content.IContentSurface.ReadableFieldsAsync(string! type, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlySet<string!>?>
+FluentCMS.Content.IContentSurface.ToJson(FluentCMS.Content.ContentDocument! entry) -> System.Text.Json.Nodes.JsonObject!
 FluentCMS.Content.IEntryValidator<T>
 FluentCMS.Content.IEntryValidator<T>.ValidateAsync(T entry, FluentCMS.Content.ValidationContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Content.IFieldValidator<TField>
@@ -2163,6 +2187,9 @@ const FluentCMS.Schema.FieldSettings.Scale = "scale" -> string!
 const FluentCMS.Schema.FieldSettings.Source = "source" -> string!
 const FluentCMS.Schema.RichTextFormats.Html = "html" -> string!
 const FluentCMS.Schema.RichTextFormats.Markdown = "markdown" -> string!
+override FluentCMS.Content.ContentProblem.Equals(object? obj) -> bool
+override FluentCMS.Content.ContentProblem.GetHashCode() -> int
+override FluentCMS.Content.ContentProblem.ToString() -> string!
 override FluentCMS.Content.ContentReference.Equals(object? obj) -> bool
 override FluentCMS.Content.ContentReference.GetHashCode() -> int
 override FluentCMS.Content.ContentReference.ToString() -> string!
@@ -2621,6 +2648,8 @@ static FluentCMS.Content.BulkResult.operator !=(FluentCMS.Content.BulkResult? le
 static FluentCMS.Content.BulkResult.operator ==(FluentCMS.Content.BulkResult? left, FluentCMS.Content.BulkResult? right) -> bool
 static FluentCMS.Content.ContentFilter.operator !=(FluentCMS.Content.ContentFilter? left, FluentCMS.Content.ContentFilter? right) -> bool
 static FluentCMS.Content.ContentFilter.operator ==(FluentCMS.Content.ContentFilter? left, FluentCMS.Content.ContentFilter? right) -> bool
+static FluentCMS.Content.ContentProblem.operator !=(FluentCMS.Content.ContentProblem? left, FluentCMS.Content.ContentProblem? right) -> bool
+static FluentCMS.Content.ContentProblem.operator ==(FluentCMS.Content.ContentProblem? left, FluentCMS.Content.ContentProblem? right) -> bool
 static FluentCMS.Content.ContentQuery.operator !=(FluentCMS.Content.ContentQuery? left, FluentCMS.Content.ContentQuery? right) -> bool
 static FluentCMS.Content.ContentQuery.operator ==(FluentCMS.Content.ContentQuery? left, FluentCMS.Content.ContentQuery? right) -> bool
 static FluentCMS.Content.ContentReference.operator !=(FluentCMS.Content.ContentReference? left, FluentCMS.Content.ContentReference? right) -> bool

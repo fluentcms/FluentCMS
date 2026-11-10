@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.Json.Nodes;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
@@ -79,6 +80,36 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         webhooks.StatusCode.ShouldBe(HttpStatusCode.OK);
         report["plugins"]!.AsArray().Select(plugin => plugin!["name"]!.GetValue<string>()).ShouldContain("webhooks");
         Operator.InsecureDefaults(report).ShouldContain("webhooks-private-networks");
+    }
+
+    // In Production the options leave introspection closed: it needs a signed-in caller with schema.read.
+    [Fact]
+    public async Task TheHostRunsTheGraphQLPluginAndKeepsIntrospectionForSchemaReadersInProduction()
+    {
+        var settings = Operator.Settings();
+        settings[ReferenceHost.SampleVariable] = "blog";
+        await _host.StartAsync(settings);
+
+        using var api = await Operator.SignInAsync(_host);
+        using var anonymous = _host.Client();
+        var report = await Operator.ReportAsync(_host);
+        report["plugins"]!.AsArray().Select(plugin => plugin!["name"]!.GetValue<string>()).ShouldContain("graphql");
+
+        var introspection = new JsonObject { ["query"] = "{ __schema { queryType { name } } }" };
+        using var refused = await Operator.PostJsonAsync(anonymous, "/graphql", introspection);
+        var (_, refusedBody) = await HostUnderTest.ReadAsync(refused);
+        refusedBody!["data"].ShouldBeNull();
+        refusedBody["errors"]![0]!["extensions"]!["code"]!.GetValue<string>().ShouldBe("FCMS1643");
+
+        using var answered = await Operator.PostJsonAsync(api, "/graphql", introspection);
+        var (status, schema) = await HostUnderTest.ReadAsync(answered);
+        status.ShouldBe(HttpStatusCode.OK, schema?.ToJsonString());
+        schema!["data"]!["__schema"]!["queryType"]!["name"]!.GetValue<string>().ShouldBe("Query");
+
+        using var articles = await Operator.PostJsonAsync(api, "/graphql", new JsonObject { ["query"] = "{ articleList { items { slug author { name } } } }" });
+        var (_, list) = await HostUnderTest.ReadAsync(articles);
+        list!["errors"].ShouldBeNull(list.ToJsonString());
+        list["data"]!["articleList"]!["items"]!.AsArray().Select(item => item!["slug"]!.GetValue<string>()).ShouldContain("welcome-to-fluentcms");
     }
 
     [Fact]
