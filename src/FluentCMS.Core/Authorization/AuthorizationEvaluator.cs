@@ -27,8 +27,16 @@ internal sealed class AuthorizationEvaluator(
 
         if (!_resolved.TryGetValue(context, out var permissions))
         {
-            var grants = context.Principal.IsSystem ? [] : await GrantsAsync(context, cancellationToken);
-            permissions = new EffectivePermissions(context, grants, rules);
+            if (context.Principal.IsSystem)
+            {
+                permissions = new EffectivePermissions(context, [], rules);
+            }
+            else
+            {
+                var (grants, clientGrants) = await GrantsAsync(context, cancellationToken);
+                permissions = new EffectivePermissions(context, grants, rules, clientGrants is null ? null : new EffectivePermissions(context, clientGrants, rules));
+            }
+
             _resolved[context] = permissions;
         }
 
@@ -121,6 +129,15 @@ internal sealed class AuthorizationEvaluator(
             return WritableFields.All;
         }
 
+        var writable = await WritableByAsync(permissions, type, operation, entry, target, cancellationToken);
+        return permissions.Limit is { } limit && writable.Allowed
+            ? writable.And(await WritableByAsync(limit, type, operation, entry, target, cancellationToken))
+            : writable;
+    }
+
+    // What the grants of one set, the principal's or the role's of its client, let a write touch.
+    private async Task<WritableFields> WritableByAsync(EffectivePermissions permissions, SchemaType type, ContentOperation operation, Guid? entry, AccessTarget target, CancellationToken cancellationToken)
+    {
         var allowed = false;
         HashSet<string> fields = new(StringComparer.Ordinal);
         Dictionary<string, bool> matched = new(StringComparer.Ordinal);
@@ -250,14 +267,33 @@ internal sealed class AuthorizationEvaluator(
     // These two work on trashed entries, which the query filter on Document otherwise hides.
     private static bool ReachesTrash(ContentOperation operation) => operation is ContentOperation.Restore or ContentOperation.Purge;
 
-    private async Task<List<EffectiveGrant>> GrantsAsync(OperationContext context, CancellationToken cancellationToken)
+    // The grants of the principal's roles and, for a token of an MCP client that registered itself, those of the role of
+    // its client, which is read with the principal's roles in one query. A client role that is gone, or a claim that names
+    // none, gives an empty list, which leaves the token nothing.
+    private async Task<(List<EffectiveGrant> Own, List<EffectiveGrant>? Client)> GrantsAsync(OperationContext context, CancellationToken cancellationToken)
     {
-        // Stamps first: a role that changes between the two reads is then cached under its older stamp, and the next
-        // request reloads it. The other order would keep the old grants under the new stamp.
-        var roles = context.Principal.IsAnonymous
-            ? await PublicRoleAsync(context.Site.Value, cancellationToken)
-            : await StampsAsync([.. await principalRoles.RolesOfAsync(context.Principal, cancellationToken)], cancellationToken);
+        if (context.Principal.IsAnonymous)
+        {
+            return (await GrantsOfAsync(await PublicRoleAsync(context.Site.Value, cancellationToken), cancellationToken), null);
+        }
 
+        var own = await principalRoles.RolesOfAsync(context.Principal, cancellationToken);
+        if (context.Principal.Claim(CmsClaimTypes.ClientRole) is not { } claim)
+        {
+            return (await GrantsOfAsync(await StampsAsync([.. own], cancellationToken), cancellationToken), null);
+        }
+
+        var clientRole = Guid.TryParse(claim, out var id) ? id : Guid.Empty;
+        var stamps = await StampsAsync([.. own.Append(clientRole).Distinct()], cancellationToken);
+        return (
+            await GrantsOfAsync([.. stamps.Where(stamp => own.Contains(stamp.Id))], cancellationToken),
+            await GrantsOfAsync([.. stamps.Where(stamp => stamp.Id == clientRole)], cancellationToken));
+    }
+
+    private async Task<List<EffectiveGrant>> GrantsOfAsync(List<RoleStamp> roles, CancellationToken cancellationToken)
+    {
+        // The stamps were read first: a role that changes between the two reads is then cached under its older stamp, and
+        // the next request reloads it. The other order would keep the old grants under the new stamp.
         List<EffectiveGrant> grants = [];
         List<Guid> staleIds = [];
         foreach (var role in roles)

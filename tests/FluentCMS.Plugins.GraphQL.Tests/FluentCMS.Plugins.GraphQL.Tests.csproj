@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+  <!-- The Blog sample brings its content types, its seed set and the media plugin its media fields need. -->
+  <ItemGroup>
+    <ProjectReference Include="../../samples/Blog/Blog.csproj" />
+    <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.GraphQL/FluentCMS.Plugins.GraphQL.csproj" />
+  </ItemGroup>
+
+</Project>

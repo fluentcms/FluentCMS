@@ -50,7 +50,8 @@ internal sealed class SchemaIntrospection(
         return permissions.IsSystem ? schema : Narrow(schema, permissions, new AccessTarget(operation.Site, operation.Locale));
     }
 
-    private static SchemaModel Narrow(SchemaModel schema, EffectivePermissions permissions, AccessTarget target)
+    // The schema with what the permissions do not let the principal read there left out, as said above.
+    public static SchemaModel Narrow(SchemaModel schema, EffectivePermissions permissions, AccessTarget target)
     {
         var readable = schema.ContentTypes
             .Where(type => permissions.Allows(type, ContentOperation.Read, target))

@@ -1,3 +1,4 @@
+using FluentCMS.Agents;
 using FluentCMS.Authorization;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
@@ -20,7 +21,8 @@ internal sealed record PluginContributionsInfo(
     IReadOnlyList<string> FieldTypes,
     IReadOnlyList<string> Permissions,
     IReadOnlyList<PluginEndpointInfo> Endpoints,
-    IReadOnlyList<string> Jobs);
+    IReadOnlyList<string> Jobs,
+    IReadOnlyList<string> Tools);
 
 internal sealed record PluginInfo(
     string Name,
@@ -67,6 +69,7 @@ internal sealed class PluginAdministration(
 
         var providers = services.GetServices<IPermissionProvider>().ToList();
         var endpoints = Endpoints();
+        var tools = await ToolsAsync(plugin => !disabled.Contains((plugin, current)), cancellationToken);
         return [.. registry.Plugins.Select(plugin => new PluginInfo(
             plugin.Name,
             plugin.Version,
@@ -77,7 +80,8 @@ internal sealed class PluginAdministration(
                 registry.Contributions.FieldTypesOf(plugin.Name),
                 PermissionsOf(plugin, providers),
                 [.. endpoints.Where(endpoint => endpoint.Plugin == plugin.Name).Select(endpoint => endpoint.Info)],
-                registry.Contributions.JobsOf(plugin.Name)),
+                registry.Contributions.JobsOf(plugin.Name),
+                tools.GetValueOrDefault(plugin.Name) ?? []),
             [.. managed.Select(site => new PluginSiteInfo(site.Id, site.Slug, !disabled.Contains((plugin.Name, site.Id))))]))];
     }
 
@@ -159,6 +163,43 @@ internal sealed class PluginAdministration(
             .SelectMany(provider => provider.GetPermissions())
             .Select(permission => permission.Name)
             .Distinct(StringComparer.Ordinal)];
+    }
+
+    // The MCP tools each plugin offers the caller in the site of the operation, by name, as the tool list of the MCP server
+    // gives them: the providers of a plugin that is disabled there are not asked, a name an earlier plugin lists is left
+    // out, and so is a provider that fails. The providers decide what the caller may use, as they do for a tool list.
+    private async Task<Dictionary<string, List<string>>> ToolsAsync(Func<string, bool> enabled, CancellationToken cancellationToken)
+    {
+        Dictionary<string, List<string>> tools = new(StringComparer.Ordinal);
+        if (accessor.Current is not { } operation)
+        {
+            return tools;
+        }
+
+        var request = new McpListRequest(operation);
+        HashSet<string> names = new(StringComparer.Ordinal);
+        foreach (var registration in registry.Contributions.Tools.Where(registration => enabled(registration.Plugin)))
+        {
+            IReadOnlyList<McpToolDescriptor> listed;
+            try
+            {
+                listed = await ((IMcpToolProvider)services.GetRequiredService(registration.Provider)).ListToolsAsync(request, cancellationToken);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                PluginLog.ToolsNotListed(logger, exception, registration.Provider.Name, registration.Plugin);
+                continue;
+            }
+
+            if (!tools.TryGetValue(registration.Plugin, out var ofPlugin))
+            {
+                tools[registration.Plugin] = ofPlugin = [];
+            }
+
+            ofPlugin.AddRange(listed.Select(tool => tool.Name).Where(names.Add));
+        }
+
+        return tools;
     }
 
     // The endpoints the plugins' groups hold once the app is built; none outside a web host.

@@ -58,6 +58,7 @@ internal sealed class MediaService(
     public const string ReferenceTarget = "media";
 
     public const int MaxPageSize = 100;
+    public const int MaxSearchLength = 256;
     public const int AltMaxLength = 1000;
     public const int CaptionMaxLength = 2000;
     public const int MaxTags = 50;
@@ -222,6 +223,24 @@ internal sealed class MediaService(
         {
             var needle = MediaJson.TagNeedle(ValidTag(tag, "tag"));
             assets = assets.Where(asset => asset.Tags.Contains(needle));
+        }
+
+        if (query.Search is { } search)
+        {
+            if (string.IsNullOrWhiteSpace(search) || search.Length > MaxSearchLength)
+            {
+                throw Invalid("search", $"A search is a text of 1 to {MaxSearchLength} characters.");
+            }
+
+            // The tags are a JSON array in one column, so a text with a character of its syntax is not looked for there.
+            var needle = search.Trim().ToLowerInvariant();
+            var inTags = needle.IndexOfAny(['"', '\\', '[', ']', ',']) < 0;
+#pragma warning disable CA1304, CA1311, CA1862 // The database lowers the columns, where lower() takes no culture and a comparison none either.
+            assets = assets.Where(asset =>
+                (asset.Title != null && asset.Title.ToLower().Contains(needle))
+                || asset.FileName.ToLower().Contains(needle)
+                || (inTags && asset.Tags.ToLower().Contains(needle)));
+#pragma warning restore CA1304, CA1311, CA1862
         }
 
         var total = await assets.LongCountAsync(cancellationToken);

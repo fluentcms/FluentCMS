@@ -13,6 +13,7 @@ public class LayeringRulesTests
     private const string Sdk = "FluentCMS.Sdk";
     private const string PluginAbstractions = "FluentCMS.Plugins.Abstractions";
     private const string PluginPrefix = "FluentCMS.Plugins.";
+    private const string GraphQLPlugin = "FluentCMS.Plugins.GraphQL";
 
     private const string ApiNamespace = "FluentCMS.Core.Api";
     private const string StorageNamespace = "FluentCMS.Core.Storage";
@@ -22,6 +23,13 @@ public class LayeringRulesTests
     private const string ProvidersNamespace = "FluentCMS.Data";
     private const string CliNamespace = "FluentCMS.Cli";
     private const string TestingNamespace = "FluentCMS.Testing";
+    private const string McpPlugin = "FluentCMS.Plugins.Mcp";
+    private const string WebhooksPlugin = "FluentCMS.Plugins.Webhooks";
+
+    private static readonly string[] McpSiteData = ["McpModel", "McpInstructions", "McpStoredPrompts", "McpInstructionService", "McpPromptService"];
+
+    // The service of the Management endpoints of the MCP clients, which checks mcp.manage.
+    private static readonly string[] McpClientServices = ["McpClientService"];
 
     private static readonly Lazy<ArchUnitNET.Domain.Architecture> core = new(
         () => new ArchLoader().LoadAssemblies(Assembly.Load("FluentCMS.Core")).Build());
@@ -58,6 +66,37 @@ public class LayeringRulesTests
         violations.ShouldBeEmpty();
     }
 
+    // Spec 2.1: the GraphQL layer carries identity and intent only. It reaches content through IContentService, so it has
+    // no context of its own and none of EF Core.
+    [Fact]
+    public void TheGraphQLPluginNeverTouchesADbContext()
+    {
+        Types().That().ResideInNamespaceOrBelow(GraphQLPlugin)
+            .Should().NotDependOnAnyTypesThat().HaveFullNameContaining("Microsoft.EntityFrameworkCore")
+            .AndShould().NotDependOnAnyTypesThat().HaveFullNameContaining("DbContext")
+            .Check(everything.Value);
+
+        // The rule finds a plugin that does have one: the webhooks plugin keeps its webhooks in tables of its own.
+        Types().That().ResideInNamespaceOrBelow("FluentCMS.Plugins.Webhooks")
+            .Should().NotDependOnAnyTypesThat().HaveFullNameContaining("DbContext")
+            .HasNoViolations(everything.Value).ShouldBeFalse();
+    }
+
+    // What a caller may read or write is the content service's to decide. The one permission the plugin asks about is
+    // whether the caller may introspect the schema, and IPermissionChecker answers it for the request interceptor.
+    [Fact]
+    public void TheGraphQLPluginNeverEvaluatesAPermissionItself()
+    {
+        Types().That().ResideInNamespaceOrBelow(GraphQLPlugin)
+            .And().DoNotHaveFullNameContaining("GraphQLRequestInterceptor")
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceOrBelow("FluentCMS.Authorization")
+            .Check(everything.Value);
+
+        Types().That().HaveFullNameContaining("GraphQLRequestInterceptor")
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceOrBelow("FluentCMS.Authorization")
+            .HasNoViolations(everything.Value).ShouldBeFalse();
+    }
+
     [Fact]
     public void SdkReferencesNoImplementationPackage()
     {
@@ -71,6 +110,37 @@ public class LayeringRulesTests
             .ToList();
 
         violations.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void TheMcpPluginReferencesTheContractPackagesAndTheProtocolPackageOnly()
+    {
+        var mcp = ProjectFile.SourceProjects.Single(project => project.Name == McpPlugin);
+
+        mcp.ProjectReferences.ShouldBe([Sdk, PluginAbstractions], ignoreOrder: true);
+        // The providers of its PostgreSQL and SQL Server migration sets are compiled against and not depended on.
+        mcp.PackageReferences.Where(package => !package.DevelopmentOnly).Select(package => package.Name).ShouldBe(["ModelContextProtocol.AspNetCore"]);
+    }
+
+    // The MCP server is a surface (2.1): it carries the identity and the intent of a call and decides nothing. It holds no
+    // database context, content's or a plugin's, and asks no permission; a provider reaches content through the services,
+    // which do both. The webhooks plugin, whose service does both, shows that the rule sees what it forbids. What a site
+    // keeps for its agents (B-73) is the plugin's own data and not content: the model and the migrations of its two tables,
+    // the two readers of them, and the two Management services, which check mcp.manage as the webhooks service checks its
+    // permission. The service of the MCP clients (B-71) checks mcp.manage too, and keeps no data: core does. The rest of
+    // the plugin is held to the rule, and none of it reaches the content context.
+    [Fact]
+    public void TheMcpPluginReachesContentThroughTheServicesAndEvaluatesNoPermission()
+    {
+        SurfaceRule(McpPlugin, [.. McpSiteData, .. McpClientServices]).Check(everything.Value);
+        Types().That().ResideInNamespaceOrBelow(McpPlugin).Should().NotDependOnAnyTypesThat().HaveName("CmsDbContext").Check(everything.Value);
+
+        // Each exception is needed: without the clients' service, or without the site's data, the rule is broken.
+        Should.Throw<Exception>(() => SurfaceRule(McpPlugin, McpSiteData).Check(everything.Value));
+        Should.Throw<Exception>(() => SurfaceRule(McpPlugin, McpClientServices).Check(everything.Value));
+
+        Should.Throw<Exception>(() => SurfaceRule(McpPlugin).Check(everything.Value));
+        Should.Throw<Exception>(() => SurfaceRule(WebhooksPlugin).Check(everything.Value));
     }
 
     // The contracts of ADR 0003 that need EF Core or ASP.NET Core, which the framework reference brings.
@@ -178,16 +248,42 @@ public class LayeringRulesTests
         found.ShouldContain(violation => violation.Contains("FromSqlRaw", StringComparison.Ordinal));
     }
 
+    // The types named keep data of the plugin's own, as its migrations do, or check the plugin's permission.
+    private static ArchUnitNET.Fluent.Syntax.Elements.Types.TypesShouldConjunction SurfaceRule(string plugin, params string[] ownData)
+    {
+        var types = Types().That().ResideInNamespaceOrBelow(plugin);
+        if (ownData.Length > 0)
+        {
+            types = types.And().DoNotResideInNamespaceOrBelow(plugin + ".Migrations");
+        }
+
+        foreach (var name in ownData)
+        {
+            types = types.And().DoNotHaveName(name);
+        }
+
+        return types
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceOrBelow("Microsoft.EntityFrameworkCore")
+            .AndShould().NotDependOnAnyTypesThat().HaveNameStartingWith("PluginDbContext")
+            .AndShould().NotDependOnAnyTypesThat().HaveName("IPermissionChecker");
+    }
+
     private static IEnumerable<string> FluentCmsReferences(ProjectFile project) =>
         project.ProjectReferences
             .Concat(project.PackageReferences.Select(package => package.Name))
             .Where(name => name.StartsWith("FluentCMS.", StringComparison.Ordinal));
 
-    // A provider plugin such as Media.S3 builds on the plugin it provides for, per the package map (2.4).
+    // A provider plugin such as Media.S3 builds on the plugin it provides for, per the package map (2.4). A plugin that adds
+    // types to the GraphQL schema implements IGraphQLSchemaContributor, which is in the GraphQL plugin, since the SDK takes
+    // no HotChocolate dependency.
     private static IEnumerable<string> AllowedPluginReferences(ProjectFile plugin, IReadOnlyList<ProjectFile> plugins)
     {
         yield return Sdk;
         yield return PluginAbstractions;
+        if (plugin.Name != GraphQLPlugin)
+        {
+            yield return GraphQLPlugin;
+        }
 
         var parent = plugin.Name[..plugin.Name.LastIndexOf('.')];
         if (plugins.Any(other => other.Name == parent))

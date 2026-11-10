@@ -29,7 +29,7 @@ internal static class OAuthFlows
     {
         DisplayName = "FluentCMS tests",
         RedirectUris = { RedirectUri },
-        Scopes = { "openid", "profile", "email", "offline_access", "draft", "management" },
+        Scopes = { "openid", "profile", "email", "offline_access", "draft", "management", "mcp" },
     };
 
     public static async Task<string> CookieAsync(IServiceProvider services, Guid userId)

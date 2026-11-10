@@ -5,8 +5,20 @@ FluentCMS.Plugins.PluginAppBuilderExtensions
 FluentCMS.Plugins.PluginDbContext<TPlugin>
 FluentCMS.Plugins.PluginDbContext<TPlugin>.PluginDbContext(Microsoft.EntityFrameworkCore.DbContextOptions<FluentCMS.Plugins.PluginDbContext<TPlugin!>!>! options) -> void
 FluentCMS.Plugins.PluginServiceBuilderExtensions
+FluentCMS.Plugins.ProtectedResourceOptions
+FluentCMS.Plugins.ProtectedResourceOptions.Name.get -> string?
+FluentCMS.Plugins.ProtectedResourceOptions.Name.init -> void
+FluentCMS.Plugins.ProtectedResourceOptions.Origin.get -> FluentCMS.Content.Origin
+FluentCMS.Plugins.ProtectedResourceOptions.Origin.init -> void
+FluentCMS.Plugins.ProtectedResourceOptions.ProtectedResourceOptions() -> void
+FluentCMS.Plugins.ProtectedResourceOptions.Scope.get -> string!
+FluentCMS.Plugins.ProtectedResourceOptions.Scope.init -> void
+FluentCMS.Plugins.PublicAddresses
 static FluentCMS.Plugins.PluginAppBuilderExtensions.MapDelivery(this FluentCMS.Plugins.IPluginAppBuilder! app, string! prefix) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
 static FluentCMS.Plugins.PluginAppBuilderExtensions.MapGroup(this FluentCMS.Plugins.IPluginAppBuilder! app, string! prefix) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
 static FluentCMS.Plugins.PluginAppBuilderExtensions.MapManagement(this FluentCMS.Plugins.IPluginAppBuilder! app, string! prefix) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
+static FluentCMS.Plugins.PluginAppBuilderExtensions.MapProtectedResource(this FluentCMS.Plugins.IPluginAppBuilder! app, string! prefix, FluentCMS.Plugins.ProtectedResourceOptions! resource) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
 static FluentCMS.Plugins.PluginServiceBuilderExtensions.AddMigrations(this FluentCMS.Plugins.IPluginServiceBuilder! plugin, System.Reflection.Assembly! assembly) -> FluentCMS.Plugins.IPluginServiceBuilder!
 static FluentCMS.Plugins.PluginServiceBuilderExtensions.AddModel<TContributor>(this FluentCMS.Plugins.IPluginServiceBuilder! plugin) -> FluentCMS.Plugins.IPluginServiceBuilder!
+static FluentCMS.Plugins.PluginAppBuilderExtensions.RequireCallerRateLimit<TBuilder>(this TBuilder builder) -> TBuilder
+static FluentCMS.Plugins.PublicAddresses.IsPublic(System.Net.IPAddress! address) -> bool

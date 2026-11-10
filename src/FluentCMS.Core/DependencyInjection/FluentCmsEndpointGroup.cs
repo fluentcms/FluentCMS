@@ -28,6 +28,8 @@ internal static class FluentCmsEndpointGroups
         (FluentCmsEndpointGroup.WellKnown, "/.well-known"),
     ];
 
+    public static string PrefixOf(FluentCmsEndpointGroup group) => Prefixes.Single(item => item.Group == group).Prefix;
+
     // How an area's registration puts its endpoints in a group; MapFluentCms maps them in the order they were added.
     public static IServiceCollection AddFluentCmsEndpoints(this IServiceCollection services, FluentCmsEndpointGroup group, Action<RouteGroupBuilder> map)
     {

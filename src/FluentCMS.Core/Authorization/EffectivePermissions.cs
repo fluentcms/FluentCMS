@@ -57,8 +57,10 @@ internal sealed class EffectiveGrant(string pattern, PermissionConstraints const
 // that lost its scopes can read published content and nothing more. Site and locale limits are applied before the
 // union, so they stay tied to their grant. A principal bound to sites or types, as an API key may be, is held to them
 // on top of everything else. It lives for one request, so the content answers are kept per type, operation, site and
-// locale: a list asks the same questions for every entry and field.
-internal sealed class EffectivePermissions(OperationContext context, IReadOnlyList<EffectiveGrant> grants, RowRuleRegistry rules)
+// locale: a list asks the same questions for every entry and field. A token of an MCP client that registered itself is
+// also held to the role of its client (limit): every answer is what both the principal's grants and that role's give, each
+// worked out as for a principal of its own, so the client's role only removes.
+internal sealed class EffectivePermissions(OperationContext context, IReadOnlyList<EffectiveGrant> grants, RowRuleRegistry rules, EffectivePermissions? limit = null)
 {
     private readonly Dictionary<Asked, IReadOnlyList<EffectiveGrant>> _grantsOf = [];
 
@@ -74,6 +76,9 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
 
     public bool IsSystem => context.Principal.IsSystem;
 
+    // The role of the client the principal came through, as permissions of its own; null when there is none.
+    public EffectivePermissions? Limit => limit;
+
     // Everything beyond reading content needs a scope that says the token is for managing; a Delivery principal has none.
     public bool CanManage =>
         IsSystem
@@ -84,7 +89,8 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
     {
         ArgumentNullException.ThrowIfNull(permission);
 
-        return IsSystem || (Permits(permission, target) && grants.Any(grant => grant.Applies(permission, target)));
+        return IsSystem
+            || (Permits(permission, target) && grants.Any(grant => grant.Applies(permission, target)) && (limit is null || limit.Allows(permission, target)));
     }
 
     public bool Allows(SchemaType type, ContentOperation operation, AccessTarget target) =>
@@ -101,6 +107,12 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
             return null;
         }
 
+        var own = OwnResourcesOf(permission, target);
+        return limit is null ? own : Both(own, limit.ResourcesOf(permission, target), StringComparer.Ordinal);
+    }
+
+    private HashSet<string>? OwnResourcesOf(string permission, AccessTarget target)
+    {
         HashSet<string> resources = new(StringComparer.Ordinal);
         if (!Permits(permission, target))
         {
@@ -139,9 +151,10 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
         }
 
         List<GrantReach> held = [.. grants.SelectMany(grant => GrantReach.Of(grant.Pattern, grant.Constraints, grant.RoleSite, _binding))];
-        return reach.Sites is null
+        var covered = reach.Sites is null
             ? held.Any(mine => mine.Includes(reach))
             : reach.Sites.All(site => held.Any(mine => mine.Includes(reach with { Sites = new HashSet<Guid> { site } })));
+        return covered && (limit is null || limit.Covers(reach));
     }
 
     // The roles must allow reading the type. On top of that a Delivery principal needs a preview key or the draft
@@ -157,7 +170,9 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
         if (!_grantsOf.TryGetValue(asked, out var applying))
         {
             var permission = CorePermissions.Content(type.Name, operation);
-            applying = Permits(permission, target) ? [.. Applying(type, operation, permission, target)] : [];
+            applying = Permits(permission, target) && (limit is null || limit.GrantsOf(type, operation, target).Count > 0)
+                ? [.. Applying(type, operation, permission, target)]
+                : [];
             _grantsOf[asked] = applying;
         }
 
@@ -180,6 +195,18 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
             return null;
         }
 
+        var own = OwnReadLocalesOf(type, target);
+        return limit is null ? own : Both(own, limit.ReadLocalesOf(type, target), StringComparer.OrdinalIgnoreCase);
+    }
+
+    // Whether a read of the type reaches every row in every locale: a grant with no row rule and no locale limit, of the
+    // principal and of the role of its client.
+    public bool ReadsEveryRow(SchemaType type, AccessTarget target) =>
+        GrantsOf(type, ContentOperation.Read, target).Any(grant => grant.Constraints.RowRule is null && grant.Constraints.Locales is null)
+        && (limit is null || limit.ReadsEveryRow(type, target));
+
+    private HashSet<string>? OwnReadLocalesOf(SchemaType type, AccessTarget target)
+    {
         HashSet<string> locales = new(StringComparer.OrdinalIgnoreCase);
         var permission = CorePermissions.Content(type.Name, ContentOperation.Read);
         if (Permits(permission, target))
@@ -213,6 +240,11 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
         if (!_readableFields.TryGetValue(asked, out var fields))
         {
             fields = ReadableFields(type, target);
+            if (limit is not null)
+            {
+                fields = Both(fields, limit.ReadableFieldsOf(type, target), StringComparer.Ordinal);
+            }
+
             _readableFields[asked] = fields;
         }
 
@@ -290,6 +322,11 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
         if (!_rowRules.TryGetValue(asked, out var rule))
         {
             rule = OnlyBoundEntry(RowRuleOfGrants(type, GrantsOf(type, operation, target)));
+            if (limit is not null)
+            {
+                rule = Both(rule, limit.RowRuleOf(type, operation, target));
+            }
+
             _rowRules[asked] = rule;
         }
 
@@ -339,6 +376,26 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
         return rule is null ? only : new And(rule, only);
     }
 
+    // The rows both rules let through; null is every row.
+    private static ContentFilter? Both(ContentFilter? own, ContentFilter? other) =>
+        own is null ? other
+        : other is null ? own
+        : ReferenceEquals(own, RowRule.NoRows) || ReferenceEquals(other, RowRule.NoRows) ? RowRule.NoRows
+        : new And(own, other);
+
+    // What both sets hold; null is everything.
+    private static HashSet<string>? Both(IReadOnlySet<string>? own, IReadOnlySet<string>? other, StringComparer comparer)
+    {
+        if (own is null || other is null)
+        {
+            return (own ?? other) is { } only ? new HashSet<string>(only, comparer) : null;
+        }
+
+        HashSet<string> both = new(own, comparer);
+        both.IntersectWith(other);
+        return both;
+    }
+
     // One rule for this operation, or null when it can match no row.
     public ContentFilter? RuleFilter(string name, SchemaType type) =>
         rules.Find(name, type.Name)?.For(context) is { } filter && !ReferenceEquals(filter, RowRule.NoRows) ? filter : null;
@@ -370,4 +427,11 @@ internal sealed record WritableFields(bool Allowed, IReadOnlySet<string>? Fields
     public static readonly WritableFields All = new(true, null);
 
     public bool Includes(string field) => Allowed && (Fields is null || Fields.Contains(field));
+
+    // What both let a write touch.
+    public WritableFields And(WritableFields other) =>
+        !Allowed || !other.Allowed ? None
+        : Fields is null ? other
+        : other.Fields is null ? this
+        : new WritableFields(true, Fields.Intersect(other.Fields, StringComparer.Ordinal).ToHashSet(StringComparer.Ordinal));
 }

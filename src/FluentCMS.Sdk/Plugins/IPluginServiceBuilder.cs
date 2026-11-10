@@ -1,4 +1,5 @@
 using FluentCMS.Activity;
+using FluentCMS.Agents;
 using FluentCMS.Authorization;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
@@ -126,4 +127,31 @@ public interface IPluginServiceBuilder
     /// <param name="title">A short title for people.</param>
     /// <returns>This builder.</returns>
     IPluginServiceBuilder AddErrorCode(string code, int status, string title);
+
+    /// <summary>
+    /// Adds tools that the MCP server offers, when the host runs the MCP plugin. They are listed and called as the caller,
+    /// and skipped in a site where this plugin is disabled.
+    /// </summary>
+    /// <typeparam name="TProvider">The provider, scoped.</typeparam>
+    /// <returns>This builder.</returns>
+    IPluginServiceBuilder AddMcpTools<TProvider>()
+        where TProvider : class, IMcpToolProvider;
+
+    /// <summary>
+    /// Adds resources that the MCP server offers, when the host runs the MCP plugin. They are listed and read as the caller,
+    /// and skipped in a site where this plugin is disabled.
+    /// </summary>
+    /// <typeparam name="TProvider">The provider, scoped.</typeparam>
+    /// <returns>This builder.</returns>
+    IPluginServiceBuilder AddMcpResources<TProvider>()
+        where TProvider : class, IMcpResourceProvider;
+
+    /// <summary>
+    /// Adds prompts that the MCP server offers, when the host runs the MCP plugin. They are listed and got as the caller,
+    /// and skipped in a site where this plugin is disabled.
+    /// </summary>
+    /// <typeparam name="TProvider">The provider, scoped.</typeparam>
+    /// <returns>This builder.</returns>
+    IPluginServiceBuilder AddMcpPrompts<TProvider>()
+        where TProvider : class, IMcpPromptProvider;
 }
