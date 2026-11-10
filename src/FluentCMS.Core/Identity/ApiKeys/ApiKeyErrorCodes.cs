@@ -13,4 +13,8 @@ internal static class ApiKeyErrorCodes
     public const string Revoked = "FCMS3018";
     public const string SeveralCredentials = "FCMS3019";
     public const string EmptyBinding = "FCMS3020";
+    public const string AddressRefused = "FCMS3023";
+    public const string InvalidAddress = "FCMS3024";
+    public const string NotRotatable = "FCMS3025";
+    public const string InvalidOverlap = "FCMS3026";
 }

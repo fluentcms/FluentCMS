@@ -29,6 +29,10 @@ namespace FluentCMS.Data.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("id");
 
+                    b.Property<string>("AllowedAddresses")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("allowed_addresses");
+
                     b.Property<string>("Class")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -69,6 +73,20 @@ namespace FluentCMS.Data.SqlServer.Migrations
                         .HasColumnType("nvarchar(128)")
                         .HasColumnName("name");
 
+                    b.Property<DateTimeOffset?>("PreviousKeyExpiresAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("previous_key_expires_at");
+
+                    b.Property<string>("PreviousKeyHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("previous_key_hash");
+
+                    b.Property<string>("PreviousKeyPrefix")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasColumnName("previous_key_prefix");
+
                     b.Property<int?>("RateLimit")
                         .HasColumnType("int")
                         .HasColumnName("rate_limit");
@@ -98,11 +116,16 @@ namespace FluentCMS.Data.SqlServer.Migrations
                     b.HasIndex("KeyPrefix")
                         .HasDatabaseName("ix_cms_api_key_key_prefix");
 
+                    b.HasIndex("PreviousKeyPrefix")
+                        .HasDatabaseName("ix_cms_api_key_previous_key_prefix");
+
                     b.HasIndex("RoleId")
                         .HasDatabaseName("ix_cms_api_key_role");
 
                     b.ToTable("cms_api_key", null, t =>
                         {
+                            t.HasCheckConstraint("ck_cms_api_key_allowed_addresses_json", "ISJSON([allowed_addresses]) = 1");
+
                             t.HasCheckConstraint("ck_cms_api_key_site_ids_json", "ISJSON([site_ids]) = 1");
 
                             t.HasCheckConstraint("ck_cms_api_key_type_names_json", "ISJSON([type_names]) = 1");

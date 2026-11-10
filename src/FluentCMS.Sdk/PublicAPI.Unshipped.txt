@@ -2867,3 +2867,54 @@ virtual FluentCMS.Events.MediaAssetEvent.Equals(FluentCMS.Events.MediaAssetEvent
 ~static FluentCMS.Schema.Ref<T>.operator ==(FluentCMS.Schema.Ref<T> left, FluentCMS.Schema.Ref<T> right) -> bool
 ~static FluentCMS.Schema.RefList<T>.operator !=(FluentCMS.Schema.RefList<T>? left, FluentCMS.Schema.RefList<T>? right) -> bool
 ~static FluentCMS.Schema.RefList<T>.operator ==(FluentCMS.Schema.RefList<T>? left, FluentCMS.Schema.RefList<T>? right) -> bool
+FluentCMS.Events.ApiKeyRotatedEvent
+FluentCMS.Events.ApiKeyRotatedEvent.ApiKeyRotatedEvent(System.Guid KeyId, string! Name, System.DateTimeOffset? PreviousKeyExpiresAt) -> void
+FluentCMS.Events.ApiKeyRotatedEvent.Deconstruct(out System.Guid KeyId, out string! Name, out System.DateTimeOffset? PreviousKeyExpiresAt) -> void
+FluentCMS.Events.ApiKeyRotatedEvent.Equals(FluentCMS.Events.ApiKeyRotatedEvent? other) -> bool
+FluentCMS.Events.ApiKeyRotatedEvent.KeyId.get -> System.Guid
+FluentCMS.Events.ApiKeyRotatedEvent.KeyId.init -> void
+FluentCMS.Events.ApiKeyRotatedEvent.Name.get -> string!
+FluentCMS.Events.ApiKeyRotatedEvent.Name.init -> void
+FluentCMS.Events.ApiKeyRotatedEvent.PreviousKeyExpiresAt.get -> System.DateTimeOffset?
+FluentCMS.Events.ApiKeyRotatedEvent.PreviousKeyExpiresAt.init -> void
+override FluentCMS.Events.ApiKeyRotatedEvent.<Clone>$() -> FluentCMS.Events.ApiKeyRotatedEvent!
+override FluentCMS.Events.ApiKeyRotatedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.ApiKeyRotatedEvent.GetHashCode() -> int
+override FluentCMS.Events.ApiKeyRotatedEvent.ToString() -> string!
+override sealed FluentCMS.Events.ApiKeyRotatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+static FluentCMS.Events.ApiKeyRotatedEvent.operator !=(FluentCMS.Events.ApiKeyRotatedEvent? left, FluentCMS.Events.ApiKeyRotatedEvent? right) -> bool
+static FluentCMS.Events.ApiKeyRotatedEvent.operator ==(FluentCMS.Events.ApiKeyRotatedEvent? left, FluentCMS.Events.ApiKeyRotatedEvent? right) -> bool
+FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent
+FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.ApiKeyAllowedAddressesChangedEvent(System.Guid KeyId, string! Name, System.Collections.Generic.IReadOnlyList<string!>? AllowedAddresses) -> void
+FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.Deconstruct(out System.Guid KeyId, out string! Name, out System.Collections.Generic.IReadOnlyList<string!>? AllowedAddresses) -> void
+FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.Equals(FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent? other) -> bool
+FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.KeyId.get -> System.Guid
+FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.KeyId.init -> void
+FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.Name.get -> string!
+FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.Name.init -> void
+FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.AllowedAddresses.get -> System.Collections.Generic.IReadOnlyList<string!>?
+FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.AllowedAddresses.init -> void
+override FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.<Clone>$() -> FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent!
+override FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.GetHashCode() -> int
+override FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.ToString() -> string!
+override sealed FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+static FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.operator !=(FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent? left, FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent? right) -> bool
+static FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent.operator ==(FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent? left, FluentCMS.Events.ApiKeyAllowedAddressesChangedEvent? right) -> bool
+FluentCMS.Events.ApiKeyAddressRefusedEvent
+FluentCMS.Events.ApiKeyAddressRefusedEvent.ApiKeyAddressRefusedEvent(System.Guid KeyId, string! Name, string? Ip) -> void
+FluentCMS.Events.ApiKeyAddressRefusedEvent.Deconstruct(out System.Guid KeyId, out string! Name, out string? Ip) -> void
+FluentCMS.Events.ApiKeyAddressRefusedEvent.Equals(FluentCMS.Events.ApiKeyAddressRefusedEvent? other) -> bool
+FluentCMS.Events.ApiKeyAddressRefusedEvent.KeyId.get -> System.Guid
+FluentCMS.Events.ApiKeyAddressRefusedEvent.KeyId.init -> void
+FluentCMS.Events.ApiKeyAddressRefusedEvent.Name.get -> string!
+FluentCMS.Events.ApiKeyAddressRefusedEvent.Name.init -> void
+FluentCMS.Events.ApiKeyAddressRefusedEvent.Ip.get -> string?
+FluentCMS.Events.ApiKeyAddressRefusedEvent.Ip.init -> void
+override FluentCMS.Events.ApiKeyAddressRefusedEvent.<Clone>$() -> FluentCMS.Events.ApiKeyAddressRefusedEvent!
+override FluentCMS.Events.ApiKeyAddressRefusedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.ApiKeyAddressRefusedEvent.GetHashCode() -> int
+override FluentCMS.Events.ApiKeyAddressRefusedEvent.ToString() -> string!
+override sealed FluentCMS.Events.ApiKeyAddressRefusedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+static FluentCMS.Events.ApiKeyAddressRefusedEvent.operator !=(FluentCMS.Events.ApiKeyAddressRefusedEvent? left, FluentCMS.Events.ApiKeyAddressRefusedEvent? right) -> bool
+static FluentCMS.Events.ApiKeyAddressRefusedEvent.operator ==(FluentCMS.Events.ApiKeyAddressRefusedEvent? left, FluentCMS.Events.ApiKeyAddressRefusedEvent? right) -> bool

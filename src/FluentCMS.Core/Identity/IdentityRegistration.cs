@@ -15,9 +15,10 @@ namespace FluentCMS.Core.Identity;
 
 internal static class IdentityRegistration
 {
-    public static void Add(IServiceCollection services, AdminUserOptions options, ClientOptions clients, SsoOptions sso, ProvidersBuilder providers)
+    public static void Add(IServiceCollection services, AdminUserOptions options, ApiKeyOptions apiKeys, ClientOptions clients, SsoOptions sso, ProvidersBuilder providers)
     {
         services.AddFluentCmsOptions(AdminUserOptions.Section, IdentityErrorCodes.InvalidOptions, options, users => users.Validate());
+        services.AddFluentCmsOptions(ApiKeyOptions.Section, IdentityErrorCodes.InvalidOptions, apiKeys, keys => keys.Validate());
 
         // The sign-in manager reads the schemes; the authorization server adds its own beside the API key's.
         services.AddAuthentication()
@@ -47,6 +48,7 @@ internal static class IdentityRegistration
         services.AddScoped<TwoFactorService>();
         services.AddScoped<ApiKeyService>();
         services.AddScoped<ApiKeyPrincipals>();
+        services.AddSingleton<ApiKeyRefusals>();
         services.AddHttpContextAccessor();
         services.TryAddScoped<IPrincipalRoles, UserPrincipalRoles>();
 

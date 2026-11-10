@@ -37,6 +37,16 @@ internal sealed class ApiKey
     // Requests per minute; null for the policy's own limit.
     public int? RateLimit { get; set; }
 
+    // A JSON array of addresses and CIDR ranges the key is accepted from; null for any address.
+    public string? AllowedAddresses { get; set; }
+
+    // The secret a rotation replaced, accepted beside the new one until PreviousKeyExpiresAt.
+    public string? PreviousKeyPrefix { get; set; }
+
+    public string? PreviousKeyHash { get; set; }
+
+    public DateTimeOffset? PreviousKeyExpiresAt { get; set; }
+
     public DateTimeOffset? RevokedAt { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }

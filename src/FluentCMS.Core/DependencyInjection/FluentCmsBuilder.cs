@@ -5,6 +5,7 @@ using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Seeding;
 using FluentCMS.Core.Settings;
@@ -41,6 +42,8 @@ public sealed class FluentCmsBuilder
     public SeedingBuilder Seeding { get; }
 
     public AdminUserOptions Users { get; } = new();
+
+    public ApiKeyOptions ApiKeys { get; } = new();
 
     public ClientOptions Clients { get; } = new();
 

@@ -315,6 +315,9 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.Property(key => key.KeyHash).HasMaxLength(HashLength);
         conventions.ConfigureJsonColumn(entity, entity.Property(key => key.SiteIds));
         conventions.ConfigureJsonColumn(entity, entity.Property(key => key.TypeNames));
+        conventions.ConfigureJsonColumn(entity, entity.Property(key => key.AllowedAddresses));
+        entity.Property(key => key.PreviousKeyPrefix).HasMaxLength(ApiKeyFormat.LookupLength);
+        entity.Property(key => key.PreviousKeyHash).HasMaxLength(HashLength);
 
         // A deleted role, or the site that held it, takes the keys bound to it along, as it does its users' hold on it.
         entity.HasOne<Role>().WithMany().HasForeignKey(key => key.RoleId).OnDelete(DeleteBehavior.Cascade);
@@ -322,6 +325,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
 
         entity.HasIndex(key => key.KeyPrefix).HasDatabaseName("ix_cms_api_key_key_prefix");
         entity.HasIndex(key => key.KeyHash).IsUnique().HasDatabaseName("uq_cms_api_key_key_hash");
+        entity.HasIndex(key => key.PreviousKeyPrefix).HasDatabaseName("ix_cms_api_key_previous_key_prefix");
     }
 
     private void MapOidc<T>(EntityTypeBuilder<T> entity, string table)

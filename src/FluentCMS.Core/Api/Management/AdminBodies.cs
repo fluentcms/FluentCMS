@@ -121,6 +121,9 @@ internal sealed record ApiKeyCreateRequest
     public DateTimeOffset? ExpiresAt { get; init; }
 
     public int? RateLimit { get; init; }
+
+    [Description("The IP addresses and CIDR ranges the key is accepted from, such as 203.0.113.0/24; left out, any address. An empty list is refused.")]
+    public IReadOnlyList<string>? AllowedAddresses { get; init; }
 }
 
 // The key as ApiKeyInfo has it, and its secret, which no other response has. The secret stays out of ToString.
@@ -138,6 +141,8 @@ internal sealed record CreatedApiKeyResponse(
     DateTimeOffset? RevokedAt,
     DateTimeOffset CreatedAt,
     Guid CreatedBy,
+    IReadOnlyList<string>? AllowedAddresses,
+    DateTimeOffset? PreviousKeyExpiresAt,
     string Secret)
 {
     public static CreatedApiKeyResponse From(CreatedApiKey created)
@@ -145,7 +150,7 @@ internal sealed record CreatedApiKeyResponse(
         ArgumentNullException.ThrowIfNull(created);
 
         var key = created.Key;
-        return new(key.Id, key.Name, key.Class, key.KeyPrefix, key.RoleId, key.SiteIds, key.TypeNames, key.ExpiresAt, key.LastUsedAt, key.RateLimit, key.RevokedAt, key.CreatedAt, key.CreatedBy, created.Secret);
+        return new(key.Id, key.Name, key.Class, key.KeyPrefix, key.RoleId, key.SiteIds, key.TypeNames, key.ExpiresAt, key.LastUsedAt, key.RateLimit, key.RevokedAt, key.CreatedAt, key.CreatedBy, key.AllowedAddresses, key.PreviousKeyExpiresAt, created.Secret);
     }
 
     public override string ToString() => $"{nameof(CreatedApiKeyResponse)} {{ Id = {Id} }}";
@@ -156,6 +161,20 @@ internal sealed record ApiKeyExpireRequest
 {
     [Description("When the key expires; left out, now.")]
     public DateTimeOffset? At { get; init; }
+}
+
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+internal sealed record ApiKeyRotateRequest
+{
+    [Description("How long the replaced secret is still accepted, in seconds, from 0 to the configured RotationOverlap; left out, RotationOverlap.")]
+    public int? OverlapSeconds { get; init; }
+}
+
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+internal sealed record ApiKeyAllowedAddressesRequest
+{
+    [Description("The IP addresses and CIDR ranges the key is accepted from; null for any address. An empty list is refused.")]
+    public required IReadOnlyList<string>? AllowedAddresses { get; init; }
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]

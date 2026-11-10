@@ -132,7 +132,7 @@ public sealed class AdminBodiesTests
     private static IEnumerable<string> Keys(object value) => JsonNode.Parse(Text(value))!.AsObject().Select(item => item.Key);
 
     private static ApiKeyInfo Key() =>
-        new(Guid.NewGuid(), "Site reader", ApiKeyClass.Delivery, "fcms_dk_ab", Guid.NewGuid(), [Guid.NewGuid()], null, At, null, 100, null, At, Guid.NewGuid());
+        new(Guid.NewGuid(), "Site reader", ApiKeyClass.Delivery, "fcms_dk_ab", Guid.NewGuid(), [Guid.NewGuid()], null, At, null, 100, null, At, Guid.NewGuid(), ["203.0.113.0/24"], At);
 
     private static JsonObject OldRole(RoleInfo role) => new()
     {

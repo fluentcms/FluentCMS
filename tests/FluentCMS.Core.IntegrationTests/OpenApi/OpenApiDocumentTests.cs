@@ -85,6 +85,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
     private static readonly string[] TakesABody =
     [
         "patch /users/{id}", "post /invitations", "post /roles", "put /roles/{id}", "post /api-keys", "post /api-keys/{id}/expire",
+        "post /api-keys/{id}/rotate", "put /api-keys/{id}/allowed-addresses",
         "patch /sites/{id}", "post /sites/{id}/locales", "patch /sites/{id}/locales/{code}", "put /settings/{area}", "put /settings/{area}/defaults",
         "put /plugins/{name}/sites/{site}",
         "post /me/two-factor/verify", "post /me/two-factor/recovery-codes", "post /me/two-factor/disable",
@@ -433,6 +434,10 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         Resolve(key["properties"]!["class"]!)["enum"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["delivery", "preview", "management"]);
         Response(Paths[$"{Management}/api-keys/{{id}}"]!["get"]!, "200")["properties"]!.AsObject().ContainsKey("secret").ShouldBeFalse();
         Paths[$"{Management}/api-keys/{{id}}/expire"]!["post"]!["requestBody"]!["required"].ShouldBeNull();
+        Paths[$"{Management}/api-keys/{{id}}/rotate"]!["post"]!["requestBody"]!["required"].ShouldBeNull();
+        Response(Paths[$"{Management}/api-keys/{{id}}/rotate"]!["post"]!, "200")["properties"]!["secret"]!["type"]!.GetValue<string>().ShouldBe("string");
+        Response(Paths[$"{Management}/api-keys/{{id}}"]!["get"]!, "200")["properties"]!.AsObject().ContainsKey("allowedAddresses").ShouldBeTrue();
+        Response(Paths[$"{Management}/api-keys/{{id}}/allowed-addresses"]!["put"]!, "200")["properties"]!.AsObject().ContainsKey("previousKeyExpiresAt").ShouldBeTrue();
 
         Response(Paths[$"{Management}/jobs/{{id}}"]!["get"]!, "200")["properties"]!["history"]!["items"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/JobAttemptInfo");
         Response(Paths[$"{Management}/me"]!["get"]!, "200")["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["id", "kind", "name"]);

@@ -29,6 +29,10 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AllowedAddresses")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("allowed_addresses");
+
                     b.Property<string>("Class")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -69,6 +73,20 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                         .HasColumnType("character varying(128)")
                         .HasColumnName("name");
 
+                    b.Property<DateTimeOffset?>("PreviousKeyExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("previous_key_expires_at");
+
+                    b.Property<string>("PreviousKeyHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("previous_key_hash");
+
+                    b.Property<string>("PreviousKeyPrefix")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("previous_key_prefix");
+
                     b.Property<int?>("RateLimit")
                         .HasColumnType("integer")
                         .HasColumnName("rate_limit");
@@ -97,6 +115,9 @@ namespace FluentCMS.Data.PostgreSql.Migrations
 
                     b.HasIndex("KeyPrefix")
                         .HasDatabaseName("ix_cms_api_key_key_prefix");
+
+                    b.HasIndex("PreviousKeyPrefix")
+                        .HasDatabaseName("ix_cms_api_key_previous_key_prefix");
 
                     b.HasIndex("RoleId")
                         .HasDatabaseName("ix_cms_api_key_role");

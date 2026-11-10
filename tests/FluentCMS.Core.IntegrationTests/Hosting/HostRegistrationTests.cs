@@ -94,6 +94,8 @@ public sealed class HostRegistrationTests : IAsyncDisposable
     [InlineData("FluentCms:Users:Lockout:MaxFailedAccessAttempts", "0", "FCMS3001")]
     [InlineData("FluentCms:Users:InvitationLifetime", "-1.00:00:00", "FCMS3001")]
     [InlineData("FluentCms:Users:PasswordResetLifetime", "00:00:00", "FCMS3001")]
+    [InlineData("FluentCms:ApiKeys:RotationOverlap", "-00:00:01", "FCMS3001")]
+    [InlineData("FluentCms:ApiKeys:RotationOverlap", "31.00:00:00", "FCMS3001")]
     public async Task AnInvalidOptionStopsTheHostAndNamesTheKey(string key, string value, string code)
     {
         var app = _host.Build(Environments.Production, new Dictionary<string, string?> { [key] = value });
