@@ -169,6 +169,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.TryAddScoped<IAuthorizationEvaluator, AuthorizationEvaluator>();
         services.AddScoped<ManagementAuthority>();
         services.TryAddScoped<IPermissionChecker, PermissionChecker>();
+        services.TryAddScoped<IEffectiveAccess, EffectiveAccess>();
         services.AddScoped<RoleService>();
         services.AddScoped<SuperAdminGuard>();
         services.TryAddScoped<IContentQueryAccess, ContentQueryAccess>();

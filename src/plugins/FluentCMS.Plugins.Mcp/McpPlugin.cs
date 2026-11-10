@@ -2,6 +2,7 @@ using FluentCMS.Authorization;
 using FluentCMS.Content;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.Mcp;
+using FluentCMS.Schema;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -27,8 +28,13 @@ public sealed class McpPlugin : IPlugin
         plugin.Services.AddOptions<McpOptions>()
             .BindConfiguration(McpOptions.Section)
             .Validate(options => options.IsValid(), $"{McpOptions.Section}: Name is 1 to 64 letters, digits, hyphens, underscores and dots, and Title is 1 to 128 characters.")
+            .Validate(options => options.ToolsAreValid(), $"{McpOptions.Section}: ExposedTypes holds names of content types, MaxExposedTypes is from 0 to 100 and UploadTimeout is up to 10 minutes.")
+            .Validate<SchemaModel>(
+                (options, schema) => options.ExposedTypes.All(type => schema.FindContentType(type) is not null),
+                $"{McpOptions.Section}: ExposedTypes names a content type the schema does not have.")
             .ValidateOnStart();
         plugin.Services.AddScoped<McpRequests>();
+        McpTools.Add(plugin);
         McpServerSetup.Add(plugin.Services);
         McpClientSetup.Add(plugin);
         McpSiteSetup.Add(plugin);
@@ -37,7 +43,11 @@ public sealed class McpPlugin : IPlugin
             .AddPermissions<McpPermissions>()
             .AddErrorCode(McpErrorCodes.UnknownTool, 404, "Unknown MCP tool")
             .AddErrorCode(McpErrorCodes.UnknownResource, 404, "Unknown MCP resource")
-            .AddErrorCode(McpErrorCodes.UnknownPrompt, 404, "Unknown MCP prompt");
+            .AddErrorCode(McpErrorCodes.UnknownPrompt, 404, "Unknown MCP prompt")
+            .AddErrorCode(McpErrorCodes.TypeNotAvailable, 404, "Content type not available")
+            .AddErrorCode(McpErrorCodes.SingletonEmpty, 404, "Singleton has no entry")
+            .AddErrorCode(McpErrorCodes.UploadSourceRefused, 400, "Upload URL refused")
+            .AddErrorCode(McpErrorCodes.UploadSourceFailed, 502, "Upload URL not fetched");
     }
 
     public void Configure(IPluginAppBuilder app)

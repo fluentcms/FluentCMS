@@ -25,6 +25,12 @@ internal static partial class McpLog
     [LoggerMessage(EventId = 9285, Level = LogLevel.Error, Message = "Could not register the recurring cleanup of MCP clients that were not approved; they stay until it is registered.")]
     public static partial void ClientCleanupNotScheduled(ILogger logger, Exception exception);
 
+    [LoggerMessage(EventId = 9288, Level = LogLevel.Warning, Message = "The content type {Type} gets no MCP tools of its own, since more types are exposed than FluentCms:Mcp:MaxExposedTypes ({Max}) allows; it is reached through the query tool.")]
+    public static partial void TypeOverCap(ILogger logger, string type, int max);
+
+    [LoggerMessage(EventId = 9289, Level = LogLevel.Warning, Message = "MCP media_upload did not fetch from the host {Host}: {Reason}")]
+    public static partial void UploadSourceRefused(ILogger logger, string host, string reason);
+
     // 9291 to 9294: the agent instructions and the stored prompts. A line names what changed and never holds its text.
     [LoggerMessage(EventId = 9291, Level = LogLevel.Information, Message = "The agent instructions of {Type} were {Change} in site {SiteId}; no type is the guidelines of the site.")]
     public static partial void InstructionChanged(ILogger logger, string change, string? type, Guid siteId);
