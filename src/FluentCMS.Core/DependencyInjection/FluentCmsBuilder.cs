@@ -4,6 +4,7 @@ using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Idempotency;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Identity.PreviewTokens;
@@ -45,6 +46,8 @@ public sealed class FluentCmsBuilder
     public AdminUserOptions Users { get; } = new();
 
     public ApiKeyOptions ApiKeys { get; } = new();
+
+    public IdempotencyOptions Idempotency { get; } = new();
 
     public PreviewTokenOptions PreviewTokens { get; } = new();
 

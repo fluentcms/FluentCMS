@@ -263,6 +263,17 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         create["responses"]!["default"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/responses/problem");
 
         Paths["/api/management/v1/content/article/{id}"]!["put"]!["parameters"]!.ToJsonString().ShouldContain("#/components/parameters/if-match\"");
+        create["parameters"]!.ToJsonString().ShouldContain("#/components/parameters/idempotency-key\"");
+        create["responses"]!["201"]!["headers"]!["Idempotent-Replayed"].ShouldNotBeNull();
+        var bulk = Paths["/api/management/v1/content/article/bulk"]!["post"]!;
+        bulk["parameters"]!.ToJsonString().ShouldContain("#/components/parameters/idempotency-key\"");
+        bulk["responses"]!["200"]!["headers"]!["Idempotent-Replayed"].ShouldNotBeNull();
+        Paths["/api/management/v1/content/article/{id}"]!["put"]!["parameters"]!.ToJsonString().ShouldNotContain("idempotency-key");
+        var key = Parameters["idempotency-key"]!;
+        key["name"]!.GetValue<string>().ShouldBe("Idempotency-Key");
+        key["in"]!.GetValue<string>().ShouldBe("header");
+        (key["required"]?.GetValue<bool>() ?? false).ShouldBeFalse();
+        key["schema"]!["maxLength"]!.GetValue<int>().ShouldBe(255);
         Paths["/api/delivery/v1/tag/by/{field}/{value}"]!["get"]!["parameters"]![0]!["schema"]!["enum"]!.AsArray()
             .Select(item => item!.GetValue<string>()).ShouldBe(["slug"]);
 

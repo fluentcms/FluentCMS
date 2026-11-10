@@ -1,4 +1,5 @@
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Idempotency;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,8 +28,8 @@ internal static class CorsPolicies
             cors.AddPolicy(Management, policy => policy
                 .WithOrigins([.. security.Cors.Management.AllowedOrigins])
                 .WithMethods("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE")
-                .WithHeaders("Authorization", "X-Api-Key", "X-Cms-Site", "X-Cms-Locale", "If-Match", "If-None-Match", "Content-Type")
-                .WithExposedHeaders(ExposedHeaders)
+                .WithHeaders("Authorization", "X-Api-Key", "X-Cms-Site", "X-Cms-Locale", "If-Match", "If-None-Match", "Content-Type", IdempotencyStore.Header)
+                .WithExposedHeaders([.. ExposedHeaders, IdempotentRequests.ReplayedHeader])
                 .SetPreflightMaxAge(TimeSpan.FromMinutes(10)));
         });
 

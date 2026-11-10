@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Schema.FieldTypes;
@@ -102,6 +103,11 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
             parameters.Add(SharedComponents.ParameterRef(described.IfMatch == ContentPrecondition.Required ? "if-match" : "if-match-optional"));
         }
 
+        if (described.Idempotent)
+        {
+            parameters.Add(SharedComponents.ParameterRef("idempotency-key"));
+        }
+
         JsonObject operation = new()
         {
             ["tags"] = new JsonArray(Tag(route.Surface, type.Name)),
@@ -129,17 +135,29 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
             response["content"] = new JsonObject { ["application/json"] = new JsonObject { ["schema"] = body } };
         }
 
+        JsonObject headers = [];
         if (route.Surface != Delivery && described.ETag && payload is ContentPayload.Entry or ContentPayload.Published)
         {
             var when = described.Query == ContentParameters.Single ? "a read of the published version or " : "";
-            response["headers"] = new JsonObject
+            headers["ETag"] = new JsonObject
             {
-                ["ETag"] = new JsonObject
-                {
-                    ["description"] = $"The version of the draft, to send back as If-Match. Left out for {when}a value that came through the fallback chain.",
-                    ["schema"] = SharedComponents.String(),
-                },
+                ["description"] = $"The version of the draft, to send back as If-Match. Left out for {when}a value that came through the fallback chain.",
+                ["schema"] = SharedComponents.String(),
             };
+        }
+
+        if (described.Idempotent)
+        {
+            headers[IdempotentRequests.ReplayedHeader] = new JsonObject
+            {
+                ["description"] = "true when the response is the one stored for the Idempotency-Key, and nothing ran again.",
+                ["schema"] = SharedComponents.String(),
+            };
+        }
+
+        if (headers.Count > 0)
+        {
+            response["headers"] = headers;
         }
 
         operation["responses"] = new JsonObject

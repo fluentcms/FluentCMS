@@ -7,6 +7,7 @@ using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Idempotency;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Identity.Oidc;
@@ -272,6 +273,9 @@ public static class ErrorCodeRegistry
         new(LocaleErrorCodes.LocaleNotFound, StatusCodes.Status404NotFound, "Locale not found"),
         new(LocaleErrorCodes.LocaleInUse, StatusCodes.Status409Conflict, "Locale in use"),
         new(LocaleErrorCodes.LocaleExists, StatusCodes.Status409Conflict, "Locale exists"),
+        BadQuery(IdempotencyErrorCodes.InvalidKey, "Invalid Idempotency-Key"),
+        Invalid(IdempotencyErrorCodes.KeyReused, "Idempotency-Key used for another request"),
+        new(IdempotencyErrorCodes.InProgress, StatusCodes.Status409Conflict, "Request with this Idempotency-Key still running"),
 
         // 315x the reference host (FluentCMS.Host, which this assembly does not reference, so its codes are written out) and the schema sync it allows, found when it starts
         Startup("FCMS3150", "Unknown data provider"),

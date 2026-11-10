@@ -60,6 +60,7 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | `FluentCms:Events:Handlers` | the in-process event handlers: `Timeout` (5 seconds), `SlowThreshold` (1 second) (see [event handlers](#event-handlers)) |
 | `FluentCms:Events:Outbox` | the outbox: `BatchSize`, `MaxAttempts`, `LeaseDuration`, retries, `OrphanAfter`, `Retention`, `FailedRetention` (off by default), `PruneBatchSize` |
 | `FluentCms:Activity` | the activity log: `Enabled`, `Retention`, `SiteRetention`, `PruneSchedule` |
+| `FluentCms:Idempotency` | `Window` (24 hours), `InProgressTimeout` (5 minutes) (see [idempotency keys](#idempotency-keys)) |
 | `FluentCms:Health` | `JobRunnerHeartbeatTimeout`, `PendingJobAgeLimit` |
 
 A key the configuration sets wins over what the host set in code inside `AddFluentCms`; a key it leaves out keeps the code's value. The options are checked when the host starts, and an invalid value stops it with an `FCMS` code and the key, for example `FCMS1101: FluentCms:Query:MaxPageSize: The field MaxPageSize must be between 1 and 2147483647.`
@@ -110,7 +111,7 @@ The client address is the connection's remote address, an IPv4-mapped address co
 
 ## CORS
 
-`Cors:Delivery:AllowedOrigins` applies to `/api/delivery/v1`, which allows `GET` and `HEAD`. `Cors:Management:AllowedOrigins` applies to `/api/management/v1` and to `/connect`, so the admin application can sign in from its own origin. Both allow the `X-Cms-Site` and `X-Cms-Locale` headers, and a browser can read `ETag`, `Location`, `Retry-After` and the `RateLimit-*` headers. An origin that is not on the list gets no CORS headers, and an empty list, the default, allows none. The lists come from configuration only; a setting that edits them at run time is not part of this release.
+`Cors:Delivery:AllowedOrigins` applies to `/api/delivery/v1`, which allows `GET` and `HEAD`. `Cors:Management:AllowedOrigins` applies to `/api/management/v1` and to `/connect`, so the admin application can sign in from its own origin. Both allow the `X-Cms-Site` and `X-Cms-Locale` headers, Management also `Idempotency-Key`, and a browser can read `ETag`, `Location`, `Retry-After` and the `RateLimit-*` headers, and `Idempotent-Replayed` on Management. An origin that is not on the list gets no CORS headers, and an empty list, the default, allows none. The lists come from configuration only; a setting that edits them at run time is not part of this release.
 
 ## Security headers and request limits
 
@@ -207,6 +208,10 @@ A key can be limited to IP addresses and CIDR ranges with `allowedAddresses`, on
 | --- | --- | --- |
 | `DefaultLifetime` | `00:10:00` | How long a token lasts when the request names no `minutes`, in whole minutes from one minute to `MaximumLifetime`. |
 | `MaximumLifetime` | `01:00:00` | The most `minutes` may ask for, in whole minutes from one minute to one day. |
+
+## Idempotency keys
+
+A client that retries `POST /api/management/v1/content/{type}` or `.../bulk` after a timeout sends the same `Idempotency-Key` (such as a UUID) each time. A repeat of the same request answers the first response, with `Idempotent-Replayed: true`, and creates nothing; the same key with another request is `FCMS3141` (422), and a repeat while the first still runs is `FCMS3142` (409). Keys belong to the caller and the site, and are kept for `FluentCms:Idempotency:Window` (24 hours, at most 30 days); the hourly job `idempotency.retention` removes them. A request whose instance stopped before it answered holds its key for `InProgressTimeout` (5 minutes, at most the window), after which a repeat runs. A refused or failed request keeps nothing, so a retry runs again.
 
 ## Authorization server
 
