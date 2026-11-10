@@ -21,6 +21,7 @@ internal static class McpServerSetup
     public static void Add(IServiceCollection services)
     {
         services.AddMcpServer().WithHttpTransport(http => http.Stateless = true);
+        services.Configure<ModelContextProtocol.AspNetCore.HttpServerTransportOptions>(http => http.ConfigureSessionOptions = McpSiteSetup.InstructAsync);
         services.AddOptions<McpServerOptions>().Configure<IOptions<McpOptions>>((server, options) =>
         {
             server.ServerInfo = new Implementation { Name = options.Value.Name, Title = options.Value.Title, Version = Version };

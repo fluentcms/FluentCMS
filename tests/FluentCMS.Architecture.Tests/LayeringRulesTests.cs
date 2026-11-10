@@ -26,6 +26,8 @@ public class LayeringRulesTests
     private const string McpPlugin = "FluentCMS.Plugins.Mcp";
     private const string WebhooksPlugin = "FluentCMS.Plugins.Webhooks";
 
+    private static readonly string[] McpSiteData = ["McpModel", "McpInstructions", "McpStoredPrompts", "McpInstructionService", "McpPromptService"];
+
     private static readonly Lazy<ArchUnitNET.Domain.Architecture> core = new(
         () => new ArchLoader().LoadAssemblies(Assembly.Load("FluentCMS.Core")).Build());
 
@@ -113,17 +115,23 @@ public class LayeringRulesTests
         var mcp = ProjectFile.SourceProjects.Single(project => project.Name == McpPlugin);
 
         mcp.ProjectReferences.ShouldBe([Sdk, PluginAbstractions], ignoreOrder: true);
-        mcp.PackageReferences.Select(package => package.Name).ShouldBe(["ModelContextProtocol.AspNetCore"]);
+        // The providers of its PostgreSQL and SQL Server migration sets are compiled against and not depended on.
+        mcp.PackageReferences.Where(package => !package.DevelopmentOnly).Select(package => package.Name).ShouldBe(["ModelContextProtocol.AspNetCore"]);
     }
 
     // The MCP server is a surface (2.1): it carries the identity and the intent of a call and decides nothing. It holds no
     // database context, content's or a plugin's, and asks no permission; a provider reaches content through the services,
-    // which do both. The webhooks plugin, whose service does both, shows that the rule sees what it forbids.
+    // which do both. The webhooks plugin, whose service does both, shows that the rule sees what it forbids. What a site
+    // keeps for its agents (B-73) is the plugin's own data and not content: the model and the migrations of its two tables,
+    // the two readers of them, and the two Management services, which check mcp.manage as the webhooks service checks its
+    // permission. The rest of the plugin is held to the rule, and none of it reaches the content context.
     [Fact]
     public void TheMcpPluginReachesContentThroughTheServicesAndEvaluatesNoPermission()
     {
-        SurfaceRule(McpPlugin).Check(everything.Value);
+        SurfaceRule(McpPlugin, McpSiteData).Check(everything.Value);
+        Types().That().ResideInNamespaceOrBelow(McpPlugin).Should().NotDependOnAnyTypesThat().HaveName("CmsDbContext").Check(everything.Value);
 
+        Should.Throw<Exception>(() => SurfaceRule(McpPlugin).Check(everything.Value));
         Should.Throw<Exception>(() => SurfaceRule(WebhooksPlugin).Check(everything.Value));
     }
 
@@ -232,11 +240,25 @@ public class LayeringRulesTests
         found.ShouldContain(violation => violation.Contains("FromSqlRaw", StringComparison.Ordinal));
     }
 
-    private static ArchUnitNET.Fluent.Syntax.Elements.Types.TypesShouldConjunction SurfaceRule(string plugin) =>
-        Types().That().ResideInNamespaceOrBelow(plugin)
+    // The types named keep data of the plugin's own, as its migrations do.
+    private static ArchUnitNET.Fluent.Syntax.Elements.Types.TypesShouldConjunction SurfaceRule(string plugin, params string[] ownData)
+    {
+        var types = Types().That().ResideInNamespaceOrBelow(plugin);
+        if (ownData.Length > 0)
+        {
+            types = types.And().DoNotResideInNamespaceOrBelow(plugin + ".Migrations");
+        }
+
+        foreach (var name in ownData)
+        {
+            types = types.And().DoNotHaveName(name);
+        }
+
+        return types
             .Should().NotDependOnAnyTypesThat().ResideInNamespaceOrBelow("Microsoft.EntityFrameworkCore")
             .AndShould().NotDependOnAnyTypesThat().HaveNameStartingWith("PluginDbContext")
             .AndShould().NotDependOnAnyTypesThat().HaveName("IPermissionChecker");
+    }
 
     private static IEnumerable<string> FluentCmsReferences(ProjectFile project) =>
         project.ProjectReferences

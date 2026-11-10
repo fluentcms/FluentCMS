@@ -49,6 +49,57 @@ A failure is an error result that names its code first, such as `FCMS3103: ...`,
 
 The providers of a plugin that is disabled for the site of a request are not asked. When two providers list one name, the one of the earlier plugin is served.
 
+## Schema, guidelines and instructions
+
+The server offers these resources itself:
+
+| URI | Holds |
+| --- | --- |
+| `fluentcms://schema` | The content types, components and blocks, as the Management API serves them at `/schema`. |
+| `fluentcms://schema/{type}` | One content type. |
+| `fluentcms://sites/{site}/guidelines` | The guidelines of the site, named by its id: how the site wants its content written. |
+| `fluentcms://types/{type}/instructions` | The instructions of the site for one content type. |
+
+The schema is what the caller may read: a type it may not read is left out and answers as an unknown resource (`FCMS1601`), and a field it may not read is left out. A caller without `schema.read` is refused the schema (`FCMS3103`) and is not listed it. The guidelines are for every agent of the site, and a request reads those of its own site only. The instructions of a type are served to a caller that reads the type. The guidelines and the instructions that are saved are listed as resources, and the two forms with `{type}` as resource templates.
+
+The guidelines are also the `instructions` of the server's answer to `initialize`. The text is data shown to an agent and is never run.
+
+An administrator with `mcp.manage` in the site keeps them through the Management API:
+
+| Request | Does |
+| --- | --- |
+| `GET /api/management/v1/mcp/instructions` | Lists the guidelines (`type` is null) and the instructions by type. `orphaned` marks a type that is no longer in the schema. |
+| `PUT /api/management/v1/mcp/instructions` | Saves the guidelines, from `{ "text": "..." }`. |
+| `PUT /api/management/v1/mcp/instructions/{type}` | Saves the instructions of a content type. |
+| `DELETE` of either | Removes them. |
+
+A text has at most 4000 characters, with no control characters other than line breaks and tabs (`FCMS1620`). A type that is not in the schema cannot be written to (`FCMS1621`), and a delete of what is not there is `FCMS1622`. Instructions of a type that has left the schema are served to no agent, stay in the list and can be deleted.
+
+## Stored prompts
+
+A site stores prompts for its agents, which `prompts/list` and `prompts/get` serve beside the prompts of the plugins' providers, to every agent of the site.
+
+```json
+{
+  "name": "summarize",
+  "title": "Summarize an entry",
+  "description": "Sums an entry up for a reader.",
+  "arguments": [{ "name": "entry", "description": "The id of the entry.", "required": true }, { "name": "tone" }],
+  "template": "Summarize the entry {{entry}} in a {{tone}} tone."
+}
+```
+
+`GET` and `POST /api/management/v1/mcp/prompts` list and create, and `GET`, `PUT` and `DELETE /api/management/v1/mcp/prompts/{id}` read, replace and remove one, with `mcp.manage` in the site.
+
+- A name is 1 to 64 lower case letters, digits, underscores, hyphens and dots. It is unique in its site (`FCMS1625`) and is not the name of a prompt that a provider of an enabled plugin lists (`FCMS1626`).
+- A template names an argument as `{{name}}`, and that is all it can say: there are no expressions. An argument it names must be declared (`FCMS1627`), and `{{` that opens no argument is refused (`FCMS1623`).
+- `prompts/get` puts each value in as it is, once, as one user message. A required argument that is missing or empty is refused (`FCMS1628`), an optional one is left empty, and an argument the prompt does not declare is ignored.
+- A site has at most 100 stored prompts, a prompt at most 20 arguments and a template at most 16000 characters (`FCMS1623`). A prompt that is not there is `FCMS1624`.
+
+Each change of the instructions or of a stored prompt writes an activity row: `mcp.instruction_saved`, `mcp.instruction_deleted`, `mcp.prompt_created`, `mcp.prompt_updated` or `mcp.prompt_deleted`. No row holds a text. The change is logged too, with event id 9291 for instructions and 9292 for a prompt, and 9293 warns of a stored prompt that is left out because its arguments cannot be read.
+
+The tables `cms_mcp_instruction` and `cms_mcp_prompt` are in the plugin's migration stream, `cms_mcp__migrations`, with a set for SQLite, PostgreSQL and SQL Server ([plugin migrations](../../../docs/plugin-migrations.md)).
+
 ## Telemetry
 
 A tool call is a span of the `FluentCMS` activity source named `mcp {tool}`, with `fluentcms.operation`, `fluentcms.site` and, for a failure, `fluentcms.code`. Requests count in `fluentcms.requests` with the surface `mcp`. Each tool call is logged with event id 9280: the tool, the principal, the client, the site, the outcome and the duration, never an argument or a result.
