@@ -17,6 +17,7 @@ using FluentCMS.Core.Content.Validation;
 using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Health;
+using FluentCMS.Core.Idempotency;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Jobs;
@@ -239,6 +240,11 @@ public static class FluentCmsServiceCollectionExtensions
 
         builder.Jobs.AddJob<OidcPruneJob, OidcPrunePayload>(OidcPruneJob.Type);
         services.AddHostedService<OidcPruneScheduleService>();
+
+        services.AddFluentCmsOptions(IdempotencyOptions.Section, HostErrorCodes.InvalidOption, builder.Idempotency, idempotency => idempotency.Validate());
+        services.AddSingleton<IdempotencyStore>();
+        builder.Jobs.AddJob<IdempotencyRetentionJob, IdempotencyRetentionPayload>(IdempotencyRetentionJob.Type);
+        services.AddHostedService<IdempotencyRetentionScheduleService>();
 
         builder.Events.Outbox.Validate();
         builder.Jobs.Options.Queues.TryAdd(OutboxDrainJob.Queue, 1);

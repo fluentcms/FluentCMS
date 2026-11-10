@@ -32,9 +32,9 @@ internal static class ContentEndpoints
         content.MapGet("", ListAsync)
             .Describe(new("list", "Lists the entries, drafts unless status=published is asked") { Query = ContentParameters.List, Response = ContentPayload.List });
         content.MapPost("", CreateAsync)
-            .Describe(new("create", "Creates an entry as a draft") { Request = ContentPayload.Entry, Status = StatusCodes.Status201Created });
+            .Describe(new("create", "Creates an entry as a draft") { Request = ContentPayload.Entry, Status = StatusCodes.Status201Created, Idempotent = true });
         content.MapPost("/bulk", BulkAsync)
-            .Describe(new("bulk", "Applies one operation to the entries listed or matched by the filter") { Query = ContentParameters.Filter, Request = ContentPayload.Bulk, Response = ContentPayload.Bulk });
+            .Describe(new("bulk", "Applies one operation to the entries listed or matched by the filter") { Query = ContentParameters.Filter, Request = ContentPayload.Bulk, Response = ContentPayload.Bulk, Idempotent = true });
         content.MapGet("/trash", ListTrashAsync)
             .Describe(new("listTrash", "Lists the entries in the trash") { Query = ContentParameters.List, Response = ContentPayload.List });
         content.MapPost("/trash/{id}/restore", RestoreAsync)
@@ -98,7 +98,8 @@ internal static class ContentEndpoints
                 : "";
             httpContext.Response.Headers.Location = $"{httpContext.Request.PathBase}{Prefix}/content/{Uri.EscapeDataString(name)}/{created.Get<Guid>("id"):D}{site}";
             return Entry(httpContext, created, statusCode: StatusCodes.Status201Created);
-        });
+        },
+        idempotent: true);
 
     private static Task<IResult> UpdateAsync(string type, string id, HttpContext httpContext, [FromServices] IContentService content) =>
         WriteAsync(httpContext, type, async () =>
@@ -203,7 +204,8 @@ internal static class ContentEndpoints
             var result = await content.BulkAsync(type, request, httpContext.RequestAborted);
             return Results.Json(ManagementJson.Bulk(result, httpContext.User.Identity?.IsAuthenticated == true, httpContext.RequestServices.GetService<ErrorCodeCatalogue>()));
         },
-        bulk: true);
+        bulk: true,
+        idempotent: true);
 
     private static Task<IResult> ListTrashAsync(string type, HttpContext httpContext, [FromServices] IContentService content) =>
         ReadAsync(httpContext, type, async () =>
@@ -244,7 +246,8 @@ internal static class ContentEndpoints
     }
 
     // A bulk request checks its own parameters, since it takes a filter. Delete, restore and purge act on every locale.
-    private static Task<IResult> WriteAsync(HttpContext httpContext, string type, Func<Task<IResult>> handler, bool bulk = false, bool oneLocale = true)
+    // A create and a bulk request take an Idempotency-Key, once the request itself is known to be well formed.
+    private static Task<IResult> WriteAsync(HttpContext httpContext, string type, Func<Task<IResult>> handler, bool bulk = false, bool oneLocale = true, bool idempotent = false)
     {
         TypeAccess.EnsureKnown(httpContext, type);
         if (!bulk)
@@ -257,7 +260,7 @@ internal static class ContentEndpoints
             EnsureOneLocale(httpContext);
         }
 
-        return handler();
+        return idempotent ? IdempotentRequests.RunAsync(httpContext, handler) : handler();
     }
 
     // The bridge reads locale=all as the default locale, which a write would then change without saying so.

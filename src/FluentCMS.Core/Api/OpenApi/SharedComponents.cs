@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.Idempotency;
 using FluentCMS.Publishing;
 
 namespace FluentCMS.Core.Api.OpenApi;
@@ -188,6 +189,7 @@ internal static class SharedComponents
         yield return ("withTotal", Query("withTotal", new JsonObject { ["type"] = "boolean" }, "Whether the list carries its total, which costs a count. Delivery counts only with true, the Management API unless it is false."));
         yield return ("if-match", Header("If-Match", required: true, "The version read, as its ETag, such as \"7\"; \"0\" adds a locale the entry does not have."));
         yield return ("if-match-optional", Header("If-Match", required: false, "The version read, as its ETag, such as \"7\". Without it, or with *, the current version is used."));
+        yield return ("idempotency-key", IdempotencyKey());
     }
 
     public static JsonObject ProblemResponseBody() => new()
@@ -234,6 +236,16 @@ internal static class SharedComponents
 
         json["schema"] = schema;
         return json;
+    }
+
+    private static JsonObject IdempotencyKey()
+    {
+        var header = Header(
+            IdempotencyStore.Header,
+            required: false,
+            "A key of the client's own, such as a UUID, that makes a repeat of the request answer what the first answered instead of running again. It is kept for the principal and site for FluentCms:Idempotency:Window (24 hours by default). The same key with another request is FCMS3141 (422), and a repeat while the first still runs is FCMS3142 (409).");
+        header["schema"] = new JsonObject { ["type"] = "string", ["minLength"] = 1, ["maxLength"] = IdempotencyStore.MaxKeyLength, ["pattern"] = "^[!-~]+$" };
+        return header;
     }
 
     private static JsonObject Header(string name, bool required, string description) => new()
