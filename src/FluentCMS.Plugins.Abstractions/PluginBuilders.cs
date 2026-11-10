@@ -18,4 +18,6 @@ internal interface IPluginEndpointBuilder
     RouteGroupBuilder MapManagement(string prefix);
 
     RouteGroupBuilder MapDelivery(string prefix);
+
+    RouteGroupBuilder MapProtectedResource(string prefix, ProtectedResourceOptions resource);
 }

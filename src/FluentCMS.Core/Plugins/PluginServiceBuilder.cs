@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
 using FluentCMS.Activity;
+using FluentCMS.Agents;
 using FluentCMS.Authorization;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.DependencyInjection;
@@ -15,14 +16,16 @@ using FluentCMS.Providers;
 using FluentCMS.Schema;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Core.Plugins;
 
 // What every plugin of the host contributed that core reads after the plugins have run: field type names and error codes,
 // which must be unique across core and the plugins, the tables of each plugin in plugin order, and the permission providers,
-// jobs and outbox handlers of each plugin, which the plugin list shows and per-site enablement gates.
-internal sealed class PluginContributions
+// jobs and outbox handlers of each plugin, which the plugin list shows and per-site enablement gates, and the MCP providers,
+// which the MCP plugin serves.
+internal sealed class PluginContributions : IMcpProviders
 {
     private static readonly Regex CodePattern = new("^[A-Z]{2,}[0-9]{4}\\z", RegexOptions.CultureInvariant);
 
@@ -33,6 +36,15 @@ internal sealed class PluginContributions
     private readonly List<(Type Provider, string Plugin)> _permissions = [];
     private readonly Dictionary<string, string> _jobs = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _outboxHandlers = new(StringComparer.Ordinal);
+    private readonly List<McpProviderRegistration> _mcpTools = [];
+    private readonly List<McpProviderRegistration> _mcpResources = [];
+    private readonly List<McpProviderRegistration> _mcpPrompts = [];
+
+    public IReadOnlyList<McpProviderRegistration> Tools => _mcpTools;
+
+    public IReadOnlyList<McpProviderRegistration> Resources => _mcpResources;
+
+    public IReadOnlyList<McpProviderRegistration> Prompts => _mcpPrompts;
 
     public IReadOnlyDictionary<string, ErrorCodeInfo> ErrorCodes => _errorCodes.ToDictionary(item => item.Key, item => item.Value.Info, StringComparer.Ordinal);
 
@@ -56,6 +68,12 @@ internal sealed class PluginContributions
     public void AddJob(RegisteredPlugin plugin, string type) => _jobs[type] = plugin.Name;
 
     public void AddOutboxHandler(RegisteredPlugin plugin, string name) => _outboxHandlers[name] = plugin.Name;
+
+    public void AddMcpTools(RegisteredPlugin plugin, Type provider) => AddMcp(_mcpTools, plugin, provider);
+
+    public void AddMcpResources(RegisteredPlugin plugin, Type provider) => AddMcp(_mcpResources, plugin, provider);
+
+    public void AddMcpPrompts(RegisteredPlugin plugin, Type provider) => AddMcp(_mcpPrompts, plugin, provider);
 
     public void AddFieldType(RegisteredPlugin plugin, IFieldType fieldType)
     {
@@ -135,6 +153,15 @@ internal sealed class PluginContributions
         }
 
         return storage;
+    }
+
+    // A provider added twice is served once, as the plugin that added it first.
+    private static void AddMcp(List<McpProviderRegistration> providers, RegisteredPlugin plugin, Type provider)
+    {
+        if (!providers.Exists(item => item.Provider == provider))
+        {
+            providers.Add(new McpProviderRegistration(plugin.Name, provider));
+        }
     }
 
     private static List<string> Of(Dictionary<string, string> owners, string plugin) =>
@@ -230,6 +257,30 @@ internal sealed class PluginServiceBuilder(FluentCmsBuilder cms, RegisteredPlugi
         return this;
     }
 
+    public IPluginServiceBuilder AddMcpTools<TProvider>()
+        where TProvider : class, IMcpToolProvider
+    {
+        cms.Services.TryAddScoped<TProvider>();
+        contributions.AddMcpTools(plugin, typeof(TProvider));
+        return this;
+    }
+
+    public IPluginServiceBuilder AddMcpResources<TProvider>()
+        where TProvider : class, IMcpResourceProvider
+    {
+        cms.Services.TryAddScoped<TProvider>();
+        contributions.AddMcpResources(plugin, typeof(TProvider));
+        return this;
+    }
+
+    public IPluginServiceBuilder AddMcpPrompts<TProvider>()
+        where TProvider : class, IMcpPromptProvider
+    {
+        cms.Services.TryAddScoped<TProvider>();
+        contributions.AddMcpPrompts(plugin, typeof(TProvider));
+        return this;
+    }
+
     public void AddModel(IPluginModelContributor contributor) => contributions.AddModel(plugin, contributor);
 
     public void AddMigrations(Assembly assembly) => contributions.StorageOf(plugin).AddMigrations(assembly);
@@ -248,4 +299,7 @@ internal sealed class PluginAppBuilder(RegisteredPlugin plugin, IServiceProvider
 
     public RouteGroupBuilder MapDelivery(string prefix) =>
         FluentCmsEndpointRouteBuilderExtensions.MapPluginDelivery(cms, plugin, prefix, services.GetRequiredService<SchemaModel>());
+
+    public RouteGroupBuilder MapProtectedResource(string prefix, ProtectedResourceOptions resource) =>
+        FluentCmsEndpointRouteBuilderExtensions.MapPluginProtectedResource(cms, plugin, prefix, resource, services.GetRequiredService<ProtectedResources>());
 }

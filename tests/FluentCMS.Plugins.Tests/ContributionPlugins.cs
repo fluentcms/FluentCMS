@@ -173,6 +173,38 @@ public sealed class RoutedPlugin : IPlugin
     }
 }
 
+// Maps a group that is an OAuth protected resource, and a second one when a test names it. Its endpoint says it allows
+// anonymous callers, which a protected resource does not take.
+[FluentCmsPlugin("guarded", SdkRange = "[1.0.0,2.0.0)")]
+public sealed class GuardedPlugin : IPlugin
+{
+    public string Prefix { get; set; } = "/guarded";
+
+    public string? Second { get; set; }
+
+    public string Scope { get; set; } = "mcp";
+
+    public Origin Origin { get; set; } = Origin.Api;
+
+    public void ConfigureServices(IPluginServiceBuilder plugin)
+    {
+    }
+
+    public void Configure(IPluginAppBuilder app)
+    {
+        Map(app, Prefix);
+        if (Second is not null)
+        {
+            Map(app, Second);
+        }
+    }
+
+    private void Map(IPluginAppBuilder app, string prefix) =>
+        app.MapProtectedResource(prefix, new ProtectedResourceOptions { Scope = Scope, Origin = Origin, Name = "Guarded" })
+            .MapGet("/origin", (IOperationContextAccessor operations) => operations.Current!.Origin.ToString())
+            .AllowAnonymous();
+}
+
 public sealed class FakeServiceBuilder : IPluginServiceBuilder
 {
     public string Name => "fake";
@@ -211,6 +243,15 @@ public sealed class FakeServiceBuilder : IPluginServiceBuilder
         where TEvent : FluentCMS.Events.CmsEvent => this;
 
     public IPluginServiceBuilder AddErrorCode(string code, int status, string title) => this;
+
+    public IPluginServiceBuilder AddMcpTools<TProvider>()
+        where TProvider : class, FluentCMS.Agents.IMcpToolProvider => this;
+
+    public IPluginServiceBuilder AddMcpResources<TProvider>()
+        where TProvider : class, FluentCMS.Agents.IMcpResourceProvider => this;
+
+    public IPluginServiceBuilder AddMcpPrompts<TProvider>()
+        where TProvider : class, FluentCMS.Agents.IMcpPromptProvider => this;
 }
 
 

@@ -44,6 +44,29 @@ public static class PluginAppBuilderExtensions
     /// <returns>The group.</returns>
     public static RouteGroupBuilder MapDelivery(this IPluginAppBuilder app, string prefix) => Endpoints(app).MapDelivery(prefix);
 
+    /// <summary>
+    /// A group under the route group of FluentCMS that is an OAuth protected resource of its own (RFC 9728), as <c>/mcp</c>
+    /// is. Its endpoints run inside the operation of their request with the origin of <paramref name="resource"/>, the
+    /// Management rate limit and CORS policy, and no output cache. They need a caller the FluentCMS authentication scheme
+    /// signed in, and no endpoint opts out: a request without credentials is answered 401 with a <c>WWW-Authenticate</c>
+    /// header that names the metadata of the resource, and a bearer token without the scope of the resource 403 with
+    /// <c>insufficient_scope</c>. An API key holds no OAuth scope and is taken by its class. Core serves the metadata at
+    /// <c>/.well-known/oauth-protected-resource{prefix}</c>, and at <c>/.well-known/oauth-protected-resource</c> while the
+    /// host has one protected resource, and the authorization server accepts the public URL of the group as the
+    /// <c>resource</c> parameter of a request (RFC 8707). What the caller may do is still the plugin's to check, through the
+    /// services. A prefix under a group of core or with a route parameter stops the host.
+    /// </summary>
+    /// <param name="app">The builder of the plugin.</param>
+    /// <param name="prefix">The prefix, starting with a slash, such as <c>/mcp</c>.</param>
+    /// <param name="resource">The scope a bearer token needs, and the origin of the operations.</param>
+    /// <returns>The group.</returns>
+    public static RouteGroupBuilder MapProtectedResource(this IPluginAppBuilder app, string prefix, ProtectedResourceOptions resource)
+    {
+        ArgumentNullException.ThrowIfNull(resource);
+
+        return Endpoints(app).MapProtectedResource(prefix, resource);
+    }
+
     private static IPluginEndpointBuilder Endpoints(IPluginAppBuilder app)
     {
         ArgumentNullException.ThrowIfNull(app);

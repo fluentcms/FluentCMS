@@ -231,6 +231,7 @@ public sealed class PluginContributionTests(PluginContributionFixture fixture) :
     [InlineData("/api/management/v1/routed", false)]
     [InlineData("/API/Delivery/v1", false)]
     [InlineData("/connect/routed", false)]
+    [InlineData("/.well-known/routed", false)]
     [InlineData("/{area}", false)]
     [InlineData("/*rest", false)]
     [InlineData("routed", false)]

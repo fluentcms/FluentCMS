@@ -22,6 +22,8 @@ public class LayeringRulesTests
     private const string ProvidersNamespace = "FluentCMS.Data";
     private const string CliNamespace = "FluentCMS.Cli";
     private const string TestingNamespace = "FluentCMS.Testing";
+    private const string McpPlugin = "FluentCMS.Plugins.Mcp";
+    private const string WebhooksPlugin = "FluentCMS.Plugins.Webhooks";
 
     private static readonly Lazy<ArchUnitNET.Domain.Architecture> core = new(
         () => new ArchLoader().LoadAssemblies(Assembly.Load("FluentCMS.Core")).Build());
@@ -71,6 +73,26 @@ public class LayeringRulesTests
             .ToList();
 
         violations.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void TheMcpPluginReferencesTheContractPackagesAndTheProtocolPackageOnly()
+    {
+        var mcp = ProjectFile.SourceProjects.Single(project => project.Name == McpPlugin);
+
+        mcp.ProjectReferences.ShouldBe([Sdk, PluginAbstractions], ignoreOrder: true);
+        mcp.PackageReferences.Select(package => package.Name).ShouldBe(["ModelContextProtocol.AspNetCore"]);
+    }
+
+    // The MCP server is a surface (2.1): it carries the identity and the intent of a call and decides nothing. It holds no
+    // database context, content's or a plugin's, and asks no permission; a provider reaches content through the services,
+    // which do both. The webhooks plugin, whose service does both, shows that the rule sees what it forbids.
+    [Fact]
+    public void TheMcpPluginReachesContentThroughTheServicesAndEvaluatesNoPermission()
+    {
+        SurfaceRule(McpPlugin).Check(everything.Value);
+
+        Should.Throw<Exception>(() => SurfaceRule(WebhooksPlugin).Check(everything.Value));
     }
 
     // The contracts of ADR 0003 that need EF Core or ASP.NET Core, which the framework reference brings.
@@ -177,6 +199,12 @@ public class LayeringRulesTests
         found.ShouldContain(violation => violation.Contains("ExecuteSqlRaw", StringComparison.Ordinal));
         found.ShouldContain(violation => violation.Contains("FromSqlRaw", StringComparison.Ordinal));
     }
+
+    private static ArchUnitNET.Fluent.Syntax.Elements.Types.TypesShouldConjunction SurfaceRule(string plugin) =>
+        Types().That().ResideInNamespaceOrBelow(plugin)
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceOrBelow("Microsoft.EntityFrameworkCore")
+            .AndShould().NotDependOnAnyTypesThat().HaveNameStartingWith("PluginDbContext")
+            .AndShould().NotDependOnAnyTypesThat().HaveName("IPermissionChecker");
 
     private static IEnumerable<string> FluentCmsReferences(ProjectFile project) =>
         project.ProjectReferences
