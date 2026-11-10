@@ -168,7 +168,7 @@ public sealed class McpContentToolCallTests(McpToolsFixture fixture) : IClassFix
         var read = await OkAsync(client, "post_get", new { id, populate = Author });
         var updated = await OkAsync(client, "post_update_draft", new { id, expectedVersion = 1, fields = new { title = "Second", category = (string?)null } });
         var stale = await CallAsync(client, "post_update_draft", new { id, expectedVersion = 1, fields = new { title = "Third" } });
-        var deleted = await OkAsync(client, "post_delete", new { id });
+        var deleted = await ConfirmedAsync(client, "post_delete", new { id });
         var gone = await CallAsync(client, "post_get", new { id });
 
         created.GetProperty("version").GetInt32().ShouldBe(1);

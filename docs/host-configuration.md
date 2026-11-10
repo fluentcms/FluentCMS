@@ -386,6 +386,14 @@ The MCP plugin (`FluentCMS.Plugins.Mcp`, which the reference host adds) serves t
 | `ExposedTypes` | empty | The content types the tools reach, by name. Empty is every type the caller may read. A name the schema does not have stops the host. |
 | `MaxExposedTypes` | `10` | How many of those types get tools of their own, from 0 to 100. A type over it is reached through the `query` tool, and the log names it once. |
 | `UploadTimeout` | `00:00:30` | The longest the `media_upload` tool waits for a URL, up to 10 minutes. |
+| `MaxBulkItems` | `100` | The most entries one call of the `bulk` tool names or selects, from 1 to 1000. |
+| `Limits:CallsPerMinute` | `120` | The tool calls a client may make in a minute, counted per client id or API key on each instance. A call over it is a tool error (`FCMS1634`) that says when to retry. |
+| `Limits:WritesPerMinute` | `30` | The calls of tools that change data a client may make in a minute, at most `CallsPerMinute`. |
+| `MaxRequestBytes` | `1048576` | The body of a request to `/mcp`, in bytes, refused with 413 and `FCMS3111` when larger. `FluentCms:Limits:MaxBodySize` still caps it. |
+| `MaxResultBytes` | `262144` | The largest list a content tool answers, in bytes of its JSON. A longer one ends at an entry, with `truncated` and the cursor of the rest. |
+| `MaxListTextLength` | `500` | The characters of a text a list shows before it shortens it. |
+
+The `{type}_delete` and `bulk` tools answer a plan first and run only with its confirmation token, which is signed with a key that Data Protection wraps. The instances of a host share the key ring, which is in the database ([authorization server](#authorization-server)), so each accepts the tokens of the others and nothing is stored.
 
 An MCP client finds the authorization server through `/.well-known/oauth-protected-resource/mcp`, which the 401 of `/mcp` names. That document and the `resource` parameter the client then sends are built from the [public origin](#public-origin), so set it. A client either has a registration under `FluentCms:Clients:Applications` whose `Scopes` include `mcp`, or registers itself. The endpoint is stateless, so it needs no session affinity behind a load balancer.
 

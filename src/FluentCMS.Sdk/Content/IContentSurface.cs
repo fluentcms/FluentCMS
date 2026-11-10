@@ -50,6 +50,11 @@ public interface IContentSurface
     /// <returns>The JSON object.</returns>
     JsonObject ToJson(ScheduleInfo schedule);
 
+    /// <summary>Writes the result of a bulk request as the Management API answers it: <c>items</c>, each with its outcome, and <c>cancelled</c>.</summary>
+    /// <param name="result">The result, as the content service returned it.</param>
+    /// <returns>The JSON object.</returns>
+    JsonObject ToJson(BulkResult result);
+
     /// <summary>
     /// Reads the query parameters of a list of the REST APIs, such as <c>filter[title][eq]</c>, <c>sort</c> and
     /// <c>pageSize</c>, as the query the content service takes.

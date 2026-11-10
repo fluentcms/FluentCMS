@@ -8,7 +8,7 @@ namespace FluentCMS.Plugins.Mcp;
 // the fields the caller may write, each as its field type describes it for the OpenAPI document, so its validation, the
 // options of a select, the ids of a relation, and the components and blocks follow the schema; a hidden or read-only
 // field, which no client sets, is left out. Components and blocks are under $defs.
-internal sealed class McpToolSchemas(SchemaModel schema, IFieldTypeRegistry fieldTypes)
+internal sealed class McpToolSchemas(SchemaModel schema, IFieldTypeRegistry fieldTypes, int defaultPageSize, int maxPageSize)
 {
     private const string OpenApiSchemas = "#/components/schemas/";
     private const string ComponentPrefix = "component-";
@@ -19,7 +19,7 @@ internal sealed class McpToolSchemas(SchemaModel schema, IFieldTypeRegistry fiel
         + "in and nin (an array), between (an array of two), null and notNull (true or false), hasBlock (a block name, on a blocks field). "
         + "\"or\" and \"and\" take an array of such objects and \"not\" takes one. A path through a relation or a component is dotted, such as author.name.";
 
-    public static JsonElement List(SchemaType type, bool drafts, bool search)
+    public JsonElement List(SchemaType type, bool drafts, bool search)
     {
         JsonObject properties = [];
         if (search)
@@ -29,10 +29,7 @@ internal sealed class McpToolSchemas(SchemaModel schema, IFieldTypeRegistry fiel
 
         properties[McpQueryArguments.Filter] = new JsonObject { ["type"] = "object", ["description"] = $"{FilterHelp} Fields: {FieldList(type, withTypes: false)}, and the system fields id, status, createdAt, updatedAt and publishedAt." };
         properties["sort"] = Texts("Field paths to sort by, with a leading - for descending, such as -updatedAt.");
-        properties["page"] = Integer("The page, from 1.", minimum: 1);
-        properties["pageSize"] = Integer("The entries on a page.", minimum: 1);
-        properties["cursor"] = Text("The nextCursor of the page before, in place of page.");
-        properties["withTotal"] = new JsonObject { ["type"] = "boolean", ["description"] = "False leaves the total out, which saves a count." };
+        AddPaging(properties);
         AddRead(properties, type, drafts);
         return Tool(properties, search ? [McpQueryArguments.Search] : []);
     }
@@ -90,10 +87,35 @@ internal sealed class McpToolSchemas(SchemaModel schema, IFieldTypeRegistry fiel
         return Tool(properties, singleton ? [] : ["id"]);
     }
 
-    public static JsonElement Delete(SchemaType type) =>
-        Tool(new JsonObject { ["id"] = Id($"The id of the {type.Name} entry.") }, ["id"]);
+    public static JsonElement Delete(SchemaType type)
+    {
+        JsonObject properties = new() { ["id"] = Id($"The id of the {type.Name} entry.") };
+        AddDryRun(properties);
+        return Tool(properties, ["id"]);
+    }
 
-    public static JsonElement Query(IReadOnlyList<string> types, bool search)
+    public static JsonElement Bulk(IReadOnlyList<string> types, IReadOnlyList<string> actions, int maxItems)
+    {
+        JsonObject properties = new()
+        {
+            ["type"] = TypeName(types),
+            ["action"] = new JsonObject { ["type"] = "string", ["enum"] = new JsonArray([.. actions.Select(action => (JsonNode)action)]), ["description"] = "What to do to each entry." },
+            ["ids"] = new JsonObject { ["type"] = "array", ["items"] = Id("The id of an entry."), ["minItems"] = 1, ["maxItems"] = maxItems, ["description"] = "The entries, by id. Either ids or filter." },
+            [McpQueryArguments.Filter] = new JsonObject { ["type"] = "object", ["description"] = $"The entries, by a filter. Either ids or filter. {FilterHelp}" },
+            ["limit"] = new JsonObject
+            {
+                ["type"] = "integer",
+                ["minimum"] = 1,
+                ["maximum"] = maxItems,
+                ["description"] = "The most entries the call may touch. A call that names or matches more is refused, and touches none.",
+            },
+            ["locale"] = new JsonObject { ["type"] = "string", ["description"] = "The locale to publish or unpublish, such as fr-CA; the locale of the connection when left out. Not for a delete." },
+        };
+        AddDryRun(properties);
+        return Tool(properties, ["type", "action", "limit"]);
+    }
+
+    public JsonElement Query(IReadOnlyList<string> types, bool search)
     {
         JsonObject properties = new() { ["type"] = TypeName(types) };
         if (search)
@@ -103,10 +125,7 @@ internal sealed class McpToolSchemas(SchemaModel schema, IFieldTypeRegistry fiel
 
         properties[McpQueryArguments.Filter] = new JsonObject { ["type"] = "object", ["description"] = FilterHelp };
         properties["sort"] = Texts("Field paths to sort by, with a leading - for descending, such as -updatedAt.");
-        properties["page"] = Integer("The page, from 1.", minimum: 1);
-        properties["pageSize"] = Integer("The entries on a page.", minimum: 1);
-        properties["cursor"] = Text("The nextCursor of the page before, in place of page.");
-        properties["withTotal"] = new JsonObject { ["type"] = "boolean", ["description"] = "False leaves the total out, which saves a count." };
+        AddPaging(properties);
         properties["fields"] = Texts("The fields to return; all when left out.");
         properties["populate"] = Texts("The relations to return as entries rather than ids, or * for all.");
         properties["depth"] = Integer("How deep populate goes, 1 when left out.", minimum: 1);
@@ -163,6 +182,31 @@ internal sealed class McpToolSchemas(SchemaModel schema, IFieldTypeRegistry fiel
     {
         var kind = field.Relation is { } relation ? $"{field.FieldType} to {relation.Target}" : field.FieldType;
         return field.Multiple ? $"list of {kind}" : kind;
+    }
+
+    private void AddPaging(JsonObject properties)
+    {
+        properties["page"] = Integer("The page, from 1.", minimum: 1);
+        properties["pageSize"] = new JsonObject
+        {
+            ["type"] = "integer",
+            ["minimum"] = 1,
+            ["maximum"] = maxPageSize,
+            ["description"] = $"The entries on a page, {defaultPageSize} when left out and {maxPageSize} at most.",
+        };
+        properties["cursor"] = Text("The nextCursor of the answer before, in place of page. An answer that would be too long ends early, with truncated true, and its nextCursor goes on from there.");
+        properties["withTotal"] = new JsonObject { ["type"] = "boolean", ["description"] = "False leaves the total out, which saves a count." };
+    }
+
+    private static void AddDryRun(JsonObject properties)
+    {
+        properties[McpConfirmations.DryRun] = new JsonObject
+        {
+            ["type"] = "boolean",
+            ["default"] = true,
+            ["description"] = "True, the default, changes nothing and answers the plan with a confirmationToken. False runs the call, and needs that token.",
+        };
+        properties[McpConfirmations.Token] = Text("The confirmationToken of the dry run of this same call, which lasts five minutes. Needed when dryRun is false.");
     }
 
     private static void AddRead(JsonObject properties, SchemaType type, bool drafts)
