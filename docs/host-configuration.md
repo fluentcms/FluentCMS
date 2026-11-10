@@ -389,6 +389,8 @@ The MCP plugin (`FluentCMS.Plugins.Mcp`, which the reference host adds) serves t
 
 An MCP client finds the authorization server through `/.well-known/oauth-protected-resource/mcp`, which the 401 of `/mcp` names. That document and the `resource` parameter the client then sends are built from the [public origin](#public-origin), so set it, and give the client a registration under `FluentCms:Clients:Applications` whose `Scopes` include `mcp`. The endpoint is stateless, so it needs no session affinity behind a load balancer.
 
+The plugin keeps the guidelines, the type instructions and the stored prompts of a site in two tables of its own, `cms_mcp_instruction` and `cms_mcp_prompt`. They are a [migration stream](plugin-migrations.md) of the plugin, `cms_mcp__migrations`, which the host applies with its other migrations (`FluentCms:Database:MigrateOnStartup`), so a host that already runs the plugin has one migration to apply after it updates.
+
 ## Media
 
 The media plugin (`FluentCMS.Plugins.Media`, which the reference host adds) keeps the assets and folders of each site under `/api/management/v1/media`, answers `/api/delivery/v1/media/{id}`, and serves signed image transforms at `/media/{id}/{fileName}` and original files at `/media/{id}/original/{fileName}`. Its instance options are in `FluentCms:Media`:

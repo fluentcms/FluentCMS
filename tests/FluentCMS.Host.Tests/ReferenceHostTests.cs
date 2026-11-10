@@ -334,7 +334,7 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         app.Services.GetRequiredService<IDataProvider>().Name.ShouldBe(name);
     }
 
-    // The webhooks and media plugins hold a migration set per provider, which the check before any migration takes (#2711).
+    // The webhooks, media and MCP plugins hold a migration set per provider, which the check before any migration takes (#2711).
     [Theory]
     [InlineData("PostgreSql", "Host=db;Database=cms;Username=cms;Password=secret")]
     [InlineData("SqlServer", "Server=db;Database=cms;User Id=cms;Password=secret;TrustServerCertificate=true")]
@@ -342,7 +342,7 @@ public sealed class ReferenceHostTests : IAsyncDisposable
     {
         var app = _host.Build(new() { [ReferenceHost.ProviderKey] = provider, [$"ConnectionStrings:{ReferenceHost.ConnectionStringName}"] = connectionString });
 
-        app.Services.GetServices<IPluginMigrations>().Select(stream => stream.Name).ShouldBe(["media", "webhooks"], ignoreOrder: true);
+        app.Services.GetServices<IPluginMigrations>().Select(stream => stream.Name).ShouldBe(["media", "webhooks", "mcp"], ignoreOrder: true);
         await app.Services.GetRequiredService<MigrationRunner>().RefuseForeignMigrationsAsync(Token);
     }
 

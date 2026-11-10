@@ -159,6 +159,38 @@ public sealed class McpContentToolListTests(McpToolsFixture fixture) : IClassFix
         tools.Where(tool => tool.Name is McpContentTools.Publish or McpContentTools.Unpublish or McpContentTools.Schedule or McpContentTools.Query).ShouldAllBe(tool => tool.ContentType == null);
     }
 
+    // The instructions a site saved for a type follow the descriptions of that type's tools, for a caller the tools are
+    // listed for, and of no other tool.
+    [Fact]
+    public async Task TheInstructionsOfATypeAreInTheDescriptionsOfItsToolsAndOfNoOtherTool()
+    {
+        var host = fixture.Host;
+        var site = await CreateSiteAsync(host);
+        const string Text = "Write headlines in sentence case.";
+        using var admin = await McpSiteTesting.KeyInAsync(host, site);
+        await McpSiteTesting.SendAsync(admin, HttpMethod.Put, $"{McpSiteTesting.Instructions}/post", new { text = Text });
+        using var other = await RoleAsync(host, Grant("content.writer.read"), Grant("content.writer.update"));
+        await using var client = await ConnectAsync(admin, site, InitializeProtocol);
+        using var inDefault = await KeyAsync(host);
+        await using var elsewhere = await ConnectAsync(inDefault, protocolVersion: InitializeProtocol);
+        await using var withoutPost = await ConnectAsync(other, site, InitializeProtocol);
+
+        var tools = await ToolsAsync(client);
+
+        Of(tools, "post_").ShouldNotBeEmpty();
+        foreach (var name in Of(tools, "post_"))
+        {
+            tools[name].Description.ShouldNotBeNull().ShouldEndWith($"\n\nInstructions of this site for post:\n{Text}", customMessage: name);
+        }
+
+        tools["post_list"].Description!.ShouldStartWith("Lists the entries of the content type post");
+        tools.Where(tool => !tool.Key.StartsWith("post_", StringComparison.Ordinal)).ShouldAllBe(tool => !tool.Value.Description!.Contains(Text, StringComparison.Ordinal));
+        (await ToolsAsync(elsewhere)).Values.ShouldAllBe(tool => !tool.Description!.Contains(Text, StringComparison.Ordinal));
+        var seen = await ToolsAsync(withoutPost);
+        Of(seen, "writer_").ShouldNotBeEmpty();
+        seen.Values.ShouldAllBe(tool => !tool.Description!.Contains(Text, StringComparison.Ordinal));
+    }
+
     // The types come in the order of the schema, which is by name: masthead, post, writer.
     [Fact]
     public async Task ATypeOverTheCapHasNoToolsOfItsOwnIsReachedThroughQueryAndIsNamedInTheLogOnce()

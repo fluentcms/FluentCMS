@@ -19,6 +19,7 @@ internal sealed class McpRequests(
     IMcpProviders providers,
     IPluginState plugins,
     IProblemDescriber problems,
+    McpInstructions instructions,
     IServiceProvider services,
     TimeProvider time,
     ILogger<McpRequests> logger)
@@ -32,6 +33,7 @@ internal sealed class McpRequests(
     {
         var result = new ListToolsResult();
         HashSet<string> names = new(StringComparer.Ordinal);
+        var instructed = await instructions.ByTypeAsync(Operation().Site, cancellationToken);
         await ListAsync<IMcpToolProvider, McpToolDescriptor>(
             providers.Tools,
             (provider, request) => provider.ListToolsAsync(request, cancellationToken),
@@ -45,7 +47,7 @@ internal sealed class McpRequests(
 
                 try
                 {
-                    result.Tools.Add(ToolOf(tool));
+                    result.Tools.Add(ToolOf(Instructed(tool, instructed)));
                 }
                 catch (ArgumentException exception)
                 {
@@ -247,6 +249,13 @@ internal sealed class McpRequests(
 
     private static bool Cancelled(Exception exception, CancellationToken cancellationToken) =>
         exception is OperationCanceledException && cancellationToken.IsCancellationRequested;
+
+    // The instructions of a site for a content type follow the description of each tool of that type. Only a tool a
+    // provider listed for the caller gets them, so they reach no one the type's tools do not.
+    private static McpToolDescriptor Instructed(McpToolDescriptor tool, IReadOnlyDictionary<string, string> instructed) =>
+        tool.ContentType is { } type && instructed.TryGetValue(type, out var text)
+            ? tool with { Description = $"{tool.Description}\n\nInstructions of this site for {type}:\n{text}" }
+            : tool;
 
     // The hints are always written, since a client reads a missing one as the protocol's default, which is destructive
     // and open to the world.

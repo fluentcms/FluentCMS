@@ -23,8 +23,8 @@ public sealed class McpSiteTests(McpFixture fixture) : IClassFixture<McpFixture>
         await using var inDefault = await ConnectAsync(http, protocolVersion: InitializeProtocol);
 
         (await inDocs.ListToolsAsync(cancellationToken: Token)).ShouldNotContain(tool => tool.Name.StartsWith("sample_", StringComparison.Ordinal));
-        (await inDocs.ListResourcesAsync(cancellationToken: Token)).ShouldBeEmpty();
-        (await inDocs.ListResourceTemplatesAsync(cancellationToken: Token)).ShouldBeEmpty();
+        (await inDocs.ListResourcesAsync(cancellationToken: Token)).ShouldAllBe(resource => !resource.Uri.StartsWith("sample:", StringComparison.Ordinal));
+        (await inDocs.ListResourceTemplatesAsync(cancellationToken: Token)).ShouldAllBe(template => !template.UriTemplate.StartsWith("sample:", StringComparison.Ordinal));
         (await inDocs.ListPromptsAsync(cancellationToken: Token)).ShouldBeEmpty();
         (await Should.ThrowAsync<McpProtocolException>(async () => await inDocs.CallToolAsync(SampleTools.WhoAmI, cancellationToken: Token))).Message.ShouldContain("FCMS1600");
         (await Should.ThrowAsync<McpProtocolException>(async () => await inDocs.ReadResourceAsync(SampleResources.Greeting, cancellationToken: Token))).Message.ShouldContain("FCMS1601");

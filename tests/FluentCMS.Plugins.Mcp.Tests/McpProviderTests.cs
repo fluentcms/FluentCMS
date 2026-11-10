@@ -34,8 +34,8 @@ public sealed class McpProviderTests(McpFixture fixture) : IClassFixture<McpFixt
         var prompt = await client.GetPromptAsync(SamplePrompts.Greet, new Dictionary<string, object?> { ["name"] = "Ada" }, cancellationToken: Token);
 
         tools.Select(tool => tool.Name).ShouldContain(SampleTools.WhoAmI);
-        resources.ShouldHaveSingleItem().Uri.ShouldBe(SampleResources.Greeting);
-        templates.ShouldHaveSingleItem().UriTemplate.ShouldBe(SampleResources.EchoTemplate);
+        resources.Select(resource => resource.Uri).ShouldContain(SampleResources.Greeting);
+        templates.Select(template => template.UriTemplate).ShouldContain(SampleResources.EchoTemplate);
         prompts.ShouldHaveSingleItem().Name.ShouldBe(SamplePrompts.Greet);
         prompts[0].ProtocolPrompt.Arguments.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
             argument => argument.Name.ShouldBe("name"),

@@ -5,11 +5,23 @@
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Shouldly" />
+    <!-- For `dotnet ef migrations add`, which uses this project as the startup project of the plugin's stream. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- The checks of a plugin's migration sets, shared with the plugin host tests. -->
+  <ItemGroup>
+    <Compile Include="../FluentCMS.Plugins.Tests/PluginMigrationSetChecks.cs" Link="PluginMigrationSetChecks.cs" />
   </ItemGroup>
 
   <!-- The protocol's own client comes with the plugin's package. The sample plugin offers the tools, resources and prompts,
        and the media plugin the service behind the media tools. -->
   <ItemGroup>
+    <ProjectReference Include="../../src/FluentCMS.Data.PostgreSql/FluentCMS.Data.PostgreSql.csproj" />
+    <ProjectReference Include="../../src/FluentCMS.Data.SqlServer/FluentCMS.Data.SqlServer.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj" />
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
