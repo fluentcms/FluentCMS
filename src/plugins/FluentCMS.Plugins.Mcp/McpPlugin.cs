@@ -30,6 +30,7 @@ public sealed class McpPlugin : IPlugin
             .ValidateOnStart();
         plugin.Services.AddScoped<McpRequests>();
         McpServerSetup.Add(plugin.Services);
+        McpClientSetup.Add(plugin);
 
         plugin
             .AddPermissions<McpPermissions>()
@@ -44,6 +45,7 @@ public sealed class McpPlugin : IPlugin
 
         var options = app.Services.GetRequiredService<IOptions<McpOptions>>().Value;
         app.MapProtectedResource(Prefix, new ProtectedResourceOptions { Scope = Scope, Origin = Origin.Mcp, Name = options.Title }).MapMcp();
+        app.MapManagement("/mcp/clients").MapMcpClientEndpoints();
     }
 }
 

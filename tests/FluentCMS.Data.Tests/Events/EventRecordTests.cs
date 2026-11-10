@@ -45,6 +45,10 @@ public sealed class EventRecordTests
         new CacheInvalidatedEvent(["site:1", "entry:2"]),
         new JobFailedEvent(Guid.Parse("00000000-0000-0000-0000-0000000000b1"), "probe", "default", 1, 3, "It failed."),
         new JobDeadLetteredEvent(Guid.Parse("00000000-0000-0000-0000-0000000000b1"), "probe", "default", 3, "It failed."),
+        new McpClientRegisteredEvent(Entry, "mcp-1", "Agent", "approved", Guid.Parse("00000000-0000-0000-0000-0000000000c1"), "198.51.100.8"),
+        new McpClientApprovedEvent(Entry, "mcp-1", "Agent", Guid.Parse("00000000-0000-0000-0000-0000000000c1"), "Editor"),
+        new McpClientRejectedEvent(Entry, "mcp-1", "Agent"),
+        new McpClientRevokedEvent(Entry, "mcp-1", "Agent"),
     ];
 
     [Theory]
@@ -98,6 +102,10 @@ public sealed class EventRecordTests
             "JobFailedEvent",
             "LoginFailedEvent",
             "LoginSucceededEvent",
+            "McpClientApprovedEvent",
+            "McpClientRegisteredEvent",
+            "McpClientRejectedEvent",
+            "McpClientRevokedEvent",
             "MediaAssetDeletedEvent",
             "MediaAssetMovedEvent",
             "MediaAssetReplacedEvent",

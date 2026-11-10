@@ -17,4 +17,10 @@ internal static partial class McpLog
 
     [LoggerMessage(EventId = 9283, Level = LogLevel.Warning, Message = "The MCP provider {Provider} of the plugin {Plugin} lists {Name}, which is left out: {Reason}")]
     public static partial void Skipped(ILogger logger, string provider, string plugin, string name, string reason);
+
+    [LoggerMessage(EventId = 9284, Level = LogLevel.Information, Message = "Removed {Count} MCP clients that registered themselves and were not approved within {Days:0} days.")]
+    public static partial void UnapprovedClientsRemoved(ILogger logger, int count, double days);
+
+    [LoggerMessage(EventId = 9285, Level = LogLevel.Error, Message = "Could not register the recurring cleanup of MCP clients that were not approved; they stay until it is registered.")]
+    public static partial void ClientCleanupNotScheduled(ILogger logger, Exception exception);
 }

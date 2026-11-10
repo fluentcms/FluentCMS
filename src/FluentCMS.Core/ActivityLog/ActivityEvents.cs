@@ -113,6 +113,22 @@ internal static class ActivityEvents
             Ip = message.Ip,
         });
 
+        events.AddActivity<McpClientRegisteredEvent>("mcp_client.registered", message => McpClient("mcp_client.registered", message.Id, message.ClientId, message.Name, new Dictionary<string, string?>
+        {
+            ["status"] = message.Status,
+            ["role"] = message.RoleId?.ToString("D"),
+        }) with
+        {
+            Ip = message.Ip,
+        });
+        events.AddActivity<McpClientApprovedEvent>("mcp_client.approved", message => McpClient("mcp_client.approved", message.Id, message.ClientId, message.Name, new Dictionary<string, string?>
+        {
+            ["role"] = message.RoleId.ToString("D"),
+            ["roleName"] = message.RoleName,
+        }));
+        events.AddActivity<McpClientRejectedEvent>("mcp_client.rejected", message => McpClient("mcp_client.rejected", message.Id, message.ClientId, message.Name, []));
+        events.AddActivity<McpClientRevokedEvent>("mcp_client.revoked", message => McpClient("mcp_client.revoked", message.Id, message.ClientId, message.Name, []));
+
         events.AddActivity<CacheInvalidatedEvent>("cache.invalidated", message => new ActivityEntry("cache.invalidated")
         {
             Details = new Dictionary<string, string?>
@@ -178,6 +194,18 @@ internal static class ActivityEvents
             TargetId = plugin,
             TargetLabel = plugin,
         };
+
+    private static ActivityEntry McpClient(string action, Guid id, string clientId, string name, Dictionary<string, string?> details)
+    {
+        details["clientId"] = clientId;
+        return new(action)
+        {
+            TargetType = "mcp_client",
+            TargetId = id.ToString("D"),
+            TargetLabel = name,
+            Details = details,
+        };
+    }
 
     private static ActivityEntry User(string action, Guid userId, string userName, Dictionary<string, string?>? details) =>
         new(action)

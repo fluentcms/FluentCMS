@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json;
+using FluentCMS.Agents;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using Microsoft.AspNetCore;
@@ -26,6 +27,10 @@ namespace FluentCMS.Core.Identity.Oidc;
 // key set without passing them through, but they are routed all the same, so that they get the group's CORS and headers.
 internal static class ConnectEndpoints
 {
+    // The errors the error page shows for a client that registered itself and is not approved.
+    public const string ClientPendingApproval = "client_pending_approval";
+    public const string ClientRejected = "client_rejected";
+
     public static void Map(RouteGroupBuilder connect)
     {
         connect.MapMethods("authorize", [HttpMethods.Get, HttpMethods.Post], (Delegate)AuthorizeAsync).ExcludeFromDescription();
@@ -34,6 +39,7 @@ internal static class ConnectEndpoints
         connect.MapMethods("logout", [HttpMethods.Get, HttpMethods.Post], (Delegate)LogoutAsync).ExcludeFromDescription();
         connect.MapPost("introspect", AnsweredByServer).ExcludeFromDescription();
         connect.MapPost("revoke", AnsweredByServer).ExcludeFromDescription();
+        connect.MapPost("register", (Delegate)DynamicClientRegistration.RegisterAsync).ExcludeFromDescription();
     }
 
     public static void MapWellKnown(RouteGroupBuilder wellKnown)
@@ -56,6 +62,20 @@ internal static class ConnectEndpoints
         }
 
         var request = ServerRequest(context);
+        var applications = context.RequestServices.GetRequiredService<IOpenIddictApplicationManager>();
+        var application = await applications.FindByClientIdAsync(request.ClientId!, context.RequestAborted)
+            ?? throw new InvalidOperationException("The authorization server passed a client it did not find.");
+
+        // A client that registered itself gets nothing until an administrator has approved it, and the user is not asked
+        // to sign in for it. Its redirect URI is as unvetted as the client, so the refusal is shown here.
+        var registered = McpClientState.Of(await applications.GetPropertiesAsync(application, context.RequestAborted));
+        if (registered is { IsApproved: false })
+        {
+            return ErrorPage(context, registered.Status == McpClientStatus.Rejected
+                ? new OpenIddictResponse { Error = ClientRejected, ErrorDescription = "An administrator rejected the client." }
+                : new OpenIddictResponse { Error = ClientPendingApproval, ErrorDescription = "The client waits for an administrator to approve it." });
+        }
+
         var cookie = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
         var signIn = context.RequestServices.GetRequiredService<SignInManager<CmsUser>>();
         var user = cookie.Succeeded ? await signIn.ValidateSecurityStampAsync(cookie.Principal) : null;
@@ -124,10 +144,7 @@ internal static class ConnectEndpoints
         var identity = TokenClaims.Identity()
             .SetClaim(Claims.AuthenticationTime, signedInAt.ToUnixTimeSeconds())
             .SetClaim(TokenClaims.SessionStart, now.ToUnixTimeSeconds());
-        TokenClaims.ForUser(identity, user, await signIn.UserManager.GetSecurityStampAsync(user), request.GetScopes(), methods);
-        var applications = context.RequestServices.GetRequiredService<IOpenIddictApplicationManager>();
-        var application = await applications.FindByClientIdAsync(request.ClientId!, context.RequestAborted)
-            ?? throw new InvalidOperationException("The authorization server passed a client it did not find.");
+        TokenClaims.ForUser(identity, user, await signIn.UserManager.GetSecurityStampAsync(user), request.GetScopes(), registered?.RoleId, methods);
         if (await applications.HasConsentTypeAsync(application, ConsentTypes.Explicit, context.RequestAborted))
         {
             var consents = context.RequestServices.GetRequiredService<ClientConsents>();
@@ -199,7 +216,24 @@ internal static class ConnectEndpoints
                 return Refuse(Errors.InvalidGrant, "The session has reached its absolute lifetime; the user signs in again.");
             }
 
-            TokenClaims.ForUser(identity, user, stamp, result.Principal!.GetScopes());
+            // The client is read again, so a token of a client that registered itself carries the role the client has now,
+            // and one that is not approved, which no code was issued to, redeems nothing either.
+            var clients = context.RequestServices.GetRequiredService<IOpenIddictApplicationManager>();
+            var client = (request.ClientId ?? result.Principal!.GetPresenters().FirstOrDefault()) is { } clientId
+                ? await clients.FindByClientIdAsync(clientId, context.RequestAborted)
+                : null;
+            if (client is null)
+            {
+                return Refuse(Errors.InvalidClient, "The client is not known.");
+            }
+
+            var registered = McpClientState.Of(await clients.GetPropertiesAsync(client, context.RequestAborted));
+            if (registered is { IsApproved: false })
+            {
+                return Refuse(Errors.UnauthorizedClient, "The client is not approved.");
+            }
+
+            TokenClaims.ForUser(identity, user, stamp, result.Principal!.GetScopes(), registered?.RoleId);
             return Results.SignIn(new ClaimsPrincipal(identity), properties: null, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         }
 

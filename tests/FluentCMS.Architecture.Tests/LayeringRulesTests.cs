@@ -86,12 +86,15 @@ public class LayeringRulesTests
 
     // The MCP server is a surface (2.1): it carries the identity and the intent of a call and decides nothing. It holds no
     // database context, content's or a plugin's, and asks no permission; a provider reaches content through the services,
-    // which do both. The webhooks plugin, whose service does both, shows that the rule sees what it forbids.
+    // which do both. The webhooks plugin, whose service does both, shows that the rule sees what it forbids. The services
+    // behind the plugin's own Management endpoints are named exceptions: each checks mcp.manage with IPermissionChecker,
+    // as the service of any plugin does (4.13), and the rule holds for everything else, the server included.
     [Fact]
     public void TheMcpPluginReachesContentThroughTheServicesAndEvaluatesNoPermission()
     {
-        SurfaceRule(McpPlugin).Check(everything.Value);
+        SurfaceRule(McpPlugin, McpManagementServices).Check(everything.Value);
 
+        Should.Throw<Exception>(() => SurfaceRule(McpPlugin).Check(everything.Value));
         Should.Throw<Exception>(() => SurfaceRule(WebhooksPlugin).Check(everything.Value));
     }
 
@@ -200,11 +203,25 @@ public class LayeringRulesTests
         found.ShouldContain(violation => violation.Contains("FromSqlRaw", StringComparison.Ordinal));
     }
 
-    private static ArchUnitNET.Fluent.Syntax.Elements.Types.TypesShouldConjunction SurfaceRule(string plugin) =>
-        Types().That().ResideInNamespaceOrBelow(plugin)
+    // The services of the MCP plugin that check its permission, by full name; one per line.
+    private static readonly string[] McpManagementServices =
+    [
+        "FluentCMS.Plugins.Mcp.McpClientService",
+    ];
+
+    private static ArchUnitNET.Fluent.Syntax.Elements.Types.TypesShouldConjunction SurfaceRule(string plugin, params string[] except)
+    {
+        var types = Types().That().ResideInNamespaceOrBelow(plugin);
+        foreach (var name in except)
+        {
+            types = types.And().DoNotHaveFullName(name);
+        }
+
+        return types
             .Should().NotDependOnAnyTypesThat().ResideInNamespaceOrBelow("Microsoft.EntityFrameworkCore")
             .AndShould().NotDependOnAnyTypesThat().HaveNameStartingWith("PluginDbContext")
             .AndShould().NotDependOnAnyTypesThat().HaveName("IPermissionChecker");
+    }
 
     private static IEnumerable<string> FluentCmsReferences(ProjectFile project) =>
         project.ProjectReferences
