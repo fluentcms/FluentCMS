@@ -24,6 +24,10 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
 
+                    b.Property<string>("AllowedAddresses")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("allowed_addresses");
+
                     b.Property<string>("Class")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -64,6 +68,20 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("name");
 
+                    b.Property<long?>("PreviousKeyExpiresAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("previous_key_expires_at");
+
+                    b.Property<string>("PreviousKeyHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("previous_key_hash");
+
+                    b.Property<string>("PreviousKeyPrefix")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("previous_key_prefix");
+
                     b.Property<int?>("RateLimit")
                         .HasColumnType("INTEGER")
                         .HasColumnName("rate_limit");
@@ -93,11 +111,16 @@ namespace FluentCMS.Data.Sqlite.Migrations
                     b.HasIndex("KeyPrefix")
                         .HasDatabaseName("ix_cms_api_key_key_prefix");
 
+                    b.HasIndex("PreviousKeyPrefix")
+                        .HasDatabaseName("ix_cms_api_key_previous_key_prefix");
+
                     b.HasIndex("RoleId")
                         .HasDatabaseName("ix_cms_api_key_role");
 
                     b.ToTable("cms_api_key", null, t =>
                         {
+                            t.HasCheckConstraint("ck_cms_api_key_allowed_addresses_json", "json_valid(\"allowed_addresses\")");
+
                             t.HasCheckConstraint("ck_cms_api_key_site_ids_json", "json_valid(\"site_ids\")");
 
                             t.HasCheckConstraint("ck_cms_api_key_type_names_json", "json_valid(\"type_names\")");
@@ -617,6 +640,79 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         .HasDatabaseName("ix_cms_document_type_site");
 
                     b.ToTable("cms_document", (string)null);
+                });
+
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.IdempotencyRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("ExpiresAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("KeyHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("key_hash");
+
+                    b.Property<long>("LeaseUntil")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("lease_until");
+
+                    b.Property<Guid>("Owner")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("owner");
+
+                    b.Property<Guid>("PrincipalId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("principal_id");
+
+                    b.Property<string>("PrincipalKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("principal_kind");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("request_hash");
+
+                    b.Property<string>("ResponseBody")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("response_body");
+
+                    b.Property<string>("ResponseHeaders")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("response_headers");
+
+                    b.Property<int?>("ResponseStatus")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("response_status");
+
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("site_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_cms_idempotency_key_expires_at");
+
+                    b.HasIndex("SiteId", "PrincipalKind", "PrincipalId", "KeyHash")
+                        .IsUnique()
+                        .HasDatabaseName("uq_cms_idempotency_key_scope");
+
+                    b.ToTable("cms_idempotency_key", (string)null);
                 });
 
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.Job", b =>

@@ -16,6 +16,46 @@ public sealed class DeliveryCacheOptionsTests
         options.OutputCache.ShouldBeTrue();
         options.OutputCacheDuration.ShouldBe(TimeSpan.FromSeconds(60));
         options.SharedCacheControl.ShouldBe(options.CacheControl);
+        options.CacheTagHeader.ShouldBeNull();
+        options.TagHeader.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData(true, null, true)]
+    [InlineData(false, null, false)]
+    [InlineData(false, "", false)]
+    [InlineData(false, "Cache-Tag", true)]
+    public void TheEvictionsRunWhileTheOutputCacheOrTheTagHeaderNeedsThem(bool outputCache, string? header, bool invalidates)
+    {
+        var options = new DeliveryCacheOptions { OutputCache = outputCache, CacheTagHeader = header };
+
+        options.Validate();
+
+        options.Invalidates.ShouldBe(invalidates);
+    }
+
+    [Theory]
+    [InlineData("Cache-Tag")]
+    [InlineData("Surrogate-Key")]
+    [InlineData("Edge-Cache-Tag")]
+    [InlineData("X_Tags.v2")]
+    public void AHeaderNameIsAccepted(string header) => new DeliveryCacheOptions { CacheTagHeader = header }.Validate();
+
+    [Theory]
+    [InlineData("Cache Tag")]
+    [InlineData(" ")]
+    [InlineData("Cache-Tag:")]
+    [InlineData("Tägs")]
+    [InlineData("cache-control")]
+    [InlineData("Vary")]
+    [InlineData("Set-Cookie")]
+    [InlineData("Transfer-Encoding")]
+    public void ATagHeaderThatIsNoNameOrOneTheResponseWritesIsRefused(string header)
+    {
+        var exception = Should.Throw<FluentCmsConfigurationException>(new DeliveryCacheOptions { CacheTagHeader = header }.Validate);
+
+        exception.Code.ShouldBe("FCMS1101");
+        exception.Detail.ShouldStartWith("CacheTagHeader");
     }
 
     [Theory]

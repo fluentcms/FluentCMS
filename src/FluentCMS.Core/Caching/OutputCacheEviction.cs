@@ -10,10 +10,11 @@ namespace FluentCMS.Core.Caching;
 // its type's from the output cache and raises CacheInvalidatedEvent with them, for a CDN to purge the same. It runs
 // through the outbox, so a crash after the commit does not leave the cache stale; a retried delivery evicts again and
 // raises the event again. Only the store of the instance that delivers is evicted, unless the store is shared. With the
-// output cache off nothing is recorded for it, as nothing was stored. A change to a site's locales changes what fallback
-// reads give, so it evicts the site, and so does a change to a role or its grants, which changes what the site's callers
-// may read: the Public role decides the shared copy, and a key's role its own. A plugin disabled in a site evicts the site
-// too, since a copy of its Delivery group's answer would be served without asking whether the plugin is enabled.
+// output cache off and no tag header nothing is recorded for it, as nothing was stored or sent. A change to a site's
+// locales changes what fallback reads give, so it evicts the site, and so does a change to a role or its grants, which
+// changes what the site's callers may read: the Public role decides the shared copy, and a key's role its own. A plugin
+// disabled in a site evicts the site too, since a copy of its Delivery group's answer would be served without asking
+// whether the plugin is enabled.
 internal sealed class OutputCacheEviction(IOutputCacheStore store, IEventBus events, SchemaModel schema)
     : IOutboxEventHandler<EntryPublishedEvent>,
       IOutboxEventHandler<EntryUnpublishedEvent>,

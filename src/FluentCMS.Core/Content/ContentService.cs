@@ -65,6 +65,7 @@ internal sealed partial class ContentService(
     private object? _write;
     private bool _ownsTransaction;
     private int _savepoints;
+    private int _writes;
     private int _commits;
     private Document? _committed;
 
@@ -74,8 +75,9 @@ internal sealed partial class ContentService(
     public Task<ContentDocument?> GetAsync(string type, Guid id, GetOptions? options, bool everySystemField, CancellationToken cancellationToken) =>
         ReadEntryAsync(type, id, options, everySystemField, resolvedLocale: null, cancellationToken);
 
-    // A write's own reads pass on the locale its operation resolved for this site, which need not be resolved again.
-    private async Task<ContentDocument?> ReadEntryAsync(string type, Guid id, GetOptions? options, bool everySystemField, string? resolvedLocale, CancellationToken cancellationToken)
+    // A write's own reads pass on the locale its operation resolved for this site, which need not be resolved again, and
+    // what it has read or written of the entry.
+    private async Task<ContentDocument?> ReadEntryAsync(string type, Guid id, GetOptions? options, bool everySystemField, string? resolvedLocale, CancellationToken cancellationToken, KnownEntry? known = null)
     {
         ArgumentNullException.ThrowIfNull(type);
 
@@ -93,7 +95,7 @@ internal sealed partial class ContentService(
             RichTextFormat = options.RichTextFormat,
         };
 
-        var items = (await ReadAsync(type, query, id, everySystemField, cancellationToken, resolvedLocale: resolvedLocale)).Items;
+        var items = (await ReadAsync(type, query, id, everySystemField, cancellationToken, resolvedLocale: resolvedLocale, known: known)).Items;
         return items.Count > 0 ? items[0] : null;
     }
 
@@ -293,7 +295,7 @@ internal sealed partial class ContentService(
         await locales.ResolveAsync(new LocaleRequest(site) { Parameter = locale }, cancellationToken);
 
     // Reads ask the engine, which holds the permission on the type, the row rule, the site and the field limits as one query.
-    private async Task<PagedResult<ContentDocument>> ReadAsync(string typeName, ContentQuery query, Guid? id, bool everySystemField, CancellationToken cancellationToken, bool trashed = false, string? resolvedLocale = null)
+    private async Task<PagedResult<ContentDocument>> ReadAsync(string typeName, ContentQuery query, Guid? id, bool everySystemField, CancellationToken cancellationToken, bool trashed = false, string? resolvedLocale = null, KnownEntry? known = null)
     {
         // A read of the trash has the span of QueryTrashAsync.
         using var span = trashed ? null : Span(id is null ? "query" : "get", typeName);
@@ -325,7 +327,7 @@ internal sealed partial class ContentService(
         {
             page = trashed
                 ? await engine.ExecuteTrashAsync(typeName, bound, everySystemField, cancellationToken)
-                : await engine.ExecuteAsync(typeName, bound, everySystemField, cancellationToken);
+                : await engine.ExecuteAsync(typeName, bound, everySystemField, known, cancellationToken);
             found = page.Items;
         }
 
@@ -495,7 +497,11 @@ internal sealed partial class ContentService(
     // Runs writes as one transaction and tells the sink what committed. A write inside another transaction takes a
     // savepoint, so that one that fails leaves nothing behind for that transaction to commit. Internal for #2703.
     internal Task<T> InTransactionAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken) =>
-        OneAtATimeAsync(() => TransactAsync(work, cancellationToken));
+        OneAtATimeAsync(() =>
+        {
+            _writes++;
+            return TransactAsync(work, cancellationToken);
+        });
 
     private async Task<T> TransactAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken)
     {
@@ -679,9 +685,13 @@ internal sealed partial class ContentService(
 
         var write = await BeginAsync(typeName, ContentOperation.Update, cancellationToken);
         var type = write.Type;
+        KnownEntry? known = null;
+        var writes = 0;
         var row = await InTransactionAsync(
             async () =>
             {
+                known = new KnownEntry();
+                writes = _writes;
                 var documents = await store.DocumentsAsync(type, id, write.Site, trashed: false, cancellationToken);
                 if (documents.Count == 0)
                 {
@@ -719,7 +729,8 @@ internal sealed partial class ContentService(
                 }
 
                 var writable = await evaluator.WritableFieldsAsync(write.Operation, type, ContentOperation.Update, id, target, cancellationToken);
-                var (stored, rows) = await store.ReadDraftAsync(type, document, cancellationToken);
+                var draft = await store.ReadDraftAsync(type, document, cancellationToken);
+                var (stored, rows) = draft;
                 var sent = WithoutFallbacks(changes);
                 if (!isPatch)
                 {
@@ -728,7 +739,7 @@ internal sealed partial class ContentService(
 
                 // A write answers what a read showed, so what that read left out is not the client's to change.
                 var needsRead = NeedsWhatARead(write, sent, isPatch);
-                var shown = needsRead ? await ReadShownAsync(write, id, documents, addsLocale, cancellationToken) : null;
+                var shown = needsRead ? await ReadShownAsync(write, id, documents, addsLocale, addsLocale ? null : Known(known, type, document, draft), cancellationToken) : null;
                 var unseen = needsRead ? await UnseenNestedTargetsAsync(write, stored, shown, cancellationToken) : null;
                 var refused = WithoutUnchangedInside(write, isPatch ? sent : WithoutUnchanged(write, sent, shown, writable, addsLocale), stored, shown, unseen, writable, addsLocale);
                 Reject(write, refused, writable);
@@ -768,7 +779,9 @@ internal sealed partial class ContentService(
                     throw await ConflictAsync(write, id, expectedVersion, await store.DraftVersionAsync(id, document.Locale, cancellationToken), cancellationToken);
                 }
 
-                await store.WriteDraftAsync(type, document, isNewDocument: addsLocale, rows, working, fields, write.Operation.Origin, write.Operation.ClientId, cancellationToken);
+                // The write changes a row of its own type, which a row rule on a relation to that type may read.
+                known.Readable.Forget(type);
+                known.References = await store.WriteDraftAsync(type, document, isNewDocument: addsLocale, rows, working, fields, write.Operation.Origin, write.Operation.ClientId, cancellationToken);
                 if (sharedChanged)
                 {
                     await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken);
@@ -778,7 +791,8 @@ internal sealed partial class ContentService(
 
                 // A write may not take an entry out of the reach of the rule that let the principal change it. With no
                 // rule there is nothing to ask: the write has not moved the entry out of its site.
-                if (!await evaluator.CanAccessEntryAsync(write.Operation, type, ContentOperation.Update, id, write.Target with { Found = true }, QueryStatus.Draft, cancellationToken))
+                if (write.Permissions.RowRuleOf(type, ContentOperation.Update, write.Target) is not null
+                    && !await evaluator.CanAccessEntryAsync(write.Operation, type, ContentOperation.Update, id, write.Target with { Found = true }, QueryStatus.Draft, cancellationToken))
                 {
                     throw new ContentAccessDeniedException(type.Name, CorePermissions.OperationName(ContentOperation.Update));
                 }
@@ -791,7 +805,22 @@ internal sealed partial class ContentService(
             },
             cancellationToken);
 
-        return await RespondAsync(write, row);
+        // Another write in this scope since, by a hook, a validator or a handler of what committed, may have changed the
+        // references, so the response then reads them.
+        return await RespondAsync(write, row, _writes == writes ? known : null);
+    }
+
+    // The documents and the draft rows come from this transaction, as a read of the entry in the write's site, locale and
+    // state would find them.
+    private static KnownEntry Known(KnownEntry known, SchemaType type, Document document, StoredDraft draft)
+    {
+        if (draft.Rows.Shared is { } shared && (!type.Localized || draft.Rows.Localized is not null))
+        {
+            known.Row = new QueryRow { Document = document, Shared = shared, Localized = draft.Rows.Localized! };
+        }
+
+        known.References = draft.References;
+        return known;
     }
 
     // A full update sends what a read gave it: a field the principal can see but not change is no write as long as it
@@ -859,18 +888,29 @@ internal sealed partial class ContentService(
     }
 
     // A locale being added has no row to read, so this reads a locale it has for the shared fields. One that has since
-    // been disabled cannot be read, and the next one may.
-    private async Task<ContentDocument?> ReadShownAsync(WriteScope write, Guid id, List<Document> documents, bool addsLocale, CancellationToken cancellationToken)
+    // been disabled cannot be read, and the next one may. known is what the write read of its own locale's row; the row
+    // is not the entry once the write has changed it.
+    private async Task<ContentDocument?> ReadShownAsync(WriteScope write, Guid id, List<Document> documents, bool addsLocale, KnownEntry? known, CancellationToken cancellationToken)
     {
-        foreach (var locale in addsLocale ? documents.Select(document => document.Locale) : [write.Locale])
+        try
         {
-            if (await ReadDraftOrNullAsync(write, id, locale, LocaleFallback.None, cancellationToken) is { } shown)
+            foreach (var locale in addsLocale ? documents.Select(document => document.Locale) : [write.Locale])
             {
-                return shown;
+                if (await ReadDraftOrNullAsync(write, id, locale, LocaleFallback.None, cancellationToken, known) is { } shown)
+                {
+                    return shown;
+                }
+            }
+
+            return null;
+        }
+        finally
+        {
+            if (known is not null)
+            {
+                known.Row = null;
             }
         }
-
-        return null;
     }
 
     // What a read gave comes back with the targets it may not read missing. They are not the client's to remove, so each
@@ -1177,13 +1217,14 @@ internal sealed partial class ContentService(
     // write. A write in a transaction of its own has committed by now, so neither a cancelled caller nor a deadlock the read
     // loses to another writer turns it into a failure: the read runs again (#2959). In the caller's transaction the deadlock
     // has ended that transaction, which is the caller's to handle.
-    private async Task<ContentDocument> RespondAsync(WriteScope write, Document row)
+    // known is the references the write has just written, and the relation targets it has found readable.
+    private async Task<ContentDocument> RespondAsync(WriteScope write, Document row, KnownEntry? known = null)
     {
         for (var deadlocks = 0; ; )
         {
             try
             {
-                return await ReadDraftOrNullAsync(write, row.DocumentId, write.Locale, LocaleFallback.None, CancellationToken.None)
+                return await ReadDraftOrNullAsync(write, row.DocumentId, write.Locale, LocaleFallback.None, CancellationToken.None, known)
                     ?? new ContentDocument { ["id"] = row.DocumentId, ["version"] = row.DraftVersion };
             }
             catch (Exception exception) when (deadlocks < DeadlockReruns && context.Database.CurrentTransaction is null && provider.IsDeadlock(exception))
@@ -1193,12 +1234,12 @@ internal sealed partial class ContentService(
         }
     }
 
-    private async Task<ContentDocument?> ReadDraftOrNullAsync(WriteScope write, Guid id, string locale, LocaleFallback fallbacks, CancellationToken cancellationToken)
+    private async Task<ContentDocument?> ReadDraftOrNullAsync(WriteScope write, Guid id, string locale, LocaleFallback fallbacks, CancellationToken cancellationToken, KnownEntry? known = null)
     {
         var asked = string.IsNullOrEmpty(locale) ? write.Locale : locale;
         try
         {
-            return await ReadEntryAsync(write.Type.Name, id, new GetOptions { Status = QueryStatus.Draft, Locale = asked, Fallback = fallbacks }, everySystemField: false, asked == write.Locale ? write.Locale : null, cancellationToken);
+            return await ReadEntryAsync(write.Type.Name, id, new GetOptions { Status = QueryStatus.Draft, Locale = asked, Fallback = fallbacks }, everySystemField: false, asked == write.Locale ? write.Locale : null, cancellationToken, known);
         }
         catch (ValidationException exception) when (exception.Errors.All(error => error.Path is "type" or "status" or "locale"))
         {

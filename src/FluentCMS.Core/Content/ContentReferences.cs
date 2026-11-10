@@ -96,7 +96,7 @@ internal sealed class ContentReferences(
         var references = database.References.Where(reference => reference.TargetType == targetType && reference.TargetId == targetId);
         var entries = await references.Select(reference => reference.SourceDocumentId).Distinct().ToListAsync(cancellationToken);
         var removed = await references.ExecuteDeleteAsync(cancellationToken);
-        if (removed > 0 && delivery.OutputCache)
+        if (removed > 0 && delivery.Invalidates)
         {
             string[] tags = [.. entries.Select(CacheTags.Entry)];
             foreach (var tag in tags)

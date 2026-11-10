@@ -1,3 +1,4 @@
+using FluentCMS.Core.Caching;
 using FluentCMS.Core.DependencyInjection;
 using Microsoft.Net.Http.Headers;
 
@@ -21,6 +22,15 @@ public sealed class DeliveryCacheOptions
 
     public TimeSpan OutputCacheDuration { get; set; } = TimeSpan.FromSeconds(60);
 
+    // The header that carries a published read's tags, for a CDN that purges by tag: Cache-Tag, Surrogate-Key or another
+    // name. Empty, none is sent.
+    public string? CacheTagHeader { get; set; }
+
+    internal string? TagHeader => string.IsNullOrEmpty(CacheTagHeader) ? null : CacheTagHeader;
+
+    // A CDN that is sent the tags purges by the CacheInvalidatedEvent, so it is raised while either needs it.
+    internal bool Invalidates => OutputCache || TagHeader is not null;
+
     internal string SharedCacheControl => _headers.Value.Shared;
 
     // A CDN keys its copies by URL, not by credentials, so what a key or a token reads must not be stored there.
@@ -40,6 +50,13 @@ public sealed class DeliveryCacheOptions
             throw new FluentCmsConfigurationException(
                 HostErrorCodes.InvalidOption,
                 $"{nameof(OutputCacheDuration)} is {OutputCacheDuration}; it must be more than zero.");
+        }
+
+        if (TagHeader is { } header && !CacheTags.IsHeaderName(header))
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.InvalidOption,
+                $"{nameof(CacheTagHeader)} is '{header}'; it is not a header name, or it is one the Delivery API writes itself.");
         }
     }
 

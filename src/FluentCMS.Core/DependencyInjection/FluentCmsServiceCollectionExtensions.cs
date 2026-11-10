@@ -17,6 +17,7 @@ using FluentCMS.Core.Content.Validation;
 using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Health;
+using FluentCMS.Core.Idempotency;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Jobs;
@@ -160,7 +161,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddHostedService<RowRuleStartupCheck>();
         // Before the identity registration, which takes out the Data Protection hosted service that the pages' antiforgery adds.
         HostedPages.Add(services);
-        IdentityRegistration.Add(services, builder.Users, builder.Clients, builder.Sso, builder.Providers);
+        IdentityRegistration.Add(services, builder.Users, builder.ApiKeys, builder.PreviewTokens, builder.Clients, builder.Sso, builder.Providers);
         services.TryAddScoped<IAuthorizationEvaluator, AuthorizationEvaluator>();
         services.AddScoped<ManagementAuthority>();
         services.TryAddScoped<IPermissionChecker, PermissionChecker>();
@@ -240,6 +241,11 @@ public static class FluentCmsServiceCollectionExtensions
         builder.Jobs.AddJob<OidcPruneJob, OidcPrunePayload>(OidcPruneJob.Type);
         services.AddHostedService<OidcPruneScheduleService>();
 
+        services.AddFluentCmsOptions(IdempotencyOptions.Section, HostErrorCodes.InvalidOption, builder.Idempotency, idempotency => idempotency.Validate());
+        services.AddSingleton<IdempotencyStore>();
+        builder.Jobs.AddJob<IdempotencyRetentionJob, IdempotencyRetentionPayload>(IdempotencyRetentionJob.Type);
+        services.AddHostedService<IdempotencyRetentionScheduleService>();
+
         builder.Events.Outbox.Validate();
         builder.Jobs.Options.Queues.TryAdd(OutboxDrainJob.Queue, 1);
         builder.Jobs.AddJob<OutboxDrainJob, OutboxDrainPayload>(OutboxDrainJob.Type);
@@ -277,7 +283,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddOutputCache();
         builder.Providers.Default(MemoryOutputCacheStore());
         builder.Providers.Default<ISearchIndex, NoSearchIndex>();
-        OutputCacheEviction.Register(builder.Events, () => builder.DeliveryCache.OutputCache);
+        OutputCacheEviction.Register(builder.Events, () => builder.DeliveryCache.Invalidates);
 
         services.AddSingleton(builder.Seeding);
         services.AddScoped<SeedStateStore>();

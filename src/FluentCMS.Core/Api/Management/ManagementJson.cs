@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Content;
+using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Publishing;
 
 namespace FluentCMS.Core.Api.Management;
@@ -23,6 +24,17 @@ internal static class ManagementJson
         ["runAt"] = EntryJson.Moment(schedule.RunAt),
         ["timeZone"] = schedule.TimeZone,
         ["version"] = schedule.Version,
+    };
+
+    public static JsonObject PreviewToken(IssuedPreviewToken issued) => new()
+    {
+        ["token"] = issued.Token,
+        ["scheme"] = PreviewTokenAuthentication.Scheme,
+        ["expiresAt"] = EntryJson.Moment(issued.ExpiresAt),
+        ["type"] = issued.Binding.Type,
+        ["id"] = issued.Binding.Entry,
+        ["site"] = issued.Binding.Site,
+        ["locale"] = issued.Binding.Locale,
     };
 
     public static JsonObject Versions(IReadOnlyList<VersionInfo> versions) => new()

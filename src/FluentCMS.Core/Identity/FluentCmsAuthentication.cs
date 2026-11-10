@@ -1,5 +1,6 @@
 using System.Text.Encodings.Web;
 using FluentCMS.Core.Identity.ApiKeys;
+using FluentCMS.Core.Identity.PreviewTokens;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -20,7 +21,8 @@ internal sealed class FluentCmsAuthenticationOptions : AuthenticationSchemeOptio
     public string? BearerScheme { get; set; }
 }
 
-// Picks the scheme for a request: the API key's when it carries one, and otherwise the bearer scheme when one is set.
+// Picks the scheme for a request: the API key's when it carries one, the preview token's when it carries one, and otherwise
+// the bearer scheme when one is set.
 // With neither the request has no result here, so it is anonymous. A policy scheme cannot say that: its handler throws
 // when it has nowhere to forward.
 internal sealed class FluentCmsAuthenticationHandler(IOptionsMonitor<FluentCmsAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder)
@@ -94,7 +96,12 @@ internal sealed class FluentCmsAuthenticationHandler(IOptionsMonitor<FluentCmsAu
             return ApiKeyAuthentication.Scheme;
         }
 
+        if (PreviewTokenAuthentication.IsPresented(Request))
+        {
+            return PreviewTokenAuthentication.Scheme;
+        }
+
         var bearer = Options.BearerScheme;
-        return string.IsNullOrEmpty(bearer) || bearer == Scheme.Name || bearer == ApiKeyAuthentication.Scheme ? null : bearer;
+        return string.IsNullOrEmpty(bearer) || bearer == Scheme.Name || bearer == ApiKeyAuthentication.Scheme || bearer == PreviewTokenAuthentication.Scheme ? null : bearer;
     }
 }

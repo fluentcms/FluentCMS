@@ -11,6 +11,8 @@ using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Testing;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -205,6 +207,67 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
         (await fixture.DeleteAsync($"api-keys/{id}")).Status.ShouldBe(HttpStatusCode.NoContent);
         (await delivery.GetAsync(new Uri("/api/delivery/v1/page", UriKind.Relative), TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         (await fixture.GetAsync($"api-keys/{id}")).Json["revokedAt"].ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task AKeyIsLimitedToItsAddressesAndRotatedWithAnOverlap()
+    {
+        var created = await fixture.PostAsync("api-keys", $$"""
+            { "name": "Office reader", "class": "delivery", "roleId": "{{BuiltInRoles.Editor:D}}", "allowedAddresses": ["203.0.113.0/24"] }
+            """);
+        created.Status.ShouldBe(HttpStatusCode.Created, created.Body?.ToJsonString());
+        var id = created.Json["id"]!.GetValue<string>();
+        var secret = created.Json["secret"]!.GetValue<string>();
+        created.Json["allowedAddresses"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["203.0.113.0/24"]);
+
+        (await DeliveryAsync(secret, "203.0.113.7")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        using (var refused = await DeliveryAsync(secret, "192.0.2.7"))
+        {
+            refused.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+            (await refused.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldContain("FCMS3016");
+        }
+
+        var invalid = await fixture.PutAsync($"api-keys/{id}/allowed-addresses", """{ "allowedAddresses": ["192.0.2.1/24"] }""");
+        invalid.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        invalid.Body!.ToJsonString().ShouldContain("FCMS3024");
+        (await fixture.PutAsync($"api-keys/{id}/allowed-addresses", "{}")).Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
+
+        var opened = await fixture.PutAsync($"api-keys/{id}/allowed-addresses", """{ "allowedAddresses": null }""");
+        opened.Status.ShouldBe(HttpStatusCode.OK, opened.Body?.ToJsonString());
+        opened.Json["allowedAddresses"].ShouldBeNull();
+        (await DeliveryAsync(secret, "192.0.2.7")).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var rotated = await fixture.PostAsync($"api-keys/{id}/rotate");
+        rotated.Status.ShouldBe(HttpStatusCode.OK, rotated.Body?.ToJsonString());
+        var next = rotated.Json["secret"]!.GetValue<string>();
+        next.ShouldNotBe(secret);
+        rotated.Json["previousKeyExpiresAt"].ShouldNotBeNull();
+        (await DeliveryAsync(secret, "192.0.2.7")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await DeliveryAsync(next, "192.0.2.7")).StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await fixture.GetAsync($"api-keys/{id}")).Json["secret"].ShouldBeNull();
+
+        var now = await fixture.PostAsync($"api-keys/{id}/rotate", """{ "overlapSeconds": 0 }""");
+        now.Json["previousKeyExpiresAt"].ShouldBeNull();
+        (await DeliveryAsync(next, "192.0.2.7")).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await DeliveryAsync(now.Json["secret"]!.GetValue<string>(), "192.0.2.7")).StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var tooLong = await fixture.PostAsync($"api-keys/{id}/rotate", """{ "overlapSeconds": 999999999 }""");
+        tooLong.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        tooLong.Body!.ToJsonString().ShouldContain("FCMS3026");
+
+        (await fixture.DeleteAsync($"api-keys/{id}")).Status.ShouldBe(HttpStatusCode.NoContent);
+        var revoked = await fixture.PostAsync($"api-keys/{id}/rotate");
+        revoked.Status.ShouldBe(HttpStatusCode.Conflict);
+        revoked.Json["code"]!.GetValue<string>().ShouldBe("FCMS3025");
+    }
+
+    private async Task<HttpResponseMessage> DeliveryAsync(string secret, string address)
+    {
+        var server = (TestServer)fixture.Host.Services.GetRequiredService<IServer>();
+        using var client = new HttpClient(server.CreateHandler(context => context.Connection.RemoteIpAddress = IPAddress.Parse(address))) { BaseAddress = server.BaseAddress };
+        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri("/api/delivery/v1/page", UriKind.Relative));
+        request.Headers.Authorization = new AuthenticationHeaderValue("ApiKey", secret);
+        return await client.SendAsync(request, TestContext.Current.CancellationToken);
     }
 
     // A body is described for the OpenAPI document without a media type, so routing leaves another one to the route.

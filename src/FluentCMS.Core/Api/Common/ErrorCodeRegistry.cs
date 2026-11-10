@@ -7,9 +7,11 @@ using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Idempotency;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Identity.Oidc;
+using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.Plugins;
@@ -207,6 +209,14 @@ public static class ErrorCodeRegistry
         Invalid(ApiKeyErrorCodes.EmptyBinding, "Empty API key binding"),
         Startup(OidcErrorCodes.InvalidClients, "Invalid client registration"),
         Startup(OidcErrorCodes.SigningCertificateUnusable, "Signing certificate unusable"),
+        new(ApiKeyErrorCodes.AddressRefused, StatusCodes.Status401Unauthorized, "API key not allowed from this address"),
+        Invalid(ApiKeyErrorCodes.InvalidAddress, "Invalid allowed address"),
+        new(ApiKeyErrorCodes.NotRotatable, StatusCodes.Status409Conflict, "API key cannot be rotated"),
+        Invalid(ApiKeyErrorCodes.InvalidOverlap, "Invalid rotation overlap"),
+        Invalid(PreviewTokenErrorCodes.InvalidLifetime, "Invalid preview token lifetime"),
+        new(PreviewTokenErrorCodes.OutsideToken, StatusCodes.Status403Forbidden, "Outside the preview token"),
+        new(PreviewTokenErrorCodes.InvalidToken, StatusCodes.Status401Unauthorized, "Preview token not valid"),
+        new(PreviewTokenErrorCodes.Expired, StatusCodes.Status401Unauthorized, "Preview token expired"),
         new(RoleErrorCodes.RoleNotFound, StatusCodes.Status404NotFound, "Role not found"),
         Invalid(RoleErrorCodes.InvalidRole, "Invalid role"),
         Invalid(RoleErrorCodes.InvalidGrant, "Invalid grant"),
@@ -263,6 +273,9 @@ public static class ErrorCodeRegistry
         new(LocaleErrorCodes.LocaleNotFound, StatusCodes.Status404NotFound, "Locale not found"),
         new(LocaleErrorCodes.LocaleInUse, StatusCodes.Status409Conflict, "Locale in use"),
         new(LocaleErrorCodes.LocaleExists, StatusCodes.Status409Conflict, "Locale exists"),
+        BadQuery(IdempotencyErrorCodes.InvalidKey, "Invalid Idempotency-Key"),
+        Invalid(IdempotencyErrorCodes.KeyReused, "Idempotency-Key used for another request"),
+        new(IdempotencyErrorCodes.InProgress, StatusCodes.Status409Conflict, "Request with this Idempotency-Key still running"),
 
         // 315x the reference host (FluentCMS.Host, which this assembly does not reference, so its codes are written out) and the schema sync it allows, found when it starts
         Startup("FCMS3150", "Unknown data provider"),

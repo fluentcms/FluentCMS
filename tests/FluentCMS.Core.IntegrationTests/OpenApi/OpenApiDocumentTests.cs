@@ -85,6 +85,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
     private static readonly string[] TakesABody =
     [
         "patch /users/{id}", "post /invitations", "post /roles", "put /roles/{id}", "post /api-keys", "post /api-keys/{id}/expire",
+        "post /api-keys/{id}/rotate", "put /api-keys/{id}/allowed-addresses",
         "patch /sites/{id}", "post /sites/{id}/locales", "patch /sites/{id}/locales/{code}", "put /settings/{area}", "put /settings/{area}/defaults",
         "put /plugins/{name}/sites/{site}",
         "post /me/two-factor/verify", "post /me/two-factor/recovery-codes", "post /me/two-factor/disable",
@@ -188,6 +189,26 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
             .ShouldBe("""[{"oauth2":["management"]},{"apiKey":[]}]""");
         Paths["/api/delivery/v1/article"]!["get"]!["security"]!.ToJsonString()
             .ShouldBe("""[{},{"oauth2":[]},{"apiKey":[]}]""");
+
+        schemes["previewToken"]!["type"]!.GetValue<string>().ShouldBe("http");
+        schemes["previewToken"]!["scheme"]!.GetValue<string>().ShouldBe("Preview");
+        Paths["/api/delivery/v1/article/{id}"]!["get"]!["security"]!.ToJsonString()
+            .ShouldBe("""[{},{"oauth2":[]},{"apiKey":[]},{"previewToken":[]}]""");
+    }
+
+    [Fact]
+    public void ThePreviewTokenRouteHasItsBodies()
+    {
+        var mint = Paths["/api/management/v1/content/article/{id}/preview-token"]!["post"]!;
+
+        mint["operationId"]!.GetValue<string>().ShouldBe("previewTokenArticle");
+        (mint["requestBody"]!["required"]?.GetValue<bool>() ?? false).ShouldBeFalse();
+        mint["requestBody"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/preview-token-request");
+        mint["responses"]!["200"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/preview-token");
+
+        var schemas = Document["components"]!["schemas"]!;
+        schemas["preview-token-request"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["minutes", "locale"]);
+        schemas["preview-token"]!["required"]!.ToJsonString().ShouldBe("""["token","scheme","expiresAt","type","id","site"]""");
     }
 
     [Fact]
@@ -242,6 +263,17 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         create["responses"]!["default"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/responses/problem");
 
         Paths["/api/management/v1/content/article/{id}"]!["put"]!["parameters"]!.ToJsonString().ShouldContain("#/components/parameters/if-match\"");
+        create["parameters"]!.ToJsonString().ShouldContain("#/components/parameters/idempotency-key\"");
+        create["responses"]!["201"]!["headers"]!["Idempotent-Replayed"].ShouldNotBeNull();
+        var bulk = Paths["/api/management/v1/content/article/bulk"]!["post"]!;
+        bulk["parameters"]!.ToJsonString().ShouldContain("#/components/parameters/idempotency-key\"");
+        bulk["responses"]!["200"]!["headers"]!["Idempotent-Replayed"].ShouldNotBeNull();
+        Paths["/api/management/v1/content/article/{id}"]!["put"]!["parameters"]!.ToJsonString().ShouldNotContain("idempotency-key");
+        var key = Parameters["idempotency-key"]!;
+        key["name"]!.GetValue<string>().ShouldBe("Idempotency-Key");
+        key["in"]!.GetValue<string>().ShouldBe("header");
+        (key["required"]?.GetValue<bool>() ?? false).ShouldBeFalse();
+        key["schema"]!["maxLength"]!.GetValue<int>().ShouldBe(255);
         Paths["/api/delivery/v1/tag/by/{field}/{value}"]!["get"]!["parameters"]![0]!["schema"]!["enum"]!.AsArray()
             .Select(item => item!.GetValue<string>()).ShouldBe(["slug"]);
 
@@ -433,6 +465,10 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         Resolve(key["properties"]!["class"]!)["enum"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["delivery", "preview", "management"]);
         Response(Paths[$"{Management}/api-keys/{{id}}"]!["get"]!, "200")["properties"]!.AsObject().ContainsKey("secret").ShouldBeFalse();
         Paths[$"{Management}/api-keys/{{id}}/expire"]!["post"]!["requestBody"]!["required"].ShouldBeNull();
+        Paths[$"{Management}/api-keys/{{id}}/rotate"]!["post"]!["requestBody"]!["required"].ShouldBeNull();
+        Response(Paths[$"{Management}/api-keys/{{id}}/rotate"]!["post"]!, "200")["properties"]!["secret"]!["type"]!.GetValue<string>().ShouldBe("string");
+        Response(Paths[$"{Management}/api-keys/{{id}}"]!["get"]!, "200")["properties"]!.AsObject().ContainsKey("allowedAddresses").ShouldBeTrue();
+        Response(Paths[$"{Management}/api-keys/{{id}}/allowed-addresses"]!["put"]!, "200")["properties"]!.AsObject().ContainsKey("previousKeyExpiresAt").ShouldBeTrue();
 
         Response(Paths[$"{Management}/jobs/{{id}}"]!["get"]!, "200")["properties"]!["history"]!["items"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/JobAttemptInfo");
         Response(Paths[$"{Management}/me"]!["get"]!, "200")["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["id", "kind", "name"]);

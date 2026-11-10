@@ -69,7 +69,8 @@ internal static class ApiKeyAuthentication
 // Authorization: ApiKey <key>, or X-Api-Key: <key>. A request with neither is not this handler's, so another scheme may
 // take it; one with a key that is wrong, expired or revoked fails, and so does one with a key and any other credential,
 // which would otherwise be read as whichever came first. The failure names a code and never the key, and a wrong, expired
-// or revoked key gets the same one, so that the answer does not tell that a secret was ever a key.
+// or revoked key gets the same one, so that the answer does not tell that a secret was ever a key. A valid key from an address
+// it is not allowed from gets that code too, so a stolen key does not say that it would work from elsewhere.
 internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
@@ -87,10 +88,23 @@ internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<Authentication
         }
 
         var service = Context.RequestServices.GetRequiredService<ApiKeyService>();
-        var check = await service.AuthenticateAsync(keys[0], Context.RequestAborted);
+        var check = await service.AuthenticateAsync(keys[0], Context.Connection.RemoteIpAddress, Context.RequestAborted);
         if (check.Key is not { } key)
         {
             Refused(check.Failure!, check.RefusedKeyId);
+            if (check is { Failure: ApiKeyErrorCodes.AddressRefused, Refused: { } refused })
+            {
+                // The request is refused either way; a failed write must not turn its 401 into a 500.
+                try
+                {
+                    await service.RecordAddressRefusedAsync(refused, Context.Connection.RemoteIpAddress, System.Diagnostics.Activity.Current?.Id ?? Context.TraceIdentifier);
+                }
+                catch (Exception exception)
+                {
+                    ApiKeyLog.RefusalNotRecorded(Logger, exception, refused.Id);
+                }
+            }
+
             return AuthenticateResult.Fail($"{ApiKeyErrorCodes.InvalidKey}: the API key is not valid, has expired or was revoked.");
         }
 
@@ -109,8 +123,9 @@ internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<Authentication
         return base.HandleChallengeAsync(properties);
     }
 
-    // A refusal writes no activity row: a row per refused key would let a flood of keys write as fast as it is sent, and the
-    // limit before authentication already bounds it. The log and the metric keep the reason, which the client is not told.
+    // A refusal writes no activity row, except a valid key's from the wrong address: a row per refused key would let a flood
+    // of keys write as fast as it is sent, and the limit before authentication already bounds it. The log and the metric
+    // keep the reason, which the client is not told.
     private void Refused(string code, Guid? keyId)
     {
         ApiKeyLog.Refused(Logger, code, Context.Connection.RemoteIpAddress, keyId);

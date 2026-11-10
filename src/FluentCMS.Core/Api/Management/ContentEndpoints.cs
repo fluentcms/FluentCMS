@@ -3,6 +3,7 @@ using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Localization;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
@@ -32,9 +33,9 @@ internal static class ContentEndpoints
         content.MapGet("", ListAsync)
             .Describe(new("list", "Lists the entries, drafts unless status=published is asked") { Query = ContentParameters.List, Response = ContentPayload.List });
         content.MapPost("", CreateAsync)
-            .Describe(new("create", "Creates an entry as a draft") { Request = ContentPayload.Entry, Status = StatusCodes.Status201Created });
+            .Describe(new("create", "Creates an entry as a draft") { Request = ContentPayload.Entry, Status = StatusCodes.Status201Created, Idempotent = true });
         content.MapPost("/bulk", BulkAsync)
-            .Describe(new("bulk", "Applies one operation to the entries listed or matched by the filter") { Query = ContentParameters.Filter, Request = ContentPayload.Bulk, Response = ContentPayload.Bulk });
+            .Describe(new("bulk", "Applies one operation to the entries listed or matched by the filter") { Query = ContentParameters.Filter, Request = ContentPayload.Bulk, Response = ContentPayload.Bulk, Idempotent = true });
         content.MapGet("/trash", ListTrashAsync)
             .Describe(new("listTrash", "Lists the entries in the trash") { Query = ContentParameters.List, Response = ContentPayload.List });
         content.MapPost("/trash/{id}/restore", RestoreAsync)
@@ -61,6 +62,9 @@ internal static class ContentEndpoints
             .Describe(new("schedule", "Schedules a publish or an unpublish") { Request = ContentPayload.Schedule, Response = ContentPayload.Schedule });
         content.MapDelete("/{id}/schedule/{action}", CancelScheduleAsync)
             .Describe(new("cancelSchedule", "Cancels a scheduled publish or unpublish") { Response = ContentPayload.None, Status = StatusCodes.Status204NoContent });
+
+        content.MapPost("/{id}/preview-token", PreviewTokenAsync)
+            .Describe(new("previewToken", "Mints a short-lived token that reads this entry's draft on the Delivery API") { Request = ContentPayload.PreviewToken, Response = ContentPayload.PreviewToken });
 
         content.MapGet("/{id}/versions", VersionsAsync)
             .Describe(new("listVersions", "Lists the versions of one locale, newest first") { Response = ContentPayload.Versions });
@@ -98,7 +102,8 @@ internal static class ContentEndpoints
                 : "";
             httpContext.Response.Headers.Location = $"{httpContext.Request.PathBase}{Prefix}/content/{Uri.EscapeDataString(name)}/{created.Get<Guid>("id"):D}{site}";
             return Entry(httpContext, created, statusCode: StatusCodes.Status201Created);
-        });
+        },
+        idempotent: true);
 
     private static Task<IResult> UpdateAsync(string type, string id, HttpContext httpContext, [FromServices] IContentService content) =>
         WriteAsync(httpContext, type, async () =>
@@ -162,6 +167,19 @@ internal static class ContentEndpoints
             return Results.NoContent();
         });
 
+    // The body is optional. The token reads the site the request is in.
+    private static async Task<IResult> PreviewTokenAsync(string type, string id, HttpContext httpContext, [FromServices] PreviewTokenService tokens)
+    {
+        await TypeAccess.EnsureReadableAsync(httpContext, type);
+        ContentRequests.OnlyParameters(httpContext.Request, filter: false);
+        var body = httpContext.Request.ContentLength == 0 || (httpContext.Request.ContentLength is null && string.IsNullOrEmpty(httpContext.Request.ContentType))
+            ? (System.Text.Json.JsonElement?)null
+            : await RequestBody.ObjectAsync(httpContext.Request);
+        var issued = await tokens.MintAsync(type, EntryId(id), ContentRequests.PreviewToken(body), httpContext.RequestAborted);
+        httpContext.Response.Headers.CacheControl = "no-store";
+        return Results.Json(ManagementJson.PreviewToken(issued));
+    }
+
     private static Task<IResult> VersionsAsync(string type, string id, HttpContext httpContext, [FromServices] IContentService content) =>
         VersionReadAsync(httpContext, type, async () =>
             Results.Json(ManagementJson.Versions(await content.GetVersionsAsync(type, EntryId(id), cancellationToken: httpContext.RequestAborted))));
@@ -203,7 +221,8 @@ internal static class ContentEndpoints
             var result = await content.BulkAsync(type, request, httpContext.RequestAborted);
             return Results.Json(ManagementJson.Bulk(result, httpContext.User.Identity?.IsAuthenticated == true, httpContext.RequestServices.GetService<ErrorCodeCatalogue>()));
         },
-        bulk: true);
+        bulk: true,
+        idempotent: true);
 
     private static Task<IResult> ListTrashAsync(string type, HttpContext httpContext, [FromServices] IContentService content) =>
         ReadAsync(httpContext, type, async () =>
@@ -244,7 +263,8 @@ internal static class ContentEndpoints
     }
 
     // A bulk request checks its own parameters, since it takes a filter. Delete, restore and purge act on every locale.
-    private static Task<IResult> WriteAsync(HttpContext httpContext, string type, Func<Task<IResult>> handler, bool bulk = false, bool oneLocale = true)
+    // A create and a bulk request take an Idempotency-Key, once the request itself is known to be well formed.
+    private static Task<IResult> WriteAsync(HttpContext httpContext, string type, Func<Task<IResult>> handler, bool bulk = false, bool oneLocale = true, bool idempotent = false)
     {
         TypeAccess.EnsureKnown(httpContext, type);
         if (!bulk)
@@ -257,7 +277,7 @@ internal static class ContentEndpoints
             EnsureOneLocale(httpContext);
         }
 
-        return handler();
+        return idempotent ? IdempotentRequests.RunAsync(httpContext, handler) : handler();
     }
 
     // The bridge reads locale=all as the default locale, which a write would then change without saying so.

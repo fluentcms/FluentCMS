@@ -20,6 +20,9 @@ internal static class RateLimitPolicyNames
 // not read from the bucket when the response starts, since the partitioned limiter may have disposed it by then.
 internal abstract class FluentCmsRateLimitPolicy : IRateLimiterPolicy<string>
 {
+    // A caller's key starts with "ip:", "key:" or "sub:", so it is never this one.
+    private const string CountedPartition = "counted";
+
     private readonly object _stateKey = new();
     private readonly object _countedKey = new();
     private readonly TimeProvider _time;
@@ -42,14 +45,15 @@ internal abstract class FluentCmsRateLimitPolicy : IRateLimiterPolicy<string>
 
     public RateLimitPartition<string> GetPartition(HttpContext httpContext)
     {
-        var (key, limit) = Partition(httpContext);
-
         // The request was counted by the pre-authentication check of its path, so the endpoint's own limiter lets it through.
+        // The endpoint's limiter keeps one limiter per key, whatever the factory, so the pass-through has a key of its own that
+        // no caller's bucket shares.
         if (httpContext.Items.ContainsKey(_countedKey))
         {
-            return RateLimitPartition.GetNoLimiter(key);
+            return RateLimitPartition.GetNoLimiter(CountedPartition);
         }
 
+        var (key, limit) = Partition(httpContext);
         TokenBucketLimiter.RecordNextAcquireIn(_reportsHeaders ? Record(httpContext) : null);
         return RateLimitPartition.Get(key, limit == DefaultLimit ? _createDefault : Factory(limit));
     }

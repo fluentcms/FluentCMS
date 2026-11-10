@@ -12,6 +12,10 @@ internal static class CmsClaimTypes
     public const string Types = "fcms_types";
     public const string RateLimit = "fcms_rate_limit";
 
+    // The one entry, and the one locale, a preview token reads.
+    public const string Entry = "fcms_entry";
+    public const string Locale = "fcms_locale";
+
     // The OAuth client a bearer token was issued to; the request's OperationContext.ClientId.
     public const string ClientId = "client_id";
 

@@ -74,6 +74,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<IdentityUserToken<Guid>>(MapUserToken);
         modelBuilder.Entity<Invitation>(MapInvitation);
         modelBuilder.Entity<ApiKey>(MapApiKey);
+        modelBuilder.Entity<IdempotencyRow>(MapIdempotency);
 
         // OpenIddict's own mapping, moved to the cms_oidc_* tables with snake_case columns and FluentCMS index names.
         modelBuilder.UseOpenIddict<Guid>();
@@ -315,6 +316,9 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.Property(key => key.KeyHash).HasMaxLength(HashLength);
         conventions.ConfigureJsonColumn(entity, entity.Property(key => key.SiteIds));
         conventions.ConfigureJsonColumn(entity, entity.Property(key => key.TypeNames));
+        conventions.ConfigureJsonColumn(entity, entity.Property(key => key.AllowedAddresses));
+        entity.Property(key => key.PreviousKeyPrefix).HasMaxLength(ApiKeyFormat.LookupLength);
+        entity.Property(key => key.PreviousKeyHash).HasMaxLength(HashLength);
 
         // A deleted role, or the site that held it, takes the keys bound to it along, as it does its users' hold on it.
         entity.HasOne<Role>().WithMany().HasForeignKey(key => key.RoleId).OnDelete(DeleteBehavior.Cascade);
@@ -322,6 +326,26 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
 
         entity.HasIndex(key => key.KeyPrefix).HasDatabaseName("ix_cms_api_key_key_prefix");
         entity.HasIndex(key => key.KeyHash).IsUnique().HasDatabaseName("uq_cms_api_key_key_hash");
+        entity.HasIndex(key => key.PreviousKeyPrefix).HasDatabaseName("ix_cms_api_key_previous_key_prefix");
+    }
+
+    private void MapIdempotency(EntityTypeBuilder<IdempotencyRow> entity)
+    {
+        entity.ToTable(StorageNames.Idempotency);
+        MapColumnNames(entity);
+        conventions.ConfigureKey(entity.Property(row => row.Id));
+        entity.Property(row => row.PrincipalKind).HasConversion<string>().HasMaxLength(StatusLength);
+        entity.Property(row => row.KeyHash).HasMaxLength(HashLength);
+        entity.Property(row => row.RequestHash).HasMaxLength(HashLength);
+
+        // The claim of a key is this insert, so two requests that send it at once cannot both run.
+        entity.HasIndex(row => new { row.SiteId, row.PrincipalKind, row.PrincipalId, row.KeyHash })
+            .IsUnique()
+            .HasDatabaseName("uq_cms_idempotency_key_scope");
+
+        // For the retention job. No foreign key to the site: the rows expire on their own.
+        entity.HasIndex(row => row.ExpiresAt)
+            .HasDatabaseName("ix_cms_idempotency_key_expires_at");
     }
 
     private void MapOidc<T>(EntityTypeBuilder<T> entity, string table)

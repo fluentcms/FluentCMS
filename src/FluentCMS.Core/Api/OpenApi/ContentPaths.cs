@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Schema.FieldTypes;
@@ -102,6 +103,11 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
             parameters.Add(SharedComponents.ParameterRef(described.IfMatch == ContentPrecondition.Required ? "if-match" : "if-match-optional"));
         }
 
+        if (described.Idempotent)
+        {
+            parameters.Add(SharedComponents.ParameterRef("idempotency-key"));
+        }
+
         JsonObject operation = new()
         {
             ["tags"] = new JsonArray(Tag(route.Surface, type.Name)),
@@ -109,7 +115,7 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
             ["operationId"] = (route.Surface == Delivery ? Delivery + Pascal(described.Name) : described.Name) + Pascal(type.Name),
             ["parameters"] = parameters,
             ["security"] = route.Surface == Delivery
-                ? new JsonArray(new JsonObject(), Requirement(FluentCmsDocumentTransformer.OAuth), Requirement(FluentCmsDocumentTransformer.ApiKey))
+                ? DeliverySecurity(described)
                 : new JsonArray(Requirement(FluentCmsDocumentTransformer.OAuth, TokenScopes.Management), Requirement(FluentCmsDocumentTransformer.ApiKey)),
         };
 
@@ -117,7 +123,7 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
         {
             operation["requestBody"] = new JsonObject
             {
-                ["required"] = true,
+                ["required"] = described.Request != ContentPayload.PreviewToken,
                 ["content"] = new JsonObject { ["application/json"] = new JsonObject { ["schema"] = request } },
             };
         }
@@ -129,17 +135,29 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
             response["content"] = new JsonObject { ["application/json"] = new JsonObject { ["schema"] = body } };
         }
 
+        JsonObject headers = [];
         if (route.Surface != Delivery && described.ETag && payload is ContentPayload.Entry or ContentPayload.Published)
         {
             var when = described.Query == ContentParameters.Single ? "a read of the published version or " : "";
-            response["headers"] = new JsonObject
+            headers["ETag"] = new JsonObject
             {
-                ["ETag"] = new JsonObject
-                {
-                    ["description"] = $"The version of the draft, to send back as If-Match. Left out for {when}a value that came through the fallback chain.",
-                    ["schema"] = SharedComponents.String(),
-                },
+                ["description"] = $"The version of the draft, to send back as If-Match. Left out for {when}a value that came through the fallback chain.",
+                ["schema"] = SharedComponents.String(),
             };
+        }
+
+        if (described.Idempotent)
+        {
+            headers[IdempotentRequests.ReplayedHeader] = new JsonObject
+            {
+                ["description"] = "true when the response is the one stored for the Idempotency-Key, and nothing ran again.",
+                ["schema"] = SharedComponents.String(),
+            };
+        }
+
+        if (headers.Count > 0)
+        {
+            response["headers"] = headers;
         }
 
         operation["responses"] = new JsonObject
@@ -148,6 +166,18 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
             ["default"] = new JsonObject { ["$ref"] = $"#/components/responses/{SharedComponents.ProblemResponse}" },
         };
         return operation;
+    }
+
+    // A preview token reads one entry by id, so only that route lists it.
+    private static JsonArray DeliverySecurity(ContentOperation described)
+    {
+        var security = new JsonArray(new JsonObject(), Requirement(FluentCmsDocumentTransformer.OAuth), Requirement(FluentCmsDocumentTransformer.ApiKey));
+        if (described.Name == "get")
+        {
+            security.Add(Requirement(FluentCmsDocumentTransformer.PreviewToken));
+        }
+
+        return security;
     }
 
     private static JsonObject Requirement(string scheme, params string[] scopes) =>
@@ -227,6 +257,7 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
             ContentPayload.Diff => SharedComponents.Ref("diff"),
             ContentPayload.Bulk when request => BulkRequest(input),
             ContentPayload.Bulk => SharedComponents.Ref("bulk-result"),
+            ContentPayload.PreviewToken => SharedComponents.Ref(request ? "preview-token-request" : "preview-token"),
             _ => null,
         };
     }

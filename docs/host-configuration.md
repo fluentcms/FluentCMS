@@ -53,13 +53,14 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | `FluentCms:ReverseProxy` | `PathBase`, `ForwardedHeaders`, `HttpsRedirection`, `Hsts` (see [reverse proxy](reverse-proxy.md)) |
 | `FluentCms:RateLimits` | `Delivery:PermitLimit`, `Delivery:MaxKeyLimit`, `Management:PermitLimit`, `Auth:PermitLimit`, `PreAuth:PermitLimit`, `Health:PermitLimit` |
 | `FluentCms:Limits` | `MaxBodySize` |
-| `FluentCms:Delivery:Cache` | `CacheControl`, `OutputCache`, `OutputCacheDuration` (see [Delivery caching](#delivery-caching)) |
+| `FluentCms:Delivery:Cache` | `CacheControl`, `OutputCache`, `OutputCacheDuration`, `CacheTagHeader` (see [Delivery caching](#delivery-caching)) |
 | `FluentCms:OpenApi` | `Enabled` (see [OpenAPI and the Scalar UI](#openapi-and-the-scalar-ui)) |
 | `FluentCms:Query` | `DefaultPageSize`, `MaxPageSize`, `MaxOffset` (10,000 entries a page or offset may skip; read further by cursor), `MaxPopulateDepth`, `MaxFilterNodes`, `MaxPopulatedEntries` |
 | `FluentCms:Jobs` | the job runner: `Queues`, `PollInterval`, `LeaseDuration`, retries, retention |
 | `FluentCms:Events:Handlers` | the in-process event handlers: `Timeout` (5 seconds), `SlowThreshold` (1 second) (see [event handlers](#event-handlers)) |
 | `FluentCms:Events:Outbox` | the outbox: `BatchSize`, `MaxAttempts`, `LeaseDuration`, retries, `OrphanAfter`, `Retention`, `FailedRetention` (off by default), `PruneBatchSize` |
 | `FluentCms:Activity` | the activity log: `Enabled`, `Retention`, `SiteRetention`, `PruneSchedule` |
+| `FluentCms:Idempotency` | `Window` (24 hours), `InProgressTimeout` (5 minutes) (see [idempotency keys](#idempotency-keys)) |
 | `FluentCms:Health` | `JobRunnerHeartbeatTimeout`, `PendingJobAgeLimit` |
 
 A key the configuration sets wins over what the host set in code inside `AddFluentCms`; a key it leaves out keeps the code's value. The options are checked when the host starts, and an invalid value stops it with an `FCMS` code and the key, for example `FCMS1101: FluentCms:Query:MaxPageSize: The field MaxPageSize must be between 1 and 2147483647.`
@@ -110,7 +111,7 @@ The client address is the connection's remote address, an IPv4-mapped address co
 
 ## CORS
 
-`Cors:Delivery:AllowedOrigins` applies to `/api/delivery/v1`, which allows `GET` and `HEAD`. `Cors:Management:AllowedOrigins` applies to `/api/management/v1` and to `/connect`, so the admin application can sign in from its own origin. Both allow the `X-Cms-Site` and `X-Cms-Locale` headers, and a browser can read `ETag`, `Location`, `Retry-After` and the `RateLimit-*` headers. An origin that is not on the list gets no CORS headers, and an empty list, the default, allows none. The lists come from configuration only; a setting that edits them at run time is not part of this release.
+`Cors:Delivery:AllowedOrigins` applies to `/api/delivery/v1`, which allows `GET` and `HEAD`. `Cors:Management:AllowedOrigins` applies to `/api/management/v1` and to `/connect`, so the admin application can sign in from its own origin. Both allow the `X-Cms-Site` and `X-Cms-Locale` headers, Management also `Idempotency-Key`, and a browser can read `ETag`, `Location`, `Retry-After` and the `RateLimit-*` headers, and `Idempotent-Replayed` on Management. An origin that is not on the list gets no CORS headers, and an empty list, the default, allows none. The lists come from configuration only; a setting that edits them at run time is not part of this release.
 
 ## Security headers and request limits
 
@@ -125,10 +126,27 @@ The options are `FluentCms:Delivery:Cache` (`cms.DeliveryCache` in code). A Deli
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `CacheControl` | `public, max-age=60, stale-while-revalidate=300` | What browsers and CDNs are told for a published read without credentials. A read with an API key or a token gets the same value as `private`, a draft read gets `no-store`, and an error gets `no-cache,no-store`. |
-| `OutputCache` | `true` | Whether the server keeps published reads in the ASP.NET Core output cache. Off, nothing is evicted and no `CacheInvalidatedEvent` is raised. |
+| `OutputCache` | `true` | Whether the server keeps published reads in the ASP.NET Core output cache. Off, nothing is kept, and no `CacheInvalidatedEvent` is raised unless `CacheTagHeader` is set. |
 | `OutputCacheDuration` | `00:01:00` | How long it keeps one, at most. |
+| `CacheTagHeader` | unset | The header that carries a published read's cache tags for a CDN, such as `Cache-Tag` or `Surrogate-Key`. Unset or empty, none is sent. A name that is not an HTTP token, or one the response writes itself such as `Cache-Control` or `Vary`, stops the host with `FCMS1101`. |
 
 The server keeps one copy for every request without credentials and one per API key, and keeps nothing for a bearer token, a draft read, credentials it refuses or an error. Publishing, unpublishing, trashing and restoring an entry evict the tags `entry:{id}` and `type:{site}:{type}` (`type:global:{type}` for a global type) through the outbox and raise `CacheInvalidatedEvent` with them, so a CDN can purge the same; a change to a site or its locales evicts `site:{id}` the same way, and so does a change to a role or its grants, since the Public role decides what the shared copy holds and a key's role what its own copy holds: a role of a site evicts that site, and a role of the instance every site. Disabling a plugin in a site evicts the site too, since the answers of its Delivery groups are cached with it. Every read is tagged with its site, its type and every entry in it, populated ones included. A newly published target of a relation shows when the copy expires.
+
+### Purging a CDN by tag
+
+With `CacheTagHeader` set, every published Delivery read, from an API key too, carries its tags in that header: `site:{id}`, `type:{site}:{type}` (`type:global:{type}`) and `entry:{id}` for every entry in the body, and the media route's `site:{id}`, `media:{id}` and `media-presets:{site}`. A draft read carries none. The tags are listed apart by a space for `Surrogate-Key`, as Fastly reads it, and by a comma for any other name, as Cloudflare's `Cache-Tag` and Akamai's `Edge-Cache-Tag` are read. Each `CacheInvalidatedEvent` names tags from the same set, so a CDN that purges by them drops every copy the change made stale. The event is raised while `CacheTagHeader` is set even with `OutputCache` off. CDNs cap the header (16 KB at Cloudflare and Fastly), so a long list page with many populated entries may need a smaller page size. The media plugin reads the option from configuration, as it reads `CacheControl`, so set it there rather than in code when the plugin is added.
+
+The purge goes through the webhooks plugin: a webhook on `cache.invalidated` receives `data.tags`, and a small receiver checks the signature and calls the CDN's purge API with them. With Cloudflare, set `CacheTagHeader` to `Cache-Tag` and have the receiver, a Worker for example, send:
+
+```http
+POST https://api.cloudflare.com/client/v4/zones/{zone_id}/purge_cache
+Authorization: Bearer {api_token}
+Content-Type: application/json
+
+{ "tags": ["entry:0190…", "type:0190…:article"] }
+```
+
+Cloudflare takes the `Cache-Tag` header off the response before it reaches a visitor. Fastly's equivalent is `Surrogate-Key` and its purge by key.
 
 `UseFluentCms()` adds the output cache middleware, so a host that caches its own endpoints does not call `UseOutputCache()` again. FluentCMS routes other than Delivery are never cached, even under a base policy of the host's. The store is the [provider slot](#provider-slots) `IOutputCacheStore`, in memory by default, and an eviction reaches only the store of the instance that delivers the outbox event: with several instances on the in-memory store, the others serve their copies until `OutputCacheDuration` runs out. A shared store removes that lag, such as the Redis one of `Microsoft.AspNetCore.OutputCaching.StackExchangeRedis`, which `AddStackExchangeRedisOutputCache()` registers when it is called before `AddFluentCms()`. The key of a copy holds the schema hash, so a shared store never serves an instance a copy made for another schema, during a rolling deployment or after a restart with a new one.
 
@@ -173,6 +191,27 @@ A setting that is lifted rather than fixed stays in the startup report, as `gene
 `AddFluentCms()` registers the `ApiKey` authentication scheme. It reads a key from `Authorization: ApiKey <key>` or from the `X-Api-Key` header, and leaves a request with neither to the other schemes. A request with a key and any other credential is refused. The FluentCMS endpoints authenticate with the `FluentCms` scheme, which uses `ApiKey` when the request carries a key and otherwise the bearer scheme of the authorization server. It never uses the host's default scheme, so a cookie is not a credential for the APIs. The host calls `app.UseAuthentication()` before `MapFluentCms()`. A key's `last_used_at` is written at most once every five minutes.
 
 A wrong, expired or revoked key gets the same 401, `FCMS3016`, so the answer does not tell that a secret was ever a key. The log says why: each refused key is event id 9010 (`ApiKeyRefused`, Information) with its code (`FCMS3016` wrong, `FCMS3017` expired, `FCMS3018` revoked, `FCMS3019` sent with another credential), the client address and the id of the key when one was found, never the key. The meter `FluentCMS` counts them in `fluentcms.api_keys.refused`, tagged `fluentcms.code`; alert on it to see keys being probed. A refused key writes no activity row, since a row per failed key would let a flood of keys write to the database as fast as it is sent; the [rate limit](#rate-limits) before authentication bounds it instead.
+
+A key can be limited to IP addresses and CIDR ranges with `allowedAddresses`, on create or with `PUT /api/management/v1/api-keys/{id}/allowed-addresses`. The address checked is the one the host trusts, so behind a proxy configure the [forwarded headers](reverse-proxy.md) first, or every request comes from the proxy's address. A valid key sent from another address gets `FCMS3016` too; the log says `FCMS3023`, and the activity log has `api_key.address_refused` with the address, at most once per key and address, and for ten addresses per key, every five minutes.
+
+`POST /api/management/v1/api-keys/{id}/rotate` gives a key a new secret and keeps the old one working for an overlap, so clients can change over without a gap. The body `{ "overlapSeconds": n }` asks for a shorter overlap, and `0` ends the old secret at once, as for a leaked key.
+
+| `FluentCms:ApiKeys:` | Default | Meaning |
+| --- | --- | --- |
+| `RotationOverlap` | `1.00:00:00` | How long the secret a rotation replaces is still accepted beside the new one, at most 30 days. `00:00:00` ends it at the rotation. |
+
+### Preview tokens
+
+`POST /api/management/v1/content/{type}/{id}/preview-token` mints a token that reads the draft of that one entry, optionally of one locale (`{ "minutes", "locale" }`, both optional). The caller needs the `management` scope and the permission to read that draft. A front end sends it as `Authorization: Preview <token>` to `GET /api/delivery/v1/{type}/{id}?status=draft`, and every other read with it is refused with `FCMS3028`. It is signed with the authorization server's key and nothing is stored, so it cannot be revoked: keep the lifetimes short. It stops working at once if its user is deactivated, its key revoked or its role loses the read.
+
+| `FluentCms:PreviewTokens:` | Default | Meaning |
+| --- | --- | --- |
+| `DefaultLifetime` | `00:10:00` | How long a token lasts when the request names no `minutes`, in whole minutes from one minute to `MaximumLifetime`. |
+| `MaximumLifetime` | `01:00:00` | The most `minutes` may ask for, in whole minutes from one minute to one day. |
+
+## Idempotency keys
+
+A client that retries `POST /api/management/v1/content/{type}` or `.../bulk` after a timeout sends the same `Idempotency-Key` (such as a UUID) each time. A repeat of the same request answers the first response, with `Idempotent-Replayed: true`, and creates nothing; the same key with another request is `FCMS3141` (422), and a repeat while the first still runs is `FCMS3142` (409). Keys belong to the caller and the site, and are kept for `FluentCms:Idempotency:Window` (24 hours, at most 30 days); the hourly job `idempotency.retention` removes them. A request whose instance stopped before it answered holds its key for `InProgressTimeout` (5 minutes, at most the window), after which a repeat runs. A refused or failed request keeps nothing, so a retry runs again.
 
 ## Authorization server
 
