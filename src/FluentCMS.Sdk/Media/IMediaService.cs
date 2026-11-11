@@ -143,6 +143,17 @@ public interface IMediaService
     /// <returns>The URL, signed with the instance's signing key.</returns>
     Task<string> GetImageUrlAsync(MediaAsset asset, MediaImageOptions? options = null, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Opens a copy of an image for code that runs in the host and needs its pixels, such as a plugin that describes the
+    /// image: decoded, resized as the parameters say and encoded again without its metadata. It needs <c>media.read</c> in
+    /// the asset's folder, reads a private asset too, and is held to the limits of the site's media settings.
+    /// </summary>
+    /// <param name="id">The id of the asset, an image the image processor reads.</param>
+    /// <param name="options">The size, quality and type of the copy. A preset is not taken.</param>
+    /// <param name="cancellationToken">Cancels the work.</param>
+    /// <returns>The copy, whose stream the caller disposes.</returns>
+    Task<MediaImage> OpenImageAsync(Guid id, MediaImageOptions options, CancellationToken cancellationToken = default);
+
     /// <summary>Lists the presets of the site, by name. It needs <c>media.read</c>.</summary>
     /// <param name="cancellationToken">Cancels the work.</param>
     /// <returns>The presets.</returns>

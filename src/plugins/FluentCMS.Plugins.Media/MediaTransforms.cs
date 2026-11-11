@@ -5,6 +5,7 @@ using System.Text.Json;
 using FluentCMS.Content;
 using FluentCMS.Media;
 using FluentCMS.Settings;
+using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -64,6 +65,17 @@ internal sealed class MediaTransforms(
             merged = ImageQuery.Merge(PresetOptions(preset), requested);
         }
 
+        return await RenderAsync(site, asset, merged, accepted, cancellationToken);
+    }
+
+    // IMediaService.OpenImageAsync: a copy of an asset the caller may read, private or not, for code in the host. No URL
+    // asks for it, so nothing is signed, and the type follows the options alone.
+    public Task<TransformedImage> OpenAsync(SiteId site, Asset asset, MediaImageOptions options, CancellationToken cancellationToken) =>
+        RenderAsync(site, asset, options, [], cancellationToken);
+
+    private async Task<TransformedImage> RenderAsync(SiteId site, Asset asset, MediaImageOptions merged, IReadOnlyCollection<string> accepted, CancellationToken cancellationToken)
+    {
+        var id = asset.Id;
         var rules = await settings.GetAsync(site, cancellationToken);
         CheckLimits(merged, rules);
         if (!processor.CanDecode(asset.MimeType))

@@ -53,6 +53,7 @@ internal sealed class MediaService(
     MediaSigning signing,
     IContentReferences references,
     MediaCache cache,
+    MediaTransforms transforms,
     TimeProvider time,
     ILogger<MediaService> logger) : IMediaService
 {
@@ -611,6 +612,24 @@ internal sealed class MediaService(
         var signature = await signing.SignAsync(ImageQuery.Canonical(asset.Id, parameters), cancellationToken);
         var query = string.Join('&', parameters.Append(new(ImageQuery.Signature, signature)).Select(pair => $"{pair.Key}={Uri.EscapeDataString(pair.Value)}"));
         return $"/media/{asset.Id:D}/{Uri.EscapeDataString(asset.FileName)}?{query}";
+    }
+
+    public async Task<MediaImage> OpenImageAsync(Guid id, MediaImageOptions options, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        var site = Operation().Site;
+        var reach = await ReachAsync(MediaPermissions.Read, site, cancellationToken);
+        var asset = await FindAssetAsync(site, id, reach, tracked: false, cancellationToken);
+        List<ValidationError> errors = [];
+        ImageQuery.Check(errors, options, asQuery: false, allowPreset: false);
+        if (errors.Count > 0)
+        {
+            throw new ValidationException(errors);
+        }
+
+        var image = await transforms.OpenAsync(site, asset, options, cancellationToken);
+        return new MediaImage(image.Content, image.MimeType);
     }
 
     public async Task<IReadOnlyList<MediaPreset>> ListPresetsAsync(CancellationToken cancellationToken = default)

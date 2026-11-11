@@ -459,3 +459,16 @@ The GraphQL plugin (`FluentCMS.Plugins.GraphQL`, which the reference host adds) 
 | `OnlyPersisted` | `false` | Refuses every query that is not in the folder. |
 
 The page size and populate depth limits are those of `FluentCms:Query`. A Delivery key or an anonymous caller reads published entries and runs no mutation; a caller with the `management` scope runs the mutations its roles allow. Introspection names every type and field of the schema, whatever the caller may read, which is why it is closed outside Development ([ADR 0006](decisions/0006-one-graphql-schema-per-instance.md)). A browser on another origin can send `GET` only, since the endpoint answers the Delivery CORS policy. The plugin's [README](../src/plugins/FluentCMS.Plugins.GraphQL/README.md) has the schema, the queries, the mutations and the error codes.
+
+## AI assist
+
+The AI assist plugin (`FluentCMS.Plugins.AiAssist`, which the reference host adds) runs AI actions on the fields a site opted in, under `/api/management/v1/ai` with `ai.use`, and logs their usage. It is off until a site names a provider and opts fields in, in the settings area `ai`. The plugin's [README](../src/plugins/FluentCMS.Plugins.AiAssist/README.md) covers the settings of a site, the actions and a provider of the host's own. Its options are in `FluentCms:Ai`:
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `AllowedEndpoints` | empty | The endpoints a site may name in its settings, each an absolute `http` or `https` URL with no user, query or fragment, such as `FluentCms__Ai__AllowedEndpoints__0=http://ollama:11434`. Empty leaves a site OpenAI and Anthropic at their own endpoints. A value that is not such a URL stops the host. |
+| `{Provider}:ApiKey` | unset | The key of `OpenAi`, `AzureOpenAi`, `Anthropic`, `Ollama` or `OpenAiCompatible` for the sites whose settings hold none. Give it through a secret store or the environment. |
+| `MaxInputLength` | `20000` | The most characters of text an action takes. |
+| `UsageRetention` | `90.00:00:00` | How long the usage log keeps a row. |
+
+The allow-list keeps a site administrator from pointing the server at an address inside the network: an endpoint is used only when the list holds it, the list is read at every call, and no redirect is followed. The configuration's key for `OpenAi` or `Anthropic` is sent to that provider's own endpoint only; the key for the other providers goes to whichever allowed endpoint a site names for them. The calls of a principal are counted in memory on each instance, so with several instances a principal can make its `callsPerMinute` on each.

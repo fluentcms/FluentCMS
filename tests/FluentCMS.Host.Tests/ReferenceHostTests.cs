@@ -190,6 +190,28 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         Operator.InsecureDefaults(report).ShouldContain("media-local-storage");
     }
 
+    // AI assist is off until a site names a provider and opts fields in, so the host runs the plugin and calls no provider.
+    [Fact]
+    public async Task TheHostRunsTheAiAssistPluginWhichIsOffUntilASiteOptsIn()
+    {
+        await _host.StartAsync(Operator.Settings());
+
+        using var api = await Operator.SignInAsync(_host);
+        using var usage = await api.GetAsync(new Uri("/api/management/v1/ai/usage", UriKind.Relative), Token);
+        using var action = await Operator.PostJsonAsync(api, "/api/management/v1/ai/actions/rewrite", new JsonObject { ["type"] = "article", ["field"] = "title", ["text"] = "Ships are big boats." });
+        var report = await Operator.ReportAsync(_host);
+
+        var (usageStatus, rows) = await HostUnderTest.ReadAsync(usage);
+        usageStatus.ShouldBe(HttpStatusCode.OK, rows?.ToJsonString());
+        rows!["total"]!.GetValue<long>().ShouldBe(0);
+        var (actionStatus, refusal) = await HostUnderTest.ReadAsync(action);
+        actionStatus.ShouldBe(HttpStatusCode.Forbidden, refusal?.ToJsonString());
+        refusal!["code"]!.GetValue<string>().ShouldBe("FCMS1683");
+        report["plugins"]!.AsArray().Select(plugin => plugin!["name"]!.GetValue<string>()).ShouldContain("ai");
+        var factory = report["providerSlots"]!.AsArray().Single(slot => slot!["slot"]!.GetValue<string>() == "FluentCMS.Plugins.AiAssist.IAiClientFactory")!;
+        (factory["implementation"]!.GetValue<string>(), factory["source"]!.GetValue<string>(), factory["plugin"]!.GetValue<string>()).ShouldBe(("FluentCMS.Plugins.AiAssist.AiClientFactory", "default", "ai"));
+    }
+
     [Fact]
     public async Task TheBlogSampleServesItsSeededContentThroughTheDeliveryApi()
     {
@@ -365,7 +387,7 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         app.Services.GetRequiredService<IDataProvider>().Name.ShouldBe(name);
     }
 
-    // The webhooks, media, MCP and multi-site plugins hold a migration set per provider, which the check before any migration takes (#2711).
+    // The webhooks, media, MCP, multi-site and AI assist plugins hold a migration set per provider, which the check before any migration takes (#2711).
     [Theory]
     [InlineData("PostgreSql", "Host=db;Database=cms;Username=cms;Password=secret")]
     [InlineData("SqlServer", "Server=db;Database=cms;User Id=cms;Password=secret;TrustServerCertificate=true")]
@@ -373,7 +395,7 @@ public sealed class ReferenceHostTests : IAsyncDisposable
     {
         var app = _host.Build(new() { [ReferenceHost.ProviderKey] = provider, [$"ConnectionStrings:{ReferenceHost.ConnectionStringName}"] = connectionString });
 
-        app.Services.GetServices<IPluginMigrations>().Select(stream => stream.Name).ShouldBe(["media", "webhooks", "mcp", "multi-site"], ignoreOrder: true);
+        app.Services.GetServices<IPluginMigrations>().Select(stream => stream.Name).ShouldBe(["media", "webhooks", "mcp", "multi-site", "ai"], ignoreOrder: true);
         await app.Services.GetRequiredService<MigrationRunner>().RefuseForeignMigrationsAsync(Token);
     }
 
