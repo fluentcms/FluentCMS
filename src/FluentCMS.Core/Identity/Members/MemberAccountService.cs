@@ -73,25 +73,35 @@ internal sealed class MemberAccountService(
             return;
         }
 
-        // A member an administrator made has no password and waits for its own link; a registration never gives it one.
+        // As long as hashing a new member's password, whichever way it goes from here.
+        _ = members.PasswordHasher.HashPassword(existing, password);
+
+        // A member without a password waits for the link that sets one, whether an administrator made it or its address
+        // was registered twice; a registration never gives it a password, and changes nothing else either.
         if (existing.EmailConfirmed || existing.DeactivatedAt is not null || existing.PasswordHash is null)
         {
-            // As long as hashing a new member's password, and a mail goes out as it does for one.
-            _ = members.PasswordHasher.HashPassword(existing, password);
             await mail.SendAlreadyRegisteredAsync(existing, cancellationToken);
             return;
         }
 
-        // Nobody has shown that the address is theirs yet, so the password of the last registration is the one the next
-        // verification mail stands for. Whoever registered before cannot sign in with theirs once the owner verifies. It
-        // is a new registration in every way, so it is in none of the groups the one before was put in.
+        // The address was registered before and nobody has shown that it is theirs. Keeping the first password would let
+        // whoever registered first sign in once the owner verifies, and taking the new one would let whoever registered
+        // last. So neither is kept: the member has no password, is in none of the groups it was put in, and the owner of
+        // the mailbox chooses the password with the link of the mail, which verifies the address too.
         using (MemberOperation.Begin(accessor, existing, time))
         {
             await LeaveGroupsAsync(existing, cancellationToken);
-            MemberViews.Check(await members.ReplacePendingAsync(existing, password, name));
+            var cleared = await members.ClearPendingPasswordAsync(existing);
+            if (cleared.Errors.Any(error => error.Code == nameof(IdentityErrorDescriber.ConcurrencyFailure)))
+            {
+                // Another registration of the address did this at the same time; this one is answered like any other.
+                return;
+            }
+
+            MemberViews.Check(cleared);
         }
 
-        await mail.SendVerificationAsync(existing, await members.GenerateEmailConfirmationTokenAsync(existing), cancellationToken);
+        await mail.SendChoosePasswordAsync(existing, await members.GeneratePasswordResetTokenAsync(existing), cancellationToken);
     }
 
     public async Task VerifyEmailAsync(string email, string token, CancellationToken cancellationToken)

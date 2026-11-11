@@ -228,27 +228,126 @@ public sealed class MemberAccountTests(MemberFixture fixture) : IClassFixture<Me
         member.EmailConfirmed.ShouldBeFalse();
     }
 
+    // The owner registers first, and someone else registers the address before the owner verifies.
     [Fact]
-    public async Task ARegistrationOfAnAddressThatIsNotVerifiedTakesThePlaceOfTheOneBefore()
+    public async Task ARegistrationAfterTheOwnersSetsNoPasswordAndTheOwnerChoosesItWithTheMailedLink()
     {
+        const string Owners = "The-Owners-First-Password-1";
+        const string Intruders = "An-Intruders-Password-22";
         var address = MemberFixture.NewAddress();
-        (await fixture.MembersAsync(HttpMethod.Post, "register", $$"""{ "email": "{{address}}", "password": "Someone-Elses-Password-1" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
-        var first = fixture.TokenOf(address);
+        (await fixture.MembersAsync(HttpMethod.Post, "register", $$"""{ "email": "{{address}}", "password": "{{Owners}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        var verification = fixture.TokenOf(address);
+        var registered = await MemberAsync(address);
 
-        fixture.Host.Time.Advance(MemberMailLimiter.Window + TimeSpan.FromSeconds(1));
-        (await fixture.MembersAsync(HttpMethod.Post, "register", $$"""{ "email": "{{address}}", "password": "{{Password}}", "displayName": "Owner" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
-        var second = fixture.TokenOf(address);
+        var later = MemberMailLimiter.Window + TimeSpan.FromSeconds(1);
+        fixture.Host.Time.Advance(later);
+        var competing = await fixture.MembersAsync(HttpMethod.Post, "register", $$"""{ "email": "{{address}}", "password": "{{Intruders}}", "displayName": "Intruder" }""");
+        competing.Status.ShouldBe(HttpStatusCode.Accepted);
+        competing.Body.ShouldBeNull();
 
-        // The link of the first registration no longer verifies, so the password of whoever registered first never signs in.
-        (await fixture.MembersAsync(HttpMethod.Post, "verify-email", $$"""{ "email": "{{address}}", "token": "{{first}}" }""")).Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
-        (await fixture.MembersAsync(HttpMethod.Post, "verify-email", $$"""{ "email": "{{address}}", "token": "{{second}}" }""")).Status.ShouldBe(HttpStatusCode.NoContent);
+        // Neither password is kept, the earlier link is dead, and the member counts as made now.
+        var cleared = await MemberAsync(address);
+        cleared.Id.ShouldBe(registered.Id);
+        cleared.PasswordHash.ShouldBeNull();
+        cleared.EmailConfirmed.ShouldBeFalse();
+        cleared.DisplayName.ShouldBeNull();
+        cleared.SecurityStamp.ShouldNotBe(registered.SecurityStamp);
+        cleared.CreatedAt.ShouldBe(registered.CreatedAt + later);
+        (await fixture.MembersAsync(HttpMethod.Post, "verify-email", $$"""{ "email": "{{address}}", "token": "{{verification}}" }""")).Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        (await fixture.DirectLoginAsync(address, Intruders)).Status.ShouldBe(HttpStatusCode.BadRequest);
+        (await fixture.DirectLoginAsync(address, Owners)).Status.ShouldBe(HttpStatusCode.BadRequest);
 
-        (await fixture.DirectLoginAsync(address, "Someone-Elses-Password-1")).Status.ShouldBe(HttpStatusCode.BadRequest);
+        // The mail goes to the owner of the mailbox, with the link that sets a password and verifies the address.
+        lock (fixture.Emails.Sent)
+        {
+            fixture.Emails.Sent.Last(mail => mail.To == address).Subject.ShouldBe("Choose a password to finish registering");
+        }
+
+        fixture.Emails.LinkTo(address).GetLeftPart(UriPartial.Path).ShouldBe("https://localhost/account/members/reset-password");
+        var link = fixture.TokenOf(address);
+
+        // A third registration, and one more, change nothing: the stamp stays, so the owner's link goes on working.
+        foreach (var password in (string[])[Intruders, "Yet-Another-Password-333"])
+        {
+            fixture.Host.Time.Advance(MemberMailLimiter.Window + TimeSpan.FromSeconds(1));
+            (await fixture.MembersAsync(HttpMethod.Post, "register", $$"""{ "email": "{{address}}", "password": "{{password}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+            var unchanged = await MemberAsync(address);
+            unchanged.SecurityStamp.ShouldBe(cleared.SecurityStamp);
+            unchanged.PasswordHash.ShouldBeNull();
+            unchanged.CreatedAt.ShouldBe(cleared.CreatedAt);
+            lock (fixture.Emails.Sent)
+            {
+                fixture.Emails.Sent.Last(mail => mail.To == address).Subject.ShouldBe("You already have an account");
+            }
+        }
+
+        (await fixture.MembersAsync(HttpMethod.Post, "reset-password", $$"""{ "email": "{{address}}", "token": "{{link}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.NoContent);
+        (await MemberAsync(address)).EmailConfirmed.ShouldBeTrue();
         (await fixture.DirectLoginAsync(address, Password)).Status.ShouldBe(HttpStatusCode.OK);
+        (await fixture.DirectLoginAsync(address, Intruders)).Status.ShouldBe(HttpStatusCode.BadRequest);
+        (await fixture.DirectLoginAsync(address, Owners)).Status.ShouldBe(HttpStatusCode.BadRequest);
 
         await using var scope = fixture.Host.Services.CreateAsyncScope();
         var normalized = address.ToUpperInvariant();
         (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<CmsMember>().AsNoTracking().CountAsync(member => member.NormalizedEmail == normalized, Token)).ShouldBe(1);
+    }
+
+    // Someone else registers the address first, and the owner registers it afterwards.
+    [Fact]
+    public async Task ARegistrationBeforeTheOwnersNeverSignsInWhetherOrNotTheOwnerFinishes()
+    {
+        const string Intruders = "An-Intruders-Password-22";
+        var address = MemberFixture.NewAddress();
+        (await fixture.MembersAsync(HttpMethod.Post, "register", $$"""{ "email": "{{address}}", "password": "{{Intruders}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        var intrudersLink = fixture.TokenOf(address);
+
+        fixture.Host.Time.Advance(MemberMailLimiter.Window + TimeSpan.FromSeconds(1));
+        (await fixture.MembersAsync(HttpMethod.Post, "register", $$"""{ "email": "{{address}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+
+        // The verification link of the first registration verifies nothing any more, and neither password signs in.
+        (await fixture.MembersAsync(HttpMethod.Post, "verify-email", $$"""{ "email": "{{address}}", "token": "{{intrudersLink}}" }""")).Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        (await fixture.DirectLoginAsync(address, Intruders)).Status.ShouldBe(HttpStatusCode.BadRequest);
+        (await fixture.DirectLoginAsync(address, Password)).Status.ShouldBe(HttpStatusCode.BadRequest);
+
+        // A new verification mail verifies the address and still gives nobody a password.
+        fixture.Host.Time.Advance(MemberMailLimiter.Window + TimeSpan.FromSeconds(1));
+        var chosen = fixture.TokenOf(address);
+        (await fixture.MembersAsync(HttpMethod.Post, "resend-verification", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        (await fixture.MembersAsync(HttpMethod.Post, "verify-email", $$"""{ "email": "{{address}}", "token": "{{fixture.TokenOf(address)}}" }""")).Status.ShouldBe(HttpStatusCode.NoContent);
+        (await fixture.DirectLoginAsync(address, Intruders)).Status.ShouldBe(HttpStatusCode.BadRequest);
+        (await fixture.DirectLoginAsync(address, Password)).Status.ShouldBe(HttpStatusCode.BadRequest);
+        (await fixture.MembersAsync(HttpMethod.Post, "reset-password", $$"""{ "email": "{{address}}", "token": "{{chosen}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
+
+        // The owner chooses the password with a link of its own mailbox.
+        fixture.Host.Time.Advance(MemberMailLimiter.Window + TimeSpan.FromSeconds(1));
+        (await fixture.MembersAsync(HttpMethod.Post, "forgot-password", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        (await fixture.MembersAsync(HttpMethod.Post, "reset-password", $$"""{ "email": "{{address}}", "token": "{{fixture.TokenOf(address)}}", "password": "{{MemberFixture.NewPassword}}" }""")).Status.ShouldBe(HttpStatusCode.NoContent);
+        (await fixture.DirectLoginAsync(address, MemberFixture.NewPassword)).Status.ShouldBe(HttpStatusCode.OK);
+        (await fixture.DirectLoginAsync(address, Intruders)).Status.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task TwoRegistrationsOfAPendingAddressAtOnceAreBothAnsweredLikeAnyOther()
+    {
+        var address = MemberFixture.NewAddress();
+        (await fixture.MembersAsync(HttpMethod.Post, "register", $$"""{ "email": "{{address}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        fixture.Host.Time.Advance(MemberMailLimiter.Window + TimeSpan.FromSeconds(1));
+        var mails = fixture.MailsTo(address);
+
+        // This request read the member before another registration cleared its password, so its own change is refused as
+        // stale. It ends as the other did, with no error and no mail of its own.
+        await using var stale = fixture.Host.Services.CreateAsyncScope();
+        (await stale.ServiceProvider.GetRequiredService<MemberManager>().FindByEmailAsync(address)).ShouldNotBeNull();
+        (await fixture.MembersAsync(HttpMethod.Post, "register", $$"""{ "email": "{{address}}", "password": "Another-Registration-22" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        fixture.MailsTo(address).ShouldBe(mails + 1);
+        var cleared = await MemberAsync(address);
+
+        await stale.ServiceProvider.GetRequiredService<MemberAccountService>().RegisterAsync(address, "A-Stale-Registration-333", null, Token);
+
+        fixture.MailsTo(address).ShouldBe(mails + 1);
+        var after = await MemberAsync(address);
+        after.SecurityStamp.ShouldBe(cleared.SecurityStamp);
+        after.PasswordHash.ShouldBeNull();
     }
 
     [Fact]
@@ -275,7 +374,7 @@ public sealed class MemberAccountTests(MemberFixture fixture) : IClassFixture<Me
         (await fixture.DirectLoginAsync(invited, Password)).Status.ShouldBe(HttpStatusCode.OK);
         (await fixture.ManageAsync(HttpMethod.Get, $"members/{invitedId}")).Json["groups"]!.AsArray().Count.ShouldBe(1);
 
-        // A registration that is not verified and was put in a group: the registration that takes its place is in none.
+        // A registration that is not verified and was put in a group: once its address is registered again it is in none.
         var pending = MemberFixture.NewAddress();
         (await fixture.MembersAsync(HttpMethod.Post, "register", $$"""{ "email": "{{pending}}", "password": "Someone-Elses-Password-1" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
         var pendingId = await fixture.MemberIdAsync(pending);
@@ -461,11 +560,16 @@ public sealed class MemberAccountTests(MemberFixture fixture) : IClassFixture<Me
         using var client = host.CreateSecureClient();
         var stale = MemberFixture.NewAddress();
         (await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "register", $$"""{ "email": "{{stale}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        var contested = MemberFixture.NewAddress();
+        (await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "register", $$"""{ "email": "{{contested}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
         var verified = await host.CreateMemberAsync(cancellationToken: Token);
 
         host.Time.Advance(TimeSpan.FromDays(6));
         var recent = MemberFixture.NewAddress();
         (await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "register", $$"""{ "email": "{{recent}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+
+        // An address that is registered again counts as made then, so the link of that mail has its time.
+        (await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "register", $$"""{ "email": "{{contested}}", "password": "Another-Registration-22" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
         host.Time.Advance(TimeSpan.FromDays(1) + TimeSpan.FromMinutes(1));
 
         await using (var scope = host.Services.CreateAsyncScope())
@@ -478,7 +582,14 @@ public sealed class MemberAccountTests(MemberFixture fixture) : IClassFixture<Me
 
         await using var check = host.Services.CreateAsyncScope();
         var left = await check.ServiceProvider.GetRequiredService<SystemDbContext>().Set<CmsMember>().AsNoTracking().Select(member => member.Email).ToListAsync(Token);
-        left.ShouldBe([verified.Email, recent], ignoreOrder: true);
+        left.ShouldBe([verified.Email, recent, contested], ignoreOrder: true);
+    }
+
+    private async Task<CmsMember> MemberAsync(string address)
+    {
+        await using var scope = fixture.Host.Services.CreateAsyncScope();
+        var normalized = address.ToUpperInvariant();
+        return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<CmsMember>().AsNoTracking().SingleAsync(member => member.NormalizedEmail == normalized, Token);
     }
 
     private static string TokenOf(HostedPagesTests.CapturedEmails emails, string address) =>

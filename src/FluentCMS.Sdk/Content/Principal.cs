@@ -9,8 +9,9 @@ namespace FluentCMS.Content;
 public sealed class Principal : IEquatable<Principal>
 {
     /// <summary>
-    /// The claim that holds the names of the member groups a member is in, separated by spaces. The engine sets it from
-    /// the member's groups as they are when the operation is authorized, so a row rule reads the groups of that moment.
+    /// The claim that holds the names of the member groups a member is in, separated by spaces. The engine sets it, from
+    /// the member's groups as they are when the operation is authorized, on the principal a row rule is given, and
+    /// nowhere else: the principal of an operation context outside a row rule does not carry it.
     /// </summary>
     public const string GroupsClaim = "fcms_groups";
 
@@ -80,9 +81,14 @@ public sealed class Principal : IEquatable<Principal>
     /// <returns>The claim value, or <see langword="null"/> when the principal has no such claim.</returns>
     public string? Claim(string type) => _claims.GetValueOrDefault(type);
 
-    /// <summary>Whether the principal is a member of the member group with this name. Only a member is in groups.</summary>
+    /// <summary>
+    /// Whether the principal is a member of the member group with this name. Only a member is in groups. This is for
+    /// row rules: the groups are on the principal a row rule is given, and not on the principal of the operation
+    /// context a hook, a job or a plugin's endpoint reads, where this answers <see langword="false"/> for every name.
+    /// So never refuse something there because this is false, and never allow something because its negation is true.
+    /// </summary>
     /// <param name="name">The name of the group, as it was given when the group was made.</param>
-    /// <returns><see langword="true"/> when the principal's groups hold the name.</returns>
+    /// <returns><see langword="true"/> when the principal carries its groups and they hold the name.</returns>
     public bool IsInGroup(string name)
     {
         ArgumentNullException.ThrowIfNull(name);

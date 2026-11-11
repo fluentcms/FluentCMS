@@ -82,23 +82,30 @@ internal sealed class MemberManager : UserManager<CmsMember>
         return result;
     }
 
-    // A registration of an address that is registered and not verified takes the place of the one before it: its
-    // password and display name, with a new security stamp, which ends the verification links sent so far. The
-    // password passed the policy already.
-    public async Task<IdentityResult> ReplacePendingAsync(CmsMember user, string password, string? displayName)
+    // An address that is registered and not verified was registered again, and nobody has shown yet that it is theirs:
+    // the password of neither registration is kept, so whoever owns the mailbox chooses it with a mailed link. One new
+    // security stamp ends the links sent so far, and the member counts as made now, so that the job that removes members
+    // who never verified leaves the new link its time. It happens once: a member without a password is not cleared again.
+    public async Task<IdentityResult> ClearPendingPasswordAsync(CmsMember user)
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(user);
-        ArgumentNullException.ThrowIfNull(password);
 
-        if (user.EmailConfirmed)
+        if (user.EmailConfirmed || user.PasswordHash is null)
         {
-            throw new InvalidOperationException("Only a member whose address is not verified is registered again.");
+            throw new InvalidOperationException("Only a member with a password whose address is not verified has its password cleared.");
         }
 
-        user.DisplayName = displayName;
-        user.PasswordHash = PasswordHasher.HashPassword(user, password);
-        return await UpdateSecurityStampAsync(user);
+        var (hash, createdAt) = (user.PasswordHash, user.CreatedAt);
+        user.PasswordHash = null;
+        user.CreatedAt = _time.GetUtcNow();
+        var result = await UpdateSecurityStampAsync(user);
+        if (!result.Succeeded)
+        {
+            (user.PasswordHash, user.CreatedAt) = (hash, createdAt);
+        }
+
+        return result;
     }
 
     // A new security stamp ends the member's codes and refresh tokens; MemberSessions ends its access tokens.

@@ -39,6 +39,13 @@ internal sealed class MemberMail(
             "Choose a password for your account",
             $"An account was created for this email address. Choose a password here to start using it:\n\n{link}\n\nThe link can be used once and expires at {Expiry(options.PasswordResetLifetime)} UTC. After that, ask for a new link with the forgotten password page."), cancellationToken);
 
+    // For an address that was registered again before it was verified: no password of a registration was kept.
+    public Task<bool> SendChoosePasswordAsync(CmsMember member, string token, CancellationToken cancellationToken) =>
+        SendAsync(member, options.Links.ResetPassword, HostedPagePaths.MemberResetPassword, token, link => new EmailMessage(
+            member.Email!,
+            "Choose a password to finish registering",
+            $"This email address was registered more than once before it was verified, so no password was kept for it. If it was you, choose your password here, which also verifies the address:\n\n{link}\n\nThe link can be used once and expires at {Expiry(options.PasswordResetLifetime)} UTC. After that, ask for a new link with the forgotten password page. If you did not register, ignore this email; the account is removed if the address is not verified."), cancellationToken);
+
     // No link: the address has an account already, and the mail says how to get back in.
     public Task<bool> SendAlreadyRegisteredAsync(CmsMember member, CancellationToken cancellationToken) =>
         DeliverAsync(member, new EmailMessage(
