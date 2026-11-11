@@ -2,6 +2,8 @@ using System.Net;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Members;
+using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.IntegrationTests.Diagnostics;
 using FluentCMS.Core.IntegrationTests.Identity;
 using FluentCMS.Events;
 using FluentCMS.Testing;
@@ -228,6 +230,7 @@ public sealed partial class MemberProviderTests
     // the request names.
     [Theory]
     [InlineData(Google)]
+    [InlineData(MicrosoftAccount)]
     [InlineData(GitHub)]
     [InlineData(Apple)]
     [InlineData(Corp)]
@@ -241,8 +244,18 @@ public sealed partial class MemberProviderTests
         QueryHelpers.ParseQuery(authorize.Query)["redirect_uri"].ToString().ShouldBe($"https://localhost/account/members/sso/{provider}");
 
         // The provider redeems the code only with the callback it was given, so the member is there only if both agree.
+        // Microsoft's member is made and waits for its mail; the others are signed in.
         using var back = await AnswerAsync(browser, provider, authorize, account);
-        (await DecideAsync(browser, back)).ShouldBe("/");
+        if (provider == MicrosoftAccount)
+        {
+            using var page = await browser.FollowAsync(back);
+            (await page.Content.ReadAsStringAsync(Token)).ShouldContain(CheckYourMail);
+        }
+        else
+        {
+            (await DecideAsync(browser, back)).ShouldBe("/");
+        }
+
         (await MemberAsync(fixture.Host, address)).ShouldNotBeNull();
     }
 
@@ -348,11 +361,192 @@ public sealed partial class MemberProviderTests
         (await LoginsAsync(host, member.Id)).ShouldBeEmpty();
     }
 
+    // A sign-in through a provider with the address of a member that is not verified yet is a second claim of that
+    // address, as a second registration is: whatever the first claim left, a login or a password, is not kept, and the
+    // owner of the mailbox chooses a password with the mailed link. The hosts are the tests' own, since they move the
+    // clock past the minute between two mails to one address.
     [Fact]
-    public async Task NoLogLineHoldsASecretOfAProviderOrAnAddress()
+    public async Task ALoginPlantedOnAnAddressIsGoneOnceItsOwnerSignsInThroughAProvider()
     {
+        var emails = new HostedPagesTests.CapturedEmails();
+        await using var host = NewHost(fixture.Providers, fixture.Oidc, emails);
         var address = MemberFixture.NewAddress();
-        using (var browser = new HostedPagesBrowser(fixture.Host, "10.7.15.1"))
+        var stranger = new FakeAccount(Guid.NewGuid().ToString("D"), address);
+        var owner = new FakeAccount(Guid.NewGuid().ToString("D"), address);
+
+        // A stranger signs in at a provider that does not verify addresses, and gives the owner's address.
+        using (var browser = new HostedPagesBrowser(host, "10.7.17.1"))
+        {
+            using var back = await SignInWithAsync(browser, MicrosoftAccount, stranger);
+            using var page = await browser.FollowAsync(back);
+            (await page.Content.ReadAsStringAsync(Token)).ShouldContain(CheckYourMail);
+        }
+
+        var member = (await MemberAsync(host, address)).ShouldNotBeNull();
+        (await LoginsAsync(host, member.Id)).ShouldHaveSingleItem().ProviderKey.ShouldBe(stranger.Subject);
+        var planted = emails.LinkTo(address);
+        planted.AbsolutePath.ShouldBe("/account/members/verify-email");
+
+        // The owner signs in with an account of its own and is answered like any pending sign-in. The stranger's login
+        // is gone, the link the stranger's sign-in sent is dead, and the owner's account is not linked either.
+        host.Time.Advance(MemberMailLimiter.Window + TimeSpan.FromSeconds(1));
+        using var ownersBrowser = new HostedPagesBrowser(host, "10.7.17.2");
+        using (var back = await SignInWithAsync(ownersBrowser, MicrosoftAccount, owner))
+        {
+            using var page = await ownersBrowser.FollowAsync(back);
+            page.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await page.Content.ReadAsStringAsync(Token)).ShouldContain(CheckYourMail);
+            ownersBrowser.HasCookie(MemberCookie).ShouldBeFalse();
+        }
+
+        (await LoginsAsync(host, member.Id)).ShouldBeEmpty();
+        var contested = (await MemberAsync(host, address)).ShouldNotBeNull();
+        contested.EmailConfirmed.ShouldBeFalse();
+        using var client = host.CreateSecureClient();
+        var dead = await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "verify-email", $$"""{ "email": "{{address}}", "token": "{{TokenOf(planted)}}" }""");
+        dead.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        Details((await MemberFixture.ActivityAsync(host, "member.login_unlinked", member.Id.ToString("D"))).ShouldHaveSingleItem())["provider"].ShouldBe(MicrosoftAccount);
+
+        // A repeat by either of them changes nothing: the stamp stays, so nobody can keep ending the owner's link.
+        var link = emails.LinkTo(address);
+        link.AbsolutePath.ShouldBe("/account/members/reset-password");
+        foreach (var (account, ip) in new[] { (stranger, "10.7.17.3"), (owner, "10.7.17.4") })
+        {
+            using var browser = new HostedPagesBrowser(host, ip);
+            using var back = await SignInWithAsync(browser, MicrosoftAccount, account);
+            using var page = await browser.FollowAsync(back);
+            (await page.Content.ReadAsStringAsync(Token)).ShouldContain(CheckYourMail);
+            browser.HasCookie(MemberCookie).ShouldBeFalse();
+        }
+
+        (await MemberAsync(host, address))!.SecurityStamp.ShouldBe(contested.SecurityStamp);
+        (await LoginsAsync(host, member.Id)).ShouldBeEmpty();
+
+        // The owner completes through the mailed link and holds one way in: the password it chose.
+        var reset = await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "reset-password", $$"""{ "email": "{{address}}", "token": "{{TokenOf(link)}}", "password": "{{MemberFixture.Password}}" }""");
+        reset.Status.ShouldBe(HttpStatusCode.NoContent);
+        var owned = (await MemberAsync(host, address)).ShouldNotBeNull();
+        owned.Id.ShouldBe(member.Id);
+        owned.EmailConfirmed.ShouldBeTrue();
+        (await LoginsAsync(host, member.Id)).ShouldBeEmpty();
+
+        using (var browser = new HostedPagesBrowser(host, "10.7.17.5"))
+        {
+            using var back = await SignInWithAsync(browser, MicrosoftAccount, stranger);
+            using var page = await browser.FollowAsync(back);
+            page.StatusCode.ShouldBe(HttpStatusCode.OK);
+            browser.HasCookie(MemberCookie).ShouldBeFalse();
+        }
+
+        await SignInWithPasswordAsync(ownersBrowser, address);
+        ownersBrowser.HasCookie(MemberCookie).ShouldBeTrue();
+        (await LoginsAsync(host, member.Id)).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task APasswordPlantedOnAnAddressNeverSignsInOnceItsOwnerSignsInThroughAProvider()
+    {
+        const string Planted = "A-Strangers-Passphrase-4";
+        var emails = new HostedPagesTests.CapturedEmails();
+        await using var host = NewHost(fixture.Providers, fixture.Oidc, emails);
+        var address = MemberFixture.NewAddress();
+        using var client = host.CreateSecureClient();
+
+        // A stranger registers the owner's address with a password of its own.
+        var registered = await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "register", $$"""{ "email": "{{address}}", "password": "{{Planted}}" }""");
+        registered.Status.ShouldBe(HttpStatusCode.Accepted);
+        var member = (await MemberAsync(host, address)).ShouldNotBeNull();
+        member.PasswordHash.ShouldNotBeNull();
+        var planted = emails.LinkTo(address);
+
+        // The owner signs in with an account whose address the provider verified. It is not signed in and not linked:
+        // the member is not shown to be its own yet. The password and the link of the registration are gone.
+        host.Time.Advance(MemberMailLimiter.Window + TimeSpan.FromSeconds(1));
+        var owner = FakeAccount.Of(address);
+        using var ownersBrowser = new HostedPagesBrowser(host, "10.7.18.1");
+        using (var back = await SignInWithAsync(ownersBrowser, Google, owner))
+        {
+            using var page = await ownersBrowser.FollowAsync(back);
+            page.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await page.Content.ReadAsStringAsync(Token)).ShouldContain(CheckYourMail);
+            ownersBrowser.HasCookie(MemberCookie).ShouldBeFalse();
+        }
+
+        var contested = (await MemberAsync(host, address)).ShouldNotBeNull();
+        contested.PasswordHash.ShouldBeNull();
+        contested.EmailConfirmed.ShouldBeFalse();
+        (await LoginsAsync(host, member.Id)).ShouldBeEmpty();
+        var dead = await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "verify-email", $$"""{ "email": "{{address}}", "token": "{{TokenOf(planted)}}" }""");
+        dead.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
+
+        // A repeat changes nothing.
+        using (var again = new HostedPagesBrowser(host, "10.7.18.2"))
+        {
+            using var back = await SignInWithAsync(again, Google, owner);
+            using var page = await again.FollowAsync(back);
+            (await page.Content.ReadAsStringAsync(Token)).ShouldContain(CheckYourMail);
+        }
+
+        (await MemberAsync(host, address))!.SecurityStamp.ShouldBe(contested.SecurityStamp);
+
+        // The owner chooses a password with the mailed link. The planted one signs nobody in, before or after.
+        var link = emails.LinkTo(address);
+        link.AbsolutePath.ShouldBe("/account/members/reset-password");
+        var reset = await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "reset-password", $$"""{ "email": "{{address}}", "token": "{{TokenOf(link)}}", "password": "{{MemberFixture.Password}}" }""");
+        reset.Status.ShouldBe(HttpStatusCode.NoContent);
+        (await MemberAsync(host, address))!.EmailConfirmed.ShouldBeTrue();
+
+        using (var strangersBrowser = new HostedPagesBrowser(host, "10.7.18.3"))
+        {
+            using var refused = await strangersBrowser.SubmitAsync("/account/members/login", MemberTokenTests.Credentials(address, Planted));
+            refused.StatusCode.ShouldBe(HttpStatusCode.OK);
+            strangersBrowser.HasCookie(MemberCookie).ShouldBeFalse();
+        }
+
+        await SignInWithPasswordAsync(ownersBrowser, address);
+        ownersBrowser.HasCookie(MemberCookie).ShouldBeTrue();
+
+        // Now that the address is the owner's, the provider is refused until the owner links it.
+        using (var browser = new HostedPagesBrowser(host, "10.7.18.4"))
+        {
+            using var back = await SignInWithAsync(browser, Google, owner);
+            using var page = await browser.FollowAsync(back);
+            (await page.Content.ReadAsStringAsync(Token)).ShouldContain(Refused);
+        }
+    }
+
+    // The callbacks are answered by the authentication middleware, before the endpoints and their rate limiter. The
+    // check before authentication counts them by client address with the auth limit, as it counts the pages.
+    [Fact]
+    public async Task TheCallbackOfAProviderIsRateLimitedByClientAddress()
+    {
+        await using var host = NewHost(fixture.Providers, fixture.Oidc, fixture.Emails)
+            .WithServices(services => services.PostConfigure<RateLimitOptions>(limits => limits.Auth.PermitLimit = 3));
+        using var flooding = new HostedPagesBrowser(host, "10.7.19.1");
+        using var other = new HostedPagesBrowser(host, "10.7.19.2");
+        const string Callback = "/account/members/sso/google?code=made-up&state=made-up";
+
+        for (var call = 0; call < 3; call++)
+        {
+            using var answered = await flooding.GetAsync(Callback);
+            answered.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        }
+
+        using var refused = await flooding.GetAsync(Callback);
+        refused.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        using var elsewhere = await other.GetAsync(Callback);
+        elsewhere.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+    }
+
+    // The host writes everything, down to Trace, as a host that looks for a fault would.
+    [Fact]
+    public async Task NoLogLineOfFluentCmsHoldsASecretOrATokenOfAProvider()
+    {
+        var logs = new LogCapture();
+        await using var host = NewHost(fixture.Providers, fixture.Oidc, fixture.Emails, logs)
+            .WithServices(services => services.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Trace)));
+        var address = MemberFixture.NewAddress();
+        using (var browser = new HostedPagesBrowser(host, "10.7.15.1"))
         {
             using var apple = await SignInWithAsync(browser, Apple, new FakeAccount("001234." + Guid.NewGuid().ToString("N"), address));
             (await DecideAsync(browser, apple)).ShouldBe("/");
@@ -362,7 +556,8 @@ public sealed partial class MemberProviderTests
         }
 
         var key = string.Concat(fixture.Providers.ApplePrivateKey.Split('\n').Where(line => !line.StartsWith("-----", StringComparison.Ordinal)).Select(line => line.Trim()));
-        var lines = fixture.Logs.Entries;
+        var generated = fixture.Providers.TokenRequests.Last(sent => sent.Kind == "apple").ClientSecret.ShouldNotBeNull();
+        var lines = logs.Entries;
         lines.ShouldContain(entry => entry.EventId.Id == MemberLog.ProviderMemberCreatedId);
         lines.ShouldContain(entry => entry.EventId.Id == MemberLog.ProviderSignInRefusedId);
         lines.ShouldContain(entry => entry.EventId.Id == MemberLog.ProviderFailureId);
@@ -374,11 +569,20 @@ public sealed partial class MemberProviderTests
             text.ShouldNotContain(fixture.Providers.ClientSecret);
             text.ShouldNotContain(FakeOidcProvider.ClientSecret);
             text.ShouldNotContain(key[..40]);
+            text.ShouldNotContain(generated);
+            text.ShouldNotContain("ID Token:");
+            text.ShouldNotContain("Access Token:");
             if (entry.Category.StartsWith("FluentCMS.Core.Identity.Members", StringComparison.Ordinal))
             {
                 text.ShouldNotContain(address);
             }
         }
+
+        // The Apple package writes the client secret it signs and the tokens of a sign-in at Trace. They are in its own
+        // category, which the host configuration guide says to keep above that level.
+        var told = lines.Where(entry => entry.Message.Contains(generated, StringComparison.Ordinal) || entry.Message.StartsWith("ID Token:", StringComparison.Ordinal)).ToList();
+        told.Count.ShouldBeGreaterThanOrEqualTo(2);
+        told.ShouldAllBe(entry => entry.Level == LogLevel.Trace && entry.Category.StartsWith("AspNet.Security.OAuth.Apple", StringComparison.Ordinal));
     }
 
     private async Task ChangeAsync(string memberId, Func<MemberManager, CmsMember, Task> change)

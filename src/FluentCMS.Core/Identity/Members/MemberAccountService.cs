@@ -76,9 +76,17 @@ internal sealed class MemberAccountService(
 
         // As long as hashing a new member's password, whichever way it goes from here.
         _ = members.PasswordHasher.HashPassword(existing, password);
+        await ContestAsync(existing, cancellationToken);
+    }
 
-        // A member without a password waits for the link that sets one, whether an administrator made it or its address
-        // was registered twice; a registration never gives it a password, and changes nothing else either.
+    // The address of a member was claimed again: by a second registration, or by a sign-in through a provider with a
+    // login that is not the member's. A member without a password or a login waits for the link that sets one, whether
+    // an administrator made it or its address was claimed twice; it never gets a password this way, and nothing else of
+    // it changes either. Nor does anything of a verified or a deactivated member.
+    public async Task ContestAsync(CmsMember existing, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(existing);
+
         var pending = !existing.EmailConfirmed && existing.DeactivatedAt is null;
         var unproven = pending ? await members.GetLoginsAsync(existing) : [];
         if (!pending || (existing.PasswordHash is null && unproven.Count == 0))
@@ -87,18 +95,18 @@ internal sealed class MemberAccountService(
             return;
         }
 
-        // The address was registered before and nobody has shown that it is theirs. Keeping the first password would let
+        // The address was claimed before and nobody has shown that it is theirs. Keeping the first password would let
         // whoever registered first sign in once the owner verifies, and taking the new one would let whoever registered
         // last. So neither is kept: the member has no password, is in none of the groups it was put in, and the owner of
         // the mailbox chooses the password with the link of the mail, which verifies the address too. An external login
-        // of a provider that did not verify the address is such a first registration, and goes the same way.
+        // that came with the address before it was verified is such a first claim, and goes the same way.
         using (MemberOperation.Begin(accessor, existing, time))
         {
             await LeaveGroupsAsync(existing, cancellationToken);
             var cleared = await members.ClearPendingAsync(existing, unproven);
             if (cleared.Errors.Any(error => error.Code == nameof(IdentityErrorDescriber.ConcurrencyFailure)))
             {
-                // Another registration of the address did this at the same time; this one is answered like any other.
+                // Another claim of the address did this at the same time; this one is answered like any other.
                 return;
             }
 

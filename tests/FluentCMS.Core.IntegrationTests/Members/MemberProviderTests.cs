@@ -397,19 +397,21 @@ public sealed partial class MemberProviderTests(MemberProviderFixture fixture) :
 
         (await LoginsAsync(fixture.Host, existing.Id)).ShouldHaveSingleItem();
 
-        // A member whose address is not verified is not linked either: its password is not shown to be its owner's.
+        // A member whose address is not verified is not linked either, even by this provider: its password is not shown
+        // to be its owner's, so the address is contested and nobody is signed in.
         var pending = MemberFixture.NewAddress();
         await RegisterAsync(pending);
         using (var browser = new HostedPagesBrowser(fixture.Host, "10.7.5.7"))
         {
             using var back = await SignInWithAsync(browser, Partner, FakeAccount.Of(pending));
             using var page = await browser.FollowAsync(back);
-            (await page.Content.ReadAsStringAsync(Token)).ShouldContain(Refused);
+            (await page.Content.ReadAsStringAsync(Token)).ShouldContain(CheckYourMail);
             browser.HasCookie(MemberCookie).ShouldBeFalse();
         }
 
         var unverified = (await MemberAsync(fixture.Host, pending)).ShouldNotBeNull();
         unverified.EmailConfirmed.ShouldBeFalse();
+        unverified.PasswordHash.ShouldBeNull();
         (await LoginsAsync(fixture.Host, unverified.Id)).ShouldBeEmpty();
     }
 

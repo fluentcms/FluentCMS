@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -37,6 +38,8 @@ public sealed class MemberProviderStartupTests : IAsyncDisposable
     [InlineData("no private key", "FluentCms:Members:Providers:apple:PrivateKey")]
     [InlineData("linking for Microsoft", "FluentCms:Members:Providers:microsoft:LinkVerifiedEmail")]
     [InlineData("a name that is no path segment", "FluentCms:Members:Providers:my.provider:")]
+    [InlineData("a name that is not lower-case", "FluentCms:Members:Providers:Google:")]
+    [InlineData("the name of a sign-in method", "FluentCms:Members:Providers:password: 'password'")]
     public async Task AProviderThatIsNotValidStopsTheHostWithItsCode(string what, string key)
     {
         var settings = what switch
@@ -58,6 +61,8 @@ public sealed class MemberProviderStartupTests : IAsyncDisposable
             "no authority" => Settings(("corp:Type", "Oidc"), ("corp:ClientId", "id")),
             "no private key" => Settings(("apple:Type", "Apple"), ("apple:ClientId", "id"), ("apple:TeamId", "TEAM123456"), ("apple:KeyId", "KEY1234567")),
             "linking for Microsoft" => Settings(("microsoft:Type", "Microsoft"), ("microsoft:ClientId", "id"), ("microsoft:ClientSecret", "secret"), ("microsoft:LinkVerifiedEmail", "true")),
+            "a name that is not lower-case" => Settings(("Google:Type", "Google"), ("Google:ClientId", "id"), ("Google:ClientSecret", "secret")),
+            "the name of a sign-in method" => Settings(("password:Type", "Google"), ("password:ClientId", "id"), ("password:ClientSecret", "secret")),
             _ => Settings(("my.provider:Type", "Google"), ("my.provider:ClientId", "id"), ("my.provider:ClientSecret", "secret")),
         };
         var app = _host.Build(Environments.Production, settings);
@@ -136,7 +141,16 @@ public sealed class MemberProviderStartupTests : IAsyncDisposable
         Remote(corp, "corp");
         (corp.Authority, corp.ClientId, corp.ClientSecret, corp.ResponseType, corp.UsePkce).ShouldBe(("https://id.example.com/", "corp-id", null, "code", true));
         corp.Scope.ShouldBe(["openid", "profile", "email", "groups"]);
+
+        // A provider's logout ends no member session, and none is started here: neither path of the handler answers.
         corp.RemoteSignOutPath.Value.ShouldBe("/account/members/sso/corp/signout");
+        corp.SignedOutCallbackPath.Value.ShouldBe("/account/members/sso/corp/signed-out");
+        using var client = app.GetTestClient();
+        foreach (var path in new[] { "/account/members/sso/corp/signout", "/account/members/sso/corp/signed-out", "/account/members/sso/corp/signout?iss=https%3A%2F%2Fid.example.com%2F" })
+        {
+            using var answer = await client.GetAsync(new Uri(path, UriKind.Relative), Token);
+            answer.StatusCode.ShouldBe(System.Net.HttpStatusCode.NotFound, path);
+        }
 
         // The admin provider of the same name keeps its own callback and cookie.
         var staff = oidc.Get("corp");

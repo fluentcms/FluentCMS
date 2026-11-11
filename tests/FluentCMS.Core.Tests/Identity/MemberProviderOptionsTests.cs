@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity.Members;
+using FluentCMS.Events;
 using Shouldly;
 using Xunit;
 
@@ -27,7 +28,7 @@ public sealed class MemberProviderOptionsTests
         var options = new MemberOptions();
         options.Providers["google"] = new MemberProvider { Type = MemberProviderTypes.Google, ClientId = "id", ClientSecret = "secret", LinkVerifiedEmail = true };
         options.Providers["microsoft"] = new MemberProvider { Type = "microsoft", ClientId = "id", ClientSecret = "secret" };
-        options.Providers["git_hub-1"] = new MemberProvider { Type = "GITHUB", ClientId = "id", ClientSecret = "secret", Scopes = { "read:org" } };
+        options.Providers["git-hub-1"] = new MemberProvider { Type = "GITHUB", ClientId = "id", ClientSecret = "secret", Scopes = { "read:org" } };
         options.Providers["apple"] = new MemberProvider { Type = MemberProviderTypes.Apple, ClientId = "com.example.web", TeamId = "TEAM123456", KeyId = "KEY1234567", PrivateKey = AppleKey };
         options.Providers["corp"] = new MemberProvider { Type = MemberProviderTypes.Oidc, ClientId = "id", Authority = "https://id.example.com/realms/members" };
         options.Providers["local"] = new MemberProvider { Type = MemberProviderTypes.Oidc, ClientId = "id", ClientSecret = "secret", Authority = "http://localhost:8080", RequireHttpsMetadata = false };
@@ -35,7 +36,7 @@ public sealed class MemberProviderOptionsTests
         Should.NotThrow(options.Validate);
         options.Providers["GOOGLE"].ShouldBeSameAs(options.Providers["google"]);
         options.Providers["microsoft"].Kind.ShouldBe(MemberProviderKind.Microsoft);
-        options.Providers["git_hub-1"].Kind.ShouldBe(MemberProviderKind.GitHub);
+        options.Providers["git-hub-1"].Kind.ShouldBe(MemberProviderKind.GitHub);
     }
 
     [Fact]
@@ -50,16 +51,33 @@ public sealed class MemberProviderOptionsTests
         MemberProvider.SchemeOf("google").ShouldBe("member-google");
     }
 
+    // The name is kept with every login as it is written, so it has one way to be written: lower-case.
     [Theory]
     [InlineData("corp/x")]
     [InlineData("corp.x")]
     [InlineData("corp x")]
+    [InlineData("corp_x")]
+    [InlineData("Google")]
+    [InlineData("CORP")]
     [InlineData("")]
-    public void AProviderNameMustFitAPath(string name)
+    public void AProviderNameIsLowerCaseAndFitsAPath(string name)
     {
         var refused = Refused(name, new MemberProvider { Type = MemberProviderTypes.Google, ClientId = "id", ClientSecret = "secret" });
 
         refused.ShouldStartWith($"FCMS3180: Providers:{name}:");
+    }
+
+    // A sign-in through a provider names the provider as its method in the sign-in events.
+    [Fact]
+    public void AProviderIsNotNamedLikeASignInMethodOfThePool()
+    {
+        var refused = Refused(MemberLoginMethods.Password, new MemberProvider { Type = MemberProviderTypes.Google, ClientId = "id", ClientSecret = "secret" });
+
+        refused.ShouldStartWith("FCMS3180: Providers:password: 'password' is a sign-in method");
+
+        // The other method has a character a name cannot have, and is refused for that already.
+        Refused(MemberLoginMethods.DirectLogin, new MemberProvider { Type = MemberProviderTypes.Google, ClientId = "id", ClientSecret = "secret" })
+            .ShouldStartWith("FCMS3180: Providers:direct_login:");
     }
 
     [Theory]

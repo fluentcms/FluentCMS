@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
@@ -106,9 +107,16 @@ public sealed class MemberStoreTests : IDisposable
         fixture.Read(context => context.Set<CmsMemberLogin>().Count()).ShouldBe(0);
         await fixture.WithAsync(services => services.GetRequiredService<OutboxDrainer>().DrainAsync(Token));
         var rows = fixture.ActivityRows().Where(row => row.TargetId == member.Id.ToString("D")).ToList();
-        rows.Where(row => row.Action == "member.login_linked").Select(row => row.Details).ShouldBe(["""{"provider":"google"}""", """{"provider":"github"}"""], ignoreOrder: true);
-        rows.Where(row => row.Action == "member.login_unlinked").Select(row => row.Details).ShouldBe(["""{"provider":"google"}""", """{"provider":"github"}"""], ignoreOrder: true);
+        rows.Where(row => row.Action == "member.login_linked").Select(Provider).ShouldBe(["google", "github"], ignoreOrder: true);
+        rows.Where(row => row.Action == "member.login_unlinked").Select(Provider).ShouldBe(["google", "github"], ignoreOrder: true);
         rows.ShouldAllBe(row => row.SiteId == null && row.TargetType == "member");
+    }
+
+    // The details are JSON, which each database writes its own way, so they are read and not compared as text.
+    private static string? Provider(ActivityRow row)
+    {
+        using var details = JsonDocument.Parse(row.Details ?? "{}");
+        return details.RootElement.TryGetProperty("provider", out var provider) ? provider.GetString() : null;
     }
 
     [Fact]

@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Events;
 
 namespace FluentCMS.Core.Identity.Members;
 
@@ -25,7 +26,8 @@ internal enum MemberProviderKind
 
 // One entry of cms.Members.Providers, and FluentCms:Members:Providers:{name} in configuration: an external provider
 // members sign in with on the member pages. The name is the login provider of its members in cms_member_login and part
-// of its callback path, /account/members/sso/{name}; its authentication scheme is member-{name}, so a provider of
+// of its callback path, /account/members/sso/{name}. It is lower-case, so that writing it in another case later cannot
+// part the members from their logins. Its authentication scheme is member-{name}, so a provider of
 // cms.Sso with the same name is another scheme, and neither pool is reached through the other's provider. Secrets come
 // from configuration only.
 public sealed partial class MemberProvider
@@ -34,6 +36,9 @@ public sealed partial class MemberProvider
 
     // The length of the display name column of cms_member_login, which keeps the name beside each login.
     private const int MaxDisplayNameLength = 128;
+
+    // A sign-in through a provider names the provider as its method, so a provider is not named like another method.
+    private static readonly string[] SignInMethods = [MemberLoginMethods.Password, MemberLoginMethods.DirectLogin];
 
     // One of MemberProviderTypes; the case does not matter.
     public string? Type { get; set; }
@@ -84,7 +89,10 @@ public sealed partial class MemberProvider
     internal void Validate(string name)
     {
         var key = $"{nameof(MemberOptions.Providers)}:{name}";
-        Require(NamePattern().IsMatch(name), $"{key}: a provider name is 1 to 64 letters, digits, '-' or '_', since it is part of the callback path.");
+        Require(NamePattern().IsMatch(name), $"{key}: a provider name is 1 to 64 lower-case letters, digits or '-'. It is part of the callback path, and the logins of its members are kept under it as it is written.");
+        Require(
+            !SignInMethods.Contains(name, StringComparer.OrdinalIgnoreCase),
+            $"{key}: '{name}' is a sign-in method of the member pool, which a sign-in event would not tell from the provider.");
         Require(TryKind(Type, out var kind), $"{key}:{nameof(Type)} is '{Type}'; it is one of {string.Join(", ", Enum.GetNames<MemberProviderKind>())}.");
         Require(!string.IsNullOrWhiteSpace(ClientId), $"{key}:{nameof(ClientId)} is required.");
         Require(DisplayName is null || (DisplayName.Length <= MaxDisplayNameLength && !DisplayName.Any(char.IsControl)), $"{key}:{nameof(DisplayName)} has at most {MaxDisplayNameLength} characters and no control character.");
@@ -158,6 +166,6 @@ public sealed partial class MemberProvider
         }
     }
 
-    [GeneratedRegex("^[A-Za-z0-9_-]{1,64}$")]
+    [GeneratedRegex("^[a-z0-9-]{1,64}$")]
     private static partial Regex NamePattern();
 }

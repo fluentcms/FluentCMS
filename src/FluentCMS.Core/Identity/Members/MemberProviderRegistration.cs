@@ -160,12 +160,16 @@ internal static class MemberProviderRegistration
 
         options.Events.OnTokenValidated = KeepSubject;
 
-        // A provider's front-channel logout ends no member session: the path answers as one that is not there.
-        options.Events.OnRemoteSignOut = context =>
-        {
-            context.SkipHandler();
-            return Task.CompletedTask;
-        };
+        // A provider's logout ends no member session, and none is started here: the two paths the handler would answer
+        // are left to the rest of the pipeline, which has nothing there.
+        options.Events.OnRemoteSignOut = NotServed;
+        options.Events.OnSignedOutCallbackRedirect = NotServed;
+    }
+
+    private static Task NotServed(RemoteSignOutContext context)
+    {
+        context.SkipHandler();
+        return Task.CompletedTask;
     }
 
     private static void OAuth(OAuthOptions options, MemberProvider provider)

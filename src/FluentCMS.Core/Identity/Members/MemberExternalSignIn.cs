@@ -26,8 +26,9 @@ internal enum MemberExternalOutcome
 // while registration is open, named by the provider's address and display name, with no password. The address of that
 // member counts as verified only when the provider says so; otherwise the member gets the verification mail and signs
 // in once the address is verified. An address that belongs to a member is never taken over: the sign-in is refused,
-// unless the provider links verified addresses and says this one is verified, and the member may sign in now. A
-// sign-in with an address the provider did not verify is answered the same whether or not the address is a member's.
+// unless the provider links verified addresses and says this one is verified, and the member may sign in now. An
+// address of a member that is not verified yet is contested, as a second registration of it is. A sign-in with an
+// address the provider did not verify is answered the same whether or not the address is a member's.
 internal sealed class MemberExternalSignIn(
     MemberOptions options,
     MemberManager members,
@@ -35,6 +36,7 @@ internal sealed class MemberExternalSignIn(
     MemberSignInEvents events,
     MemberMail mail,
     MemberLogins logins,
+    MemberAccountService account,
     IdentityChanges changes,
     IOperationContextAccessor accessor,
     TimeProvider time,
@@ -109,6 +111,17 @@ internal sealed class MemberExternalSignIn(
         }
 
         var existing = login.Email is null ? null : await members.FindByEmailAsync(login.Email);
+        if (existing is { EmailConfirmed: false, DeactivatedAt: null })
+        {
+            // The address is claimed a second time before anyone has shown whose it is, as when it is registered
+            // twice: the password or the logins the first claim left are not kept, whatever this provider says of the
+            // address, and the owner of the mailbox chooses a password with the mailed link. Nothing is linked, and
+            // nobody is signed in. With registration closed the answer stays the one a visitor without a member gets.
+            await RefusedAsync(login, MemberErrorCodes.ProviderEmailTaken, "the address belongs to a member whose address is not verified.", LoginFailureReasons.NotAllowed);
+            await account.ContestAsync(existing, cancellationToken);
+            return options.AllowRegistration ? MemberExternalOutcome.Pending : MemberExternalOutcome.Refused;
+        }
+
         if (existing is not null)
         {
             if (login.EmailVerified && options.Providers[login.Provider].LinkVerifiedEmail)
@@ -220,8 +233,7 @@ internal sealed class MemberExternalSignIn(
     }
 
     // Only a member who may sign in now, and who has no other login of the provider, so that a second account at the
-    // provider does not join the first. A member whose address is not verified is not linked: nobody has shown that
-    // its password, if it has one, is the choice of the mailbox's owner.
+    // provider does not join the first.
     private async Task<bool> LinkExistingAsync(CmsMember member, MemberExternalLogin login)
     {
         if (!await signIn.MaySignInAsync(member))

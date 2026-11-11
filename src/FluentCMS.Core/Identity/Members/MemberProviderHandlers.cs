@@ -37,13 +37,27 @@ internal sealed class MemberMicrosoftHandler(IOptionsMonitor<MicrosoftAccountOpt
 }
 
 internal sealed class MemberAppleHandler(IOptionsMonitor<AppleAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder, PublicOrigin origin)
-    : AppleAuthenticationHandler(options, logger, encoder)
+    : AppleAuthenticationHandler(options, new PackageCategory(logger), encoder)
 {
     protected override string BuildChallengeUrl(AuthenticationProperties properties, string redirectUri) =>
         base.BuildChallengeUrl(properties, MemberProviders.Callback(origin, Options.CallbackPath, redirectUri));
 
     protected override Task<OAuthTokenResponse> ExchangeCodeAsync(OAuthCodeExchangeContext context) =>
         base.ExchangeCodeAsync(MemberProviders.Callback(origin, Options.CallbackPath, context));
+
+    // A handler's log is named after its type, and the Apple handler writes the tokens of a sign-in to it at Trace.
+    // The log keeps the name of the package's handler, so that a host that turns the FluentCMS categories up for a
+    // diagnosis does not write those tokens, and one category, AspNet.Security.OAuth.Apple, holds all the package says.
+    private sealed class PackageCategory(ILoggerFactory inner) : ILoggerFactory
+    {
+        public ILogger CreateLogger(string categoryName) => inner.CreateLogger(typeof(AppleAuthenticationHandler).FullName!);
+
+        public void AddProvider(ILoggerProvider provider) => inner.AddProvider(provider);
+
+        public void Dispose()
+        {
+        }
+    }
 }
 
 // The GitHub handler takes the primary address of the account whether or not GitHub verified it. This one takes it
