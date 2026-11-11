@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json;
 using FluentCMS.Agents;
+using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using Microsoft.AspNetCore;
@@ -68,12 +69,19 @@ internal static class ConnectEndpoints
 
         // A client that registered itself gets nothing until an administrator has approved it, and the user is not asked
         // to sign in for it. Its redirect URI is as unvetted as the client, so the refusal is shown here.
-        var registered = McpClientState.Of(await applications.GetPropertiesAsync(application, context.RequestAborted));
+        var properties = await applications.GetPropertiesAsync(application, context.RequestAborted);
+        var registered = McpClientState.Of(properties);
         if (registered is { IsApproved: false })
         {
             return ErrorPage(context, registered.Status == McpClientStatus.Rejected
                 ? new OpenIddictResponse { Error = ClientRejected, ErrorDescription = "An administrator rejected the client." }
                 : new OpenIddictResponse { Error = ClientPendingApproval, ErrorDescription = "The client waits for an administrator to approve it." });
+        }
+
+        // The client names its pool: one of the member pool is answered from the member cookie and never from the admin's.
+        if (MemberConnect.IsMemberClient(properties))
+        {
+            return await MemberConnect.AuthorizeAsync(context, request);
         }
 
         var cookie = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
@@ -180,6 +188,11 @@ internal static class ConnectEndpoints
             // The code or refresh token keeps its scopes and session; the user is read again, so one who can no longer
             // sign in, or whose password changed since, gets no new token.
             var result = await context.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+            if (MemberConnect.IsMemberToken(result.Principal))
+            {
+                return await MemberConnect.RedeemAsync(context, request, result.Principal!);
+            }
+
             var signIn = context.RequestServices.GetRequiredService<SignInManager<CmsUser>>();
             var users = signIn.UserManager;
             var user = result.Principal?.GetClaim(Claims.Subject) is { } subject ? await users.FindByIdAsync(subject) : null;
@@ -227,10 +240,17 @@ internal static class ConnectEndpoints
                 return Refuse(Errors.InvalidClient, "The client is not known.");
             }
 
-            var registered = McpClientState.Of(await clients.GetPropertiesAsync(client, context.RequestAborted));
+            var properties = await clients.GetPropertiesAsync(client, context.RequestAborted);
+            var registered = McpClientState.Of(properties);
             if (registered is { IsApproved: false })
             {
                 return Refuse(Errors.UnauthorizedClient, "The client is not approved.");
+            }
+
+            // A client that the configuration moved to the member pool redeems no admin user's token.
+            if (MemberConnect.IsMemberClient(properties))
+            {
+                return Refuse(Errors.InvalidGrant, "The token was issued to a client of the admin pool, which this client is not.");
             }
 
             TokenClaims.ForUser(identity, user, stamp, result.Principal!.GetScopes(), registered?.RoleId);
@@ -246,10 +266,20 @@ internal static class ConnectEndpoints
             var id = Guid.Parse(await applications.GetIdAsync(application, context.RequestAborted) ?? "");
             var name = await applications.GetDisplayNameAsync(application, context.RequestAborted) ?? request.ClientId!;
             var properties = await applications.GetPropertiesAsync(application, context.RequestAborted);
+            if (MemberConnect.IsMemberClient(properties))
+            {
+                return Refuse(Errors.UnauthorizedClient, "A client of the member pool is not a service account.");
+            }
+
             var roles = await RoleIdsAsync(context.RequestServices, properties, context.RequestAborted);
 
             var identity = TokenClaims.ForServiceAccount(TokenClaims.Identity(), id, name, roles, request.GetScopes());
             return Results.SignIn(new ClaimsPrincipal(identity), properties: null, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        }
+
+        if (request.GrantType == AuthorizationServer.MemberPasswordGrant)
+        {
+            return await MemberConnect.DirectLoginAsync(context, request);
         }
 
         return Refuse(Errors.UnsupportedGrantType, "The grant type is not supported.");
@@ -258,6 +288,11 @@ internal static class ConnectEndpoints
     private static async Task<IResult> UserInfoAsync(HttpContext context)
     {
         var result = await context.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        if (MemberConnect.IsMemberToken(result.Principal))
+        {
+            return await MemberConnect.UserInfoAsync(context, result.Principal!);
+        }
+
         var users = context.RequestServices.GetRequiredService<UserManager<CmsUser>>();
         var user = result.Principal?.GetClaim(Claims.Subject) is { } subject ? await users.FindByIdAsync(subject) : null;
         if (user is null || user.DeactivatedAt is not null)
@@ -290,6 +325,9 @@ internal static class ConnectEndpoints
     // or to the logout page. The user confirms on the logout page, whose form posts back with an antiforgery token, or the
     // client sends a valid id_token_hint of the signed-in user. Anything else, a cross-site POST included, goes to the logout
     // page, which asks. A request without the sign-in cookie has no sign-in to end, so it sends no expiring cookie either.
+    // The client the request names, by its client_id or by the audience of its hint, says whose sign-in ends: a client of
+    // the member pool ends the member's on the member pages, and any other request the admin user's, so that neither
+    // signs the other out.
     private static async Task<IResult> LogoutAsync(HttpContext context)
     {
         if (context.GetOpenIddictServerResponse() is { Error: not null } failed)
@@ -297,37 +335,56 @@ internal static class ConnectEndpoints
             return ErrorPage(context, failed);
         }
 
-        var cookie = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
-        if (!await ConfirmedAsync(context) && !await HintsSignedInUserAsync(context, cookie))
+        var hint = await context.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        var members = await IsMemberClientAsync(context, context.GetOpenIddictServerRequest()?.ClientId ?? hint.Principal?.GetAudiences().FirstOrDefault());
+        var (scheme, page) = members
+            ? (MemberAuthentication.CookieScheme, HostedPagePaths.MemberLogout)
+            : (IdentityConstants.ApplicationScheme, HostedPagePaths.Logout);
+
+        var cookie = await context.AuthenticateAsync(scheme);
+        if (!await ConfirmedAsync(context, members) && !HintsSignedInUser(context, hint, cookie, members))
         {
-            return Results.Redirect(context.Request.PathBase + HostedPagePaths.Logout + QueryString.Create(LogoutParameters(context)));
+            return Results.Redirect(context.Request.PathBase + page + QueryString.Create(LogoutParameters(context)));
         }
 
         if (cookie.Succeeded)
         {
-            await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+            await context.SignOutAsync(scheme);
         }
 
         return Results.SignOut(
-            new AuthenticationProperties { RedirectUri = context.Request.PathBase + HostedPagePaths.Logout },
+            new AuthenticationProperties { RedirectUri = context.Request.PathBase + page },
             [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme]);
     }
 
-    // The form of the logout page, with the antiforgery token the page rendered.
-    private static async Task<bool> ConfirmedAsync(HttpContext context) =>
-        HttpMethods.IsPost(context.Request.Method) && context.Request.HasFormContentType
-        && await context.RequestServices.GetRequiredService<IAntiforgery>().IsRequestValidAsync(context);
-
-    // What the logout page posts back: the client's request, without a token of an earlier form.
-    private static IEnumerable<KeyValuePair<string, StringValues>> LogoutParameters(HttpContext context)
+    private static async Task<bool> IsMemberClientAsync(HttpContext context, string? clientId)
     {
-        if (!context.Request.HasFormContentType)
+        if (string.IsNullOrEmpty(clientId))
         {
-            return context.Request.Query;
+            return false;
         }
 
+        var applications = context.RequestServices.GetRequiredService<IOpenIddictApplicationManager>();
+        return await applications.FindByClientIdAsync(clientId, context.RequestAborted) is { } application
+            && MemberConnect.IsMemberClient(await applications.GetPropertiesAsync(application, context.RequestAborted));
+    }
+
+    // The form of the logout page, with the antiforgery token the page rendered. The two logout pages share that token,
+    // so the form also says which page it is: the member page marks its form, and only the page of the pool that is signed
+    // out confirms it.
+    private static async Task<bool> ConfirmedAsync(HttpContext context, bool members) =>
+        HttpMethods.IsPost(context.Request.Method) && context.Request.HasFormContentType
+        && (context.Request.Form[MemberAuthentication.LogoutPageField] == MemberAuthentication.LogoutPageMark) == members
+        && await context.RequestServices.GetRequiredService<IAntiforgery>().IsRequestValidAsync(context);
+
+    // What the logout page posts back: the client's request, without a token or a page's mark of an earlier form.
+    private static IEnumerable<KeyValuePair<string, StringValues>> LogoutParameters(HttpContext context)
+    {
         var token = context.RequestServices.GetRequiredService<IOptions<AntiforgeryOptions>>().Value.FormFieldName;
-        return context.Request.Form.Where(parameter => !string.Equals(parameter.Key, token, StringComparison.Ordinal));
+        IEnumerable<KeyValuePair<string, StringValues>> parameters = context.Request.HasFormContentType ? context.Request.Form : context.Request.Query;
+        return parameters.Where(parameter =>
+            !string.Equals(parameter.Key, token, StringComparison.Ordinal)
+            && !string.Equals(parameter.Key, MemberAuthentication.LogoutPageField, StringComparison.OrdinalIgnoreCase));
     }
 
     // An error the server could not return to the client, such as an unknown client or redirect URI. The error page shows
@@ -341,21 +398,27 @@ internal static class ConnectEndpoints
 
     // OpenIddict passes a hint it cannot read through without a principal, so the hint is checked here. Without the cookie
     // a GET, which a browser sends with it, has no one signed in; a POST may be a cross-site one, which never carries it.
-    private static async Task<bool> HintsSignedInUserAsync(HttpContext context, AuthenticateResult cookie)
+    // The cookie is the one of the pool the request is for, read by that pool's manager.
+    private static bool HintsSignedInUser(HttpContext context, AuthenticateResult hint, AuthenticateResult cookie, bool members)
     {
-        var hint = await context.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         if (hint.Principal?.GetClaim(Claims.Subject) is not { } subject)
         {
             return false;
         }
 
-        return cookie.Succeeded
-            ? context.RequestServices.GetRequiredService<UserManager<CmsUser>>().GetUserId(cookie.Principal) == subject
-            : HttpMethods.IsGet(context.Request.Method);
+        if (!cookie.Succeeded)
+        {
+            return HttpMethods.IsGet(context.Request.Method);
+        }
+
+        var signedIn = members
+            ? context.RequestServices.GetRequiredService<MemberManager>().GetUserId(cookie.Principal)
+            : context.RequestServices.GetRequiredService<UserManager<CmsUser>>().GetUserId(cookie.Principal);
+        return signedIn == subject;
     }
 
     // A new sign-in answers prompt=login and max_age, so the request it comes back with no longer asks for one.
-    private static IEnumerable<KeyValuePair<string, StringValues>> WithoutReauthentication(List<KeyValuePair<string, StringValues>> parameters)
+    internal static IEnumerable<KeyValuePair<string, StringValues>> WithoutReauthentication(List<KeyValuePair<string, StringValues>> parameters)
     {
         foreach (var (name, value) in parameters)
         {
@@ -381,7 +444,7 @@ internal static class ConnectEndpoints
     private static OpenIddictRequest ServerRequest(HttpContext context) =>
         context.GetOpenIddictServerRequest() ?? throw new InvalidOperationException("The request did not pass through the authorization server.");
 
-    private static IResult Refuse(string error, string description) => Results.Forbid(
+    internal static IResult Refuse(string error, string description) => Results.Forbid(
         new AuthenticationProperties(new Dictionary<string, string?>
         {
             [OpenIddictServerAspNetCoreConstants.Properties.Error] = error,

@@ -248,8 +248,10 @@ public static class FluentCmsEndpointRouteBuilderExtensions
     private static bool Covers(string group, string prefix) =>
         prefix.StartsWith(group, StringComparison.OrdinalIgnoreCase) && (prefix.Length == group.Length || prefix[group.Length] == '/');
 
-    // The admin application calls /connect and reads the discovery document from its own origin, so those groups answer
-    // the Management origins. Only Delivery is cached; the others say so, so that a base policy of the host's leaves them alone.
+    // The admin application calls /connect and reads the discovery document from its own origin, and so does a front end
+    // that signs members in, so those groups answer the Management origins and the Members ones. The member routes take
+    // the strict auth limit by client address, as /connect does. Only Delivery is cached; the others say so, so that a base
+    // policy of the host's leaves them alone.
     private static RouteGroupBuilder Protect(RouteGroupBuilder routes, FluentCmsEndpointGroup group)
     {
         // Discovery and the key set belong to the authorization server, so they count as its surface.
@@ -277,11 +279,14 @@ public static class FluentCmsEndpointRouteBuilderExtensions
             case FluentCmsEndpointGroup.Management:
                 routes.RequireRateLimiting(RateLimitPolicyNames.Management).RequireCors(CorsPolicies.Management);
                 break;
+            case FluentCmsEndpointGroup.Members:
+                routes.RequireRateLimiting(RateLimitPolicyNames.Auth).RequireCors(CorsPolicies.Members);
+                break;
             case FluentCmsEndpointGroup.Connect:
-                routes.RequireRateLimiting(RateLimitPolicyNames.Auth).RequireCors(CorsPolicies.Management);
+                routes.RequireRateLimiting(RateLimitPolicyNames.Auth).RequireCors(CorsPolicies.Connect);
                 break;
             case FluentCmsEndpointGroup.WellKnown:
-                routes.RequireCors(CorsPolicies.Management);
+                routes.RequireCors(CorsPolicies.Connect);
                 break;
             case FluentCmsEndpointGroup.Account:
                 routes.AsHostedPages();

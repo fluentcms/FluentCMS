@@ -3460,3 +3460,197 @@ static FluentCMS.Events.SiteDeletedEvent.operator ==(FluentCMS.Events.SiteDelete
 static FluentCMS.Sites.SiteInfo.operator !=(FluentCMS.Sites.SiteInfo? left, FluentCMS.Sites.SiteInfo? right) -> bool
 static FluentCMS.Sites.SiteInfo.operator ==(FluentCMS.Sites.SiteInfo? left, FluentCMS.Sites.SiteInfo? right) -> bool
 FluentCMS.Sites.ISiteAdministration.FindAsync(FluentCMS.Sites.SiteId site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Sites.SiteInfo?>!
+FluentCMS.Content.Principal.IsInGroup(string! name) -> bool
+FluentCMS.Events.MemberChanges
+FluentCMS.Events.MemberDeactivatedEvent
+FluentCMS.Events.MemberDeactivatedEvent.Deconstruct(out System.Guid MemberId, out string! Email) -> void
+FluentCMS.Events.MemberDeactivatedEvent.Email.get -> string!
+FluentCMS.Events.MemberDeactivatedEvent.Email.init -> void
+FluentCMS.Events.MemberDeactivatedEvent.Equals(FluentCMS.Events.MemberDeactivatedEvent? other) -> bool
+FluentCMS.Events.MemberDeactivatedEvent.MemberDeactivatedEvent(System.Guid MemberId, string! Email) -> void
+FluentCMS.Events.MemberDeactivatedEvent.MemberId.get -> System.Guid
+FluentCMS.Events.MemberDeactivatedEvent.MemberId.init -> void
+FluentCMS.Events.MemberDeletedEvent
+FluentCMS.Events.MemberDeletedEvent.Deconstruct(out System.Guid MemberId, out string! Email) -> void
+FluentCMS.Events.MemberDeletedEvent.Email.get -> string!
+FluentCMS.Events.MemberDeletedEvent.Email.init -> void
+FluentCMS.Events.MemberDeletedEvent.Equals(FluentCMS.Events.MemberDeletedEvent? other) -> bool
+FluentCMS.Events.MemberDeletedEvent.MemberDeletedEvent(System.Guid MemberId, string! Email) -> void
+FluentCMS.Events.MemberDeletedEvent.MemberId.get -> System.Guid
+FluentCMS.Events.MemberDeletedEvent.MemberId.init -> void
+FluentCMS.Events.MemberGroupChangedEvent
+FluentCMS.Events.MemberGroupChangedEvent.Added.get -> System.Collections.Generic.IReadOnlyList<System.Guid>!
+FluentCMS.Events.MemberGroupChangedEvent.Added.init -> void
+FluentCMS.Events.MemberGroupChangedEvent.Deconstruct(out System.Guid MemberId, out string! Email, out System.Collections.Generic.IReadOnlyList<System.Guid>! Added, out System.Collections.Generic.IReadOnlyList<System.Guid>! Removed) -> void
+FluentCMS.Events.MemberGroupChangedEvent.Email.get -> string!
+FluentCMS.Events.MemberGroupChangedEvent.Email.init -> void
+FluentCMS.Events.MemberGroupChangedEvent.Equals(FluentCMS.Events.MemberGroupChangedEvent? other) -> bool
+FluentCMS.Events.MemberGroupChangedEvent.MemberGroupChangedEvent(System.Guid MemberId, string! Email, System.Collections.Generic.IReadOnlyList<System.Guid>! Added, System.Collections.Generic.IReadOnlyList<System.Guid>! Removed) -> void
+FluentCMS.Events.MemberGroupChangedEvent.MemberId.get -> System.Guid
+FluentCMS.Events.MemberGroupChangedEvent.MemberId.init -> void
+FluentCMS.Events.MemberGroupChangedEvent.Removed.get -> System.Collections.Generic.IReadOnlyList<System.Guid>!
+FluentCMS.Events.MemberGroupChangedEvent.Removed.init -> void
+FluentCMS.Events.MemberGroupCreatedEvent
+FluentCMS.Events.MemberGroupCreatedEvent.Deconstruct(out System.Guid GroupId, out string! Name, out System.Guid RoleId) -> void
+FluentCMS.Events.MemberGroupCreatedEvent.Equals(FluentCMS.Events.MemberGroupCreatedEvent? other) -> bool
+FluentCMS.Events.MemberGroupCreatedEvent.GroupId.get -> System.Guid
+FluentCMS.Events.MemberGroupCreatedEvent.GroupId.init -> void
+FluentCMS.Events.MemberGroupCreatedEvent.MemberGroupCreatedEvent(System.Guid GroupId, string! Name, System.Guid RoleId) -> void
+FluentCMS.Events.MemberGroupCreatedEvent.Name.get -> string!
+FluentCMS.Events.MemberGroupCreatedEvent.Name.init -> void
+FluentCMS.Events.MemberGroupCreatedEvent.RoleId.get -> System.Guid
+FluentCMS.Events.MemberGroupCreatedEvent.RoleId.init -> void
+FluentCMS.Events.MemberGroupDeletedEvent
+FluentCMS.Events.MemberGroupDeletedEvent.Deconstruct(out System.Guid GroupId, out string! Name) -> void
+FluentCMS.Events.MemberGroupDeletedEvent.Equals(FluentCMS.Events.MemberGroupDeletedEvent? other) -> bool
+FluentCMS.Events.MemberGroupDeletedEvent.GroupId.get -> System.Guid
+FluentCMS.Events.MemberGroupDeletedEvent.GroupId.init -> void
+FluentCMS.Events.MemberGroupDeletedEvent.MemberGroupDeletedEvent(System.Guid GroupId, string! Name) -> void
+FluentCMS.Events.MemberGroupDeletedEvent.Name.get -> string!
+FluentCMS.Events.MemberGroupDeletedEvent.Name.init -> void
+FluentCMS.Events.MemberGroupUpdatedEvent
+FluentCMS.Events.MemberGroupUpdatedEvent.Deconstruct(out System.Guid GroupId, out string! Name, out System.Guid RoleId) -> void
+FluentCMS.Events.MemberGroupUpdatedEvent.Equals(FluentCMS.Events.MemberGroupUpdatedEvent? other) -> bool
+FluentCMS.Events.MemberGroupUpdatedEvent.GroupId.get -> System.Guid
+FluentCMS.Events.MemberGroupUpdatedEvent.GroupId.init -> void
+FluentCMS.Events.MemberGroupUpdatedEvent.MemberGroupUpdatedEvent(System.Guid GroupId, string! Name, System.Guid RoleId) -> void
+FluentCMS.Events.MemberGroupUpdatedEvent.Name.get -> string!
+FluentCMS.Events.MemberGroupUpdatedEvent.Name.init -> void
+FluentCMS.Events.MemberGroupUpdatedEvent.RoleId.get -> System.Guid
+FluentCMS.Events.MemberGroupUpdatedEvent.RoleId.init -> void
+FluentCMS.Events.MemberLoginFailedEvent
+FluentCMS.Events.MemberLoginFailedEvent.Deconstruct(out System.Guid? MemberId, out string? Email, out string! Method, out string! Reason, out string? Ip) -> void
+FluentCMS.Events.MemberLoginFailedEvent.Email.get -> string?
+FluentCMS.Events.MemberLoginFailedEvent.Email.init -> void
+FluentCMS.Events.MemberLoginFailedEvent.Equals(FluentCMS.Events.MemberLoginFailedEvent? other) -> bool
+FluentCMS.Events.MemberLoginFailedEvent.Ip.get -> string?
+FluentCMS.Events.MemberLoginFailedEvent.Ip.init -> void
+FluentCMS.Events.MemberLoginFailedEvent.MemberId.get -> System.Guid?
+FluentCMS.Events.MemberLoginFailedEvent.MemberId.init -> void
+FluentCMS.Events.MemberLoginFailedEvent.MemberLoginFailedEvent(System.Guid? MemberId, string? Email, string! Method, string! Reason, string? Ip) -> void
+FluentCMS.Events.MemberLoginFailedEvent.Method.get -> string!
+FluentCMS.Events.MemberLoginFailedEvent.Method.init -> void
+FluentCMS.Events.MemberLoginFailedEvent.Reason.get -> string!
+FluentCMS.Events.MemberLoginFailedEvent.Reason.init -> void
+FluentCMS.Events.MemberLoginMethods
+FluentCMS.Events.MemberLoginSucceededEvent
+FluentCMS.Events.MemberLoginSucceededEvent.Deconstruct(out System.Guid MemberId, out string! Email, out string! Method, out string? Ip) -> void
+FluentCMS.Events.MemberLoginSucceededEvent.Email.get -> string!
+FluentCMS.Events.MemberLoginSucceededEvent.Email.init -> void
+FluentCMS.Events.MemberLoginSucceededEvent.Equals(FluentCMS.Events.MemberLoginSucceededEvent? other) -> bool
+FluentCMS.Events.MemberLoginSucceededEvent.Ip.get -> string?
+FluentCMS.Events.MemberLoginSucceededEvent.Ip.init -> void
+FluentCMS.Events.MemberLoginSucceededEvent.MemberId.get -> System.Guid
+FluentCMS.Events.MemberLoginSucceededEvent.MemberId.init -> void
+FluentCMS.Events.MemberLoginSucceededEvent.MemberLoginSucceededEvent(System.Guid MemberId, string! Email, string! Method, string? Ip) -> void
+FluentCMS.Events.MemberLoginSucceededEvent.Method.get -> string!
+FluentCMS.Events.MemberLoginSucceededEvent.Method.init -> void
+FluentCMS.Events.MemberRegisteredEvent
+FluentCMS.Events.MemberRegisteredEvent.Deconstruct(out System.Guid MemberId, out string! Email) -> void
+FluentCMS.Events.MemberRegisteredEvent.Email.get -> string!
+FluentCMS.Events.MemberRegisteredEvent.Email.init -> void
+FluentCMS.Events.MemberRegisteredEvent.Equals(FluentCMS.Events.MemberRegisteredEvent? other) -> bool
+FluentCMS.Events.MemberRegisteredEvent.MemberId.get -> System.Guid
+FluentCMS.Events.MemberRegisteredEvent.MemberId.init -> void
+FluentCMS.Events.MemberRegisteredEvent.MemberRegisteredEvent(System.Guid MemberId, string! Email) -> void
+FluentCMS.Events.MemberUpdatedEvent
+FluentCMS.Events.MemberUpdatedEvent.Changes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Events.MemberUpdatedEvent.Changes.init -> void
+FluentCMS.Events.MemberUpdatedEvent.Deconstruct(out System.Guid MemberId, out string! Email, out System.Collections.Generic.IReadOnlyList<string!>! Changes) -> void
+FluentCMS.Events.MemberUpdatedEvent.Email.get -> string!
+FluentCMS.Events.MemberUpdatedEvent.Email.init -> void
+FluentCMS.Events.MemberUpdatedEvent.Equals(FluentCMS.Events.MemberUpdatedEvent? other) -> bool
+FluentCMS.Events.MemberUpdatedEvent.MemberId.get -> System.Guid
+FluentCMS.Events.MemberUpdatedEvent.MemberId.init -> void
+FluentCMS.Events.MemberUpdatedEvent.MemberUpdatedEvent(System.Guid MemberId, string! Email, System.Collections.Generic.IReadOnlyList<string!>! Changes) -> void
+FluentCMS.Events.MemberVerifiedEvent
+FluentCMS.Events.MemberVerifiedEvent.Deconstruct(out System.Guid MemberId, out string! Email) -> void
+FluentCMS.Events.MemberVerifiedEvent.Email.get -> string!
+FluentCMS.Events.MemberVerifiedEvent.Email.init -> void
+FluentCMS.Events.MemberVerifiedEvent.Equals(FluentCMS.Events.MemberVerifiedEvent? other) -> bool
+FluentCMS.Events.MemberVerifiedEvent.MemberId.get -> System.Guid
+FluentCMS.Events.MemberVerifiedEvent.MemberId.init -> void
+FluentCMS.Events.MemberVerifiedEvent.MemberVerifiedEvent(System.Guid MemberId, string! Email) -> void
+const FluentCMS.Content.Principal.GroupsClaim = "fcms_groups" -> string!
+const FluentCMS.Events.MemberChanges.DisplayName = "displayName" -> string!
+const FluentCMS.Events.MemberChanges.Password = "password" -> string!
+const FluentCMS.Events.MemberChanges.Reactivated = "reactivated" -> string!
+const FluentCMS.Events.MemberLoginMethods.DirectLogin = "direct_login" -> string!
+const FluentCMS.Events.MemberLoginMethods.Password = "password" -> string!
+override FluentCMS.Events.MemberDeactivatedEvent.<Clone>$() -> FluentCMS.Events.MemberDeactivatedEvent!
+override FluentCMS.Events.MemberDeactivatedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.MemberDeactivatedEvent.GetHashCode() -> int
+override FluentCMS.Events.MemberDeactivatedEvent.ToString() -> string!
+override FluentCMS.Events.MemberDeletedEvent.<Clone>$() -> FluentCMS.Events.MemberDeletedEvent!
+override FluentCMS.Events.MemberDeletedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.MemberDeletedEvent.GetHashCode() -> int
+override FluentCMS.Events.MemberDeletedEvent.ToString() -> string!
+override FluentCMS.Events.MemberGroupChangedEvent.<Clone>$() -> FluentCMS.Events.MemberGroupChangedEvent!
+override FluentCMS.Events.MemberGroupChangedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.MemberGroupChangedEvent.GetHashCode() -> int
+override FluentCMS.Events.MemberGroupChangedEvent.ToString() -> string!
+override FluentCMS.Events.MemberGroupCreatedEvent.<Clone>$() -> FluentCMS.Events.MemberGroupCreatedEvent!
+override FluentCMS.Events.MemberGroupCreatedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.MemberGroupCreatedEvent.GetHashCode() -> int
+override FluentCMS.Events.MemberGroupCreatedEvent.ToString() -> string!
+override FluentCMS.Events.MemberGroupDeletedEvent.<Clone>$() -> FluentCMS.Events.MemberGroupDeletedEvent!
+override FluentCMS.Events.MemberGroupDeletedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.MemberGroupDeletedEvent.GetHashCode() -> int
+override FluentCMS.Events.MemberGroupDeletedEvent.ToString() -> string!
+override FluentCMS.Events.MemberGroupUpdatedEvent.<Clone>$() -> FluentCMS.Events.MemberGroupUpdatedEvent!
+override FluentCMS.Events.MemberGroupUpdatedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.MemberGroupUpdatedEvent.GetHashCode() -> int
+override FluentCMS.Events.MemberGroupUpdatedEvent.ToString() -> string!
+override FluentCMS.Events.MemberLoginFailedEvent.<Clone>$() -> FluentCMS.Events.MemberLoginFailedEvent!
+override FluentCMS.Events.MemberLoginFailedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.MemberLoginFailedEvent.GetHashCode() -> int
+override FluentCMS.Events.MemberLoginFailedEvent.ToString() -> string!
+override FluentCMS.Events.MemberLoginSucceededEvent.<Clone>$() -> FluentCMS.Events.MemberLoginSucceededEvent!
+override FluentCMS.Events.MemberLoginSucceededEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.MemberLoginSucceededEvent.GetHashCode() -> int
+override FluentCMS.Events.MemberLoginSucceededEvent.ToString() -> string!
+override FluentCMS.Events.MemberRegisteredEvent.<Clone>$() -> FluentCMS.Events.MemberRegisteredEvent!
+override FluentCMS.Events.MemberRegisteredEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.MemberRegisteredEvent.GetHashCode() -> int
+override FluentCMS.Events.MemberRegisteredEvent.ToString() -> string!
+override FluentCMS.Events.MemberUpdatedEvent.<Clone>$() -> FluentCMS.Events.MemberUpdatedEvent!
+override FluentCMS.Events.MemberUpdatedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.MemberUpdatedEvent.GetHashCode() -> int
+override FluentCMS.Events.MemberUpdatedEvent.ToString() -> string!
+override FluentCMS.Events.MemberVerifiedEvent.<Clone>$() -> FluentCMS.Events.MemberVerifiedEvent!
+override FluentCMS.Events.MemberVerifiedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.MemberVerifiedEvent.GetHashCode() -> int
+override FluentCMS.Events.MemberVerifiedEvent.ToString() -> string!
+override sealed FluentCMS.Events.MemberDeactivatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.MemberDeletedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.MemberGroupChangedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.MemberGroupCreatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.MemberGroupDeletedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.MemberGroupUpdatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.MemberLoginFailedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.MemberLoginSucceededEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.MemberRegisteredEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.MemberUpdatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.MemberVerifiedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+static FluentCMS.Events.MemberDeactivatedEvent.operator !=(FluentCMS.Events.MemberDeactivatedEvent? left, FluentCMS.Events.MemberDeactivatedEvent? right) -> bool
+static FluentCMS.Events.MemberDeactivatedEvent.operator ==(FluentCMS.Events.MemberDeactivatedEvent? left, FluentCMS.Events.MemberDeactivatedEvent? right) -> bool
+static FluentCMS.Events.MemberDeletedEvent.operator !=(FluentCMS.Events.MemberDeletedEvent? left, FluentCMS.Events.MemberDeletedEvent? right) -> bool
+static FluentCMS.Events.MemberDeletedEvent.operator ==(FluentCMS.Events.MemberDeletedEvent? left, FluentCMS.Events.MemberDeletedEvent? right) -> bool
+static FluentCMS.Events.MemberGroupChangedEvent.operator !=(FluentCMS.Events.MemberGroupChangedEvent? left, FluentCMS.Events.MemberGroupChangedEvent? right) -> bool
+static FluentCMS.Events.MemberGroupChangedEvent.operator ==(FluentCMS.Events.MemberGroupChangedEvent? left, FluentCMS.Events.MemberGroupChangedEvent? right) -> bool
+static FluentCMS.Events.MemberGroupCreatedEvent.operator !=(FluentCMS.Events.MemberGroupCreatedEvent? left, FluentCMS.Events.MemberGroupCreatedEvent? right) -> bool
+static FluentCMS.Events.MemberGroupCreatedEvent.operator ==(FluentCMS.Events.MemberGroupCreatedEvent? left, FluentCMS.Events.MemberGroupCreatedEvent? right) -> bool
+static FluentCMS.Events.MemberGroupDeletedEvent.operator !=(FluentCMS.Events.MemberGroupDeletedEvent? left, FluentCMS.Events.MemberGroupDeletedEvent? right) -> bool
+static FluentCMS.Events.MemberGroupDeletedEvent.operator ==(FluentCMS.Events.MemberGroupDeletedEvent? left, FluentCMS.Events.MemberGroupDeletedEvent? right) -> bool
+static FluentCMS.Events.MemberGroupUpdatedEvent.operator !=(FluentCMS.Events.MemberGroupUpdatedEvent? left, FluentCMS.Events.MemberGroupUpdatedEvent? right) -> bool
+static FluentCMS.Events.MemberGroupUpdatedEvent.operator ==(FluentCMS.Events.MemberGroupUpdatedEvent? left, FluentCMS.Events.MemberGroupUpdatedEvent? right) -> bool
+static FluentCMS.Events.MemberLoginFailedEvent.operator !=(FluentCMS.Events.MemberLoginFailedEvent? left, FluentCMS.Events.MemberLoginFailedEvent? right) -> bool
+static FluentCMS.Events.MemberLoginFailedEvent.operator ==(FluentCMS.Events.MemberLoginFailedEvent? left, FluentCMS.Events.MemberLoginFailedEvent? right) -> bool
+static FluentCMS.Events.MemberLoginSucceededEvent.operator !=(FluentCMS.Events.MemberLoginSucceededEvent? left, FluentCMS.Events.MemberLoginSucceededEvent? right) -> bool
+static FluentCMS.Events.MemberLoginSucceededEvent.operator ==(FluentCMS.Events.MemberLoginSucceededEvent? left, FluentCMS.Events.MemberLoginSucceededEvent? right) -> bool
+static FluentCMS.Events.MemberRegisteredEvent.operator !=(FluentCMS.Events.MemberRegisteredEvent? left, FluentCMS.Events.MemberRegisteredEvent? right) -> bool
+static FluentCMS.Events.MemberRegisteredEvent.operator ==(FluentCMS.Events.MemberRegisteredEvent? left, FluentCMS.Events.MemberRegisteredEvent? right) -> bool
+static FluentCMS.Events.MemberUpdatedEvent.operator !=(FluentCMS.Events.MemberUpdatedEvent? left, FluentCMS.Events.MemberUpdatedEvent? right) -> bool
+static FluentCMS.Events.MemberUpdatedEvent.operator ==(FluentCMS.Events.MemberUpdatedEvent? left, FluentCMS.Events.MemberUpdatedEvent? right) -> bool
+static FluentCMS.Events.MemberVerifiedEvent.operator !=(FluentCMS.Events.MemberVerifiedEvent? left, FluentCMS.Events.MemberVerifiedEvent? right) -> bool
+static FluentCMS.Events.MemberVerifiedEvent.operator ==(FluentCMS.Events.MemberVerifiedEvent? left, FluentCMS.Events.MemberVerifiedEvent? right) -> bool

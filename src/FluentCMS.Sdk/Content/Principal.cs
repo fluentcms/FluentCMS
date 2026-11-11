@@ -8,6 +8,12 @@ namespace FluentCMS.Content;
 /// </summary>
 public sealed class Principal : IEquatable<Principal>
 {
+    /// <summary>
+    /// The claim that holds the names of the member groups a member is in, separated by spaces. The engine sets it from
+    /// the member's groups as they are when the operation is authorized, so a row rule reads the groups of that moment.
+    /// </summary>
+    public const string GroupsClaim = "fcms_groups";
+
     private readonly FrozenDictionary<string, string> _claims;
 
     /// <summary>Creates a principal.</summary>
@@ -73,6 +79,19 @@ public sealed class Principal : IEquatable<Principal>
     /// <param name="type">The claim type.</param>
     /// <returns>The claim value, or <see langword="null"/> when the principal has no such claim.</returns>
     public string? Claim(string type) => _claims.GetValueOrDefault(type);
+
+    /// <summary>Whether the principal is a member of the member group with this name. Only a member is in groups.</summary>
+    /// <param name="name">The name of the group, as it was given when the group was made.</param>
+    /// <returns><see langword="true"/> when the principal's groups hold the name.</returns>
+    public bool IsInGroup(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        return Kind == PrincipalKind.Member
+            && name.Length > 0
+            && Claim(GroupsClaim) is { } groups
+            && groups.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(name, StringComparer.Ordinal);
+    }
 
     /// <inheritdoc/>
     public bool Equals(Principal? other) => other is not null && Kind == other.Kind && Id == other.Id;

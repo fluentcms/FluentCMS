@@ -51,7 +51,22 @@ public sealed class ClientOptions
         {
             var key = $"{nameof(Applications)}:{clientId}";
             Require(!string.IsNullOrWhiteSpace(clientId) && clientId.Length <= ClientIdLength && !clientId.Any(char.IsControl), $"{key} is not a client id of 1 to {ClientIdLength} characters.");
-            Require(client.IsConfidential || client.RedirectUris.Count > 0, $"{key} has neither a {nameof(ClientRegistration.Secret)} nor {nameof(ClientRegistration.RedirectUris)}; a public client signs users in through a redirect URI.");
+            if (client.Pool == ClientPool.Members)
+            {
+                Require(client.RedirectUris.Count > 0 || client.AllowDirectLogin, $"{key} has neither {nameof(ClientRegistration.RedirectUris)} nor {nameof(ClientRegistration.AllowDirectLogin)}; a client of the member pool signs members in through a redirect URI or the direct login.");
+                Require(client.Roles.Count == 0, $"{key}:{nameof(ClientRegistration.Roles)} is set on a client of the member pool; it signs members in and is never a service account.");
+                Require(!client.RequireConsent, $"{key}:{nameof(ClientRegistration.RequireConsent)} is set on a client of the member pool, whose pages have no consent step.");
+                foreach (var scope in client.Scopes)
+                {
+                    Require(AuthorizationServer.MemberScopes.Contains(scope, StringComparer.Ordinal), $"{key}:{nameof(ClientRegistration.Scopes)} has '{scope}'; a client of the member pool asks for {string.Join(", ", AuthorizationServer.MemberScopes)} only.");
+                }
+            }
+            else
+            {
+                Require(client.IsConfidential || client.RedirectUris.Count > 0, $"{key} has neither a {nameof(ClientRegistration.Secret)} nor {nameof(ClientRegistration.RedirectUris)}; a public client signs users in through a redirect URI.");
+                Require(!client.AllowDirectLogin, $"{key}:{nameof(ClientRegistration.AllowDirectLogin)} is set on a client of the admin pool; the direct login is for members, so set {nameof(ClientRegistration.Pool)} to {nameof(ClientPool.Members)}.");
+            }
+
             Require(client.Roles.Count == 0 || client.IsConfidential, $"{key}:{nameof(ClientRegistration.Roles)} is set on a client without a {nameof(ClientRegistration.Secret)}; only a confidential client signs in as a service account.");
 
             foreach (var uri in client.RedirectUris.Concat(client.PostLogoutRedirectUris))
@@ -78,9 +93,17 @@ public sealed class ClientOptions
     }
 }
 
+// Which pool a client signs in: the admin users, or the members.
+public enum ClientPool
+{
+    Admins = 0,
+    Members = 1,
+}
+
 // A client with a secret is confidential: it may sign in as a service account with client credentials, holding the
 // instance-wide roles Roles names. A client with redirect URIs signs users in with the authorization code flow, PKCE and
-// refresh tokens. A client may be both.
+// refresh tokens. A client may be both. A client of the member pool signs members in and nothing else: its tokens have
+// the members audience and no scope beyond openid, profile, email and offline_access, and it is never a service account.
 public sealed class ClientRegistration
 {
     public string? DisplayName { get; set; }
@@ -98,6 +121,14 @@ public sealed class ClientRegistration
 
     // A third-party client: the user allows it on the consent page before it gets a code, once for the scopes it asks.
     public bool RequireConsent { get; set; }
+
+    // The pool the client signs in. The authorize endpoint asks a client of the member pool for the member cookie, and
+    // one of the admin pool for the admin's.
+    public ClientPool Pool { get; set; }
+
+    // Lets a client of the member pool send a member's address and password to the token endpoint, while
+    // cms.Members.AllowDirectLogin is on too. For first-party apps only: the app sees the password.
+    public bool AllowDirectLogin { get; set; }
 
     internal bool IsConfidential => !string.IsNullOrEmpty(Secret);
 }

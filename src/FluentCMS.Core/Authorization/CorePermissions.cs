@@ -17,13 +17,14 @@ public static class CorePermissions
     public const string PluginsManage = "plugins.manage";
     public const string TransferManage = "transfer.manage";
     public const string SystemRead = "system.read";
+    public const string MembersManage = "members.manage";
 
     // What a grant of this name means: every permission there is, plugins' and later types' included.
     public const string All = "*";
 
     public static readonly FrozenSet<string> Fixed = new[]
     {
-        UsersManage, RolesManage, ApiKeysManage, SitesManage, JobsManage, ActivityRead, SchemaRead, PluginsManage, TransferManage, SystemRead,
+        UsersManage, RolesManage, ApiKeysManage, SitesManage, JobsManage, ActivityRead, SchemaRead, PluginsManage, TransferManage, SystemRead, MembersManage,
     }.ToFrozenSet(StringComparer.Ordinal);
 
     public static string Settings(string area) => string.Create(CultureInfo.InvariantCulture, $"settings.{area}.manage");

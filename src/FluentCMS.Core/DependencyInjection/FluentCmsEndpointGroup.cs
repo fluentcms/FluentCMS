@@ -8,6 +8,7 @@ internal enum FluentCmsEndpointGroup
 {
     Delivery,
     Management,
+    Members,
     Connect,
     Account,
     Health,
@@ -22,6 +23,7 @@ internal static class FluentCmsEndpointGroups
     [
         (FluentCmsEndpointGroup.Delivery, "/api/delivery/v1"),
         (FluentCmsEndpointGroup.Management, "/api/management/v1"),
+        (FluentCmsEndpointGroup.Members, "/api/members/v1"),
         (FluentCmsEndpointGroup.Connect, "/connect"),
         (FluentCmsEndpointGroup.Account, "/account"),
         (FluentCmsEndpointGroup.Health, "/health"),

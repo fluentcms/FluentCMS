@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Schema;
@@ -30,6 +31,12 @@ internal sealed class AuthorizationEvaluator(
             if (context.Principal.IsSystem)
             {
                 permissions = new EffectivePermissions(context, [], rules);
+            }
+            else if (context.Principal.Kind == PrincipalKind.Member)
+            {
+                // The row rules of the operation read the principal with the groups it has now.
+                var (roles, groups) = await MemberRolesAsync(context.Principal.Id, context.Site.Value, cancellationToken);
+                permissions = new EffectivePermissions(context with { Principal = InGroups(context.Principal, groups) }, await GrantsOfAsync(roles, cancellationToken), rules);
             }
             else
             {
@@ -288,6 +295,37 @@ internal sealed class AuthorizationEvaluator(
         return (
             await GrantsOfAsync([.. stamps.Where(stamp => own.Contains(stamp.Id))], cancellationToken),
             await GrantsOfAsync([.. stamps.Where(stamp => stamp.Id == clientRole)], cancellationToken));
+    }
+
+    // What a member holds, read on every request so that a change holds from the next one: the Public role of the site,
+    // the Member role and the roles of the groups it is in, with their stamps, and the names of those groups, in one query.
+    // A member that is deactivated or gone holds nothing, not even what a visitor reads; its tokens are revoked as well.
+    // Nothing is taken from the token: a roles or groups claim on a member is never read.
+    private async Task<(List<RoleStamp> Roles, List<string> Groups)> MemberRolesAsync(Guid memberId, Guid site, CancellationToken cancellationToken)
+    {
+        var rows = await (
+            from role in database.Set<Role>().AsNoTracking()
+            join held in database.Set<MemberGroup>().Where(item => database.Set<MemberGroupMember>().Any(membership => membership.GroupId == item.Id && membership.MemberId == memberId))
+                on role.Id equals held.RoleId into bound
+            from held in bound.DefaultIfEmpty()
+            where database.Set<CmsMember>().Any(member => member.Id == memberId && member.DeactivatedAt == null)
+                && (held != null || role.Id == BuiltInRoles.Member || role.Id == BuiltInRoles.Public || (role.SiteId == site && role.Name == BuiltInRoles.PublicName))
+            select new { role.Id, role.PermissionsVersion, role.SiteId, role.Name, Group = (string?)held.Name }).ToListAsync(cancellationToken);
+
+        // A site's own Public role stands in for the seeded one, as it does for a visitor.
+        var visitor = rows.Find(row => row.SiteId == site && row.Name == BuiltInRoles.PublicName) ?? rows.Find(row => row.Id == BuiltInRoles.Public);
+        List<RoleStamp> roles = [.. rows
+            .Where(row => row.Group is not null || row.Id == BuiltInRoles.Member || row.Id == visitor?.Id)
+            .DistinctBy(row => row.Id)
+            .Select(row => new RoleStamp(row.Id, row.PermissionsVersion, row.SiteId))];
+        List<string> groups = [.. rows.Select(row => row.Group).OfType<string>().Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
+        return (roles, groups);
+    }
+
+    private static Principal InGroups(Principal member, List<string> groups)
+    {
+        var claims = member.Claims.Where(claim => claim.Key != Principal.GroupsClaim);
+        return new Principal(member.Kind, member.Id, member.Name, groups.Count == 0 ? claims : claims.Append(KeyValuePair.Create(Principal.GroupsClaim, string.Join(' ', groups))));
     }
 
     private async Task<List<EffectiveGrant>> GrantsOfAsync(List<RoleStamp> roles, CancellationToken cancellationToken)

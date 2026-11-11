@@ -60,6 +60,7 @@ public sealed class SecurityOptions
         SigningCertificate.Validate();
         Cors.Delivery.Validate("Cors:Delivery");
         Cors.Management.Validate("Cors:Management");
+        Cors.Members.Validate("Cors:Members");
     }
 }
 
@@ -112,6 +113,9 @@ public sealed class SecurityCorsOptions
     public CorsOriginsOptions Delivery { get; } = new();
 
     public CorsOriginsOptions Management { get; } = new();
+
+    // The front ends that call /api/members/v1 from a browser; /connect answers them beside the Management origins.
+    public CorsOriginsOptions Members { get; } = new();
 }
 
 // The browser origins one API answers. Empty, the default, answers none, and a wildcard is refused.

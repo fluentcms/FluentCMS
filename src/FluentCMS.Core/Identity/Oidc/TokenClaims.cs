@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Identity.Members;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using OpenIddict.Validation;
@@ -23,6 +24,9 @@ internal static class TokenClaims
     // The authentication method reference Identity gives a sign-in with a second factor.
     public const string MultiFactor = "mfa";
 
+    // The one a password gives.
+    public const string Password = "pwd";
+
     // A new identity, or one that keeps what a code or refresh token carried: its scopes, audiences and session.
     public static ClaimsIdentity Identity(ClaimsPrincipal? from = null) =>
         new(from?.Claims, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, Claims.Name, CmsClaimTypes.Roles);
@@ -44,6 +48,28 @@ internal static class TokenClaims
 
         identity.SetScopes(scopes);
         identity.SetAudiences(AuthorizationServer.ManagementAudience);
+        identity.SetDestinations(Destinations);
+        return identity;
+    }
+
+    // A member's token: the members audience, the kind Member and no scope beyond openid, profile, email and
+    // offline_access, whatever was asked for. It carries no roles and no groups, which are read on each request.
+    public static ClaimsIdentity ForMember(ClaimsIdentity identity, CmsMember member, string? securityStamp, IEnumerable<string> scopes, IEnumerable<string>? methods = null)
+    {
+        identity.SetClaim(Claims.Subject, member.Id.ToString("D"))
+            .SetClaim(Claims.Name, member.DisplayName ?? member.Email)
+            .SetClaim(Claims.Email, member.Email)
+            .SetClaim(SecurityStamp, securityStamp)
+            .SetClaim(CmsClaimTypes.Kind, nameof(PrincipalKind.Member))
+            .RemoveClaims(CmsClaimTypes.ClientRole)
+            .RemoveClaims(CmsClaimTypes.Roles);
+        if (methods is not null)
+        {
+            identity.SetClaims(Claims.AuthenticationMethodReference, [.. methods.Distinct(StringComparer.Ordinal)]);
+        }
+
+        identity.SetScopes(scopes.Intersect(AuthorizationServer.MemberScopes, StringComparer.Ordinal));
+        identity.SetAudiences(AuthorizationServer.MembersAudience);
         identity.SetDestinations(Destinations);
         return identity;
     }

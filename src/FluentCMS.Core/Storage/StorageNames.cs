@@ -35,6 +35,11 @@ internal static class StorageNames
     public const string Invitation = "cms_invitation";
     public const string ApiKey = "cms_api_key";
     public const string Idempotency = "cms_idempotency_key";
+    public const string Member = "cms_member";
+    public const string MemberLogin = "cms_member_login";
+    public const string MemberToken = "cms_member_token";
+    public const string MemberGroup = "cms_member_group";
+    public const string MemberGroupMember = "cms_member_group_member";
     public const string OidcApplication = "cms_oidc_application";
     public const string OidcAuthorization = "cms_oidc_authorization";
     public const string OidcScope = "cms_oidc_scope";

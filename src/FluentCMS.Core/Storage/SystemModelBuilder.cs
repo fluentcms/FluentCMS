@@ -1,5 +1,6 @@
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
+using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Storage.Entities;
 using Microsoft.AspNetCore.Identity;
@@ -47,6 +48,9 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     private const int KeyNameLength = 128;
     private const int AlgorithmLength = 32;
     private const int FriendlyNameLength = 256;
+    private const int DisplayNameLength = 128;
+    private const int GroupNameLength = 64;
+    private const int GroupDescriptionLength = 512;
 
     public void Apply(ModelBuilder modelBuilder)
     {
@@ -75,6 +79,11 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<Invitation>(MapInvitation);
         modelBuilder.Entity<ApiKey>(MapApiKey);
         modelBuilder.Entity<IdempotencyRow>(MapIdempotency);
+        modelBuilder.Entity<CmsMember>(MapMember);
+        modelBuilder.Entity<CmsMemberLogin>(MapMemberLogin);
+        modelBuilder.Entity<CmsMemberToken>(MapMemberToken);
+        modelBuilder.Entity<MemberGroup>(MapMemberGroup);
+        modelBuilder.Entity<MemberGroupMember>(MapMemberGroupMember);
 
         // OpenIddict's own mapping, moved to the cms_oidc_* tables with snake_case columns and FluentCMS index names.
         modelBuilder.UseOpenIddict<Guid>();
@@ -327,6 +336,88 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.HasIndex(key => key.KeyPrefix).HasDatabaseName("ix_cms_api_key_key_prefix");
         entity.HasIndex(key => key.KeyHash).IsUnique().HasDatabaseName("uq_cms_api_key_key_hash");
         entity.HasIndex(key => key.PreviousKeyPrefix).HasDatabaseName("ix_cms_api_key_previous_key_prefix");
+    }
+
+    private void MapMember(EntityTypeBuilder<CmsMember> entity)
+    {
+        entity.ToTable(StorageNames.Member);
+        MapColumnNames(entity);
+
+        // The address is the sign-in name, and a member has no phone number, no second factor and no lockout switch.
+        entity.Ignore(member => member.UserName);
+        entity.Ignore(member => member.NormalizedUserName);
+        entity.Ignore(member => member.PhoneNumber);
+        entity.Ignore(member => member.PhoneNumberConfirmed);
+        entity.Ignore(member => member.TwoFactorEnabled);
+        entity.Ignore(member => member.LockoutEnabled);
+
+        conventions.ConfigureKey(entity.Property(member => member.Id));
+        entity.Property(member => member.Email).HasMaxLength(EmailLength).IsRequired();
+        entity.Property(member => member.NormalizedEmail).HasMaxLength(EmailLength).IsRequired();
+        entity.Property(member => member.SecurityStamp).HasMaxLength(StampLength);
+        entity.Property(member => member.ConcurrencyStamp).HasMaxLength(StampLength).IsConcurrencyToken();
+        entity.Property(member => member.DisplayName).HasMaxLength(DisplayNameLength);
+
+        // One pool for the instance: an address is one member.
+        entity.HasIndex(member => member.NormalizedEmail)
+            .IsUnique()
+            .HasDatabaseName("uq_cms_member_normalized_email");
+
+        // The job that removes members who never verified reads by these.
+        entity.HasIndex(member => new { member.EmailConfirmed, member.CreatedAt })
+            .HasDatabaseName("ix_cms_member_email_confirmed_created_at");
+    }
+
+    private static void MapMemberLogin(EntityTypeBuilder<CmsMemberLogin> entity)
+    {
+        entity.ToTable(StorageNames.MemberLogin);
+        MapColumnNames(entity);
+        entity.HasKey(login => new { login.LoginProvider, login.ProviderKey });
+        entity.Property(login => login.UserId).HasColumnName("member_id");
+        entity.Property(login => login.LoginProvider).HasMaxLength(ProviderLength);
+        entity.Property(login => login.ProviderKey).HasMaxLength(ProviderLength);
+        entity.Property(login => login.ProviderDisplayName).HasMaxLength(ProviderLength);
+
+        entity.HasOne<CmsMember>().WithMany().HasForeignKey(login => login.UserId).OnDelete(DeleteBehavior.Cascade);
+        entity.HasIndex(login => login.UserId).HasDatabaseName("ix_cms_member_login_member");
+    }
+
+    private static void MapMemberToken(EntityTypeBuilder<CmsMemberToken> entity)
+    {
+        entity.ToTable(StorageNames.MemberToken);
+        MapColumnNames(entity);
+        entity.HasKey(token => new { token.UserId, token.LoginProvider, token.Name });
+        entity.Property(token => token.UserId).HasColumnName("member_id");
+        entity.Property(token => token.LoginProvider).HasMaxLength(ProviderLength);
+        entity.Property(token => token.Name).HasMaxLength(ProviderLength);
+
+        entity.HasOne<CmsMember>().WithMany().HasForeignKey(token => token.UserId).OnDelete(DeleteBehavior.Cascade);
+    }
+
+    private void MapMemberGroup(EntityTypeBuilder<MemberGroup> entity)
+    {
+        entity.ToTable(StorageNames.MemberGroup);
+        MapColumnNames(entity);
+        conventions.ConfigureKey(entity.Property(group => group.Id));
+        entity.Property(group => group.Name).HasMaxLength(GroupNameLength);
+        entity.Property(group => group.Description).HasMaxLength(GroupDescriptionLength);
+
+        // RoleService does not delete a role a group uses. A site that is deleted takes its roles along, and with them
+        // the groups bound to those roles, as it does the API keys bound to them.
+        entity.HasOne<Role>().WithMany().HasForeignKey(group => group.RoleId).OnDelete(DeleteBehavior.Cascade);
+        entity.HasIndex(group => group.RoleId).HasDatabaseName("ix_cms_member_group_role");
+        entity.HasIndex(group => group.Name).IsUnique().HasDatabaseName("uq_cms_member_group_name");
+    }
+
+    private static void MapMemberGroupMember(EntityTypeBuilder<MemberGroupMember> entity)
+    {
+        entity.ToTable(StorageNames.MemberGroupMember);
+        MapColumnNames(entity);
+        entity.HasKey(membership => new { membership.GroupId, membership.MemberId });
+
+        entity.HasOne<MemberGroup>().WithMany().HasForeignKey(membership => membership.GroupId).OnDelete(DeleteBehavior.Cascade);
+        entity.HasOne<CmsMember>().WithMany().HasForeignKey(membership => membership.MemberId).OnDelete(DeleteBehavior.Cascade);
+        entity.HasIndex(membership => membership.MemberId).HasDatabaseName("ix_cms_member_group_member_member");
     }
 
     private void MapIdempotency(EntityTypeBuilder<IdempotencyRow> entity)

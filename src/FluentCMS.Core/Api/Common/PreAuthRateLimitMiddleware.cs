@@ -16,8 +16,8 @@ internal enum PreAuthLimit
 // after authentication, which is too late for a flood of API keys, each looked up in the database, or of requests to the
 // token endpoint, which the authorization server answers while authenticating. Routing has run, so a FluentCMS endpoint,
 // a plugin's included, is known by its metadata, and a path under a group of core gets the limit even when no endpoint
-// answers it, as none answers the token endpoint. /connect and /account also get the strict auth limit, which the
-// endpoints of those groups then do not count a second time. /health counts in a partition of its own, so that probes
+// answers it, as none answers the token endpoint. /connect, /account and /api/members/v1 also get the strict auth limit,
+// which the endpoints of those groups then do not count a second time. /health counts in a partition of its own, so that probes
 // and API traffic from one address do not use up each other's allowance.
 internal sealed class PreAuthRateLimiter : IDisposable
 {
@@ -30,7 +30,7 @@ internal sealed class PreAuthRateLimiter : IDisposable
 
     private static readonly PathString[] AuthPrefixes =
     [
-        .. FluentCmsEndpointGroups.Prefixes.Where(entry => entry.Group is FluentCmsEndpointGroup.Connect or FluentCmsEndpointGroup.Account).Select(entry => new PathString(entry.Prefix)),
+        .. FluentCmsEndpointGroups.Prefixes.Where(entry => entry.Group is FluentCmsEndpointGroup.Connect or FluentCmsEndpointGroup.Account or FluentCmsEndpointGroup.Members).Select(entry => new PathString(entry.Prefix)),
     ];
 
     private readonly PreAuthRateLimitPolicy _coarsePolicy;
