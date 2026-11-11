@@ -87,6 +87,11 @@ public sealed record MediaFolder(Guid Id, Guid SiteId, Guid? ParentId, string Na
 /// <param name="ExpiresAt">When the URL is refused from.</param>
 public sealed record MediaDownloadUrl(string Url, DateTimeOffset ExpiresAt);
 
+/// <summary>A copy of an image, as <see cref="IMediaService.OpenImageAsync"/> gives it.</summary>
+/// <param name="Content">The bytes, which the caller disposes.</param>
+/// <param name="MimeType">The MIME type the copy is encoded as.</param>
+public sealed record MediaImage(Stream Content, string MimeType);
+
 /// <summary>An asset as the Delivery API gives it.</summary>
 /// <param name="Asset">The asset, with its alternative text and caption in the locale of the operation.</param>
 /// <param name="Urls">Its URLs, or <see langword="null"/> for a private asset, whose file only a download URL serves.</param>

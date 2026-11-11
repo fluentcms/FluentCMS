@@ -2,6 +2,7 @@ using System.Reflection;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
@@ -141,6 +142,11 @@ internal sealed class StartupReportFactory(
         if (proxy.ForwardedHeaders is { Enabled: true } forwarded && forwarded.TrustsEveryAddress)
         {
             found.Add(new InsecureDefault { Id = "forwarded-headers-trust-any", Message = "Forwarded headers are trusted from every address, so any caller can choose the scheme and client address the host sees. List the proxies or networks." });
+        }
+
+        if (environment?.IsProduction() == true && services.GetService<MemberOptions>() is { AllowDirectLogin: true })
+        {
+            found.Add(new InsecureDefault { Id = "member-direct-login", Message = $"Members may sign in by sending their password to the token endpoint ({FluentCmsOptions.Section}:{MemberOptions.Section}:{nameof(MemberOptions.AllowDirectLogin)}), so an app sees the password. It is the less secure way in: prefer the hosted pages and the authorization code flow, and keep it to first-party apps." });
         }
 
         found.AddRange(services.GetServices<IInsecureDefaultSource>()

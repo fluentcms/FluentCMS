@@ -5,6 +5,7 @@ using System.Text.Json;
 using FluentCMS.Content;
 using FluentCMS.Media;
 using FluentCMS.Settings;
+using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -23,6 +24,7 @@ internal sealed record TransformedImage(Stream Content, string MimeType, string 
 internal sealed class MediaTransforms(
     PluginDbContext<MediaPlugin> database,
     IOperationContextAccessor operations,
+    MediaLibraries libraries,
     ISettings<MediaSettings> settings,
     MediaStorage storages,
     IImageProcessor processor,
@@ -50,18 +52,30 @@ internal sealed class MediaTransforms(
 
         var requested = ImageQuery.Parse(parameters);
         var site = (operations.Current ?? throw new InvalidOperationException("An image is served inside an operation, which names the site.")).Site;
+        var library = await libraries.OfAsync(site, cancellationToken);
         var asset = await database.Set<Asset>().AsNoTracking()
-            .FirstOrDefaultAsync(item => item.Id == id && item.SiteId == site.Value && item.DeletedAt == null && !item.IsPrivate, cancellationToken)
+            .FirstOrDefaultAsync(item => item.Id == id && item.SiteId == library.Value && item.DeletedAt == null && !item.IsPrivate, cancellationToken)
             ?? throw new PluginException(MediaErrorCodes.AssetNotFound, $"The site has no public media asset {id:D}.");
 
         var merged = requested;
         if (requested.Preset is { } name)
         {
-            var preset = await database.Set<Preset>().AsNoTracking().FirstOrDefaultAsync(item => item.SiteId == site.Value && item.Name == name, cancellationToken)
+            var preset = await database.Set<Preset>().AsNoTracking().FirstOrDefaultAsync(item => item.SiteId == library.Value && item.Name == name, cancellationToken)
                 ?? throw new PluginException(MediaErrorCodes.PresetNotFound, $"The site has no media preset '{name}'.");
             merged = ImageQuery.Merge(PresetOptions(preset), requested);
         }
 
+        return await RenderAsync(site, asset, merged, accepted, cancellationToken);
+    }
+
+    // IMediaService.OpenImageAsync: a copy of an asset the caller may read, private or not, for code in the host. No URL
+    // asks for it, so nothing is signed, and the type follows the options alone.
+    public Task<TransformedImage> OpenAsync(SiteId site, Asset asset, MediaImageOptions options, CancellationToken cancellationToken) =>
+        RenderAsync(site, asset, options, [], cancellationToken);
+
+    private async Task<TransformedImage> RenderAsync(SiteId site, Asset asset, MediaImageOptions merged, IReadOnlyCollection<string> accepted, CancellationToken cancellationToken)
+    {
+        var id = asset.Id;
         var rules = await settings.GetAsync(site, cancellationToken);
         CheckLimits(merged, rules);
         if (!processor.CanDecode(asset.MimeType))

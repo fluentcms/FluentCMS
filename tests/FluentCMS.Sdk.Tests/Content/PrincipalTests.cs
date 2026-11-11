@@ -108,6 +108,32 @@ public class PrincipalTests
     }
 
     [Fact]
+    public void AMemberIsInTheGroupsItsGroupsClaimNames()
+    {
+        var member = new Principal(PrincipalKind.Member, UserId, "Sam", new Dictionary<string, string> { [Principal.GroupsClaim] = "gold early-access" });
+
+        member.IsInGroup("gold").ShouldBeTrue();
+        member.IsInGroup("early-access").ShouldBeTrue();
+        member.IsInGroup("Gold").ShouldBeFalse();
+        member.IsInGroup("early").ShouldBeFalse();
+        member.IsInGroup("gold early-access").ShouldBeFalse();
+        member.IsInGroup("").ShouldBeFalse();
+        Should.Throw<ArgumentNullException>(() => member.IsInGroup(null!));
+    }
+
+    [Fact]
+    public void OnlyAMemberIsInGroups()
+    {
+        var claims = new Dictionary<string, string> { [Principal.GroupsClaim] = "gold" };
+
+        new Principal(PrincipalKind.Member, UserId, "Sam").IsInGroup("gold").ShouldBeFalse();
+        new Principal(PrincipalKind.AdminUser, UserId, "Amir", claims).IsInGroup("gold").ShouldBeFalse();
+        new Principal(PrincipalKind.ApiKey, UserId, "Key", claims).IsInGroup("gold").ShouldBeFalse();
+        Principal.Anonymous.IsInGroup("gold").ShouldBeFalse();
+        Principal.System.IsInGroup("gold").ShouldBeFalse();
+    }
+
+    [Fact]
     public void ClaimsAreCopiedOnConstruction()
     {
         var source = new Dictionary<string, string> { ["region"] = "eu" };

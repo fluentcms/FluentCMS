@@ -43,6 +43,14 @@ public sealed partial class HostedPagesTests
         "account/forgot-password",
         "account/login",
         "account/logout",
+        "account/members/external-login",
+        "account/members/forgot-password",
+        "account/members/login",
+        "account/members/logins",
+        "account/members/logout",
+        "account/members/register",
+        "account/members/reset-password",
+        "account/members/verify-email",
         "account/recovery-code",
         "account/reset-password",
         "account/two-factor",
@@ -73,7 +81,12 @@ public sealed partial class HostedPagesTests
         foreach (var route in Routes)
         {
             using var response = await browser.GetAsync("/" + route);
-            response.StatusCode.ShouldBeOneOf([HttpStatusCode.OK, HttpStatusCode.Redirect, HttpStatusCode.BadRequest], route);
+
+            // Registration is off on this host, so its page is not there; the answer carries the headers all the same.
+            HttpStatusCode[] expected = route == "account/members/register"
+                ? [HttpStatusCode.NotFound]
+                : [HttpStatusCode.OK, HttpStatusCode.Redirect, HttpStatusCode.BadRequest];
+            response.StatusCode.ShouldBeOneOf(expected, route);
             var policy = string.Join(", ", response.Headers.GetValues("Content-Security-Policy"));
             policy.ShouldContain("frame-ancestors 'none'", customMessage: route);
             if (response.StatusCode == HttpStatusCode.OK)

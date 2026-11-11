@@ -31,7 +31,8 @@ internal sealed class MediaPermissions : IPermissionProvider
     ];
 }
 
-// The media of the site of the current operation. Each call checks its permission with IPermissionChecker. A grant limited
+// The media of the site of the current operation, which is the library of the default site when the sites share one
+// (MediaLibraries). Each call checks its permission with IPermissionChecker in the site of the operation. A grant limited
 // to folders reaches them and their subfolders (ADR 0004), and an asset or folder outside what the caller reaches is not
 // found; the root is reached only by a grant with no folder limit, and the presets of the site only by such a grant of
 // media.presets.manage. Uploads are read to a temporary file, where their type, size, checksum and image size are found,
@@ -43,6 +44,7 @@ internal sealed class MediaService(
     PluginDbContext<MediaPlugin> database,
     IPermissionChecker permissions,
     IOperationContextAccessor operations,
+    MediaLibraries libraries,
     ISettings<MediaSettings> settings,
     MediaStorage storages,
     IEventBus events,
@@ -51,6 +53,7 @@ internal sealed class MediaService(
     MediaSigning signing,
     IContentReferences references,
     MediaCache cache,
+    MediaTransforms transforms,
     TimeProvider time,
     ILogger<MediaService> logger) : IMediaService
 {
@@ -68,11 +71,11 @@ internal sealed class MediaService(
     {
         ArgumentNullException.ThrowIfNull(upload);
 
-        var site = Operation().Site;
-        var reach = await ReachAsync(MediaPermissions.Upload, site, cancellationToken);
+        var (site, library) = await ScopeAsync(Operation(), cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.Upload, site, library, cancellationToken);
         if (upload.FolderId is { } folderId)
         {
-            await FindFolderAsync(site, folderId, reach, tracked: false, cancellationToken);
+            await FindFolderAsync(library, folderId, reach, tracked: false, cancellationToken);
         }
         else if (!reach.IsAll)
         {
@@ -105,14 +108,14 @@ internal sealed class MediaService(
             foreach (var file in prepared)
             {
                 var id = Guid.CreateVersion7();
-                var key = $"{site.Value:N}/{id:N}/original{file.Type.Extension}";
+                var key = $"{library.Value:N}/{id:N}/original{file.Type.Extension}";
                 file.Content.Position = 0;
                 await storages.Current.WriteAsync(key, file.Content, cancellationToken);
                 written.Add(key);
                 assets.Add(new Asset
                 {
                     Id = id,
-                    SiteId = site.Value,
+                    SiteId = library.Value,
                     FolderId = upload.FolderId,
                     FileName = file.FileName,
                     StorageProvider = storages.Current.Name,
@@ -157,9 +160,9 @@ internal sealed class MediaService(
 
     public async Task<MediaAsset> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var site = Operation().Site;
-        var reach = await ReachAsync(MediaPermissions.Read, site, cancellationToken);
-        return Info(await FindAssetAsync(site, id, reach, tracked: false, cancellationToken), Operation().Locale);
+        var (site, library) = await ScopeAsync(Operation(), cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.Read, site, library, cancellationToken);
+        return Info(await FindAssetAsync(library, id, reach, tracked: false, cancellationToken), Operation().Locale);
     }
 
     public async Task<PagedResult<MediaAsset>> ListAsync(MediaQuery query, CancellationToken cancellationToken = default)
@@ -181,16 +184,16 @@ internal sealed class MediaService(
             throw Invalid("folder", "A list is of one folder or of the root, not both.");
         }
 
-        var site = Operation().Site;
-        var reach = await ReachAsync(MediaPermissions.Read, site, cancellationToken);
-        var assets = database.Set<Asset>().AsNoTracking().Where(asset => asset.SiteId == site.Value && asset.DeletedAt == null);
+        var (site, library) = await ScopeAsync(Operation(), cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.Read, site, library, cancellationToken);
+        var assets = database.Set<Asset>().AsNoTracking().Where(asset => asset.SiteId == library.Value && asset.DeletedAt == null);
 
         if (query.FolderId is { } folderId)
         {
-            var folder = await FindFolderAsync(site, folderId, reach, tracked: false, cancellationToken);
+            var folder = await FindFolderAsync(library, folderId, reach, tracked: false, cancellationToken);
             if (query.IncludeSubfolders)
             {
-                var subtree = (await SubtreeAsync(site, folder.Path, cancellationToken)).Where(item => reach.Includes(item)).ToList();
+                var subtree = (await SubtreeAsync(library, folder.Path, cancellationToken)).Where(item => reach.Includes(item)).ToList();
                 assets = assets.Where(asset => asset.FolderId != null && subtree.Contains(asset.FolderId.Value));
             }
             else
@@ -256,9 +259,9 @@ internal sealed class MediaService(
         ArgumentNullException.ThrowIfNull(changes);
 
         var operation = Operation();
-        var site = operation.Site;
-        var reach = await ReachAsync(MediaPermissions.Update, site, cancellationToken);
-        var asset = await FindAssetAsync(site, id, reach, tracked: true, cancellationToken);
+        var (site, library) = await ScopeAsync(operation, cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.Update, site, library, cancellationToken);
+        var asset = await FindAssetAsync(library, id, reach, tracked: true, cancellationToken);
         if (changes == new MediaAssetChanges())
         {
             return Info(asset, operation.Locale);
@@ -346,12 +349,12 @@ internal sealed class MediaService(
     public async Task<MediaAsset> MoveAsync(Guid id, Guid? folderId, CancellationToken cancellationToken = default)
     {
         var operation = Operation();
-        var site = operation.Site;
-        var reach = await ReachAsync(MediaPermissions.Update, site, cancellationToken);
-        var asset = await FindAssetAsync(site, id, reach, tracked: true, cancellationToken);
+        var (site, library) = await ScopeAsync(operation, cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.Update, site, library, cancellationToken);
+        var asset = await FindAssetAsync(library, id, reach, tracked: true, cancellationToken);
         if (folderId is { } target)
         {
-            await FindFolderAsync(site, target, reach, tracked: false, cancellationToken);
+            await FindFolderAsync(library, target, reach, tracked: false, cancellationToken);
         }
         else if (!reach.IsAll)
         {
@@ -378,9 +381,9 @@ internal sealed class MediaService(
     public async Task DeleteAsync(Guid id, bool force = false, CancellationToken cancellationToken = default)
     {
         var operation = Operation();
-        var site = operation.Site;
-        var reach = await ReachAsync(MediaPermissions.Delete, site, cancellationToken);
-        var asset = await FindAssetAsync(site, id, reach, tracked: true, cancellationToken);
+        var (site, library) = await ScopeAsync(operation, cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.Delete, site, library, cancellationToken);
+        var asset = await FindAssetAsync(library, id, reach, tracked: true, cancellationToken);
 
         if (force)
         {
@@ -405,15 +408,15 @@ internal sealed class MediaService(
         ArgumentNullException.ThrowIfNull(file);
 
         var operation = Operation();
-        var site = operation.Site;
-        var reach = await ReachAsync(MediaPermissions.Update, site, cancellationToken);
-        var asset = await FindAssetAsync(site, id, reach, tracked: true, cancellationToken);
+        var (site, library) = await ScopeAsync(operation, cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.Update, site, library, cancellationToken);
+        var asset = await FindAssetAsync(library, id, reach, tracked: true, cancellationToken);
         var rules = await settings.GetAsync(site, cancellationToken);
         var prepared = await PrepareAsync(file, 0, rules, Math.Min(rules.MaxRequestSize, options.Value.MaxRequestBodySize), cancellationToken);
         string? written = null;
         try
         {
-            var key = $"{site.Value:N}/{id:N}/original-{Guid.CreateVersion7():N}{prepared.Type.Extension}";
+            var key = $"{library.Value:N}/{id:N}/original-{Guid.CreateVersion7():N}{prepared.Type.Extension}";
             prepared.Content.Position = 0;
             await storages.Current.WriteAsync(key, prepared.Content, cancellationToken);
             written = key;
@@ -455,17 +458,17 @@ internal sealed class MediaService(
 
     public async Task<IReadOnlyList<ContentReference>> GetUsageAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var site = Operation().Site;
-        var reach = await ReachAsync(MediaPermissions.Read, site, cancellationToken);
-        await FindAssetAsync(site, id, reach, tracked: false, cancellationToken);
+        var (site, library) = await ScopeAsync(Operation(), cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.Read, site, library, cancellationToken);
+        await FindAssetAsync(library, id, reach, tracked: false, cancellationToken);
         return await references.FindAsync(ReferenceTarget, id, cancellationToken);
     }
 
     public async Task<MediaDownloadUrl> GetDownloadUrlAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var site = Operation().Site;
-        var reach = await ReachAsync(MediaPermissions.Read, site, cancellationToken);
-        var asset = await FindAssetAsync(site, id, reach, tracked: false, cancellationToken);
+        var (site, library) = await ScopeAsync(Operation(), cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.Read, site, library, cancellationToken);
+        var asset = await FindAssetAsync(library, id, reach, tracked: false, cancellationToken);
         var rules = await settings.GetAsync(site, cancellationToken);
         var expires = time.GetUtcNow().ToUnixTimeSeconds() + rules.DownloadUrlSeconds;
         return new MediaDownloadUrl(await MediaOriginals.UrlAsync(signing, id, asset.FileName, expires, cancellationToken), DateTimeOffset.FromUnixTimeSeconds(expires));
@@ -476,8 +479,8 @@ internal sealed class MediaService(
     public async Task<MediaDelivery> DeliverAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var operation = Operation();
-        var site = operation.Site;
-        var asset = await database.Set<Asset>().AsNoTracking().FirstOrDefaultAsync(item => item.Id == id && item.SiteId == site.Value && item.DeletedAt == null, cancellationToken)
+        var (site, library) = await ScopeAsync(operation, cancellationToken);
+        var asset = await database.Set<Asset>().AsNoTracking().FirstOrDefaultAsync(item => item.Id == id && item.SiteId == library.Value && item.DeletedAt == null, cancellationToken)
             ?? throw AssetNotFound(id);
         if (!asset.IsPrivate)
         {
@@ -487,7 +490,7 @@ internal sealed class MediaService(
         FolderReach reach;
         try
         {
-            reach = await ReachAsync(MediaPermissions.Read, site, cancellationToken);
+            reach = await ReachAsync(MediaPermissions.Read, site, library, cancellationToken);
         }
         catch (PermissionDeniedException)
         {
@@ -499,17 +502,17 @@ internal sealed class MediaService(
 
     public async Task<IReadOnlyList<MediaFolder>> ListFoldersAsync(CancellationToken cancellationToken = default)
     {
-        var site = Operation().Site;
-        var reach = await ReachAsync(MediaPermissions.Read, site, cancellationToken);
-        var folders = await database.Set<Folder>().AsNoTracking().Where(folder => folder.SiteId == site.Value).ToListAsync(cancellationToken);
+        var (site, library) = await ScopeAsync(Operation(), cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.Read, site, library, cancellationToken);
+        var folders = await database.Set<Folder>().AsNoTracking().Where(folder => folder.SiteId == library.Value).ToListAsync(cancellationToken);
         return [.. folders.Where(folder => reach.Includes(folder.Id)).OrderBy(folder => folder.Name, StringComparer.Ordinal).ThenBy(folder => folder.Id).Select(Info)];
     }
 
     public async Task<MediaFolder> CreateFolderAsync(string name, Guid? parentId, CancellationToken cancellationToken = default)
     {
-        var site = Operation().Site;
-        var reach = await ReachAsync(MediaPermissions.ManageFolders, site, cancellationToken);
-        var parent = parentId is { } id ? await FindFolderAsync(site, id, reach, tracked: false, cancellationToken) : null;
+        var (site, library) = await ScopeAsync(Operation(), cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.ManageFolders, site, library, cancellationToken);
+        var parent = parentId is { } id ? await FindFolderAsync(library, id, reach, tracked: false, cancellationToken) : null;
         if (parent is null && !reach.IsAll)
         {
             throw new PermissionDeniedException(MediaPermissions.ManageFolders, site);
@@ -521,7 +524,7 @@ internal sealed class MediaService(
             throw Invalid("parentId", $"Folders nest at most {MediaModel.MaxDepth} deep.");
         }
 
-        var folder = new Folder { Id = Guid.CreateVersion7(), SiteId = site.Value, ParentId = parentId, Name = valid };
+        var folder = new Folder { Id = Guid.CreateVersion7(), SiteId = library.Value, ParentId = parentId, Name = valid };
         folder.Path = $"{parent?.Path ?? "/"}{folder.Id:D}/";
         database.Add(folder);
         await SaveFolderAsync(folder, cancellationToken);
@@ -530,9 +533,9 @@ internal sealed class MediaService(
 
     public async Task<MediaFolder> RenameFolderAsync(Guid id, string name, CancellationToken cancellationToken = default)
     {
-        var site = Operation().Site;
-        var reach = await ReachAsync(MediaPermissions.ManageFolders, site, cancellationToken);
-        var folder = await FindFolderAsync(site, id, reach, tracked: true, cancellationToken);
+        var (site, library) = await ScopeAsync(Operation(), cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.ManageFolders, site, library, cancellationToken);
+        var folder = await FindFolderAsync(library, id, reach, tracked: true, cancellationToken);
         folder.Name = ValidName(name);
         await SaveFolderAsync(folder, cancellationToken);
         return Info(folder);
@@ -541,10 +544,10 @@ internal sealed class MediaService(
     // The folder takes its subfolders along, each path rewritten under the new parent; assets stay in their folders.
     public async Task<MediaFolder> MoveFolderAsync(Guid id, Guid? parentId, CancellationToken cancellationToken = default)
     {
-        var site = Operation().Site;
-        var reach = await ReachAsync(MediaPermissions.ManageFolders, site, cancellationToken);
-        var folder = await FindFolderAsync(site, id, reach, tracked: true, cancellationToken);
-        var parent = parentId is { } target ? await FindFolderAsync(site, target, reach, tracked: false, cancellationToken) : null;
+        var (site, library) = await ScopeAsync(Operation(), cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.ManageFolders, site, library, cancellationToken);
+        var folder = await FindFolderAsync(library, id, reach, tracked: true, cancellationToken);
+        var parent = parentId is { } target ? await FindFolderAsync(library, target, reach, tracked: false, cancellationToken) : null;
         if (parent is null && !reach.IsAll)
         {
             throw new PermissionDeniedException(MediaPermissions.ManageFolders, site);
@@ -562,7 +565,7 @@ internal sealed class MediaService(
 
         var oldPrefix = folder.Path;
         var newPrefix = $"{parent?.Path ?? "/"}{folder.Id:D}/";
-        var subtree = await database.Set<Folder>().Where(item => item.SiteId == site.Value && item.Path.StartsWith(oldPrefix)).ToListAsync(cancellationToken);
+        var subtree = await database.Set<Folder>().Where(item => item.SiteId == library.Value && item.Path.StartsWith(oldPrefix)).ToListAsync(cancellationToken);
         if (subtree.Max(item => Depth(item.Path)) - Depth(oldPrefix) + Depth(newPrefix) > MediaModel.MaxDepth)
         {
             throw Invalid("parentId", $"Folders nest at most {MediaModel.MaxDepth} deep.");
@@ -580,11 +583,11 @@ internal sealed class MediaService(
 
     public async Task DeleteFolderAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var site = Operation().Site;
-        var reach = await ReachAsync(MediaPermissions.ManageFolders, site, cancellationToken);
-        var folder = await FindFolderAsync(site, id, reach, tracked: true, cancellationToken);
-        if (await database.Set<Folder>().AnyAsync(item => item.SiteId == site.Value && item.ParentId == id, cancellationToken)
-            || await database.Set<Asset>().AnyAsync(asset => asset.SiteId == site.Value && asset.FolderId == id && asset.DeletedAt == null, cancellationToken))
+        var (site, library) = await ScopeAsync(Operation(), cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.ManageFolders, site, library, cancellationToken);
+        var folder = await FindFolderAsync(library, id, reach, tracked: true, cancellationToken);
+        if (await database.Set<Folder>().AnyAsync(item => item.SiteId == library.Value && item.ParentId == id, cancellationToken)
+            || await database.Set<Asset>().AnyAsync(asset => asset.SiteId == library.Value && asset.FolderId == id && asset.DeletedAt == null, cancellationToken))
         {
             throw new PluginException(MediaErrorCodes.FolderNotEmpty, $"The folder {id:D} holds folders or assets; move or delete them first.");
         }
@@ -611,11 +614,29 @@ internal sealed class MediaService(
         return $"/media/{asset.Id:D}/{Uri.EscapeDataString(asset.FileName)}?{query}";
     }
 
+    public async Task<MediaImage> OpenImageAsync(Guid id, MediaImageOptions options, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        var (site, library) = await ScopeAsync(Operation(), cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.Read, site, library, cancellationToken);
+        var asset = await FindAssetAsync(library, id, reach, tracked: false, cancellationToken);
+        List<ValidationError> errors = [];
+        ImageQuery.Check(errors, options, asQuery: false, allowPreset: false);
+        if (errors.Count > 0)
+        {
+            throw new ValidationException(errors);
+        }
+
+        var image = await transforms.OpenAsync(site, asset, options, cancellationToken);
+        return new MediaImage(image.Content, image.MimeType);
+    }
+
     public async Task<IReadOnlyList<MediaPreset>> ListPresetsAsync(CancellationToken cancellationToken = default)
     {
-        var site = Operation().Site;
-        await ReachAsync(MediaPermissions.Read, site, cancellationToken);
-        var presets = await database.Set<Preset>().AsNoTracking().Where(preset => preset.SiteId == site.Value).ToListAsync(cancellationToken);
+        var (site, library) = await ScopeAsync(Operation(), cancellationToken);
+        await ReachAsync(MediaPermissions.Read, site, library, cancellationToken);
+        var presets = await database.Set<Preset>().AsNoTracking().Where(preset => preset.SiteId == library.Value).ToListAsync(cancellationToken);
         return [.. presets.OrderBy(preset => preset.Name, StringComparer.Ordinal).Select(preset => new MediaPreset(preset.Name, MediaTransforms.PresetOptions(preset)))];
     }
 
@@ -624,8 +645,8 @@ internal sealed class MediaService(
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        var site = Operation().Site;
-        await ManagePresetsAsync(site, cancellationToken);
+        var (site, library) = await ScopeAsync(Operation(), cancellationToken);
+        await ManagePresetsAsync(site, library, cancellationToken);
         List<ValidationError> errors = [];
         if (!ImageQuery.IsValidPresetName(name))
         {
@@ -645,10 +666,10 @@ internal sealed class MediaService(
 
         MediaTransforms.CheckLimits(options, await settings.GetAsync(site, cancellationToken));
         var parameters = MediaTransforms.PresetParams(options);
-        var preset = await database.Set<Preset>().FirstOrDefaultAsync(item => item.SiteId == site.Value && item.Name == name, cancellationToken);
+        var preset = await database.Set<Preset>().FirstOrDefaultAsync(item => item.SiteId == library.Value && item.Name == name, cancellationToken);
         if (preset is null)
         {
-            database.Add(new Preset { SiteId = site.Value, Name = name, Params = parameters });
+            database.Add(new Preset { SiteId = library.Value, Name = name, Params = parameters });
         }
         else
         {
@@ -663,45 +684,45 @@ internal sealed class MediaService(
         {
             // Another writer created it first; this write replaces its parameters, as a second PUT would.
             database.ChangeTracker.Clear();
-            await database.Set<Preset>().Where(item => item.SiteId == site.Value && item.Name == name)
+            await database.Set<Preset>().Where(item => item.SiteId == library.Value && item.Name == name)
                 .ExecuteUpdateAsync(item => item.SetProperty(row => row.Params, parameters), CancellationToken.None);
         }
 
-        await cache.EvictAsync([MediaCache.Presets(site.Value)], CancellationToken.None);
+        await cache.EvictAsync([MediaCache.Presets(library.Value)], CancellationToken.None);
         return new MediaPreset(name, MediaTransforms.PresetOptions(new Preset { Params = parameters }));
     }
 
     public async Task DeletePresetAsync(string name, CancellationToken cancellationToken = default)
     {
-        var site = Operation().Site;
-        await ManagePresetsAsync(site, cancellationToken);
-        if (await database.Set<Preset>().Where(preset => preset.SiteId == site.Value && preset.Name == name).ExecuteDeleteAsync(cancellationToken) == 0)
+        var (site, library) = await ScopeAsync(Operation(), cancellationToken);
+        await ManagePresetsAsync(site, library, cancellationToken);
+        if (await database.Set<Preset>().Where(preset => preset.SiteId == library.Value && preset.Name == name).ExecuteDeleteAsync(cancellationToken) == 0)
         {
             throw new PluginException(MediaErrorCodes.PresetNotFound, $"The site has no media preset '{name}'.");
         }
 
-        await cache.EvictAsync([MediaCache.Presets(site.Value)], CancellationToken.None);
+        await cache.EvictAsync([MediaCache.Presets(library.Value)], CancellationToken.None);
     }
 
     // Presets are the site's, so a grant limited to folders does not reach them.
-    private async Task ManagePresetsAsync(SiteId site, CancellationToken cancellationToken)
+    private async Task ManagePresetsAsync(SiteId site, SiteId library, CancellationToken cancellationToken)
     {
-        if (!(await ReachAsync(MediaPermissions.ManagePresets, site, cancellationToken)).IsAll)
+        if (!(await ReachAsync(MediaPermissions.ManagePresets, site, library, cancellationToken)).IsAll)
         {
             throw new PermissionDeniedException(MediaPermissions.ManagePresets, site);
         }
     }
 
-    private Task<FolderReach> ReachAsync(string permission, SiteId site, CancellationToken cancellationToken) =>
-        FolderReach.OfAsync(database, permissions, permission, site, cancellationToken);
+    private Task<FolderReach> ReachAsync(string permission, SiteId site, SiteId library, CancellationToken cancellationToken) =>
+        FolderReach.OfAsync(database, permissions, permission, site, library, cancellationToken);
 
-    private Task<List<Guid>> SubtreeAsync(SiteId site, string path, CancellationToken cancellationToken) =>
-        FolderReach.SubtreeAsync(database, site, path, cancellationToken);
+    private Task<List<Guid>> SubtreeAsync(SiteId library, string path, CancellationToken cancellationToken) =>
+        FolderReach.SubtreeAsync(database, library, path, cancellationToken);
 
-    private async Task<Asset> FindAssetAsync(SiteId site, Guid id, FolderReach reach, bool tracked, CancellationToken cancellationToken)
+    private async Task<Asset> FindAssetAsync(SiteId library, Guid id, FolderReach reach, bool tracked, CancellationToken cancellationToken)
     {
         var assets = tracked ? database.Set<Asset>() : database.Set<Asset>().AsNoTracking();
-        var asset = await assets.FirstOrDefaultAsync(asset => asset.Id == id && asset.SiteId == site.Value && asset.DeletedAt == null, cancellationToken);
+        var asset = await assets.FirstOrDefaultAsync(asset => asset.Id == id && asset.SiteId == library.Value && asset.DeletedAt == null, cancellationToken);
         return asset is not null && reach.Includes(asset.FolderId) ? asset : throw AssetNotFound(id);
     }
 
@@ -735,10 +756,10 @@ internal sealed class MediaService(
     internal Task<List<string>> PresetNamesAsync(Guid site, CancellationToken cancellationToken) =>
         database.Set<Preset>().AsNoTracking().Where(preset => preset.SiteId == site).Select(preset => preset.Name).ToListAsync(cancellationToken);
 
-    private async Task<Folder> FindFolderAsync(SiteId site, Guid id, FolderReach reach, bool tracked, CancellationToken cancellationToken)
+    private async Task<Folder> FindFolderAsync(SiteId library, Guid id, FolderReach reach, bool tracked, CancellationToken cancellationToken)
     {
         var folders = tracked ? database.Set<Folder>() : database.Set<Folder>().AsNoTracking();
-        var folder = await folders.FirstOrDefaultAsync(folder => folder.Id == id && folder.SiteId == site.Value, cancellationToken);
+        var folder = await folders.FirstOrDefaultAsync(folder => folder.Id == id && folder.SiteId == library.Value, cancellationToken);
         return folder is not null && reach.Includes(folder.Id)
             ? folder
             : throw new PluginException(MediaErrorCodes.FolderNotFound, $"The site has no media folder {id:D}.");
@@ -917,6 +938,10 @@ internal sealed class MediaService(
 
     public static ValidationException Invalid(string path, string message) => new([new ValidationError(path, MediaErrorCodes.InvalidField, message)]);
 
+    // The site of the request, whose roles and settings decide what the caller may do, and the site whose library it acts on.
+    private async ValueTask<(SiteId Site, SiteId Library)> ScopeAsync(OperationContext operation, CancellationToken cancellationToken) =>
+        (operation.Site, await libraries.OfAsync(operation.Site, cancellationToken));
+
     private OperationContext Operation() =>
         operations.Current ?? throw new InvalidOperationException("The media of a site is managed inside an operation, which names the site.");
 
@@ -963,7 +988,7 @@ internal sealed class FolderReach(IReadOnlySet<Guid>? folders)
 
     // Every folder and the root when a grant has no folder limit, otherwise the folders the grants name and their subfolders.
     // No grant at all is a refusal.
-    public static async Task<FolderReach> OfAsync(PluginDbContext<MediaPlugin> database, IPermissionChecker permissions, string permission, SiteId site, CancellationToken cancellationToken)
+    public static async Task<FolderReach> OfAsync(PluginDbContext<MediaPlugin> database, IPermissionChecker permissions, string permission, SiteId site, SiteId library, CancellationToken cancellationToken)
     {
         var resources = await permissions.ResourcesAsync(permission, site, cancellationToken);
         if (resources is null)
@@ -978,19 +1003,19 @@ internal sealed class FolderReach(IReadOnlySet<Guid>? folders)
 
         var named = resources.Select(resource => Guid.TryParse(resource, out var id) ? id : (Guid?)null).OfType<Guid>().ToList();
         var paths = await database.Set<Folder>().AsNoTracking()
-            .Where(folder => folder.SiteId == site.Value && named.Contains(folder.Id))
+            .Where(folder => folder.SiteId == library.Value && named.Contains(folder.Id))
             .Select(folder => folder.Path)
             .ToListAsync(cancellationToken);
 
         HashSet<Guid> folders = [];
         foreach (var path in paths)
         {
-            folders.UnionWith(await SubtreeAsync(database, site, path, cancellationToken));
+            folders.UnionWith(await SubtreeAsync(database, library, path, cancellationToken));
         }
 
         return new FolderReach(folders);
     }
 
-    public static Task<List<Guid>> SubtreeAsync(PluginDbContext<MediaPlugin> database, SiteId site, string path, CancellationToken cancellationToken) =>
-        database.Set<Folder>().AsNoTracking().Where(folder => folder.SiteId == site.Value && folder.Path.StartsWith(path)).Select(folder => folder.Id).ToListAsync(cancellationToken);
+    public static Task<List<Guid>> SubtreeAsync(PluginDbContext<MediaPlugin> database, SiteId library, string path, CancellationToken cancellationToken) =>
+        database.Set<Folder>().AsNoTracking().Where(folder => folder.SiteId == library.Value && folder.Path.StartsWith(path)).Select(folder => folder.Id).ToListAsync(cancellationToken);
 }

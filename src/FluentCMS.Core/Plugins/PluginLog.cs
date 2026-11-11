@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Plugins;
 
-// Event ids 9230 to 9239, per-site enablement.
+// Event ids 9230 to 9239: per-site enablement, and what the plugin host says of itself.
 internal static partial class PluginLog
 {
     [LoggerMessage(EventId = 9230, Level = LogLevel.Information, Message = "The plugin {Plugin} was enabled for the site {SiteId}.")]
@@ -25,4 +25,7 @@ internal static partial class PluginLog
 
     [LoggerMessage(EventId = 9236, Level = LogLevel.Error, Message = "The MCP provider {Provider} of the plugin {Plugin} failed to list its tools, so the plugin list names none of them.")]
     public static partial void ToolsNotListed(ILogger logger, Exception exception, string provider, string plugin);
+
+    [LoggerMessage(EventId = 9237, Level = LogLevel.Information, Message = "Plugin discovery is off (FluentCMS.Plugins.DisableDiscovery), so the host runs only the plugins it adds with AddPlugin.")]
+    public static partial void DiscoveryDisabled(ILogger logger);
 }

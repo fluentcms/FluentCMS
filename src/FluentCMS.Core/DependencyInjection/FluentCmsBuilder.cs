@@ -7,6 +7,7 @@ using FluentCMS.Core.Events;
 using FluentCMS.Core.Idempotency;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
+using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Seeding;
@@ -54,6 +55,8 @@ public sealed class FluentCmsBuilder
     public ClientOptions Clients { get; } = new();
 
     public SsoOptions Sso { get; } = new();
+
+    public MemberOptions Members { get; } = new();
 
     public ReverseProxyOptions ReverseProxy { get; } = new();
 

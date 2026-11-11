@@ -164,6 +164,59 @@ public sealed class OperationsEndpointsTests(AdminFixture fixture) : IClassFixtu
         (await fixture.GetAsync("me/sessions", client)).Json["items"]!.AsArray().ShouldBeEmpty();
     }
 
+    // A user with a role in each of two sites reads both, the default site first, with no sites.manage in either, and
+    // nothing of a third site. A key is held to the sites it is bound to, and a grant to the sites it is limited to.
+    [Fact]
+    public async Task MySitesListsOnlyTheSitesInWhichTheCallerHoldsAGrant()
+    {
+        var token = TestContext.Current.CancellationToken;
+        Site first, second, third;
+        await using (var scope = fixture.Host.Services.CreateAsyncScope())
+        {
+            var sites = scope.ServiceProvider.GetRequiredService<SiteManager>();
+            first = await sites.CreateAsync("First", $"a-{Guid.NewGuid():N}", "en", token);
+            second = await sites.CreateAsync("Second", $"b-{Guid.NewGuid():N}", "fr", token);
+            third = await sites.CreateAsync("Third", $"c-{Guid.NewGuid():N}", "en", token);
+        }
+
+        var all = await fixture.GetAsync("me/sites");
+        all.Status.ShouldBe(HttpStatusCode.OK, all.Body?.ToJsonString());
+        var listed = all.Json["items"]!.AsArray();
+        listed[0]!.ToJsonString().ShouldBe($$"""{"id":"{{DefaultSite.Id}}","name":"{{DefaultSite.Name}}","slug":"{{DefaultSite.Slug}}","defaultLocale":"{{DefaultSite.Locale}}","isDefault":true}""");
+        new[] { first.Id, second.Id, third.Id }.ShouldBeSubsetOf(Ids(all));
+
+        var user = await fixture.Host.CreateUserAsync(await fixture.RoleWithAsync(), cancellationToken: token);
+        foreach (var site in (Site[])[first, second])
+        {
+            var role = await fixture.PostAsync("roles", $$"""{ "name": "reader-{{Guid.NewGuid():N}}", "siteId": "{{site.Id}}", "grants": [ { "permission": "content.page.read" } ] }""");
+            role.Status.ShouldBe(HttpStatusCode.Created, role.Body?.ToJsonString());
+            (await fixture.PutAsync($"users/{user.Id}/roles/{role.Json["id"]!.GetValue<string>()}")).Status.ShouldBe(HttpStatusCode.OK);
+        }
+
+        using var reader = await fixture.Host.AsUserAsync(user);
+        var mine = await fixture.GetAsync("me/sites", reader);
+        mine.Status.ShouldBe(HttpStatusCode.OK, mine.Body?.ToJsonString());
+        Ids(mine).ShouldBe([first.Id, second.Id]);
+        mine.Json["items"]![1]!["defaultLocale"]!.GetValue<string>().ShouldBe("fr");
+        (await fixture.GetAsync("sites", reader)).Status.ShouldBe(HttpStatusCode.Forbidden);
+
+        var limited = await fixture.PostAsync("roles", $$"""{ "name": "limited-{{Guid.NewGuid():N}}", "grants": [ { "permission": "content.page.read", "constraints": { "sites": ["{{third.Id}}"] } } ] }""");
+        limited.Status.ShouldBe(HttpStatusCode.Created, limited.Body?.ToJsonString());
+        using var limitedKey = fixture.Host.AsKey(await fixture.Host.CreateApiKeyAsync(ApiKeyClass.Management, limited.Json["name"]!.GetValue<string>(), cancellationToken: token));
+        Ids(await fixture.GetAsync("me/sites", limitedKey)).ShouldBe([third.Id]);
+
+        var bound = await fixture.PostAsync("api-keys", $$"""{ "name": "bound-{{Guid.NewGuid():N}}", "class": "management", "roleId": "{{BuiltInRoles.Editor}}", "siteIds": ["{{second.Id}}"] }""");
+        bound.Status.ShouldBe(HttpStatusCode.Created, bound.Body?.ToJsonString());
+        using var boundKey = fixture.Host.CreateClient();
+        boundKey.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("ApiKey", bound.Json["secret"]!.GetValue<string>());
+        Ids(await fixture.GetAsync("me/sites", boundKey)).ShouldBe([second.Id]);
+
+        using var anonymous = fixture.Host.CreateClient();
+        (await fixture.GetAsync("me/sites", anonymous)).Status.ShouldBe(HttpStatusCode.Unauthorized);
+
+        static List<Guid> Ids(ApiResponse response) => [.. response.Json["items"]!.AsArray().Select(site => Guid.Parse(site!["id"]!.GetValue<string>()))];
+    }
+
     [Theory]
     [InlineData("users")]
     [InlineData("invitations")]

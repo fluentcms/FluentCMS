@@ -58,6 +58,13 @@ internal sealed partial class HostedPagesBrowser : IDisposable
         return await _client.PostAsync(url, content, Token);
     }
 
+    // A request that is not a form, such as a JSON body, with the browser's cookies and address.
+    public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, HttpContent? content = null)
+    {
+        using var request = new HttpRequestMessage(method, url) { Content = content };
+        return await _client.SendAsync(request, Token);
+    }
+
     // Follows redirects until a page answers or the flow leaves for the client's redirect URI.
     public async Task<HttpResponseMessage> FollowAsync(HttpResponseMessage response, string stopAt = FluentCmsTestHost.OAuthRedirectUri)
     {

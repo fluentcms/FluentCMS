@@ -35,10 +35,19 @@ public class MediaHost : IAsyncDisposable
     }
 
     internal MediaHost(params Type[] contentTypes)
+        : this(null, contentTypes)
+    {
+    }
+
+    internal MediaHost(Action<MediaOptions>? configure, params Type[] contentTypes)
     {
         Host = new FluentCmsTestHost()
             .WithContentTypes(contentTypes)
-            .WithServices(services => services.PostConfigure<MediaOptions>(options => options.Local.Root = _directory.FullName))
+            .WithServices(services => services.PostConfigure<MediaOptions>(options =>
+            {
+                options.Local.Root = _directory.FullName;
+                configure?.Invoke(options);
+            }))
             .Configure(cms =>
             {
                 cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;

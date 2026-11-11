@@ -10,6 +10,7 @@ using FluentCMS.Core.Events;
 using FluentCMS.Core.Idempotency;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
+using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Core.Jobs;
@@ -277,6 +278,34 @@ public static class ErrorCodeRegistry
         BadQuery(IdempotencyErrorCodes.InvalidKey, "Invalid Idempotency-Key"),
         Invalid(IdempotencyErrorCodes.KeyReused, "Idempotency-Key used for another request"),
         new(IdempotencyErrorCodes.InProgress, StatusCodes.Status409Conflict, "Request with this Idempotency-Key still running"),
+
+        // 316x the member pool: its options, found when the host starts, and the refusals of its APIs
+        Startup(MemberErrorCodes.InvalidOptions, "Invalid member options"),
+        new(MemberErrorCodes.MemberNotFound, StatusCodes.Status404NotFound, "Member not found"),
+        Invalid(MemberErrorCodes.InvalidMember, "Invalid member"),
+        new(MemberErrorCodes.EmailTaken, StatusCodes.Status409Conflict, "Email address of another member"),
+        Invalid(MemberErrorCodes.InvalidEmail, "Invalid email address"),
+        Invalid(MemberErrorCodes.InvalidPassword, "Password refused by the policy"),
+        Invalid(MemberErrorCodes.InvalidToken, "Link not valid"),
+        Invalid(MemberErrorCodes.WrongPassword, "Current password refused"),
+        new(MemberErrorCodes.GroupNotFound, StatusCodes.Status404NotFound, "Member group not found"),
+        Invalid(MemberErrorCodes.InvalidGroup, "Invalid member group"),
+        new(MemberErrorCodes.GroupNameTaken, StatusCodes.Status409Conflict, "Member group name taken"),
+        new(MemberErrorCodes.AlreadyInGroup, StatusCodes.Status409Conflict, "Member already in the group"),
+        new(MemberErrorCodes.NotInGroup, StatusCodes.Status404NotFound, "Member not in the group"),
+        new(MemberErrorCodes.NoMailLink, StatusCodes.Status409Conflict, "Member mail has nowhere to link to"),
+        new(MemberErrorCodes.MemberChanged, StatusCodes.Status409Conflict, "Member changed"),
+
+        // 318x the external providers of the member pool: a provider's options, found when the host starts, the refusals
+        // of a sign-in that the member pages log, and the removal and linking of a member's external logins
+        Startup(MemberErrorCodes.InvalidProvider, "Invalid member provider"),
+        Startup(MemberErrorCodes.ProviderNoEmail, "No email address from the member provider"),
+        Startup(MemberErrorCodes.ProviderEmailTaken, "Email address of an unlinked member"),
+        Startup(MemberErrorCodes.ProviderMemberNotCreated, "Member not created through the provider"),
+        new(MemberErrorCodes.LastWayIn, StatusCodes.Status409Conflict, "Last way to sign in"),
+        new(MemberErrorCodes.LoginNotFound, StatusCodes.Status404NotFound, "External login not found"),
+        new(MemberErrorCodes.LoginTaken, StatusCodes.Status409Conflict, "External login already linked"),
+        Startup(MemberErrorCodes.ProviderRegistrationClosed, "Registration closed to the member provider"),
 
         // 315x the reference host (FluentCMS.Host, which this assembly does not reference, so its codes are written out) and the schema sync it allows, found when it starts
         Startup("FCMS3150", "Unknown data provider"),

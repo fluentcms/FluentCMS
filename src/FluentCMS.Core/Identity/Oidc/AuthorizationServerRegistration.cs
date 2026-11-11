@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FluentCMS.Agents;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Storage;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
@@ -79,6 +80,11 @@ internal static class AuthorizationServerRegistration
                 server.Configure(options => options.CodeChallengeMethods.Remove(OpenIddictConstants.CodeChallengeMethods.Plain));
                 server.AllowRefreshTokenFlow();
                 server.AllowClientCredentialsFlow();
+
+                // The direct login of members (Q4). The token endpoint takes it only while cms.Members.AllowDirectLogin is
+                // on, and the discovery document names it only then.
+                server.AllowCustomFlow(AuthorizationServer.MemberPasswordGrant);
+                server.AddEventHandler(MemberGrantDiscoveryHandler.Descriptor);
                 server.RegisterScopes(AuthorizationServer.KnownScopes);
 
                 // Signed JWTs a resource server can read; codes and refresh tokens stay encrypted.
@@ -105,7 +111,8 @@ internal static class AuthorizationServerRegistration
             .AddValidation(validation =>
             {
                 validation.UseLocalServer();
-                validation.AddAudiences(AuthorizationServer.ManagementAudience);
+                // Both pools: a member's token is kept out of the Management API, of drafts and of /mcp by its scopes.
+                validation.AddAudiences(AuthorizationServer.ManagementAudience, AuthorizationServer.MembersAudience);
 
                 validation.AddEventHandler(BearerClaimsHandler.Descriptor);
 

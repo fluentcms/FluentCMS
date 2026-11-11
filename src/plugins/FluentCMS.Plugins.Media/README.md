@@ -8,12 +8,19 @@ The instance's options are in `FluentCms:Media`:
 
 | Key | Default | Meaning |
 | --- | --- | --- |
+| `Library` | `Shared` | `Shared`: every site reads and writes one library, that of the default site. `PerSite`: each site keeps its own assets, folders and presets (see below). |
 | `Local:Root` | `App_Data/media` | The directory of the local storage, under the content root unless it is absolute. |
 | `MaxRequestBodySize` | `268435456` | The largest upload request, in bytes. A site's `MaxRequestSize` above it is cut to it. |
 | `RequireSignedUrls` | `true` | `false` serves unsigned transform URLs, for a setup where every client is trusted. The startup report lists `media-unsigned-urls` in Production. |
 | `SigningKey` | none | The base64 of at least 32 bytes that signs transform URLs. Left out, the plugin generates one key (see below). |
 | `CacheControl` | `public, max-age=86400` | The `Cache-Control` of a transformed image and of the original file of a public asset. |
 | `DeletedRetention` | `30.00:00:00` | How long a deleted asset keeps its file and its row before the daily cleanup purges them. |
+
+## One library or one per site
+
+With `Library` set to `Shared`, the default, the sites of an instance share one media library: an asset, a folder or a preset made in one site is the same in every other, and its `siteId` is the default site's. The permission is still checked in the site of the request, with its folder limits, so each site's roles decide who uploads and who reads there, and the media settings below are still each site's. The usage of an asset lists the entries of every site that refer to it, and a delete is refused while any does.
+
+With `PerSite`, each site keeps its own library, and an asset of one site is unknown in another. An instance with one site behaves the same either way. An instance that already has several sites, each with assets of its own, sets `PerSite` to keep reading them: with `Shared`, only the library of the default site is read. The option adds no table and moves no row, so it can be changed back.
 
 ## Site settings
 

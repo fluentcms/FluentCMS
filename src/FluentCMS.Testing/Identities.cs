@@ -2,6 +2,7 @@ using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
+using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -58,6 +59,45 @@ internal static class Identities
         // An admin user signs in to the admin, whose tokens carry the management scope.
         var principal = new Principal(PrincipalKind.AdminUser, id, userName, new Dictionary<string, string> { [TokenScopes.Claim] = TokenScopes.Management });
         return new TestUser(id, userName, email, stored.Name, stored.Id, principal);
+    }
+
+    // A member is stored through the member manager with a verified address, so that it may sign in, and is put in the
+    // member groups named. Its principal is what its token becomes on a request: no scope beyond those of a member.
+    public static async Task<TestMember> CreateMemberAsync(IServiceProvider services, string? email, string? password, IReadOnlyCollection<string> groups, CancellationToken cancellationToken)
+    {
+        var member = new CmsMember { EmailConfirmed = true };
+        member.Email = email ?? $"{member.Id:N}@members.fluentcms.local";
+
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var members = scope.ServiceProvider.GetRequiredService<UserManager<CmsMember>>();
+            Check(password is null ? await members.CreateAsync(member) : await members.CreateAsync(member, password), member.Email);
+
+            var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+            foreach (var name in groups)
+            {
+                var group = await context.Set<MemberGroup>().AsNoTracking().FirstOrDefaultAsync(item => item.Name == name, cancellationToken)
+                    ?? throw new InvalidOperationException($"There is no member group named '{name}'. CreateMemberGroupAsync adds one.");
+                context.Add(new MemberGroupMember { GroupId = group.Id, MemberId = member.Id });
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
+        }
+
+        var principal = new Principal(PrincipalKind.Member, member.Id, member.Email, new Dictionary<string, string> { [TokenScopes.Claim] = "openid" });
+        return new TestMember(member.Id, member.Email, principal);
+    }
+
+    public static async Task<Guid> CreateMemberGroupAsync(IServiceProvider services, string name, string role, CancellationToken cancellationToken)
+    {
+        var stored = await FindRoleAsync(services, role, cancellationToken);
+
+        await using var scope = services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        var group = new MemberGroup { Id = Guid.CreateVersion7(), Name = name, RoleId = stored.Id, CreatedAt = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow() };
+        context.Add(group);
+        await context.SaveChangesAsync(cancellationToken);
+        return group.Id;
     }
 
     public static async Task<TestApiKey> CreateApiKeyAsync(IServiceProvider services, ApiKeyClass keyClass, string role, string? name, CancellationToken cancellationToken)

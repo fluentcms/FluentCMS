@@ -29,6 +29,9 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
 
     public const string OAuthRedirectUri = OAuthFlows.RedirectUri;
 
+    // The public client of the member pool the test host registers, whose tokens AsMemberAsync gets.
+    public const string OAuthMemberClientId = OAuthFlows.MemberClientId;
+
     private readonly List<Type> _contentTypes = [];
     private readonly List<Action<FluentCmsBuilder>> _configure = [];
     private readonly List<Action<IServiceCollection>> _services = [];
@@ -121,6 +124,8 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
 
     public TestActor As(TestApiKey key, Origin origin = Origin.Api) => Act(key.Principal, origin, key.Id.ToString());
 
+    public TestActor As(TestMember member) => Act(member.Principal, Origin.Api, OAuthFlows.MemberClientId);
+
     public IContentService<T> Content<T>()
         where T : ContentItem => Anonymous.Content<T>();
 
@@ -131,6 +136,15 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
 
     public async Task<TestApiKey> CreateApiKeyAsync(ApiKeyClass keyClass, string role, string? name = null, CancellationToken cancellationToken = default) =>
         await Identities.CreateApiKeyAsync(Services, keyClass, role, name, cancellationToken);
+
+    // A member of the member pool with a verified address, in the member groups named, which CreateMemberGroupAsync makes.
+    // Without a password it signs in through AsMemberAsync only.
+    public async Task<TestMember> CreateMemberAsync(string? email = null, string? password = null, IReadOnlyCollection<string>? groups = null, CancellationToken cancellationToken = default) =>
+        await Identities.CreateMemberAsync(Services, email, password, groups ?? [], cancellationToken);
+
+    // A member group bound to the role of that name, as CreateRoleAsync makes one.
+    public async Task<Guid> CreateMemberGroupAsync(string name, string role, CancellationToken cancellationToken = default) =>
+        await Identities.CreateMemberGroupAsync(Services, name, role, cancellationToken);
 
     // Each permission is a name or pattern as role grants hold them. The role is written the way role management will write it.
     public async Task<Guid> CreateRoleAsync(string name, IEnumerable<string> permissions, CancellationToken cancellationToken = default)
@@ -164,6 +178,26 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
         var client = CreateSecureClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
         return client;
+    }
+
+    // A client with the member's bearer token, which the member test client got through the authorization code flow with PKCE.
+    public async Task<HttpClient> AsMemberAsync(TestMember member, params string[] scopes)
+    {
+        ArgumentNullException.ThrowIfNull(member);
+
+        var tokens = await SignInAsync(member, scopes);
+        var client = CreateSecureClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
+        return client;
+    }
+
+    // The tokens of the member test client for the member, from the real authorize and token endpoints.
+    public async Task<TestTokens> SignInAsync(TestMember member, params string[] scopes)
+    {
+        ArgumentNullException.ThrowIfNull(member);
+
+        using var client = CreateSecureClient();
+        return await OAuthFlows.SignInMemberAsync(client, Services, member.Id, scopes.Length > 0 ? scopes : ["openid", "offline_access"], CancellationToken.None);
     }
 
     // The tokens of the test client for the user, from the real authorize and token endpoints.
@@ -275,6 +309,7 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
                     cms.UseSqlite(connectionString);
                     cms.UseContentMigrations(typeof(CmsDbContext).Assembly);
                     cms.Clients.Applications[OAuthFlows.ClientId] = OAuthFlows.Client();
+                    cms.Clients.Applications[OAuthFlows.MemberClientId] = OAuthFlows.MemberClient();
                     foreach (var configure in _configure)
                     {
                         configure(cms);

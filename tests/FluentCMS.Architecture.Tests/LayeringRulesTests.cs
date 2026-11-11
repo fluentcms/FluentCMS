@@ -24,7 +24,9 @@ public class LayeringRulesTests
     private const string CliNamespace = "FluentCMS.Cli";
     private const string TestingNamespace = "FluentCMS.Testing";
     private const string McpPlugin = "FluentCMS.Plugins.Mcp";
+    private const string MultiSitePlugin = "FluentCMS.Plugins.MultiSite";
     private const string WebhooksPlugin = "FluentCMS.Plugins.Webhooks";
+    private const string AiAssistPlugin = "FluentCMS.Plugins.AiAssist";
 
     private static readonly string[] McpSiteData = ["McpModel", "McpInstructions", "McpStoredPrompts", "McpInstructionService", "McpPromptService"];
 
@@ -122,6 +124,22 @@ public class LayeringRulesTests
         mcp.PackageReferences.Where(package => !package.DevelopmentOnly).Select(package => package.Name).ShouldBe(["ModelContextProtocol.AspNetCore"]);
     }
 
+    // Spec 5.6: the multi-site plugin reaches sites through ISiteAdministration of the SDK, so the two contract packages are
+    // all it references, and no type of it names one of core's.
+    [Fact]
+    public void TheMultiSitePluginReferencesTheSdkAndThePluginAbstractionsOnly()
+    {
+        var multiSite = ProjectFile.SourceProjects.Single(project => project.Name == MultiSitePlugin);
+
+        multiSite.ProjectReferences.ShouldBe([Sdk, PluginAbstractions], ignoreOrder: true);
+        // The providers of its PostgreSQL and SQL Server migration sets are compiled against and not depended on.
+        multiSite.PackageReferences.Where(package => !package.DevelopmentOnly).ShouldBeEmpty();
+        Types().That().ResideInNamespaceOrBelow(MultiSitePlugin)
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceOrBelow("FluentCMS.Core")
+            .AndShould().NotDependOnAnyTypesThat().HaveName("CmsDbContext")
+            .Check(everything.Value);
+    }
+
     // The MCP server is a surface (2.1): it carries the identity and the intent of a call and decides nothing. It holds no
     // database context, content's or a plugin's, and asks no permission; a provider reaches content through the services,
     // which do both. The webhooks plugin, whose service does both, shows that the rule sees what it forbids. What a site
@@ -141,6 +159,44 @@ public class LayeringRulesTests
 
         Should.Throw<Exception>(() => SurfaceRule(McpPlugin).Check(everything.Value));
         Should.Throw<Exception>(() => SurfaceRule(WebhooksPlugin).Check(everything.Value));
+    }
+
+    [Fact]
+    public void TheAiAssistPluginReferencesTheContractPackagesAndItsProviderPackagesOnly()
+    {
+        var ai = ProjectFile.SourceProjects.Single(project => project.Name == AiAssistPlugin);
+
+        ai.ProjectReferences.ShouldBe([Sdk, PluginAbstractions], ignoreOrder: true);
+        // The providers of its PostgreSQL and SQL Server migration sets are compiled against and not depended on.
+        ai.PackageReferences.Where(package => !package.DevelopmentOnly).Select(package => package.Name)
+            .ShouldBe(["Anthropic", "Microsoft.Extensions.AI", "Microsoft.Extensions.AI.OpenAI", "OllamaSharp"], ignoreOrder: true);
+    }
+
+    // Spec 5.5: the AI assist plugin reads content and media through their services, as the caller, and writes nothing to
+    // content. The one thing it keeps is its usage log: the model and the migrations of that table, the service that writes
+    // and pages it and the job that prunes it. The rest of the plugin holds no database context, and of the content and
+    // media services it calls the reads alone. The MCP plugin, whose tools write through the same services, shows that the
+    // scan of the calls sees a write.
+    [Fact]
+    public void TheAiAssistPluginReadsThroughTheServicesAndWritesNothingToContent()
+    {
+        Types().That().ResideInNamespaceOrBelow(AiAssistPlugin)
+            .And().DoNotResideInNamespaceOrBelow(AiAssistPlugin + ".Migrations")
+            .And().DoNotHaveName("AiUsageModel")
+            .And().DoNotHaveName("AiUsageService")
+            .And().DoNotHaveName("AiUsageRetentionJob")
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceOrBelow("Microsoft.EntityFrameworkCore")
+            .AndShould().NotDependOnAnyTypesThat().HaveNameStartingWith("PluginDbContext")
+            .Check(everything.Value);
+        Types().That().ResideInNamespaceOrBelow(AiAssistPlugin).Should().NotDependOnAnyTypesThat().HaveName("CmsDbContext").Check(everything.Value);
+        Types().That().ResideInNamespaceOrBelow(AiAssistPlugin)
+            .Should().NotDependOnAnyTypesThat().HaveNameStartingWith("PluginDbContext")
+            .HasNoViolations(everything.Value).ShouldBeFalse();
+
+        ServiceCalls.In(AiAssistPlugin).ShouldBe(
+            ["FluentCMS.Content.IContentService.GetAsync", "FluentCMS.Media.IMediaService.GetAsync", "FluentCMS.Media.IMediaService.OpenImageAsync"],
+            ignoreOrder: true);
+        ServiceCalls.In(McpPlugin).ShouldContain("FluentCMS.Content.IContentService.CreateAsync");
     }
 
     // The contracts of ADR 0003 that need EF Core or ASP.NET Core, which the framework reference brings.

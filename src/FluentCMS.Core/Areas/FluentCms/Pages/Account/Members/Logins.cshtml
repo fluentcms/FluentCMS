@@ -1,0 +1,55 @@
+@page "/account/members/logins"
+@model MemberLoginsModel
+@{
+    ViewData["Title"] = "Your sign-in methods";
+}
+@if (Model.Notice is not null)
+{
+    <p class="notice">@Model.Notice</p>
+}
+@if (Model.Problem is not null)
+{
+    <p class="error">@Model.Problem</p>
+}
+<div asp-validation-summary="ModelOnly" class="error"></div>
+<p>You are signed in as <strong>@Model.Email</strong>.</p>
+@if (Model.PendingLink is not null)
+{
+    @if (Model.PendingLink.Account is not null)
+    {
+        <p>Link the @Model.PendingLink.ProviderName account <strong>@Model.PendingLink.Account</strong> to your account? Whoever signs in to it then signs in here as you.</p>
+    }
+    else
+    {
+        <p>Link the @Model.PendingLink.ProviderName account you just signed in to? Whoever signs in to it then signs in here as you.</p>
+    }
+    <form method="post" asp-page-handler="Confirm">
+        <button type="submit">Link @Model.PendingLink.ProviderName</button>
+    </form>
+    <form method="post" asp-page-handler="Cancel">
+        <button type="submit" class="secondary">Cancel</button>
+    </form>
+}
+else
+{
+    @if (Model.Logins.Count == 0)
+    {
+        <p class="muted">No external account is linked.</p>
+    }
+    @foreach (var login in Model.Logins)
+    {
+        <form method="post" asp-page-handler="Remove">
+            <input type="hidden" name="provider" value="@login.Provider">
+            <button type="submit" class="secondary">Remove @login.DisplayName</button>
+        </form>
+    }
+    @if (Model.Linkable.Count > 0)
+    {
+        <form method="post" asp-page-handler="Link">
+            @foreach (var provider in Model.Linkable)
+            {
+                <button type="submit" class="secondary" name="provider" value="@provider.Name">Link @provider.DisplayName</button>
+            }
+        </form>
+    }
+}

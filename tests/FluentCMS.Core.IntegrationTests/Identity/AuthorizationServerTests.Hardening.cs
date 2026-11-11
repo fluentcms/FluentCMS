@@ -179,7 +179,7 @@ public sealed partial class AuthorizationServerTests
             logs.Entries.ShouldNotContain(entry => entry.EventId.Id == OidcLog.ClientDeletedId);
             var kept = logs.Entries.Where(entry => entry.EventId.Id == OidcLog.ClientsKeptId).ShouldHaveSingleItem();
             kept.Level.ShouldBe(LogLevel.Warning);
-            ((string)kept.State["ClientIds"]!).Split(", ").ShouldBe([ServiceClientId, FluentCmsTestHost.OAuthClientId], ignoreOrder: true);
+            ((string)kept.State["ClientIds"]!).Split(", ").ShouldBe([ServiceClientId, FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthMemberClientId], ignoreOrder: true);
 
             using var client = second.CreateSecureClient();
             (await TokenAsync(client, ClientCredentials("management"), Token)).AccessToken.ShouldNotBeNullOrEmpty();

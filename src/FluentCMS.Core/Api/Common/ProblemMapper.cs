@@ -1,6 +1,7 @@
 using FluentCMS.Authorization;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.ProseMirror;
 using FluentCMS.Hooks;
@@ -35,6 +36,8 @@ internal static class ProblemMapper
         ManagementAccessDeniedException denied => Denied(denied.Message, authenticated),
         PermissionDeniedException denied => Denied(denied.Message, authenticated),
         ScopeDeniedException denied => Denied(denied.Message, authenticated),
+        MemberAccessDeniedException denied => Denied(denied.Message, authenticated),
+        MemberRegistrationClosedException closed => Known(ApiErrorCodes.NotFound, closed.Message),
         SignInRequiredException required => Known(ApiErrorCodes.Unauthorized, required.Message),
         RequestAuthenticationException unauthenticated => Known(unauthenticated.Code ?? ApiErrorCodes.Unauthorized, unauthenticated.Message),
         EntryNotFoundException notFound => Known(ApiErrorCodes.NotFound, notFound.Message),

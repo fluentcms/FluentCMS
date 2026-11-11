@@ -1,0 +1,41 @@
+@page "/account/members/register"
+@model MemberRegisterModel
+@{
+    ViewData["Title"] = "Register";
+}
+@if (Model.Sent)
+{
+    <p class="notice">If the address can be registered, an email with a link to verify it is on its way. The link works once.</p>
+    <p><a asp-page="./Login" asp-route-ReturnUrl="@Model.ReturnUrl">Back to sign in</a></p>
+}
+else
+{
+    <form method="post">
+        <div asp-validation-summary="ModelOnly" class="error"></div>
+        <input type="hidden" asp-for="ReturnUrl">
+        <label asp-for="Input.Email"></label>
+        <input asp-for="Input.Email" autocomplete="email" autofocus>
+        <span asp-validation-for="Input.Email"></span>
+        <label asp-for="Input.DisplayName"></label>
+        <input asp-for="Input.DisplayName" type="text" autocomplete="name">
+        <span asp-validation-for="Input.DisplayName"></span>
+        <label asp-for="Input.Password"></label>
+        <input asp-for="Input.Password" autocomplete="new-password">
+        <span asp-validation-for="Input.Password"></span>
+        <label asp-for="Input.ConfirmPassword"></label>
+        <input asp-for="Input.ConfirmPassword" autocomplete="new-password">
+        <span asp-validation-for="Input.ConfirmPassword"></span>
+        <button type="submit">Register</button>
+    </form>
+    @if (Model.ExternalProviders.Count > 0)
+    {
+        <form method="post" asp-page-handler="External">
+            <input type="hidden" asp-for="ReturnUrl">
+            @foreach (var provider in Model.ExternalProviders)
+            {
+                <button type="submit" class="secondary" name="provider" value="@provider.Name">Continue with @provider.DisplayName</button>
+            }
+        </form>
+    }
+    <p><a asp-page="./Login" asp-route-ReturnUrl="@Model.ReturnUrl">Back to sign in</a></p>
+}

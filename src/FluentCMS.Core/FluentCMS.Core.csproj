@@ -15,6 +15,8 @@
     <InternalsVisibleTo Include="FluentCMS.Plugins.Media.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Plugins.GraphQL.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Plugins.Mcp.Tests" />
+    <InternalsVisibleTo Include="FluentCMS.Plugins.MultiSite.Tests" />
+    <InternalsVisibleTo Include="FluentCMS.Plugins.AiAssist.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Host.Tests" />
   </ItemGroup>
 
@@ -23,8 +25,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AspNet.Security.OAuth.Apple" />
+    <PackageReference Include="AspNet.Security.OAuth.GitHub" />
     <PackageReference Include="Cronos" />
     <PackageReference Include="MailKit" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />

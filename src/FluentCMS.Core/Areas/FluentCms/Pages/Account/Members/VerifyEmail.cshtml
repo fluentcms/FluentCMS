@@ -1,0 +1,31 @@
+@page "/account/members/verify-email"
+@model MemberVerifyEmailModel
+@{
+    ViewData["Title"] = "Verify your email address";
+}
+<div asp-validation-summary="ModelOnly" class="error"></div>
+@if (Model.Sent)
+{
+    <p class="notice">If the address belongs to an account that is not verified yet, an email with a new link is on its way. The link works once.</p>
+    <p><a asp-page="./Login">Back to sign in</a></p>
+}
+else if (Model.HasLink)
+{
+    <p>Verify <strong>@Model.Email</strong> as the address of your account.</p>
+    <form method="post">
+        <input type="hidden" asp-for="Email">
+        <input type="hidden" asp-for="Token">
+        <button type="submit">Verify the address</button>
+    </form>
+}
+else
+{
+    <p>Enter the email address of your account, and we will send you a new link to verify it.</p>
+    <form method="post" asp-page-handler="Resend">
+        <label asp-for="Input.Email"></label>
+        <input asp-for="Input.Email" autocomplete="email" autofocus>
+        <span asp-validation-for="Input.Email"></span>
+        <button type="submit">Send the link</button>
+    </form>
+    <p><a asp-page="./Login">Back to sign in</a></p>
+}

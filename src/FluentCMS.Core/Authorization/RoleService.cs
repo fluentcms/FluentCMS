@@ -2,6 +2,7 @@ using FluentCMS.Activity;
 using FluentCMS.Content;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
+using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
@@ -26,10 +27,10 @@ internal sealed record RoleRequest(string Name, string? Description, IReadOnlyLi
 
 // Roles and their grants for the Management API. Writing a role needs roles.manage where the role applies, and a role holds
 // only what the caller holds itself: no grant above one's own reach, neither added nor taken from a role the caller could not
-// have made. Users, invitations and keys ask here whether the caller may hand a role out. A role is written through
-// CmsDbContext, whose interceptor raises its permissions version with the change, and deleted only while no user holds it
-// and no key that is not revoked uses it, so the cascade of the database drops no holder without its event. An edit that
-// takes `*` from an instance-wide role keeps the last Super Admin.
+// have made. Users, invitations, keys and member groups ask here whether the caller may hand a role out. A role is written
+// through CmsDbContext, whose interceptor raises its permissions version with the change, and deleted only while no user
+// holds it, no key that is not revoked uses it and no member group is bound to it, so the cascade of the database drops
+// no holder without its event. An edit that takes `*` from an instance-wide role keeps the last Super Admin.
 internal sealed class RoleService(
     CmsDbContext context,
     PermissionCatalogue catalogue,
@@ -48,13 +49,13 @@ internal sealed class RoleService(
 
     private static readonly PrincipalBinding Unbound = new(null, null);
 
-    private static readonly string[] Readers = [CorePermissions.RolesManage, CorePermissions.UsersManage, CorePermissions.ApiKeysManage];
+    private static readonly string[] Readers = [CorePermissions.RolesManage, CorePermissions.UsersManage, CorePermissions.ApiKeysManage, CorePermissions.MembersManage];
 
     public async Task<IReadOnlyList<PermissionEntry>> CatalogueAsync(CancellationToken cancellationToken)
     {
         if (!await AnyAsync(Readers, authority.CurrentSite?.Value, cancellationToken))
         {
-            throw new ManagementAccessDeniedException($"The permission catalogue needs {CorePermissions.RolesManage}, {CorePermissions.UsersManage} or {CorePermissions.ApiKeysManage}.");
+            throw new ManagementAccessDeniedException($"The permission catalogue needs {string.Join(", ", Readers[..^1])} or {Readers[^1]}.");
         }
 
         return catalogue.Entries;
@@ -77,7 +78,7 @@ internal sealed class RoleService(
 
         if (visible.Count == 0 && !await AnyAsync(Readers, authority.CurrentSite?.Value, cancellationToken))
         {
-            throw new ManagementAccessDeniedException($"Roles are read with {CorePermissions.RolesManage}, {CorePermissions.UsersManage} or {CorePermissions.ApiKeysManage}.");
+            throw new ManagementAccessDeniedException($"Roles are read with {string.Join(", ", Readers[..^1])} or {Readers[^1]}.");
         }
 
         return visible;
@@ -178,7 +179,8 @@ internal sealed class RoleService(
         var deleted = await context.Set<Role>()
             .Where(item => item.Id == id
                 && !context.Set<CmsUserRole>().Any(membership => membership.RoleId == id)
-                && !context.Set<ApiKey>().Any(key => key.RoleId == id && key.RevokedAt == null))
+                && !context.Set<ApiKey>().Any(key => key.RoleId == id && key.RevokedAt == null)
+                && !context.Set<MemberGroup>().Any(group => group.RoleId == id))
             .ExecuteDeleteAsync(cancellationToken);
 
         if (deleted == 0)
@@ -190,8 +192,9 @@ internal sealed class RoleService(
 
             var users = await context.Set<CmsUserRole>().CountAsync(membership => membership.RoleId == id, cancellationToken);
             var keys = await context.Set<ApiKey>().CountAsync(key => key.RoleId == id && key.RevokedAt == null, cancellationToken);
+            var groups = await context.Set<MemberGroup>().CountAsync(group => group.RoleId == id, cancellationToken);
             throw new ValidationException([new ValidationError("id", RoleErrorCodes.RoleInUse,
-                $"The role is held by {users} user(s) and {keys} API key(s) that are not revoked. Take it from the users and revoke the keys first.")]);
+                $"The role is held by {users} user(s), {keys} API key(s) that are not revoked and {groups} member group(s). Take it from the users, revoke the keys and bind the groups to another role first.")]);
         }
 
         cache.Remove(id);
