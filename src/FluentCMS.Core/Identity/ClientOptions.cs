@@ -47,6 +47,8 @@ public sealed class ClientOptions
 
         Require(AccessTokenLifetime <= RefreshTokenLifetime, $"{nameof(AccessTokenLifetime)} is longer than {nameof(RefreshTokenLifetime)}, so a client would refresh a token that outlives the refresh token.");
 
+        Require(!Applications.TryGetValue(AdminClientId, out var adminClient) || adminClient.Pool == ClientPool.Admins, $"{nameof(AdminClientId)} is '{AdminClientId}', a client of the member pool; the admin application signs admin users in.");
+
         foreach (var (clientId, client) in Applications)
         {
             var key = $"{nameof(Applications)}:{clientId}";
@@ -63,8 +65,8 @@ public sealed class ClientOptions
             }
             else
             {
-                Require(client.IsConfidential || client.RedirectUris.Count > 0, $"{key} has neither a {nameof(ClientRegistration.Secret)} nor {nameof(ClientRegistration.RedirectUris)}; a public client signs users in through a redirect URI.");
                 Require(!client.AllowDirectLogin, $"{key}:{nameof(ClientRegistration.AllowDirectLogin)} is set on a client of the admin pool; the direct login is for members, so set {nameof(ClientRegistration.Pool)} to {nameof(ClientPool.Members)}.");
+                Require(client.IsConfidential || client.RedirectUris.Count > 0, $"{key} has neither a {nameof(ClientRegistration.Secret)} nor {nameof(ClientRegistration.RedirectUris)}; a public client signs users in through a redirect URI.");
             }
 
             Require(client.Roles.Count == 0 || client.IsConfidential, $"{key}:{nameof(ClientRegistration.Roles)} is set on a client without a {nameof(ClientRegistration.Secret)}; only a confidential client signs in as a service account.");

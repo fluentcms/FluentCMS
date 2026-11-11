@@ -47,6 +47,12 @@ internal static class MemberViews
     // Identity's refusals as problems with the codes of the registry.
     public static void Check(IdentityResult result)
     {
+        // One answer for every link that does not work, whichever call found it out.
+        if (result.Errors.Any(error => error.Code == nameof(IdentityErrorDescriber.InvalidToken)))
+        {
+            throw InvalidToken();
+        }
+
         if (!result.Succeeded)
         {
             throw new ValidationException([.. result.Errors.Select(error => new ValidationError(PathOf(error.Code), CodeOf(error.Code), error.Description))]);

@@ -3,8 +3,8 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Identity.Members;
 
-// 9070 to 9089, the event ids of the member pool (FCMS3160 to FCMS3179). A line names a member by its id, never by its
-// address, and holds no token and no password.
+// 9070 to 9089, the event ids of the member pool, whose codes MemberErrorCodes has. A line names a member by its id,
+// never by its address, and holds no token and no password.
 internal static partial class MemberLog
 {
     public const int MailFailedId = 9070;

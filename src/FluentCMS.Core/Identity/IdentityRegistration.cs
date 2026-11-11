@@ -58,9 +58,10 @@ internal static class IdentityRegistration
         services.AddHttpContextAccessor();
         services.TryAddScoped<IPrincipalRoles, UserPrincipalRoles>();
 
+        // Before the authorization server's, which takes out the Data Protection hosted service that a cookie scheme adds.
+        MemberRegistration.Add(services, members);
         AuthorizationServerRegistration.Add(services, clients);
         SsoRegistration.Add(services, sso);
-        MemberRegistration.Add(services, members);
 
         services.AddFluentCmsOptions(EmailOptions.Section, HostErrorCodes.InvalidOption, new EmailOptions(), email => email.Validate());
         providers.Default<IEmailSender>(provider =>

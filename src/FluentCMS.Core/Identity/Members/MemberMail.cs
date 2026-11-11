@@ -39,12 +39,12 @@ internal sealed class MemberMail(
             "Choose a password for your account",
             $"An account was created for this email address. Choose a password here to start using it:\n\n{link}\n\nThe link can be used once and expires at {Expiry(options.PasswordResetLifetime)} UTC. After that, ask for a new link with the forgotten password page."), cancellationToken);
 
-    // No link: the member has an account and a password already, and the mail says how to get back in.
+    // No link: the address has an account already, and the mail says how to get back in.
     public Task<bool> SendAlreadyRegisteredAsync(CmsMember member, CancellationToken cancellationToken) =>
         DeliverAsync(member, new EmailMessage(
             member.Email!,
             "You already have an account",
-            "Someone tried to register an account with this email address, which has an account already. If it was you, sign in with your password, or reset it with the forgotten password page. If it was not you, ignore this email; nothing has changed."), cancellationToken);
+            "Someone tried to register an account with this email address, which has an account already. If it was you, sign in with your password, or choose a new one with the forgotten password page. If it was not you, ignore this email; nothing has changed."), cancellationToken);
 
     private async Task<bool> SendAsync(CmsMember member, string? template, string hostedPage, string token, Func<string, EmailMessage> message, CancellationToken cancellationToken)
     {

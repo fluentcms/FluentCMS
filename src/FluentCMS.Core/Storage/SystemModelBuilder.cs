@@ -341,15 +341,23 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     private void MapMember(EntityTypeBuilder<CmsMember> entity)
     {
         entity.ToTable(StorageNames.Member);
-        MapColumnNames(entity);
 
         // The address is the sign-in name, and a member has no phone number, no second factor and no lockout switch.
-        entity.Ignore(member => member.UserName);
-        entity.Ignore(member => member.NormalizedUserName);
-        entity.Ignore(member => member.PhoneNumber);
-        entity.Ignore(member => member.PhoneNumberConfirmed);
-        entity.Ignore(member => member.TwoFactorEnabled);
-        entity.Ignore(member => member.LockoutEnabled);
+        string[] fixedByTheClass =
+        [
+            nameof(CmsMember.UserName),
+            nameof(CmsMember.NormalizedUserName),
+            nameof(CmsMember.PhoneNumber),
+            nameof(CmsMember.PhoneNumberConfirmed),
+            nameof(CmsMember.TwoFactorEnabled),
+            nameof(CmsMember.LockoutEnabled),
+        ];
+        foreach (var name in fixedByTheClass)
+        {
+            entity.Ignore(name);
+        }
+
+        MapColumnNames(entity, except: fixedByTheClass);
 
         conventions.ConfigureKey(entity.Property(member => member.Id));
         entity.Property(member => member.Email).HasMaxLength(EmailLength).IsRequired();
@@ -368,8 +376,11 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
             .HasDatabaseName("ix_cms_member_email_confirmed_created_at");
     }
 
+    // Identity's store asks for a login and a token that derive from its own types, which are the rows of the admin
+    // users. A member's are rows of tables of their own, so they are no part of a hierarchy with those.
     private static void MapMemberLogin(EntityTypeBuilder<CmsMemberLogin> entity)
     {
+        entity.HasBaseType((Type?)null);
         entity.ToTable(StorageNames.MemberLogin);
         MapColumnNames(entity);
         entity.HasKey(login => new { login.LoginProvider, login.ProviderKey });
@@ -384,6 +395,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
 
     private static void MapMemberToken(EntityTypeBuilder<CmsMemberToken> entity)
     {
+        entity.HasBaseType((Type?)null);
         entity.ToTable(StorageNames.MemberToken);
         MapColumnNames(entity);
         entity.HasKey(token => new { token.UserId, token.LoginProvider, token.Name });
@@ -659,10 +671,10 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.Property(row => row.FluentcmsVersion).HasMaxLength(VersionLength).HasColumnName("fluentcms_version");
     }
 
-    private static void MapColumnNames<T>(EntityTypeBuilder<T> entity)
+    private static void MapColumnNames<T>(EntityTypeBuilder<T> entity, params string[] except)
         where T : class
     {
-        foreach (var property in typeof(T).GetProperties())
+        foreach (var property in typeof(T).GetProperties().Where(property => !except.Contains(property.Name, StringComparer.Ordinal)))
         {
             entity.Property(property.Name).HasColumnName(StorageNames.Column(property.Name));
         }

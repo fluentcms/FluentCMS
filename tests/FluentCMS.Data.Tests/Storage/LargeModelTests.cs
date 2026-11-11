@@ -40,6 +40,6 @@ public class LargeModelTests
         using var database = new StorageDatabase(LargeSchema());
         using var context = database.CreateContext();
 
-        context.Model.GetEntityTypes().Count().ShouldBe(TypeCount + (TypeCount / 2) + 31);
+        context.Model.GetEntityTypes().Count().ShouldBe(TypeCount + (TypeCount / 2) + 36);
     }
 }

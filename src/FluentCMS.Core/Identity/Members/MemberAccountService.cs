@@ -1,5 +1,6 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Storage;
+using FluentCMS.Events;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,6 +27,7 @@ internal sealed class MemberAccountService(
     MemberSessions sessions,
     MemberOptions options,
     SystemDbContext context,
+    IdentityChanges changes,
     IOperationContextAccessor accessor,
     TimeProvider time)
 {
@@ -71,7 +73,8 @@ internal sealed class MemberAccountService(
             return;
         }
 
-        if (existing.EmailConfirmed || existing.DeactivatedAt is not null)
+        // A member an administrator made has no password and waits for its own link; a registration never gives it one.
+        if (existing.EmailConfirmed || existing.DeactivatedAt is not null || existing.PasswordHash is null)
         {
             // As long as hashing a new member's password, and a mail goes out as it does for one.
             _ = members.PasswordHasher.HashPassword(existing, password);
@@ -80,9 +83,11 @@ internal sealed class MemberAccountService(
         }
 
         // Nobody has shown that the address is theirs yet, so the password of the last registration is the one the next
-        // verification mail stands for. Whoever registered before cannot sign in with theirs once the owner verifies.
+        // verification mail stands for. Whoever registered before cannot sign in with theirs once the owner verifies. It
+        // is a new registration in every way, so it is in none of the groups the one before was put in.
         using (MemberOperation.Begin(accessor, existing, time))
         {
+            await LeaveGroupsAsync(existing, cancellationToken);
             MemberViews.Check(await members.ReplacePendingAsync(existing, password, name));
         }
 
@@ -172,6 +177,27 @@ internal sealed class MemberAccountService(
 
         MemberViews.Check(changed);
         await sessions.RevokeAllAsync(member.Id, cancellationToken);
+    }
+
+    private async Task LeaveGroupsAsync(CmsMember member, CancellationToken cancellationToken)
+    {
+        var groups = await context.Set<MemberGroupMember>().AsNoTracking()
+            .Where(membership => membership.MemberId == member.Id)
+            .Select(membership => membership.GroupId)
+            .ToListAsync(cancellationToken);
+        if (groups.Count == 0)
+        {
+            return;
+        }
+
+        await changes.RunAsync(
+            async () =>
+            {
+                await context.Set<MemberGroupMember>().Where(membership => membership.MemberId == member.Id).ExecuteDeleteAsync(cancellationToken);
+                await changes.RaiseAsync(new MemberGroupChangedEvent(member.Id, member.Email ?? "", [], groups), cancellationToken);
+                return true;
+            },
+            cancellationToken);
     }
 
     // What is wrong with the request whoever sends it, checked before anything is looked up.

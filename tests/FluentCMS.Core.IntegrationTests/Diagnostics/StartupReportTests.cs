@@ -135,6 +135,21 @@ public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fix
     }
 
     [Fact]
+    public async Task TheDirectLoginOfMembersIsReportedInProductionAsTheLessSecureWayIn()
+    {
+        var on = await StartAsync(Environments.Production, new Dictionary<string, string?> { ["FluentCms:Members:AllowDirectLogin"] = "true" });
+        var insecure = on.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Single(item => item.Id == "member-direct-login");
+        insecure.Message.ShouldContain("FluentCms:Members:AllowDirectLogin");
+        insecure.Message.ShouldContain("less secure");
+
+        var off = await StartAsync(Environments.Production);
+        off.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("member-direct-login");
+
+        var development = await StartAsync(Environments.Development, new Dictionary<string, string?> { ["FluentCms:Members:AllowDirectLogin"] = "true" });
+        development.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("member-direct-login");
+    }
+
+    [Fact]
     public async Task AMissingPublicOriginIsReportedInProduction()
     {
         var app = await StartAsync(Environments.Production, new Dictionary<string, string?> { ["AllowedHosts"] = "cms.example.com" });

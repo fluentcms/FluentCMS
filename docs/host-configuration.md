@@ -44,11 +44,12 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | Section | Holds |
 | --- | --- |
 | `FluentCms:Database` | `MigrateOnStartup`, `SchemaSync` (see [content migrations](content-migrations.md)) |
-| `FluentCms:Security` | `AllowGeneratedSigningKey`, `AllowRequestOrigin`, `AllowUnencryptedKeyRing` (see [Production refusals](#production-refusals)), `SigningCertificate:Path`, `SigningCertificate:Password`, `Cors:Delivery:AllowedOrigins`, `Cors:Management:AllowedOrigins`, `ReferrerPolicy`, `FrameAncestors` |
+| `FluentCms:Security` | `AllowGeneratedSigningKey`, `AllowRequestOrigin`, `AllowUnencryptedKeyRing` (see [Production refusals](#production-refusals)), `SigningCertificate:Path`, `SigningCertificate:Password`, `Cors:Delivery:AllowedOrigins`, `Cors:Management:AllowedOrigins`, `Cors:Members:AllowedOrigins`, `ReferrerPolicy`, `FrameAncestors` |
 | `FluentCms:Users` | `Password`, `Lockout`, `InvitationLifetime` (7 days), `PasswordResetLifetime` (1 hour) (see [hosted pages](#hosted-pages)) |
 | `FluentCms:Email` | `Smtp:Host`, `Smtp:Port` (587), `Smtp:Security` (`StartTls`, `SslOnConnect` or `None`), `Smtp:UserName`, `Smtp:Password`, `Smtp:From` (see [email](#email)) |
-| `FluentCms:Clients` | `AdminClientId`, `AccessTokenLifetime`, `RefreshTokenLifetime`, `SignInCookieLifetime`, `AbsoluteSessionLifetime`, and `Applications:{clientId}` with `DisplayName`, `Secret`, `RedirectUris`, `PostLogoutRedirectUris`, `Scopes`, `Roles`, `RequireConsent` (see [authorization server](#authorization-server)) |
+| `FluentCms:Clients` | `AdminClientId`, `AccessTokenLifetime`, `RefreshTokenLifetime`, `SignInCookieLifetime`, `AbsoluteSessionLifetime`, and `Applications:{clientId}` with `DisplayName`, `Secret`, `RedirectUris`, `PostLogoutRedirectUris`, `Scopes`, `Roles`, `RequireConsent`, `Pool`, `AllowDirectLogin` (see [authorization server](#authorization-server) and [members](#members)) |
 | `FluentCms:Sso` | `DisableLocalLogin`, and `Providers:{name}` with `Preset`, `DisplayName`, `Authority`, `TenantId`, `Domain`, `AuthorizationServerId`, `BaseUrl`, `Realm`, `ClientId`, `ClientSecret`, `Scopes`, `AutoProvision`, `RequireVerifiedEmail`, `LinkExistingUsers`, `DefaultRole`, `EmailClaim`, `GroupsClaim`, `RoleMappings`, `TrustMfaClaim`, `RequireHttpsMetadata` (see [single sign-on](#single-sign-on)) |
+| `FluentCms:Members` | `AllowRegistration`, `AllowDirectLogin`, `Password`, `Lockout`, `EmailVerificationLifetime` (24 hours), `PasswordResetLifetime` (1 hour), `UnverifiedMemberLifetime` (7 days), `Links:VerifyEmail`, `Links:ResetPassword` (see [members](#members)) |
 | `FluentCms:PublicOrigin` | the address users reach the instance at, such as `https://cms.example.com` (see [public origin](#public-origin)) |
 | `FluentCms:ReverseProxy` | `PathBase`, `ForwardedHeaders`, `HttpsRedirection`, `Hsts` (see [reverse proxy](reverse-proxy.md)) |
 | `FluentCms:RateLimits` | `Delivery:PermitLimit`, `Delivery:MaxKeyLimit`, `Management:PermitLimit`, `Auth:PermitLimit`, `PreAuth:PermitLimit`, `Health:PermitLimit` |
@@ -95,7 +96,7 @@ ASP.NET Core's rate limiter runs three policies, each a token bucket per caller 
 | --- | --- | --- | --- |
 | `delivery` | `/api/delivery/v1` and the groups plugins map with `MapGroup` | the API key's `sub`, or the client address | 600 |
 | `management` | `/api/management/v1` | the principal's `sub`, or the client address when there is none | 300 |
-| `auth` | `/connect`, `/account`, checked by path before authentication | the client address | 20 |
+| `auth` | `/connect`, `/account`, `/api/members/v1`, checked by path before authentication | the client address | 20 |
 | coarse (`PreAuth`) | every FluentCMS route but `/health`, plugin routes included, before authentication | the client address | 6000 |
 | `Health` | `/health`, before authentication, apart from the coarse limit | the client address | 1200 |
 
@@ -103,7 +104,7 @@ An API key whose principal has an `fcms_rate_limit` claim gets that many request
 
 An endpoint a plugin puts under the `caller` policy with `RequireCallerRateLimit()`, such as `/graphql`, serves both kinds of caller: one with the `management` scope is counted as the `management` policy counts it, and any other as `delivery` does, a key's own limit included. Its buckets are apart from those of the REST APIs.
 
-The coarse limit is checked before authentication on every endpoint that `MapFluentCms()` maps, those of plugins included, and on every path under the groups of core, so it also covers requests that no endpoint answers, such as `/connect/token` from the authorization server. A flood of API keys sent to a plugin's route is turned away there too, before any key is looked up. It adds no `RateLimit-*` headers, and neither does the `Health` limit; a refusal is the same 429 problem. The strict `auth` limit is checked there too, for every path under `/connect` and `/account`, because the authorization server answers `/connect/token`, `/connect/introspect` and `/connect/revoke` without routing; the endpoints of those groups do not count a request a second time.
+The coarse limit is checked before authentication on every endpoint that `MapFluentCms()` maps, those of plugins included, and on every path under the groups of core, so it also covers requests that no endpoint answers, such as `/connect/token` from the authorization server. A flood of API keys sent to a plugin's route is turned away there too, before any key is looked up. It adds no `RateLimit-*` headers, and neither does the `Health` limit; a refusal is the same 429 problem. The strict `auth` limit is checked there too, for every path under `/connect`, `/account` and `/api/members/v1`, because the authorization server answers `/connect/token`, `/connect/introspect` and `/connect/revoke` without routing; the endpoints of those groups do not count a request a second time.
 
 A caller that has been quiet may send the whole limit at once, and then one request per minute divided by the limit (every tenth of a second at 600), so a burst at the turn of a minute is not let through twice, as a fixed window of one minute would let it. A response carries `RateLimit-Limit`, `RateLimit-Remaining` (the requests that may be sent now) and `RateLimit-Reset` (seconds until the bucket is full again), from the IETF draft. A refused request is a 429 `application/problem+json` with code `FCMS3110` and a `Retry-After` in seconds until the next request is let through.
 
@@ -113,7 +114,7 @@ The client address is the connection's remote address, an IPv4-mapped address co
 
 ## CORS
 
-`Cors:Delivery:AllowedOrigins` applies to `/api/delivery/v1`, which allows `GET` and `HEAD`. `Cors:Management:AllowedOrigins` applies to `/api/management/v1` and to `/connect`, so the admin application can sign in from its own origin. Both allow the `X-Cms-Site` and `X-Cms-Locale` headers, Management also `Idempotency-Key`, and a browser can read `ETag`, `Location`, `Retry-After` and the `RateLimit-*` headers, and `Idempotent-Replayed` on Management. An origin that is not on the list gets no CORS headers, and an empty list, the default, allows none. The lists come from configuration only; a setting that edits them at run time is not part of this release.
+`Cors:Delivery:AllowedOrigins` applies to `/api/delivery/v1`, which allows `GET` and `HEAD`. `Cors:Management:AllowedOrigins` applies to `/api/management/v1` and to `/connect`, so the admin application can sign in from its own origin. `Cors:Members:AllowedOrigins` applies to `/api/members/v1`, which allows `GET`, `HEAD`, `POST` and `PATCH` with the `Authorization` and `Content-Type` headers and no credentials, and `/connect` answers these origins too, so a front end can sign members in from its own origin. Both allow the `X-Cms-Site` and `X-Cms-Locale` headers, Management also `Idempotency-Key`, and a browser can read `ETag`, `Location`, `Retry-After` and the `RateLimit-*` headers, and `Idempotent-Replayed` on Management. An origin that is not on the list gets no CORS headers, and an empty list, the default, allows none. The lists come from configuration only; a setting that edits them at run time is not part of this release.
 
 ## Security headers and request limits
 
@@ -172,7 +173,7 @@ The server of the document is the request's origin and path base, and so are the
 
 ## Startup report and diagnostics
 
-Once the migrations have run, the host logs one `StartupReport` (event id 9130, Information) and a warning per insecure default (event id 9131). The report is a public type of the SDK (`FluentCMS.Diagnostics.StartupReport`). It names the environment, the FluentCMS and data provider versions, the FluentCMS assemblies in the process, the plugins, the [provider slots](#provider-slots) and the implementation each resolves to, the pending migrations of the system, plugin and content streams, the schema hash in code against the one last applied, and the insecure defaults: the refusals of the production checks below (a generated signing key even in an environment that does not enforce it), a generated signing key that `AllowGeneratedSigningKey` accepted, the key ring stored unencrypted where it is not refused (`data-protection-keys-unencrypted`), the Development email sender, the HTTPS redirect being off in Production, `AllowedHosts` left at `*` or unset in Production, `FluentCms:PublicOrigin` unset in Production and accepted with `AllowRequestOrigin` (`public-origin-unset`), schema sync running outside Development (see [content migrations](content-migrations.md#schema-sync)), forwarded headers trusted from every address, and those a plugin reports through `IInsecureDefaultSource`, such as `webhooks-private-networks` and `mcp-open-client-registration`. It holds no connection string, key or password. If the report cannot be made, the log says so (event id 9132, with the scrubbed message) and the report is reduced to what needs no database, with `failure` naming the exception type; a request that arrives before any report exists gets a 503 (`FCMS3106`).
+Once the migrations have run, the host logs one `StartupReport` (event id 9130, Information) and a warning per insecure default (event id 9131). The report is a public type of the SDK (`FluentCMS.Diagnostics.StartupReport`). It names the environment, the FluentCMS and data provider versions, the FluentCMS assemblies in the process, the plugins, the [provider slots](#provider-slots) and the implementation each resolves to, the pending migrations of the system, plugin and content streams, the schema hash in code against the one last applied, and the insecure defaults: the refusals of the production checks below (a generated signing key even in an environment that does not enforce it), a generated signing key that `AllowGeneratedSigningKey` accepted, the key ring stored unencrypted where it is not refused (`data-protection-keys-unencrypted`), the Development email sender, the HTTPS redirect being off in Production, `AllowedHosts` left at `*` or unset in Production, `FluentCms:PublicOrigin` unset in Production and accepted with `AllowRequestOrigin` (`public-origin-unset`), schema sync running outside Development (see [content migrations](content-migrations.md#schema-sync)), forwarded headers trusted from every address, the direct login of members turned on in Production (`member-direct-login`, see [members](#members)), and those a plugin reports through `IInsecureDefaultSource`, such as `webhooks-private-networks` and `mcp-open-client-registration`. It holds no connection string, key or password. If the report cannot be made, the log says so (event id 9132, with the scrubbed message) and the report is reduced to what needs no database, with `failure` naming the exception type; a request that arrives before any report exists gets a 503 (`FCMS3106`).
 
 `GET /api/management/v1/system/diagnostics` returns the same report as JSON. It needs the instance-wide permission `system.read` (a Super Admin has it), which a role of one site, a grant limited to sites and a key bound to sites do not reach, and which a Delivery or Preview key never gets because it lacks the management scope.
 
@@ -306,9 +307,63 @@ The invitation page offers a button per provider next to the password form. Acce
 
 A user's external logins are listed with `GET /api/management/v1/users/{id}/logins` (`users.manage`) or `GET /api/management/v1/me/logins`, and removed with `DELETE` on `.../logins/{provider}`. Removing a login ends the user's sessions, and the last way to sign in is refused (`FCMS3090`): a login counts while its provider is configured, a password while local login is on. Links and removals are `user.login_linked` and `user.login_unlinked` activity rows.
 
+## Members
+
+Members are the accounts of a site's own visitors, apart from the admin users: their own tables (`cms_member*`), password policy, lockout, sign-in cookie, pages and tokens. The pool is one for the instance, so an address is one member in every site, and the address is the sign-in name. It is always there; what a host decides is under `FluentCms:Members`, or `cms.Members` in code:
+
+| Key | Default | What it is |
+| --- | --- | --- |
+| `AllowRegistration` | `false` | Lets a visitor register. Off, `POST /api/members/v1/register` and `/account/members/register` answer 404, and members come from the Management API only. |
+| `AllowDirectLogin` | `false` | Lets a client that also has `AllowDirectLogin` send a member's address and password to the token endpoint (see below). |
+| `Password`, `Lockout` | Identity's, with `Password:RequiredLength` 12 | The policy and the lockout of members, apart from `FluentCms:Users`. A member's lockout is always on. |
+| `EmailVerificationLifetime` | `1.00:00:00` | How long the link of a verification mail works. |
+| `PasswordResetLifetime` | `01:00:00` | How long the link that sets or resets a password works. |
+| `UnverifiedMemberLifetime` | `7.00:00:00` | A member that has not verified its address this long after it was made is removed by a daily job. |
+| `Links:VerifyEmail`, `Links:ResetPassword` | unset | URL templates of the front end, see below. |
+
+A bad value stops the host with `FCMS3160` and the key.
+
+**Mail and links.** A member's mail (verification, reset, the first password of a member an administrator made, and a note that an address is registered already) goes through `IEmailSender` (see [email](#email)). A link goes to your front end when the template is set: an absolute `http` or `https` URL with `{email}` and `{token}` after the host, such as `https://app.example.com/verify?email={email}&token={token}`; the front end then calls `POST /api/members/v1/verify-email` or `/reset-password` with the two values. Left unset, the link goes to the member page on the [public origin](#public-origin). A link is never built from a request, so with neither a template nor a public origin no mail is sent, the log says so (event id 9071, `FCMS3173`), and creating a member through the Management API is refused with `FCMS3173`. An address gets one mail a minute, counted on each instance.
+
+**The API.** `/api/members/v1` takes the `auth` rate limit by client address and answers the browser origins of `FluentCms:Security:Cors:Members:AllowedOrigins`, which `/connect` answers too. `POST /register`, `/resend-verification` and `/forgot-password` answer 202 with no body whether or not the address is a member's. `POST /verify-email` and `/reset-password` take the address and the token of the mail; a token works once. With a member's token, `GET` and `PATCH /me` read the member and change its display name, and `POST /me/change-password` changes the password. A reset and a change of password end every session of the member.
+
+**The pages.** `/account/members/login`, `/logout`, `/register`, `/verify-email`, `/forgot-password` and `/reset-password` look and behave like the [hosted pages](#hosted-pages) and are overridden the same way, such as `Areas/FluentCms/Pages/Account/Members/Login.cshtml` with `@model FluentCMS.Core.Api.Account.MemberLoginModel`. They sign in with a cookie of their own (`.FluentCms.Members`), so an admin session and a member session in one browser neither sign each other in nor out. A member signs in only once its address is verified.
+
+**Clients and tokens.** A client under `FluentCms:Clients:Applications` signs members in when its `Pool` is `Members` (the default is `Admins`). It asks for `openid`, `profile`, `email` and `offline_access` only, names no roles and has no consent step; anything else stops the host with `FCMS3021`. Its users sign in on the member pages with the authorization code flow and PKCE, and its tokens carry the audience `fluentcms:members` and the kind `Member`. A member's token never holds `management`, `draft` or `mcp`: the Management API and `/mcp` refuse it, and on the Delivery API it reads published content only.
+
+```json
+{
+  "FluentCms": {
+    "PublicOrigin": "https://cms.example.com",
+    "Members": { "AllowRegistration": true },
+    "Clients": {
+      "Applications": {
+        "shop": {
+          "Pool": "Members",
+          "RedirectUris": [ "https://shop.example.com/signed-in" ],
+          "PostLogoutRedirectUris": [ "https://shop.example.com/" ],
+          "Scopes": [ "openid", "profile", "email", "offline_access" ]
+        }
+      }
+    },
+    "Security": { "Cors": { "Members": { "AllowedOrigins": [ "https://shop.example.com" ] } } }
+  }
+}
+```
+
+**Direct login.** With `FluentCms:Members:AllowDirectLogin` and `AllowDirectLogin` on the client, both off by default, the client posts `grant_type=member_password` with `client_id`, `username` and `password` to `/connect/token` and gets the member's tokens. The app sees the password, so this is the less secure way in, for first-party apps that cannot open a browser; the startup report lists `member-direct-login` in Production. Every refusal is `invalid_grant` with the same description, a wrong password counts towards the lockout, and the discovery document names the grant only while the option is on.
+
+**What a member reads.** A member holds the Public role of the site, the built-in Member role and the roles of its member groups. A group is a named set of members bound to one role, of the instance or of a site; its name is lower-case letters, digits, `-` and `_`. The groups are read on every request, so a change holds from the next one, and a row rule reads them with `Principal.IsInGroup`:
+
+```csharp
+cms.Authorization.AddRowRule<Perk>("perk-tier", ctx => perk => perk.Tier == (ctx.Principal.IsInGroup("gold") ? "gold" : "standard"));
+```
+
+**Managing members.** `/api/management/v1/members` and `/member-groups` need the instance-wide permission `members.manage`, which is apart from `users.manage`. An administrator lists members (`search`, `group`, `verified`, `active`), creates one, which mails it a link to choose its password, changes its display name, deactivates, reactivates and deletes it, lists and ends its sessions, and puts it in groups. Binding a role to a group, and putting a member in a group, need every permission of that role, and a role is not deleted while a group is bound to it (`FCMS3044`). Deactivating or deleting a member ends its sessions at once. Each change is an activity row of no site: `member.registered`, `member.verified`, `member.updated`, `member.deactivated`, `member.deleted`, `member.group_changed`, `member_group.created`, `member_group.updated` and `member_group.deleted`, and sign-ins are `member.login_succeeded` and `member.login_failed` with the client address.
+
 ## Email
 
-Invitations and password resets go through `IEmailSender`. In Development the default writes each message, link included, to the log and the startup report lists `development-email-sender`; anywhere else it refuses to send (`FCMS3008`) until a sender is set up. Setting `FluentCms:Email:Smtp:Host` sends through that SMTP server in every environment, Development included:
+Invitations, password resets and the mail of [members](#members) go through `IEmailSender`. In Development the default writes each message, link included, to the log and the startup report lists `development-email-sender`; anywhere else it refuses to send (`FCMS3008`) until a sender is set up. Setting `FluentCms:Email:Smtp:Host` sends through that SMTP server in every environment, Development included:
 
 | Key | Default | Meaning |
 | --- | --- | --- |
