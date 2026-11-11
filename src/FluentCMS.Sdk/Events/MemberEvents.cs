@@ -33,6 +33,18 @@ public sealed record MemberDeletedEvent(Guid MemberId, string Email) : CmsEvent;
 /// <param name="Removed">The ids of the groups it was taken out of.</param>
 public sealed record MemberGroupChangedEvent(Guid MemberId, string Email, IReadOnlyList<Guid> Added, IReadOnlyList<Guid> Removed) : CmsEvent;
 
+/// <summary>An external login was linked to a member: at its first sign-in through a provider, or by the member on the hosted pages.</summary>
+/// <param name="MemberId">The id of the member.</param>
+/// <param name="Email">Its email address.</param>
+/// <param name="LoginProvider">The name of the provider.</param>
+public sealed record MemberLoginLinkedEvent(Guid MemberId, string Email, string LoginProvider) : CmsEvent;
+
+/// <summary>An external login of a member was removed. The member no longer signs in through that provider.</summary>
+/// <param name="MemberId">The id of the member.</param>
+/// <param name="Email">Its email address.</param>
+/// <param name="LoginProvider">The name of the provider.</param>
+public sealed record MemberLoginUnlinkedEvent(Guid MemberId, string Email, string LoginProvider) : CmsEvent;
+
 /// <summary>A member group was created.</summary>
 /// <param name="GroupId">The id of the group.</param>
 /// <param name="Name">Its name.</param>

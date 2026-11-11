@@ -4,8 +4,8 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Identity.Members;
 
-// The mail of the member pool: the verification link, the link that sets or resets a password, and the note that an
-// address is registered already. A link goes to the front end's page when cms.Members.Links names one, and to the hosted
+// The mail of the member pool: the verification link, also for a member a provider made, the link that sets or resets a
+// password, and the note that an address is registered already. A link goes to the front end's page when cms.Members.Links names one, and to the hosted
 // page on the public origin otherwise; it is never built from a request, so without either no mail goes out. An address
 // gets one mail a minute, and a mail that is held back or fails is logged and never told to the caller, whose answer is
 // the same either way.
@@ -25,6 +25,14 @@ internal sealed class MemberMail(
             member.Email!,
             "Verify your email address",
             $"Someone registered an account with this email address. If it was you, verify the address here:\n\n{link}\n\nThe link can be used once and expires at {Expiry(options.EmailVerificationLifetime)} UTC. If you did not register, ignore this email; the account is removed if the address is not verified."), cancellationToken);
+
+    // For a member a provider made without saying that its address is verified. The mail names the provider, so that
+    // the owner of the mailbox knows what the link allows: the account at the provider signs in as this member.
+    public Task<bool> SendProviderVerificationAsync(CmsMember member, string provider, string token, CancellationToken cancellationToken) =>
+        SendAsync(member, options.Links.VerifyEmail, HostedPagePaths.MemberVerifyEmail, token, link => new EmailMessage(
+            member.Email!,
+            "Verify your email address",
+            $"Someone signed in with {provider} and gave this email address. If it was you, verify the address here:\n\n{link}\n\nThe link can be used once and expires at {Expiry(options.EmailVerificationLifetime)} UTC. Once it is verified, that {provider} account signs in to the account of this address. If it was not you, ignore this email and do not use the link; the account is removed if the address is not verified."), cancellationToken);
 
     public Task<bool> SendPasswordResetAsync(CmsMember member, string token, CancellationToken cancellationToken) =>
         SendAsync(member, options.Links.ResetPassword, HostedPagePaths.MemberResetPassword, token, link => new EmailMessage(

@@ -13,8 +13,8 @@ namespace FluentCMS.Core.Api.Members;
 
 // /api/members/v1 of spec 4.10: what a front end calls for a visitor's own account. Registering, verifying and resetting
 // need no token; /me needs a member's. The routes read the request, and MemberAccountService decides: whether
-// registration is open, what a token is worth, and that only a member reads /me. The three routes that send mail answer
-// 202 with no body whatever the address, so the answer never tells whether it is a member's.
+// registration is open, what a token is worth, and that only a member reads /me and its external logins. The three
+// routes that send mail answer 202 with no body whatever the address, so the answer never tells whether it is a member's.
 internal static class MemberEndpoints
 {
     public static IServiceCollection AddMembersApi(this IServiceCollection services) =>
@@ -31,6 +31,8 @@ internal static class MemberEndpoints
         members.MapGet("/me", MeAsync).Produces<MemberProfile>();
         members.MapPatch("/me", UpdateMeAsync).Produces<MemberProfile>();
         members.MapPost("/me/change-password", ChangePasswordAsync).Produces(StatusCodes.Status204NoContent);
+        members.MapGet("/me/logins", MyLoginsAsync).Produces<ItemList<MemberLogin>>();
+        members.MapDelete("/me/logins/{provider}", RemoveMyLoginAsync).Produces(StatusCodes.Status204NoContent);
     }
 
     private static async Task<IResult> RegisterAsync(HttpContext httpContext, [FromServices] MemberAccountService account)
@@ -111,6 +113,21 @@ internal static class MemberEndpoints
         body.ThrowIfInvalid();
 
         await account.ChangePasswordAsync(current!, next!, httpContext.RequestAborted);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> MyLoginsAsync(HttpContext httpContext, [FromServices] MemberAccountService account)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        var logins = await account.MyLoginsAsync();
+        httpContext.Response.Headers.CacheControl = "no-store";
+        return AdminJson.Items(logins);
+    }
+
+    private static async Task<IResult> RemoveMyLoginAsync(string provider, HttpContext httpContext, [FromServices] MemberAccountService account)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        await account.RemoveMyLoginAsync(provider, httpContext.RequestAborted);
         return Results.NoContent();
     }
 

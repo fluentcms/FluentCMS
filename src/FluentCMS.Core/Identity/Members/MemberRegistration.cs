@@ -26,15 +26,23 @@ internal static class MemberRegistration
             token.TokenLifespan = members.PasswordResetLifetime;
         });
 
-        // The cookie of the member pages, which only they and the authorize endpoint read.
-        services.AddAuthentication().AddCookie(MemberAuthentication.CookieScheme, cookie =>
-        {
-            cookie.Cookie.Name = MemberAuthentication.CookieName;
-            cookie.LoginPath = HostedPagePaths.MemberLogin;
-            cookie.LogoutPath = HostedPagePaths.MemberLogout;
-            cookie.AccessDeniedPath = HostedPagePaths.MemberLogin;
-            cookie.SlidingExpiration = true;
-        });
+        // The cookie of the member pages, which only they and the authorize endpoint read, and the cookie a provider
+        // of the pool signs into, which lasts as long as the way back from the provider to the page that reads it.
+        services.AddAuthentication()
+            .AddCookie(MemberAuthentication.CookieScheme, cookie =>
+            {
+                cookie.Cookie.Name = MemberAuthentication.CookieName;
+                cookie.LoginPath = HostedPagePaths.MemberLogin;
+                cookie.LogoutPath = HostedPagePaths.MemberLogout;
+                cookie.AccessDeniedPath = HostedPagePaths.MemberLogin;
+                cookie.SlidingExpiration = true;
+            })
+            .AddCookie(MemberProviders.ExternalScheme, cookie =>
+            {
+                cookie.Cookie.Name = MemberProviders.ExternalCookieName;
+                cookie.ExpireTimeSpan = TimeSpan.FromMinutes(5);
+                cookie.SlidingExpiration = false;
+            });
         services.AddOptions<CookieAuthenticationOptions>(MemberAuthentication.CookieScheme)
             .Configure<ClientOptions>((cookie, clients) => cookie.ExpireTimeSpan = clients.SignInCookieLifetime);
 

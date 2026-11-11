@@ -33,6 +33,10 @@ public sealed class MemberOptions
 
     public MemberLinkOptions Links { get; } = new();
 
+    // The external providers members sign in with, by name. They are apart from the providers of cms.Sso, which sign in
+    // admin users only.
+    public IDictionary<string, MemberProvider> Providers { get; } = new Dictionary<string, MemberProvider>(StringComparer.OrdinalIgnoreCase);
+
     internal void Validate()
     {
         Require(Password.RequiredLength >= 1, $"{nameof(Password)}:{nameof(Password.RequiredLength)} is {Password.RequiredLength}; it must be at least 1.");
@@ -43,6 +47,10 @@ public sealed class MemberOptions
         Require(PasswordResetLifetime > TimeSpan.Zero, $"{nameof(PasswordResetLifetime)} must be positive.");
         Require(UnverifiedMemberLifetime >= EmailVerificationLifetime, $"{nameof(UnverifiedMemberLifetime)} is shorter than {nameof(EmailVerificationLifetime)}, so a member would be removed while its verification link still works.");
         Links.Validate();
+        foreach (var (name, provider) in Providers)
+        {
+            provider.Validate(name);
+        }
     }
 
     internal void Apply(IdentityOptions identity)

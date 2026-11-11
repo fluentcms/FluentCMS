@@ -39,7 +39,7 @@ internal static class CorsPolicies
             // No credentials are allowed, so a browser sends no cookie: the member routes take a bearer token or nothing.
             cors.AddPolicy(Members, policy => policy
                 .WithOrigins([.. security.Cors.Members.AllowedOrigins])
-                .WithMethods("GET", "HEAD", "POST", "PATCH")
+                .WithMethods("GET", "HEAD", "POST", "PATCH", "DELETE")
                 .WithHeaders("Authorization", "Content-Type")
                 .WithExposedHeaders(ExposedHeaders)
                 .SetPreflightMaxAge(TimeSpan.FromMinutes(10)));

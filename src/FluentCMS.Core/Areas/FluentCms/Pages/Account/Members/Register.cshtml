@@ -27,5 +27,15 @@ else
         <span asp-validation-for="Input.ConfirmPassword"></span>
         <button type="submit">Register</button>
     </form>
+    @if (Model.ExternalProviders.Count > 0)
+    {
+        <form method="post" asp-page-handler="External">
+            <input type="hidden" asp-for="ReturnUrl">
+            @foreach (var provider in Model.ExternalProviders)
+            {
+                <button type="submit" class="secondary" name="provider" value="@provider.Name">Continue with @provider.DisplayName</button>
+            }
+        </form>
+    }
     <p><a asp-page="./Login" asp-route-ReturnUrl="@Model.ReturnUrl">Back to sign in</a></p>
 }

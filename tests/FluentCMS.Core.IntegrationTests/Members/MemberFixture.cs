@@ -232,13 +232,16 @@ public sealed class MemberFixture : IAsyncLifetime
     }
 
     // The activity rows once the outbox is delivered.
-    public async Task<List<ActivityRow>> ActivityAsync(string actionPrefix, string? targetId = null)
+    public Task<List<ActivityRow>> ActivityAsync(string actionPrefix, string? targetId = null) =>
+        ActivityAsync(Host, actionPrefix, targetId);
+
+    internal static async Task<List<ActivityRow>> ActivityAsync(FluentCmsTestHost host, string actionPrefix, string? targetId = null)
     {
-        while (await Host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(TestContext.Current.CancellationToken) > 0)
+        while (await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(TestContext.Current.CancellationToken) > 0)
         {
         }
 
-        await using var scope = Host.Services.CreateAsyncScope();
+        await using var scope = host.Services.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<ActivityRow>().AsNoTracking()
             .Where(row => row.Action.StartsWith(actionPrefix) && (targetId == null || row.TargetId == targetId))
             .ToListAsync(TestContext.Current.CancellationToken);

@@ -3654,3 +3654,37 @@ static FluentCMS.Events.MemberUpdatedEvent.operator !=(FluentCMS.Events.MemberUp
 static FluentCMS.Events.MemberUpdatedEvent.operator ==(FluentCMS.Events.MemberUpdatedEvent? left, FluentCMS.Events.MemberUpdatedEvent? right) -> bool
 static FluentCMS.Events.MemberVerifiedEvent.operator !=(FluentCMS.Events.MemberVerifiedEvent? left, FluentCMS.Events.MemberVerifiedEvent? right) -> bool
 static FluentCMS.Events.MemberVerifiedEvent.operator ==(FluentCMS.Events.MemberVerifiedEvent? left, FluentCMS.Events.MemberVerifiedEvent? right) -> bool
+FluentCMS.Events.MemberLoginLinkedEvent
+FluentCMS.Events.MemberLoginLinkedEvent.Deconstruct(out System.Guid MemberId, out string! Email, out string! LoginProvider) -> void
+FluentCMS.Events.MemberLoginLinkedEvent.Email.get -> string!
+FluentCMS.Events.MemberLoginLinkedEvent.Email.init -> void
+FluentCMS.Events.MemberLoginLinkedEvent.Equals(FluentCMS.Events.MemberLoginLinkedEvent? other) -> bool
+FluentCMS.Events.MemberLoginLinkedEvent.LoginProvider.get -> string!
+FluentCMS.Events.MemberLoginLinkedEvent.LoginProvider.init -> void
+FluentCMS.Events.MemberLoginLinkedEvent.MemberId.get -> System.Guid
+FluentCMS.Events.MemberLoginLinkedEvent.MemberId.init -> void
+FluentCMS.Events.MemberLoginLinkedEvent.MemberLoginLinkedEvent(System.Guid MemberId, string! Email, string! LoginProvider) -> void
+override FluentCMS.Events.MemberLoginLinkedEvent.<Clone>$() -> FluentCMS.Events.MemberLoginLinkedEvent!
+override FluentCMS.Events.MemberLoginLinkedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.MemberLoginLinkedEvent.GetHashCode() -> int
+override FluentCMS.Events.MemberLoginLinkedEvent.ToString() -> string!
+override sealed FluentCMS.Events.MemberLoginLinkedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+static FluentCMS.Events.MemberLoginLinkedEvent.operator !=(FluentCMS.Events.MemberLoginLinkedEvent? left, FluentCMS.Events.MemberLoginLinkedEvent? right) -> bool
+static FluentCMS.Events.MemberLoginLinkedEvent.operator ==(FluentCMS.Events.MemberLoginLinkedEvent? left, FluentCMS.Events.MemberLoginLinkedEvent? right) -> bool
+FluentCMS.Events.MemberLoginUnlinkedEvent
+FluentCMS.Events.MemberLoginUnlinkedEvent.Deconstruct(out System.Guid MemberId, out string! Email, out string! LoginProvider) -> void
+FluentCMS.Events.MemberLoginUnlinkedEvent.Email.get -> string!
+FluentCMS.Events.MemberLoginUnlinkedEvent.Email.init -> void
+FluentCMS.Events.MemberLoginUnlinkedEvent.Equals(FluentCMS.Events.MemberLoginUnlinkedEvent? other) -> bool
+FluentCMS.Events.MemberLoginUnlinkedEvent.LoginProvider.get -> string!
+FluentCMS.Events.MemberLoginUnlinkedEvent.LoginProvider.init -> void
+FluentCMS.Events.MemberLoginUnlinkedEvent.MemberId.get -> System.Guid
+FluentCMS.Events.MemberLoginUnlinkedEvent.MemberId.init -> void
+FluentCMS.Events.MemberLoginUnlinkedEvent.MemberLoginUnlinkedEvent(System.Guid MemberId, string! Email, string! LoginProvider) -> void
+override FluentCMS.Events.MemberLoginUnlinkedEvent.<Clone>$() -> FluentCMS.Events.MemberLoginUnlinkedEvent!
+override FluentCMS.Events.MemberLoginUnlinkedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.MemberLoginUnlinkedEvent.GetHashCode() -> int
+override FluentCMS.Events.MemberLoginUnlinkedEvent.ToString() -> string!
+override sealed FluentCMS.Events.MemberLoginUnlinkedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+static FluentCMS.Events.MemberLoginUnlinkedEvent.operator !=(FluentCMS.Events.MemberLoginUnlinkedEvent? left, FluentCMS.Events.MemberLoginUnlinkedEvent? right) -> bool
+static FluentCMS.Events.MemberLoginUnlinkedEvent.operator ==(FluentCMS.Events.MemberLoginUnlinkedEvent? left, FluentCMS.Events.MemberLoginUnlinkedEvent? right) -> bool

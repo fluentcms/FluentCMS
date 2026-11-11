@@ -23,6 +23,7 @@ internal sealed class MemberAdministration(
     MemberGroupService groups,
     IdentityChanges changes,
     MemberSessions sessions,
+    MemberLogins logins,
     MemberMail mail)
 {
     public async Task<MemberPage> ListAsync(MemberFilter filter, int page, int pageSize, CancellationToken cancellationToken)
@@ -135,6 +136,18 @@ internal sealed class MemberAdministration(
         {
             throw UserViews.SessionNotFound(sessionId);
         }
+    }
+
+    public async Task<IReadOnlyList<MemberLogin>> LoginsAsync(Guid id, CancellationToken cancellationToken)
+    {
+        await RequireAsync(cancellationToken);
+        return await logins.ListAsync(await FindAsync(id));
+    }
+
+    public async Task RemoveLoginAsync(Guid id, string provider, CancellationToken cancellationToken)
+    {
+        await RequireAsync(cancellationToken);
+        await logins.RemoveAsync(await FindAsync(id), provider, cancellationToken);
     }
 
     public async Task<MemberInfo> AddToGroupAsync(Guid id, Guid groupId, CancellationToken cancellationToken)

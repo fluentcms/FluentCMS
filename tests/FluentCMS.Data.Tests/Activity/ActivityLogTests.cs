@@ -64,6 +64,8 @@ public sealed class ActivityLogTests
         new MemberDeactivatedEvent(Entry, "mia@example.com"),
         new MemberDeletedEvent(Entry, "mia@example.com"),
         new MemberGroupChangedEvent(Entry, "mia@example.com", [Job], []),
+        new MemberLoginLinkedEvent(Entry, "mia@example.com", "google"),
+        new MemberLoginUnlinkedEvent(Entry, "mia@example.com", "google"),
         new MemberGroupCreatedEvent(Job, "gold", Entry),
         new MemberGroupUpdatedEvent(Job, "gold", Entry),
         new MemberGroupDeletedEvent(Job, "gold"),

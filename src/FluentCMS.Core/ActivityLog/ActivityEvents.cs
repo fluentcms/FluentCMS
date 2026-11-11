@@ -102,6 +102,14 @@ internal static class ActivityEvents
             ["added"] = string.Join(',', message.Added.Select(id => id.ToString("D"))),
             ["removed"] = string.Join(',', message.Removed.Select(id => id.ToString("D"))),
         }));
+        events.AddActivity<MemberLoginLinkedEvent>("member.login_linked", message => Member("member.login_linked", message.MemberId, message.Email, new Dictionary<string, string?>
+        {
+            ["provider"] = message.LoginProvider,
+        }));
+        events.AddActivity<MemberLoginUnlinkedEvent>("member.login_unlinked", message => Member("member.login_unlinked", message.MemberId, message.Email, new Dictionary<string, string?>
+        {
+            ["provider"] = message.LoginProvider,
+        }));
         events.AddActivity<MemberGroupCreatedEvent>("member_group.created", message => MemberGroup("member_group.created", message.GroupId, message.Name, message.RoleId));
         events.AddActivity<MemberGroupUpdatedEvent>("member_group.updated", message => MemberGroup("member_group.updated", message.GroupId, message.Name, message.RoleId));
         events.AddActivity<MemberGroupDeletedEvent>("member_group.deleted", message => MemberGroup("member_group.deleted", message.GroupId, message.Name, null));
