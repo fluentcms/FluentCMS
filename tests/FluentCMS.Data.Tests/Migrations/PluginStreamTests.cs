@@ -2,6 +2,7 @@ using System.Reflection;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
+using FluentCMS.Data.Tests.Jobs;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.Mcp;
@@ -10,6 +11,8 @@ using FluentCMS.Plugins.MultiSite;
 using FluentCMS.Plugins.Webhooks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 
@@ -63,6 +66,20 @@ public sealed class PluginStreamTests : IDisposable
         }
     }
 
+    // Streams is kept by hand, so a plugin that gets migrations and no line there would never meet a server.
+    [Fact]
+    public void EveryFirstPartyPluginWithMigrationsIsInTheList()
+    {
+        var plugins = Path.Combine(RepositoryRoot(), "src", "plugins");
+        var withMigrations = Directory.EnumerateDirectories(plugins)
+            .Where(project => Directory.Exists(Path.Combine(project, "Migrations")))
+            .Select(Path.GetFileName)
+            .ToList();
+
+        withMigrations.ShouldNotBeEmpty();
+        withMigrations.ShouldBe(Streams.Select(stream => stream.Project), ignoreOrder: true);
+    }
+
     // The tests of this project start hosts of their own, which must not pick up the plugins the project references.
     [Fact]
     public void AHostOfTheseTestsLoadsNoPluginItDoesNotAdd()
@@ -71,6 +88,23 @@ public sealed class PluginStreamTests : IDisposable
 
         PluginDiscovery.Types.ShouldBeEmpty();
         services.GetServices<IPluginMigrations>().ShouldBeEmpty();
+    }
+
+    // A referenced plugin that does not run leaves a line in the log that says why.
+    [Fact]
+    public async Task AHostWithDiscoveryOffSaysSoWhenItStarts()
+    {
+        var logs = new RecordingLogs();
+        using var host = _database.CreateHost(
+            ArticleSchemas.Titled,
+            "Production",
+            GeneratedMigrations.CompileFirst(ArticleSchemas.Titled),
+            services: services => services.AddSingleton<ILoggerProvider>(logs));
+
+        await host.StartAsync(Token);
+        await host.StopAsync(Token);
+
+        logs.Count("DiscoveryDisabled").ShouldBe(1);
     }
 
     // Reads every table of the plugin through its model, so that a table or a column the model has and the applied set
@@ -86,7 +120,19 @@ public sealed class PluginStreamTests : IDisposable
         }
     }
 
-    private sealed record PluginStream(string Name, Action<FluentCmsBuilder> Add, Func<IServiceProvider, DbContext> Context)
+    private static string RepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Directory.Packages.props")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? throw new InvalidOperationException("The repository root was not found.");
+    }
+
+    // Project is the plugin's project under src/plugins, which is named after its assembly.
+    private sealed record PluginStream(string Name, string Project, Action<FluentCmsBuilder> Add, Func<IServiceProvider, DbContext> Context)
     {
         public string HistoryTable => $"cms_{Name.Replace('-', '_')}__migrations";
 
@@ -94,6 +140,7 @@ public sealed class PluginStreamTests : IDisposable
             where TPlugin : class, IPlugin, new() =>
             new(
                 typeof(TPlugin).GetCustomAttribute<FluentCmsPluginAttribute>()!.Name!,
+                typeof(TPlugin).Assembly.GetName().Name!,
                 cms => cms.AddPlugin<TPlugin>(),
                 services => services.GetRequiredService<PluginDbContext<TPlugin>>());
     }

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -27,6 +28,12 @@ internal sealed partial class StartupReportService(StartupReportFactory factory,
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        // A referenced plugin that does not run would otherwise leave no trace of why.
+        if (PluginDiscovery.Disabled)
+        {
+            PluginLog.DiscoveryDisabled(logger);
+        }
+
         StartupReport report;
         try
         {

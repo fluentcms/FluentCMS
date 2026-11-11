@@ -18,7 +18,9 @@ internal static class PluginDiscovery
 
     private static readonly Lazy<IReadOnlyList<Type>> discovered = new(Discover);
 
-    public static IReadOnlyList<Type> Types => AppContext.TryGetSwitch(DisableSwitch, out var disabled) && disabled ? [] : discovered.Value;
+    public static bool Disabled => AppContext.TryGetSwitch(DisableSwitch, out var disabled) && disabled;
+
+    public static IReadOnlyList<Type> Types => Disabled ? [] : discovered.Value;
 
     private static List<Type> Discover()
     {

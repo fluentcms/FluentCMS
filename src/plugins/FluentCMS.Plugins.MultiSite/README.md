@@ -36,6 +36,8 @@ A host name belongs to one site in the whole instance. A name that a site alread
 
 A site with host names has exactly one primary host. The first host of a site is its primary host, whatever `isPrimary` says. A later host becomes the primary one when it is added with `isPrimary: true` or patched to it, in place of the one that was. The primary host stays primary until another is made primary, and it is removed last (`FCMS1665`, 409). The primary host is data for a front end, such as the canonical name of the site. The backend redirects nothing by it.
 
+The changes to host names run one at a time, on every instance together. A change that waits 45 seconds for another to finish is refused (`FCMS1666`, 503) and changes nothing.
+
 Every change raises `SiteUpdatedEvent` for the site, so its Delivery copies are evicted, and writes the activity row `site.host-added`, `site.host-updated` or `site.host-removed`, which names the host.
 
 ## How a request finds its site
@@ -74,5 +76,6 @@ Where the plugin is disabled for a site, its routes answer 404 (`FCMS1550`) for 
 | `FCMS1663` | 409 | A site has the host name |
 | `FCMS1664` | 404 | The site has no such host name |
 | `FCMS1665` | 409 | The primary host cannot be removed or demoted yet |
+| `FCMS1666` | 503 | Another change to the host names is still running; nothing was changed, so try again |
 
 Log event ids 9340 to 9344.

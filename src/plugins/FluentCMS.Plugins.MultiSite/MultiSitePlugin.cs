@@ -28,7 +28,8 @@ public sealed class MultiSitePlugin : IPlugin
             .AddErrorCode(MultiSiteErrorCodes.HostNameWithPort, 422, "Host name with a port")
             .AddErrorCode(MultiSiteErrorCodes.HostNameTaken, 409, "Host name taken")
             .AddErrorCode(MultiSiteErrorCodes.HostNotFound, 404, "Host name not found")
-            .AddErrorCode(MultiSiteErrorCodes.PrimaryHostNeeded, 409, "Primary host needed");
+            .AddErrorCode(MultiSiteErrorCodes.PrimaryHostNeeded, 409, "Primary host needed")
+            .AddErrorCode(MultiSiteErrorCodes.HostNamesBusy, 503, "Host names busy");
     }
 
     public void Configure(IPluginAppBuilder app) => app.MapManagement("/sites").MapMultiSiteEndpoints();

@@ -190,9 +190,10 @@ internal sealed class SiteHostService(
             ?? throw new ValidationException([new ValidationError("site", SiteNotFound, $"There is no site {siteId}.")]);
     }
 
+    // Another write of host names holds the lock for longer than the wait: nothing was changed, and the caller tries again.
     private async Task<IDistributedLockHandle> LockAsync(CancellationToken cancellationToken) =>
         await locks.TryAcquireAsync(LockName, Wait, cancellationToken)
-            ?? throw new TimeoutException($"The lock {LockName} was not free within {Wait.TotalSeconds:0} seconds, so the host names were not changed; try again.");
+            ?? throw new PluginException(MultiSiteErrorCodes.HostNamesBusy, $"Another change to the host names did not finish within {Wait.TotalSeconds:0} seconds, so this one was not made; try again.");
 
     // A host change is a change to its site: SiteUpdatedEvent drops what core keeps of the site and its Delivery copies.
     private async Task ChangedAsync(string action, SiteInfo site, string hostname)

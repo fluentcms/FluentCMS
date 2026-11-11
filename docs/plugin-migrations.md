@@ -88,4 +88,6 @@ A plugin that gets a migration stream is added in two places:
 1. a `ProjectReference` to the plugin in `tests/FluentCMS.Data.Tests/FluentCMS.Data.Tests.csproj`, beside the others;
 2. a line in `PluginStreamTests.Streams`: `PluginStream.Of<AiAssistPlugin>()`.
 
+A test of that class fails when a project under `src/plugins` has a `Migrations` folder and no line there.
+
 The other data tests start hosts of their own, which must not load these plugins. So the project turns plugin discovery off with the `AppContext` switch `FluentCMS.Plugins.DisableDiscovery`, set in its project file, and the hosts of `PluginStreamTests` add the plugins with `AddPlugin`.

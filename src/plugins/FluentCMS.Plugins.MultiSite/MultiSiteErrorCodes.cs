@@ -9,4 +9,5 @@ internal static class MultiSiteErrorCodes
     public const string HostNameTaken = "FCMS1663";
     public const string HostNotFound = "FCMS1664";
     public const string PrimaryHostNeeded = "FCMS1665";
+    public const string HostNamesBusy = "FCMS1666";
 }
