@@ -83,29 +83,46 @@ internal sealed class MemberManager : UserManager<CmsMember>
     }
 
     // An address that is registered and not verified was registered again, and nobody has shown yet that it is theirs:
-    // the password of neither registration is kept, so whoever owns the mailbox chooses it with a mailed link. One new
-    // security stamp ends the links sent so far, and the member counts as made now, so that the job that removes members
-    // who never verified leaves the new link its time. It happens once: a member without a password is not cleared again.
-    public async Task<IdentityResult> ClearPendingPasswordAsync(CmsMember user)
+    // the password of neither registration is kept, nor an external login that a provider which does not verify
+    // addresses brought, so whoever owns the mailbox chooses the password with a mailed link. One new security stamp
+    // ends the links sent so far, and the member counts as made now, so that the job that removes members who never
+    // verified leaves the new link its time. It happens once: a member with neither is not cleared again.
+    public async Task<IdentityResult> ClearPendingAsync(CmsMember user, IList<UserLoginInfo> logins)
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(user);
+        ArgumentNullException.ThrowIfNull(logins);
 
-        if (user.EmailConfirmed || user.PasswordHash is null)
+        if (user.EmailConfirmed || (user.PasswordHash is null && logins.Count == 0))
         {
-            throw new InvalidOperationException("Only a member with a password whose address is not verified has its password cleared.");
+            throw new InvalidOperationException("Only a member whose address is not verified, with a password or an external login, is cleared.");
         }
 
         var (hash, createdAt) = (user.PasswordHash, user.CreatedAt);
         user.PasswordHash = null;
         user.CreatedAt = _time.GetUtcNow();
-        var result = await UpdateSecurityStampAsync(user);
+        var result = await RemoveLoginsAsync(user, logins);
         if (!result.Succeeded)
         {
             (user.PasswordHash, user.CreatedAt) = (hash, createdAt);
         }
 
         return result;
+    }
+
+    // The logins go in one save with one new security stamp, which ends the member's codes, refresh tokens and cookie.
+    public async Task<IdentityResult> RemoveLoginsAsync(CmsMember user, IEnumerable<UserLoginInfo> logins)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(user);
+        ArgumentNullException.ThrowIfNull(logins);
+
+        foreach (var login in logins)
+        {
+            await MemberStore.RemoveLoginAsync(user, login.LoginProvider, login.ProviderKey, CancellationToken);
+        }
+
+        return await UpdateSecurityStampAsync(user);
     }
 
     // A new security stamp ends the member's codes and refresh tokens; MemberSessions ends its access tokens.

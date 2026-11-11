@@ -296,6 +296,17 @@ public static class ErrorCodeRegistry
         new(MemberErrorCodes.NoMailLink, StatusCodes.Status409Conflict, "Member mail has nowhere to link to"),
         new(MemberErrorCodes.MemberChanged, StatusCodes.Status409Conflict, "Member changed"),
 
+        // 318x the external providers of the member pool: a provider's options, found when the host starts, the refusals
+        // of a sign-in that the member pages log, and the removal and linking of a member's external logins
+        Startup(MemberErrorCodes.InvalidProvider, "Invalid member provider"),
+        Startup(MemberErrorCodes.ProviderNoEmail, "No email address from the member provider"),
+        Startup(MemberErrorCodes.ProviderEmailTaken, "Email address of an unlinked member"),
+        Startup(MemberErrorCodes.ProviderMemberNotCreated, "Member not created through the provider"),
+        new(MemberErrorCodes.LastWayIn, StatusCodes.Status409Conflict, "Last way to sign in"),
+        new(MemberErrorCodes.LoginNotFound, StatusCodes.Status404NotFound, "External login not found"),
+        new(MemberErrorCodes.LoginTaken, StatusCodes.Status409Conflict, "External login already linked"),
+        Startup(MemberErrorCodes.ProviderRegistrationClosed, "Registration closed to the member provider"),
+
         // 315x the reference host (FluentCMS.Host, which this assembly does not reference, so its codes are written out) and the schema sync it allows, found when it starts
         Startup("FCMS3150", "Unknown data provider"),
         Startup("FCMS3151", "Connection string missing"),

@@ -9,8 +9,9 @@ namespace FluentCMS.Core.Identity.Members;
 
 // Identity's EF store over cms_member, cms_member_login and cms_member_token. A member's name is its address, so a
 // lookup by name is a lookup by address, and a member has no claims of its own. A change is described from what was
-// stored before it and raised as the member events of the catalogue, in the transaction of the change. A member can be
-// deleted, unlike an admin user: its logins, tokens and group memberships go with it, and activity rows keep its id.
+// stored before it and raised as the member events of the catalogue, in the transaction of the change; an external
+// login that is added or removed is one of them. A member can be deleted, unlike an admin user: its logins, tokens and
+// group memberships go with it, and activity rows keep its id.
 internal sealed class MemberStore(SystemDbContext context, IdentityChanges changes, TimeProvider time, IdentityErrorDescriber? describer = null)
     : UserOnlyStore<CmsMember, SystemDbContext, Guid, CmsMemberClaim, CmsMemberLogin, CmsMemberToken>(context, describer)
 {
@@ -30,6 +31,7 @@ internal sealed class MemberStore(SystemDbContext context, IdentityChanges chang
         return changes.RunAsync(
             async () =>
             {
+                var logins = LoginChanges(user);
                 var result = await base.CreateAsync(user, cancellationToken);
                 if (result.Succeeded)
                 {
@@ -38,6 +40,8 @@ internal sealed class MemberStore(SystemDbContext context, IdentityChanges chang
                     {
                         await changes.RaiseAsync(new MemberVerifiedEvent(user.Id, user.Email ?? ""), cancellationToken);
                     }
+
+                    await RaiseLoginsAsync(user, logins, cancellationToken);
                 }
 
                 return result;
@@ -53,6 +57,7 @@ internal sealed class MemberStore(SystemDbContext context, IdentityChanges chang
         return await changes.RunAsync(
             async () =>
             {
+                var logins = LoginChanges(user);
                 var result = await base.UpdateAsync(user, cancellationToken);
                 if (!result.Succeeded || before is null)
                 {
@@ -75,6 +80,7 @@ internal sealed class MemberStore(SystemDbContext context, IdentityChanges chang
                     await changes.RaiseAsync(new MemberUpdatedEvent(user.Id, email, changed), cancellationToken);
                 }
 
+                await RaiseLoginsAsync(user, logins, cancellationToken);
                 return result;
             },
             cancellationToken);
@@ -135,6 +141,22 @@ internal sealed class MemberStore(SystemDbContext context, IdentityChanges chang
         }
 
         return await Context.Set<CmsMember>().AsNoTracking().FirstOrDefaultAsync(stored => stored.Id == user.Id, cancellationToken);
+    }
+
+    // The logins the save is about to add or remove, read before it, since the save forgets them.
+    private List<(string Provider, bool Linked)> LoginChanges(CmsMember user) =>
+        [.. Context.ChangeTracker.Entries<CmsMemberLogin>()
+            .Where(entry => entry.Entity.UserId == user.Id && entry.State is EntityState.Added or EntityState.Deleted)
+            .Select(entry => (entry.Entity.LoginProvider, entry.State == EntityState.Added))];
+
+    private async Task RaiseLoginsAsync(CmsMember user, List<(string Provider, bool Linked)> logins, CancellationToken cancellationToken)
+    {
+        foreach (var (provider, linked) in logins)
+        {
+            await changes.RaiseAsync(
+                linked ? new MemberLoginLinkedEvent(user.Id, user.Email ?? "", provider) : new MemberLoginUnlinkedEvent(user.Id, user.Email ?? "", provider),
+                cancellationToken);
+        }
     }
 
     // What an administrator would call a change. The stamps, the last sign-in and the counters of failed sign-ins are not.

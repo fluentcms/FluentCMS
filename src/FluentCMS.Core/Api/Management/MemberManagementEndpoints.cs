@@ -45,6 +45,8 @@ internal static class MemberManagementEndpoints
         members.MapPost("/{id}/reactivate", ReactivateMemberAsync).Produces<MemberInfo>();
         members.MapGet("/{id}/sessions", SessionsAsync).Produces<ItemList<UserSession>>();
         members.MapDelete("/{id}/sessions/{sessionId}", RevokeSessionAsync).Produces(StatusCodes.Status204NoContent);
+        members.MapGet("/{id}/logins", LoginsAsync).Produces<ItemList<MemberLogin>>();
+        members.MapDelete("/{id}/logins/{provider}", RemoveLoginAsync).Produces(StatusCodes.Status204NoContent);
         members.MapPut("/{id}/groups/{groupId}", AddToGroupAsync).Produces<MemberInfo>();
         members.MapDelete("/{id}/groups/{groupId}", RemoveFromGroupAsync).Produces<MemberInfo>();
 
@@ -133,6 +135,19 @@ internal static class MemberManagementEndpoints
         ManagementQuery.Only(httpContext.Request);
         var (member, session) = (ManagementQuery.RouteId(id, nameof(id)), ManagementQuery.RouteId(sessionId, nameof(sessionId)));
         await members.RevokeSessionAsync(member, session, httpContext.RequestAborted);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> LoginsAsync(string id, HttpContext httpContext, [FromServices] MemberAdministration members)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        return AdminJson.Items(await members.LoginsAsync(ManagementQuery.RouteId(id, nameof(id)), httpContext.RequestAborted));
+    }
+
+    private static async Task<IResult> RemoveLoginAsync(string id, string provider, HttpContext httpContext, [FromServices] MemberAdministration members)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        await members.RemoveLoginAsync(ManagementQuery.RouteId(id, nameof(id)), provider, httpContext.RequestAborted);
         return Results.NoContent();
     }
 

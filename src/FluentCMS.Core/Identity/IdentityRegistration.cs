@@ -63,6 +63,9 @@ internal static class IdentityRegistration
         AuthorizationServerRegistration.Add(services, clients);
         SsoRegistration.Add(services, sso);
 
+        // After the providers of cms.Sso, so that a member provider whose scheme is the name of one of them is the one refused.
+        MemberProviderRegistration.Add(services);
+
         services.AddFluentCmsOptions(EmailOptions.Section, HostErrorCodes.InvalidOption, new EmailOptions(), email => email.Validate());
         providers.Default<IEmailSender>(provider =>
         {

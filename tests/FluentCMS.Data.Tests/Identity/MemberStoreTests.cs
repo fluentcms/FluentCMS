@@ -1,5 +1,6 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -68,6 +69,46 @@ public sealed class MemberStoreTests : IDisposable
         _fixture.Read(context => context.Set<CmsMemberLogin>().Count()).ShouldBe(1);
         _fixture.Read(context => context.Set<IdentityUserLogin<Guid>>().Single().UserId).ShouldBe(admin.Id);
         (await _fixture.UsersAsync(users => users.FindByEmailAsync("mia@example.com"))).ShouldNotBeNull().Id.ShouldBe(admin.Id);
+    }
+
+    // #2993: a member's external logins. Linking and removing are events with activity rows, a login is one member's, and
+    // the removal of several is one save with one new security stamp.
+    [Fact]
+    public async Task LinkingAndRemovingALoginAreEventsAndARemovalGivesANewSecurityStamp()
+    {
+        using var fixture = new IdentityFixture(activity: true);
+        var member = new CmsMember { Email = "lin@example.com", EmailConfirmed = true };
+        var other = new CmsMember { Email = "leo@example.com" };
+        var stamp = await fixture.WithAsync(async services =>
+        {
+            var members = services.GetRequiredService<MemberManager>();
+            Succeeded(await members.CreateAsync(member));
+            Succeeded(await members.CreateAsync(other));
+            Succeeded(await members.AddLoginAsync(member, new UserLoginInfo("google", "lin-google", "Google")));
+            Succeeded(await members.AddLoginAsync(member, new UserLoginInfo("github", "lin-github", "GitHub")));
+
+            // The login is the first member's: the key of the table refuses it to another.
+            (await members.AddLoginAsync(other, new UserLoginInfo("google", "lin-google", "Google"))).Succeeded.ShouldBeFalse();
+            return (await members.FindByIdAsync(member.Id.ToString("D")))!.SecurityStamp;
+        });
+
+        await fixture.WithAsync(async services =>
+        {
+            var members = services.GetRequiredService<MemberManager>();
+            var stored = (await members.FindByIdAsync(member.Id.ToString("D")))!;
+            Succeeded(await members.RemoveLoginsAsync(stored, await members.GetLoginsAsync(stored)));
+            stored.SecurityStamp.ShouldNotBe(stamp);
+            (await members.GetLoginsAsync(stored)).ShouldBeEmpty();
+            (await members.FindByLoginAsync("google", "lin-google")).ShouldBeNull();
+            return true;
+        });
+
+        fixture.Read(context => context.Set<CmsMemberLogin>().Count()).ShouldBe(0);
+        await fixture.WithAsync(services => services.GetRequiredService<OutboxDrainer>().DrainAsync(Token));
+        var rows = fixture.ActivityRows().Where(row => row.TargetId == member.Id.ToString("D")).ToList();
+        rows.Where(row => row.Action == "member.login_linked").Select(row => row.Details).ShouldBe(["""{"provider":"google"}""", """{"provider":"github"}"""], ignoreOrder: true);
+        rows.Where(row => row.Action == "member.login_unlinked").Select(row => row.Details).ShouldBe(["""{"provider":"google"}""", """{"provider":"github"}"""], ignoreOrder: true);
+        rows.ShouldAllBe(row => row.SiteId == null && row.TargetType == "member");
     }
 
     [Fact]

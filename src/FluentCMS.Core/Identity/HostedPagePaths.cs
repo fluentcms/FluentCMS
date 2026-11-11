@@ -23,4 +23,6 @@ internal static class HostedPagePaths
     public const string MemberVerifyEmail = "/account/members/verify-email";
     public const string MemberForgotPassword = "/account/members/forgot-password";
     public const string MemberResetPassword = "/account/members/reset-password";
+    public const string MemberExternalLogin = "/account/members/external-login";
+    public const string MemberLogins = "/account/members/logins";
 }

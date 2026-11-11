@@ -440,6 +440,7 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
 
         (await PreflightAsync(client, MemberFixture.Api + "register", App, "POST")).ShouldBe(App);
         (await PreflightAsync(client, MemberFixture.Api + "me", App, "PATCH")).ShouldBe(App);
+        (await PreflightAsync(client, MemberFixture.Api + "me/logins/google", App, "DELETE")).ShouldBe(App);
         (await PreflightAsync(client, MemberFixture.Api + "register", AdminApp, "POST")).ShouldBeNull();
         (await PreflightAsync(client, MemberFixture.Api + "register", "https://evil.example", "POST")).ShouldBeNull();
 
@@ -507,7 +508,7 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
         System.Text.RegularExpressions.Regex.Replace(html, "name=\"__RequestVerificationToken\"[^>]*>", "");
 
     // An authorization code request with PKCE, and the exchange of the code it brings back.
-    private sealed record AuthorizeRequest(string Url, string ClientId, string Verifier)
+    internal sealed record AuthorizeRequest(string Url, string ClientId, string Verifier)
     {
         public static AuthorizeRequest For(string clientId, string scope)
         {

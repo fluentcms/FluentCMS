@@ -49,7 +49,7 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | `FluentCms:Email` | `Smtp:Host`, `Smtp:Port` (587), `Smtp:Security` (`StartTls`, `SslOnConnect` or `None`), `Smtp:UserName`, `Smtp:Password`, `Smtp:From` (see [email](#email)) |
 | `FluentCms:Clients` | `AdminClientId`, `AccessTokenLifetime`, `RefreshTokenLifetime`, `SignInCookieLifetime`, `AbsoluteSessionLifetime`, and `Applications:{clientId}` with `DisplayName`, `Secret`, `RedirectUris`, `PostLogoutRedirectUris`, `Scopes`, `Roles`, `RequireConsent`, `Pool`, `AllowDirectLogin` (see [authorization server](#authorization-server) and [members](#members)) |
 | `FluentCms:Sso` | `DisableLocalLogin`, and `Providers:{name}` with `Preset`, `DisplayName`, `Authority`, `TenantId`, `Domain`, `AuthorizationServerId`, `BaseUrl`, `Realm`, `ClientId`, `ClientSecret`, `Scopes`, `AutoProvision`, `RequireVerifiedEmail`, `LinkExistingUsers`, `DefaultRole`, `EmailClaim`, `GroupsClaim`, `RoleMappings`, `TrustMfaClaim`, `RequireHttpsMetadata` (see [single sign-on](#single-sign-on)) |
-| `FluentCms:Members` | `AllowRegistration`, `AllowDirectLogin`, `Password`, `Lockout`, `EmailVerificationLifetime` (24 hours), `PasswordResetLifetime` (1 hour), `UnverifiedMemberLifetime` (7 days), `Links:VerifyEmail`, `Links:ResetPassword` (see [members](#members)) |
+| `FluentCms:Members` | `AllowRegistration`, `AllowDirectLogin`, `Password`, `Lockout`, `EmailVerificationLifetime` (24 hours), `PasswordResetLifetime` (1 hour), `UnverifiedMemberLifetime` (7 days), `Links:VerifyEmail`, `Links:ResetPassword` (see [members](#members)), and `Providers:{name}` with `Type`, `DisplayName`, `ClientId`, `ClientSecret`, `Scopes`, `Authority`, `RequireHttpsMetadata`, `TeamId`, `KeyId`, `PrivateKey`, `LinkVerifiedEmail` (see [external providers](#member-sign-in-with-an-external-provider)) |
 | `FluentCms:PublicOrigin` | the address users reach the instance at, such as `https://cms.example.com` (see [public origin](#public-origin)) |
 | `FluentCms:ReverseProxy` | `PathBase`, `ForwardedHeaders`, `HttpsRedirection`, `Hsts` (see [reverse proxy](reverse-proxy.md)) |
 | `FluentCms:RateLimits` | `Delivery:PermitLimit`, `Delivery:MaxKeyLimit`, `Management:PermitLimit`, `Auth:PermitLimit`, `PreAuth:PermitLimit`, `Health:PermitLimit` |
@@ -114,7 +114,7 @@ The client address is the connection's remote address, an IPv4-mapped address co
 
 ## CORS
 
-`Cors:Delivery:AllowedOrigins` applies to `/api/delivery/v1`, which allows `GET` and `HEAD`. `Cors:Management:AllowedOrigins` applies to `/api/management/v1` and to `/connect`, so the admin application can sign in from its own origin. `Cors:Members:AllowedOrigins` applies to `/api/members/v1`, which allows `GET`, `HEAD`, `POST` and `PATCH` with the `Authorization` and `Content-Type` headers and no credentials, and `/connect` answers these origins too, so a front end can sign members in from its own origin. Both allow the `X-Cms-Site` and `X-Cms-Locale` headers, Management also `Idempotency-Key`, and a browser can read `ETag`, `Location`, `Retry-After` and the `RateLimit-*` headers, and `Idempotent-Replayed` on Management. An origin that is not on the list gets no CORS headers, and an empty list, the default, allows none. The lists come from configuration only; a setting that edits them at run time is not part of this release.
+`Cors:Delivery:AllowedOrigins` applies to `/api/delivery/v1`, which allows `GET` and `HEAD`. `Cors:Management:AllowedOrigins` applies to `/api/management/v1` and to `/connect`, so the admin application can sign in from its own origin. `Cors:Members:AllowedOrigins` applies to `/api/members/v1`, which allows `GET`, `HEAD`, `POST`, `PATCH` and `DELETE` with the `Authorization` and `Content-Type` headers and no credentials, and `/connect` answers these origins too, so a front end can sign members in from its own origin. Both allow the `X-Cms-Site` and `X-Cms-Locale` headers, Management also `Idempotency-Key`, and a browser can read `ETag`, `Location`, `Retry-After` and the `RateLimit-*` headers, and `Idempotent-Replayed` on Management. An origin that is not on the list gets no CORS headers, and an empty list, the default, allows none. The lists come from configuration only; a setting that edits them at run time is not part of this release.
 
 ## Security headers and request limits
 
@@ -320,14 +320,15 @@ Members are the accounts of a site's own visitors, apart from the admin users: t
 | `PasswordResetLifetime` | `01:00:00` | How long the link that sets or resets a password works. |
 | `UnverifiedMemberLifetime` | `7.00:00:00` | A member that has not verified its address this long after it was made is removed by a daily job. |
 | `Links:VerifyEmail`, `Links:ResetPassword` | unset | URL templates of the front end, see below. |
+| `Providers:{name}` | none | The external providers members sign in with, see [below](#member-sign-in-with-an-external-provider). |
 
-A bad value stops the host with `FCMS3160` and the key.
+A bad value stops the host with `FCMS3160` and the key, and a provider that is not valid with `FCMS3180`.
 
 **Mail and links.** A member's mail (verification, reset, the first password of a member an administrator made, and a note that an address is registered already) goes through `IEmailSender` (see [email](#email)). A link goes to your front end when the template is set: an absolute `http` or `https` URL with `{email}` and `{token}` after the host, such as `https://app.example.com/verify?email={email}&token={token}`; the front end then calls `POST /api/members/v1/verify-email` or `/reset-password` with the two values. Left unset, the link goes to the member page on the [public origin](#public-origin). A link is never built from a request, so with neither a template nor a public origin no mail is sent, the log says so (event id 9071, `FCMS3173`), and creating a member through the Management API is refused with `FCMS3173`. An address gets one mail a minute, counted on each instance.
 
-**The API.** `/api/members/v1` takes the `auth` rate limit by client address and answers the browser origins of `FluentCms:Security:Cors:Members:AllowedOrigins`, which `/connect` answers too. `POST /register`, `/resend-verification` and `/forgot-password` answer 202 with no body whether or not the address is a member's. An address that is registered a second time before it is verified keeps the password of neither registration: its owner gets a mail with a link to choose one, and later registrations of it change nothing. `POST /verify-email` and `/reset-password` take the address and the token of the mail; a token works once. With a member's token, `GET` and `PATCH /me` read the member and change its display name, and `POST /me/change-password` changes the password. A reset and a change of password end every session of the member.
+**The API.** `/api/members/v1` takes the `auth` rate limit by client address and answers the browser origins of `FluentCms:Security:Cors:Members:AllowedOrigins`, which `/connect` answers too. `POST /register`, `/resend-verification` and `/forgot-password` answer 202 with no body whether or not the address is a member's. An address that is registered a second time before it is verified keeps the password of neither registration: its owner gets a mail with a link to choose one, and later registrations of it change nothing. `POST /verify-email` and `/reset-password` take the address and the token of the mail; a token works once. With a member's token, `GET` and `PATCH /me` read the member and change its display name, `POST /me/change-password` changes the password, and `GET /me/logins` and `DELETE /me/logins/{provider}` list and remove its external logins. A reset, a change of password and the removal of a login end every session of the member.
 
-**The pages.** `/account/members/login`, `/logout`, `/register`, `/verify-email`, `/forgot-password` and `/reset-password` look and behave like the [hosted pages](#hosted-pages) and are overridden the same way, such as `Areas/FluentCms/Pages/Account/Members/Login.cshtml` with `@model FluentCMS.Core.Api.Account.MemberLoginModel`. They sign in with a cookie of their own (`.FluentCms.Members`), so an admin session and a member session in one browser neither sign each other in nor out. A member signs in only once its address is verified.
+**The pages.** `/account/members/login`, `/logout`, `/register`, `/verify-email`, `/forgot-password`, `/reset-password`, `/external-login` and `/logins` look and behave like the [hosted pages](#hosted-pages) and are overridden the same way, such as `Areas/FluentCms/Pages/Account/Members/Login.cshtml` with `@model FluentCMS.Core.Api.Account.MemberLoginModel`. They sign in with a cookie of their own (`.FluentCms.Members`), so an admin session and a member session in one browser neither sign each other in nor out. A member signs in only once its address is verified.
 
 **Clients and tokens.** A client under `FluentCms:Clients:Applications` signs members in when its `Pool` is `Members` (the default is `Admins`). It asks for `openid`, `profile`, `email` and `offline_access` only, names no roles and has no consent step; anything else stops the host with `FCMS3021`. Its users sign in on the member pages with the authorization code flow and PKCE, and its tokens carry the audience `fluentcms:members` and the kind `Member`. A member's token never holds `management`, `draft` or `mcp`: the Management API and `/mcp` refuse it, and on the Delivery API it reads published content only.
 
@@ -359,7 +360,53 @@ A bad value stops the host with `FCMS3160` and the key.
 cms.Authorization.AddRowRule<Perk>("perk-tier", ctx => perk => perk.Tier == (ctx.Principal.IsInGroup("gold") ? "gold" : "standard"));
 ```
 
-**Managing members.** `/api/management/v1/members` and `/member-groups` need the instance-wide permission `members.manage`, which is apart from `users.manage`. An administrator lists members (`search`, `group`, `verified`, `active`), creates one, which mails it a link to choose its password, changes its display name, deactivates, reactivates and deletes it, lists and ends its sessions, and puts it in groups. Binding a role to a group, and putting a member in a group, need every permission of that role, and a role is not deleted while a group is bound to it (`FCMS3044`). Deactivating or deleting a member ends its sessions at once. Each change is an activity row of no site: `member.registered`, `member.verified`, `member.updated`, `member.deactivated`, `member.deleted`, `member.group_changed`, `member_group.created`, `member_group.updated` and `member_group.deleted`, and sign-ins are `member.login_succeeded` and `member.login_failed` with the client address.
+**Managing members.** `/api/management/v1/members` and `/member-groups` need the instance-wide permission `members.manage`, which is apart from `users.manage`. An administrator lists members (`search`, `group`, `verified`, `active`), creates one, which mails it a link to choose its password, changes its display name, deactivates, reactivates and deletes it, lists and ends its sessions, and puts it in groups. Binding a role to a group, and putting a member in a group, need every permission of that role, and a role is not deleted while a group is bound to it (`FCMS3044`). Deactivating or deleting a member ends its sessions at once. Each change is an activity row of no site: `member.registered`, `member.verified`, `member.updated`, `member.deactivated`, `member.deleted`, `member.group_changed`, `member.login_linked`, `member.login_unlinked`, `member_group.created`, `member_group.updated` and `member_group.deleted`, and sign-ins are `member.login_succeeded` and `member.login_failed` with the client address.
+
+### Member sign-in with an external provider
+
+Members can sign in with Google, Microsoft, GitHub, Apple or any OpenID Connect provider. The member login and registration pages show a button for each provider of `FluentCms:Members:Providers`, or `cms.Members.Providers` in code. These providers are apart from those of [single sign-on](#single-sign-on): a provider under `FluentCms:Sso` signs in admin users only and has no button on a member page, a member provider has none on the admin login page, and the same name in both sections is two providers.
+
+A provider's name is 1 to 64 letters, digits, `-` or `_`. It is the login provider of its members in `cms_member_login`, its authentication scheme is `member-{name}`, and the redirect URI to register at the provider is `https://{host}{path base}/account/members/sso/{name}`, built from the [public origin](#public-origin) when one is set.
+
+| Key | For | What it is |
+| --- | --- | --- |
+| `Type` | every provider | `Google`, `Microsoft`, `GitHub`, `Apple` or `Oidc`. |
+| `ClientId` | every provider | The client id the provider gave; for Apple, the Services ID. |
+| `ClientSecret` | Google, Microsoft, GitHub, and `Oidc` when the client has one | The client secret. Apple has none: see `PrivateKey`. |
+| `Scopes` | every provider | Scopes asked for after those the type needs for the address. |
+| `DisplayName` | every provider | The text of the button, "Continue with Google". The type's name by default, and the provider's name for `Oidc`. |
+| `Authority` | `Oidc` | The issuer, an https URL. `RequireHttpsMetadata` set to `false` allows http, for a provider on the developer's machine. |
+| `TeamId`, `KeyId`, `PrivateKey` | Apple | The team id, the id of the Sign in with Apple key, and the key itself: the PEM text of its `.p8` file, not a path. The handler signs the client secret with it. |
+| `LinkVerifiedEmail` | every provider but Microsoft | Off by default; see below. |
+
+Secrets come from configuration only: give `ClientSecret` and `PrivateKey` with user secrets, environment variables or a secret store, and never in a file under source control. A provider that is not valid stops the host with `FCMS3180` and the key: an unknown type, a missing client id or secret, an Apple key that is not a private key, or a name whose scheme is the name of another authentication scheme. With environment variables:
+
+```bash
+FluentCms__Members__AllowRegistration=true
+FluentCms__Members__Providers__google__Type=Google
+FluentCms__Members__Providers__google__ClientId=...
+FluentCms__Members__Providers__google__ClientSecret=...
+FluentCms__Members__Providers__apple__Type=Apple
+FluentCms__Members__Providers__apple__ClientId=com.example.web
+FluentCms__Members__Providers__apple__TeamId=...
+FluentCms__Members__Providers__apple__KeyId=...
+FluentCms__Members__Providers__apple__PrivateKey=...
+FluentCms__Members__Providers__corp__Type=Oidc
+FluentCms__Members__Providers__corp__Authority=https://id.example.com
+FluentCms__Members__Providers__corp__ClientId=...
+```
+
+Google and Microsoft run on the ASP.NET Core handlers, GitHub and Apple on the `AspNet.Security.OAuth` handlers, and `Oidc` on the OpenID Connect handler with the code flow and PKCE. A host tunes a provider further with `services.Configure<GoogleOptions>("member-{name}", ...)` and the like. The Apple handler writes the client secret it signs to the log below the `Information` level, so keep the `AspNet.Security.OAuth.Apple` category at `Information` or above.
+
+**Who signs in.** A member linked to the account at the provider signs in, unless it is deactivated or locked out. Anyone else gets a member only while `AllowRegistration` is on: it is named by the provider's address and display name and has no password. With registration off the sign-in is refused. The provider signs in through the hosted pages and the authorization code flow only; the direct login takes no external login.
+
+**Verified addresses.** Whether the address of a new member is verified is the provider's word. Google, Apple and `Oidc` say so with `email_verified`. From GitHub only the primary address is taken, and only when GitHub verified it, which is why `user:email` is always asked for; the address of the public profile is never used, and an account without a verified primary address makes no member. Microsoft does not say, so a member it makes gets the verification mail, which names the provider, and signs in with Microsoft once the address is verified; the same holds for an account of another provider whose address it does not say is verified.
+
+**An address that is a member's already.** A provider never takes over a member by its address: the sign-in is refused, and the member signs in as before and links the provider itself. `LinkVerifiedEmail` on a provider links such a member at its first sign-in through it instead, only when the provider says the address is verified and the member may sign in now, its own address verified. Turn it on only for a provider you trust to verify addresses; it is not offered for Microsoft. A sign-in with an address the provider did not verify is answered the same whether or not the address is a member's. A login that came with such an address is not kept once the address is registered again, or its owner chooses a password with a mailed link, before it was verified: nobody has shown that the login is the owner's.
+
+**Linking and removing.** On `/account/members/logins` a signed-in member links a provider, which asks before it links and names the account at the provider, and removes one. `GET /api/members/v1/me/logins` lists `{ "provider", "displayName" }` and `DELETE /api/members/v1/me/logins/{provider}` removes one; an administrator does the same with `GET` and `DELETE /api/management/v1/members/{id}/logins` and `.../logins/{provider}` (`members.manage`). Removing a login gives the member a new security stamp and ends its sessions, access tokens included. The last way to sign in is not removed (409, `FCMS3184`): a login counts while its provider is configured, and a password while the member has one.
+
+**Failures.** An error at the provider, or a callback that belongs to no sign-in started in that browser, goes back to the member login page as a failed sign-in, with a `member.login_failed` activity row whose method is the provider's name. The reason of a refusal is in the log with its code: `FCMS3181` no usable address, `FCMS3182` the address of a member that is not linked, `FCMS3183` the member could not be made, `FCMS3187` registration is off (event ids 9090 to 9094).
 
 ## Email
 

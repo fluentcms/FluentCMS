@@ -25,6 +25,7 @@ internal sealed class MemberAccountService(
     MemberManager members,
     MemberMail mail,
     MemberSessions sessions,
+    MemberLogins logins,
     MemberOptions options,
     SystemDbContext context,
     IdentityChanges changes,
@@ -78,7 +79,9 @@ internal sealed class MemberAccountService(
 
         // A member without a password waits for the link that sets one, whether an administrator made it or its address
         // was registered twice; a registration never gives it a password, and changes nothing else either.
-        if (existing.EmailConfirmed || existing.DeactivatedAt is not null || existing.PasswordHash is null)
+        var pending = !existing.EmailConfirmed && existing.DeactivatedAt is null;
+        var unproven = pending ? await members.GetLoginsAsync(existing) : [];
+        if (!pending || (existing.PasswordHash is null && unproven.Count == 0))
         {
             await mail.SendAlreadyRegisteredAsync(existing, cancellationToken);
             return;
@@ -87,11 +90,12 @@ internal sealed class MemberAccountService(
         // The address was registered before and nobody has shown that it is theirs. Keeping the first password would let
         // whoever registered first sign in once the owner verifies, and taking the new one would let whoever registered
         // last. So neither is kept: the member has no password, is in none of the groups it was put in, and the owner of
-        // the mailbox chooses the password with the link of the mail, which verifies the address too.
+        // the mailbox chooses the password with the link of the mail, which verifies the address too. An external login
+        // of a provider that did not verify the address is such a first registration, and goes the same way.
         using (MemberOperation.Begin(accessor, existing, time))
         {
             await LeaveGroupsAsync(existing, cancellationToken);
-            var cleared = await members.ClearPendingPasswordAsync(existing);
+            var cleared = await members.ClearPendingAsync(existing, unproven);
             if (cleared.Errors.Any(error => error.Code == nameof(IdentityErrorDescriber.ConcurrencyFailure)))
             {
                 // Another registration of the address did this at the same time; this one is answered like any other.
@@ -125,7 +129,16 @@ internal sealed class MemberAccountService(
 
         if (await ActiveAsync(email) is { EmailConfirmed: false } member)
         {
-            await mail.SendVerificationAsync(member, await members.GenerateEmailConfirmationTokenAsync(member), cancellationToken);
+            // A member a provider made is told which provider its link lets in.
+            var token = await members.GenerateEmailConfirmationTokenAsync(member);
+            if ((await members.GetLoginsAsync(member)).FirstOrDefault() is { } login)
+            {
+                await mail.SendProviderVerificationAsync(member, login.ProviderDisplayName ?? login.LoginProvider, token, cancellationToken);
+            }
+            else
+            {
+                await mail.SendVerificationAsync(member, token, cancellationToken);
+            }
         }
     }
 
@@ -146,9 +159,19 @@ internal sealed class MemberAccountService(
         ArgumentNullException.ThrowIfNull(password);
 
         var member = await ActiveAsync(email) ?? throw MemberViews.InvalidToken();
+
+        // An external login from before the address was verified was never shown to be of the mailbox's owner, who is
+        // the one choosing the password now: it goes with the reset, in one change, so that it signs nobody in after it.
+        var unproven = member.EmailConfirmed ? [] : await members.GetLoginsAsync(member);
         using (MemberOperation.Begin(accessor, member, time))
         {
-            MemberViews.Check(await members.ResetPasswordAsync(member, token, password));
+            MemberViews.Check(await changes.RunAsync(
+                async () =>
+                {
+                    var reset = await members.ResetPasswordAsync(member, token, password);
+                    return reset.Succeeded && unproven.Count > 0 ? await members.RemoveLoginsAsync(member, unproven) : reset;
+                },
+                cancellationToken));
         }
 
         await sessions.RevokeAllAsync(member.Id, cancellationToken);
@@ -188,6 +211,12 @@ internal sealed class MemberAccountService(
         MemberViews.Check(changed);
         await sessions.RevokeAllAsync(member.Id, cancellationToken);
     }
+
+    public async Task<IReadOnlyList<MemberLogin>> MyLoginsAsync() =>
+        await logins.ListAsync(await CallerAsync());
+
+    public async Task RemoveMyLoginAsync(string provider, CancellationToken cancellationToken) =>
+        await logins.RemoveAsync(await CallerAsync(), provider, cancellationToken);
 
     private async Task LeaveGroupsAsync(CmsMember member, CancellationToken cancellationToken)
     {
