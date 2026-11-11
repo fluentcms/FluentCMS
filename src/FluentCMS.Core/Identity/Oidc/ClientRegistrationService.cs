@@ -143,7 +143,19 @@ internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, Cli
             }
         }
 
-        if (client.IsConfidential)
+        // A client of the member pool is never a service account. Every such client may send the direct login grant, so
+        // that the token endpoint answers each refusal of it alike; the flag, and the option of the pool, decide there.
+        if (client.Pool == ClientPool.Members)
+        {
+            descriptor.Properties[AuthorizationServer.MembersProperty] = JsonSerializer.SerializeToElement(true);
+            descriptor.Permissions.Add(Permissions.Prefixes.GrantType + AuthorizationServer.MemberPasswordGrant);
+            if (client.AllowDirectLogin)
+            {
+                descriptor.Properties[AuthorizationServer.DirectLoginProperty] = JsonSerializer.SerializeToElement(true);
+                descriptor.Permissions.Add(Permissions.GrantTypes.RefreshToken);
+            }
+        }
+        else if (client.IsConfidential)
         {
             descriptor.Permissions.Add(Permissions.Endpoints.Introspection);
             descriptor.Permissions.Add(Permissions.GrantTypes.ClientCredentials);

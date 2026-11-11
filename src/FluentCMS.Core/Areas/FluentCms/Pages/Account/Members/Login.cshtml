@@ -1,0 +1,27 @@
+@page "/account/members/login"
+@model MemberLoginModel
+@{
+    ViewData["Title"] = "Sign in";
+}
+@if (Model.Notice is not null)
+{
+    <p class="notice">@Model.Notice</p>
+}
+<form method="post">
+    <div asp-validation-summary="ModelOnly" class="error"></div>
+    <input type="hidden" asp-for="ReturnUrl">
+    <label asp-for="Input.Email"></label>
+    <input asp-for="Input.Email" type="email" autocomplete="username" autofocus>
+    <span asp-validation-for="Input.Email"></span>
+    <label asp-for="Input.Password"></label>
+    <input asp-for="Input.Password" autocomplete="current-password">
+    <span asp-validation-for="Input.Password"></span>
+    <label class="check"><input asp-for="Input.RememberMe"> @Html.DisplayNameFor(model => model.Input.RememberMe)</label>
+    <button type="submit">Sign in</button>
+</form>
+<p><a asp-page="./ForgotPassword">Forgot your password?</a></p>
+<p class="muted">No verification email? <a asp-page="./VerifyEmail">Send it again</a>.</p>
+@if (Model.RegistrationOpen)
+{
+    <p class="muted">No account yet? <a asp-page="./Register" asp-route-ReturnUrl="@Model.ReturnUrl">Register</a>.</p>
+}

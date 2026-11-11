@@ -34,7 +34,7 @@ public sealed class MigrationRunnerTests : IDisposable
         await host.StartAsync(Token);
 
         // EF locks a SQLite database for its migrations with a table of its own, and a server without one.
-        List<string> tables = ["cms__migrations", "cms_activity", "cms_api_key", "cms_idempotency_key", "cms_data_protection_key", "cms_oidc_application", "cms_oidc_authorization", "cms_oidc_scope", "cms_oidc_token", "cms_signing_key", "cms_article", "cms_content__migrations", "cms_document", "cms_invitation", "cms_job", "cms_job_attempt", "cms_lock", "cms_outbox", "cms_plugin_site", "cms_recurring_job", "cms_reference", "cms_role", "cms_role_permission", "cms_schedule", "cms_schema_history", "cms_setting", "cms_site", "cms_site_locale", "cms_user", "cms_user_claim", "cms_user_login", "cms_user_role", "cms_user_token", "cms_version"];
+        List<string> tables = ["cms__migrations", "cms_activity", "cms_api_key", "cms_idempotency_key", "cms_data_protection_key", "cms_oidc_application", "cms_oidc_authorization", "cms_oidc_scope", "cms_oidc_token", "cms_signing_key", "cms_article", "cms_content__migrations", "cms_document", "cms_invitation", "cms_job", "cms_job_attempt", "cms_lock", "cms_member", "cms_member_group", "cms_member_group_member", "cms_member_login", "cms_member_token", "cms_outbox", "cms_plugin_site", "cms_recurring_job", "cms_reference", "cms_role", "cms_role_permission", "cms_schedule", "cms_schema_history", "cms_setting", "cms_site", "cms_site_locale", "cms_user", "cms_user_claim", "cms_user_login", "cms_user_role", "cms_user_token", "cms_version"];
         if (TestProvider.IsSqlite)
         {
             tables.Add("__EFMigrationsLock");
@@ -255,7 +255,7 @@ public sealed class MigrationRunnerTests : IDisposable
 
         var tables = context.GetService<IDesignTimeModel>().Model.GetRelationalModel().Tables;
         tables.Where(table => !table.IsExcludedFromMigrations).Select(table => table.Name).ShouldBe(["cms_article"]);
-        tables.Where(table => table.IsExcludedFromMigrations).Select(table => table.Name).ShouldBe(["cms_activity", "cms_api_key", "cms_idempotency_key", "cms_data_protection_key", "cms_oidc_application", "cms_oidc_authorization", "cms_oidc_scope", "cms_oidc_token", "cms_signing_key", "cms_document", "cms_invitation", "cms_job", "cms_job_attempt", "cms_lock", "cms_outbox", "cms_plugin_site", "cms_recurring_job", "cms_reference", "cms_role", "cms_role_permission", "cms_schedule", "cms_schema_history", "cms_setting", "cms_site", "cms_site_locale", "cms_user", "cms_user_claim", "cms_user_login", "cms_user_role", "cms_user_token", "cms_version"], ignoreOrder: true);
+        tables.Where(table => table.IsExcludedFromMigrations).Select(table => table.Name).ShouldBe(["cms_activity", "cms_api_key", "cms_idempotency_key", "cms_data_protection_key", "cms_oidc_application", "cms_oidc_authorization", "cms_oidc_scope", "cms_oidc_token", "cms_signing_key", "cms_document", "cms_invitation", "cms_job", "cms_job_attempt", "cms_lock", "cms_member", "cms_member_group", "cms_member_group_member", "cms_member_login", "cms_member_token", "cms_outbox", "cms_plugin_site", "cms_recurring_job", "cms_reference", "cms_role", "cms_role_permission", "cms_schedule", "cms_schema_history", "cms_setting", "cms_site", "cms_site_locale", "cms_user", "cms_user_claim", "cms_user_login", "cms_user_role", "cms_user_token", "cms_version"], ignoreOrder: true);
     }
 
     [Fact]

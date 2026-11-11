@@ -43,6 +43,40 @@ public sealed class GraphQLAccessTests(BlogHost blog)
     }
 
     [Fact]
+    public async Task AMembersTokenReadsWhatItsGroupsRolesAllowAndIsRefusedEveryMutation()
+    {
+        // Even in a group bound to Super Admin: a member's token has no scope that manages, so it reads published
+        // content and writes nothing.
+        var group = $"readers-{Guid.NewGuid():N}"[..20];
+        await blog.Host.CreateMemberGroupAsync(group, Core.Authorization.BuiltInRoles.SuperAdminName, Token);
+        using var member = await blog.Host.AsMemberAsync(await blog.Host.CreateMemberAsync(groups: [group], cancellationToken: Token));
+        using var stranger = await blog.Host.AsMemberAsync(await blog.Host.CreateMemberAsync(cancellationToken: Token));
+
+        var author = (await member.QueryAsync($$"""{ author(slug: "{{BlogSeeder.AdaSlug}}") { id name } }"""))["author"]!;
+        author["name"]!.GetValue<string>().ShouldBe("Ada Lovelace");
+        var id = author["id"]!.GetValue<string>();
+
+        var (data, errors) = await member.FailAsync(CreateAuthor);
+        data!["createAuthor"].ShouldBeNull();
+        errors.Codes().ShouldBe(["FCMS3103"]);
+        errors[0]!["extensions"]!["status"]!.GetValue<int>().ShouldBe(403);
+
+        foreach (var mutation in (string[])[
+            "updateAuthor(id: $id, input: { name: \"Changed\" }, expectedVersion: 1) { id }",
+            "publishAuthor(id: $id) { entry { id } }",
+            "unpublishAuthor(id: $id) { id }",
+            "deleteAuthor(id: $id)"])
+        {
+            (await member.FailAsync($"mutation($id: ID!) {{ {mutation} }}", new { id })).Errors.Codes().ShouldBe(["FCMS3103"], mutation);
+        }
+
+        // A member in no group holds the Public and the Member role, which grant nothing here.
+        var (nothing, refused) = await stranger.FailAsync("{ articleList { items { title } } }");
+        nothing!["articleList"].ShouldBeNull();
+        refused.Codes().ShouldBe(["FCMS3104"]);
+    }
+
+    [Fact]
     public async Task AnAnonymousCallerReadsWhatThePublicRoleMayRead()
     {
         using var anonymous = blog.Anonymous();

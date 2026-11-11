@@ -78,6 +78,26 @@ public sealed class McpAuthenticationTests(McpFixture fixture) : IClassFixture<M
         }
     }
 
+    // A member's token never holds the mcp scope, whatever the roles of the member's groups grant.
+    [Fact]
+    public async Task AMembersTokenIsRefusedAsATokenWithoutTheScope()
+    {
+        var host = fixture.Host;
+        var group = $"agents-{Guid.NewGuid():N}"[..20];
+        await host.CreateMemberGroupAsync(group, BuiltInRoles.SuperAdminName, Token);
+        var member = await host.CreateMemberAsync(groups: [group], cancellationToken: Token);
+        using var http = await host.AsMemberAsync(member);
+
+        using var response = await PostAsync(http);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await CodeAsync(response)).ShouldBe("FCMS3103");
+        response.Headers.WwwAuthenticate.ShouldHaveSingleItem().Parameter!.ShouldStartWith("error=\"insufficient_scope\"");
+
+        // The member client may not ask for the scope either, so no token of a member ever has it.
+        await Should.ThrowAsync<InvalidOperationException>(() => host.SignInAsync(member, "openid", "mcp"));
+    }
+
     // A preview token carries the kind of the principal that minted it, a key's included, and reads one entry. It is no key.
     [Fact]
     public async Task APreviewTokenIsRefusedAsATokenWithoutTheScope()

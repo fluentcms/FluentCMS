@@ -1,3 +1,4 @@
+using FluentCMS.Core.Identity.Members;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 
@@ -5,7 +6,8 @@ namespace FluentCMS.Core.Api.Account;
 
 // Asks before signing out. The form posts the request of the client, if one sent the user here, to /connect/logout with an
 // antiforgery token, which the endpoint checks before it ends the sign-in and returns to the client or to this page. There
-// is no sign-out by GET without the session's id_token_hint.
+// is no sign-out by GET without the session's id_token_hint. The mark of the member logout page is never passed on from a
+// link, so this page cannot be made to confirm the end of a member's sign-in.
 public sealed class LogoutModel : AccountPageModel
 {
     public string? UserName { get; private set; }
@@ -19,6 +21,8 @@ public sealed class LogoutModel : AccountPageModel
     {
         var cookie = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
         UserName = cookie.Succeeded ? cookie.Principal.Identity?.Name : null;
-        Parameters = [.. Request.Query.SelectMany(parameter => parameter.Value.Select(value => KeyValuePair.Create(parameter.Key, value ?? "")))];
+        Parameters = [.. Request.Query
+            .Where(parameter => !string.Equals(parameter.Key, MemberAuthentication.LogoutPageField, StringComparison.OrdinalIgnoreCase))
+            .SelectMany(parameter => parameter.Value.Select(value => KeyValuePair.Create(parameter.Key, value ?? "")))];
     }
 }

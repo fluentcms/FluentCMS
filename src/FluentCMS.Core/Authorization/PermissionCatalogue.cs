@@ -24,6 +24,7 @@ public sealed class PermissionCatalogue
         (CorePermissions.PluginsManage, "Enable and disable plugins per site."),
         (CorePermissions.TransferManage, "Export and import content."),
         (CorePermissions.SystemRead, "Read the startup report and the detailed health of the instance."),
+        (CorePermissions.MembersManage, "Create, edit, deactivate and delete members, and manage member groups."),
     ];
 
     private static readonly (ContentOperation Operation, string Description)[] ContentOperations =

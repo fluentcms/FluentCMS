@@ -1,6 +1,7 @@
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity.ApiKeys;
+using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Core.Identity.Sso;
@@ -16,7 +17,7 @@ namespace FluentCMS.Core.Identity;
 
 internal static class IdentityRegistration
 {
-    public static void Add(IServiceCollection services, AdminUserOptions options, ApiKeyOptions apiKeys, PreviewTokenOptions previewTokens, ClientOptions clients, SsoOptions sso, ProvidersBuilder providers)
+    public static void Add(IServiceCollection services, AdminUserOptions options, ApiKeyOptions apiKeys, PreviewTokenOptions previewTokens, ClientOptions clients, SsoOptions sso, MemberOptions members, ProvidersBuilder providers)
     {
         services.AddFluentCmsOptions(AdminUserOptions.Section, IdentityErrorCodes.InvalidOptions, options, users => users.Validate());
         services.AddFluentCmsOptions(ApiKeyOptions.Section, IdentityErrorCodes.InvalidOptions, apiKeys, keys => keys.Validate());
@@ -57,6 +58,8 @@ internal static class IdentityRegistration
         services.AddHttpContextAccessor();
         services.TryAddScoped<IPrincipalRoles, UserPrincipalRoles>();
 
+        // Before the authorization server's, which takes out the Data Protection hosted service that a cookie scheme adds.
+        MemberRegistration.Add(services, members);
         AuthorizationServerRegistration.Add(services, clients);
         SsoRegistration.Add(services, sso);
 

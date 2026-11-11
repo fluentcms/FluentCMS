@@ -8,6 +8,7 @@ using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Api.Management;
+using FluentCMS.Core.Api.Members;
 using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Caching;
@@ -20,6 +21,7 @@ using FluentCMS.Core.Events;
 using FluentCMS.Core.Health;
 using FluentCMS.Core.Idempotency;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
@@ -165,7 +167,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddHostedService<RowRuleStartupCheck>();
         // Before the identity registration, which takes out the Data Protection hosted service that the pages' antiforgery adds.
         HostedPages.Add(services);
-        IdentityRegistration.Add(services, builder.Users, builder.ApiKeys, builder.PreviewTokens, builder.Clients, builder.Sso, builder.Providers);
+        IdentityRegistration.Add(services, builder.Users, builder.ApiKeys, builder.PreviewTokens, builder.Clients, builder.Sso, builder.Members, builder.Providers);
         services.TryAddScoped<IAuthorizationEvaluator, AuthorizationEvaluator>();
         services.AddScoped<ManagementAuthority>();
         services.TryAddScoped<IPermissionChecker, PermissionChecker>();
@@ -192,6 +194,8 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddDeliveryApi(builder.DeliveryCache);
         services.AddManagementContentApi();
         services.AddManagementIdentityApi();
+        services.AddManagementMembersApi();
+        services.AddMembersApi();
         services.AddManagementSiteApi();
         services.AddManagementOperationsApi();
         services.AddManagementPluginApi();
@@ -247,6 +251,7 @@ public static class FluentCmsServiceCollectionExtensions
 
         builder.Jobs.AddJob<OidcPruneJob, OidcPrunePayload>(OidcPruneJob.Type);
         services.AddHostedService<OidcPruneScheduleService>();
+        builder.Jobs.AddJob<UnverifiedMembersJob, UnverifiedMembersPayload>(UnverifiedMembersJob.Type);
 
         services.AddFluentCmsOptions(IdempotencyOptions.Section, HostErrorCodes.InvalidOption, builder.Idempotency, idempotency => idempotency.Validate());
         services.AddSingleton<IdempotencyStore>();

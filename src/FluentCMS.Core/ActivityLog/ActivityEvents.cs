@@ -89,6 +89,42 @@ internal static class ActivityEvents
             Ip = message.Ip,
         });
 
+        events.AddActivity<MemberRegisteredEvent>("member.registered", message => Member("member.registered", message.MemberId, message.Email, null));
+        events.AddActivity<MemberVerifiedEvent>("member.verified", message => Member("member.verified", message.MemberId, message.Email, null));
+        events.AddActivity<MemberUpdatedEvent>("member.updated", message => Member("member.updated", message.MemberId, message.Email, new Dictionary<string, string?>
+        {
+            ["changes"] = string.Join(',', message.Changes),
+        }));
+        events.AddActivity<MemberDeactivatedEvent>("member.deactivated", message => Member("member.deactivated", message.MemberId, message.Email, null));
+        events.AddActivity<MemberDeletedEvent>("member.deleted", message => Member("member.deleted", message.MemberId, message.Email, null));
+        events.AddActivity<MemberGroupChangedEvent>("member.group_changed", message => Member("member.group_changed", message.MemberId, message.Email, new Dictionary<string, string?>
+        {
+            ["added"] = string.Join(',', message.Added.Select(id => id.ToString("D"))),
+            ["removed"] = string.Join(',', message.Removed.Select(id => id.ToString("D"))),
+        }));
+        events.AddActivity<MemberGroupCreatedEvent>("member_group.created", message => MemberGroup("member_group.created", message.GroupId, message.Name, message.RoleId));
+        events.AddActivity<MemberGroupUpdatedEvent>("member_group.updated", message => MemberGroup("member_group.updated", message.GroupId, message.Name, message.RoleId));
+        events.AddActivity<MemberGroupDeletedEvent>("member_group.deleted", message => MemberGroup("member_group.deleted", message.GroupId, message.Name, null));
+
+        events.AddActivity<MemberLoginSucceededEvent>("member.login_succeeded", message => Member("member.login_succeeded", message.MemberId, message.Email, new Dictionary<string, string?>
+        {
+            ["method"] = message.Method,
+        }) with { Ip = message.Ip });
+
+        // A sign-in that matched no member has no target.
+        events.AddActivity<MemberLoginFailedEvent>("member.login_failed", message => new ActivityEntry("member.login_failed")
+        {
+            TargetType = message.MemberId is null ? null : "member",
+            TargetId = message.MemberId?.ToString("D"),
+            TargetLabel = message.Email,
+            Details = new Dictionary<string, string?>
+            {
+                ["method"] = message.Method,
+                ["reason"] = message.Reason,
+            },
+            Ip = message.Ip,
+        });
+
         events.AddActivity<ApiKeyCreatedEvent>("api_key.created", message => Key("api_key.created", message.KeyId, message.Name, new Dictionary<string, string?>
         {
             ["class"] = message.KeyClass,
@@ -215,6 +251,24 @@ internal static class ActivityEvents
             TargetId = userId.ToString("D"),
             TargetLabel = userName,
             Details = details,
+        };
+
+    private static ActivityEntry Member(string action, Guid memberId, string email, Dictionary<string, string?>? details) =>
+        new(action)
+        {
+            TargetType = "member",
+            TargetId = memberId.ToString("D"),
+            TargetLabel = email,
+            Details = details,
+        };
+
+    private static ActivityEntry MemberGroup(string action, Guid groupId, string name, Guid? roleId) =>
+        new(action)
+        {
+            TargetType = "member_group",
+            TargetId = groupId.ToString("D"),
+            TargetLabel = name,
+            Details = roleId is { } role ? new Dictionary<string, string?> { ["role"] = role.ToString("D") } : null,
         };
 
     private static ActivityEntry Key(string action, Guid keyId, string name, Dictionary<string, string?>? details) =>
