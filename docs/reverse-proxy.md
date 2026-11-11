@@ -29,6 +29,8 @@ The client address matters beyond logs: the rate limits partition by it, so a ho
 
 Host filtering (`AllowedHosts`) runs before the forwarded headers and checks the `Host` the proxy sent. With `ForwardHost` on, `X-Forwarded-Host` is therefore applied only for a host in `AllowedHosts`, and one outside it is ignored, so a forwarded host cannot get past host filtering. With `AllowedHosts` at `*` or unset, any forwarded host is applied.
 
+With the multi-site plugin, the host name decides the site of a request that names none. A proxy that replaces `Host` with an internal name must forward the original one, with `ForwardHost` on, and `AllowedHosts` lists both the name the proxy sends and the host names of the sites.
+
 Set `FluentCms:PublicOrigin` to the address users reach the instance at, such as `https://cms.example.com`, so that password reset and invitation links and the issuer do not depend on the host at all; see [public origin](host-configuration.md#public-origin). Its path is empty or `PathBase`, which is added when it is left out.
 
 Environment variables use `__`, for example `FluentCms__ReverseProxy__ForwardedHeaders__Enabled=true`. ASP.NET Core adds its own forwarded headers middleware when `ASPNETCORE_FORWARDEDHEADERS_ENABLED` is set, and that trusts every address; leave it unset and use the options above.

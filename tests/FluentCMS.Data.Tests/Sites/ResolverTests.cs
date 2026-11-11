@@ -94,6 +94,15 @@ public sealed class ResolverTests : IDisposable
         (await SiteAsync(new SiteRequest { Host = "unknown.example.com" })).ShouldBe(new SiteId(DefaultSite.Id));
     }
 
+    // A resolver may still hold the host of a site that was deleted. Such a host is one no site has, not an error.
+    [Fact]
+    public async Task AHostWhoseSiteIsGoneReadsTheDefaultSite()
+    {
+        _hosts.Sites["gone.example.com"] = new SiteId(Guid.CreateVersion7());
+
+        (await SiteAsync(new SiteRequest { Host = "gone.example.com" })).ShouldBe(new SiteId(DefaultSite.Id));
+    }
+
     [Fact]
     public async Task ASiteIsNamedByIdOrBySlugInAnyCase()
     {

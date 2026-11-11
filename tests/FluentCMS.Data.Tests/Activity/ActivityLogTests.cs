@@ -46,6 +46,7 @@ public sealed class ActivityLogTests
         new SettingsChangedEvent("seo"),
         new SiteCreatedEvent(SiteB.Value, "b"),
         new SiteUpdatedEvent(SiteB.Value, "b"),
+        new SiteDeletedEvent(SiteB.Value, "b"),
         new PluginEnabledEvent("media", SiteB.Value),
         new PluginDisabledEvent("media", SiteB.Value),
         new UserCreatedEvent(Entry, "ann"),

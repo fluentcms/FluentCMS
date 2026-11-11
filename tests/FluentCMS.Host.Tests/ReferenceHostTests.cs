@@ -113,6 +113,37 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         report["plugins"]!.AsArray().Select(plugin => plugin!["name"]!.GetValue<string>()).ShouldContain("mcp");
     }
 
+    // The operator creates a second site and gives it a host name, and a request on that name is one of that site.
+    [Fact]
+    public async Task TheHostRunsTheMultiSitePluginAndResolvesASiteByItsHostName()
+    {
+        var settings = Operator.Settings();
+        settings["FluentCms:PublicOrigin"] = "https://localhost";
+        await _host.StartAsync(settings);
+
+        using var api = await Operator.SignInAsync(_host);
+        var report = await Operator.ReportAsync(_host);
+        report["plugins"]!.AsArray().Select(plugin => plugin!["name"]!.GetValue<string>()).ShouldContain("multi-site");
+
+        using var created = await Operator.PostJsonAsync(api, "/api/management/v1/sites", new JsonObject { ["name"] = "Docs", ["slug"] = "docs", ["defaultLocale"] = "en" });
+        var (status, site) = await HostUnderTest.ReadAsync(created);
+        status.ShouldBe(HttpStatusCode.Created, site?.ToJsonString());
+        var id = site!["id"]!.GetValue<string>();
+
+        using var added = await Operator.PostJsonAsync(api, $"/api/management/v1/sites/{id}/hosts", new JsonObject { ["hostname"] = "docs.example.com" });
+        added.StatusCode.ShouldBe(HttpStatusCode.Created, await added.Content.ReadAsStringAsync(Token));
+
+        // A settings read answers the site it read for. The token is the one issuer's, whatever host name carries it.
+        using var onHost = await api.GetAsync(new Uri("https://docs.example.com/api/management/v1/settings/media"), Token);
+        using var onOrigin = await api.GetAsync(new Uri("/api/management/v1/settings/media", UriKind.Relative), Token);
+        var (hostStatus, hostSettings) = await HostUnderTest.ReadAsync(onHost);
+        var (_, originSettings) = await HostUnderTest.ReadAsync(onOrigin);
+
+        hostStatus.ShouldBe(HttpStatusCode.OK, hostSettings?.ToJsonString());
+        hostSettings!["siteId"]!.GetValue<string>().ShouldBe(id);
+        originSettings!["siteId"]!.GetValue<string>().ShouldNotBe(id);
+    }
+
     // In Production the options leave introspection closed: it needs a signed-in caller with schema.read.
     [Fact]
     public async Task TheHostRunsTheGraphQLPluginAndKeepsIntrospectionForSchemaReadersInProduction()
@@ -334,7 +365,7 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         app.Services.GetRequiredService<IDataProvider>().Name.ShouldBe(name);
     }
 
-    // The webhooks, media and MCP plugins hold a migration set per provider, which the check before any migration takes (#2711).
+    // The webhooks, media, MCP and multi-site plugins hold a migration set per provider, which the check before any migration takes (#2711).
     [Theory]
     [InlineData("PostgreSql", "Host=db;Database=cms;Username=cms;Password=secret")]
     [InlineData("SqlServer", "Server=db;Database=cms;User Id=cms;Password=secret;TrustServerCertificate=true")]
@@ -342,7 +373,7 @@ public sealed class ReferenceHostTests : IAsyncDisposable
     {
         var app = _host.Build(new() { [ReferenceHost.ProviderKey] = provider, [$"ConnectionStrings:{ReferenceHost.ConnectionStringName}"] = connectionString });
 
-        app.Services.GetServices<IPluginMigrations>().Select(stream => stream.Name).ShouldBe(["media", "webhooks", "mcp"], ignoreOrder: true);
+        app.Services.GetServices<IPluginMigrations>().Select(stream => stream.Name).ShouldBe(["media", "webhooks", "mcp", "multi-site"], ignoreOrder: true);
         await app.Services.GetRequiredService<MigrationRunner>().RefuseForeignMigrationsAsync(Token);
     }
 

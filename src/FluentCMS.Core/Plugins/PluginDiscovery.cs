@@ -7,14 +7,18 @@ namespace FluentCMS.Core.Plugins;
 
 // The plugin classes named by [assembly: FluentCmsPlugin(typeof(T))] in the libraries of the app's deps.json that depend
 // on the SDK, in the order of that file. Read once per process: the file does not change while the app runs. An app with
-// no deps file on disk, such as a single-file one, discovers nothing and adds its plugins explicitly.
+// no deps file on disk, such as a single-file one, discovers nothing and adds its plugins explicitly. So does an app that
+// turns discovery off with the AppContext switch FluentCMS.Plugins.DisableDiscovery, which is for one that references
+// plugins it adds to some of its hosts only, as the data tests do.
 internal static class PluginDiscovery
 {
+    public const string DisableSwitch = "FluentCMS.Plugins.DisableDiscovery";
+
     private const string Sdk = "FluentCMS.Sdk";
 
     private static readonly Lazy<IReadOnlyList<Type>> discovered = new(Discover);
 
-    public static IReadOnlyList<Type> Types => discovered.Value;
+    public static IReadOnlyList<Type> Types => AppContext.TryGetSwitch(DisableSwitch, out var disabled) && disabled ? [] : discovered.Value;
 
     private static List<Type> Discover()
     {

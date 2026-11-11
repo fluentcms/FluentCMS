@@ -9,6 +9,7 @@
     <ProjectReference Include="../plugins/FluentCMS.Plugins.GraphQL/FluentCMS.Plugins.GraphQL.csproj" />
     <ProjectReference Include="../plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj" />
     <ProjectReference Include="../plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.MultiSite/FluentCMS.Plugins.MultiSite.csproj" />
     <ProjectReference Include="../plugins/FluentCMS.Plugins.Webhooks/FluentCMS.Plugins.Webhooks.csproj" />
     <ProjectReference Include="../../samples/Blog/Blog.csproj" />
   </ItemGroup>

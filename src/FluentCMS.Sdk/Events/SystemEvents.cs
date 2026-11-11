@@ -14,6 +14,11 @@ public sealed record SiteCreatedEvent(Guid SiteId, string Slug) : CmsEvent;
 /// <param name="Slug">Its slug.</param>
 public sealed record SiteUpdatedEvent(Guid SiteId, string Slug) : CmsEvent;
 
+/// <summary>A site was deleted. Its source names no site, since the site is gone.</summary>
+/// <param name="SiteId">The id the site had.</param>
+/// <param name="Slug">The slug it had.</param>
+public sealed record SiteDeletedEvent(Guid SiteId, string Slug) : CmsEvent;
+
 /// <summary>A plugin was enabled for a site.</summary>
 /// <param name="Plugin">The name of the plugin.</param>
 /// <param name="SiteId">The id of the site.</param>

@@ -6,14 +6,18 @@ using Microsoft.Net.Http.Headers;
 
 namespace FluentCMS.Plugins.Media;
 
-// Bound from FluentCms:Media. What is the instance's, since the storage is one for every site: where the local disk keeps
-// the files, the largest request body an upload may send, how transform URLs are signed and cached, and how long a deleted
-// asset keeps its bytes. The rules of uploads and the limits of transforms are each site's, in MediaSettings.
+// Bound from FluentCms:Media. What is the instance's, since the storage is one for every site: whether the sites share
+// one library, where the local disk keeps the files, the largest request body an upload may send, how transform URLs are
+// signed and cached, and how long a deleted asset keeps its bytes. The rules of uploads and the limits of transforms are
+// each site's, in MediaSettings.
 public sealed class MediaOptions
 {
     public const string Section = "FluentCms:Media";
 
     public LocalStorageOptions Local { get; set; } = new();
+
+    // Shared: every site reads and writes the library of the default site. PerSite: each site keeps its own.
+    public MediaLibrary Library { get; set; } = MediaLibrary.Shared;
 
     // Bytes. A site's MaxRequestSize above it is cut to it.
     public long MaxRequestBodySize { get; set; } = 256L * 1024 * 1024;
@@ -34,6 +38,7 @@ public sealed class MediaOptions
 
     internal bool IsValid() =>
         !string.IsNullOrWhiteSpace(Local?.Root)
+        && Enum.IsDefined(Library)
         && MaxRequestBodySize > 0
         && (string.IsNullOrEmpty(SigningKey) || (Convert.TryFromBase64String(SigningKey, new byte[SigningKey.Length], out var length) && length >= MediaSigning.KeyLength))
         && !string.IsNullOrWhiteSpace(CacheControl) && CacheControlHeaderValue.TryParse(CacheControl, out _)

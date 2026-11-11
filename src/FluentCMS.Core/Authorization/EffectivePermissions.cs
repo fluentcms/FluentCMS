@@ -41,6 +41,9 @@ internal sealed class EffectiveGrant(string pattern, PermissionConstraints const
         && (RoleSite is null || target.Site?.Value == RoleSite)
         && (Constraints.Sites is null || (target.Site is { } site && Constraints.Sites.Contains(site)));
 
+    public bool ReachesSite(SiteId site) =>
+        (RoleSite is null || site.Value == RoleSite) && (Constraints.Sites is null || Constraints.Sites.Contains(site));
+
     // A global entry is shared by every site, so what changes it must come from a grant that no site limits.
     public bool IsInstanceWide => RoleSite is null && Constraints.Sites is null;
 
@@ -95,6 +98,14 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
 
     public bool Allows(SchemaType type, ContentOperation operation, AccessTarget target) =>
         IsSystem || GrantsOf(type, operation, target).Count > 0;
+
+    // Whether some grant reaches the site, whatever it permits there: through a role of the site or of the instance, within
+    // the grant's own site limit, the binding of a key and the role of the client.
+    public bool HoldsGrantIn(SiteId site) =>
+        IsSystem
+        || ((_binding.Sites is null || _binding.Sites.Contains(site.Value))
+            && grants.Any(grant => grant.ReachesSite(site))
+            && (limit is null || limit.HoldsGrantIn(site)));
 
     // The resources a permission reaches: null when a grant with no resource limit holds it, otherwise the union of the
     // resources of the grants that do, empty when none does.

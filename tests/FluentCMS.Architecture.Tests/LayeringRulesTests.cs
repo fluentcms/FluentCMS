@@ -24,6 +24,7 @@ public class LayeringRulesTests
     private const string CliNamespace = "FluentCMS.Cli";
     private const string TestingNamespace = "FluentCMS.Testing";
     private const string McpPlugin = "FluentCMS.Plugins.Mcp";
+    private const string MultiSitePlugin = "FluentCMS.Plugins.MultiSite";
     private const string WebhooksPlugin = "FluentCMS.Plugins.Webhooks";
 
     private static readonly string[] McpSiteData = ["McpModel", "McpInstructions", "McpStoredPrompts", "McpInstructionService", "McpPromptService"];
@@ -120,6 +121,22 @@ public class LayeringRulesTests
         mcp.ProjectReferences.ShouldBe([Sdk, PluginAbstractions], ignoreOrder: true);
         // The providers of its PostgreSQL and SQL Server migration sets are compiled against and not depended on.
         mcp.PackageReferences.Where(package => !package.DevelopmentOnly).Select(package => package.Name).ShouldBe(["ModelContextProtocol.AspNetCore"]);
+    }
+
+    // Spec 5.6: the multi-site plugin reaches sites through ISiteAdministration of the SDK, so the two contract packages are
+    // all it references, and no type of it names one of core's.
+    [Fact]
+    public void TheMultiSitePluginReferencesTheSdkAndThePluginAbstractionsOnly()
+    {
+        var multiSite = ProjectFile.SourceProjects.Single(project => project.Name == MultiSitePlugin);
+
+        multiSite.ProjectReferences.ShouldBe([Sdk, PluginAbstractions], ignoreOrder: true);
+        // The providers of its PostgreSQL and SQL Server migration sets are compiled against and not depended on.
+        multiSite.PackageReferences.Where(package => !package.DevelopmentOnly).ShouldBeEmpty();
+        Types().That().ResideInNamespaceOrBelow(MultiSitePlugin)
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceOrBelow("FluentCMS.Core")
+            .AndShould().NotDependOnAnyTypesThat().HaveName("CmsDbContext")
+            .Check(everything.Value);
     }
 
     // The MCP server is a surface (2.1): it carries the identity and the intent of a call and decides nothing. It holds no

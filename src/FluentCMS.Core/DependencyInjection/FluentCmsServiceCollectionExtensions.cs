@@ -187,6 +187,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<LocaleRegistry>();
         services.AddScoped<LocaleFallbackReader>();
         services.AddScoped<SiteManager>();
+        services.TryAddScoped<ISiteAdministration, SiteAdministration>();
         services.AddScoped<RequestBridge>();
         services.AddDeliveryApi(builder.DeliveryCache);
         services.AddManagementContentApi();

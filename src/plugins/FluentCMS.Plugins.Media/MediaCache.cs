@@ -57,7 +57,8 @@ internal sealed class MediaCache(IOutputCacheStore store, IEventBus events, IOpt
 // The answer of the Delivery route, with the cache headers of a content read (4.10): an ETag that hashes the body, no
 // Last-Modified, the Cache-Control of the Delivery API, shared only for a public asset read without credentials, and the
 // Vary of content. The tags go on a copy the output cache keeps, beside the site's that core adds, and with the site's in
-// the tag header when one is configured. A response the output cache is about to store is sent whole even to a matching
+// the tag header when one is configured. The presets' tag is the library's, which is the asset's site and, when the
+// sites share a library, not the site of the request. A response the output cache is about to store is sent whole even to a matching
 // If-None-Match, so that the copy exists for the next request.
 internal sealed class MediaDeliveryResponse(MediaDelivery delivered, Guid site, bool shared) : IResult
 {
@@ -85,12 +86,12 @@ internal sealed class MediaDeliveryResponse(MediaDelivery delivered, Guid site, 
         if (cache is { EnableOutputCaching: true })
         {
             cache.Tags.Add(MediaCache.Asset(asset.Id));
-            cache.Tags.Add(MediaCache.Presets(site));
+            cache.Tags.Add(MediaCache.Presets(asset.SiteId));
         }
 
         if (cacheControl.TagHeader is { } header)
         {
-            response.Headers[header] = cacheControl.TagHeaderValue([MediaCache.Site(site), MediaCache.Asset(asset.Id), MediaCache.Presets(site)]);
+            response.Headers[header] = cacheControl.TagHeaderValue([MediaCache.Site(site), MediaCache.Asset(asset.Id), MediaCache.Presets(asset.SiteId)]);
         }
 
         if (cache is not { EnableOutputCaching: true, AllowCacheStorage: true } && Matches(httpContext.Request, etag))

@@ -18,6 +18,7 @@ internal sealed record OriginalFile(Stream Content, string MimeType, string Chec
 internal sealed class MediaOriginals(
     PluginDbContext<MediaPlugin> database,
     IOperationContextAccessor operations,
+    MediaLibraries libraries,
     MediaStorage storages,
     MediaSigning signing,
     IOptions<MediaOptions> options,
@@ -74,8 +75,9 @@ internal sealed class MediaOriginals(
         }
 
         var site = (operations.Current ?? throw new InvalidOperationException("A file is served inside an operation, which names the site.")).Site;
+        var library = await libraries.OfAsync(site, cancellationToken);
         var asset = await database.Set<Asset>().AsNoTracking()
-            .FirstOrDefaultAsync(item => item.Id == id && item.SiteId == site.Value && item.DeletedAt == null && (download || !item.IsPrivate), cancellationToken)
+            .FirstOrDefaultAsync(item => item.Id == id && item.SiteId == library.Value && item.DeletedAt == null && (download || !item.IsPrivate), cancellationToken)
             ?? throw new PluginException(MediaErrorCodes.AssetNotFound, $"The site has no {(download ? "" : "public ")}media asset {id:D}.");
 
         var content = await storages.Of(asset.StorageProvider).OpenReadAsync(asset.StorageKey, cancellationToken)

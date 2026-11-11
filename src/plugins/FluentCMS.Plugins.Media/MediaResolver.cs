@@ -12,6 +12,7 @@ internal sealed class MediaResolver(
     PluginDbContext<MediaPlugin> database,
     IPermissionChecker permissions,
     IOperationContextAccessor operations,
+    MediaLibraries libraries,
     MediaService media) : IMediaResolver
 {
     public async Task<IReadOnlyDictionary<Guid, MediaDelivery>> ResolveAsync(IReadOnlyCollection<Guid> ids, string? locale = null, CancellationToken cancellationToken = default)
@@ -25,10 +26,11 @@ internal sealed class MediaResolver(
             return new Dictionary<Guid, MediaDelivery>();
         }
 
+        var library = await libraries.OfAsync(site, cancellationToken);
         FolderReach reach;
         try
         {
-            reach = await FolderReach.OfAsync(database, permissions, MediaPermissions.Read, site, cancellationToken);
+            reach = await FolderReach.OfAsync(database, permissions, MediaPermissions.Read, site, library, cancellationToken);
         }
         catch (PermissionDeniedException)
         {
@@ -37,12 +39,12 @@ internal sealed class MediaResolver(
 
         var wanted = ids.Distinct().ToList();
         var assets = (await database.Set<Asset>().AsNoTracking()
-                .Where(asset => wanted.Contains(asset.Id) && asset.SiteId == site.Value && asset.DeletedAt == null)
+                .Where(asset => wanted.Contains(asset.Id) && asset.SiteId == library.Value && asset.DeletedAt == null)
                 .ToListAsync(cancellationToken))
             .Where(asset => reach.Includes(asset.FolderId))
             .ToList();
 
-        var presets = assets.Any(asset => !asset.IsPrivate) ? await media.PresetNamesAsync(site.Value, cancellationToken) : [];
+        var presets = assets.Any(asset => !asset.IsPrivate) ? await media.PresetNamesAsync(library.Value, cancellationToken) : [];
         Dictionary<Guid, MediaDelivery> resolved = [];
         foreach (var asset in assets)
         {
@@ -57,7 +59,7 @@ internal sealed class MediaResolver(
 // Lets core populate media fields, and the media nodes of rich text, through IMediaResolver, and check the assets a write
 // names. What population returns is the asset's metadata in the locale of the read and the URLs of the Delivery API; who
 // uploaded it, its folder and its tags are left out.
-internal sealed class MediaReferenceResolver(IMediaResolver media, PluginDbContext<MediaPlugin> database, IOperationContextAccessor operations) : IReferenceResolver
+internal sealed class MediaReferenceResolver(IMediaResolver media, PluginDbContext<MediaPlugin> database, IOperationContextAccessor operations, MediaLibraries libraries) : IReferenceResolver
 {
     public string TargetType => MediaService.ReferenceTarget;
 
@@ -72,9 +74,10 @@ internal sealed class MediaReferenceResolver(IMediaResolver media, PluginDbConte
         ArgumentNullException.ThrowIfNull(ids);
 
         var site = (operations.Current ?? throw new InvalidOperationException("Media is checked inside an operation, which names the site.")).Site;
+        var library = await libraries.OfAsync(site, cancellationToken);
         var wanted = ids.Distinct().ToList();
         var found = await database.Set<Asset>().AsNoTracking()
-            .Where(asset => wanted.Contains(asset.Id) && asset.SiteId == site.Value && asset.DeletedAt == null)
+            .Where(asset => wanted.Contains(asset.Id) && asset.SiteId == library.Value && asset.DeletedAt == null)
             .Select(asset => asset.Id)
             .ToListAsync(cancellationToken);
         return wanted.Except(found).ToHashSet();

@@ -3404,3 +3404,44 @@ override FluentCMS.Events.ApiKeyAddressRefusedEvent.ToString() -> string!
 override sealed FluentCMS.Events.ApiKeyAddressRefusedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 static FluentCMS.Events.ApiKeyAddressRefusedEvent.operator !=(FluentCMS.Events.ApiKeyAddressRefusedEvent? left, FluentCMS.Events.ApiKeyAddressRefusedEvent? right) -> bool
 static FluentCMS.Events.ApiKeyAddressRefusedEvent.operator ==(FluentCMS.Events.ApiKeyAddressRefusedEvent? left, FluentCMS.Events.ApiKeyAddressRefusedEvent? right) -> bool
+FluentCMS.Events.SiteDeletedEvent
+FluentCMS.Events.SiteDeletedEvent.Deconstruct(out System.Guid SiteId, out string! Slug) -> void
+FluentCMS.Events.SiteDeletedEvent.Equals(FluentCMS.Events.SiteDeletedEvent? other) -> bool
+FluentCMS.Events.SiteDeletedEvent.SiteDeletedEvent(System.Guid SiteId, string! Slug) -> void
+FluentCMS.Events.SiteDeletedEvent.SiteId.get -> System.Guid
+FluentCMS.Events.SiteDeletedEvent.SiteId.init -> void
+FluentCMS.Events.SiteDeletedEvent.Slug.get -> string!
+FluentCMS.Events.SiteDeletedEvent.Slug.init -> void
+FluentCMS.Sites.ISiteAdministration
+FluentCMS.Sites.ISiteAdministration.CreateAsync(string! name, string! slug, string! defaultLocale, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Sites.SiteInfo!>!
+FluentCMS.Sites.ISiteAdministration.DeleteAsync(FluentCMS.Sites.SiteId site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Sites.SiteInfo
+FluentCMS.Sites.SiteInfo.<Clone>$() -> FluentCMS.Sites.SiteInfo!
+FluentCMS.Sites.SiteInfo.CreatedAt.get -> System.DateTimeOffset
+FluentCMS.Sites.SiteInfo.CreatedAt.init -> void
+FluentCMS.Sites.SiteInfo.Deconstruct(out System.Guid Id, out string! Name, out string! Slug, out string! DefaultLocale, out bool IsDefault, out System.DateTimeOffset CreatedAt) -> void
+FluentCMS.Sites.SiteInfo.DefaultLocale.get -> string!
+FluentCMS.Sites.SiteInfo.DefaultLocale.init -> void
+FluentCMS.Sites.SiteInfo.Equals(FluentCMS.Sites.SiteInfo? other) -> bool
+FluentCMS.Sites.SiteInfo.Id.get -> System.Guid
+FluentCMS.Sites.SiteInfo.Id.init -> void
+FluentCMS.Sites.SiteInfo.IsDefault.get -> bool
+FluentCMS.Sites.SiteInfo.IsDefault.init -> void
+FluentCMS.Sites.SiteInfo.Name.get -> string!
+FluentCMS.Sites.SiteInfo.Name.init -> void
+FluentCMS.Sites.SiteInfo.SiteInfo(System.Guid Id, string! Name, string! Slug, string! DefaultLocale, bool IsDefault, System.DateTimeOffset CreatedAt) -> void
+FluentCMS.Sites.SiteInfo.Slug.get -> string!
+FluentCMS.Sites.SiteInfo.Slug.init -> void
+override FluentCMS.Events.SiteDeletedEvent.<Clone>$() -> FluentCMS.Events.SiteDeletedEvent!
+override FluentCMS.Events.SiteDeletedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.SiteDeletedEvent.GetHashCode() -> int
+override FluentCMS.Events.SiteDeletedEvent.ToString() -> string!
+override FluentCMS.Sites.SiteInfo.Equals(object? obj) -> bool
+override FluentCMS.Sites.SiteInfo.GetHashCode() -> int
+override FluentCMS.Sites.SiteInfo.ToString() -> string!
+override sealed FluentCMS.Events.SiteDeletedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+static FluentCMS.Events.SiteDeletedEvent.operator !=(FluentCMS.Events.SiteDeletedEvent? left, FluentCMS.Events.SiteDeletedEvent? right) -> bool
+static FluentCMS.Events.SiteDeletedEvent.operator ==(FluentCMS.Events.SiteDeletedEvent? left, FluentCMS.Events.SiteDeletedEvent? right) -> bool
+static FluentCMS.Sites.SiteInfo.operator !=(FluentCMS.Sites.SiteInfo? left, FluentCMS.Sites.SiteInfo? right) -> bool
+static FluentCMS.Sites.SiteInfo.operator ==(FluentCMS.Sites.SiteInfo? left, FluentCMS.Sites.SiteInfo? right) -> bool
+FluentCMS.Sites.ISiteAdministration.FindAsync(FluentCMS.Sites.SiteId site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Sites.SiteInfo?>!

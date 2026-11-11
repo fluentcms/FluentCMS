@@ -35,7 +35,7 @@ Compression after `UseFluentCms()` would sit inside the output cache, which does
 
 An endpoint runs as the principal of the `FluentCms` authentication scheme, which `AddFluentCms()` registers: the API key handler when a key is sent, otherwise the bearer scheme set in `FluentCmsAuthenticationOptions.BearerScheme`, and anonymous when neither applies. The handler writes `sub` (the id), `name`, `fcms_kind` (a `PrincipalKind` name), `roles` and `scope` (both space-separated), and `fcms_sites` for an API key bound to sites. A request without an authenticated user runs as the anonymous principal, which holds the Public role of its site, so anonymous Delivery access is what that role grants. A principal without a usable `fcms_kind` or `sub` is refused with 401.
 
-The site is the key's binding, then the `X-Cms-Site` header, then the `site` parameter (an id or a slug), then the default site. A key bound to one site reads that site. A key bound to several reads the one the request names, or the default site when it is among them, and is otherwise refused with `FCMS3122`. A request that names a site outside the binding, or one that does not exist, is refused with `FCMS3121` (403). A header and a parameter that name different sites are refused. The locale is the `locale` parameter, then the `X-Cms-Locale` header, then the site's default; `locale=all` returns every locale of an entry as a map.
+The site is the key's binding, then the `X-Cms-Site` header, then the `site` parameter (an id or a slug), then the host name of the request when the multi-site plugin is added (see Multi-site), then the default site. A key bound to one site reads that site. A key bound to several reads the one the request names, or the site of the host name, the default site when no site has it, when that site is among them, and is otherwise refused with `FCMS3122`. A request that names a site outside the binding, or one that does not exist, is refused with `FCMS3121` (403). A header and a parameter that name different sites are refused. The locale is the `locale` parameter, then the `X-Cms-Locale` header, then the site's default; `locale=all` returns every locale of an entry as a map.
 
 ## Options
 
@@ -412,12 +412,26 @@ The role of a client limits its tokens: a call through the client is allowed wha
 
 The plugin keeps the guidelines, the type instructions and the stored prompts of a site in two tables of its own, `cms_mcp_instruction` and `cms_mcp_prompt`. They are a [migration stream](plugin-migrations.md) of the plugin, `cms_mcp__migrations`, which the host applies with its other migrations (`FluentCms:Database:MigrateOnStartup`), so a host that already runs the plugin has one migration to apply after it updates.
 
+## Multi-site
+
+The multi-site plugin (`FluentCMS.Plugins.MultiSite`, which the reference host adds) creates and deletes sites and keeps the host names of each site, under `/api/management/v1/sites`, with `sites.manage` for the instance:
+
+- `POST /sites` `{ "name", "slug", "defaultLocale" }` creates a site with its default locale and its Public role, and `DELETE /sites/{id}` deletes one that is not the default site and has no content;
+- `GET` and `POST /sites/{id}/hosts` `{ "hostname", "isPrimary" }`, `PATCH /sites/{id}/hosts/{hostname}` `{ "isPrimary": true }` and `DELETE /sites/{id}/hosts/{hostname}` manage its host names.
+
+A request that names no site by a key's binding, the header or the parameter reads the site of its host name, and the default site when no site has that name. A host name is a DNS name without a scheme, port, path or wildcard, and belongs to one site. A site with host names has one primary host, which a front end reads as its canonical name; the backend redirects nothing by it.
+
+List the host names of every site in `AllowedHosts`. Behind a reverse proxy, the host name is the forwarded one only with `FluentCms:ReverseProxy:ForwardedHeaders:ForwardHost`. `FluentCms:PublicOrigin` stays the one address of the authorization server and the hosted pages, so a token works on every host name. Each instance keeps the host names for 30 seconds, so another instance sees a change within that time. The plugin has no options; its README has the codes.
+
+`GET /api/management/v1/me/sites` lists the sites in which the caller holds a grant, with or without the plugin.
+
 ## Media
 
 The media plugin (`FluentCMS.Plugins.Media`, which the reference host adds) keeps the assets and folders of each site under `/api/management/v1/media`, answers `/api/delivery/v1/media/{id}`, and serves signed image transforms at `/media/{id}/{fileName}` and original files at `/media/{id}/original/{fileName}`. Its instance options are in `FluentCms:Media`:
 
 | Key | Default | Meaning |
 | --- | --- | --- |
+| `Library` | `Shared` | `Shared`: every site reads and writes the media library of the default site, and each site's roles still decide who uploads and who reads there. `PerSite`: each site keeps its own library. An instance with several sites that each have assets sets `PerSite`. |
 | `Local:Root` | `App_Data/media` | The directory of the local storage, under the content root unless it is absolute. The startup report lists `media-local-storage` in Production. |
 | `MaxRequestBodySize` | `268435456` | The largest upload request, in bytes. |
 | `RequireSignedUrls` | `true` | `false` serves unsigned transform URLs. The startup report lists `media-unsigned-urls` while it is off in Production. |

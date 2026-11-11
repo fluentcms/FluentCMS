@@ -27,4 +27,15 @@
     <ProjectReference Include="../../src/FluentCMS.Data.SqlServer/FluentCMS.Data.SqlServer.csproj" />
   </ItemGroup>
 
+  <!-- The first-party plugins that have a migration stream, which PluginStreamTests applies on the provider of the run. A
+       plugin that gets a stream is referenced here and listed in that test. Discovery is off, so that the other tests of
+       the project, which start hosts of their own, do not load the plugins. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.MultiSite/FluentCMS.Plugins.MultiSite.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Webhooks/FluentCMS.Plugins.Webhooks.csproj" />
+    <RuntimeHostConfigurationOption Include="FluentCMS.Plugins.DisableDiscovery" Value="true" />
+  </ItemGroup>
+
 </Project>

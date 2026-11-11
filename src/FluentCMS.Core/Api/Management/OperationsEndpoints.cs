@@ -10,6 +10,7 @@ using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Jobs;
+using FluentCMS.Core.Sites;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Settings;
@@ -24,7 +25,7 @@ namespace FluentCMS.Core.Api.Management;
 // The jobs, events, activity and me groups of spec 4.10. Jobs and the failed deliveries of the outbox need jobs.manage for the
 // instance; the activity log needs activity.read
 // in the site of the request, and shows the rows of no site only to a reader of the instance; /me is the caller itself,
-// /me/two-factor its second factor and /me/logins its external logins.
+// /me/sites the sites it holds a grant in, /me/two-factor its second factor and /me/logins its external logins.
 internal static class OperationsEndpoints
 {
     public static IServiceCollection AddManagementOperationsApi(this IServiceCollection services) =>
@@ -72,6 +73,7 @@ internal static class OperationsEndpoints
 
         var me = management.MapGroup("/me").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
         me.MapGet("", MeAsync).Produces<MeResponse>();
+        me.MapGet("/sites", MySitesAsync).Produces<ItemList<MySiteInfo>>();
         me.MapGet("/sessions", MySessionsAsync).Produces<ItemList<UserSession>>();
         me.MapDelete("/sessions/{sessionId}", RevokeMySessionAsync).Produces(StatusCodes.Status204NoContent);
         me.MapGet("/two-factor", TwoFactorAsync).Produces<TwoFactorStatus>();
@@ -179,6 +181,12 @@ internal static class OperationsEndpoints
         return me.User is { } user
             ? AdminJson.Ok(MeResponse.From(me, user))
             : AdminJson.Ok(new PrincipalResponse(me.Id, me.Kind, me.Name));
+    }
+
+    private static async Task<IResult> MySitesAsync(HttpContext httpContext, [FromServices] SiteManager sites)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        return AdminJson.Items(await sites.MineAsync(httpContext.RequestAborted));
     }
 
     private static async Task<IResult> MySessionsAsync(HttpContext httpContext, [FromServices] CurrentUser current)
