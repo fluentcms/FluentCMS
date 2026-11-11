@@ -16,6 +16,7 @@
     <InternalsVisibleTo Include="FluentCMS.Plugins.GraphQL.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Plugins.Mcp.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Plugins.MultiSite.Tests" />
+    <InternalsVisibleTo Include="FluentCMS.Plugins.AiAssist.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Host.Tests" />
   </ItemGroup>
 

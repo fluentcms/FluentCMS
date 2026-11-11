@@ -31,6 +31,7 @@
        plugin that gets a stream is referenced here and listed in that test. Discovery is off, so that the other tests of
        the project, which start hosts of their own, do not load the plugins. -->
   <ItemGroup>
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.AiAssist/FluentCMS.Plugins.AiAssist.csproj" />
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj" />
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.MultiSite/FluentCMS.Plugins.MultiSite.csproj" />
