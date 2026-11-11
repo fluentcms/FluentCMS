@@ -1,11 +1,15 @@
 using System.ClientModel;
 using System.ClientModel.Primitives;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Anthropic;
+using FluentCMS.Settings;
 using FluentCMS.Sites;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OllamaSharp;
@@ -18,23 +22,24 @@ namespace FluentCMS.Plugins.AiAssist;
 // package and Ollama through OllamaSharp. An endpoint that a site names is used only when it is one of
 // FluentCms:Ai:AllowedEndpoints, and no redirect is followed, so that an allowed endpoint cannot lead the server elsewhere.
 // A call is one request: the retries of the provider packages are off, so that a call is paid for and logged once.
-internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguration configuration, ILogger<AiClientFactory> logger) : IAiClientFactory, IDisposable
+internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguration configuration, IServiceScopeFactory scopes, ILogger<AiClientFactory> logger) : IAiClientFactory, IDisposable
 {
     public static readonly Uri OpenAiEndpoint = new("https://api.openai.com/v1");
     public static readonly Uri AnthropicEndpoint = new("https://api.anthropic.com");
 
-    private readonly SocketsHttpHandler _handler = new() { AllowAutoRedirect = false, PooledConnectionLifetime = TimeSpan.FromMinutes(5) };
+    // Shared by the sites, so it keeps no cookie a provider sets.
+    private readonly SocketsHttpHandler _handler = new() { AllowAutoRedirect = false, UseCookies = false, PooledConnectionLifetime = TimeSpan.FromMinutes(5) };
 
     public static string NameOf(AiProvider provider) => JsonNamingPolicy.CamelCase.ConvertName(provider.ToString());
 
-    public ValueTask<AiClient?> CreateAsync(SiteId site, AiSettings settings, CancellationToken cancellationToken = default)
+    public async ValueTask<AiClient?> CreateAsync(SiteId site, AiSettings settings, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
         var provider = settings.Provider;
         if (provider == AiProvider.None)
         {
-            return ValueTask.FromResult<AiClient?>(null);
+            return null;
         }
 
         if (!Enum.IsDefined(provider))
@@ -63,6 +68,10 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
                     : $"hold an API key, and {AiOptions.Section}:{provider}:ApiKey holds none");
             }
         }
+        else if (await IsInheritedForElsewhereAsync(settings, endpoint, cancellationToken))
+        {
+            throw NotConfigured("hold an API key of the site's own: the key it took from the instance defaults is used with the provider and the endpoint of the defaults only");
+        }
 
         var timeout = TimeSpan.FromSeconds(settings.RequestTimeout);
         var client = provider switch
@@ -71,12 +80,33 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
             AiProvider.Ollama => OllamaClient(endpoint!, key, model),
             _ => OpenAiClient(endpoint ?? OpenAiEndpoint, key!, model, timeout),
         };
-        return ValueTask.FromResult<AiClient?>(new AiClient(client, NameOf(provider), model));
+        return new AiClient(client, NameOf(provider), model);
     }
 
     public void Dispose() => _handler.Dispose();
 
-    // The allow-list is read at every call, so an endpoint saved before it left the list is refused too.
+    // A site that saves its settings without a key keeps the key it was shown as set, which for a site with no settings of
+    // its own yet is the one of the instance defaults (spec 4.13, "Settings as built"). That key is the operator's, for the
+    // provider and the endpoint the defaults name, so a site that names another provider or endpoint does not send it there.
+    private async ValueTask<bool> IsInheritedForElsewhereAsync(AiSettings settings, Uri? endpoint, CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var defaults = await scope.ServiceProvider.GetRequiredService<ISettings<AiSettings>>().GetDefaultAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(defaults.ApiKey)
+            || !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(defaults.ApiKey), Encoding.UTF8.GetBytes(settings.ApiKey!)))
+        {
+            return false;
+        }
+
+        var theirs = AiProviderEndpoints.Parse(defaults.Endpoint);
+        var sameEndpoint = theirs is null || endpoint is null
+            ? theirs is null && endpoint is null
+            : AiProviderEndpoints.Canonical(theirs) == AiProviderEndpoints.Canonical(endpoint);
+        return defaults.Provider != settings.Provider || !sameEndpoint;
+    }
+
+    // Against the list the host started with: a call is checked, not only a save, so an endpoint that was saved while it
+    // was on the list is refused once the host runs with a list that no longer holds it.
     private Uri? EndpointOf(SiteId site, AiSettings settings)
     {
         if (string.IsNullOrWhiteSpace(settings.Endpoint))

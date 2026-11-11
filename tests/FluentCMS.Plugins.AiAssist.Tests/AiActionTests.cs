@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
 using Microsoft.Extensions.AI;
@@ -116,6 +117,42 @@ public sealed class AiActionTests : IClassFixture<AiHost>
         // A refusal asks no provider and writes no usage row.
         _ai.Chat.Calls.ShouldHaveSingleItem();
         (await _ai.UsageAsync(site)).ShouldHaveSingleItem().Field.ShouldBe("title");
+    }
+
+    // A grant may be limited to locales, so the right is asked in the locale the body names, which the draft is read in,
+    // and not in the locale of the request.
+    [Fact]
+    public async Task TheRightToUpdateIsAskedInTheLocaleTheSuggestionIsFor()
+    {
+        var site = await _ai.SiteAsync(null, "fr");
+        using var admin = await _ai.AdminAsync(site);
+        var entry = await ArticleAsync(admin, new { title = "Ships", summary = "The English summary." });
+        using var french = new HttpRequestMessage(HttpMethod.Put, new Uri($"/api/management/v1/content/article/{entry:D}?locale=fr", UriKind.Relative))
+        {
+            Content = JsonContent.Create(new { title = "Navires", summary = "Le sommaire en langue seconde." }),
+        };
+        french.Headers.IfMatch.Add(new EntityTagHeaderValue("\"0\""));
+        using var added = await admin.SendAsync(french, Token);
+        added.StatusCode.ShouldBe(HttpStatusCode.OK, await added.Content.ReadAsStringAsync(Token));
+        using var editor = await _ai.CallerAsync(
+            site,
+            (AiPermissions.Use, null),
+            ("content.article.read", null),
+            ("content.article.update", new PermissionConstraints { Locales = ["fr"] }));
+
+        // The request is in the default locale, en, each time but the last.
+        var inItsLocale = await SuggestAsync(editor, "shorten", new { type = "article", field = "summary", locale = "fr", documentId = entry });
+        using var inTheDefault = await ActAsync(editor, "shorten", new { type = "article", field = "summary", documentId = entry });
+        using var named = await ActAsync(editor, "shorten", new { type = "article", field = "summary", locale = "en", documentId = entry });
+        using var namedUnderItsOwn = await ActAsync(editor, "shorten?locale=fr", new { type = "article", field = "summary", locale = "en", documentId = entry });
+        using var withText = await ActAsync(editor, "shorten", new { type = "article", field = "summary", text = "A text of the caller's own." });
+
+        inItsLocale["suggestion"]!.GetValue<string>().ShouldBe("A suggestion.");
+        Text(_ai.Chat.Calls.ShouldHaveSingleItem().Messages[1]).ShouldBe("Le sommaire en langue seconde.");
+        (await RefusedAsync(inTheDefault, HttpStatusCode.Forbidden)).ShouldBe("FCMS3103");
+        (await RefusedAsync(named, HttpStatusCode.Forbidden)).ShouldBe("FCMS3103");
+        (await RefusedAsync(namedUnderItsOwn, HttpStatusCode.Forbidden)).ShouldBe("FCMS3103");
+        (await RefusedAsync(withText, HttpStatusCode.Forbidden)).ShouldBe("FCMS3103");
     }
 
     [Fact]

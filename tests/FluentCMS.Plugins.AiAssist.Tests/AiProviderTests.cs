@@ -1,4 +1,6 @@
 using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using Shouldly;
 using Xunit;
@@ -11,6 +13,8 @@ namespace FluentCMS.Plugins.AiAssist.Tests;
 public sealed class AiProviderTests : IAsyncLifetime
 {
     private const string Marker = "ships-that-must-not-be-logged";
+
+    private static readonly string[] SummaryOnly = ["summary"];
 
     private StubProvider _first = null!;
     private StubProvider _second = null!;
@@ -194,6 +198,52 @@ public sealed class AiProviderTests : IAsyncLifetime
         (await _ai.UsageAsync(site)).ShouldHaveSingleItem().Succeeded.ShouldBeFalse();
     }
 
+    // A site's first save without a key takes the key of the instance defaults with it, since a form never shows a secret
+    // and must not wipe it (spec 4.13). A site administrator who then names another endpoint does not get that key sent
+    // there: it stays with the provider and the endpoint of the defaults.
+    [Fact]
+    public async Task AKeyASiteTookFromTheInstanceDefaultsIsNeverSentToAnEndpointTheSiteNames()
+    {
+        await _ai.SetDefaultsAsync(new AiSettings
+        {
+            Provider = AiProvider.OpenAiCompatible,
+            Model = "model-of-the-instance",
+            Endpoint = _first.Url("v1"),
+            ApiKey = "key-of-the-instance",
+            Fields = { ["article"] = ["summary"] },
+        });
+        using var inheriting = await _ai.AdminAsync(await _ai.BareSiteAsync());
+        using var sameEndpoint = await _ai.AdminAsync(await _ai.BareSiteAsync());
+        var movedSite = await _ai.BareSiteAsync();
+        using var moved = await _ai.AdminAsync(movedSite);
+        using var owning = await _ai.AdminAsync(await _ai.BareSiteAsync());
+        var fields = new { article = SummaryOnly };
+        var body = new { type = "article", field = "summary", text = "Ships are big boats." };
+
+        // None of the first three sends a key; the last brings its own.
+        await SaveAsync(sameEndpoint, new { provider = "openAiCompatible", model = "model-of-the-site", endpoint = _first.Url("v1"), fields });
+        var saved = await SaveAsync(moved, new { provider = "ollama", model = "model-of-the-site", endpoint = _second.Url(), fields });
+        await SaveAsync(owning, new { provider = "ollama", model = "model-of-the-site", endpoint = _second.Url(), apiKey = "key-of-the-site", fields });
+
+        var followed = await SuggestAsync(inheriting, "rewrite", body);
+        var kept = await SuggestAsync(sameEndpoint, "rewrite", body);
+        using var refused = await ActAsync(moved, "rewrite", body);
+        var problem = await JsonAsync(refused, HttpStatusCode.Conflict);
+        var own = await SuggestAsync(owning, "rewrite", body);
+
+        // The site did take the key with it, which is what makes the refusal necessary.
+        saved["secretsSet"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldContain("apiKey");
+        problem["code"]!.GetValue<string>().ShouldBe("FCMS1685");
+        problem.ToJsonString().ShouldNotContain("key-of-the-instance");
+        followed["usage"]!["model"]!.GetValue<string>().ShouldBe("model-of-the-instance");
+        kept["usage"]!["model"]!.GetValue<string>().ShouldBe("model-of-the-site");
+        own["usage"]!["provider"]!.GetValue<string>().ShouldBe("ollama");
+        _first.Requests.Select(request => request.Headers["Authorization"]).ShouldBe(["Bearer key-of-the-instance", "Bearer key-of-the-instance"]);
+        _second.Requests.ShouldHaveSingleItem().Headers["Authorization"].ShouldBe("Bearer key-of-the-site");
+        (await _ai.UsageAsync(movedSite)).ShouldBeEmpty();
+        _ai.Logs.Lines.ShouldNotContain(line => line.Contains("key-of-the-instance", StringComparison.Ordinal));
+    }
+
     // The slot keeps the plugin's default until a host fills it.
     [Fact]
     public async Task TheStartupReportListsTheDefaultOfTheSlotWithThePlugin()
@@ -206,6 +256,20 @@ public sealed class AiProviderTests : IAsyncLifetime
         slot["implementation"]!.GetValue<string>().ShouldBe(typeof(AiClientFactory).FullName);
         slot["source"]!.GetValue<string>().ShouldBe("default");
         slot["plugin"]!.GetValue<string>().ShouldBe("ai");
+    }
+
+    // The settings of the site of the client, saved through the Management API as its administrator saves them, and read
+    // back as the API shows them.
+    private static async Task<JsonNode> SaveAsync(HttpClient admin, object document)
+    {
+        var path = new Uri("/api/management/v1/settings/ai", UriKind.Relative);
+        using var read = await admin.GetAsync(path, Token);
+        using var write = new HttpRequestMessage(HttpMethod.Put, path) { Content = JsonContent.Create(document) };
+        write.Headers.IfMatch.Add(new EntityTagHeaderValue($"\"{(await JsonAsync(read))["version"]!.GetValue<long>()}\""));
+        using var written = await admin.SendAsync(write, Token);
+        await JsonAsync(written);
+        using var after = await admin.GetAsync(path, Token);
+        return await JsonAsync(after);
     }
 
     private static void Use(AiSettings settings, AiProvider provider, string? model, string? endpoint = null, string? key = null) =>

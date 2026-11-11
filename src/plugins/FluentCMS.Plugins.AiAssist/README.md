@@ -34,9 +34,11 @@ The options are in `FluentCms:Ai`:
 | `MaxInputLength` | `20000` | The most characters of text an action takes. |
 | `UsageRetention` | `90.00:00:00` | How long the usage log keeps a row. |
 
-The allow-list is a security control. A site administrator who could name any endpoint could make the server call an address inside the network, so an endpoint is used only when it is on the list: the same scheme, host, port and path, whatever the case of the host and with or without a slash at the end. The list is read at every call, redirects are not followed, and a refusal is `FCMS1684`.
+The allow-list is a security control. A site administrator who could name any endpoint could make the server call an address inside the network, so an endpoint is used only when it is on the list: the same scheme, host, port and path, whatever the case of the host and with or without a slash at the end. The list is read when the host starts, so a change to it applies after a restart. An endpoint is checked against it at every call and not only when the settings are saved, so an endpoint that was saved while it was on the list is refused once the host runs with a list that no longer holds it. Redirects are not followed, and a refusal is `FCMS1684`.
 
 The key of the configuration for `OpenAi` or `Anthropic` is the operator's account with that provider, so it is sent to the provider's own endpoint only. A site that names another endpoint for one of them holds its own key. The key of the configuration for `AzureOpenAi`, `OpenAiCompatible` or `Ollama` goes to whichever allowed endpoint a site names for that provider, so give each site its own key when the list holds endpoints of more than one party.
+
+A key in the instance defaults of the settings is the operator's as well. A site with no settings of its own follows the defaults whole. When such a site first saves its settings without a key, it keeps the key of the defaults, because a secret that is not sent is kept, as for every settings area. The plugin sends that key only to the provider and the endpoint the defaults name: a site that names another provider or endpoint sets a key of its own, and is refused with `FCMS1685` until it does. An inherited key is told by comparing it with the key the defaults hold now. So a key that is replaced in the defaults is also revoked at the provider: a site that saved its settings before holds a copy of the old one, which from then on counts as its own.
 
 ## Actions
 
@@ -54,7 +56,7 @@ The key of the configuration for `OpenAi` or `Anthropic` is the operator's accou
 
 - `type` and `field` name the field the suggestion is for.
 - `text` is the text to work on. `documentId` in its place names an entry, and the plugin reads that field of its draft, as the caller.
-- `locale` is the locale of the draft, an enabled locale of the site; left out, it is the locale of the request.
+- `locale` is the locale the suggestion is for, an enabled locale of the site: the draft is read in it and the right to update is asked in it. Left out, it is the locale of the request.
 - `translate` takes `options.targetLocale`, an enabled locale of the site.
 - `altText` takes `options.mediaId`, an image of the media library, and needs no text. The plugin sends a copy of the image that fits 1024 by 1024 pixels and carries no metadata, read through the media service as the caller.
 
@@ -92,7 +94,7 @@ The checks run in this order:
 
 1. the permission `ai.use` in the site;
 2. the type and field opted in under `fields` (`FCMS1683`);
-3. the caller's right to update that field of the type, since a suggestion is for a field the caller edits (`FCMS3103`).
+3. the caller's right to update that field of the type in the locale of the suggestion, since a suggestion is for a field the caller edits (`FCMS3103`). A grant limited to locales gives suggestions for those locales only.
 
 With `documentId` the content service decides whether the caller may read the draft, and with `mediaId` the media service whether it may read the image.
 

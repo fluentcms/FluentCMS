@@ -49,15 +49,15 @@ internal static class AiEndpoints
 
         // Tells a proxy such as nginx to pass each event on as it is written.
         http.Response.Headers["X-Accel-Buffering"] = "no";
+        AiActionResult result;
         try
         {
-            var result = await ai.RunAsync(call, (text, token) => WriteAsync(http.Response, "delta", new AiDelta(text), serializer, token), cancellationToken);
-            await WriteAsync(http.Response, "done", result, serializer, cancellationToken);
+            result = await ai.RunAsync(call, (text, token) => WriteAsync(http.Response, "delta", new AiDelta(text), serializer, token), cancellationToken);
         }
         catch (Exception exception)
         {
-            // A caller that went away reads no event.
-            if (cancellationToken.IsCancellationRequested)
+            // A caller that went away reads no event: the call was cancelled, whether or not the request says so yet.
+            if (exception is OperationCanceledException || cancellationToken.IsCancellationRequested)
             {
                 return Results.Empty;
             }
@@ -70,10 +70,25 @@ internal static class AiEndpoints
                 AiLog.StreamFailed(loggers.CreateLogger(typeof(AiEndpoints)), action, exception.GetType().Name, problem.Code);
             }
 
-            await WriteAsync(http.Response, "error", new AiStreamProblem($"urn:fluentcms:error:{problem.Code}", problem.Title, problem.Status, problem.Detail, problem.Code), serializer, cancellationToken);
+            await EndAsync(http.Response, "error", new AiStreamProblem($"urn:fluentcms:error:{problem.Code}", problem.Title, problem.Status, problem.Detail, problem.Code), serializer, cancellationToken);
+            return Results.Empty;
         }
 
+        await EndAsync(http.Response, "done", result, serializer, cancellationToken);
         return Results.Empty;
+    }
+
+    // The last event of a stream. The call has ended and its usage is written, so a caller that went away before it
+    // could read the event changes nothing, and is not a failure of the server.
+    private static async ValueTask EndAsync<T>(HttpResponse response, string name, T data, JsonSerializerOptions serializer, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await WriteAsync(response, name, data, serializer, cancellationToken);
+        }
+        catch (Exception exception) when (exception is OperationCanceledException or IOException)
+        {
+        }
     }
 
     // JSON has no line break outside its strings, where it is escaped, so an event is one data line.

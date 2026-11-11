@@ -71,6 +71,11 @@ internal sealed partial class AiUsageService(
         var to = Parse<DateTimeOffset>(query.To, "to", "a date and time with an offset, such as 2026-11-01T00:00:00Z", TryParseTime, errors);
         var page = Parse<int>(query.Page, "page", "a number from 1", (string text, out int value) => int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out value) && value >= 1, errors) ?? 1;
         var pageSize = Parse<int>(query.PageSize, "pageSize", $"a number from 1 to {MaxPageSize}", (string text, out int value) => int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out value) && value is >= 1 and <= MaxPageSize, errors) ?? DefaultPageSize;
+        if ((long)(page - 1) * pageSize > int.MaxValue)
+        {
+            errors.Add(new ValidationError("page", AiErrorCodes.InvalidRequest, "The page is past any list."));
+        }
+
         var action = string.IsNullOrWhiteSpace(query.Action) ? null : query.Action.Trim();
         if (action is not null && !AiActions.IsKnown(action))
         {

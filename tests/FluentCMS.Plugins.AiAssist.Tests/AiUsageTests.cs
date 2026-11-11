@@ -161,7 +161,7 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
         // The caller who may run actions may not read the log, and a parameter that cannot be read is refused.
         using var refused = await editor.GetAsync(new Uri(Usage, UriKind.Relative), Token);
         refused.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        foreach (var query in new[] { "?principalId=someone", "?action=paraphrase", "?from=2026-11-01T00:00:00", "?to=yesterday", "?page=0", "?pageSize=101" })
+        foreach (var query in new[] { "?principalId=someone", "?action=paraphrase", "?from=2026-11-01T00:00:00", "?to=yesterday", "?page=0", "?pageSize=101", "?page=2147483647", "?page=42949674&pageSize=100" })
         {
             using var invalid = await auditor.GetAsync(new Uri(Usage + query, UriKind.Relative), Token);
             (await RefusedAsync(invalid, HttpStatusCode.UnprocessableEntity)).ShouldBe("FCMS1680", query);

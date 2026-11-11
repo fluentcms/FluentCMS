@@ -103,14 +103,21 @@ internal sealed class AiAssistService(
             throw new PluginException(AiErrorCodes.FieldNotOptedIn, "The AI settings of the site do not opt this field in. A field that takes AI actions is a text, long text or rich text field of a content type, named under 'fields'.");
         }
 
-        var held = await access.ContentAsync(cancellationToken);
+        // The locale comes before the right to update, because a grant may be limited to locales: the right is asked in
+        // the locale the suggestion is for, which is also the one the draft is read in.
+        List<ValidationError> errors = [];
+        var locale = await LocaleAsync(site, request.Locale, operation.Locale, "locale", errors, cancellationToken);
+        if (locale is null)
+        {
+            throw new ValidationException(errors);
+        }
+
+        var held = await AccessInAsync(operation, type.Localized ? locale : operation.Locale, cancellationToken);
         if (!held.Types.TryGetValue(type.Name, out var typeAccess) || !typeAccess.Update || !typeAccess.UpdatableFields.Contains(field.Name))
         {
             throw new ContentAccessDeniedException(type.Name, "update");
         }
 
-        List<ValidationError> errors = [];
-        var locale = await LocaleAsync(site, request.Locale, operation.Locale, "locale", errors, cancellationToken);
         string? targetLocale = null;
         if (action == AiActions.Translate)
         {
@@ -141,7 +148,7 @@ internal sealed class AiAssistService(
         }
 
         var richText = field.FieldType == RichTextFieldType;
-        var text = request.DocumentId is { } id ? await ReadFieldAsync(type, field, id, locale!, richText, cancellationToken) : request.Text;
+        var text = request.DocumentId is { } id ? await ReadFieldAsync(type, field, id, locale, richText, cancellationToken) : request.Text;
         if (action != AiActions.AltText && string.IsNullOrWhiteSpace(text))
         {
             throw new ValidationException([Invalid("documentId", "The field of the draft holds no text.")]);
@@ -184,7 +191,7 @@ internal sealed class AiAssistService(
             field.Name,
             client,
             [
-                new ChatMessage(ChatRole.System, AiActions.Instructions(action, type.Name, field.Name, richText, field.MaxLength, locale!, targetLocale)),
+                new ChatMessage(ChatRole.System, AiActions.Instructions(action, type.Name, field.Name, richText, field.MaxLength, locale, targetLocale)),
                 new ChatMessage(ChatRole.User, message),
             ],
             new ChatOptions { MaxOutputTokens = current.MaxOutputTokens },
@@ -289,6 +296,26 @@ internal sealed class AiAssistService(
 
     private static ValidationError Invalid(string path, string message) => new(path, AiErrorCodes.InvalidRequest, message);
 
+    // What the caller may do with content in a locale. IEffectiveAccess answers for the operation, so the question is
+    // asked inside the caller's own operation with that locale, which is put back at once.
+    private async ValueTask<ContentAccess> AccessInAsync(OperationContext operation, string locale, CancellationToken cancellationToken)
+    {
+        if (locale == operation.Locale)
+        {
+            return await access.ContentAsync(cancellationToken);
+        }
+
+        operations.Current = operation with { Locale = locale };
+        try
+        {
+            return await access.ContentAsync(cancellationToken);
+        }
+        finally
+        {
+            operations.Current = operation;
+        }
+    }
+
     // A locale the body names is one the site lists, as the locale resolver reads it. Null when it was refused.
     private async Task<string?> LocaleAsync(SiteId site, string? named, string? fallback, string path, List<ValidationError> errors, CancellationToken cancellationToken)
     {
@@ -361,13 +388,15 @@ internal sealed class AiAssistService(
         }
     }
 
+    // A piece that cannot be written means the caller went away, whatever the write throws, a cancellation of its own
+    // included; only the end of the call itself, its timeout or the request's cancellation, is let through as it is.
     private static async ValueTask SendAsync(Func<string, CancellationToken, ValueTask> onDelta, string delta, CancellationToken cancellationToken)
     {
         try
         {
             await onDelta(delta, cancellationToken);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
             throw new CallerGoneException(exception);
         }

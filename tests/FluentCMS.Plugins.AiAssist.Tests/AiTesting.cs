@@ -78,21 +78,32 @@ public sealed class AiHost : IAsyncDisposable
     // an article, changed as the test asks.
     public async Task<Guid> SiteAsync(Action<AiSettings>? change = null, params string[] locales)
     {
-        Guid site;
-        await using (var scope = Services.CreateAsyncScope())
-        {
-            var sites = scope.ServiceProvider.GetRequiredService<SiteManager>();
-            site = (await sites.CreateAsync("Docs", $"docs-{Guid.NewGuid():N}", "en", Token)).Id;
-            foreach (var locale in locales)
-            {
-                await sites.EnsureLocaleAsync(site, locale, Token);
-            }
-        }
-
+        var site = await BareSiteAsync(locales);
         var settings = new AiSettings { Provider = AiProvider.OpenAi, Model = "test-model", Fields = { ["article"] = ["title", "summary", "body"] } };
         change?.Invoke(settings);
         await SetSettingsAsync(site, settings);
         return site;
+    }
+
+    // A site with no settings of its own, which follows the instance defaults.
+    public async Task<Guid> BareSiteAsync(params string[] locales)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var sites = scope.ServiceProvider.GetRequiredService<SiteManager>();
+        var site = (await sites.CreateAsync("Docs", $"docs-{Guid.NewGuid():N}", "en", Token)).Id;
+        foreach (var locale in locales)
+        {
+            await sites.EnsureLocaleAsync(site, locale, Token);
+        }
+
+        return site;
+    }
+
+    public async Task SetDefaultsAsync(AiSettings settings)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+        await scope.ServiceProvider.GetRequiredService<ISettings<AiSettings>>().SetDefaultAsync(settings, Token);
     }
 
     // As the host's own code, which a settings write takes as allowed.

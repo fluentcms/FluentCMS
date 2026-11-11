@@ -1,4 +1,8 @@
 using System.Net;
+using FluentCMS.Content;
+using FluentCMS.Sites;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Plugins.AiAssist.Tests.AiTesting;
@@ -81,6 +85,33 @@ public sealed class AiStreamTests : IClassFixture<AiHost>
         problem["type"]!.GetValue<string>().ShouldBe("urn:fluentcms:error:FCMS1689");
         problem["detail"]!.GetValue<string>().ShouldNotContain("broke");
         (await _ai.UsageAsync(site)).ShouldHaveSingleItem().Succeeded.ShouldBeFalse();
+    }
+
+    // A write to a connection that is gone may fail with a cancellation of its own, before the request says it was
+    // aborted. That is the caller going away: the call is cancelled, not a failure of the provider.
+    [Fact]
+    public async Task APieceThatCannotBeWrittenEndsTheCallAsCancelledWhateverTheWriteThrows()
+    {
+        var site = Guid.CreateVersion7();
+        await using var scope = _ai.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider.GetRequiredService<AiAssistService>();
+        var call = new AiCall(
+            "rewrite",
+            new SiteId(site),
+            new Principal(PrincipalKind.AdminUser, Guid.CreateVersion7(), "editor"),
+            "article",
+            "summary",
+            new AiClient(_ai.Chat, ScriptedFactory.Provider, "test-model"),
+            [new ChatMessage(ChatRole.User, "Ships are big boats.")],
+            new ChatOptions(),
+            TimeSpan.FromSeconds(30));
+
+        await Should.ThrowAsync<OperationCanceledException>(() => service.RunAsync(call, (_, _) => throw new OperationCanceledException("The connection was aborted."), Token));
+        await Should.ThrowAsync<OperationCanceledException>(() => service.RunAsync(call, (_, _) => throw new IOException("The connection was reset."), Token));
+
+        (await _ai.UsageAsync(site)).Select(usage => usage.Succeeded).ShouldBe([false, false]);
+        _ai.Logs.Of(9360).Count(line => line.Contains(site.ToString(), StringComparison.Ordinal) && line.Contains("cancelled", StringComparison.Ordinal)).ShouldBe(2);
+        _ai.Logs.Of(9361).ShouldNotContain(line => line.Contains(site.ToString(), StringComparison.Ordinal));
     }
 
     // Nothing was sent to a provider, so there is no stream to end: the answer is the problem itself.
