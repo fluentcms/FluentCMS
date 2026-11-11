@@ -618,9 +618,9 @@ internal sealed class MediaService(
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        var site = Operation().Site;
-        var reach = await ReachAsync(MediaPermissions.Read, site, cancellationToken);
-        var asset = await FindAssetAsync(site, id, reach, tracked: false, cancellationToken);
+        var (site, library) = await ScopeAsync(Operation(), cancellationToken);
+        var reach = await ReachAsync(MediaPermissions.Read, site, library, cancellationToken);
+        var asset = await FindAssetAsync(library, id, reach, tracked: false, cancellationToken);
         List<ValidationError> errors = [];
         ImageQuery.Check(errors, options, asQuery: false, allowPreset: false);
         if (errors.Count > 0)

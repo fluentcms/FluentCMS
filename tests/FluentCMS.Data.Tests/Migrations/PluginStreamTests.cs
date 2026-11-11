@@ -5,6 +5,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Data.Tests.Jobs;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Plugins;
+using FluentCMS.Plugins.AiAssist;
 using FluentCMS.Plugins.Mcp;
 using FluentCMS.Plugins.Media;
 using FluentCMS.Plugins.MultiSite;
@@ -31,6 +32,7 @@ public sealed class PluginStreamTests : IDisposable
         PluginStream.Of<WebhooksPlugin>(),
         PluginStream.Of<McpPlugin>(),
         PluginStream.Of<MultiSitePlugin>(),
+        PluginStream.Of<AiAssistPlugin>(),
     ];
 
     private readonly TestDatabase _database = TestDatabase.Create();

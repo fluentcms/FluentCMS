@@ -3,10 +3,16 @@ using System.Net.Http.Json;
 using System.Text;
 using FluentCMS.Authorization;
 using FluentCMS.Content;
+using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Storage;
 using FluentCMS.Media;
+using FluentCMS.Sites;
 using FluentCMS.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
+using Role = FluentCMS.Core.Storage.Entities.Role;
+using RoleGrant = FluentCMS.Core.Storage.Entities.RoleGrant;
 using static FluentCMS.Plugins.Media.Tests.MediaHost;
 using static FluentCMS.Plugins.Media.Tests.Transforms;
 
@@ -60,6 +66,48 @@ public sealed class MediaOpenImageTests(TransformHosts hosts) : IClassFixture<Tr
         (await Should.ThrowAsync<PluginException>(() => OpenAsync(reader, document.Id, options))).Code.ShouldBe(MediaErrorCodes.NotTransformable);
         (await Should.ThrowAsync<PluginException>(() => OpenAsync(reader, asset.Id, new MediaImageOptions { Width = 100_000 }))).Code.ShouldBe(MediaErrorCodes.TransformLimit);
         (await Should.ThrowAsync<ValidationException>(() => OpenAsync(reader, asset.Id, new MediaImageOptions { Preset = "thumb" }))).Errors.ShouldHaveSingleItem().Code.ShouldBe(MediaErrorCodes.InvalidField);
+    }
+
+    // Under the shared library the image is a row of the default site, and media.read is asked in the site of the caller,
+    // with the folders its grant names there.
+    [Fact]
+    public async Task UnderTheSharedLibraryAnotherSiteOpensTheImageWithItsOwnPermissionAndFolderLimits()
+    {
+        var media = hosts.Media;
+        using var admin = await media.AdminAsync();
+        var site = await MediaLibraryTesting.CreateSiteAsync(media);
+        var open = await FolderAsync(admin, Unique("open"));
+        var closed = await FolderAsync(admin, Unique("closed"));
+        var reachable = Id((await UploadedAsync(admin, open, ("a.png", Bands(40, 20)))).Single()!);
+        var hidden = Id((await UploadedAsync(admin, closed, ("b.png", Bands(40, 20)))).Single()!);
+        var role = new Role { Id = Guid.CreateVersion7(), Name = Unique("reader") };
+        await using (var scope = media.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            context.Set<Role>().Add(role);
+            context.Set<RoleGrant>().Add(new RoleGrant
+            {
+                Id = Guid.CreateVersion7(),
+                RoleId = role.Id,
+                Permission = "media.read",
+                Constraints = new PermissionConstraints { Sites = [new SiteId(site)], Resources = [open.ToString()] }.ToJson(),
+            });
+            await context.SaveChangesAsync(Token);
+        }
+
+        var reader = media.Host.As(await media.Host.CreateApiKeyAsync(ApiKeyClass.Management, role.Name, cancellationToken: Token));
+        var options = new MediaImageOptions { Width = 10 };
+
+        var (type, bytes) = await OpenAsync(reader.In(new SiteId(site)), reachable, options);
+
+        type.ShouldBe("image/png");
+        using (var image = Decode(bytes))
+        {
+            (image.Width, image.Height).ShouldBe((10, 5));
+        }
+
+        (await Should.ThrowAsync<PluginException>(() => OpenAsync(reader.In(new SiteId(site)), hidden, options))).Code.ShouldBe(MediaErrorCodes.AssetNotFound);
+        await Should.ThrowAsync<PermissionDeniedException>(() => OpenAsync(reader, reachable, options));
     }
 
     // A caller in this process whose role holds the permission alone.
