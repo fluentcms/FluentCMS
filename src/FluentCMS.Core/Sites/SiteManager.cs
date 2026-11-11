@@ -9,11 +9,13 @@ using FluentCMS.Core.Settings;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Events;
+using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Core.Sites;
 
-internal sealed record SiteInfo(Guid Id, string Name, string Slug, string DefaultLocale, bool IsDefault, DateTimeOffset CreatedAt);
+// A site the caller holds a grant in, as GET /me/sites answers it.
+internal sealed record MySiteInfo(Guid Id, string Name, string Slug, string DefaultLocale, bool IsDefault);
 
 internal sealed record SiteLocaleInfo(string Code, int Position, IReadOnlyList<string>? Fallbacks, bool Enabled);
 
@@ -39,8 +41,9 @@ internal sealed record SiteLocaleChange
 }
 
 // What creating and deleting a site does to the rows around it, and the site and locale changes of the Management API.
-// Those check sites.manage for the site; creating, deleting and EnsureLocaleAsync are the host's and the seeder's. Each write
-// drops what SiteCache keeps, and a change to a site or its locales raises SiteUpdatedEvent after the commit.
+// Those check sites.manage for the site; creating, deleting and EnsureLocaleAsync are the host's and the seeder's, and
+// SiteAdministration is the create and delete that a plugin calls, with their check and their events. Each write drops what
+// SiteCache keeps, and a change to a site or its locales raises SiteUpdatedEvent after the commit.
 internal sealed partial class SiteManager(
     CmsDbContext context,
     TimeProvider time,
@@ -62,9 +65,9 @@ internal sealed partial class SiteManager(
     public async Task<Site> CreateAsync(string name, string slug, string defaultLocale, CancellationToken cancellationToken = default)
     {
         List<ValidationError> errors = [];
-        if (string.IsNullOrWhiteSpace(name))
+        if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > NameLength)
         {
-            errors.Add(new("name", SiteErrorCodes.InvalidSite, "A site needs a name."));
+            errors.Add(new("name", SiteErrorCodes.InvalidSite, $"A site has a name of 1 to {NameLength} characters."));
         }
 
         if (slug.Length > SlugLength || !SlugPattern().IsMatch(slug))
@@ -157,7 +160,7 @@ internal sealed partial class SiteManager(
 
     // The foreign keys delete the site's locales, its roles with their grants, its settings and its plugin rows. A site with documents stays, because
     // they would be left in a site that no longer exists; trashed ones count, since restoring one needs its site.
-    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Site> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var site = await context.Set<Site>().AsNoTracking().FirstOrDefaultAsync(item => item.Id == id, cancellationToken)
             ?? throw new ValidationException([new ValidationError("site", SiteErrorCodes.SiteNotFound, $"There is no site {id}.")]);
@@ -175,6 +178,7 @@ internal sealed partial class SiteManager(
         await context.Set<Site>().Where(item => item.Id == id).ExecuteDeleteAsync(cancellationToken);
         settings.InvalidateSite(id);
         sites.Invalidate();
+        return site;
     }
 
     // The sites the caller manages, the default first.
@@ -198,6 +202,28 @@ internal sealed partial class SiteManager(
 
         return managed;
     }
+
+    // The sites in which the caller holds a grant, the default first: what an admin shows a user to choose from. A user with
+    // roles in two sites reads both without sites.manage in either.
+    public async Task<IReadOnlyList<MySiteInfo>> MineAsync(CancellationToken cancellationToken)
+    {
+        var sites = await context.Set<Site>().AsNoTracking().ToListAsync(cancellationToken);
+
+        List<MySiteInfo> mine = [];
+        foreach (var site in sites.OrderByDescending(item => item.IsDefault).ThenBy(item => item.Slug, StringComparer.Ordinal))
+        {
+            if (await authority.HoldsGrantInAsync(site.Id, cancellationToken))
+            {
+                mine.Add(new MySiteInfo(site.Id, site.Name, site.Slug, site.DefaultLocale, site.IsDefault));
+            }
+        }
+
+        return mine;
+    }
+
+    // Null when there is no such site. The caller checks the permission.
+    public async Task<SiteInfo?> FindInfoAsync(Guid id, CancellationToken cancellationToken) =>
+        await context.Set<Site>().AsNoTracking().FirstOrDefaultAsync(item => item.Id == id, cancellationToken) is { } site ? Info(site) : null;
 
     public async Task<SiteInfo> GetAsync(Guid id, CancellationToken cancellationToken)
     {
@@ -451,7 +477,7 @@ internal sealed partial class SiteManager(
     private ValueTask UpdatedAsync(Site site) =>
         bus.PublishAsync(new SiteUpdatedEvent(site.Id, site.Slug) { Source = SourceOf(site.Id) }, CancellationToken.None);
 
-    private static SiteInfo Info(Site site) => new(site.Id, site.Name, site.Slug, site.DefaultLocale, site.IsDefault, site.CreatedAt);
+    public static SiteInfo Info(Site site) => new(site.Id, site.Name, site.Slug, site.DefaultLocale, site.IsDefault, site.CreatedAt);
 
     private static SiteLocaleInfo Info(SiteLocale row) => new(row.Code, row.Position, Chain(row.Fallbacks), row.Enabled);
 

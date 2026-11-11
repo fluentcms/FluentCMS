@@ -4,6 +4,7 @@ using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Telemetry;
 using FluentCMS.Schema;
+using FluentCMS.Sites;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,7 +17,8 @@ namespace FluentCMS.Core.Api.Delivery;
 // save. The key carries the schema hash, so a store that outlives the process, or that instances on another schema share,
 // never serves a copy made for another schema. Only a 200 is stored, with the tag of its site, and never one that a
 // middleware inside the cache encoded, since the key does not vary on Accept-Encoding. A HEAD is stored apart from its GET,
-// since the key carries the method.
+// since the key carries the method. Beside the host name, which the framework puts in the key, the key carries the site
+// that host name resolves to, so that a host name which moves to another site reads none of the copies it left.
 internal sealed class DeliveryOutputCachePolicy : IOutputCachePolicy
 {
     public const string CacheName = "delivery";
@@ -28,7 +30,7 @@ internal sealed class DeliveryOutputCachePolicy : IOutputCachePolicy
 
     private static readonly object HitItem = new();
 
-    ValueTask IOutputCachePolicy.CacheRequestAsync(OutputCacheContext context, CancellationToken cancellationToken)
+    async ValueTask IOutputCachePolicy.CacheRequestAsync(OutputCacheContext context, CancellationToken cancellationToken)
     {
         var http = context.HttpContext;
         var options = http.RequestServices.GetRequiredService<DeliveryCacheOptions>();
@@ -65,7 +67,15 @@ internal sealed class DeliveryOutputCachePolicy : IOutputCachePolicy
         vary["locale"] = string.Join('\n', request.Headers[RequestBridge.LocaleHeader].ToArray());
         vary["caller"] = caller ?? "";
         vary["schema"] = SchemaSnapshot.Of(http.RequestServices.GetRequiredService<SchemaModel>()).Hash;
-        return ValueTask.CompletedTask;
+
+        // The header, the parameter and a key's binding, which win over the host name, are in the key already.
+        vary["hostSite"] = caller is null ? "" : await HostSiteAsync(http, cancellationToken);
+    }
+
+    private static async ValueTask<string> HostSiteAsync(HttpContext http, CancellationToken cancellationToken)
+    {
+        var site = await http.RequestServices.GetRequiredService<ISiteResolver>().ResolveAsync(new SiteRequest { Host = http.Request.Host.Host }, cancellationToken);
+        return site.Value.ToString("N");
     }
 
     ValueTask IOutputCachePolicy.ServeFromCacheAsync(OutputCacheContext context, CancellationToken cancellationToken)

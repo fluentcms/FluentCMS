@@ -36,6 +36,7 @@ public sealed class MediaPlugin : IPlugin
                 options => options.IsValid(),
                 $"{MediaOptions.Section}: Local:Root must name a directory, MaxRequestBodySize must be positive, SigningKey must be the base64 of at least {MediaSigning.KeyLength} bytes when set, CacheControl a Cache-Control value, and DeletedRetention positive.");
         plugin.Services.AddOptions<DeliveryCacheControl>().BindConfiguration(DeliveryCacheControl.Section);
+        plugin.Services.AddScoped<MediaLibraries>();
         plugin.Services.AddScoped<MediaService>();
         plugin.Services.AddScoped<IMediaService>(services => services.GetRequiredService<MediaService>());
         plugin.Services.AddScoped<IMediaResolver, MediaResolver>();

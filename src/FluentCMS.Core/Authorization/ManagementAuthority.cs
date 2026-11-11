@@ -33,6 +33,13 @@ internal sealed class ManagementAuthority(IAuthorizationEvaluator evaluator, IOp
         }
     }
 
+    // Whether any grant of the caller reaches the site, whatever it permits there.
+    public async ValueTask<bool> HoldsGrantInAsync(Guid site, CancellationToken cancellationToken)
+    {
+        var permissions = await evaluator.ResolveAsync(Operation(), cancellationToken);
+        return permissions.HoldsGrantIn(new SiteId(site));
+    }
+
     // Whether the caller holds every grant given here, as it reaches through its role's site and the binding of a key.
     public async ValueTask<bool> CoversAsync(IEnumerable<(string Pattern, PermissionConstraints Constraints)> grants, Guid? roleSite, PrincipalBinding binding, CancellationToken cancellationToken)
     {

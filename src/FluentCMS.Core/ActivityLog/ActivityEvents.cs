@@ -44,6 +44,7 @@ internal static class ActivityEvents
 
         events.AddActivity<SiteCreatedEvent>("site.created", message => Site("site.created", message.SiteId, message.Slug));
         events.AddActivity<SiteUpdatedEvent>("site.updated", message => Site("site.updated", message.SiteId, message.Slug));
+        events.AddActivity<SiteDeletedEvent>("site.deleted", message => Site("site.deleted", message.SiteId, message.Slug));
 
         events.AddActivity<PluginEnabledEvent>("plugin.enabled", message => Plugin("plugin.enabled", message.Plugin));
         events.AddActivity<PluginDisabledEvent>("plugin.disabled", message => Plugin("plugin.disabled", message.Plugin));

@@ -57,9 +57,10 @@ internal sealed class RequestBridge(ISiteResolver sites, ILocaleResolver locales
         return new ApiRequest(operation, asked);
     }
 
-    // A key bound to one site reads that site. A key bound to several reads the one the request names, or the default
-    // site when it is among them. A named site outside the binding is refused the same way whether it exists or not, so
-    // a bound key cannot learn which sites there are. A header and a parameter that disagree are refused, not ranked.
+    // A key bound to one site reads that site. A key bound to several reads the one the request names, or the site of the
+    // request's host name, which is the default site unless a host resolver names another, when it is among them. A named
+    // site outside the binding is refused the same way whether it exists or not, so a bound key cannot learn which sites
+    // there are. A header and a parameter that disagree are refused, not ranked.
     private async Task<SiteId> SiteAsync(HttpRequest request, Principal principal, CancellationToken cancellationToken)
     {
         var header = Present(request.Headers[SiteHeader].FirstOrDefault());
