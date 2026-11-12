@@ -14,13 +14,14 @@ namespace FluentCMS.Core.Caching;
 // locales changes what fallback reads give, so it evicts the site, and so does a change to a role or its grants, which
 // changes what the site's callers may read: the Public role decides the shared copy, and a key's role its own. A plugin
 // disabled in a site evicts the site too, since a copy of its Delivery group's answer would be served without asking
-// whether the plugin is enabled.
+// whether the plugin is enabled. A deleted site evicts its copies, which would otherwise be served until they expire.
 internal sealed class OutputCacheEviction(IOutputCacheStore store, IEventBus events, SchemaModel schema)
     : IOutboxEventHandler<EntryPublishedEvent>,
       IOutboxEventHandler<EntryUnpublishedEvent>,
       IOutboxEventHandler<EntryTrashedEvent>,
       IOutboxEventHandler<EntryRestoredEvent>,
       IOutboxEventHandler<SiteUpdatedEvent>,
+      IOutboxEventHandler<SiteDeletedEvent>,
       IOutboxEventHandler<RolePermissionsChangedEvent>,
       IOutboxEventHandler<PluginDisabledEvent>
 {
@@ -31,10 +32,14 @@ internal sealed class OutputCacheEviction(IOutputCacheStore store, IEventBus eve
             .AddOutboxHandler<EntryTrashedEvent, OutputCacheEviction>("cache.content.trashed", active)
             .AddOutboxHandler<EntryRestoredEvent, OutputCacheEviction>("cache.content.restored", active)
             .AddOutboxHandler<SiteUpdatedEvent, OutputCacheEviction>("cache.site.updated", active)
+            .AddOutboxHandler<SiteDeletedEvent, OutputCacheEviction>("cache.site.deleted", active)
             .AddOutboxHandler<RolePermissionsChangedEvent, OutputCacheEviction>("cache.role.changed", active)
             .AddOutboxHandler<PluginDisabledEvent, OutputCacheEviction>("cache.plugin.disabled", active);
 
     public ValueTask HandleAsync(SiteUpdatedEvent message, EventDelivery delivery, CancellationToken cancellationToken) =>
+        EvictAsync([CacheTags.Site(message.SiteId)], cancellationToken);
+
+    public ValueTask HandleAsync(SiteDeletedEvent message, EventDelivery delivery, CancellationToken cancellationToken) =>
         EvictAsync([CacheTags.Site(message.SiteId)], cancellationToken);
 
     public ValueTask HandleAsync(PluginDisabledEvent message, EventDelivery delivery, CancellationToken cancellationToken) =>

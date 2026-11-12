@@ -1,7 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Sites;
+using FluentCMS.Events;
+using FluentCMS.Media;
+using FluentCMS.Sites;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Plugins.Media.Tests.MediaHost;
@@ -65,6 +71,20 @@ public sealed class SharedMediaLibraryTests(MediaHost fixture) : IClassFixture<M
         inAnotherSite.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         upload.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
+
+    // What a site uploads is in the default site's library, so deleting the site removes none of it.
+    [Fact]
+    public async Task DeletingASiteKeepsTheSharedLibrary()
+    {
+        var site = await MediaLibraryTesting.CreateSiteAsync(fixture);
+        using var second = await MediaLibraryTesting.InSiteAsync(fixture, site);
+        var asset = Id((await UploadedAsync(second, null, ("a.png", Files.Png(1, 1)))).Single()!);
+
+        await MediaLibraryTesting.DeleteSiteAsync(fixture, site);
+
+        using var first = await fixture.AdminAsync();
+        Id(await GetAsync(first, $"{Root}/{asset}")).ShouldBe(asset);
+    }
 }
 
 // PerSite: each site keeps its own library, as built in M3.
@@ -99,6 +119,105 @@ public sealed class PerSiteMediaLibraryTests(PerSiteMediaHost fixture) : IClassF
         using var fromFirst = await first.GetAsync(new Uri($"{Root}/{Id(own)}", UriKind.Relative), Token);
         (await CodeAsync(fromFirst)).ShouldBe("FCMS1585");
     }
+
+    // A deleted site takes its library with it: its assets, variants, folders and presets, rows and files. An asset whose file
+    // cannot be deleted stays as a deleted row, which the cleanup purges, and another site keeps its own. The handler may run
+    // again for the same event and goes on with what is left.
+    [Fact]
+    public async Task DeletingASiteRemovesItsLibraryAndItsFiles()
+    {
+        using var first = await fixture.AdminAsync();
+        var site = await MediaLibraryTesting.CreateSiteAsync(fixture);
+        using var second = await MediaLibraryTesting.InSiteAsync(fixture, site);
+        var folder = await FolderAsync(second, Unique("gone"));
+        var resized = await Transforms.UploadAsync(second, Transforms.Bands(8, 8));
+        await UploadedAsync(second, folder, ("a.png", Files.Png(2, 2)));
+        var stuck = Id((await UploadedAsync(second, null, ("b.png", Files.Png(2, 2)))).Single()!);
+        var kept = Id((await UploadedAsync(first, null, ("c.png", Files.Png(2, 2)))).Single()!);
+        using (var put = await second.PutAsJsonAsync(new Uri($"{Root}/presets/{Unique("thumb")}", UriKind.Relative), new { width = 10, height = 10 }, Token))
+        {
+            put.StatusCode.ShouldBe(HttpStatusCode.OK, await put.Content.ReadAsStringAsync(Token));
+        }
+
+        using (var anonymous = fixture.Host.CreateClient())
+        {
+            anonymous.DefaultRequestHeaders.Add("X-Cms-Site", site.ToString());
+            using var variant = await Transforms.FetchAsync(anonymous, await Transforms.UrlAsync(fixture, resized, new MediaImageOptions { Width = 4 }));
+            variant.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        await using (var scope = fixture.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+            (await database.Set<Variant>().AsNoTracking().CountAsync(variant => variant.AssetId == resized.Id, Token)).ShouldBe(1);
+            await database.Set<Asset>().Where(asset => asset.Id == stuck).ExecuteUpdateAsync(set => set.SetProperty(asset => asset.StorageProvider, "elsewhere"), Token);
+        }
+
+        await MediaLibraryTesting.DeleteSiteAsync(fixture, site);
+
+        await using (var scope = fixture.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+            var left = await database.Set<Asset>().AsNoTracking().Where(asset => asset.SiteId == site).ToListAsync(Token);
+            left.Select(asset => asset.Id).ShouldBe([stuck]);
+            left.Single().DeletedAt.ShouldNotBeNull();
+            (await database.Set<Variant>().AsNoTracking().AnyAsync(variant => variant.AssetId == resized.Id, Token)).ShouldBeFalse();
+            (await database.Set<Folder>().AsNoTracking().AnyAsync(item => item.SiteId == site, Token)).ShouldBeFalse();
+            (await database.Set<Preset>().AsNoTracking().AnyAsync(preset => preset.SiteId == site, Token)).ShouldBeFalse();
+            (await database.Set<Asset>().AsNoTracking().SingleAsync(asset => asset.Id == kept, Token)).DeletedAt.ShouldBeNull();
+
+            await ActivatorUtilities.CreateInstance<DeletedSiteMedia>(scope.ServiceProvider).HandleAsync(new SiteDeletedEvent(site, "gone"), new EventDelivery(Guid.CreateVersion7(), 2), Token);
+            (await database.Set<Asset>().AsNoTracking().Where(asset => asset.SiteId == site).Select(asset => asset.Id).ToListAsync(Token)).ShouldBe([stuck]);
+        }
+
+        Directory.EnumerateFiles(Path.Combine(fixture.StorageRoot, site.ToString("N")), "*", SearchOption.AllDirectories).ShouldHaveSingleItem().ShouldContain(stuck.ToString("N"));
+        Directory.EnumerateFiles(Path.Combine(fixture.StorageRoot, DefaultSite.Id.ToString("N"), kept.ToString("N"))).ShouldNotBeEmpty();
+    }
+
+    // A storage that fails, with an error or with a timeout of its own, fails that file only: its asset stays deleted, the
+    // run goes past it to the next batch, and the deletion of the site stands.
+    [Fact]
+    public async Task AFileTheStorageFailsToDeleteLeavesItsAssetAndTheRestAreRemoved()
+    {
+        var site = await MediaLibraryTesting.CreateSiteAsync(fixture);
+        using var second = await MediaLibraryTesting.InSiteAsync(fixture, site);
+        List<Guid> assets = [];
+        for (var index = 0; index < 4; index++)
+        {
+            assets.Add(Id((await UploadedAsync(second, null, ($"{index}.png", Files.Png(1, 1)))).Single()!));
+        }
+
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+        var keys = await database.Set<Asset>().AsNoTracking().Where(asset => asset.Id == assets[0] || asset.Id == assets[2]).Select(asset => asset.StorageKey).ToListAsync(Token);
+        var storage = new FailingStorage(fixture.Services.GetRequiredService<IFileStorage>(), keys[0], keys[1]);
+        var handler = new DeletedSiteMedia(database, new MediaStorage(storage, scope.ServiceProvider), TimeProvider.System, NullLogger<DeletedSiteMedia>.Instance) { BatchSize = 1 };
+
+        await handler.HandleAsync(new SiteDeletedEvent(site, "gone"), new EventDelivery(Guid.CreateVersion7(), 1), Token);
+
+        var left = await database.Set<Asset>().AsNoTracking().Where(asset => asset.SiteId == site).ToListAsync(Token);
+        left.Select(asset => asset.Id).ShouldBe([assets[0], assets[2]], ignoreOrder: true);
+        left.ShouldAllBe(asset => asset.DeletedAt != null);
+    }
+
+    // The first key fails with an error, the second with a timeout of the storage's own.
+    private sealed class FailingStorage(IFileStorage inner, string broken, string slow) : IFileStorage
+    {
+        public string Name => inner.Name;
+
+        public Task<Stream?> OpenReadAsync(string key, CancellationToken cancellationToken = default) => inner.OpenReadAsync(key, cancellationToken);
+
+        public Task WriteAsync(string key, Stream content, CancellationToken cancellationToken = default) => inner.WriteAsync(key, content, cancellationToken);
+
+        public Task<bool> DeleteAsync(string key, CancellationToken cancellationToken = default) =>
+            key == broken ? throw new IOException("The storage refused the delete.")
+            : key == slow ? throw new TaskCanceledException("The storage timed out.")
+            : inner.DeleteAsync(key, cancellationToken);
+
+        public Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default) => inner.ExistsAsync(key, cancellationToken);
+
+        public Task<FileStorageMetadata?> GetMetadataAsync(string key, CancellationToken cancellationToken = default) => inner.GetMetadataAsync(key, cancellationToken);
+    }
 }
 
 internal static class MediaLibraryTesting
@@ -107,6 +226,17 @@ internal static class MediaLibraryTesting
     {
         await using var scope = host.Services.CreateAsyncScope();
         return (await scope.ServiceProvider.GetRequiredService<SiteManager>().CreateAsync("Second", $"second-{Guid.NewGuid():N}", "en", Token)).Id;
+    }
+
+    // As an administrator of the instance, and then the outbox, so that the handlers of the event have run.
+    public static async Task DeleteSiteAsync(MediaHost host, Guid site)
+    {
+        await host.Host.As(await host.Host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).RunAsync<ISiteAdministration, bool>(async sites =>
+        {
+            await sites.DeleteAsync(new SiteId(site), Token);
+            return true;
+        });
+        await host.DrainOutboxAsync();
     }
 
     // An administrator of the instance whose every request names the site.

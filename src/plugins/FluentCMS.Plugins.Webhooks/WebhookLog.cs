@@ -37,4 +37,7 @@ internal static partial class WebhookLog
 
     [LoggerMessage(EventId = 9250, Level = LogLevel.Warning, Message = "Webhook {WebhookId} was disabled: every attempt to it since {FailingSince:u} failed.")]
     public static partial void Disabled(ILogger logger, Guid webhookId, DateTimeOffset failingSince);
+
+    [LoggerMessage(EventId = 9251, Level = LogLevel.Information, Message = "Removed {Webhooks} webhooks and {Attempts} delivery attempts of the deleted site {SiteId}.")]
+    public static partial void SiteRemoved(ILogger logger, int webhooks, int attempts, Guid siteId);
 }

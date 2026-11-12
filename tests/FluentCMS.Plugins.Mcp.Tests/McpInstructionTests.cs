@@ -1,6 +1,7 @@
 using System.Net;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Sites;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -192,5 +193,37 @@ public sealed class McpInstructionTests(McpSiteFixture fixture) : IClassFixture<
         saved.Select(row => (row["targetType"]?.GetValue<string>(), row["targetId"]?.GetValue<string>())).ShouldBe([("mcp_guidelines", null), ("mcp_guidelines", null), ("mcp_instruction", "article")]);
         deleted.Select(row => (row["targetType"]?.GetValue<string>(), row["targetId"]?.GetValue<string>())).ShouldBe([("mcp_instruction", "article"), ("mcp_guidelines", null)]);
         saved.Concat(deleted).ShouldAllBe(row => row["siteId"]!.GetValue<string>() == site.ToString("D") && !row.ToJsonString().Contains(text, StringComparison.Ordinal));
+    }
+
+    // A deleted site takes its guidelines, its instructions and its stored prompts with it, and another site keeps its own.
+    // The handler may run again for the same event, and then finds nothing.
+    [Fact]
+    public async Task DeletingASiteRemovesItsGuidelinesInstructionsAndPrompts()
+    {
+        var host = fixture.Host;
+        var site = await CreateSiteAsync(host);
+        var other = await CreateSiteAsync(host);
+        foreach (var each in (Guid[])[site, other])
+        {
+            using var http = await KeyInAsync(host, each);
+            await SendAsync(http, HttpMethod.Put, Instructions, new { text = "Titles are sentence case." });
+            await SendAsync(http, HttpMethod.Put, $"{Instructions}/article", new { text = "Articles are short." });
+            await SendAsync(http, HttpMethod.Post, Prompts, new { name = "sum-up", template = "Sum it up." }, HttpStatusCode.Created);
+        }
+
+        await host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).RunAsync<ISiteAdministration, bool>(async sites =>
+        {
+            await sites.DeleteAsync(new SiteId(site), Token);
+            return true;
+        });
+        await DrainOutboxAsync(host);
+
+        await using var scope = host.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<McpPlugin>>();
+        Guid[] both = [site, other];
+        (await database.Set<McpInstruction>().AsNoTracking().Where(row => both.Contains(row.SiteId)).Select(row => row.SiteId).ToListAsync(Token)).ShouldBe([other, other]);
+        (await database.Set<McpPrompt>().AsNoTracking().Where(row => both.Contains(row.SiteId)).Select(row => row.SiteId).ToListAsync(Token)).ShouldBe([other]);
+        (await scope.ServiceProvider.GetRequiredService<McpInstructionService>().RemoveAllAsync(site, Token)).ShouldBe(0);
+        (await scope.ServiceProvider.GetRequiredService<McpPromptService>().RemoveAllAsync(site, Token)).ShouldBe(0);
     }
 }

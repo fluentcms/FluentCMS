@@ -184,6 +184,18 @@ internal sealed partial class WebhookService(
         await events.PublishAsync(new WebhookDeletedEvent(webhook.Id, webhook.Name), cancellationToken);
     }
 
+    // The webhooks of a deleted site with their attempts, for the system rather than a caller, so nothing is checked. No
+    // event is raised for each, since no one could read the activity of that site. A second run finds nothing.
+    public async Task<(int Webhooks, int Attempts)> RemoveAllAsync(Guid siteId, CancellationToken cancellationToken)
+    {
+        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+        var ids = await database.Set<Webhook>().Where(webhook => webhook.SiteId == siteId).Select(webhook => webhook.Id).ToListAsync(cancellationToken);
+        var attempts = await database.Set<WebhookDelivery>().Where(delivery => ids.Contains(delivery.WebhookId)).ExecuteDeleteAsync(cancellationToken);
+        var webhooks = await database.Set<Webhook>().Where(webhook => ids.Contains(webhook.Id)).ExecuteDeleteAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return (webhooks, attempts);
+    }
+
     // The attempts of the webhook's deliveries, newest first.
     public async Task<DeliveryPage> DeliveriesAsync(Guid id, int page, int pageSize, CancellationToken cancellationToken)
     {
