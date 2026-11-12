@@ -13,10 +13,11 @@ During development, add new public members to `PublicAPI.Unshipped.txt`. The `RS
 ## Cutting a release
 
 1. Check that `main` builds: `dotnet build -c Release -warnaserror`.
-2. In `src/FluentCMS.Sdk`, move every entry from `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt`. Keep the `#nullable enable` first line in both files, keep `PublicAPI.Shipped.txt` sorted, and leave `PublicAPI.Unshipped.txt` with only the `#nullable enable` line. For a `*REMOVED*` line, delete the entry it names from `PublicAPI.Shipped.txt` and drop the `*REMOVED*` line itself.
-3. Commit the two files with the release, for example `Ship public API for 1.1.0`.
-4. Tag and publish the packages.
-5. Open a follow-up pull request that sets `PackageValidationBaselineVersion` in `src/FluentCMS.Sdk/FluentCMS.Sdk.csproj` to the version that was just released, so the next release is compared with it. Until 1.0.0 has shipped there is no baseline and the property is absent; the first release adds it.
+2. Check that the `Fresh machine` jobs of CI passed on the commit to release, on Linux and Windows, or run them with **Actions → Fresh machine → Run workflow**. They run [`eng/fresh-machine.ps1`](../eng/fresh-machine.ps1), which packs every package into a folder feed and, on a clean runner, installs the templates and the `fluentcms` tool from it, makes a Blog host with `dotnet new fluentcms`, runs `migrations add` and `migrate` on SQLite (and on PostgreSQL on Linux), makes an administrator and a key, compiles the output of `generate typescript`, exports the site and imports it into a second new host, and builds and tests a plugin from `dotnet new fluentcms-plugin`. The Linux job then checks that a package that misses a file and a template that names a wrong version fail the script. The script runs on a developer's machine too (PowerShell 7.4, the .NET SDK and Node.js); beyond the repository's own build output, it leaves nothing behind but its work directory.
+3. In `src/FluentCMS.Sdk`, move every entry from `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt`. Keep the `#nullable enable` first line in both files, keep `PublicAPI.Shipped.txt` sorted, and leave `PublicAPI.Unshipped.txt` with only the `#nullable enable` line. For a `*REMOVED*` line, delete the entry it names from `PublicAPI.Shipped.txt` and drop the `*REMOVED*` line itself.
+4. Commit the two files with the release, for example `Ship public API for 1.1.0`.
+5. Tag and publish the packages.
+6. Open a follow-up pull request that sets `PackageValidationBaselineVersion` in `src/FluentCMS.Sdk/FluentCMS.Sdk.csproj` to the version that was just released, so the next release is compared with it. Until 1.0.0 has shipped there is no baseline and the property is absent; the first release adds it.
 
 ## Breaking changes
 
