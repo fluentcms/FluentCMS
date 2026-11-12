@@ -63,6 +63,31 @@ public sealed class UserStoreTests : IDisposable
             .ShouldBe([BuiltInRoles.Editor]);
     }
 
+    // A provider of cms.Sso may be written in another case later; its logins stay its users' (#3010).
+    [Fact]
+    public async Task ALoginIsFoundUnderItsProviderInAnotherCaseAndNotTakenByAnotherUser()
+    {
+        var ann = await _fixture.CreateUserAsync("ann");
+        var bob = await _fixture.CreateUserAsync("bob");
+        await _fixture.UsersAsync(async users =>
+        {
+            Succeeded(await users.AddLoginAsync((await users.FindByIdAsync(ann.Id.ToString("D")))!, new UserLoginInfo("Corp", "ann-key", "Corp")));
+            return true;
+        });
+
+        await _fixture.UsersAsync(async users =>
+        {
+            (await users.FindByLoginAsync("Corp", "ann-key")).ShouldNotBeNull().Id.ShouldBe(ann.Id);
+            (await users.FindByLoginAsync("corp", "ann-key")).ShouldNotBeNull().Id.ShouldBe(ann.Id);
+            (await users.FindByLoginAsync("CORP", "ann-key")).ShouldNotBeNull().Id.ShouldBe(ann.Id);
+            (await users.FindByLoginAsync("corp-mfa", "ann-key")).ShouldBeNull();
+
+            var taken = await users.AddLoginAsync((await users.FindByIdAsync(bob.Id.ToString("D")))!, new UserLoginInfo("corp", "ann-key", "Corp"));
+            taken.Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.LoginAlreadyAssociated));
+            return true;
+        });
+    }
+
     [Fact]
     public async Task ARoleIsGivenOnceAndARoleThatDoesNotExistIsRefused()
     {

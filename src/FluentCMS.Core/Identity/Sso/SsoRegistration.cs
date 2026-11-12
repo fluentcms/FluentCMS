@@ -41,6 +41,17 @@ internal static class SsoRegistration
             }
         });
 
+        // Again once every scheme is added, since a host may add one after these, and logins are found ignoring case too.
+        services.AddOptions<AuthenticationOptions>().PostConfigure<SsoOptions>((authentication, options) =>
+        {
+            foreach (var name in options.Providers.Keys)
+            {
+                SsoOptions.Require(
+                    authentication.SchemeMap.Keys.Count(scheme => string.Equals(scheme, name, StringComparison.OrdinalIgnoreCase)) == 1,
+                    $"{nameof(SsoOptions.Providers)}:{name}: '{name}' is the name of another authentication scheme.");
+            }
+        });
+
         services.AddSingleton<IConfigureOptions<OpenIdConnectOptions>, HandlerOptions>();
         services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, PublicOriginCallback>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<OpenIdConnectOptions>, OpenIdConnectPostConfigureOptions>());

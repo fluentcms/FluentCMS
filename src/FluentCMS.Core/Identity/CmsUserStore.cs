@@ -91,6 +91,22 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
             Description = "An admin user is deactivated, not deleted, because versions, schedules and the activity log name it.",
         }));
 
+    // A login provider is the name of a provider of cms.Sso, and a name is found ignoring case, so a login kept before the
+    // case of the name changed in configuration still finds its user. The name as it is written now is found first.
+    protected override async Task<IdentityUserLogin<Guid>?> FindUserLoginAsync(string loginProvider, string providerKey, CancellationToken cancellationToken)
+    {
+        if (await base.FindUserLoginAsync(loginProvider, providerKey, cancellationToken) is { } exact)
+        {
+            return exact;
+        }
+
+        var logins = await Context.Set<IdentityUserLogin<Guid>>().Where(login => login.ProviderKey == providerKey).ToListAsync(cancellationToken);
+        return logins
+            .Where(login => string.Equals(login.LoginProvider, loginProvider, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(login => login.LoginProvider, StringComparer.Ordinal)
+            .FirstOrDefault();
+    }
+
     public async Task AddToRoleAsync(CmsUser user, string normalizedRoleName, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(user);
