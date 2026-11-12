@@ -12,8 +12,9 @@
 # FLUENTCMS_FRESH_POSTGRES_IMPORT hold them): two empty databases, one for each host. -Feed takes a feed that holds the packages
 # of -Version and skips packing. It needs the .NET SDK and Node.js with npm.
 #
-# Everything it writes is under the work directory, which it keeps for its logs: the NuGet packages, the installed templates,
-# the npm cache and the hosts. It stops the hosts it starts and puts the environment back however it ends.
+# Past the pack, which builds the repository as `dotnet pack` always does (its bin/ and obj/, and its packages in the NuGet
+# cache), everything it writes is under the work directory, which it keeps for its logs: the NuGet packages, the installed
+# templates, the npm cache and the hosts. It stops the hosts it starts and puts the environment back however it ends.
 [CmdletBinding()]
 param(
     [string] $WorkDirectory,
@@ -41,7 +42,11 @@ if (-not $WorkDirectory) {
     $WorkDirectory = Join-Path ([IO.Path]::GetTempPath()) ('fluentcms-fresh-' + [Guid]::NewGuid().ToString('N').Substring(0, 8))
 }
 
-$WorkDirectory = [IO.Path]::GetFullPath($WorkDirectory)
+# Relative to PowerShell's location, which .NET's current directory need not be.
+$WorkDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($WorkDirectory)
+if ($Feed) {
+    $Feed = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Feed)
+}
 $withPostgreSql = [bool]$PostgreSql -and [bool]$PostgreSqlImport
 if ([bool]$PostgreSql -ne [bool]$PostgreSqlImport) {
     [Console]::Error.WriteLine('PostgreSQL needs two databases: give both -PostgreSql and -PostgreSqlImport, or neither.')
@@ -238,8 +243,8 @@ function Initialize-Host([string] $name, [string] $directory) {
     Assert-TemplateVersions $directory
     Invoke-Checked dotnet @('restore', $directory)
     Assert-FromFeed $directory
-    $tool = (Get-Content -Raw (Join-Path $directory '.config/dotnet-tools.json') | ConvertFrom-Json).tools.'fluentcms.cli'
-    if ($null -eq $tool -or $tool.version -ne $Version) {
+    $tool = (Get-Content -Raw (Join-Path $directory '.config/dotnet-tools.json') | ConvertFrom-Json -AsHashtable).tools['fluentcms.cli']
+    if ($null -eq $tool -or $tool['version'] -ne $Version) {
         Fail ".config/dotnet-tools.json of $name does not pin fluentcms.cli $Version"
     }
 
@@ -403,26 +408,39 @@ function Get-Entry($cms, [string] $path, [string] $locale, [int] $expected = 200
     $response.Content
 }
 
-# The welcome article of the Blog seed, which the seeder writes after the host is ready.
-function Wait-Welcome($cms) {
+# The seeder runs after the host is ready, so the host's log says when the Blog seed is complete (event 9901), before anything
+# reads or exports it; a seed that failed or was skipped (9903, 9902) fails the step.
+function Wait-Seeded($cms) {
     $deadline = [DateTime]::UtcNow.AddMinutes(2)
     while ($true) {
-        $response = Invoke-Cms $cms GET "/api/delivery/v1/article/by/slug/$welcomeSlug" $null
-        if ($response.StatusCode -eq 200) {
-            return $response.Content | ConvertFrom-Json
+        if (Select-String -Path $cms.Log -Pattern 'SeedRunner\[(9902|9903)\]' -Quiet) {
+            Show-Log $cms
+            Fail "the Blog seed of $($cms.Name) failed or was skipped"
         }
 
-        if ([DateTime]::UtcNow -gt $deadline) {
+        if (Select-String -Path $cms.Log -Pattern 'Seeder .*BlogSeeder version \d+ was applied' -Quiet) {
+            break
+        }
+
+        if ([DateTime]::UtcNow -gt $deadline -or $cms.Process.HasExited) {
             Show-Log $cms
-            Fail "the Delivery API of $($cms.Name) did not serve the welcome article within two minutes: $($response.StatusCode) $($response.Content)"
+            Fail "the Blog seed of $($cms.Name) was not applied within two minutes"
         }
 
         Start-Sleep -Seconds 2
     }
+
+    $response = Invoke-Cms $cms GET "/api/delivery/v1/article/by/slug/$welcomeSlug" $null
+    if ($response.StatusCode -ne 200) {
+        Fail "the Delivery API of $($cms.Name) did not serve the welcome article: $($response.StatusCode) $($response.Content)"
+    }
+
+    $response.Content | ConvertFrom-Json
 }
 
+# The same JSON values; System.Text.Json keeps dates as the strings they were sent as.
 function Compare-Json([string] $left, [string] $right) {
-    ($left | ConvertFrom-Json | ConvertTo-Json -Depth 100 -Compress) -ceq ($right | ConvertFrom-Json | ConvertTo-Json -Depth 100 -Compress)
+    [Text.Json.Nodes.JsonNode]::DeepEquals([Text.Json.Nodes.JsonNode]::Parse($left), [Text.Json.Nodes.JsonNode]::Parse($right))
 }
 
 # fluentcms generate typescript against the running instance, and the module compiled in strict mode with @fluentcms/client
@@ -509,10 +527,10 @@ function Test-Provider([string] $provider, [hashtable] $sourceVariables, [hashta
     }
     $sourceKey = New-ManagementKey $source $sourceVariables
 
-    Start-Step "Start $sourceName and read the welcome article of the Blog seed"
+    Start-Step "Start $sourceName, wait for the Blog seed and read its welcome article"
     $sourceHost = Start-Host $sourceName $source $sourceVariables
     $sourceHost.Key = $sourceKey
-    $welcome = Wait-Welcome $sourceHost
+    $welcome = Wait-Seeded $sourceHost
     if ($welcome.title -ne 'Welcome to FluentCMS') {
         Fail "the welcome article is titled '$($welcome.title)'"
     }
@@ -560,7 +578,9 @@ function Test-Provider([string] $provider, [hashtable] $sourceVariables, [hashta
     $sites = Invoke-Cms $targetHost GET '/api/management/v1/sites' $null
     if ($sites.StatusCode -ne 200) { Fail "GET /sites answered $($sites.StatusCode): $($sites.Content)" }
     $site = ($sites.Content | ConvertFrom-Json).items | Where-Object isDefault | Select-Object -First 1
+    if ($null -eq $site) { Fail "GET /sites of $targetName lists no default site: $($sites.Content)" }
     $locales = Invoke-Cms $targetHost GET "/api/management/v1/sites/$($site.id)/locales" $null
+    if ($locales.StatusCode -ne 200) { Fail "GET /sites/$($site.id)/locales answered $($locales.StatusCode): $($locales.Content)" }
     $allowed = @(($locales.Content | ConvertFrom-Json).items | ForEach-Object code)
     foreach ($locale in $manifest.locales | Where-Object { $_ -notin $allowed }) {
         $added = Invoke-Cms $targetHost POST "/api/management/v1/sites/$($site.id)/locales" @{ code = $locale }
@@ -601,7 +621,10 @@ try {
     if (-not $Feed) {
         $Feed = Join-Path $WorkDirectory 'feed'
         Start-Step "Pack every package of the solution as $Version into a folder feed"
-        Invoke-Checked dotnet @('pack', (Join-Path $repository 'FluentCMS.slnx'), '-c', 'Release', '-o', $Feed, "-p:Version=$Version")
+        # A build of the repository like any other, which leaves no build server running.
+        Use-Variables @{ MSBUILDDISABLENODEREUSE = '1'; DOTNET_CLI_USE_MSBUILD_SERVER = '0'; UseSharedCompilation = 'false' } {
+            Invoke-Checked dotnet @('pack', (Join-Path $repository 'FluentCMS.slnx'), '-c', 'Release', '-o', $Feed, "-p:Version=$Version")
+        }
 
         Start-Step 'Pack @fluentcms/client'
         $clientSource = Join-Path $WorkDirectory 'client-src'

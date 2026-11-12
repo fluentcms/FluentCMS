@@ -19,7 +19,8 @@ if (-not $WorkDirectory) {
     $WorkDirectory = Join-Path ([IO.Path]::GetTempPath()) ('fluentcms-broken-feed-' + [Guid]::NewGuid().ToString('N').Substring(0, 8))
 }
 
-$WorkDirectory = [IO.Path]::GetFullPath($WorkDirectory)
+$WorkDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($WorkDirectory)
+$Feed = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Feed)
 New-Item -ItemType Directory -Force $WorkDirectory | Out-Null
 
 function Edit-Package([string] $feed, [string] $id, [scriptblock] $edit) {
@@ -80,3 +81,6 @@ Test-BrokenFeed 'wrong-version' 'Restore SourceSqlite and check that its FluentC
 }
 
 Write-Host 'Both broken feeds failed the sequence.'
+
+# $LASTEXITCODE still holds the last expected failure, which the runner would take as this script's exit code.
+exit 0
