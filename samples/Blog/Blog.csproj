@@ -11,4 +11,10 @@
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
   </ItemGroup>
 
+  <!-- The source generator emits ArticleFields and the other typed filter and sort builders of the sample, and the analyzers check the schema attributes in the build. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/FluentCMS.Generators/FluentCMS.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../src/FluentCMS.Analyzers/FluentCMS.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
 </Project>

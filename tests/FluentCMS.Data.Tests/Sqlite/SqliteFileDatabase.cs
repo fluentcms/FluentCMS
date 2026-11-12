@@ -39,7 +39,7 @@ internal sealed class SqliteFileDatabase(bool writeAheadLog = true) : TestDataba
     protected override DbConnection NewConnection() => new SqliteConnection(ConnectionString);
 
     // A commit of a file database waits for the disk to flush, and the tests seed rows and create tables one commit at a time, which is most of what they cost on a Windows runner. The locks behave the same without it, and the file is deleted after the test.
-    private sealed class UnflushedSqliteProvider(SqliteDataProvider inner) : IDataProvider
+    private sealed class UnflushedSqliteProvider(SqliteDataProvider inner) : IDataProvider, IDatabaseFile
     {
         private static readonly NoFlush Interceptor = new();
 
@@ -60,6 +60,14 @@ internal sealed class SqliteFileDatabase(bool writeAheadLog = true) : TestDataba
         public bool IsUniqueViolation(Exception exception) => inner.IsUniqueViolation(exception);
 
         public bool IsDeadlock(Exception exception) => inner.IsDeadlock(exception);
+
+        public string? FilePath => ((IDatabaseFile)inner).FilePath;
+
+        public void Snapshot(string destination) => ((IDatabaseFile)inner).Snapshot(destination);
+
+        public bool IsInUse() => ((IDatabaseFile)inner).IsInUse();
+
+        public void Restore(string snapshot) => ((IDatabaseFile)inner).Restore(snapshot);
 
         public void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly)
         {

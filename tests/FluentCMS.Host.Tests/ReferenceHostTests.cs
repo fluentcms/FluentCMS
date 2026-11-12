@@ -190,6 +190,37 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         Operator.InsecureDefaults(report).ShouldContain("media-local-storage");
     }
 
+    // As the compose file sets it up against MinIO. Nothing answers at the endpoint, which only the ready check asks.
+    [Fact]
+    public async Task TheMediaS3SectionPutsNewUploadsInTheBucket()
+    {
+        var settings = Operator.Settings();
+        settings[$"{ReferenceHost.MediaS3Section}:Endpoint"] = "http://127.0.0.1:9";
+        settings[$"{ReferenceHost.MediaS3Section}:Bucket"] = "fluentcms-media";
+        settings[$"{ReferenceHost.MediaS3Section}:ForcePathStyle"] = "true";
+        settings[$"{ReferenceHost.MediaS3Section}:AccessKeyId"] = "media-user";
+        settings[$"{ReferenceHost.MediaS3Section}:SecretAccessKey"] = "media-secret-for-tests";
+        await _host.StartAsync(settings);
+
+        var report = await Operator.ReportAsync(_host);
+
+        var storage = report["providerSlots"]!.AsArray().Single(slot => slot!["slot"]!.GetValue<string>() == "FluentCMS.Media.IFileStorage")!;
+        (storage["implementation"]!.GetValue<string>(), storage["plugin"]!.GetValue<string>()).ShouldBe(("FluentCMS.Plugins.Media.S3.S3FileStorage", "media"));
+        Operator.InsecureDefaults(report).ShouldNotContain("media-local-storage");
+    }
+
+    [Fact]
+    public async Task AMediaS3SectionWithoutABucketStopsTheHostAtStart()
+    {
+        var settings = Operator.Settings();
+        settings[$"{ReferenceHost.MediaS3Section}:Endpoint"] = "http://127.0.0.1:9";
+        var app = _host.Build(settings);
+
+        var error = await Should.ThrowAsync<OptionsValidationException>(() => app.StartAsync(Token));
+
+        error.Message.ShouldContain("Bucket");
+    }
+
     // AI assist is off until a site names a provider and opts fields in, so the host runs the plugin and calls no provider.
     [Fact]
     public async Task TheHostRunsTheAiAssistPluginWhichIsOffUntilASiteOptsIn()
@@ -313,21 +344,25 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         error.Message.ShouldContain(code);
     }
 
+    // Nothing changes a server database at start (decision 55): `fluentcms schema apply` brings its content tables up to
+    // the schema, which the data tests run on each provider.
     [Theory]
     [InlineData("PostgreSql", "Host=db;Database=cms;Username=cms;Password=secret")]
     [InlineData("SqlServer", "Server=db;Database=cms;User Id=cms;Password=secret;TrustServerCertificate=true")]
-    public void ASchemaFileOnAServerProviderIsRefusedBecauseItsTablesComeFromMigrations(string provider, string connectionString)
+    public void ASchemaFileAndTheSampleOnAServerProviderLeaveTheTablesToSchemaApply(string provider, string connectionString)
     {
         var file = _host.WriteFile("schema.json", """{ "collections": [ { "name": "post", "fields": [ { "name": "title", "type": "text" } ] } ] }""");
 
-        var error = Should.Throw<FluentCmsConfigurationException>(() => _host.Build(new()
+        var app = _host.Build(new()
         {
             [ReferenceHost.SchemaVariable] = file,
+            [ReferenceHost.SampleVariable] = ReferenceHost.BlogSampleName,
             [ReferenceHost.ProviderKey] = provider,
             [$"ConnectionStrings:{ReferenceHost.ConnectionStringName}"] = connectionString,
-        }));
+        });
 
-        error.Code.ShouldBe("FCMS3154");
+        app.Services.GetRequiredService<IOptions<DatabaseOptions>>().Value.SchemaSyncOutsideDevelopment.ShouldBeFalse();
+        app.Services.GetRequiredService<SchemaModel>().FindContentType("post").ShouldNotBeNull();
     }
 
     [Fact]

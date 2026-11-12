@@ -1,0 +1,96 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The dotnet new templates of fluentcms/ and fluentcms-plugin/. Nothing is compiled: the template files are copied to obj/
+       with their package versions stamped, and packed from there. -->
+  <PropertyGroup>
+    <PackageId>FluentCMS.Templates</PackageId>
+    <PackageType>Template</PackageType>
+    <IsPackable>true</IsPackable>
+    <Description>The dotnet new templates for FluentCMS: an API host (fluentcms) and the server half of a plugin (fluentcms-plugin).</Description>
+    <PackageTags>$(PackageTags) dotnet-new templates</PackageTags>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IncludeSymbols>false</IncludeSymbols>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <TemplateSource Include="fluentcms/**/*;fluentcms-plugin/**/*" Exclude="**/bin/**;**/obj/**;**/*.user;**/*.db" />
+  </ItemGroup>
+
+  <!-- A "{{version:Id}}" in a template file is the version of package Id in Directory.Packages.props, and "{{version:FluentCMS}}"
+       the version of the FluentCMS packages being built, so a created project gets the packages this one was built with. -->
+  <UsingTask TaskName="StampTemplateFiles" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <Versions ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <OwnVersion ParameterType="System.String" Required="true" />
+      <SourceRoot ParameterType="System.String" Required="true" />
+      <OutputRoot ParameterType="System.String" Required="true" />
+      <Written ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var versions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["FluentCMS"] = OwnVersion };
+        foreach (var item in Versions)
+        {
+            versions[item.ItemSpec] = item.GetMetadata("Version");
+        }
+
+        var token = new Regex(@"\{\{version:([^}]+)\}\}");
+        var written = new List<ITaskItem>();
+        foreach (var file in Files)
+        {
+            var source = file.GetMetadata("FullPath");
+            var relative = source.Substring(Path.GetFullPath(SourceRoot).Length).TrimStart('/', '\\');
+            var target = Path.Combine(OutputRoot, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(target));
+
+            var text = File.ReadAllText(source);
+            var stamped = token.Replace(text, match =>
+            {
+                string version;
+                if (versions.TryGetValue(match.Groups[1].Value, out version))
+                {
+                    return version;
+                }
+
+                Log.LogError("{0}: no version of {1} in Directory.Packages.props", relative, match.Groups[1].Value);
+                return match.Value;
+            });
+
+            File.WriteAllText(target, stamped);
+
+            var item = new Microsoft.Build.Utilities.TaskItem(target);
+            // A folder, not a file name: NuGet reads a path without an extension, such as Dockerfile, as a folder.
+            item.SetMetadata("PackagePath", Path.Combine("content", Path.GetDirectoryName(relative)).Replace('\\', '/') + "/");
+            written.Add(item);
+        }
+
+        Written = written.ToArray();
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="StampTemplates" BeforeTargets="_GetPackageFiles;GenerateNuspec" DependsOnTargets="$(GetPackageVersionDependsOn)">
+    <!-- Set here rather than in the project body, where IntermediateOutputPath is not yet defined. -->
+    <PropertyGroup>
+      <StampedTemplatesDir>$([MSBuild]::NormalizeDirectory($(MSBuildProjectDirectory), $(IntermediateOutputPath), 'templates'))</StampedTemplatesDir>
+    </PropertyGroup>
+    <RemoveDir Directories="$(StampedTemplatesDir)" />
+    <StampTemplateFiles Files="@(TemplateSource)" Versions="@(PackageVersion)" OwnVersion="$(PackageVersion)" SourceRoot="$(MSBuildProjectDirectory)" OutputRoot="$(StampedTemplatesDir)">
+      <Output TaskParameter="Written" ItemName="StampedTemplate" />
+    </StampTemplateFiles>
+    <ItemGroup>
+      <None Include="@(StampedTemplate)" Pack="true" PackagePath="%(StampedTemplate.PackagePath)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

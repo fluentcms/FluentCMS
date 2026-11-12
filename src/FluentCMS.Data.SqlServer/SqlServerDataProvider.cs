@@ -20,7 +20,7 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
 
     public IJobClaimDialect JobClaimDialect { get; } = new SqlServerJobClaimDialect();
 
-    public IDatabaseSchemaReader SchemaReader { get; } = new InformationSchemaReader("SCHEMA_NAME()");
+    public IDatabaseSchemaReader SchemaReader { get; } = new InformationSchemaReader(SqlServerCatalog.CurrentSchema, SqlServerCatalog.Indexes, SqlServerCatalog.CheckConstraints);
 
     // 2601 is a unique index, 2627 a unique or primary key constraint.
     public bool IsUniqueViolation(Exception exception) =>

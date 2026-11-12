@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- The small host that the tool's tests hand commands to: SQLite from configuration, and the sample plugin, which brings a
+       migration stream of its own. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/FluentCMS.Core/FluentCMS.Core.csproj" />
+    <ProjectReference Include="../../src/FluentCMS.Data.Sqlite/FluentCMS.Data.Sqlite.csproj" />
+    <ProjectReference Include="../FluentCMS.Plugins.Sample/FluentCMS.Plugins.Sample.csproj" />
+  </ItemGroup>
+
+</Project>

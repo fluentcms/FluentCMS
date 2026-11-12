@@ -127,6 +127,20 @@ internal abstract class TestDatabase : IDisposable
         command.ExecuteNonQuery();
     }
 
+    // The batches of a script, on one connection.
+    public void ExecuteBatches(IEnumerable<string> batches)
+    {
+        using var connection = OpenConnection();
+        foreach (var batch in batches.Where(batch => batch.Trim().Length > 0))
+        {
+            using var command = connection.CreateCommand();
+#pragma warning disable CA2100 // Scripts the tests wrote.
+            command.CommandText = batch;
+#pragma warning restore CA2100
+            command.ExecuteNonQuery();
+        }
+    }
+
     public abstract void Dispose();
 
 

@@ -53,6 +53,7 @@ internal sealed partial class ContentService(
     ApiKeyPrincipals keys,
     IDataProvider provider,
     TimeProvider time,
+    TransferImportMode importMode,
     ILogger<ContentService> logger) : IContentService
 {
     internal const int DeadlockReruns = 5;
@@ -283,7 +284,7 @@ internal sealed partial class ContentService(
         var operation = accessor.Current
             ?? throw new InvalidOperationException("The content service runs inside an operation; the entry point sets IOperationContextAccessor.Current.");
 
-        if (operation.Principal.IsSystem && !SystemOperation.Allows(operation.Origin))
+        if (operation.Principal.IsSystem && !SystemOperation.Allows(operation.Origin) && !(operation.Origin == Origin.Import && importMode.Active))
         {
             throw new InvalidOperationException($"The system principal cannot come from the origin {operation.Origin}.");
         }
@@ -1132,7 +1133,7 @@ internal sealed partial class ContentService(
             {
                 checkedUnique = true;
                 await store.CheckUniqueAsync(write.Type, working, id, write.Site, write.Locale, context, token);
-                await resolvers.CheckAddedAsync(store, write.Type, working, save.Stored, context, token);
+                await resolvers.CheckAddedAsync(store, write.Type, working, save.Stored, context, token, ProvidedTargets);
             });
 
         var errors = await ReportableAsync(write, result.Errors, now, sent, save, cancellationToken);
@@ -1142,7 +1143,7 @@ internal sealed partial class ContentService(
         {
             var context = new ValidationContext(write.Type, values, write.Operation, ValidationMode.Draft, entry);
             await store.CheckUniqueAsync(write.Type, working, id, write.Site, write.Locale, context, cancellationToken);
-            await resolvers.CheckAddedAsync(store, write.Type, working, save.Stored, context, cancellationToken);
+            await resolvers.CheckAddedAsync(store, write.Type, working, save.Stored, context, cancellationToken, ProvidedTargets);
             errors = await ReportableAsync(write, context.Errors, now, sent, save, cancellationToken);
         }
 

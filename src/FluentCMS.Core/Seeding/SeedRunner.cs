@@ -8,6 +8,14 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Seeding;
 
+internal sealed record SeedApplied(string Name, int Version);
+
+// The seeders a run applied, in order, and why it stopped or never started when another run holds the claim.
+internal sealed record SeedRun(IReadOnlyList<SeedApplied> Applied, string? Skipped)
+{
+    public static SeedRun Nothing { get; } = new([], null);
+}
+
 // Runs the seeders that were added to the builder. What was applied is kept in the instance-wide settings area "seeding". A run holds
 // one claim in the same document for all its seeders, taken with a write that names the version it read and renewed while the run
 // lasts, so two instances never seed at once and a claim older than the timeout means its owner is gone.
@@ -21,19 +29,29 @@ internal sealed class SeedRunner(
     TimeProvider time,
     ILogger<SeedRunner> logger) : ISeedRunner
 {
-    public async Task RunAsync(CancellationToken cancellationToken = default)
+    public const string AnotherInstanceSeeds = "another instance is seeding";
+    public const string AnotherInstanceClaimed = "another instance claimed the seed first";
+    public const string ClaimTakenOver = "the claim on seeding was taken over by another run";
+
+    // The names of the seeders added to the builder, in registration order.
+    public IReadOnlyList<string> Names => [.. Seeders().Select(seeder => seeder.Name)];
+
+    public async Task RunAsync(CancellationToken cancellationToken = default) => await RunAsync(only: null, cancellationToken);
+
+    // Only, when given, is the name of the one seeder to run, which still runs only when it is not applied at its version.
+    public async Task<SeedRun> RunAsync(string? only, CancellationToken cancellationToken)
     {
         if (options.Types.Count == 0)
         {
-            return;
+            return SeedRun.Nothing;
         }
 
-        var seeders = options.Types.Select(type => (ISeeder)services.GetService(type)!).ToList();
+        var seeders = Seeders().Where(seeder => only is null || seeder.Name == only).ToList();
         var (state, version) = await store.ReadAsync(cancellationToken);
         var pending = seeders.Where(seeder => state.Seeders.GetValueOrDefault(seeder.Name)?.Applied is not { } applied || applied < seeder.Version).ToList();
         if (pending.Count == 0)
         {
-            return;
+            return SeedRun.Nothing;
         }
 
         var site = new SiteId(DefaultSite.Id);
@@ -43,7 +61,7 @@ internal sealed class SeedRunner(
 
         try
         {
-            await RunClaimedAsync(pending, state, version, site, cancellationToken);
+            return await RunClaimedAsync(pending, state, version, site, cancellationToken);
         }
         finally
         {
@@ -51,21 +69,25 @@ internal sealed class SeedRunner(
         }
     }
 
-    private async Task RunClaimedAsync(List<ISeeder> pending, SeedingState state, int version, SiteId site, CancellationToken cancellationToken)
+    private IEnumerable<ISeeder> Seeders() => options.Types.Select(type => (ISeeder)services.GetService(type)!);
+
+    private async Task<SeedRun> RunClaimedAsync(List<ISeeder> pending, SeedingState state, int version, SiteId site, CancellationToken cancellationToken)
     {
         if (state.Claim is { } held && time.GetUtcNow() - held.At < options.ClaimTimeout)
         {
-            SeedLog.Skipped(logger, "another instance is seeding");
-            return;
+            SeedLog.Skipped(logger, AnotherInstanceSeeds);
+            return new SeedRun([], AnotherInstanceSeeds);
         }
 
         var claimId = Guid.CreateVersion7();
         state.Claim = new SeedClaim { Id = claimId, At = time.GetUtcNow() };
         if (!await store.TryWriteAsync(state, version, cancellationToken))
         {
-            SeedLog.Skipped(logger, "another instance claimed the seed first");
-            return;
+            SeedLog.Skipped(logger, AnotherInstanceClaimed);
+            return new SeedRun([], AnotherInstanceClaimed);
         }
+
+        List<SeedApplied> done = [];
 
         using var run = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         using var stopHeartbeat = new CancellationTokenSource();
@@ -89,7 +111,7 @@ internal sealed class SeedRunner(
                 catch (OperationCanceledException) when (lost)
                 {
                     SeedLog.ClaimLost(logger);
-                    return;
+                    return new SeedRun(done, ClaimTakenOver);
                 }
                 catch (Exception exception)
                 {
@@ -114,17 +136,20 @@ internal sealed class SeedRunner(
                 if (!marked)
                 {
                     SeedLog.ClaimLost(logger);
-                    return;
+                    return new SeedRun(done, ClaimTakenOver);
                 }
 
                 SeedLog.Applied(logger, seeder.Name, seeder.Version);
+                done.Add(new SeedApplied(seeder.Name, seeder.Version));
             }
 
             await ReleaseAsync(claimId);
+            return new SeedRun(done, Skipped: null);
         }
         catch (OperationCanceledException) when (lost)
         {
             SeedLog.ClaimLost(logger);
+            return new SeedRun(done, ClaimTakenOver);
         }
         catch (Exception)
         {

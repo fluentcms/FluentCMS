@@ -8,14 +8,19 @@ using SQLitePCL;
 
 namespace FluentCMS.Data.Sqlite;
 
-public sealed class SqliteDataProvider(string connectionString, bool writeAheadLog = true) : IDataProvider
+// It fills the database file slot of core, IDatabaseFile, which `fluentcms backup` and `fluentcms restore` use.
+public sealed class SqliteDataProvider(string connectionString, bool writeAheadLog = true) : IDataProvider, IDatabaseFile
 {
     // The write interceptors keep writers from starving in the rollback journal, which a host may keep with writeAheadLog false.
     private static readonly IInterceptor[] WriteInterceptors = [new SqliteWriteInterceptor(), new SqliteCommandTransactions()];
 
     private readonly IInterceptor[] _interceptors = writeAheadLog ? [new SqliteWriteAheadLog(), .. WriteInterceptors] : WriteInterceptors;
 
+    private readonly SqliteDatabaseFile _file = new(connectionString, writeAheadLog);
+
     public string Name => "SQLite";
+
+    string? IDatabaseFile.FilePath => _file.FilePath;
 
     public bool MigrateOnStartup => true;
 
@@ -54,4 +59,10 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
             .MigrationsAssembly(typeof(SqliteDataProvider).Assembly)
             .MigrationsHistoryTable(SystemDbContext.HistoryTable))
             .AddInterceptors(_interceptors);
+
+    void IDatabaseFile.Snapshot(string destination) => _file.Snapshot(destination);
+
+    bool IDatabaseFile.IsInUse() => _file.IsInUse();
+
+    void IDatabaseFile.Restore(string snapshot) => _file.Restore(snapshot);
 }

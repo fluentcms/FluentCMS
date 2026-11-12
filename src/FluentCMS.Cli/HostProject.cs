@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
-using System.Text.Json;
+using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -30,27 +30,22 @@ internal sealed class HostProject : IDisposable
         _assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
     }
 
-    public static HostProject Open(string? project, string? assembly, TextWriter output)
+    public static HostProject Open(HostTarget target) => new(target.AssemblyPath, target.RootNamespace, target.ProjectDirectory);
+
+    public IReadOnlyList<string> AddMigration(string name) => WithFactory(factory =>
     {
-        if (assembly is not null)
-        {
-            var path = Path.GetFullPath(assembly);
-            return new HostProject(path, Path.GetFileNameWithoutExtension(path), Path.GetFullPath(project ?? "."));
-        }
+        var files = ContentMigrationGenerator.Add(() => factory.CreateDbContext([]), name, _rootNamespace, _directory);
+        return (IReadOnlyList<string>)[files.MigrationFile, files.MetadataFile, files.SnapshotFile];
+    });
 
-        var target = project ?? ".";
-        output.WriteLine($"Building {target}");
-        RunDotnet("build", target);
+    public SchemaDiffReport? ReviewMigration() => WithFactory(factory => ContentMigrationGenerator.Review(() => factory.CreateDbContext([])));
 
-        using var json = JsonDocument.Parse(RunDotnet("msbuild", target, "-getProperty:TargetPath", "-getProperty:RootNamespace", "-getProperty:MSBuildProjectDirectory"));
-        var properties = json.RootElement.GetProperty("Properties");
-        return new HostProject(
-            properties.GetProperty("TargetPath").GetString()!,
-            properties.GetProperty("RootNamespace").GetString()!,
-            properties.GetProperty("MSBuildProjectDirectory").GetString()!);
-    }
+    public string? NewestMigration() => WithFactory(factory => ContentMigrationGenerator.Newest(() => factory.CreateDbContext([])));
 
-    public IReadOnlyList<string> AddMigration(string name)
+    public RemovedMigrationFiles RemoveMigration() =>
+        WithFactory(factory => ContentMigrationGenerator.Remove(() => factory.CreateDbContext([]), _rootNamespace, _directory));
+
+    private T WithFactory<T>(Func<IDesignTimeDbContextFactory<CmsDbContext>, T> use)
     {
         try
         {
@@ -64,9 +59,7 @@ internal sealed class HostProject : IDisposable
                     $"{_assembly.GetName().Name} has {factories.Count} implementations of IDesignTimeDbContextFactory<CmsDbContext>; it needs exactly one, which returns ContentMigrations.CreateContext(...).");
             }
 
-            var factory = (IDesignTimeDbContextFactory<CmsDbContext>)Activator.CreateInstance(factories[0])!;
-            var files = ContentMigrationGenerator.Add(() => factory.CreateDbContext([]), name, _rootNamespace, _directory);
-            return [files.MigrationFile, files.MetadataFile, files.SnapshotFile];
+            return use((IDesignTimeDbContextFactory<CmsDbContext>)Activator.CreateInstance(factories[0])!);
         }
         catch (Exception exception) when (exception is ReflectionTypeLoadException or TargetInvocationException or TypeLoadException or MissingMemberException or FileLoadException)
         {
@@ -107,22 +100,4 @@ internal sealed class HostProject : IDisposable
 
     // The package version, without the commit that the build appends.
     private static string? ProductVersion(string path) => path.Length == 0 ? null : FileVersionInfo.GetVersionInfo(path).ProductVersion?.Split('+')[0];
-
-    private static string RunDotnet(params string[] arguments)
-    {
-        var start = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true };
-        foreach (var argument in arguments)
-        {
-            start.ArgumentList.Add(argument);
-        }
-
-        using var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start dotnet.");
-        var errors = process.StandardError.ReadToEndAsync();
-        var output = process.StandardOutput.ReadToEnd();
-        process.WaitForExit();
-
-        return process.ExitCode == 0
-            ? output
-            : throw new InvalidOperationException($"dotnet {arguments[0]} failed:{Environment.NewLine}{output}{errors.GetAwaiter().GetResult()}");
-    }
 }

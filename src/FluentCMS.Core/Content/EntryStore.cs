@@ -39,6 +39,77 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         return await rows.OrderBy(document => document.CreatedAt).ThenBy(document => document.Id).ToListAsync(cancellationToken);
     }
 
+    // Every row of a document id, of any type and site and in the trash too, which an import must not write over.
+    public Task<List<Document>> AllRowsAsync(Guid id, CancellationToken cancellationToken) =>
+        context.Documents.IgnoreQueryFilters().AsNoTracking()
+            .Where(document => document.DocumentId == id)
+            .ToListAsync(cancellationToken);
+
+    // The ids of the entries of a type in a site, or in every site for a global type, outside the trash.
+    public Task<List<Guid>> EntryIdsAsync(SchemaType type, SiteId site, bool publishedOnly, CancellationToken cancellationToken)
+    {
+        var typeName = type.Name;
+        var siteId = (Guid?)site.Value;
+        var rows = context.Documents.AsNoTracking().Where(document => document.Type == typeName);
+        if (type.Scope == ContentScope.Site)
+        {
+            rows = rows.Where(document => document.SiteId == siteId);
+        }
+
+        if (publishedOnly)
+        {
+            rows = rows.Where(document => document.PublishedVersion != null);
+        }
+
+        return rows.Select(document => document.DocumentId).Distinct().ToListAsync(cancellationToken);
+    }
+
+    // The rows of these entries, oldest locale first, outside the trash.
+    public async Task<List<Document>> DocumentsOfAsync(SchemaType type, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+    {
+        var typeName = type.Name;
+        var rows = await context.Documents.AsNoTracking()
+            .Where(document => document.Type == typeName && ids.Contains(document.DocumentId))
+            .ToListAsync(cancellationToken);
+        return [.. rows.OrderBy(document => document.CreatedAt).ThenBy(document => document.Locale, StringComparer.Ordinal)];
+    }
+
+    // What an import keeps of the package once its writes are done: the times, the authors, and an Unpublished status.
+    public Task SettleImportedAsync(Guid id, string locale, ImportedState state, CancellationToken cancellationToken) =>
+        context.Documents
+            .Where(document => document.DocumentId == id && document.Locale == locale)
+            .ExecuteUpdateAsync(
+                set => set
+                    .SetProperty(document => document.Status, state.Status)
+                    .SetProperty(document => document.DraftVersion, state.DraftVersion)
+                    .SetProperty(document => document.PublishedVersion, state.PublishedVersion)
+                    .SetProperty(document => document.CreatedAt, state.CreatedAt)
+                    .SetProperty(document => document.CreatedBy, state.CreatedBy)
+                    .SetProperty(document => document.UpdatedAt, state.UpdatedAt)
+                    .SetProperty(document => document.UpdatedBy, state.UpdatedBy)
+                    .SetProperty(document => document.PublishedAt, state.PublishedAt)
+                    .SetProperty(document => document.FirstPublishedAt, state.FirstPublishedAt),
+                cancellationToken);
+
+    // Moves the versions of one locale to new numbers, through negative ones so that no two rows ever share a number.
+    public async Task RenumberVersionsAsync(Guid id, string locale, IReadOnlyDictionary<int, int> numbers, CancellationToken cancellationToken)
+    {
+        var versions = context.Versions.Where(version => version.DocumentId == id && version.Locale == locale);
+        await versions.ExecuteUpdateAsync(set => set.SetProperty(version => version.Number, version => -version.Number), cancellationToken);
+        foreach (var (from, to) in numbers)
+        {
+            var moved = -from;
+            await versions.Where(version => version.Number == moved).ExecuteUpdateAsync(set => set.SetProperty(version => version.Number, to), cancellationToken);
+        }
+    }
+
+    public Task<List<int>> VersionNumbersAsync(Guid id, string locale, CancellationToken cancellationToken) =>
+        context.Versions.AsNoTracking()
+            .Where(version => version.DocumentId == id && version.Locale == locale)
+            .OrderBy(version => version.Number)
+            .Select(version => version.Number)
+            .ToListAsync(cancellationToken);
+
     public Task<bool> AnyEntryAsync(SchemaType type, SiteId site, CancellationToken cancellationToken)
     {
         var typeName = type.Name;

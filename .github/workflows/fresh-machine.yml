@@ -1,0 +1,132 @@
+name: Fresh machine
+
+# The exit criteria of M6 (#3023): eng/fresh-machine.ps1 runs the sequence of a new user from the packages of this commit in a
+# folder feed, on clean runners. Linux runs it on SQLite and PostgreSQL, then checks that broken feeds fail it; Windows runs
+# SQLite. It runs on pushes to feature branches and when dispatched; CI calls it on pushes to main, on manual runs and on the
+# pull request of a feature branch into main. Issue pull requests do not run it.
+on:
+  push:
+    branches: ["feature/**"]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Fresh machine (ubuntu-latest, SQLite and PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # At job level: a called workflow shares the caller's workflow name, so a workflow-level group would hold CI's own.
+    concurrency:
+      group: fresh-machine-linux-${{ github.event_name }}-${{ github.ref }}
+      cancel-in-progress: true
+    services:
+      # The image of the PostgreSQL data tests (postgres:15.19): one empty database for each of the two hosts.
+      postgres:
+        image: postgres@sha256:1aac5b49cefd627f02816141ca4ad012d6cc19460dfe02a9b5168a105be3fc53
+        env:
+          POSTGRES_USER: fluentcms
+          POSTGRES_PASSWORD: fluentcms-ci
+          POSTGRES_DB: fluentcms
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fluentcms"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      postgres-import:
+        image: postgres@sha256:1aac5b49cefd627f02816141ca4ad012d6cc19460dfe02a9b5168a105be3fc53
+        env:
+          POSTGRES_USER: fluentcms
+          POSTGRES_PASSWORD: fluentcms-ci
+          POSTGRES_DB: fluentcms
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U fluentcms"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PACKAGE_VERSION: 1.0.0-ci.${{ github.run_number }}.${{ github.run_attempt }}
+      FLUENTCMS_FRESH_POSTGRES: Host=localhost;Port=5432;Database=fluentcms;Username=fluentcms;Password=fluentcms-ci
+      FLUENTCMS_FRESH_POSTGRES_IMPORT: Host=localhost;Port=5433;Database=fluentcms;Username=fluentcms;Password=fluentcms-ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            Directory.Packages.props
+            **/*.csproj
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Run the M6 sequence from packages
+        shell: pwsh
+        run: ./eng/fresh-machine.ps1 -WorkDirectory "$env:RUNNER_TEMP/fresh-machine" -Version $env:PACKAGE_VERSION
+
+      - name: Check that a broken feed fails the sequence
+        shell: pwsh
+        run: ./eng/fresh-machine-broken-feed.ps1 -Feed "$env:RUNNER_TEMP/fresh-machine/feed" -Version $env:PACKAGE_VERSION -WorkDirectory "$env:RUNNER_TEMP/broken-feed"
+
+      - name: Upload the logs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: fresh-machine-logs-linux
+          path: |
+            ${{ runner.temp }}/fresh-machine/*.log
+            ${{ runner.temp }}/broken-feed/*.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  windows:
+    name: Fresh machine (windows-latest, SQLite)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    concurrency:
+      group: fresh-machine-windows-${{ github.event_name }}-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      PACKAGE_VERSION: 1.0.0-ci.${{ github.run_number }}.${{ github.run_attempt }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            Directory.Packages.props
+            **/*.csproj
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Run the M6 sequence from packages
+        shell: pwsh
+        run: ./eng/fresh-machine.ps1 -WorkDirectory "$env:RUNNER_TEMP/fresh-machine" -Version $env:PACKAGE_VERSION
+
+      - name: Upload the logs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: fresh-machine-logs-windows
+          path: ${{ runner.temp }}/fresh-machine/*.log
+          if-no-files-found: ignore
+          retention-days: 7

@@ -8,9 +8,9 @@ namespace FluentCMS.Sdk.Tests.Content;
 public class OriginTests
 {
     [Fact]
-    public void HasTheSixOrigins()
+    public void HasTheSevenOrigins()
     {
-        Enum.GetNames<Origin>().ShouldBe(["Admin", "Api", "Mcp", "Job", "Cli", "Seed"]);
+        Enum.GetNames<Origin>().ShouldBe(["Admin", "Api", "Mcp", "Job", "Cli", "Seed", "Import"]);
     }
 
     [Fact]
@@ -22,6 +22,7 @@ public class OriginTests
         ((int)Origin.Job).ShouldBe(4);
         ((int)Origin.Cli).ShouldBe(5);
         ((int)Origin.Seed).ShouldBe(6);
+        ((int)Origin.Import).ShouldBe(7);
     }
 
     [Fact]

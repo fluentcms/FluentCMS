@@ -154,4 +154,13 @@ public interface IPluginServiceBuilder
     /// <returns>This builder.</returns>
     IPluginServiceBuilder AddMcpPrompts<TProvider>()
         where TProvider : class, IMcpPromptProvider;
+
+    /// <summary>
+    /// Adds what puts the plugin's data into a transfer package and takes it back out. It runs in a site only while the
+    /// plugin is enabled there, and its name must be unique among the contributors of the host.
+    /// </summary>
+    /// <typeparam name="TContributor">The contributor, scoped.</typeparam>
+    /// <returns>This builder.</returns>
+    IPluginServiceBuilder AddTransferContributor<TContributor>()
+        where TContributor : class, Transfer.ITransferContributor;
 }

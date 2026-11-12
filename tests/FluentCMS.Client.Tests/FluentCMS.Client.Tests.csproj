@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+    <!-- Compiles the generated Blog code on its own, against FluentCMS.Client alone. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/FluentCMS.Client/FluentCMS.Client.csproj" />
+    <!-- The seeded Blog sample on a test host is the instance the client reads and writes. -->
+    <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
+    <ProjectReference Include="../../samples/Blog/Blog.csproj" />
+  </ItemGroup>
+
+  <!-- Blog/ holds what `fluentcms generate csharp` writes for the Blog sample, which a test of FluentCMS.Cli.Tests keeps current. -->
+  <ItemGroup>
+    <None Include="../../clients/filter-cases.json" Link="filter-cases.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Blog/*.g.cs" Link="BlogSources/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

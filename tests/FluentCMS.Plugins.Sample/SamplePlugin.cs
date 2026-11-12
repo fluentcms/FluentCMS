@@ -40,7 +40,8 @@ public sealed class SamplePlugin : IPlugin
             .AddErrorCode(NoteExists, 409, "Note exists")
             .AddMcpTools<SampleTools>()
             .AddMcpResources<SampleResources>()
-            .AddMcpPrompts<SamplePrompts>();
+            .AddMcpPrompts<SamplePrompts>()
+            .AddTransferContributor<SampleTransfer>();
 
         if (PluginCalls.In(plugin.Services) is { } calls)
         {

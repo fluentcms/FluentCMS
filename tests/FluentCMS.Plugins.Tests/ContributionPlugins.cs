@@ -252,6 +252,9 @@ public sealed class FakeServiceBuilder : IPluginServiceBuilder
 
     public IPluginServiceBuilder AddMcpPrompts<TProvider>()
         where TProvider : class, FluentCMS.Agents.IMcpPromptProvider => this;
+
+    public IPluginServiceBuilder AddTransferContributor<TContributor>()
+        where TContributor : class, FluentCMS.Transfer.ITransferContributor => this;
 }
 
 

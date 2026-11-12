@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/FluentCMS.Cli/FluentCMS.Cli.csproj" />
+    <!-- An instance on a test server for the commands that reach a running instance, and the MCP plugin, which serves /mcp to the proxy. -->
+    <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj" />
+    <!-- The Blog sample is the instance and the host project that `generate` reads. -->
+    <ProjectReference Include="../../samples/Blog/Blog.csproj" />
+  </ItemGroup>
+
+  <!-- Built first and never loaded: the tests start it as the tool does, from its own output folder. -->
+  <ItemGroup>
+    <ProjectReference Include="../FluentCMS.Cli.Tests.Host/FluentCMS.Cli.Tests.Host.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>HostProject</_Parameter1>
+      <_Parameter2>$(MSBuildThisFileDirectory)../FluentCMS.Cli.Tests.Host</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>HostAssembly</_Parameter1>
+      <_Parameter2>$(MSBuildThisFileDirectory)../FluentCMS.Cli.Tests.Host/bin/$(Configuration)/$(TargetFramework)/FluentCMS.Cli.Tests.Host.dll</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>RepositoryRoot</_Parameter1>
+      <_Parameter2>$(MSBuildThisFileDirectory)../..</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>Configuration</_Parameter1>
+      <_Parameter2>$(Configuration)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+</Project>

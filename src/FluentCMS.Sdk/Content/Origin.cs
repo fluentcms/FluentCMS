@@ -20,4 +20,7 @@ public enum Origin
 
     /// <summary>Seeding of sample or initial content.</summary>
     Seed = 6,
+
+    /// <summary>The import of a transfer package, which writes as the system principal for the caller who started it.</summary>
+    Import = 7,
 }

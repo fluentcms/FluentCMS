@@ -8,15 +8,25 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="FluentCMS.Cli.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Data.Tests" />
+    <InternalsVisibleTo Include="FluentCMS.Core.IntegrationTests" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="System.CommandLine" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../FluentCMS.Core/FluentCMS.Core.csproj" />
+  </ItemGroup>
+
+  <!-- The emitter of the source generator, so that `generate csharp` writes the builders a host gets. Linked rather than
+       referenced: the generator's assembly is an analyzer, and its IsExternalInit is for netstandard2.0 only. -->
+  <ItemGroup>
+    <Compile Include="../FluentCMS.Generators/Emit/*.cs" Link="Generate/Emit/%(Filename)%(Extension)" />
+    <Compile Include="../FluentCMS.Generators/Snapshot/*.cs" Link="Generate/Snapshot/%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

@@ -13,6 +13,9 @@ internal sealed class LocalFileStorage(IOptions<MediaOptions> options, IHostEnvi
 {
     public const string ProviderName = "local";
 
+    // The key of the DirectoryInfo of the root among the services.
+    public const string RootKey = "FluentCMS.Media.LocalRoot";
+
     public string Name => ProviderName;
 
     public string Root { get; } = Path.GetFullPath(Path.Combine(environment.ContentRootPath, options.Value.Local.Root));

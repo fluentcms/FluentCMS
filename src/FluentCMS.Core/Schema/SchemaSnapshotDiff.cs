@@ -17,11 +17,15 @@ internal static class SchemaSnapshotDiff
         ("blocks", "block"),
     ];
 
-    public static IReadOnlyList<SchemaChange> Compare(string before, string after)
+    public static IReadOnlyList<SchemaChange> Compare(string before, string after) => Report(before, after).Changes;
+
+    // The changes and the possible renames among them, which the schema tools print and the drift log leaves out.
+    public static SchemaDiffReport Report(string before, string after)
     {
         try
         {
-            return CompareCore(before, after);
+            var renames = new List<PossibleRename>();
+            return new SchemaDiffReport(CompareCore(before, after, renames), renames);
         }
         catch (InvalidOperationException)
         {
@@ -30,7 +34,7 @@ internal static class SchemaSnapshotDiff
         }
     }
 
-    private static List<SchemaChange> CompareCore(string before, string after)
+    private static List<SchemaChange> CompareCore(string before, string after, List<PossibleRename> renames)
     {
         using var previous = JsonDocument.Parse(before);
         using var current = JsonDocument.Parse(after);
@@ -45,7 +49,7 @@ internal static class SchemaSnapshotDiff
         {
             if (oldTypes.TryGetValue(key, out var old))
             {
-                CompareType(key, old, type, changes);
+                CompareType(key, old, type, changes, renames);
             }
             else
             {
@@ -79,7 +83,7 @@ internal static class SchemaSnapshotDiff
         return types;
     }
 
-    private static void CompareType((string Family, string Name) key, (string Group, JsonElement Element) oldType, (string Group, JsonElement Element) newType, List<SchemaChange> changes)
+    private static void CompareType((string Family, string Name) key, (string Group, JsonElement Element) oldType, (string Group, JsonElement Element) newType, List<SchemaChange> changes, List<PossibleRename> renames)
     {
         var (family, name) = key;
         var (old, current) = (oldType.Element, newType.Element);
@@ -97,6 +101,7 @@ internal static class SchemaSnapshotDiff
         var oldFields = FieldsOf(old);
         var newFields = FieldsOf(current);
         var renamedFrom = new HashSet<string>(StringComparer.Ordinal);
+        var added = new List<string>();
 
         foreach (var (field, element) in newFields)
         {
@@ -115,6 +120,7 @@ internal static class SchemaSnapshotDiff
             if (former is null)
             {
                 changes.Add(new SchemaChange(SchemaChangeKind.FieldAdded, family, name, field));
+                added.Add(field);
                 continue;
             }
 
@@ -128,9 +134,21 @@ internal static class SchemaSnapshotDiff
             }
         }
 
-        foreach (var field in oldFields.Keys.Where(field => !newFields.ContainsKey(field) && !renamedFrom.Contains(field)))
+        var removed = oldFields.Keys.Where(field => !newFields.ContainsKey(field) && !renamedFrom.Contains(field)).ToList();
+        foreach (var field in removed)
         {
             changes.Add(new SchemaChange(SchemaChangeKind.FieldRemoved, family, name, field));
+        }
+
+        // Each added field takes the first removed field of its kind that no other took, in declaration order.
+        foreach (var field in added)
+        {
+            var match = removed.FirstOrDefault(candidate => SameKind(oldFields[candidate], newFields[field]));
+            if (match is not null)
+            {
+                removed.Remove(match);
+                renames.Add(new PossibleRename(family, name, match, field));
+            }
         }
 
         var kept = oldFields.Keys.Where(newFields.ContainsKey).ToList();
@@ -139,6 +157,10 @@ internal static class SchemaSnapshotDiff
             changes.Add(new SchemaChange(SchemaChangeKind.FieldsReordered, family, name));
         }
     }
+
+    // The kind of a field is its field type and whether it holds a list, which is what its storage follows.
+    private static bool SameKind(JsonElement old, JsonElement current) =>
+        Raw(old, "type") == Raw(current, "type") && Raw(old, "multiple") == Raw(current, "multiple");
 
     // In declaration order, which is what the order of the dictionary keeps.
     private static Dictionary<string, JsonElement> FieldsOf(JsonElement type)

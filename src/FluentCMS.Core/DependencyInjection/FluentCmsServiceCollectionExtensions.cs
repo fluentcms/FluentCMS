@@ -12,6 +12,7 @@ using FluentCMS.Core.Api.Members;
 using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Caching;
+using FluentCMS.Core.Commands;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
@@ -33,6 +34,7 @@ using FluentCMS.Core.Seeding;
 using FluentCMS.Core.Settings;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
+using FluentCMS.Core.Transfer;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Localization;
@@ -62,6 +64,10 @@ public static class FluentCmsServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
+
+        // First, so that a host started with a command that it does not run stops before anything else of it starts.
+        services.TryAddSingleton(ProcessArguments.Current());
+        services.AddHostedService<CommandEntryPointCheck>();
 
         var builder = new FluentCmsBuilder(services);
         configure(builder);
@@ -202,6 +208,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<SchemaIntrospection>();
         services.TryAddScoped<ISchemaIntrospection>(serviceProvider => serviceProvider.GetRequiredService<SchemaIntrospection>());
         services.AddManagementSchemaApi();
+        services.AddManagementTransferApi();
         services.AddFluentCmsHealth();
         services.AddSystemApi();
         services.AddFluentCmsOpenApi(builder.OpenApi);
@@ -221,6 +228,13 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<EntryStore>();
         services.AddScoped<ScheduleStore>();
         services.AddScoped<ContentService>();
+        services.AddScoped<TransferImportMode>();
+        services.AddScoped<EntryExport>();
+        services.AddFluentCmsOptions(TransferOptions.Section, HostErrorCodes.InvalidOption, new TransferOptions(), transfer => transfer.Validate());
+        services.AddSingleton(new TransferContributorRegistrations(plugins.Contributions.TransferContributors));
+        services.AddScoped<TransferContributors>();
+        services.AddScoped<TransferExporter>();
+        services.AddScoped<TransferImporter>();
         services.TryAddScoped<IContentService>(serviceProvider => serviceProvider.GetRequiredService<ContentService>());
         services.TryAddScoped(typeof(IContentService<>), typeof(TypedContentService<>));
         services.TryAddScoped<IContentReferences, ContentReferences>();
@@ -302,7 +316,8 @@ public static class FluentCmsServiceCollectionExtensions
 
         services.AddSingleton(builder.Seeding);
         services.AddScoped<SeedStateStore>();
-        services.AddScoped<ISeedRunner, SeedRunner>();
+        services.AddScoped<SeedRunner>();
+        services.AddScoped<ISeedRunner>(provider => provider.GetRequiredService<SeedRunner>());
         if (builder.Seeding.Types.Count > 0 && builder.Seeding.RunOnStart)
         {
             services.AddHostedService<SeedStartupService>();

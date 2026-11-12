@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "FluentCMS",
+  "classifications": ["Web", "CMS", "Library", "Test"],
+  "identity": "FluentCMS.Templates.Plugin",
+  "groupIdentity": "FluentCMS.Templates.Plugin",
+  "name": "FluentCMS plugin",
+  "description": "The server half of a FluentCMS plugin, with a table and its migrations, a permission, settings, a hook and a Management endpoint, and a test project that boots it in the test host.",
+  "shortName": "fluentcms-plugin",
+  "sourceName": "FluentCms-Plugin1",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "forms": {
+    "lastSegment": {
+      "identifier": "replace",
+      "pattern": "^.*\\.",
+      "replacement": ""
+    },
+    "lettersAndDigits": {
+      "identifier": "replace",
+      "pattern": "[^A-Za-z0-9]",
+      "replacement": ""
+    },
+    "firstUpper": {
+      "identifier": "firstUpperCaseInvariant"
+    },
+    "kebab": {
+      "identifier": "kebabCase"
+    },
+    "underscores": {
+      "identifier": "replace",
+      "pattern": "-",
+      "replacement": "_"
+    },
+    "className": {
+      "identifier": "chain",
+      "steps": ["lastSegment", "lettersAndDigits", "firstUpper"]
+    },
+    "pluginName": {
+      "identifier": "chain",
+      "steps": ["lastSegment", "lettersAndDigits", "kebab"]
+    },
+    "tableName": {
+      "identifier": "chain",
+      "steps": ["lastSegment", "lettersAndDigits", "kebab", "underscores"]
+    }
+  },
+  "symbols": {
+    "pluginClass": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "className",
+      "replaces": "Starter",
+      "fileRename": "Starter",
+      "description": "The prefix of the plugin's classes: the last segment of the name."
+    },
+    "pluginName": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "pluginName",
+      "replaces": "starter-plugin",
+      "description": "The name of the plugin in its manifest, its settings area and its routes: the last segment of the name in kebab case."
+    },
+    "pluginTable": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "tableName",
+      "replaces": "starter_plugin",
+      "description": "The plugin's name with underscores, as its tables are named."
+    }
+  }
+}

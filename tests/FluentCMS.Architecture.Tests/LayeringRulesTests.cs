@@ -13,6 +13,8 @@ public class LayeringRulesTests
     private const string Sdk = "FluentCMS.Sdk";
     private const string PluginAbstractions = "FluentCMS.Plugins.Abstractions";
     private const string PluginPrefix = "FluentCMS.Plugins.";
+    private const string Analyzers = "FluentCMS.Analyzers";
+    private const string Generators = "FluentCMS.Generators";
     private const string GraphQLPlugin = "FluentCMS.Plugins.GraphQL";
 
     private const string ApiNamespace = "FluentCMS.Core.Api";
@@ -22,6 +24,8 @@ public class LayeringRulesTests
     private const string SitesNamespace = "FluentCMS.Core.Sites";
     private const string ProvidersNamespace = "FluentCMS.Data";
     private const string CliNamespace = "FluentCMS.Cli";
+    private const string CliProject = "FluentCMS.Cli";
+    private const string ClientProject = "FluentCMS.Client";
     private const string TestingNamespace = "FluentCMS.Testing";
     private const string McpPlugin = "FluentCMS.Plugins.Mcp";
     private const string MultiSitePlugin = "FluentCMS.Plugins.MultiSite";
@@ -68,6 +72,52 @@ public class LayeringRulesTests
         violations.ShouldBeEmpty();
     }
 
+    // Spec 6.4: the reference host, the Blog sample and every first-party plugin build with the analyzers, as analyzers only,
+    // and a plugin keeps them out of the dependencies of its package.
+    [Fact]
+    public void TheHostTheSampleAndThePluginsBuildWithTheAnalyzers()
+    {
+        var projects = ProjectFile.SourceProjects
+            .Where(project => project.Name == "FluentCMS.Host" || (project.Name.StartsWith(PluginPrefix, StringComparison.Ordinal) && project.Name != PluginAbstractions))
+            .Append(ProjectFile.Load("samples/Blog/Blog.csproj"))
+            .ToList();
+
+        projects.Count.ShouldBeGreaterThan(2);
+        projects.Where(project => !project.AnalyzerReferences.Any(reference => reference.Name == Analyzers)).Select(project => project.Name).ShouldBeEmpty();
+        projects.Where(project => project.ProjectReferences.Contains(Analyzers)).Select(project => project.Name).ShouldBeEmpty();
+        projects.Where(project => project.Name.StartsWith(PluginPrefix, StringComparison.Ordinal))
+            .Where(project => project.AnalyzerReferences.Any(reference => reference.Name == Analyzers && !reference.Private))
+            .Select(project => project.Name)
+            .ShouldBeEmpty();
+    }
+
+    // Spec 6.2: the plugin of the fluentcms-plugin template is held to the rule of a first-party plugin: among the FluentCMS
+    // packages it depends on the two contract packages only, and it builds with the generator and the analyzers as
+    // development dependencies, which keeps them out of its package. Its providers are compiled against only.
+    [Fact]
+    public void ThePluginTemplateReferencesTheSdkAndThePluginAbstractionsOnly()
+    {
+        var plugin = ProjectFile.Load("templates/fluentcms-plugin/src/FluentCms-Plugin1/FluentCms-Plugin1.csproj");
+
+        plugin.ProjectReferences.ShouldBeEmpty();
+        plugin.PackageReferences.Where(package => !package.DevelopmentOnly).Select(package => package.Name)
+            .ShouldBe([Sdk, PluginAbstractions], ignoreOrder: true);
+        plugin.PackageReferences.Where(package => package.DevelopmentOnly && package.Name.StartsWith("FluentCMS.", StringComparison.Ordinal))
+            .Select(package => package.Name)
+            .ShouldBe([Generators, Analyzers], ignoreOrder: true);
+    }
+
+    // Spec 6.2: a host from the fluentcms template references the generator and the analyzers as packages of their own,
+    // as development dependencies.
+    [Fact]
+    public void TheHostTemplateBuildsWithTheGeneratorAndTheAnalyzers()
+    {
+        var host = ProjectFile.Load("templates/fluentcms/FluentCms-App.csproj");
+
+        host.PackageReferences.Where(package => package.DevelopmentOnly).Select(package => package.Name)
+            .ShouldBe([Generators, Analyzers], ignoreOrder: true);
+    }
+
     // Spec 2.1: the GraphQL layer carries identity and intent only. It reaches content through IContentService, so it has
     // no context of its own and none of EF Core.
     [Fact]
@@ -112,6 +162,31 @@ public class LayeringRulesTests
             .ToList();
 
         violations.ShouldBeEmpty();
+    }
+
+    // Spec 2.4: the client that generated C# compiles against references no other FluentCMS package, neither in its project
+    // nor in its assembly, so an application in another process gets none of the host's types; it needs no package at all.
+    [Fact]
+    public void TheClientReferencesNoOtherFluentCmsPackage()
+    {
+        var client = ProjectFile.SourceProjects.Single(project => project.Name == ClientProject);
+
+        client.ProjectReferences.ShouldBeEmpty();
+        client.PackageReferences.ShouldBeEmpty();
+        Assembly.Load(ClientProject).GetReferencedAssemblies().Select(reference => reference.Name)
+            .Where(name => name!.StartsWith("FluentCMS.", StringComparison.Ordinal))
+            .ShouldBeEmpty();
+    }
+
+    // Spec 6.1: the tool parses the command line and hands a command to the host as arguments, so Core and everything a
+    // host references keeps no dependency on the parser.
+    [Fact]
+    public void OnlyTheToolReferencesTheCommandLineParser()
+    {
+        ProjectFile.SourceProjects
+            .Where(project => project.PackageReferences.Any(package => package.Name == "System.CommandLine"))
+            .Select(project => project.Name)
+            .ShouldBe([CliProject]);
     }
 
     [Fact]

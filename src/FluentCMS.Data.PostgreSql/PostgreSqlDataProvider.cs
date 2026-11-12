@@ -20,7 +20,7 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
 
     public IJobClaimDialect JobClaimDialect { get; } = new PostgreSqlJobClaimDialect();
 
-    public IDatabaseSchemaReader SchemaReader { get; } = new InformationSchemaReader("current_schema()");
+    public IDatabaseSchemaReader SchemaReader { get; } = new InformationSchemaReader(PostgreSqlCatalog.CurrentSchema, PostgreSqlCatalog.Indexes);
 
     public bool IsUniqueViolation(Exception exception) =>
         (exception as PostgresException ?? exception.InnerException as PostgresException) is { SqlState: PostgresErrorCodes.UniqueViolation };
@@ -54,4 +54,51 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
         options.UseNpgsql(connectionString, npgsql => npgsql
             .MigrationsAssembly(typeof(PostgreSqlDataProvider).Assembly)
             .MigrationsHistoryTable(SystemDbContext.HistoryTable));
+
+    // Npgsql locks the history table inside each migration's transaction, after the migrator has read what is applied, so
+    // two processes that start together both apply the next migration. A session advisory lock, keyed by the database
+    // since the keys are shared by the whole server, holds the other process until this one has applied every stream.
+    public async Task<IAsyncDisposable?> LockMigrationsAsync(CancellationToken cancellationToken)
+    {
+        var connection = new NpgsqlConnection(connectionString);
+        try
+        {
+            await connection.OpenAsync(cancellationToken);
+            await RunAsync(connection, $"SELECT pg_advisory_lock({MigrationsLockKey})", cancellationToken);
+            return new MigrationsLock(connection);
+        }
+        catch
+        {
+            await connection.DisposeAsync();
+            throw;
+        }
+    }
+
+    private const string MigrationsLockKey = "hashtext(current_database() || ':fluentcms:migrations')";
+
+    private static async Task RunAsync(NpgsqlConnection connection, string sql, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+#pragma warning disable CA2100 // Constants of this class.
+        command.CommandText = sql;
+#pragma warning restore CA2100
+        command.CommandTimeout = 0;
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    // A pooled connection keeps its session, and with it the lock, until it is used again, so the lock is released first.
+    private sealed class MigrationsLock(NpgsqlConnection connection) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync()
+        {
+            try
+            {
+                await RunAsync(connection, $"SELECT pg_advisory_unlock({MigrationsLockKey})", CancellationToken.None);
+            }
+            finally
+            {
+                await connection.DisposeAsync();
+            }
+        }
+    }
 }
