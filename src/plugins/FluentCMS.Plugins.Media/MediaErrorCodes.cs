@@ -1,6 +1,6 @@
 namespace FluentCMS.Plugins.Media;
 
-// The media plugin has the codes from FCMS1580 up to 1599. Each is added with AddErrorCode in MediaPlugin.
+// The media plugin has the codes from FCMS1580 up to 1599, and FCMS3220 and 3221 of transfer. Each is added with AddErrorCode in MediaPlugin.
 internal static class MediaErrorCodes
 {
     public const string InvalidField = "FCMS1580";
@@ -19,4 +19,8 @@ internal static class MediaErrorCodes
     public const string PresetNotFound = "FCMS1593";
     public const string AssetInUse = "FCMS1594";
     public const string DownloadExpired = "FCMS1595";
+
+    // The items of a transfer package, from the range of transfer, 3200 up to 3239.
+    public const string TransferFileMissing = "FCMS3220";
+    public const string TransferIdTaken = "FCMS3221";
 }

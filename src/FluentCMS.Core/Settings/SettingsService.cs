@@ -1,11 +1,14 @@
+using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Core.Transfer;
 using FluentCMS.Events;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
+using FluentCMS.Transfer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -124,6 +127,63 @@ internal sealed class SettingsService(
         }
 
         await ChangedAsync(descriptor, site, operation, "reset", cancellationToken);
+    }
+
+    // For an export, which has checked transfer.manage: the site's own documents, without their secrets. One that its class
+    // cannot read, or whose area no longer exists, is left out, as a read would skip it.
+    public async Task<IReadOnlyList<(string Area, string Json)>> SiteDocumentsAsync(SiteId site, CancellationToken cancellationToken)
+    {
+        Guid? siteId = site.Value;
+        var rows = await context.Set<SettingRow>().AsNoTracking()
+            .Where(row => row.SiteId == siteId)
+            .ToListAsync(cancellationToken);
+
+        List<(string Area, string Json)> documents = [];
+        foreach (var row in rows.OrderBy(row => row.Key, StringComparer.Ordinal))
+        {
+            if (registry.Find(row.Key) is { } descriptor && descriptor.CanRead(row.Json))
+            {
+                documents.Add((row.Key, descriptor.Redact(row.Json).Json));
+            }
+        }
+
+        return documents;
+    }
+
+    // For an import: a document without secrets, which keep what the site has, as a write that leaves them out does. The
+    // same document as the site's is no write. A dry run checks the document and writes nothing. The caller who started the
+    // import needs settings.{area}.manage in the site, as a write of its own would; the write itself is the import's.
+    public async Task<TransferOutcome> ImportAsync(string area, SiteId site, string json, bool dryRun, OperationContext caller, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(caller);
+
+        var descriptor = registry.Find(area)
+            ?? throw SettingsDescriptor.Fail("area", TransferErrorCodes.UnknownArea, $"There is no settings area '{area}' in this instance.");
+        if (!(await authorization.ResolveAsync(caller, cancellationToken)).Allows(descriptor.Permission, new AccessTarget(site, null)))
+        {
+            throw new SettingsAccessDeniedException(descriptor.Area, site);
+        }
+
+        var canonical = descriptor.Canonicalize(json);
+
+        Guid? siteId = site.Value;
+        var stored = await context.Set<SettingRow>().AsNoTracking()
+            .Where(row => row.Key == area && row.SiteId == siteId)
+            .Select(row => row.Json)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (stored is not null
+            && descriptor.CanRead(stored)
+            && JsonNode.DeepEquals(JsonNode.Parse(descriptor.Redact(stored).Json), JsonNode.Parse(descriptor.Redact(canonical).Json)))
+        {
+            return TransferOutcome.Skipped;
+        }
+
+        if (!dryRun)
+        {
+            await WriteAsync(descriptor, site, json, expectedVersion: null, cancellationToken);
+        }
+
+        return stored is null ? TransferOutcome.Created : TransferOutcome.Updated;
     }
 
     private ResolvedSetting? Pick(SettingsDescriptor descriptor, SettingRow? row, SettingsSource source, int version, Guid scope)

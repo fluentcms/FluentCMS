@@ -39,8 +39,12 @@ internal sealed class PluginContributions : IMcpProviders
     private readonly List<McpProviderRegistration> _mcpTools = [];
     private readonly List<McpProviderRegistration> _mcpResources = [];
     private readonly List<McpProviderRegistration> _mcpPrompts = [];
+    private readonly List<McpProviderRegistration> _transferContributors = [];
 
     public IReadOnlyList<McpProviderRegistration> Tools => _mcpTools;
+
+    // The contributors of transfer packages, by the plugin that added each, in plugin order.
+    public IReadOnlyList<McpProviderRegistration> TransferContributors => _transferContributors;
 
     public IReadOnlyList<McpProviderRegistration> Resources => _mcpResources;
 
@@ -74,6 +78,8 @@ internal sealed class PluginContributions : IMcpProviders
     public void AddMcpResources(RegisteredPlugin plugin, Type provider) => AddMcp(_mcpResources, plugin, provider);
 
     public void AddMcpPrompts(RegisteredPlugin plugin, Type provider) => AddMcp(_mcpPrompts, plugin, provider);
+
+    public void AddTransferContributor(RegisteredPlugin plugin, Type contributor) => AddMcp(_transferContributors, plugin, contributor);
 
     public void AddFieldType(RegisteredPlugin plugin, IFieldType fieldType)
     {
@@ -278,6 +284,14 @@ internal sealed class PluginServiceBuilder(FluentCmsBuilder cms, RegisteredPlugi
     {
         cms.Services.TryAddScoped<TProvider>();
         contributions.AddMcpPrompts(plugin, typeof(TProvider));
+        return this;
+    }
+
+    public IPluginServiceBuilder AddTransferContributor<TContributor>()
+        where TContributor : class, FluentCMS.Transfer.ITransferContributor
+    {
+        cms.Services.TryAddScoped<TContributor>();
+        contributions.AddTransferContributor(plugin, typeof(TContributor));
         return this;
     }
 

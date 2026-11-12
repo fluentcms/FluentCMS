@@ -778,6 +778,7 @@ FluentCMS.Content.Origin
 FluentCMS.Content.Origin.Admin = 1 -> FluentCMS.Content.Origin
 FluentCMS.Content.Origin.Api = 2 -> FluentCMS.Content.Origin
 FluentCMS.Content.Origin.Cli = 5 -> FluentCMS.Content.Origin
+FluentCMS.Content.Origin.Import = 7 -> FluentCMS.Content.Origin
 FluentCMS.Content.Origin.Job = 4 -> FluentCMS.Content.Origin
 FluentCMS.Content.Origin.Mcp = 3 -> FluentCMS.Content.Origin
 FluentCMS.Content.Origin.Seed = 6 -> FluentCMS.Content.Origin
@@ -1870,6 +1871,7 @@ FluentCMS.Plugins.IPluginServiceBuilder.AddMcpTools<TProvider>() -> FluentCMS.Pl
 FluentCMS.Plugins.IPluginServiceBuilder.AddProviderSlot<TSlot, TDefault>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddJob<TJob, TPayload>(string! type) -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddJob<TJob, TPayload>(string! type, System.TimeSpan? attemptTimeout) -> FluentCMS.Plugins.IPluginServiceBuilder!
+FluentCMS.Plugins.IPluginServiceBuilder.AddTransferContributor<TContributor>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginState
 FluentCMS.Plugins.IPluginState.IsEnabledAsync(string! plugin, FluentCMS.Sites.SiteId site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
 FluentCMS.Plugins.IPluginServiceBuilder
@@ -2601,6 +2603,29 @@ FluentCMS.Sites.SiteRequest.Parameter.init -> void
 FluentCMS.Sites.SiteRequest.SiteRequest() -> void
 abstract FluentCMS.Content.ContentFilter.<Clone>$() -> FluentCMS.Content.ContentFilter!
 abstract FluentCMS.Events.CmsEvent.<Clone>$() -> FluentCMS.Events.CmsEvent!
+FluentCMS.Transfer.ITransferContributor
+FluentCMS.Transfer.ITransferContributor.ExportAsync(FluentCMS.Transfer.ITransferExport! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+FluentCMS.Transfer.ITransferContributor.ImportAsync(FluentCMS.Transfer.ITransferImport! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+FluentCMS.Transfer.ITransferContributor.Name.get -> string!
+FluentCMS.Transfer.ITransferExport
+FluentCMS.Transfer.ITransferExport.Options.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+FluentCMS.Transfer.ITransferExport.Site.get -> FluentCMS.Sites.SiteId
+FluentCMS.Transfer.ITransferExport.WriteAsync(string! path, System.Func<System.IO.Stream!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! write, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+FluentCMS.Transfer.ITransferImport
+FluentCMS.Transfer.ITransferImport.DryRun.get -> bool
+FluentCMS.Transfer.ITransferImport.Options.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+FluentCMS.Transfer.ITransferImport.Overwrite.get -> bool
+FluentCMS.Transfer.ITransferImport.PackageSite.get -> FluentCMS.Sites.SiteId
+FluentCMS.Transfer.ITransferImport.Paths.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Transfer.ITransferImport.ReadAsync(string! path, System.Func<System.IO.Stream!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! read, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+FluentCMS.Transfer.ITransferImport.Report(string! section, string! id, FluentCMS.Transfer.TransferOutcome outcome, string? code = null, string? message = null) -> void
+FluentCMS.Transfer.ITransferImport.Site.get -> FluentCMS.Sites.SiteId
+FluentCMS.Transfer.TransferOutcome
+FluentCMS.Transfer.TransferOutcome.Conflict = 4 -> FluentCMS.Transfer.TransferOutcome
+FluentCMS.Transfer.TransferOutcome.Created = 1 -> FluentCMS.Transfer.TransferOutcome
+FluentCMS.Transfer.TransferOutcome.Error = 5 -> FluentCMS.Transfer.TransferOutcome
+FluentCMS.Transfer.TransferOutcome.Skipped = 3 -> FluentCMS.Transfer.TransferOutcome
+FluentCMS.Transfer.TransferOutcome.Updated = 2 -> FluentCMS.Transfer.TransferOutcome
 const FluentCMS.Authorization.Permission.ContentPrefix = "content" -> string!
 const FluentCMS.Content.BulkRequest.MaxItems = 1000 -> int
 const FluentCMS.Content.ValidationErrorCodes.AboveMaximum = "FCMS2105" -> string!

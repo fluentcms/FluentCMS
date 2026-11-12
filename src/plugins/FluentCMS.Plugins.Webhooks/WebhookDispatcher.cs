@@ -21,8 +21,16 @@ internal sealed class WebhookEventHandler<TEvent>(WebhookDispatcher dispatcher) 
 // again enqueues jobs that find their attempt claimed.
 internal sealed class WebhookDispatcher(PluginDbContext<WebhooksPlugin> database, IJobScheduler scheduler)
 {
+    // The correlation id that core gives the events of an import started with webhooks=true (spec 4.11).
+    internal const string ImportWithWebhooks = "import+webhooks:";
+
     public async ValueTask DispatchAsync(CmsEvent message, EventDelivery delivery, CancellationToken cancellationToken)
     {
+        if (!Delivers(message.Source))
+        {
+            return;
+        }
+
         var name = WebhookEvents.Names[message.GetType()];
         var site = message.Source.SiteId;
         var type = (message as EntryEvent)?.Type;
@@ -49,6 +57,10 @@ internal sealed class WebhookDispatcher(PluginDbContext<WebhooksPlugin> database
             await scheduler.EnqueueAsync<WebhookDeliveryJob, WebhookAttempt>(attempt, WebhookDeliveryJob.Options(site), cancellationToken);
         }
     }
+
+    // What an import writes is delivered only when the import asked for it.
+    internal static bool Delivers(EventSource source) =>
+        source.Origin != Origin.Import || source.CorrelationId.StartsWith(ImportWithWebhooks, StringComparison.Ordinal);
 
     private static Guid DeliveryIdOf(Guid key, Guid webhook)
     {
