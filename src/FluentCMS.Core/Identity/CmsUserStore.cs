@@ -11,7 +11,7 @@ namespace FluentCMS.Core.Identity;
 // instance-wide ones, because a name is unique only within its site; CmsUserManager reaches any role by id. A change is
 // described from what was stored before it and raised as the identity events of the catalogue. Users are deactivated,
 // never deleted: versions, schedules and the activity log name them.
-internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges changes, ILookupNormalizer normalizer, TimeProvider time, IdentityErrorDescriber? describer = null)
+internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges changes, ILookupNormalizer normalizer, TimeProvider time, SsoOptions sso, IdentityErrorDescriber? describer = null)
     : UserOnlyStore<CmsUser, SystemDbContext, Guid, IdentityUserClaim<Guid>, IdentityUserLogin<Guid>, IdentityUserToken<Guid>>(context, describer),
       IUserRoleStore<CmsUser>
 {
@@ -91,11 +91,12 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
             Description = "An admin user is deactivated, not deleted, because versions, schedules and the activity log name it.",
         }));
 
-    // A login provider is the name of a provider of cms.Sso, and a name is found ignoring case, so a login kept before the
-    // case of the name changed in configuration still finds its user. The name as it is written now is found first.
+    // The providers of cms.Sso are found by name ignoring case, so a login of one kept before the case of its name changed in
+    // configuration still finds its user. The name as it is written now is found first; other schemes match exactly.
     protected override async Task<IdentityUserLogin<Guid>?> FindUserLoginAsync(string loginProvider, string providerKey, CancellationToken cancellationToken)
     {
-        if (await base.FindUserLoginAsync(loginProvider, providerKey, cancellationToken) is { } exact)
+        var exact = await base.FindUserLoginAsync(loginProvider, providerKey, cancellationToken);
+        if (exact is not null || !sso.Providers.ContainsKey(loginProvider))
         {
             return exact;
         }
