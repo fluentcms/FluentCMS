@@ -152,7 +152,7 @@ internal sealed class StartupReportFactory(
 
         if (environment?.IsProduction() == true && WritesAppleSecrets())
         {
-            found.Add(new InsecureDefault { Id = "member-apple-logging", Message = $"The log category {AppleLogLevel.Category} is below Information in Production, so the log holds the client secret the Apple member provider signs and the tokens of each sign-in. Keep it at Information or above." });
+            found.Add(new InsecureDefault { Id = "member-apple-logging", Message = $"The log category {AppleLogLevel.Category} is below Information in Production. At Trace the log holds the client secret the Apple member provider signs and the tokens of each sign-in. Keep it at Information or above." });
         }
 
         found.AddRange(services.GetServices<IInsecureDefaultSource>()

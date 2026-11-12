@@ -35,11 +35,24 @@ public sealed class AppleLogLevelTests
     [Fact]
     public void TheHostLowersTheCategoryByNamingIt()
     {
-        using var everyProvider = Loggers(logging => logging.AddFilter<Sink>(null, LogLevel.Warning).AddFilter(AppleLogLevel.Category, LogLevel.Trace));
+        using var everyProvider = Loggers(logging => logging.AddFilter<Sink>(null, LogLevel.Trace).AddFilter(AppleLogLevel.Category, LogLevel.Trace));
         using var oneProvider = Loggers(logging => logging.SetMinimumLevel(LogLevel.Trace).AddFilter<Sink>(AppleLogLevel.Category, LogLevel.Trace));
 
         AppleLogLevel.Categories.ShouldAllBe(category => Enabled(everyProvider, category, LogLevel.Trace));
         AppleLogLevel.Categories.ShouldAllBe(category => Enabled(oneProvider, category, LogLevel.Trace));
+    }
+
+    // A provider kept above Information, as the event log is on Windows, stays there whatever the category is named.
+    [Fact]
+    public void ALevelAboveInformationIsKept()
+    {
+        using var filtered = Loggers(logging => logging.AddFilter<Sink>(level => level >= LogLevel.Warning).AddFilter(AppleLogLevel.Category, LogLevel.Trace));
+        using var everyProvider = Loggers(logging => logging.SetMinimumLevel(LogLevel.Warning));
+        using var oneProvider = Loggers(logging => logging.AddFilter<Sink>(null, LogLevel.Error).AddFilter(AppleLogLevel.Category, LogLevel.Trace));
+
+        AppleLogLevel.Categories.ShouldAllBe(category => !Enabled(filtered, category, LogLevel.Information) && Enabled(filtered, category, LogLevel.Warning));
+        AppleLogLevel.Categories.ShouldAllBe(category => !Enabled(everyProvider, category, LogLevel.Information) && Enabled(everyProvider, category, LogLevel.Warning));
+        AppleLogLevel.Categories.ShouldAllBe(category => !Enabled(oneProvider, category, LogLevel.Warning) && Enabled(oneProvider, category, LogLevel.Error));
     }
 
     [Fact]
