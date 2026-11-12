@@ -57,6 +57,22 @@ internal static class SchemaSources
         return CommandExitCodes.Failure;
     }
 
+    // UTF-8 bytes as they are: on the console, past its writer, whose encoding is the console's code page when redirected,
+    // so that `> file` keeps the bytes and the hash of a snapshot.
+    public static async Task WriteBytesAsync(TextWriter output, byte[] content, CancellationToken cancellationToken)
+    {
+        if (!ReferenceEquals(output, Console.Out))
+        {
+            await output.WriteAsync(Encoding.UTF8.GetString(content));
+            return;
+        }
+
+        await output.FlushAsync(cancellationToken);
+        await using var standardOutput = Console.OpenStandardOutput();
+        await standardOutput.WriteAsync(content, cancellationToken);
+        await standardOutput.FlushAsync(cancellationToken);
+    }
+
     public static async Task WriteFileAsync(string path, string text, CancellationToken cancellationToken)
     {
         try

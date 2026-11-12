@@ -62,6 +62,16 @@ public class SchemaDiffReportTests
     }
 
     [Fact]
+    public void ATypeWhoseTablesChangeIsDestructive()
+    {
+        var localized = Article(type => type.Field("title", "text"), localized: true);
+        var singleton = SampleSchema.NewBuilder().AddSingleton("article", type => type.Field("title", "text")).Build();
+
+        Destructive(localized, Article(type => type.Field("title", "text"))).ShouldBe(["type 'article' changed (localized)"]);
+        Destructive(Article(type => type.Field("title", "text")), singleton).ShouldBe(["type 'article' changed (kind)"]);
+    }
+
+    [Fact]
     public void WhatKeepsTheStoredValuesIsNotDestructive()
     {
         var before = Article(type => type.Field("title", "text"));

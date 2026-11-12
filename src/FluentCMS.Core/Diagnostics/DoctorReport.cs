@@ -23,6 +23,12 @@ internal static class DoctorReport
             await WriteTextAsync(report, output);
         }
 
+        return await JudgeAsync(report, refusals, error);
+    }
+
+    // What keeps the host from starting, and what is pending, give exit code 1; versions that differ only a warning.
+    public static async Task<int> JudgeAsync(StartupReport report, IReadOnlyList<string> refusals, TextWriter error)
+    {
         var exitCode = CommandExitCodes.Success;
         foreach (var refusal in refusals)
         {

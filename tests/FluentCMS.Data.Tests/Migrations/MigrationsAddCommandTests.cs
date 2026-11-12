@@ -118,6 +118,11 @@ public sealed partial class MigrationsAddCommandTests : IDisposable
         (await Add("AddSubtitle", ArticleSchemas.WithSubtitle, CompileGeneratedFiles())).ShouldBe(0, _error.ToString());
 
         _output.ToString().ShouldStartWith($"field 'article.subtitle' added{Environment.NewLine}");
+
+        // The schema on the model changed too, and an annotation makes no operation.
+        var migration = File.ReadAllText(GeneratedFiles().Single(file => file.EndsWith("_AddSubtitle.cs", StringComparison.Ordinal)));
+        migration.ShouldNotContain("AlterDatabase");
+        migration.ShouldContain("AddColumn");
     }
 
     [Fact]

@@ -21,11 +21,17 @@ internal sealed record SchemaChange(SchemaChangeKind Kind, string Family, string
     // value was, or a column of the other table of a localized type.
     private static readonly string[] StorageProperties = ["type", "multiple", "localizable"];
 
-    // A change that loses stored values when a database follows it: a type or a field removed, and a field whose kind changed.
+    // The properties of a type whose change drops or rekeys its tables: the locale table of a localized type, the keys of a
+    // singleton, and the site column of a type that is global or per site.
+    private static readonly string[] TableProperties = ["kind", "localized", "scope"];
+
+    // A change that loses stored values when a database follows it: a type or a field removed, a field whose kind changed,
+    // and a type whose tables change.
     public bool IsDestructive => Kind switch
     {
         SchemaChangeKind.TypeRemoved or SchemaChangeKind.FieldRemoved => true,
         SchemaChangeKind.FieldChanged => Properties?.Any(StorageProperties.Contains) == true,
+        SchemaChangeKind.TypeChanged => Properties?.Any(TableProperties.Contains) == true,
         _ => false,
     };
 

@@ -210,6 +210,14 @@ public sealed class MigrationRunner(
     internal Task RefuseForeignMigrationsAsync(CancellationToken cancellationToken = default) =>
         RefuseForeignMigrationsAsync([.. Plugins, Content], cancellationToken);
 
+    // What a start checks: without the content stream when schema sync runs, as RunAtStartupAsync does.
+    internal Task RefuseForeignMigrationsAtStartupAsync(CancellationToken cancellationToken = default)
+    {
+        var options = ResolveOptions();
+        var sync = options.MigrateOnStartup && options.SchemaSync == SchemaSyncMode.Auto;
+        return RefuseForeignMigrationsAsync(sync ? Plugins : [.. Plugins, Content], cancellationToken);
+    }
+
     // EF would apply a set scaffolded for another provider with that provider's store types, and startup validation compares
     // names only, so a switch of provider would go unnoticed. The system stream comes with the provider package.
     private async Task RefuseForeignMigrationsAsync(IEnumerable<Stream> streams, CancellationToken cancellationToken)

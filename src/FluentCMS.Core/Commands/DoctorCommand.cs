@@ -49,7 +49,7 @@ internal sealed class DoctorCommand : HostCommand
 
         try
         {
-            await services.GetRequiredService<MigrationRunner>().RefuseForeignMigrationsAsync(cancellationToken);
+            await services.GetRequiredService<MigrationRunner>().RefuseForeignMigrationsAtStartupAsync(cancellationToken);
         }
         catch (FluentCmsConfigurationException exception)
         {

@@ -1,3 +1,4 @@
+using System.Text;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
@@ -24,7 +25,7 @@ internal sealed class SchemaSnapshotCommand : HostCommand
         var snapshot = SchemaSnapshot.Of(SchemaSources.Host(context.Services));
         if (context.Arguments.Value(Output) is not { } file)
         {
-            await context.Output.WriteAsync(snapshot.Json);
+            await SchemaSources.WriteBytesAsync(context.Output, Encoding.UTF8.GetBytes(snapshot.Json), cancellationToken);
             return CommandExitCodes.Success;
         }
 

@@ -226,7 +226,7 @@ internal sealed class CommandLine(TextWriter output, TextWriter error, IHostLaun
             var snapshot = await InstanceSnapshotAsync(target, cancellationToken);
             if (path is null)
             {
-                await output.WriteAsync(Encoding.UTF8.GetString(snapshot));
+                await SchemaSources.WriteBytesAsync(output, snapshot, cancellationToken);
                 return ExitCodes.Success;
             }
 
@@ -319,7 +319,17 @@ internal sealed class CommandLine(TextWriter output, TextWriter error, IHostLaun
                 ? (await HostSnapshotAsync(result, project, cancellationToken), "the host's schema")
                 : (SchemaSnapshot.Of(DiffSchemaFile(file)).Json, file);
 
-            return await SchemaSources.WriteDiffAsync(SchemaSnapshotDiff.Report(from, to), result.GetValue(json), $"the instance at {target}", toLabel, output, error);
+            SchemaDiffReport report;
+            try
+            {
+                report = SchemaSnapshotDiff.Report(from, to);
+            }
+            catch (JsonException)
+            {
+                throw new CliException(CliErrorCodes.InstanceUnreachable, $"{target} answered schema/snapshot with something that is not a schema snapshot.");
+            }
+
+            return await SchemaSources.WriteDiffAsync(report, result.GetValue(json), $"the instance at {target}", toLabel, output, error);
         }));
         return command;
     }
@@ -339,11 +349,34 @@ internal sealed class CommandLine(TextWriter output, TextWriter error, IHostLaun
 
             using var http = _connect(target);
             var body = await new InstanceClient(target, http).GetAsync("system/diagnostics", "system.read", cancellationToken);
-            var report = JsonSerializer.Deserialize<StartupReport>(body, StartupReportJson.Options)
-                ?? throw new CliException(CliErrorCodes.InstanceUnreachable, $"{target} answered no report");
+            StartupReport? report;
+            try
+            {
+                report = JsonSerializer.Deserialize<StartupReport>(body, StartupReportJson.Options);
+            }
+            catch (JsonException)
+            {
+                report = null;
+            }
 
-            // An instance that answers has started, so only what is pending and the versions are left to judge.
-            return await DoctorReport.WriteAsync(report, [], result.GetValue(json), output, error);
+            if (report is null)
+            {
+                throw new CliException(CliErrorCodes.InstanceUnreachable, $"{target} answered system/diagnostics with something that is not a startup report.");
+            }
+
+            // The JSON as the instance sent it, so that what a newer instance adds is kept. An instance that answers has
+            // started, so only what is pending and the versions are left to judge.
+            if (result.GetValue(json))
+            {
+                await SchemaSources.WriteBytesAsync(output, body, cancellationToken);
+                await output.WriteLineAsync();
+            }
+            else
+            {
+                await DoctorReport.WriteTextAsync(report, output);
+            }
+
+            return await DoctorReport.JudgeAsync(report, [], error);
         }));
         return command;
     }
@@ -371,7 +404,14 @@ internal sealed class CommandLine(TextWriter output, TextWriter error, IHostLaun
         }
         finally
         {
-            File.Delete(file);
+            try
+            {
+                File.Delete(file);
+            }
+            catch (IOException)
+            {
+                // A file left in the temporary folder must not hide what failed.
+            }
         }
     }
 
