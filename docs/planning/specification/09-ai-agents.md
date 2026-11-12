@@ -18,7 +18,7 @@ Two first-party plugins. The MCP plugin makes FluentCMS a first-class tool for a
 | 12 | Rate and size limits for agents | Must | Per-client call limits, payload caps and tool-result truncation with paging, to protect the host from runaway loops. |
 | 13 | MCP client management in admin | Must | Register clients, assign service accounts and roles, see last activity, revoke; view agent writes in the activity log with one filter. |
 | 14 | AI assist in the editor | Must | Opt-in actions on fields: rewrite, shorten, expand, fix grammar, generate title or summary, suggest SEO metadata, translate to another locale, alt text for images. Results are suggestions inserted into the draft, never auto-published. |
-| 15 | Provider-agnostic AI layer | Must | Microsoft.Extensions.AI abstractions; providers for OpenAI, Azure OpenAI, Anthropic, Ollama and any OpenAI-compatible endpoint; keys and model per site; usage logged per user and action. |
+| 15 | Provider-agnostic AI layer | Must | Microsoft.Extensions.AI abstractions; OpenAI, Azure OpenAI and any OpenAI-compatible endpoint, which is how Ollama is reached; any other client through the plugin's provider slot; keys and model per site; usage logged per user and action. |
 | 16 | Semantic search | Should | Embeddings per entry (pgvector on PostgreSQL, in-process vector index on SQLite and SQL Server) exposed as a Delivery API parameter and an MCP `semantic_search` tool. |
 | 17 | Agent-context resource | Should | One compact resource bundling schema, site guidelines, locale rules and example entries so an agent gets oriented in a single read. |
 | 18 | Content provenance | Should | AI-assisted flag per version and per field (which action, which model) visible in history and filterable in lists. |

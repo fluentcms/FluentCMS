@@ -26,7 +26,7 @@ Two HTTP surfaces over one in-process service: a public, cacheable Delivery API 
 | 20 | HTTP caching | Must | `ETag`, `Cache-Control` and `Last-Modified` on Delivery responses; tag-based server cache with invalidation on publish; CDN purge hook. |
 | 21 | Delivery API as a separate hostable surface | Should | Run Delivery alone on edge nodes with read replicas while Management stays central. |
 | 22 | Aggregations | Should | Count, min, max, sum, avg and group-by on a type with filters, for dashboards. |
-| 23 | Full-text search parameter | Should | `q=` across searchable fields using the configured search provider (Postgres FTS, SQLite FTS5, external). |
+| 23 | Full-text search parameter | Must | `q=` across searchable fields using the configured search provider (Postgres FTS, SQLite FTS5, external). On SQL Server the first release matches a part of the text. |
 | 24 | Webhook-style change feed endpoint | Should | Paginated feed of changes since a cursor, for sync and static-site rebuilds. |
 | 25 | SDK generation for more languages | Should | Python and Go clients via the same OpenAPI document. |
 | 26 | Realtime subscriptions | Could | SSE or GraphQL subscriptions scoped by access rules. |
