@@ -7,15 +7,18 @@
     <PackageReference Include="Shouldly" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing" />
-    <!-- The testing package brings Workspaces 3.8.0, which pins Roslyn 3.8.0; this keeps all of Roslyn on the generator's version. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" />
+    <!-- The testing packages bring Workspaces 3.8.0, which pins Roslyn 3.8.0; this keeps all of Roslyn on the generator's version. -->
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
-    <!-- Lifts the vulnerable 9.0.6 that the testing package brings. -->
+    <!-- Lifts the vulnerable 9.0.6 that the testing packages bring. -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Run on the Kitchen types of this project, and referenced to drive the generator and the emitter in tests. -->
     <ProjectReference Include="../../src/FluentCMS.Generators/FluentCMS.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
+    <!-- Under an alias, since the analyzers share SchemaNames with the generator as source. -->
+    <ProjectReference Include="../../src/FluentCMS.Analyzers/FluentCMS.Analyzers.csproj" Aliases="Analyzers" />
     <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
     <ProjectReference Include="../../samples/Blog/Blog.csproj" />
   </ItemGroup>

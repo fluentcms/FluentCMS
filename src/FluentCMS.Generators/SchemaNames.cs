@@ -4,8 +4,8 @@ using System.Text;
 namespace FluentCMS.Generators;
 
 // The names the attribute reader gives: JsonNamingPolicy.CamelCase for a field and JsonNamingPolicy.KebabCaseLower for
-// a type, ported because System.Text.Json is not available to a generator on netstandard2.0. A test holds them to the
-// policies.
+// a type, ported because System.Text.Json is not available to a generator on netstandard2.0, and SnakeCaseLower for the
+// column of a field, which the analyzers measure. A test holds them to the policies.
 internal static class SchemaNames
 {
     public static string ToCamelCase(string name)
@@ -42,9 +42,12 @@ internal static class SchemaNames
         return new string(chars);
     }
 
-    public static string ToKebabCase(string name)
+    public static string ToKebabCase(string name) => ToSeparated(name, '-');
+
+    public static string ToSnakeCase(string name) => ToSeparated(name, '_');
+
+    private static string ToSeparated(string name, char separator)
     {
-        const char separator = '-';
         if (string.IsNullOrEmpty(name))
         {
             return name;

@@ -27,7 +27,7 @@ internal static class Generation
     public static CSharpParseOptions ParseOptions { get; } = new(LanguageVersion.Latest);
 
     // The implicit usings of an SDK project, which the sources of the sample and the kitchen rely on.
-    private const string ImplicitUsings = """
+    public const string ImplicitUsings = """
         global using System;
         global using System.Collections.Generic;
         global using System.IO;

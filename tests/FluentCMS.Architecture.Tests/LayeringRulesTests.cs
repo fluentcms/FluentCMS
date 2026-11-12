@@ -69,6 +69,20 @@ public class LayeringRulesTests
         violations.ShouldBeEmpty();
     }
 
+    // Spec 6.4: the reference host, the Blog sample and every first-party plugin build with the analyzers, as analyzers only.
+    [Fact]
+    public void TheHostTheSampleAndThePluginsBuildWithTheAnalyzers()
+    {
+        var projects = ProjectFile.SourceProjects
+            .Where(project => project.Name == "FluentCMS.Host" || (project.Name.StartsWith(PluginPrefix, StringComparison.Ordinal) && project.Name != PluginAbstractions))
+            .Append(ProjectFile.Load("samples/Blog/Blog.csproj"))
+            .ToList();
+
+        projects.Count.ShouldBeGreaterThan(2);
+        projects.Where(project => !project.AnalyzerReferences.Contains("FluentCMS.Analyzers")).Select(project => project.Name).ShouldBeEmpty();
+        projects.Where(project => project.ProjectReferences.Contains("FluentCMS.Analyzers")).Select(project => project.Name).ShouldBeEmpty();
+    }
+
     // Spec 2.1: the GraphQL layer carries identity and intent only. It reaches content through IContentService, so it has
     // no context of its own and none of EF Core.
     [Fact]
