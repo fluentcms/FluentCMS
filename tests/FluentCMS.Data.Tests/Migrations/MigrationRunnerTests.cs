@@ -130,7 +130,7 @@ public sealed class MigrationRunnerTests : IDisposable
 
         var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
 
-        exception.Message.ShouldBe("FCMS1301: table cms_article is missing; set FluentCms:Database:MigrateOnStartup to true to apply the pending migrations");
+        exception.Message.ShouldBe("FCMS1301: table cms_article is missing; run 'fluentcms migrate' to apply the pending migrations, or set FluentCms:Database:MigrateOnStartup to true");
     }
 
     [Fact]
@@ -142,7 +142,7 @@ public sealed class MigrationRunnerTests : IDisposable
         var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
 
         exception.Code.ShouldBe("FCMS1305");
-        exception.Message.ShouldBe($"FCMS1305: stream system has not applied {string.Join(", ", pending.Select(migration => migration.Id))}; set FluentCms:Database:MigrateOnStartup to true to apply the pending migrations");
+        exception.Message.ShouldBe($"FCMS1305: stream system has not applied {string.Join(", ", pending.Select(migration => migration.Id))}; run 'fluentcms migrate' to apply the pending migrations, or set FluentCms:Database:MigrateOnStartup to true");
     }
 
     [Fact]
@@ -154,7 +154,7 @@ public sealed class MigrationRunnerTests : IDisposable
 
         var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
 
-        exception.Message.ShouldBe($"FCMS1305: stream {DemoPlugin.PluginName} has not applied {DemoPlugin.MigrationId}; set FluentCms:Database:MigrateOnStartup to true to apply the pending migrations");
+        exception.Message.ShouldBe($"FCMS1305: stream {DemoPlugin.PluginName} has not applied {DemoPlugin.MigrationId}; run 'fluentcms migrate' to apply the pending migrations, or set FluentCms:Database:MigrateOnStartup to true");
     }
 
     [Fact]

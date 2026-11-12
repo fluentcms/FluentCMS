@@ -21,6 +21,7 @@ public sealed class MigrationsAddCommandTests : IDisposable
     private readonly DirectoryInfo _hosts = Directory.CreateTempSubdirectory("fluentcms-cli-hosts-");
     private readonly StringWriter _output = new();
     private readonly StringWriter _error = new();
+    private readonly ListingLauncher _launcher = new();
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -41,13 +42,25 @@ public sealed class MigrationsAddCommandTests : IDisposable
         _error.Dispose();
     }
 
-    private int Run(params string[] args) => CommandLine.Run(args, _output, _error);
+    private Task<int> Run(params string[] args)
+    {
+        _output.GetStringBuilder().Clear();
+        _error.GetStringBuilder().Clear();
+        return CommandLine.RunAsync(args, _output, _error, _launcher, Token);
+    }
 
-    private int Add(string name, SchemaModel schema, Assembly? migrations = null)
+    private Task<int> Add(string name, SchemaModel schema, Assembly? migrations = null)
     {
         TestHostFactory.Schema = schema;
         TestHostFactory.Migrations = migrations ?? typeof(CmsDbContext).Assembly;
         return Run("migrations", "add", name, "--assembly", HostAssembly, "--project", _project.FullName);
+    }
+
+    private Task<int> Remove(SchemaModel schema, Assembly migrations, params string[] options)
+    {
+        TestHostFactory.Schema = schema;
+        TestHostFactory.Migrations = migrations;
+        return Run(["migrations", "remove", "--assembly", HostAssembly, "--project", _project.FullName, .. options]);
     }
 
     private string[] GeneratedFiles() => [.. Directory.GetFiles(Path.Combine(_project.FullName, "Migrations", "Content"), "*.cs")];
@@ -57,7 +70,7 @@ public sealed class MigrationsAddCommandTests : IDisposable
     [Fact]
     public async Task ItGeneratesAContentMigrationThatCompilesAndApplies()
     {
-        Add("Initial", ArticleSchemas.Titled).ShouldBe(0, _error.ToString());
+        (await Add("Initial", ArticleSchemas.Titled)).ShouldBe(0, _error.ToString());
 
         var files = GeneratedFiles().Select(Path.GetFileName).ToList();
         files.Count.ShouldBe(3);
@@ -78,10 +91,10 @@ public sealed class MigrationsAddCommandTests : IDisposable
     [Fact]
     public async Task ASecondMigrationAddsTheFieldAndKeepsOneSnapshot()
     {
-        Add("Initial", ArticleSchemas.Titled).ShouldBe(0, _error.ToString());
+        (await Add("Initial", ArticleSchemas.Titled)).ShouldBe(0, _error.ToString());
         var first = CompileGeneratedFiles();
 
-        Add("AddSubtitle", ArticleSchemas.WithSubtitle, first).ShouldBe(0, _error.ToString());
+        (await Add("AddSubtitle", ArticleSchemas.WithSubtitle, first)).ShouldBe(0, _error.ToString());
 
         GeneratedFiles().Length.ShouldBe(5);
         File.ReadAllText(GeneratedFiles().Single(file => file.EndsWith("_AddSubtitle.cs", StringComparison.Ordinal))).ShouldNotContain("CreateTable");
@@ -93,15 +106,15 @@ public sealed class MigrationsAddCommandTests : IDisposable
     }
 
     [Fact]
-    public void AnAssemblyWithNoFactorySaysWhatItNeeds()
+    public async Task AnAssemblyWithNoFactorySaysWhatItNeeds()
     {
-        Run("migrations", "add", "Initial", "--assembly", typeof(CmsDbContext).Assembly.Location, "--project", _project.FullName).ShouldBe(1);
+        (await Run("migrations", "add", "Initial", "--assembly", typeof(CmsDbContext).Assembly.Location, "--project", _project.FullName)).ShouldBe(1);
 
         _error.ToString().ShouldContain("IDesignTimeDbContextFactory<CmsDbContext>");
     }
 
     [Fact]
-    public void AHostWhoseTypesDoNotLoadGetsTheVersionsAndNoStackTrace()
+    public async Task AHostWhoseTypesDoNotLoadGetsTheVersionsAndNoStackTrace()
     {
         var missing = Compile("namespace Missing { public class Base { } }");
         var host = Compile(
@@ -112,7 +125,7 @@ public sealed class MigrationsAddCommandTests : IDisposable
         var path = Path.Combine(_hosts.FullName, $"{host.Name}.dll");
         File.WriteAllBytes(path, host.Image);
 
-        Run("migrations", "add", "Initial", "--assembly", path, "--project", _project.FullName).ShouldBe(1);
+        (await Run("migrations", "add", "Initial", "--assembly", path, "--project", _project.FullName)).ShouldBe(1);
 
         var error = _error.ToString();
         error.ShouldContain($"{host.Name} could not be used by this fluentcms, which has FluentCMS.Core ");
@@ -122,12 +135,12 @@ public sealed class MigrationsAddCommandTests : IDisposable
     }
 
     [Fact]
-    public void AFactoryThatFailsToStartGetsTheVersionsAndItsOwnMessage()
+    public async Task AFactoryThatFailsToStartGetsTheVersionsAndItsOwnMessage()
     {
         TestHostFactory.Fails = true;
         try
         {
-            Add("Initial", ArticleSchemas.Titled).ShouldBe(1);
+            (await Add("Initial", ArticleSchemas.Titled)).ShouldBe(1);
         }
         finally
         {
@@ -159,18 +172,118 @@ public sealed class MigrationsAddCommandTests : IDisposable
     }
 
     [Theory]
-    [InlineData]
-    [InlineData("migrations")]
     [InlineData("migrations", "add")]
     [InlineData("migrations", "add", "--project", "x")]
     [InlineData("migrations", "add", "Name", "--unknown", "x")]
     [InlineData("migrations", "add", "Name", "--project")]
-    [InlineData("migrate")]
-    public void BadUsagePrintsTheUsage(params string[] args)
+    public async Task BadUsagePrintsTheUsage(params string[] args)
     {
-        Run(args).ShouldBe(2);
+        (await Run(args)).ShouldBe(2);
 
-        _error.ToString().ShouldContain("Usage: fluentcms migrations add");
+        _error.ToString().ShouldContain("fluentcms migrations add <name> [options]");
+    }
+
+    [Fact]
+    public async Task RemoveDeletesTheNewestMigrationAndPutsTheSnapshotBack()
+    {
+        (await Add("Initial", ArticleSchemas.Titled)).ShouldBe(0, _error.ToString());
+        var snapshot = File.ReadAllText(Snapshot());
+        var first = CompileGeneratedFiles();
+        (await Add("AddSubtitle", ArticleSchemas.WithSubtitle, first)).ShouldBe(0, _error.ToString());
+        var both = CompileGeneratedFiles();
+
+        (await Remove(ArticleSchemas.WithSubtitle, both)).ShouldBe(0, _error.ToString());
+
+        GeneratedFiles().Select(Path.GetFileName).ShouldNotContain(file => file!.Contains("_AddSubtitle", StringComparison.Ordinal));
+        GeneratedFiles().Length.ShouldBe(3);
+        File.ReadAllText(Snapshot()).ShouldBe(snapshot);
+        _output.ToString().ShouldContain("_AddSubtitle.cs");
+        File.ReadAllText(Snapshot()).ShouldBe(snapshot, _output.ToString());
+        _output.ToString().ShouldContain("Restored ", Case.Sensitive, _output.ToString());
+        _launcher.Calls.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task RemovingTheOnlyMigrationDeletesTheSnapshot()
+    {
+        (await Add("Initial", ArticleSchemas.Titled)).ShouldBe(0, _error.ToString());
+
+        (await Remove(ArticleSchemas.Titled, CompileGeneratedFiles())).ShouldBe(0, _error.ToString());
+
+        GeneratedFiles().ShouldBeEmpty();
+        _output.ToString().ShouldContain($"Removed {Snapshot()}");
+    }
+
+    [Fact]
+    public async Task RemoveRefusesTheNewestMigrationWhenTheHostsDatabaseHasItAndForceRemovesItUnasked()
+    {
+        (await Add("Initial", ArticleSchemas.Titled)).ShouldBe(0, _error.ToString());
+        var migrations = CompileGeneratedFiles();
+        var id = Path.GetFileNameWithoutExtension(GeneratedFiles().Single(file => file.EndsWith("_Initial.cs", StringComparison.Ordinal)));
+        _launcher.Applied = [id];
+
+        (await Remove(ArticleSchemas.Titled, migrations)).ShouldBe(1);
+
+        _error.ToString().ShouldStartWith($"FCMS3314: {id} is applied to the host's database");
+        _launcher.Arguments.ShouldBe(["migrations", "list", "--json"]);
+        GeneratedFiles().Length.ShouldBe(3);
+
+        (await Remove(ArticleSchemas.Titled, migrations, "--force")).ShouldBe(0, _error.ToString());
+
+        _launcher.Calls.ShouldBe(1);
+        GeneratedFiles().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task RemoveSaysSoWhenTheHostCannotListItsMigrations()
+    {
+        (await Add("Initial", ArticleSchemas.Titled)).ShouldBe(0, _error.ToString());
+        _launcher.ExitCode = 1;
+
+        (await Remove(ArticleSchemas.Titled, CompileGeneratedFiles())).ShouldBe(1);
+
+        _error.ToString().ShouldStartWith("FCMS3315: the host could not list its migrations (exit code 1)");
+        _error.ToString().ShouldContain("the host's own error");
+        GeneratedFiles().Length.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task RemoveWithNoContentMigrationSaysSo()
+    {
+        (await Remove(ArticleSchemas.Titled, typeof(CmsDbContext).Assembly)).ShouldBe(1);
+
+        _error.ToString().ShouldStartWith("FCMS3313: ");
+        _launcher.Calls.ShouldBe(0);
+    }
+
+    private string Snapshot() => Path.Combine(_project.FullName, "Migrations", "Content", "CmsDbContextModelSnapshot.cs");
+
+    // The host's `migrations list --json`, with the content migrations a test says its database has.
+    private sealed class ListingLauncher : IHostLauncher
+    {
+        public IReadOnlyList<string> Applied { get; set; } = [];
+
+        public int ExitCode { get; set; }
+
+        public int Calls { get; private set; }
+
+        public IReadOnlyList<string>? Arguments { get; private set; }
+
+        public async Task<int> RunAsync(HostTarget host, string? environment, IReadOnlyList<string> arguments, TextWriter output, TextWriter error, CancellationToken cancellationToken)
+        {
+            Calls++;
+            Arguments = arguments;
+            if (ExitCode != 0)
+            {
+                await error.WriteLineAsync("the host's own error");
+                return ExitCode;
+            }
+
+            await output.WriteLineAsync("info: a log line on standard output");
+            var applied = string.Join(",", Applied.Select(id => $"\"{id}\""));
+            await output.WriteLineAsync($$"""{"streams":[{"name":"system","applied":[],"pending":[]},{"name":"content","applied":[{{applied}}],"pending":[]}]}""");
+            return 0;
+        }
     }
 
     public sealed class TestHostFactory : IDesignTimeDbContextFactory<CmsDbContext>

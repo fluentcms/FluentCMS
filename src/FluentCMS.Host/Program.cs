@@ -1,3 +1,4 @@
+using FluentCMS.Core.Commands;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Schema;
 using FluentCMS.Host;
@@ -10,7 +11,15 @@ if (args is [HealthProbe.Argument])
 // A configuration the host cannot start with ends the process with its FCMS message and exit code 1, not a crash.
 try
 {
-    await ReferenceHost.Build(WebApplication.CreateBuilder(args)).RunAsync();
+    await using var app = ReferenceHost.Build(WebApplication.CreateBuilder(args));
+
+    // "fluentcms <command>", such as the migrate step of an init container, runs and ends the process with its code.
+    if (await app.RunFluentCmsCommandAsync(args) is { } exitCode)
+    {
+        return exitCode;
+    }
+
+    await app.RunAsync();
     return 0;
 }
 catch (Exception exception) when (IsConfiguration(exception))

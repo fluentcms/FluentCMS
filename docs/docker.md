@@ -153,6 +153,29 @@ The startup report, logged at start and served at `GET /api/management/v1/system
 
 ## Other databases
 
-`FluentCms__Database__Provider=PostgreSql` or `SqlServer` with `ConnectionStrings__FluentCms` runs on that server. Those providers do not migrate on start by default, so run the system migrations before the host starts, with `FluentCms__Database__MigrateOnStartup=true` on one instance; the `fluentcms migrate` command for an init container comes with the CLI in M6. On SQL Server the system migrations turn `READ_COMMITTED_SNAPSHOT` on unless it is on already, as on Azure SQL Database. That needs `ALTER` permission on the database, and it disconnects the database's other sessions once ([ADR 0005](decisions/0005-sql-server-read-committed-snapshot.md)). They keep content tables on reviewed migrations and never create them from the schema on start, so `FLUENTCMS_SCHEMA` and `FLUENTCMS_SAMPLE` stop the host on them with `FCMS3154`. Until the CLI generates migrations from a schema file, the image runs a schema file on SQLite only. PostgreSQL 15 and SQL Server 2019 and 2025 are tested providers ([#2711](https://github.com/fluentcms/FluentCMS/issues/2711)). The webhooks and media plugins hold a migration set for each of these providers ([plugin migrations](plugin-migrations.md)).
+`FluentCms__Database__Provider=PostgreSql` or `SqlServer` with `ConnectionStrings__FluentCms` runs on that server. Those providers do not migrate on start by default, so apply the migrations before the host starts, with `fluentcms migrate` (below) or with `FluentCms__Database__MigrateOnStartup=true` on one instance. On SQL Server the system migrations turn `READ_COMMITTED_SNAPSHOT` on unless it is on already, as on Azure SQL Database. That needs `ALTER` permission on the database, and it disconnects the database's other sessions once ([ADR 0005](decisions/0005-sql-server-read-committed-snapshot.md)). They keep content tables on reviewed migrations and never create them from the schema on start, so `FLUENTCMS_SCHEMA` and `FLUENTCMS_SAMPLE` stop the host on them with `FCMS3154`. Until the CLI generates migrations from a schema file, the image runs a schema file on SQLite only. PostgreSQL 15 and SQL Server 2019 and 2025 are tested providers ([#2711](https://github.com/fluentcms/FluentCMS/issues/2711)). The webhooks and media plugins hold a migration set for each of these providers ([plugin migrations](plugin-migrations.md)).
+
+## Migrate before the host starts
+
+The image runs the commands of the host as well as the host: arguments that start with `fluentcms` run that command and end the container with its exit code (0, 1 for a failure, 2 for bad usage), and nothing listens, runs jobs or seeds. An init container or a deploy step applies the migrations of every stream with the same image and settings as the host:
+
+```bash
+docker run --rm \
+  -e FluentCms__Database__Provider=PostgreSql \
+  -e "ConnectionStrings__FluentCms=Host=db;Database=fluentcms;Username=fluentcms;Password=<from your secret store>" \
+  fluentcms fluentcms migrate
+```
+
+`fluentcms migrate --check` lists what is pending and exits with 1 when anything is, which suits a readiness gate. `fluentcms migrations list` shows the applied and pending migrations of each stream, and `fluentcms migrations script --idempotent --output /out/migrate.sql` writes the SQL for a database that only an administrator may change (PostgreSQL and SQL Server; mount `/out`). The host's logs go to standard output with the command's output, so set `Logging__Console__LogToStandardErrorThreshold=Trace` to keep them apart. A command needs none of the Production settings of the host above, since it serves nothing. In Kubernetes:
+
+```yaml
+initContainers:
+  - name: migrate
+    image: fluentcms
+    args: ["fluentcms", "migrate"]
+    envFrom:
+      - secretRef:
+          name: fluentcms-database
+```
 
 For local development, `compose.yaml` at the root of the repository runs PostgreSQL and MinIO at the versions the tests use; see [Local development](../CONTRIBUTING.md#local-development).

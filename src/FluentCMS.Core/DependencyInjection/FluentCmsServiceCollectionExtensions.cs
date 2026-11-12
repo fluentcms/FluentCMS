@@ -12,6 +12,7 @@ using FluentCMS.Core.Api.Members;
 using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Caching;
+using FluentCMS.Core.Commands;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
@@ -62,6 +63,10 @@ public static class FluentCmsServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
+
+        // First, so that a host started with a command that it does not run stops before anything else of it starts.
+        services.TryAddSingleton(ProcessArguments.Current());
+        services.AddHostedService<CommandEntryPointCheck>();
 
         var builder = new FluentCmsBuilder(services);
         configure(builder);

@@ -18,10 +18,13 @@ namespace FluentCMS.Core.Storage;
 // A migration of one stream: "system", a plugin's name, or "content".
 public sealed record StreamMigration(string Stream, string Id);
 
+// The migrations of one stream that its history holds, and those of its set that it does not.
+public sealed record StreamMigrations(string Stream, IReadOnlyList<string> Applied, IReadOnlyList<string> Pending);
+
 public sealed record SchemaSyncReport(IReadOnlyList<string> Applied, IReadOnlyList<string> NotApplied);
 
-// Applies the streams in the order system, plugins, content. MigrationStartupService calls it at startup, and
-// `fluentcms migrate` and `migrate --check` of M6 will call MigrateAsync and GetPendingMigrationsAsync.
+// Applies the streams in the order system, plugins, content. MigrationStartupService calls it at startup, and the
+// commands `fluentcms migrate` and `migrations list` and `script` call it from the host's command entry point.
 public sealed class MigrationRunner(
     IServiceScopeFactory scopes,
     IDataProvider provider,
@@ -36,7 +39,7 @@ public sealed class MigrationRunner(
     public const string SystemStream = "system";
     public const string ContentStream = "content";
 
-    private const string ApplyPending = $"set {DatabaseOptions.MigrateOnStartupKey} to true to apply the pending migrations";
+    private const string ApplyPending = $"run 'fluentcms migrate' to apply the pending migrations, or set {DatabaseOptions.MigrateOnStartupKey} to true";
 
     internal const string SchemaSyncLock = "fluentcms:schema-sync";
 
@@ -48,6 +51,11 @@ public sealed class MigrationRunner(
     private IEnumerable<Stream> Plugins => plugins.Select(plugin => new Stream(plugin.Name, plugin.ResolveContext));
 
     private IEnumerable<Stream> SystemAndPlugins => [System, .. Plugins];
+
+    private IEnumerable<Stream> AllStreams => [System, .. Plugins, Content];
+
+    // In the order they apply.
+    public IReadOnlyList<string> Streams => [.. AllStreams.Select(stream => stream.Name)];
 
     public async Task RunAtStartupAsync(CancellationToken cancellationToken = default)
     {
@@ -101,7 +109,44 @@ public sealed class MigrationRunner(
     }
 
     public Task<IReadOnlyList<StreamMigration>> GetPendingMigrationsAsync(CancellationToken cancellationToken = default) =>
-        GetPendingAsync([.. SystemAndPlugins, Content], cancellationToken);
+        GetPendingAsync(AllStreams, cancellationToken);
+
+    public async Task<IReadOnlyList<StreamMigrations>> ListAsync(CancellationToken cancellationToken = default)
+    {
+        var streams = new List<StreamMigrations>();
+        foreach (var stream in AllStreams)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var database = stream.ResolveContext(scope.ServiceProvider).Database;
+            var applied = await database.GetAppliedMigrationsAsync(cancellationToken);
+            var pending = await database.GetPendingMigrationsAsync(cancellationToken);
+            streams.Add(new StreamMigrations(stream.Name, [.. applied], [.. pending]));
+        }
+
+        return streams;
+    }
+
+    // The migrations of a stream's set, oldest first, read from its assembly without opening the database.
+    public IReadOnlyList<string> MigrationsOf(string stream)
+    {
+        using var scope = scopes.CreateScope();
+        return [.. Find(stream).ResolveContext(scope.ServiceProvider).Database.GetMigrations()];
+    }
+
+    // The SQL of the host's provider that takes a stream from one migration to another ("0" is before the first), without
+    // opening the database. A set scaffolded for another provider is refused as MigrateAsync refuses it.
+    public async Task<string> ScriptAsync(string stream, string? fromMigration, string? toMigration, bool idempotent, CancellationToken cancellationToken = default)
+    {
+        var target = Find(stream);
+        if (target.Name != SystemStream)
+        {
+            await RefuseForeignMigrationsAsync([target], cancellationToken);
+        }
+
+        await using var scope = scopes.CreateAsyncScope();
+        var context = target.ResolveContext(scope.ServiceProvider);
+        return context.GetService<IMigrator>().GenerateScript(fromMigration, toMigration, idempotent ? MigrationsSqlGenerationOptions.Idempotent : MigrationsSqlGenerationOptions.Default);
+    }
 
     internal Task<SchemaStatus> GetSchemaStatusAsync(CancellationToken cancellationToken = default) => _history.StatusAsync(schema, cancellationToken);
 
@@ -135,6 +180,10 @@ public sealed class MigrationRunner(
 
         throw new FluentCmsConfigurationException(StorageErrorCodes.MissingContentSchema, $"{string.Join("; ", diff.Missing)}; {fix}");
     }
+
+    private Stream Find(string stream) =>
+        AllStreams.FirstOrDefault(candidate => candidate.Name == stream)
+        ?? throw new ArgumentOutOfRangeException(nameof(stream), stream, $"The streams are {string.Join(", ", Streams)}.");
 
     private DatabaseStartup ResolveOptions() => DatabaseStartup.Resolve(provider, databaseOptions?.Value, environment, logger);
 
@@ -218,8 +267,9 @@ public sealed class MigrationRunner(
             }
 
             MigrationLog.ApplyingStream(logger, pending.Count, stream.Name);
+            using var recorder = AppliedMigrations.Record(context.GetService<IMigrator>());
             await context.Database.MigrateAsync(cancellationToken);
-            applied.AddRange(pending.Select(id => new StreamMigration(stream.Name, id)));
+            applied.AddRange(recorder.Ids.Select(id => new StreamMigration(stream.Name, id)));
         }
 
         return applied;
