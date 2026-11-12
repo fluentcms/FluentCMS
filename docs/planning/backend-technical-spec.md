@@ -134,7 +134,7 @@ Proposed NuGet packages, all `FluentCMS.*`, first release 1.0.0. A host adds two
 | `FluentCMS.Plugins.Mcp` | Streamable HTTP MCP server, tools, resources, prompts, client management, agent instructions. | `FluentCMS.Sdk`, `FluentCMS.Plugins.Abstractions`, ModelContextProtocol |
 | `FluentCMS.Plugins.AiAssist` | Provider-agnostic AI actions and usage log. | `FluentCMS.Sdk`, `FluentCMS.Plugins.Abstractions`, Microsoft.Extensions.AI |
 | `FluentCMS.Plugins.MultiSite` | Hostname resolution, per-site hosts, cross-site operations. | `FluentCMS.Sdk`, `FluentCMS.Plugins.Abstractions` |
-| `FluentCMS.Plugins.Search` (Should) | Full-text `q=` parameter on PostgreSQL FTS and SQLite FTS5, external index slot. | `FluentCMS.Sdk` |
+| `FluentCMS.Plugins.Search` | Full-text `q=` parameter on PostgreSQL FTS and SQLite FTS5, a match on a part of the text on SQL Server (10.4, H6); an external index fills the same slot. | `FluentCMS.Sdk`, `FluentCMS.Plugins.Abstractions` |
 | `FluentCMS.Caching.Redis` (Should) | Distributed cache, output cache and distributed lock on one connection string. | `FluentCMS.Sdk` |
 | `FluentCMS.Testing` | `FluentCmsTestHost`, fixtures for users, keys and content; SQLite by default. | `FluentCMS.Core`, `FluentCMS.Data.Sqlite` |
 | `FluentCMS.Cli` | The `fluentcms` dotnet tool. Its project commands run inside the host (6.1). | `FluentCMS.Core` design-time services for `migrations add`, System.CommandLine |
@@ -1470,6 +1470,8 @@ Microsoft.Extensions.AI `IChatClient` with providers for OpenAI, Azure OpenAI, A
 - **Codes and log ids.** `FCMS1680` a request that cannot be read (422), `FCMS1681` no such action (404), `FCMS1682` no provider (409), `FCMS1683` a field that is not opted in (403), `FCMS1684` an endpoint that is not allowed (409), `FCMS1685` a provider that is not configured (409), `FCMS1686` a text over the input limit (413), `FCMS1687` a caller over its call limit (429), `FCMS1688` a timeout (504), `FCMS1689` a provider that failed (502), `FCMS1690` an answer that cannot be used (502) and `FCMS1691` no image to describe (422); `FCMS1692` to `FCMS1699` are free. Log event ids 9360 a call with its caller, field, provider, outcome, duration and tokens, 9361 a provider that failed, 9362 and 9363 the retention, 9364 a caller over its limit, 9365 a usage row that could not be written, 9366 an endpoint refused and 9367 a failure while streaming, of 9360 to 9379.
 - **Left for later.** Token budgets and billing, embeddings and semantic search (9.16) with the `IEmbeddingGenerator` slot, provenance flags on versions (9.18), suggestions on upload (9.20) and AI actions as MCP tools.
 
+**Planned for M7 (10.4, H2 and H8).** B-103 ([#3048](https://github.com/fluentcms/FluentCMS/issues/3048)) cuts the providers to `openAi`, `azureOpenAi` and `openAiCompatible`, which share the client of `Microsoft.Extensions.AI.OpenAI`, and removes the `Anthropic` and `OllamaSharp` packages with their clients. Ollama is reached as `openAiCompatible` through its `/v1` endpoint, which needs no key, and a model without an OpenAI-compatible endpoint through a gateway or the `IAiClientFactory` slot. [#3005](https://github.com/fluentcms/FluentCMS/issues/3005) then replaces the comparison of a site's key with the key of the defaults: core no longer copies an inherited secret into the site's row, and the plugin asks whether the key is the site's own. Until those issues are merged, the text above is what is built.
+
 ### 5.6 Multi-site plugin
 
 Rows 7.10 to 7.13 (beyond the core model), 7.15 and 7.18 as Should.
@@ -1504,7 +1506,9 @@ Rows 7.10 to 7.13 (beyond the core model), 7.15 and 7.18 as Should.
 
 ### 5.7 Search, SSO providers, rendering
 
-Search (2.23, 8.11): `ISearchIndex` slot in the SDK from the start; the plugin provides PostgreSQL FTS and SQLite FTS5 (Should).
+Search (2.23, 8.11): `ISearchIndex` slot in the SDK from the start; the plugin provides PostgreSQL FTS and SQLite FTS5. It was a Should and is built in M7 (10.4, H6).
+
+**Search plugin as planned for M7 (B-104, [#3049](https://github.com/fluentcms/FluentCMS/issues/3049)).** `SearchPlugin`, named `search`, fills the slot and changes nothing in core. It keeps one row for a document, a locale and a state (draft or published) in `cms_search_entry`, in a migration stream of its own, with the text of the fields marked `Searchable`: a `tsvector` with a GIN index on PostgreSQL, an FTS5 table on SQLite, and on SQL Server a match on a part of the text without a full-text catalogue. Every word must match and the last one matches as the start of a word. Handlers of the entry events keep the rows current on the outbox, `SiteDeletedEvent` removes the rows of a site, and the job `search.rebuild` indexes content that existed before the plugin. A type without a `Searchable` field, and a site where the plugin is disabled, refuse `q=`. Ranking by relevance, stemming by language and an external index stay out.
 
 **Search seam as built.** Core defines the seam and the plugin fills it: `ContentQuery.Search`, the `q=` parameter of the Delivery and Management lists, and the `ISearchIndex` slot, whose core default refuses `q=` with `FCMS2211` (4.4, "Search as built"). The index finds ids and the engine narrows the query to them, so the row rule, site, locale and status still decide what a caller reads. `Searchable` (4.2) is the plugin's to read, and how it keeps its index current, such as from the entry events, is its own. Storage hooks in core (`tsvector` with GIN on PostgreSQL, an FTS5 external-content table on SQLite, a full-text catalogue on SQL Server, through `IStorageConventions`) are out of scope for now and stay additive, as does ranking by relevance. The Entra ID, Okta and Keycloak presets of generic OIDC are in core (4.7); other presets and SAML (4.18) are Should. The rendering plugin (Blazor components and Razor tag helpers) is Should and mostly not backend; its server pieces (rich text to HTML, draft preview middleware, sitemap) reuse `RichText/` renderers from core.
 
@@ -1658,8 +1662,9 @@ Should: 1.14 polymorphic relations, 1.15 computed and reverse fields, 1.16 hiera
 | 2.18 | CORS and security headers | middleware | 4.10 | M2 |
 | 2.19 | Keyset pagination | cursor | 4.4 | M1 |
 | 2.20 | HTTP caching | headers, output cache, tags | 4.10 | M2 |
+| 2.23 | Full-text `q=` | the seam in core, the search plugin | 4.4, 5.7 | M2, M7 |
 
-Should: 2.21 separately hostable Delivery (`MapFluentCmsDelivery()` only), 2.22 aggregations, 2.23 full-text `q=`, 2.24 change feed, 2.25 more SDK languages.
+Row 2.23 was a Should and became a Must when M7 was planned (10.4, H6). Should: 2.21 separately hostable Delivery (`MapFluentCmsDelivery()` only), 2.22 aggregations, 2.24 change feed, 2.25 more SDK languages.
 
 ### 7.3 Identity and permissions (category 4)
 
@@ -1835,12 +1840,15 @@ Follows the sequencing note in the decisions log: SDK and core first, because ev
 | M4 Agents and GraphQL | MCP server and GraphQL plugin. | Claude or an IDE client connects to `/mcp` through OAuth, lists tools filtered by role, drafts an entry and cannot publish without the permission; GraphQL queries and mutations mirror REST. |
 | M5 Multi-site, members, AI assist | Hostname-resolved sites, member authentication with external providers, AI actions. | Two sites on different hostnames share types and media with separate content and roles; a member registers, verifies and signs in with Google; an AI action returns a suggestion and logs usage. |
 | M6 Tooling and transfer | CLI, templates, source generator, analyzers, export and import, backups. | `dotnet new fluentcms`, `fluentcms migrations add`, `fluentcms migrate`, `fluentcms generate typescript`, `fluentcms export` and `import --dry-run` work end to end on a fresh machine. |
+| M7 Hardening and preview | The backend is reviewed, its open follow-ups are settled, and it is published as a first public preview. | `1.0.0-preview.1` of every package of 2.4 is on nuget.org and the image of the reference host is on the registry, both pushed by the `Publish` workflow from a tag on `main`; the `Fresh machine` sequence passes against nuget.org on a clean machine; each migration stream has one migration for each provider; no bug and no High or Medium finding of the review is open. |
 
 The deferrals of Q19 in M0 to M2 ended with [#2711](https://github.com/fluentcms/FluentCMS/issues/2711): PostgreSQL 15 and SQL Server 2019 and 2025 are supported and tested providers, and CI runs the data tests on each beside SQLite (4.3).
 
 M1 and M2 are the critical path. M3 can start once the SDK is stable (end of M1). M6 pieces that unblock earlier milestones (`FluentCMS.Testing`, the content migration command) are pulled into M1.
 
-The exit criteria of M6 are the `Fresh machine` jobs, which run the sequence from packages in a folder feed on clean Linux and Windows runners ([#3023](https://github.com/fluentcms/FluentCMS/issues/3023)): `eng/fresh-machine.ps1` installs the templates and the tool from the feed, makes a Blog host, runs `migrations add` and `migrate` on SQLite and, on Linux, PostgreSQL, compiles the output of `generate typescript`, runs `export`, `import --dry-run` and `import` into a second host and compares an entry through the Delivery API, and builds and tests a plugin; a broken feed must fail it. Nothing is published for it (10.3, P8). After M6 comes a hardening milestone with the remaining follow-ups of the M5 review, and then the technical specification of the admin; search and the Redis pack stay Should (10.3, P13).
+The exit criteria of M6 are the `Fresh machine` jobs, which run the sequence from packages in a folder feed on clean Linux and Windows runners ([#3023](https://github.com/fluentcms/FluentCMS/issues/3023)): `eng/fresh-machine.ps1` installs the templates and the tool from the feed, makes a Blog host, runs `migrations add` and `migrate` on SQLite and, on Linux, PostgreSQL, compiles the output of `generate typescript`, runs `export`, `import --dry-run` and `import` into a second host and compares an entry through the Delivery API, and builds and tests a plugin; a broken feed must fail it. Nothing is published for it (10.3, P8).
+
+After M6 comes M7, planned on 12 Nov 2026 (10.4). It was foreseen as a hardening milestone with the remaining follow-ups of the M5 review (10.3, P13), and was planned wider: it reviews the code of M4 and M6, brings in the search plugin, cuts the AI assist plugin to OpenAI-compatible endpoints, publishes one migration baseline, and ends with the first public preview of the backend. The technical specification of the admin is drafted beside it, as a document of its own. The Redis pack stays a Should.
 
 ## 9. Proposed issues
 
@@ -1977,11 +1985,38 @@ Tracking issue: [#3025](https://github.com/fluentcms/FluentCMS/issues/3025). Pla
 
 No issue of M6 adds a migration. This section first listed seven issues for M6, and M6 was planned with twelve.
 
-77 issues for the Must scope, created milestone by milestone (Q17), plus [#2711](https://github.com/fluentcms/FluentCMS/issues/2711) for the deferred PostgreSQL and SQL Server validation (Q19), which has no milestone until the code is complete. Should items get issues when their milestone is planned, not now.
+### 9.8 M7 Hardening and preview
+
+Tracking issue: [#3057](https://github.com/fluentcms/FluentCMS/issues/3057). Planned on 12 Nov 2026 (10.4). B-102 to B-109 are new; the other eight are the follow-ups of the M5 review that waited for this milestone (10.3, P13), and they carry no B number.
+
+| Id | Issue | Spec | Size |
+| --- | --- | --- | --- |
+| B-102 [#3047](https://github.com/fluentcms/FluentCMS/issues/3047) | Review of the code of M4 and M6, with a security pass on the operator commands | 5.3, 5.4, 4.14, 6 | M |
+| B-103 [#3048](https://github.com/fluentcms/FluentCMS/issues/3048) | AI assist on OpenAI-compatible endpoints only | 9.15 | S |
+| B-104 [#3049](https://github.com/fluentcms/FluentCMS/issues/3049) | Search plugin: PostgreSQL full-text search, SQLite FTS5, a match on a part of the text on SQL Server | 2.23, 8.11 | L |
+| B-105 [#3050](https://github.com/fluentcms/FluentCMS/issues/3050) | Audit of the Management API against the Must rows of the admin | 2.2, category 3 | M |
+| B-106 [#3051](https://github.com/fluentcms/FluentCMS/issues/3051) | Read of the public surface of the SDK before the first preview | 8.3 | M |
+| B-107 [#3052](https://github.com/fluentcms/FluentCMS/issues/3052) | One migration baseline for each provider and plugin | 10.4, 8.13 | M |
+| B-108 [#3053](https://github.com/fluentcms/FluentCMS/issues/3053) | Publish workflow for the packages and the image, with one version | 10.2, 11.11 | M |
+| B-109 [#3054](https://github.com/fluentcms/FluentCMS/issues/3054) | Release of `1.0.0-preview.1` | 10.2, 11.11 | S |
+| [#3003](https://github.com/fluentcms/FluentCMS/issues/3003) | Member token lifetimes and lockout on the test clock | 4.10, 4.2 | S |
+| [#3004](https://github.com/fluentcms/FluentCMS/issues/3004) | Member groups outside row rules, and the right to take a member out of a group | 4.6, 4.10 | M |
+| [#3005](https://github.com/fluentcms/FluentCMS/issues/3005) | Whether a settings secret is the site's own or inherited | 8.7, 9.15 | M |
+| [#3007](https://github.com/fluentcms/FluentCMS/issues/3007) | Member sign-in against Google, Entra ID and GitHub | 4.11 | M |
+| [#3008](https://github.com/fluentcms/FluentCMS/issues/3008) | AI assist against a real OpenAI-compatible endpoint and a local Ollama | 9.14, 9.15 | S |
+| [#3009](https://github.com/fluentcms/FluentCMS/issues/3009) | Host name lookup without a query for a deleted site | 7.11 | S |
+| [#3011](https://github.com/fluentcms/FluentCMS/issues/3011) | A line in the startup report when the shared media library hides the assets of other sites | 10.14 | S |
+| [#3012](https://github.com/fluentcms/FluentCMS/issues/3012) | Search of members by display name | 4.10 | S |
+
+B-102 opens an issue for each High and Medium finding, in this milestone. [#3055](https://github.com/fluentcms/FluentCMS/issues/3055) records the plan in this document. Beside M7, [#3056](https://github.com/fluentcms/FluentCMS/issues/3056) drafts the technical specification of the admin, which has no milestone here.
+
+Migrations: #3012 may add one to the system stream and B-104 adds the stream of the search plugin. B-107 then replaces every chain by one baseline.
+
+77 issues for the Must scope, created milestone by milestone (Q17), plus [#2711](https://github.com/fluentcms/FluentCMS/issues/2711) for the deferred PostgreSQL and SQL Server validation (Q19), which has no milestone until the code is complete. Should items get issues when their milestone is planned, not now. M6 was planned with twelve issues where the 77 counted seven, and M7, which the 77 do not count, with the sixteen of 9.8.
 
 ## 10. Open questions and suggestions
 
-All eighteen questions were decided on 1 Nov 2026, and Q19 was added the same day after approval. The table keeps each question and its decision; where the decision differs from the recommendation that was made, it says so. Section 10.3 holds the decisions taken when M6 was planned on 12 Nov 2026.
+All eighteen questions were decided on 1 Nov 2026, and Q19 was added the same day after approval. The table keeps each question and its decision; where the decision differs from the recommendation that was made, it says so. Section 10.3 holds the decisions taken when M6 was planned on 12 Nov 2026, and section 10.4 those of M7, planned the same day after M6 was merged.
 
 ### 10.1 Decisions on the open questions
 
@@ -2046,6 +2081,25 @@ M6 was planned on 12 Nov 2026, after M0 to M5 were merged. The review of the pla
 | P13 | What surrounds M6? | The four bugs of the M5 review (#3001, #3002, #3006, #3010) run beside M6. Its other follow-ups form a hardening milestone after M6, and then the admin gets its technical specification. Search and the Redis pack stay Should. |
 | P14 | Rows 11.5 and 11.3 name a seed command and an MSBuild target that 6.1 did not have. | `fluentcms seed` is added. No MSBuild target runs `generate`: the source generator covers C# in a host, and a front end calls the command from its own build. Row 11.3 is amended. |
 | P15 | The compose file of the reference host (4.16) was put off until #2711 and the media plugin. | A small issue of M6, with a migrate step, used by CI as a smoke test on PostgreSQL and MinIO. |
+
+### 10.4 Decisions of the M7 planning
+
+M7 was planned on 12 Nov 2026, after M6 was merged. The document had one sentence about it (8; 10.3, P13). The review of the plan against the code and the feature specification found what that sentence left out: code that was never reviewed as a whole, a contract and a migration history that were about to be published as they stood, an admin row that needs a plugin tiered Should, and no way to publish. Each point was decided that day; the table says what a decision replaces.
+
+| Id | Point | Decision (12 Nov 2026) |
+| --- | --- | --- |
+| H1 | What does M7 end with? P13 foresaw a hardening milestone and P8 left a preview on nuget.org as a release decision of its own. | A public preview, `1.0.0-preview.1`: the packages on nuget.org and the image of the reference host on a registry, pushed by a workflow from a tag. The contract stays free to break between previews: every entry stays in `PublicAPI.Unshipped.txt` and no package validation baseline is set until 1.0.0. The minimal `FluentCMS.Client` is published with the others, since generated C# compiles against it, which replaces "not published" of P9 for it. |
+| H2 | The AI assist plugin holds three clients with three wire formats (5.5), and two of them never called a real endpoint. | OpenAI-compatible endpoints only: `openAi`, `azureOpenAi` and `openAiCompatible`, which share one client. The `Anthropic` and `OllamaSharp` packages go. Ollama is reached through its `/v1` endpoint, without a key, and any other client through the `IAiClientFactory` slot. Row 9.15 is amended. |
+| H3 | Member sign-in and AI assist were tested against stubs only (#3007, #3008), and a real provider needs an account that only the maintainer can open. | Verified in M7: Google, Entra ID (for the Microsoft handler and generic OIDC) and GitHub for sign-in; one OpenAI-compatible endpoint with a key and a local Ollama for AI assist. Apple and Azure OpenAI are named as not verified in the notes of the preview and are done before 1.0.0. |
+| H4 | The review of 7 Nov 2026 read the code up to M3 and the review of M5 its own; M4 and M6 were reviewed per pull request only. | One review of the code of M4 and M6 is the first issue of M7, with a security pass on `schema apply`, import, `restore`, the `mcp` proxy, the MCP confirmations and the GraphQL limits. High and Medium findings are fixed in M7; Low ones wait without a milestone. |
+| H5 | About twenty system migrations and eight plugin migrations for each provider exist, and none was published. | They are squashed into one baseline for each stream and provider at the end of M7, on `main`. A database of the old chain is refused and recreated. Previews make no promise to upgrade a database until 1.0.0. |
+| H6 | The admin's list views need free-text search (category 3, row 4, a Must), and `q=` is refused without the search plugin, a Should (P13). | A minimal search plugin moves into M7: full-text search on PostgreSQL, FTS5 on SQLite, a match on a part of the text on SQL Server, kept current from the entry events, with a rebuild job. Row 2.23 becomes a Must. Ranking, stemming by language, a full-text catalogue on SQL Server and an external index stay out. The Redis pack stays a Should. |
+| H7 | `Principal.IsInGroup` answers false outside a row rule, which fails open for a check that denies by group, and taking a member out of a group needs `members.manage` only (#3004). | It throws outside a row rule. The operation's principal does not carry the groups, which would cost a query on every request of a member. Taking a member out of a group, and deleting a group, need the grants of the group's role, as adding does. |
+| H8 | A site that saves settings without a secret gets a copy of the secret of the instance defaults, and the copy cannot be told from a secret of its own once the defaults change (#3005). | An inherited secret is not copied. A site that sets none reads the secret of the defaults at use, so a replaced key reaches every site that inherits it, and a plugin can ask whether a secret is the site's own. |
+| H9 | #3011 asks for a note for an instance built on M3 that upgrades. | With one baseline (H5) and nothing published before it, that upgrade cannot occur, and the note falls away. The line in the startup report stays, for a host that turns `PerSite` back to `Shared`. |
+| H10 | When is the technical specification of the admin written (P13: after the hardening milestone), and how is its work numbered? | Beside M7, as `docs/planning/admin-technical-spec.md`, with milestones of its own, A0 onward, and issues numbered `A-nn`. M7 carries an audit of the Management API against the admin's Must rows; a gap that changes a shape or a route is fixed in M7, before the preview. |
+| H11 | Where does the work run? | On `feature/m7` with one merge into `main` after full CI, as M6 did. Bugs go to `main`. The baseline (H5) and the tag of the preview come last, on `main`. |
+| H12 | What can no lane do? | The maintainer opens the development applications and the public origin for H3, reserves the `FluentCMS.` prefix on nuget.org (decision 61), sets up the publishing credentials and a `release` environment with a required reviewer, makes the image package public, and says whether the `@fluentcms` scope on npm is the project's; until it is, `@fluentcms/client` is attached to the GitHub release and not pushed to npm. |
 
 ## Appendix A: worked example
 

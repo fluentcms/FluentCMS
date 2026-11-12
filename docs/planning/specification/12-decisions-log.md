@@ -1,6 +1,6 @@
 # Decisions log
 
-All eleven categories are approved. Sixteen decisions are locked; 43 carry a recommendation and are treated as decided unless you change the Status here; the last two were decided on 31 Oct 2026. Summary across categories: 165 Must, 67 Should, 51 Could, 36 Won't.
+All eleven categories are approved. Sixteen decisions are locked; 43 carry a recommendation and are treated as decided unless you change the Status here; the last two were decided on 31 Oct 2026. Summary across categories: 166 Must, 66 Should, 51 Could, 36 Won't, after row 2.23 (full-text search) became a Must on 12 Nov 2026.
 
 ## Locked
 
