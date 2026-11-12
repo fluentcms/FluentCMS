@@ -41,6 +41,26 @@ public sealed class HostCommandTests : IDisposable
         output.ShouldBe($"No migration is pending.{Environment.NewLine}");
     }
 
+    // "docker run <image> fluentcms schema apply" with the schema the image loads from FLUENTCMS_SCHEMA.
+    [Fact]
+    public async Task TheHostAppliesItsSchemaFileAfterMigrate()
+    {
+        var schema = Path.Combine(_directory.FullName, "schema.json");
+        await File.WriteAllTextAsync(schema, """{ "collections": [ { "name": "post", "fields": [ { "name": "title", "type": "text" } ] } ] }""", Token);
+        var variables = new Dictionary<string, string> { [ReferenceHost.SchemaVariable] = schema };
+
+        var (exitCode, _, error) = await RunAsync(variables, "fluentcms", "migrate");
+        exitCode.ShouldBe(0, error);
+
+        (exitCode, var output, error) = await RunAsync(variables, "fluentcms", "schema", "apply");
+        exitCode.ShouldBe(0, error);
+        output.ShouldContain("  create table cms_post");
+
+        (exitCode, output, error) = await RunAsync(variables, "fluentcms", "schema", "apply");
+        exitCode.ShouldBe(0, error);
+        output.ShouldStartWith("Nothing to apply;");
+    }
+
     [Fact]
     public async Task BadUsageExitsWithTwo()
     {
@@ -51,7 +71,9 @@ public sealed class HostCommandTests : IDisposable
         File.Exists(Path.Combine(_directory.FullName, "cms.db")).ShouldBeFalse();
     }
 
-    private async Task<(int ExitCode, string Output, string Error)> RunAsync(params string[] args)
+    private Task<(int ExitCode, string Output, string Error)> RunAsync(params string[] args) => RunAsync([], args);
+
+    private async Task<(int ExitCode, string Output, string Error)> RunAsync(Dictionary<string, string> variables, params string[] args)
     {
         var start = new ProcessStartInfo("dotnet")
         {
@@ -70,6 +92,10 @@ public sealed class HostCommandTests : IDisposable
         start.Environment["Logging__Console__LogToStandardErrorThreshold"] = "Trace";
         start.Environment.Remove("ASPNETCORE_ENVIRONMENT");
         start.Environment.Remove("DOTNET_ENVIRONMENT");
+        foreach (var (name, value) in variables)
+        {
+            start.Environment[name] = value;
+        }
 
         using var process = Process.Start(start)!;
         var error = process.StandardError.ReadToEndAsync(Token);

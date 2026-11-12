@@ -47,6 +47,8 @@ public sealed partial class ParserTests : IDisposable
     [InlineData("seed", "--url", "https://cms.example.com")]
     [InlineData("mcp")]
     [InlineData("mcp", "--project", ".")]
+    [InlineData("schema", "apply", "--output", "schema.sql")]
+    [InlineData("schema", "apply", "--script", "--dry-run")]
     public async Task BadUsagePrintsTheHelpAndExitsWithTwo(params string[] args)
     {
         (await RunAsync(args)).ShouldBe(2);
@@ -78,6 +80,7 @@ public sealed partial class ParserTests : IDisposable
     [InlineData(new[] { "schema", "snapshot" }, new[] { "schema", "snapshot" })]
     [InlineData(new[] { "schema", "validate" }, new[] { "schema", "validate" })]
     [InlineData(new[] { "schema", "diff", "--json", "--applied" }, new[] { "schema", "diff", "--applied", "--json" })]
+    [InlineData(new[] { "schema", "apply", "--allow-destructive", "--dry-run" }, new[] { "schema", "apply", "--dry-run", "--allow-destructive" })]
     [InlineData(new[] { "doctor", "--json", "--environment", "Production" }, new[] { "doctor", "--json" })]
     [InlineData(new[] { "apikey", "create", "--json", "--role", "Super Admin", "--class", "management", "--name", "ci", "--no-build" }, new[] { "apikey", "create", "--name", "ci", "--class", "management", "--role", "Super Admin", "--json" })]
     [InlineData(new[] { "apikey", "revoke", "0190A3C4-5E6F-7A8B-9C0D-1E2F3A4B5C6D" }, new[] { "apikey", "revoke", "0190a3c4-5e6f-7a8b-9c0d-1e2f3a4b5c6d" })]
@@ -120,6 +123,9 @@ public sealed partial class ParserTests : IDisposable
 
         await RunAsync("schema", "diff", "--schema", "deployed.json", "--assembly", ToolRun.HostAssembly);
         _launcher.Arguments.ShouldBe(["schema", "diff", "--schema", Path.GetFullPath("deployed.json")]);
+
+        await RunAsync("schema", "apply", "--script", "--output", "schema.sql", "--assembly", ToolRun.HostAssembly);
+        _launcher.Arguments.ShouldBe(["schema", "apply", "--script", "--output", Path.GetFullPath("schema.sql")]);
 
         // A schema file goes to the host only when a host is named, which checks it with its own field types.
         await RunAsync("schema", "validate", "--schema", "schema.json", "--assembly", ToolRun.HostAssembly);

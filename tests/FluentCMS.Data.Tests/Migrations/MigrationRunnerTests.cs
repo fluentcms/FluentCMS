@@ -118,7 +118,7 @@ public sealed class MigrationRunnerTests : IDisposable
 
         var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
 
-        exception.Message.ShouldBe("FCMS1301: table cms_article is missing; run 'fluentcms migrations add AddArticle'");
+        exception.Message.ShouldBe("FCMS1301: table cms_article is missing; run 'fluentcms schema apply', or 'fluentcms migrations add AddArticle' to give the host content migrations");
     }
 
     [Fact]

@@ -34,6 +34,10 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
         }
     }
 
+    // The same for a caller that reports a row it could not write.
+    public Task RecordOrThrowAsync(SchemaModel schema, CancellationToken cancellationToken) =>
+        RecordWithRetriesAsync(SchemaSnapshot.Of(schema), cancellationToken);
+
     // Logs what differs between the code and the newest row. It never fails startup: a schema that drifted is the
     // operator's to apply, and a missing check must not stop a host that works.
     public async Task CheckDriftAsync(SchemaModel schema, CancellationToken cancellationToken)

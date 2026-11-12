@@ -63,11 +63,12 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
             MigrationsList(),
             MigrationsScript(),
         },
-        new Command("schema", "The host's schema: its snapshot, its errors, and what differs from an instance, a schema file or the applied history.")
+        new Command("schema", "The host's schema: its snapshot, its errors, what differs from an instance, a schema file or the applied history, and applying it to the content tables.")
         {
             Snapshot(),
             Validate(),
             Diff(),
+            Apply(),
         },
         Doctor(),
         ApiKey(),
@@ -342,6 +343,45 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
 
             return await SchemaSources.WriteDiffAsync(report, result.GetValue(json), $"the instance at {target}", toLabel, output, error);
         }));
+        return command;
+    }
+
+    private Command Apply()
+    {
+        var script = new Option<bool>("--script") { Description = "Writes the SQL for the database as it is now and applies nothing." };
+        var file = new Option<string>("--output") { Description = "The file the script is written to; standard output when left out. Needs --script.", HelpName = "file" };
+        var dryRun = new Option<bool>("--dry-run") { Description = "Prints the operations and applies nothing; exits with 1 when they would be refused." };
+        var allow = new Option<bool>("--allow-destructive") { Description = "Applies a change that loses data, such as a dropped table or column or a changed column." };
+        var command = new Command("apply", "Brings the content tables of a host whose types are data up to its schema, and records the schema in the schema history.")
+        {
+            script, file, dryRun, allow,
+        };
+
+        command.Validators.Add(result =>
+        {
+            if (result.GetValue(file) is not null && !result.GetValue(script))
+            {
+                result.AddError("--output names the file of --script, so it needs --script.");
+            }
+            else if (result.GetValue(script) && result.GetValue(dryRun))
+            {
+                result.AddError("--script and --dry-run both apply nothing; give one.");
+            }
+        });
+
+        var project = ProjectOptions.AddTo(command);
+        command.SetAction((result, cancellationToken) => HandOverAsync(
+            result,
+            project,
+            [
+                "schema", "apply",
+                .. Flag(result, script),
+
+                // The host runs in the project directory, and the path is the caller's.
+                .. result.GetValue(file) is { } path ? ["--output", Path.GetFullPath(path)] : Array.Empty<string>(),
+                .. Flag(result, dryRun), .. Flag(result, allow),
+            ],
+            cancellationToken));
         return command;
     }
 

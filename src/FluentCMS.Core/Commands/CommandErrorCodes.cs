@@ -1,8 +1,9 @@
 namespace FluentCMS.Core.Commands;
 
 // The 330x codes are the commands that run inside the host; the fluentcms tool has the 331x codes. The schema tools and
-// doctor have 3320 to 3334, those of the host here and those of the tool in CliErrorCodes. Of the commands that administer
-// an instance (B-91), the 335x codes are shared by the host and the tool and the 336x codes are the tool's.
+// doctor have 3320 to 3334, those of the host here and those of the tool in CliErrorCodes, and schema apply 3335 to 3349. Of
+// the commands that administer an instance (B-91), the 335x codes are shared by the host and the tool and the 336x codes are
+// the tool's.
 internal static class CommandErrorCodes
 {
     public const string BadUsage = "FCMS3300";
@@ -30,4 +31,10 @@ internal static class CommandErrorCodes
     public const string UnknownSeeder = "FCMS3357";
     public const string SeedingClaimed = "FCMS3358";
     public const string InvalidValue = "FCMS3359";
+    public const string ContentMigrationsExist = "FCMS3335";
+    public const string StreamsNotMigrated = "FCMS3336";
+    public const string DestructiveSchemaChange = "FCMS3337";
+    public const string SchemaChangeNotApplicable = "FCMS3338";
+    public const string SchemaApplyFailed = "FCMS3339";
+    public const string SchemaNotRecorded = "FCMS3340";
 }

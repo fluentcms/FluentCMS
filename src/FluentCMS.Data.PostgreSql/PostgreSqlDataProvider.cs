@@ -20,7 +20,7 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
 
     public IJobClaimDialect JobClaimDialect { get; } = new PostgreSqlJobClaimDialect();
 
-    public IDatabaseSchemaReader SchemaReader { get; } = new InformationSchemaReader("current_schema()");
+    public IDatabaseSchemaReader SchemaReader { get; } = new InformationSchemaReader(PostgreSqlCatalog.CurrentSchema, PostgreSqlCatalog.Indexes);
 
     public bool IsUniqueViolation(Exception exception) =>
         (exception as PostgresException ?? exception.InnerException as PostgresException) is { SqlState: PostgresErrorCodes.UniqueViolation };
