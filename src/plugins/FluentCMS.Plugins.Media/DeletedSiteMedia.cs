@@ -9,12 +9,13 @@ namespace FluentCMS.Plugins.Media;
 // variants, the files from the storage the asset recorded and then the rows. Every asset is marked deleted first, so that
 // none is served while the files go and what this cannot remove is still the daily cleanup's: a file that cannot be deleted
 // keeps its asset as a deleted row, which the cleanup purges with the file after FluentCms:Media:DeletedRetention, and the
-// site's deletion stands. A run cut short, or a second delivery, goes on with what is left. A shared library is the default
+// site's deletion stands. A run cut short, or a second delivery, goes on with what is left; a library too large for the
+// outbox's attempts is left to the cleanup in the same way, since every asset was marked first. A shared library is the default
 // site's, which cannot be deleted, so only rows a site kept while the library was per site are found.
 internal sealed class DeletedSiteMedia(PluginDbContext<MediaPlugin> database, MediaStorage storages, TimeProvider time, ILogger<DeletedSiteMedia> logger)
     : IOutboxEventHandler<SiteDeletedEvent>
 {
-    public const int BatchSize = 500;
+    internal int BatchSize { get; init; } = 500;
 
     public async ValueTask HandleAsync(SiteDeletedEvent message, EventDelivery delivery, CancellationToken cancellationToken)
     {
@@ -99,7 +100,8 @@ internal sealed class DeletedSiteMedia(PluginDbContext<MediaPlugin> database, Me
             await storage.DeleteAsync(key, cancellationToken);
             return true;
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        // A storage's own timeout is a failure of that file; only the delivery's token stops the run.
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
             MediaLog.SiteFileNotDeleted(logger, storage.Name, key, asset.Id, asset.SiteId, exception);
             return false;
