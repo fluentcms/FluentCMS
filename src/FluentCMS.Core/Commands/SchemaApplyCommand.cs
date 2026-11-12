@@ -4,6 +4,7 @@ using FluentCMS.Core.Events;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.Commands;
@@ -102,7 +103,7 @@ internal sealed class SchemaApplyCommand : HostCommand
             {
                 throw new CommandException(
                     CommandErrorCodes.SchemaApplyFailed,
-                    $"the database refused an operation ({exception.GetType().Name}: {SecretScrubber.Of(exception.Message)}); its transaction was rolled back, and the schema history keeps its last row");
+                    $"the database refused an operation ({exception.GetType().Name}: {SecretScrubber.Of(exception.Message)}); its transaction was rolled back, except what SQLite committed before a table rebuild, which the next run leaves out, and the schema history keeps its last row");
             }
         }
 
@@ -111,11 +112,11 @@ internal sealed class SchemaApplyCommand : HostCommand
         {
             await runner.RecordSchemaAsync(guarded.Token);
         }
-        catch (Exception exception) when (exception is DbException or InvalidOperationException)
+        catch (Exception exception) when (exception is DbException or DbUpdateException or InvalidOperationException)
         {
             throw new CommandException(
                 CommandErrorCodes.SchemaNotRecorded,
-                $"the content tables match schema {hash}, but the schema history could not be written ({exception.GetType().Name}); run 'fluentcms schema apply' again to record it");
+                $"the content tables match schema {hash}, but the schema history could not be written ({exception.GetType().Name}); run 'fluentcms schema apply' again with the same options to record it");
         }
 
         await context.Output.WriteLineAsync(steps.Count == 0

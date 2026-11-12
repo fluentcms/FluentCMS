@@ -163,6 +163,57 @@ public sealed partial class SchemaApplyTests : IDisposable
         (await RunAsync(ArticleSchemas.Titled, "schema", "apply")).Output.ShouldStartWith("Nothing to apply;");
     }
 
+    // A wider column is altered, a removed type's table dropped, and an index the schema no longer has dropped, which
+    // holds no data and so needs no flag.
+    [Fact]
+    public async Task AChangedColumnAndARemovedTypeNeedAllowDestructiveAndARemovedIndexDoesNot()
+    {
+        var before = SampleSchema.NewBuilder()
+            .AddCollection("article", type => type
+                .Field("title", "text", field => field.Length(null, 100))
+                .Field("code", "text", field => field.Length(null, 20).Indexed()))
+            .AddCollection("tag", type => type.Field("name", "text"))
+            .Build();
+        await MigrateAndApplyAsync(before);
+        InsertArticle("Kept");
+
+        var unindexed = SampleSchema.NewBuilder()
+            .AddCollection("article", type => type
+                .Field("title", "text", field => field.Length(null, 100))
+                .Field("code", "text", field => field.Length(null, 20)))
+            .AddCollection("tag", type => type.Field("name", "text"))
+            .Build();
+        var (exitCode, output, error) = await RunAsync(unindexed, "schema", "apply");
+
+        exitCode.ShouldBe(0, error);
+        output.ShouldContain("  drop index ix_cms_article_code from table cms_article");
+
+        var after = SampleSchema.NewBuilder()
+            .AddCollection("article", type => type
+                .Field("title", "text", field => field.Length(null, 200))
+                .Field("code", "text", field => field.Length(null, 20)))
+            .Build();
+        (exitCode, output, error) = await RunAsync(after, "schema", "apply");
+
+        exitCode.ShouldBe(1);
+        output.ShouldContain("  drop table cms_tag [destructive]");
+        if (!TestProvider.IsSqlite)
+        {
+            // SQLite's TEXT has no length.
+            output.ShouldContain("  change column title on table cms_article from ");
+        }
+
+        error.ShouldStartWith("FCMS3337: ");
+        _database.Tables().ShouldContain("cms_tag");
+
+        (exitCode, _, error) = await RunAsync(after, "schema", "apply", "--allow-destructive");
+
+        exitCode.ShouldBe(0, error);
+        _database.Tables().ShouldNotContain("cms_tag");
+        _database.ReadStrings("select title from cms_article").ShouldBe(["Kept"]);
+        (await RunAsync(after, "schema", "apply")).Output.ShouldStartWith("Nothing to apply;");
+    }
+
     [Fact]
     public async Task DryRunAndScriptChangeNothingAndTheScriptAppliesOnTheDatabaseItWasWrittenFor()
     {
