@@ -7,7 +7,9 @@ using FluentCMS.Core.Localization;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Core.Transfer;
 using FluentCMS.Events;
+using FluentCMS.Transfer;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Core.Authorization;
@@ -199,6 +201,87 @@ internal sealed class RoleService(
 
         cache.Remove(id);
         await LogAsync("role.deleted", role, null, cancellationToken);
+    }
+
+    // For an export, which has checked transfer.manage: the roles of the site, without the built-in ones.
+    public async Task<IReadOnlyList<RoleInfo>> SiteRolesAsync(Guid site, CancellationToken cancellationToken)
+    {
+        Guid? siteId = site;
+        var roles = await context.Set<Role>().AsNoTracking().Where(role => role.SiteId == siteId && !role.BuiltIn).ToListAsync(cancellationToken);
+        var grants = await GrantsAsync([.. roles.Select(role => role.Id)], cancellationToken);
+        return [.. roles.OrderBy(role => role.Name, StringComparer.Ordinal).Select(role => Info(role, grants[role.Id]))];
+    }
+
+    // For an import into a site: the role keeps its id, and is written as roles.manage would write it. One with the same name,
+    // description, flag and grants is no write, and a dry run validates and writes nothing. The caller who started the import
+    // needs roles.manage in the site and every grant the role had and gets, as an edit of its own would; the write is the import's.
+    public async Task<TransferOutcome> ImportAsync(RoleInfo role, Guid site, bool dryRun, OperationContext caller, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(role);
+        ArgumentNullException.ThrowIfNull(caller);
+
+        var existing = await context.Set<Role>().AsNoTracking().FirstOrDefaultAsync(item => item.Id == role.Id, cancellationToken);
+        if (existing is not null && (existing.SiteId != site || existing.BuiltIn))
+        {
+            throw new ValidationException([new ValidationError("id", TransferErrorCodes.IdTaken, $"The role {role.Id:D} is one of another site or a built-in role of this instance.")]);
+        }
+
+        var request = new RoleRequest(role.Name, role.Description, role.Grants) { SiteId = site, RequireTwoFactor = role.RequireTwoFactor };
+        if (existing is not null)
+        {
+            var stored = (await GrantsAsync([existing.Id], cancellationToken))[existing.Id].ToList();
+            var (name, description, grants) = await ValidateAsync(request, site, existing.Id, cancellationToken);
+            if (existing.Name == name && existing.Description == description && existing.RequireTwoFactor == role.RequireTwoFactor && SameGrants(stored, grants))
+            {
+                return TransferOutcome.Skipped;
+            }
+
+            await AsCallerAsync(caller, async () =>
+            {
+                await authority.RequireAsync(CorePermissions.RolesManage, site, cancellationToken);
+                await RequireCoveredAsync(stored, site, existing.Name, cancellationToken);
+                await RequireCoveredAsync(grants, site, name, cancellationToken);
+            });
+
+            if (!dryRun)
+            {
+                await UpdateAsync(existing.Id, request, cancellationToken);
+            }
+
+            return TransferOutcome.Updated;
+        }
+
+        var (newName, newDescription, newGrants) = await ValidateAsync(request, site, role.Id, cancellationToken);
+        await AsCallerAsync(caller, async () =>
+        {
+            await authority.RequireAsync(CorePermissions.RolesManage, site, cancellationToken);
+            await RequireCoveredAsync(newGrants, site, newName, cancellationToken);
+        });
+        if (dryRun)
+        {
+            return TransferOutcome.Created;
+        }
+
+        var created = new Role { Id = role.Id, SiteId = site, Name = newName, Description = newDescription, RequireTwoFactor = role.RequireTwoFactor };
+        context.Add(created);
+        context.AddRange(Rows(created.Id, newGrants));
+        await SaveAsync(created, cancellationToken);
+        await LogAsync("role.created", created, null, cancellationToken);
+        return TransferOutcome.Created;
+    }
+
+    private async Task AsCallerAsync(OperationContext caller, Func<Task> check)
+    {
+        var current = accessor.Current;
+        accessor.Current = caller;
+        try
+        {
+            await check();
+        }
+        finally
+        {
+            accessor.Current = current;
+        }
     }
 
     // For a user or an invitation: the caller must hold every grant of each role. A role that does not exist is the caller's

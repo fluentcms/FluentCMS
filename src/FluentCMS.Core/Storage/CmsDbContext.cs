@@ -1,5 +1,6 @@
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Core.Storage;
@@ -8,6 +9,11 @@ namespace FluentCMS.Core.Storage;
 public sealed class CmsDbContext : DbContext
 {
     public const string HistoryTable = "cms_content__migrations";
+
+    // The snapshot of the schema on the content model, so that each migration's target model and the model snapshot carry
+    // the schema they were generated from, which `migrations add` compares the next schema with. No migration operation
+    // follows from a model annotation.
+    internal const string SchemaAnnotation = "FluentCMS:Schema";
 
     private readonly CmsModelOptionsExtension _model;
 
@@ -23,6 +29,8 @@ public sealed class CmsDbContext : DbContext
     public DbSet<Reference> References => Set<Reference>();
 
     public DbSet<ContentVersion> Versions => Set<ContentVersion>();
+
+    internal SchemaModel Schema => _model.Schema;
 
     internal string ModelKey => SchemaSnapshot.Of(_model.Schema).Hash;
 
@@ -55,6 +63,7 @@ public sealed class CmsDbContext : DbContext
         }
 
         new ContentModelBuilder(_model.Schema, _model.Conventions).Apply(modelBuilder);
+        modelBuilder.HasAnnotation(SchemaAnnotation, SchemaSnapshot.Of(_model.Schema).Json);
         _model.JsonDialect?.ConfigureFunctions(modelBuilder);
     }
 }

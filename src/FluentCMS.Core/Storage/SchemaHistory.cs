@@ -34,6 +34,10 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
         }
     }
 
+    // The same for a caller that reports a row it could not write.
+    public Task RecordOrThrowAsync(SchemaModel schema, CancellationToken cancellationToken) =>
+        RecordWithRetriesAsync(SchemaSnapshot.Of(schema), cancellationToken);
+
     // Logs what differs between the code and the newest row. It never fails startup: a schema that drifted is the
     // operator's to apply, and a missing check must not stop a host that works.
     public async Task CheckDriftAsync(SchemaModel schema, CancellationToken cancellationToken)
@@ -72,6 +76,14 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
 
         var drifted = last.Hash != snapshot.Hash;
         return new SchemaStatus(snapshot.Hash, last.Hash, last.AppliedAt, last.FluentcmsVersion, drifted, drifted ? Describe(last.Snapshot, snapshot.Json) : null);
+    }
+
+    // The snapshot of the newest row, or null while the history is empty. A history that cannot be read throws.
+    public async Task<string?> AppliedSnapshotAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        return (await NewestAsync(context, cancellationToken))?.Snapshot;
     }
 
     private async Task RecordWithRetriesAsync(SchemaSnapshot snapshot, CancellationToken cancellationToken)
@@ -181,9 +193,9 @@ internal static partial class SchemaHistoryLog
     [LoggerMessage(EventId = 9313, Level = LogLevel.Warning, Message = "The schema in code could not be compared with the schema history ({ExceptionType}); the host starts without the check.")]
     public static partial void NotChecked(ILogger logger, string exceptionType, Exception exception);
 
-    [LoggerMessage(EventId = 9314, Level = LogLevel.Information, Message = "The schema history is empty, so the schema in code cannot be compared; a start with FluentCms:Database:MigrateOnStartup = true records it.")]
+    [LoggerMessage(EventId = 9314, Level = LogLevel.Information, Message = "The schema history is empty, so the schema in code cannot be compared; run 'fluentcms migrate' to record it, or start with FluentCms:Database:MigrateOnStartup = true.")]
     public static partial void NoHistory(ILogger logger);
 
-    [LoggerMessage(EventId = 9315, Level = LogLevel.Warning, Message = "The schema in code differs from the one applied on {AppliedAt:u} by FluentCMS {Version} (hash {Applied}, code {Current}): {Changes}. A start with FluentCms:Database:MigrateOnStartup = true applies and records it.")]
+    [LoggerMessage(EventId = 9315, Level = LogLevel.Warning, Message = "The schema in code differs from the one applied on {AppliedAt:u} by FluentCMS {Version} (hash {Applied}, code {Current}): {Changes}. Run 'fluentcms migrate' to apply and record it, or start with FluentCms:Database:MigrateOnStartup = true.")]
     public static partial void Drift(ILogger logger, DateTimeOffset appliedAt, string version, string applied, string current, string changes);
 }

@@ -3,6 +3,7 @@ using FluentCMS.Content;
 using FluentCMS.Core.ActivityLog;
 using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Commands;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
@@ -21,6 +22,7 @@ using FluentCMS.Core.Seeding;
 using FluentCMS.Core.Settings;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
+using FluentCMS.Core.Transfer;
 using FluentCMS.Publishing;
 using Microsoft.AspNetCore.Http;
 
@@ -307,6 +309,40 @@ public static class ErrorCodeRegistry
         new(MemberErrorCodes.LoginTaken, StatusCodes.Status409Conflict, "External login already linked"),
         Startup(MemberErrorCodes.ProviderRegistrationClosed, "Registration closed to the member provider"),
 
+        // 320x to 323x transfer: the refusals of an export or an import as a whole, the codes of the items of an import's
+        // report, which no response has as its own, and a contributor of a plugin, found when a transfer first runs
+        Invalid(TransferErrorCodes.InvalidPackage, "Invalid package"),
+        Invalid(TransferErrorCodes.UnsupportedFormat, "Package format not supported"),
+        new(TransferErrorCodes.SchemaIncompatible, StatusCodes.Status409Conflict, "Package schema incompatible"),
+        new(TransferErrorCodes.LocaleNotInSite, StatusCodes.Status409Conflict, "Package locale not allowed in the site"),
+        new(TransferErrorCodes.PackageTooLarge, StatusCodes.Status413PayloadTooLarge, "Package too large"),
+        new(TransferErrorCodes.ExportRunning, StatusCodes.Status409Conflict, "Export already running"),
+        BadQuery(TransferErrorCodes.InvalidOption, "Invalid transfer option"),
+        new(TransferErrorCodes.ImportRunning, StatusCodes.Status409Conflict, "Import already running"),
+        new(TransferErrorCodes.IdTaken, StatusCodes.Status409Conflict, "Id taken by another item"),
+        new(TransferErrorCodes.InTrash, StatusCodes.Status409Conflict, "Entry in the trash"),
+        Invalid(TransferErrorCodes.InvalidItem, "Invalid package item"),
+        Invalid(TransferErrorCodes.UnknownArea, "Settings area not in the instance"),
+        Invalid(TransferErrorCodes.NoContributor, "No contributor for a package folder"),
+        Startup(TransferErrorCodes.ItemFailed, "Package item failed"),
+        Startup(TransferErrorCodes.InvalidContributor, "Invalid transfer contributor"),
+
+        // 324x and 325x the commands export, import, backup and restore, in the host and in the fluentcms tool, whose codes
+        // for what an instance answers are written out; a request never reaches either
+        Startup(TransferCommandErrorCodes.BackupNotSupported, "Backup not supported by the data provider"),
+        Startup(TransferCommandErrorCodes.NoDatabaseFile, "No database file"),
+        Startup(TransferCommandErrorCodes.InvalidArchive, "Invalid backup archive"),
+        Startup(TransferCommandErrorCodes.ArchiveNewer, "Backup of a newer FluentCMS"),
+        Startup(TransferCommandErrorCodes.DatabaseExists, "Database exists"),
+        Startup(TransferCommandErrorCodes.DatabaseInUse, "Database in use"),
+        Startup(TransferCommandErrorCodes.MediaNotEmpty, "Media directory not empty"),
+        Startup(TransferCommandErrorCodes.NoLocalMedia, "No local media storage"),
+        Startup(TransferCommandErrorCodes.FileNotRead, "File not read"),
+        Startup(TransferCommandErrorCodes.ImportNotClean, "Import reported conflicts or errors"),
+        Startup("FCMS3251", "Instance refused the transfer"),
+        Startup("FCMS3252", "Instance not reached for a transfer"),
+        Startup("FCMS3253", "Unexpected transfer answer"),
+
         // 315x the reference host (FluentCMS.Host, which this assembly does not reference, so its codes are written out) and the schema sync it allows, found when it starts
         Startup("FCMS3150", "Unknown data provider"),
         Startup("FCMS3151", "Connection string missing"),
@@ -314,6 +350,72 @@ public static class ErrorCodeRegistry
         Startup("FCMS3153", "Schema file not found"),
         Startup(StorageErrorCodes.SchemaSyncNotSupported, "Schema sync not supported"),
         Startup("FCMS3155", "Key ring certificate unusable"),
+
+        // 330x the commands that run inside the host, and 331x the fluentcms tool (FluentCMS.Cli, which this assembly does
+        // not reference, so its codes are written out); a request never reaches either
+        Startup(CommandErrorCodes.BadUsage, "Bad command usage"),
+        Startup(CommandErrorCodes.NoEntryPoint, "Command entry point missing"),
+        Startup(CommandErrorCodes.CommandFailed, "Command failed"),
+        Startup(CommandErrorCodes.MigrationsPending, "Migrations pending"),
+        Startup(CommandErrorCodes.UnknownStream, "Unknown migration stream"),
+        Startup(CommandErrorCodes.UnknownMigration, "Unknown migration"),
+        Startup(CommandErrorCodes.ScriptNotSupported, "Script not supported by the provider"),
+        Startup(CommandErrorCodes.OutputNotWritten, "Output not written"),
+        Startup("FCMS3310", "Host project not built"),
+        Startup("FCMS3311", "Host assembly not found"),
+        Startup("FCMS3312", "Host not started"),
+        Startup("FCMS3313", "No content migration to remove"),
+        Startup("FCMS3314", "Content migration applied"),
+        Startup("FCMS3315", "Applied migrations unknown"),
+        Startup("FCMS3316", "Invalid instance address or token"),
+
+        // 3320 to 3334 the schema tools and doctor, inside the host and in the tool
+        Startup(CommandErrorCodes.SchemaInvalid, "Schema invalid"),
+        Startup(CommandErrorCodes.SchemaFileUnreadable, "Schema file unreadable"),
+        Startup(CommandErrorCodes.SchemaDrift, "Schema drift"),
+        Startup(CommandErrorCodes.NoAppliedSchema, "No applied schema"),
+        Startup(CommandErrorCodes.AppliedSchemaUnreadable, "Applied schema unreadable"),
+        Startup(CommandErrorCodes.HostWouldNotStart, "Host would not start"),
+        Startup(CommandErrorCodes.MixedVersions, "FluentCMS assemblies of different versions"),
+        Startup("FCMS3327", "Destructive migration refused"),
+        Startup("FCMS3328", "Migration not checked"),
+        Startup("FCMS3329", "Instance unreachable"),
+        Startup("FCMS3330", "Instance refused the key"),
+        Startup("FCMS3331", "Host schema not read"),
+
+        // 335x the commands that administer an instance, in the host and in the tool alike, and 336x the tool's own
+        Startup(CommandErrorCodes.UnknownRole, "Unknown role"),
+        Startup(CommandErrorCodes.UnknownSite, "Unknown site"),
+        Startup(CommandErrorCodes.PasswordNotRead, "Password not read"),
+        Startup(CommandErrorCodes.UserNotFound, "User not found or deactivated"),
+        Startup(CommandErrorCodes.PublicOriginRequired, "Public origin required"),
+        Startup(CommandErrorCodes.UnknownJob, "Unknown recurring job"),
+        Startup(CommandErrorCodes.InlineJobFailed, "Inline job failed"),
+        Startup(CommandErrorCodes.UnknownSeeder, "Unknown seeder"),
+        Startup(CommandErrorCodes.SeedingClaimed, "Seeding held by another run"),
+        Startup(CommandErrorCodes.InvalidValue, "Invalid option value"),
+        Startup("FCMS3361", "Unexpected answer from the instance"),
+        Startup("FCMS3362", "Key refused by the MCP endpoint"),
+        Startup("FCMS3363", "Key sent without TLS"),
+
+        // 3335 to 3349 schema apply, inside the host
+        Startup(CommandErrorCodes.ContentMigrationsExist, "Host has content migrations"),
+        Startup(CommandErrorCodes.StreamsNotMigrated, "System or plugin migrations pending"),
+        Startup(CommandErrorCodes.DestructiveSchemaChange, "Destructive schema change refused"),
+        Startup(CommandErrorCodes.SchemaChangeNotApplicable, "Schema change cannot be applied"),
+        Startup(CommandErrorCodes.SchemaApplyFailed, "Schema change failed in the database"),
+        Startup(CommandErrorCodes.SchemaNotRecorded, "Schema history not written"),
+        // 337x the generate commands: the tool's codes are written out, and the host's own is FCMS3379
+        Startup("FCMS3370", "Schema snapshot unreadable"),
+        Startup("FCMS3371", "Instance request failed"),
+        Startup("FCMS3372", "Generated files out of date"),
+        Startup("FCMS3373", "Generated files not written"),
+        Startup("FCMS3374", "Invalid namespace"),
+        Startup("FCMS3375", "Field type without a generated type"),
+        Startup("FCMS3376", "Name without a generated identifier"),
+        Startup("FCMS3377", "Conflicting schema sources"),
+        Startup("FCMS3378", "Host gave no generator input"),
+        Startup(GenerateErrorCodes.OpenApiUnavailable, "OpenAPI document unavailable"),
     ];
 
     private static readonly FrozenDictionary<string, ErrorCodeInfo> byCode = All.ToFrozenDictionary(info => info.Code);

@@ -5,9 +5,15 @@
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
   </PropertyGroup>
 
+  <!-- The tool diffs and prints for an instance what the schema commands and doctor do inside a host, with the same code. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FluentCMS.Cli" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="FluentCMS.Core.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Data.Tests" />
+    <InternalsVisibleTo Include="FluentCMS.Cli.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Testing" />
     <InternalsVisibleTo Include="FluentCMS.Core.IntegrationTests" />
     <InternalsVisibleTo Include="FluentCMS.Plugins.Tests" />
@@ -18,6 +24,9 @@
     <InternalsVisibleTo Include="FluentCMS.Plugins.MultiSite.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Plugins.AiAssist.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Host.Tests" />
+    <InternalsVisibleTo Include="FluentCMS.Generators.Tests" />
+    <!-- For the database file slot of backup and restore, IDatabaseFile, which only the SQLite provider fills. -->
+    <InternalsVisibleTo Include="FluentCMS.Data.Sqlite" />
   </ItemGroup>
 
   <ItemGroup>

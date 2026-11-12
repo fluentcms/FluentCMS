@@ -17,7 +17,8 @@ internal sealed class ReferenceResolvers(IEnumerable<IReferenceResolver> resolve
         schema.FindContentType(target) is null ? _byTarget.GetValueOrDefault(target) : null;
 
     // A write refuses only the targets it adds, so an entry whose asset was deleted since can still be saved.
-    public async Task CheckAddedAsync(EntryStore store, SchemaType type, ContentDocument entry, ContentDocument? stored, ValidationContext result, CancellationToken cancellationToken)
+    // provided holds the targets that a dry run of an import counts as there, because the package brings them.
+    public async Task CheckAddedAsync(EntryStore store, SchemaType type, ContentDocument entry, ContentDocument? stored, ValidationContext result, CancellationToken cancellationToken, IReadOnlySet<(string Target, Guid Id)>? provided = null)
     {
         if (IsEmpty)
         {
@@ -34,6 +35,11 @@ internal sealed class ReferenceResolvers(IEnumerable<IReferenceResolver> resolve
             }
 
             var missing = await resolver.FindMissingAsync([.. group.Select(found => found.Id).Distinct()], cancellationToken);
+            if (provided is { Count: > 0 })
+            {
+                missing = missing.Where(id => !provided.Contains((group.Key, id))).ToHashSet();
+            }
+
             foreach (var (path, target, id) in group.Where(found => missing.Contains(found.Id)).Distinct())
             {
                 result.AddError(path, ValidationErrorCodes.UnknownReference, $"No {target} {id:D} exists in this site.");

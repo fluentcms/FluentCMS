@@ -14,6 +14,8 @@
     "**/bin/**",
     "**/obj/**",
     // Upstream Contributor Covenant text, kept verbatim.
-    "CODE_OF_CONDUCT.md"
+    "CODE_OF_CONDUCT.md",
+    // Release tracking of the Roslyn analyzers, in the format its parser reads.
+    "**/AnalyzerReleases.*.md"
   ]
 }

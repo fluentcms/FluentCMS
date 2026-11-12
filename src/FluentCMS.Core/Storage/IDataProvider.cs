@@ -38,4 +38,8 @@ public interface IDataProvider
     // The same, for the context of a plugin's stream, with its assembly and its history table cms_{plugin}__migrations, and
     // UsePluginMigrationSet with the name of the provider's set in that assembly.
     void ConfigurePluginMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly, string historyTable);
+
+    // Holds the database while one process applies its streams, for a provider whose own migrations lock lets two processes
+    // apply the same migration; disposing it lets the next go. Null where EF's lock is enough.
+    Task<IAsyncDisposable?> LockMigrationsAsync(CancellationToken cancellationToken) => Task.FromResult<IAsyncDisposable?>(null);
 }

@@ -14,6 +14,8 @@
   <ItemGroup>
     <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
     <ProjectReference Include="../../samples/Blog/Blog.csproj" />
+    <!-- The tool's commands at an instance, run against a test host's server. -->
+    <ProjectReference Include="../../src/FluentCMS.Cli/FluentCMS.Cli.csproj" />
   </ItemGroup>
 
 </Project>

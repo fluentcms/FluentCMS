@@ -1,0 +1,51 @@
+using System.Globalization;
+using System.Text;
+
+namespace FluentCMS.Core.Commands;
+
+// The commands a host runs. Internal: a contract for the commands of plugins is not part of 1.0.
+internal static class CommandRegistry
+{
+    public static IReadOnlyList<HostCommand> Commands { get; } =
+    [
+        new MigrateCommand(),
+        new MigrationsListCommand(),
+        new MigrationsScriptCommand(),
+        new SchemaSnapshotCommand(),
+        new SchemaValidateCommand(),
+        new SchemaDiffCommand(),
+        new SchemaApplyCommand(),
+        new DoctorCommand(),
+        new ApiKeyCreateCommand(),
+        new ApiKeyListCommand(),
+        new ApiKeyRevokeCommand(),
+        new UserCreateCommand(),
+        new UserInviteCommand(),
+        new UserResetPasswordCommand(),
+        new UserAddRoleCommand(),
+        new JobsListCommand(),
+        new JobsRunCommand(),
+        new JobsRetryCommand(),
+        new SeedCommand(),
+        new ExportCommand(),
+        new ImportCommand(),
+        new BackupCommand(),
+        new RestoreCommand(),
+        new OpenApiDocumentCommand(),
+    ];
+
+    public static string Usage => UsageOf(Commands);
+
+    public static string UsageOf(IReadOnlyList<HostCommand> commands)
+    {
+        commands = [.. commands.Where(command => !command.Hidden)];
+        var usage = new StringBuilder("Usage: fluentcms <command> [options]").AppendLine().AppendLine().AppendLine("Commands this host runs:");
+        var width = commands.Max(command => command.Name.Length);
+        foreach (var command in commands)
+        {
+            usage.AppendLine(CultureInfo.InvariantCulture, $"  {command.Name.PadRight(width)}  {command.Description}");
+        }
+
+        return usage.AppendLine().Append("'fluentcms <command> --help' describes a command.").ToString();
+    }
+}

@@ -30,7 +30,7 @@ docker run -d --name fluentcms -p 8080:8080 -v fluentcms-data:/data \
 
 `FluentCms__PublicOrigin` is the https address you reach the instance at through the proxy that ends TLS, which sign-in needs (see [before production](#before-production)). With no such address yet, `FluentCms__Security__AllowRequestOrigin=true` in its place builds links from each request. The startup report keeps listing each opt-in, as `generated-signing-key`, `data-protection-keys-unencrypted` or `public-origin-unset`.
 
-It runs on SQLite, in `/data/fluentcms.db`, and applies the migrations on start. Keep `/data` on a volume, or the database goes with the container. The database is in WAL mode, so `/data` also holds `fluentcms.db-wal` and `fluentcms.db-shm` while the host runs: keep the three files together, and stop the container before copying them, since `fluentcms.db` alone misses the commits still in `-wal`. Put the volume on a local disk, not a network share such as NFS, SMB or Azure Files, where SQLite's locks and the shared memory WAL needs do not work (see [SQLite](host-configuration.md#sqlite)). `GET http://localhost:8080/health/ready` answers `Healthy` once the database and the job runner are up, and `docker ps` shows the container as healthy: the image's `HEALTHCHECK` runs the host itself with `--probe`, because a chiseled image has no `curl`.
+It runs on SQLite, in `/data/fluentcms.db`, and applies the migrations on start. Keep `/data` on a volume, or the database goes with the container. The database is in WAL mode, so `/data` also holds `fluentcms.db-wal` and `fluentcms.db-shm` while the host runs: keep the three files together, and stop the container before copying them, since `fluentcms.db` alone misses the commits still in `-wal`, or take a backup while it runs with `fluentcms backup` ([backups](backups.md)). Put the volume on a local disk, not a network share such as NFS, SMB or Azure Files, where SQLite's locks and the shared memory WAL needs do not work (see [SQLite](host-configuration.md#sqlite)). `GET http://localhost:8080/health/ready` answers `Healthy` once the database and the job runner are up, and `docker ps` shows the container as healthy: the image's `HEALTHCHECK` runs the host itself with `--probe`, because a chiseled image has no `curl`.
 
 ## Content types
 
@@ -64,7 +64,7 @@ docker run -d -p 8080:8080 -v fluentcms-data:/data -v ./schema.json:/config/sche
 
 The format is the one `GET /api/management/v1/schema/snapshot` returns, so a snapshot of one instance is a schema file for another. A file with an error stops the container with every problem and its code, such as `FCMS1213` for a file that is not valid JSON or has an unknown property and `FCMS1203` for an unknown field type; a path that does not exist stops it with `FCMS3153`. Both may be set: the sample's types and the file's are then one schema.
 
-A schema file has no compiled migrations, so the host creates and extends its tables on start, on SQLite only: a new type, a new optional field and a new index are applied, and a change that would drop or rewrite data, such as removing a field, changing its type or adding a required field, is logged as a warning and left undone. Such a change needs a new database for now; the CLI will generate migrations from a schema file. The startup report lists this as `schema-sync-outside-development`, a known choice of the image rather than a mistake.
+A schema file has no compiled migrations. On SQLite the host creates and extends its tables on start: a new type, a new optional field and a new index are applied, and a change that would drop or rewrite data, such as removing a field, changing its type or adding a required field, is logged as a warning and left undone. The startup report lists this as `schema-sync-outside-development`, a known choice of the image rather than a mistake. On PostgreSQL and SQL Server nothing changes the database on start; `fluentcms schema apply` brings the content tables up to the schema ([below](#apply-a-schema-file)), and it applies on SQLite too, where it also makes the changes that start leaves undone.
 
 ## Environment variables
 
@@ -83,6 +83,7 @@ A schema file has no compiled migrations, so the host creates and extends its ta
 | `FluentCms__Security__AllowUnencryptedKeyRing` | `false` | `true` accepts the key ring stored unencrypted (`FCMS1106` otherwise). |
 | `FluentCms__Email__Smtp__Host` and the rest of `FluentCms__Email__Smtp__*` | none | The SMTP server that invitations and password resets go through; see [email](host-configuration.md#email). |
 | `FluentCms__Sso__Providers__{name}__*` | none | An OpenID Connect provider that admin users sign in with; see [single sign-on](#single-sign-on). |
+| `FluentCms__Media__S3__*` | none | Any key of the section stores new uploads in an S3 bucket, or one of an S3-compatible service such as MinIO, instead of the local disk: `Bucket`, `Endpoint`, `Region`, `KeyPrefix`, `ForcePathStyle`, `AccessKeyId` and `SecretAccessKey`, as the [media plugin](../src/plugins/FluentCMS.Plugins.Media/README.md#storage-on-s3-or-azure-blob) lists them. A section without a valid bucket stops the host at start. |
 | `FluentCms__OpenApi__Enabled` | off | `true` serves the OpenAPI document at `/openapi/v1.json` and the Scalar UI at `/scalar`. See [the API description](#the-api-description). |
 | `ASPNETCORE_HTTP_PORTS` | `8080` | The port the host listens on, from the base image. |
 
@@ -90,7 +91,19 @@ Every other option is a key of the `FluentCms` section, written with `__` for `:
 
 ## The first administrator
 
-A new instance has no users, and an invitation is sent by someone who can manage users. The operator is a confidential client with the Super Admin role, registered from the environment:
+A new instance has no users. The image makes the first administrator with `fluentcms user create`, run with the same settings as the instance and, on SQLite, the same `/data` volume (see [commands of the image](#migrate-before-the-host-starts)). The password is read from standard input, never from an argument, so pass `-i` and write it to the command, or pass `-it`, leave out `--password-stdin` and type it twice at the prompt, which does not echo it:
+
+```bash
+docker run --rm -v fluentcms-data:/data fluentcms fluentcms migrate
+docker run --rm -i -v fluentcms-data:/data fluentcms \
+  fluentcms user create --email ada@example.com --role "Super Admin" --password-stdin < ada-password.txt
+```
+
+A command applies no migration, and the Super Admin role comes with the system migration, so a new database is migrated first, with `fluentcms migrate` or one start of the instance.
+
+The user is active, with the address as its user name, and signs in through the hosted login page at once. `user create` exists in the host only: over the Management API a user is invited, so that an API key alone never sets a password.
+
+An instance that is set up from its environment alone, with no step that runs a command, invites its first administrator instead, and an invitation is sent by someone who can manage users. The operator is a confidential client with the Super Admin role, registered from the environment:
 
 ```bash
 -e FluentCms__Clients__Applications__ops__Secret=<from your secret store>
@@ -100,7 +113,7 @@ A new instance has no users, and an invitation is sent by someone who can manage
 
 It gets a token with the client credentials grant at `/connect/token` (`grant_type=client_credentials`, `client_id=ops`, its secret, `scope=management`) and invites the first administrator with `POST /api/management/v1/invitations` `{ "email": "ada@example.com", "roleIds": ["<id of Super Admin from GET /roles>"] }`. The invitation is emailed, so set up SMTP first. The person follows the link, picks a user name and a password on the hosted page, and signs in from then on through the hosted login page with any client registered with `RedirectUris`. Remove the operator's variables, or keep its secret in a secret store, once it is no longer needed.
 
-The Delivery API is closed until a role allows reading: create a role with `content.{type}.read` and a Delivery key bound to it with `POST /api/management/v1/api-keys` `{ "name", "class": "delivery", "roleId" }`, or grant those permissions to the site's Public role for anonymous reads.
+The Delivery API is closed until a role allows reading: create a role with `content.{type}.read` and a Delivery key bound to it with `POST /api/management/v1/api-keys` `{ "name", "class": "delivery", "roleId" }`, or with `fluentcms apikey create --name site --class delivery --role <role>`, or grant those permissions to the site's Public role for anonymous reads.
 
 ## Single sign-on
 
@@ -153,6 +166,116 @@ The startup report, logged at start and served at `GET /api/management/v1/system
 
 ## Other databases
 
-`FluentCms__Database__Provider=PostgreSql` or `SqlServer` with `ConnectionStrings__FluentCms` runs on that server. Those providers do not migrate on start by default, so run the system migrations before the host starts, with `FluentCms__Database__MigrateOnStartup=true` on one instance; the `fluentcms migrate` command for an init container comes with the CLI in M6. On SQL Server the system migrations turn `READ_COMMITTED_SNAPSHOT` on unless it is on already, as on Azure SQL Database. That needs `ALTER` permission on the database, and it disconnects the database's other sessions once ([ADR 0005](decisions/0005-sql-server-read-committed-snapshot.md)). They keep content tables on reviewed migrations and never create them from the schema on start, so `FLUENTCMS_SCHEMA` and `FLUENTCMS_SAMPLE` stop the host on them with `FCMS3154`. Until the CLI generates migrations from a schema file, the image runs a schema file on SQLite only. PostgreSQL 15 and SQL Server 2019 and 2025 are tested providers ([#2711](https://github.com/fluentcms/FluentCMS/issues/2711)). The webhooks and media plugins hold a migration set for each of these providers ([plugin migrations](plugin-migrations.md)).
+`FluentCms__Database__Provider=PostgreSql` or `SqlServer` with `ConnectionStrings__FluentCms` runs on that server. Those providers do not migrate on start by default, so apply the migrations before the host starts, with `fluentcms migrate` (below) or with `FluentCms__Database__MigrateOnStartup=true` on one instance. On SQL Server the system migrations turn `READ_COMMITTED_SNAPSHOT` on unless it is on already, as on Azure SQL Database. That needs `ALTER` permission on the database, and it disconnects the database's other sessions once ([ADR 0005](decisions/0005-sql-server-read-committed-snapshot.md)). They never create content tables from the schema on start: with `FLUENTCMS_SCHEMA` or `FLUENTCMS_SAMPLE`, run `fluentcms schema apply` after `fluentcms migrate` ([below](#apply-a-schema-file)), and a host that starts before it stops with `FCMS1301`, which names the command. PostgreSQL 15 and SQL Server 2019 and 2025 are tested providers ([#2711](https://github.com/fluentcms/FluentCMS/issues/2711)). The webhooks and media plugins hold a migration set for each of these providers ([plugin migrations](plugin-migrations.md)).
+
+## Migrate before the host starts
+
+The image runs the commands of the host as well as the host: arguments that start with `fluentcms` run that command and end the container with its exit code (0, 1 for a failure, 2 for bad usage), and nothing listens, runs jobs or seeds. An init container or a deploy step applies the migrations of every stream with the same image and settings as the host:
+
+```bash
+docker run --rm \
+  -e FluentCms__Database__Provider=PostgreSql \
+  -e "ConnectionStrings__FluentCms=Host=db;Database=fluentcms;Username=fluentcms;Password=<from your secret store>" \
+  fluentcms fluentcms migrate
+```
+
+`fluentcms migrate --check` lists what is pending and exits with 1 when anything is, which suits a readiness gate. `fluentcms migrations list` shows the applied and pending migrations of each stream, and `fluentcms migrations script --idempotent --output /out/migrate.sql` writes the SQL for a database that only an administrator may change (PostgreSQL and SQL Server; mount `/out`). The host's logs go to standard output with the command's output, so set `Logging__Console__LogToStandardErrorThreshold=Trace` to keep them apart. A command needs none of the Production settings of the host above, since it serves nothing. Instances that migrate one database at once apply each migration once, but on SQL Server the first migration of a new database turns `READ_COMMITTED_SNAPSHOT` on, which disconnects the database's other sessions, so a second run that waits meanwhile fails and succeeds when it runs again: run one migrate step per deploy, or let it restart. In Kubernetes:
+
+```yaml
+initContainers:
+  - name: migrate
+    image: fluentcms
+    args: ["fluentcms", "migrate"]
+    envFrom:
+      - secretRef:
+          name: fluentcms-database
+```
+
+## Administer an instance
+
+The same image runs the commands that administer the instance, as the system, with the origin `Cli` in the activity log:
+
+| Command | Does |
+| --- | --- |
+| `fluentcms apikey create --name <name> --class <delivery\|preview\|management> --role <name> [--site <slug>] [--types <list>] [--expires <date>]` | prints the new key once, alone on standard output |
+| `fluentcms apikey list`, `fluentcms apikey revoke <id>` | lists the keys, revokes one |
+| `fluentcms user create --email <address> --role <name> [--site <slug>] [--password-stdin]` | an active administrator (above) |
+| `fluentcms user invite --email <address> --role <name> [--site <slug>]` | emails an invitation |
+| `fluentcms user reset-password --email <address> [--password-stdin]` | emails a reset link, or sets the password read from standard input |
+| `fluentcms user add-role --email <address> --role <name> [--site <slug>]` | gives a role |
+| `fluentcms jobs list [--queue <name>] [--status <status>]`, `fluentcms jobs retry <id>` | lists the newest jobs, queues a dead-lettered one again |
+| `fluentcms jobs run <name> [--inline]` | queues a run of a recurring job, or runs it in the command's process with one attempt |
+| `fluentcms seed [--name <seeder>]` | runs the seeders that are not applied at their version |
+
+List commands print a table, and one line of JSON in the shape of the Management API with `--json`. The invitation and reset emails link to `FluentCms__PublicOrigin`, which these commands need (`FCMS3354` otherwise). Set `Logging__Console__LogToStandardErrorThreshold=Trace` so that standard output holds only what the command prints, such as the key of `apikey create`. What a command writes to the activity log reaches it through the outbox, which a running instance delivers.
+
+The `fluentcms` tool runs `apikey`, `user invite`, `user add-role`, `jobs list` and `jobs retry` against a running instance too, with `--url https://cms.example.com` and a management API key in `FLUENTCMS_TOKEN` (or `--token`, which a process list shows). They call the Management API as that key, so a key without the permission is refused with the API's problem and exit code 1. `fluentcms mcp --url https://cms.example.com` is a proxy from standard input and output to the instance's `/mcp`, for an MCP client that speaks stdio only; a refused key ends it with `FCMS3362` on standard error.
+
+## Apply a schema file
+
+With `FLUENTCMS_SCHEMA` or `FLUENTCMS_SAMPLE` the content types are data, so they have no migrations. `fluentcms schema apply`, run after `fluentcms migrate` with the same image and settings, compares the schema with the content tables, applies the difference and records the schema in the schema history; when nothing differs it changes nothing and exits with 0. It refuses while the system or a plugin stream has a pending migration (`FCMS3336`), which is why it runs second:
+
+```yaml
+initContainers:
+  - name: migrate
+    image: fluentcms
+    args: ["fluentcms", "migrate"]
+    envFrom:
+      - secretRef:
+          name: fluentcms-database
+  - name: schema-apply
+    image: fluentcms
+    args: ["fluentcms", "schema", "apply"]
+    env:
+      - name: FLUENTCMS_SCHEMA
+        value: /config/schema.json
+    envFrom:
+      - secretRef:
+          name: fluentcms-database
+    volumeMounts:
+      - name: schema
+        mountPath: /config
+        readOnly: true
+```
+
+A new type, field or index is applied, and so is a renamed field that lists its old name in `formerNames`, which keeps its values. A required field added to a table with rows gets an empty value in them: `''` for text, the empty document for rich text. A change that loses data, such as a removed type or field or a changed field type, is listed and refused with `FCMS3337`, and nothing is applied, unless `--allow-destructive` is given. So is a renamed field whose values are not a column of its own, such as a relation, or a field of a component or block, which may be kept in JSON. The operations of a run are one transaction, so a database that refuses one keeps none (`FCMS3339`); on SQLite a table rebuild commits what came before it, which the next run then leaves out, and runs started together apply each operation once.
+
+`--dry-run` prints the operations and applies nothing, and exits with 1 when the run would be refused. `--script --output /out/schema.sql` writes the SQL for the database as it is now and applies nothing, for a database that only an administrator may change; the next `fluentcms schema apply` finds nothing to do and records the schema, and after a script with a change that loses data it needs `--allow-destructive` too. A host built with content migrations of its own is refused with `FCMS3335`, since its content tables belong to those migrations.
 
 For local development, `compose.yaml` at the root of the repository runs PostgreSQL and MinIO at the versions the tests use; see [Local development](../CONTRIBUTING.md#local-development).
+
+## Compose with PostgreSQL and MinIO
+
+`src/FluentCMS.Host/compose.yaml` runs the image on PostgreSQL 15, with its media in a MinIO bucket and the Blog sample, set up from the environment alone. Its services:
+
+- `postgres`, with its data in the volume `postgres` and a health check.
+- `minio`, with its data in the volume `minio`, and `minio-init`, which makes the bucket `fluentcms-media` and a MinIO user allowed that bucket only, and ends. The host signs its requests with that user, not the root user.
+- `migrate`, which runs `fluentcms migrate`, and then `schema-apply`, which runs `fluentcms schema apply`, with the image and the database settings of the host. The image runs one command per container and has no shell, so they are two services. Each ends, and applies nothing when nothing is pending, so every `up` runs them.
+- `cms`, the host, which starts once `migrate` and `schema-apply` have ended with 0, `minio-init` has made the bucket, and `postgres` and `minio` are healthy. It listens on `http://localhost:8080`, on the machine's loopback address only.
+
+The passwords and keys come from `.env` beside the compose file, which `.gitignore` keeps out of the repository. Copy `.env.example`, fill in every empty value, and start from that directory:
+
+```bash
+cd src/FluentCMS.Host
+cp .env.example .env
+docker compose up -d --build
+```
+
+`docker compose` refuses to start while a value is missing or empty, and names it. The example also sets the two opt-ins of an evaluation, `FLUENTCMS_ALLOW_GENERATED_SIGNING_KEY` and `FLUENTCMS_ALLOW_UNENCRYPTED_KEY_RING`; without them the host stops with `FCMS1102` and `FCMS1106`. The public origin is `https://localhost` and `AllowedHosts` is `localhost` unless `FLUENTCMS_PUBLIC_ORIGIN` and `FLUENTCMS_ALLOWED_HOSTS` say otherwise. `GET http://localhost:8080/health/ready` answers `Healthy` once the database, the job runner and the bucket (`media-storage`) answer. PostgreSQL takes its password when it creates its volume, so a changed `FLUENTCMS_POSTGRES_PASSWORD` needs `docker compose down -v`, which deletes the data too.
+
+Make the first administrator and a deploy key with the image while the services run. `--no-deps` keeps `run` from running `migrate` and the other steps again. The key is printed alone on standard output:
+
+```bash
+docker compose run --rm -T --no-deps cms fluentcms user create --email ada@example.com --role "Super Admin" --password-stdin < ada-password.txt
+docker compose run --rm -T --no-deps cms fluentcms apikey create --name deploy --class management --role "Super Admin"
+```
+
+The key works over plain http at once. Signing in on the hosted pages needs https, so it waits for the proxy below. The `Compose` workflow in CI starts this file with throwaway values on every push to `main` and to a `feature/*` branch, signs an administrator in through the hosted pages with a proxy's forwarded headers, publishes an article through the Management API, reads it through the Delivery API, and uploads an image that it reads back from MinIO.
+
+What to change for production:
+
+- **Certificates.** Remove the two opt-ins from `.env`, mount the signing and key ring certificates into `cms` and set their paths and passwords, as [before production](#before-production) shows.
+- **Address and TLS.** Put a proxy that ends TLS in front of `cms`, set `FLUENTCMS_PUBLIC_ORIGIN` to its https address and `FLUENTCMS_ALLOWED_HOSTS` to its host name with `localhost`, and forward the scheme ([reverse proxy](reverse-proxy.md)).
+- **Content types.** Replace `FLUENTCMS_SAMPLE: blog` in `x-host-environment` with `FLUENTCMS_SCHEMA` and mount the schema file into `migrate`, `schema-apply` and `cms`, since each of them loads it. A change that loses data stops `schema-apply` with `FCMS3337`, and `cms` then does not start; add `--allow-destructive` to its command only for that run.
+- **Storage.** For S3 or another managed service, drop `minio` and `minio-init` and set the `FluentCms__Media__S3__*` keys of `cms` to its bucket and an access key limited to it.
+- **Email, backups and the image.** Set the SMTP keys, back up the database with `pg_dump` ([backups](backups.md); `fluentcms backup` refuses on PostgreSQL) and the bucket with the tools of its service, and set `FLUENTCMS_IMAGE` to an image of your registry with its tag.

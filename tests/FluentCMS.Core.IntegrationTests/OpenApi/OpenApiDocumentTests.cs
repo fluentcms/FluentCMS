@@ -112,6 +112,16 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
     }
 
     [Fact]
+    public void TheTransferEndpointsAnswerAPackageAndLinesOfJson()
+    {
+        Paths[$"{Management}/transfer/export"]!["post"]!["responses"]!["200"]!["content"]!["application/zip"].ShouldNotBeNull();
+        var import = Paths[$"{Management}/transfer/import"]!["post"]!;
+        import["responses"]!["200"]!["content"]!["application/x-ndjson"].ShouldNotBeNull();
+        QueryParameters(import).Select(parameter => parameter["name"]!.GetValue<string>())
+            .ShouldBe(["site", "locale", "dryRun", "overwrite", "missingLocales", "webhooks", "roles", "types", "options"], ignoreOrder: true);
+    }
+
+    [Fact]
     public void EveryReferenceResolves()
     {
         var references = References(Document).Distinct().ToList();
@@ -361,7 +371,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         activity["locale"]!["description"]!.GetValue<string>().ShouldContain("reads nothing by it");
         Schema(activity["actorId"]!).ShouldBe("""{"format":"uuid","type":"string"}""");
         Values(activity["actorKind"]!).ShouldBe(["adminUser", "member", "apiKey", "serviceAccount", "system", "anonymous"]);
-        Values(activity["origin"]!).ShouldBe(["admin", "api", "mcp", "job", "cli", "seed"]);
+        Values(activity["origin"]!).ShouldBe(["admin", "api", "mcp", "job", "cli", "seed", "import"]);
         Schema(activity["action"]!).ShouldBe("""{"minLength":1,"type":"string"}""");
         activity["action"]!["description"]!.GetValue<string>().ShouldContain("trailing *");
         foreach (var name in new[] { "from", "to" })

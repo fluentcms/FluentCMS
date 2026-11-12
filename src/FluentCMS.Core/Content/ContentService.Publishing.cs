@@ -469,7 +469,7 @@ internal sealed partial class ContentService
             async (context, token) =>
             {
                 await store.CheckUniqueAsync(write.Type, working, document.DocumentId, write.Site, write.Locale, context, token, publishing: true);
-                await CheckReferencesAsync(write, working, document.DocumentId, target, context, warnings, token);
+                await CheckReferencesAsync(write, working, document.DocumentId, target, context, warnings, token, tolerateTargetState: importMode.Active);
             });
 
         var errors = new EntryErrors(schema, write.Type, write.Permissions, write.Target).ForPublish(result.Errors, fields);

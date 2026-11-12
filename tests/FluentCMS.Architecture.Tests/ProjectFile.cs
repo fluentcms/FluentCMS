@@ -4,12 +4,16 @@ namespace FluentCMS.Architecture.Tests;
 
 internal sealed record PackageDependency(string Name, bool DevelopmentOnly);
 
+internal sealed record AnalyzerReference(string Name, bool Private);
+
 // Declared references are read from the project files because the compiler drops references that
-// no code uses, so a stub assembly shows none of its project references in its metadata.
+// no code uses, so a stub assembly shows none of its project references in its metadata. A project referenced only as an
+// analyzer, such as FluentCMS.Analyzers, runs in the build and is not a reference of the assembly.
 internal sealed record ProjectFile(
     string Name,
     IReadOnlyList<string> ProjectReferences,
-    IReadOnlyList<PackageDependency> PackageReferences)
+    IReadOnlyList<PackageDependency> PackageReferences,
+    IReadOnlyList<AnalyzerReference> AnalyzerReferences)
 {
     private static readonly Lazy<IReadOnlyList<ProjectFile>> sourceProjects = new(LoadSourceProjects);
 
@@ -29,13 +33,15 @@ internal sealed record ProjectFile(
             .ToList();
     }
 
+    public static ProjectFile Load(string relativePath) => Parse(Path.Combine(FindRepositoryRoot(), relativePath));
+
     private static ProjectFile Parse(string path)
     {
         var items = XDocument.Load(path).Descendants().ToList();
 
-        var projectReferences = items
+        var references = items
             .Where(e => e.Name.LocalName == "ProjectReference")
-            .Select(e => Path.GetFileNameWithoutExtension(((string)e.Attribute("Include")!).Replace('\\', '/')))
+            .Select(e => (Name: Path.GetFileNameWithoutExtension(((string)e.Attribute("Include")!).Replace('\\', '/')), AnalyzerOnly: IsAnalyzerOnly(e), Private: IsDevelopmentOnly(e)))
             .ToList();
 
         var packageReferences = items
@@ -43,8 +49,16 @@ internal sealed record ProjectFile(
             .Select(e => new PackageDependency((string)e.Attribute("Include")!, IsDevelopmentOnly(e)))
             .ToList();
 
-        return new ProjectFile(Path.GetFileNameWithoutExtension(path), projectReferences, packageReferences);
+        return new ProjectFile(
+            Path.GetFileNameWithoutExtension(path),
+            [.. references.Where(reference => !reference.AnalyzerOnly).Select(reference => reference.Name)],
+            packageReferences,
+            [.. references.Where(reference => reference.AnalyzerOnly).Select(reference => new AnalyzerReference(reference.Name, reference.Private))]);
     }
+
+    private static bool IsAnalyzerOnly(XElement projectReference) =>
+        string.Equals((string?)projectReference.Attribute("OutputItemType"), "Analyzer", StringComparison.OrdinalIgnoreCase)
+        && string.Equals((string?)projectReference.Attribute("ReferenceOutputAssembly"), "false", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsDevelopmentOnly(XElement packageReference)
     {

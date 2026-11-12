@@ -49,6 +49,11 @@ public sealed class MediaPlugin : IPlugin
         plugin.Services.AddHostedService<MediaStartup>();
         plugin.Services.AddSingleton<MediaStorage>();
         plugin.Services.AddKeyedSingleton<IFileStorage, LocalFileStorage>(LocalFileStorage.ProviderName);
+
+        // The directory `fluentcms backup` and `fluentcms restore` copy, under a key core names too, since neither references the other.
+        plugin.Services.AddKeyedSingleton(
+            LocalFileStorage.RootKey,
+            (services, _) => new DirectoryInfo(((LocalFileStorage)services.GetRequiredKeyedService<IFileStorage>(LocalFileStorage.ProviderName)).Root));
         plugin.Services.AddHealthChecks()
             .AddCheck<MediaStorageHealthCheck>(MediaStorageHealthCheck.Name, failureStatus: null, [FluentCmsHealthCheckTags.Ready], MediaStorageHealthCheck.Timeout);
 
@@ -77,6 +82,9 @@ public sealed class MediaPlugin : IPlugin
             .AddErrorCode(MediaErrorCodes.PresetNotFound, 404, "Media preset not found")
             .AddErrorCode(MediaErrorCodes.AssetInUse, 409, "Media asset in use")
             .AddErrorCode(MediaErrorCodes.DownloadExpired, 403, "Media download URL expired")
+            .AddErrorCode(MediaErrorCodes.TransferFileMissing, 422, "Media file missing from the package")
+            .AddErrorCode(MediaErrorCodes.TransferIdTaken, 409, "Media id taken")
+            .AddTransferContributor<MediaTransfer>()
             .AddOutboxHandler<MediaAssetUpdatedEvent, MediaCache>("media.cache.updated")
             .AddOutboxHandler<MediaAssetMovedEvent, MediaCache>("media.cache.moved")
             .AddOutboxHandler<MediaAssetReplacedEvent, MediaCache>("media.cache.replaced")
