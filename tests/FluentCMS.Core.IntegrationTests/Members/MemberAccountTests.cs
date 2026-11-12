@@ -162,55 +162,79 @@ public sealed class MemberAccountTests(MemberFixture fixture) : IClassFixture<Me
         emails.Release();
     }
 
+    // On a host of its own, since it moves the clock by a week, past the tokens of the shared host's admin.
     [Fact]
     public async Task AVerificationLinkSentNearTheEndExpiresWhenTheMemberMayBeRemoved()
     {
-        var address = MemberFixture.NewAddress();
-        (await fixture.MembersAsync(HttpMethod.Post, "register", $$"""{ "email": "{{address}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
-        var id = await fixture.MemberIdAsync(address);
-        DateTimeOffset createdAt;
-        await using (var scope = fixture.Host.Services.CreateAsyncScope())
+        var emails = new HostedPagesTests.CapturedEmails();
+        var logs = new LogCapture();
+        await using var host = MemberFixture.NewHost(emails, logs);
+        using var client = host.CreateSecureClient();
+        async Task<Management.ApiResponse> CallAsync(string route, string json)
         {
-            createdAt = (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<CmsMember>().AsNoTracking()
-                .SingleAsync(member => member.Id == id, Token)).CreatedAt;
+            var response = await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + route, json);
+            await AccountMailJobs.RunAsync(host);
+            return response;
         }
+
+        int MailsTo(string to)
+        {
+            lock (emails.Sent)
+            {
+                return emails.Sent.Count(mail => mail.To == to);
+            }
+        }
+
+        string LastTo(string to)
+        {
+            lock (emails.Sent)
+            {
+                return emails.Sent.Last(mail => mail.To == to).TextBody;
+            }
+        }
+
+        string TokenOf(string to) => Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(emails.LinkTo(to).Query)["token"].ToString();
+
+        var address = MemberFixture.NewAddress();
+        (await CallAsync("register", $$"""{ "email": "{{address}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        DateTimeOffset createdAt;
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var normalized = address.ToUpperInvariant();
+            createdAt = (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<CmsMember>().AsNoTracking()
+                .SingleAsync(member => member.NormalizedEmail == normalized, Token)).CreatedAt;
+        }
+
+        var removable = createdAt + new MemberOptions().UnverifiedMemberLifetime;
+        var expiry = $"expires at {removable.UtcDateTime.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture)} UTC";
 
         // Two hours before the job may remove the member, the link of a mail sent again is good for those two hours.
-        var removable = createdAt + new MemberOptions().UnverifiedMemberLifetime;
-        fixture.Host.Time.Set(removable - TimeSpan.FromHours(2));
-        (await fixture.MembersAsync(HttpMethod.Post, "resend-verification", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
-        fixture.MailsTo(address).ShouldBe(2);
-        lock (fixture.Emails.Sent)
-        {
-            fixture.Emails.Sent.Last(mail => mail.To == address).TextBody.ShouldContain($"expires at {removable.UtcDateTime.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture)} UTC");
-        }
-
-        var token = fixture.TokenOf(address);
+        host.Time.Set(removable - TimeSpan.FromHours(2));
+        (await CallAsync("resend-verification", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        MailsTo(address).ShouldBe(2);
+        LastTo(address).ShouldContain(expiry);
+        var token = TokenOf(address);
 
         // A reset link of the member, good for an hour, ends at the same time when less is left.
-        fixture.Host.Time.Set(removable - TimeSpan.FromMinutes(30));
-        (await fixture.MembersAsync(HttpMethod.Post, "forgot-password", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
-        fixture.MailsTo(address).ShouldBe(3);
-        var resetLink = fixture.Emails.LinkTo(address);
-        resetLink.AbsolutePath.ShouldBe("/account/members/reset-password");
-        lock (fixture.Emails.Sent)
-        {
-            fixture.Emails.Sent.Last(mail => mail.To == address).TextBody.ShouldContain($"expires at {removable.UtcDateTime.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture)} UTC");
-        }
+        host.Time.Set(removable - TimeSpan.FromMinutes(30));
+        (await CallAsync("forgot-password", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        MailsTo(address).ShouldBe(3);
+        emails.LinkTo(address).AbsolutePath.ShouldBe("/account/members/reset-password");
+        LastTo(address).ShouldContain(expiry);
+        var resetToken = TokenOf(address);
 
-        var resetToken = fixture.TokenOf(address);
-        fixture.Host.Time.Set(removable);
-        var late = await fixture.MembersAsync(HttpMethod.Post, "verify-email", $$"""{ "email": "{{address}}", "token": "{{token}}" }""");
+        host.Time.Set(removable);
+        var late = await CallAsync("verify-email", $$"""{ "email": "{{address}}", "token": "{{token}}" }""");
         late.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
         late.Json["code"]!.GetValue<string>().ShouldBe("FCMS3166");
-        var lateReset = await fixture.MembersAsync(HttpMethod.Post, "reset-password", $$"""{ "email": "{{address}}", "token": "{{resetToken}}", "password": "{{MemberFixture.NewPassword}}" }""");
+        var lateReset = await CallAsync("reset-password", $$"""{ "email": "{{address}}", "token": "{{resetToken}}", "password": "{{MemberFixture.NewPassword}}" }""");
         lateReset.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
         lateReset.Json["code"]!.GetValue<string>().ShouldBe("FCMS3166");
 
         // From then on a mail would carry a link that has expired already, so none goes.
-        (await fixture.MembersAsync(HttpMethod.Post, "resend-verification", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
-        fixture.MailsTo(address).ShouldBe(3);
-        fixture.Logs.Entries.ShouldContain(entry => entry.EventId.Id == MemberLog.MailTooLateId);
+        (await CallAsync("resend-verification", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        MailsTo(address).ShouldBe(3);
+        logs.Entries.ShouldContain(entry => entry.EventId.Id == MemberLog.MailTooLateId);
     }
 
     [Fact]
