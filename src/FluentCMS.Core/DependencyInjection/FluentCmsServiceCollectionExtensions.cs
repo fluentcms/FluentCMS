@@ -313,7 +313,8 @@ public static class FluentCmsServiceCollectionExtensions
 
         services.AddSingleton(builder.Seeding);
         services.AddScoped<SeedStateStore>();
-        services.AddScoped<ISeedRunner, SeedRunner>();
+        services.AddScoped<SeedRunner>();
+        services.AddScoped<ISeedRunner>(provider => provider.GetRequiredService<SeedRunner>());
         if (builder.Seeding.Types.Count > 0 && builder.Seeding.RunOnStart)
         {
             services.AddHostedService<SeedStartupService>();

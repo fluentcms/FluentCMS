@@ -15,6 +15,17 @@ internal static class CommandRegistry
         new SchemaValidateCommand(),
         new SchemaDiffCommand(),
         new DoctorCommand(),
+        new ApiKeyCreateCommand(),
+        new ApiKeyListCommand(),
+        new ApiKeyRevokeCommand(),
+        new UserCreateCommand(),
+        new UserInviteCommand(),
+        new UserResetPasswordCommand(),
+        new UserAddRoleCommand(),
+        new JobsListCommand(),
+        new JobsRunCommand(),
+        new JobsRetryCommand(),
+        new SeedCommand(),
     ];
 
     public static string Usage => UsageOf(Commands);

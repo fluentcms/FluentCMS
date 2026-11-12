@@ -13,7 +13,9 @@ namespace FluentCMS.Cli;
 // The command tree of `fluentcms`. A project command either runs inside the host, which the tool builds and starts with
 // "fluentcms <command>" (see IHostLauncher), or, for `migrations add` and `remove`, in the tool's own process, because
 // they need EF Core's design-time package, which a host does not get. Exit codes: 0, 1 for a failure, 2 for bad usage.
-internal sealed class CommandLine(TextWriter output, TextWriter error, IHostLauncher launcher, Func<Instance, HttpClient>? connect = null)
+// The commands that administer an instance are in CommandLine.Admin.cs. Standard input is the tool's for `mcp` and the
+// host's otherwise; a test gives its own.
+internal sealed partial class CommandLine(TextWriter output, TextWriter error, IHostLauncher launcher, Func<Instance, HttpClient>? connect = null, TextReader? input = null)
 {
     public const string Description = "The fluentcms tool. Project commands build the host project and run inside it, with its configuration and plugins.";
 
@@ -25,6 +27,10 @@ internal sealed class CommandLine(TextWriter output, TextWriter error, IHostLaun
     // With the client that reaches an instance of --url, which a test names.
     public static Task<int> RunAsync(string[] args, TextWriter output, TextWriter error, IHostLauncher? launcher, Func<Instance, HttpClient>? connect, CancellationToken cancellationToken = default) =>
         new CommandLine(output, error, launcher ?? new ProcessHostLauncher(), connect).RunAsync(args, cancellationToken);
+
+    // With standard input too, which `mcp` reads.
+    public static Task<int> RunAsync(string[] args, TextWriter output, TextWriter error, IHostLauncher? launcher, Func<Instance, HttpClient>? connect, TextReader? input, CancellationToken cancellationToken) =>
+        new CommandLine(output, error, launcher ?? new ProcessHostLauncher(), connect, input).RunAsync(args, cancellationToken);
 
     public static Command Tree() => new CommandLine(TextWriter.Null, TextWriter.Null, new ProcessHostLauncher()).Build();
 
@@ -64,6 +70,11 @@ internal sealed class CommandLine(TextWriter output, TextWriter error, IHostLaun
             Diff(),
         },
         Doctor(),
+        ApiKey(),
+        User(),
+        Jobs(),
+        Seed(),
+        Mcp(),
     };
 
     private Command Migrate()

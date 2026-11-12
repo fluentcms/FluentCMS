@@ -82,6 +82,28 @@ internal sealed class JobStore(
         return new ClaimedJob(job.Id, job.Type, job.Payload, job.Queue, job.SiteId, job.Attempts, job.MaxAttempts, owner, leaseUntil);
     }
 
+    // A new job that this worker holds from the start, as a claim would leave it, for a run in the caller's own process
+    // (`fluentcms jobs run --inline`). No worker of a queue can take it while the lease is renewed.
+    public async Task<ClaimedJob> AddClaimedAsync(Job job, string owner, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(job);
+
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+
+        var now = time.GetUtcNow();
+        var leaseUntil = StorageConventions.ToMicroseconds(now + options.LeaseDuration);
+        job.Status = JobStatus.Running;
+        job.Attempts = 1;
+        job.LeaseOwner = owner;
+        job.LeaseUntil = leaseUntil;
+        context.Add(job);
+        context.Add(new JobAttempt { JobId = job.Id, Attempt = 1, StartedAt = now });
+        await context.SaveChangesAsync(cancellationToken);
+
+        return new ClaimedJob(job.Id, job.Type, job.Payload, job.Queue, job.SiteId, job.Attempts, job.MaxAttempts, owner, leaseUntil);
+    }
+
     // The new end of the lease, or null when the worker no longer holds the job.
     public async Task<DateTimeOffset?> RenewLeaseAsync(ClaimedJob job)
     {

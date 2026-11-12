@@ -57,11 +57,13 @@ internal abstract class HostCommand
     private static string Label(CommandOption option) => option.TakesValue ? $"{option.Name} <{option.ValueName}>" : option.Name;
 }
 
-internal sealed class CommandContext(IServiceProvider services, CommandArguments arguments, TextWriter output, TextWriter error)
+internal sealed class CommandContext(IServiceProvider services, CommandArguments arguments, TextWriter output, TextWriter error, CommandInput? input = null)
 {
     public IServiceProvider Services { get; } = services;
 
     public CommandArguments Arguments { get; } = arguments;
+
+    public CommandInput Input { get; } = input ?? CommandInput.None;
 
     public TextWriter Output { get; } = output;
 

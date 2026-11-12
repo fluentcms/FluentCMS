@@ -1,3 +1,4 @@
+using System.Net.Mail;
 using System.Text.Json.Serialization;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
@@ -69,6 +70,50 @@ internal sealed class UserAdministration(
         var held = await UserViews.RolesOfAsync(context, [.. found.Select(user => user.Id)], cancellationToken);
 
         return new UserPage([.. found.Select(user => UserViews.Info(user, held[user.Id]))], total, page, pageSize);
+    }
+
+    // The user with this email address, or null. For the command line, which names a user by its address.
+    public async Task<UserInfo?> FindByEmailAsync(string address, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(address);
+        await RequireAsync(cancellationToken);
+        return await users.FindByEmailAsync(address.Trim()) is { } user ? await InfoAsync(user, cancellationToken) : null;
+    }
+
+    // An active user with a password and the roles given, which is how `fluentcms user create` makes the first administrator
+    // of an instance. The address is its name and counts as confirmed, as an invitation's does. The Management API has no
+    // such call: over HTTP a user is invited, so that a key alone never sets a password.
+    public async Task<UserInfo> CreateAsync(string address, string password, IReadOnlyCollection<Guid> roleIds, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(address);
+        ArgumentNullException.ThrowIfNull(password);
+        ArgumentNullException.ThrowIfNull(roleIds);
+
+        await RequireAsync(cancellationToken);
+        await roles.RequireAssignableAsync(roleIds, cancellationToken);
+
+        var trimmed = address.Trim();
+        if (!MailAddress.TryCreate(trimmed, out var parsed) || parsed.Address != trimmed)
+        {
+            throw new ValidationException([new ValidationError("email", IdentityErrorCodes.InvalidEmail, "The address is not a valid email address.")]);
+        }
+
+        var user = new CmsUser { UserName = trimmed, Email = trimmed, EmailConfirmed = true };
+        UserViews.Check(await changes.RunAsync(
+            async () => await users.CreateAsync(user, password) is { Succeeded: false } created ? created : await users.AddToRolesAsync(user, roleIds),
+            cancellationToken));
+        return await InfoAsync(user, cancellationToken);
+    }
+
+    // Sets the password as a reset does, which ends the user's sessions with a new security stamp. For the command line only.
+    public async Task<UserInfo> SetPasswordAsync(Guid id, string password, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(password);
+
+        var user = await TargetAsync(id, cancellationToken);
+        var token = await users.GeneratePasswordResetTokenAsync(user);
+        UserViews.Check(await users.ResetPasswordAsync(user, token, password));
+        return await InfoAsync(user, cancellationToken);
     }
 
     public async Task<UserInfo> GetAsync(Guid id, CancellationToken cancellationToken)

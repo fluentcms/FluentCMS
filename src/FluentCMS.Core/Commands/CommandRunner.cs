@@ -17,7 +17,10 @@ internal static class CommandRunner
         RunAsync(services, args, output, error, CommandRegistry.Commands, cancellationToken);
 
     // With the commands given, which a test names.
-    internal static async Task<int?> RunAsync(IServiceProvider services, IReadOnlyList<string> args, TextWriter output, TextWriter error, IReadOnlyList<HostCommand> commands, CancellationToken cancellationToken)
+    internal static Task<int?> RunAsync(IServiceProvider services, IReadOnlyList<string> args, TextWriter output, TextWriter error, IReadOnlyList<HostCommand> commands, CancellationToken cancellationToken) =>
+        RunAsync(services, args, CommandInput.None, output, error, commands, cancellationToken);
+
+    internal static async Task<int?> RunAsync(IServiceProvider services, IReadOnlyList<string> args, CommandInput input, TextWriter output, TextWriter error, IReadOnlyList<HostCommand> commands, CancellationToken cancellationToken)
     {
         if (args is not [Prefix, ..])
         {
@@ -51,7 +54,7 @@ internal static class CommandRunner
             using var operation = SystemOperation.Begin(accessor, Origin.Cli, new SiteId(DefaultSite.Id));
             try
             {
-                exitCode = await command.RunAsync(new CommandContext(scope.ServiceProvider, arguments, output, error), cancellationToken);
+                exitCode = await command.RunAsync(new CommandContext(scope.ServiceProvider, arguments, output, error, input), cancellationToken);
             }
             catch (CommandException exception)
             {
@@ -63,6 +66,16 @@ internal static class CommandRunner
                 }
 
                 exitCode = exception.ExitCode;
+            }
+            catch (ValidationException exception)
+            {
+                // The refusal of a service, with the codes the Management API answers with.
+                foreach (var refusal in exception.Errors)
+                {
+                    await error.WriteLineAsync(refusal.Path.Length == 0 ? $"{refusal.Code}: {refusal.Message}" : $"{refusal.Code}: {refusal.Path}: {refusal.Message}");
+                }
+
+                exitCode = CommandExitCodes.Failure;
             }
             catch (FluentCmsConfigurationException exception)
             {

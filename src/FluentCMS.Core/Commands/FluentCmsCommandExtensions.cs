@@ -13,6 +13,6 @@ public static class FluentCmsCommandExtensions
         ArgumentNullException.ThrowIfNull(host);
         ArgumentNullException.ThrowIfNull(args);
 
-        return CommandRunner.RunAsync(host.Services, args, Console.Out, Console.Error, cancellationToken);
+        return CommandRunner.RunAsync(host.Services, args, new ConsoleCommandInput(), Console.Out, Console.Error, CommandRegistry.Commands, cancellationToken);
     }
 }

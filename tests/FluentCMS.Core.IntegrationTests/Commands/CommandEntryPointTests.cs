@@ -141,7 +141,7 @@ public sealed class CommandEntryPointTests : IDisposable
 
     [Theory]
     [InlineData(new string[0], "FCMS3300: no command was given.")]
-    [InlineData(new[] { "seed" }, "FCMS3300: 'seed' is not a command that this host runs.")]
+    [InlineData(new[] { "frobnicate" }, "FCMS3300: 'frobnicate' is not a command that this host runs.")]
     [InlineData(new[] { "migrate", "--now" }, "FCMS3300: --now is not an option of 'fluentcms migrate'.")]
     public async Task BadUsageInTheHostPrintsTheUsageAndExitsWithTwo(string[] args, string message)
     {
