@@ -11,6 +11,10 @@ internal static class CommandRegistry
         new MigrateCommand(),
         new MigrationsListCommand(),
         new MigrationsScriptCommand(),
+        new SchemaSnapshotCommand(),
+        new SchemaValidateCommand(),
+        new SchemaDiffCommand(),
+        new DoctorCommand(),
     ];
 
     public static string Usage => UsageOf(Commands);

@@ -1,4 +1,5 @@
 using System.Reflection;
+using FluentCMS.Core.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -46,6 +47,24 @@ public static class ContentMigrationGenerator
             var files = scaffolder.Save(projectDirectory, ScaffoldMarked(scaffolder, name, rootNamespace), outputDir: null);
             return new GeneratedMigrationFiles(files.MigrationFile!, files.MetadataFile!, files.SnapshotFile!);
         });
+    }
+
+    // What the next migration carries, as the schema tools word it: from the schema on the model snapshot to the context's
+    // schema, and from nothing for the first migration. Null when the snapshot carries no schema, as one written before
+    // the schema was put on the model, so the change cannot be named.
+    internal static SchemaDiffReport? Review(Func<CmsDbContext> createContext)
+    {
+        ArgumentNullException.ThrowIfNull(createContext);
+
+        using var context = createContext();
+        var after = SchemaSnapshot.Of(context.Schema).Json;
+        var snapshot = context.GetService<IMigrationsAssembly>().ModelSnapshot;
+        if (snapshot is null)
+        {
+            return SchemaSnapshotDiff.Report("{}", after);
+        }
+
+        return snapshot.Model.FindAnnotation(CmsDbContext.SchemaAnnotation)?.Value is string before ? SchemaSnapshotDiff.Report(before, after) : null;
     }
 
     // The id of the newest content migration of the factory's assembly, or null when it has none.

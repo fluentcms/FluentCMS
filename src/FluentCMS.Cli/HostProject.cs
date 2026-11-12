@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
+using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -36,6 +37,8 @@ internal sealed class HostProject : IDisposable
         var files = ContentMigrationGenerator.Add(() => factory.CreateDbContext([]), name, _rootNamespace, _directory);
         return (IReadOnlyList<string>)[files.MigrationFile, files.MetadataFile, files.SnapshotFile];
     });
+
+    public SchemaDiffReport? ReviewMigration() => WithFactory(factory => ContentMigrationGenerator.Review(() => factory.CreateDbContext([])));
 
     public string? NewestMigration() => WithFactory(factory => ContentMigrationGenerator.Newest(() => factory.CreateDbContext([])));
 

@@ -17,7 +17,19 @@ internal enum SchemaChangeKind
 // must not carry (a default value can be anything).
 internal sealed record SchemaChange(SchemaChangeKind Kind, string Family, string Type, string? Field = null, string? FormerField = null, IReadOnlyList<string>? Properties = null)
 {
-    private string Label => Family == SchemaSnapshotDiff.ContentFamily ? Type : $"{Family} {Type}";
+    // The properties of a field whose change moves or retypes its stored value: a column of another type, a list where a
+    // value was, or a column of the other table of a localized type.
+    private static readonly string[] StorageProperties = ["type", "multiple", "localizable"];
+
+    // A change that loses stored values when a database follows it: a type or a field removed, and a field whose kind changed.
+    public bool IsDestructive => Kind switch
+    {
+        SchemaChangeKind.TypeRemoved or SchemaChangeKind.FieldRemoved => true,
+        SchemaChangeKind.FieldChanged => Properties?.Any(StorageProperties.Contains) == true,
+        _ => false,
+    };
+
+    internal string Label => Family == SchemaSnapshotDiff.ContentFamily ? Type : $"{Family} {Type}";
 
     public override string ToString() => Kind switch
     {
@@ -32,4 +44,14 @@ internal sealed record SchemaChange(SchemaChangeKind Kind, string Family, string
     };
 
     private static string Join(IReadOnlyList<string>? properties) => string.Join(", ", properties ?? []);
+}
+
+// A field removed beside a field added of the same kind in one type, which may be one field renamed. Only [FormerNames] on
+// the new field makes it a rename; the tools suggest the attribute and never apply it.
+internal sealed record PossibleRename(string Family, string Type, string From, string To)
+{
+    public string Attribute => $"[FormerNames(\"{From}\")]";
+
+    public override string ToString() =>
+        $"possible rename: field '{(Family == SchemaSnapshotDiff.ContentFamily ? Type : $"{Family} {Type}")}.{From}' to '{To}'; add {Attribute} to '{To}' to make it one";
 }

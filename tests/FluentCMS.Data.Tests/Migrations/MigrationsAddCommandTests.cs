@@ -1,5 +1,7 @@
 using System.Reflection;
+using System.Text.RegularExpressions;
 using FluentCMS.Cli;
+using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.Tests.Providers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -12,7 +14,7 @@ using Xunit;
 namespace FluentCMS.Data.Tests.Migrations;
 
 // This test assembly is the host: it has the one IDesignTimeDbContextFactory<CmsDbContext>.
-public sealed class MigrationsAddCommandTests : IDisposable
+public sealed partial class MigrationsAddCommandTests : IDisposable
 {
     private static readonly string HostAssembly = typeof(MigrationsAddCommandTests).Assembly.Location;
 
@@ -49,11 +51,11 @@ public sealed class MigrationsAddCommandTests : IDisposable
         return CommandLine.RunAsync(args, _output, _error, _launcher, Token);
     }
 
-    private Task<int> Add(string name, SchemaModel schema, Assembly? migrations = null)
+    private Task<int> Add(string name, SchemaModel schema, Assembly? migrations = null, params string[] options)
     {
         TestHostFactory.Schema = schema;
         TestHostFactory.Migrations = migrations ?? typeof(CmsDbContext).Assembly;
-        return Run("migrations", "add", name, "--assembly", HostAssembly, "--project", _project.FullName);
+        return Run(["migrations", "add", name, "--assembly", HostAssembly, "--project", _project.FullName, .. options]);
     }
 
     private Task<int> Remove(SchemaModel schema, Assembly migrations, params string[] options)
@@ -104,6 +106,89 @@ public sealed class MigrationsAddCommandTests : IDisposable
 
         _database.Columns("cms_article").ShouldContain("subtitle");
     }
+
+    [Fact]
+    public async Task ItPrintsTheSchemaChangeAndTheSnapshotCarriesTheSchema()
+    {
+        (await Add("Initial", ArticleSchemas.Titled)).ShouldBe(0, _error.ToString());
+
+        _output.ToString().ShouldStartWith($"type 'article' added{Environment.NewLine}");
+        File.ReadAllText(Snapshot()).ShouldContain("\"FluentCMS:Schema\"");
+
+        (await Add("AddSubtitle", ArticleSchemas.WithSubtitle, CompileGeneratedFiles())).ShouldBe(0, _error.ToString());
+
+        _output.ToString().ShouldStartWith($"field 'article.subtitle' added{Environment.NewLine}");
+    }
+
+    [Fact]
+    public async Task ADestructiveChangeIsRefusedAndNothingIsWrittenUnlessItIsAllowed()
+    {
+        (await Add("Initial", ArticleSchemas.WithSubtitle)).ShouldBe(0, _error.ToString());
+        var first = CompileGeneratedFiles();
+
+        (await Add("DropSubtitle", ArticleSchemas.Titled, first)).ShouldBe(1);
+
+        _output.ToString().ShouldContain("field 'article.subtitle' removed [destructive]");
+        _error.ToString().ShouldStartWith("FCMS3327: the migration loses data: field 'article.subtitle' removed; nothing was written. Pass --allow-destructive");
+        GeneratedFiles().Length.ShouldBe(3);
+
+        (await Add("DropSubtitle", ArticleSchemas.Titled, first, "--allow-destructive")).ShouldBe(0, _error.ToString());
+
+        _error.ToString().ShouldStartWith("FCMS3327: warning: the migration loses data");
+        GeneratedFiles().Length.ShouldBe(5);
+        File.ReadAllText(GeneratedFiles().Single(file => file.EndsWith("_DropSubtitle.cs", StringComparison.Ordinal))).ShouldContain("DropColumn");
+    }
+
+    [Fact]
+    public async Task ARenamedFieldIsSuggestedAsARenameAndWithTheAttributeReportedAsOne()
+    {
+        (await Add("Initial", ArticleSchemas.WithSubtitle)).ShouldBe(0, _error.ToString());
+        var first = CompileGeneratedFiles();
+
+        (await Add("Rename", ArticleSchemas.Article("title", "summary"), first)).ShouldBe(1);
+
+        _output.ToString().ShouldContain("possible rename: field 'article.subtitle' to 'summary'; add [FormerNames(\"subtitle\")] to 'summary' to make it one");
+        _error.ToString().ShouldStartWith("FCMS3327: ");
+
+        var declared = SampleSchema.NewBuilder()
+            .AddCollection("article", type => type.Field("title", "text").Field("summary", "text", field => field.FormerNames("subtitle")))
+            .Build();
+        (await Add("Rename", declared, first)).ShouldBe(1);
+
+        // The generated migration does not read [FormerNames], so the rename would still drop the column.
+        _output.ToString().Trim().ShouldBe("field 'article.subtitle' renamed to 'summary'");
+        _error.ToString().ShouldStartWith("FCMS3327: the migration loses data: field 'article.subtitle' renamed to 'summary'; a renamed field is still a dropped column");
+        GeneratedFiles().Length.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task AMigrationThatRecordsNoSchemaLeavesTheNextOneUncheckedAndRefusedUnlessAllowed()
+    {
+        (await Add("Initial", ArticleSchemas.Titled)).ShouldBe(0, _error.ToString());
+        foreach (var file in GeneratedFiles())
+        {
+            // As a snapshot written before the schema was put on the model.
+            File.WriteAllText(file, SchemaAnnotation().Replace(File.ReadAllText(file), "\"FluentCMS:Other\", \"\""));
+        }
+
+        var first = CompileGeneratedFiles();
+
+        (await Add("AddSubtitle", ArticleSchemas.WithSubtitle, first)).ShouldBe(1);
+
+        _error.ToString().ShouldStartWith("FCMS3328: the newest content migration records no schema");
+        GeneratedFiles().Length.ShouldBe(3);
+
+        (await Add("AddSubtitle", ArticleSchemas.WithSubtitle, first, "--allow-destructive")).ShouldBe(0, _error.ToString());
+
+        _error.ToString().ShouldStartWith("FCMS3328: warning: ");
+        GeneratedFiles().Length.ShouldBe(5);
+        File.ReadAllText(Snapshot()).ShouldContain("\"FluentCMS:Schema\"");
+    }
+
+    [GeneratedRegex("""
+        "FluentCMS:Schema",\s*(?:@"(?:[^"]|"")*"|"(?:[^"\\]|\\.)*")
+        """)]
+    private static partial Regex SchemaAnnotation();
 
     [Fact]
     public async Task AnAssemblyWithNoFactorySaysWhatItNeeds()

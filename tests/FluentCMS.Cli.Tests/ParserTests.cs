@@ -10,6 +10,9 @@ public sealed partial class ParserTests : IDisposable
 {
     private static readonly string[] ProjectOptions = ["--project", "--assembly", "--no-build", "--environment"];
 
+    // The tool reaches an instance itself, so these are never handed on.
+    private static readonly string[] InstanceOptionNames = ["--url", "--token"];
+
     private readonly ToolRun _tool = new();
     private readonly RecordingLauncher _launcher = new();
 
@@ -26,6 +29,9 @@ public sealed partial class ParserTests : IDisposable
     [InlineData("migrations", "script", "--from", "0")]
     [InlineData("migrations", "script", "--to", "20260101000000_Initial")]
     [InlineData("migrations", "remove", "--force", "yes")]
+    [InlineData("schema", "diff")]
+    [InlineData("schema", "diff", "--url", "https://cms.example.com", "--applied")]
+    [InlineData("schema", "snapshot", "--output")]
     public async Task BadUsagePrintsTheHelpAndExitsWithTwo(params string[] args)
     {
         (await RunAsync(args)).ShouldBe(2);
@@ -54,6 +60,10 @@ public sealed partial class ParserTests : IDisposable
     [InlineData(new[] { "migrate", "--check", "--no-build", "--environment", "Production" }, new[] { "migrate", "--check" })]
     [InlineData(new[] { "migrations", "list", "--json" }, new[] { "migrations", "list", "--json" })]
     [InlineData(new[] { "migrations", "script", "--idempotent", "--stream", "content", "--to", "X" }, new[] { "migrations", "script", "--stream", "content", "--to", "X", "--idempotent" })]
+    [InlineData(new[] { "schema", "snapshot" }, new[] { "schema", "snapshot" })]
+    [InlineData(new[] { "schema", "validate" }, new[] { "schema", "validate" })]
+    [InlineData(new[] { "schema", "diff", "--json", "--applied" }, new[] { "schema", "diff", "--applied", "--json" })]
+    [InlineData(new[] { "doctor", "--json", "--environment", "Production" }, new[] { "doctor", "--json" })]
     public async Task TheCommandIsHandedOnWithoutTheToolsOwnOptions(string[] args, string[] handedOn)
     {
         (await RunAsync([.. args, "--assembly", ToolRun.HostAssembly])).ShouldBe(RecordingLauncher.ExitCode);
@@ -80,6 +90,20 @@ public sealed partial class ParserTests : IDisposable
         _launcher.Arguments.ShouldBe(["migrations", "script", "--output", Path.GetFullPath("out.sql")]);
     }
 
+    [Fact]
+    public async Task ThePathsOfTheSchemaCommandsAreTheCallers()
+    {
+        await RunAsync("schema", "snapshot", "--output", "schema.json", "--assembly", ToolRun.HostAssembly);
+        _launcher.Arguments.ShouldBe(["schema", "snapshot", "--output", Path.GetFullPath("schema.json")]);
+
+        await RunAsync("schema", "diff", "--schema", "deployed.json", "--assembly", ToolRun.HostAssembly);
+        _launcher.Arguments.ShouldBe(["schema", "diff", "--schema", Path.GetFullPath("deployed.json")]);
+
+        // A schema file goes to the host only when a host is named, which checks it with its own field types.
+        await RunAsync("schema", "validate", "--schema", "schema.json", "--assembly", ToolRun.HostAssembly);
+        _launcher.Arguments.ShouldBe(["schema", "validate", "--schema", Path.GetFullPath("schema.json")]);
+    }
+
     // The host reads what the tool hands on with its own parser, so the two must name the same commands and options.
     [Fact]
     public void EveryCommandOfTheHostIsInTheToolWithTheSameOptions()
@@ -89,7 +113,7 @@ public sealed partial class ParserTests : IDisposable
         {
             var tool = command.Name.Split(' ').Aggregate(tree, (parent, word) => parent.Subcommands.Single(child => child.Name == word));
 
-            tool.Options.Select(option => option.Name).Where(name => !ProjectOptions.Contains(name) && name != "--help")
+            tool.Options.Select(option => option.Name).Where(name => !ProjectOptions.Contains(name) && !InstanceOptionNames.Contains(name) && name != "--help")
                 .ShouldBe(command.Options.Select(option => option.Name), ignoreOrder: true, command.Name);
             tool.Arguments.Count.ShouldBe(command.Arguments.Count, command.Name);
         }
