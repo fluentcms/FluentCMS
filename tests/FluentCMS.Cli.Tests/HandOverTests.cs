@@ -43,6 +43,24 @@ public sealed class HandOverTests : IDisposable
     }
 
     [Fact]
+    public async Task TheSchemaCommandsAndDoctorRunInTheBuiltHost()
+    {
+        (await _tool.HostCommandAsync("schema", "snapshot", "--output", Path.Combine(_tool.Root, "schema.json"))).ShouldBe(0, _tool.Error.ToString());
+        _tool.Exists("schema.json").ShouldBeTrue();
+
+        (await _tool.HostCommandAsync("schema", "validate")).ShouldBe(0, _tool.Error.ToString());
+        _tool.Output.ToString().ShouldStartWith("The host's schema is valid: 0 types");
+
+        (await _tool.HostCommandAsync("schema", "diff", "--schema", Path.Combine(_tool.Root, "schema.json"))).ShouldBe(0, _tool.Error.ToString());
+
+        // Nothing is migrated yet, so doctor names what is pending and changes nothing.
+        (await _tool.HostCommandAsync("doctor", "--json")).ShouldBe(1);
+        _tool.Output.ToString().ShouldContain("\"pendingMigrations\":[{");
+        _tool.Error.ToString().ShouldContain("FCMS3303: ");
+        (await _tool.HostCommandAsync("migrate", "--check")).ShouldBe(1);
+    }
+
+    [Fact]
     public async Task TheEnvironmentChoosesTheHostsConfiguration()
     {
         _tool.WriteSettings("appsettings.Staging.json", "staging.db");

@@ -150,6 +150,8 @@ public sealed class MigrationRunner(
 
     internal Task<SchemaStatus> GetSchemaStatusAsync(CancellationToken cancellationToken = default) => _history.StatusAsync(schema, cancellationToken);
 
+    internal Task<string?> GetAppliedSnapshotAsync(CancellationToken cancellationToken = default) => _history.AppliedSnapshotAsync(cancellationToken);
+
     // Applies the additive changes a schema needs and reports the rest. Startup calls this for the host's schema;
     // passing another applies a changed schema without a restart. Refuses where schema sync is not Auto.
     public Task<SchemaSyncReport> SyncContentSchemaAsync(SchemaModel? changedSchema = null, CancellationToken cancellationToken = default)
@@ -207,6 +209,14 @@ public sealed class MigrationRunner(
     // What MigrateAsync checks first, for every stream that it applies.
     internal Task RefuseForeignMigrationsAsync(CancellationToken cancellationToken = default) =>
         RefuseForeignMigrationsAsync([.. Plugins, Content], cancellationToken);
+
+    // What a start checks: without the content stream when schema sync runs, as RunAtStartupAsync does.
+    internal Task RefuseForeignMigrationsAtStartupAsync(CancellationToken cancellationToken = default)
+    {
+        var options = ResolveOptions();
+        var sync = options.MigrateOnStartup && options.SchemaSync == SchemaSyncMode.Auto;
+        return RefuseForeignMigrationsAsync(sync ? Plugins : [.. Plugins, Content], cancellationToken);
+    }
 
     // EF would apply a set scaffolded for another provider with that provider's store types, and startup validation compares
     // names only, so a switch of provider would go unnoticed. The system stream comes with the provider package.

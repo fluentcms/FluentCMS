@@ -5,6 +5,11 @@
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
   </PropertyGroup>
 
+  <!-- The tool diffs and prints for an instance what the schema commands and doctor do inside a host, with the same code. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="FluentCMS.Cli" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="FluentCMS.Core.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Data.Tests" />

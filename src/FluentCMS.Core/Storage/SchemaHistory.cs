@@ -74,6 +74,14 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
         return new SchemaStatus(snapshot.Hash, last.Hash, last.AppliedAt, last.FluentcmsVersion, drifted, drifted ? Describe(last.Snapshot, snapshot.Json) : null);
     }
 
+    // The snapshot of the newest row, or null while the history is empty. A history that cannot be read throws.
+    public async Task<string?> AppliedSnapshotAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        return (await NewestAsync(context, cancellationToken))?.Snapshot;
+    }
+
     private async Task RecordWithRetriesAsync(SchemaSnapshot snapshot, CancellationToken cancellationToken)
     {
         for (var attempt = 1; ; attempt++)

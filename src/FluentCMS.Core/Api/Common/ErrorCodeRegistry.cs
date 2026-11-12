@@ -352,6 +352,20 @@ public static class ErrorCodeRegistry
         Startup("FCMS3314", "Content migration applied"),
         Startup("FCMS3315", "Applied migrations unknown"),
         Startup("FCMS3316", "Invalid instance address or token"),
+
+        // 3320 to 3334 the schema tools and doctor, inside the host and in the tool
+        Startup(CommandErrorCodes.SchemaInvalid, "Schema invalid"),
+        Startup(CommandErrorCodes.SchemaFileUnreadable, "Schema file unreadable"),
+        Startup(CommandErrorCodes.SchemaDrift, "Schema drift"),
+        Startup(CommandErrorCodes.NoAppliedSchema, "No applied schema"),
+        Startup(CommandErrorCodes.AppliedSchemaUnreadable, "Applied schema unreadable"),
+        Startup(CommandErrorCodes.HostWouldNotStart, "Host would not start"),
+        Startup(CommandErrorCodes.MixedVersions, "FluentCMS assemblies of different versions"),
+        Startup("FCMS3327", "Destructive migration refused"),
+        Startup("FCMS3328", "Migration not checked"),
+        Startup("FCMS3329", "Instance unreachable"),
+        Startup("FCMS3330", "Instance refused the key"),
+        Startup("FCMS3331", "Host schema not read"),
     ];
 
     private static readonly FrozenDictionary<string, ErrorCodeInfo> byCode = All.ToFrozenDictionary(info => info.Code);
