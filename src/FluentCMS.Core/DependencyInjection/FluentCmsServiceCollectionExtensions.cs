@@ -266,6 +266,9 @@ public static class FluentCmsServiceCollectionExtensions
         builder.Jobs.AddJob<OidcPruneJob, OidcPrunePayload>(OidcPruneJob.Type);
         services.AddHostedService<OidcPruneScheduleService>();
         builder.Jobs.AddJob<UnverifiedMembersJob, UnverifiedMembersPayload>(UnverifiedMembersJob.Type);
+        builder.Jobs.Options.Queues.TryAdd(AccountMail.Queue, AccountMail.Workers);
+        builder.Jobs.AddJob<MemberMailJob, MemberMailRequest>(MemberMailJob.Type);
+        builder.Jobs.AddJob<PasswordResetMailJob, PasswordResetMailRequest>(PasswordResetMailJob.Type);
 
         services.AddFluentCmsOptions(IdempotencyOptions.Section, HostErrorCodes.InvalidOption, builder.Idempotency, idempotency => idempotency.Validate());
         services.AddSingleton<IdempotencyStore>();

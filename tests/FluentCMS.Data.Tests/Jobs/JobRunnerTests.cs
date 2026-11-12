@@ -1,6 +1,7 @@
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Health;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
@@ -385,6 +386,7 @@ public sealed class JobRunnerTests : IDisposable
         {
             [JobRunnerOptions.DefaultQueue] = TimeSpan.Zero,
             [OutboxDrainJob.Queue] = TimeSpan.Zero,
+            [AccountMail.Queue] = TimeSpan.Zero,
             ["no-workers"] = TimeSpan.FromMinutes(20),
         }, ignoreOrder: true);
     }

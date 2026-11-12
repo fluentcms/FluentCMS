@@ -111,7 +111,134 @@ public sealed class MemberAccountTests(MemberFixture fixture) : IClassFixture<Me
     }
 
     [Fact]
-    public async Task AnAddressGetsNoMoreThanOneMailAMinute()
+    public async Task ResendAndForgotDoTheSameWorkForAKnownAndAnUnknownAddressAndLeaveTheMailToAJob()
+    {
+        var verified = await fixture.RegisterVerifiedAsync();
+        var pending = MemberFixture.NewAddress();
+        (await fixture.MembersAsync(HttpMethod.Post, "register", $$"""{ "email": "{{pending}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        var unknown = MemberFixture.NewAddress();
+        fixture.Host.Time.Advance(MemberMailLimiter.Window + TimeSpan.FromSeconds(1));
+        var sent = fixture.Emails.Count;
+
+        // Each request enqueues one job and sends nothing, whoever the address is.
+        using var client = fixture.Host.CreateSecureClient();
+        foreach (var route in (string[])["resend-verification", "forgot-password"])
+        {
+            foreach (var address in (string[])[verified, pending, unknown])
+            {
+                var before = await AccountMailJobs.PendingAsync(fixture.Host, MemberMailJob.Type);
+                (await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + route, $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+                (await AccountMailJobs.PendingAsync(fixture.Host, MemberMailJob.Type)).ShouldBe(before + 1, $"{route} for {address}");
+            }
+        }
+
+        fixture.Emails.Count.ShouldBe(sent);
+
+        // The jobs send to the members, the verification mail only to the one that is not verified, and nothing to the
+        // address that is no member's.
+        (await AccountMailJobs.RunAsync(fixture.Host)).ShouldBe(6);
+        fixture.MailsTo(unknown).ShouldBe(0);
+        lock (fixture.Emails.Sent)
+        {
+            fixture.Emails.Sent.Skip(sent).Select(mail => (mail.To, mail.Subject)).OrderBy(mail => mail.To).ThenBy(mail => mail.Subject).ShouldBe(
+                new[] { (pending, "Verify your email address"), (verified, "Reset your password") }.OrderBy(mail => mail.Item1).ThenBy(mail => mail.Item2));
+        }
+    }
+
+    [Fact]
+    public async Task TheAnswerDoesNotWaitForTheMailToGo()
+    {
+        var emails = new BlockingEmailSender();
+        await using var host = MemberFixture.NewHost(emails, configure: cms => cms.Jobs.Options.Queues[Core.Identity.AccountMail.Queue] = 1);
+        var member = await host.CreateMemberAsync(password: Password, cancellationToken: Token);
+        using var client = host.CreateSecureClient();
+
+        // The worker of the mail queue sends while the answer is already back; were the answer waiting, it never came.
+        var reply = await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "forgot-password", $$"""{ "email": "{{member.Email}}" }""").WaitAsync(TimeSpan.FromSeconds(30), Token);
+        reply.Status.ShouldBe(HttpStatusCode.Accepted);
+        (await emails.Entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Token)).To.ShouldBe(member.Email);
+        emails.Sent.ShouldBe(0);
+
+        emails.Release();
+    }
+
+    // On a host of its own, since it moves the clock by a week, past the tokens of the shared host's admin.
+    [Fact]
+    public async Task AVerificationLinkSentNearTheEndExpiresWhenTheMemberMayBeRemoved()
+    {
+        var emails = new HostedPagesTests.CapturedEmails();
+        var logs = new LogCapture();
+        await using var host = MemberFixture.NewHost(emails, logs);
+        using var client = host.CreateSecureClient();
+        async Task<Management.ApiResponse> CallAsync(string route, string json)
+        {
+            var response = await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + route, json);
+            await AccountMailJobs.RunAsync(host);
+            return response;
+        }
+
+        int MailsTo(string to)
+        {
+            lock (emails.Sent)
+            {
+                return emails.Sent.Count(mail => mail.To == to);
+            }
+        }
+
+        string LastTo(string to)
+        {
+            lock (emails.Sent)
+            {
+                return emails.Sent.Last(mail => mail.To == to).TextBody;
+            }
+        }
+
+        string TokenOf(string to) => Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(emails.LinkTo(to).Query)["token"].ToString();
+
+        var address = MemberFixture.NewAddress();
+        (await CallAsync("register", $$"""{ "email": "{{address}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        DateTimeOffset createdAt;
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var normalized = address.ToUpperInvariant();
+            createdAt = (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<CmsMember>().AsNoTracking()
+                .SingleAsync(member => member.NormalizedEmail == normalized, Token)).CreatedAt;
+        }
+
+        var removable = createdAt + new MemberOptions().UnverifiedMemberLifetime;
+        var expiry = $"expires at {removable.UtcDateTime.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture)} UTC";
+
+        // Two hours before the job may remove the member, the link of a mail sent again is good for those two hours.
+        host.Time.Set(removable - TimeSpan.FromHours(2));
+        (await CallAsync("resend-verification", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        MailsTo(address).ShouldBe(2);
+        LastTo(address).ShouldContain(expiry);
+        var token = TokenOf(address);
+
+        // A reset link of the member, good for an hour, ends at the same time when less is left.
+        host.Time.Set(removable - TimeSpan.FromMinutes(30));
+        (await CallAsync("forgot-password", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        MailsTo(address).ShouldBe(3);
+        emails.LinkTo(address).AbsolutePath.ShouldBe("/account/members/reset-password");
+        LastTo(address).ShouldContain(expiry);
+        var resetToken = TokenOf(address);
+
+        host.Time.Set(removable);
+        var late = await CallAsync("verify-email", $$"""{ "email": "{{address}}", "token": "{{token}}" }""");
+        late.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        late.Json["code"]!.GetValue<string>().ShouldBe("FCMS3166");
+        var lateReset = await CallAsync("reset-password", $$"""{ "email": "{{address}}", "token": "{{resetToken}}", "password": "{{MemberFixture.NewPassword}}" }""");
+        lateReset.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        lateReset.Json["code"]!.GetValue<string>().ShouldBe("FCMS3166");
+
+        // From then on a mail would carry a link that has expired already, so none goes.
+        (await CallAsync("resend-verification", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        MailsTo(address).ShouldBe(3);
+        logs.Entries.ShouldContain(entry => entry.EventId.Id == MemberLog.MailTooLateId);
+    }
+
+    [Fact]
+    public async Task AnAddressGetsNoMoreThanOneMailItAskedForAndOneNoticeAMinute()
     {
         var address = MemberFixture.NewAddress();
         var body = $$"""{ "email": "{{address}}" }""";
@@ -119,20 +246,48 @@ public sealed class MemberAccountTests(MemberFixture fixture) : IClassFixture<Me
         (await fixture.MembersAsync(HttpMethod.Post, "register", $$"""{ "email": "{{address}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
         fixture.MailsTo(address).ShouldBe(1);
 
-        // Within the minute every route that mails the address answers as before and sends nothing.
-        (await fixture.MembersAsync(HttpMethod.Post, "resend-verification", body)).Status.ShouldBe(HttpStatusCode.Accepted);
-        (await fixture.MembersAsync(HttpMethod.Post, "forgot-password", body)).Status.ShouldBe(HttpStatusCode.Accepted);
+        // Within the minute another registration answers as before and sends nothing.
         (await fixture.MembersAsync(HttpMethod.Post, "register", $$"""{ "email": "{{address.ToUpperInvariant()}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
         fixture.MailsTo(address).ShouldBe(1);
         fixture.Logs.Entries.ShouldContain(entry => entry.EventId.Id == MemberLog.MailHeldBackId);
 
+        // What the owner asks for has a slot of its own, which the first of the two routes takes for the minute.
+        (await fixture.MembersAsync(HttpMethod.Post, "resend-verification", body)).Status.ShouldBe(HttpStatusCode.Accepted);
+        fixture.MailsTo(address).ShouldBe(2);
+        (await fixture.MembersAsync(HttpMethod.Post, "forgot-password", body)).Status.ShouldBe(HttpStatusCode.Accepted);
+        fixture.MailsTo(address).ShouldBe(2);
+
         fixture.Host.Time.Advance(MemberMailLimiter.Window - TimeSpan.FromSeconds(1));
         (await fixture.MembersAsync(HttpMethod.Post, "resend-verification", body)).Status.ShouldBe(HttpStatusCode.Accepted);
-        fixture.MailsTo(address).ShouldBe(1);
+        fixture.MailsTo(address).ShouldBe(2);
 
         fixture.Host.Time.Advance(TimeSpan.FromSeconds(2));
         (await fixture.MembersAsync(HttpMethod.Post, "resend-verification", body)).Status.ShouldBe(HttpStatusCode.Accepted);
-        fixture.MailsTo(address).ShouldBe(2);
+        fixture.MailsTo(address).ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task ANoticeAVisitorCausesDoesNotHoldBackTheResetTheOwnerAsksFor()
+    {
+        var address = await fixture.RegisterVerifiedAsync();
+        fixture.Host.Time.Advance(MemberMailLimiter.Window + TimeSpan.FromSeconds(1));
+
+        // Someone registers the owner's address, and the owner gets the note that it has an account.
+        (await fixture.MembersAsync(HttpMethod.Post, "register", $$"""{ "email": "{{address}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        lock (fixture.Emails.Sent)
+        {
+            fixture.Emails.Sent.Last(mail => mail.To == address).Subject.ShouldBe("You already have an account");
+        }
+
+        // Within the same minute the owner asks for a reset, and gets it.
+        (await fixture.MembersAsync(HttpMethod.Post, "forgot-password", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        lock (fixture.Emails.Sent)
+        {
+            fixture.Emails.Sent.Last(mail => mail.To == address).Subject.ShouldBe("Reset your password");
+        }
+
+        var reset = await fixture.MembersAsync(HttpMethod.Post, "reset-password", $$"""{ "email": "{{address}}", "token": "{{fixture.TokenOf(address)}}", "password": "{{MemberFixture.NewPassword}}" }""");
+        reset.Status.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Fact]
@@ -502,6 +657,7 @@ public sealed class MemberAccountTests(MemberFixture fixture) : IClassFixture<Me
         // A member an administrator made still resets its password.
         var member = await host.CreateMemberAsync(password: Password, cancellationToken: Token);
         (await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "forgot-password", $$"""{ "email": "{{member.Email}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        await AccountMailJobs.RunAsync(host);
         emails.Count.ShouldBe(1);
 
         await using var scope = host.Services.CreateAsyncScope();

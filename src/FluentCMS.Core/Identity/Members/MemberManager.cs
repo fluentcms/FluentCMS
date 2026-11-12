@@ -9,6 +9,7 @@ namespace FluentCMS.Core.Identity.Members;
 // container's IdentityOptions are. It adds deactivation, and it spends a verification link when it is used.
 internal sealed class MemberManager : UserManager<CmsMember>
 {
+    private readonly MemberOptions _members;
     private readonly TimeProvider _time;
 
     public MemberManager(
@@ -19,9 +20,11 @@ internal sealed class MemberManager : UserManager<CmsMember>
         IdentityErrorDescriber errors,
         IServiceProvider services,
         ILogger<UserManager<CmsMember>> logger,
+        MemberOptions members,
         TimeProvider time)
         : base(store, options, passwordHasher, [new MemberValidator()], [new PasswordValidator<CmsMember>(errors)], keyNormalizer, errors, services, logger)
     {
+        _members = members;
         _time = time;
     }
 
@@ -70,6 +73,12 @@ internal sealed class MemberManager : UserManager<CmsMember>
     public override async Task<IdentityResult> ResetPasswordAsync(CmsMember user, string token, string newPassword)
     {
         ArgumentNullException.ThrowIfNull(user);
+
+        // Checked here, since the token provider sees the address as verified already.
+        if (!MemberTokenLifetime.Open(user, _members, _time))
+        {
+            return IdentityResult.Failed(ErrorDescriber.InvalidToken());
+        }
 
         var verified = user.EmailConfirmed;
         user.EmailConfirmed = true;
@@ -248,14 +257,20 @@ internal sealed class MemberValidator : IUserValidator<CmsMember>
 
 // Identity's Data Protection tokens with the lifetimes of cms.Members and a purpose of their own, so that a token of the
 // admin pool is never one of a member. A token carries the member's security stamp, which verifying the address and
-// resetting the password both change, so it is spent once it is used.
+// resetting the password both change, so it is spent once it is used. A token of a member that is not verified also ends
+// when the job may remove the member, as its mail says (MemberMail).
 internal sealed class MemberEmailTokenProvider(
     IDataProtectionProvider dataProtectionProvider,
     IOptions<MemberEmailTokenProviderOptions> options,
+    MemberOptions members,
+    TimeProvider time,
     ILogger<DataProtectorTokenProvider<CmsMember>> logger)
     : DataProtectorTokenProvider<CmsMember>(dataProtectionProvider, options, logger)
 {
     public const string ProviderName = "FluentCmsMemberEmail";
+
+    public override async Task<bool> ValidateAsync(string purpose, string token, UserManager<CmsMember> manager, CmsMember user) =>
+        MemberTokenLifetime.Open(user, members, time) && await base.ValidateAsync(purpose, token, manager, user);
 }
 
 internal sealed class MemberEmailTokenProviderOptions : DataProtectionTokenProviderOptions;
@@ -263,10 +278,21 @@ internal sealed class MemberEmailTokenProviderOptions : DataProtectionTokenProvi
 internal sealed class MemberPasswordResetTokenProvider(
     IDataProtectionProvider dataProtectionProvider,
     IOptions<MemberPasswordResetTokenProviderOptions> options,
+    MemberOptions members,
+    TimeProvider time,
     ILogger<DataProtectorTokenProvider<CmsMember>> logger)
     : DataProtectorTokenProvider<CmsMember>(dataProtectionProvider, options, logger)
 {
     public const string ProviderName = "FluentCmsMemberPasswordReset";
+
+    public override async Task<bool> ValidateAsync(string purpose, string token, UserManager<CmsMember> manager, CmsMember user) =>
+        MemberTokenLifetime.Open(user, members, time) && await base.ValidateAsync(purpose, token, manager, user);
 }
 
 internal sealed class MemberPasswordResetTokenProviderOptions : DataProtectionTokenProviderOptions;
+
+internal static class MemberTokenLifetime
+{
+    public static bool Open(CmsMember user, MemberOptions options, TimeProvider time) =>
+        UnverifiedMembersJob.RemovableAt(user, options) is not { } removable || time.GetUtcNow() < removable;
+}

@@ -112,24 +112,6 @@ public sealed class MemberOptionsTests
         MemberValidator.IsEmail(address).ShouldBe(valid);
 
     [Fact]
-    public void AnAddressGetsOneMailAMinuteAndAnotherAddressIsNotHeldBack()
-    {
-        var time = new Clock(new DateTimeOffset(2026, 11, 11, 9, 0, 0, TimeSpan.Zero));
-        var limiter = new MemberMailLimiter(time);
-
-        limiter.TryAcquire("MIA@EXAMPLE.COM").ShouldBeTrue();
-        limiter.TryAcquire("MIA@EXAMPLE.COM").ShouldBeFalse();
-        limiter.TryAcquire("SAM@EXAMPLE.COM").ShouldBeTrue();
-
-        time.Now += MemberMailLimiter.Window - TimeSpan.FromSeconds(1);
-        limiter.TryAcquire("MIA@EXAMPLE.COM").ShouldBeFalse();
-
-        time.Now += TimeSpan.FromSeconds(1);
-        limiter.TryAcquire("MIA@EXAMPLE.COM").ShouldBeTrue();
-        limiter.TryAcquire("MIA@EXAMPLE.COM").ShouldBeFalse();
-    }
-
-    [Fact]
     public void AClientOfTheMemberPoolAsksForAMembersScopesOnlyAndIsNeverAServiceAccount()
     {
         Should.NotThrow(() => Clients(new ClientRegistration { Pool = ClientPool.Members, RedirectUris = { "https://app.example.com/cb" }, Scopes = { "openid", "profile", "email", "offline_access" } }).Validate());
@@ -198,13 +180,6 @@ public sealed class MemberOptionsTests
         var exception = Should.Throw<FluentCmsConfigurationException>(options.Validate);
         exception.Code.ShouldBe(OidcErrorCodes.InvalidClients);
         exception.Detail.ShouldStartWith(nameof(ClientOptions.AdminClientId));
-    }
-
-    private sealed class Clock(DateTimeOffset now) : TimeProvider
-    {
-        public DateTimeOffset Now { get; set; } = now;
-
-        public override DateTimeOffset GetUtcNow() => Now;
     }
 
     private static ClientOptions Clients(ClientRegistration client)

@@ -81,6 +81,7 @@ public sealed class MemberFixture : IAsyncLifetime
             cms.Jobs.Options.PollInterval = TimeSpan.FromDays(1);
             cms.Jobs.Options.Queues[Jobs.JobRunnerOptions.DefaultQueue] = 0;
             cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
+            AccountMailJobs.RunByTest(cms);
             cms.Clients.Applications[DirectClientId] = new ClientRegistration
             {
                 Pool = ClientPool.Members,
@@ -146,11 +147,14 @@ public sealed class MemberFixture : IAsyncLifetime
         return new ApiResponse(response.StatusCode, text.Length == 0 ? null : JsonNode.Parse(text), response.Headers);
     }
 
-    // A call of /api/members/v1 with no credentials, or with the client's.
+    // A call of /api/members/v1 with no credentials, or with the client's, and then the mail jobs it enqueued, so that a
+    // test reads the mail of resend-verification and forgot-password as it reads that of register.
     public async Task<ApiResponse> MembersAsync(HttpMethod method, string path, string? json = null, HttpClient? client = null)
     {
         using var anonymous = client is null ? Host.CreateSecureClient() : null;
-        return await SendAsync(client ?? anonymous!, method, Api + path, json);
+        var response = await SendAsync(client ?? anonymous!, method, Api + path, json);
+        await AccountMailJobs.RunAsync(Host);
+        return response;
     }
 
     public Task<ApiResponse> ManageAsync(HttpMethod method, string path, string? json = null, HttpClient? client = null) =>

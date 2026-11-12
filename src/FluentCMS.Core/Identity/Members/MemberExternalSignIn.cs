@@ -228,7 +228,7 @@ internal sealed class MemberExternalSignIn(
         }
 
         // The provider made this member and did not say its address is verified: the mail goes, again if need be.
-        await mail.SendProviderVerificationAsync(member, login.ProviderName, await members.GenerateEmailConfirmationTokenAsync(member), cancellationToken);
+        await mail.SendProviderVerificationAsync(member, login.ProviderName, await members.GenerateEmailConfirmationTokenAsync(member), MemberMailSlot.Notice, cancellationToken);
         return MemberExternalOutcome.Pending;
     }
 

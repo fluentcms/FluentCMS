@@ -1,6 +1,7 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Storage;
 using FluentCMS.Events;
+using FluentCMS.Jobs;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,7 +19,8 @@ internal sealed record MemberProfile(
 
 // What a visitor and a member do with an account of the member pool, for /api/members/v1 and the hosted pages alike.
 // Registering, asking for the verification mail again and asking for a reset answer the same whether or not the
-// address is a member's: they return nothing, and what they did is in the mail or in the log. What is wrong with the
+// address is a member's: they return nothing, and what they did is in the mail or in the log. The verification mail
+// again and the reset are sent by a job after the answer, so not even its time depends on the address. What is wrong with the
 // request itself, such as an address that is none or a password the policy refuses, is told, since it says nothing of
 // who is a member. A reset and a new password end every session of the member.
 internal sealed class MemberAccountService(
@@ -30,6 +32,7 @@ internal sealed class MemberAccountService(
     SystemDbContext context,
     IdentityChanges changes,
     IOperationContextAccessor accessor,
+    IJobScheduler scheduler,
     TimeProvider time)
 {
     public async Task RegisterAsync(string email, string password, string? displayName, CancellationToken cancellationToken)
@@ -70,7 +73,7 @@ internal sealed class MemberAccountService(
                 }
             }
 
-            await mail.SendVerificationAsync(member, await members.GenerateEmailConfirmationTokenAsync(member), cancellationToken);
+            await mail.SendVerificationAsync(member, await members.GenerateEmailConfirmationTokenAsync(member), MemberMailSlot.Notice, cancellationToken);
             return;
         }
 
@@ -131,34 +134,11 @@ internal sealed class MemberAccountService(
         }
     }
 
-    public async Task ResendVerificationAsync(string email, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(email);
+    public Task ResendVerificationAsync(string email, CancellationToken cancellationToken) =>
+        EnqueueMailAsync(MemberMailJob.Verification, email, cancellationToken);
 
-        if (await ActiveAsync(email) is { EmailConfirmed: false } member)
-        {
-            // A member a provider made is told which provider its link lets in.
-            var token = await members.GenerateEmailConfirmationTokenAsync(member);
-            if ((await members.GetLoginsAsync(member)).FirstOrDefault() is { } login)
-            {
-                await mail.SendProviderVerificationAsync(member, login.ProviderDisplayName ?? login.LoginProvider, token, cancellationToken);
-            }
-            else
-            {
-                await mail.SendVerificationAsync(member, token, cancellationToken);
-            }
-        }
-    }
-
-    public async Task ForgotPasswordAsync(string email, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(email);
-
-        if (await ActiveAsync(email) is { } member)
-        {
-            await mail.SendPasswordResetAsync(member, await members.GeneratePasswordResetTokenAsync(member), cancellationToken);
-        }
-    }
+    public Task ForgotPasswordAsync(string email, CancellationToken cancellationToken) =>
+        EnqueueMailAsync(MemberMailJob.PasswordReset, email, cancellationToken);
 
     public async Task ResetPasswordAsync(string email, string token, string password, CancellationToken cancellationToken)
     {
@@ -267,6 +247,18 @@ internal sealed class MemberAccountService(
         if (errors.Count > 0)
         {
             throw new ValidationException(errors);
+        }
+    }
+
+    // Nothing is looked up here: the job does that after the answer (AccountMail).
+    private async Task EnqueueMailAsync(string kind, string email, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(email);
+
+        var address = email.Trim();
+        if (MemberValidator.IsEmail(address))
+        {
+            await scheduler.EnqueueAsync<MemberMailJob, MemberMailRequest>(new MemberMailRequest(kind, address), AccountMail.Options, cancellationToken);
         }
     }
 
