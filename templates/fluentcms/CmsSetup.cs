@@ -11,10 +11,10 @@ using FluentCMS.Plugins.Media;
 using FluentCMS.Plugins.Webhooks;
 using FluentCMS.Schema;
 #if (blog)
-using FluentCmsApp.Blog;
+using FluentCms_App.Blog;
 #endif
 
-namespace FluentCmsApp;
+namespace FluentCms_App;
 
 // What the host and the design-time factory of `fluentcms migrations add` share, so that both see the same model.
 public static class CmsSetup

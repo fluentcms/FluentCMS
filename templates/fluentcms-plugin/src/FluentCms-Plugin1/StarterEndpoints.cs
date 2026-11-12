@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 
-namespace FluentCmsPlugin1;
+namespace FluentCms_Plugin1;
 
 public sealed record StarterNoteRequest(string Text);
 
@@ -51,7 +51,7 @@ public static class StarterEndpoints
             var note = new StarterNote { Id = Guid.CreateVersion7(), SiteId = site, Text = request.Text, CreatedAt = time.GetUtcNow() };
             database.Add(note);
             await database.SaveChangesAsync(cancellationToken);
-            return Results.Created($"notes/{note.Id}", new StarterNoteResponse(note.Id, note.Text, note.CreatedAt));
+            return Results.Json(new StarterNoteResponse(note.Id, note.Text, note.CreatedAt), statusCode: StatusCodes.Status201Created);
         });
 
         return group;

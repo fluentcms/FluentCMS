@@ -10,7 +10,7 @@ using FluentCMS.Data.SqlServer;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace FluentCmsApp;
+namespace FluentCms_App;
 
 // Used by `fluentcms migrations add` to write the content migrations of Migrations/Content for this host's provider. It never
 // opens the database named here. The field types come from the host's services, so that a plugin's type, such as media, is known.

@@ -1,4 +1,4 @@
-namespace FluentCmsApp.Blog;
+namespace FluentCms_App.Blog;
 
 public enum ArticleCategory
 {

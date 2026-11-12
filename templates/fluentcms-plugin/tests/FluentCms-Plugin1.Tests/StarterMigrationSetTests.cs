@@ -2,7 +2,7 @@ using FluentCMS.Core.Plugins;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
-namespace FluentCmsPlugin1.Tests;
+namespace FluentCms_Plugin1.Tests;
 
 // A host takes the migration set of its provider, so each set must match the model on its provider. Never opens a database.
 public sealed class StarterMigrationSetTests

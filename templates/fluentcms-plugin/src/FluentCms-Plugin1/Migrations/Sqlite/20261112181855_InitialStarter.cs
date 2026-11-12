@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FluentCmsPlugin1.Migrations.Sqlite
+namespace FluentCms_Plugin1.Migrations.Sqlite
 {
     /// <inheritdoc />
     public partial class InitialStarter : Migration

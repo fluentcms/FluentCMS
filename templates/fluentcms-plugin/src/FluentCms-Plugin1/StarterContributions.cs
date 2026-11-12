@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using FluentCMS.Authorization;
 using FluentCMS.Settings;
 
-namespace FluentCmsPlugin1;
+namespace FluentCms_Plugin1;
 
 // The permissions join the catalogue, so a role can be granted them; the plugin checks them with IPermissionChecker.
 public sealed class StarterPermissions : IPermissionProvider

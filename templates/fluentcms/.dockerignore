@@ -6,3 +6,8 @@
 App_Data/
 Dockerfile
 .dockerignore
+.git/
+.vs/
+.vscode/
+.idea/
+*.user

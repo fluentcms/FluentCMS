@@ -1,6 +1,6 @@
 using FluentCMS.Schema;
 
-namespace FluentCmsApp.Content;
+namespace FluentCms_App.Content;
 
 // A content type is a class: its table, its Management and Delivery endpoints (/api/delivery/v1/article) and its typed
 // filter and sort builder (ArticleFields) come from it. Add your own types next to it.

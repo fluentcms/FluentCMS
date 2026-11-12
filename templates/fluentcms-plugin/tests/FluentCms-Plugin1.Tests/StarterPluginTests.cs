@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace FluentCmsPlugin1.Tests;
+namespace FluentCms_Plugin1.Tests;
 
 // The test host discovers the plugin, as a host that references its package does, applies its migrations to an in-memory
 // SQLite database and serves its endpoints in process.

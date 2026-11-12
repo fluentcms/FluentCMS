@@ -1,7 +1,7 @@
 using FluentCMS.Core.Commands;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Schema;
-using FluentCmsApp;
+using FluentCms_App;
 
 var builder = WebApplication.CreateBuilder(args);
 

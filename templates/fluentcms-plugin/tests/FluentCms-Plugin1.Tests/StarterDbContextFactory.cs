@@ -5,7 +5,7 @@ using FluentCMS.Data.SqlServer;
 using FluentCMS.Plugins;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace FluentCmsPlugin1.Tests;
+namespace FluentCms_Plugin1.Tests;
 
 // Used only by `dotnet ef migrations add`, which never opens these databases. The argument after `--` names the set to
 // scaffold into: Sqlite, PostgreSql or SqlServer.

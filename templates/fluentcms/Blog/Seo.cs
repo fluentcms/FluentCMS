@@ -1,6 +1,6 @@
 using FluentCMS.Schema;
 
-namespace FluentCmsApp.Blog;
+namespace FluentCms_App.Blog;
 
 [Component]
 public sealed class Seo

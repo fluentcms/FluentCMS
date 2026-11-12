@@ -1,10 +1,10 @@
-# FluentCmsApp
+# FluentCms-App
 
 A FluentCMS API host, made with the `fluentcms` template of the `FluentCMS.Templates` package:
 
 ```bash
 dotnet new install FluentCMS.Templates
-dotnet new fluentcms -n FluentCmsApp --provider sqlite --sample none
+dotnet new fluentcms -n FluentCms-App --provider sqlite --sample none
 ```
 
 | Option | Values | Default |
@@ -54,7 +54,7 @@ dotnet tool restore
 dotnet fluentcms --help
 ```
 
-A command runs inside the host, with its configuration, provider and plugins, so `Program.cs` keeps the call to `RunFluentCmsCommandAsync` between `Build()` and `Run()`. `--environment Development` runs a command with the Development settings.
+A command runs inside the host, with its configuration, provider and plugins, so `Program.cs` keeps the call to `RunFluentCmsCommandAsync` between `Build()` and `Run()`. It runs in the environment of the shell, Production unless `DOTNET_ENVIRONMENT` says otherwise, so the commands below pass `--environment Development` to read `appsettings.Development.json` and the user secrets, as `dotnet run` does. Against another database, leave it out and set `ConnectionStrings__FluentCms`.
 
 ## A server database: migrations
 
@@ -62,21 +62,21 @@ A migration set belongs to one provider, so the template ships none: the first o
 
 ```bash
 dotnet fluentcms migrations add Initial
-dotnet fluentcms migrate
+dotnet fluentcms migrate --environment Development
 dotnet run
 ```
 
-`migrations add` writes the content migration of the model to `Migrations/Content`, and refuses a change that loses data unless you pass `--allow-destructive`. `migrate` applies what is pending in every stream: the system tables, the plugins' tables and the content tables. Add a migration with each change of the content types, and run `migrate` before the new version starts; `dotnet fluentcms migrate --check` exits with 1 while one is pending.
+`migrations add` writes the content migration of the model to `Migrations/Content`, and refuses a change that loses data unless you pass `--allow-destructive`. `migrate` applies what is pending in every stream: the system tables, the plugins' tables and the content tables. Add a migration with each change of the content types, and run `migrate` before the new version starts; `fluentcms migrate --check` exits with 1 while one is pending.
 
 On SQLite the same migrations are how a production database is made, from a new database: one that schema sync changed has no content history, so the first migration does not apply to it. On SQLite the host applies its migrations at start (`FluentCms:Database:MigrateOnStartup`, `true` on SQLite and `false` on the servers).
 
 ## The first administrator and a key
 
-Once the system tables exist, after `dotnet fluentcms migrate` or a first start:
+Once the system tables exist, after `fluentcms migrate` or a first start:
 
 ```bash
-dotnet fluentcms user create --email you@example.com --role "Super Admin" --password-stdin
-dotnet fluentcms apikey create --name website --class management --role "Super Admin"
+dotnet fluentcms user create --email you@example.com --role "Super Admin" --password-stdin --environment Development
+dotnet fluentcms apikey create --name website --class management --role "Super Admin" --environment Development
 ```
 
 The password is read from standard input, so it stays out of the shell history. The key is shown once; send it as `Authorization: ApiKey <key>`.
@@ -94,8 +94,8 @@ dotnet fluentcms generate typescript --output ../web/src/cms
 ## Docker
 
 ```bash
-docker build -t fluentcmsapp .
-docker run --rm fluentcmsapp fluentcms migrate
+docker build -t fluentcms-app .
+docker run --rm fluentcms-app fluentcms migrate
 ```
 
 The image runs the commands of the tool too, so the migrate step of a deployment, such as an init container, is the same image with `fluentcms migrate`. In Production the host stops at start until a signing certificate, `FluentCms__PublicOrigin` and an encryptor of the Data Protection key ring are set, and names each with its setting; set `AllowedHosts` too.

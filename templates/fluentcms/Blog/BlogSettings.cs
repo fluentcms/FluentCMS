@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using FluentCMS.Settings;
 
-namespace FluentCmsApp.Blog;
+namespace FluentCms_App.Blog;
 
 [Settings("blog")]
 public sealed class BlogSettings

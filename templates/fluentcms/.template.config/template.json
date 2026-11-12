@@ -7,7 +7,7 @@
   "name": "FluentCMS host",
   "description": "An API host for FluentCMS: the content types, the data provider, the media and webhooks plugins and the fluentcms tool.",
   "shortName": "fluentcms",
-  "sourceName": "FluentCmsApp",
+  "sourceName": "FluentCms-App",
   "preferNameDirectory": true,
   "tags": {
     "language": "C#",

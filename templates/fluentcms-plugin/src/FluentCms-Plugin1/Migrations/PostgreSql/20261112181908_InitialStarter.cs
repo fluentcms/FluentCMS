@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FluentCmsPlugin1.Migrations.PostgreSql
+namespace FluentCms_Plugin1.Migrations.PostgreSql
 {
     /// <inheritdoc />
     public partial class InitialStarter : Migration

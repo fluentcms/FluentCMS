@@ -1,14 +1,14 @@
 # syntax=docker/dockerfile:1
 # Build from this folder, for one platform or both:
-#   docker build -t fluentcmsapp .
-#   docker buildx build --platform linux/amd64,linux/arm64 -t fluentcmsapp .
+#   docker build -t fluentcms-app .
+#   docker buildx build --platform linux/amd64,linux/arm64 -t fluentcms-app .
 
 # The SDK runs on the build machine and compiles for the target, so no emulation is needed for the other architecture.
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG TARGETARCH
 WORKDIR /src
 
-COPY FluentCmsApp.csproj ./
+COPY FluentCms-App.csproj ./
 RUN dotnet restore -a $TARGETARCH
 
 COPY . .
@@ -36,4 +36,4 @@ USER $APP_UID
 # Production stops at start until the signing certificate, FluentCms__PublicOrigin and an encryptor of the key ring are set
 # (FCMS1102, FCMS1105, FCMS1106), each named with its setting. The same image applies the migrations first:
 #   docker run <image> fluentcms migrate
-ENTRYPOINT ["dotnet", "/app/FluentCmsApp.dll"]
+ENTRYPOINT ["dotnet", "/app/FluentCms-App.dll"]

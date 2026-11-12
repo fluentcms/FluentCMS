@@ -5,6 +5,7 @@
   <PropertyGroup>
     <PackageId>FluentCMS.Templates</PackageId>
     <PackageType>Template</PackageType>
+    <IsPackable>true</IsPackable>
     <Description>The dotnet new templates for FluentCMS: an API host (fluentcms) and the server half of a plugin (fluentcms-plugin).</Description>
     <PackageTags>$(PackageTags) dotnet-new templates</PackageTags>
     <EnableDefaultItems>false</EnableDefaultItems>

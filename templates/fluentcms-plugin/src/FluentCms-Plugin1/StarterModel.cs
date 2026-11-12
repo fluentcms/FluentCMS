@@ -1,7 +1,7 @@
 using FluentCMS.Plugins;
 using Microsoft.EntityFrameworkCore;
 
-namespace FluentCmsPlugin1;
+namespace FluentCms_Plugin1;
 
 public sealed class StarterNote
 {

@@ -1,6 +1,6 @@
 using FluentCMS.Core.DependencyInjection;
 
-namespace FluentCmsApp.Blog;
+namespace FluentCms_App.Blog;
 
 public static class BlogSample
 {

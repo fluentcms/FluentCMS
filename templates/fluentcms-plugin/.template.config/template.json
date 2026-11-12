@@ -7,7 +7,7 @@
   "name": "FluentCMS plugin",
   "description": "The server half of a FluentCMS plugin, with a table and its migrations, a permission, settings, a hook and a Management endpoint, and a test project that boots it in the test host.",
   "shortName": "fluentcms-plugin",
-  "sourceName": "FluentCmsPlugin1",
+  "sourceName": "FluentCms-Plugin1",
   "preferNameDirectory": true,
   "tags": {
     "language": "C#",

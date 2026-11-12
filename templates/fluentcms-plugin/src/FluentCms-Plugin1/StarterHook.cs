@@ -2,7 +2,7 @@ using FluentCMS.Content;
 using FluentCMS.Hooks;
 using Microsoft.Extensions.Logging;
 
-namespace FluentCmsPlugin1;
+namespace FluentCms_Plugin1;
 
 // Runs after an entry of any content type is published; IAfterPublishHook<Article> would run for articles only. A before
 // hook can refuse the operation with context.Cancel(code, message).

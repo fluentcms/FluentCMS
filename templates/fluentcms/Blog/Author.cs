@@ -1,7 +1,7 @@
 using FluentCMS.Media;
 using FluentCMS.Schema;
 
-namespace FluentCmsApp.Blog;
+namespace FluentCms_App.Blog;
 
 [Collection("author")]
 public sealed class Author : ContentItem

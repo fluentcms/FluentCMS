@@ -27,7 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/FluentCmsPlugin1/FluentCmsPlugin1.csproj" />
+    <ProjectReference Include="../../src/FluentCms-Plugin1/FluentCms-Plugin1.csproj" />
   </ItemGroup>
 
 </Project>

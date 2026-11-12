@@ -3,21 +3,24 @@ using System;
 using FluentCMS.Plugins;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FluentCmsPlugin1.Migrations.Sqlite
+namespace FluentCms_Plugin1.Migrations.Sqlite
 {
     [DbContext(typeof(PluginDbContext<StarterPlugin>))]
-    partial class SqliteModelSnapshot : ModelSnapshot
+    [Migration("20261112181855_InitialStarter")]
+    partial class InitialStarter
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.14");
 
-            modelBuilder.Entity("FluentCmsPlugin1.StarterNote", b =>
+            modelBuilder.Entity("FluentCms_Plugin1.StarterNote", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT")

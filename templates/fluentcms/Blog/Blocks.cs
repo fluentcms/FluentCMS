@@ -1,7 +1,7 @@
 using FluentCMS.Media;
 using FluentCMS.Schema;
 
-namespace FluentCmsApp.Blog;
+namespace FluentCms_App.Blog;
 
 [Block("hero")]
 public sealed class HeroBlock

@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FluentCmsPlugin1.Migrations.SqlServer
+namespace FluentCms_Plugin1.Migrations.SqlServer
 {
     /// <inheritdoc />
     public partial class InitialStarter : Migration

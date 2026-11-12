@@ -6,7 +6,8 @@
 #
 #   templates/test-templates.sh <feed> <version> <work directory>
 #
-# Everything it writes is under the work directory, the NuGet packages and the installed templates included.
+# Everything it writes is under the work directory, the NuGet packages and the installed templates included. It needs bash 4
+# or later (Git Bash on Windows has it), curl and the .NET SDK of global.json.
 set -euo pipefail
 
 if [ $# -ne 3 ]; then
@@ -29,7 +30,12 @@ hive="$work/hive"
 
 step() { echo "::group::$*"; }
 end() { echo "::endgroup::"; }
-fail() { echo "::error::$*"; echo "FAILED: $*" >&2; exit 1; }
+# To standard error, so that a failure inside a command substitution still shows, as an annotation on GitHub too.
+fail() { echo "::error::$*" >&2; exit 1; }
+
+# A host the checks started is stopped however the script ends.
+pid=
+trap '[ -n "$pid" ] && kill "$pid" 2>/dev/null; true' EXIT
 
 # The FluentCMS packages come from the folder feed only, everything else from nuget.org.
 cat > "$work/nuget.config" <<EOF
@@ -80,13 +86,38 @@ step "The FluentCMS packages and the tool of every project are version $version"
 if grep -rl "{{version:" "$work"/Host* "$work/$plugin" --include=*.csproj --include=*.json; then
   fail "a version token was left in a created project"
 fi
-versions=$(grep -rhoE 'Include="FluentCMS\.[A-Za-z.]+" Version="[^"]+"' "$work"/Host* "$work/$plugin" --include=*.csproj | sed -E 's/.*Version="([^"]+)"/\1/' | sort -u)
-[ "$versions" = "$version" ] || fail "the FluentCMS packages of the created projects are $versions, not $version"
+versions=$( (grep -rhoE 'Include="FluentCMS\.[A-Za-z.]+" Version="[^"]+"' "$work"/Host* "$work/$plugin" --include=*.csproj || true) \
+  | sed -E 's/.*Version="([^"]+)"/\1/' | sort -u)
+[ "$versions" = "$version" ] || fail "the FluentCMS packages of the created projects are '$versions', not $version"
 for host in "${hosts[@]}"; do
   grep -q "\"version\": \"$version\"" "$work/$host/.config/dotnet-tools.json" || fail "$host does not pin fluentcms $version"
 done
 grep -q '\[FluentCmsPlugin(Name, ' "$work/$plugin/src/$plugin/ReviewNotesPlugin.cs" || fail "the plugin class is not ReviewNotesPlugin"
 grep -q 'Name = "review-notes"' "$work/$plugin/src/$plugin/ReviewNotesPlugin.cs" || fail "the plugin is not named review-notes"
+end
+
+step "The Dockerfile of each provider"
+for host in "${hosts[@]}"; do
+  grep -q "^COPY $host.csproj ./" "$work/$host/Dockerfile" || fail "the Dockerfile of $host does not copy its project"
+  grep -q "^ENTRYPOINT \[\"dotnet\", \"/app/$host.dll\"\]" "$work/$host/Dockerfile" || fail "the Dockerfile of $host does not start its assembly"
+  if [[ $host == HostSqlite* ]]; then
+    grep -q '^ENV ConnectionStrings__FluentCms="Data Source=/data/fluentcms.db"' "$work/$host/Dockerfile" || fail "the Dockerfile of $host has no SQLite database in /data"
+  elif grep -q '^ENV ConnectionStrings__FluentCms' "$work/$host/Dockerfile"; then
+    fail "the Dockerfile of $host sets a connection string"
+  fi
+  if grep -q '^#if\|^#else\|^#endif' "$work/$host/Dockerfile"; then
+    fail "the Dockerfile of $host kept a template conditional"
+  fi
+done
+end
+
+# A name that is not a namespace keeps its files and project references, and its code gets a namespace that is one.
+step "dotnet new fluentcms -n my-site and dotnet new fluentcms-plugin -n my-plugin"
+new fluentcms -n my-site -o "$work/my-site"
+dotnet build "$work/my-site/my-site.csproj" -c Release -warnaserror
+grep -q '^COPY my-site.csproj ./' "$work/my-site/Dockerfile" || fail "the Dockerfile of my-site does not copy my-site.csproj"
+new fluentcms-plugin -n my-plugin -o "$work/my-plugin"
+dotnet build "$work/my-plugin/my-plugin.slnx" -c Release -warnaserror
 end
 
 secret=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
@@ -123,6 +154,7 @@ start() {
 stop() {
   kill "$pid" 2>/dev/null || true
   wait "$pid" 2>/dev/null || true
+  pid=
 }
 
 # GET or POST as the operator; prints the body and fails on another status than the one expected.

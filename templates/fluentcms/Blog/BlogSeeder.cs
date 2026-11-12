@@ -6,7 +6,7 @@ using FluentCMS.Schema;
 using FluentCMS.Seeding;
 using FluentCMS.Settings;
 
-namespace FluentCmsApp.Blog;
+namespace FluentCms_App.Blog;
 
 // Every entry is found by its slug, which a person does not change by accident, and each step brings what it finds to the state the
 // seed wants. A run that stopped halfway therefore finishes the job. State changes (publish, trash, schedule) are made only to what

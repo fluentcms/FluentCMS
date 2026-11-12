@@ -96,7 +96,7 @@ public class LayeringRulesTests
     [Fact]
     public void ThePluginTemplateReferencesTheSdkAndThePluginAbstractionsOnly()
     {
-        var plugin = ProjectFile.Load("templates/fluentcms-plugin/src/FluentCmsPlugin1/FluentCmsPlugin1.csproj");
+        var plugin = ProjectFile.Load("templates/fluentcms-plugin/src/FluentCms-Plugin1/FluentCms-Plugin1.csproj");
 
         plugin.ProjectReferences.ShouldBeEmpty();
         plugin.PackageReferences.Where(package => !package.DevelopmentOnly).Select(package => package.Name)
@@ -111,7 +111,7 @@ public class LayeringRulesTests
     [Fact]
     public void TheHostTemplateBuildsWithTheGeneratorAndTheAnalyzers()
     {
-        var host = ProjectFile.Load("templates/fluentcms/FluentCmsApp.csproj");
+        var host = ProjectFile.Load("templates/fluentcms/FluentCms-App.csproj");
 
         host.PackageReferences.Where(package => package.DevelopmentOnly).Select(package => package.Name)
             .ShouldBe([Generators, Analyzers], ignoreOrder: true);

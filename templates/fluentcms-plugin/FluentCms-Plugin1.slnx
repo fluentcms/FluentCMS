@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FluentCms-Plugin1/FluentCms-Plugin1.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FluentCms-Plugin1.Tests/FluentCms-Plugin1.Tests.csproj" />
+  </Folder>
+</Solution>

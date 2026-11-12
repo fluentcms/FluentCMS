@@ -1,6 +1,6 @@
 using FluentCMS.Schema;
 
-namespace FluentCmsApp.Blog;
+namespace FluentCms_App.Blog;
 
 [Collection("tag", Scope = ContentScope.Global)]
 public sealed class Tag : ContentItem
