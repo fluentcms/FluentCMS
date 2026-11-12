@@ -128,6 +128,7 @@ public sealed class EmitterTests
     {
         SchemaNames.ToCamelCase(name).ShouldBe(JsonNamingPolicy.CamelCase.ConvertName(name));
         SchemaNames.ToKebabCase(name).ShouldBe(JsonNamingPolicy.KebabCaseLower.ConvertName(name));
+        SchemaNames.ToSnakeCase(name).ShouldBe(JsonNamingPolicy.SnakeCaseLower.ConvertName(name));
     }
 
     [Theory]

@@ -13,6 +13,7 @@ public class LayeringRulesTests
     private const string Sdk = "FluentCMS.Sdk";
     private const string PluginAbstractions = "FluentCMS.Plugins.Abstractions";
     private const string PluginPrefix = "FluentCMS.Plugins.";
+    private const string Analyzers = "FluentCMS.Analyzers";
     private const string GraphQLPlugin = "FluentCMS.Plugins.GraphQL";
 
     private const string ApiNamespace = "FluentCMS.Core.Api";
@@ -67,6 +68,25 @@ public class LayeringRulesTests
             .ToList();
 
         violations.ShouldBeEmpty();
+    }
+
+    // Spec 6.4: the reference host, the Blog sample and every first-party plugin build with the analyzers, as analyzers only,
+    // and a plugin keeps them out of the dependencies of its package.
+    [Fact]
+    public void TheHostTheSampleAndThePluginsBuildWithTheAnalyzers()
+    {
+        var projects = ProjectFile.SourceProjects
+            .Where(project => project.Name == "FluentCMS.Host" || (project.Name.StartsWith(PluginPrefix, StringComparison.Ordinal) && project.Name != PluginAbstractions))
+            .Append(ProjectFile.Load("samples/Blog/Blog.csproj"))
+            .ToList();
+
+        projects.Count.ShouldBeGreaterThan(2);
+        projects.Where(project => !project.AnalyzerReferences.Any(reference => reference.Name == Analyzers)).Select(project => project.Name).ShouldBeEmpty();
+        projects.Where(project => project.ProjectReferences.Contains(Analyzers)).Select(project => project.Name).ShouldBeEmpty();
+        projects.Where(project => project.Name.StartsWith(PluginPrefix, StringComparison.Ordinal))
+            .Where(project => project.AnalyzerReferences.Any(reference => reference.Name == Analyzers && !reference.Private))
+            .Select(project => project.Name)
+            .ShouldBeEmpty();
     }
 
     // Spec 2.1: the GraphQL layer carries identity and intent only. It reaches content through IContentService, so it has

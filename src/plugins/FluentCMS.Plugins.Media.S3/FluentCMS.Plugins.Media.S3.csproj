@@ -16,4 +16,9 @@
     <InternalsVisibleTo Include="FluentCMS.Plugins.Media.Tests" />
   </ItemGroup>
 
+  <!-- The analyzers check the schema attributes in the build; PrivateAssets keeps them out of the package's dependencies. -->
+  <ItemGroup>
+    <ProjectReference Include="../../FluentCMS.Analyzers/FluentCMS.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+  </ItemGroup>
+
 </Project>

@@ -21,5 +21,5 @@ During development, add new public members to `PublicAPI.Unshipped.txt`. The `RS
 ## Breaking changes
 
 - A breaking change to a shipped member lands only in a major version.
-- Announce the removal one minor version ahead: mark the member `[Obsolete("Use X instead.")]` in a minor release, then remove it in the next major. The `FluentCMS.Analyzers` package reports obsolete SDK members to plugin authors.
+- Announce the removal one minor version ahead: mark the member `[Obsolete("Use X instead.")]` in a minor release, then remove it in the next major. The compiler warns a plugin author who uses an obsolete member (`CS0618`). A `FluentCMS.Analyzers` rule for obsolete SDK members follows with the first member that is marked `[Obsolete]`; until then the package holds the schema rules only ([analyzer rules](analyzers.md)).
 - For a major version, set `PackageValidationBaselineVersion` to the last release of the previous major, and record each intentional break by running `dotnet pack -c Release -p:ApiCompatGenerateSuppressionFile=true`. Review the generated `CompatibilitySuppressions.xml` in the pull request, and delete it once the major has shipped and the baseline has moved to it.
