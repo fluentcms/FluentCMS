@@ -41,6 +41,9 @@ internal static partial class McpLog
     [LoggerMessage(EventId = 9293, Level = LogLevel.Warning, Message = "The stored MCP prompt {Name} of site {SiteId} holds arguments that cannot be read, so it is left out until it is saved again.")]
     public static partial void PromptUnreadable(ILogger logger, string name, Guid siteId);
 
+    [LoggerMessage(EventId = 9294, Level = LogLevel.Information, Message = "Removed {Instructions} agent instructions and {Prompts} stored MCP prompts of the deleted site {SiteId}.")]
+    public static partial void SiteRemoved(ILogger logger, int instructions, int prompts, Guid siteId);
+
     // 9295 to 9299: the call limits and the dry runs.
     [LoggerMessage(EventId = 9295, Level = LogLevel.Warning, Message = "The MCP client {ClientId} of {PrincipalKind} {PrincipalId} is over its {Limit} {Kind} a minute in site {SiteId}, so its calls are refused for {RetryAfterSeconds} s. Its next refusals are not logged for a minute.")]
     public static partial void CallLimitExceeded(ILogger logger, string? clientId, PrincipalKind principalKind, Guid principalId, int limit, string kind, Guid siteId, int retryAfterSeconds);

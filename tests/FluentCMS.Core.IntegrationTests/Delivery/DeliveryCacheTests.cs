@@ -293,6 +293,39 @@ public sealed class DeliveryCacheTests(DeliveryCacheFixture fixture) : IClassFix
         (await GetAsync(path)).Status.ShouldBe(HttpStatusCode.NotFound);
     }
 
+    // A site with no content can be deleted, and the copies of its reads go with it rather than being served until they expire.
+    [Fact]
+    public async Task DeletingASiteEvictsItsCopies()
+    {
+        Guid site;
+        await using (var scope = _host.Services.CreateAsyncScope())
+        {
+            site = (await scope.ServiceProvider.GetRequiredService<SiteManager>().CreateAsync("Gone", $"gone-{Guid.NewGuid():N}", DefaultSite.Locale, Token)).Id;
+            var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            var role = await context.Set<Role>().SingleAsync(item => item.SiteId == site && item.Name == BuiltInRoles.PublicName, Token);
+            context.Set<RoleGrant>().Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = role.Id, Permission = "content.note.read" });
+            await context.SaveChangesAsync(Token);
+        }
+
+        await DrainAsync();
+        _invalidations.Forget();
+        (string, string) ofTheSite = (RequestBridge.SiteHeader, site.ToString("D"));
+        (await GetAsync("note", ofTheSite)).Status.ShouldBe(HttpStatusCode.OK);
+        (await GetAsync("note", ofTheSite)).FromCache.ShouldBeTrue();
+
+        var admin = _host.As(await _host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token));
+        await admin.RunAsync<ISiteAdministration, bool>(async sites =>
+        {
+            await sites.DeleteAsync(new SiteId(site), Token);
+            return true;
+        });
+
+        (await InvalidatedAsync()).ShouldBe([$"site:{site:D}"]);
+        var after = await GetAsync("note", ofTheSite);
+        after.FromCache.ShouldBeFalse();
+        after.Status.ShouldNotBe(HttpStatusCode.OK);
+    }
+
     // A key's copy follows its role; a role of the instance evicts every site, since a key of any site may hold it.
     [Fact]
     public async Task AChangeToARoleOfTheInstanceEvictsEverySite()

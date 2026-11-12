@@ -5,6 +5,7 @@ using FluentCMS.Content;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Plugins.Webhooks;
 
@@ -14,6 +15,19 @@ internal sealed class WebhookEventHandler<TEvent>(WebhookDispatcher dispatcher) 
 {
     public ValueTask HandleAsync(TEvent message, EventDelivery delivery, CancellationToken cancellationToken) =>
         dispatcher.DispatchAsync(message, delivery, cancellationToken);
+}
+
+// The webhooks of a site go with it, through the outbox, so a failure is tried again rather than leaving them listed.
+internal sealed class DeletedSiteWebhooks(WebhookService webhooks, ILogger<DeletedSiteWebhooks> logger) : IOutboxEventHandler<SiteDeletedEvent>
+{
+    public async ValueTask HandleAsync(SiteDeletedEvent message, EventDelivery delivery, CancellationToken cancellationToken)
+    {
+        var (removed, attempts) = await webhooks.RemoveAllAsync(message.SiteId, cancellationToken);
+        if (removed > 0)
+        {
+            WebhookLog.SiteRemoved(logger, removed, attempts, message.SiteId);
+        }
+    }
 }
 
 // Matches an event against the enabled webhooks of its site, by event name and content type, and enqueues the first

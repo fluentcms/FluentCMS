@@ -97,6 +97,11 @@ internal sealed class McpInstructionService(
         await events.PublishAsync(new McpInstructionDeletedEvent(type), cancellationToken);
     }
 
+    // The guidelines and instructions of a deleted site, for the system rather than a caller, so nothing is checked and no
+    // event is raised. A second run finds nothing.
+    public Task<int> RemoveAllAsync(Guid siteId, CancellationToken cancellationToken) =>
+        database.Set<McpInstruction>().Where(instruction => instruction.SiteId == siteId).ExecuteDeleteAsync(cancellationToken);
+
     private static string TextOf(string? given)
     {
         var text = given?.Trim();

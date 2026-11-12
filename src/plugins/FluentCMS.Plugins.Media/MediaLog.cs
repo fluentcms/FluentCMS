@@ -37,4 +37,10 @@ internal static partial class MediaLog
 
     [LoggerMessage(EventId = 9270, Level = LogLevel.Information, Message = "The cleanup purged {Count} media assets deleted longer ago than the retention.")]
     public static partial void AssetsPurged(ILogger logger, int count);
+
+    [LoggerMessage(EventId = 9271, Level = LogLevel.Warning, Message = "The file {Key} of the {Storage} storage, of the media asset {AssetId} of the deleted site {SiteId}, could not be deleted; the asset stays deleted and the cleanup purges it after the retention.")]
+    public static partial void SiteFileNotDeleted(ILogger logger, string storage, string key, Guid assetId, Guid siteId, Exception? exception);
+
+    [LoggerMessage(EventId = 9272, Level = LogLevel.Information, Message = "Removed {Count} media assets of the deleted site {SiteId} with its folders and presets; {Left} stay deleted for the cleanup.")]
+    public static partial void SiteLibraryRemoved(ILogger logger, int count, Guid siteId, int left);
 }

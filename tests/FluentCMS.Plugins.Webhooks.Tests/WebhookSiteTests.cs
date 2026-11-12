@@ -59,6 +59,51 @@ public sealed class WebhookSiteTests
         receiver.Requests.ShouldHaveSingleItem();
     }
 
+    // A deleted site takes its webhooks and their attempts with it, and another site keeps its own. The handler may run
+    // again for the same event, and then finds nothing.
+    [Fact]
+    public async Task DeletingASiteRemovesItsWebhooksAndTheirAttempts()
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        await using var host = Host();
+        using var client = await AdminAsync(host);
+        Guid site;
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            site = (await scope.ServiceProvider.GetRequiredService<SiteManager>().CreateAsync("Gone", $"gone-{Guid.NewGuid():N}", "en", Token)).Id;
+        }
+
+        using var inTheSite = await AdminAsync(host);
+        inTheSite.DefaultRequestHeaders.Add("X-Cms-Site", site.ToString());
+        var gone = Id(await CreateAsync(inTheSite, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
+        var kept = Id(await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
+        foreach (var (caller, webhook) in new[] { (inTheSite, gone), (client, kept) })
+        {
+            using var ping = await caller.PostAsync(new Uri($"/api/management/v1/webhooks/{webhook:D}/ping", UriKind.Relative), null, Token);
+            ping.StatusCode.ShouldBe(HttpStatusCode.Accepted);
+        }
+
+        await PumpAsync(host);
+        (await DeliveriesAsync(host, gone)).ShouldNotBeEmpty();
+
+        await host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).RunAsync<ISiteAdministration, bool>(async sites =>
+        {
+            await sites.DeleteAsync(new SiteId(site), Token);
+            return true;
+        });
+        await PumpAsync(host);
+
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<WebhooksPlugin>>();
+            (await database.Set<Webhook>().AsNoTracking().Select(webhook => webhook.Id).ToListAsync(Token)).ShouldBe([kept]);
+            (await scope.ServiceProvider.GetRequiredService<WebhookService>().RemoveAllAsync(site, Token)).ShouldBe((0, 0));
+        }
+
+        (await DeliveriesAsync(host, gone)).ShouldBeEmpty();
+        (await DeliveriesAsync(host, kept)).ShouldNotBeEmpty();
+    }
+
     private static async Task<HttpStatusCode> SetAsync(HttpClient client, bool enabled)
     {
         using var content = new StringContent($$"""{ "enabled": {{(enabled ? "true" : "false")}} }""", Encoding.UTF8, "application/json");

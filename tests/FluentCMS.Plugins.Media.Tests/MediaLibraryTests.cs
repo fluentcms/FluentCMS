@@ -1,6 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Sites;
+using FluentCMS.Events;
+using FluentCMS.Media;
+using FluentCMS.Sites;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -98,6 +103,65 @@ public sealed class PerSiteMediaLibraryTests(PerSiteMediaHost fixture) : IClassF
         own["siteId"]!.GetValue<string>().ShouldBe(site.ToString());
         using var fromFirst = await first.GetAsync(new Uri($"{Root}/{Id(own)}", UriKind.Relative), Token);
         (await CodeAsync(fromFirst)).ShouldBe("FCMS1585");
+    }
+
+    // A deleted site takes its library with it: its assets, variants, folders and presets, rows and files. An asset whose file
+    // cannot be deleted stays as a deleted row, which the cleanup purges, and another site keeps its own. The handler may run
+    // again for the same event and goes on with what is left.
+    [Fact]
+    public async Task DeletingASiteRemovesItsLibraryAndItsFiles()
+    {
+        using var first = await fixture.AdminAsync();
+        var site = await MediaLibraryTesting.CreateSiteAsync(fixture);
+        using var second = await MediaLibraryTesting.InSiteAsync(fixture, site);
+        var folder = await FolderAsync(second, Unique("gone"));
+        var resized = await Transforms.UploadAsync(second, Transforms.Bands(8, 8));
+        await UploadedAsync(second, folder, ("a.png", Files.Png(2, 2)));
+        var stuck = Id((await UploadedAsync(second, null, ("b.png", Files.Png(2, 2)))).Single()!);
+        var kept = Id((await UploadedAsync(first, null, ("c.png", Files.Png(2, 2)))).Single()!);
+        using (var put = await second.PutAsJsonAsync(new Uri($"{Root}/presets/{Unique("thumb")}", UriKind.Relative), new { width = 10, height = 10 }, Token))
+        {
+            put.StatusCode.ShouldBe(HttpStatusCode.OK, await put.Content.ReadAsStringAsync(Token));
+        }
+
+        using (var anonymous = fixture.Host.CreateClient())
+        {
+            anonymous.DefaultRequestHeaders.Add("X-Cms-Site", site.ToString());
+            using var variant = await Transforms.FetchAsync(anonymous, await Transforms.UrlAsync(fixture, resized, new MediaImageOptions { Width = 4 }));
+            variant.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        await using (var scope = fixture.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+            (await database.Set<Variant>().AsNoTracking().CountAsync(variant => variant.AssetId == resized.Id, Token)).ShouldBe(1);
+            await database.Set<Asset>().Where(asset => asset.Id == stuck).ExecuteUpdateAsync(set => set.SetProperty(asset => asset.StorageProvider, "elsewhere"), Token);
+        }
+
+        await fixture.Host.As(await fixture.Host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).RunAsync<ISiteAdministration, bool>(async sites =>
+        {
+            await sites.DeleteAsync(new SiteId(site), Token);
+            return true;
+        });
+        await fixture.DrainOutboxAsync();
+
+        await using (var scope = fixture.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+            var left = await database.Set<Asset>().AsNoTracking().Where(asset => asset.SiteId == site).ToListAsync(Token);
+            left.Select(asset => asset.Id).ShouldBe([stuck]);
+            left.Single().DeletedAt.ShouldNotBeNull();
+            (await database.Set<Variant>().AsNoTracking().AnyAsync(variant => variant.AssetId == resized.Id, Token)).ShouldBeFalse();
+            (await database.Set<Folder>().AsNoTracking().AnyAsync(item => item.SiteId == site, Token)).ShouldBeFalse();
+            (await database.Set<Preset>().AsNoTracking().AnyAsync(preset => preset.SiteId == site, Token)).ShouldBeFalse();
+            (await database.Set<Asset>().AsNoTracking().SingleAsync(asset => asset.Id == kept, Token)).DeletedAt.ShouldBeNull();
+
+            await ActivatorUtilities.CreateInstance<DeletedSiteMedia>(scope.ServiceProvider).HandleAsync(new SiteDeletedEvent(site, "gone"), new EventDelivery(Guid.CreateVersion7(), 2), Token);
+            (await database.Set<Asset>().AsNoTracking().Where(asset => asset.SiteId == site).Select(asset => asset.Id).ToListAsync(Token)).ShouldBe([stuck]);
+        }
+
+        Directory.EnumerateFiles(Path.Combine(fixture.StorageRoot, site.ToString("N")), "*", SearchOption.AllDirectories).ShouldHaveSingleItem().ShouldContain(stuck.ToString("N"));
+        Directory.EnumerateFiles(Path.Combine(fixture.StorageRoot, DefaultSite.Id.ToString("N"), kept.ToString("N"))).ShouldNotBeEmpty();
     }
 }
 

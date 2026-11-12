@@ -1,7 +1,9 @@
 using FluentCMS.Activity;
 using FluentCMS.Content;
+using FluentCMS.Events;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
 namespace FluentCMS.Plugins.Mcp;
@@ -22,6 +24,7 @@ internal static class McpSiteSetup
             .AddMigrations(typeof(McpPlugin).Assembly)
             .AddMcpResources<McpSiteResources>()
             .AddMcpPrompts<McpStoredPromptProvider>()
+            .AddOutboxHandler<SiteDeletedEvent, DeletedSiteMcpData>("mcp.cleanup.site.deleted")
             .AddErrorCode(McpErrorCodes.InvalidInstruction, 422, "Invalid agent instructions")
             .AddErrorCode(McpErrorCodes.InstructionTypeNotFound, 404, "Content type not found")
             .AddErrorCode(McpErrorCodes.InstructionNotFound, 404, "Agent instructions not found")
@@ -68,4 +71,18 @@ internal static class McpSiteSetup
         TargetId = id.ToString("D"),
         TargetLabel = name,
     };
+}
+
+// The guidelines, instructions and stored prompts of a site go with it, through the outbox, so a failure is tried again.
+internal sealed class DeletedSiteMcpData(McpInstructionService instructions, McpPromptService prompts, ILogger<DeletedSiteMcpData> logger) : IOutboxEventHandler<SiteDeletedEvent>
+{
+    public async ValueTask HandleAsync(SiteDeletedEvent message, EventDelivery delivery, CancellationToken cancellationToken)
+    {
+        var removedInstructions = await instructions.RemoveAllAsync(message.SiteId, cancellationToken);
+        var removedPrompts = await prompts.RemoveAllAsync(message.SiteId, cancellationToken);
+        if (removedInstructions + removedPrompts > 0)
+        {
+            McpLog.SiteRemoved(logger, removedInstructions, removedPrompts, message.SiteId);
+        }
+    }
 }
