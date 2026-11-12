@@ -75,7 +75,7 @@ jobs:
           - group: units
             projects: tests/FluentCMS.Sdk.Tests tests/FluentCMS.Core.Tests tests/FluentCMS.Architecture.Tests tests/FluentCMS.Generators.Tests
           - group: integration
-            projects: tests/FluentCMS.Core.IntegrationTests tests/FluentCMS.Cli.Tests
+            projects: tests/FluentCMS.Core.IntegrationTests tests/FluentCMS.Cli.Tests tests/FluentCMS.Client.Tests
           - group: plugins
             projects: tests/FluentCMS.Plugins.Tests tests/FluentCMS.Plugins.Media.Tests tests/FluentCMS.Plugins.Webhooks.Tests tests/FluentCMS.Plugins.Mcp.Tests tests/FluentCMS.Plugins.GraphQL.Tests tests/FluentCMS.Plugins.MultiSite.Tests tests/FluentCMS.Plugins.AiAssist.Tests tests/FluentCMS.Host.Tests
     steps:
@@ -109,10 +109,40 @@ jobs:
           path: artifacts/test-results
           retention-days: 14
 
+  # @fluentcms/client: its build, and its tests, which compile the module `fluentcms generate typescript` writes for the
+  # Blog sample in strict mode. Node is the version the markdown lint action runs on.
+  typescript:
+    name: TypeScript client
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: clients/typescript
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: clients/typescript/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+  # The full suite of the nightly and manual runs takes more than 20 minutes with the client and generate tests.
   build-test-windows:
     name: Build and test (windows-latest)
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       # Pull requests and pushes to main run only the fast tests on Windows, because the Linux shards
       # already run the full suite. Only the nightly and manual runs run the full suite on Windows.
@@ -234,6 +264,21 @@ jobs:
       - name: Pack
         run: dotnet pack -c Release --no-build -o artifacts/packages
 
+      # Packed beside the NuGet packages and, like them, not published.
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: clients/typescript/package-lock.json
+
+      - name: Pack the TypeScript client
+        working-directory: clients/typescript
+        run: |
+          npm ci
+          npm run build
+          npm pack --pack-destination ../../artifacts/packages
+
       - name: Upload packages
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
@@ -299,7 +344,7 @@ jobs:
   # Nobody watches the nightly run, which is the only one that runs the full Windows suite, so a failure opens an issue.
   nightly-report:
     name: Report nightly failure
-    needs: [markdown, build, test, build-test-windows, data-tests, pack, templates]
+    needs: [markdown, build, test, typescript, build-test-windows, data-tests, pack, templates]
     if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 5

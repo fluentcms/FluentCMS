@@ -22,6 +22,8 @@ How to read it: sections 1 to 3 set scope and architecture; sections 4 to 6 desc
 
 The generated C# and TypeScript types are produced from the backend's schema snapshot (4.2). The CLI command that produces them is in scope, with minimal `FluentCMS.Client` and `@fluentcms/client` packages for the generated code to compile against (10.3, P9). The rest of the client packages, and publishing them, are tracked with the frontend work.
 
+**Clients as built (B-93, [#3016](https://github.com/fluentcms/FluentCMS/issues/3016)).** `FluentCMS.Client` and `@fluentcms/client` hold the Delivery reads (list, by id, by a unique field, a singleton), the content group of the Management API (create, update, delete, publish, unpublish), the typed filters, sort, paging, `populate`, locale and status, and a problem with its `FCMS` code. The users, roles, keys and settings endpoints are not in them. CI packs both and publishes neither (6.1).
+
 ### 1.2 Decisions this document is bound by
 
 From [scope and locked decisions](specification/00-scope-tiers-locked-decisions.md) and the [decisions log](specification/12-decisions-log.md). Numbers are decision numbers in the log.
@@ -143,6 +145,8 @@ Proposed NuGet packages, all `FluentCMS.*`, first release 1.0.0. A host adds two
 
 Not a package: `FluentCMS.Host`, the reference host application and Docker image. Not a NuGet package: `@fluentcms/client` in `clients/typescript`, the same set as `FluentCMS.Client` for TypeScript.
 
+**Client packages as built (B-93).** `FluentCMS.Client` references no FluentCMS package and no package at all, which an architecture test holds for its project and its assembly. `@fluentcms/client` is ES modules over `fetch` with no runtime dependency; `typescript` 6.0.3, pinned in its `package.json`, is its only development dependency. Both are packed by the `pack` job of CI, `dotnet pack` and `npm pack`, into the same artifact, and neither is published.
+
 A host's `Program.cs`:
 
 ```csharp
@@ -201,6 +205,9 @@ FluentCMS/
 |   +-- FluentCMS.Core.IntegrationTests/   HTTP tests through FluentCMS.Testing
 |   +-- FluentCMS.Data.Tests/              provider matrix: PostgreSQL, SQLite, SQL Server
 |   +-- FluentCMS.Architecture.Tests/      layering rules
+|   +-- FluentCMS.Cli.Tests/               the tool, its hand-over to a host and `generate`
+|   +-- FluentCMS.Client.Tests/            the C# client on the Blog sample; Blog/ is what
+|                                          `generate csharp` writes for it
 |   +-- FluentCMS.Plugins.*.Tests/
 +-- templates/
 |   +-- fluentcms/                         API host template
@@ -208,7 +215,9 @@ FluentCMS/
 +-- samples/
 |   +-- Blog/                              sample host used by docs and tests
 +-- clients/
-|   +-- typescript/                        @fluentcms/client, minimal TypeScript client
+|   +-- filter-cases.json                  the typed filters both clients must write the same way
+|   +-- typescript/                        @fluentcms/client, minimal TypeScript client; test/blog is the
+|                                          module `generate typescript` writes for the Blog sample
 +-- admin/                                 reserved: Blazor admin
 +-- starters/                              reserved: frontend starters
 +-- Directory.Build.props                  TFM, nullable, warnings as errors, analyzers, package metadata
@@ -1541,6 +1550,13 @@ Codes `FCMS3350` to `FCMS3359` are the host's and the tool's (an unknown role, s
 
 **Transfer and backup commands as built (B-101, [#3024](https://github.com/fluentcms/FluentCMS/issues/3024)).** `export` and `import` take `InstanceOptions` and `ProjectOptions`: with `--url` the tool calls the transfer endpoints itself (`TransferClient`, on the client the tool makes for an instance), and without it hands the command to the host with its paths made absolute (4.14). `backup` and `restore` are project commands only (4.15). The test that every command of the host is in the tool with the same options leaves `--url` and `--token` out of the comparison, as they are the tool's own. Tests give `CommandLine.RunAsync` a client of a test server for the instance. The guide is `docs/backups.md`.
 
+**Generate as built (B-93, [#3016](https://github.com/fluentcms/FluentCMS/issues/3016)).** `generate typescript --output <dir>`, `generate csharp --output <dir> --namespace <name>` and `generate openapi --output <file>` run in the tool. The first two read the schema snapshot of 4.2: with `--schema <file>` from a file, with `--url` from `GET /api/management/v1/schema/snapshot` through `InstanceClient`, as `schema snapshot --url` reads it, and in project mode from the host's `schema snapshot --output`, as `schema diff` reads it, without the database. The text is read back with `SchemaBuilder` over `UncheckedFieldTypes`, which stands in for a field type of a plugin, and the files depend on that text alone, so the three sources give the same bytes, which a test holds for the Blog sample. `--schema` and `--url` together are `FCMS3377` (exit code 2), and a text that is not a snapshot is `FCMS3370`; an instance that refuses the key or cannot be reached is `FCMS3330` or `FCMS3329`, as for the schema tools. `generate openapi` saves `/openapi/v1.json` of an instance, or in project mode the document `IOpenApiDocumentProvider` builds in the host without listening, which the hidden host command `openapi document --output <file>` writes (`FCMS3379` when the host has none). A hidden command is left out of the host's usage and has no command of its name in the tool.
+
+- TypeScript: one module, `fluentcms.ts`, which imports `@fluentcms/client` as the namespace `fluentcms`, so no name of the schema clashes with an export: an interface per content type (extending `Entry`, with the system fields), component (`SeoComponent`) and block type (`HeroBlock`, with `type` as its literal and an optional `id`); a blocks field is the union of its block types, a relation `Relation<Author, "author">`, the reference or the populated entry, a media field `MediaReference`, rich text `RichText`, a select the union of its options, and a localized type has `fallbacks` with its localizable fields. The builders are those the C# emitter gives, by name, with their members in camel case (`ArticleFields.sections.hero.heading.eq("x")`), and `createClient(options)` binds each content type to a collection or singleton client.
+- C#: a class per content type (`[ContentType("article")]`, deriving from `Entry`), component (`SeoComponent`) and block type (`HeroBlock`, deriving from the generated `Block`, which names its derived types for `type` and reads one it does not know as itself), with `JsonPropertyName` on every property; a relation is `Relation<Author>`, a media field `MediaReference`, rich text and JSON `JsonElement`, and a localized type has `{Name}Fallbacks`. The builders are those of the emitter of B-95 over the field types of `FluentCMS.Client`, so that `ArticleFields.Title.Contains("x")` reads the same in a host and in a client. Every file carries the schema hash in its header and is written only when it changed; a file with the header of an earlier run that is no longer generated, such as the class of a removed type, is removed.
+- `--check` writes nothing, and exits 1 with `FCMS3372`, naming each file that differs, is missing or is no longer generated, when the files on disk are not what the schema gives. A field type without a generated type is JSON or `unknown` with `FCMS3375`, and a name that gives no identifier or is taken gets nothing, with `FCMS3376`; both are warnings and the command exits 0. Other codes: `FCMS3371` for a request for the OpenAPI document of an instance that fails (with the status and the problem's code, never the key), `FCMS3373` for files that cannot be written, `FCMS3374` for a namespace that is not one and `FCMS3378` for a host that wrote no snapshot or document. Codes `FCMS3370` to `FCMS3379` of the range `FCMS3370` to `FCMS3389`.
+- The clients: `FluentCmsClient` over the caller's `HttpClient`, which carries the key or the bearer token, and `FluentCmsClient` of `@fluentcms/client` over `fetch` with the headers given; an answer that is not a success throws `FluentCmsProblemException` or `FluentCmsProblem` with the status, `code`, `title`, `detail`, `errors` and `traceId` of the problem. A write leaves out the system fields and sends a relation or a media field as its id, and an update sends `If-Match` with the version read. Both write a query as the bracket grammar of 4.4 in the order and with the escaping of the server's writer, and are held to one list of filters and the query strings they give, `clients/filter-cases.json`, whose cases on the Blog sample's fields a test sends to its Delivery API. A moment is written in UTC with `Z` and no trailing zeros in its fraction, which a JavaScript `Date` and a `DateTimeOffset` both give.
+
 ### 6.2 Templates
 
 `fluentcms`: an API host with `Program.cs` (with the command entry point of 6.1), `appsettings.json`, a sample `Article` type, the design-time factory and an empty `Migrations/` folder, a tool manifest that pins `fluentcms`, references to the generator and the analyzers, a Dockerfile and a README; options for provider and sample content. It ships no generated migration, since a migration set belongs to one provider. `fluentcms-plugin`: a server project with manifest, settings, a hook, an endpoint, a migration and a test project on `FluentCMS.Testing`; the admin half is added when the admin exists.
@@ -1578,6 +1594,8 @@ The emitter is shared source in `src/FluentCMS.Generators/Emit`: `FieldsEmitter.
 **Left for after 1.0 (10.3, P12).** The reflection-free `ContentDocument` mapper waits for a benchmark that shows the mapper of the content service as a cost, and the rule for obsolete SDK members for the first member that is obsolete.
 
 **Client generation (10.3, P9).** Q15 decided an own TypeScript emitter and left the C# generator to B-93. Both are own emitters that read the schema snapshot, not the OpenAPI document: the snapshot has what the types need and exists without a running instance. The C# emitter is shared source with the source generator, so the builders read the same in a host and in a client. The generated code compiles against `FluentCMS.Client` and `@fluentcms/client` (2.4), which M6 builds with only what generated code needs and does not publish. No MSBuild target runs `generate` on build (10.3, P14).
+
+**Client generation as built (B-93).** The tool links `Emit/*.cs` and `Snapshot/SchemaDescriptions.cs` of `FluentCMS.Generators` rather than referencing the analyzer, and calls the emitter with the namespace of `FluentCMS.Client`, whose field types have the members of the SDK's, so the C# builders of a client are the text a host gets with the field types' namespace changed, as a test holds for the Blog sample. The TypeScript emitter is the tool's own and gives the same builders: none for a type whose name gives no class, a block type with a hyphen or a repeated component. The Blog code that the clients' tests compile is checked in, under `tests/FluentCMS.Client.Tests/Blog` and `clients/typescript/test/blog`, and a test of the tool runs `--check` on both, so it is what the tool writes; the C# compiles on its own against `FluentCMS.Client` with every warning an error, and the TypeScript with `tsc` in strict mode.
 
 ## 7. Backend feature inventory
 

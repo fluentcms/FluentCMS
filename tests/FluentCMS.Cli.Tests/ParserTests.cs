@@ -55,6 +55,11 @@ public sealed partial class ParserTests : IDisposable
     [InlineData("backup")]
     [InlineData("restore")]
     [InlineData("restore", "one.zip", "two.zip")]
+    [InlineData("generate")]
+    [InlineData("generate", "csharp", "--output", "out")]
+    [InlineData("generate", "typescript")]
+    [InlineData("generate", "source")]
+    [InlineData("openapi", "document")]
     public async Task BadUsagePrintsTheHelpAndExitsWithTwo(params string[] args)
     {
         (await RunAsync(args)).ShouldBe(2);
@@ -164,12 +169,13 @@ public sealed partial class ParserTests : IDisposable
         _launcher.Arguments.ShouldBeNull();
     }
 
-    // The host reads what the tool hands on with its own parser, so the two must name the same commands and options.
+    // The host reads what the tool hands on with its own parser, so the two must name the same commands and options. A
+    // hidden command is the tool's way to read from the host, and the tool has no command of its name.
     [Fact]
     public void EveryCommandOfTheHostIsInTheToolWithTheSameOptions()
     {
         var tree = CommandLine.Tree();
-        foreach (var command in CommandRegistry.Commands)
+        foreach (var command in CommandRegistry.Commands.Where(command => !command.Hidden))
         {
             var tool = command.Name.Split(' ').Aggregate(tree, (parent, word) => parent.Subcommands.Single(child => child.Name == word));
 
@@ -180,6 +186,30 @@ public sealed partial class ParserTests : IDisposable
     }
 
     // `mcp` reaches a running instance only.
+    [Fact]
+    public void AHiddenCommandIsNotInTheToolAndTheGenerateCommandsAskTheHostWithIt()
+    {
+        var tree = CommandLine.Tree();
+        foreach (var command in CommandRegistry.Commands.Where(command => command.Hidden))
+        {
+            tree.Parse(command.Name.Split(' ')).Errors.ShouldNotBeEmpty(command.Name);
+        }
+
+        CommandRegistry.Usage.ShouldNotContain("openapi document");
+    }
+
+    [Theory]
+    [InlineData("typescript")]
+    [InlineData("openapi")]
+    public async Task GenerateInProjectModeAsksTheHostForItsSource(string language)
+    {
+        (await RunAsync("generate", language, "--output", Path.Combine(_tool.Root, "out"), "--assembly", ToolRun.HostAssembly, "--environment", "Staging")).ShouldBe(1);
+
+        _launcher.Arguments!.Take(3).ShouldBe(language == "openapi" ? ["openapi", "document", "--output"] : ["schema", "snapshot", "--output"]);
+        _launcher.Environment.ShouldBe("Staging");
+        _tool.Error.ToString().ShouldStartWith("FCMS3378: ");
+    }
+
     [Fact]
     public void EveryProjectCommandTakesTheProjectOptions()
     {

@@ -22,6 +22,10 @@ internal abstract class HostCommand
 
     public virtual IReadOnlyList<CommandOption> Options => [];
 
+    // A command the tool runs to read what it needs from the host, which the usage leaves out and the tool has no command
+    // of the same name for.
+    public virtual bool Hidden => false;
+
     public abstract Task<int> RunAsync(CommandContext context, CancellationToken cancellationToken);
 
     public string Usage

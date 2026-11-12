@@ -12,6 +12,8 @@
     <!-- An instance on a test server for the commands that reach a running instance, and the MCP plugin, which serves /mcp to the proxy. -->
     <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj" />
+    <!-- The Blog sample is the instance and the host project that `generate` reads. -->
+    <ProjectReference Include="../../samples/Blog/Blog.csproj" />
   </ItemGroup>
 
   <!-- Built first and never loaded: the tests start it as the tool does, from its own output folder. -->
@@ -27,6 +29,10 @@
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>HostAssembly</_Parameter1>
       <_Parameter2>$(MSBuildThisFileDirectory)../FluentCMS.Cli.Tests.Host/bin/$(Configuration)/$(TargetFramework)/FluentCMS.Cli.Tests.Host.dll</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>RepositoryRoot</_Parameter1>
+      <_Parameter2>$(MSBuildThisFileDirectory)../..</_Parameter2>
     </AssemblyAttribute>
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
       <_Parameter1>Configuration</_Parameter1>
