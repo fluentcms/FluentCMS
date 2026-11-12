@@ -14,6 +14,7 @@ internal static partial class MemberLog
     public const int UnverifiedMembersRemovedId = 9073;
     public const int CleanupScheduleFailedId = 9074;
     public const int DirectLoginRefusedId = 9075;
+    public const int MailTooLateId = 9076;
     public const int ProviderMemberCreatedId = 9090;
     public const int ProviderFailureId = 9091;
     public const int ProviderSignInRefusedId = 9092;
@@ -26,8 +27,11 @@ internal static partial class MemberLog
     [LoggerMessage(EventId = NoMailLinkId, EventName = "MemberMailLinkUnavailable", Level = LogLevel.Error, Message = "FCMS3173: no mail was sent to member {MemberId}, because its link has nowhere to go. Set FluentCms:PublicOrigin, or the FluentCms:Members:Links templates of the front end; a link is never built from a request.")]
     public static partial void NoMailLink(ILogger logger, Guid memberId);
 
-    [LoggerMessage(EventId = MailHeldBackId, EventName = "MemberMailHeldBack", Level = LogLevel.Information, Message = "Held back a mail to member {MemberId}: its address got one less than a minute ago.")]
+    [LoggerMessage(EventId = MailHeldBackId, EventName = "MemberMailHeldBack", Level = LogLevel.Information, Message = "Held back a mail to member {MemberId}: its address got one of the same kind less than a minute ago, or the lock of the limit was not free.")]
     public static partial void MailHeldBack(ILogger logger, Guid memberId);
+
+    [LoggerMessage(EventId = MailTooLateId, EventName = "MemberMailTooLate", Level = LogLevel.Information, Message = "Sent no link to member {MemberId}: it has not verified its address for as long as an unverified member is kept, so the link would expire as it is sent.")]
+    public static partial void MailTooLate(ILogger logger, Guid memberId);
 
     [LoggerMessage(EventId = UnverifiedMembersRemovedId, EventName = "UnverifiedMembersRemoved", Level = LogLevel.Information, Message = "Removed {Count} member(s) that had not verified their address since {Threshold}.")]
     public static partial void UnverifiedMembersRemoved(ILogger logger, int count, DateTimeOffset threshold);

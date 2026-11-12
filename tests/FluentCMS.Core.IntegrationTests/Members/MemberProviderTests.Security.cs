@@ -317,6 +317,7 @@ public sealed partial class MemberProviderTests
         using var client = host.CreateSecureClient();
         host.Time.Advance(MemberMailLimiter.Window + TimeSpan.FromSeconds(1));
         (await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "resend-verification", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        await AccountMailJobs.RunAsync(host);
         emails.Sent.Count(mail => mail.To == address && mail.TextBody.Contains("Someone signed in with Microsoft", StringComparison.Ordinal)).ShouldBe(2);
 
         host.Time.Advance(MemberMailLimiter.Window + TimeSpan.FromSeconds(1));
@@ -332,6 +333,7 @@ public sealed partial class MemberProviderTests
         else
         {
             (await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "forgot-password", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+            await AccountMailJobs.RunAsync(host);
             (await LoginsAsync(host, member.Id)).ShouldHaveSingleItem();
         }
 

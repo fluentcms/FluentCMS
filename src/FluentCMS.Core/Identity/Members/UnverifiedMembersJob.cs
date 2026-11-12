@@ -19,6 +19,10 @@ internal sealed class UnverifiedMembersJob(SystemDbContext context, MemberOption
 
     public const string Schedule = "45 3 * * *";
 
+    // From when the job may remove a member, which is when a link sent to it stops working; null for a verified member.
+    public static DateTimeOffset? RemovableAt(CmsMember member, MemberOptions options) =>
+        member.EmailConfirmed ? null : member.CreatedAt + options.UnverifiedMemberLifetime;
+
     public async Task ExecuteAsync(UnverifiedMembersPayload payload, JobContext jobContext)
     {
         ArgumentNullException.ThrowIfNull(jobContext);

@@ -201,6 +201,7 @@ public sealed partial class HostedPagesTests : IClassFixture<HostedPagesFixture>
             (await sent.Content.ReadAsStringAsync(Token)).ShouldContain("is on its way");
         }
 
+        (await AccountMailJobs.RunAsync(_host)).ShouldBe(1);
         var link = _emails.LinkTo(editor.Email);
         link.AbsolutePath.ShouldBe("/account/reset-password");
         QueryHelpers.ParseQuery(link.Query)["user"].ToString().ShouldBe(editor.Id.ToString("D"));
@@ -236,7 +237,50 @@ public sealed partial class HostedPagesTests : IClassFixture<HostedPagesFixture>
 
         sent.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await sent.Content.ReadAsStringAsync(Token)).ShouldContain("is on its way");
+        (await AccountMailJobs.RunAsync(_host)).ShouldBe(1);
         _emails.Count.ShouldBe(before);
+    }
+
+    [Fact]
+    public async Task ForgotPasswordDoesTheSameWorkForAKnownAndAnUnknownAddressAndLeavesTheMailToAJob()
+    {
+        var editor = await CreateUserAsync(_host);
+        using var browser = new HostedPagesBrowser(_host);
+        var before = _emails.Count;
+
+        foreach (var address in (string[])[editor.Email, $"{Guid.NewGuid():N}@example.com"])
+        {
+            var pending = await AccountMailJobs.PendingAsync(_host, PasswordResetMailJob.Type);
+            using var sent = await browser.SubmitAsync("/account/forgot-password", new Dictionary<string, string> { ["Input.Email"] = address });
+            sent.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await AccountMailJobs.PendingAsync(_host, PasswordResetMailJob.Type)).ShouldBe(pending + 1);
+        }
+
+        _emails.Count.ShouldBe(before);
+        (await AccountMailJobs.RunAsync(_host)).ShouldBe(2);
+        _emails.Count.ShouldBe(before + 1);
+        _emails.LinkTo(editor.Email).AbsolutePath.ShouldBe("/account/reset-password");
+    }
+
+    [Fact]
+    public async Task ForgotPasswordAnswersBeforeTheMailGoes()
+    {
+        var emails = new BlockingEmailSender();
+        await using var host = NewHost(new CapturedEmails())
+            .WithServices(services => services.AddSingleton<IEmailSender>(emails))
+            .Configure(cms => cms.Jobs.Options.Queues[AccountMail.Queue] = 1);
+        var editor = await CreateUserAsync(host);
+        using var browser = new HostedPagesBrowser(host);
+
+        // The worker of the mail queue sends while the page is already back; were the page waiting, it never came.
+        using (var sent = await browser.SubmitAsync("/account/forgot-password", new Dictionary<string, string> { ["Input.Email"] = editor.Email }).WaitAsync(TimeSpan.FromSeconds(30), Token))
+        {
+            sent.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        (await emails.Entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Token)).To.ShouldBe(editor.Email);
+        emails.Sent.ShouldBe(0);
+        emails.Release();
     }
 
     [Fact]
@@ -520,12 +564,14 @@ public sealed partial class HostedPagesTests : IClassFixture<HostedPagesFixture>
 
     private static readonly Uri OAuthBase = HostedPagesBrowser.OAuthBase;
 
-    // No worker drains the outbox: a test does, so that the activity rows are there when it reads them.
+    // No worker drains the outbox or sends the reset mail: a test does, so that the activity rows and the mail are there
+    // when it reads them.
     internal static FluentCmsTestHost NewHost(CapturedEmails emails) => new FluentCmsTestHost()
         .WithServices(services => services.AddSingleton<IEmailSender>(emails))
         .Configure(cms =>
         {
             cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
+            AccountMailJobs.RunByTest(cms);
             cms.Clients.Applications[ThirdPartyClientId] = new ClientRegistration
             {
                 DisplayName = "Agent Tool",

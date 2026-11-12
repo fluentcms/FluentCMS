@@ -249,6 +249,7 @@ public sealed partial class HostedPagesTests
         (await browser.PageAsync("/cms/account/logout")).ShouldContain("action=\"/cms/connect/logout\"");
 
         using var sent = await browser.SubmitAsync("/cms/account/forgot-password", new Dictionary<string, string> { ["Input.Email"] = editor.Email });
+        await AccountMailJobs.RunAsync(host);
         emails.LinkTo(editor.Email).AbsolutePath.ShouldBe("/cms/account/reset-password");
     }
 

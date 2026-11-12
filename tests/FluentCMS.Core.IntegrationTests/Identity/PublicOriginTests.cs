@@ -36,6 +36,7 @@ public sealed partial class PublicOriginTests
         using var sent = await browser.SubmitAsync("/account/forgot-password", new Dictionary<string, string> { ["Input.Email"] = editor.Email });
 
         sent.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await AccountMailJobs.RunAsync(host);
         emails.LinkTo(editor.Email).GetLeftPart(UriPartial.Path).ShouldBe($"{Origin}/account/reset-password");
     }
 
@@ -50,6 +51,7 @@ public sealed partial class PublicOriginTests
         using var sent = await browser.SubmitAsync("/account/forgot-password", new Dictionary<string, string> { ["Input.Email"] = editor.Email });
 
         sent.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await AccountMailJobs.RunAsync(host);
         emails.LinkTo(editor.Email).GetLeftPart(UriPartial.Path).ShouldBe("https://cms.other.example/account/reset-password");
     }
 
@@ -68,6 +70,7 @@ public sealed partial class PublicOriginTests
         using var sent = await browser.SubmitAsync("/cms/account/forgot-password", new Dictionary<string, string> { ["Input.Email"] = editor.Email });
 
         sent.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await AccountMailJobs.RunAsync(host);
         emails.LinkTo(editor.Email).GetLeftPart(UriPartial.Path).ShouldBe($"{Origin}/cms/account/reset-password");
     }
 
@@ -167,7 +170,7 @@ public sealed partial class PublicOriginTests
 
     private static FluentCmsTestHost NewHost(Emails emails, Action<FluentCMS.Core.DependencyInjection.FluentCmsBuilder>? configure = null)
     {
-        var host = new FluentCmsTestHost().WithServices(services => services.AddSingleton<IEmailSender>(emails));
+        var host = new FluentCmsTestHost().WithServices(services => services.AddSingleton<IEmailSender>(emails)).Configure(AccountMailJobs.RunByTest);
         return configure is null ? host : host.Configure(configure);
     }
 

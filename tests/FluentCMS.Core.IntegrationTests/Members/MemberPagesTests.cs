@@ -342,6 +342,10 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
         Strip(known).ShouldBe(Strip(unknown));
         known.ShouldContain("an email with a link to choose a new password is on its way");
 
+        // The mail goes out from the job each request enqueued, the unknown address's as well.
+        fixture.MailsTo(address).ShouldBe(1);
+        (await AccountMailJobs.RunAsync(fixture.Host)).ShouldBe(2);
+        fixture.MailsTo(address).ShouldBe(2);
         var link = fixture.Emails.LinkTo(address);
         link.AbsolutePath.ShouldBe("/account/members/reset-password");
         using (var reset = await browser.SubmitAsync(link.PathAndQuery, new Dictionary<string, string>
