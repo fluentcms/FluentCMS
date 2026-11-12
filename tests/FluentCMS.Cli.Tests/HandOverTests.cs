@@ -106,6 +106,25 @@ public sealed class HandOverTests : IDisposable
         _tool.Error.ToString().ShouldContain("FCMS3304: this host has no stream 'nothing'; its streams are system, sample, content");
     }
 
+    // The relative database file of the configuration is the project directory's, in both hosts.
+    [Fact]
+    public async Task ABackupOfTheHostRestoresIntoTheHostOfAnotherProjectDirectoryOnce()
+    {
+        (await _tool.HostCommandAsync("migrate")).ShouldBe(0, _tool.Error.ToString());
+        var archive = Path.Combine(_tool.Root, "backup.zip");
+
+        (await _tool.HostCommandAsync("backup", "--output", archive)).ShouldBe(0, _tool.Error.ToString());
+        _tool.Output.ToString().ShouldStartWith($"Wrote {archive} with the database");
+
+        using var other = new ToolRun();
+        (await other.HostCommandAsync("restore", archive)).ShouldBe(0, other.Error.ToString());
+        other.Exists("default.db").ShouldBeTrue();
+        other.Output.ToString().ShouldEndWith($"No migration is pending.{Environment.NewLine}");
+
+        (await other.HostCommandAsync("restore", archive)).ShouldBe(1);
+        other.Error.ToString().ShouldContain($"{Environment.NewLine}FCMS3244: ");
+    }
+
     [Fact]
     public async Task TheToolHoldsNoReferenceToTheHostsTypes()
     {
