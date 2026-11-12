@@ -9,6 +9,7 @@ namespace FluentCMS.Core.Identity.Members;
 // container's IdentityOptions are. It adds deactivation, and it spends a verification link when it is used.
 internal sealed class MemberManager : UserManager<CmsMember>
 {
+    private readonly MemberOptions _members;
     private readonly TimeProvider _time;
 
     public MemberManager(
@@ -19,9 +20,11 @@ internal sealed class MemberManager : UserManager<CmsMember>
         IdentityErrorDescriber errors,
         IServiceProvider services,
         ILogger<UserManager<CmsMember>> logger,
+        MemberOptions members,
         TimeProvider time)
         : base(store, options, passwordHasher, [new MemberValidator()], [new PasswordValidator<CmsMember>(errors)], keyNormalizer, errors, services, logger)
     {
+        _members = members;
         _time = time;
     }
 
@@ -70,6 +73,12 @@ internal sealed class MemberManager : UserManager<CmsMember>
     public override async Task<IdentityResult> ResetPasswordAsync(CmsMember user, string token, string newPassword)
     {
         ArgumentNullException.ThrowIfNull(user);
+
+        // Checked here, since the token provider sees the address as verified already.
+        if (!MemberTokenLifetime.Open(user, _members, _time))
+        {
+            return IdentityResult.Failed(ErrorDescriber.InvalidToken());
+        }
 
         var verified = user.EmailConfirmed;
         user.EmailConfirmed = true;

@@ -133,10 +133,10 @@ internal enum MemberMailSlot
 }
 
 // One mail a minute to an address in each slot. It is kept in the distributed cache, which every instance sees once the
-// host registers a shared one, and decided under one distributed lock, so that of two instances that ask at once only one
-// sends. The key holds a hash of the address, never the address, and the entry expires with the window. It is asked only
+// host registers a shared one, and then decided under one distributed lock, so that of two instances that ask at once only
+// one sends. The key holds a hash of the address, never the address, and the entry expires with the window. It is asked only
 // when a mail is about to go, so an address that gets none holds no place here.
-internal sealed class MemberMailLimiter(IDistributedCache cache, IDistributedLock locks, TimeProvider time)
+internal sealed class MemberMailLimiter(IDistributedCache cache, IDistributedLock locks, TimeProvider time) : IDisposable
 {
     public const string LockName = "members.mail_limit";
 
@@ -144,16 +144,38 @@ internal sealed class MemberMailLimiter(IDistributedCache cache, IDistributedLoc
 
     private static readonly TimeSpan LockWait = TimeSpan.FromSeconds(10);
 
+    private readonly SemaphoreSlim _local = new(1, 1);
+
+    public void Dispose() => _local.Dispose();
+
     // The value is the time of the last mail, read against the clock of the instance, so a cache that keeps an entry a
     // little longer than asked holds nothing back for longer.
     public async Task<bool> TryAcquireAsync(string address, MemberMailSlot slot, CancellationToken cancellationToken)
     {
-        await using var held = await locks.TryAcquireAsync(LockName, LockWait, cancellationToken);
-        if (held is null)
+        // The default in-memory cache is the instance's own, so the instance's own gate is all it needs.
+        if (cache is MemoryDistributedCache)
         {
-            return false;
+            if (!await _local.WaitAsync(LockWait, cancellationToken))
+            {
+                return false;
+            }
+
+            try
+            {
+                return await DecideAsync(address, slot, cancellationToken);
+            }
+            finally
+            {
+                _local.Release();
+            }
         }
 
+        await using var held = await locks.TryAcquireAsync(LockName, LockWait, cancellationToken);
+        return held is not null && await DecideAsync(address, slot, cancellationToken);
+    }
+
+    private async Task<bool> DecideAsync(string address, MemberMailSlot slot, CancellationToken cancellationToken)
+    {
         var key = Key(address, slot);
         var now = time.GetUtcNow();
         if (await cache.GetAsync(key, cancellationToken) is { Length: sizeof(long) } last

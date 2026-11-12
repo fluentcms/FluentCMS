@@ -186,14 +186,30 @@ public sealed class MemberAccountTests(MemberFixture fixture) : IClassFixture<Me
         }
 
         var token = fixture.TokenOf(address);
+
+        // A reset link of the member, good for an hour, ends at the same time when less is left.
+        fixture.Host.Time.Set(removable - TimeSpan.FromMinutes(30));
+        (await fixture.MembersAsync(HttpMethod.Post, "forgot-password", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        fixture.MailsTo(address).ShouldBe(3);
+        var resetLink = fixture.Emails.LinkTo(address);
+        resetLink.AbsolutePath.ShouldBe("/account/members/reset-password");
+        lock (fixture.Emails.Sent)
+        {
+            fixture.Emails.Sent.Last(mail => mail.To == address).TextBody.ShouldContain($"expires at {removable.UtcDateTime.ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture)} UTC");
+        }
+
+        var resetToken = fixture.TokenOf(address);
         fixture.Host.Time.Set(removable);
         var late = await fixture.MembersAsync(HttpMethod.Post, "verify-email", $$"""{ "email": "{{address}}", "token": "{{token}}" }""");
         late.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
         late.Json["code"]!.GetValue<string>().ShouldBe("FCMS3166");
+        var lateReset = await fixture.MembersAsync(HttpMethod.Post, "reset-password", $$"""{ "email": "{{address}}", "token": "{{resetToken}}", "password": "{{MemberFixture.NewPassword}}" }""");
+        lateReset.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        lateReset.Json["code"]!.GetValue<string>().ShouldBe("FCMS3166");
 
         // From then on a mail would carry a link that has expired already, so none goes.
         (await fixture.MembersAsync(HttpMethod.Post, "resend-verification", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
-        fixture.MailsTo(address).ShouldBe(2);
+        fixture.MailsTo(address).ShouldBe(3);
         fixture.Logs.Entries.ShouldContain(entry => entry.EventId.Id == MemberLog.MailTooLateId);
     }
 

@@ -16,17 +16,28 @@ public sealed class MemberMailLimiterTests : IDisposable
 
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
 
-    private readonly MemoryDistributedCache _cache = new(Options.Create(new MemoryDistributedCacheOptions()));
+    private readonly SharedCache _cache = new();
     private readonly SharedLock _lock = new();
     private readonly Clock _time = new();
 
     public void Dispose() => _lock.Dispose();
 
     [Fact]
+    public async Task TheDefaultInMemoryCacheIsDecidedOnTheInstanceWithoutTheDistributedLock()
+    {
+        using var limiter = new MemberMailLimiter(new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions())), new NoLock(), _time);
+
+        var granted = await Task.WhenAll(Enumerable.Range(0, 20)
+            .Select(_ => Task.Run(() => limiter.TryAcquireAsync(Address, MemberMailSlot.Requested, Token), Token)));
+
+        granted.Count(sent => sent).ShouldBe(1);
+    }
+
+    [Fact]
     public async Task TwoInstancesAskingAtOnceSendOneMailToAnAddress()
     {
-        var first = new MemberMailLimiter(_cache, _lock, _time);
-        var second = new MemberMailLimiter(_cache, _lock, _time);
+        using var first = new MemberMailLimiter(_cache, _lock, _time);
+        using var second = new MemberMailLimiter(_cache, _lock, _time);
 
         var asked = Enumerable.Range(0, 40)
             .Select(attempt => Task.Run(() => (attempt % 2 == 0 ? first : second).TryAcquireAsync(Address, MemberMailSlot.Requested, Token), Token));
@@ -38,8 +49,8 @@ public sealed class MemberMailLimiterTests : IDisposable
     [Fact]
     public async Task WhatOneInstanceSentHoldsBackTheOtherForAMinute()
     {
-        var first = new MemberMailLimiter(_cache, _lock, _time);
-        var second = new MemberMailLimiter(_cache, _lock, _time);
+        using var first = new MemberMailLimiter(_cache, _lock, _time);
+        using var second = new MemberMailLimiter(_cache, _lock, _time);
 
         (await first.TryAcquireAsync(Address, MemberMailSlot.Notice, Token)).ShouldBeTrue();
         (await second.TryAcquireAsync(Address, MemberMailSlot.Notice, Token)).ShouldBeFalse();
@@ -55,7 +66,7 @@ public sealed class MemberMailLimiterTests : IDisposable
     [Fact]
     public async Task ANoticeDoesNotHoldBackWhatTheOwnerAskedForAndAnotherAddressIsApart()
     {
-        var limiter = new MemberMailLimiter(_cache, _lock, _time);
+        using var limiter = new MemberMailLimiter(_cache, _lock, _time);
 
         (await limiter.TryAcquireAsync(Address, MemberMailSlot.Notice, Token)).ShouldBeTrue();
         (await limiter.TryAcquireAsync(Address, MemberMailSlot.Requested, Token)).ShouldBeTrue();
@@ -66,11 +77,11 @@ public sealed class MemberMailLimiterTests : IDisposable
     [Fact]
     public async Task TheCacheHoldsAHashOfTheAddressAndNoMailGoesWithoutTheLock()
     {
-        var limiter = new MemberMailLimiter(_cache, _lock, _time);
+        using var limiter = new MemberMailLimiter(_cache, _lock, _time);
         (await limiter.TryAcquireAsync(Address, MemberMailSlot.Requested, Token)).ShouldBeTrue();
         (await _cache.GetAsync(Address, Token)).ShouldBeNull();
 
-        var unavailable = new MemberMailLimiter(_cache, new NoLock(), _time);
+        using var unavailable = new MemberMailLimiter(_cache, new NoLock(), _time);
         (await unavailable.TryAcquireAsync("NEW@EXAMPLE.COM", MemberMailSlot.Requested, Token)).ShouldBeFalse();
     }
 
@@ -81,6 +92,28 @@ public sealed class MemberMailLimiterTests : IDisposable
         public override DateTimeOffset GetUtcNow() => new(Interlocked.Read(ref _ticks), TimeSpan.Zero);
 
         public void Advance(TimeSpan by) => Interlocked.Add(ref _ticks, by.Ticks);
+    }
+
+    // A cache every limiter of the test shares, as a host's Redis is; not the in-memory default, which a limiter decides alone.
+    private sealed class SharedCache : IDistributedCache
+    {
+        private readonly MemoryDistributedCache _inner = new(Options.Create(new MemoryDistributedCacheOptions()));
+
+        public byte[]? Get(string key) => _inner.Get(key);
+
+        public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => _inner.GetAsync(key, token);
+
+        public void Set(string key, byte[] value, DistributedCacheEntryOptions options) => _inner.Set(key, value, options);
+
+        public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default) => _inner.SetAsync(key, value, options, token);
+
+        public void Refresh(string key) => _inner.Refresh(key);
+
+        public Task RefreshAsync(string key, CancellationToken token = default) => _inner.RefreshAsync(key, token);
+
+        public void Remove(string key) => _inner.Remove(key);
+
+        public Task RemoveAsync(string key, CancellationToken token = default) => _inner.RemoveAsync(key, token);
     }
 
     // One lock for every limiter of the test, as cms_lock is one for every instance.
