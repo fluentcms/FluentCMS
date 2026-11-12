@@ -61,6 +61,15 @@ public sealed class OutputCacheEvictionTests
         _bus.Published.ShouldHaveSingleItem().Tags.ShouldBe([$"site:{Site:D}"]);
     }
 
+    [Fact]
+    public async Task ADeletedSiteEvictsTheSite()
+    {
+        await _eviction.HandleAsync(new SiteDeletedEvent(Site, "main"), new EventDelivery(Guid.CreateVersion7(), 1), Token);
+
+        _store.Evicted.ShouldBe([$"site:{Site:D}"]);
+        _bus.Published.ShouldHaveSingleItem().Tags.ShouldBe([$"site:{Site:D}"]);
+    }
+
     // A plugin's Delivery group is cached with its site, and a copy is served without the plugin's per-site gate.
     [Fact]
     public async Task APluginDisabledInASiteEvictsTheSite()

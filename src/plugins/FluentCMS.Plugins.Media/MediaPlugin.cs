@@ -89,6 +89,7 @@ public sealed class MediaPlugin : IPlugin
             .AddOutboxHandler<MediaAssetMovedEvent, MediaCache>("media.cache.moved")
             .AddOutboxHandler<MediaAssetReplacedEvent, MediaCache>("media.cache.replaced")
             .AddOutboxHandler<MediaAssetDeletedEvent, MediaCache>("media.cache.deleted")
+            .AddOutboxHandler<SiteDeletedEvent, DeletedSiteMedia>("media.cleanup.site.deleted")
             .AddActivity<MediaAssetUploadedEvent>("media.uploaded", uploaded => Activity("media.uploaded", uploaded, new Dictionary<string, string?> { ["mimeType"] = uploaded.MimeType, ["size"] = uploaded.Size.ToString(System.Globalization.CultureInfo.InvariantCulture) }))
             .AddActivity<MediaAssetUpdatedEvent>("media.updated", updated => Activity("media.updated", updated, null))
             .AddActivity<MediaAssetReplacedEvent>("media.replaced", replaced => Activity("media.replaced", replaced, new Dictionary<string, string?> { ["mimeType"] = replaced.MimeType, ["size"] = replaced.Size.ToString(System.Globalization.CultureInfo.InvariantCulture) }))

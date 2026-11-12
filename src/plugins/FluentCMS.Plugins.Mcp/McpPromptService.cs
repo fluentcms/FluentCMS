@@ -101,6 +101,11 @@ internal sealed partial class McpPromptService(
         await events.PublishAsync(new McpPromptDeletedEvent(prompt.Id, prompt.Name), cancellationToken);
     }
 
+    // The stored prompts of a deleted site, for the system rather than a caller, so nothing is checked and no event is
+    // raised. A second run finds nothing.
+    public Task<int> RemoveAllAsync(Guid siteId, CancellationToken cancellationToken) =>
+        database.Set<McpPrompt>().Where(prompt => prompt.SiteId == siteId).ExecuteDeleteAsync(cancellationToken);
+
     private OperationContext Operation() =>
         operations.Current ?? throw new InvalidOperationException("The stored prompts of a site are managed inside an operation, which names the site.");
 

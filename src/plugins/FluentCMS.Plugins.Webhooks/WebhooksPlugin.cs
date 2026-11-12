@@ -38,6 +38,7 @@ public sealed class WebhooksPlugin : IPlugin
             .AddJob<WebhookDeliveryJob, WebhookAttempt>(WebhookDeliveryJob.Type)
             .AddJobQueue(WebhookDeliveryJob.Queue, services => services.GetRequiredService<IOptions<WebhooksOptions>>().Value.Workers)
             .AddJob<WebhookRetentionJob, WebhookRetentionPayload>(WebhookRetentionJob.Type, WebhookRetentionJob.AttemptTimeout)
+            .AddOutboxHandler<SiteDeletedEvent, DeletedSiteWebhooks>("webhooks.cleanup.site.deleted")
             .AddErrorCode(WebhookErrorCodes.InvalidField, 422, "Invalid webhook")
             .AddErrorCode(WebhookErrorCodes.InvalidUrl, 422, "Invalid webhook URL")
             .AddErrorCode(WebhookErrorCodes.PrivateAddress, 422, "Webhook URL is not public")
