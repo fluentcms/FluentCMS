@@ -267,6 +267,26 @@ public sealed partial class HostedPagesTests
     }
 
     [Fact]
+    public async Task ALoginKeptUnderTheProvidersNameInAnotherCaseStillSignsItsUserIn()
+    {
+        var (idp, host) = (_idp, _sso);
+        var editor = await CreateUserAsync(host);
+        var identity = FakeIdentity.Of(editor.Email);
+
+        // Linked while the provider was configured as Corp, before its name was written corp.
+        await AddLoginAsync(host, editor.Id, "Corp", identity.Subject);
+
+        using var browser = new HostedPagesBrowser(host, "10.3.2.9");
+        using var back = await SignInWithProviderAsync(browser, idp, identity);
+
+        (await ExternalLoginAsync(browser, back)).ShouldBe("/");
+        browser.HasCookie(".AspNetCore.Identity.Application").ShouldBeTrue();
+        (await LinkedUserAsync(host, Corp, identity.Subject)).Id.ShouldBe(editor.Id);
+        (await LoginsAsync(host, editor.Id)).ShouldHaveSingleItem().LoginProvider.ShouldBe("Corp");
+        (await ActivityAsync(host, "user.login_succeeded", count: 1, of: row => row.Ip == "10.3.2.9")).Single().TargetId.ShouldBe(editor.Id.ToString("D"));
+    }
+
+    [Fact]
     public async Task AnAddressTheProviderHasNotVerifiedCreatesNoUser()
     {
         var (idp, host) = (_idp, _sso);

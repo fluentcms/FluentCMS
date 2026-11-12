@@ -4,6 +4,7 @@ using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Events;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -61,6 +62,41 @@ public sealed class UserStoreTests : IDisposable
 
         (await _fixture.UsersAsync(async users => await users.GetRoleIdsAsync((await users.FindByIdAsync(user.Id.ToString("D")))!)))
             .ShouldBe([BuiltInRoles.Editor]);
+    }
+
+    // A provider of cms.Sso may be written in another case later; its logins stay its users' (#3010).
+    [Fact]
+    public async Task ALoginIsFoundUnderItsProviderInAnotherCaseAndNotTakenByAnotherUser()
+    {
+        using var fixture = new IdentityFixture(cms => cms.Sso.Providers["corp"] = new SsoProvider { Authority = "https://id.example.com", ClientId = "cms" });
+        var ann = await fixture.CreateUserAsync("ann");
+        var bob = await fixture.CreateUserAsync("bob");
+        await fixture.UsersAsync(async users =>
+        {
+            var stored = (await users.FindByIdAsync(ann.Id.ToString("D")))!;
+            Succeeded(await users.AddLoginAsync(stored, new UserLoginInfo("Corp", "ann-key", "Corp")));
+            Succeeded(await users.AddLoginAsync(stored, new UserLoginInfo("Google", "ann-key", "Google")));
+            return true;
+        });
+
+        await fixture.UsersAsync(async users =>
+        {
+            (await users.FindByLoginAsync("Corp", "ann-key")).ShouldNotBeNull().Id.ShouldBe(ann.Id);
+            (await users.FindByLoginAsync("corp", "ann-key")).ShouldNotBeNull().Id.ShouldBe(ann.Id);
+            (await users.FindByLoginAsync("CORP", "ann-key")).ShouldNotBeNull().Id.ShouldBe(ann.Id);
+            (await users.FindByLoginAsync("corp-mfa", "ann-key")).ShouldBeNull();
+
+            // A scheme that is no provider of cms.Sso is matched as it is written, as the database compares it.
+            (await users.FindByLoginAsync("Google", "ann-key")).ShouldNotBeNull().Id.ShouldBe(ann.Id);
+            if (!TestProvider.IsSqlServer)
+            {
+                (await users.FindByLoginAsync("google", "ann-key")).ShouldBeNull();
+            }
+
+            var taken = await users.AddLoginAsync((await users.FindByIdAsync(bob.Id.ToString("D")))!, new UserLoginInfo("corp", "ann-key", "Corp"));
+            taken.Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.LoginAlreadyAssociated));
+            return true;
+        });
     }
 
     [Fact]
