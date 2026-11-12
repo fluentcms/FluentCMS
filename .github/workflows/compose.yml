@@ -1,0 +1,246 @@
+name: Compose
+
+# The compose file of the reference host, src/FluentCMS.Host/compose.yaml, with a smoke test: the image, PostgreSQL, MinIO
+# and the CLI together. It runs on pushes to feature branches and when dispatched; CI calls it on pushes to main and when
+# dispatched there. Pull requests do not run it.
+on:
+  push:
+    branches: ["feature/**"]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Compose smoke test (PostgreSQL and MinIO)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # At job level: a called workflow shares the caller's workflow name, so a workflow-level group would hold CI's own.
+    concurrency:
+      group: compose-${{ github.event_name }}-${{ github.ref }}
+      cancel-in-progress: true
+    defaults:
+      run:
+        shell: bash
+        working-directory: src/FluentCMS.Host
+    env:
+      BASE: http://localhost:8080
+      BUILDKIT_PROGRESS: plain
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Refuse to start without the values of .env
+        run: |
+          refused() {
+            if docker compose up -d --no-build 2> "$RUNNER_TEMP/refusal.txt"; then
+              echo "::error::docker compose started $1"
+              exit 1
+            fi
+            cat "$RUNNER_TEMP/refusal.txt"
+            grep -q "in .env (see .env.example)" "$RUNNER_TEMP/refusal.txt"
+          }
+          refused "with no .env"
+          cp .env.example .env
+          refused "with the example's empty values"
+          rm .env
+
+      - name: Build the image
+        run: docker compose build cms
+
+      # Throwaway values in place of the example's empty ones. The override stands in for the proxy that ends TLS, which
+      # sign-in needs: the runner reaches the host through the network's gateway and forwards the scheme. It also registers
+      # a public client to sign the administrator in with.
+      - name: Write .env with throwaway values
+        run: |
+          : > .env
+          while IFS= read -r line; do
+            case "$line" in
+              FLUENTCMS_*=)
+                value=$(openssl rand -hex 10)
+                echo "::add-mask::$value"
+                echo "$line$value" >> .env
+                ;;
+              *) echo "$line" >> .env ;;
+            esac
+          done < .env.example
+          cat > "$RUNNER_TEMP/compose.ci.yaml" <<'YAML'
+          services:
+            cms:
+              environment:
+                FluentCms__ReverseProxy__ForwardedHeaders__Enabled: "true"
+                FluentCms__ReverseProxy__ForwardedHeaders__KnownNetworks__0: 172.16.0.0/12
+                FluentCms__ReverseProxy__ForwardedHeaders__KnownNetworks__1: 192.168.0.0/16
+                FluentCms__Clients__Applications__smoke__RedirectUris__0: https://localhost/signed-in
+                FluentCms__Clients__Applications__smoke__Scopes__0: openid
+                FluentCms__Clients__Applications__smoke__Scopes__1: management
+          YAML
+          echo "COMPOSE_FILE=compose.yaml:$RUNNER_TEMP/compose.ci.yaml" >> "$GITHUB_ENV"
+
+      - name: Start
+        run: docker compose up -d --no-build
+
+      - name: Wait until the host is ready
+        run: |
+          if ! timeout 240 sh -c 'until curl -fsS -4 --max-time 10 -o /dev/null "$BASE/health/ready"; do sleep 3; done'; then
+            echo "::error::The host was not ready within 240 seconds."
+            exit 1
+          fi
+
+      - name: Check that migrate and schema apply ran before the host
+        run: |
+          for step in minio-init migrate schema-apply; do
+            code=$(docker inspect -f '{{.State.ExitCode}}' "$(docker compose ps -aq "$step")")
+            [ "$code" = 0 ] || { echo "::error::$step exited with $code"; exit 1; }
+          done
+          docker compose logs --no-log-prefix migrate | tee "$RUNNER_TEMP/migrate.txt"
+          grep -q "^Applied " "$RUNNER_TEMP/migrate.txt"
+          docker compose logs --no-log-prefix schema-apply | tee "$RUNNER_TEMP/schema-apply.txt"
+          grep -q "^Applied .*the schema history records schema" "$RUNNER_TEMP/schema-apply.txt"
+          finished=$(docker inspect -f '{{.State.FinishedAt}}' "$(docker compose ps -aq schema-apply)")
+          started=$(docker inspect -f '{{.State.StartedAt}}' "$(docker compose ps -q cms)")
+          echo "schema apply finished at $finished, the host started at $started"
+          [ "$(date -d "$finished" +%s%N)" -lt "$(date -d "$started" +%s%N)" ]
+
+      - name: Make the administrator and a management key with the CLI
+        run: |
+          password="Aa1!$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          printf '%s' "$password" > "$RUNNER_TEMP/admin-password"
+          docker compose run --rm -T cms fluentcms user create --email admin@example.com --role "Super Admin" --password-stdin < "$RUNNER_TEMP/admin-password"
+          key=$(docker compose run --rm -T cms fluentcms apikey create --name ci --class management --role "Super Admin" | tr -d '\r')
+          echo "::add-mask::$key"
+          [ -n "$key" ] && [ "$(printf '%s\n' "$key" | wc -l)" = 1 ] || { echo "::error::apikey create printed more than the key"; exit 1; }
+          echo "MANAGEMENT_KEY=$key" >> "$GITHUB_ENV"
+
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          jar="$RUNNER_TEMP/cookies"; hdr="$RUNNER_TEMP/headers"; body="$RUNNER_TEMP/body"
+          : > "$jar"
+
+          # A browser behind the proxy: https is forwarded, cookies are kept by name, and redirects are followed by hand.
+          call() {
+            local args=(-H "X-Forwarded-Proto: https" -H "X-Forwarded-For: 203.0.113.10") line
+            if [ -s "$jar" ]; then args+=(-H "Cookie: $(paste -sd ';' "$jar" | sed 's/;/; /g')"); fi
+            status=$(curl -sS -4 --max-time 30 -o "$body" -D "$hdr" -w '%{http_code}' "${args[@]}" "$@")
+            while IFS= read -r line; do
+              awk -v name="${line%%=*}=" 'index($0, name) != 1' "$jar" > "$jar.new"
+              mv "$jar.new" "$jar"
+              if [ -n "${line#*=}" ]; then echo "$line" >> "$jar"; fi
+            done < <(tr -d '\r' < "$hdr" | sed -n 's/^[Ss]et-[Cc]ookie: *\([^;]*\).*/\1/p')
+            return 0
+          }
+          expect() {
+            if [ "$status" != "$1" ]; then
+              echo "::error::$2 answered $status, expected $1"
+              head -c 2000 "$body"; echo
+              exit 1
+            fi
+          }
+          location() { tr -d '\r' < "$hdr" | sed -n 's/^[Ll]ocation: *//p' | sed -E 's#^https?://[^/]+##'; }
+          json() { call -H "Content-Type: application/json" "$@"; }
+          key=(-H "Authorization: ApiKey $MANAGEMENT_KEY")
+
+          # PostgreSQL, the bucket and the Blog sample.
+          call "${key[@]}" "$BASE/api/management/v1/system/diagnostics"; expect 200 "The diagnostics"
+          [ "$(jq -r '.dataProvider.provider' "$body")" = PostgreSQL ]
+          [ "$(jq -r '.providerSlots[] | select(.slot == "FluentCMS.Media.IFileStorage") | .implementation' "$body")" = FluentCMS.Plugins.Media.S3.S3FileStorage ]
+
+          # An article created and published with the management key, and read with a Delivery key.
+          json "${key[@]}" -d '{"title":"Compose smoke test"}' "$BASE/api/management/v1/content/article"; expect 201 "Creating the article"
+          article=$(jq -r '.id' "$body")
+          call "${key[@]}" -X POST "$BASE/api/management/v1/content/article/$article/publish"; expect 200 "Publishing the article"
+          json "${key[@]}" -d '{"name":"Compose smoke reader","grants":[{"permission":"content.article.read"}]}' "$BASE/api/management/v1/roles"; expect 201 "Creating the role"
+          role=$(jq -r '.id' "$body")
+          json "${key[@]}" -d "{\"name\":\"compose-smoke\",\"class\":\"delivery\",\"roleId\":\"$role\"}" "$BASE/api/management/v1/api-keys"; expect 201 "Creating the Delivery key"
+          delivery_key=$(jq -r '.secret' "$body")
+          echo "::add-mask::$delivery_key"
+          delivery=(-H "Authorization: ApiKey $delivery_key")
+          call "${delivery[@]}" "$BASE/api/delivery/v1/article/$article"; expect 200 "Reading the article"
+          [ "$(jq -r '.title' "$body")" = "Compose smoke test" ]
+          call "${delivery[@]}" "$BASE/api/delivery/v1/article/by/slug/welcome-to-fluentcms"; expect 200 "Reading the seeded article"
+          { echo "ARTICLE_ID=$article"; echo "DELIVERY_KEY=$delivery_key"; } >> "$GITHUB_ENV"
+
+          # The administrator signs in on the hosted login page and gets a token with PKCE.
+          verifier=$(openssl rand -hex 32)
+          challenge=$(printf '%s' "$verifier" | openssl dgst -sha256 -binary | openssl base64 -A | tr '+/' '-_' | tr -d '=')
+          call -G "$BASE/connect/authorize" --data-urlencode client_id=smoke --data-urlencode response_type=code \
+            --data-urlencode redirect_uri=https://localhost/signed-in --data-urlencode "scope=openid management" \
+            --data-urlencode "code_challenge=$challenge" --data-urlencode code_challenge_method=S256 --data-urlencode state=smoke
+          expect 302 "The authorization request"
+          login=$(location)
+          [[ "$login" == /account/login* ]]
+          call "$BASE$login"; expect 200 "The login page"
+          token=$(grep -o 'name="__RequestVerificationToken"[^>]*value="[^"]*"' "$body" | sed 's/.*value="//; s/"$//')
+          call "$BASE$login" --data-urlencode "Input.UserName=admin@example.com" --data-urlencode "Input.Password@$RUNNER_TEMP/admin-password" \
+            --data-urlencode "__RequestVerificationToken=$token"
+          expect 302 "Signing in"
+          next=$(location)
+          for _ in 1 2 3 4 5 6 7 8; do
+            [[ "$next" == /signed-in* ]] && break
+            call "$BASE$next"; expect 302 "Following $next"
+            next=$(location)
+          done
+          [[ "$next" == /signed-in* ]] || { echo "::error::The sign-in did not come back to the client"; exit 1; }
+          code=$(sed -n 's/.*[?&]code=\([^&]*\).*/\1/p' <<< "$next")
+          code=$(printf '%b' "${code//%/\\x}")
+          call "$BASE/connect/token" --data-urlencode grant_type=authorization_code --data-urlencode "code=$code" \
+            --data-urlencode redirect_uri=https://localhost/signed-in --data-urlencode client_id=smoke --data-urlencode "code_verifier=$verifier"
+          expect 200 "The token request"
+          access=$(jq -r '.access_token' "$body")
+          echo "::add-mask::$access"
+          admin=(-H "Authorization: Bearer $access")
+
+          # An image uploaded by the administrator, stored in the bucket and served back as it was sent.
+          base64 -d > "$RUNNER_TEMP/smoke.png" <<< 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+          call "${admin[@]}" -F "files=@$RUNNER_TEMP/smoke.png;type=image/png" "$BASE/api/management/v1/media"; expect 201 "Uploading the image"
+          asset=$(jq -r '.items[0].id' "$body")
+          docker compose exec -T minio sh -ec 'mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" > /dev/null; mc ls --recursive local/fluentcms-media' \
+            | tee "$RUNNER_TEMP/bucket.txt"
+          grep -q "${asset//-/}/original.png" "$RUNNER_TEMP/bucket.txt"
+          call "${admin[@]}" -X POST "$BASE/api/management/v1/media/$asset/download-url"; expect 200 "The download URL"
+          url=$(jq -r '.url' "$body" | sed -E 's#^https?://[^/]+##')
+          call "$BASE$url"; expect 200 "Reading the image back"
+          [ "$(sha256sum < "$body")" = "$(sha256sum < "$RUNNER_TEMP/smoke.png")" ]
+          echo "The smoke test passed."
+
+      # The bounded wait above is what fails the job when the host never becomes ready; with MinIO stopped, it must.
+      - name: Check that the wait fails while the host is not ready
+        run: |
+          docker compose stop minio
+          if timeout 30 sh -c 'until curl -fsS -4 --max-time 10 -o /dev/null "$BASE/health/ready"; do sleep 3; done'; then
+            echo "::error::The host answered ready with MinIO stopped."
+            exit 1
+          fi
+          curl -sS -4 --max-time 10 "$BASE/health/ready" || true
+          echo
+
+      - name: Check that a second up applies nothing and starts
+        run: |
+          docker compose down
+          docker compose up -d --no-build
+          if ! timeout 240 sh -c 'until curl -fsS -4 --max-time 10 -o /dev/null "$BASE/health/ready"; do sleep 3; done'; then
+            echo "::error::The host was not ready within 240 seconds after the second up."
+            exit 1
+          fi
+          docker compose logs --no-log-prefix migrate | tee "$RUNNER_TEMP/migrate.txt"
+          grep -q "^Nothing to apply; every stream is up to date" "$RUNNER_TEMP/migrate.txt"
+          docker compose logs --no-log-prefix schema-apply | tee "$RUNNER_TEMP/schema-apply.txt"
+          grep -q "^Nothing to apply; the content tables match schema" "$RUNNER_TEMP/schema-apply.txt"
+          status=$(curl -sS -4 --max-time 30 -o /dev/null -w '%{http_code}' -H "Authorization: ApiKey $DELIVERY_KEY" "$BASE/api/delivery/v1/article/$ARTICLE_ID")
+          [ "$status" = 200 ] || { echo "::error::The article published before the second up answered $status"; exit 1; }
+
+      - name: Dump the services and their logs
+        if: failure()
+        run: |
+          docker compose ps -a || true
+          docker compose logs --no-color --timestamps || true
+
+      - name: Remove the services and their volumes
+        if: always()
+        run: |
+          docker compose down -v --remove-orphans || true
+          rm -f .env

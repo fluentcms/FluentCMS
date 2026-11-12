@@ -1,0 +1,142 @@
+# The reference host on PostgreSQL with its media in MinIO, with the Blog sample. Copy .env.example to .env beside this file,
+# fill in every value, and run from this directory:
+#   docker compose up -d --build
+# docs/docker.md describes it and what to change for production.
+name: fluentcms-host
+
+# What the one-shot steps and the host share: the database and the content types.
+x-host-environment: &host-environment
+  FluentCms__Database__Provider: PostgreSql
+  ConnectionStrings__FluentCms: Host=postgres;Database=fluentcms;Username=fluentcms;Password=${FLUENTCMS_POSTGRES_PASSWORD:?set FLUENTCMS_POSTGRES_PASSWORD in .env (see .env.example)}
+  FLUENTCMS_SAMPLE: blog
+  # Logs on standard error, so that standard output holds only what a command prints, such as a new API key.
+  Logging__Console__LogToStandardErrorThreshold: Trace
+
+services:
+  postgres:
+    # postgres:15.19, the image of the data tests on PostgreSQL.
+    image: postgres@sha256:1aac5b49cefd627f02816141ca4ad012d6cc19460dfe02a9b5168a105be3fc53
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fluentcms
+      POSTGRES_USER: fluentcms
+      POSTGRES_PASSWORD: ${FLUENTCMS_POSTGRES_PASSWORD:?set FLUENTCMS_POSTGRES_PASSWORD in .env (see .env.example)}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fluentcms -d fluentcms"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    # MinIO publishes no images any more; this is the Pigsty project's continuation of the community build that the media
+    # storage tests use, RELEASE.2026-08-04T00-00-00Z. It brings mc and curl.
+    image: pgsty/minio@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
+    restart: unless-stopped
+    command: ["server", "/data"]
+    environment:
+      MINIO_ROOT_USER: ${FLUENTCMS_MINIO_ROOT_USER:?set FLUENTCMS_MINIO_ROOT_USER in .env (see .env.example)}
+      MINIO_ROOT_PASSWORD: ${FLUENTCMS_MINIO_ROOT_PASSWORD:?set FLUENTCMS_MINIO_ROOT_PASSWORD in .env (see .env.example)}
+    volumes:
+      - minio:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # The bucket, and a user that may use it alone, which the host signs its requests with. Safe to run on every up.
+  minio-init:
+    image: pgsty/minio@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${FLUENTCMS_MINIO_ROOT_USER:?set FLUENTCMS_MINIO_ROOT_USER in .env (see .env.example)}
+      MINIO_ROOT_PASSWORD: ${FLUENTCMS_MINIO_ROOT_PASSWORD:?set FLUENTCMS_MINIO_ROOT_PASSWORD in .env (see .env.example)}
+      MEDIA_ACCESS_KEY: ${FLUENTCMS_MEDIA_ACCESS_KEY:?set FLUENTCMS_MEDIA_ACCESS_KEY in .env (see .env.example)}
+      MEDIA_SECRET_KEY: ${FLUENTCMS_MEDIA_SECRET_KEY:?set FLUENTCMS_MEDIA_SECRET_KEY in .env (see .env.example)}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" > /dev/null
+        mc mb --ignore-existing local/fluentcms-media
+        cat > /tmp/fluentcms-media.json <<'POLICY'
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            { "Effect": "Allow", "Action": ["s3:ListBucket", "s3:GetBucketLocation"], "Resource": ["arn:aws:s3:::fluentcms-media"] },
+            { "Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"], "Resource": ["arn:aws:s3:::fluentcms-media/*"] }
+          ]
+        }
+        POLICY
+        mc admin policy create local fluentcms-media /tmp/fluentcms-media.json > /dev/null
+        mc admin user add local "$$MEDIA_ACCESS_KEY" "$$MEDIA_SECRET_KEY" > /dev/null
+        # Attaching a policy that the user has already fails.
+        case "$$(mc admin user info local "$$MEDIA_ACCESS_KEY")" in
+          *fluentcms-media*) ;;
+          *) mc admin policy attach local fluentcms-media --user "$$MEDIA_ACCESS_KEY" > /dev/null ;;
+        esac
+        echo "The bucket fluentcms-media and its user are ready."
+
+  # The image runs one command per container and has no shell, so the two steps are two services: the migrations of every
+  # stream, then the content tables of the schema. Both apply nothing when nothing is pending.
+  migrate:
+    image: ${FLUENTCMS_IMAGE:-fluentcms}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *host-environment
+    command: ["fluentcms", "migrate"]
+
+  schema-apply:
+    image: ${FLUENTCMS_IMAGE:-fluentcms}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *host-environment
+    command: ["fluentcms", "schema", "apply"]
+
+  # Builds the image that the two steps above run too.
+  cms:
+    image: ${FLUENTCMS_IMAGE:-fluentcms}
+    build:
+      context: ../..
+      dockerfile: src/FluentCMS.Host/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      schema-apply:
+        condition: service_completed_successfully
+    environment:
+      <<: *host-environment
+      FluentCms__PublicOrigin: ${FLUENTCMS_PUBLIC_ORIGIN:-https://localhost}
+      AllowedHosts: ${FLUENTCMS_ALLOWED_HOSTS:-localhost}
+      # Left out of .env, the host refuses to start in Production (FCMS1102, FCMS1106); see docs/docker.md.
+      FluentCms__Security__AllowGeneratedSigningKey: ${FLUENTCMS_ALLOW_GENERATED_SIGNING_KEY:-false}
+      FluentCms__Security__AllowUnencryptedKeyRing: ${FLUENTCMS_ALLOW_UNENCRYPTED_KEY_RING:-false}
+      FluentCms__Media__S3__Endpoint: http://minio:9000
+      FluentCms__Media__S3__Bucket: fluentcms-media
+      FluentCms__Media__S3__ForcePathStyle: "true"
+      FluentCms__Media__S3__AccessKeyId: ${FLUENTCMS_MEDIA_ACCESS_KEY:?set FLUENTCMS_MEDIA_ACCESS_KEY in .env (see .env.example)}
+      FluentCms__Media__S3__SecretAccessKey: ${FLUENTCMS_MEDIA_SECRET_KEY:?set FLUENTCMS_MEDIA_SECRET_KEY in .env (see .env.example)}
+    ports:
+      - "127.0.0.1:${FLUENTCMS_HTTP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "dotnet", "/app/FluentCMS.Host.dll", "--probe"]
+      interval: 10s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+volumes:
+  postgres:
+  minio:

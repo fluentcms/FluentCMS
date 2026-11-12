@@ -9,6 +9,7 @@ using FluentCMS.Plugins.AiAssist;
 using FluentCMS.Plugins.GraphQL;
 using FluentCMS.Plugins.Mcp;
 using FluentCMS.Plugins.Media;
+using FluentCMS.Plugins.Media.S3;
 using FluentCMS.Plugins.MultiSite;
 using FluentCMS.Plugins.Webhooks;
 using FluentCMS.Samples.Blog;
@@ -27,6 +28,7 @@ public static class ReferenceHost
     public const string BlogSampleName = "blog";
     public const string KeyRingCertificatePathKey = "FluentCms:DataProtection:Certificate:Path";
     public const string KeyRingCertificatePasswordKey = "FluentCms:DataProtection:Certificate:Password";
+    public const string MediaS3Section = "FluentCms:Media:S3";
 
     public static WebApplication Build(WebApplicationBuilder builder)
     {
@@ -35,6 +37,7 @@ public static class ReferenceHost
         var configuration = builder.Configuration;
         var blog = UsesBlogSample(configuration[SampleVariable]);
         var file = configuration[SchemaVariable];
+        var s3 = configuration.GetSection(MediaS3Section);
 
         // Built with the registry of the container, so that a schema file can use the field types of plugins, such as media.
         builder.Services.AddSingleton(services => BuildSchema(file, blog, services.GetRequiredService<IFieldTypeRegistry>()));
@@ -43,7 +46,15 @@ public static class ReferenceHost
         {
             var sqlite = UseDatabase(cms, configuration, builder.Environment);
             cms.UseContentMigrations(typeof(ReferenceHost).Assembly);
-            cms.AddPlugin<MediaPlugin>();
+            // Any key of the section moves new uploads to the bucket, so that a section with a missing bucket stops the host
+            // at start rather than leaving uploads on the local disk.
+            cms.AddPlugin<MediaPlugin>(media =>
+            {
+                if (s3.Exists())
+                {
+                    media.UseS3(s3);
+                }
+            });
             cms.AddPlugin<WebhooksPlugin>();
             cms.AddPlugin<McpPlugin>();
             cms.AddPlugin<MultiSitePlugin>();
