@@ -73,7 +73,7 @@ jobs:
       matrix:
         include:
           - group: units
-            projects: tests/FluentCMS.Sdk.Tests tests/FluentCMS.Core.Tests tests/FluentCMS.Architecture.Tests
+            projects: tests/FluentCMS.Sdk.Tests tests/FluentCMS.Core.Tests tests/FluentCMS.Architecture.Tests tests/FluentCMS.Generators.Tests
           - group: integration
             projects: tests/FluentCMS.Core.IntegrationTests
           - group: plugins

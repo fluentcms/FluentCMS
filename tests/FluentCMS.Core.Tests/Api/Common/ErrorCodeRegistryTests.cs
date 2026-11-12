@@ -49,12 +49,13 @@ public partial class ErrorCodeRegistryTests
     }
 
     // A code written under src/plugins/{project} is listed when core has it or when that plugin adds it with AddErrorCode.
+    // The generator and the analyzers report compiler diagnostics, not problems a client sees, so their codes are not listed.
     [Fact]
     public void EveryCodeWrittenInSourceIsListed()
     {
         var source = Path.Combine(RepositoryRoot(), "src");
         var used = Directory.EnumerateFiles(source, "*.cs", SearchOption.AllDirectories)
-            .Where(path => !IsBuildOutput(source, path))
+            .Where(path => !IsBuildOutput(source, path) && !IsCompileTime(source, path))
             .SelectMany(path => CodePattern().Matches(File.ReadAllText(path)).Select(match => (match.Value, Path.GetRelativePath(source, path))))
             .ToList();
         var plugins = Directory.EnumerateDirectories(Path.Combine(source, "plugins"))
@@ -118,6 +119,9 @@ public partial class ErrorCodeRegistryTests
 
     private static bool IsBuildOutput(string source, string path) =>
         Path.GetRelativePath(source, path).Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(part => part is "bin" or "obj");
+
+    private static bool IsCompileTime(string source, string path) =>
+        Path.GetRelativePath(source, path).Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0] is "FluentCMS.Generators" or "FluentCMS.Analyzers";
 
     private static string RepositoryRoot()
     {
