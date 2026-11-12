@@ -366,6 +366,7 @@ public static class ErrorCodeRegistry
         Startup("FCMS3329", "Instance unreachable"),
         Startup("FCMS3330", "Instance refused the key"),
         Startup("FCMS3331", "Host schema not read"),
+
         // 335x the commands that administer an instance, in the host and in the tool alike, and 336x the tool's own
         Startup(CommandErrorCodes.UnknownRole, "Unknown role"),
         Startup(CommandErrorCodes.UnknownSite, "Unknown site"),
@@ -380,6 +381,14 @@ public static class ErrorCodeRegistry
         Startup("FCMS3361", "Unexpected answer from the instance"),
         Startup("FCMS3362", "Key refused by the MCP endpoint"),
         Startup("FCMS3363", "Key sent without TLS"),
+
+        // 3335 to 3349 schema apply, inside the host
+        Startup(CommandErrorCodes.ContentMigrationsExist, "Host has content migrations"),
+        Startup(CommandErrorCodes.StreamsNotMigrated, "System or plugin migrations pending"),
+        Startup(CommandErrorCodes.DestructiveSchemaChange, "Destructive schema change refused"),
+        Startup(CommandErrorCodes.SchemaChangeNotApplicable, "Schema change cannot be applied"),
+        Startup(CommandErrorCodes.SchemaApplyFailed, "Schema change failed in the database"),
+        Startup(CommandErrorCodes.SchemaNotRecorded, "Schema history not written"),
     ];
 
     private static readonly FrozenDictionary<string, ErrorCodeInfo> byCode = All.ToFrozenDictionary(info => info.Code);

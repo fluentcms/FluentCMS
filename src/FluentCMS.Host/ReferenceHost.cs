@@ -41,7 +41,7 @@ public static class ReferenceHost
         ProtectKeyRing(builder.Services, configuration);
         builder.Services.AddFluentCms(cms =>
         {
-            UseDatabase(cms, configuration, builder.Environment);
+            var sqlite = UseDatabase(cms, configuration, builder.Environment);
             cms.UseContentMigrations(typeof(ReferenceHost).Assembly);
             cms.AddPlugin<MediaPlugin>();
             cms.AddPlugin<WebhooksPlugin>();
@@ -50,9 +50,9 @@ public static class ReferenceHost
             cms.AddPlugin<GraphQLPlugin>();
             cms.AddPlugin<AiAssistPlugin>();
 
-            // Types that are data have no compiled migrations, so their tables follow the schema at start (Q2, until the
-            // CLI generates migrations from a schema file). Core refuses this on a provider without schema sync.
-            if (blog || !string.IsNullOrWhiteSpace(file))
+            // Types that are data have no compiled migrations, so on SQLite their tables follow the schema at start (Q2).
+            // A server database changes only when an operator runs `fluentcms schema apply` (decision 55).
+            if (sqlite && (blog || !string.IsNullOrWhiteSpace(file)))
             {
                 cms.AllowSchemaSyncOutsideDevelopment();
             }
@@ -109,7 +109,8 @@ public static class ReferenceHost
         return schema.Build();
     }
 
-    private static void UseDatabase(FluentCmsBuilder cms, ConfigurationManager configuration, IWebHostEnvironment environment)
+    // Whether the provider is SQLite.
+    private static bool UseDatabase(FluentCmsBuilder cms, ConfigurationManager configuration, IWebHostEnvironment environment)
     {
         var provider = configuration[ProviderKey];
         var connectionString = configuration.GetConnectionString(ConnectionStringName);
@@ -117,8 +118,10 @@ public static class ReferenceHost
         if (string.IsNullOrWhiteSpace(provider) || Is(provider, "Sqlite"))
         {
             cms.UseSqlite(string.IsNullOrWhiteSpace(connectionString) ? $"Data Source={Path.Combine(environment.ContentRootPath, "fluentcms.db")}" : connectionString);
+            return true;
         }
-        else if (Is(provider, "PostgreSql"))
+
+        if (Is(provider, "PostgreSql"))
         {
             cms.UsePostgreSql(Required(connectionString, provider));
         }
@@ -130,6 +133,8 @@ public static class ReferenceHost
         {
             throw new ReferenceHostException(ReferenceHostErrorCodes.UnknownDataProvider, $"{ProviderKey} is '{provider}'; use Sqlite, PostgreSql or SqlServer.");
         }
+
+        return false;
     }
 
     // The image is set up by environment variables alone, so it cannot call ProtectKeysWithCertificate the way a host of

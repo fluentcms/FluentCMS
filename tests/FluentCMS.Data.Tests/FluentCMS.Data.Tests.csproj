@@ -7,7 +7,6 @@
     <PackageReference Include="Shouldly" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Testcontainers.MsSql" />
     <PackageReference Include="Testcontainers.PostgreSql" />
   </ItemGroup>
@@ -37,6 +36,13 @@
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.MultiSite/FluentCMS.Plugins.MultiSite.csproj" />
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Webhooks/FluentCMS.Plugins.Webhooks.csproj" />
     <RuntimeHostConfigurationOption Include="FluentCMS.Plugins.DisableDiscovery" Value="true" />
+  </ItemGroup>
+
+  <!-- The reference host, which ReferenceHostSchemaApplyTests runs with a schema file and the sample on the provider of the
+       run; it adds its plugins itself. Under an alias, since its namespace FluentCMS.Host would hide the generic Host. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../../src/FluentCMS.Host/FluentCMS.Host.csproj" Aliases="ReferenceImage" />
   </ItemGroup>
 
 </Project>

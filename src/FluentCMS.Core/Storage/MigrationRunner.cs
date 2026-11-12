@@ -1,3 +1,4 @@
+using System.Text;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Providers;
@@ -152,6 +153,80 @@ public sealed class MigrationRunner(
 
     internal Task<string?> GetAppliedSnapshotAsync(CancellationToken cancellationToken = default) => _history.AppliedSnapshotAsync(cancellationToken);
 
+    // What schema apply checks first: the content migrations of the host's set and of the content history, which own the
+    // content tables of a host that has any, and what the system and plugin streams have not applied.
+    internal async Task<IReadOnlyList<string>> GetContentMigrationsAsync(CancellationToken cancellationToken = default)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var database = Content.ResolveContext(scope.ServiceProvider).Database;
+        return [.. database.GetMigrations().Union(await database.GetAppliedMigrationsAsync(cancellationToken), StringComparer.Ordinal)];
+    }
+
+    internal Task<IReadOnlyList<StreamMigration>> GetPendingSystemAndPluginMigrationsAsync(CancellationToken cancellationToken = default) =>
+        GetPendingAsync(SystemAndPlugins, cancellationToken);
+
+    // Held by schema apply and schema sync, which change the same tables, so that two runs apply each operation once.
+    internal async Task<IDistributedLockHandle> LockContentSchemaAsync(CancellationToken cancellationToken = default) =>
+        await locks.TryAcquireAsync(SchemaSyncLock, Timeout.InfiniteTimeSpan, cancellationToken)
+        ?? throw new InvalidOperationException($"The lock {SchemaSyncLock} was not taken.");
+
+    // The steps that bring the content tables up to the host's schema: schema sync's comparison, with renames and the
+    // changes sync leaves undone.
+    internal async Task<IReadOnlyList<SchemaApplyStep>> PlanContentSchemaAsync(CancellationToken cancellationToken = default)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        var diff = await ContentSchemaDiff.PlanAsync(context, schema, provider.SchemaReader, PluginTablePrefixes(scope.ServiceProvider), cancellationToken);
+        return diff.Steps;
+    }
+
+    // With the SQL of the provider's migrations generator, which EF's executor runs in one transaction; it commits early
+    // only before a command the provider runs outside one, such as the foreign key pragma of a SQLite table rebuild.
+    internal async Task ApplyContentSchemaAsync(IReadOnlyList<SchemaApplyStep> steps, CancellationToken cancellationToken = default)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        var commands = context.GetService<IMigrationsSqlGenerator>().Generate(ContentSchemaDiff.OperationsOf(steps), context.GetService<IDesignTimeModel>().Model);
+        await context.GetService<IMigrationCommandExecutor>().ExecuteNonQueryAsync(commands, context.GetService<IRelationalConnection>(), cancellationToken);
+    }
+
+    // The same SQL as a script in the provider's dialect, in a transaction as `migrations script` writes one.
+    internal string ScriptContentSchema(IReadOnlyList<SchemaApplyStep> steps)
+    {
+        using var scope = scopes.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        var sql = context.GetService<ISqlGenerationHelper>();
+        var commands = context.GetService<IMigrationsSqlGenerator>().Generate(ContentSchemaDiff.OperationsOf(steps), context.GetService<IDesignTimeModel>().Model, MigrationsSqlGenerationOptions.Script);
+
+        var script = new StringBuilder();
+        var inTransaction = false;
+        foreach (var command in commands)
+        {
+            if (!inTransaction && !command.TransactionSuppressed)
+            {
+                script.AppendLine(sql.StartTransactionStatement).Append(sql.BatchTerminator);
+                inTransaction = true;
+            }
+            else if (inTransaction && command.TransactionSuppressed)
+            {
+                script.AppendLine(sql.CommitTransactionStatement).Append(sql.BatchTerminator);
+                inTransaction = false;
+            }
+
+            script.Append(command.CommandText).Append(sql.BatchTerminator);
+        }
+
+        if (inTransaction)
+        {
+            script.AppendLine(sql.CommitTransactionStatement).Append(sql.BatchTerminator);
+        }
+
+        return script.ToString();
+    }
+
+    // Unlike the runner's own record, a row that cannot be written fails: it is what schema apply was asked for.
+    internal Task RecordSchemaAsync(CancellationToken cancellationToken = default) => _history.RecordOrThrowAsync(schema, cancellationToken);
+
     // Applies the additive changes a schema needs and reports the rest. Startup calls this for the host's schema;
     // passing another applies a changed schema without a restart. Refuses where schema sync is not Auto.
     public Task<SchemaSyncReport> SyncContentSchemaAsync(SchemaModel? changedSchema = null, CancellationToken cancellationToken = default)
@@ -177,8 +252,11 @@ public sealed class MigrationRunner(
         }
 
         // A migration that exists only needs applying, which is what FluentCms:Database:MigrateOnStartup = false leaves to do.
+        // A host with no content migrations may have types that are data, whose tables schema apply brings up to the schema.
         var pending = await context.Database.GetPendingMigrationsAsync(cancellationToken);
-        var fix = pending.Any() ? ApplyPending : $"run 'fluentcms migrations add {diff.SuggestedMigrationName}'";
+        var fix = pending.Any() ? ApplyPending
+            : context.Database.GetMigrations().Any() ? $"run 'fluentcms migrations add {diff.SuggestedMigrationName}'"
+            : $"run 'fluentcms schema apply', or 'fluentcms migrations add {diff.SuggestedMigrationName}' to give the host content migrations";
 
         throw new FluentCmsConfigurationException(StorageErrorCodes.MissingContentSchema, $"{string.Join("; ", diff.Missing)}; {fix}");
     }

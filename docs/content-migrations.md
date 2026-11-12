@@ -88,6 +88,7 @@ A command runs before any hosted service starts, so nothing migrates on start, l
 | `fluentcms schema snapshot [--output <file>]` | The canonical snapshot of the host's schema, whose SHA-256 is the schema hash. |
 | `fluentcms schema validate [--schema <file>]` | Builds the host's schema, or a schema file, and prints every `FCMS12xx` error; exits with 1 when there is one (`FCMS3320`). A schema file is checked by the tool without a host, with core's field types, unless `--project` or `--assembly` is given. |
 | `fluentcms schema diff --applied \| --schema <file> [--json]` | What differs from the schema in the newest row of the schema history, or from a schema file, to the host's schema, and from the history to a file with both. Destructive changes are marked and possible renames suggested; exits with 1 when anything differs (`FCMS3322`), so CI can gate a deploy. |
+| `fluentcms schema apply [--script [--output <file>]] [--dry-run] [--allow-destructive]` | For a host whose types are data and so have no content migrations, such as the [Docker image](docker.md#apply-a-schema-file) with a schema file: compares the schema with the content tables, applies the difference in one transaction (on SQLite, committed in parts around a table rebuild) and records the schema in the schema history, on every provider. A renamed field with `formerNames` keeps its values; a change that loses data is refused (`FCMS3337`) unless `--allow-destructive` is given. `--dry-run` prints the operations, and `--script` writes their SQL, applying nothing. It refuses a host with content migrations (`FCMS3335`) and runs after `fluentcms migrate` (`FCMS3336`). |
 | `fluentcms doctor [--json]` | The startup report without starting the host: providers, plugins, assemblies, pending migrations, schema drift and insecure defaults. Exits with 1 when the host would not start (`FCMS3325`) or a migration is pending (`FCMS3303`). |
 
 `schema snapshot`, `schema diff` and `doctor` also take `--url <url>` with a management API key in `--token` or `FLUENTCMS_TOKEN`: the snapshot and the diagnostics of a running instance, and the diff from that instance to the host's schema, or to a schema file with `--schema`. The key needs `schema.read` for the schema and `system.read` for `doctor`.
@@ -108,7 +109,7 @@ Unless schema sync ran, startup then compares the content model with the databas
 FCMS1301: table cms_article is missing column subtitle; run 'fluentcms migrations add AddSubtitle'
 ```
 
-If a content migration exists but is not applied, it asks to run `fluentcms migrate` instead, with the startup option as the alternative. It checks tables and columns only, not indexes or column types.
+If a content migration exists but is not applied, it asks to run `fluentcms migrate` instead, with the startup option as the alternative. A host with no content migration at all is asked to run `fluentcms schema apply` first, since its types may be data, with `migrations add` as the alternative. It checks tables and columns only, not indexes or column types.
 
 ## Schema sync
 

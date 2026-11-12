@@ -14,6 +14,7 @@ internal static class CommandRegistry
         new SchemaSnapshotCommand(),
         new SchemaValidateCommand(),
         new SchemaDiffCommand(),
+        new SchemaApplyCommand(),
         new DoctorCommand(),
         new ApiKeyCreateCommand(),
         new ApiKeyListCommand(),

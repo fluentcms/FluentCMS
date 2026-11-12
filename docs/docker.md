@@ -64,7 +64,7 @@ docker run -d -p 8080:8080 -v fluentcms-data:/data -v ./schema.json:/config/sche
 
 The format is the one `GET /api/management/v1/schema/snapshot` returns, so a snapshot of one instance is a schema file for another. A file with an error stops the container with every problem and its code, such as `FCMS1213` for a file that is not valid JSON or has an unknown property and `FCMS1203` for an unknown field type; a path that does not exist stops it with `FCMS3153`. Both may be set: the sample's types and the file's are then one schema.
 
-A schema file has no compiled migrations, so the host creates and extends its tables on start, on SQLite only: a new type, a new optional field and a new index are applied, and a change that would drop or rewrite data, such as removing a field, changing its type or adding a required field, is logged as a warning and left undone. Such a change needs a new database for now; the CLI will generate migrations from a schema file. The startup report lists this as `schema-sync-outside-development`, a known choice of the image rather than a mistake.
+A schema file has no compiled migrations. On SQLite the host creates and extends its tables on start: a new type, a new optional field and a new index are applied, and a change that would drop or rewrite data, such as removing a field, changing its type or adding a required field, is logged as a warning and left undone. The startup report lists this as `schema-sync-outside-development`, a known choice of the image rather than a mistake. On PostgreSQL and SQL Server nothing changes the database on start; `fluentcms schema apply` brings the content tables up to the schema ([below](#apply-a-schema-file)), and it applies on SQLite too, where it also makes the changes that start leaves undone.
 
 ## Environment variables
 
@@ -165,7 +165,7 @@ The startup report, logged at start and served at `GET /api/management/v1/system
 
 ## Other databases
 
-`FluentCms__Database__Provider=PostgreSql` or `SqlServer` with `ConnectionStrings__FluentCms` runs on that server. Those providers do not migrate on start by default, so apply the migrations before the host starts, with `fluentcms migrate` (below) or with `FluentCms__Database__MigrateOnStartup=true` on one instance. On SQL Server the system migrations turn `READ_COMMITTED_SNAPSHOT` on unless it is on already, as on Azure SQL Database. That needs `ALTER` permission on the database, and it disconnects the database's other sessions once ([ADR 0005](decisions/0005-sql-server-read-committed-snapshot.md)). They keep content tables on reviewed migrations and never create them from the schema on start, so `FLUENTCMS_SCHEMA` and `FLUENTCMS_SAMPLE` stop the host on them with `FCMS3154`. Until the CLI generates migrations from a schema file, the image runs a schema file on SQLite only. PostgreSQL 15 and SQL Server 2019 and 2025 are tested providers ([#2711](https://github.com/fluentcms/FluentCMS/issues/2711)). The webhooks and media plugins hold a migration set for each of these providers ([plugin migrations](plugin-migrations.md)).
+`FluentCms__Database__Provider=PostgreSql` or `SqlServer` with `ConnectionStrings__FluentCms` runs on that server. Those providers do not migrate on start by default, so apply the migrations before the host starts, with `fluentcms migrate` (below) or with `FluentCms__Database__MigrateOnStartup=true` on one instance. On SQL Server the system migrations turn `READ_COMMITTED_SNAPSHOT` on unless it is on already, as on Azure SQL Database. That needs `ALTER` permission on the database, and it disconnects the database's other sessions once ([ADR 0005](decisions/0005-sql-server-read-committed-snapshot.md)). They never create content tables from the schema on start: with `FLUENTCMS_SCHEMA` or `FLUENTCMS_SAMPLE`, run `fluentcms schema apply` after `fluentcms migrate` ([below](#apply-a-schema-file)), and a host that starts before it stops with `FCMS1301`, which names the command. PostgreSQL 15 and SQL Server 2019 and 2025 are tested providers ([#2711](https://github.com/fluentcms/FluentCMS/issues/2711)). The webhooks and media plugins hold a migration set for each of these providers ([plugin migrations](plugin-migrations.md)).
 
 ## Migrate before the host starts
 
@@ -209,5 +209,36 @@ The same image runs the commands that administer the instance, as the system, wi
 List commands print a table, and one line of JSON in the shape of the Management API with `--json`. The invitation and reset emails link to `FluentCms__PublicOrigin`, which these commands need (`FCMS3354` otherwise). Set `Logging__Console__LogToStandardErrorThreshold=Trace` so that standard output holds only what the command prints, such as the key of `apikey create`. What a command writes to the activity log reaches it through the outbox, which a running instance delivers.
 
 The `fluentcms` tool runs `apikey`, `user invite`, `user add-role`, `jobs list` and `jobs retry` against a running instance too, with `--url https://cms.example.com` and a management API key in `FLUENTCMS_TOKEN` (or `--token`, which a process list shows). They call the Management API as that key, so a key without the permission is refused with the API's problem and exit code 1. `fluentcms mcp --url https://cms.example.com` is a proxy from standard input and output to the instance's `/mcp`, for an MCP client that speaks stdio only; a refused key ends it with `FCMS3362` on standard error.
+
+## Apply a schema file
+
+With `FLUENTCMS_SCHEMA` or `FLUENTCMS_SAMPLE` the content types are data, so they have no migrations. `fluentcms schema apply`, run after `fluentcms migrate` with the same image and settings, compares the schema with the content tables, applies the difference and records the schema in the schema history; when nothing differs it changes nothing and exits with 0. It refuses while the system or a plugin stream has a pending migration (`FCMS3336`), which is why it runs second:
+
+```yaml
+initContainers:
+  - name: migrate
+    image: fluentcms
+    args: ["fluentcms", "migrate"]
+    envFrom:
+      - secretRef:
+          name: fluentcms-database
+  - name: schema-apply
+    image: fluentcms
+    args: ["fluentcms", "schema", "apply"]
+    env:
+      - name: FLUENTCMS_SCHEMA
+        value: /config/schema.json
+    envFrom:
+      - secretRef:
+          name: fluentcms-database
+    volumeMounts:
+      - name: schema
+        mountPath: /config
+        readOnly: true
+```
+
+A new type, field or index is applied, and so is a renamed field that lists its old name in `formerNames`, which keeps its values. A required field added to a table with rows gets an empty value in them: `''` for text, the empty document for rich text. A change that loses data, such as a removed type or field or a changed field type, is listed and refused with `FCMS3337`, and nothing is applied, unless `--allow-destructive` is given. So is a renamed field whose values are not a column of its own, such as a relation, or a field of a component or block, which may be kept in JSON. The operations of a run are one transaction, so a database that refuses one keeps none (`FCMS3339`); on SQLite a table rebuild commits what came before it, which the next run then leaves out, and runs started together apply each operation once.
+
+`--dry-run` prints the operations and applies nothing, and exits with 1 when the run would be refused. `--script --output /out/schema.sql` writes the SQL for the database as it is now and applies nothing, for a database that only an administrator may change; the next `fluentcms schema apply` finds nothing to do and records the schema, and after a script with a change that loses data it needs `--allow-destructive` too. A host built with content migrations of its own is refused with `FCMS3335`, since its content tables belong to those migrations.
 
 For local development, `compose.yaml` at the root of the repository runs PostgreSQL and MinIO at the versions the tests use; see [Local development](../CONTRIBUTING.md#local-development).

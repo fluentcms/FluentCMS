@@ -313,21 +313,25 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         error.Message.ShouldContain(code);
     }
 
+    // Nothing changes a server database at start (decision 55): `fluentcms schema apply` brings its content tables up to
+    // the schema, which the data tests run on each provider.
     [Theory]
     [InlineData("PostgreSql", "Host=db;Database=cms;Username=cms;Password=secret")]
     [InlineData("SqlServer", "Server=db;Database=cms;User Id=cms;Password=secret;TrustServerCertificate=true")]
-    public void ASchemaFileOnAServerProviderIsRefusedBecauseItsTablesComeFromMigrations(string provider, string connectionString)
+    public void ASchemaFileAndTheSampleOnAServerProviderLeaveTheTablesToSchemaApply(string provider, string connectionString)
     {
         var file = _host.WriteFile("schema.json", """{ "collections": [ { "name": "post", "fields": [ { "name": "title", "type": "text" } ] } ] }""");
 
-        var error = Should.Throw<FluentCmsConfigurationException>(() => _host.Build(new()
+        var app = _host.Build(new()
         {
             [ReferenceHost.SchemaVariable] = file,
+            [ReferenceHost.SampleVariable] = ReferenceHost.BlogSampleName,
             [ReferenceHost.ProviderKey] = provider,
             [$"ConnectionStrings:{ReferenceHost.ConnectionStringName}"] = connectionString,
-        }));
+        });
 
-        error.Code.ShouldBe("FCMS3154");
+        app.Services.GetRequiredService<IOptions<DatabaseOptions>>().Value.SchemaSyncOutsideDevelopment.ShouldBeFalse();
+        app.Services.GetRequiredService<SchemaModel>().FindContentType("post").ShouldNotBeNull();
     }
 
     [Fact]
