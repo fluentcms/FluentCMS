@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing" />
+    <!-- The testing package brings Workspaces 3.8.0, which pins Roslyn 3.8.0; this keeps all of Roslyn on the generator's version. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+    <!-- Lifts the vulnerable 9.0.6 that the testing package brings. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Run on the Kitchen types of this project, and referenced to drive the generator and the emitter in tests. -->
+    <ProjectReference Include="../../src/FluentCMS.Generators/FluentCMS.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
+    <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
+    <ProjectReference Include="../../samples/Blog/Blog.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The tool links the same file to emit from a schema snapshot. -->
+    <Compile Include="../../src/FluentCMS.Generators/Snapshot/*.cs" Link="Snapshot/%(Filename)%(Extension)" />
+    <!-- The sources of the Blog sample, which the generator runs on in a test. -->
+    <None Include="../../samples/Blog/*.cs" Link="BlogSources/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

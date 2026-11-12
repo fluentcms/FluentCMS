@@ -15,4 +15,9 @@
     <ProjectReference Include="../../samples/Blog/Blog.csproj" />
   </ItemGroup>
 
+  <!-- The source generator emits the typed filter and sort builders of the types a host declares. -->
+  <ItemGroup>
+    <ProjectReference Include="../FluentCMS.Generators/FluentCMS.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
 </Project>

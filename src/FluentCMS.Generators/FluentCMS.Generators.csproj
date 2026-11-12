@@ -3,6 +3,39 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
+    <Description>The FluentCMS source generator: typed filter and sort builders for the content types, components and blocks a host declares with the schema attributes.</Description>
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <!-- The package carries the generator under analyzers/dotnet/cs and no library. -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IncludeSymbols>false</IncludeSymbols>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pinned to the Roslyn of SDK 10.0.100, so that every .NET 10 SDK loads the generator. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FluentCMS.Generators.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+  </ItemGroup>
+
+  <!-- Snapshot/ describes a SchemaModel for the emitter. It needs the SDK, so it is linked by the tool and the tests, not compiled here. -->
+  <ItemGroup>
+    <Compile Remove="Snapshot/**" />
+    <None Include="Snapshot/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+  </ItemGroup>
 
 </Project>

@@ -18,6 +18,7 @@
     <InternalsVisibleTo Include="FluentCMS.Plugins.MultiSite.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Plugins.AiAssist.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Host.Tests" />
+    <InternalsVisibleTo Include="FluentCMS.Generators.Tests" />
   </ItemGroup>
 
   <ItemGroup>
