@@ -45,4 +45,7 @@
   <Folder Name="/samples/">
     <Project Path="samples/Blog/Blog.csproj" />
   </Folder>
+  <Folder Name="/templates/">
+    <Project Path="templates/FluentCMS.Templates.csproj" />
+  </Folder>
 </Solution>

@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "FluentCMS",
+  "classifications": ["Web", "CMS", "API"],
+  "identity": "FluentCMS.Templates.Host",
+  "groupIdentity": "FluentCMS.Templates.Host",
+  "name": "FluentCMS host",
+  "description": "An API host for FluentCMS: the content types, the data provider, the media and webhooks plugins and the fluentcms tool.",
+  "shortName": "fluentcms",
+  "sourceName": "FluentCmsApp",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "guids": ["6f1a8a52-0d7e-4c55-9a43-2b8f1d4c7e90"],
+  "symbols": {
+    "provider": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "The database the host runs on.",
+      "choices": [
+        { "choice": "sqlite", "description": "SQLite, in a file next to the host." },
+        { "choice": "postgresql", "description": "PostgreSQL." },
+        { "choice": "sqlserver", "description": "SQL Server." }
+      ],
+      "defaultValue": "sqlite"
+    },
+    "sample": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "The content types to start with.",
+      "choices": [
+        { "choice": "none", "description": "One Article type." },
+        { "choice": "blog", "description": "The Blog types (articles, authors, tags, blocks) with seed content." }
+      ],
+      "defaultValue": "none"
+    },
+    "sqlite": {
+      "type": "computed",
+      "value": "(provider == \"sqlite\")"
+    },
+    "postgresql": {
+      "type": "computed",
+      "value": "(provider == \"postgresql\")"
+    },
+    "sqlserver": {
+      "type": "computed",
+      "value": "(provider == \"sqlserver\")"
+    },
+    "blog": {
+      "type": "computed",
+      "value": "(sample == \"blog\")"
+    }
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "condition": "(blog)",
+          "exclude": ["Content/Article.cs"]
+        },
+        {
+          "condition": "(!blog)",
+          "exclude": ["Blog/**"]
+        }
+      ]
+    }
+  ],
+  "SpecialCustomOperations": {
+    "**/Dockerfile": {
+      "operations": [
+        {
+          "type": "conditional",
+          "configuration": {
+            "if": ["#if"],
+            "else": ["#else"],
+            "elseif": ["#elseif"],
+            "endif": ["#endif"],
+            "trim": true,
+            "wholeLine": true
+          }
+        }
+      ]
+    }
+  }
+}

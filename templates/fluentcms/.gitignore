@@ -1,0 +1,15 @@
+# Build output
+bin/
+obj/
+
+# IDE state
+.vs/
+.vscode/
+.idea/
+*.user
+
+# The local SQLite database and the media files of the local storage
+*.db
+*.db-shm
+*.db-wal
+App_Data/

@@ -1,0 +1,12 @@
+# Build output
+bin/
+obj/
+
+# IDE state
+.vs/
+.vscode/
+.idea/
+*.user
+
+# Test results
+TestResults/
