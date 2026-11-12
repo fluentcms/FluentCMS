@@ -67,7 +67,7 @@ public sealed class FilterIndexAnalyzer : DiagnosticAnalyzer
     // in the namespace of the class. A block's fields are JSON, which no index of a column reaches.
     private static Builder? Find(INamedTypeSymbol builderType)
     {
-        foreach (var candidate in builderType.ContainingNamespace.GetTypeMembers())
+        foreach (var candidate in Classes(builderType.ContainingNamespace.GetTypeMembers()))
         {
             if (SchemaReader.KindsOf(candidate).Count != 1 || SchemaReader.Read(candidate) is not { } schema)
             {
@@ -100,6 +100,19 @@ public sealed class FilterIndexAnalyzer : DiagnosticAnalyzer
         }
 
         return null;
+    }
+
+    // The classes of a namespace with the classes nested in them, since the generator gives a nested class a builder too.
+    private static IEnumerable<INamedTypeSymbol> Classes(IEnumerable<INamedTypeSymbol> types)
+    {
+        foreach (var type in types)
+        {
+            yield return type;
+            foreach (var nested in Classes(type.GetTypeMembers()))
+            {
+                yield return nested;
+            }
+        }
     }
 
     // The class and member names of the emitter (FieldsEmitter.Pascal).

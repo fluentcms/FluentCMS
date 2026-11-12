@@ -192,7 +192,7 @@ public sealed class SchemaAttributeAnalyzer : DiagnosticAnalyzer
                 {
                     report(Rules.ReverseOutsideContentType, SchemaReader.ArgumentLocation(field.FieldAttribute, "Reverse"), location);
                 }
-                else if (StorageNames.IsValidFieldName(reverse) && StorageNames.ReservedFieldNames.Contains(reverse))
+                else if (field.TargetKnown && StorageNames.IsValidFieldName(reverse) && StorageNames.ReservedFieldNames.Contains(reverse))
                 {
                     report(Rules.ReservedFieldName, SchemaReader.ArgumentLocation(field.FieldAttribute, "Reverse"), location, $"declares the reverse relation '{reverse}', a name reserved for a system field");
                 }
@@ -218,7 +218,8 @@ public sealed class SchemaAttributeAnalyzer : DiagnosticAnalyzer
 
     private static void ValidateColumn(SchemaClass schema, SchemaField field, string owner, string prefix, bool localized, Reporter report, Location? anchor, HashSet<ISymbol> path, bool lengthReported)
     {
-        if (field.FieldType is not { } fieldType || !StorageNames.IsValidFieldName(field.Name))
+        // A field type of a plugin, media included, is checked only when the host knows the plugin is there.
+        if (field.FieldType is not { } fieldType || fieldType == "media" || !StorageNames.IsValidFieldName(field.Name))
         {
             return;
         }
@@ -283,10 +284,10 @@ public sealed class SchemaAttributeAnalyzer : DiagnosticAnalyzer
         Reference,
     }
 
-    // The storage kinds of the core field types and of media (spec 4.2), with their Multiple.
+    // The storage kinds of the core field types (spec 4.2), with their Multiple.
     private static Storage StorageKind(SchemaField field) => field.FieldType switch
     {
-        "relation" or "media" => Storage.Reference,
+        "relation" => Storage.Reference,
         "json" or "richText" or "blocks" => Storage.Json,
         "select" or "component" => field.Multiple ? Storage.Json : Storage.Column,
         _ => Storage.Column,

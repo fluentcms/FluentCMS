@@ -1,3 +1,5 @@
+extern alias Analyzers;
+
 using Xunit;
 
 namespace FluentCMS.Generators.Tests.Analyzers;
@@ -209,6 +211,30 @@ public sealed class NoOptionsTests
         public sealed class Page : ContentItem
         {
             [Select("news", "blog")] public string Kind { get; set; } = "";
+        }
+        """);
+}
+
+// What the reader cannot read without an exception, or what depends on a plugin the analyzers cannot see, is left to the host.
+public sealed class LeftToTheHostTests
+{
+    [Fact]
+    public Task ANullListOfOptionsOrBlockTypesIsNotReported() => Analysis.Verify<Analyzers::FluentCMS.Analyzers.SchemaAttributeAnalyzer>(Analysis.Usings + """
+        [Collection("page")]
+        public sealed class Page : ContentItem
+        {
+            [Select(null!)] public string Kind { get; set; } = "";
+
+            [Blocks(null!)] public BlockList Body { get; set; } = new();
+        }
+        """);
+
+    [Fact]
+    public Task AUniqueMediaFieldIsNotReported() => Analysis.Verify<Analyzers::FluentCMS.Analyzers.SchemaAttributeAnalyzer>(Analysis.Usings + """
+        [Collection("page")]
+        public sealed class Page : ContentItem
+        {
+            [Media, Unique] public FluentCMS.Media.MediaRef? Hero { get; set; }
         }
         """);
 }

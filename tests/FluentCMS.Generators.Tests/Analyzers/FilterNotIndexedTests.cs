@@ -100,6 +100,30 @@ public sealed class FilterNotIndexedTests
         """);
 
     [Fact]
+    public async Task ABuilderOfANestedClassIsRead()
+    {
+        const string source = """
+            public static class Content
+            {
+                [Collection("note")]
+                public sealed class Note : ContentItem
+                {
+                    [Text] public string Title { get; set; } = "";
+                }
+            }
+
+            public static class Queries
+            {
+                public static FieldFilter ByTitle() => NoteFields.Title.Contains("x");
+            }
+            """;
+        Generation.Driver().RunGeneratorsAndUpdateCompilation(Generation.Compile(("Note.cs", Analysis.Usings + source)), out var compilation, out _, TestContext.Current.CancellationToken);
+        compilation.GetDiagnostics(TestContext.Current.CancellationToken).Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+
+        (await Analysis.Diagnostics(compilation)).ShouldHaveSingleItem().Id.ShouldBe("FCMS0060");
+    }
+
+    [Fact]
     public async Task TheRuleReadsTheBuildersOfTheGenerator()
     {
         const string queries = """

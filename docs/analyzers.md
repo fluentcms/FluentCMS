@@ -76,7 +76,7 @@ Error, for `FCMS1211`. A list or an array holds a field type that holds a single
 
 ### FCMS0015
 
-Error, for `FCMS1211`. `[Unique]` is on a field that has no column to index: a relation or media field, which is stored as a reference, or a rich text, JSON, blocks, multiple select or repeated component field, which is stored as JSON. Inside a single component the rule reports the field of the component, for each content type that holds it.
+Error, for `FCMS1211`. `[Unique]` is on a field that has no column to index: a relation field, which is stored as a reference, or a rich text, JSON, blocks, multiple select or repeated component field, which is stored as JSON. Inside a single component the rule reports the field of the component, for each content type that holds it.
 
 ### FCMS0016
 
@@ -98,7 +98,7 @@ Error, for `FCMS1218`. A type name has more than 64 characters, or the table of 
 
 ### FCMS0023
 
-Error, for `FCMS1218`. A field name has more than 64 characters, its column has more than 63 (a field of a single component is a column named after the field that holds it, as `seo_meta_title`), or the path of a relation or media field (`seo.ogImage`) has more than 64.
+Error, for `FCMS1218`. A field name has more than 64 characters, its column has more than 63 (a field of a single component is a column named after the field that holds it, as `seo_meta_title`), or the path of a relation field (`seo.author`) has more than 64. A media field is left to the host, since the analyzers cannot tell whether the media plugin registers its type.
 
 ## Slugs
 

@@ -204,7 +204,7 @@ internal static class Rules
     public static readonly DiagnosticDescriptor RelationTargetNotContentType = new(
         "FCMS0040",
         "A relation target is not a content type",
-        "The relation target '{0}' of '{1}' is not marked with [Collection] or [Singleton]; the host refuses it with FCMS1204",
+        "The relation target '{0}' of '{1}' is not a concrete class marked with [Collection] or [Singleton]; the host refuses it with FCMS1204",
         Schema,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,

@@ -54,6 +54,9 @@ internal sealed class SchemaField(IPropertySymbol property, string name, string?
 
     public bool IsRelation { get; set; }
 
+    // A relation whose target the host discovers as a collection or singleton.
+    public bool TargetKnown { get; set; }
+
     public string? Reverse { get; set; }
 }
 
@@ -269,6 +272,12 @@ internal static class SchemaReader
         var attribute = field.FieldAttribute;
         var (element, multiple) = Unwrap(property.Type);
 
+        // [Select(null)] or [Blocks(null)] stops the reader with an exception rather than a code, so nothing is reported.
+        if (field.FieldType is "select" or "blocks" && attribute.ConstructorArguments is { Length: 1 } arguments && arguments[0].IsNull)
+        {
+            return false;
+        }
+
         switch (field.FieldType)
         {
             case "decimal":
@@ -357,6 +366,17 @@ internal static class SchemaReader
         {
             findings?.Add(new Finding(Rules.RelationTargetNotContentType, TypeLocation(field.Property) ?? LocationOf(field.FieldAttribute), [target.Name, location]));
             return false;
+        }
+
+        // The reader takes a target marked as a content type, but the host knows only one it discovers; an abstract one
+        // is refused by schema validation with the same code.
+        if (target is not INamedTypeSymbol named || Discover(named) is null)
+        {
+            findings?.Add(new Finding(Rules.RelationTargetNotContentType, TypeLocation(field.Property) ?? LocationOf(field.FieldAttribute), [target.Name, location]));
+        }
+        else
+        {
+            field.TargetKnown = true;
         }
 
         field.IsRelation = true;

@@ -236,6 +236,23 @@ public sealed class RelationTargetNotContentTypeTests
         }
         """, "FCMS1204");
 
+    // The reader takes the field, and schema validation refuses the target it never discovered; the reverse side is not
+    // checked then, so only the target is reported.
+    [Fact]
+    public Task ARelationToAnAbstractCollectionIsReported() => Analysis.Reports("""
+        [Collection("author")]
+        public abstract class Author : ContentItem
+        {
+            [Text] public string Name { get; set; } = "";
+        }
+
+        [Collection("page")]
+        public sealed class Page : ContentItem
+        {
+            [Relation(Reverse = "status")] public {|FCMS0040:Ref<Author>|} Author { get; set; }
+        }
+        """, "FCMS1204");
+
     [Fact]
     public Task ARelationToACollectionOrSingletonIsAccepted() => Analysis.Accepts("""
         [Collection("author")]
