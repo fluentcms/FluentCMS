@@ -23,8 +23,8 @@ internal sealed class ProjectOptions
         return options;
     }
 
-    public HostTarget Resolve(ParseResult result, TextWriter output) =>
-        HostTarget.Resolve(result.GetValue(Project), result.GetValue(Assembly), result.GetValue(NoBuild), output);
+    public HostTarget Resolve(ParseResult result, TextWriter error) =>
+        HostTarget.Resolve(result.GetValue(Project), result.GetValue(Assembly), result.GetValue(NoBuild), error);
 
     public string? EnvironmentOf(ParseResult result) => result.GetValue(Environment);
 }

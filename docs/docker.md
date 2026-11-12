@@ -166,7 +166,7 @@ docker run --rm \
   fluentcms fluentcms migrate
 ```
 
-`fluentcms migrate --check` lists what is pending and exits with 1 when anything is, which suits a readiness gate. `fluentcms migrations list` shows the applied and pending migrations of each stream, and `fluentcms migrations script --idempotent --output /out/migrate.sql` writes the SQL for a database that only an administrator may change (PostgreSQL and SQL Server; mount `/out`). The host's logs go to standard output with the command's output, so set `Logging__Console__LogToStandardErrorThreshold=Trace` to keep them apart. A command needs none of the Production settings of the host above, since it serves nothing. In Kubernetes:
+`fluentcms migrate --check` lists what is pending and exits with 1 when anything is, which suits a readiness gate. `fluentcms migrations list` shows the applied and pending migrations of each stream, and `fluentcms migrations script --idempotent --output /out/migrate.sql` writes the SQL for a database that only an administrator may change (PostgreSQL and SQL Server; mount `/out`). The host's logs go to standard output with the command's output, so set `Logging__Console__LogToStandardErrorThreshold=Trace` to keep them apart. A command needs none of the Production settings of the host above, since it serves nothing. Instances that migrate one database at once apply each migration once, but on SQL Server the first migration of a new database turns `READ_COMMITTED_SNAPSHOT` on, which disconnects the database's other sessions, so a second run that waits meanwhile fails and succeeds when it runs again: run one migrate step per deploy, or let it restart. In Kubernetes:
 
 ```yaml
 initContainers:

@@ -125,7 +125,7 @@ internal sealed class CommandLine(TextWriter output, TextWriter error, IHostLaun
         var project = ProjectOptions.AddTo(command);
         command.SetAction((result, cancellationToken) => GuardAsync(async () =>
         {
-            var target = project.Resolve(result, output);
+            var target = project.Resolve(result, error);
             using var host = OpenInTool(target, project.EnvironmentOf(result));
             var newest = host.NewestMigration() ?? throw new CliException(CliErrorCodes.NoContentMigration, $"{target.Name} has no content migration to remove.");
 
@@ -153,7 +153,7 @@ internal sealed class CommandLine(TextWriter output, TextWriter error, IHostLaun
     }
 
     private Task<int> HandOverAsync(ParseResult result, ProjectOptions project, IReadOnlyList<string> arguments, CancellationToken cancellationToken) =>
-        GuardAsync(() => launcher.RunAsync(project.Resolve(result, output), project.EnvironmentOf(result), arguments, output, error, cancellationToken));
+        GuardAsync(() => launcher.RunAsync(project.Resolve(result, error), project.EnvironmentOf(result), arguments, output, error, cancellationToken));
 
     // The content stream's applied migrations, from `migrations list --json` inside the host, which has the connection.
     private async Task<IReadOnlyList<string>> AppliedContentMigrationsAsync(HostTarget target, string? environment, string newest, CancellationToken cancellationToken)
@@ -177,7 +177,7 @@ internal sealed class CommandLine(TextWriter output, TextWriter error, IHostLaun
             .Select(id => id.GetString()!)];
     }
 
-    private HostProject OpenInTool(ParseResult result, ProjectOptions project) => OpenInTool(project.Resolve(result, output), project.EnvironmentOf(result));
+    private HostProject OpenInTool(ParseResult result, ProjectOptions project) => OpenInTool(project.Resolve(result, error), project.EnvironmentOf(result));
 
     // The host's design-time factory runs in this process, so it sees the environment as the host would.
     private static HostProject OpenInTool(HostTarget target, string? environment)
@@ -216,7 +216,7 @@ internal sealed class CommandLine(TextWriter output, TextWriter error, IHostLaun
     }
 
     private static bool IsReported(Exception exception) =>
-        exception is InvalidOperationException or IOException or ArgumentException or BadImageFormatException or UnauthorizedAccessException or JsonException;
+        exception is InvalidOperationException or IOException or ArgumentException or BadImageFormatException or UnauthorizedAccessException or JsonException or KeyNotFoundException;
 
     private int Report(Exception exception)
     {

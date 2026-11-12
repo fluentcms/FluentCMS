@@ -10,6 +10,7 @@ internal static partial class CommandLog
     [LoggerMessage(EventId = 9171, Level = LogLevel.Information, Message = "The command {Command} ended with exit code {ExitCode}.")]
     public static partial void Ended(ILogger logger, string command, int exitCode);
 
-    [LoggerMessage(EventId = 9172, Level = LogLevel.Error, Message = "The command {Command} failed ({ExceptionType}).")]
-    public static partial void Failed(ILogger logger, string command, string exceptionType, Exception exception);
+    // The exception as text that passed through SecretScrubber, since a driver may have put a secret in it.
+    [LoggerMessage(EventId = 9172, Level = LogLevel.Error, Message = "The command {Command} failed ({ExceptionType}): {Exception}")]
+    public static partial void Failed(ILogger logger, string command, string exceptionType, string exception);
 }

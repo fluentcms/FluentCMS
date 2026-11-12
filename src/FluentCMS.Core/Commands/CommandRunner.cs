@@ -69,10 +69,11 @@ internal static class CommandRunner
                 await error.WriteLineAsync(exception.Message);
                 exitCode = CommandExitCodes.Failure;
             }
-            catch (Exception exception) when (exception is not OperationCanceledException || cancellationToken.IsCancellationRequested)
+            catch (Exception exception) when (exception is not OutOfMemoryException)
             {
-                // The log keeps the stack; the console gets the cause without secrets a driver may have put in it.
-                CommandLog.Failed(logger, command.Name, exception.GetType().Name, exception);
+                // A cancellation too, so that the process still ends with 1 and a message rather than a crash. The log keeps
+                // the stack, and both leave out what looks like a secret.
+                CommandLog.Failed(logger, command.Name, exception.GetType().Name, SecretScrubber.Of(exception.ToString()));
                 await error.WriteLineAsync($"{CommandErrorCodes.CommandFailed}: 'fluentcms {command.Name}' failed: {exception.GetType().Name}: {SecretScrubber.Of(exception.Message)}");
                 exitCode = CommandExitCodes.Failure;
             }

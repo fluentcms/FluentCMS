@@ -70,7 +70,7 @@ A command runs before any hosted service starts, so nothing migrates on start, l
 
 | Command | Does |
 | --- | --- |
-| `fluentcms migrate` | Applies the pending migrations of every stream in the order system, plugins, content, lists them under their stream, and records the schema in the schema history. Instances that migrate one database at once apply each migration once. |
+| `fluentcms migrate` | Applies the pending migrations of every stream in the order system, plugins, content, lists them under their stream, and records the schema in the schema history. Instances that migrate one database at once apply each migration once; on SQL Server, a run that waits while another turns `READ_COMMITTED_SNAPSHOT` on is disconnected and succeeds when run again ([ADR 0005](decisions/0005-sql-server-read-committed-snapshot.md)). |
 | `fluentcms migrate --check` | Lists the pending migrations of every stream and exits with 1 when any is pending (`FCMS3303`), and with 0 when none is. |
 | `fluentcms migrations list [--json]` | Every stream with its applied and pending migrations. |
 | `fluentcms migrations script [--stream <name>] [--from <id>] [--to <id>] [--idempotent] [--output <file>]` | The SQL of the host's provider, for a database that only an administrator may change. Without `--stream`, every stream in order; `--from` and `--to` need `--stream`, and `0` is before the first migration. `--idempotent` checks each migration against the history, on PostgreSQL and SQL Server only (`FCMS3306` on SQLite). It opens no database, and records no schema history, which the next `fluentcms migrate` or a start with `MigrateOnStartup` does. |

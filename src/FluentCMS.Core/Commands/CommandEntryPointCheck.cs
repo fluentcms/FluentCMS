@@ -17,9 +17,17 @@ internal sealed class CommandEntryPointCheck(ProcessArguments arguments) : IHost
 
     public Task StartingAsync(CancellationToken cancellationToken)
     {
-        if (arguments.Values is not [CommandRunner.Prefix, ..])
+        Refuse(arguments);
+        return Task.CompletedTask;
+    }
+
+    // Also asked by the migrations at start: with HostOptions.ServicesStartConcurrently the host does not stop at the
+    // first service that fails to start.
+    public static void Refuse(ProcessArguments? arguments)
+    {
+        if (arguments?.Values is not [CommandRunner.Prefix, ..])
         {
-            return Task.CompletedTask;
+            return;
         }
 
         // The words only: an option's value is the caller's and is not repeated.

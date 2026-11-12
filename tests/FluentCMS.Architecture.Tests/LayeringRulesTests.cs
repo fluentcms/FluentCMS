@@ -22,6 +22,7 @@ public class LayeringRulesTests
     private const string SitesNamespace = "FluentCMS.Core.Sites";
     private const string ProvidersNamespace = "FluentCMS.Data";
     private const string CliNamespace = "FluentCMS.Cli";
+    private const string CliProject = "FluentCMS.Cli";
     private const string TestingNamespace = "FluentCMS.Testing";
     private const string McpPlugin = "FluentCMS.Plugins.Mcp";
     private const string MultiSitePlugin = "FluentCMS.Plugins.MultiSite";
@@ -112,6 +113,17 @@ public class LayeringRulesTests
             .ToList();
 
         violations.ShouldBeEmpty();
+    }
+
+    // Spec 6.1: the tool parses the command line and hands a command to the host as arguments, so Core and everything a
+    // host references keeps no dependency on the parser.
+    [Fact]
+    public void OnlyTheToolReferencesTheCommandLineParser()
+    {
+        ProjectFile.SourceProjects
+            .Where(project => project.PackageReferences.Any(package => package.Name == "System.CommandLine"))
+            .Select(project => project.Name)
+            .ShouldBe([CliProject]);
     }
 
     [Fact]

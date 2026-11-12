@@ -7,8 +7,9 @@ internal sealed record HostTarget(string AssemblyPath, string ProjectDirectory, 
 {
     public string Name => Path.GetFileNameWithoutExtension(AssemblyPath);
 
-    // --assembly names a built host and builds nothing; otherwise the project is built unless --no-build says it is.
-    public static HostTarget Resolve(string? project, string? assembly, bool noBuild, TextWriter output)
+    // --assembly names a built host and builds nothing; otherwise the project is built unless --no-build says it is. The
+    // notice goes to standard error, since standard output is the command's own.
+    public static HostTarget Resolve(string? project, string? assembly, bool noBuild, TextWriter error)
     {
         if (assembly is not null)
         {
@@ -21,7 +22,7 @@ internal sealed record HostTarget(string AssemblyPath, string ProjectDirectory, 
         var target = project ?? ".";
         if (!noBuild)
         {
-            output.WriteLine($"Building {target}");
+            error.WriteLine($"Building {target}");
             Dotnet.Run(CliErrorCodes.ProjectNotBuilt, "build", target);
         }
 

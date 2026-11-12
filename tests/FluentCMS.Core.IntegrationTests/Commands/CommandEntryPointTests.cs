@@ -69,6 +69,26 @@ public sealed class CommandEntryPointTests : IDisposable
         Tables(file).ShouldBeEmpty();
     }
 
+    // The host does not stop at the first service that fails when it starts them together, so the migrations ask too.
+    [Fact]
+    public async Task AHostThatStartsItsServicesTogetherStopsBeforeItMigratesToo()
+    {
+        var file = Path.Combine(_directory.FullName, "cms.db");
+        await using var host = new FluentCmsTestHost()
+            .UseSqlite(file)
+            .WithServices(services =>
+            {
+                services.AddSingleton(new ProcessArguments(["fluentcms", "migrate"]));
+                services.Configure<HostOptions>(options => options.ServicesStartConcurrently = true);
+            });
+
+        var exception = Should.Throw<Exception>(() => host.Services);
+
+        IReadOnlyList<Exception> errors = exception is AggregateException aggregate ? aggregate.Flatten().InnerExceptions : [exception];
+        errors.ShouldAllBe(error => error is FluentCmsConfigurationException && ((FluentCmsConfigurationException)error).Code == "FCMS3301");
+        Tables(file).ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task AHostStartedWithOtherArgumentsStarts()
     {

@@ -20,7 +20,7 @@ internal sealed class ProcessHostLauncher : IHostLauncher
         // On the console the host writes to it itself, which keeps its colours, its encoding and a prompt; other writers,
         // such as a test's, get what it writes.
         var inherit = ReferenceEquals(output, Console.Out) && ReferenceEquals(error, Console.Error);
-        var start = new ProcessStartInfo("dotnet")
+        var start = new ProcessStartInfo(Dotnet.Path)
         {
             WorkingDirectory = host.ProjectDirectory,
             UseShellExecute = false,
