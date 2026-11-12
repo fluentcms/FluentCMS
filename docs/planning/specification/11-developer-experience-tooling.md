@@ -6,7 +6,7 @@ A developer should go from `dotnet new` to a running admin with a typed client i
 | --- | --- | --- | --- |
 | 1 | Project templates | Must | `dotnet new fluentcms` (API host with admin), `fluentcms-admin` (standalone admin), `fluentcms-plugin`; options for database provider and sample content types. |
 | 2 | CLI | Must | `fluentcms` global tool: new, migrate, schema snapshot and diff, generate types (C#, TypeScript, OpenAPI), export and import, create API key and admin user, run jobs, mcp proxy. |
-| 3 | Type generation | Must | C# models and typed client, TypeScript types and client, from the running schema or from code without a running instance; MSBuild target to regenerate on build. |
+| 3 | Type generation | Must | C# models and typed client, TypeScript types and client, from the running schema or from code without a running instance; the source generator regenerates the C# builders on every build. |
 | 4 | Fast local loop | Must | `dotnet watch` with hot reload for API and admin; SQLite default needing no services; schema changes apply without restart in development. |
 | 5 | Seed data and sample project | Must | Seed API and CLI for sample content; a sample site with a few types, media and users that templates can include. |
 | 6 | Test host | Must | `FluentCmsTestHost` that boots the CMS in-process with SQLite for integration tests; fixtures for users, keys and content; used by the project's own tests and by plugin authors. |

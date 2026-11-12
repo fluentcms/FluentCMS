@@ -18,9 +18,9 @@ How to read it: sections 1 to 3 set scope and architecture; sections 4 to 6 desc
 | Authorization server (OpenIddict), including the server-rendered login, consent, two-factor, invitation and reset pages it needs | Preview iframe and `postMessage` protocol (the backend ships only preview keys and draft reads) |
 | First-party plugins, server side: media, webhooks, GraphQL, MCP, AI assist, multi-site, search | Frontend starter kits (Next.js, Astro, Blazor) |
 | Infrastructure: configuration, health, observability, multi-instance safety, export and import, startup diagnostics, reference host image | Documentation site, `llms.txt`, agent skills and repository instructions |
-| Tooling that targets the backend: CLI, `fluentcms` and `fluentcms-plugin` templates (server half), test host, source generator, analyzers | Generated TypeScript client (a consumer of the backend's OpenAPI document; tracked with the frontend work) |
+| Tooling that targets the backend: CLI, `fluentcms` and `fluentcms-plugin` templates (server half), test host, source generator, analyzers | The full C# and TypeScript client packages and their publishing (M6 builds only what generated code needs; the rest is tracked with the frontend work) |
 
-The generated C# and TypeScript clients are produced *from* the backend's OpenAPI document. The CLI command that produces them is in scope; the client packages themselves are tracked with the frontend work.
+The generated C# and TypeScript types are produced from the backend's schema snapshot (4.2). The CLI command that produces them is in scope, with minimal `FluentCMS.Client` and `@fluentcms/client` packages for the generated code to compile against (10.3, P9). The rest of the client packages, and publishing them, are tracked with the frontend work.
 
 ### 1.2 Decisions this document is bound by
 
@@ -135,12 +135,13 @@ Proposed NuGet packages, all `FluentCMS.*`, first release 1.0.0. A host adds two
 | `FluentCMS.Plugins.Search` (Should) | Full-text `q=` parameter on PostgreSQL FTS and SQLite FTS5, external index slot. | `FluentCMS.Sdk` |
 | `FluentCMS.Caching.Redis` (Should) | Distributed cache, output cache and distributed lock on one connection string. | `FluentCMS.Sdk` |
 | `FluentCMS.Testing` | `FluentCmsTestHost`, fixtures for users, keys and content; SQLite by default. | `FluentCMS.Core`, `FluentCMS.Data.Sqlite` |
-| `FluentCMS.Cli` | The `fluentcms` dotnet tool. | `FluentCMS.Core` design-time services |
-| `FluentCMS.Generators` | Roslyn source generator: typed filter builders and mappers for the host's content types. | Roslyn |
-| `FluentCMS.Analyzers` | Roslyn analyzers for schema attributes and SDK misuse. | Roslyn |
+| `FluentCMS.Cli` | The `fluentcms` dotnet tool. Its project commands run inside the host (6.1). | `FluentCMS.Core` design-time services for `migrations add`, System.CommandLine |
+| `FluentCMS.Generators` | Roslyn source generator: typed filter and sort builders for the host's content types. | Roslyn |
+| `FluentCMS.Analyzers` | Roslyn analyzers for schema attributes. | Roslyn |
 | `FluentCMS.Templates` | `dotnet new` templates (`fluentcms`, `fluentcms-plugin`). | none |
+| `FluentCMS.Client` | Minimal typed HTTP client that generated C# compiles against: Delivery reads, content management, filters, paging, problems (6.1). | no FluentCMS package |
 
-Not a package: `FluentCMS.Host`, the reference host application and Docker image.
+Not a package: `FluentCMS.Host`, the reference host application and Docker image. Not a NuGet package: `@fluentcms/client` in `clients/typescript`, the same set as `FluentCMS.Client` for TypeScript.
 
 A host's `Program.cs`:
 
@@ -180,6 +181,7 @@ FluentCMS/
 |   +-- FluentCMS.Data.SqlServer/
 |   +-- FluentCMS.Testing/
 |   +-- FluentCMS.Cli/
+|   +-- FluentCMS.Client/         minimal C# client for generated code
 |   +-- FluentCMS.Generators/
 |   +-- FluentCMS.Analyzers/
 |   +-- FluentCMS.Host/           reference host: app, Dockerfile, compose
@@ -205,6 +207,8 @@ FluentCMS/
 |   +-- fluentcms-plugin/                  plugin template, server half (admin half later)
 +-- samples/
 |   +-- Blog/                              sample host used by docs and tests
++-- clients/
+|   +-- typescript/                        @fluentcms/client, minimal TypeScript client
 +-- admin/                                 reserved: Blazor admin
 +-- starters/                              reserved: frontend starters
 +-- Directory.Build.props                  TFM, nullable, warnings as errors, analyzers, package metadata
@@ -527,7 +531,7 @@ At runtime one `CmsDbContext` holds the union model for querying, with the syste
 
 **Development loop.** With `FluentCms:Database:SchemaSync = Auto` (default in Development on SQLite only) the content stream is skipped and additive changes (new tables, new nullable columns, new indexes) are applied by diffing the model against the database at startup. Destructive changes are reported, never applied. This gives "schema changes apply without restart" for new fields and keeps production on explicit migrations.
 
-**Development loop outside Development, as built.** A host whose types are data has no compiled content migrations, which is the reference host with a schema file or the sample (Q2). `cms.AllowSchemaSyncOutsideDevelopment()`, in code only so that no configuration key turns it on, makes `SchemaSync` default to `Auto` on SQLite in every environment, with the rules of Development: additive changes apply at start and destructive ones are logged and left undone. `FluentCms:Database:SchemaSync = Off` still turns it off. A provider without schema sync (PostgreSQL, SQL Server) refuses the opt-in when `AddFluentCms` runs (`FCMS3154`), so their content tables stay on migrations. The startup report lists `schema-sync-outside-development` when sync runs outside Development. This is how Q2 works in Production until the M6 CLI generates migrations from a schema file.
+**Development loop outside Development, as built.** A host whose types are data has no compiled content migrations, which is the reference host with a schema file or the sample (Q2). `cms.AllowSchemaSyncOutsideDevelopment()`, in code only so that no configuration key turns it on, makes `SchemaSync` default to `Auto` on SQLite in every environment, with the rules of Development: additive changes apply at start and destructive ones are logged and left undone. `FluentCms:Database:SchemaSync = Off` still turns it off. A provider without schema sync (PostgreSQL, SQL Server) refuses the opt-in when `AddFluentCms` runs (`FCMS3154`), so their content tables stay on migrations. The startup report lists `schema-sync-outside-development` when sync runs outside Development. This is how Q2 works in Production on SQLite. On PostgreSQL and SQL Server a schema file is to be applied with `fluentcms schema apply` (6.1, [#3021](https://github.com/fluentcms/FluentCMS/issues/3021)), which M6 plans in place of migrations generated from a schema file (10.3, P4).
 
 **Startup validation.** The runner compares the content model with the database and fails with actionable errors (`FCMS1301: table cms_article is missing column subtitle; run 'fluentcms migrations add AddSubtitle'`).
 
@@ -1031,11 +1035,17 @@ A hook or handler is the plugin's by the tiebreaker's rule above, and a job type
 
 Rows 10.9, 10.10, 1.19.
 
-**Export package.** A zip: `manifest.json` (FluentCMS version, schema hash, site, created at, options), `schema.json`, `content/{type}.jsonl` (both states, versions optional), `references.jsonl`, `media.jsonl` (metadata and storage keys; binaries optional), `settings.json`, `roles.json` (optional; users never). Produced by a job; downloaded from `/transfer/export/{jobId}`.
+**Export package.** A zip, written and read as a stream: `manifest.json` (format version, FluentCMS version, schema hash, site and its locales, created at, options, the list of sections), `schema.json`, `content/{type}.jsonl` (one line per entry with both states), `settings.json` (without secrets), `roles.json` (optional) and `plugins/{plugin}/` for what a plugin contributes, which for the media plugin is the asset and folder metadata and, optionally, the files. Users, members, API keys and the activity log are never in a package. A package is of one site. `POST /transfer/export` answers the zip as a stream, with `transfer.manage`.
 
-**Import.** Schema hash check (strict, or compatible when only additive differences), upsert by id, per-type selection, site remap, dry run with a report of creates, updates, skips and conflicts, then apply as a job with progress.
+**Import.** `POST /transfer/import` takes the zip as its body and answers a stream of progress lines that ends with the report of creates, updates, skips, conflicts and errors. Schema hash check (equal, or compatible when the instance has every type and field the package uses), upsert by id, per-type selection, import into the site of the request, and a dry run with the same report. The import writes through the content service as the system in an import mode that keeps the ids, times and published state of the package, so validation, hooks, references, versions and the activity log behave as for any write. Each entry is its own transaction, and an import that stopped is finished by running it again. Everything an import writes carries `Origin.Import`, and the webhooks plugin delivers nothing for it unless the import asks for webhooks.
 
-**Schema tools.** `fluentcms schema snapshot` from code; `fluentcms schema diff --url` against a running instance's introspection; non-zero exit on drift so CI can gate deploys.
+**No jobs, no stored package (10.3, P7).** The first design ran export and import as jobs with a download from `/transfer/export/{jobId}`. Core has nowhere to keep a package that every instance can reach, so both are streamed within the request instead.
+
+**Plugin data (10.3, P11).** `ITransferContributor` in the SDK (`FluentCMS.Transfer`) lets a plugin write sections on export and read them on import, with the dry run. The media plugin implements it in M6; the other first-party plugins can follow without a change to the SDK.
+
+**Left out of the first package.** `references.jsonl`, since references are derived from the fields on import, and versions, which the list of sections in the manifest lets a later release add.
+
+**Schema tools.** `fluentcms schema snapshot` from code or from an instance; `fluentcms schema validate`; `fluentcms schema diff` between the code, a running instance's introspection, a schema file or the applied history, with a non-zero exit on drift so CI can gate deploys. The diff marks destructive changes and reports a field removed beside a field added of the same kind as a possible rename, with the `[FormerNames]` line to add; `migrations add` prints the same report and refuses a destructive change without `--allow-destructive` (10.3, P5). `fluentcms schema apply` brings the content tables of a host whose types are data up to its schema (4.3, 10.3, P4).
 
 ### 4.15 Infrastructure and operations
 
@@ -1063,7 +1073,7 @@ Rows 10.3, 10.5 to 10.8, 10.11 to 10.15.
 
 **Startup diagnostics as built.** The report is made once per start, after the migrations, by a hosted service that logs it at Information with event id 9130 (the report as JSON in the message, and its counts as properties) and one warning with event id 9131 per insecure default; a report that cannot be made is logged (9132, the exception type and its scrubbed message) and replaced by a reduced one that carries the type of the failure, so the endpoint still answers; before any report exists it is a 503 (`FCMS3106`). The report types are public records in the SDK (`FluentCMS.Diagnostics`). It holds the environment, the FluentCMS version, the data provider with its version and the resolved `MigrateOnStartup` and `SchemaSync`, the FluentCMS assemblies in the process, the plugins (an empty list until the plugin host exists), the pending migrations of every stream, the schema hash in code against the newest row of the history (applied hash, time and version, and what differs), and the insecure defaults. Those come from the production startup checks, which are asked in every environment so the report and the refusal cannot disagree (the public origin and key ring checks refuse in Production only, so that other environments keep their own lines), and from nine more: a generated signing key that `AllowGeneratedSigningKey` accepted, the key ring unencrypted where it is not refused (`data-protection-keys-unencrypted`: in every environment but Production, and in Production with `AllowUnencryptedKeyRing`), the Development email sender, the HTTPS redirect off in Production, `AllowedHosts` of `*` or unset in Production (`allowed-hosts-any`, read from the host filtering options, so any `Host` is answered), `FluentCms:PublicOrigin` unset in Production and accepted by `AllowRequestOrigin` (`public-origin-unset`, so links in emails and the issuer follow the request's host), schema sync outside Development (`schema-sync-outside-development`, 4.3), forwarded headers trusted from every network, and the direct login of members turned on in Production (`member-direct-login`, 4.7). A plugin adds its own with an `IInsecureDefaultSource` (`FluentCMS.Diagnostics`, in the SDK), which the report asks in every environment, so it decides itself where a setting is insecure; the webhooks plugin reports `webhooks-private-networks` and the MCP plugin `mcp-open-client-registration` (5.4). Free text goes through `SecretScrubber`, and the report holds no connection string, key or password. `GET /api/management/v1/system/diagnostics` serves that same report, so a change after the start does not show until the next one. It needs `system.read`, an instance-level permission: a role of one site, a grant limited to sites and a key bound to sites are refused with 403, and so is a key without the management scope. There is no switch to turn CORS or the rate limits off, so neither can be reported as off.
 
-**Backups.** Documented per database and storage provider; `fluentcms backup` bundles an export package and the media files into one archive for small installs.
+**Backups.** Documented per database and storage provider in `docs/backups.md`. For a host on SQLite, `fluentcms backup` writes an online snapshot of the database and the files of the local media storage into one archive, and `fluentcms restore` puts them back. On PostgreSQL and SQL Server both commands refuse and name the guide, since the database's own tools do it better. A backup is not built on export packages, which leave out users, keys and the activity log (10.3, P6).
 
 **Supported platforms.** Linux and Windows containers, Azure App Service, AWS ECS, Kubernetes, bare `dotnet run`. .NET 10 LTS baseline.
 
@@ -1428,26 +1438,33 @@ Rows 11.1 to 11.6, 11.12, 11.13.
 
 ### 6.1 CLI
 
-`fluentcms` dotnet tool, also published as standalone binaries later (decision 59). Works against the host project (`--project`, design-time services) or a running instance (`--url`, `--token`).
+`fluentcms` dotnet tool; standalone binaries follow after 1.0 (decision 59; 10.3, P12). Works against the host project (`--project`) or a running instance (`--url`, with a management API key in `--token` or `FLUENTCMS_TOKEN`; 10.3, P3). The command line is parsed with System.CommandLine (10.3, P2).
 
-| Command | Does |
-| --- | --- |
-| `new host`, `new plugin` | wraps `dotnet new fluentcms` and `fluentcms-plugin` |
-| `migrations add <name>`, `migrations list`, `migrations script`, `migrations remove` | content migration stream for the host's provider |
-| `migrate [--check]` | applies all streams in order; `--check` lists pending and exits non-zero |
-| `schema snapshot`, `schema diff --url`, `schema validate` | snapshot from code, drift against an instance, validation errors |
-| `generate csharp`, `generate typescript`, `generate openapi` | from a running instance or from code |
-| `export`, `import --dry-run` | transfer packages |
-| `apikey create`, `apikey list`, `apikey revoke` | |
-| `user create`, `user invite`, `user reset-password`, `user add-role` | |
-| `jobs list`, `jobs run <name>`, `jobs retry <id>` | |
-| `mcp` | stdio to Streamable HTTP proxy for IDE clients |
-| `backup` | export package plus media archive |
-| `doctor` | the startup report without starting the host |
+**Project commands run inside the host (10.3, P1).** The command logic is in Core. A host calls `app.RunFluentCmsCommandAsync(args)` between `Build()` and `Run()`; the tool builds the project and starts its assembly with `fluentcms <command>`, so a command runs with the host's own FluentCMS.Core, configuration and plugins, as the system with `Origin.Cli`, and before any hosted service starts. The reference host makes the same call, so `docker run <image> fluentcms migrate` is what an init container runs. `migrations add` and `migrations remove` stay in the tool's own process, because they need EF Core's design-time package, which a host does not get.
+
+| Command | Does | Mode |
+| --- | --- | --- |
+| `migrations add <name>`, `migrations remove` | content migration stream for the host's provider; `add` reports possible renames and refuses a destructive change without `--allow-destructive` | project, in the tool |
+| `migrations list`, `migrations script` | applied and pending migrations per stream; the SQL of a stream | project |
+| `migrate [--check]` | applies all streams in order; `--check` lists pending and exits non-zero | project |
+| `schema snapshot`, `schema validate`, `schema diff` | snapshot, validation errors, drift between code, an instance, a schema file or the applied history, with rename detection (4.14) | project, `--url` |
+| `schema apply [--script] [--dry-run]` | brings the content tables of a host whose types are data up to its schema, on every provider (4.3) | project |
+| `generate csharp`, `generate typescript`, `generate openapi` | from the schema snapshot of a running instance, of the host or of a schema file; `--check` for CI | project, `--url` |
+| `export`, `import [--dry-run]` | transfer packages (4.14) | project, `--url` |
+| `apikey create`, `apikey list`, `apikey revoke` | | project, `--url` |
+| `user create` | an active administrator, with the password from a prompt or standard input | project |
+| `user invite`, `user reset-password`, `user add-role` | | project, `--url` |
+| `jobs list`, `jobs run <name>`, `jobs retry <id>` | | project, `--url` |
+| `seed [--name]` | runs the registered seeders (4.16) | project |
+| `mcp` | stdio to Streamable HTTP proxy for IDE clients | `--url` |
+| `backup`, `restore` | SQLite snapshot with the local media files (4.15) | project |
+| `doctor` | the startup report without starting the host; with `--url`, an instance's diagnostics | project, `--url` |
+
+`new host` and `new plugin`, which only wrapped `dotnet new`, are dropped: the templates are used through `dotnet new` (6.2).
 
 ### 6.2 Templates
 
-`fluentcms`: an API host with `Program.cs`, `appsettings.json`, a sample `Article` type, a `Migrations/` folder, a Dockerfile and a README; options for provider and sample content. `fluentcms-plugin`: a server project with manifest, settings, a hook, an endpoint, a migration and a test project on `FluentCMS.Testing`; the admin half is added when the admin exists.
+`fluentcms`: an API host with `Program.cs` (with the command entry point of 6.1), `appsettings.json`, a sample `Article` type, the design-time factory and an empty `Migrations/` folder, a tool manifest that pins `fluentcms`, references to the generator and the analyzers, a Dockerfile and a README; options for provider and sample content. It ships no generated migration, since a migration set belongs to one provider. `fluentcms-plugin`: a server project with manifest, settings, a hook, an endpoint, a migration and a test project on `FluentCMS.Testing`; the admin half is added when the admin exists.
 
 ### 6.3 Test host
 
@@ -1455,7 +1472,11 @@ Rows 11.1 to 11.6, 11.12, 11.13.
 
 ### 6.4 Source generator and analyzers
 
-`FluentCMS.Generators` emits, per content type in the host: a typed filter and sort builder (`ArticleFields.Title.Contains("x")`), a reflection-free `ContentDocument` mapper, and block union helpers. `FluentCMS.Analyzers` reports `FCMS0xxx` diagnostics: invalid attribute combinations, reserved names, slug source missing, relation to a non-content type, `Localizable` on a non-localized type, a filtered field without `Indexed` (info), obsolete SDK members. Client generation from OpenAPI follows Q15: an own TypeScript emitter for the `d.ts` and the typed query builder, and the C# generator (Kiota or own) decided in issue B-93 once the OpenAPI document exists.
+`FluentCMS.Generators` emits, per content type in the host: a typed filter and sort builder (`ArticleFields.Title.Contains("x")`) and block union helpers. The field types the builders return are in the SDK. `FluentCMS.Analyzers` reports `FCMS0xxx` diagnostics: invalid attribute combinations, reserved names, slug source missing, relation to a non-content type, `Localizable` on a non-localized type, a filtered field without `Indexed` (info). Each ships as a package of its own that a host references.
+
+**Left for after 1.0 (10.3, P12).** The reflection-free `ContentDocument` mapper waits for a benchmark that shows the mapper of the content service as a cost, and the rule for obsolete SDK members for the first member that is obsolete.
+
+**Client generation (10.3, P9).** Q15 decided an own TypeScript emitter and left the C# generator to B-93. Both are own emitters that read the schema snapshot, not the OpenAPI document: the snapshot has what the types need and exists without a running instance. The C# emitter is shared source with the source generator, so the builders read the same in a host and in a client. The generated code compiles against `FluentCMS.Client` and `@fluentcms/client` (2.4), which M6 builds with only what generated code needs and does not publish. No MSBuild target runs `generate` on build (10.3, P14).
 
 ## 7. Backend feature inventory
 
@@ -1494,7 +1515,7 @@ Should: 1.14 polymorphic relations, 1.15 computed and reverse fields, 1.16 hiera
 | 2.7 | Compact response shape | serializer | 4.4 | M2 |
 | 2.8 | Error model | problem details | 4.10 | M2 |
 | 2.9 | OpenAPI 3.1 | transformers, Scalar | 4.10 | M2 |
-| 2.10, 2.11 | Generated C# SDK and TypeScript client | CLI `generate` only | 6.1 | M6 |
+| 2.10, 2.11 | Generated C# SDK and TypeScript client | CLI `generate`, minimal `FluentCMS.Client` and `@fluentcms/client` | 6.1, 6.4 | M6 |
 | 2.12 | API keys and scopes | key classes, handler | 4.7 | M2 |
 | 2.13 | Bearer tokens | OpenIddict | 4.7 | M2 |
 | 2.14 | Bulk operations | `BulkAsync`, endpoint | 4.4 | M1, M2 |
@@ -1644,7 +1665,7 @@ Should: 9.16 semantic search, 9.17 agent-context resource, 9.18 content provenan
 | 10.8 | Response caching | output cache, tags, purge event | 4.10 | M2 |
 | 10.9 | Content export and import | transfer | 4.14 | M6 |
 | 10.10 | Schema snapshot and diff | snapshot, CLI | 4.2, 6.1 | M1, M6 |
-| 10.11 | Backups guidance | docs, `backup` | 4.15, 6.1 | M6 |
+| 10.11 | Backups guidance | docs, `backup` and `restore` on SQLite | 4.15, 6.1 | M6 |
 | 10.12 | Rate and request limits | policies, caps | 4.10 | M2 |
 | 10.13 | Reverse proxy and TLS | options | 4.15 | M2 |
 | 10.14 | Startup diagnostics | report, endpoint | 4.15 | M2 |
@@ -1662,7 +1683,7 @@ Should: 10.16 environment promotion, 10.17 Redis provider pack, 10.18 read repli
 | 11.4 | Fast local loop | SQLite default, schema sync | 4.3 | M1 |
 | 11.5 | Seed data and sample project | `Seed` API, sample pack, `samples/Blog` | 4.16, 6.3 | M2 |
 | 11.6 | Test host | `FluentCMS.Testing` | 6.3 | M1 |
-| 11.12 | Upgrade tooling | `doctor`, obsoletion analyzers | 6.1, 6.4 | M6 |
+| 11.12 | Upgrade tooling | `doctor`; the obsoletion analyzer follows the first obsolete member | 6.1, 6.4 | M6, later |
 | 11.13 | Analyzers | `FluentCMS.Analyzers` | 6.4 | M6 |
 | 11.14 | Error messages with links | `FCMS` codes, problem `type` | 4.10 | M2 |
 
@@ -1685,6 +1706,8 @@ Follows the sequencing note in the decisions log: SDK and core first, because ev
 The deferrals of Q19 in M0 to M2 ended with [#2711](https://github.com/fluentcms/FluentCMS/issues/2711): PostgreSQL 15 and SQL Server 2019 and 2025 are supported and tested providers, and CI runs the data tests on each beside SQLite (4.3).
 
 M1 and M2 are the critical path. M3 can start once the SDK is stable (end of M1). M6 pieces that unblock earlier milestones (`FluentCMS.Testing`, the content migration command) are pulled into M1.
+
+The exit criteria of M6 are proven by a CI job that runs the sequence from packages in a folder feed on clean Linux and Windows runners ([#3023](https://github.com/fluentcms/FluentCMS/issues/3023)). Nothing is published for it (10.3, P8). After M6 comes a hardening milestone with the remaining follow-ups of the M5 review, and then the technical specification of the admin; search and the Redis pack stay Should (10.3, P13).
 
 ## 9. Proposed issues
 
@@ -1802,21 +1825,30 @@ Tracking issue: [#2795](https://github.com/fluentcms/FluentCMS/issues/2795).
 
 ### 9.7 M6 Tooling and transfer
 
+Tracking issue: [#3025](https://github.com/fluentcms/FluentCMS/issues/3025). Planned on 12 Nov 2026 (10.3): B-90 and B-92 were split, and B-98 to B-100 are new.
+
 | Id | Issue | Spec | Size |
 | --- | --- | --- | --- |
-| B-90 | CLI skeleton with `--project` and `--url` modes; `migrate`, `migrations *`, `schema *`, `doctor` | 11.2, 10.4, 10.10 | L |
-| B-91 | CLI: `apikey`, `user`, `jobs`, `mcp` proxy, `backup` | 11.2 | M |
-| B-92 | Export package writer and import with dry run; transfer endpoints; CLI `export` and `import` | 10.9 | L |
-| B-93 | `generate csharp`, `generate typescript`, `generate openapi` (Q15) | 11.3 | L |
-| B-94 | Templates package: `fluentcms` host and `fluentcms-plugin` server half | 11.1 | M |
-| B-95 | Source generator: typed filter builders and mappers | 11.3 | L |
-| B-96 | Analyzers: schema attribute rules and SDK obsoletion | 11.13, 11.12 | M |
+| B-90 [#3013](https://github.com/fluentcms/FluentCMS/issues/3013) | CLI framework: System.CommandLine, commands that run inside the host, `migrate`, `migrations list`, `script` and `remove`, the reference host's commands | 11.2, 10.4 | L |
+| B-91 [#3014](https://github.com/fluentcms/FluentCMS/issues/3014) | CLI: `apikey`, `user`, `jobs`, `seed`, `mcp` proxy | 11.2, 11.5 | M |
+| B-92 [#3015](https://github.com/fluentcms/FluentCMS/issues/3015) | Export package and import with dry run, streamed transfer endpoints, import mode, `Origin.Import`, `ITransferContributor` with the media plugin | 10.9 | L |
+| B-93 [#3016](https://github.com/fluentcms/FluentCMS/issues/3016) | `generate csharp`, `generate typescript`, `generate openapi` (Q15), with minimal `FluentCMS.Client` and `@fluentcms/client` | 2.10, 2.11, 11.3 | L |
+| B-94 [#3017](https://github.com/fluentcms/FluentCMS/issues/3017) | Templates package: `fluentcms` host and `fluentcms-plugin` server half | 11.1 | M |
+| B-95 [#3018](https://github.com/fluentcms/FluentCMS/issues/3018) | Source generator: typed filter and sort builders, the SDK field types and the shared emitter | 11.3 | M |
+| B-96 [#3019](https://github.com/fluentcms/FluentCMS/issues/3019) | Analyzers: schema attribute rules | 11.13 | M |
+| B-97 [#3020](https://github.com/fluentcms/FluentCMS/issues/3020) | CLI: `schema snapshot`, `validate` and `diff` with rename detection, `doctor` | 10.10, 11.12 | M |
+| B-98 [#3021](https://github.com/fluentcms/FluentCMS/issues/3021) | CLI: `schema apply` for a host whose types are data, on every provider | 10.4, 10.2 | M |
+| B-99 [#3022](https://github.com/fluentcms/FluentCMS/issues/3022) | Compose file for the reference host with PostgreSQL, MinIO and a migrate step, with a smoke test in CI | 10.2 | S |
+| B-100 [#3023](https://github.com/fluentcms/FluentCMS/issues/3023) | The M6 sequence from packages on a clean machine, in CI | 11.1 to 11.3, 10.9 | S |
+| B-101 [#3024](https://github.com/fluentcms/FluentCMS/issues/3024) | CLI: `export` and `import`; `backup` and `restore` for SQLite; backup guide | 10.9, 10.11 | M |
+
+No issue of M6 adds a migration. This section first listed seven issues for M6, and M6 was planned with twelve.
 
 77 issues for the Must scope, created milestone by milestone (Q17), plus [#2711](https://github.com/fluentcms/FluentCMS/issues/2711) for the deferred PostgreSQL and SQL Server validation (Q19), which has no milestone until the code is complete. Should items get issues when their milestone is planned, not now.
 
 ## 10. Open questions and suggestions
 
-All eighteen questions were decided on 1 Nov 2026, and Q19 was added the same day after approval. The table keeps each question and its decision; where the decision differs from the recommendation that was made, it says so.
+All eighteen questions were decided on 1 Nov 2026, and Q19 was added the same day after approval. The table keeps each question and its decision; where the decision differs from the recommendation that was made, it says so. Section 10.3 holds the decisions taken when M6 was planned on 12 Nov 2026.
 
 ### 10.1 Decisions on the open questions
 
@@ -1859,6 +1891,28 @@ All eighteen questions were decided on 1 Nov 2026, and Q19 was added the same da
 | S10 | Reserve `/admin`, `/media`, `/mcp`, `/graphql`, `/connect`, `/health`, `/openapi`, `/scalar` in the route map now. | Hosts mount FluentCMS next to their own routes; a published list avoids collisions later. |
 | S11 | Add a `Seed` API to the SDK in M1 and use it for the sample pack, tests and the template. | 11.5 is Must and three consumers need the same thing. |
 | S12 | The research folder stays a private planning input outside the repository (Q16). | The restart announcement avoided mentioning v2, and the research text does. |
+
+### 10.3 Decisions of the M6 planning
+
+M6 was planned on 12 Nov 2026, after M0 to M5 were merged. The review of the plan against the code found work that the specification promised and section 9.7 did not list, and design points that 4.14 and 6 left open. Each was decided that day; the table says what a decision replaces.
+
+| Id | Point | Decision (12 Nov 2026) |
+| --- | --- | --- |
+| P1 | How do project commands reach the host's services, configuration and plugins? The tool loaded the host's assembly beside its own Core, which gave it a `DbContext` only and bound both to one version. | Commands run inside the host's process, which the tool starts. The reference host accepts the same commands, so an init container runs `fluentcms migrate` from the image. `migrations add` and `migrations remove` stay in the tool. |
+| P2 | Command-line parser for about thirty commands. | System.CommandLine 2.0, referenced by the tool only. |
+| P3 | Authentication to a running instance. | A management API key in `--token` or `FLUENTCMS_TOKEN`. An interactive login comes after 1.0. |
+| P4 | A host whose types are data cannot run on PostgreSQL or SQL Server (`FCMS3154`); 4.3 expected the CLI to generate migrations from a schema file. | `fluentcms schema apply` compares the schema with the content tables and applies the difference, or writes it as SQL. Nothing changes a server database at start, which keeps decision 55, and no migration files are generated from a schema file. |
+| P5 | Renames: a field renamed without `[FormerNames]` is a drop and an add (#2890). | `schema diff` and `migrations add` detect a possible rename and suggest the attribute; nothing is rewritten. A destructive change needs `--allow-destructive`. |
+| P6 | `backup` was an export package with media and had no `restore`; a package leaves out users, keys and the activity log. | `backup` is an online snapshot of a SQLite database with the local media files, and `restore` puts it back. Server databases are documented, and the commands refuse there. |
+| P7 | Export and import as jobs with a download need a place for the package that every instance reaches, and core has none. | Both are streamed within the request. No transfer job and no stored package. |
+| P8 | The exit criteria say "on a fresh machine". | A CI job runs the sequence from packages in a folder feed on clean runners. A preview on nuget.org is a release decision of its own. |
+| P9 | C# generator, Kiota or own (Q15), and who builds the clients that generated code needs (1.1). | Own emitters for C# and TypeScript from the schema snapshot, the C# one shared with the source generator. Minimal `FluentCMS.Client` and `@fluentcms/client` are built in M6 and not published; the frontend work adds the rest. |
+| P10 | How does an import write, and what does it trigger? `CreateAsync` always mints an id (#2890). | Through the content service as the system, in an import mode that keeps ids, times and state; the create endpoints keep minting ids. A new `Origin.Import` marks what an import writes. Validation, hooks, cache eviction and the activity log run; webhooks are delivered only when the import asks for them. |
+| P11 | Data that plugins own is not in a package, and adding it after 1.0 needs an SDK contract. | `ITransferContributor` goes into the SDK now. The media plugin implements it; the other first-party plugins follow in a minor release. |
+| P12 | What is left out of M6? | The reflection-free mapper, the analyzer for obsolete SDK members and standalone binaries of the tool wait until after 1.0. The `mcp` proxy stays in M6. |
+| P13 | What surrounds M6? | The four bugs of the M5 review (#3001, #3002, #3006, #3010) run beside M6. Its other follow-ups form a hardening milestone after M6, and then the admin gets its technical specification. Search and the Redis pack stay Should. |
+| P14 | Rows 11.5 and 11.3 name a seed command and an MSBuild target that 6.1 did not have. | `fluentcms seed` is added. No MSBuild target runs `generate`: the source generator covers C# in a host, and a front end calls the command from its own build. Row 11.3 is amended. |
+| P15 | The compose file of the reference host (4.16) was put off until #2711 and the media plugin. | A small issue of M6, with a migrate step, used by CI as a smoke test on PostgreSQL and MinIO. |
 
 ## Appendix A: worked example
 
