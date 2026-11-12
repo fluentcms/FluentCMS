@@ -10,11 +10,22 @@ WORKDIR /src
 
 COPY global.json Directory.Build.props Directory.Packages.props ./
 COPY docs/resources/icon.png docs/resources/
+# Every project the host references, directly or not; restore skips one that is missing, and the publish then fails.
 COPY src/FluentCMS.Sdk/FluentCMS.Sdk.csproj src/FluentCMS.Sdk/
+COPY src/FluentCMS.Plugins.Abstractions/FluentCMS.Plugins.Abstractions.csproj src/FluentCMS.Plugins.Abstractions/
 COPY src/FluentCMS.Core/FluentCMS.Core.csproj src/FluentCMS.Core/
+COPY src/FluentCMS.Generators/FluentCMS.Generators.csproj src/FluentCMS.Generators/
+COPY src/FluentCMS.Analyzers/FluentCMS.Analyzers.csproj src/FluentCMS.Analyzers/
 COPY src/FluentCMS.Data.PostgreSql/FluentCMS.Data.PostgreSql.csproj src/FluentCMS.Data.PostgreSql/
 COPY src/FluentCMS.Data.Sqlite/FluentCMS.Data.Sqlite.csproj src/FluentCMS.Data.Sqlite/
 COPY src/FluentCMS.Data.SqlServer/FluentCMS.Data.SqlServer.csproj src/FluentCMS.Data.SqlServer/
+COPY src/plugins/FluentCMS.Plugins.AiAssist/FluentCMS.Plugins.AiAssist.csproj src/plugins/FluentCMS.Plugins.AiAssist/
+COPY src/plugins/FluentCMS.Plugins.GraphQL/FluentCMS.Plugins.GraphQL.csproj src/plugins/FluentCMS.Plugins.GraphQL/
+COPY src/plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj src/plugins/FluentCMS.Plugins.Mcp/
+COPY src/plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj src/plugins/FluentCMS.Plugins.Media/
+COPY src/plugins/FluentCMS.Plugins.Media.S3/FluentCMS.Plugins.Media.S3.csproj src/plugins/FluentCMS.Plugins.Media.S3/
+COPY src/plugins/FluentCMS.Plugins.MultiSite/FluentCMS.Plugins.MultiSite.csproj src/plugins/FluentCMS.Plugins.MultiSite/
+COPY src/plugins/FluentCMS.Plugins.Webhooks/FluentCMS.Plugins.Webhooks.csproj src/plugins/FluentCMS.Plugins.Webhooks/
 COPY samples/Blog/Blog.csproj samples/Blog/
 COPY src/FluentCMS.Host/FluentCMS.Host.csproj src/FluentCMS.Host/
 RUN dotnet restore src/FluentCMS.Host/FluentCMS.Host.csproj -a $TARGETARCH

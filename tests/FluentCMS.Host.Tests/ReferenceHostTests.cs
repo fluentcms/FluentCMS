@@ -190,6 +190,37 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         Operator.InsecureDefaults(report).ShouldContain("media-local-storage");
     }
 
+    // As the compose file sets it up against MinIO. Nothing answers at the endpoint, which only the ready check asks.
+    [Fact]
+    public async Task TheMediaS3SectionPutsNewUploadsInTheBucket()
+    {
+        var settings = Operator.Settings();
+        settings[$"{ReferenceHost.MediaS3Section}:Endpoint"] = "http://127.0.0.1:9";
+        settings[$"{ReferenceHost.MediaS3Section}:Bucket"] = "fluentcms-media";
+        settings[$"{ReferenceHost.MediaS3Section}:ForcePathStyle"] = "true";
+        settings[$"{ReferenceHost.MediaS3Section}:AccessKeyId"] = "media-user";
+        settings[$"{ReferenceHost.MediaS3Section}:SecretAccessKey"] = "media-secret-for-tests";
+        await _host.StartAsync(settings);
+
+        var report = await Operator.ReportAsync(_host);
+
+        var storage = report["providerSlots"]!.AsArray().Single(slot => slot!["slot"]!.GetValue<string>() == "FluentCMS.Media.IFileStorage")!;
+        (storage["implementation"]!.GetValue<string>(), storage["plugin"]!.GetValue<string>()).ShouldBe(("FluentCMS.Plugins.Media.S3.S3FileStorage", "media"));
+        Operator.InsecureDefaults(report).ShouldNotContain("media-local-storage");
+    }
+
+    [Fact]
+    public async Task AMediaS3SectionWithoutABucketStopsTheHostAtStart()
+    {
+        var settings = Operator.Settings();
+        settings[$"{ReferenceHost.MediaS3Section}:Endpoint"] = "http://127.0.0.1:9";
+        var app = _host.Build(settings);
+
+        var error = await Should.ThrowAsync<OptionsValidationException>(() => app.StartAsync(Token));
+
+        error.Message.ShouldContain("Bucket");
+    }
+
     // AI assist is off until a site names a provider and opts fields in, so the host runs the plugin and calls no provider.
     [Fact]
     public async Task TheHostRunsTheAiAssistPluginWhichIsOffUntilASiteOptsIn()

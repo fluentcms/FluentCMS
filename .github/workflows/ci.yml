@@ -296,6 +296,13 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # The compose file of the reference host with its smoke test, on pushes to main and manual runs, not on pull requests or
+  # the nightly run. Pushes to feature branches run it from compose.yml itself.
+  compose:
+    name: Compose
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/compose.yml
+
   # Nobody watches the nightly run, which is the only one that runs the full Windows suite, so a failure opens an issue.
   nightly-report:
     name: Report nightly failure

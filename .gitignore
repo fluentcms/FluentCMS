@@ -34,6 +34,7 @@ project.lock.json
 # Local configuration and secrets
 .env
 .env.*
+!.env.example
 *.pfx
 appsettings.*.local.json
 

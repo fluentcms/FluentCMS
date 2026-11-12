@@ -26,6 +26,8 @@ Thank you for your interest. FluentCMS is starting over, so there is little to b
 
 The `CI` workflow builds the whole solution on Linux and runs every test project there in three shards (units, integration, plugins and host), plus the data jobs, Markdown lint, packaging and the templates job, which installs the `dotnet new` templates from the packed packages, creates and builds every combination, runs the plugin's tests and starts the SQLite hosts and a PostgreSQL host (`templates/test-templates.sh`). This runs for every pull request into `main` and every push to it. The data jobs run the data tests on SQLite and PostgreSQL 15 in every run. SQL Server 2025 joins them on pushes to `main`, on pull requests from `feature/*` branches and on the nightly and manual runs, and SQL Server 2019 only on the nightly and manual runs. On Windows the same runs build the whole solution and run only the SDK unit, core unit and architecture tests. The full Windows suite runs nightly and on manual runs, so a Windows-only failure shows up in the nightly run rather than on a pull request. A failed nightly run opens an issue titled `Nightly CI failed`, or adds a comment to it while it is open.
 
+The `Compose` workflow builds the image, starts `src/FluentCMS.Host/compose.yaml` on PostgreSQL and MinIO and runs a smoke test against it ([Docker](docs/docker.md#compose-with-postgresql-and-minio)). It runs on pushes to `feature/*` branches, `CI` calls it on pushes to `main` and on manual runs, and pull requests do not run it.
+
 ### Feature branches and validation
 
 For a batch of related issues, create a branch such as `feature/media` from `main`. Each issue branches from it and opens its pull request back into it. The `Feature CI` workflow builds the whole solution on Linux and Windows and runs SDK unit tests, core unit tests, architecture tests and Markdown lint. Integration, data, host and plugin tests, packaging and the templates job run in full CI.
@@ -99,7 +101,7 @@ To run a host on PostgreSQL, or media on S3, `compose.yaml` starts PostgreSQL 15
 docker compose up -d
 ```
 
-The reference host then runs on PostgreSQL with `FluentCms__Database__Provider=PostgreSql`, `ConnectionStrings__FluentCms=Host=127.0.0.1;Database=fluentcms;Username=fluentcms;Password=fluentcms` and `FluentCms__Database__MigrateOnStartup=true`. The reference host keeps media on the local disk; a host of your own that calls `media.UseS3` can use MinIO, which answers S3 on `http://127.0.0.1:9000` (`ForcePathStyle` true) and serves its console on `http://127.0.0.1:9001`, where you create the bucket. `docker compose down` stops both and keeps the data; add `-v` to delete it.
+The reference host then runs on PostgreSQL with `FluentCms__Database__Provider=PostgreSql`, `ConnectionStrings__FluentCms=Host=127.0.0.1;Database=fluentcms;Username=fluentcms;Password=fluentcms` and `FluentCms__Database__MigrateOnStartup=true`. The reference host keeps media on the local disk unless `FluentCms__Media__S3__*` is set; it, or a host of your own that calls `media.UseS3`, can use MinIO, which answers S3 on `http://127.0.0.1:9000` (`ForcePathStyle` true) and serves its console on `http://127.0.0.1:9001`, where you create the bucket. `docker compose down` stops both and keeps the data; add `-v` to delete it.
 
 During implementation, run the test project or test class affected by the change. Before opening an issue pull request, into a feature branch or `main`, run the fast checks once:
 

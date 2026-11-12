@@ -83,6 +83,7 @@ A schema file has no compiled migrations. On SQLite the host creates and extends
 | `FluentCms__Security__AllowUnencryptedKeyRing` | `false` | `true` accepts the key ring stored unencrypted (`FCMS1106` otherwise). |
 | `FluentCms__Email__Smtp__Host` and the rest of `FluentCms__Email__Smtp__*` | none | The SMTP server that invitations and password resets go through; see [email](host-configuration.md#email). |
 | `FluentCms__Sso__Providers__{name}__*` | none | An OpenID Connect provider that admin users sign in with; see [single sign-on](#single-sign-on). |
+| `FluentCms__Media__S3__*` | none | Any key of the section stores new uploads in an S3 bucket, or one of an S3-compatible service such as MinIO, instead of the local disk: `Bucket`, `Endpoint`, `Region`, `KeyPrefix`, `ForcePathStyle`, `AccessKeyId` and `SecretAccessKey`, as the [media plugin](../src/plugins/FluentCMS.Plugins.Media/README.md#storage-on-s3-or-azure-blob) lists them. A section without a valid bucket stops the host at start. |
 | `FluentCms__OpenApi__Enabled` | off | `true` serves the OpenAPI document at `/openapi/v1.json` and the Scalar UI at `/scalar`. See [the API description](#the-api-description). |
 | `ASPNETCORE_HTTP_PORTS` | `8080` | The port the host listens on, from the base image. |
 
@@ -242,3 +243,39 @@ A new type, field or index is applied, and so is a renamed field that lists its 
 `--dry-run` prints the operations and applies nothing, and exits with 1 when the run would be refused. `--script --output /out/schema.sql` writes the SQL for the database as it is now and applies nothing, for a database that only an administrator may change; the next `fluentcms schema apply` finds nothing to do and records the schema, and after a script with a change that loses data it needs `--allow-destructive` too. A host built with content migrations of its own is refused with `FCMS3335`, since its content tables belong to those migrations.
 
 For local development, `compose.yaml` at the root of the repository runs PostgreSQL and MinIO at the versions the tests use; see [Local development](../CONTRIBUTING.md#local-development).
+
+## Compose with PostgreSQL and MinIO
+
+`src/FluentCMS.Host/compose.yaml` runs the image on PostgreSQL 15, with its media in a MinIO bucket and the Blog sample, set up from the environment alone. Its services:
+
+- `postgres`, with its data in the volume `postgres` and a health check.
+- `minio`, with its data in the volume `minio`, and `minio-init`, which makes the bucket `fluentcms-media` and a MinIO user allowed that bucket only, and ends. The host signs its requests with that user, not the root user.
+- `migrate`, which runs `fluentcms migrate`, and then `schema-apply`, which runs `fluentcms schema apply`, with the image and the database settings of the host. The image runs one command per container and has no shell, so they are two services. Each ends, and applies nothing when nothing is pending, so every `up` runs them.
+- `cms`, the host, which starts once `migrate` and `schema-apply` have ended with 0, `minio-init` has made the bucket, and `postgres` and `minio` are healthy. It listens on `http://localhost:8080`, on the machine's loopback address only.
+
+The passwords and keys come from `.env` beside the compose file, which `.gitignore` keeps out of the repository. Copy `.env.example`, fill in every empty value, and start from that directory:
+
+```bash
+cd src/FluentCMS.Host
+cp .env.example .env
+docker compose up -d --build
+```
+
+`docker compose` refuses to start while a value is missing or empty, and names it. The example also sets the two opt-ins of an evaluation, `FLUENTCMS_ALLOW_GENERATED_SIGNING_KEY` and `FLUENTCMS_ALLOW_UNENCRYPTED_KEY_RING`; without them the host stops with `FCMS1102` and `FCMS1106`. The public origin is `https://localhost` and `AllowedHosts` is `localhost` unless `FLUENTCMS_PUBLIC_ORIGIN` and `FLUENTCMS_ALLOWED_HOSTS` say otherwise. `GET http://localhost:8080/health/ready` answers `Healthy` once the database, the job runner and the bucket (`media-storage`) answer. PostgreSQL takes its password when it creates its volume, so a changed `FLUENTCMS_POSTGRES_PASSWORD` needs `docker compose down -v`, which deletes the data too.
+
+Make the first administrator and a deploy key with the image while the services run. `--no-deps` keeps `run` from running `migrate` and the other steps again. The key is printed alone on standard output:
+
+```bash
+docker compose run --rm -T --no-deps cms fluentcms user create --email ada@example.com --role "Super Admin" --password-stdin < ada-password.txt
+docker compose run --rm -T --no-deps cms fluentcms apikey create --name deploy --class management --role "Super Admin"
+```
+
+The key works over plain http at once. Signing in on the hosted pages needs https, so it waits for the proxy below. The `Compose` workflow in CI starts this file with throwaway values on every push to `main` and to a `feature/*` branch, signs an administrator in through the hosted pages with a proxy's forwarded headers, publishes an article through the Management API, reads it through the Delivery API, and uploads an image that it reads back from MinIO.
+
+What to change for production:
+
+- **Certificates.** Remove the two opt-ins from `.env`, mount the signing and key ring certificates into `cms` and set their paths and passwords, as [before production](#before-production) shows.
+- **Address and TLS.** Put a proxy that ends TLS in front of `cms`, set `FLUENTCMS_PUBLIC_ORIGIN` to its https address and `FLUENTCMS_ALLOWED_HOSTS` to its host name with `localhost`, and forward the scheme ([reverse proxy](reverse-proxy.md)).
+- **Content types.** Replace `FLUENTCMS_SAMPLE: blog` in `x-host-environment` with `FLUENTCMS_SCHEMA` and mount the schema file into `migrate`, `schema-apply` and `cms`, since each of them loads it. A change that loses data stops `schema-apply` with `FCMS3337`, and `cms` then does not start; add `--allow-destructive` to its command only for that run.
+- **Storage.** For S3 or another managed service, drop `minio` and `minio-init` and set the `FluentCms__Media__S3__*` keys of `cms` to its bucket and an access key limited to it.
+- **Email, backups and the image.** Set the SMTP keys, back up the database with `pg_dump` ([backups](backups.md); `fluentcms backup` refuses on PostgreSQL) and the bucket with the tools of its service, and set `FLUENTCMS_IMAGE` to an image of your registry with its tag.
