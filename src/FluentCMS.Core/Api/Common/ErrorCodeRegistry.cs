@@ -21,6 +21,7 @@ using FluentCMS.Core.Seeding;
 using FluentCMS.Core.Settings;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
+using FluentCMS.Core.Transfer;
 using FluentCMS.Publishing;
 using Microsoft.AspNetCore.Http;
 
@@ -306,6 +307,23 @@ public static class ErrorCodeRegistry
         new(MemberErrorCodes.LoginNotFound, StatusCodes.Status404NotFound, "External login not found"),
         new(MemberErrorCodes.LoginTaken, StatusCodes.Status409Conflict, "External login already linked"),
         Startup(MemberErrorCodes.ProviderRegistrationClosed, "Registration closed to the member provider"),
+
+        // 320x to 323x transfer: the refusals of an export or an import as a whole, the codes of the items of an import's
+        // report, which no response has as its own, and a contributor of a plugin, found when a transfer first runs
+        Invalid(TransferErrorCodes.InvalidPackage, "Invalid package"),
+        Invalid(TransferErrorCodes.UnsupportedFormat, "Package format not supported"),
+        new(TransferErrorCodes.SchemaIncompatible, StatusCodes.Status409Conflict, "Package schema incompatible"),
+        new(TransferErrorCodes.LocaleNotInSite, StatusCodes.Status409Conflict, "Package locale not allowed in the site"),
+        new(TransferErrorCodes.PackageTooLarge, StatusCodes.Status413PayloadTooLarge, "Package too large"),
+        new(TransferErrorCodes.ExportRunning, StatusCodes.Status409Conflict, "Export already running"),
+        BadQuery(TransferErrorCodes.InvalidOption, "Invalid transfer option"),
+        new(TransferErrorCodes.IdTaken, StatusCodes.Status409Conflict, "Id taken by another item"),
+        new(TransferErrorCodes.InTrash, StatusCodes.Status409Conflict, "Entry in the trash"),
+        Invalid(TransferErrorCodes.InvalidItem, "Invalid package item"),
+        Invalid(TransferErrorCodes.UnknownArea, "Settings area not in the instance"),
+        Invalid(TransferErrorCodes.NoContributor, "No contributor for a package folder"),
+        Startup(TransferErrorCodes.ItemFailed, "Package item failed"),
+        Startup(TransferErrorCodes.InvalidContributor, "Invalid transfer contributor"),
 
         // 315x the reference host (FluentCMS.Host, which this assembly does not reference, so its codes are written out) and the schema sync it allows, found when it starts
         Startup("FCMS3150", "Unknown data provider"),
