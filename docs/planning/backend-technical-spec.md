@@ -1826,7 +1826,7 @@ The deferrals of Q19 in M0 to M2 ended with [#2711](https://github.com/fluentcms
 
 M1 and M2 are the critical path. M3 can start once the SDK is stable (end of M1). M6 pieces that unblock earlier milestones (`FluentCMS.Testing`, the content migration command) are pulled into M1.
 
-The exit criteria of M6 are proven by a CI job that runs the sequence from packages in a folder feed on clean Linux and Windows runners ([#3023](https://github.com/fluentcms/FluentCMS/issues/3023)). Nothing is published for it (10.3, P8). After M6 comes a hardening milestone with the remaining follow-ups of the M5 review, and then the technical specification of the admin; search and the Redis pack stay Should (10.3, P13).
+The exit criteria of M6 are the `Fresh machine` jobs, which run the sequence from packages in a folder feed on clean Linux and Windows runners ([#3023](https://github.com/fluentcms/FluentCMS/issues/3023)): `eng/fresh-machine.ps1` installs the templates and the tool from the feed, makes a Blog host, runs `migrations add` and `migrate` on SQLite and, on Linux, PostgreSQL, compiles the output of `generate typescript`, runs `export`, `import --dry-run` and `import` into a second host and compares an entry through the Delivery API, and builds and tests a plugin; a broken feed must fail it. Nothing is published for it (10.3, P8). After M6 comes a hardening milestone with the remaining follow-ups of the M5 review, and then the technical specification of the admin; search and the Redis pack stay Should (10.3, P13).
 
 ## 9. Proposed issues
 
