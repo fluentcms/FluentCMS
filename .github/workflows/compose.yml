@@ -47,9 +47,6 @@ jobs:
           refused "with the example's empty values"
           rm .env
 
-      - name: Build the image
-        run: docker compose build cms
-
       # Throwaway values in place of the example's empty ones. The override stands in for the proxy that ends TLS, which
       # sign-in needs: the runner reaches the host through the network's gateway and forwards the scheme. It also registers
       # a public client to sign the administrator in with.
@@ -78,6 +75,10 @@ jobs:
                 FluentCms__Clients__Applications__smoke__Scopes__1: management
           YAML
           echo "COMPOSE_FILE=compose.yaml:$RUNNER_TEMP/compose.ci.yaml" >> "$GITHUB_ENV"
+
+      # After .env: compose interpolates the whole file for any command, a build included.
+      - name: Build the image
+        run: docker compose build cms
 
       - name: Start
         run: docker compose up -d --no-build
@@ -109,8 +110,8 @@ jobs:
           password="Aa1!$(openssl rand -hex 16)"
           echo "::add-mask::$password"
           printf '%s' "$password" > "$RUNNER_TEMP/admin-password"
-          docker compose run --rm -T cms fluentcms user create --email admin@example.com --role "Super Admin" --password-stdin < "$RUNNER_TEMP/admin-password"
-          key=$(docker compose run --rm -T cms fluentcms apikey create --name ci --class management --role "Super Admin" | tr -d '\r')
+          docker compose run --rm -T --no-deps cms fluentcms user create --email admin@example.com --role "Super Admin" --password-stdin < "$RUNNER_TEMP/admin-password"
+          key=$(docker compose run --rm -T --no-deps cms fluentcms apikey create --name ci --class management --role "Super Admin" | tr -d '\r')
           echo "::add-mask::$key"
           [ -n "$key" ] && [ "$(printf '%s\n' "$key" | wc -l)" = 1 ] || { echo "::error::apikey create printed more than the key"; exit 1; }
           echo "MANAGEMENT_KEY=$key" >> "$GITHUB_ENV"
@@ -174,7 +175,7 @@ jobs:
           login=$(location)
           [[ "$login" == /account/login* ]]
           call "$BASE$login"; expect 200 "The login page"
-          token=$(grep -o 'name="__RequestVerificationToken"[^>]*value="[^"]*"' "$body" | sed 's/.*value="//; s/"$//')
+          token=$(grep -o 'name="__RequestVerificationToken"[^>]*value="[^"]*"' "$body" | head -n 1 | sed 's/.*value="//; s/"$//')
           call "$BASE$login" --data-urlencode "Input.UserName=admin@example.com" --data-urlencode "Input.Password@$RUNNER_TEMP/admin-password" \
             --data-urlencode "__RequestVerificationToken=$token"
           expect 302 "Signing in"
@@ -207,7 +208,7 @@ jobs:
           [ "$(sha256sum < "$body")" = "$(sha256sum < "$RUNNER_TEMP/smoke.png")" ]
           echo "The smoke test passed."
 
-      # The bounded wait above is what fails the job when the host never becomes ready; with MinIO stopped, it must.
+      # The same bounded wait as above, which fails the job when the host never becomes ready: with MinIO stopped, it must time out.
       - name: Check that the wait fails while the host is not ready
         run: |
           docker compose stop minio

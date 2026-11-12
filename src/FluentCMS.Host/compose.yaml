@@ -130,12 +130,6 @@ services:
       FluentCms__Media__S3__SecretAccessKey: ${FLUENTCMS_MEDIA_SECRET_KEY:?set FLUENTCMS_MEDIA_SECRET_KEY in .env (see .env.example)}
     ports:
       - "127.0.0.1:${FLUENTCMS_HTTP_PORT:-8080}:8080"
-    healthcheck:
-      test: ["CMD", "dotnet", "/app/FluentCMS.Host.dll", "--probe"]
-      interval: 10s
-      timeout: 10s
-      start_period: 60s
-      retries: 3
 
 volumes:
   postgres:

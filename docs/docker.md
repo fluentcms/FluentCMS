@@ -263,11 +263,11 @@ docker compose up -d --build
 
 `docker compose` refuses to start while a value is missing or empty, and names it. The example also sets the two opt-ins of an evaluation, `FLUENTCMS_ALLOW_GENERATED_SIGNING_KEY` and `FLUENTCMS_ALLOW_UNENCRYPTED_KEY_RING`; without them the host stops with `FCMS1102` and `FCMS1106`. The public origin is `https://localhost` and `AllowedHosts` is `localhost` unless `FLUENTCMS_PUBLIC_ORIGIN` and `FLUENTCMS_ALLOWED_HOSTS` say otherwise. `GET http://localhost:8080/health/ready` answers `Healthy` once the database, the job runner and the bucket (`media-storage`) answer. PostgreSQL takes its password when it creates its volume, so a changed `FLUENTCMS_POSTGRES_PASSWORD` needs `docker compose down -v`, which deletes the data too.
 
-Make the first administrator and a deploy key with the image, once `migrate` has run. The key is printed alone on standard output:
+Make the first administrator and a deploy key with the image while the services run. `--no-deps` keeps `run` from running `migrate` and the other steps again. The key is printed alone on standard output:
 
 ```bash
-docker compose run --rm -T cms fluentcms user create --email ada@example.com --role "Super Admin" --password-stdin < ada-password.txt
-docker compose run --rm -T cms fluentcms apikey create --name deploy --class management --role "Super Admin"
+docker compose run --rm -T --no-deps cms fluentcms user create --email ada@example.com --role "Super Admin" --password-stdin < ada-password.txt
+docker compose run --rm -T --no-deps cms fluentcms apikey create --name deploy --class management --role "Super Admin"
 ```
 
 The key works over plain http at once. Signing in on the hosted pages needs https, so it waits for the proxy below. The `Compose` workflow in CI starts this file with throwaway values on every push to `main` and to a `feature/*` branch, signs an administrator in through the hosted pages with a proxy's forwarded headers, publishes an article through the Management API, reads it through the Delivery API, and uploads an image that it reads back from MinIO.
