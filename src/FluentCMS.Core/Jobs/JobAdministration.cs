@@ -38,6 +38,8 @@ internal sealed class JobAdministration(
     SystemDbContext context,
     IJobDeadLetters deadLetters,
     JobStore store,
+    JobExecutor executor,
+    JobRunnerOptions options,
     ManagementAuthority authority,
     IOperationContextAccessor accessor,
     TimeProvider time)
@@ -109,6 +111,56 @@ internal sealed class JobAdministration(
         }
 
         return await GetAsync(id, cancellationToken);
+    }
+
+    // The names of the recurring jobs, which are what `jobs run` takes: each has the payload and queue of its runs.
+    public async Task<IReadOnlyList<string>> RecurringNamesAsync(CancellationToken cancellationToken)
+    {
+        await RequireAsync(cancellationToken);
+        var names = await context.Set<RecurringJob>().AsNoTracking().Select(job => job.Name).ToListAsync(cancellationToken);
+        return [.. names.Order(StringComparer.Ordinal)];
+    }
+
+    // A run of the recurring job of this name, due now, with its payload and queue; null when there is none. Queued, it is
+    // the next run of whichever instance works its queue. Inline, it is held by this process from the start and runs here to
+    // its end with one attempt, so that a failure is dead-lettered rather than left for an instance that may never start.
+    public async Task<JobDetail?> RunRecurringAsync(string name, bool inline, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        await RequireAsync(cancellationToken);
+
+        if (await context.Set<RecurringJob>().AsNoTracking().FirstOrDefaultAsync(job => job.Name == name, cancellationToken) is not { } recurring)
+        {
+            return null;
+        }
+
+        var now = time.GetUtcNow();
+        var current = accessor.Current;
+        var job = new Job
+        {
+            Id = Guid.CreateVersion7(),
+            Type = recurring.Type,
+            Payload = recurring.Payload,
+            Queue = recurring.Queue,
+            RunAt = now,
+            MaxAttempts = inline ? 1 : options.DefaultMaxAttempts,
+            CreatedAt = now,
+            CreatedBy = current?.AuditPrincipal.Id is { } author && author != Guid.Empty ? author : null,
+            Origin = current?.Origin ?? Origin.Job,
+        };
+
+        if (inline)
+        {
+            var claimed = await store.AddClaimedAsync(job, $"inline:{Environment.MachineName}:{Environment.ProcessId}:{Guid.NewGuid():N}", cancellationToken);
+            await executor.RunAsync(claimed, shutdown: cancellationToken);
+
+            // A run stopped by its caller was handed back as pending, which the caller is told.
+            return await GetAsync(job.Id, CancellationToken.None);
+        }
+
+        context.Add(job);
+        await context.SaveChangesAsync(cancellationToken);
+        return await GetAsync(job.Id, cancellationToken);
     }
 
     private ValueTask RequireAsync(CancellationToken cancellationToken) =>

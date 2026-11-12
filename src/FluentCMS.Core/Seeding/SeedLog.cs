@@ -7,7 +7,7 @@ internal static partial class SeedLog
     [LoggerMessage(EventId = 9901, Level = LogLevel.Information, Message = "Seeder {Seeder} version {Version} was applied.")]
     public static partial void Applied(ILogger logger, string seeder, int version);
 
-    [LoggerMessage(EventId = 9902, Level = LogLevel.Information, Message = "Seeding is skipped: {Reason}. It is tried again at a later start or with ISeedRunner.")]
+    [LoggerMessage(EventId = 9902, Level = LogLevel.Information, Message = "Seeding is skipped: {Reason}. It is tried again at a later start, with ISeedRunner or with 'fluentcms seed'.")]
     public static partial void Skipped(ILogger logger, string reason);
 
     [LoggerMessage(EventId = 9903, Level = LogLevel.Warning, Message = "Seeder {Seeder} version {Version} failed and will run again at the next start.")]

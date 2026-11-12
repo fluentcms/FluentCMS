@@ -32,6 +32,21 @@ public sealed partial class ParserTests : IDisposable
     [InlineData("schema", "diff")]
     [InlineData("schema", "diff", "--url", "https://cms.example.com", "--applied")]
     [InlineData("schema", "snapshot", "--output")]
+    [InlineData("apikey", "create", "--name", "x", "--class", "admin", "--role", "Editor")]
+    [InlineData("apikey", "create", "--name", "x", "--class", "delivery")]
+    [InlineData("apikey", "create", "--name", "x", "--class", "delivery", "--role", "Editor", "--expires", "soon")]
+    [InlineData("apikey", "create", "--name", "x", "--class", "delivery", "--role", "Editor", "--types", ",")]
+    [InlineData("apikey", "list", "--url", "https://cms.example.com", "--no-build")]
+    [InlineData("apikey", "revoke", "not-an-id")]
+    [InlineData("user", "create", "--email", "a@example.com", "--role", "Editor", "--password", "secret")]
+    [InlineData("user", "create", "--email", "a@example.com", "--role", "Editor", "--url", "https://cms.example.com")]
+    [InlineData("user", "reset-password", "--email", "a@example.com", "--url", "https://cms.example.com")]
+    [InlineData("jobs", "list", "--status", "lost")]
+    [InlineData("jobs", "run")]
+    [InlineData("jobs", "run", "x", "--url", "https://cms.example.com")]
+    [InlineData("seed", "--url", "https://cms.example.com")]
+    [InlineData("mcp")]
+    [InlineData("mcp", "--project", ".")]
     public async Task BadUsagePrintsTheHelpAndExitsWithTwo(params string[] args)
     {
         (await RunAsync(args)).ShouldBe(2);
@@ -64,6 +79,13 @@ public sealed partial class ParserTests : IDisposable
     [InlineData(new[] { "schema", "validate" }, new[] { "schema", "validate" })]
     [InlineData(new[] { "schema", "diff", "--json", "--applied" }, new[] { "schema", "diff", "--applied", "--json" })]
     [InlineData(new[] { "doctor", "--json", "--environment", "Production" }, new[] { "doctor", "--json" })]
+    [InlineData(new[] { "apikey", "create", "--json", "--role", "Super Admin", "--class", "management", "--name", "ci", "--no-build" }, new[] { "apikey", "create", "--name", "ci", "--class", "management", "--role", "Super Admin", "--json" })]
+    [InlineData(new[] { "apikey", "revoke", "0190A3C4-5E6F-7A8B-9C0D-1E2F3A4B5C6D" }, new[] { "apikey", "revoke", "0190a3c4-5e6f-7a8b-9c0d-1e2f3a4b5c6d" })]
+    [InlineData(new[] { "user", "create", "--password-stdin", "--email", "a@example.com", "--role", "Super Admin" }, new[] { "user", "create", "--email", "a@example.com", "--role", "Super Admin", "--password-stdin" })]
+    [InlineData(new[] { "user", "add-role", "--email", "a@example.com", "--role", "Editor", "--site", "docs" }, new[] { "user", "add-role", "--email", "a@example.com", "--role", "Editor", "--site", "docs" })]
+    [InlineData(new[] { "jobs", "run", "--inline", "fluentcms.jobs.retention" }, new[] { "jobs", "run", "fluentcms.jobs.retention", "--inline" })]
+    [InlineData(new[] { "jobs", "list", "--status", "dead_lettered" }, new[] { "jobs", "list", "--status", "dead_lettered" })]
+    [InlineData(new[] { "seed", "--name", "BlogSeeder" }, new[] { "seed", "--name", "BlogSeeder" })]
     public async Task TheCommandIsHandedOnWithoutTheToolsOwnOptions(string[] args, string[] handedOn)
     {
         (await RunAsync([.. args, "--assembly", ToolRun.HostAssembly])).ShouldBe(RecordingLauncher.ExitCode);
@@ -119,10 +141,11 @@ public sealed partial class ParserTests : IDisposable
         }
     }
 
+    // `mcp` reaches a running instance only.
     [Fact]
     public void EveryProjectCommandTakesTheProjectOptions()
     {
-        foreach (var command in Leaves(CommandLine.Tree()))
+        foreach (var command in Leaves(CommandLine.Tree()).Where(command => command.Name != "mcp"))
         {
             ProjectOptions.ShouldBeSubsetOf(command.Options.Select(option => option.Name), command.Name);
         }

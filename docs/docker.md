@@ -90,7 +90,19 @@ Every other option is a key of the `FluentCms` section, written with `__` for `:
 
 ## The first administrator
 
-A new instance has no users, and an invitation is sent by someone who can manage users. The operator is a confidential client with the Super Admin role, registered from the environment:
+A new instance has no users. The image makes the first administrator with `fluentcms user create`, run with the same settings as the instance and, on SQLite, the same `/data` volume (see [commands of the image](#migrate-before-the-host-starts)). The password is read from standard input, never from an argument, so pass `-i` and write it to the command, or pass `-it`, leave out `--password-stdin` and type it twice at the prompt, which does not echo it:
+
+```bash
+docker run --rm -v fluentcms-data:/data fluentcms fluentcms migrate
+docker run --rm -i -v fluentcms-data:/data fluentcms \
+  fluentcms user create --email ada@example.com --role "Super Admin" --password-stdin < ada-password.txt
+```
+
+A command applies no migration, and the Super Admin role comes with the system migration, so a new database is migrated first, with `fluentcms migrate` or one start of the instance.
+
+The user is active, with the address as its user name, and signs in through the hosted login page at once. `user create` exists in the host only: over the Management API a user is invited, so that an API key alone never sets a password.
+
+An instance that is set up from its environment alone, with no step that runs a command, invites its first administrator instead, and an invitation is sent by someone who can manage users. The operator is a confidential client with the Super Admin role, registered from the environment:
 
 ```bash
 -e FluentCms__Clients__Applications__ops__Secret=<from your secret store>
@@ -100,7 +112,7 @@ A new instance has no users, and an invitation is sent by someone who can manage
 
 It gets a token with the client credentials grant at `/connect/token` (`grant_type=client_credentials`, `client_id=ops`, its secret, `scope=management`) and invites the first administrator with `POST /api/management/v1/invitations` `{ "email": "ada@example.com", "roleIds": ["<id of Super Admin from GET /roles>"] }`. The invitation is emailed, so set up SMTP first. The person follows the link, picks a user name and a password on the hosted page, and signs in from then on through the hosted login page with any client registered with `RedirectUris`. Remove the operator's variables, or keep its secret in a secret store, once it is no longer needed.
 
-The Delivery API is closed until a role allows reading: create a role with `content.{type}.read` and a Delivery key bound to it with `POST /api/management/v1/api-keys` `{ "name", "class": "delivery", "roleId" }`, or grant those permissions to the site's Public role for anonymous reads.
+The Delivery API is closed until a role allows reading: create a role with `content.{type}.read` and a Delivery key bound to it with `POST /api/management/v1/api-keys` `{ "name", "class": "delivery", "roleId" }`, or with `fluentcms apikey create --name site --class delivery --role <role>`, or grant those permissions to the site's Public role for anonymous reads.
 
 ## Single sign-on
 
@@ -177,5 +189,25 @@ initContainers:
       - secretRef:
           name: fluentcms-database
 ```
+
+## Administer an instance
+
+The same image runs the commands that administer the instance, as the system, with the origin `Cli` in the activity log:
+
+| Command | Does |
+| --- | --- |
+| `fluentcms apikey create --name <name> --class <delivery\|preview\|management> --role <name> [--site <slug>] [--types <list>] [--expires <date>]` | prints the new key once, alone on standard output |
+| `fluentcms apikey list`, `fluentcms apikey revoke <id>` | lists the keys, revokes one |
+| `fluentcms user create --email <address> --role <name> [--site <slug>] [--password-stdin]` | an active administrator (above) |
+| `fluentcms user invite --email <address> --role <name> [--site <slug>]` | emails an invitation |
+| `fluentcms user reset-password --email <address> [--password-stdin]` | emails a reset link, or sets the password read from standard input |
+| `fluentcms user add-role --email <address> --role <name> [--site <slug>]` | gives a role |
+| `fluentcms jobs list [--queue <name>] [--status <status>]`, `fluentcms jobs retry <id>` | lists the newest jobs, queues a dead-lettered one again |
+| `fluentcms jobs run <name> [--inline]` | queues a run of a recurring job, or runs it in the command's process with one attempt |
+| `fluentcms seed [--name <seeder>]` | runs the seeders that are not applied at their version |
+
+List commands print a table, and one line of JSON in the shape of the Management API with `--json`. The invitation and reset emails link to `FluentCms__PublicOrigin`, which these commands need (`FCMS3354` otherwise). Set `Logging__Console__LogToStandardErrorThreshold=Trace` so that standard output holds only what the command prints, such as the key of `apikey create`. What a command writes to the activity log reaches it through the outbox, which a running instance delivers.
+
+The `fluentcms` tool runs `apikey`, `user invite`, `user add-role`, `jobs list` and `jobs retry` against a running instance too, with `--url https://cms.example.com` and a management API key in `FLUENTCMS_TOKEN` (or `--token`, which a process list shows). They call the Management API as that key, so a key without the permission is refused with the API's problem and exit code 1. `fluentcms mcp --url https://cms.example.com` is a proxy from standard input and output to the instance's `/mcp`, for an MCP client that speaks stdio only; a refused key ends it with `FCMS3362` on standard error.
 
 For local development, `compose.yaml` at the root of the repository runs PostgreSQL and MinIO at the versions the tests use; see [Local development](../CONTRIBUTING.md#local-development).

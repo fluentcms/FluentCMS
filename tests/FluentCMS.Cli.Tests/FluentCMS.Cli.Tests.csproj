@@ -9,8 +9,9 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/FluentCMS.Cli/FluentCMS.Cli.csproj" />
-    <!-- An instance on a test server for the commands that reach a running instance. -->
+    <!-- An instance on a test server for the commands that reach a running instance, and the MCP plugin, which serves /mcp to the proxy. -->
     <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj" />
   </ItemGroup>
 
   <!-- Built first and never loaded: the tests start it as the tool does, from its own output folder. -->

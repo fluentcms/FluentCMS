@@ -33,7 +33,7 @@ public sealed class CommandParserTests
 
     [Theory]
     [InlineData(new string[0], "no command was given")]
-    [InlineData(new[] { "seed" }, "'seed' is not a command that this host runs")]
+    [InlineData(new[] { "frobnicate" }, "'frobnicate' is not a command that this host runs")]
     [InlineData(new[] { "migrations", "add", "Initial" }, "'migrations add Initial' is not a command that this host runs")]
     [InlineData(new[] { "migrate", "--force" }, "--force is not an option of 'fluentcms migrate'")]
     [InlineData(new[] { "migrate", "--check", "--check" }, "--check is given more than once")]

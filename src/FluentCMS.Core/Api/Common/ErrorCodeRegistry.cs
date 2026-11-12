@@ -366,6 +366,20 @@ public static class ErrorCodeRegistry
         Startup("FCMS3329", "Instance unreachable"),
         Startup("FCMS3330", "Instance refused the key"),
         Startup("FCMS3331", "Host schema not read"),
+        // 335x the commands that administer an instance, in the host and in the tool alike, and 336x the tool's own
+        Startup(CommandErrorCodes.UnknownRole, "Unknown role"),
+        Startup(CommandErrorCodes.UnknownSite, "Unknown site"),
+        Startup(CommandErrorCodes.PasswordNotRead, "Password not read"),
+        Startup(CommandErrorCodes.UserNotFound, "User not found or deactivated"),
+        Startup(CommandErrorCodes.PublicOriginRequired, "Public origin required"),
+        Startup(CommandErrorCodes.UnknownJob, "Unknown recurring job"),
+        Startup(CommandErrorCodes.InlineJobFailed, "Inline job failed"),
+        Startup(CommandErrorCodes.UnknownSeeder, "Unknown seeder"),
+        Startup(CommandErrorCodes.SeedingClaimed, "Seeding held by another run"),
+        Startup(CommandErrorCodes.InvalidValue, "Invalid option value"),
+        Startup("FCMS3361", "Unexpected answer from the instance"),
+        Startup("FCMS3362", "Key refused by the MCP endpoint"),
+        Startup("FCMS3363", "Key sent without TLS"),
     ];
 
     private static readonly FrozenDictionary<string, ErrorCodeInfo> byCode = All.ToFrozenDictionary(info => info.Code);
