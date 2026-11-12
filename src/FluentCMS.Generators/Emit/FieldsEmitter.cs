@@ -130,6 +130,13 @@ internal static class FieldsEmitter
                     _ => "Fields",
                 };
 
+                // A filter path names the block type as a segment, which may hold only letters, digits and underscores.
+                if (group == Group.Block && type.Name.Contains('-'))
+                {
+                    Report(EmitCodes.BlockNotReachable, $"The block type '{type.Name}' gets no field builder, because a filter path cannot name a block type with a hyphen; a block list still has Has{Pascal(type.Name)}().", type, null);
+                    continue;
+                }
+
                 var builder = new Builder(type, className);
                 if (_builders.ContainsKey((group, type.Name)) || !classNames.Add(builder.FullName))
                 {
@@ -146,7 +153,7 @@ internal static class FieldsEmitter
         }
 
         private void Report(string code, string message, TypeDescription type, string? field) =>
-            _diagnostics.Add(new EmitDiagnostic(code, message, type.Kind, type.Name, field));
+            _diagnostics.Add(new EmitDiagnostic(code, message, type.Kind, type.Name, type.Namespace, field));
 
         private string Write(Builder builder)
         {
@@ -333,7 +340,7 @@ internal static class FieldsEmitter
                     writer.Line($"/// <summary>The fields of the blocks of the type <c>{block}</c> in this list.</summary>");
                     writer.Line($"public {builder!.FullName} {member} => new {builder.FullName}(Path);");
                 }
-                else
+                else if (!block.Contains('-'))
                 {
                     Report(EmitCodes.MissingBuilder, $"The block type '{block}' of the field '{owner.Name}.{field.Name}' has no builder here, so only {has}() is emitted; declare it in the same project.", owner, field.Name);
                 }

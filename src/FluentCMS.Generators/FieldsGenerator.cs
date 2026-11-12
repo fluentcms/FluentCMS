@@ -73,7 +73,7 @@ public sealed class FieldsGenerator : IIncrementalGenerator
 
     private static Location? LocationOf(EquatableArray<TypeModel> types, EmitDiagnostic diagnostic)
     {
-        var type = types.FirstOrDefault(type => type.Description.Kind == diagnostic.Kind && type.Description.Name == diagnostic.TypeName);
+        var type = types.FirstOrDefault(type => type.Description.Kind == diagnostic.Kind && type.Description.Name == diagnostic.TypeName && type.Description.Namespace == diagnostic.Namespace);
         if (type is null)
         {
             return null;

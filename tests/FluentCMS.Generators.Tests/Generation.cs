@@ -1,6 +1,12 @@
 using System.Collections.Immutable;
+using FluentCMS.Core.Schema;
+using FluentCMS.Generators.Emit;
+using FluentCMS.Generators.Snapshot;
+using FluentCMS.Schema;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.Extensions.DependencyInjection;
+using Shouldly;
 
 namespace FluentCMS.Generators.Tests;
 
@@ -19,6 +25,17 @@ internal static class Generation
     ];
 
     public static CSharpParseOptions ParseOptions { get; } = new(LanguageVersion.Latest);
+
+    // The implicit usings of an SDK project, which the sources of the sample and the kitchen rely on.
+    private const string ImplicitUsings = """
+        global using System;
+        global using System.Collections.Generic;
+        global using System.IO;
+        global using System.Linq;
+        global using System.Net.Http;
+        global using System.Threading;
+        global using System.Threading.Tasks;
+        """;
 
     public static SyntaxTree Parse(string text, string path) =>
         CSharpSyntaxTree.ParseText(text, ParseOptions, path, cancellationToken: Xunit.TestContext.Current.CancellationToken);
@@ -41,6 +58,30 @@ internal static class Generation
 
     public static string Generated(GeneratorRunResult result, string hintName) =>
         result.GeneratedSources.Single(source => source.HintName == hintName).SourceText.ToString();
+
+    // The generator on the sources copied to a folder of the output, and the emitter on the snapshot of the host's schema
+    // read back, give the same files with the same text.
+    public static void ShouldEmitTheSameText(string sourceFolder, IServiceProvider host, string @namespace)
+    {
+        (string, string)[] sources =
+        [
+            .. Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, sourceFolder), "*.cs").Select(path => (Path.GetFileName(path), File.ReadAllText(path))),
+            ("ImplicitUsings.cs", ImplicitUsings),
+        ];
+        var fromSymbols = Run(Compile(sources));
+        fromSymbols.Diagnostics.ShouldBeEmpty();
+
+        var snapshot = SchemaJsonWriter.Write(host.GetRequiredService<SchemaModel>());
+        var schema = new SchemaBuilder(host.GetRequiredService<IFieldTypeRegistry>()).AddSchemaJson(snapshot).Build();
+        var fromSnapshot = FieldsEmitter.Emit(SchemaDescriptions.Of(schema, @namespace), EmitOptions.Sdk);
+
+        fromSnapshot.Diagnostics.ShouldBeEmpty();
+        fromSnapshot.Sources.Select(source => source.HintName).ShouldBe(fromSymbols.GeneratedSources.Select(source => source.HintName), ignoreOrder: true);
+        foreach (var source in fromSnapshot.Sources)
+        {
+            source.Text.ShouldBe(Generated(fromSymbols, source.HintName), source.HintName);
+        }
+    }
 
     // The generated sources compiled with the host's, and the errors of the whole.
     public static IReadOnlyList<Diagnostic> Errors(CSharpCompilation compilation)

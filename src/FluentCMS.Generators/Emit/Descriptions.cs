@@ -25,7 +25,7 @@ internal sealed record EmitOptions(string FieldTypesNamespace)
 
 internal sealed record EmittedSource(string HintName, string Text);
 
-internal sealed record EmitDiagnostic(string Code, string Message, BuilderKind Kind, string TypeName, string? FieldName);
+internal sealed record EmitDiagnostic(string Code, string Message, BuilderKind Kind, string TypeName, string Namespace, string? FieldName);
 
 internal sealed record EmitResult(EquatableArray<EmittedSource> Sources, EquatableArray<EmitDiagnostic> Diagnostics);
 
@@ -42,4 +42,7 @@ internal static class EmitCodes
 
     // A field or a block type gets no member: the component or block it names has no builder in the same run.
     public const string MissingBuilder = "FCMS0103";
+
+    // A block type gets no builder: its name has a hyphen, which a segment of a filter path cannot hold.
+    public const string BlockNotReachable = "FCMS0104";
 }

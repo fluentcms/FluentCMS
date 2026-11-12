@@ -10,9 +10,9 @@ public sealed class JsonField(string path) : QueryField(path)
     public JsonKeyField Key(string name)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
-        return name.Contains('.', StringComparison.Ordinal)
-            ? throw new ArgumentException("A filter reaches one level inside JSON, so the key cannot contain a dot.", nameof(name))
-            : new JsonKeyField($"{Path}.{name}");
+        return name.All(character => char.IsAsciiLetterOrDigit(character) || character == '_')
+            ? new JsonKeyField($"{Path}.{name}")
+            : throw new ArgumentException("A filter reaches one key inside JSON, named with ASCII letters, digits and underscores.", nameof(name));
     }
 
     /// <summary>The field has no value (<c>null</c>).</summary>

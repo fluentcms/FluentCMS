@@ -134,25 +134,8 @@ public sealed class BlogBuilderTests(BlogFixture fixture) : IClassFixture<BlogFi
     }
 
     [Fact]
-    public void TheEmitterGivesTheSameTextFromSymbolsAndFromTheSnapshot()
-    {
-        var sources = Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, "BlogSources"), "*.cs")
-            .Select(path => (Path.GetFileName(path), File.ReadAllText(path)))
-            .ToArray();
-        var fromSymbols = Generation.Run(Generation.Compile(sources));
-        fromSymbols.Diagnostics.ShouldBeEmpty();
-
-        var snapshot = SchemaJsonWriter.Write(Schema);
-        var schema = new SchemaBuilder(fixture.Host.Services.GetRequiredService<IFieldTypeRegistry>()).AddSchemaJson(snapshot).Build();
-        var fromSnapshot = FieldsEmitter.Emit(SchemaDescriptions.Of(schema, typeof(Article).Namespace!), EmitOptions.Sdk);
-
-        fromSnapshot.Diagnostics.ShouldBeEmpty();
-        fromSnapshot.Sources.Select(source => source.HintName).ShouldBe(fromSymbols.GeneratedSources.Select(source => source.HintName), ignoreOrder: true);
-        foreach (var source in fromSnapshot.Sources)
-        {
-            source.Text.ShouldBe(Generation.Generated(fromSymbols, source.HintName), source.HintName);
-        }
-    }
+    public void TheEmitterGivesTheSameTextFromSymbolsAndFromTheSnapshot() =>
+        Generation.ShouldEmitTheSameText("BlogSources", fixture.Host.Services, typeof(Article).Namespace!);
 
     // The field types a filter reaches inside a block (Q7).
     private static readonly string[] BlockScalars = ["text", "longText", "slug", "email", "url", "select", "integer", "decimal", "boolean", "date", "dateTime"];

@@ -95,6 +95,18 @@ public sealed class OperatorTests : IAsyncLifetime
         problems.ShouldBeEmpty();
     }
 
+    [Fact]
+    public void TheEmitterGivesTheSameTextFromSymbolsAndFromTheSnapshotForEveryKind() =>
+        Generation.ShouldEmitTheSameText("KitchenSources", _host.Services, typeof(Kitchen.Kitchen).Namespace!);
+
+    [Fact]
+    public async Task AJsonKeyIsOneNameAFilterPathCanHold()
+    {
+        (await Refusal(new ContentQuery { Filter = KitchenFields.Metadata.Key("audience_2").Eq("all") })).ShouldBeNull();
+        Should.Throw<ArgumentException>(() => KitchenFields.Metadata.Key("my-key"));
+        Should.Throw<ArgumentException>(() => KitchenFields.Metadata.Key("a.b"));
+    }
+
     // Every QueryField the builders of the kitchen reach: through components, block lists and their block types, and a key of the JSON field.
     private static IEnumerable<QueryField> Fields()
     {

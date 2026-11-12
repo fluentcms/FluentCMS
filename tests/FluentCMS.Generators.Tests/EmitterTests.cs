@@ -84,6 +84,18 @@ public sealed class EmitterTests
     }
 
     [Fact]
+    public void ABlockTypeWithAHyphenKeepsOnlyItsPresenceHelper()
+    {
+        var result = FieldsEmitter.Emit([Type("page", BuilderKind.Collection, Field("body", "blocks", blocks: ["call-to-action"])), Type("call-to-action", BuilderKind.Block, Field("label", "text"))], EmitOptions.Sdk);
+
+        var source = result.Sources.ShouldHaveSingleItem();
+        source.Text.ShouldContain("public global::FluentCMS.Content.FieldFilter HasCallToAction() => HasBlock(\"call-to-action\");");
+        source.Text.ShouldNotContain("CallToActionBlockFields");
+        var diagnostic = result.Diagnostics.ShouldHaveSingleItem();
+        (diagnostic.Code, diagnostic.TypeName, diagnostic.Kind).ShouldBe(("FCMS0104", "call-to-action", BuilderKind.Block));
+    }
+
+    [Fact]
     public void AMemberNameThatClashesWithObjectOrTheBuilderIsReported()
     {
         var result = FieldsEmitter.Emit(

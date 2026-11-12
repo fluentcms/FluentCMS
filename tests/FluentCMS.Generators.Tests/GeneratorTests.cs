@@ -279,6 +279,37 @@ public sealed class GeneratorTests
     }
 
     [Fact]
+    public void ATypeWhoseBuilderNameIsTakenIsReportedAtItsOwnClass()
+    {
+        const string source = """
+            using FluentCMS.Schema;
+
+            namespace A
+            {
+                [Collection("post")]
+                public sealed class Post : ContentItem
+                {
+                }
+            }
+
+            namespace B
+            {
+                [Collection("post")]
+                public sealed class Article : ContentItem
+                {
+                }
+            }
+            """;
+
+        var result = Generation.Run(Generation.Compile(("Post.cs", source)));
+
+        result.GeneratedSources.Select(generated => generated.HintName).ShouldBe(["A.PostFields.g.cs"]);
+        var diagnostic = result.Diagnostics.ShouldHaveSingleItem();
+        diagnostic.Id.ShouldBe("FCMS0100");
+        diagnostic.Location.GetLineSpan().StartLinePosition.Line.ShouldBe(13);
+    }
+
+    [Fact]
     public void AClassTheAttributeReaderRefusesGetsNoBuilder()
     {
         const string source = """

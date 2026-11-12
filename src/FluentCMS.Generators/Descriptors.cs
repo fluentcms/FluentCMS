@@ -40,11 +40,20 @@ internal static class Descriptors
         DiagnosticSeverity.Info,
         isEnabledByDefault: true);
 
+    public static readonly DiagnosticDescriptor BlockNotReachable = new(
+        EmitCodes.BlockNotReachable,
+        "A filter path cannot name the block type",
+        "{0}",
+        Category,
+        DiagnosticSeverity.Info,
+        isEnabledByDefault: true);
+
     public static DiagnosticDescriptor For(string code) => code switch
     {
         EmitCodes.TypeSkipped => TypeSkipped,
         EmitCodes.UnknownFieldType => UnknownFieldType,
         EmitCodes.MemberNameTaken => MemberNameTaken,
+        EmitCodes.BlockNotReachable => BlockNotReachable,
         _ => MissingBuilder,
     };
 }

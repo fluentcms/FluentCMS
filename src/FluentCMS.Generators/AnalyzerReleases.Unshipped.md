@@ -9,3 +9,4 @@ FCMS0100 | FluentCMS.Generators | Warning | Descriptors
 FCMS0101 | FluentCMS.Generators | Info | Descriptors
 FCMS0102 | FluentCMS.Generators | Warning | Descriptors
 FCMS0103 | FluentCMS.Generators | Info | Descriptors
+FCMS0104 | FluentCMS.Generators | Info | Descriptors

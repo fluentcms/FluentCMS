@@ -25,6 +25,7 @@
     <Compile Include="../../src/FluentCMS.Generators/Snapshot/*.cs" Link="Snapshot/%(Filename)%(Extension)" />
     <!-- The sources of the Blog sample, which the generator runs on in a test. -->
     <None Include="../../samples/Blog/*.cs" Link="BlogSources/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Kitchen/*.cs" Link="KitchenSources/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

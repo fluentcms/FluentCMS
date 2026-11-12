@@ -63,6 +63,9 @@ public sealed class Kitchen : ContentItem
     [Media]
     public MediaRefList Photos { get; set; } = [];
 
+    [Media]
+    public List<MediaRef> Album { get; set; } = [];
+
     [Component]
     public Shelf Shelf { get; set; } = new();
 

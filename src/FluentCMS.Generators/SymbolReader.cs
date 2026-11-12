@@ -188,9 +188,13 @@ internal static class SymbolReader
                 return blocks.Count == 0 ? null : new FieldDescription(name, fieldType, false, null, blocks.ToEquatableArray());
 
             case "media":
-                return Field(name, fieldType, FullName(property.Type as INamedTypeSymbol) == "FluentCMS.Media.MediaRefList");
+                return Field(name, fieldType, multiple || FullName(property.Type as INamedTypeSymbol) == "FluentCMS.Media.MediaRefList");
 
+            // The reader leaves a json field as it is, and reads the settings of a decimal and of a slug with a source
+            // without marking either as a list.
             case "json":
+            case "decimal":
+            case "slug" when attribute.NamedArguments.Any(argument => argument.Key == "Source" && argument.Value.Value is not null):
                 return Field(name, fieldType, false);
 
             default:
