@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.CommandLine.Help;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentCMS.Core.Commands;
 using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Schema;
@@ -13,8 +14,8 @@ namespace FluentCMS.Cli;
 // The command tree of `fluentcms`. A project command either runs inside the host, which the tool builds and starts with
 // "fluentcms <command>" (see IHostLauncher), or, for `migrations add` and `remove`, in the tool's own process, because
 // they need EF Core's design-time package, which a host does not get. Exit codes: 0, 1 for a failure, 2 for bad usage.
-// The commands that administer an instance are in CommandLine.Admin.cs. Standard input is the tool's for `mcp` and the
-// host's otherwise; a test gives its own.
+// The commands that administer an instance are in CommandLine.Admin.cs; export and import with --url call the instance
+// through TransferClient. Standard input is the tool's for `mcp` and the host's otherwise; a test gives its own.
 internal sealed partial class CommandLine(TextWriter output, TextWriter error, IHostLauncher launcher, Func<Instance, HttpClient>? connect = null, TextReader? input = null)
 {
     public const string Description = "The fluentcms tool. Project commands build the host project and run inside it, with its configuration and plugins.";
@@ -76,6 +77,10 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         Jobs(),
         Seed(),
         Mcp(),
+        Export(),
+        Import(),
+        Backup(),
+        Restore(),
     };
 
     private Command Migrate()
@@ -430,6 +435,144 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
             return await DoctorReport.JudgeAsync(report, [], error);
         }));
         return command;
+    }
+
+    private Command Export()
+    {
+        var file = new Option<string>("--output") { Description = "The package file to write.", HelpName = "file", Required = true };
+        var site = SiteOption("export");
+        var types = TypesOption("The content types to export, separated by commas; every type when left out.");
+        var publishedOnly = new Option<bool>("--published-only") { Description = "Leaves out the drafts and the entries that are not published." };
+        var roles = new Option<bool>("--roles") { Description = "Adds the site's roles." };
+        var mediaFiles = new Option<bool>("--media-files") { Description = "Adds the files of the media assets, not only their metadata." };
+        var command = new Command("export", "Writes an export package of a site: its content, settings and, when asked, its roles and the media files.")
+        {
+            file, site, types, publishedOnly, roles, mediaFiles,
+        };
+        var instance = InstanceOptions.AddTo(command);
+        var project = ProjectOptions.AddTo(command);
+        command.SetAction((result, cancellationToken) => GuardAsync(async () =>
+        {
+            var path = Path.GetFullPath(result.GetValue(file)!);
+            if (instance.Resolve(result) is not { } at)
+            {
+                return await launcher.RunAsync(
+                    project.Resolve(result, error),
+                    project.EnvironmentOf(result),
+                    ["export", "--output", path, .. Value(result, site), .. Value(result, types), .. Flag(result, publishedOnly), .. Flag(result, roles), .. Flag(result, mediaFiles)],
+                    output,
+                    error,
+                    cancellationToken);
+            }
+
+            // The body of the endpoint, as the command inside the host builds its request.
+            var body = new JsonObject();
+            if (Types(result.GetValue(types)) is { } names)
+            {
+                body["types"] = new JsonArray([.. names.Select(name => JsonValue.Create(name))]);
+            }
+
+            body["publishedOnly"] = result.GetValue(publishedOnly);
+            body["roles"] = result.GetValue(roles);
+            body["options"] = result.GetValue(mediaFiles) ? new JsonObject { ["mediaFiles"] = "true" } : new JsonObject();
+
+            using var client = new TransferClient(at, _connect(at));
+            await client.ExportAsync(body, result.GetValue(site), path, cancellationToken);
+            await output.WriteLineAsync($"Wrote {path}");
+            return ExitCodes.Success;
+        }));
+        return command;
+    }
+
+    private Command Import()
+    {
+        var file = new Argument<string>("file") { Description = "The package to import." };
+        var dryRun = new Option<bool>("--dry-run") { Description = "Checks everything and writes nothing; the report is the one the import would give." };
+        var site = SiteOption("import into");
+        var types = TypesOption("The content types to import, separated by commas; every type of the package when left out.");
+        var overwrite = new Option<bool>("--overwrite") { Description = "Takes the package's copy of an entry that is newer in the instance, which is otherwise a conflict." };
+        var webhooks = new Option<bool>("--webhooks") { Description = "Delivers the webhooks of what the import writes, which are otherwise not delivered." };
+        var missingLocales = new Option<string>("--missing-locales") { Description = "refuse (the default) or skip: whether the locales the site does not allow refuse the import or are left out.", HelpName = "mode" };
+        missingLocales.AcceptOnlyFromAmong("refuse", "skip");
+        var roles = new Option<bool>("--roles") { Description = "Imports the roles of the package too." };
+        var json = new Option<bool>("--json") { Description = "Writes the report as the endpoint's last line of JSON." };
+        var command = new Command("import", "Imports an export package into a site and prints the report; exits with 1 when it has a conflict or an error.")
+        {
+            file, dryRun, site, types, overwrite, webhooks, missingLocales, roles, json,
+        };
+        var instance = InstanceOptions.AddTo(command);
+        var project = ProjectOptions.AddTo(command);
+        command.SetAction((result, cancellationToken) => GuardAsync(async () =>
+        {
+            var path = Path.GetFullPath(result.GetValue(file)!);
+            if (instance.Resolve(result) is not { } at)
+            {
+                return await launcher.RunAsync(
+                    project.Resolve(result, error),
+                    project.EnvironmentOf(result),
+                    [
+                        "import", path,
+                        .. Flag(result, dryRun), .. Value(result, site), .. Value(result, types), .. Flag(result, overwrite), .. Flag(result, webhooks),
+                        .. Value(result, missingLocales), .. Flag(result, roles), .. Flag(result, json),
+                    ],
+                    output,
+                    error,
+                    cancellationToken);
+            }
+
+            List<string> query = [];
+            AddQuery(query, "dryRun", result.GetValue(dryRun) ? "true" : null);
+            AddQuery(query, "overwrite", result.GetValue(overwrite) ? "true" : null);
+            AddQuery(query, "missingLocales", result.GetValue(missingLocales));
+            AddQuery(query, "webhooks", result.GetValue(webhooks) ? "true" : null);
+            AddQuery(query, "roles", result.GetValue(roles) ? "true" : null);
+            AddQuery(query, "types", Types(result.GetValue(types)) is { } names ? string.Join(',', names) : null);
+
+            using var client = new TransferClient(at, _connect(at));
+            var report = await client.ImportAsync(
+                path,
+                result.GetValue(site),
+                query.Count == 0 ? "" : "?" + string.Join('&', query),
+                line => ImportOutput.WriteProgressAsync(line, error),
+                cancellationToken);
+            return await ImportOutput.WriteReportAsync(report, result.GetValue(json), output, error);
+        }));
+        return command;
+    }
+
+    private Command Backup()
+    {
+        var file = new Option<string>("--output") { Description = "The archive to write.", HelpName = "file", Required = true };
+        var command = new Command("backup", "Writes a backup of a host on SQLite: an online snapshot of the database and the files of the local media storage, in one archive.") { file };
+        var project = ProjectOptions.AddTo(command);
+        command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["backup", "--output", Path.GetFullPath(result.GetValue(file)!)], cancellationToken));
+        return command;
+    }
+
+    private Command Restore()
+    {
+        var file = new Argument<string>("file") { Description = "The archive of 'fluentcms backup'." };
+        var force = new Option<bool>("--force") { Description = "Replaces the database and the media files the host has." };
+        var command = new Command("restore", "Restores a backup into a host on SQLite that is stopped: the database and the local media files.") { file, force };
+        var project = ProjectOptions.AddTo(command);
+        command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["restore", Path.GetFullPath(result.GetValue(file)!), .. Flag(result, force)], cancellationToken));
+        return command;
+    }
+
+    private static Option<string> SiteOption(string verb) =>
+        new("--site") { Description = $"The site to {verb}, by slug or id; the default site when left out.", HelpName = "slug" };
+
+    private static Option<string> TypesOption(string description) => new("--types") { Description = description, HelpName = "list" };
+
+    private static string[]? Types(string? list) =>
+        list?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private static void AddQuery(List<string> query, string name, string? value)
+    {
+        if (value is not null)
+        {
+            query.Add($"{name}={Uri.EscapeDataString(value)}");
+        }
     }
 
     private async Task<byte[]> InstanceSnapshotAsync(Instance target, CancellationToken cancellationToken)

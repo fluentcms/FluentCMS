@@ -49,6 +49,12 @@ public sealed partial class ParserTests : IDisposable
     [InlineData("mcp", "--project", ".")]
     [InlineData("schema", "apply", "--output", "schema.sql")]
     [InlineData("schema", "apply", "--script", "--dry-run")]
+    [InlineData("export")]
+    [InlineData("import")]
+    [InlineData("import", "package.zip", "--missing-locales", "maybe")]
+    [InlineData("backup")]
+    [InlineData("restore")]
+    [InlineData("restore", "one.zip", "two.zip")]
     public async Task BadUsagePrintsTheHelpAndExitsWithTwo(params string[] args)
     {
         (await RunAsync(args)).ShouldBe(2);
@@ -130,6 +136,32 @@ public sealed partial class ParserTests : IDisposable
         // A schema file goes to the host only when a host is named, which checks it with its own field types.
         await RunAsync("schema", "validate", "--schema", "schema.json", "--assembly", ToolRun.HostAssembly);
         _launcher.Arguments.ShouldBe(["schema", "validate", "--schema", Path.GetFullPath("schema.json")]);
+    }
+
+    [Fact]
+    public async Task ExportImportBackupAndRestoreHandOnTheirOptionsWithTheCallersPaths()
+    {
+        await RunAsync("export", "--output", "out.zip", "--site", "blog", "--types", "article,tag", "--published-only", "--roles", "--media-files", "--assembly", ToolRun.HostAssembly);
+        _launcher.Arguments.ShouldBe(["export", "--output", Path.GetFullPath("out.zip"), "--site", "blog", "--types", "article,tag", "--published-only", "--roles", "--media-files"]);
+
+        await RunAsync("import", "in.zip", "--json", "--dry-run", "--missing-locales", "skip", "--overwrite", "--webhooks", "--roles", "--assembly", ToolRun.HostAssembly);
+        _launcher.Arguments.ShouldBe(["import", Path.GetFullPath("in.zip"), "--dry-run", "--overwrite", "--webhooks", "--missing-locales", "skip", "--roles", "--json"]);
+
+        await RunAsync("backup", "--output", "backup.zip", "--assembly", ToolRun.HostAssembly);
+        _launcher.Arguments.ShouldBe(["backup", "--output", Path.GetFullPath("backup.zip")]);
+
+        await RunAsync("restore", "backup.zip", "--force", "--assembly", ToolRun.HostAssembly);
+        _launcher.Arguments.ShouldBe(["restore", Path.GetFullPath("backup.zip"), "--force"]);
+    }
+
+    [Fact]
+    public async Task AKeyWithoutAnAddressIsBadUsageAndNothingRuns()
+    {
+        (await RunAsync("export", "--output", "out.zip", "--token", "secret-key", "--assembly", ToolRun.HostAssembly)).ShouldBe(2);
+
+        _tool.Error.ToString().ShouldStartWith("FCMS3316: ");
+        _tool.Error.ToString().ShouldNotContain("secret-key");
+        _launcher.Arguments.ShouldBeNull();
     }
 
     // The host reads what the tool hands on with its own parser, so the two must name the same commands and options.

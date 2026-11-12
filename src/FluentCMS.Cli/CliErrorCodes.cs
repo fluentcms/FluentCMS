@@ -3,6 +3,7 @@ namespace FluentCMS.Cli;
 // The 331x codes, and those of 3327 to 3334 that the schema tools and doctor have in the tool; the commands inside the host
 // have the 330x codes and the rest of 3320 to 3334. Of the commands that administer an instance, the 336x codes are the
 // tool's, and the 335x codes are the host's and the tool's alike, since an instance reached with --url answers the same way.
+// Export and import at an instance have 3251 to 3253, and share 3248 with the commands inside the host.
 internal static class CliErrorCodes
 {
     public const string UnknownRole = "FCMS3350";
@@ -24,6 +25,10 @@ internal static class CliErrorCodes
     public const string InstanceUnreachable = "FCMS3329";
     public const string InstanceRefused = "FCMS3330";
     public const string HostSnapshotFailed = "FCMS3331";
+    public const string TransferFileNotRead = "FCMS3248";
+    public const string TransferRefused = "FCMS3251";
+    public const string TransferUnreachable = "FCMS3252";
+    public const string TransferAnswerUnexpected = "FCMS3253";
 }
 
 internal static class ExitCodes

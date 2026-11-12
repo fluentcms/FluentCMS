@@ -49,6 +49,11 @@ public sealed class MediaPlugin : IPlugin
         plugin.Services.AddHostedService<MediaStartup>();
         plugin.Services.AddSingleton<MediaStorage>();
         plugin.Services.AddKeyedSingleton<IFileStorage, LocalFileStorage>(LocalFileStorage.ProviderName);
+
+        // The directory `fluentcms backup` and `fluentcms restore` copy, under a key core names too, since neither references the other.
+        plugin.Services.AddKeyedSingleton(
+            LocalFileStorage.RootKey,
+            (services, _) => new DirectoryInfo(((LocalFileStorage)services.GetRequiredKeyedService<IFileStorage>(LocalFileStorage.ProviderName)).Root));
         plugin.Services.AddHealthChecks()
             .AddCheck<MediaStorageHealthCheck>(MediaStorageHealthCheck.Name, failureStatus: null, [FluentCmsHealthCheckTags.Ready], MediaStorageHealthCheck.Timeout);
 

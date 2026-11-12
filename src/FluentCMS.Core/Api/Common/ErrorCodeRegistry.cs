@@ -327,6 +327,22 @@ public static class ErrorCodeRegistry
         Startup(TransferErrorCodes.ItemFailed, "Package item failed"),
         Startup(TransferErrorCodes.InvalidContributor, "Invalid transfer contributor"),
 
+        // 324x and 325x the commands export, import, backup and restore, in the host and in the fluentcms tool, whose codes
+        // for what an instance answers are written out; a request never reaches either
+        Startup(TransferCommandErrorCodes.BackupNotSupported, "Backup not supported by the data provider"),
+        Startup(TransferCommandErrorCodes.NoDatabaseFile, "No database file"),
+        Startup(TransferCommandErrorCodes.InvalidArchive, "Invalid backup archive"),
+        Startup(TransferCommandErrorCodes.ArchiveNewer, "Backup of a newer FluentCMS"),
+        Startup(TransferCommandErrorCodes.DatabaseExists, "Database exists"),
+        Startup(TransferCommandErrorCodes.DatabaseInUse, "Database in use"),
+        Startup(TransferCommandErrorCodes.MediaNotEmpty, "Media directory not empty"),
+        Startup(TransferCommandErrorCodes.NoLocalMedia, "No local media storage"),
+        Startup(TransferCommandErrorCodes.FileNotRead, "File not read"),
+        Startup(TransferCommandErrorCodes.ImportNotClean, "Import reported conflicts or errors"),
+        Startup("FCMS3251", "Instance refused the transfer"),
+        Startup("FCMS3252", "Instance not reached for a transfer"),
+        Startup("FCMS3253", "Unexpected transfer answer"),
+
         // 315x the reference host (FluentCMS.Host, which this assembly does not reference, so its codes are written out) and the schema sync it allows, found when it starts
         Startup("FCMS3150", "Unknown data provider"),
         Startup("FCMS3151", "Connection string missing"),

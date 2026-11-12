@@ -27,6 +27,10 @@ internal static class CommandRegistry
         new JobsRunCommand(),
         new JobsRetryCommand(),
         new SeedCommand(),
+        new ExportCommand(),
+        new ImportCommand(),
+        new BackupCommand(),
+        new RestoreCommand(),
     ];
 
     public static string Usage => UsageOf(Commands);
