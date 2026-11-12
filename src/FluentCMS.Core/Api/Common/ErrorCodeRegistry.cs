@@ -3,6 +3,7 @@ using FluentCMS.Content;
 using FluentCMS.Core.ActivityLog;
 using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Commands;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
@@ -314,6 +315,24 @@ public static class ErrorCodeRegistry
         Startup("FCMS3153", "Schema file not found"),
         Startup(StorageErrorCodes.SchemaSyncNotSupported, "Schema sync not supported"),
         Startup("FCMS3155", "Key ring certificate unusable"),
+
+        // 330x the commands that run inside the host, and 331x the fluentcms tool (FluentCMS.Cli, which this assembly does
+        // not reference, so its codes are written out); a request never reaches either
+        Startup(CommandErrorCodes.BadUsage, "Bad command usage"),
+        Startup(CommandErrorCodes.NoEntryPoint, "Command entry point missing"),
+        Startup(CommandErrorCodes.CommandFailed, "Command failed"),
+        Startup(CommandErrorCodes.MigrationsPending, "Migrations pending"),
+        Startup(CommandErrorCodes.UnknownStream, "Unknown migration stream"),
+        Startup(CommandErrorCodes.UnknownMigration, "Unknown migration"),
+        Startup(CommandErrorCodes.ScriptNotSupported, "Script not supported by the provider"),
+        Startup(CommandErrorCodes.OutputNotWritten, "Output not written"),
+        Startup("FCMS3310", "Host project not built"),
+        Startup("FCMS3311", "Host assembly not found"),
+        Startup("FCMS3312", "Host not started"),
+        Startup("FCMS3313", "No content migration to remove"),
+        Startup("FCMS3314", "Content migration applied"),
+        Startup("FCMS3315", "Applied migrations unknown"),
+        Startup("FCMS3316", "Invalid instance address or token"),
     ];
 
     private static readonly FrozenDictionary<string, ErrorCodeInfo> byCode = All.ToFrozenDictionary(info => info.Code);

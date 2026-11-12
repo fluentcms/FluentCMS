@@ -28,6 +28,8 @@
     <Project Path="tests/FluentCMS.Core.Tests/FluentCMS.Core.Tests.csproj" />
     <Project Path="tests/FluentCMS.Core.IntegrationTests/FluentCMS.Core.IntegrationTests.csproj" />
     <Project Path="tests/FluentCMS.Data.Tests/FluentCMS.Data.Tests.csproj" />
+    <Project Path="tests/FluentCMS.Cli.Tests/FluentCMS.Cli.Tests.csproj" />
+    <Project Path="tests/FluentCMS.Cli.Tests.Host/FluentCMS.Cli.Tests.Host.csproj" />
     <Project Path="tests/FluentCMS.Architecture.Tests/FluentCMS.Architecture.Tests.csproj" />
     <Project Path="tests/FluentCMS.Generators.Tests/FluentCMS.Generators.Tests.csproj" />
     <Project Path="tests/FluentCMS.Host.Tests/FluentCMS.Host.Tests.csproj" />

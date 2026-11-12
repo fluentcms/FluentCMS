@@ -75,7 +75,7 @@ jobs:
           - group: units
             projects: tests/FluentCMS.Sdk.Tests tests/FluentCMS.Core.Tests tests/FluentCMS.Architecture.Tests tests/FluentCMS.Generators.Tests
           - group: integration
-            projects: tests/FluentCMS.Core.IntegrationTests
+            projects: tests/FluentCMS.Core.IntegrationTests tests/FluentCMS.Cli.Tests
           - group: plugins
             projects: tests/FluentCMS.Plugins.Tests tests/FluentCMS.Plugins.Media.Tests tests/FluentCMS.Plugins.Webhooks.Tests tests/FluentCMS.Plugins.Mcp.Tests tests/FluentCMS.Plugins.GraphQL.Tests tests/FluentCMS.Plugins.MultiSite.Tests tests/FluentCMS.Plugins.AiAssist.Tests tests/FluentCMS.Host.Tests
     steps:

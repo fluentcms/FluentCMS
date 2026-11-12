@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using FluentCMS.Content;
+using FluentCMS.Core.Commands;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
@@ -39,6 +40,7 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
     private readonly Lock _gate = new();
 
     private string? _file;
+    private string? _connectionString;
     private bool _inMemory = true;
     private bool _started;
     private bool _disposed;
@@ -55,6 +57,7 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
     public FluentCmsTestHost UseSqlite()
     {
         EnsureNotStarted();
+        EnsureNoDatabase();
         _inMemory = true;
         _file = null;
         return this;
@@ -64,6 +67,7 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
     public FluentCmsTestHost UseSqlite(string? file)
     {
         EnsureNotStarted();
+        EnsureNoDatabase();
         _inMemory = false;
         _file = file;
         return this;
@@ -217,6 +221,37 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
         return OAuthFlows.CookieAsync(Services, user.Id);
     }
 
+    // Runs "fluentcms <args>" as a host's command entry point does. Before the host has started, the command gets a host of
+    // its own on the same database that is built and never started, as in a process that runs a command; after, it runs
+    // against the started host.
+    public async Task<TestCommandResult> RunCommandAsync(params string[] args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+
+        IHost? started;
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            started = _host;
+        }
+
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var host = started ?? CreateHostBuilder().Build();
+        try
+        {
+            var exitCode = await CommandRunner.RunAsync(host.Services, [CommandRunner.Prefix, .. args], output, error, CancellationToken.None);
+            return new TestCommandResult(exitCode ?? throw new InvalidOperationException("No command ran."), output.ToString(), error.ToString());
+        }
+        finally
+        {
+            if (started is null)
+            {
+                host.Dispose();
+            }
+        }
+    }
+
     public HttpClient CreateClient() => Start().GetTestClient();
 
     // A client on https://localhost, which the authorization server asks for.
@@ -341,6 +376,18 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
         }
     }
 
+    // A command before the start opens the database, which the host then keeps.
+    private void EnsureNoDatabase()
+    {
+        lock (_gate)
+        {
+            if (_connectionString is not null)
+            {
+                throw new InvalidOperationException("A command has opened the database; choose it before the first command.");
+            }
+        }
+    }
+
     private SchemaModel BuildSchema(IFieldTypeRegistry fieldTypes)
     {
         var builder = new SchemaBuilder(fieldTypes);
@@ -353,6 +400,14 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
     }
 
     private string OpenDatabase()
+    {
+        lock (_gate)
+        {
+            return _connectionString ??= CreateDatabase();
+        }
+    }
+
+    private string CreateDatabase()
     {
         if (_inMemory)
         {
@@ -379,6 +434,7 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
 
     private void Release()
     {
+        _connectionString = null;
         _keeper?.Dispose();
         _keeper = null;
 
