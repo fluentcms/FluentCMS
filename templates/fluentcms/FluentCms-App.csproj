@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>6f1a8a52-0d7e-4c55-9a43-2b8f1d4c7e90</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentCMS.Core" Version="{{version:FluentCMS}}" />
+<!--#if (sqlite) -->
+    <PackageReference Include="FluentCMS.Data.Sqlite" Version="{{version:FluentCMS}}" />
+<!--#elseif (postgresql) -->
+    <PackageReference Include="FluentCMS.Data.PostgreSql" Version="{{version:FluentCMS}}" />
+<!--#else -->
+    <PackageReference Include="FluentCMS.Data.SqlServer" Version="{{version:FluentCMS}}" />
+<!--#endif -->
+    <PackageReference Include="FluentCMS.Plugins.Media" Version="{{version:FluentCMS}}" />
+    <PackageReference Include="FluentCMS.Plugins.Webhooks" Version="{{version:FluentCMS}}" />
+  </ItemGroup>
+
+  <!-- The source generator emits typed filter and sort builders, such as ArticleFields, and the analyzers check the schema
+       attributes as you type. Both run in the build only. -->
+  <ItemGroup>
+    <PackageReference Include="FluentCMS.Generators" Version="{{version:FluentCMS}}" PrivateAssets="all" />
+    <PackageReference Include="FluentCMS.Analyzers" Version="{{version:FluentCMS}}" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

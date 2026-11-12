@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "fluentcms.cli": {
+      "version": "{{version:FluentCMS}}",
+      "commands": [
+        "fluentcms"
+      ],
+      "rollForward": false
+    }
+  }
+}

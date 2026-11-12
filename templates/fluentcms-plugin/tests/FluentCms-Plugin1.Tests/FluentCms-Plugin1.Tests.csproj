@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="{{version:Microsoft.NET.Test.Sdk}}" />
+    <PackageReference Include="xunit.v3" Version="{{version:xunit.v3}}" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="{{version:xunit.runner.visualstudio}}" />
+  </ItemGroup>
+
+  <!-- The test host, and the providers of the design-time factory, which builds each migration set's context. -->
+  <ItemGroup>
+    <PackageReference Include="FluentCMS.Testing" Version="{{version:FluentCMS}}" />
+    <PackageReference Include="FluentCMS.Data.PostgreSql" Version="{{version:FluentCMS}}" />
+    <PackageReference Include="FluentCMS.Data.SqlServer" Version="{{version:FluentCMS}}" />
+    <!-- For `dotnet ef migrations add`, which uses this project as the startup project of the plugin's stream. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="{{version:Microsoft.EntityFrameworkCore.Design}}">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/FluentCms-Plugin1/FluentCms-Plugin1.csproj" />
+  </ItemGroup>
+
+</Project>

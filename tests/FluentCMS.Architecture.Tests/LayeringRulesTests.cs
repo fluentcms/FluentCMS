@@ -14,6 +14,7 @@ public class LayeringRulesTests
     private const string PluginAbstractions = "FluentCMS.Plugins.Abstractions";
     private const string PluginPrefix = "FluentCMS.Plugins.";
     private const string Analyzers = "FluentCMS.Analyzers";
+    private const string Generators = "FluentCMS.Generators";
     private const string GraphQLPlugin = "FluentCMS.Plugins.GraphQL";
 
     private const string ApiNamespace = "FluentCMS.Core.Api";
@@ -87,6 +88,33 @@ public class LayeringRulesTests
             .Where(project => project.AnalyzerReferences.Any(reference => reference.Name == Analyzers && !reference.Private))
             .Select(project => project.Name)
             .ShouldBeEmpty();
+    }
+
+    // Spec 6.2: the plugin of the fluentcms-plugin template is held to the rule of a first-party plugin: among the FluentCMS
+    // packages it depends on the two contract packages only, and it builds with the generator and the analyzers as
+    // development dependencies, which keeps them out of its package. Its providers are compiled against only.
+    [Fact]
+    public void ThePluginTemplateReferencesTheSdkAndThePluginAbstractionsOnly()
+    {
+        var plugin = ProjectFile.Load("templates/fluentcms-plugin/src/FluentCms-Plugin1/FluentCms-Plugin1.csproj");
+
+        plugin.ProjectReferences.ShouldBeEmpty();
+        plugin.PackageReferences.Where(package => !package.DevelopmentOnly).Select(package => package.Name)
+            .ShouldBe([Sdk, PluginAbstractions], ignoreOrder: true);
+        plugin.PackageReferences.Where(package => package.DevelopmentOnly && package.Name.StartsWith("FluentCMS.", StringComparison.Ordinal))
+            .Select(package => package.Name)
+            .ShouldBe([Generators, Analyzers], ignoreOrder: true);
+    }
+
+    // Spec 6.2: a host from the fluentcms template references the generator and the analyzers as packages of their own,
+    // as development dependencies.
+    [Fact]
+    public void TheHostTemplateBuildsWithTheGeneratorAndTheAnalyzers()
+    {
+        var host = ProjectFile.Load("templates/fluentcms/FluentCms-App.csproj");
+
+        host.PackageReferences.Where(package => package.DevelopmentOnly).Select(package => package.Name)
+            .ShouldBe([Generators, Analyzers], ignoreOrder: true);
     }
 
     // Spec 2.1: the GraphQL layer carries identity and intent only. It reaches content through IContentService, so it has
