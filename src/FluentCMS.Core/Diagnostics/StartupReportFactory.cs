@@ -13,6 +13,7 @@ using FluentCMS.Diagnostics;
 using Microsoft.AspNetCore.HostFiltering;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -149,6 +150,11 @@ internal sealed class StartupReportFactory(
             found.Add(new InsecureDefault { Id = "member-direct-login", Message = $"Members may sign in by sending their password to the token endpoint ({FluentCmsOptions.Section}:{MemberOptions.Section}:{nameof(MemberOptions.AllowDirectLogin)}), so an app sees the password. It is the less secure way in: prefer the hosted pages and the authorization code flow, and keep it to first-party apps." });
         }
 
+        if (environment?.IsProduction() == true && WritesAppleSecrets())
+        {
+            found.Add(new InsecureDefault { Id = "member-apple-logging", Message = $"The log category {AppleLogLevel.Category} is below Information in Production, so the log holds the client secret the Apple member provider signs and the tokens of each sign-in. Keep it at Information or above." });
+        }
+
         found.AddRange(services.GetServices<IInsecureDefaultSource>()
             .SelectMany(source => source.GetInsecureDefaults())
             .Select(item => item with { Message = SecretScrubber.Of(item.Message) }));
@@ -159,6 +165,13 @@ internal sealed class StartupReportFactory(
     // Web host defaults read AllowedHosts into these options and make an unset value "*"; without them nothing filters hosts.
     private bool AllowsAnyHost() =>
         services.GetService<IOptions<HostFilteringOptions>>()?.Value.AllowedHosts is not { Count: > 0 } hosts || hosts.Contains("*");
+
+    // The loggers of the package's categories are asked rather than the rules read, so a provider's own default, a
+    // filter and a logger factory of the host's own count as they do when the package logs.
+    private bool WritesAppleSecrets() =>
+        services.GetService<MemberOptions>()?.Providers.Values.Any(provider => provider.Kind == MemberProviderKind.Apple) == true
+        && services.GetService<ILoggerFactory>() is { } loggers
+        && AppleLogLevel.Categories.Any(category => loggers.CreateLogger(category).IsEnabled(LogLevel.Debug));
 
     private List<StartupPlugin> Plugins() =>
         [.. plugins.Plugins.Select(plugin => new StartupPlugin { Name = plugin.Name, Version = plugin.Version })];
