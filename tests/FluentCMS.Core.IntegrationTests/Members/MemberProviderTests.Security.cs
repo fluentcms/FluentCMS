@@ -538,13 +538,13 @@ public sealed partial class MemberProviderTests
         elsewhere.StatusCode.ShouldBe(HttpStatusCode.Redirect);
     }
 
-    // The host writes everything, down to Trace, as a host that looks for a fault would.
+    // The host writes everything, down to Trace, as a host that looks for a fault would, and so does its logging provider.
     [Fact]
     public async Task NoLogLineOfFluentCmsHoldsASecretOrATokenOfAProvider()
     {
         var logs = new LogCapture();
         await using var host = NewHost(fixture.Providers, fixture.Oidc, fixture.Emails, logs)
-            .WithServices(services => services.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Trace)));
+            .WithServices(services => services.AddLogging(logging => logging.SetMinimumLevel(LogLevel.Trace).AddFilter<LogCapture>(null, LogLevel.Trace)));
         var address = MemberFixture.NewAddress();
         using (var browser = new HostedPagesBrowser(host, "10.7.15.1"))
         {
@@ -578,11 +578,28 @@ public sealed partial class MemberProviderTests
             }
         }
 
-        // The Apple package writes the client secret it signs and the tokens of a sign-in at Trace. They are in its own
-        // category, which the host configuration guide says to keep above that level.
-        var told = lines.Where(entry => entry.Message.Contains(generated, StringComparison.Ordinal) || entry.Message.StartsWith("ID Token:", StringComparison.Ordinal)).ToList();
+        // The Apple package writes the client secret it signs and the tokens of a sign-in at Trace, in its own category,
+        // which stays at Information while the host does not name it.
+        lines.ShouldNotContain(entry => entry.Message.Contains(generated, StringComparison.Ordinal) || entry.Message.StartsWith("ID Token:", StringComparison.Ordinal));
+        lines.ShouldNotContain(entry => entry.Category.StartsWith(AppleLogLevel.Category, StringComparison.Ordinal) && entry.Level < LogLevel.Information);
+    }
+
+    [Fact]
+    public async Task AHostThatNamesTheAppleCategoryGetsWhatThePackageWritesThere()
+    {
+        var logs = new LogCapture();
+        await using var host = NewHost(fixture.Providers, fixture.Oidc, fixture.Emails, logs)
+            .WithServices(services => services.AddLogging(logging => logging.AddFilter(AppleLogLevel.Category, LogLevel.Trace)));
+        using (var browser = new HostedPagesBrowser(host, "10.7.15.2"))
+        {
+            using var apple = await SignInWithAsync(browser, Apple, new FakeAccount("001234." + Guid.NewGuid().ToString("N"), MemberFixture.NewAddress()));
+            (await DecideAsync(browser, apple)).ShouldBe("/");
+        }
+
+        var generated = fixture.Providers.TokenRequests.Last(sent => sent.Kind == "apple").ClientSecret.ShouldNotBeNull();
+        var told = logs.Entries.Where(entry => entry.Message.Contains(generated, StringComparison.Ordinal) || entry.Message.StartsWith("ID Token:", StringComparison.Ordinal)).ToList();
         told.Count.ShouldBeGreaterThanOrEqualTo(2);
-        told.ShouldAllBe(entry => entry.Level == LogLevel.Trace && entry.Category.StartsWith("AspNet.Security.OAuth.Apple", StringComparison.Ordinal));
+        told.ShouldAllBe(entry => entry.Level == LogLevel.Trace && entry.Category.StartsWith(AppleLogLevel.Category, StringComparison.Ordinal));
     }
 
     private async Task ChangeAsync(string memberId, Func<MemberManager, CmsMember, Task> change)

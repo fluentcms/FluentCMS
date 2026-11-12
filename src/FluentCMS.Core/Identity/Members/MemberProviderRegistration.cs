@@ -94,6 +94,7 @@ internal static class MemberProviderRegistration
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<AppleAuthenticationOptions>, OAuthPostConfigureOptions<AppleAuthenticationOptions, AppleAuthenticationHandler>>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<OpenIdConnectOptions>, OpenIdConnectPostConfigureOptions>());
         services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, PublicOriginCallback>();
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<LoggerFilterOptions>, AppleLogLevel>());
 
         services.AddScoped<MemberExternalSignIn>();
         services.AddScoped<MemberLogins>();
