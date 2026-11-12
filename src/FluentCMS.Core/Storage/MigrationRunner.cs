@@ -253,6 +253,8 @@ public sealed class MigrationRunner(
 
     private async Task<IReadOnlyList<StreamMigration>> ApplyAsync(IEnumerable<Stream> streams, CancellationToken cancellationToken)
     {
+        // Taken before the pending migrations are read, so that a process that waited finds what the other applied.
+        await using var held = await provider.LockMigrationsAsync(cancellationToken);
         var applied = new List<StreamMigration>();
         foreach (var stream in streams)
         {
