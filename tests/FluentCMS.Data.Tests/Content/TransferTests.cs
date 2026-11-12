@@ -241,6 +241,110 @@ public sealed class TransferTests : IDisposable
     }
 
     [Fact]
+    public async Task GlobalTypesNeedTransferManageForTheInstanceAndTheOtherTypesAreTakenWithout()
+    {
+        await SeedAsync();
+        var package = await ExportAsync(_source);
+        var target = Target();
+        var siteRole = AddRole(target, Guid.CreateVersion7(), SiteA.Value, CorePermissions.TransferManage);
+        var siteAdmin = WithRole(siteRole);
+
+        await Should.ThrowAsync<ManagementAccessDeniedException>(() => ImportAsync(target, package, principal: siteAdmin));
+        var taken = await ImportAsync(target, package, new TransferImportRequest { Types = ["article", "author", "settings"] }, principal: siteAdmin);
+
+        taken.Total.Errors.ShouldBe(0);
+        taken.Items.ShouldNotContain(item => item.Section == "tag");
+        target.Read(context => context.Documents.Count(document => document.Type == "tag")).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task RolesComeWithTheirIdsOnlyWhenAskedAndOnlyAsFarAsTheCallerHoldsThem()
+    {
+        var own = Guid.CreateVersion7();
+        var other = Guid.CreateVersion7();
+        AddRole(_source, own, SiteA.Value, CorePermissions.TransferManage, CorePermissions.RolesManage, CorePermissions.UsersManage);
+        AddRole(_source, other, SiteA.Value, "content.*.read");
+        var package = await ExportAsync(_source, new TransferExportRequest { Roles = true });
+        var target = Target();
+        AddRole(target, own, SiteA.Value, CorePermissions.TransferManage);
+
+        var without = await ImportAsync(target, package);
+        var limited = await ImportAsync(target, package, new TransferImportRequest { Roles = true }, principal: WithRole(own));
+        var full = await ImportAsync(target, package, new TransferImportRequest { Roles = true });
+
+        without.Items.ShouldNotContain(item => item.Section == TransferImporter.RolesSection);
+        limited.Items.Where(item => item.Section == TransferImporter.RolesSection).ShouldAllBe(item => item.Outcome == TransferOutcome.Error && item.Code == "FCMS3103");
+        full.Items.Single(item => item.Id == own.ToString("D")).Outcome.ShouldBe(TransferOutcome.Updated);
+        full.Items.Single(item => item.Id == other.ToString("D")).Outcome.ShouldBe(TransferOutcome.Created);
+        target.Read(context => context.Set<RoleGrant>().Count(grant => grant.RoleId == own)).ShouldBe(3);
+        target.Read(context => context.Set<Role>().Single(role => role.Id == other).SiteId).ShouldBe(SiteA.Value);
+    }
+
+    [Fact]
+    public async Task AFieldThePackageDoesNotHaveKeepsWhatTheInstanceHolds()
+    {
+        var source = Source(NoteSchema(maxLength: null));
+        var note = IdOf(await CreateAsSystemAsync(source, "note", new ContentDocument { ["title"] = "One" }));
+        var package = await ExportAsync(source);
+        var wider = Target(NoteSchema(maxLength: null, extra: "subtitle"));
+        await ImportAsync(wider, package);
+        var stored = (await wider.GetAsync(Admin, note, type: "note"))!;
+        await wider.UpdateAsync(Admin, note, new ContentDocument { ["title"] = "Changed", ["subtitle"] = "Only here" }, VersionOf(stored), "note");
+
+        var result = await ImportAsync(wider, package, new TransferImportRequest { Overwrite = true });
+
+        result.Items.Single().Outcome.ShouldBe(TransferOutcome.Updated);
+        var read = (await wider.GetAsync(Admin, note, type: "note"))!;
+        read["title"].ShouldBe("One");
+        read["subtitle"].ShouldBe("Only here");
+    }
+
+    [Fact]
+    public async Task ADraftThatOverwritesAPublishedEntryIsADraftAgainAndThenSkipped()
+    {
+        var source = Source(NoteSchema(maxLength: null));
+        var note = IdOf(await CreateAsSystemAsync(source, "note", new ContentDocument { ["title"] = "One" }));
+        var package = await ExportAsync(source);
+        var target = Target(NoteSchema(maxLength: null));
+        await ImportAsync(target, package);
+        await PublishAsync(target, "note", note, null);
+
+        var overwritten = await ImportAsync(target, package, new TransferImportRequest { Overwrite = true });
+        var again = await ImportAsync(target, package);
+
+        overwritten.Items.Single().Outcome.ShouldBe(TransferOutcome.Updated);
+        again.Items.Single().Outcome.ShouldBe(TransferOutcome.Skipped);
+        target.Read(context => context.Documents.Single().Status).ShouldBe(EntryStatus.Draft);
+    }
+
+    [Fact]
+    public async Task ASecondImportOfTheSiteWhileOneRunsIsRefusedWithItsCode()
+    {
+        await SeedAsync();
+        var package = await ExportAsync(_source);
+        var target = Target();
+        await using var held = await target.AsAsync(Admin, async services => (await services.GetRequiredService<IDistributedLock>().TryAcquireAsync($"transfer.import.{SiteA.Value:N}", TimeSpan.Zero, Token))!);
+
+        var running = await Should.ThrowAsync<ValidationException>(() => ImportAsync(target, package));
+
+        running.Errors.Single().Code.ShouldBe(TransferErrorCodes.ImportRunning);
+    }
+
+    [Fact]
+    public async Task APackageWhoseRolesCannotBeReadIsRefusedBeforeAnyWrite()
+    {
+        AddRole(_source, Guid.CreateVersion7(), SiteA.Value, "content.*.read");
+        await CreateAsSystemAsync(_source, "author", new ContentDocument { ["name"] = "Ada" });
+        var package = Rewrite(await ExportAsync(_source, new TransferExportRequest { Roles = true }), TransferPackage.Roles, "[{\"id\":");
+        var target = Target();
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(target, package, new TransferImportRequest { Roles = true }));
+
+        refused.Errors.Single().Code.ShouldBe(TransferErrorCodes.InvalidPackage);
+        target.Read(context => context.Documents.Count()).ShouldBe(0);
+    }
+
+    [Fact]
     public async Task TheImportOfAnEntryInTheTrashOrOfAnIdOfAnotherTypeIsReported()
     {
         var ids = await SeedAsync();
@@ -329,6 +433,31 @@ public sealed class TransferTests : IDisposable
             using var reader = new StreamReader(entry.Open());
             return reader.ReadToEnd();
         });
+    }
+
+    private static Guid AddRole(ServiceDatabase database, Guid id, Guid site, params string[] permissions)
+    {
+        database.Read(context =>
+        {
+            context.Add(new Role { Id = id, SiteId = site, Name = $"role-{id:N}" });
+            context.AddRange(permissions.Select(permission => new RoleGrant { Id = Guid.CreateVersion7(), RoleId = id, Permission = permission }));
+            return context.SaveChanges();
+        });
+        return id;
+    }
+
+    private static byte[] Rewrite(byte[] package, string path, string content)
+    {
+        using var stream = new MemoryStream();
+        stream.Write(package);
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Update, leaveOpen: true))
+        {
+            archive.GetEntry(path)!.Delete();
+            using var writer = new StreamWriter(archive.CreateEntry(path).Open());
+            writer.Write(content);
+        }
+
+        return stream.ToArray();
     }
 
     private static Task<byte[]> ExportAsync(ServiceDatabase database, TransferExportRequest? request = null) =>

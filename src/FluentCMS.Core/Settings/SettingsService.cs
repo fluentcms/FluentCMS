@@ -151,11 +151,19 @@ internal sealed class SettingsService(
     }
 
     // For an import: a document without secrets, which keep what the site has, as a write that leaves them out does. The
-    // same document as the site's is no write. A dry run checks the document and writes nothing.
-    public async Task<TransferOutcome> ImportAsync(string area, SiteId site, string json, bool dryRun, CancellationToken cancellationToken)
+    // same document as the site's is no write. A dry run checks the document and writes nothing. The caller who started the
+    // import needs settings.{area}.manage in the site, as a write of its own would; the write itself is the import's.
+    public async Task<TransferOutcome> ImportAsync(string area, SiteId site, string json, bool dryRun, OperationContext caller, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(caller);
+
         var descriptor = registry.Find(area)
             ?? throw SettingsDescriptor.Fail("area", TransferErrorCodes.UnknownArea, $"There is no settings area '{area}' in this instance.");
+        if (!(await authorization.ResolveAsync(caller, cancellationToken)).Allows(descriptor.Permission, new AccessTarget(site, null)))
+        {
+            throw new SettingsAccessDeniedException(descriptor.Area, site);
+        }
+
         var canonical = descriptor.Canonicalize(json);
 
         Guid? siteId = site.Value;

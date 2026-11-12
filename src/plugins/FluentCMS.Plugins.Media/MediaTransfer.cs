@@ -11,8 +11,8 @@ namespace FluentCMS.Plugins.Media;
 
 // The media of a site in a transfer package: plugins/media/folders.jsonl, plugins/media/assets.jsonl and, with the option
 // mediaFiles=true, the files under plugins/media/files/{id}/. An import keeps the ids, times and authors of the package. An
-// asset whose file is neither in the package nor in the storage of the instance under the key the package names is
-// reported and not imported, so that no entry refers to an asset that cannot be served. A file is never deleted: one that an
+// asset whose file is neither in the package nor in the storage of the instance, under a key of the site's library that
+// the package names, is reported and not imported, so that no entry refers to an asset that cannot be served. A file is never deleted: one that an
 // update replaces stays in the storage. The import has checked transfer.manage, so the media permissions are not asked.
 internal sealed class MediaTransfer(
     PluginDbContext<MediaPlugin> database,
@@ -220,7 +220,12 @@ internal sealed class MediaTransfer(
         {
             (provider, key) = (existing.StorageProvider, existing.StorageKey);
         }
-        else if (line.StorageProvider is { } named && line.StorageKey is { } stored && storages.Find(named) is { } storage && await storage.ExistsAsync(stored, cancellationToken))
+        else if (line.StorageProvider is { } named
+            && line.StorageKey is { } stored
+            && FileStorageKeys.IsValid(stored)
+            && stored.StartsWith($"{library:N}/", StringComparison.Ordinal)
+            && storages.Find(named) is { } storage
+            && await storage.ExistsAsync(stored, cancellationToken))
         {
             (provider, key) = (named, stored);
         }
@@ -274,6 +279,12 @@ internal sealed class MediaTransfer(
         {
             database.ChangeTracker.Clear();
             context.Report(section, id.ToString("D"), TransferOutcome.Error, MediaErrorCodes.TransferIdTaken, $"The database refused the item: {exception.InnerException?.Message ?? exception.Message}");
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // A storage that refuses a key or a write fails this item only.
+            database.ChangeTracker.Clear();
+            context.Report(section, id.ToString("D"), TransferOutcome.Error, MediaErrorCodes.TransferFileMissing, $"The file of the item could not be stored: {exception.Message}");
         }
     }
 
@@ -342,11 +353,13 @@ internal sealed class MediaTransfer(
 
     private static string FileOf(Guid id, string storageKey) => $"{FilesFolder}{id:N}/original{Extension(storageKey)}";
 
+    // Only an extension that is a storage key's segment as it is, so that a package cannot name a key the storage refuses.
     private static string Extension(string path)
     {
         var name = path[(path.LastIndexOf('/') + 1)..];
         var dot = name.LastIndexOf('.');
-        return dot >= 0 ? name[dot..] : "";
+        var extension = dot >= 0 ? name[dot..] : "";
+        return extension.Length is > 1 and <= 16 && extension[1..].All(char.IsAsciiLetterOrDigit) ? extension : "";
     }
 
     private static long Microseconds(DateTimeOffset moment) => moment.UtcTicks / 10;

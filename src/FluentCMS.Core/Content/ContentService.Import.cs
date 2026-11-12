@@ -114,7 +114,8 @@ internal sealed partial class ContentService
             var (draftVersion, publishedVersion) = before.Count == 0
                 ? await RenumberImportedAsync(row, locale, cancellationToken)
                 : (row.DraftVersion, row.PublishedVersion);
-            var status = row.Status == EntryStatus.Draft && locale.Status == EntryStatus.Unpublished ? EntryStatus.Unpublished : row.Status;
+            // Never published or published no more: the package says which, since an unpublish leaves Unpublished either way.
+            var status = row.PublishedVersion is null && locale.Status is EntryStatus.Draft or EntryStatus.Unpublished ? locale.Status : row.Status;
             await store.SettleImportedAsync(
                 entry.Id,
                 row.Locale,
@@ -162,8 +163,9 @@ internal sealed partial class ContentService
         return (locale.DraftVersion, locale.PublishedVersion);
     }
 
-    // A draft of one locale, as an update by the system would write it, whole: every field of the package, hidden and
-    // read-only ones too, and a new entry under the id of the package.
+    // A draft of one locale, as an update by the system would write it: every field of the package, hidden and read-only ones
+    // too, and a new entry under the id of the package. A field the package does not have, as when the instance has more,
+    // keeps what the entry holds, or takes its default on a new entry.
     private async Task WriteImportedDraftAsync(SchemaType type, Guid id, string locale, JsonObject fields, CancellationToken cancellationToken)
     {
         var documents = await store.DocumentsAsync(type, id, Current().Site, trashed: false, cancellationToken);
@@ -197,12 +199,18 @@ internal sealed partial class ContentService
         var stored = draft?.Entry;
 
         ContentDocument sent = [];
-        foreach (var field in type.Fields)
+        foreach (var field in type.Fields.Where(field => fields.ContainsKey(field.Name)))
         {
             sent[field.Name] = fields[field.Name]?.DeepClone();
         }
 
-        var working = Prepare(write, sent, document, stored);
+        ContentDocument composed = stored is null ? new ContentDocument(sent) : EntryComposer.Replace(type, stored, sent, field => !fields.ContainsKey(field.Name));
+        foreach (var field in type.Fields.Where(field => stored is null && field.DefaultValue is not null && !composed.ContainsKey(field.Name)))
+        {
+            composed[field.Name] = field.DefaultValue;
+        }
+
+        var working = Prepare(write, composed, document, stored);
         (working, var written) = await RunBeforeHooksAsync(write, isNewEntry ? HookKind.BeforeCreate : HookKind.BeforeUpdate, working, new SaveContext(stored, Client(sent), writable, document), cancellationToken);
 
         var status = document.Status;

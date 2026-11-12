@@ -213,10 +213,12 @@ internal sealed class RoleService(
     }
 
     // For an import into a site: the role keeps its id, and is written as roles.manage would write it. One with the same name,
-    // description, flag and grants is no write, and a dry run validates and writes nothing.
-    public async Task<TransferOutcome> ImportAsync(RoleInfo role, Guid site, bool dryRun, CancellationToken cancellationToken)
+    // description, flag and grants is no write, and a dry run validates and writes nothing. The caller who started the import
+    // needs roles.manage in the site and every grant the role had and gets, as an edit of its own would; the write is the import's.
+    public async Task<TransferOutcome> ImportAsync(RoleInfo role, Guid site, bool dryRun, OperationContext caller, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(role);
+        ArgumentNullException.ThrowIfNull(caller);
 
         var existing = await context.Set<Role>().AsNoTracking().FirstOrDefaultAsync(item => item.Id == role.Id, cancellationToken);
         if (existing is not null && (existing.SiteId != site || existing.BuiltIn))
@@ -234,6 +236,13 @@ internal sealed class RoleService(
                 return TransferOutcome.Skipped;
             }
 
+            await AsCallerAsync(caller, async () =>
+            {
+                await authority.RequireAsync(CorePermissions.RolesManage, site, cancellationToken);
+                await RequireCoveredAsync(stored, site, existing.Name, cancellationToken);
+                await RequireCoveredAsync(grants, site, name, cancellationToken);
+            });
+
             if (!dryRun)
             {
                 await UpdateAsync(existing.Id, request, cancellationToken);
@@ -242,9 +251,12 @@ internal sealed class RoleService(
             return TransferOutcome.Updated;
         }
 
-        await authority.RequireAsync(CorePermissions.RolesManage, site, cancellationToken);
         var (newName, newDescription, newGrants) = await ValidateAsync(request, site, role.Id, cancellationToken);
-        await RequireCoveredAsync(newGrants, site, newName, cancellationToken);
+        await AsCallerAsync(caller, async () =>
+        {
+            await authority.RequireAsync(CorePermissions.RolesManage, site, cancellationToken);
+            await RequireCoveredAsync(newGrants, site, newName, cancellationToken);
+        });
         if (dryRun)
         {
             return TransferOutcome.Created;
@@ -256,6 +268,20 @@ internal sealed class RoleService(
         await SaveAsync(created, cancellationToken);
         await LogAsync("role.created", created, null, cancellationToken);
         return TransferOutcome.Created;
+    }
+
+    private async Task AsCallerAsync(OperationContext caller, Func<Task> check)
+    {
+        var current = accessor.Current;
+        accessor.Current = caller;
+        try
+        {
+            await check();
+        }
+        finally
+        {
+            accessor.Current = current;
+        }
     }
 
     // For a user or an invitation: the caller must hold every grant of each role. A role that does not exist is the caller's

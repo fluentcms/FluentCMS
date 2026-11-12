@@ -317,6 +317,7 @@ public static class ErrorCodeRegistry
         new(TransferErrorCodes.PackageTooLarge, StatusCodes.Status413PayloadTooLarge, "Package too large"),
         new(TransferErrorCodes.ExportRunning, StatusCodes.Status409Conflict, "Export already running"),
         BadQuery(TransferErrorCodes.InvalidOption, "Invalid transfer option"),
+        new(TransferErrorCodes.ImportRunning, StatusCodes.Status409Conflict, "Import already running"),
         new(TransferErrorCodes.IdTaken, StatusCodes.Status409Conflict, "Id taken by another item"),
         new(TransferErrorCodes.InTrash, StatusCodes.Status409Conflict, "Entry in the trash"),
         Invalid(TransferErrorCodes.InvalidItem, "Invalid package item"),

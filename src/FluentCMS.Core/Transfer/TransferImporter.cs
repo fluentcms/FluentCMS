@@ -11,6 +11,7 @@ using FluentCMS.Core.Schema;
 using FluentCMS.Core.Settings;
 using FluentCMS.Core.Telemetry;
 using FluentCMS.Events;
+using FluentCMS.Providers;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
 using FluentCMS.Transfer;
@@ -32,6 +33,7 @@ internal sealed class TransferImporter(
     SettingsService settings,
     RoleService roles,
     TransferContributors contributors,
+    IDistributedLock locks,
     IServiceScopeFactory scopes,
     IActivityLog activity,
     ErrorCodeCatalogue codes,
@@ -63,13 +65,26 @@ internal sealed class TransferImporter(
             throw TooLarge();
         }
 
-        var file = new FileStream(
+        // One import of a site at a time, so that two runs never write the same entries at once.
+        var held = await locks.TryAcquireAsync($"transfer.import.{operation.Site.Value:N}", TimeSpan.Zero, cancellationToken)
+            ?? throw new ValidationException([new ValidationError("", TransferErrorCodes.ImportRunning, "An import into this site is running; try again when it has finished.")]);
+        FileStream file;
+        try
+        {
+            file = new FileStream(
             Path.Combine(Path.GetTempPath(), $"fluentcms-import-{Guid.NewGuid():N}.zip"),
             FileMode.CreateNew,
             FileAccess.ReadWrite,
             FileShare.None,
             81920,
             FileOptions.DeleteOnClose | FileOptions.Asynchronous);
+        }
+        catch
+        {
+            await held.DisposeAsync();
+            throw;
+        }
+
         try
         {
             await CopyAsync(body, file, cancellationToken);
@@ -77,7 +92,7 @@ internal sealed class TransferImporter(
             var archive = await OpenAsync(file, cancellationToken);
             try
             {
-                return await PlanAsync(operation, request, archive, file, cancellationToken);
+                return await PlanAsync(operation, request, archive, file, held, cancellationToken);
             }
             catch
             {
@@ -88,6 +103,7 @@ internal sealed class TransferImporter(
         catch
         {
             await file.DisposeAsync();
+            await held.DisposeAsync();
             throw;
         }
     }
@@ -116,7 +132,7 @@ internal sealed class TransferImporter(
             await ImportSettingsAsync(run, report, cancellationToken);
             await progress(new { section = SettingsSection, counts = report.Of(SettingsSection) }, cancellationToken);
 
-            if (run.Request.Roles && run.Archive.GetEntry(TransferPackage.Roles) is not null)
+            if (run.Request.Roles && run.Roles.Count > 0)
             {
                 await ImportRolesAsync(run, report, cancellationToken);
                 await progress(new { section = RolesSection, counts = report.Of(RolesSection) }, cancellationToken);
@@ -150,8 +166,14 @@ internal sealed class TransferImporter(
         return report.ToResult();
     }
 
-    private async Task<TransferImportRun> PlanAsync(OperationContext operation, TransferImportRequest request, ZipArchive archive, FileStream file, CancellationToken cancellationToken)
+    private async Task<TransferImportRun> PlanAsync(OperationContext operation, TransferImportRequest request, ZipArchive archive, FileStream file, IDistributedLockHandle held, CancellationToken cancellationToken)
     {
+        // A file of the package is never larger, unpacked, than the package may be.
+        if (archive.Entries.FirstOrDefault(entry => entry.Length > options.MaxPackageSize) is { } large)
+        {
+            throw Invalid($"{large.FullName} of the package is larger, unpacked, than {options.MaxPackageSize.ToString(CultureInfo.InvariantCulture)} bytes.");
+        }
+
         var manifest = await ReadJsonAsync<TransferManifest>(archive, TransferPackage.Manifest, cancellationToken)
             ?? throw Invalid($"The package has no {TransferPackage.Manifest}.");
         if (manifest.FormatVersion != TransferPackage.FormatVersion)
@@ -175,14 +197,36 @@ internal sealed class TransferImporter(
         }
 
         var types = request.Types is { } asked ? [.. inPackage.Where(type => asked.Contains(type, StringComparer.Ordinal))] : inPackage;
-        var instance = SchemaSnapshot.Of(schema);
-        if (manifest.SchemaHash != instance.Hash)
+
+        // A global type is every site's, so writing it needs transfer.manage for the instance, as writing it does (4.8).
+        var global = types.Where(type => schema.FindContentType(type)?.Scope == ContentScope.Global && archive.GetEntry(TransferPackage.ContentPath(type))!.Length > 0).ToList();
+        if (global.Count > 0 && !await authority.AllowsAsync(CorePermissions.TransferManage, null, cancellationToken))
         {
-            var errors = SchemaCompatibility.Check(packageSchema, instance.Json, types);
-            if (errors.Count > 0)
-            {
-                throw new ValidationException(errors);
-            }
+            throw new ManagementAccessDeniedException($"The package has the global types {string.Join(", ", global)}, whose import needs the instance-wide permission {CorePermissions.TransferManage}; import the other types with types=.");
+        }
+
+        var instance = SchemaSnapshot.Of(schema);
+        List<ValidationError> errors;
+        try
+        {
+            errors = manifest.SchemaHash == instance.Hash ? [] : SchemaCompatibility.Check(packageSchema, instance.Json, types);
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentException or InvalidCastException)
+        {
+            throw Invalid($"{TransferPackage.Schema} of the package cannot be read: {exception.Message}");
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new ValidationException(errors);
+        }
+
+        // Read whole before any write, so that a package that cannot be read is refused before it changes anything.
+        var settingsFile = await ReadJsonAsync<List<TransferSetting>>(archive, TransferPackage.Settings, cancellationToken) ?? [];
+        var rolesFile = request.Roles ? await ReadJsonAsync<List<TransferRole>>(archive, TransferPackage.Roles, cancellationToken) ?? [] : [];
+        if (settingsFile.Any(item => item is null || string.IsNullOrEmpty(item.Area)) || rolesFile.Any(item => item is null || item.Name is null || item.Grants is null || item.Grants.Any(grant => grant is null || grant.Permission is null)))
+        {
+            throw Invalid($"{TransferPackage.Settings} or {TransferPackage.Roles} of the package has an item without its name.");
         }
 
         var siteLocales = await locales.GetAsync(operation.Site, cancellationToken);
@@ -192,15 +236,14 @@ internal sealed class TransferImporter(
             throw new ValidationException([.. missing.Select(code => new ValidationError("locales", TransferErrorCodes.LocaleNotInSite, $"The site does not allow the locale '{code}' of the package; allow it, or import with missingLocales=skip."))]);
         }
 
-        return new TransferImportRun(operation, request, manifest, types, archive, file);
+        return new TransferImportRun(operation, request, manifest, types, settingsFile, rolesFile, archive, file, held);
     }
 
     private async Task ImportSettingsAsync(TransferImportRun run, TransferReport report, CancellationToken cancellationToken)
     {
-        var documents = await ReadJsonAsync<List<TransferSetting>>(run.Archive, TransferPackage.Settings, cancellationToken) ?? [];
-        foreach (var document in documents)
+        foreach (var document in run.Settings)
         {
-            await ItemAsync(report, SettingsSection, document.Area, () => settings.ImportAsync(document.Area, run.Operation.Site, document.Value.GetRawText(), run.Request.DryRun, cancellationToken), cancellationToken);
+            await ItemAsync(report, SettingsSection, document.Area, () => settings.ImportAsync(document.Area, run.Operation.Site, document.Value.GetRawText(), run.Request.DryRun, run.Operation, cancellationToken), cancellationToken);
         }
     }
 
@@ -209,7 +252,7 @@ internal sealed class TransferImporter(
     {
         var site = run.Operation.Site.Value;
         var packageSite = run.Manifest.Site.Id;
-        foreach (var role in await ReadJsonAsync<List<TransferRole>>(run.Archive, TransferPackage.Roles, cancellationToken) ?? [])
+        foreach (var role in run.Roles)
         {
             await ItemAsync(
                 report,
@@ -237,7 +280,7 @@ internal sealed class TransferImporter(
                     }
 
                     var info = new RoleInfo(role.Id, site, role.Name, role.Description, BuiltIn: false, role.RequireTwoFactor, grants);
-                    return roles.ImportAsync(info, site, run.Request.DryRun, cancellationToken);
+                    return roles.ImportAsync(info, site, run.Request.DryRun, run.Operation, cancellationToken);
                 },
                 cancellationToken);
         }
@@ -520,9 +563,16 @@ internal sealed class TransferImportRun(
     TransferImportRequest request,
     TransferManifest manifest,
     IReadOnlyList<string> types,
+    IReadOnlyList<TransferSetting> settings,
+    IReadOnlyList<TransferRole> roles,
     ZipArchive archive,
-    FileStream file) : IAsyncDisposable
+    FileStream file,
+    IDistributedLockHandle held) : IAsyncDisposable
 {
+    public IReadOnlyList<TransferSetting> Settings => settings;
+
+    public IReadOnlyList<TransferRole> Roles => roles;
+
     public OperationContext Operation => operation;
 
     public TransferImportRequest Request => request;
@@ -537,5 +587,6 @@ internal sealed class TransferImportRun(
     {
         await archive.DisposeAsync();
         await file.DisposeAsync();
+        await held.DisposeAsync();
     }
 }

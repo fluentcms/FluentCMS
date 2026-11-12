@@ -11,6 +11,7 @@ internal static class TransferErrorCodes
     public const string PackageTooLarge = "FCMS3204";
     public const string ExportRunning = "FCMS3205";
     public const string InvalidOption = "FCMS3206";
+    public const string ImportRunning = "FCMS3207";
 
     // One item of a report.
     public const string IdTaken = "FCMS3210";
