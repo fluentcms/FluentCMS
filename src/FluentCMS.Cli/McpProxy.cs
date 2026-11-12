@@ -122,14 +122,23 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
             await error.WriteLineAsync(reason.Message);
             await AnswerWithErrorAsync(line, reason.Message);
         }
+        // Once the proxy stops, an answer still being read is aborted, which some handlers report as a failed read and not
+        // as a cancellation.
+        catch (Exception exception) when (stop.IsCancellationRequested && exception is OperationCanceledException or HttpRequestException or IOException)
+        {
+        }
         catch (CliException exception)
         {
             // The instance could not be reached for this request; the next one may reach it.
             await error.WriteLineAsync(exception.Message);
             await AnswerWithErrorAsync(line, exception.Message);
         }
-        catch (OperationCanceledException) when (stop.IsCancellationRequested)
+        catch (Exception exception) when (exception is HttpRequestException or IOException)
         {
+            // The answer broke off while it was read.
+            var reason = new CliException(CliErrorCodes.InstanceUnreachable, $"{client.Instance} could not be reached: {exception.Message}");
+            await error.WriteLineAsync(reason.Message);
+            await AnswerWithErrorAsync(line, reason.Message);
         }
     }
 
