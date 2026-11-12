@@ -81,6 +81,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         Import(),
         Backup(),
         Restore(),
+        new Generate.GenerateCommands(output, error, launcher, _connect, HostSnapshotAsync).Build(),
     };
 
     private Command Migrate()
@@ -722,7 +723,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         }
     }
 
-    private static bool IsReported(Exception exception) =>
+    internal static bool IsReported(Exception exception) =>
         exception is InvalidOperationException or IOException or ArgumentException or BadImageFormatException or UnauthorizedAccessException or JsonException or KeyNotFoundException;
 
     private int Report(Exception exception)

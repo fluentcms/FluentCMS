@@ -1,0 +1,117 @@
+{
+  "$comment": "The typed filters both clients must write the same way. FluentCMS.Client's tests and @fluentcms/client's tests build each case with their builders and compare the query string; the C# tests also send every case whose path is in the Blog sample (api is not false) to its Delivery API. A field names the class of both clients, of the generic argument of C#; call names the method in camel case, which C# writes in Pascal case.",
+  "filters": [
+    { "field": "TextField", "path": "title", "call": "eq", "args": ["Welcome"], "query": "filter[title][eq]=Welcome" },
+    { "field": "TextField", "path": "title", "call": "ne", "args": ["Hello World"], "query": "filter[title][ne]=Hello%20World" },
+    { "field": "TextField", "path": "title", "call": "in", "args": ["a,b", "c\\d", "é"], "query": "filter[title][in]=a%5C,b,c%5C%5Cd,%C3%A9" },
+    { "field": "TextField", "path": "title", "call": "notIn", "args": ["x", "y"], "query": "filter[title][nin]=x,y" },
+    { "field": "TextField", "path": "title", "call": "contains", "args": ["(Hello) World's!*"], "query": "filter[title][contains]=%28Hello%29%20World%27s%21*" },
+    { "field": "TextField", "path": "slug", "call": "startsWith", "args": ["a&b=c"], "query": "filter[slug][startsWith]=a%26b%3Dc" },
+    { "field": "TextField", "path": "videoUrl", "call": "isNull", "args": [], "query": "filter[videoUrl][null]=true" },
+    { "field": "TextField", "path": "videoUrl", "call": "isNotNull", "args": [], "query": "filter[videoUrl][notNull]=true" },
+    { "field": "TextField", "path": "seo.metaTitle", "call": "startsWith", "args": ["Bon"], "query": "filter[seo.metaTitle][startsWith]=Bon" },
+    { "field": "RichTextField", "path": "body", "call": "isNotNull", "args": [], "query": "filter[body][notNull]=true" },
+    { "field": "SelectField", "path": "category", "call": "eq", "args": ["news"], "query": "filter[category][eq]=news" },
+    { "field": "SelectField", "path": "category", "call": "in", "args": ["news", "video"], "query": "filter[category][in]=news,video" },
+    { "field": "SelectField", "path": "category", "call": "ne", "args": ["opinion"], "query": "filter[category][ne]=opinion" },
+    { "field": "DateField", "of": "DateTimeOffset", "path": "publishedOn", "call": "gt", "args": ["2026-01-01T00:00:00Z"], "query": "filter[publishedOn][gt]=2026-01-01T00%3A00%3A00Z" },
+    { "field": "DateField", "of": "DateTimeOffset", "path": "publishedOn", "call": "between", "args": ["2026-01-01T00:00:00Z", "2026-12-31T23:59:59.5Z"], "query": "filter[publishedOn][between]=2026-01-01T00%3A00%3A00Z,2026-12-31T23%3A59%3A59.5Z" },
+    { "field": "DateField", "of": "DateTimeOffset", "path": "publishedOn", "call": "isNull", "args": [], "query": "filter[publishedOn][null]=true" },
+    { "field": "RelationField", "path": "author", "call": "eq", "args": ["0192f2a4-1111-7000-8000-000000000001"], "query": "filter[author][eq]=0192f2a4-1111-7000-8000-000000000001" },
+    { "field": "RelationField", "path": "tags", "call": "in", "args": ["0192f2a4-2222-7000-8000-000000000002", "0192f2a4-2222-7000-8000-000000000003"], "query": "filter[tags][in]=0192f2a4-2222-7000-8000-000000000002,0192f2a4-2222-7000-8000-000000000003" },
+    { "field": "RelationField", "path": "author", "call": "isNotNull", "args": [], "query": "filter[author][notNull]=true" },
+    { "field": "MediaField", "path": "hero", "call": "eq", "args": ["0192f2a4-3333-7000-8000-000000000003"], "query": "filter[hero][eq]=0192f2a4-3333-7000-8000-000000000003" },
+    { "field": "MediaField", "path": "hero", "call": "in", "args": ["0192f2a4-3333-7000-8000-000000000003"], "query": "filter[hero][in]=0192f2a4-3333-7000-8000-000000000003" },
+    { "field": "BlocksField", "path": "sections", "call": "hasBlock", "args": ["hero"], "query": "filter[sections][hasBlock]=hero" },
+    { "field": "BlocksField", "path": "sections", "call": "isNotNull", "args": [], "query": "filter[sections][notNull]=true" },
+    { "field": "BlockTextField", "path": "sections.hero.heading", "call": "eq", "args": ["Welcome"], "query": "filter[sections.hero.heading][eq]=Welcome" },
+    { "field": "BlockTextField", "path": "sections.hero.heading", "call": "contains", "args": ["come"], "query": "filter[sections.hero.heading][contains]=come" },
+    { "field": "BlockContainsField", "path": "sections.quote.text", "call": "contains", "args": ["illegal"], "query": "filter[sections.quote.text][contains]=illegal" },
+    { "field": "BlockValueField", "of": "long", "path": "sections.gallery.columns", "call": "eq", "args": [2], "query": "filter[sections.gallery.columns][eq]=2" },
+    { "field": "NumberField", "of": "long", "path": "rating", "call": "lt", "args": [5], "query": "filter[rating][lt]=5", "api": false },
+    { "field": "NumberField", "of": "long", "path": "rating", "call": "between", "args": [1, 5], "query": "filter[rating][between]=1,5", "api": false },
+    { "field": "NumberField", "of": "long", "path": "rating", "call": "in", "args": [1, 2, 3], "query": "filter[rating][in]=1,2,3", "api": false },
+    { "field": "NumberField", "of": "decimal", "path": "price", "call": "gte", "args": [9.5], "query": "filter[price][gte]=9.5", "api": false },
+    { "field": "DateField", "of": "DateOnly", "path": "day", "call": "eq", "args": ["2026-03-01"], "query": "filter[day][eq]=2026-03-01", "api": false },
+    { "field": "DateField", "of": "DateOnly", "path": "day", "call": "notIn", "args": ["2026-03-01", "2026-03-02"], "query": "filter[day][nin]=2026-03-01,2026-03-02", "api": false },
+    { "field": "BooleanField", "path": "featured", "call": "eq", "args": [true], "query": "filter[featured][eq]=true", "api": false },
+    { "field": "BooleanField", "path": "featured", "call": "ne", "args": [false], "query": "filter[featured][ne]=false", "api": false },
+    { "field": "LongTextField", "path": "summary", "call": "contains", "args": ["x y"], "query": "filter[summary][contains]=x%20y", "api": false },
+    { "field": "SelectListField", "path": "labels", "call": "contains", "args": ["a"], "query": "filter[labels][contains]=a", "api": false },
+    { "field": "SelectListField", "path": "labels", "call": "notIn", "args": ["a", "b"], "query": "filter[labels][nin]=a,b", "api": false },
+    { "field": "JsonField", "path": "meta", "key": "color", "call": "eq", "args": ["red"], "query": "filter[meta.color][eq]=red", "api": false },
+    { "field": "JsonField", "path": "meta", "key": "size", "call": "ne", "args": [3], "query": "filter[meta.size][ne]=3", "api": false },
+    { "field": "JsonField", "path": "meta", "call": "isNull", "args": [], "query": "filter[meta][null]=true", "api": false },
+    { "field": "BlockValueField", "of": "bool", "path": "sections.hero.wide", "call": "eq", "args": [true], "query": "filter[sections.hero.wide][eq]=true", "api": false }
+  ],
+  "queries": [
+    {
+      "name": "conditions side by side, a sort and a page",
+      "query": {
+        "filter": { "and": [
+          { "field": "TextField", "path": "title", "call": "contains", "args": ["a"] },
+          { "field": "SelectField", "path": "category", "call": "eq", "args": ["news"] }
+        ] },
+        "sort": [
+          { "field": "DateField", "of": "DateTimeOffset", "path": "publishedOn", "call": "descending" },
+          { "field": "TextField", "path": "title", "call": "ascending" }
+        ],
+        "page": 2,
+        "pageSize": 5
+      },
+      "expect": "filter[title][contains]=a&filter[category][eq]=news&sort=-publishedOn,title&page=2&pageSize=5"
+    },
+    {
+      "name": "an or",
+      "query": {
+        "filter": { "or": [
+          { "field": "TextField", "path": "title", "call": "startsWith", "args": ["A"] },
+          { "field": "TextField", "path": "title", "call": "startsWith", "args": ["B"] }
+        ] }
+      },
+      "expect": "filter[or][0][title][startsWith]=A&filter[or][1][title][startsWith]=B"
+    },
+    {
+      "name": "a not, fields, populate, depth, status and locale",
+      "query": {
+        "filter": { "not": { "field": "SelectField", "path": "category", "call": "eq", "args": ["video"] } },
+        "fields": ["title", "slug"],
+        "populate": ["author", "tags"],
+        "depth": 2,
+        "status": "published",
+        "locale": "fr"
+      },
+      "expect": "filter[not][category][eq]=video&fields=title,slug&populate=author,tags&depth=2&status=published&locale=fr"
+    },
+    {
+      "name": "two conditions on one path and operator",
+      "query": {
+        "filter": { "and": [
+          { "field": "TextField", "path": "title", "call": "contains", "args": ["a"] },
+          { "field": "TextField", "path": "title", "call": "contains", "args": ["b"] }
+        ] }
+      },
+      "expect": "filter[and][0][title][contains]=a&filter[and][1][title][contains]=b"
+    },
+    {
+      "name": "an or inside an and",
+      "query": {
+        "filter": { "and": [
+          { "field": "BlocksField", "path": "sections", "call": "hasBlock", "args": ["hero"] },
+          { "or": [
+            { "field": "SelectField", "path": "category", "call": "eq", "args": ["news"] },
+            { "field": "RelationField", "path": "author", "call": "isNull", "args": [] }
+          ] }
+        ] },
+        "populate": ["*"]
+      },
+      "expect": "filter[sections][hasBlock]=hero&filter[or][0][category][eq]=news&filter[or][1][author][null]=true&populate=*"
+    },
+    {
+      "name": "a cursor",
+      "query": { "cursor": "eyJpZCI6MX0=", "pageSize": 10 },
+      "expect": "pageSize=10&cursor=eyJpZCI6MX0%3D",
+      "api": false
+    }
+  ]
+}

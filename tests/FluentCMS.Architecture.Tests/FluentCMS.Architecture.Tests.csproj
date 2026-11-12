@@ -16,6 +16,7 @@
     <!-- Here for their assemblies, which the content rules scan: the host references the providers. -->
     <ProjectReference Include="../../src/FluentCMS.Analyzers/FluentCMS.Analyzers.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Cli/FluentCMS.Cli.csproj" />
+    <ProjectReference Include="../../src/FluentCMS.Client/FluentCMS.Client.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Generators/FluentCMS.Generators.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Host/FluentCMS.Host.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />

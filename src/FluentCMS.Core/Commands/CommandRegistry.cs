@@ -31,12 +31,14 @@ internal static class CommandRegistry
         new ImportCommand(),
         new BackupCommand(),
         new RestoreCommand(),
+        new OpenApiDocumentCommand(),
     ];
 
     public static string Usage => UsageOf(Commands);
 
     public static string UsageOf(IReadOnlyList<HostCommand> commands)
     {
+        commands = [.. commands.Where(command => !command.Hidden)];
         var usage = new StringBuilder("Usage: fluentcms <command> [options]").AppendLine().AppendLine().AppendLine("Commands this host runs:");
         var width = commands.Max(command => command.Name.Length);
         foreach (var command in commands)

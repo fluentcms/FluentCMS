@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The minimal client that `fluentcms generate csharp` writes code for. It references no other FluentCMS package, so an
+       application in another process does not get the host's types. -->
+  <PropertyGroup>
+    <Description>A minimal typed HTTP client for FluentCMS: Delivery reads, content management, typed filters, paging and problems.</Description>
+    <PackageTags>$(PackageTags) client</PackageTags>
+  </PropertyGroup>
+
+</Project>

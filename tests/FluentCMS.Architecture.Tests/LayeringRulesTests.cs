@@ -25,6 +25,7 @@ public class LayeringRulesTests
     private const string ProvidersNamespace = "FluentCMS.Data";
     private const string CliNamespace = "FluentCMS.Cli";
     private const string CliProject = "FluentCMS.Cli";
+    private const string ClientProject = "FluentCMS.Client";
     private const string TestingNamespace = "FluentCMS.Testing";
     private const string McpPlugin = "FluentCMS.Plugins.Mcp";
     private const string MultiSitePlugin = "FluentCMS.Plugins.MultiSite";
@@ -161,6 +162,20 @@ public class LayeringRulesTests
             .ToList();
 
         violations.ShouldBeEmpty();
+    }
+
+    // Spec 2.4: the client that generated C# compiles against references no other FluentCMS package, neither in its project
+    // nor in its assembly, so an application in another process gets none of the host's types; it needs no package at all.
+    [Fact]
+    public void TheClientReferencesNoOtherFluentCmsPackage()
+    {
+        var client = ProjectFile.SourceProjects.Single(project => project.Name == ClientProject);
+
+        client.ProjectReferences.ShouldBeEmpty();
+        client.PackageReferences.ShouldBeEmpty();
+        Assembly.Load(ClientProject).GetReferencedAssemblies().Select(reference => reference.Name)
+            .Where(name => name!.StartsWith("FluentCMS.", StringComparison.Ordinal))
+            .ShouldBeEmpty();
     }
 
     // Spec 6.1: the tool parses the command line and hands a command to the host as arguments, so Core and everything a
