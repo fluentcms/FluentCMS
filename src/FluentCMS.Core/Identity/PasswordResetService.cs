@@ -30,7 +30,7 @@ internal sealed class PasswordResetService(CmsUserManager users, IEmailSender em
         }
     }
 
-    // The job's half: the user of the address, if any, gets the link.
+    // The job's half, which the user reset-password command calls directly: the user of the address, if any, gets the link.
     public async Task SendAsync(string address, Uri resetUrl, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(address);

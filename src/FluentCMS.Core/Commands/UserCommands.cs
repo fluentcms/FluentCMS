@@ -91,8 +91,10 @@ internal sealed class UserResetPasswordCommand : HostCommand
             return CommandExitCodes.Success;
         }
 
+        // Sent here rather than by a job, which may have no runner while a command runs; the command has told
+        // whether the user exists already, so its time tells nothing more.
         var reset = Link(context, HostedPagePaths.ResetPassword);
-        await context.Services.GetRequiredService<PasswordResetService>().RequestAsync(email, reset, cancellationToken);
+        await context.Services.GetRequiredService<PasswordResetService>().SendAsync(email, reset, cancellationToken);
         await context.Output.WriteLineAsync($"Sent a password reset link to {user.Email}.");
         return CommandExitCodes.Success;
     }
