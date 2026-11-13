@@ -5,6 +5,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>fluentcms</ToolCommandName>
     <Description>The fluentcms command-line tool.</Description>
+    <PackageTags>$(PackageTags) cli dotnet-tool</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

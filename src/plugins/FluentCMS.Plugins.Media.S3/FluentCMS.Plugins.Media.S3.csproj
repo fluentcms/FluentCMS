@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <Description>Media storage for FluentCMS on Amazon S3 and S3-compatible services, with private objects.</Description>
+    <PackageTags>$(PackageTags) media s3</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <Description>Media for FluentCMS: folders, uploads checked by their bytes, metadata per locale, file storage on the local disk, signed image transforms, and the media field type.</Description>
+    <PackageTags>$(PackageTags) media images</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

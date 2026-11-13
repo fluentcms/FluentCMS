@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <Description>GraphQL for FluentCMS: queries, mutations and limits generated from the content schema, over the same services as REST.</Description>
+    <PackageTags>$(PackageTags) graphql</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

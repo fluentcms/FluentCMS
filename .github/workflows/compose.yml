@@ -2,12 +2,22 @@ name: Compose
 
 # The compose file of the reference host, src/FluentCMS.Host/compose.yaml, with a smoke test: the image, PostgreSQL, MinIO
 # and the CLI together. It runs on pushes to feature branches and when dispatched; CI calls it on pushes to main and when
-# dispatched there. Pull requests do not run it.
+# dispatched there. Pull requests do not run it. A manual run with an image runs the published one instead of building it, such
+# as ghcr.io/fluentcms/fluentcms:1.0.0-preview.1 after a release (docs/releasing.md); the image must be public.
 on:
   push:
     branches: ["feature/**"]
   workflow_dispatch:
+    inputs:
+      image:
+        description: A published image to run instead of building one, such as ghcr.io/fluentcms/fluentcms:1.0.0-preview.1.
+        type: string
+        default: ""
   workflow_call:
+    inputs:
+      image:
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -28,6 +38,7 @@ jobs:
     env:
       BASE: http://localhost:8080
       BUILDKIT_PROGRESS: plain
+      FLUENTCMS_IMAGE: ${{ inputs.image || 'fluentcms' }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -78,7 +89,12 @@ jobs:
 
       # After .env: compose interpolates the whole file for any command, a build included.
       - name: Build the image
+        if: ${{ !inputs.image }}
         run: docker compose build cms
+
+      - name: Pull the published image
+        if: ${{ inputs.image }}
+        run: docker compose pull cms
 
       - name: Start
         run: docker compose up -d --no-build

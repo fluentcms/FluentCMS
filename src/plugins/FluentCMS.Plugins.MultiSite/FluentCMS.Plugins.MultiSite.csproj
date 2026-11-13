@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <Description>Multi-site for FluentCMS: sites beyond the default one, and the host names that decide the site of a request.</Description>
+    <PackageTags>$(PackageTags) multi-site</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
