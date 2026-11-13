@@ -22,7 +22,9 @@ internal sealed class SiteHostMap(IServiceScopeFactory scopes, TimeProvider time
     {
         ArgumentNullException.ThrowIfNull(host);
 
-        return HostNames.OfRequest(host) is { } name && (await CurrentAsync(cancellationToken)).TryGetValue(name, out var site)
+        // A host sent in the stored form, as most are, is found as it is, and only another is put in that form.
+        var sites = await CurrentAsync(cancellationToken);
+        return sites.TryGetValue(host, out var site) || (HostNames.OfRequest(host) is { } name && sites.TryGetValue(name, out site))
             ? new SiteId(site)
             : null;
     }

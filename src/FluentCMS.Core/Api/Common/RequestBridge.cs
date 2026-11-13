@@ -57,6 +57,20 @@ internal sealed class RequestBridge(ISiteResolver sites, ILocaleResolver locales
         return new ApiRequest(operation, asked);
     }
 
+    // The site of the request's host name, resolved once for the request: the Delivery output cache puts it in the key of a
+    // copy before the endpoint runs, and the endpoint then reads that same site.
+    public async ValueTask<SiteId> HostSiteAsync(HttpContext httpContext, CancellationToken cancellationToken)
+    {
+        if (httpContext.Features.Get<HostSite>() is { } resolved)
+        {
+            return resolved.Site;
+        }
+
+        var site = await sites.ResolveAsync(new SiteRequest { Host = httpContext.Request.Host.Host }, cancellationToken);
+        httpContext.Features[typeof(HostSite)] = new HostSite(site);
+        return site;
+    }
+
     // A key bound to one site reads that site. A key bound to several reads the one the request names, or the site of the
     // request's host name, which is the default site unless a host resolver names another, when it is among them. A named
     // site outside the binding is refused the same way whether it exists or not, so a bound key cannot learn which sites
@@ -81,7 +95,7 @@ internal sealed class RequestBridge(ISiteResolver sites, ILocaleResolver locales
 
         if (bound is null)
         {
-            return await sites.ResolveAsync(new SiteRequest { Host = request.Host.Host }, cancellationToken);
+            return await HostSiteAsync(request.HttpContext, cancellationToken);
         }
 
         switch (bound.Count)
@@ -92,7 +106,7 @@ internal sealed class RequestBridge(ISiteResolver sites, ILocaleResolver locales
                 return await sites.ResolveAsync(new SiteRequest { ApiKeySite = new SiteId(bound.Single()) }, cancellationToken);
         }
 
-        var unnamed = await sites.ResolveAsync(new SiteRequest { Host = request.Host.Host }, cancellationToken);
+        var unnamed = await HostSiteAsync(request.HttpContext, cancellationToken);
         return bound.Contains(unnamed.Value)
             ? unnamed
             : throw Refused(SiteParameter, RequestErrorCodes.SiteNotNamed, $"The key is bound to several sites; name one with {SiteHeader} or {SiteParameter}.");
@@ -134,4 +148,6 @@ internal sealed class RequestBridge(ISiteResolver sites, ILocaleResolver locales
     private static string? Present(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static ValidationException Refused(string path, string code, string message) => new([new ValidationError(path, code, message)]);
+
+    private sealed record HostSite(SiteId Site);
 }
