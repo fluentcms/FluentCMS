@@ -169,6 +169,33 @@ public sealed class MemberManagementTests(MemberFixture fixture) : IClassFixture
     }
 
     [Fact]
+    public async Task TheMembersOfAGroupWhoseRoleHoldsNoGrantAreManagedWithMembersManageAlone()
+    {
+        using var manager = await fixture.AdminWithAsync(CorePermissions.MembersManage);
+        var member = await fixture.Host.CreateMemberAsync(groups: ["gold"], cancellationToken: Token);
+        using var client = await fixture.Host.AsMemberAsync(member);
+
+        // Gold's role holds no grant, so the caller holds all of it, both ways, and the row rule that reads the group answers otherwise.
+        (await MemberFixture.TitlesAsync(client, "perk")).Titles.ShouldBe(["Gold perk"]);
+        (await fixture.ManageAsync(HttpMethod.Delete, $"members/{member.Id:D}/groups/{fixture.Gold:D}", client: manager)).Status.ShouldBe(HttpStatusCode.OK);
+        (await MemberFixture.TitlesAsync(client, "perk")).Titles.ShouldBe(["Standard perk"]);
+        (await fixture.ManageAsync(HttpMethod.Put, $"members/{member.Id:D}/groups/{fixture.Gold:D}", client: manager)).Status.ShouldBe(HttpStatusCode.OK);
+        (await MemberFixture.TitlesAsync(client, "perk")).Titles.ShouldBe(["Gold perk"]);
+
+        // Insiders' role holds a grant the caller lacks: refused whether or not the member is in the group.
+        (await fixture.ManageAsync(HttpMethod.Delete, $"members/{member.Id:D}/groups/{fixture.Insiders:D}", client: manager)).Json["code"]!.GetValue<string>().ShouldBe("FCMS3103");
+        (await fixture.ManageAsync(HttpMethod.Put, $"members/{member.Id:D}/groups/{fixture.Insiders:D}")).Status.ShouldBe(HttpStatusCode.OK);
+        var refused = await fixture.ManageAsync(HttpMethod.Delete, $"members/{member.Id:D}/groups/{fixture.Insiders:D}", client: manager);
+        refused.Status.ShouldBe(HttpStatusCode.Forbidden);
+        refused.Json["code"]!.GetValue<string>().ShouldBe("FCMS3103");
+
+        // A group that does not exist is not found, before any grant is looked at.
+        var unknown = Guid.NewGuid();
+        (await fixture.ManageAsync(HttpMethod.Delete, $"members/{member.Id:D}/groups/{unknown:D}", client: manager)).Json["code"]!.GetValue<string>().ShouldBe("FCMS3168");
+        (await fixture.ManageAsync(HttpMethod.Delete, $"member-groups/{unknown:D}", client: manager)).Json["code"]!.GetValue<string>().ShouldBe("FCMS3168");
+    }
+
+    [Fact]
     public async Task ARoleIsNotDeletedWhileAGroupUsesIt()
     {
         var roleName = $"bound-{Guid.NewGuid():N}";
