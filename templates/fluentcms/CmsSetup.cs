@@ -8,6 +8,7 @@ using FluentCMS.Data.PostgreSql;
 using FluentCMS.Data.SqlServer;
 #endif
 using FluentCMS.Plugins.Media;
+using FluentCMS.Plugins.Search;
 using FluentCMS.Plugins.Webhooks;
 using FluentCMS.Schema;
 #if (blog)
@@ -36,6 +37,7 @@ public static class CmsSetup
 #endif
         cms.AddPlugin<MediaPlugin>();
         cms.AddPlugin<WebhooksPlugin>();
+        cms.AddPlugin<SearchPlugin>();
 #if (blog)
         cms.AddBlogSample();
 #endif

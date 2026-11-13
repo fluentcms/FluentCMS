@@ -442,6 +442,7 @@ A provider slot is a service with one implementation that core fills with a defa
 | `IDistributedLock` | a lease in the `cms_lock` table |
 | `IDistributedCache` | the framework's in-memory cache, one per instance, which keeps the member mail limit per instance |
 | `IOutputCacheStore` | the framework's in-memory output cache store, one per instance, which evicts only its own copies |
+| `ISearchIndex` | none: `q=` is refused with `FCMS2211` until the [search plugin](#search) or the host fills it |
 
 Choose an implementation with `cms.Providers.Use<TSlot, TImplementation>()`, which registers it as a singleton; a plugin calls the same `Use` on `plugin.Providers` in its `ConfigureServices`:
 
@@ -574,3 +575,7 @@ The AI assist plugin (`FluentCMS.Plugins.AiAssist`, which the reference host add
 | `UsageRetention` | `90.00:00:00` | How long the usage log keeps a row. |
 
 The allow-list keeps a site administrator from pointing the server at an address inside the network: an endpoint is used only when the list holds it, it is checked at every call, and no redirect is followed. The list is read when the host starts, so a change to it applies after a restart. The configuration's key for `OpenAi` is sent to OpenAI's own endpoint only; the key for the other providers goes to whichever allowed endpoint a site names for them. Ollama is reached as `openAiCompatible` at its `/v1` endpoint, which needs no key. A key in the instance defaults of the `ai` settings is sent only to the provider and the endpoint those defaults name, also from a site that saved settings of its own without a key, which inherits it; a key replaced in the defaults reaches every site that inherits it. The calls of a principal are counted in memory on each instance, so with several instances a principal can make its `callsPerMinute` on each.
+
+## Search
+
+The search plugin (`FluentCMS.Plugins.Search`, which the reference host adds) fills the `ISearchIndex` slot, so `q=` on the Delivery and Management lists finds entries by the text of their fields marked `[Searchable]`: every word, the last as the start of a word, on SQLite (FTS5) and PostgreSQL (full-text search with a GIN index), and every word as a part of the text on SQL Server, which uses no full-text catalogue. The outbox keeps the index current from the entry events. It has no options. Run `POST /api/management/v1/search/rebuild` (permission `search.manage`) once when you add the plugin to a host that has content, and after a field becomes searchable or stops being. The plugin's [README](../src/plugins/FluentCMS.Plugins.Search/README.md) has the details.
