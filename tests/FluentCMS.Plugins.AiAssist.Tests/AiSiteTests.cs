@@ -79,7 +79,7 @@ public sealed class AiSiteTests : IClassFixture<AiHost>
 
         using var write = new HttpRequestMessage(HttpMethod.Put, new Uri(Settings, UriKind.Relative))
         {
-            Content = JsonContent.Create(new { provider = "anthropic", model = "a-model", apiKey = "key-that-is-never-returned", fields = new { article = TitleOnly } }),
+            Content = JsonContent.Create(new { provider = "azureOpenAi", model = "a-model", apiKey = "key-that-is-never-returned", fields = new { article = TitleOnly } }),
         };
         write.Headers.IfMatch.Add(new EntityTagHeaderValue($"\"{read["version"]!.GetValue<long>()}\""));
         using var written = await admin.SendAsync(write, Token);
@@ -89,7 +89,7 @@ public sealed class AiSiteTests : IClassFixture<AiHost>
         written.StatusCode.ShouldBe(HttpStatusCode.OK, answered);
         answered.ShouldNotContain("key-that-is-never-returned");
         after.ToJsonString().ShouldNotContain("key-that-is-never-returned");
-        after["value"]!["provider"]!.GetValue<string>().ShouldBe("anthropic");
+        after["value"]!["provider"]!.GetValue<string>().ShouldBe("azureOpenAi");
         after["value"]!["apiKey"].ShouldBeNull();
         after["secretsSet"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldContain("apiKey");
         after["schema"]!["properties"]!["apiKey"]!["writeOnly"]!.GetValue<bool>().ShouldBeTrue();
@@ -118,6 +118,31 @@ public sealed class AiSiteTests : IClassFixture<AiHost>
         using var written = await admin.SendAsync(write, Token);
 
         (await RefusedAsync(written, HttpStatusCode.UnprocessableEntity)).ShouldBe("FCMS2805");
+    }
+
+    // Anthropic and Ollama are gone; the refusal says what to use instead.
+    [Theory]
+    [InlineData("anthropic")]
+    [InlineData("ollama")]
+    public async Task SettingsThatNameARemovedProviderAreRefusedWithWhatToUse(string provider)
+    {
+        var site = await _ai.SiteAsync();
+        using var admin = await _ai.AdminAsync(site);
+        var read = await ReadAsync(admin);
+
+        using var write = new HttpRequestMessage(HttpMethod.Put, new Uri(Settings, UriKind.Relative))
+        {
+            Content = JsonContent.Create(new { provider, model = "a-model", endpoint = "http://localhost:11434", fields = new { article = TitleOnly } }),
+        };
+        write.Headers.IfMatch.Add(new EntityTagHeaderValue($"\"{read["version"]!.GetValue<long>()}\""));
+        using var written = await admin.SendAsync(write, Token);
+        var problem = await JsonAsync(written, HttpStatusCode.UnprocessableEntity);
+
+        problem["code"]!.GetValue<string>().ShouldBe("FCMS2805");
+        problem.ToJsonString().ShouldContain("provider");
+        problem.ToJsonString().ShouldContain("openAiCompatible");
+        problem.ToJsonString().ShouldContain(nameof(IAiClientFactory));
+        (await ReadAsync(admin))["value"]!["provider"]!.GetValue<string>().ShouldBe("openAi");
     }
 
     private static async Task<JsonNode> ReadAsync(HttpClient client)
