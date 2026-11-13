@@ -155,6 +155,52 @@ public sealed class MediaDeliveryReferenceTests(PublicStoryHost media) : IClassF
         withoutGone["body"]!.GetValue<string>().ShouldNotContain("src=");
     }
 
+    // A preset's change evicts at once, by the presets tag of the library, the copy of an entry whose asset lists the presets.
+    [Fact]
+    public async Task APresetChangeEvictsTheCachedReadOfAnEntryThatShowsAnAsset()
+    {
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var hero = await AssetAsync(admin, "hero.png", Transforms.Bands(8, 4));
+        var id = await PublishedAsync(admin, Story(hero));
+        var preset = Unique("wide");
+
+        var before = await GetAsync(anonymous, $"{Delivery}/{id:D}?{Populated}");
+        await PresetAsync(admin, preset);
+        var after = await GetAsync(anonymous, $"{Delivery}/{id:D}?{Populated}");
+
+        before["hero"]!["urls"]!["presets"]!.AsObject().ContainsKey(preset).ShouldBeFalse();
+        after["hero"]!["urls"]!["presets"]![preset]!.GetValue<string>().ShouldContain($"preset={preset}");
+    }
+
+    // The media routes of a site where the plugin is disabled answer 404, so its references resolve to nothing on Delivery there.
+    [Fact]
+    public async Task InASiteWhereThePluginIsDisabledNoMediaReferenceResolvesOnDelivery()
+    {
+        await using var off = new PublicStoryHost();
+        using var admin = await off.AdminAsync();
+        using var anonymous = off.Host.CreateClient();
+        var hero = await AssetAsync(admin, "hero.png");
+        var id = await PublishedAsync(admin, Story(hero, [hero], [hero], banner: hero));
+        var enabled = await GetAsync(anonymous, $"{Delivery}/{id:D}?{Populated}");
+
+        using (var disabled = await admin.PutAsJsonAsync(new Uri($"/api/management/v1/plugins/media/sites/{DefaultSite.Id:D}", UriKind.Relative), new { enabled = false }, Token))
+        {
+            disabled.StatusCode.ShouldBe(HttpStatusCode.OK, await disabled.Content.ReadAsStringAsync(Token));
+        }
+
+        await off.DrainOutboxAsync();
+        var entry = await GetAsync(anonymous, $"{Delivery}/{id:D}?{Populated}");
+        using var route = await anonymous.GetAsync(new Uri($"/api/delivery/v1/media/{hero:D}", UriKind.Relative), Token);
+
+        enabled["hero"]!["urls"].ShouldNotBeNull();
+        route.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        entry["hero"].ShouldBeNull();
+        entry["gallery"]!.AsArray().ShouldBeEmpty();
+        entry["sections"]![0]!["image"].ShouldBeNull();
+        entry["body"]!.GetValue<string>().ShouldNotContain("src=");
+    }
+
     [Fact]
     public async Task TheTagHeaderOfAReadThatShowsAnAssetNamesTheTagsOfTheMediaRoute()
     {

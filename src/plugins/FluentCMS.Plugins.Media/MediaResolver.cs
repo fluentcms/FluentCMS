@@ -1,6 +1,7 @@
 using FluentCMS.Authorization;
 using FluentCMS.Content;
 using FluentCMS.Media;
+using FluentCMS.Plugins;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,15 +9,17 @@ namespace FluentCMS.Plugins.Media;
 
 // The assets of the library of the site of the current operation, as content shows them. On the Delivery API they are the
 // public ones, whoever reads, which is what its media route serves to anyone; a private one is never shown there, and no
-// grant is asked, since a Delivery principal holds none but reading content (4.8). Elsewhere they are those the caller
-// reaches with media.read, and a caller with no grant of it reaches none. A public asset has the URLs the Delivery API
-// gives it; a private one has none, since only a download URL serves it.
+// grant is asked, since a Delivery principal holds none but reading content (4.8). In a site where the plugin is disabled,
+// whose media routes answer 404, none is shown there. Elsewhere they are those the caller reaches with media.read, and a
+// caller with no grant of it reaches none. A public asset has the URLs the Delivery API gives it; a private one has none,
+// since only a download URL serves it.
 internal sealed class MediaResolver(
     PluginDbContext<MediaPlugin> database,
     IPermissionChecker permissions,
     IOperationContextAccessor operations,
     MediaLibraries libraries,
-    MediaService media) : IMediaResolver
+    MediaService media,
+    IPluginState plugins) : IMediaResolver
 {
     public async Task<IReadOnlyDictionary<Guid, MediaDelivery>> ResolveAsync(IReadOnlyCollection<Guid> ids, string? locale = null, CancellationToken cancellationToken = default)
     {
@@ -58,7 +61,7 @@ internal sealed class MediaResolver(
     {
         if (operation.IsDelivery)
         {
-            return asset => !asset.IsPrivate;
+            return await plugins.IsEnabledAsync(MediaPlugin.Name, operation.Site, cancellationToken) ? asset => !asset.IsPrivate : null;
         }
 
         try
