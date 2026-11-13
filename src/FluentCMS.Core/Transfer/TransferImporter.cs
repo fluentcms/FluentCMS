@@ -198,12 +198,15 @@ internal sealed class TransferImporter(
 
         var types = request.Types is { } asked ? [.. inPackage.Where(type => asked.Contains(type, StringComparer.Ordinal))] : inPackage;
 
-        // A global type is every site's, so writing it needs transfer.manage for the instance, as writing it does (4.8).
-        var global = types.Where(type => schema.FindContentType(type)?.Scope == ContentScope.Global && archive.GetEntry(TransferPackage.ContentPath(type))!.Length > 0).ToList();
+        // A global type is every site's, so writing it needs transfer.manage for the instance, as writing it does (4.8). Its
+        // file counts whatever size it declares, since only reading it tells what it holds.
+        var global = types.Where(type => schema.FindContentType(type)?.Scope == ContentScope.Global).ToList();
         if (global.Count > 0 && !await authority.AllowsAsync(CorePermissions.TransferManage, null, cancellationToken))
         {
             throw new ManagementAccessDeniedException($"The package has the global types {string.Join(", ", global)}, whose import needs the instance-wide permission {CorePermissions.TransferManage}; import the other types with types=.");
         }
+
+        await CheckSizesAsync(archive, cancellationToken);
 
         var instance = SchemaSnapshot.Of(schema);
         List<ValidationError> errors;
@@ -319,7 +322,7 @@ internal sealed class TransferImporter(
     {
         var localized = schema.FindContentType(type)?.Localized ?? false;
         var entry = run.Archive.GetEntry(TransferPackage.ContentPath(type))!;
-        await using var stream = await entry.OpenAsync(cancellationToken);
+        await using var stream = await PackageEntryStream.OpenAsync(entry, cancellationToken);
         using var reader = new StreamReader(stream);
         var number = 0;
         var done = 0;
@@ -474,6 +477,25 @@ internal sealed class TransferImporter(
         }
     }
 
+    // Every file is read through PackageEntryStream, so none yields more than it declares. A stored file yields its compressed
+    // size and a deflated one stops at its declared size, so only a file whose compressed size is the larger can hold more.
+    // Each such file is read through here, at no more cost than the package, so that the package is refused before any write.
+    private static async Task CheckSizesAsync(ZipArchive archive, CancellationToken cancellationToken)
+    {
+        foreach (var entry in archive.Entries.Where(entry => entry.CompressedLength > entry.Length))
+        {
+            try
+            {
+                await using var stream = await PackageEntryStream.OpenAsync(entry, cancellationToken);
+                await stream.CopyToAsync(Stream.Null, cancellationToken);
+            }
+            catch (Exception exception) when (exception is InvalidDataException or NotSupportedException)
+            {
+                throw Invalid($"{entry.FullName} of the package cannot be read: {exception.Message}");
+            }
+        }
+    }
+
     private static async Task<string?> ReadTextAsync(ZipArchive archive, string path, CancellationToken cancellationToken)
     {
         if (archive.GetEntry(path) is not { } entry)
@@ -481,7 +503,7 @@ internal sealed class TransferImporter(
             return null;
         }
 
-        await using var stream = await entry.OpenAsync(cancellationToken);
+        await using var stream = await PackageEntryStream.OpenAsync(entry, cancellationToken);
         using var reader = new StreamReader(stream);
         return await reader.ReadToEndAsync(cancellationToken);
     }
@@ -496,7 +518,7 @@ internal sealed class TransferImporter(
 
         try
         {
-            await using var stream = await entry.OpenAsync(cancellationToken);
+            await using var stream = await PackageEntryStream.OpenAsync(entry, cancellationToken);
             return await JsonSerializer.DeserializeAsync<T>(stream, TransferPackage.Json, cancellationToken)
                 ?? throw Invalid($"{path} of the package is empty.");
         }
@@ -542,7 +564,7 @@ internal sealed class TransferImporter(
                 return false;
             }
 
-            await using var stream = await entry.OpenAsync(cancellationToken);
+            await using var stream = await PackageEntryStream.OpenAsync(entry, cancellationToken);
             await read(stream, cancellationToken);
             return true;
         }

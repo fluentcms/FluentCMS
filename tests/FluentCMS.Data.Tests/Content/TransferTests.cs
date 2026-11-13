@@ -8,6 +8,7 @@ using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
+using FluentCMS.Core.Tests.Transfer;
 using FluentCMS.Core.Transfer;
 using FluentCMS.Data.Tests.Authorization;
 using FluentCMS.Hooks;
@@ -258,6 +259,59 @@ public sealed class TransferTests : IDisposable
     }
 
     [Fact]
+    public async Task AGlobalTypeWhoseStoredFileDeclaresNoBytesStillNeedsTransferManageForTheInstanceAndNothingIsWritten()
+    {
+        await SeedAsync();
+        var package = Craft(await ExportAsync(_source), TransferPackage.ContentPath("tag"), 0);
+        using (var archive = new ZipArchive(new MemoryStream(package), ZipArchiveMode.Read))
+        {
+            archive.GetEntry(TransferPackage.ContentPath("tag"))!.Length.ShouldBe(0);
+        }
+
+        var target = Target();
+        var siteAdmin = WithRole(AddRole(target, Guid.CreateVersion7(), SiteA.Value, CorePermissions.TransferManage));
+
+        await Should.ThrowAsync<ManagementAccessDeniedException>(() => ImportAsync(target, package, new TransferImportRequest { Overwrite = true }, principal: siteAdmin));
+
+        target.Read(context => context.Documents.Count()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AGlobalTypeWithAnEmptyFileStillNeedsTransferManageForTheInstanceAndTheOtherTypesAreTakenWithTypes()
+    {
+        await CreateAsSystemAsync(_source, "author", new ContentDocument { ["name"] = "Ada" });
+        var package = await ExportAsync(_source);
+        Entries(package)[TransferPackage.ContentPath("tag")].ShouldBeEmpty();
+        var target = Target();
+        var siteAdmin = WithRole(AddRole(target, Guid.CreateVersion7(), SiteA.Value, CorePermissions.TransferManage));
+
+        await Should.ThrowAsync<ManagementAccessDeniedException>(() => ImportAsync(target, package, principal: siteAdmin));
+        var taken = await ImportAsync(target, package, new TransferImportRequest { Types = ["author"] }, principal: siteAdmin);
+
+        taken.Total.Created.ShouldBe(1);
+        taken.Total.Errors.ShouldBe(0);
+        target.Read(context => context.Documents.Count(document => document.Type == "author")).ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData("content/tag.jsonl", 0u)]
+    [InlineData("content/article.jsonl", 10u)]
+    [InlineData("manifest.json", 10u)]
+    [InlineData("settings.json", 0u)]
+    public async Task AFileThatHoldsMoreThanItsZipEntryDeclaresIsRefusedBeforeAnyWrite(string path, uint declared)
+    {
+        await SeedAsync();
+        var package = Craft(await ExportAsync(_source), path, declared);
+        var target = Target();
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(target, package, new TransferImportRequest { Overwrite = true }));
+
+        refused.Errors.Single().Code.ShouldBe(TransferErrorCodes.InvalidPackage);
+        refused.Errors.Single().Message.ShouldContain(path);
+        target.Read(context => context.Documents.Count()).ShouldBe(0);
+    }
+
+    [Fact]
     public async Task RolesComeWithTheirIdsOnlyWhenAskedAndOnlyAsFarAsTheCallerHoldsThem()
     {
         var own = Guid.CreateVersion7();
@@ -269,7 +323,7 @@ public sealed class TransferTests : IDisposable
         AddRole(target, own, SiteA.Value, CorePermissions.TransferManage);
 
         var without = await ImportAsync(target, package);
-        var limited = await ImportAsync(target, package, new TransferImportRequest { Roles = true }, principal: WithRole(own));
+        var limited = await ImportAsync(target, package, new TransferImportRequest { Roles = true, Types = ["author"] }, principal: WithRole(own));
         var full = await ImportAsync(target, package, new TransferImportRequest { Roles = true });
 
         without.Items.ShouldNotContain(item => item.Section == TransferImporter.RolesSection);
@@ -446,18 +500,27 @@ public sealed class TransferTests : IDisposable
         return id;
     }
 
-    private static byte[] Rewrite(byte[] package, string path, string content)
+    private static byte[] Rewrite(byte[] package, string path, string content, CompressionLevel level = CompressionLevel.Optimal)
     {
         using var stream = new MemoryStream();
         stream.Write(package);
         using (var archive = new ZipArchive(stream, ZipArchiveMode.Update, leaveOpen: true))
         {
             archive.GetEntry(path)!.Delete();
-            using var writer = new StreamWriter(archive.CreateEntry(path).Open());
+            using var writer = new StreamWriter(archive.CreateEntry(path, level).Open());
             writer.Write(content);
         }
 
         return stream.ToArray();
+    }
+
+    // The file at the path as a stored entry whose central directory declares the size given, which System.IO.Compression
+    // does not hold a stored entry to: it yields the whole file whatever the size declared.
+    private static byte[] Craft(byte[] package, string path, uint declared)
+    {
+        var content = Entries(package)[path];
+        content.Length.ShouldBeGreaterThan((int)declared);
+        return ZipCentralDirectory.Declare(Rewrite(package, path, content, CompressionLevel.NoCompression), path, declared);
     }
 
     private static Task<byte[]> ExportAsync(ServiceDatabase database, TransferExportRequest? request = null) =>
