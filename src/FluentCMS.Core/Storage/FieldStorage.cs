@@ -23,6 +23,9 @@ internal sealed record StoredField(
 {
     // The columns the field had under its former names and those of the components above it, which schema apply renames.
     public IReadOnlyList<string> FormerColumns { get; init; } = [];
+
+    // The same as paths in the type, such as meta.ogImage, which cms_reference keeps a reference under.
+    public IReadOnlyList<string> FormerPaths { get; init; } = [];
 }
 
 // Where a field lives comes from IFieldType.StorageKind of the registry the schema was built with. This
@@ -44,17 +47,17 @@ internal static class FieldStorage
         Computed.GetValue(schema, static _ => new ConcurrentDictionary<SchemaType, Leaves>())
             .GetOrAdd(type, static (type, schema) =>
             {
-                StoredField[] all = [.. type.Fields.SelectMany(field => Flatten(schema, field, type.Name, [""], flattened: false, field.Localizable))];
+                StoredField[] all = [.. type.Fields.SelectMany(field => Flatten(schema, field, type.Name, [("", "")], flattened: false, field.Localizable))];
                 return new Leaves(all, all.ToFrozenDictionary(stored => stored.Location[(type.Name.Length + 1)..], StringComparer.Ordinal));
             }, schema);
 
-    // The prefixes of the components above the field: the current one first, then those of their former names.
-    private static IEnumerable<StoredField> Flatten(SchemaModel schema, SchemaField field, string owner, IReadOnlyList<string> prefixes, bool flattened, bool localized)
+    // The column and path prefixes of the components above the field: the current ones first, then those of their former names.
+    private static IEnumerable<StoredField> Flatten(SchemaModel schema, SchemaField field, string owner, IReadOnlyList<(string Column, string Path)> prefixes, bool flattened, bool localized)
     {
         var location = $"{owner}.{field.Name}";
-        string[] columns = [.. prefixes
-            .SelectMany(prefix => field.FormerNames.Prepend(field.Name).Select(name => prefix + StorageNames.Column(name)))
-            .Distinct(StringComparer.Ordinal)];
+        (string Column, string Path)[] names = [.. prefixes.SelectMany(prefix => field.FormerNames.Prepend(field.Name).Select(name => (prefix.Column + StorageNames.Column(name), prefix.Path + name)))];
+        string[] columns = [.. names.Select(name => name.Column).Distinct(StringComparer.Ordinal)];
+        string[] paths = [.. names.Select(name => name.Path).Distinct(StringComparer.Ordinal)];
 
         var fieldType = schema.FieldTypes.Find(field.FieldType)
             ?? throw new InvalidOperationException($"Field {location} has type '{field.FieldType}', which is not registered.");
@@ -63,10 +66,10 @@ internal static class FieldStorage
         if (field.FieldType == FieldTypeNames.Component && kind == FieldStorageKind.Column)
         {
             var component = schema.FindComponent((string)field.Settings[FieldSettings.Component])!;
-            return component.Fields.SelectMany(inner => Flatten(schema, inner, location, [.. columns.Select(column => column + "_")], flattened: true, localized));
+            return component.Fields.SelectMany(inner => Flatten(schema, inner, location, [.. names.Distinct().Select(name => (name.Column + "_", name.Path + "."))], flattened: true, localized));
         }
 
-        return [Map(field, kind, location, columns[0], flattened, localized) with { FormerColumns = columns[1..] }];
+        return [Map(field, kind, location, columns[0], flattened, localized) with { FormerColumns = columns[1..], FormerPaths = paths[1..] }];
     }
 
     // Nothing is NOT NULL unless Appendix A shows it, because a draft may be incomplete and a missing

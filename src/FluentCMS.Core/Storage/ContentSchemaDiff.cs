@@ -73,10 +73,15 @@ internal sealed class ContentSchemaDiff
     public static Task<ContentSchemaDiff> CompareAsync(CmsDbContext context, IDatabaseSchemaReader reader, IReadOnlyCollection<string> pluginTablePrefixes, CancellationToken cancellationToken) =>
         CompareAsync(new ContentSchemaDiff(null), context, reader, pluginTablePrefixes, cancellationToken);
 
-    // The same comparison with the steps of schema apply, which also renames a column of a field's former name, drops what
-    // the schema no longer has and changes what differs. The context's model must be the schema's.
-    public static Task<ContentSchemaDiff> PlanAsync(CmsDbContext context, SchemaModel schema, IDatabaseSchemaReader reader, IReadOnlyCollection<string> pluginTablePrefixes, CancellationToken cancellationToken) =>
-        CompareAsync(new ContentSchemaDiff(FieldsByTable(schema)), context, reader, pluginTablePrefixes, cancellationToken);
+    // The same comparison with the steps of schema apply, which also renames a column of a field's former name, moves the
+    // references kept under its former path, drops what the schema no longer has and changes what differs. The context's
+    // model must be the schema's.
+    public static async Task<ContentSchemaDiff> PlanAsync(CmsDbContext context, SchemaModel schema, IDatabaseSchemaReader reader, IReadOnlyCollection<string> pluginTablePrefixes, CancellationToken cancellationToken)
+    {
+        var diff = await CompareAsync(new ContentSchemaDiff(FieldsByTable(schema)), context, reader, pluginTablePrefixes, cancellationToken);
+        await diff.PlanReferencesAsync(context, schema, cancellationToken);
+        return diff;
+    }
 
     private static async Task<ContentSchemaDiff> CompareAsync(ContentSchemaDiff diff, CmsDbContext context, IDatabaseSchemaReader reader, IReadOnlyCollection<string> pluginTablePrefixes, CancellationToken cancellationToken)
     {
@@ -134,6 +139,42 @@ internal sealed class ContentSchemaDiff
         return tables;
     }
 
+    // References that cms_reference keeps under a path of a field's former name, or of a component above it, which the
+    // schema no longer has, move to the field's path.
+    private async Task PlanReferencesAsync(CmsDbContext context, SchemaModel schema, CancellationToken cancellationToken)
+    {
+        foreach (var type in schema.ContentTypes)
+        {
+            var paths = FieldStorage.ByPath(schema, type);
+            var moved = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var leaf in FieldStorage.Of(schema, type).Where(ContentRenames.HoldsReferences))
+            {
+                string[] formers = [.. leaf.FormerPaths.Where(former => !paths.ContainsKey(former) && !moved.Contains(former))];
+                if (formers.Length == 0)
+                {
+                    continue;
+                }
+
+                var stored = await context.References
+                    .Where(reference => reference.SourceType == type.Name && formers.Contains(reference.Field))
+                    .Select(reference => reference.Field)
+                    .Distinct()
+                    .ToListAsync(cancellationToken);
+                if (formers.FirstOrDefault(stored.Contains) is not { } former)
+                {
+                    continue;
+                }
+
+                var path = leaf.Location[(type.Name.Length + 1)..];
+                moved.Add(former);
+                Step(
+                    $"rename field {type.Name}.{former} to {type.Name}.{path} in table {StorageNames.Reference}",
+                    SchemaStepKind.Rename,
+                    (RenamePhase, ContentRenames.MoveReferences(type.Name, former, path)));
+            }
+        }
+    }
+
     private bool Applying => _fields is not null;
 
     private void CompareTable(CreateTableOperation create, DatabaseTable? table, List<CreateIndexOperation> indexes)
@@ -167,10 +208,18 @@ internal sealed class ContentSchemaDiff
             {
                 renamed[former.Name] = wanted.Name;
                 columnsAfterSync.Add(wanted.Name);
+
+                // A check named for the former column is made again under the model's name, unless the column is changed,
+                // which does that already. Only SQL Server's reader reports checks.
+                var checks = Differs(wanted, former) ? [] : DropChecks(table, former.Name).ToList();
                 Step(
                     $"rename column {former.Name} to {wanted.Name} on table {create.Name}",
                     SchemaStepKind.Rename,
-                    (RenamePhase, new RenameColumnOperation { Table = create.Name, Schema = create.Schema, Name = former.Name, NewName = wanted.Name }));
+                    [
+                        (RenamePhase, new RenameColumnOperation { Table = create.Name, Schema = create.Schema, Name = former.Name, NewName = wanted.Name }),
+                        .. checks,
+                        .. checks.Count == 0 ? [] : AddChecks(create.CheckConstraints.Where(check => References(check, wanted.Name))),
+                    ]);
                 CompareColumn(create, table, wanted, former);
             }
             else if (CompareMissingColumn(create, wanted))
@@ -248,9 +297,12 @@ internal sealed class ContentSchemaDiff
             _ => null,
         };
 
+    private static bool Differs(AddColumnOperation wanted, DatabaseColumn existing) =>
+        !Same(wanted.ColumnType, existing.StoreType) || wanted.IsNullable != existing.IsNullable;
+
     private void CompareColumn(CreateTableOperation create, DatabaseTable table, AddColumnOperation wanted, DatabaseColumn existing)
     {
-        if (!Same(wanted.ColumnType, existing.StoreType) || wanted.IsNullable != existing.IsNullable)
+        if (Differs(wanted, existing))
         {
             var description = $"change column {wanted.Name} on table {wanted.Table} from {Describe(existing.StoreType, existing.IsNullable)} to {Describe(wanted.ColumnType, wanted.IsNullable)}";
             _notApplied.Add(description);

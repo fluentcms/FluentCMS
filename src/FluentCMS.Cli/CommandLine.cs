@@ -6,6 +6,7 @@ using System.Text.Json.Nodes;
 using FluentCMS.Core.Commands;
 using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Storage;
 using FluentCMS.Diagnostics;
 using FluentCMS.Schema;
 
@@ -140,7 +141,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
     private Command MigrationsAdd()
     {
         var name = new Argument<string>("name") { Description = "The name of the migration, such as AddSubtitle." };
-        var allow = new Option<bool>("--allow-destructive") { Description = "Generates the migration even when it loses data, such as a removed type or field, a changed field type or a renamed field." };
+        var allow = new Option<bool>("--allow-destructive") { Description = "Generates the migration even when it loses data, such as a removed type or field, a changed field type or a renamed field whose values are kept in JSON." };
         var command = new Command("add", "Prints what the schema change is, then generates a content migration from the host's schema and provider, in Migrations/Content of the project.") { name, allow };
         var project = ProjectOptions.AddTo(command);
         command.SetAction((result, cancellationToken) => GuardAsync(async () =>
@@ -158,9 +159,8 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
     }
 
     // The schema change the migration carries, in the words of `schema diff`. A change that loses data is refused unless
-    // allowed, and so is a rename: the generated migration drops the old column and adds the new one, since it does not
-    // read [FormerNames], so the values would be lost all the same.
-    private async Task ReviewAsync(SchemaDiffReport? review, bool allowDestructive)
+    // allowed, and so is a rename whose values are kept in JSON under the former name, which the migration does not rename.
+    private async Task ReviewAsync(MigrationReview? review, bool allowDestructive)
     {
         if (review is null)
         {
@@ -174,17 +174,19 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
             return;
         }
 
-        await review.WriteTextAsync(output);
+        await review.Changes.WriteTextAsync(output);
 
-        var renamed = review.Changes.Where(change => change.Kind == SchemaChangeKind.FieldRenamed).ToList();
-        List<SchemaChange> losing = [.. review.Destructive, .. renamed];
+        List<string> losing =
+        [
+            .. review.Changes.Destructive.Select(change => change.ToString()),
+            .. review.RenamesInJson.Select(change => $"{change}, whose values are kept in JSON under '{change.FormerField}', which the migration does not rename"),
+        ];
         if (losing.Count == 0)
         {
             return;
         }
 
-        var loss = $"the migration loses data: {string.Join("; ", losing)}"
-            + (renamed.Count == 0 ? "" : "; a renamed field is still a dropped column and an added one in the generated migration, which does not carry its values over, so edit the migration to rename the column");
+        var loss = $"the migration loses data: {string.Join("; ", losing)}";
         if (!allowDestructive)
         {
             throw new CliException(CliErrorCodes.DestructiveMigration, $"{loss}; nothing was written. Pass --allow-destructive to generate it.");
