@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 namespace FluentCMS.Core.Identity;
 
 // Identity's user manager for admin users, with what the CMS adds: roles by id, so that a role of a site can be held too,
-// deactivation and the forced password change.
+// deactivation, the forced password change, and the lockout on the host's clock.
 public sealed class CmsUserManager : UserManager<CmsUser>
 {
     private readonly TimeProvider _time;
@@ -189,6 +189,31 @@ public sealed class CmsUserManager : UserManager<CmsUser>
         {
             store.Rehashing = false;
         }
+    }
+
+    // A store without lockout is left to Identity, which refuses it.
+    public override async Task<bool> IsLockedOutAsync(CmsUser user)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(user);
+
+        return Store is IUserLockoutStore<CmsUser> store
+            ? await ClockedLockout.IsLockedOutAsync(store, user, _time, CancellationToken)
+            : await base.IsLockedOutAsync(user);
+    }
+
+    public override async Task<IdentityResult> AccessFailedAsync(CmsUser user)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(user);
+
+        if (Store is not IUserLockoutStore<CmsUser> store)
+        {
+            return await base.AccessFailedAsync(user);
+        }
+
+        await ClockedLockout.CountFailureAsync(store, user, Options.Lockout, _time, CancellationToken);
+        return await UpdateUserAsync(user);
     }
 
     public override Task<IdentityResult> ChangePasswordAsync(CmsUser user, string currentPassword, string newPassword) =>
