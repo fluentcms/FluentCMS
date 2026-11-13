@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Caching;
+using FluentCMS.Core.Content;
 using FluentCMS.Schema;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Json;
@@ -19,7 +20,8 @@ namespace FluentCMS.Core.Api.Delivery;
 // Last-Modified: no date in the body moves when an entry leaves a list, a populated target is unpublished or a role
 // changes what the caller reads, so a 304 by date would keep a stale copy. A response the output cache is about to store
 // is sent whole even to a matching If-None-Match, so that the copy exists for the next request. A published read sends
-// its tags in the configured tag header, the site's included, for a CDN to purge by the CacheInvalidatedEvent.
+// its tags in the configured tag header, the site's included, for a CDN to purge by the CacheInvalidatedEvent. Its tags
+// include those of the targets of other kinds it resolved, such as media, so that their plugin's evictions reach it.
 internal sealed class DeliveryResponse : IResult
 {
     public const string Vary = "Authorization, X-Api-Key, X-Cms-Site, X-Cms-Locale";
@@ -60,7 +62,7 @@ internal sealed class DeliveryResponse : IResult
         if (cache is { EnableOutputCaching: true } || header is not null)
         {
             var site = api.Operation.Site.Value;
-            string[] tags = [CacheTags.Type(_type, site), .. EntryIds(_body).Select(CacheTags.Entry)];
+            string[] tags = [CacheTags.Type(_type, site), .. EntryIds(_body).Select(CacheTags.Entry), .. services.GetRequiredService<ReferenceResolvers>().CacheTags];
             if (cache is { EnableOutputCaching: true })
             {
                 foreach (var tag in tags)

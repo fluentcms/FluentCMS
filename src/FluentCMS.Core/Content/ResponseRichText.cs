@@ -44,7 +44,7 @@ internal sealed class ResponseRichText(SchemaModel schema, IRichTextRenderer ren
 
             if (ids.Count > 0)
             {
-                var resolved = await media.ResolveAsync(ids, locale, cancellationToken);
+                var resolved = await resolvers.ResolveAsync(media, ids, locale, cancellationToken);
                 options = new RichTextRenderOptions
                 {
                     MediaUrlResolver = id => resolved.GetValueOrDefault(id)?.Url,

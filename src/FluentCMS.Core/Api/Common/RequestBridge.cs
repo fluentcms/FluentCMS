@@ -18,7 +18,8 @@ internal sealed record ApiRequest(OperationContext Operation, string Locale)
 }
 
 // Turns an HTTP request into the OperationContext of spec 2.2, for every API: the principal from the authentication
-// handler, the site (spec 4.6, with a key's binding first) and the locale.
+// handler, the site (spec 4.6, with a key's binding first), the locale, and whether the route is of the Delivery API,
+// core's or a plugin's, which the services that answer that API apart read.
 internal sealed class RequestBridge(ISiteResolver sites, ILocaleResolver locales, ClientOptions clients, TimeProvider time)
 {
     public const string SiteHeader = "X-Cms-Site";
@@ -53,7 +54,10 @@ internal sealed class RequestBridge(ISiteResolver sites, ILocaleResolver locales
             locale,
             clientId,
             System.Diagnostics.Activity.Current?.Id ?? httpContext.TraceIdentifier,
-            time.GetUtcNow());
+            time.GetUtcNow())
+        {
+            IsDelivery = FluentCmsSurfaceMetadata.IsDelivery(httpContext.GetEndpoint()),
+        };
         return new ApiRequest(operation, asked);
     }
 
