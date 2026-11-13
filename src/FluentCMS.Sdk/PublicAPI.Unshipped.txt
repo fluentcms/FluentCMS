@@ -757,6 +757,8 @@ FluentCMS.Content.OperationContext.CorrelationId.get -> string!
 FluentCMS.Content.OperationContext.CorrelationId.init -> void
 FluentCMS.Content.OperationContext.Deconstruct(out FluentCMS.Content.Principal! Principal, out FluentCMS.Content.Origin Origin, out FluentCMS.Sites.SiteId Site, out string! Locale, out string? ClientId, out string! CorrelationId, out System.DateTimeOffset Timestamp) -> void
 FluentCMS.Content.OperationContext.Equals(FluentCMS.Content.OperationContext? other) -> bool
+FluentCMS.Content.OperationContext.IsDelivery.get -> bool
+FluentCMS.Content.OperationContext.IsDelivery.init -> void
 FluentCMS.Content.OperationContext.Locale.get -> string!
 FluentCMS.Content.OperationContext.Locale.init -> void
 FluentCMS.Content.OperationContext.OperationContext(FluentCMS.Content.Principal! Principal, FluentCMS.Content.Origin Origin, FluentCMS.Sites.SiteId Site, string! Locale, string? ClientId, string! CorrelationId, System.DateTimeOffset Timestamp) -> void
@@ -832,6 +834,8 @@ FluentCMS.Content.RelationField.IsNull() -> FluentCMS.Content.FieldFilter!
 FluentCMS.Content.RelationField.RelationField(string! path) -> void
 FluentCMS.Content.ResolvedReference
 FluentCMS.Content.ResolvedReference.<Clone>$() -> FluentCMS.Content.ResolvedReference!
+FluentCMS.Content.ResolvedReference.CacheTags.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Content.ResolvedReference.CacheTags.init -> void
 FluentCMS.Content.ResolvedReference.Deconstruct(out FluentCMS.Content.ContentDocument! Value) -> void
 FluentCMS.Content.ResolvedReference.Equals(FluentCMS.Content.ResolvedReference? other) -> bool
 FluentCMS.Content.ResolvedReference.ResolvedReference(FluentCMS.Content.ContentDocument! Value) -> void

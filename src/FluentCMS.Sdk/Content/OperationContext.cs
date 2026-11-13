@@ -28,6 +28,13 @@ public sealed record OperationContext(
     /// </summary>
     public Principal? Actor { get; init; }
 
+    /// <summary>
+    /// Whether the operation is a request of the Delivery API, which serves what a site publishes to whoever reads it. It
+    /// says which API the request came through and grants nothing: a service whose answer on that API differs reads it, as
+    /// the media plugin does, which resolves a media reference there to a public asset only, whoever the principal is.
+    /// </summary>
+    public bool IsDelivery { get; init; }
+
     /// <summary>The identity to record on what this operation writes: <see cref="Actor"/> if there is one, otherwise <see cref="Principal"/>.</summary>
     public Principal AuditPrincipal => Actor ?? Principal;
 }

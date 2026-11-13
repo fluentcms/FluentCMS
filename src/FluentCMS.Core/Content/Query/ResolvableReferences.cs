@@ -78,7 +78,7 @@ internal sealed class ResolvableReferences(SchemaModel schema, ReferenceResolver
         Dictionary<string, IReadOnlyDictionary<Guid, ResolvedReference>> resolved = new(StringComparer.Ordinal);
         foreach (var (target, ids) in _ids)
         {
-            resolved[target] = await resolvers.Find(target)!.ResolveAsync(ids, locale, cancellationToken);
+            resolved[target] = await resolvers.ResolveAsync(resolvers.Find(target)!, ids, locale, cancellationToken);
         }
 
         // Each place gets a copy of its own, so that what a later step changes in one does not show in another.

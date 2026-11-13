@@ -11,9 +11,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Plugins.Media;
 
-[FluentCmsPlugin("media", SdkRange = "[1.0.0,2.0.0)")]
+[FluentCmsPlugin(Name, SdkRange = "[1.0.0,2.0.0)")]
 public sealed class MediaPlugin : IPlugin
 {
+    internal const string Name = "media";
+
     private Action<IPluginServiceBuilder>? _storage;
 
     // The seam of a storage package's UseXxx, such as UseS3: what it adds to the services once the plugin's own are in, and
