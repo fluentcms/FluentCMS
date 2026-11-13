@@ -50,7 +50,8 @@ internal sealed class SettingsService(
         registry.Find(area) ?? throw SettingsDescriptor.Fail("area", SettingsErrorCodes.UnknownArea, $"There is no settings area '{area}'.");
 
     // Site override, then instance default, then code default. A null site is the instance defaults. The document that is
-    // returned is one the class can read, so a damaged row is skipped and never takes a site down.
+    // returned is one the class can read, so a damaged row is skipped and never takes a site down. A secret that the site's
+    // row does not hold is read from the instance default as it is now, so a secret replaced there reaches the site.
     public async Task<ResolvedSetting> ResolveAsync(SettingsDescriptor descriptor, SiteId? site, CancellationToken cancellationToken)
     {
         var scope = site?.Value ?? SettingsCache.InstanceScope;
@@ -82,29 +83,34 @@ internal sealed class SettingsService(
         // The version is that of the row a write to this scope replaces, also when that row is skipped as unreadable: the
         // caller must be able to name it, or it could never save over a row that cannot be read.
         var version = (site is null ? instance : own)?.Version ?? 0;
-        var resolved = Pick(descriptor, own, SettingsSource.Site, version, scope)
-            ?? Pick(descriptor, instance, SettingsSource.Default, version, SettingsCache.InstanceScope)
-            ?? new ResolvedSetting(descriptor.Write(descriptor.CreateDefault()), SettingsSource.Code, version);
+        var resolved = Pick(descriptor, own, SettingsSource.Site, version, scope) is { } mine
+            ? ReadThrough(descriptor, mine, instance, version)
+            : (Pick(descriptor, instance, SettingsSource.Default, version, SettingsCache.InstanceScope)
+                ?? new ResolvedSetting(descriptor.Write(descriptor.CreateDefault()), SettingsSource.Code, version, []))
+                with { InheritedSecrets = site is null ? [] : descriptor.SecretsInherited(null) };
 
         cache.Set(scope, area, resolved, generation);
         return resolved;
     }
 
-    // What the Management endpoint shows: the resolved document without its secret keys, and the secret keys that hold a value in
-    // it. The version is that of the row a write to this site (or to the instance defaults) would replace, so that it can go
-    // back as the version a write names: 0 when that row does not exist, even if the document came from a level below it, and
-    // the version of the row that is there even if it was skipped because the class cannot read it.
+    // What the Management endpoint shows: the resolved document without its secret keys, the secret keys that hold a value in
+    // it, and those the site takes from the instance default. The version is that of the row a write to this site (or to the
+    // instance defaults) would replace, so that it can go back as the version a write names: 0 when that row does not exist,
+    // even if the document came from a level below it, and the version of the row that is there even if it was skipped
+    // because the class cannot read it.
     // It is what an admin edits, so it needs the permission a write needs.
     public async Task<RedactedSetting> ResolveRedactedAsync(SettingsDescriptor descriptor, SiteId? site, CancellationToken cancellationToken)
     {
         await RequirePermissionAsync(descriptor, site, cancellationToken);
         var resolved = await ResolveAsync(descriptor, site, cancellationToken);
         var (json, secretsSet) = descriptor.Redact(resolved.Json);
-        return new RedactedSetting(json, resolved.Source, resolved.Version, resolved.Source == SettingsSource.Code ? [] : secretsSet);
+        return new RedactedSetting(json, resolved.Source, resolved.Version, resolved.Source == SettingsSource.Code ? [] : secretsSet, resolved.InheritedSecrets);
     }
 
     // Replaces a document. A null site is the instance defaults. The version is the one the caller read (0 for no row), or
-    // null to replace whatever is there. A secret key that the document leaves out keeps the stored value: that of the row it replaces, or for a site with none, of the instance default.
+    // null to replace whatever is there. A secret key that the document leaves out keeps what is stored: the value of the row
+    // it replaces, and for a site that does not hold the key, or has no row, no value at all, so that it goes on reading the
+    // secret of the instance default.
     public async Task WriteAsync(SettingsDescriptor descriptor, SiteId? site, string json, int? expectedVersion, CancellationToken cancellationToken)
     {
         var operation = await AuthorizeAsync(descriptor, site, cancellationToken);
@@ -195,11 +201,24 @@ internal sealed class SettingsService(
 
         if (descriptor.CanRead(row.Json))
         {
-            return new ResolvedSetting(row.Json, source, version);
+            return new ResolvedSetting(row.Json, source, version, []);
         }
 
         SettingsLog.Unreadable(logger, descriptor.Area, ScopeName(scope));
         return null;
+    }
+
+    // A site's own document, with the secrets it does not hold as the instance row holds them now. An instance row that the
+    // class cannot read gives nothing, so those secrets take their code defaults.
+    private ResolvedSetting ReadThrough(SettingsDescriptor descriptor, ResolvedSetting own, SettingRow? instance, int version)
+    {
+        var inherited = descriptor.SecretsInherited(own.Json);
+        if (inherited.Count > 0 && Pick(descriptor, instance, SettingsSource.Default, version, SettingsCache.InstanceScope) is { } below)
+        {
+            return own with { Json = SettingsDescriptor.ReadThrough(own.Json, below.Json, inherited), InheritedSecrets = inherited };
+        }
+
+        return own with { InheritedSecrets = inherited };
     }
 
     private async Task<OperationContext> RequirePermissionAsync(SettingsDescriptor descriptor, SiteId? site, CancellationToken cancellationToken)
@@ -258,18 +277,24 @@ internal sealed class SettingsService(
             }
 
             // The secrets that the document leaves out are the ones the caller was shown, which are those of the document the read
-            // resolved to. A row that the class cannot read was skipped by the read, so its secrets were not shown and are not used:
-            // a site without a readable row of its own takes them from the instance default if that can be read, and from the code.
+            // resolved to. A row that the class cannot read was skipped by the read, so its secrets were not shown and are not used.
+            // A secret of a site that neither the document nor the site's row holds stays out of the row, so that the site goes on
+            // reading it from the instance default; it is filled in only for the checks, which see the document a read will give.
             var stored = current is not null && descriptor.CanRead(current.Json) ? current.Json : null;
             var skipped = current is not null && stored is null ? descriptor.SecretsLeftOut(json, current.Json) : [];
-            if (stored is null && site is not null)
+            IReadOnlyList<string> inherited = [];
+            if (site is not null)
             {
-                var inherited = await Rows(db, descriptor.Area, null).AsNoTracking().Select(row => row.Json).FirstOrDefaultAsync(cancellationToken);
-                stored = inherited is not null && descriptor.CanRead(inherited) ? inherited : null;
+                inherited = descriptor.SecretsLeftToDefault(json, stored);
+                var instance = await Rows(db, descriptor.Area, null).AsNoTracking().Select(row => row.Json).FirstOrDefaultAsync(cancellationToken);
+                if (instance is not null && descriptor.CanRead(instance))
+                {
+                    stored = stored is null ? instance : SettingsDescriptor.ReadThrough(stored, instance, descriptor.SecretsInherited(stored));
+                }
             }
 
-            var canonical = descriptor.Canonicalize(descriptor.KeepSecrets(json, stored, out var dropped));
-            foreach (var key in dropped.Concat(skipped))
+            var canonical = SettingsDescriptor.Without(descriptor.Canonicalize(descriptor.KeepSecrets(json, stored, out var dropped)), inherited);
+            foreach (var key in dropped.Except(inherited).Concat(skipped))
             {
                 SettingsLog.SecretDropped(logger, descriptor.Area, key, ScopeName(site ?? SettingsCache.InstanceScope));
             }

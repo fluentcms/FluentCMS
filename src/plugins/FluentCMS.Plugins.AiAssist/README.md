@@ -48,7 +48,7 @@ and name it in the settings of the site:
 }
 ```
 
-When the instance defaults hold a key, a site's first save without `apiKey` keeps that key (see below), and the call is refused with `FCMS1685` because the key belongs to the endpoint of the defaults. Send `"apiKey": null` to save the site with no key.
+When the instance defaults hold a key, a site that saves its settings without `apiKey` inherits that key (see below), and the call is refused with `FCMS1685` because the key belongs to the endpoint of the defaults. Send `"apiKey": null` to save the site with no key and inherit none.
 
 A site with no key of its own gets `FluentCms:Ai:OpenAiCompatible:ApiKey` from the configuration, and so does every `openAiCompatible` site, a keyless Ollama site included: a site cannot decline it. An operator who serves Ollama sites therefore sets no configuration key for `OpenAiCompatible`, and gives each site that needs a key its own.
 
@@ -76,7 +76,7 @@ The allow-list is a security control. A site administrator who could name any en
 
 The key of the configuration for `OpenAi` is the operator's account with OpenAI, so it is sent to OpenAI's own endpoint only. A site that names another endpoint for it holds its own key. The key of the configuration for `AzureOpenAi` or `OpenAiCompatible` goes to whichever allowed endpoint a site names for that provider, so give each site its own key when the list holds endpoints of more than one party.
 
-A key in the instance defaults of the settings is the operator's as well. A site with no settings of its own follows the defaults whole. When such a site first saves its settings without a key, it keeps the key of the defaults, because a secret that is not sent is kept, as for every settings area. The plugin sends that key only to the provider and the endpoint the defaults name: a site that names another provider or endpoint sets a key of its own, and is refused with `FCMS1685` until it does. An inherited key is told by comparing it with the key the defaults hold now. So a key that is replaced in the defaults is also revoked at the provider: a site that saved its settings before holds a copy of the old one, which from then on counts as its own.
+A key in the instance defaults of the settings is the operator's as well. A site with no settings of its own follows the defaults whole, and a site that saves its settings without a key inherits the key of the defaults, as for every secret of every settings area: the site's settings do not hold it, and each call reads it from the defaults. The settings read shows this as `secretsInherited`. The plugin sends an inherited key only to the provider and the endpoint the defaults name: a site that names another provider or endpoint sets a key of its own, and is refused with `FCMS1685` until it does. A key replaced in the defaults reaches every site that inherits it at its next call, and a site that inherits it is held to the defaults just the same. A site that has set a key of its own, or `"apiKey": null`, keeps it when it saves without `apiKey`; it inherits again once its `ai` settings are reset (`ISettings<AiSettings>.ResetAsync` in the host's code).
 
 ## Actions
 
