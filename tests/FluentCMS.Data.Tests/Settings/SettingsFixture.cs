@@ -304,3 +304,35 @@ internal sealed class RenamedSecret
 
     public string Name { get; set; } = "n";
 }
+
+internal enum TokenKind
+{
+    Bearer,
+    Basic,
+}
+
+internal sealed class TokenBudget
+{
+    public int MaxTokens { get; set; } = 256;
+}
+
+[Settings("named-not-text")]
+internal sealed class NamedLikeSecretsButNotText
+{
+    public int MaxOutputTokens { get; set; } = 1024;
+
+    public bool HasApiKey { get; set; } = true;
+
+    public TokenKind AccessToken { get; set; } = TokenKind.Bearer;
+
+    public DateTimeOffset? RotatedSecret { get; set; }
+
+    public List<int> RetryTokens { get; set; } = [];
+
+    public TokenBudget Budget { get; set; } = new();
+
+    public string? SmtpPassword { get; set; }
+
+    [SettingsSecret]
+    public int Pin { get; set; } = 1234;
+}
