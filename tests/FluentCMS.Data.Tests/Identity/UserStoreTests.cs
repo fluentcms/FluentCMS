@@ -160,6 +160,7 @@ public sealed class UserStoreTests : IDisposable
         });
 
         var user = await fixture.CreateUserAsync("ann");
+        var lockedAt = fixture.Clock.GetUtcNow();
         await fixture.WithAsync(async services =>
         {
             var signIn = services.GetRequiredService<SignInManager<CmsUser>>();
@@ -170,8 +171,18 @@ public sealed class UserStoreTests : IDisposable
             return true;
         });
 
-        var locked = await fixture.FindAsync(user.Id);
-        locked.LockoutEnd.ShouldNotBeNull().ShouldBeInRange(DateTimeOffset.UtcNow.AddMinutes(28), DateTimeOffset.UtcNow.AddMinutes(30));
+        // The lockout runs on the host's clock: still on at its end, and a tick later the right password signs in.
+        (await fixture.FindAsync(user.Id)).LockoutEnd.ShouldBe(lockedAt + TimeSpan.FromMinutes(30));
+        fixture.Clock.Advance(TimeSpan.FromMinutes(30));
+        (await SignInAsync(fixture, user)).IsLockedOut.ShouldBeTrue();
+        fixture.Clock.Advance(TimeSpan.FromTicks(1));
+        (await SignInAsync(fixture, user)).Succeeded.ShouldBeTrue();
+
+        static Task<SignInResult> SignInAsync(IdentityFixture fixture, CmsUser user) => fixture.WithAsync(async services =>
+        {
+            var signIn = services.GetRequiredService<SignInManager<CmsUser>>();
+            return await signIn.CheckPasswordSignInAsync((await signIn.UserManager.FindByIdAsync(user.Id.ToString("D")))!, Password, lockoutOnFailure: true);
+        });
     }
 
     [Fact]

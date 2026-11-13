@@ -797,6 +797,7 @@ public sealed class SettingsTests
         var code = await ResolveAsync(SiteA);
         code.Source.ShouldBe(SettingsSource.Code);
         code.SecretsSet.ShouldBeEmpty();
+        code.SecretsInherited.ShouldBe(["apiKey", "passphrase", "storageAccount"]);
         code.Json.ShouldNotContain("default-account-8841");
         JsonNode.Parse(code.Json)!.AsObject().Select(property => property.Key).ShouldBe(["maxUploadMb", "provider", "quality", "tags"], ignoreOrder: true);
 
@@ -804,13 +805,16 @@ public sealed class SettingsTests
         var fromDefault = await ResolveAsync(SiteA);
         fromDefault.Source.ShouldBe(SettingsSource.Default);
         fromDefault.SecretsSet.ShouldBe(["apiKey"]);
+        fromDefault.SecretsInherited.ShouldBe(["apiKey", "passphrase", "storageAccount"]);
         fromDefault.Json.ShouldNotContain(Secret);
+        (await ResolveAsync(null)).SecretsInherited.ShouldBeEmpty();
 
         await database.SetAsync(SiteA, new MediaSettings { ApiKey = Secret + "-key", StorageAccount = Secret + "-account", Passphrase = "pass" });
         var own = await ResolveAsync(SiteA);
         own.Source.ShouldBe(SettingsSource.Site);
         own.Version.ShouldBe(1);
         own.SecretsSet.ShouldBe(["apiKey", "passphrase", "storageAccount"]);
+        own.SecretsInherited.ShouldBeEmpty();
         own.Json.ShouldNotContain(Secret);
         own.Json.ShouldNotContain("pass\"");
         JsonNode.Parse(own.Json)!["maxUploadMb"]!.GetValue<int>().ShouldBe(25);
@@ -839,7 +843,7 @@ public sealed class SettingsTests
         var registry = new SettingsRegistry([typeof(MediaSettings)], TimeSpan.FromMinutes(1));
         var cache = new SettingsCache(registry, database.Clock);
         var site = Guid.CreateVersion7();
-        var resolved = new ResolvedSetting("{}", SettingsSource.Site, 1);
+        var resolved = new ResolvedSetting("{}", SettingsSource.Site, 1, []);
 
         var generation = cache.Generation("media");
         cache.InvalidateSite(site);
@@ -867,13 +871,17 @@ public sealed class SettingsTests
 
         (await database.GetAsync(SiteA)).ApiKey.ShouldBe(Secret + "-default");
         database.Rows().Count.ShouldBe(2);
+        database.Rows().Single(row => row.SiteId == SiteA.Value).Json.ShouldNotContain(Secret);
 
         // The site now has a row of its own, and its version is the one a second write names.
         var again = await database.ServiceAsync((service, descriptor) => service.ResolveRedactedAsync(descriptor, SiteA, Token));
         again.Source.ShouldBe(SettingsSource.Site);
         again.Version.ShouldBe(1);
+        again.SecretsSet.ShouldContain("apiKey");
+        again.SecretsInherited.ShouldBe(["apiKey", "passphrase", "storageAccount"]);
         await WriteDocumentAsync(database, "media", SiteA, again.Json, again.Version);
         database.Rows().Single(row => row.SiteId == SiteA.Value).Version.ShouldBe(2);
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBe(Secret + "-default");
     }
 
     [Fact]
@@ -1107,20 +1115,110 @@ public sealed class SettingsTests
 
         await WriteDocumentAsync(database, "media", SiteA, shown.Json, shown.Version);
 
-        (await database.GetAsync(SiteA)).ApiKey.ShouldBeNull();
+        var site = await database.GetAsync(SiteA);
+        site.ApiKey.ShouldBeNull();
+        site.StorageAccount.ShouldBe("default-account-8841");
     }
 
+    // H8: a secret that a site does not set is not copied into its row. The site reads the secret of the instance defaults at
+    // every use, so a secret replaced there reaches it, also past what readers of the site keep.
     [Fact]
-    public async Task AnInheritedSecretIsACopyThatARotationOfTheInstanceDefaultDoesNotReach()
+    public async Task AnInheritedSecretIsNotCopiedSoARotationOfTheInstanceDefaultReachesTheSite()
     {
         using var database = new SettingsDatabase();
         await database.SetDefaultAsync(new MediaSettings { ApiKey = Secret + "-old" });
         var shown = await database.ServiceAsync((service, descriptor) => service.ResolveRedactedAsync(descriptor, SiteA, Token));
         await WriteDocumentAsync(database, "media", SiteA, shown.Json, shown.Version);
-
-        await database.SetDefaultAsync(new MediaSettings { ApiKey = Secret + "-new" });
-
+        await WriteDocumentAsync(database, "media", SiteB, """{"maxUploadMb":9,"apiKey":"own-key"}""");
         (await database.GetAsync(SiteA)).ApiKey.ShouldBe(Secret + "-old");
-        (await database.GetAsync(SiteB)).ApiKey.ShouldBe(Secret + "-new");
+
+        await database.SetDefaultAsync(new MediaSettings { ApiKey = Secret + "-new", StorageAccount = "new-account" });
+
+        var site = await database.GetAsync(SiteA);
+        site.ApiKey.ShouldBe(Secret + "-new");
+        site.StorageAccount.ShouldBe("new-account");
+        (await database.GetAsync(SiteB)).ApiKey.ShouldBe("own-key");
+        (await database.GetAsync(SiteB)).StorageAccount.ShouldBe("new-account");
+        database.Rows().Where(row => row.SiteId != null).ShouldAllBe(row => !row.Json.Contains(Secret) && !row.Json.Contains("storageAccount"));
+    }
+
+    // A key that is sent as null is the site's own: no secret, neither the defaults' nor the code's. Leaving it out later keeps
+    // that, and a reset makes the site follow the defaults again, its secrets with the rest.
+    [Fact]
+    public async Task ASiteSaysNoSecretWithNullAndInheritsAgainAfterAReset()
+    {
+        using var database = new SettingsDatabase();
+        await database.SetDefaultAsync(new MediaSettings { ApiKey = Secret + "-default", StorageAccount = "account-of-the-instance" });
+
+        Task<RedactedSetting> ResolveAsync() => database.ServiceAsync((service, descriptor) => service.ResolveRedactedAsync(descriptor, SiteA, Token));
+
+        await WriteDocumentAsync(database, "media", SiteA, """{"maxUploadMb":3,"apiKey":null,"storageAccount":null}""");
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBeNull();
+        var declined = await ResolveAsync();
+        declined.SecretsSet.ShouldBeEmpty();
+        declined.SecretsInherited.ShouldBe(["passphrase"]);
+
+        await WriteDocumentAsync(database, "media", SiteA, """{"maxUploadMb":4}""");
+        await database.SetDefaultAsync(new MediaSettings { ApiKey = Secret + "-new", StorageAccount = "account-of-the-instance" });
+        var kept = await database.GetAsync(SiteA);
+        kept.ApiKey.ShouldBeNull();
+        kept.StorageAccount.ShouldBeNull();
+
+        await database.AsAsync(Admin, async media =>
+        {
+            await media.ResetAsync(SiteA, Token);
+            return true;
+        });
+        await WriteDocumentAsync(database, "media", SiteA, """{"maxUploadMb":5}""");
+
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBe(Secret + "-new");
+        (await ResolveAsync()).SecretsInherited.ShouldBe(["apiKey", "passphrase", "storageAccount"]);
+    }
+
+    // A secret of the defaults that no longer holds its attributes is the defaults' to lose, and not the site's: a site that
+    // inherits it neither keeps it in its row nor reports it lost.
+    [Fact]
+    public async Task ASecretTheSiteInheritsIsNeitherKeptInItsRowNorReportedLost()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(null, "media", """{"maxUploadMb":7,"passphrase":"far-too-long-to-pass","storageAccount":"default-of-the-instance"}""");
+
+        await WriteDocumentAsync(database, "media", SiteA, """{"maxUploadMb":8}""");
+
+        var site = await database.GetAsync(SiteA);
+        site.MaxUploadMb.ShouldBe(8);
+        site.Passphrase.ShouldBe("far-too-long-to-pass");
+        site.StorageAccount.ShouldBe("default-of-the-instance");
+        database.Logs.All.ShouldNotContain("secret key passphrase");
+        database.Rows().Single(row => row.SiteId == SiteA.Value).Json.ShouldNotContain("passphrase");
+    }
+
+    // ISettings<T>.ResolveAsync gives the settings with the secrets a site takes from the defaults, by their names in C#.
+    [Fact]
+    public async Task TheTypedResolveNamesTheInheritedSecretsByTheirPropertiesInCSharp()
+    {
+        using var database = new SettingsDatabase(cms => cms.Settings.Add<RenamedSecret>());
+        await database.SetDefaultAsync(new MediaSettings { ApiKey = Secret + "-default", Passphrase = "pass" });
+
+        Task<ResolvedSettings<MediaSettings>> ResolveAsync() => database.AsAsync(Admin, async media => await media.ResolveAsync(SiteA, Token));
+
+        var bare = await ResolveAsync();
+        bare.Value.ApiKey.ShouldBe(Secret + "-default");
+        bare.InheritedSecrets.ShouldBe([nameof(MediaSettings.ApiKey), nameof(MediaSettings.Passphrase), nameof(MediaSettings.StorageAccount)], ignoreOrder: true);
+
+        await WriteDocumentAsync(database, "media", SiteA, """{"maxUploadMb":3,"passphrase":"mine"}""");
+        var mixed = await ResolveAsync();
+        mixed.Value.ApiKey.ShouldBe(Secret + "-default");
+        mixed.Value.Passphrase.ShouldBe("mine");
+        mixed.InheritedSecrets.ShouldBe([nameof(MediaSettings.ApiKey), nameof(MediaSettings.StorageAccount)], ignoreOrder: true);
+
+        await database.SetAsync(SiteA, mixed.Value);
+        var written = await ResolveAsync();
+        written.InheritedSecrets.ShouldBeEmpty();
+        written.Value.ApiKey.ShouldBe(Secret + "-default");
+
+        var renamed = await database.AsAsync(Admin, async services => await services.GetRequiredService<ISettings<RenamedSecret>>().ResolveAsync(SiteA, Token));
+        renamed.InheritedSecrets.ShouldBe([nameof(RenamedSecret.SmtpPassword)]);
+        (await database.AsAsync(Admin, async media => await media.ResolveAsync(SiteB, Token))).InheritedSecrets.Count.ShouldBe(3);
     }
 }

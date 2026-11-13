@@ -72,12 +72,12 @@ public sealed class AdminBodiesTests
     public void ASettingHasItsValueAndItsSchema()
     {
         SettingsDescriptor descriptor = new("smtp", typeof(SmtpSettings));
-        RedactedSetting setting = new("""{"host":"mail.example.com","port":587}""", SettingsSource.Site, 3, ["password"]);
+        RedactedSetting setting = new("""{"host":"mail.example.com","port":587}""", SettingsSource.Site, 3, ["password"], ["password"]);
         var site = Guid.NewGuid();
 
         Text(SettingResponse.From(descriptor, site, setting)).ShouldBe(Text(OldSetting(descriptor, site, setting)));
-        Text(SettingResponse.From(descriptor, null, setting with { Source = SettingsSource.Code, SecretsSet = [] }))
-            .ShouldBe(Text(OldSetting(descriptor, null, setting with { Source = SettingsSource.Code, SecretsSet = [] })));
+        Text(SettingResponse.From(descriptor, null, setting with { Source = SettingsSource.Code, SecretsSet = [], SecretsInherited = [] }))
+            .ShouldBe(Text(OldSetting(descriptor, null, setting with { Source = SettingsSource.Code, SecretsSet = [], SecretsInherited = [] })));
     }
 
     [Fact]
@@ -164,6 +164,7 @@ public sealed class AdminBodiesTests
         ["version"] = setting.Version,
         ["value"] = JsonNode.Parse(setting.Json),
         ["secretsSet"] = new JsonArray([.. setting.SecretsSet.Select(key => (JsonNode)key)]),
+        ["secretsInherited"] = new JsonArray([.. setting.SecretsInherited.Select(key => (JsonNode)key)]),
         ["schema"] = descriptor.CreateSchema(),
     };
 

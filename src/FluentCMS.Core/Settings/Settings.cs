@@ -12,6 +12,12 @@ internal sealed class Settings<T>(SettingsService service, SettingsRegistry regi
     public async ValueTask<T> GetAsync(SiteId site, CancellationToken cancellationToken = default) =>
         (T)_descriptor.Read((await service.ResolveAsync(_descriptor, site, cancellationToken)).Json);
 
+    public async ValueTask<ResolvedSettings<T>> ResolveAsync(SiteId site, CancellationToken cancellationToken = default)
+    {
+        var resolved = await service.ResolveAsync(_descriptor, site, cancellationToken);
+        return new ResolvedSettings<T>((T)_descriptor.Read(resolved.Json), resolved.InheritedSecrets.Select(_descriptor.PropertyOf));
+    }
+
     public async ValueTask<T> GetDefaultAsync(CancellationToken cancellationToken = default) =>
         (T)_descriptor.Read((await service.ResolveAsync(_descriptor, null, cancellationToken)).Json);
 

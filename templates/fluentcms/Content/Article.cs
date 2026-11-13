@@ -7,7 +7,7 @@ namespace FluentCms_App.Content;
 [Collection("article")]
 public sealed class Article : ContentItem
 {
-    [Text(MaxLength = 200), Required]
+    [Text(MaxLength = 200), Required, Searchable]
     public string Title { get; set; } = "";
 
     [Slug(Source = nameof(Title)), Unique]

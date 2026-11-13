@@ -40,6 +40,7 @@
     <Project Path="tests/FluentCMS.Plugins.AiAssist.Tests/FluentCMS.Plugins.AiAssist.Tests.csproj" />
     <Project Path="tests/FluentCMS.Plugins.Mcp.Tests/FluentCMS.Plugins.Mcp.Tests.csproj" />
     <Project Path="tests/FluentCMS.Plugins.MultiSite.Tests/FluentCMS.Plugins.MultiSite.Tests.csproj" />
+    <Project Path="tests/FluentCMS.Plugins.Search.Tests/FluentCMS.Plugins.Search.Tests.csproj" />
     <Project Path="tests/FluentCMS.Plugins.Media.Tests/FluentCMS.Plugins.Media.Tests.csproj" />
     <Project Path="tests/FluentCMS.Plugins.GraphQL.Tests/FluentCMS.Plugins.GraphQL.Tests.csproj" />
     <Project Path="tests/FluentCMS.Plugins.Webhooks.Tests/FluentCMS.Plugins.Webhooks.Tests.csproj" />

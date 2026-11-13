@@ -289,6 +289,36 @@ public sealed class MemberTokenTests(MemberFixture fixture) : IClassFixture<Memb
         failures.Count(row => row.Details!.Contains(LoginFailureReasons.InvalidCredentials, StringComparison.Ordinal)).ShouldBe(4);
     }
 
+    // On a host of its own, since it moves the clock past the lockout. The lockout is Identity's rule on the host's clock:
+    // still on at its end, and over a tick later.
+    [Fact]
+    public async Task ALockedOutMemberIsRefusedUntilTheLockoutEndsAndSignsInAfterItOnTheGrantAndThePage()
+    {
+        await using var host = MemberFixture.NewHost(new HostedPagesTests.CapturedEmails());
+        var member = await host.CreateMemberAsync(password: Password, cancellationToken: Token);
+        using var browser = new HostedPagesBrowser(host, "10.9.0.4");
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            (await MemberFixture.DirectLoginAsync(host, member.Email, $"Wrong-Password-Number-{attempt}")).Status.ShouldBe(HttpStatusCode.BadRequest);
+        }
+
+        host.Time.Advance(new MemberOptions().Lockout.DefaultLockoutTimeSpan);
+        var locked = await MemberFixture.DirectLoginAsync(host, member.Email, Password);
+        locked.Status.ShouldBe(HttpStatusCode.BadRequest);
+        locked.Json["error"]!.GetValue<string>().ShouldBe("invalid_grant");
+        using (var refused = await browser.SubmitAsync("/account/members/login", Credentials(member.Email, Password)))
+        {
+            refused.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await refused.Content.ReadAsStringAsync(Token)).ShouldContain("Sign-in failed.");
+        }
+
+        host.Time.Advance(TimeSpan.FromTicks(1));
+        (await MemberFixture.DirectLoginAsync(host, member.Email, Password)).Status.ShouldBe(HttpStatusCode.OK);
+        using var signedIn = await browser.SubmitAsync("/account/members/login", Credentials(member.Email, Password));
+        signedIn.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+    }
+
     [Fact]
     public async Task TheDirectLoginIsRefusedAndNotAdvertisedWhileTheOptionIsOff()
     {

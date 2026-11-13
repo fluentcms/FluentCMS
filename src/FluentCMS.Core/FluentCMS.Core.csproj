@@ -28,6 +28,7 @@
     <InternalsVisibleTo Include="FluentCMS.Plugins.Mcp.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Plugins.MultiSite.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Plugins.AiAssist.Tests" />
+    <InternalsVisibleTo Include="FluentCMS.Plugins.Search.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Host.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Generators.Tests" />
     <!-- For the database file slot of backup and restore, IDatabaseFile, which only the SQLite provider fills. -->

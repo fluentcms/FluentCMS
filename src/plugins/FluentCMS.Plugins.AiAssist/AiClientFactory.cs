@@ -70,9 +70,9 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
                     : $"hold an API key, and {AiOptions.Section}:{provider}:ApiKey holds none");
             }
         }
-        else if (await IsInheritedForElsewhereAsync(settings, endpoint, cancellationToken))
+        else if (!await IsTheSitesOwnAsync(site, key, cancellationToken) && !await IsForTheDefaultsAsync(settings, endpoint, cancellationToken))
         {
-            throw NotConfigured("hold an API key of the site's own: the key it took from the instance defaults is used with the provider and the endpoint of the defaults only");
+            throw NotConfigured("hold an API key of the site's own: the key it inherits from the instance defaults is used with the provider and the endpoint of the defaults only");
         }
 
         var client = OpenAiClient(endpoint ?? OpenAiEndpoint, key, model, TimeSpan.FromSeconds(settings.RequestTimeout));
@@ -81,24 +81,28 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
 
     public void Dispose() => _handler.Dispose();
 
-    // A site that saves its settings without a key keeps the key it was shown as set, which for a site with no settings of
-    // its own yet is the one of the instance defaults (spec 4.13, "Settings as built"). That key is the operator's, for the
-    // provider and the endpoint the defaults name, so a site that names another provider or endpoint does not send it there.
-    private async ValueTask<bool> IsInheritedForElsewhereAsync(AiSettings settings, Uri? endpoint, CancellationToken cancellationToken)
+    // A site that does not set a key reads the key of the instance defaults (spec 4.13, "Settings as built"), which is the
+    // operator's, for the provider and the endpoint the defaults name. The key is the site's own only when a read of the
+    // site's settings says so and holds that same key: the settings the factory was given were read earlier, and a key that
+    // was inherited then must not pass because the site has set a key of its own since.
+    private async ValueTask<bool> IsTheSitesOwnAsync(SiteId site, string key, CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var read = await scope.ServiceProvider.GetRequiredService<ISettings<AiSettings>>().ResolveAsync(site, cancellationToken);
+        return !read.InheritedSecrets.Contains(nameof(AiSettings.ApiKey))
+            && read.Value.ApiKey is { } own
+            && CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(own), Encoding.UTF8.GetBytes(key));
+    }
+
+    private async ValueTask<bool> IsForTheDefaultsAsync(AiSettings settings, Uri? endpoint, CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
         var defaults = await scope.ServiceProvider.GetRequiredService<ISettings<AiSettings>>().GetDefaultAsync(cancellationToken);
-        if (string.IsNullOrWhiteSpace(defaults.ApiKey)
-            || !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(defaults.ApiKey), Encoding.UTF8.GetBytes(settings.ApiKey!)))
-        {
-            return false;
-        }
-
         var theirs = AiProviderEndpoints.Parse(defaults.Endpoint);
         var sameEndpoint = theirs is null || endpoint is null
             ? theirs is null && endpoint is null
             : AiProviderEndpoints.Canonical(theirs) == AiProviderEndpoints.Canonical(endpoint);
-        return defaults.Provider != settings.Provider || !sameEndpoint;
+        return defaults.Provider == settings.Provider && sameEndpoint;
     }
 
     // Against the list the host started with: a call is checked, not only a save, so an endpoint that was saved while it

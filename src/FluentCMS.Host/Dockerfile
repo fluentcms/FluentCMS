@@ -25,6 +25,7 @@ COPY src/plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj src/plugins/
 COPY src/plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj src/plugins/FluentCMS.Plugins.Media/
 COPY src/plugins/FluentCMS.Plugins.Media.S3/FluentCMS.Plugins.Media.S3.csproj src/plugins/FluentCMS.Plugins.Media.S3/
 COPY src/plugins/FluentCMS.Plugins.MultiSite/FluentCMS.Plugins.MultiSite.csproj src/plugins/FluentCMS.Plugins.MultiSite/
+COPY src/plugins/FluentCMS.Plugins.Search/FluentCMS.Plugins.Search.csproj src/plugins/FluentCMS.Plugins.Search/
 COPY src/plugins/FluentCMS.Plugins.Webhooks/FluentCMS.Plugins.Webhooks.csproj src/plugins/FluentCMS.Plugins.Webhooks/
 COPY samples/Blog/Blog.csproj samples/Blog/
 COPY src/FluentCMS.Host/FluentCMS.Host.csproj src/FluentCMS.Host/

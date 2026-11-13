@@ -31,6 +31,7 @@ public class LayeringRulesTests
     private const string MultiSitePlugin = "FluentCMS.Plugins.MultiSite";
     private const string WebhooksPlugin = "FluentCMS.Plugins.Webhooks";
     private const string AiAssistPlugin = "FluentCMS.Plugins.AiAssist";
+    private const string SearchPlugin = "FluentCMS.Plugins.Search";
 
     private static readonly string[] McpSiteData = ["McpModel", "McpInstructions", "McpStoredPrompts", "McpInstructionService", "McpPromptService"];
 
@@ -272,6 +273,26 @@ public class LayeringRulesTests
             ["FluentCMS.Content.IContentService.GetAsync", "FluentCMS.Media.IMediaService.GetAsync", "FluentCMS.Media.IMediaService.OpenImageAsync"],
             ignoreOrder: true);
         ServiceCalls.In(McpPlugin).ShouldContain("FluentCMS.Content.IContentService.CreateAsync");
+    }
+
+    // Spec 5.7: the search plugin fills the ISearchIndex slot with the two contract packages alone, and core does not change
+    // for it. It reads entries through the content service, and its own index alone holds what it writes; only its store
+    // reaches the database with SQL, which the scan of the calls holds to that one type.
+    [Fact]
+    public void TheSearchPluginReferencesTheSdkAndThePluginAbstractionsOnly()
+    {
+        var search = ProjectFile.SourceProjects.Single(project => project.Name == SearchPlugin);
+
+        search.ProjectReferences.ShouldBe([Sdk, PluginAbstractions], ignoreOrder: true);
+        // The providers of its PostgreSQL and SQL Server migration sets are compiled against and not depended on.
+        search.PackageReferences.Where(package => !package.DevelopmentOnly).ShouldBeEmpty();
+        Types().That().ResideInNamespaceOrBelow(SearchPlugin)
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceOrBelow("FluentCMS.Core")
+            .AndShould().NotDependOnAnyTypesThat().HaveName("CmsDbContext")
+            .Check(everything.Value);
+        ServiceCalls.In(SearchPlugin).ShouldBe(
+            ["FluentCMS.Content.IContentService.GetAsync", "FluentCMS.Content.IContentService.QueryAsync"],
+            ignoreOrder: true);
     }
 
     // The contracts of ADR 0003 that need EF Core or ASP.NET Core, which the framework reference brings.

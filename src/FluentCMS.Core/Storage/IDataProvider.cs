@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,6 +29,10 @@ public interface IDataProvider
 
     // Whether the database ended the transaction as the victim of a deadlock, which it asks to be run again.
     bool IsDeadlock(Exception exception);
+
+    // A condition of a LINQ query: the text holds the fragment, as it is (LikePattern), without regard to case as the database
+    // compares text. A match on a part of the text uses no index.
+    Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment);
 
     // Points the options of CmsDbContext at the database, with the host's content migrations and their history table.
     void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly);

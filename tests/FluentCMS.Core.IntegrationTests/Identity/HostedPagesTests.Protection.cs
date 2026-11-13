@@ -267,6 +267,8 @@ public sealed partial class HostedPagesTests
     {
         public ValueTask<BrandingSettings> GetAsync(SiteId site, CancellationToken cancellationToken = default) => throw Down();
 
+        public ValueTask<ResolvedSettings<BrandingSettings>> ResolveAsync(SiteId site, CancellationToken cancellationToken = default) => throw Down();
+
         public ValueTask<BrandingSettings> GetDefaultAsync(CancellationToken cancellationToken = default) => throw Down();
 
         public ValueTask SetAsync(SiteId site, BrandingSettings value, CancellationToken cancellationToken = default) => throw Down();

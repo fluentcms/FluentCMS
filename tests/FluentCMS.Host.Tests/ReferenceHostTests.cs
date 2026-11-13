@@ -271,6 +271,40 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         tagBody!["items"]!.AsArray().Count.ShouldBe(3);
     }
 
+    // The blog sample marks the titles of its articles and the names of its authors Searchable, and its seed is indexed
+    // through the outbox like any write, so q= finds it once the outbox has run.
+    [Fact]
+    public async Task TheHostRunsTheSearchPluginAndFindsTheSeededBlogContent()
+    {
+        var settings = Operator.Settings();
+        settings[ReferenceHost.SampleVariable] = "blog";
+        await _host.StartAsync(settings);
+
+        using var api = await Operator.SignInAsync(_host);
+        using var delivery = await Operator.DeliveryClientAsync(_host, api, "article", "author", "tag");
+        var report = await Operator.ReportAsync(_host);
+        report["plugins"]!.AsArray().Select(plugin => plugin!["name"]!.GetValue<string>()).ShouldContain("search");
+        var index = report["providerSlots"]!.AsArray().Single(slot => slot!["slot"]!.GetValue<string>() == "FluentCMS.Providers.ISearchIndex")!;
+        (index["implementation"]!.GetValue<string>(), index["source"]!.GetValue<string>(), index["plugin"]!.GetValue<string>()).ShouldBe(("FluentCMS.Plugins.Search.SearchIndex", "plugin", "search"));
+
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
+        JsonNode? found;
+        do
+        {
+            using var response = await delivery.GetAsync(new Uri("/api/delivery/v1/article?q=welc", UriKind.Relative), Token);
+            var (status, body) = await HostUnderTest.ReadAsync(response);
+            status.ShouldBe(HttpStatusCode.OK, body?.ToJsonString());
+            found = body!["items"]!.AsArray().FirstOrDefault();
+            if (found is null)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(250), Token);
+            }
+        }
+        while (found is null && DateTimeOffset.UtcNow < deadline);
+
+        found.ShouldNotBeNull("the seeded welcome article is found once the outbox has indexed it")["slug"]!.GetValue<string>().ShouldBe("welcome-to-fluentcms");
+    }
+
     // The example of docs/docker.md.
     [Fact]
     public async Task TheSchemaFileDefinesTheContentTypes()
@@ -422,7 +456,7 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         app.Services.GetRequiredService<IDataProvider>().Name.ShouldBe(name);
     }
 
-    // The webhooks, media, MCP, multi-site and AI assist plugins hold a migration set per provider, which the check before any migration takes (#2711).
+    // The webhooks, media, MCP, multi-site, AI assist and search plugins hold a migration set per provider, which the check before any migration takes (#2711).
     [Theory]
     [InlineData("PostgreSql", "Host=db;Database=cms;Username=cms;Password=secret")]
     [InlineData("SqlServer", "Server=db;Database=cms;User Id=cms;Password=secret;TrustServerCertificate=true")]
@@ -430,7 +464,7 @@ public sealed class ReferenceHostTests : IAsyncDisposable
     {
         var app = _host.Build(new() { [ReferenceHost.ProviderKey] = provider, [$"ConnectionStrings:{ReferenceHost.ConnectionStringName}"] = connectionString });
 
-        app.Services.GetServices<IPluginMigrations>().Select(stream => stream.Name).ShouldBe(["media", "webhooks", "mcp", "multi-site", "ai"], ignoreOrder: true);
+        app.Services.GetServices<IPluginMigrations>().Select(stream => stream.Name).ShouldBe(["media", "webhooks", "mcp", "multi-site", "ai", "search"], ignoreOrder: true);
         await app.Services.GetRequiredService<MigrationRunner>().RefuseForeignMigrationsAsync(Token);
     }
 

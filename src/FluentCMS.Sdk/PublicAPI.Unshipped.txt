@@ -2566,8 +2566,13 @@ FluentCMS.Settings.ISettings<T>.GetAsync(FluentCMS.Sites.SiteId site, System.Thr
 FluentCMS.Settings.ISettings<T>.GetDefaultAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<T!>
 FluentCMS.Settings.ISettings<T>.ResetAsync(FluentCMS.Sites.SiteId site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 FluentCMS.Settings.ISettings<T>.ResetDefaultAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+FluentCMS.Settings.ISettings<T>.ResolveAsync(FluentCMS.Sites.SiteId site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Settings.ResolvedSettings<T!>!>
 FluentCMS.Settings.ISettings<T>.SetAsync(FluentCMS.Sites.SiteId site, T! value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 FluentCMS.Settings.ISettings<T>.SetDefaultAsync(T! value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+FluentCMS.Settings.ResolvedSettings<T>
+FluentCMS.Settings.ResolvedSettings<T>.InheritedSecrets.get -> System.Collections.Generic.IReadOnlySet<string!>!
+FluentCMS.Settings.ResolvedSettings<T>.ResolvedSettings(T! value, System.Collections.Generic.IEnumerable<string!>! inheritedSecrets) -> void
+FluentCMS.Settings.ResolvedSettings<T>.Value.get -> T!
 FluentCMS.Settings.SettingsAccessDeniedException
 FluentCMS.Settings.SettingsAccessDeniedException.Area.get -> string!
 FluentCMS.Settings.SettingsAccessDeniedException.SettingsAccessDeniedException(string! area, FluentCMS.Sites.SiteId? site) -> void

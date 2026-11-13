@@ -9,6 +9,7 @@ using FluentCMS.Plugins.AiAssist;
 using FluentCMS.Plugins.Mcp;
 using FluentCMS.Plugins.Media;
 using FluentCMS.Plugins.MultiSite;
+using FluentCMS.Plugins.Search;
 using FluentCMS.Plugins.Webhooks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +34,7 @@ public sealed class PluginStreamTests : IDisposable
         PluginStream.Of<McpPlugin>(),
         PluginStream.Of<MultiSitePlugin>(),
         PluginStream.Of<AiAssistPlugin>(),
+        PluginStream.Of<SearchPlugin>(),
     ];
 
     private readonly TestDatabase _database = TestDatabase.Create();
