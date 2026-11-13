@@ -3,6 +3,8 @@ using FluentCMS.Data.Sqlite;
 using FluentCMS.Data.Tests.Providers;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Shouldly;
 using Xunit;
 
@@ -36,6 +38,16 @@ public sealed class JournalModeTests : IDisposable
         return command.ExecuteScalar();
     }
 
+    // Read on a connection of its own, which changes nothing.
+    private string? JournalMode()
+    {
+        using var connection = new SqliteConnection(FileConnectionString);
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA journal_mode";
+        return command.ExecuteScalar() as string;
+    }
+
     // A file another tool made, which keeps the rollback journal until something changes it.
     private void CreateInRollbackJournal()
     {
@@ -56,6 +68,46 @@ public sealed class JournalModeTests : IDisposable
 
         Pragma(context, "journal_mode").ShouldBe("wal");
         Pragma(context, "synchronous").ShouldBe(1L);
+        Pragma(context, "busy_timeout").ShouldBe(5000L);
+    }
+
+    // EF sees whether the database exists on a read-only connection first, which cannot leave the rollback journal.
+    [SqliteFact("SQLite's journal modes")]
+    public void AHostStartsOnAFileInTheRollbackJournalAndLeavesItInWalMode()
+    {
+        CreateInRollbackJournal();
+        using var context = Context(new SqliteDataProvider(FileConnectionString));
+
+        context.GetService<IRelationalDatabaseCreator>().Exists().ShouldBeTrue();
+        JournalMode().ShouldBe("delete");
+
+        context.Database.Migrate();
+
+        JournalMode().ShouldBe("wal");
+        context.Database.GetAppliedMigrations().ShouldNotBeEmpty();
+    }
+
+    [SqliteFact("SQLite's journal modes")]
+    public void ANewFileIsCreatedInWalMode()
+    {
+        using var context = Context(new SqliteDataProvider(FileConnectionString));
+
+        context.Database.Migrate();
+
+        JournalMode().ShouldBe("wal");
+    }
+
+    [SqliteFact("SQLite's journal modes")]
+    public void AReadOnlyConnectionLeavesTheJournalModeAsItIs()
+    {
+        CreateInRollbackJournal();
+        var readOnly = new SqliteConnectionStringBuilder(FileConnectionString) { Mode = SqliteOpenMode.ReadOnly }.ToString();
+        using var context = Context(new SqliteDataProvider(readOnly));
+
+        context.Database.OpenConnection();
+
+        Pragma(context, "journal_mode").ShouldBe("delete");
+        Pragma(context, "synchronous").ShouldBe(2L);
         Pragma(context, "busy_timeout").ShouldBe(5000L);
     }
 

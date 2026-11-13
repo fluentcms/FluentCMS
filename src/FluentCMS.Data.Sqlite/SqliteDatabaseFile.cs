@@ -7,9 +7,9 @@ namespace FluentCMS.Data.Sqlite;
 // The database file behind `fluentcms backup` and `fluentcms restore`. The snapshot goes through SQLite's online backup,
 // which copies the pages under a read transaction, so it is consistent while the host writes, in WAL mode without stopping
 // it. A restore replaces the file and removes the journal files of the database it replaces, whose pages would otherwise be
-// read into the new one, and puts it in WAL mode when the provider uses it: a connection that EF opens read-only to see
-// whether the database exists could not switch it.
-internal sealed class SqliteDatabaseFile(string connectionString, bool writeAheadLog) : IDatabaseFile
+// read into the new one. The file keeps the journal mode of the backup until the provider opens it to write, which puts it
+// in WAL mode when the provider uses it.
+internal sealed class SqliteDatabaseFile(string connectionString) : IDatabaseFile
 {
     private const string BusyTimeout = "PRAGMA busy_timeout = 5000";
     private const int SnapshotAttempts = 10;
@@ -109,13 +109,6 @@ internal sealed class SqliteDatabaseFile(string connectionString, bool writeAhea
         if (aside is not null)
         {
             File.Delete(aside);
-        }
-
-        if (writeAheadLog)
-        {
-            using var connection = new SqliteConnection(Unpooled(path, SqliteOpenMode.ReadWrite));
-            connection.Open();
-            Execute(connection, "PRAGMA journal_mode = WAL");
         }
     }
 

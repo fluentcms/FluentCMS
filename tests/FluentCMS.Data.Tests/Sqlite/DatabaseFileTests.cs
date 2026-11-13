@@ -2,6 +2,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Data.Sqlite;
 using FluentCMS.Data.Tests.Providers;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Shouldly;
 using Xunit;
 
@@ -124,6 +125,36 @@ public sealed class DatabaseFileTests : IDisposable
         File.Exists(snapshot).ShouldBeFalse();
         File.Exists(Database + "-wal").ShouldBeFalse();
         File.Exists(Database + "-shm").ShouldBeFalse();
+        Count(Database, "restored").ShouldBe(1);
+    }
+
+    // `backup` leaves its copy in the rollback journal; a file put in an archive by hand may be in WAL mode.
+    [SqliteTheory("SQLite's journal modes")]
+    [InlineData("DELETE")]
+    [InlineData("WAL")]
+    public void AHostStartsOnARestoredFileWhateverTheJournalModeOfTheBackupAndLeavesItInWalMode(string journalMode)
+    {
+        var snapshot = Path.Combine(_directory.FullName, "snapshot.db");
+        using (var source = Open(snapshot, $"PRAGMA journal_mode = {journalMode}"))
+        {
+            Execute(source, "CREATE TABLE restored (id INTEGER); INSERT INTO restored VALUES (1);");
+        }
+
+        var provider = new SqliteDataProvider(Connection(Database));
+        ((IDatabaseFile)provider).Restore(snapshot);
+
+        var options = new DbContextOptionsBuilder<SystemDbContext>();
+        provider.ConfigureSystemMigrations(options);
+        options.UseSystemModel(provider.Conventions);
+        using (var context = new SystemDbContext(options.Options))
+        {
+            context.Database.Migrate();
+        }
+
+        using var restored = Open(Database, "SELECT 1");
+        using var mode = restored.CreateCommand();
+        mode.CommandText = "PRAGMA journal_mode";
+        mode.ExecuteScalar().ShouldBe("wal");
         Count(Database, "restored").ShouldBe(1);
     }
 }

@@ -17,7 +17,7 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
 
     private readonly IInterceptor[] _interceptors = writeAheadLog ? [new SqliteWriteAheadLog(), .. WriteInterceptors] : WriteInterceptors;
 
-    private readonly SqliteDatabaseFile _file = new(connectionString, writeAheadLog);
+    private readonly SqliteDatabaseFile _file = new(connectionString);
 
     public string Name => "SQLite";
 
