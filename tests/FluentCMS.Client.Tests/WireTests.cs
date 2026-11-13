@@ -46,13 +46,14 @@ public sealed class WireTests
     [Fact]
     public async Task AWriteSendsIdsForRelationsAndMediaTheBlockTypesAndNoSystemField()
     {
-        var handler = new Recording(HttpStatusCode.OK, "application/json", $$"""{ "id": "{{Guid.Empty}}", "version": 8 }""");
+        var handler = new Recording(HttpStatusCode.OK, "application/json", $$"""{ "id": "{{Guid.Empty}}", "version": 8, "scheduledPublishAt": null, "scheduledUnpublishAt": "2027-03-01T09:00:00Z" }""");
         var client = new FluentCmsClient(new HttpClient(handler) { BaseAddress = new Uri("https://cms.example.com/") });
         var article = new Article
         {
             Id = Guid.NewGuid(),
             Version = 7,
             Status = "draft",
+            ScheduledPublishAt = DateTimeOffset.UnixEpoch,
             Title = "Hello",
             Author = new Relation<Author>(AuthorId) { Type = "author", Entry = new Author { Name = "Ada" } },
             Hero = new MediaReference(AssetId) { Type = "media", FileName = "hero.png" },
@@ -60,7 +61,11 @@ public sealed class WireTests
             Fallbacks = new ArticleFallbacks { Body = "en" },
         };
 
-        (await client.UpdateAsync(Guid.Empty, article, 7, new WriteOptions("fr"), Token)).Version.ShouldBe(8);
+        var updated = await client.UpdateAsync(Guid.Empty, article, 7, new WriteOptions("fr"), Token);
+
+        updated.Version.ShouldBe(8);
+        updated.ScheduledPublishAt.ShouldBeNull();
+        updated.ScheduledUnpublishAt.ShouldBe(new DateTimeOffset(2027, 3, 1, 9, 0, 0, TimeSpan.Zero));
 
         handler.Request!.Method.ShouldBe(HttpMethod.Put);
         handler.Request.RequestUri!.ToString().ShouldBe($"https://cms.example.com/api/management/v1/content/article/{Guid.Empty}?locale=fr");

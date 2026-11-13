@@ -312,7 +312,8 @@ internal sealed class EffectivePermissions(
     }
 
     // An allow-list is about the fields of the type. System fields are the same for every type, and only the two that
-    // identify a person are closed: they are outside the Delivery response shape and exist for row rules.
+    // identify a person, which exist for row rules, and the pending schedules are closed: they are outside the Delivery
+    // response shape.
     public bool CanReadField(SchemaType type, string field, AccessTarget target)
     {
         if (!Allows(type, ContentOperation.Read, target))
@@ -322,7 +323,7 @@ internal sealed class EffectivePermissions(
 
         if (SystemField.Find(field) is not null)
         {
-            return CanManage || !SystemField.NamesAPerson(field);
+            return CanManage || !SystemField.OnlyForManagers(field);
         }
 
         return ReadableFieldsOf(type, target) is not { } fields || fields.Contains(field);

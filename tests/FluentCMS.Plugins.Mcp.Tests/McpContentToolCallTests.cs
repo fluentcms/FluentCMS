@@ -198,6 +198,31 @@ public sealed class McpContentToolCallTests(McpToolsFixture fixture) : IClassFix
         JsonNode.DeepEquals(JsonNode.Parse(fromTool.GetRawText()), fromApi).ShouldBeTrue(fromTool.GetRawText());
     }
 
+    // A read answers as the Management API does where the caller manages, with the pending schedules of the locale, and
+    // as Delivery does for a Delivery key, without them.
+    [Fact]
+    public async Task AReadShowsThePendingSchedulesToACallerThatManagesOnly()
+    {
+        using var http = await KeyAsync(fixture.Host);
+        using var deliveryHttp = await KeyAsync(fixture.Host, ApiKeyClass.Delivery, BuiltInRoles.EditorName);
+        await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+        await using var delivery = await ConnectAsync(deliveryHttp, protocolVersion: InitializeProtocol);
+        var id = (await OkAsync(client, "post_create_draft", new { fields = new { title = "Scheduled" } })).GetProperty("id").GetGuid();
+        await OkAsync(client, McpContentTools.Publish, new { type = "post", id });
+        await OkAsync(client, McpContentTools.Schedule, new { type = "post", id, action = "unpublish", at = "2999-03-01T09:00:00Z" });
+
+        var managed = await OkAsync(client, "post_get", new { id });
+        var listed = await OkAsync(client, "post_list", new { filter = new { id = new { eq = id } } });
+        var read = await OkAsync(delivery, "post_get", new { id });
+
+        managed.GetProperty("scheduledUnpublishAt").GetString().ShouldBe("2999-03-01T09:00:00Z");
+        managed.GetProperty("scheduledPublishAt").ValueKind.ShouldBe(JsonValueKind.Null);
+        listed.GetProperty("items").EnumerateArray().ShouldHaveSingleItem().GetProperty("scheduledUnpublishAt").GetString().ShouldBe("2999-03-01T09:00:00Z");
+        read.GetProperty("status").GetString().ShouldBe("published");
+        read.TryGetProperty("scheduledUnpublishAt", out _).ShouldBeFalse();
+        read.TryGetProperty("scheduledPublishAt", out _).ShouldBeFalse();
+    }
+
     [Fact]
     public async Task AnEntryIsPublishedScheduledUnpublishedAndItsDraftDiscarded()
     {

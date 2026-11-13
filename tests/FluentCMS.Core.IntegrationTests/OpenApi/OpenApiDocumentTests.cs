@@ -158,8 +158,17 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         article["seo"]!.ToJsonString().ShouldContain("#/components/schemas/component-seo");
         article["author"]!.ToJsonString().ShouldContain("#/components/schemas/entry-author");
 
+        foreach (var name in new[] { "scheduledPublishAt", "scheduledUnpublishAt" })
+        {
+            article[name]!["readOnly"]!.GetValue<bool>().ShouldBeTrue();
+            article[name]!["type"]!.ToJsonString().ShouldBe("""["null","string"]""");
+            article[name]!["format"]!.GetValue<string>().ShouldBe("date-time");
+            article[name]!["description"]!.GetValue<string>().ShouldContain("Management API only");
+        }
+
         var input = Schemas["input-article"]!["properties"]!.AsObject();
         input.ContainsKey("id").ShouldBeFalse();
+        input.ContainsKey("scheduledPublishAt").ShouldBeFalse();
         input["author"]!.ToJsonString().ShouldBe("""{"type":["null","string"],"format":"uuid"}""");
         input["body"]!["anyOf"].ShouldBeNull();
     }

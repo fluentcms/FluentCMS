@@ -228,6 +228,10 @@ public sealed class TransferCommandTests : IAsyncLifetime
         using var response = await client.GetAsync(new Uri(path, UriKind.Relative), Token);
         var body = JsonNode.Parse(await response.Content.ReadAsStringAsync(Token))!;
         body.AsObject().Remove("traceId");
+
+        // A package carries no schedule (spec 4.14).
+        body.AsObject().Remove("scheduledPublishAt");
+        body.AsObject().Remove("scheduledUnpublishAt");
         return $"{(int)response.StatusCode} {body.ToJsonString()}";
     }
 

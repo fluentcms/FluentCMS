@@ -10,8 +10,10 @@ using FluentCMS.Publishing;
 namespace FluentCMS.Core.Content.Query;
 
 // A reserved field of every entry, read from cms_document. Default says whether a query without a selection returns
-// it; the response shape of the specification leaves out the two author ids, which a row rule still needs.
-internal sealed record SystemField(string Name, Func<Expression, short, Expression> Read, FilterOperator[] Operators, bool Sortable, bool Default)
+// it; the response shape of the specification leaves out the two author ids, which a row rule still needs. Management
+// marks the pending schedules of the locale (spec 4.5), which only a read in the Management shape has (ManagementShape):
+// any other read knows no such field. They are neither filtered nor sorted by.
+internal sealed record SystemField(string Name, Func<Expression, short, Expression> Read, FilterOperator[] Operators, bool Sortable, bool Default, bool Management = false)
 {
     private static readonly FilterOperator[] Identity = [FilterOperator.Equal, FilterOperator.NotEqual, FilterOperator.In, FilterOperator.NotIn];
 
@@ -24,6 +26,8 @@ internal sealed record SystemField(string Name, Func<Expression, short, Expressi
         new("createdAt", Member(nameof(Document.CreatedAt)), FilterSets.Ordered, Sortable: true, Default: true),
         new("updatedAt", Member(nameof(Document.UpdatedAt)), FilterSets.Ordered, Sortable: true, Default: true),
         new("publishedAt", Member(nameof(Document.PublishedAt)), FilterSets.Ordered, Sortable: true, Default: true),
+        new("scheduledPublishAt", Member(nameof(Document.SchedulePublishAt)), [], Sortable: false, Default: true, Management: true),
+        new("scheduledUnpublishAt", Member(nameof(Document.ScheduleUnpublishAt)), [], Sortable: false, Default: true, Management: true),
         new("createdBy", Member(nameof(Document.CreatedBy)), Identity, Sortable: false, Default: false),
         new("updatedBy", Member(nameof(Document.UpdatedBy)), Identity, Sortable: false, Default: false),
     ];
@@ -35,6 +39,9 @@ internal sealed record SystemField(string Name, Func<Expression, short, Expressi
     public static SystemField? Find(string name) => ByName.GetValueOrDefault(name);
 
     public static bool NamesAPerson(string name) => name is "createdBy" or "updatedBy";
+
+    // Outside the Delivery response shape, so only a principal that manages reads it.
+    public static bool OnlyForManagers(string name) => NamesAPerson(name) || Find(name) is { Management: true };
 
     public Expression ReadFrom(Expression row, short state) => Read(Expression.Property(row, nameof(QueryRow.Document)), state);
 

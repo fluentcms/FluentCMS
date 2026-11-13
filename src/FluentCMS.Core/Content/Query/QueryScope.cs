@@ -7,7 +7,7 @@ using FluentCMS.Sites;
 namespace FluentCMS.Core.Content.Query;
 
 // What one compilation shares: the state, locale and site every joined row must have, and the errors found so far.
-internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, short state, string locale, SiteId? site, bool reachesTrash = false)
+internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, short state, string locale, SiteId? site, bool reachesTrash = false, bool management = false)
 {
     private readonly List<ValidationError> _errors = [];
     private int _populated;
@@ -32,7 +32,10 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
     // is the root's; every row reached through a relation says explicitly that it is not in it.
     public bool ReachesTrash => reachesTrash;
 
-    public QueryPaths Paths { get; } = new(schema, access);
+    // Whether the read answers the Management shape, with the pending schedules of each entry (ManagementShape).
+    public bool Management => management;
+
+    public QueryPaths Paths { get; } = new(schema, access, management);
 
     // A site's query reads that site's entries on every level. Global entries belong to no site, and any site may read them.
     public IQueryable<QueryRow> Rows(SchemaType type, bool trashedRoot = false)

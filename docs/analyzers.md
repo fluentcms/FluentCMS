@@ -86,7 +86,7 @@ Error, for `FCMS1217`. A relation of a component or block declares `Reverse`. On
 
 ### FCMS0020
 
-Error, for `FCMS1206`. A field takes a reserved name: a system field of `ContentItem` or `fallbacks` (without regard to case), `type` or `id` in a block, a name whose column is a system column (`documentId`, `siteId`, `state`), or a reverse relation named like a system field.
+Error, for `FCMS1206`. A field takes a reserved name: one of `ContentItem.ReservedFieldNames` (the system fields of `ContentItem`, `fallbacks`, the pending schedules `scheduledPublishAt` and `scheduledUnpublishAt`, and `deletedAt` and `deletedBy` of the trash, without regard to case), `type` or `id` in a block, a name whose column is a system column (`documentId`, `siteId`, `state`), or a reverse relation named like a system field.
 
 ### FCMS0021
 

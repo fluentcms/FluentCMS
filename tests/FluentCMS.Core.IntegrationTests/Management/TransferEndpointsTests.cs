@@ -204,8 +204,10 @@ public sealed class TransferEndpointsTests : IAsyncLifetime
         using var response = await client.GetAsync(new Uri(path, UriKind.Relative), Token);
         var body = JsonNode.Parse(await response.Content.ReadAsStringAsync(Token))!;
 
-        // A problem names the request it answers.
+        // A problem names the request it answers, and a package carries no schedule (spec 4.14).
         body.AsObject().Remove("traceId");
+        body.AsObject().Remove("scheduledPublishAt");
+        body.AsObject().Remove("scheduledUnpublishAt");
         return $"{(int)response.StatusCode} {body.ToJsonString()}";
     }
 
