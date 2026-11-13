@@ -9,6 +9,10 @@ public sealed class Note : ContentItem
 {
     [Text, Required]
     public string Title { get; set; } = "";
+
+    // A note under another, so that a selection can go as deep as a test needs.
+    [Relation]
+    public Ref<Note> Parent { get; set; }
 }
 
 // The shapes the Blog sample does not have: a singleton, numbers, a date, JSON, a repeated select and a repeated component

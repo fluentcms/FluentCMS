@@ -2,8 +2,10 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Sites;
 using FluentCMS.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -154,6 +156,99 @@ public sealed class GraphQLHostTests : IDisposable
         settings["output"]!["fields"].Strings("name").ShouldNotContain("secret");
         settings["input"]!["inputFields"].Strings("name").ShouldNotContain("code");
         settings["input"]!["inputFields"].Strings("name").ShouldNotContain("secret");
+    }
+
+    [Fact]
+    public async Task AWriteWhoseSelectionPopulatesDeeperThanTheCapIsRefusedBeforeItWrites()
+    {
+        await using var host = Host();
+        using var admin = await AdminAsync(host);
+        string? id = null;
+        foreach (var title in (string[])["One", "Two", "Three", "Four", "Five"])
+        {
+            id = (await admin.QueryAsync("mutation($input: NoteInput!) { createNote(input: $input) { id } }", new { input = new { title, parent = id } }))["createNote"]!["id"]!.GetValue<string>();
+        }
+
+        // Four levels of population, one over the cap of 3, and three.
+        const string Deep = "parent { parent { parent { parent { title } } } }";
+        const string Allowed = "parent { parent { parent { title } } }";
+
+        // A query with the selection is refused before it reads, and a write as it, before it writes.
+        var (_, query) = await admin.FailAsync($"query($id: ID) {{ note(id: $id, status: DRAFT) {{ {Deep} }} }}", new { id });
+        query.Codes().ShouldBe(["FCMS2207"]);
+
+        await RefusedAsync("createNote", $"createNote(input: {{ title: \"Six\", parent: $id }}) {{ id {Deep} }}");
+        (await admin.QueryAsync("{ noteList(status: DRAFT) { total } }"))["noteList"]!["total"]!.GetValue<long>().ShouldBe(6);
+        var created = (await admin.QueryAsync($"mutation($id: ID!) {{ createNote(input: {{ title: \"Six\", parent: $id }}) {{ title {Allowed} }} }}", new { id }))["createNote"]!;
+        created["parent"]!["parent"]!["parent"]!["title"]!.GetValue<string>().ShouldBe("Three");
+
+        await RefusedAsync("updateNote", $"updateNote(id: $id, input: {{ title: \"Changed\" }}, expectedVersion: 1) {{ {Deep} }}");
+        (await DraftAsync())["version"]!.GetValue<int>().ShouldBe(1);
+        var updated = (await admin.QueryAsync($"mutation($id: ID!) {{ updateNote(id: $id, input: {{ title: \"Changed\" }}, expectedVersion: 1) {{ version {Allowed} }} }}", new { id }))["updateNote"]!;
+        updated["version"]!.GetValue<int>().ShouldBe(2);
+        updated["parent"]!["parent"]!["parent"]!["title"]!.GetValue<string>().ShouldBe("Two");
+
+        await RefusedAsync("publishNote", $"publishNote(id: $id, expectedVersion: 2) {{ entry {{ {Deep} }} }}");
+        (await PublishedAsync()).ShouldBeNull();
+        var published = (await admin.QueryAsync($"mutation($id: ID!) {{ publishNote(id: $id, expectedVersion: 2) {{ entry {{ status {Allowed} }} }} }}", new { id }))["publishNote"]!["entry"]!;
+        published["status"]!.GetValue<string>().ShouldBe("PUBLISHED");
+        published["parent"]!["parent"]!["parent"]!["title"]!.GetValue<string>().ShouldBe("Two");
+
+        await RefusedAsync("unpublishNote", $"unpublishNote(id: $id) {{ {Deep} }}");
+        (await PublishedAsync()).ShouldNotBeNull();
+        var unpublished = (await admin.QueryAsync($"mutation($id: ID!) {{ unpublishNote(id: $id) {{ title {Allowed} }} }}", new { id }))["unpublishNote"]!;
+        unpublished["parent"]!["parent"]!["parent"]!["title"]!.GetValue<string>().ShouldBe("Two");
+        (await PublishedAsync()).ShouldBeNull();
+        (await DraftAsync())["version"]!.GetValue<int>().ShouldBe(2);
+
+        async Task RefusedAsync(string field, string mutation)
+        {
+            var (data, errors) = await admin.FailAsync($"mutation($id: ID!) {{ {mutation} }}", new { id });
+            data![field].ShouldBeNull();
+            errors.Codes().ShouldBe(query.Codes(), field);
+            errors[0]!["extensions"]!["status"]!.GetValue<int>().ShouldBe(400);
+            errors[0]!["extensions"]!["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("populate");
+            errors[0]!["path"]!.AsArray().Select(part => part!.ToString()).ShouldBe([field]);
+        }
+
+        async Task<JsonNode> DraftAsync() => (await admin.QueryAsync("query($id: ID) { note(id: $id, status: DRAFT) { title version } }", new { id }))["note"]!;
+
+        async Task<JsonNode?> PublishedAsync() => (await admin.QueryAsync("query($id: ID) { note(id: $id) { id } }", new { id }))["note"];
+    }
+
+    [Fact]
+    public async Task AWriteWhoseReadFailsAfterItCommittedAnswersTheWrittenEntryWithTheErrorAtTheField()
+    {
+        // One related entry at most in a read, so that a read that populates two fails once the write is done.
+        var limit = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["MaxPopulatedEntries"] = "1" }).Build();
+        await using var host = Host(configure: services => services.Configure<ContentQueryOptions>(limit));
+        using var admin = await AdminAsync(host);
+        var one = (await admin.QueryAsync("mutation { createNote(input: { title: \"One\" }) { id } }"))["createNote"]!["id"]!.GetValue<string>();
+        var two = (await admin.QueryAsync("mutation($id: ID!) { createNote(input: { title: \"Two\", parent: $id }) { id } }", new { id = one }))["createNote"]!["id"]!.GetValue<string>();
+
+        // Each write is done and answers the entry it wrote; the relation the read was to populate is null with its error.
+        const string Selection = "id title version status parent { title parent { title } }";
+        var created = await WrittenAsync(["createNote"], $"createNote(input: {{ title: \"Three\", parent: $id }}) {{ {Selection} }}", two);
+        created["title"]!.GetValue<string>().ShouldBe("Three");
+        var id = created["id"]!.GetValue<string>();
+        (await WrittenAsync(["updateNote"], $"updateNote(id: $id, input: {{ title: \"Three again\" }}, expectedVersion: 1) {{ {Selection} }}", id))["version"]!.GetValue<int>().ShouldBe(2);
+        (await WrittenAsync(["publishNote", "entry"], $"publishNote(id: $id, expectedVersion: 2) {{ entry {{ {Selection} }} }}", id))["status"]!.GetValue<string>().ShouldBe("PUBLISHED");
+        (await WrittenAsync(["unpublishNote"], $"unpublishNote(id: $id) {{ {Selection} }}", id))["title"]!.GetValue<string>().ShouldBe("Three again");
+
+        var draft = (await admin.QueryAsync("query($id: ID) { note(id: $id, status: DRAFT) { title version parent { id } } }", new { id }))["note"]!;
+        draft["title"]!.GetValue<string>().ShouldBe("Three again");
+        draft["parent"]!["id"]!.GetValue<string>().ShouldBe(two);
+        (await admin.QueryAsync("query($id: ID) { note(id: $id) { id } }", new { id }))["note"].ShouldBeNull();
+
+        async Task<JsonNode> WrittenAsync(string[] path, string mutation, string target)
+        {
+            var (data, errors) = await admin.FailAsync($"mutation($id: ID!) {{ {mutation} }}", new { id = target });
+            var entry = path.Aggregate(data!, (node, name) => node[name]!);
+            entry["parent"].ShouldBeNull();
+            errors.Codes().ShouldBe(["FCMS2207"], path[0]);
+            errors.Single()!["path"]!.AsArray().Select(part => part!.ToString()).ShouldBe([.. path, "parent"]);
+            return entry;
+        }
     }
 
     [Fact]

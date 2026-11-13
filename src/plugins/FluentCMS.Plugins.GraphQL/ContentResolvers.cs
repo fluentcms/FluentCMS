@@ -153,6 +153,7 @@ internal static class ContentResolvers
     public static async ValueTask<object?> CreateAsync(IResolverContext context, TypeModel type)
     {
         var locale = await LocaleAsync(context);
+        var plan = await ReadPlan.BuildAsync(context, type, [context.Selection], locale);
         var input = InputReader.Read(context.ArgumentLiteral<IValueNode>(Arguments.Input), type);
         ContentDocument created;
         using (InLocale(context, locale))
@@ -160,13 +161,14 @@ internal static class ContentResolvers
             created = await Content(context).CreateAsync(type.SchemaName, input, context.RequestAborted);
         }
 
-        return await WrittenAsync(context, type, created, [context.Selection], locale);
+        return await WrittenAsync(context, type, created, plan, locale);
     }
 
     // A merge patch, as PATCH on the Management API: a field the input leaves out keeps its value, and null clears it.
     public static async ValueTask<object?> UpdateAsync(IResolverContext context, TypeModel type)
     {
         var locale = await LocaleAsync(context);
+        var plan = await ReadPlan.BuildAsync(context, type, [context.Selection], locale);
         var id = EntryId(context.ArgumentValue<string>(Arguments.Id));
         var patch = InputReader.Read(context.ArgumentLiteral<IValueNode>(Arguments.Input), type);
         ContentDocument updated;
@@ -175,7 +177,7 @@ internal static class ContentResolvers
             updated = await Content(context).PatchAsync(type.SchemaName, id, patch, context.ArgumentValue<int>(Arguments.ExpectedVersion), context.RequestAborted);
         }
 
-        return await WrittenAsync(context, type, updated, [context.Selection], locale);
+        return await WrittenAsync(context, type, updated, plan, locale);
     }
 
     public static async ValueTask<object?> DeleteAsync(IResolverContext context, TypeModel type)
@@ -188,6 +190,7 @@ internal static class ContentResolvers
     public static async ValueTask<object?> PublishAsync(IResolverContext context, TypeModel type, string payloadType)
     {
         var locale = await LocaleAsync(context);
+        var plan = await ReadPlan.BuildAsync(context, type, ReadPlan.Selections(context, context.Selection, payloadType).Where(part => part.Field.Name == Entry), locale);
         var id = EntryId(context.ArgumentValue<string>(Arguments.Id));
         var result = await Content(context).PublishAsync(
             type.SchemaName,
@@ -195,16 +198,16 @@ internal static class ContentResolvers
             new LocaleWriteOptions { Locale = locale, ExpectedVersion = context.ArgumentValue<int?>(Arguments.ExpectedVersion) },
             context.RequestAborted);
 
-        var entry = ReadPlan.Selections(context, context.Selection, payloadType).Where(part => part.Field.Name == Entry);
-        return new PublishPayload(await WrittenAsync(context, type, result.Entry, entry, locale), result.Warnings);
+        return new PublishPayload(await WrittenAsync(context, type, result.Entry, plan, locale), result.Warnings);
     }
 
     public static async ValueTask<object?> UnpublishAsync(IResolverContext context, TypeModel type)
     {
         var locale = await LocaleAsync(context);
+        var plan = await ReadPlan.BuildAsync(context, type, [context.Selection], locale);
         var id = EntryId(context.ArgumentValue<string>(Arguments.Id));
         var entry = await Content(context).UnpublishAsync(type.SchemaName, id, new LocaleOptions { Locale = locale }, context.RequestAborted);
-        return await WrittenAsync(context, type, entry, [context.Selection], locale);
+        return await WrittenAsync(context, type, entry, plan, locale);
     }
 
     public static object? SystemField(IResolverContext context, TypeModel owner, SystemFieldModel field)
@@ -229,6 +232,12 @@ internal static class ContentResolvers
         if (field is { Kind: FieldKind.Relation, ReferenceOnly: false } && Access(context)?.DeniesType(field.Target!) == true)
         {
             ReportOnce(context, $"type:{field.Target!.SchemaName}", RestErrorCodes.NotFound, $"The content type '{field.Target.SchemaName}' cannot be read.");
+            return null;
+        }
+
+        if (Access(context)?.ReadFailure is { } failure && ReadPlan.Populates(context, context.Selection, field))
+        {
+            Report(context, failure);
             return null;
         }
 
@@ -295,16 +304,25 @@ internal static class ContentResolvers
 
     // What a write returns is what the principal's read shows. A selection that goes into a relation or a media field is
     // read again, as a draft, with that population; any other is answered from the entry the content service returned.
-    private static async ValueTask<JsonObject> WrittenAsync(IResolverContext context, TypeModel type, ContentDocument written, IEnumerable<Selection> selections, string? locale)
+    // The plan was built before the write, so a selection the read would refuse was refused before anything was written.
+    // A read that still fails cannot undo the write: the entry the write returned is answered, and each field the read was
+    // to populate is null with the read's error.
+    private static async ValueTask<JsonObject> WrittenAsync(IResolverContext context, TypeModel type, ContentDocument written, ReadPlan plan, string? locale)
     {
-        var plan = await ReadPlan.BuildAsync(context, type, selections, locale);
         if (plan is { TypeDenied: false, Populate.Count: > 0 })
         {
-            written = await Content(context).GetAsync(
-                type.SchemaName,
-                written.Get<Guid>(Arguments.Id),
-                new GetOptions { Status = QueryStatus.Draft, Locale = locale, Select = plan.Select, Populate = plan.Populate },
-                context.RequestAborted) ?? written;
+            try
+            {
+                written = await Content(context).GetAsync(
+                    type.SchemaName,
+                    written.Get<Guid>(Arguments.Id),
+                    new GetOptions { Status = QueryStatus.Draft, Locale = locale, Select = plan.Select, Populate = plan.Populate },
+                    context.RequestAborted) ?? written;
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                plan.Access.ReadFailure = exception;
+            }
         }
 
         // A principal that may write the type and not read it is shown what the write returned, and nothing is reported.
