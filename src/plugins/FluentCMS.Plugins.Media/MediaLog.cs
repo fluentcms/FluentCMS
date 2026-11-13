@@ -43,4 +43,8 @@ internal static partial class MediaLog
 
     [LoggerMessage(EventId = 9272, Level = LogLevel.Information, Message = "Removed {Count} media assets of the deleted site {SiteId} with its folders and presets; {Left} stay deleted for the cleanup.")]
     public static partial void SiteLibraryRemoved(ILogger logger, int count, Guid siteId, int left);
+
+    // The type only: the message can name the connection, and under `fluentcms doctor` a database not yet migrated is expected.
+    [LoggerMessage(EventId = 9273, Level = LogLevel.Warning, Message = "Whether the shared media library hides the assets of other sites could not be checked ({ExceptionType}); the startup report says nothing of it.")]
+    public static partial void SharedLibraryNotChecked(ILogger logger, string exceptionType);
 }
