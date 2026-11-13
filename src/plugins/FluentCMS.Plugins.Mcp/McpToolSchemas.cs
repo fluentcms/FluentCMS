@@ -286,7 +286,8 @@ internal sealed class McpToolSchemas(SchemaModel schema, IFieldTypeRegistry fiel
 
     private JsonObject Fragment(SchemaField field, Dictionary<string, JsonObject> definitions)
     {
-        var fragment = fieldTypes.Find(field.FieldType)?.OpenApiSchema(field) ?? [];
+        // Localize changes the fragment, and a field type may hand out the same node every time.
+        var fragment = fieldTypes.Find(field.FieldType)?.OpenApiSchema(field).DeepClone().AsObject() ?? [];
         Localize(fragment, definitions);
         return fragment;
     }

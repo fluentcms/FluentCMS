@@ -27,12 +27,12 @@ public sealed class PublishPolicyTests
     [Fact]
     public void TheDefaultsAreNotWrittenSoNoExistingModelChangesItsKey()
     {
-        var json = SchemaJsonWriter.Write(new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(UnpublishedReferencePolicy.Warn, PublishPolicyAttribute.DefaultMaxVersions, PublishPolicyAttribute.DefaultTrashRetentionDays)).Build());
+        var json = SchemaJsonWriter.Write(new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(new PublishPolicyOptions())).Build());
 
         json.ShouldNotContain("unpublishedReferences");
         json.ShouldNotContain("maxVersions");
         json.ShouldNotContain("trashRetentionDays");
-        new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(UnpublishedReferencePolicy.Warn, PublishPolicyAttribute.DefaultMaxVersions, PublishPolicyAttribute.DefaultTrashRetentionDays)).Build().FindContentType("article")!.TrashRetentionDays.ShouldBe(PublishPolicyAttribute.DefaultTrashRetentionDays);
+        new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(new PublishPolicyOptions())).Build().FindContentType("article")!.TrashRetentionDays.ShouldBe(PublishPolicyAttribute.DefaultTrashRetentionDays);
     }
 
     [Theory]
@@ -49,11 +49,11 @@ public sealed class PublishPolicyTests
     [Fact]
     public void TheBuilderRefusesAPolicyOnAComponentAndACapBelowOne()
     {
-        Should.Throw<ArgumentException>(() => new SchemaBuilder().AddComponent("seo", type => type.PublishPolicy(UnpublishedReferencePolicy.Warn, PublishPolicyAttribute.DefaultMaxVersions, PublishPolicyAttribute.DefaultTrashRetentionDays)).Build());
-        Should.Throw<ArgumentOutOfRangeException>(() => new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(UnpublishedReferencePolicy.Warn, 0, PublishPolicyAttribute.DefaultTrashRetentionDays)).Build());
-        Should.Throw<ArgumentOutOfRangeException>(() => new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(UnpublishedReferencePolicy.Warn, PublishPolicyAttribute.DefaultMaxVersions, 0)).Build());
-        Should.Throw<ArgumentOutOfRangeException>(() => new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(UnpublishedReferencePolicy.Warn, PublishPolicyAttribute.DefaultMaxVersions, PublishPolicyAttribute.MaxTrashRetentionDays + 1)).Build());
-        new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(UnpublishedReferencePolicy.Warn, PublishPolicyAttribute.DefaultMaxVersions, PublishPolicyAttribute.MaxTrashRetentionDays)).Build().FindContentType("article")!.TrashRetentionDays.ShouldBe(36500);
+        Should.Throw<ArgumentException>(() => new SchemaBuilder().AddComponent("seo", type => type.PublishPolicy(new PublishPolicyOptions())).Build());
+        Should.Throw<ArgumentOutOfRangeException>(() => new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(new PublishPolicyOptions { MaxVersions = 0 })).Build());
+        Should.Throw<ArgumentOutOfRangeException>(() => new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(new PublishPolicyOptions { TrashRetentionDays = 0 })).Build());
+        Should.Throw<ArgumentOutOfRangeException>(() => new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(new PublishPolicyOptions { TrashRetentionDays = PublishPolicyAttribute.MaxTrashRetentionDays + 1 })).Build());
+        new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(new PublishPolicyOptions { TrashRetentionDays = PublishPolicyAttribute.MaxTrashRetentionDays })).Build().FindContentType("article")!.TrashRetentionDays.ShouldBe(36500);
     }
 
     [FluentCMS.Schema.Collection("capless")]

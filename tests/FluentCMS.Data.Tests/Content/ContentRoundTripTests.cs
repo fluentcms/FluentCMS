@@ -41,7 +41,7 @@ public sealed class ContentRoundTripTests : IDisposable
         .AddCollection("author", type => type.Field("name", "text"))
         .AddCollection("tag", type => type.Scope(ContentScope.Global).Field("name", "text"))
         .AddCollection("post", type => type
-            .PublishPolicy(UnpublishedReferencePolicy.Block, PublishPolicyAttribute.DefaultMaxVersions, PublishPolicyAttribute.DefaultTrashRetentionDays)
+            .PublishPolicy(new PublishPolicyOptions { UnpublishedReferences = UnpublishedReferencePolicy.Block })
             .Field("title", "text", field => field.Required())
             .Field("slug", "slug", field => field.Unique().Setting(FieldSettings.Source, "title"))
             .Field("body", "richText")

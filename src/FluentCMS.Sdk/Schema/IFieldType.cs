@@ -68,7 +68,10 @@ public interface IFieldType
     /// <returns><see langword="true"/> if the type can hold the value.</returns>
     bool TryCoerce(object? value, SchemaField field, out object? result, out string? message);
 
-    /// <summary>Describes the value of the field as an OpenAPI 3.1 schema, without nullability or the required marker, which belong to the object that holds the field.</summary>
+    /// <summary>
+    /// Describes the value of the field as an OpenAPI 3.1 schema, without nullability or the required marker, which belong to
+    /// the object that holds the field. Core takes a copy of the fragment at each use, so a type may return the same node every time.
+    /// </summary>
     /// <param name="field">The field.</param>
     /// <returns>The schema fragment.</returns>
     JsonObject OpenApiSchema(SchemaField field);

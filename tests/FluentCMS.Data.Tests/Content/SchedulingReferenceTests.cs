@@ -22,7 +22,7 @@ public sealed class SchedulingReferenceTests : IDisposable
         .AddCollection("author", type => type.Localized().Field("name", "text", field => field.Localizable()))
         .AddCollection("article", type => type
             .Localized()
-            .PublishPolicy(UnpublishedReferencePolicy.Block, PublishPolicyAttribute.DefaultMaxVersions, PublishPolicyAttribute.DefaultTrashRetentionDays)
+            .PublishPolicy(new PublishPolicyOptions { UnpublishedReferences = UnpublishedReferencePolicy.Block })
             .Field("title", "text", field => field.Localizable())
             .Field("author", "relation", field => field.Relation("author")))
         .Build());

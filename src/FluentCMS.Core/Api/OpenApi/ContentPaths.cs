@@ -335,7 +335,7 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
         }
 
         var blocks = field.FieldType == FieldTypeNames.Blocks ? SettingValues.List(field, FieldSettings.Blocks) : [];
-        fields[path] = Operators(fieldType.FilterOperators, Operand(fieldType.OpenApiSchema(field)), blocks);
+        fields[path] = Operators(fieldType.FilterOperators, Operand(fieldType.OpenApiSchema(field).DeepClone().AsObject()), blocks);
     }
 
     private static JsonObject Operators(IEnumerable<FilterOperator> operators, JsonObject operand, IReadOnlyList<string> blocks)

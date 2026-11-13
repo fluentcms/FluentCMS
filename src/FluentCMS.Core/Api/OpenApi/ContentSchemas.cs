@@ -116,9 +116,10 @@ internal sealed class ContentSchemas(SchemaModel schema, OpenApiDocumentOptions 
 
     // The field type's fragment, widened on a read where a query changes the value: populate turns a relation into the
     // entry, and richText=html or markdown turns a document into a string. Nullability belongs to the object that holds it.
+    // The fragment is a copy, since what follows changes it and a field type may hand out the same node every time.
     private JsonObject Field(SchemaField field, bool read = true)
     {
-        var fragment = FieldType(field)?.OpenApiSchema(field) ?? [];
+        var fragment = FieldType(field)?.OpenApiSchema(field).DeepClone().AsObject() ?? [];
         fragment = !read ? fragment : field.FieldType switch
         {
             FieldTypeNames.Relation when field.Relation is { } relation && schema.FindContentType(relation.Target) is not null =>

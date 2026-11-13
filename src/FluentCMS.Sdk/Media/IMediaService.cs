@@ -26,6 +26,7 @@ public interface IMediaService
     /// <param name="id">The id of the asset.</param>
     /// <param name="cancellationToken">Cancels the work.</param>
     /// <returns>The asset.</returns>
+    /// <exception cref="Plugins.PluginException">No such asset is found in the site or the caller's folders, with the media plugin's code for it, as for every member that names an asset.</exception>
     Task<MediaAsset> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>Lists the assets the caller may read, newest first.</summary>

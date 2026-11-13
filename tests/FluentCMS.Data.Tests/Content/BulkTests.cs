@@ -343,8 +343,8 @@ public sealed class BulkTests : IDisposable
     {
         var model = SampleSchema.NewBuilder()
             .AddCollection("author", type => type.Field("name", "text"))
-            .AddCollection("blocked", type => type.PublishPolicy(UnpublishedReferencePolicy.Block, PublishPolicyAttribute.DefaultMaxVersions, PublishPolicyAttribute.DefaultTrashRetentionDays).Field("title", "text").Field("author", "relation", field => field.Relation("author")))
-            .AddCollection("warned", type => type.PublishPolicy(UnpublishedReferencePolicy.Warn, PublishPolicyAttribute.DefaultMaxVersions, PublishPolicyAttribute.DefaultTrashRetentionDays).Field("title", "text").Field("author", "relation", field => field.Relation("author")))
+            .AddCollection("blocked", type => type.PublishPolicy(new PublishPolicyOptions { UnpublishedReferences = UnpublishedReferencePolicy.Block }).Field("title", "text").Field("author", "relation", field => field.Relation("author")))
+            .AddCollection("warned", type => type.PublishPolicy(new PublishPolicyOptions()).Field("title", "text").Field("author", "relation", field => field.Relation("author")))
             .Build();
         using var database = new ServiceDatabase(schema: model);
         var draft = IdOf(await database.CreateAsync(Editor, new() { ["name"] = "Draft" }, "author"));

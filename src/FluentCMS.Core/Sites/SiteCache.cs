@@ -56,7 +56,8 @@ internal sealed class SiteCache(TimeProvider time)
 
     public bool IsGone(Guid site) => _gone.TryGetValue(site, out var expires) && expires > time.GetUtcNow();
 
-    // With MaxGoneSites ids kept and none expired, one more is not kept, and is read again on its next request.
+    // With MaxGoneSites ids kept and none expired, one more is not kept, and is read again on its next request. The bound is
+    // soft: calls at the same moment can each pass the check and go over it by their number.
     public void SetGone(Guid site, long generation)
     {
         var now = time.GetUtcNow();

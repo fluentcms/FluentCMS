@@ -21,13 +21,11 @@ public interface ITypeBuilder
     ITypeBuilder Scope(ContentScope scope);
 
     /// <summary>Sets how entries are published, how many versions are kept and how long the trash holds them. Only collections and singletons are published.</summary>
-    /// <param name="unpublishedReferences">What publishing does about a reference to an entry that is not published or is in the trash, <see cref="UnpublishedReferencePolicy.Warn"/> by default.</param>
-    /// <param name="maxVersions">How many versions to keep per entry and locale, <see cref="PublishPolicyAttribute.DefaultMaxVersions"/> by default. A version that was published is never pruned.</param>
-    /// <param name="trashRetentionDays">How many days an entry stays in the trash before the purge job deletes it for good, <see cref="PublishPolicyAttribute.DefaultTrashRetentionDays"/> by default.</param>
+    /// <param name="options">The policy; what it does not set keeps the default.</param>
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentException">The type is a component or a block.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxVersions"/> is less than 1, or <paramref name="trashRetentionDays"/> is outside 1 to <see cref="PublishPolicyAttribute.MaxTrashRetentionDays"/>.</exception>
-    ITypeBuilder PublishPolicy(UnpublishedReferencePolicy unpublishedReferences, int maxVersions, int trashRetentionDays);
+    /// <exception cref="ArgumentOutOfRangeException"><see cref="PublishPolicyOptions.MaxVersions"/> is less than 1, or <see cref="PublishPolicyOptions.TrashRetentionDays"/> is outside 1 to <see cref="PublishPolicyAttribute.MaxTrashRetentionDays"/>.</exception>
+    ITypeBuilder PublishPolicy(PublishPolicyOptions options);
 
     /// <summary>Declares a field with the defaults of its type.</summary>
     /// <param name="name">The field name, in camelCase.</param>
