@@ -77,6 +77,7 @@ public sealed class SiteAndSettingsEndpointsTests(AdminFixture fixture) : IClass
         read.Json["siteId"]!.GetValue<string>().ShouldBe(Site);
         read.Json["value"]!["host"]!.GetValue<string>().ShouldBe("localhost");
         read.Json["value"]!.AsObject().ContainsKey("password").ShouldBeFalse();
+        read.Json["secretsInherited"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldBe(["password"]);
         read.Json["schema"]!["properties"]!["password"]!["writeOnly"]!.GetValue<bool>().ShouldBeTrue();
 
         var written = await fixture.PutAsync("settings/mail", """{ "host": "smtp.example.com", "port": 587, "password": "pa55-word-value" }""", ifMatch: "\"0\"");
@@ -85,6 +86,7 @@ public sealed class SiteAndSettingsEndpointsTests(AdminFixture fixture) : IClass
         written.Json["source"]!.GetValue<string>().ShouldBe("site");
         written.Json["value"]!["host"]!.GetValue<string>().ShouldBe("smtp.example.com");
         written.Json["secretsSet"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldBe(["password"]);
+        written.Json["secretsInherited"]!.AsArray().ShouldBeEmpty();
         written.Body!.ToJsonString().ShouldNotContain("pa55-word-value");
         (await fixture.GetAsync("settings/mail")).Body!.ToJsonString().ShouldNotContain("pa55-word-value");
 
@@ -107,6 +109,7 @@ public sealed class SiteAndSettingsEndpointsTests(AdminFixture fixture) : IClass
         var defaults = await fixture.GetAsync("settings/mail/defaults");
         defaults.Json["siteId"].ShouldBeNull();
         defaults.Json["version"]!.GetValue<int>().ShouldBe(0);
+        defaults.Json["secretsInherited"]!.AsArray().ShouldBeEmpty();
         (await fixture.GetAsync("settings/unknown")).Json["code"]!.GetValue<string>().ShouldBe("FCMS2802");
     }
 

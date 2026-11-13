@@ -226,6 +226,9 @@ public sealed class TransferTests : IDisposable
 
         result.Items.Single().ShouldBe(new TransferItem(TransferImporter.SettingsSection, MailSettings.Area, TransferOutcome.Created, null, null));
         target.Read(context => context.Set<SettingRow>().Single().Json).ShouldContain("news@example.com");
+
+        // The site of the target holds no password: it reads that of the target's instance defaults.
+        target.Read(context => context.Set<SettingRow>().Single().Json).ShouldNotContain("password");
     }
 
     [Fact]
