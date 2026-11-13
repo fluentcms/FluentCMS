@@ -1,3 +1,4 @@
+using System.Globalization;
 using FluentCMS.Content;
 using FluentCMS.Diagnostics;
 using FluentCMS.Sites;
@@ -91,7 +92,7 @@ internal sealed class SharedLibraryReport(IServiceScopeFactory scopes, IOptions<
                 return null;
             }
 
-            var list = string.Join(", ", named.OrderBy(site => site.Name, StringComparer.Ordinal).ThenBy(site => site.Id).Select(site => $"{site.Id:D} ({site.Name})"));
+            var list = string.Join(", ", named.OrderBy(site => site.Name, StringComparer.Ordinal).ThenBy(site => site.Id).Select(site => $"{site.Id:D} ({Printable(site.Name)})"));
             var more = others.Count > MaxNamed ? ", and more" : "";
             var option = $"{MediaOptions.Section}:{nameof(MediaOptions.Library)}";
             return new InsecureDefault
@@ -106,4 +107,9 @@ internal sealed class SharedLibraryReport(IServiceScopeFactory scopes, IOptions<
             return null;
         }
     }
+
+    // A site's own administrator names it, and the line reaches the log and the operator's terminal, so the characters that
+    // could start a forged line or an escape sequence are dropped.
+    internal static string Printable(string name) =>
+        string.Concat(name.Where(character => !char.IsControl(character) && char.GetUnicodeCategory(character) is not (UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator)));
 }

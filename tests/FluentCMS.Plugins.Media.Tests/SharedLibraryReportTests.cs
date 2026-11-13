@@ -1,6 +1,8 @@
 using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Sites;
+using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Diagnostics;
 using FluentCMS.Plugins.Tests;
 using FluentCMS.Sites;
@@ -191,7 +193,7 @@ public sealed class SharedLibraryReportBoundTests(MediaHost fixture) : IClassFix
     }
 
     // An asset as the library of a site kept it while it was its own.
-    private static Asset Row(Guid site)
+    internal static Asset Row(Guid site)
     {
         var id = Guid.CreateVersion7();
         return new Asset
@@ -207,5 +209,33 @@ public sealed class SharedLibraryReportBoundTests(MediaHost fixture) : IClassFix
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
         };
+    }
+}
+
+// A site whose id sorts below the library's is found by the lower of the two ranges, and the control characters of its name,
+// which its own administrator chose, do not reach the log or the terminal.
+public sealed class SharedLibraryReportNameTests(MediaHost fixture) : IClassFixture<MediaHost>
+{
+    [Fact]
+    public async Task ASiteBelowTheLibraryIsNamedWithoutTheControlCharactersOfItsName()
+    {
+        var site = new Guid("00000000-0000-0000-0000-000000000001");
+        string.CompareOrdinal(site.ToString().ToUpperInvariant(), DefaultSite.Id.ToString().ToUpperInvariant()).ShouldBeLessThan(0);
+        await using (var scope = fixture.Services.CreateAsyncScope())
+        {
+            var cms = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            cms.Set<Site>().Add(new Site { Id = site, Name = "Low\nWarning forged\u001b[31mred\u2028", Slug = $"low-{Guid.NewGuid():N}", DefaultLocale = "en", CreatedAt = DateTimeOffset.UtcNow });
+            await cms.SaveChangesAsync(Token);
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+            database.Set<Asset>().Add(SharedLibraryReportBoundTests.Row(site));
+            await database.SaveChangesAsync(Token);
+        }
+
+        var item = (await fixture.Services.GetRequiredService<StartupReportFactory>().CreateAsync(Token)).InsecureDefaults.Single(item => item.Id == SharedLibraryReport.HiddenSites);
+
+        item.Message.ShouldContain($"{site:D} (LowWarning forged[31mred)");
+        item.Message.ShouldNotContain("\n");
+        item.Message.ShouldNotContain("\u001b");
+        item.Message.ShouldNotContain("\u2028");
     }
 }
