@@ -1,5 +1,5 @@
 -- Test data of BaselineTests, not shipped: what the migrations of stream search ran on SQLite before the baseline
--- of #3052, as 'dotnet ef migrations script' wrote them at commit 8e8dbe05.
+-- of #3052, as 'dotnet ef migrations script' wrote them at commit f211dd92.
 CREATE TABLE IF NOT EXISTS "cms_search__migrations" (
     "MigrationId" TEXT NOT NULL CONSTRAINT "PK_cms_search__migrations" PRIMARY KEY,
     "ProductVersion" TEXT NOT NULL

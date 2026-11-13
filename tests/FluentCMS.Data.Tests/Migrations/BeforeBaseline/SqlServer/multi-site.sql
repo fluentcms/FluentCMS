@@ -1,5 +1,5 @@
 -- Test data of BaselineTests, not shipped: what the migrations of stream multi-site ran on SQL Server before the baseline
--- of #3052, as 'dotnet ef migrations script' wrote them at commit 8e8dbe05.
+-- of #3052, as 'dotnet ef migrations script' wrote them at commit f211dd92.
 IF OBJECT_ID(N'[cms_multi_site__migrations]') IS NULL
 BEGIN
     CREATE TABLE [cms_multi_site__migrations] (

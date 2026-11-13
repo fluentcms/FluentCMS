@@ -324,7 +324,7 @@ public sealed class MigrationRunner(
     // Each system and plugin stream starts with one baseline migration (#3052). A history that holds migrations but not the
     // baseline was written by the chain from before it, and EF would apply the baseline over tables that exist. Previews
     // do not upgrade a database until 1.0.0, so it is refused before anything is applied.
-    private async Task RefuseMigrationsBeforeBaselineAsync(CancellationToken cancellationToken)
+    internal async Task RefuseMigrationsBeforeBaselineAsync(CancellationToken cancellationToken = default)
     {
         var refused = new List<string>();
         foreach (var stream in SystemAndPlugins)

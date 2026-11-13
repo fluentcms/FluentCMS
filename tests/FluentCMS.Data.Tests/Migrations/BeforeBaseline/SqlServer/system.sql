@@ -1,5 +1,7 @@
 -- Test data of BaselineTests, not shipped: what the migrations of stream system ran on SQL Server before the baseline
--- of #3052, as 'dotnet ef migrations script' wrote them at commit 8e8dbe05.
+-- of #3052, as 'dotnet ef migrations script' wrote them at commit f211dd92.
+-- A GO follows each column a migration adds, since SQL Server compiles a batch before it runs, and EF runs each
+-- command of a migration as a batch of its own.
 IF OBJECT_ID(N'[cms__migrations]') IS NULL
 BEGIN
     CREATE TABLE [cms__migrations] (
@@ -656,6 +658,7 @@ GO
 
 BEGIN TRANSACTION;
 ALTER TABLE [cms_role] ADD [require_two_factor] bit NOT NULL DEFAULT CAST(0 AS bit);
+GO
 
 UPDATE [cms_role] SET [require_two_factor] = CAST(0 AS bit)
 WHERE [id] = '00000000-0000-7000-8000-000000000001';
@@ -742,12 +745,16 @@ GO
 
 BEGIN TRANSACTION;
 ALTER TABLE [cms_api_key] ADD [allowed_addresses] nvarchar(max) NULL;
+GO
 
 ALTER TABLE [cms_api_key] ADD [previous_key_expires_at] datetimeoffset NULL;
+GO
 
 ALTER TABLE [cms_api_key] ADD [previous_key_hash] nvarchar(64) NULL;
+GO
 
 ALTER TABLE [cms_api_key] ADD [previous_key_prefix] nvarchar(16) NULL;
+GO
 
 CREATE INDEX [ix_cms_api_key_previous_key_prefix] ON [cms_api_key] ([previous_key_prefix]);
 

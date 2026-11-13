@@ -1,5 +1,5 @@
 -- Test data of BaselineTests, not shipped: what the migrations of stream ai ran on PostgreSQL before the baseline
--- of #3052, as 'dotnet ef migrations script' wrote them at commit 8e8dbe05.
+-- of #3052, as 'dotnet ef migrations script' wrote them at commit f211dd92.
 CREATE TABLE IF NOT EXISTS cms_ai__migrations (
     "MigrationId" character varying(150) NOT NULL,
     "ProductVersion" character varying(32) NOT NULL,

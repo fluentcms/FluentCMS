@@ -1,5 +1,7 @@
 -- Test data of BaselineTests, not shipped: what the migrations of stream webhooks ran on SQL Server before the baseline
--- of #3052, as 'dotnet ef migrations script' wrote them at commit 8e8dbe05.
+-- of #3052, as 'dotnet ef migrations script' wrote them at commit f211dd92.
+-- A GO follows each column a migration adds, since SQL Server compiles a batch before it runs, and EF runs each
+-- command of a migration as a batch of its own.
 IF OBJECT_ID(N'[cms_webhooks__migrations]') IS NULL
 BEGIN
     CREATE TABLE [cms_webhooks__migrations] (
@@ -62,6 +64,7 @@ GO
 
 BEGIN TRANSACTION;
 ALTER TABLE [cms_webhooks_delivery] ADD [manual] bit NOT NULL DEFAULT CAST(0 AS bit);
+GO
 
 CREATE UNIQUE INDEX [ux_cms_webhooks_delivery_in_flight] ON [cms_webhooks_delivery] ([webhook_id]) WHERE state = 'pending';
 
@@ -73,8 +76,10 @@ GO
 
 BEGIN TRANSACTION;
 ALTER TABLE [cms_webhooks_subscription] ADD [previous_secret] nvarchar(max) NULL;
+GO
 
 ALTER TABLE [cms_webhooks_subscription] ADD [previous_secret_expires_at] datetimeoffset NULL;
+GO
 
 INSERT INTO [cms_webhooks__migrations] ([MigrationId], [ProductVersion])
 VALUES (N'20261108191415_AddPreviousSecret', N'10.0.14');

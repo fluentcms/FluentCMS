@@ -134,15 +134,27 @@ public sealed partial class BaselineTests : IDisposable
     {
         ApplyChain(_database, MigrationRunner.SystemStream);
         var before = DatabaseCatalog.Of(_database, historyRows: true);
-        using var host = _database.CreateHost(ArticleSchemas.Titled, Production, settings: new() { ["FluentCms:Database:MigrateOnStartup"] = "false" });
+        using var host = _database.CreateHost(ArticleSchemas.Titled, Production, settings: NoMigrationOnStartup);
 
-        using var output = new StringWriter();
-        using var error = new StringWriter();
-        var exitCode = await CommandRunner.RunAsync(host.Services, [CommandRunner.Prefix, "migrate"], output, error, Token);
+        var (exitCode, output, error) = await RunAsync(host, "migrate");
 
         exitCode.ShouldBe(1);
-        output.ToString().ShouldBeEmpty();
-        error.ToString().ShouldBe($"FCMS1307: stream system has applied {FirstOfChain(MigrationRunner.SystemStream)} but not its baseline {BaselineOf<SystemDbContext>(host.Services)}; {WhatToDo}{Environment.NewLine}");
+        output.ShouldBeEmpty();
+        error.ShouldBe($"FCMS1307: stream system has applied {FirstOfChain(MigrationRunner.SystemStream)} but not its baseline {BaselineOf<SystemDbContext>(host.Services)}; {WhatToDo}{Environment.NewLine}");
+        DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
+    }
+
+    [Fact]
+    public async Task DoctorNamesADatabaseOfTheChainAsAReasonTheHostWouldNotStart()
+    {
+        ApplyChain(_database, MigrationRunner.SystemStream);
+        var before = DatabaseCatalog.Of(_database, historyRows: true);
+        using var host = _database.CreateHost(ArticleSchemas.Titled, Production, settings: NoMigrationOnStartup);
+
+        var (exitCode, _, error) = await RunAsync(host, "doctor");
+
+        exitCode.ShouldBe(1);
+        error.ShouldContain($"FCMS3325: the host would not start: FCMS1307: stream system has applied {FirstOfChain(MigrationRunner.SystemStream)} but not its baseline {BaselineOf<SystemDbContext>(host.Services)}; {WhatToDo}{Environment.NewLine}");
         DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
     }
 
@@ -164,6 +176,8 @@ public sealed partial class BaselineTests : IDisposable
         DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
     }
 
+    private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "false" };
+
     private const string WhatToDo = "nothing was applied: the database was made by the migrations from before the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again";
 
     private static string ProviderFolder => TestProvider.Name switch
@@ -172,6 +186,14 @@ public sealed partial class BaselineTests : IDisposable
         TestProvider.PostgreSql => "PostgreSql",
         _ => "SqlServer",
     };
+
+    private static async Task<(int ExitCode, string Output, string Error)> RunAsync(IHost host, params string[] args)
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var exitCode = await CommandRunner.RunAsync(host.Services, [CommandRunner.Prefix, .. args], output, error, Token);
+        return (exitCode!.Value, output.ToString(), error.ToString());
+    }
 
     private static string HistoryTable(string stream) =>
         stream == MigrationRunner.SystemStream ? SystemDbContext.HistoryTable : $"cms_{stream.Replace('-', '_')}__migrations";

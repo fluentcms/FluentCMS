@@ -1,5 +1,5 @@
 -- Test data of BaselineTests, not shipped: what the migrations of stream multi-site ran on SQLite before the baseline
--- of #3052, as 'dotnet ef migrations script' wrote them at commit 8e8dbe05.
+-- of #3052, as 'dotnet ef migrations script' wrote them at commit f211dd92.
 CREATE TABLE IF NOT EXISTS "cms_multi_site__migrations" (
     "MigrationId" TEXT NOT NULL CONSTRAINT "PK_cms_multi_site__migrations" PRIMARY KEY,
     "ProductVersion" TEXT NOT NULL
