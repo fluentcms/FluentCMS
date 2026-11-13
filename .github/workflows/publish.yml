@@ -140,7 +140,8 @@ jobs:
             done
 
             # The release environment with a required reviewer, before any job names it: GitHub would make a missing one with
-            # no reviewer. Its deployments are limited to the tags v* where the token can read the policies.
+            # no reviewer, and its deployments limited to the tags v*. Both endpoints need the same access, so either one that
+            # cannot be read refuses.
             if environment=$(gh api "repos/$GITHUB_REPOSITORY/environments/release" 2> /dev/null); then
               reviewers=$(jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length' <<< "$environment")
               if [ "$reviewers" -lt 1 ]; then refuse "the release environment has no required reviewer"; fi
@@ -150,10 +151,10 @@ jobs:
                   --jq '[.branch_policies[] | "\(.type) \(.name)"] | join(", ")' 2> /dev/null); then
                 if [ "$policies" != "tag v*" ]; then refuse "the release environment deploys to $policies, not the tags v* only"; fi
               else
-                echo "::warning::The deployment policies of the release environment could not be read; check that they are the tags v* only."
+                refuse "repos/$GITHUB_REPOSITORY/environments/release/deployment-branch-policies cannot be read, so the deployments of the release environment cannot be checked"
               fi
             else
-              refuse "the release environment does not exist, or cannot be read"
+              refuse "repos/$GITHUB_REPOSITORY/environments/release cannot be read: the release environment does not exist, or the token cannot read it"
             fi
           fi
 
