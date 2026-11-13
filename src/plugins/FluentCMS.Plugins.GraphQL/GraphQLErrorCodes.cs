@@ -14,12 +14,13 @@ internal static class GraphQLErrorCodes
     public const string Timeout = "FCMS1648";
 }
 
-// The codes of the REST APIs that this surface answers where REST would: a locale or an id that is not one, and a field or
-// a type the principal may not read.
+// The codes of the REST APIs that this surface answers where REST would: a locale or an id that is not one, a selection
+// deeper than the population cap, and a field or a type the principal may not read.
 internal static class RestErrorCodes
 {
     public const string InvalidParameter = "FCMS2201";
     public const string UnknownField = "FCMS2202";
     public const string InvalidValue = "FCMS2204";
+    public const string LimitExceeded = "FCMS2207";
     public const string NotFound = "FCMS3104";
 }
