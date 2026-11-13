@@ -25,6 +25,21 @@ public sealed class TransferReportTests
         report.Of("article").ShouldBe(new TransferCounts(1, 1, 1, 1, 2));
         report.Of(TransferImporter.PackageSection).ShouldBe(TransferCounts.None with { Errors = 1 });
         report.Total.Errors.ShouldBe(3);
+        report.ToResult().Omitted.ShouldBe(1);
+    }
+
+    // A message or an id of an item, which a contributor or a line of the package can make as long as it holds.
+    [Fact]
+    public void TheTextsOfAnItemAreHeldToTheirLength()
+    {
+        var report = new TransferReport(dryRun: false, maxItems: 10);
+
+        report.Add("article", new string('i', 10_000), TransferOutcome.Error, "FCMS3212", new string('m', 10_000));
+        report.Stop(TransferImporter.PackageSection, "content/article.jsonl", "FCMS3200", new string('s', 10_000));
+
+        report.Items.ShouldAllBe(item => item.Message!.Length == TransferReport.MaxTextLength + 1 && item.Message.EndsWith('…'));
+        report.Items[0].Id.Length.ShouldBe(TransferReport.MaxTextLength + 1);
+        report.Items[1].Id.ShouldBe("content/article.jsonl");
     }
 
     [Fact]

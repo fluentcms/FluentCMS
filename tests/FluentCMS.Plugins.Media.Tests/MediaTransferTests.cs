@@ -186,6 +186,38 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         (await AssetAsync(ids[3])).ShouldBeNull();
     }
 
+    // Windows and macOS read the three spellings of a key as one file, so only the first is read.
+    [Fact]
+    public async Task AKeySpelledWithATrailingDotOrInAnotherCaseIsNotReadAgain()
+    {
+        using var admin = await media.AdminAsync();
+        var png = Files.Png(3, 3);
+        var key = (await AssetAsync((await UploadAsync(admin, png, "photo.png")).Id)).ShouldNotBeNull().StorageKey;
+        key.ShouldEndWith("/original.png");
+        Guid[] ids = [Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7()];
+        var package = await PackageAsync(
+            admin,
+            [
+                Line(ids[0], "first.png", "image/png", png, key: key),
+                Line(ids[1], "dotted.png", "image/png", png, key: key + "."),
+                Line(ids[2], "upper.png", "image/png", png, key: key[..^"original.png".Length] + "ORIGINAL.png"),
+            ]);
+
+        var dryReport = await ImportAsync(admin, package, dryRun: true);
+        var realReport = await ImportAsync(admin, package);
+
+        Items(dryReport).ShouldBe(Items(realReport));
+        Counts(realReport).ShouldBe((1, 0, 2));
+        var messages = realReport["items"]!.AsArray().ToDictionary(item => Guid.Parse(item!["id"]!.GetValue<string>()), item => (item!["code"]!.GetValue<string>(), item["message"]!.GetValue<string>()));
+        messages[ids[1]].Item1.ShouldBe(MediaErrorCodes.TransferFileMissing);
+        messages[ids[1]].Item2.ShouldContain("ends with a dot");
+        messages[ids[2]].Item1.ShouldBe(MediaErrorCodes.TransferFileMissing);
+        messages[ids[2]].Item2.ShouldContain("earlier line");
+        (await AssetAsync(ids[0])).ShouldNotBeNull();
+        (await AssetAsync(ids[1])).ShouldBeNull();
+        (await AssetAsync(ids[2])).ShouldBeNull();
+    }
+
     // A package of the default site, exported by the host, whose media folder holds the lines and files given. It carries no
     // settings, so that the import keeps the media settings of the test.
     private static async Task<byte[]> PackageAsync(HttpClient admin, IEnumerable<Dictionary<string, object?>> lines, params (string Path, byte[] Bytes)[] files)

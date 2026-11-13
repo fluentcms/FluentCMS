@@ -57,6 +57,9 @@ internal sealed class TransferImporter(
     public const string PackageSection = "@package";
     private const int ProgressEvery = 100;
 
+    // The validation errors of one item that its message names; a line can hold one per value it has.
+    private const int ErrorsNamed = 20;
+
     public async Task<TransferImportRun> PrepareAsync(Stream body, long? declaredLength, TransferImportRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(body);
@@ -423,7 +426,8 @@ internal sealed class TransferImporter(
             }
 
             var message = problem.Errors is { Count: > 0 } errors
-                ? string.Join("; ", errors.Select(error => error.Path.Length > 0 ? $"{error.Path}: {error.Message}" : error.Message))
+                ? string.Join("; ", errors.Take(ErrorsNamed).Select(error => error.Path.Length > 0 ? $"{error.Path}: {error.Message}" : error.Message))
+                    + (errors.Count > ErrorsNamed ? $"; and {(errors.Count - ErrorsNamed).ToString(CultureInfo.InvariantCulture)} more" : "")
                 : problem.Detail;
             report.Add(section, id, TransferOutcome.Error, problem.Code, message);
         }

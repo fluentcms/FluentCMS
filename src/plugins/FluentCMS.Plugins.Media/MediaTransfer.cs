@@ -105,7 +105,8 @@ internal sealed class MediaTransfer(
         var library = (await libraries.OfAsync(context.Site, cancellationToken)).Value;
         var rules = await settings.GetAsync(context.Site, cancellationToken);
         HashSet<Guid> known = [.. await database.Set<Folder>().AsNoTracking().Where(folder => folder.SiteId == library).Select(folder => folder.Id).ToListAsync(cancellationToken)];
-        HashSet<string> taken = new(StringComparer.Ordinal);
+        // A disk that ignores case reads ORIGINAL.png and original.png as one file.
+        HashSet<string> taken = new(StringComparer.OrdinalIgnoreCase);
         await context.ReadAsync(
             Folders,
             (stream, token) => ReadLinesAsync<FolderLine>(stream, context, FoldersSection, folder => ItemAsync(context, FoldersSection, folder.Id, () => ImportFolderAsync(context, library, folder, known, token)), token),
@@ -356,6 +357,12 @@ internal sealed class MediaTransfer(
             || storages.Find(provider) is not { } storage)
         {
             return null;
+        }
+
+        // A disk that drops the dots at the end of a segment reads original.png. as original.png.
+        if (key.Split('/').Any(segment => segment.EndsWith('.')))
+        {
+            throw Refused(MediaErrorCodes.TransferFileMissing, $"The key {key} of the asset {line.Id:D} has a segment that ends with a dot, which a disk may read as another key; an import takes no such key.");
         }
 
         Take(taken, $"storage/{provider}/{key}", key, line.Id);

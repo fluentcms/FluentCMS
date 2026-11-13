@@ -482,9 +482,36 @@ public sealed class TransferTests : IDisposable
         var result = await ImportAsync(target, package);
 
         result.Items.Count.ShouldBe(2);
+        result.Omitted.ShouldBe(2);
         result.Items.ShouldAllBe(item => item.Section == "article" && item.Code == TransferErrorCodes.InvalidItem);
         result.Sections["article"].ShouldBe(TransferCounts.None with { Errors = 4 });
         result.Sections["author"].ShouldBe(TransferCounts.None with { Created = 2 });
+    }
+
+    // One line of many values can break a rule once for each, and its item names the first of them only.
+    [Fact]
+    public async Task TheItemOfAnEntryWithManyErrorsNamesTheFirstTwentyAndCountsTheRest()
+    {
+        await SeedAsync();
+        var exported = await ExportAsync(_source);
+        var line = JsonNode.Parse(Entries(exported)[TransferPackage.ContentPath("article")].Split('\n')[0])!;
+        foreach (var locale in line["locales"]!.AsArray())
+        {
+            if (locale!["draft"] is JsonObject draft)
+            {
+                draft["tags"] = new JsonArray([.. Enumerable.Repeat(1, 20_000).Select(value => (JsonNode)JsonValue.Create(value))]);
+            }
+        }
+
+        var target = Target();
+
+        var result = await ImportAsync(target, Rewrite(exported, TransferPackage.ContentPath("article"), line.ToJsonString()));
+
+        var item = result.Items.Single(item => item.Section == "article");
+        item.Outcome.ShouldBe(TransferOutcome.Error);
+        item.Message!.Length.ShouldBeLessThanOrEqualTo(TransferReport.MaxTextLength + 1);
+        item.Message.ShouldEndWith(" more");
+        item.Message.Split("; ").Length.ShouldBe(21);
     }
 
     [Fact]
