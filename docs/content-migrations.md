@@ -52,10 +52,11 @@ FCMS3327: the migration loses data: field 'block hero.heading' renamed to 'title
 
 The versions in `cms_version` keep the values of a renamed field under its former name, and reading, diffing or restoring a version finds them there: a field missing under its name is read under each of its former names in order, at the top level and in a single component. A field kept in JSON keeps its former name in a version as in the entry. A role whose grant allows a list of fields still names the former one, so the renamed field drops out of that list until the role is changed.
 
-A former name must not be the name of another field of the type, component or block, since the migration would leave the values under that field and a version would give them to both. Schema validation refuses it, and a swap of two names, with `FCMS1219`:
+A former name must not be the name of another field of the type, component or block: the migration would leave the values under that field, while a version read would move them to the renamed one. Nor may two fields list the same former name, since a version would give its values to the first of them declared. Schema validation refuses each, and a swap of two names, with `FCMS1219`:
 
 ```text
 FCMS1219: former name 'subtitle' of article.summary is the name of field article.subtitle; a former name must not be the name of another field of collection 'article'
+FCMS1219: former name 'subtitle' of article.teaser is also a former name of article.summary; a former name must belong to one field of collection 'article'
 ```
 
 A model snapshot generated before the snapshot carried the schema cannot be compared, so the next migration is refused with `FCMS3328` until `--allow-destructive` is given once.

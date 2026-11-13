@@ -451,6 +451,17 @@ public class SchemaValidationTests
     }
 
     [Fact]
+    public void TwoFieldsThatShareAFormerNameAreFCMS1219()
+    {
+        var builder = new SchemaBuilder().AddCollection("article", type => type
+            .Field("summary", "text", field => field.FormerNames("subtitle"))
+            .Field("teaser", "text", field => field.FormerNames("lead", "Subtitle")));
+
+        Fails(builder).Errors.ShouldHaveSingleItem().ToString().ShouldBe(
+            "FCMS1219: former name 'Subtitle' of article.teaser is also a former name of article.summary; a former name must belong to one field of collection 'article'");
+    }
+
+    [Fact]
     public void FormerNamesThatNoOtherFieldHasBuild()
     {
         var model = new SchemaBuilder().AddCollection("article", type => type

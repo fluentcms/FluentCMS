@@ -38,6 +38,12 @@ public class VersionSnapshotTests
     }
 
     [Fact]
+    public void ANamePresentInTheSnapshotDecidesEvenWhenItHoldsNull()
+    {
+        Read("""{"summary":null,"subtitle":"S"}""").ShouldBe("""{"summary":null,"subtitle":"S"}""");
+    }
+
+    [Fact]
     public void TheFieldsOfASingleComponentAreReadUnderTheirFormerNamesToo()
     {
         Read("""{"meta":{"metaTitle":"M","social":{"owner":"O"}}}""").ShouldBe("""{"seo":{"pageTitle":"M","social":{"person":"O"}}}""");

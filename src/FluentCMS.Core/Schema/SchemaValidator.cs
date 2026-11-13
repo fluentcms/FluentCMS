@@ -111,19 +111,25 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
         ValidateFormerNames(type);
     }
 
-    // A migration and a version read the values stored under a former name as the field's, so the name must be free. A swap
-    // of two names is reported once, by the field declared first.
+    // A migration and a version read the values stored under a former name as one field's, so the name must be free and
+    // belong to that field alone. A swap of two names is reported once, by the field declared first.
     private void ValidateFormerNames(TypeDraft type)
     {
         List<FieldDraft> fields = [.. DistinctFields(type)];
+        Dictionary<string, FieldDraft> claimed = new(StringComparer.OrdinalIgnoreCase);
         for (var index = 0; index < fields.Count; index++)
         {
             var field = fields[index];
-            foreach (var former in field.FormerNames.Distinct(StringComparer.OrdinalIgnoreCase))
+            foreach (var former in field.FormerNames.Distinct(StringComparer.OrdinalIgnoreCase).Where(name => !string.Equals(name, field.Name, StringComparison.OrdinalIgnoreCase)))
             {
                 var holder = fields.FindIndex(candidate => candidate != field && string.Equals(candidate.Name, former, StringComparison.OrdinalIgnoreCase));
                 if (holder < 0)
                 {
+                    if (!claimed.TryAdd(former, field))
+                    {
+                        Report(SchemaErrorCodes.FormerNameInUse, $"former name '{former}' of {type.Name}.{field.Name} is also a former name of {type.Name}.{claimed[former].Name}; a former name must belong to one field of {Describe(type)}");
+                    }
+
                     continue;
                 }
 
