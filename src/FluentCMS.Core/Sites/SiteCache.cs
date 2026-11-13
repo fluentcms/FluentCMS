@@ -8,7 +8,8 @@ namespace FluentCMS.Core.Sites;
 // slug, that a site exists, and its locales. A write through SiteManager, and a SiteUpdatedEvent raised on this instance,
 // drop all of it at once, and a read that was under way then is not kept, because it may have read the old rows. No signal
 // reaches another instance, so it sees a change when its copy expires, CacheDuration at the most. What is not found is not
-// kept, so a site that another instance created is found at once.
+// kept, so a site that another instance created is found at once; only that the site of a host name is gone is, since that
+// site's id is never given again.
 internal sealed class SiteCache(TimeProvider time)
 {
     public static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(30);

@@ -19,6 +19,10 @@ internal static class HostNames
     // What a URL has around its host: the slashes of a scheme or a path, a query, a fragment, a user, a space.
     private static readonly SearchValues<char> NotOfAName = SearchValues.Create("/\\?#@ \t\r\n");
 
+    private static readonly SearchValues<char> OfALabel = SearchValues.Create("-0123456789abcdefghijklmnopqrstuvwxyz");
+
+    private static readonly SearchValues<char> Digits = SearchValues.Create("0123456789");
+
     // The name as it is stored, or the refusal of what was sent.
     public static string Parse(string? value, string path)
     {
@@ -71,25 +75,35 @@ internal static class HostNames
             }
         }
 
+        // A name in lower case already is returned as it is, so one in the stored form allocates nothing here.
         name = name.ToLowerInvariant();
         if (name.Length is 0 or > MaxLength)
         {
             return null;
         }
 
-        var labels = name.Split('.');
-        return labels.All(IsLabel) && !labels[^1].All(char.IsAsciiDigit) ? name : null;
+        var last = ReadOnlySpan<char>.Empty;
+        foreach (var label in name.AsSpan().Split('.'))
+        {
+            last = name.AsSpan()[label];
+            if (!IsLabel(last))
+            {
+                return null;
+            }
+        }
+
+        return last.ContainsAnyExcept(Digits) ? name : null;
     }
 
     // The name a request's Host header is looked up by. The root dot of a fully qualified name names the same host.
     public static string? OfRequest(string host) =>
         Normalize(host.Length > 1 && host[^1] == '.' ? host[..^1] : host);
 
-    private static bool IsLabel(string label) =>
+    private static bool IsLabel(ReadOnlySpan<char> label) =>
         label.Length is > 0 and <= MaxLabelLength
         && label[0] != '-'
         && label[^1] != '-'
-        && label.All(character => char.IsAsciiLetterLower(character) || char.IsAsciiDigit(character) || character == '-');
+        && !label.ContainsAnyExcept(OfALabel);
 
     private static ValidationException Refused(string path, string code, string message) => new([new ValidationError(path, code, message)]);
 }
