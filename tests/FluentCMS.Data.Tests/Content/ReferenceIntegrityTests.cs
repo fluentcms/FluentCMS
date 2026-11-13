@@ -21,7 +21,7 @@ public sealed class ReferenceIntegrityTests : IDisposable
         .AddCollection("author", type => type.Localized().Field("name", "text", field => field.Localizable()))
         .AddCollection("article", type => type
             .Localized()
-            .PublishPolicy(policy)
+            .PublishPolicy(new PublishPolicyOptions { UnpublishedReferences = policy })
             .Field("title", "text", field => field.Localizable())
             .Field("author", "relation", field => field.Relation("author"))
             .Field("secretAuthor", "relation", field => field.Hidden().Relation("author"))
@@ -373,7 +373,7 @@ public sealed class ReferenceIntegrityTests : IDisposable
     public async Task ASelfReferenceIsNoProblemAndACycleStaysBlockedUntilOneSideIsSetAfterwards()
     {
         var schema = SampleSchema.NewBuilder()
-            .AddCollection("page", type => type.PublishPolicy(UnpublishedReferencePolicy.Block).Field("title", "text").Field("next", "relation", field => field.Relation("page")))
+            .AddCollection("page", type => type.PublishPolicy(new PublishPolicyOptions { UnpublishedReferences = UnpublishedReferencePolicy.Block }).Field("title", "text").Field("next", "relation", field => field.Relation("page")))
             .Build();
         using var database = new ServiceDatabase(schema: schema);
 

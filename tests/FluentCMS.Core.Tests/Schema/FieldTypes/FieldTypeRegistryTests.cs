@@ -67,6 +67,25 @@ public class FieldTypeRegistryTests
         exception.Message.ShouldContain("'text'");
     }
 
+    // A type registered as an IFieldType service, without AddFieldType, is held to the rule of a name as well.
+    [Theory]
+    [InlineData("acme:geo")]
+    [InlineData("3d")]
+    [InlineData("geo*/")]
+    [InlineData("")]
+    public void AnExtraWhoseNameIsNotANameIsRejected(string name)
+    {
+        var exception = Should.Throw<ArgumentException>(() => new FieldTypeRegistry([new NamedFieldType(name)]));
+
+        exception.Message.ShouldContain($"'{name}'");
+    }
+
+    [Fact]
+    public void AnExtraNameMayHoldDigitsDotsHyphensAndUnderscoresAfterItsFirstLetter()
+    {
+        new FieldTypeRegistry([new NamedFieldType("acme.geo-point_2")]).Find("acme.geo-point_2").ShouldNotBeNull();
+    }
+
     [Fact]
     public void ANullExtraIsRejected()
     {

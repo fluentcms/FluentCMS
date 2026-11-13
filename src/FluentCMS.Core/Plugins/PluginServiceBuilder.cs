@@ -83,6 +83,13 @@ internal sealed class PluginContributions : IMcpProviders
 
     public void AddFieldType(RegisteredPlugin plugin, IFieldType fieldType)
     {
+        if (!FieldTypeNames.IsValid(fieldType.Name))
+        {
+            throw new FluentCmsConfigurationException(
+                PluginErrorCodes.InvalidFieldTypeName,
+                $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) adds the field type {fieldType.GetType().FullName}, whose name '{fieldType.Name}' is not an ASCII letter followed by ASCII letters, digits, '.', '-' or '_'.");
+        }
+
         var owner = FieldTypeRegistry.Core.Find(fieldType.Name) is not null ? "core" : _fieldTypes.GetValueOrDefault(fieldType.Name) is { } other ? $"the plugin '{other}'" : null;
         if (owner is not null)
         {

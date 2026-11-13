@@ -81,7 +81,7 @@ FluentCMS.Activity.IActivityLog
 FluentCMS.Activity.IActivityLog.WriteAsync(FluentCMS.Activity.ActivityEntry! entry, FluentCMS.Events.EventSource! source, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Activity.IActivityLog.WriteAsync(FluentCMS.Activity.ActivityEntry! entry, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Activity.IActivityQuery
-FluentCMS.Activity.IActivityQuery.QueryAsync(FluentCMS.Activity.ActivityFilter? filter = null, FluentCMS.Content.PageRequest? page = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<FluentCMS.Activity.ActivityItem!>!>!
+FluentCMS.Activity.IActivityQuery.QueryAsync(FluentCMS.Activity.ActivityFilter? filter, FluentCMS.Content.PageRequest? page, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<FluentCMS.Activity.ActivityItem!>!>!
 FluentCMS.Agents.IMcpClientRegistrationPolicy
 FluentCMS.Agents.IMcpClientRegistrationPolicy.GetAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Agents.McpClientRegistrationPolicy!>
 FluentCMS.Agents.IMcpClients
@@ -665,7 +665,7 @@ FluentCMS.Content.IContentSurface.MaxPageSize.get -> int
 FluentCMS.Content.IContentSurface.MaxPopulateDepth.get -> int
 FluentCMS.Content.IContentSurface.ParseQuery(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, string!>>! parameters) -> FluentCMS.Content.ContentQuery!
 FluentCMS.Content.IContentSurface.ParseSchedule(System.Text.Json.JsonElement body) -> FluentCMS.Publishing.ScheduleRequest!
-FluentCMS.Content.IContentSurface.ReadableFieldsAsync(string! type, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlySet<string!>?>
+FluentCMS.Content.IContentSurface.ReadableFieldsAsync(string! type, string? locale, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlySet<string!>?>
 FluentCMS.Content.IContentSurface.ToJson(FluentCMS.Content.BulkResult! result) -> System.Text.Json.Nodes.JsonObject!
 FluentCMS.Content.IContentSurface.ToJson(FluentCMS.Content.ContentDocument! entry) -> System.Text.Json.Nodes.JsonObject!
 FluentCMS.Content.IContentSurface.ToJson(FluentCMS.Content.PagedResult<FluentCMS.Content.ContentDocument!>! page) -> System.Text.Json.Nodes.JsonObject!
@@ -1584,10 +1584,10 @@ FluentCMS.Media.IImageProcessor.CanEncode(string! mimeType) -> bool
 FluentCMS.Media.IImageProcessor.IdentifyAsync(System.IO.Stream! image, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.ImageHeader?>!
 FluentCMS.Media.IImageProcessor.ProcessAsync(System.IO.Stream! image, FluentCMS.Media.ImageTransform! transform, System.IO.Stream! output, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Media.IMediaResolver
-FluentCMS.Media.IMediaResolver.ResolveAsync(System.Collections.Generic.IReadOnlyCollection<System.Guid>! ids, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<System.Guid, FluentCMS.Media.MediaDelivery!>!>!
+FluentCMS.Media.IMediaResolver.ResolveAsync(System.Collections.Generic.IReadOnlyCollection<System.Guid>! ids, string? locale, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<System.Guid, FluentCMS.Media.MediaDelivery!>!>!
 FluentCMS.Media.IMediaService
 FluentCMS.Media.IMediaService.CreateFolderAsync(string! name, System.Guid? parentId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaFolder!>!
-FluentCMS.Media.IMediaService.DeleteAsync(System.Guid id, bool force = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Media.IMediaService.DeleteAsync(System.Guid id, bool force, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Media.IMediaService.DeleteFolderAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Media.IMediaService.DeletePresetAsync(string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Media.IMediaService.DeliverAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaDelivery!>!
@@ -1960,6 +1960,16 @@ FluentCMS.Publishing.PublishPolicyAttribute.TrashRetentionDays.get -> int
 FluentCMS.Publishing.PublishPolicyAttribute.TrashRetentionDays.set -> void
 FluentCMS.Publishing.PublishPolicyAttribute.UnpublishedReferences.get -> FluentCMS.Publishing.UnpublishedReferencePolicy
 FluentCMS.Publishing.PublishPolicyAttribute.UnpublishedReferences.set -> void
+FluentCMS.Publishing.PublishPolicyOptions
+FluentCMS.Publishing.PublishPolicyOptions.<Clone>$() -> FluentCMS.Publishing.PublishPolicyOptions!
+FluentCMS.Publishing.PublishPolicyOptions.Equals(FluentCMS.Publishing.PublishPolicyOptions? other) -> bool
+FluentCMS.Publishing.PublishPolicyOptions.MaxVersions.get -> int
+FluentCMS.Publishing.PublishPolicyOptions.MaxVersions.init -> void
+FluentCMS.Publishing.PublishPolicyOptions.PublishPolicyOptions() -> void
+FluentCMS.Publishing.PublishPolicyOptions.TrashRetentionDays.get -> int
+FluentCMS.Publishing.PublishPolicyOptions.TrashRetentionDays.init -> void
+FluentCMS.Publishing.PublishPolicyOptions.UnpublishedReferences.get -> FluentCMS.Publishing.UnpublishedReferencePolicy
+FluentCMS.Publishing.PublishPolicyOptions.UnpublishedReferences.init -> void
 FluentCMS.Publishing.PublishResult<T>
 FluentCMS.Publishing.PublishResult<T>.<Clone>$() -> FluentCMS.Publishing.PublishResult<T>!
 FluentCMS.Publishing.PublishResult<T>.Deconstruct(out T Entry, out System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.PublishWarning!>! Warnings) -> void
@@ -2319,7 +2329,7 @@ FluentCMS.Schema.ITypeBuilder.Field(string! name, string! fieldType) -> FluentCM
 FluentCMS.Schema.ITypeBuilder.Field(string! name, string! fieldType, System.Action<FluentCMS.Schema.IFieldBuilder!>! configure) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.Localized() -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.Localized(bool localized) -> FluentCMS.Schema.ITypeBuilder!
-FluentCMS.Schema.ITypeBuilder.PublishPolicy(FluentCMS.Publishing.UnpublishedReferencePolicy unpublishedReferences = FluentCMS.Publishing.UnpublishedReferencePolicy.Warn, int maxVersions = 50, int trashRetentionDays = 30) -> FluentCMS.Schema.ITypeBuilder!
+FluentCMS.Schema.ITypeBuilder.PublishPolicy(FluentCMS.Publishing.PublishPolicyOptions! options) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.Scope(FluentCMS.Schema.ContentScope scope) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.IndexedAttribute
 FluentCMS.Schema.IndexedAttribute.IndexedAttribute() -> void
@@ -2623,7 +2633,8 @@ FluentCMS.Transfer.ITransferImport.Overwrite.get -> bool
 FluentCMS.Transfer.ITransferImport.PackageSite.get -> FluentCMS.Sites.SiteId
 FluentCMS.Transfer.ITransferImport.Paths.get -> System.Collections.Generic.IReadOnlyList<string!>!
 FluentCMS.Transfer.ITransferImport.ReadAsync(string! path, System.Func<System.IO.Stream!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! read, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
-FluentCMS.Transfer.ITransferImport.Report(string! section, string! id, FluentCMS.Transfer.TransferOutcome outcome, string? code = null, string? message = null) -> void
+FluentCMS.Transfer.ITransferImport.Report(string! section, string! id, FluentCMS.Transfer.TransferOutcome outcome) -> void
+FluentCMS.Transfer.ITransferImport.Report(string! section, string! id, FluentCMS.Transfer.TransferOutcome outcome, string? code, string? message) -> void
 FluentCMS.Transfer.ITransferImport.Site.get -> FluentCMS.Sites.SiteId
 FluentCMS.Transfer.TransferOutcome
 FluentCMS.Transfer.TransferOutcome.Conflict = 4 -> FluentCMS.Transfer.TransferOutcome
@@ -2666,8 +2677,6 @@ const FluentCMS.Events.UserChanges.Reactivated = "reactivated" -> string!
 const FluentCMS.Events.UserChanges.TwoFactor = "twoFactor" -> string!
 const FluentCMS.Events.UserChanges.UserName = "userName" -> string!
 const FluentCMS.Localization.ILocaleResolver.All = "all" -> string!
-const FluentCMS.Publishing.PublishPolicyAttribute.DefaultMaxVersions = 50 -> int
-const FluentCMS.Publishing.PublishPolicyAttribute.DefaultTrashRetentionDays = 30 -> int
 const FluentCMS.Publishing.PublishPolicyAttribute.MaxTrashRetentionDays = 36500 -> int
 const FluentCMS.Publishing.PublishWarningCodes.UnavailableReference = "FCMS2404" -> string!
 const FluentCMS.Publishing.PublishWarningCodes.UnpublishedReference = "FCMS2403" -> string!
@@ -3092,6 +3101,9 @@ override FluentCMS.Providers.EmailMessage.ToString() -> string!
 override FluentCMS.Providers.SearchRequest.Equals(object? obj) -> bool
 override FluentCMS.Providers.SearchRequest.GetHashCode() -> int
 override FluentCMS.Providers.SearchRequest.ToString() -> string!
+override FluentCMS.Publishing.PublishPolicyOptions.Equals(object? obj) -> bool
+override FluentCMS.Publishing.PublishPolicyOptions.GetHashCode() -> int
+override FluentCMS.Publishing.PublishPolicyOptions.ToString() -> string!
 override FluentCMS.Publishing.PublishResult<T>.Equals(object? obj) -> bool
 override FluentCMS.Publishing.PublishResult<T>.GetHashCode() -> int
 override FluentCMS.Publishing.PublishResult<T>.ToString() -> string!
@@ -3458,6 +3470,10 @@ static FluentCMS.Providers.EmailMessage.operator !=(FluentCMS.Providers.EmailMes
 static FluentCMS.Providers.EmailMessage.operator ==(FluentCMS.Providers.EmailMessage? left, FluentCMS.Providers.EmailMessage? right) -> bool
 static FluentCMS.Providers.SearchRequest.operator !=(FluentCMS.Providers.SearchRequest? left, FluentCMS.Providers.SearchRequest? right) -> bool
 static FluentCMS.Providers.SearchRequest.operator ==(FluentCMS.Providers.SearchRequest? left, FluentCMS.Providers.SearchRequest? right) -> bool
+static FluentCMS.Publishing.PublishPolicyAttribute.DefaultMaxVersions.get -> int
+static FluentCMS.Publishing.PublishPolicyAttribute.DefaultTrashRetentionDays.get -> int
+static FluentCMS.Publishing.PublishPolicyOptions.operator !=(FluentCMS.Publishing.PublishPolicyOptions? left, FluentCMS.Publishing.PublishPolicyOptions? right) -> bool
+static FluentCMS.Publishing.PublishPolicyOptions.operator ==(FluentCMS.Publishing.PublishPolicyOptions? left, FluentCMS.Publishing.PublishPolicyOptions? right) -> bool
 static FluentCMS.Publishing.PublishResult<T>.operator !=(FluentCMS.Publishing.PublishResult<T>? left, FluentCMS.Publishing.PublishResult<T>? right) -> bool
 static FluentCMS.Publishing.PublishResult<T>.operator ==(FluentCMS.Publishing.PublishResult<T>? left, FluentCMS.Publishing.PublishResult<T>? right) -> bool
 static FluentCMS.Publishing.PublishWarning.operator !=(FluentCMS.Publishing.PublishWarning? left, FluentCMS.Publishing.PublishWarning? right) -> bool

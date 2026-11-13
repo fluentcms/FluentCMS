@@ -254,7 +254,7 @@ public sealed class PublishingTransitionTests : IDisposable
     [Fact]
     public async Task OnlyPublishingMarksAVersionPublishedSoDiscardsCannotPassTheCap()
     {
-        var schema = SampleSchema.NewBuilder().AddCollection("note", type => type.PublishPolicy(maxVersions: 2).Field("title", "text")).Build();
+        var schema = SampleSchema.NewBuilder().AddCollection("note", type => type.PublishPolicy(new PublishPolicyOptions { MaxVersions = 2 }).Field("title", "text")).Build();
         using var database = new ServiceDatabase(schema: schema);
         var id = IdOf(await database.CreateAsync(Editor, Titled("published"), "note"));
         await database.PublishAsync(Editor, id, type: "note");
@@ -568,7 +568,7 @@ public sealed class PublishingTransitionTests : IDisposable
     [Fact]
     public async Task PruningDropsTheOldestDraftsAndKeepsEveryVersionThatWasPublished()
     {
-        var schema = SampleSchema.NewBuilder().AddCollection("page", type => type.PublishPolicy(maxVersions: 3).Field("name", "text")).Build();
+        var schema = SampleSchema.NewBuilder().AddCollection("page", type => type.PublishPolicy(new PublishPolicyOptions { MaxVersions = 3 }).Field("name", "text")).Build();
         using var database = new ServiceDatabase(schema: schema);
         var id = IdOf(await database.CreateAsync(Editor, new() { ["name"] = "v1" }, "page"));
         await database.PublishAsync(Editor, id, type: "page");

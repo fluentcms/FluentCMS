@@ -107,6 +107,26 @@ public sealed class TextImpostorPlugin : IPlugin
     }
 }
 
+[FluentCmsPlugin("named", SdkRange = "[1.0.0,2.0.0)")]
+public sealed class NamedFieldTypePlugin : IPlugin
+{
+    public Action<IPluginServiceBuilder> AddFieldType { get; set; } = static _ => { };
+
+    public void ConfigureServices(IPluginServiceBuilder plugin) => AddFieldType(plugin);
+
+    public void Configure(IPluginAppBuilder app)
+    {
+    }
+}
+
+public sealed class ColonFieldType() : ImpostorFieldType("acme:geo");
+
+public sealed class DigitFirstFieldType() : ImpostorFieldType("3d");
+
+public sealed class CommentFieldType() : ImpostorFieldType("geo*/");
+
+public sealed class DottedFieldType() : ImpostorFieldType("acme.geo-point_2");
+
 [FluentCmsPlugin("excerpt", SdkRange = "[1.0.0,2.0.0)")]
 public sealed class ExcerptImpostorPlugin : IPlugin
 {

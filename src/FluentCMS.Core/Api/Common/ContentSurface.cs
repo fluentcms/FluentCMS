@@ -26,7 +26,7 @@ internal sealed class ContentSurface(
 
     public int MaxPopulateDepth => options.MaxPopulateDepth;
 
-    public async ValueTask<IReadOnlySet<string>?> ReadableFieldsAsync(string type, string? locale = null, CancellationToken cancellationToken = default)
+    public async ValueTask<IReadOnlySet<string>?> ReadableFieldsAsync(string type, string? locale, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(type);
 

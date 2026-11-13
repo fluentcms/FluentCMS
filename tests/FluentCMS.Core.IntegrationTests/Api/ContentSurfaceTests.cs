@@ -61,7 +61,7 @@ public sealed class ContentSurfaceTests : IAsyncDisposable
         (await ReadableAsync(everything, "nothing")).ShouldBeNull();
 
         static Task<IReadOnlySet<string>?> ReadableAsync(TestActor actor, string type) =>
-            actor.RunAsync<IContentSurface, IReadOnlySet<string>?>(async surface => await surface.ReadableFieldsAsync(type, cancellationToken: Token));
+            actor.RunAsync<IContentSurface, IReadOnlySet<string>?>(async surface => await surface.ReadableFieldsAsync(type, null, Token));
     }
 
     [Fact]

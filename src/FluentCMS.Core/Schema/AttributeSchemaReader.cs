@@ -73,7 +73,7 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
                     }
                     else
                     {
-                        t.PublishPolicy(policy.UnpublishedReferences, policy.MaxVersions, policy.TrashRetentionDays);
+                        t.PublishPolicy(new PublishPolicyOptions { UnpublishedReferences = policy.UnpublishedReferences, MaxVersions = policy.MaxVersions, TrashRetentionDays = policy.TrashRetentionDays });
                     }
                 }
             }

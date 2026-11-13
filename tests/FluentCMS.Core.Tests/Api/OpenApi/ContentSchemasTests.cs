@@ -1,5 +1,8 @@
 using System.Text.Json.Nodes;
+using FluentCMS.Content;
 using FluentCMS.Core.Api.OpenApi;
+using FluentCMS.Core.Schema;
+using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Schema;
 using Shouldly;
@@ -85,6 +88,54 @@ public class ContentSchemasTests
         ContentRoute by = new("/api/delivery/v1/{type}/by/{field}/{value}", "GET", ContentPaths.Delivery, new("getBy", "Reads") { Query = ContentParameters.Single });
 
         paths.Paths([by]).Select(item => item.Path).ShouldBe(["/api/delivery/v1/memo/by/{field}/{value}"]);
+    }
+
+    // The document makes a fragment nullable or read-only in place, so it works on a copy of what the field type returns.
+    [Fact]
+    public void AFieldTypeThatReturnsTheSameFragmentEveryTimeIsLeftAsItWas()
+    {
+        var schema = new SchemaBuilder(new FieldTypeRegistry([new SharedFragmentFieldType()]))
+            .AddCollection("note", type => type.Field("first", "shared").Field("second", "shared", field => field.IsReadOnly()))
+            .Build();
+
+        for (var pass = 0; pass < 2; pass++)
+        {
+            var schemas = new ContentSchemas(schema, new());
+            var note = schemas.All().Single(item => item.Name == "entry-note").Schema["properties"]!;
+            note["first"]!["type"]!.ToJsonString().ShouldBe("""["string","null"]""");
+            note["second"]!["readOnly"]!.GetValue<bool>().ShouldBeTrue();
+            new ContentPaths(schema, schemas).Parameters().Single(item => item.Name == "filter-note").Parameter["schema"]!["properties"]!.AsObject().ContainsKey("first").ShouldBeTrue();
+        }
+
+        SharedFragmentFieldType.Fragment.ToJsonString().ShouldBe("""{"type":"string"}""");
+    }
+
+    private sealed class SharedFragmentFieldType : IFieldType
+    {
+        public static readonly JsonObject Fragment = new() { ["type"] = "string" };
+
+        public string Name => "shared";
+
+        public IReadOnlyList<Type> ClrTypes { get; } = [typeof(string)];
+
+        public IReadOnlySet<FilterOperator> FilterOperators { get; } = new HashSet<FilterOperator> { FilterOperator.Equal };
+
+        public IReadOnlyList<FieldSettingDescriptor> Settings { get; } = [];
+
+        public bool Sortable(SchemaField field) => false;
+
+        public bool Indexable(SchemaField field) => false;
+
+        public FieldStorageKind StorageKind(SchemaField field) => FieldStorageKind.Column;
+
+        public bool TryCoerce(object? value, SchemaField field, out object? result, out string? message)
+        {
+            result = value;
+            message = null;
+            return true;
+        }
+
+        public JsonObject OpenApiSchema(SchemaField field) => Fragment;
     }
 
     [FluentCMS.Schema.Collection("memo")]
