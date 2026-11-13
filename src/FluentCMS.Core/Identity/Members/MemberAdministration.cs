@@ -184,12 +184,13 @@ internal sealed class MemberAdministration(
         return await InfoAsync(member, cancellationToken);
     }
 
-    // Taking a member out of a group only takes away, so it needs no grant of the group's role.
+    // Taking a member out of a group needs the grants of its role as putting one in does: a row rule that negates the group
+    // gives the member more without it.
     public async Task<MemberInfo> RemoveFromGroupAsync(Guid id, Guid groupId, CancellationToken cancellationToken)
     {
         await RequireAsync(cancellationToken);
         var member = await FindAsync(id);
-        var group = await groups.FindAsync(groupId, cancellationToken);
+        var group = await groups.RequireAssignableAsync(groupId, cancellationToken);
 
         await changes.RunAsync(
             async () =>

@@ -62,8 +62,15 @@ internal sealed class EffectiveGrant(string pattern, PermissionConstraints const
 // on top of everything else. It lives for one request, so the content answers are kept per type, operation, site and
 // locale: a list asks the same questions for every entry and field. A token of an MCP client that registered itself is
 // also held to the role of its client (limit): every answer is what both the principal's grants and that role's give, each
-// worked out as for a principal of its own, so the client's role only removes.
-internal sealed class EffectivePermissions(OperationContext context, IReadOnlyList<EffectiveGrant> grants, RowRuleRegistry rules, EffectivePermissions? limit = null)
+// worked out as for a principal of its own, so the client's role only removes. A row rule reads the principal with the
+// names of the member groups it is in (groups, which the evaluator reads for a member), and only that principal carries
+// them, so Principal.IsInGroup throws on the principal of the operation itself.
+internal sealed class EffectivePermissions(
+    OperationContext context,
+    IReadOnlyList<EffectiveGrant> grants,
+    RowRuleRegistry rules,
+    EffectivePermissions? limit = null,
+    IReadOnlyList<string>? groups = null)
 {
     private readonly Dictionary<Asked, IReadOnlyList<EffectiveGrant>> _grantsOf = [];
 
@@ -76,6 +83,8 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
         .ToHashSet(StringComparer.Ordinal);
 
     private readonly PrincipalBinding _binding = PrincipalBinding.Of(context.Principal);
+
+    private OperationContext? _ruleContext;
 
     public bool IsSystem => context.Principal.IsSystem;
 
@@ -409,7 +418,9 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
 
     // One rule for this operation, or null when it can match no row.
     public ContentFilter? RuleFilter(string name, SchemaType type) =>
-        rules.Find(name, type.Name)?.For(context) is { } filter && !ReferenceEquals(filter, RowRule.NoRows) ? filter : null;
+        rules.Find(name, type.Name)?.For(RuleContext) is { } filter && !ReferenceEquals(filter, RowRule.NoRows) ? filter : null;
+
+    private OperationContext RuleContext => _ruleContext ??= context with { Principal = context.Principal.InRowRule(groups ?? []) };
 
     private bool Permits(string permission, AccessTarget target) => ScopeAllows(permission) && _binding.Allows(permission, target);
 

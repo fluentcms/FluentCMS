@@ -14,8 +14,10 @@ internal sealed record MemberGroupRequest(string Name, string? Description, Guid
 
 // Member groups for the Management API. A group belongs to no site, so everything here needs members.manage for the
 // instance. A group hands the grants of its role to its members, so creating one, changing one and putting a member in
-// one also need every grant of that role: no one gives a member what they do not hold themselves. A name is lower-case
-// letters, digits, '-' and '_', so that it is one name on every database and one word of the principal's groups claim.
+// one also need every grant of that role: no one gives a member what they do not hold themselves. Deleting one and taking
+// a member out of one need them as well, since a row rule that negates the group gives its members more without it. A
+// name is lower-case letters, digits, '-' and '_', so that it is one name on every database and one word of the
+// principal's groups claim.
 internal sealed partial class MemberGroupService(
     SystemDbContext context,
     ManagementAuthority authority,
@@ -77,11 +79,12 @@ internal sealed partial class MemberGroupService(
         return await GetAsync(id, cancellationToken);
     }
 
-    // Deleting a group only takes away, so it needs no grant of its role. Its memberships go with it.
+    // Its memberships go with it, which takes every member out of it, so it needs the grants of its role too.
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         await RequireAsync(cancellationToken);
         var group = await context.Set<MemberGroup>().FirstOrDefaultAsync(item => item.Id == id, cancellationToken) ?? throw NotFound(id);
+        await roles.RequireAssignableAsync([group.RoleId], cancellationToken);
         await SaveAsync(
             () => context.Remove(group),
             new MemberGroupDeletedEvent(group.Id, group.Name),
@@ -89,7 +92,8 @@ internal sealed partial class MemberGroupService(
             cancellationToken);
     }
 
-    // For MemberAdministration, which puts a member in the group: the group, once the caller holds what its role grants.
+    // For MemberAdministration, which puts a member in the group or takes one out: the group, once the caller holds what
+    // its role grants.
     public async Task<MemberGroup> RequireAssignableAsync(Guid id, CancellationToken cancellationToken)
     {
         var group = await context.Set<MemberGroup>().AsNoTracking().FirstOrDefaultAsync(item => item.Id == id, cancellationToken) ?? throw NotFound(id);

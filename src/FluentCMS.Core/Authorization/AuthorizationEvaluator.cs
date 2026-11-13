@@ -36,7 +36,7 @@ internal sealed class AuthorizationEvaluator(
             {
                 // The row rules of the operation read the principal with the groups it has now.
                 var (roles, groups) = await MemberRolesAsync(context.Principal.Id, context.Site.Value, cancellationToken);
-                permissions = new EffectivePermissions(context with { Principal = InGroups(context.Principal, groups) }, await GrantsOfAsync(roles, cancellationToken), rules);
+                permissions = new EffectivePermissions(context, await GrantsOfAsync(roles, cancellationToken), rules, groups: groups);
             }
             else
             {
@@ -320,12 +320,6 @@ internal sealed class AuthorizationEvaluator(
             .Select(row => new RoleStamp(row.Id, row.PermissionsVersion, row.SiteId))];
         List<string> groups = [.. rows.Select(row => row.Group).OfType<string>().Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
         return (roles, groups);
-    }
-
-    private static Principal InGroups(Principal member, List<string> groups)
-    {
-        var claims = member.Claims.Where(claim => claim.Key != Principal.GroupsClaim);
-        return new Principal(member.Kind, member.Id, member.Name, groups.Count == 0 ? claims : claims.Append(KeyValuePair.Create(Principal.GroupsClaim, string.Join(' ', groups))));
     }
 
     private async Task<List<EffectiveGrant>> GrantsOfAsync(List<RoleStamp> roles, CancellationToken cancellationToken)
