@@ -10,10 +10,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Anthropic" />
     <PackageReference Include="Microsoft.Extensions.AI" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
-    <PackageReference Include="OllamaSharp" />
   </ItemGroup>
 
   <!-- The PostgreSQL and SQL Server migration sets call their provider's model builder extensions. Compile only: the package

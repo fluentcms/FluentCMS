@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
 using Microsoft.Extensions.AI;
@@ -15,13 +17,20 @@ public sealed class AiClientFactoryTests
 {
     private static readonly SiteId Site = new(Guid.CreateVersion7());
 
+    // As core reads and writes settings.
+    private static readonly JsonSerializerOptions SettingsJson = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+    };
+
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Fact]
     public async Task AKeyThatTheSettingsDoNotHoldComesFromTheConfigurationOfItsProvider()
     {
         await using var stub = await StubProvider.StartAsync();
-        using var factory = Factory([stub.Url("v1")], new() { ["FluentCms:Ai:OpenAiCompatible:ApiKey"] = "key-of-the-configuration", ["FluentCms:Ai:Anthropic:ApiKey"] = "key-of-another-provider" });
+        using var factory = Factory([stub.Url("v1")], new() { ["FluentCms:Ai:OpenAiCompatible:ApiKey"] = "key-of-the-configuration", ["FluentCms:Ai:AzureOpenAi:ApiKey"] = "key-of-another-provider" });
         List<ChatMessage> messages = [new(ChatRole.User, "Ships are big boats.")];
 
         var fromConfiguration = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = stub.Url("v1") }, Token);
@@ -33,18 +42,36 @@ public sealed class AiClientFactoryTests
         stub.Requests.Select(request => request.Headers["Authorization"]).ShouldBe(["Bearer key-of-the-configuration", "Bearer key-of-the-site"]);
     }
 
-    // The operator's key for OpenAI or Anthropic is not a site's to send to another endpoint, even an allowed one.
-    [Theory]
-    [InlineData(AiProvider.OpenAi)]
-    [InlineData(AiProvider.Anthropic)]
-    public async Task TheConfigurationsKeyForOpenAiOrAnthropicGoesToTheProvidersOwnEndpointOnly(AiProvider provider)
+    // A local endpoint such as Ollama's /v1 takes no key, so an OpenAI-compatible one is called without any. OpenAI and Azure
+    // OpenAI still need one.
+    [Fact]
+    public async Task OnlyAnOpenAiCompatibleEndpointIsCalledWithoutAKey()
     {
         await using var stub = await StubProvider.StartAsync();
-        using var factory = Factory([stub.Url("v1")], new() { [$"FluentCms:Ai:{provider}:ApiKey"] = "key-of-the-operator" });
+        using var factory = Factory([stub.Url("v1")], []);
 
-        var atItsOwn = await factory.CreateAsync(Site, new AiSettings { Provider = provider, Model = "a-model" }, Token);
-        var elsewhere = await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, new AiSettings { Provider = provider, Model = "a-model", Endpoint = stub.Url("v1") }, Token));
-        var withItsOwnKey = await factory.CreateAsync(Site, new AiSettings { Provider = provider, Model = "a-model", Endpoint = stub.Url("v1"), ApiKey = "key-of-the-site" }, Token);
+        var keyless = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = stub.Url("v1") }, Token);
+        await keyless!.Client.GetResponseAsync([new(ChatRole.User, "Ships are big boats.")], cancellationToken: Token);
+        var openAi = await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model" }, Token));
+        var azure = await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.AzureOpenAi, Model = "a-deployment", Endpoint = stub.Url("v1") }, Token));
+
+        var sent = stub.Requests.ShouldHaveSingleItem();
+        sent.Path.ShouldBe("/v1/chat/completions");
+        sent.Headers.ShouldNotContainKey("Authorization");
+        openAi.Code.ShouldBe("FCMS1685");
+        azure.Code.ShouldBe("FCMS1685");
+    }
+
+    // The operator's key for OpenAI is not a site's to send to another endpoint, even an allowed one.
+    [Fact]
+    public async Task TheConfigurationsKeyForOpenAiGoesToItsOwnEndpointOnly()
+    {
+        await using var stub = await StubProvider.StartAsync();
+        using var factory = Factory([stub.Url("v1")], new() { ["FluentCms:Ai:OpenAi:ApiKey"] = "key-of-the-operator" });
+
+        var atItsOwn = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model" }, Token);
+        var elsewhere = await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model", Endpoint = stub.Url("v1") }, Token));
+        var withItsOwnKey = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model", Endpoint = stub.Url("v1"), ApiKey = "key-of-the-site" }, Token);
 
         atItsOwn.ShouldNotBeNull();
         elsewhere.Code.ShouldBe("FCMS1685");
@@ -62,12 +89,11 @@ public sealed class AiClientFactoryTests
 
     [Theory]
     [InlineData(AiProvider.OpenAi, "a-model", null, null)]
-    [InlineData(AiProvider.Anthropic, "a-model", null, null)]
     [InlineData(AiProvider.OpenAi, null, null, "a-key")]
     [InlineData(AiProvider.OpenAi, " ", null, "a-key")]
     [InlineData(AiProvider.AzureOpenAi, "a-deployment", null, "a-key")]
     [InlineData(AiProvider.OpenAiCompatible, "a-model", null, "a-key")]
-    [InlineData(AiProvider.Ollama, "a-model", null, null)]
+    [InlineData(AiProvider.OpenAiCompatible, "a-model", null, null)]
     public async Task AProviderWithoutWhatItNeedsIsNotConfigured(AiProvider provider, string? model, string? endpoint, string? key)
     {
         using var factory = Factory([], []);
@@ -77,17 +103,78 @@ public sealed class AiClientFactoryTests
         refusal.Code.ShouldBe("FCMS1685");
     }
 
-    [Theory]
-    [InlineData(AiProvider.OpenAi)]
-    [InlineData(AiProvider.Anthropic)]
-    public async Task OpenAiAndAnthropicUseTheirOwnEndpointsWhenASiteNamesNone(AiProvider provider)
+    [Fact]
+    public async Task OpenAiUsesItsOwnEndpointWhenASiteNamesNone()
     {
         using var factory = Factory([], []);
 
-        var client = await factory.CreateAsync(Site, new AiSettings { Provider = provider, Model = "a-model", ApiKey = "a-key" }, Token);
+        var client = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model", ApiKey = "a-key" }, Token);
 
         client.ShouldNotBeNull();
-        client.Client.GetService<ChatClientMetadata>().ShouldNotBeNull().ProviderUri.ShouldNotBeNull().Host.ShouldBe(provider == AiProvider.OpenAi ? "api.openai.com" : "api.anthropic.com");
+        client.Client.GetService<ChatClientMetadata>().ShouldNotBeNull().ProviderUri.ShouldNotBeNull().Host.ShouldBe("api.openai.com");
+    }
+
+    // Settings written while the plugin had Anthropic and Ollama still read, so that a site that names one is told what to
+    // use instead of following the instance defaults without a word.
+    [Theory]
+    [InlineData("anthropic")]
+    [InlineData("ollama")]
+    [InlineData("Ollama")]
+    public async Task ARemovedProviderIsRefusedWithWhatToUse(string provider)
+    {
+        await using var stub = await StubProvider.StartAsync();
+        using var factory = Factory([stub.Url("v1")], new() { ["FluentCms:Ai:OpenAiCompatible:ApiKey"] = "key-of-the-configuration" });
+        var settings = JsonSerializer.Deserialize<AiSettings>($$"""{ "provider": "{{provider}}", "model": "a-model", "endpoint": "{{stub.Url("v1")}}", "apiKey": "key-of-the-site" }""", SettingsJson)!;
+
+        var refusal = await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, settings, Token));
+
+        refusal.Code.ShouldBe("FCMS1692");
+        refusal.Message.ShouldContain("openAiCompatible");
+        refusal.Message.ShouldContain("/v1");
+        refusal.Message.ShouldContain(nameof(IAiClientFactory));
+        stub.Requests.ShouldBeEmpty();
+    }
+
+    // The provider reads and writes by its name, as core's settings do, and a removed one by the name it had.
+    [Fact]
+    public void TheProviderOfTheSettingsReadsTheNamesOfTheRemovedProvidersToo()
+    {
+        AiSettings Read(string provider) => JsonSerializer.Deserialize<AiSettings>($$"""{ "provider": {{provider}} }""", SettingsJson)!;
+
+        Read("\"openAiCompatible\"").Provider.ShouldBe(AiProvider.OpenAiCompatible);
+        Read("\"OPENAI\"").Provider.ShouldBe(AiProvider.OpenAi);
+        Read("2").Provider.ShouldBe(AiProvider.AzureOpenAi);
+        AiProviders.IsRemoved(Read("\"anthropic\"").Provider).ShouldBeTrue();
+        AiProviders.IsRemoved(Read("4").Provider).ShouldBeTrue();
+        AiProviders.IsRemoved(AiProvider.OpenAiCompatible).ShouldBeFalse();
+        JsonSerializer.Serialize(Read("\"ollama\""), SettingsJson).ShouldContain("\"provider\":\"ollama\"");
+        JsonSerializer.Serialize(new AiSettings { Provider = AiProvider.AzureOpenAi }, SettingsJson).ShouldContain("\"provider\":\"azureOpenAi\"");
+        Should.Throw<JsonException>(() => Read("\"gemini\""));
+        Should.Throw<JsonException>(() => Read("null"));
+    }
+
+    [Theory]
+    [InlineData("FluentCms:Ai:Anthropic:ApiKey")]
+    [InlineData("FluentCms:Ai:ollama:ApiKey")]
+    [InlineData("FluentCms:Ai:Ollama:Endpoint")]
+    public void ConfigurationThatNamesARemovedProviderStopsTheHost(string key)
+    {
+        using var refused = Services(new() { [key] = "a-value" });
+        using var kept = Services(new() { ["FluentCms:Ai:OpenAiCompatible:ApiKey"] = "a-value" });
+
+        var failure = Should.Throw<OptionsValidationException>(() => refused.GetRequiredService<IOptions<AiOptions>>().Value);
+        failure.Message.ShouldContain("FCMS1692");
+        failure.Message.ShouldContain("openAiCompatible");
+        failure.Message.ShouldContain(nameof(IAiClientFactory));
+        failure.Message.ShouldNotContain("a-value");
+        kept.GetRequiredService<IOptions<AiOptions>>().Value.ShouldNotBeNull();
+
+        static ServiceProvider Services(Dictionary<string, string?> configuration)
+        {
+            var services = new ServiceCollection().AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(configuration).Build());
+            AiAssistPlugin.AddOptions(services);
+            return services.BuildServiceProvider();
+        }
     }
 
     [Theory]
@@ -151,7 +238,7 @@ public sealed class AiClientFactoryTests
         var inherited = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "another-model", Endpoint = theirs.Url("v1/"), ApiKey = "key-of-the-instance" }, Token);
         await inherited!.Client.GetResponseAsync(messages, cancellationToken: Token);
         var otherEndpoint = await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = other.Url("v1"), ApiKey = "key-of-the-instance" }, Token));
-        var otherProvider = await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.Ollama, Model = "a-model", Endpoint = other.Url(), ApiKey = "key-of-the-instance" }, Token));
+        var otherProvider = await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.AzureOpenAi, Model = "a-model", Endpoint = other.Url(), ApiKey = "key-of-the-instance" }, Token));
         var sameEndpointOtherProvider = await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.AzureOpenAi, Model = "a-model", Endpoint = theirs.Url("v1"), ApiKey = "key-of-the-instance" }, Token));
         var own = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = other.Url("v1"), ApiKey = "key-of-the-site" }, Token);
         await own!.Client.GetResponseAsync(messages, cancellationToken: Token);

@@ -31,6 +31,13 @@ internal static class SettingsSchema
 
     private static JsonNode Transform(SettingsDescriptor descriptor, JsonSchemaExporterContext context, JsonNode node)
     {
+        // System.Text.Json describes no custom converter, so an enum read by one would otherwise list no values. The values
+        // are those of the enum, as the settings' own enum converter names them.
+        if (node is JsonValue && context.PropertyInfo is { PropertyType.IsEnum: true, CustomConverter: not null } converted)
+        {
+            node = JsonSchemaExporter.GetJsonSchemaAsNode(SettingsJson.Strict, converted.PropertyType);
+        }
+
         if (node is not JsonObject schema || context.PropertyInfo is not { } property)
         {
             return node;

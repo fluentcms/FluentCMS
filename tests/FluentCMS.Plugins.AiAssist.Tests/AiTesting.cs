@@ -23,6 +23,7 @@ using Shouldly;
 using Xunit;
 using Role = FluentCMS.Core.Storage.Entities.Role;
 using RoleGrant = FluentCMS.Core.Storage.Entities.RoleGrant;
+using SettingRow = FluentCMS.Core.Storage.Entities.SettingRow;
 
 namespace FluentCMS.Plugins.AiAssist.Tests;
 
@@ -112,6 +113,16 @@ public sealed class AiHost : IAsyncDisposable
         await using var scope = Services.CreateAsyncScope();
         using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(site));
         await scope.ServiceProvider.GetRequiredService<ISettings<AiSettings>>().SetAsync(new SiteId(site), settings, Token);
+    }
+
+    // Settings of a site as an earlier version of the plugin stored them, written past the settings service, which would
+    // refuse them now.
+    public async Task StoreSettingsAsync(Guid site, string json)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        context.Add(new SettingRow { Id = Guid.CreateVersion7(), SiteId = site, Key = "ai", Json = json, Version = 1, UpdatedAt = DateTimeOffset.UtcNow });
+        await context.SaveChangesAsync(Token);
     }
 
     public async Task SetEnabledAsync(string plugin, Guid site, bool enabled)
