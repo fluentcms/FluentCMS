@@ -6,9 +6,11 @@ using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity.PreviewTokens;
+using FluentCMS.Core.IntegrationTests.Blog;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Media;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
 using FluentCMS.Testing;
@@ -30,9 +32,11 @@ public sealed class PreviewTokenTargetTests : IAsyncLifetime
 
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
     private static readonly string[] KeyTypes = ["dispatch", "reporter"];
+    private static readonly byte[] Png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAABAAAAAJCAIAAAC0SDtlAAAAFElEQVR42mPQztlAEmIY1TAoNAAALmO38Z6fgBcAAAAASUVORK5CYII=");
 
     private readonly FluentCmsTestHost _host = AuthorizationServerTests.NewHost(withServiceClient: false)
         .WithContentTypes<Dispatch, Reporter, Beat>()
+        .WithMediaDirectory()
         .Configure(cms => cms.Authorization.AddRowRule<Reporter>(NewsDesk, _ => reporter => reporter.Desk == "news"));
 
     private Guid _role;
@@ -228,10 +232,7 @@ public sealed class PreviewTokenTargetTests : IAsyncLifetime
             await context.SaveChangesAsync(Token);
         }
 
-        using var client = _host.AsKey(key);
-        using var response = await client.PostAsync(new Uri($"{Management}/{_dispatch}/preview-token", UriKind.Relative), null, Token);
-        response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Token));
-        var minted = (await response.Content.ReadFromJsonAsync<JsonObject>(Token))!;
+        var minted = await MintAsync(key);
 
         var (status, body) = await ReadAsync(minted, $"{Delivery}/{_dispatch}?status=draft&{Populate}");
 
@@ -260,6 +261,29 @@ public sealed class PreviewTokenTargetTests : IAsyncLifetime
         using var anonymous = _host.CreateClient();
         using var refused = await anonymous.GetAsync(new Uri(path, UriKind.Relative), Token);
         refused.StatusCode.ShouldNotBe(HttpStatusCode.OK);
+    }
+
+    // A route that takes no status, as a public asset's does, keeps a copy for an API key, but none for a token the key
+    // minted, which may read there what its minter reads.
+    [Fact]
+    public async Task NoCacheKeepsWhatATokenReadsOnARouteWithoutAStatus()
+    {
+        var admin = _host.As(await _host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token));
+        var asset = await admin.RunAsync<IMediaService, Guid>(async media =>
+        {
+            using var content = new MemoryStream(Png, writable: false);
+            return (await media.UploadAsync(new MediaUpload(null, [new MediaUploadFile("public.png", content)]), Token))[0].Id;
+        });
+        var minted = await MintAsync(await _host.CreateApiKeyAsync(ApiKeyClass.Management, Previewer, cancellationToken: Token));
+        var path = new Uri($"/api/delivery/v1/media/{asset}", UriKind.Relative);
+
+        using var client = PreviewClient(minted);
+        for (var read = 0; read < 2; read++)
+        {
+            using var response = await client.GetAsync(path, Token);
+            response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Token));
+            response.Headers.Age.ShouldBeNull();
+        }
     }
 
     private static async Task<Guid> PublishedAsync<T>(IContentService<T> content, T entry)
@@ -295,6 +319,14 @@ public sealed class PreviewTokenTargetTests : IAsyncLifetime
     private async Task<JsonObject> MintAsync(TestUser user)
     {
         using var client = await _host.AsUserAsync(user);
+        using var response = await client.PostAsync(new Uri($"{Management}/{_dispatch}/preview-token", UriKind.Relative), null, Token);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Token));
+        return (await response.Content.ReadFromJsonAsync<JsonObject>(Token))!;
+    }
+
+    private async Task<JsonObject> MintAsync(TestApiKey key)
+    {
+        using var client = _host.AsKey(key);
         using var response = await client.PostAsync(new Uri($"{Management}/{_dispatch}/preview-token", UriKind.Relative), null, Token);
         response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Token));
         return (await response.Content.ReadFromJsonAsync<JsonObject>(Token))!;

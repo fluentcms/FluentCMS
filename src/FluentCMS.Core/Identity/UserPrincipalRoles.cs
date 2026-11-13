@@ -14,6 +14,8 @@ namespace FluentCMS.Core.Identity;
 // it was authenticated, so that row is used until the request ends; a job reads the key again.
 internal sealed class UserPrincipalRoles(CmsDbContext context, ApiKeyPrincipals keys, IHttpContextAccessor http, TimeProvider time) : IPrincipalRoles
 {
+    private static readonly object ReadItem = new();
+
     public async ValueTask<IReadOnlyCollection<Guid>> RolesOfAsync(Principal principal, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(principal);
@@ -57,9 +59,27 @@ internal sealed class UserPrincipalRoles(CmsDbContext context, ApiKeyPrincipals 
         };
     }
 
+    // A key that no handler verified, such as the one that minted a preview token, is read once for the request, since its
+    // role and its types are both asked for; outside a request it is read each time.
     private async ValueTask<ApiKey?> KeyAsync(Principal principal, CancellationToken cancellationToken)
     {
-        var key = ApiKeyAuthentication.Verified(http.HttpContext, principal.Id) ?? await keys.ActiveAsync(principal.Id, cancellationToken);
+        var request = http.HttpContext;
+        var key = ApiKeyAuthentication.Verified(request, principal.Id);
+        if (key is null && request is not null && request.Items.TryGetValue(ReadItem, out var item) && item is KeyRead read && read.Id == principal.Id)
+        {
+            key = read.Key;
+        }
+        else if (key is null)
+        {
+            key = await keys.ActiveAsync(principal.Id, cancellationToken);
+            if (request is not null)
+            {
+                request.Items[ReadItem] = new KeyRead(principal.Id, key);
+            }
+        }
+
         return key is not null && key.IsActive(time.GetUtcNow()) ? key : null;
     }
+
+    private sealed record KeyRead(Guid Id, ApiKey? Key);
 }
