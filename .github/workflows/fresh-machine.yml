@@ -3,12 +3,29 @@ name: Fresh machine
 # The exit criteria of M6 (#3023): eng/fresh-machine.ps1 runs the sequence of a new user from the packages of this commit in a
 # folder feed, on clean runners. Linux runs it on SQLite and PostgreSQL, then checks that broken feeds fail it; Windows runs
 # SQLite. It runs on pushes to feature branches and when dispatched; CI calls it on pushes to main, on manual runs and on the
-# pull request of a feature branch into main. Issue pull requests do not run it.
+# pull request of a feature branch into main. Issue pull requests do not run it. After a release, a manual run with a feed and
+# a version runs it against the published packages, such as nuget.org (docs/releasing.md).
 on:
   push:
     branches: ["feature/**"]
   workflow_dispatch:
+    inputs:
+      feed:
+        description: A feed that holds the packages, such as https://api.nuget.org/v3/index.json. Blank packs this commit.
+        type: string
+        default: ""
+      version:
+        description: The version of the packages in the feed, such as 1.0.0-preview.1. Needed with a feed.
+        type: string
+        default: ""
   workflow_call:
+    inputs:
+      feed:
+        type: string
+        default: ""
+      version:
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -51,7 +68,8 @@ jobs:
           --health-timeout 5s
           --health-retries 20
     env:
-      PACKAGE_VERSION: 1.0.0-ci.${{ github.run_number }}.${{ github.run_attempt }}
+      FEED: ${{ inputs.feed }}
+      FEED_VERSION: ${{ inputs.version }}
       FLUENTCMS_FRESH_POSTGRES: Host=localhost;Port=5432;Database=fluentcms;Username=fluentcms;Password=fluentcms-ci
       FLUENTCMS_FRESH_POSTGRES_IMPORT: Host=localhost;Port=5433;Database=fluentcms;Username=fluentcms;Password=fluentcms-ci
     steps:
@@ -72,11 +90,27 @@ jobs:
         with:
           node-version: 24
 
+      # The client of a release is attached to its GitHub release while @fluentcms/client is not on npm.
       - name: Run the M6 sequence from packages
         shell: pwsh
-        run: ./eng/fresh-machine.ps1 -WorkDirectory "$env:RUNNER_TEMP/fresh-machine" -Version $env:PACKAGE_VERSION
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $arguments = @{ WorkDirectory = "$env:RUNNER_TEMP/fresh-machine" }
+          if ($env:FEED) {
+            $arguments.Feed = $env:FEED
+            $arguments.Version = $env:FEED_VERSION
+            gh release download "v$env:FEED_VERSION" --pattern 'fluentcms-client-*.tgz' --dir "$env:RUNNER_TEMP/client"
+            if ($LASTEXITCODE -eq 0) { $arguments.Client = (Get-ChildItem "$env:RUNNER_TEMP/client" -Filter '*.tgz')[0].FullName }
+          }
+          else {
+            $arguments.Version = dotnet msbuild src/FluentCMS.Sdk/FluentCMS.Sdk.csproj -getProperty:Version | Select-Object -Last 1
+          }
+          "PACKAGE_VERSION=$($arguments.Version)" >> $env:GITHUB_ENV
+          ./eng/fresh-machine.ps1 @arguments
 
       - name: Check that a broken feed fails the sequence
+        if: ${{ !inputs.feed }}
         shell: pwsh
         run: ./eng/fresh-machine-broken-feed.ps1 -Feed "$env:RUNNER_TEMP/fresh-machine/feed" -Version $env:PACKAGE_VERSION -WorkDirectory "$env:RUNNER_TEMP/broken-feed"
 
@@ -99,7 +133,8 @@ jobs:
       group: fresh-machine-windows-${{ github.event_name }}-${{ github.ref }}
       cancel-in-progress: true
     env:
-      PACKAGE_VERSION: 1.0.0-ci.${{ github.run_number }}.${{ github.run_attempt }}
+      FEED: ${{ inputs.feed }}
+      FEED_VERSION: ${{ inputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -118,9 +153,24 @@ jobs:
         with:
           node-version: 24
 
+      # The client of a release is attached to its GitHub release while @fluentcms/client is not on npm.
       - name: Run the M6 sequence from packages
         shell: pwsh
-        run: ./eng/fresh-machine.ps1 -WorkDirectory "$env:RUNNER_TEMP/fresh-machine" -Version $env:PACKAGE_VERSION
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $arguments = @{ WorkDirectory = "$env:RUNNER_TEMP/fresh-machine" }
+          if ($env:FEED) {
+            $arguments.Feed = $env:FEED
+            $arguments.Version = $env:FEED_VERSION
+            gh release download "v$env:FEED_VERSION" --pattern 'fluentcms-client-*.tgz' --dir "$env:RUNNER_TEMP/client"
+            if ($LASTEXITCODE -eq 0) { $arguments.Client = (Get-ChildItem "$env:RUNNER_TEMP/client" -Filter '*.tgz')[0].FullName }
+          }
+          else {
+            $arguments.Version = dotnet msbuild src/FluentCMS.Sdk/FluentCMS.Sdk.csproj -getProperty:Version | Select-Object -Last 1
+          }
+          "PACKAGE_VERSION=$($arguments.Version)" >> $env:GITHUB_ENV
+          ./eng/fresh-machine.ps1 @arguments
 
       - name: Upload the logs
         if: failure()

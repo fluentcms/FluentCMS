@@ -32,12 +32,19 @@ RUN dotnet restore src/FluentCMS.Host/FluentCMS.Host.csproj -a $TARGETARCH
 
 COPY src/ src/
 COPY samples/Blog/ samples/Blog/
+# The Publish workflow passes the version of the release; without it the host is the 1.0.0-dev of a local build.
+ARG VERSION
 RUN dotnet publish src/FluentCMS.Host/FluentCMS.Host.csproj -c Release -a $TARGETARCH --no-restore -o /app -p:UseAppHost=false \
+        ${VERSION:+-p:Version=$VERSION} \
     && mkdir /data
 
 # Chiseled: no shell, no package manager, a non-root user. The extra variant adds ICU and time zone data, which
 # localized content and schedules in a time zone need.
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra
+LABEL org.opencontainers.image.title="FluentCMS" \
+      org.opencontainers.image.description="The reference host of FluentCMS, a headless CMS for .NET: the Delivery and Management APIs, the authorization server and health probes, configured by environment variables." \
+      org.opencontainers.image.source="https://github.com/fluentcms/FluentCMS" \
+      org.opencontainers.image.licenses="MIT"
 WORKDIR /app
 COPY --from=build /app .
 COPY --from=build --chown=$APP_UID:$APP_UID /data /data

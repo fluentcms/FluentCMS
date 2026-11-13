@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <Description>AI assist for FluentCMS: opt-in actions on fields that answer suggestions, over the provider each site chooses, with a usage log.</Description>
+    <PackageTags>$(PackageTags) ai openai</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

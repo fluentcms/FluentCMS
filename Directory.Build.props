@@ -14,6 +14,14 @@
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
+  <!-- One version for every package. A release passes the version of its tag (-p:Version=1.0.0-preview.1); any other build
+       is a pre-release that no release has: ci.{run}.{attempt} on GitHub Actions, dev elsewhere. -->
+  <PropertyGroup>
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == '' And '$(GITHUB_ACTIONS)' == 'true'">ci.$(GITHUB_RUN_NUMBER).$(GITHUB_RUN_ATTEMPT)</VersionSuffix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">dev</VersionSuffix>
+  </PropertyGroup>
+
   <PropertyGroup>
     <Authors>FluentCMS</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -47,6 +55,20 @@
   <ItemGroup Condition="'$(IsPackable)' != 'false'">
     <None Include="$(MSBuildThisFileDirectory)docs/resources/icon.png" Pack="true" PackagePath="" Visible="false" />
   </ItemGroup>
+
+  <!-- A package's README is the README.md beside its project; eng/check-packages.cs fails the Pack job on one without. -->
+  <PropertyGroup Condition="'$(IsPackable)' != 'false' And Exists('$(MSBuildProjectDirectory)/README.md')">
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' != 'false' And Exists('$(MSBuildProjectDirectory)/README.md')">
+    <None Include="$(MSBuildProjectDirectory)/README.md" Pack="true" PackagePath="" Visible="false" />
+  </ItemGroup>
+
+  <!-- Plugins are found on nuget.org by this tag (decision 15). -->
+  <PropertyGroup Condition="$(RepoRelativeProjectDir.StartsWith('src/plugins/'))">
+    <PackageTags>$(PackageTags) fluentcms-plugin</PackageTags>
+  </PropertyGroup>
 
   <!-- The test project stubs have no tests yet; exit code 8 means "zero tests ran". Remove this once each project has tests. -->
   <PropertyGroup Condition="$(RepoRelativeProjectDir.StartsWith('tests/'))">

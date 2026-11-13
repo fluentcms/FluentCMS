@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <Description>The SQL Server data provider for FluentCMS: storage conventions, JSON filters, job claiming and the system migrations.</Description>
+    <PackageTags>$(PackageTags) sqlserver efcore</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

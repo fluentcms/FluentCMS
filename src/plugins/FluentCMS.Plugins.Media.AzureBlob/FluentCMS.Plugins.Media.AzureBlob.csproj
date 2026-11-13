@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <Description>Media storage for FluentCMS on Azure Blob Storage, with a private container.</Description>
+    <PackageTags>$(PackageTags) media azure-blob</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

@@ -4,11 +4,14 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Description>The FluentCMS analyzers: the rules of schema validation for the schema attributes, reported in the editor and the build instead of at start.</Description>
+    <PackageTags>$(PackageTags) analyzers roslyn</PackageTags>
     <IsRoslynComponent>true</IsRoslynComponent>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <!-- The package carries the analyzers under analyzers/dotnet/cs and no library. -->
     <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- No symbols package: the PDB is embedded in the assembly, with its SourceLink. -->
     <IncludeSymbols>false</IncludeSymbols>
+    <DebugType>embedded</DebugType>
     <DevelopmentDependency>true</DevelopmentDependency>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <NoWarn>$(NoWarn);NU5128</NoWarn>

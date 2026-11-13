@@ -1,0 +1,401 @@
+name: Publish
+
+# A release, from a tag v* on main (docs/releasing.md): every package of the solution at the version of the tag, pushed with
+# its symbols to nuget.org; the image of the reference host for linux/amd64 and linux/arm64, pushed to ghcr.io/fluentcms/fluentcms
+# with the version and preview (latest for a release that is not a preview); @fluentcms/client on npm when the repository
+# variable NPM_SCOPE_OWNED is true, attached to the GitHub release otherwise; and the GitHub release, a pre-release for a
+# preview. It refuses a tag that is not on main, a commit without a successful CI and Fresh machine, and a version that the
+# version prefix of Directory.Build.props does not lead to. Only the publish job holds credentials: it runs in the release
+# environment, after its reviewer approves, and signs in to nuget.org with trusted publishing.
+#
+# A manual run, and a pull request that changes the packaging, is a dry run: it checks, packs and builds what a release would,
+# lists what it would push, and pushes nothing. A pull request runs with no environment and no secret.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The tag to rehearse, such as v1.0.0-preview.1. Blank for the version of this build.
+        type: string
+        default: ""
+  pull_request:
+    paths:
+      - .github/workflows/publish.yml
+      - Directory.Build.props
+      - eng/check-packages.cs
+      - "src/**/*.csproj"
+      - src/FluentCMS.Host/Dockerfile
+      - .dockerignore
+      - templates/FluentCMS.Templates.csproj
+      - clients/typescript/package.json
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE: ghcr.io/fluentcms/fluentcms
+  PLATFORMS: linux/amd64,linux/arm64
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  check:
+    name: Check the release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+      preview: ${{ steps.release.outputs.preview }}
+      dry-run: ${{ steps.release.outputs.dry-run }}
+      tags: ${{ steps.release.outputs.tags }}
+      npm-tag: ${{ steps.release.outputs.npm-tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+
+      # A release stops at a refusal of its commit. A dry run reports it as a warning and goes on, so that it still lists what
+      # a release would push; a pull request is no release of its commit, so it skips those checks.
+      - name: Check the tag, the commit and its runs
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+        run: |
+          dry_run=true
+          if [ "$EVENT" = push ]; then dry_run=false; fi
+          refused=false
+          refuse() {
+            if [ "$dry_run" = true ]; then echo "::warning::A release would be refused: $1"; else echo "::error::$1"; fi
+            echo "- Refused: $1" >> "$GITHUB_STEP_SUMMARY"
+            refused=true
+          }
+
+          prefix=$(dotnet msbuild src/FluentCMS.Sdk/FluentCMS.Sdk.csproj -getProperty:VersionPrefix | tail -n 1)
+          if [ -n "$TAG" ]; then
+            if [[ ! "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)(-([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?$ ]]; then
+              echo "::error::$TAG is not v and a version, such as v1.0.0 or v1.0.0-preview.1."
+              exit 1
+            fi
+            if [ "${BASH_REMATCH[1]}" != "$prefix" ]; then
+              echo "::error::$TAG is a version of ${BASH_REMATCH[1]}, and Directory.Build.props holds the version prefix $prefix."
+              exit 1
+            fi
+            case "${BASH_REMATCH[3]}" in
+              ci | ci.* | dev | dev.* | fresh | fresh.*)
+                echo "::error::The pre-release ${BASH_REMATCH[3]} is for the builds that are not releases."
+                exit 1
+                ;;
+            esac
+            version=${TAG#v}
+            if [ ! -s "docs/releases/$version.md" ]; then refuse "the release notes docs/releases/$version.md are missing"; fi
+            if gh release view "$TAG" > /dev/null 2>&1; then refuse "the GitHub release $TAG exists already"; fi
+          else
+            version=$(dotnet msbuild src/FluentCMS.Sdk/FluentCMS.Sdk.csproj -getProperty:Version | tail -n 1)
+          fi
+
+          # The commit the tag or the branch names; for a pull request, the commit of its merge.
+          commit=$(git rev-parse HEAD)
+          if [ "$EVENT" = pull_request ]; then
+            echo "A pull request: whether the commit is on main and its CI and Fresh machine passed is checked for a tag."
+          else
+            if ! git merge-base --is-ancestor "$commit" origin/main; then refuse "$commit is not on main"; fi
+            runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$commit&status=success&per_page=100" \
+              --jq '.workflow_runs[] | select(.path | startswith(".github/workflows/ci.yml") or startswith(".github/workflows/fresh-machine.yml")) | "\(.id) \(.path)"')
+            echo "Successful runs of $commit:"
+            echo "$runs"
+            if ! grep -q ' \.github/workflows/ci\.yml' <<< "$runs"; then refuse "$commit has no successful run of CI"; fi
+            jobs=""
+            while read -r id _; do
+              if [ -n "$id" ]; then
+                jobs+=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs?per_page=100" --jq '.jobs[] | select(.conclusion == "success") | .name')$'\n'
+              fi
+            done <<< "$runs"
+            for os in ubuntu-latest windows-latest; do
+              if ! grep -qF "Fresh machine ($os" <<< "$jobs"; then refuse "$commit has no successful Fresh machine job on $os"; fi
+            done
+          fi
+
+          preview=false
+          if [[ "$version" == *-* ]]; then preview=true; fi
+          channel=latest npm_tag=latest
+          if [ "$preview" = true ]; then channel=preview npm_tag=next; fi
+          {
+            echo "version=$version"
+            echo "tag=$TAG"
+            echo "preview=$preview"
+            echo "dry-run=$dry_run"
+            echo "tags=$IMAGE:$version $IMAGE:$channel"
+            echo "npm-tag=$npm_tag"
+          } >> "$GITHUB_OUTPUT"
+          echo "Version $version, preview $preview, dry run $dry_run, commit $commit." | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$dry_run" = false ] && [ "$refused" = true ]; then exit 1; fi
+
+  pack:
+    name: Pack
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            Directory.Packages.props
+            **/*.csproj
+
+      - name: Pack
+        run: dotnet pack FluentCMS.slnx -c Release -o artifacts/packages -p:Version="$VERSION"
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: clients/typescript/package-lock.json
+
+      - name: Pack @fluentcms/client
+        working-directory: clients/typescript
+        run: |
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          npm ci
+          npm run build
+          npm pack --pack-destination ../../artifacts/packages
+
+      - name: Check the metadata of the packages
+        run: dotnet run eng/check-packages.cs -- artifacts/packages "$VERSION"
+
+      - name: Upload the packages
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: packages
+          path: artifacts/packages
+          if-no-files-found: error
+          retention-days: 30
+
+  # The Dockerfile compiles on the build platform for each target, so no emulation is needed for linux/arm64.
+  image:
+    name: Image
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+      TAGS: ${{ needs.check.outputs.tags }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up a builder for both platforms
+        run: docker buildx create --name fluentcms --driver docker-container --use --bootstrap
+
+      - name: Build for linux/amd64 and linux/arm64
+        run: |
+          read -ra tags <<< "$TAGS"
+          docker buildx build --file src/FluentCMS.Host/Dockerfile --platform "$PLATFORMS" --build-arg VERSION="$VERSION" \
+            --label org.opencontainers.image.version="$VERSION" --label org.opencontainers.image.revision="$GITHUB_SHA" \
+            "${tags[@]/#/--tag=}" .
+
+  list:
+    name: What a release pushes
+    needs: [check, pack, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+      TAG: ${{ needs.check.outputs.tag }}
+      TAGS: ${{ needs.check.outputs.tags }}
+      PREVIEW: ${{ needs.check.outputs.preview }}
+      DRY_RUN: ${{ needs.check.outputs.dry-run }}
+      NPM_TAG: ${{ needs.check.outputs.npm-tag }}
+      NPM: ${{ vars.NPM_SCOPE_OWNED == 'true' }}
+    steps:
+      - name: Download the packages
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: packages
+          path: artifacts/packages
+
+      - name: List what a release pushes
+        shell: bash
+        run: |
+          {
+            if [ "$DRY_RUN" = true ]; then echo "## Dry run of $VERSION: nothing is pushed"; else echo "## Release $TAG"; fi
+            echo
+            echo "nuget.org, each package with its symbols:"
+            echo
+            for package in artifacts/packages/*.nupkg; do
+              name=$(basename "$package" ".$VERSION.nupkg")
+              if [ -f "artifacts/packages/$name.$VERSION.snupkg" ]; then symbols=", symbols"; else symbols=""; fi
+              echo "- $name $VERSION$symbols"
+            done
+            echo
+            for client in artifacts/packages/*.tgz; do
+              if [ "$NPM" = true ]; then
+                echo "npm: @fluentcms/client $VERSION with the dist-tag $NPM_TAG ($(basename "$client"))"
+              else
+                echo "The GitHub release: $(basename "$client"), since NPM_SCOPE_OWNED is not true"
+              fi
+            done
+            echo
+            echo "ghcr.io, for $PLATFORMS:"
+            echo
+            for tag in $TAGS; do echo "- $tag"; done
+            echo
+            if [ "$PREVIEW" = true ]; then kind="a pre-release"; else kind="a release"; fi
+            echo "GitHub: ${TAG:-v$VERSION} as $kind, with the notes of docs/releases/$VERSION.md"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # Only this job holds credentials, in the release environment, and it runs for a tag after the environment's reviewer approves.
+  # The image goes first: a package on nuget.org can be unlisted but never deleted.
+  publish:
+    name: Publish
+    needs: [check, pack, image, list]
+    if: github.event_name == 'push' && needs.check.outputs.dry-run == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: release
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+      TAGS: ${{ needs.check.outputs.tags }}
+      NPM_TAG: ${{ needs.check.outputs.npm-tag }}
+    steps:
+      # GitHub makes an environment that does not exist, with no reviewer and no secret: stop before any push then.
+      - name: Check the release environment
+        env:
+          NUGET_USER: ${{ secrets.NUGET_USER }}
+        run: |
+          if [ -z "$NUGET_USER" ]; then
+            echo "::error::The release environment has no secret NUGET_USER; set it up as docs/releasing.md says."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+
+      - name: Set up a builder for both platforms
+        run: docker buildx create --name fluentcms --driver docker-container --use --bootstrap
+
+      - name: Sign in to ghcr.io
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Build and push the image
+        run: |
+          read -ra tags <<< "$TAGS"
+          docker buildx build --file src/FluentCMS.Host/Dockerfile --platform "$PLATFORMS" --build-arg VERSION="$VERSION" \
+            --label org.opencontainers.image.version="$VERSION" --label org.opencontainers.image.revision="$GITHUB_SHA" \
+            "${tags[@]/#/--tag=}" --push .
+
+      - name: Download the packages
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: packages
+          path: artifacts/packages
+
+      # Trusted publishing: a key of one hour for the policy of this workflow and environment, not a stored one.
+      - name: Sign in to nuget.org
+        id: nuget
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      # dotnet nuget push pushes the .snupkg beside each package to the symbol server; a rerun skips what is there already.
+      - name: Push the packages and their symbols to nuget.org
+        env:
+          NUGET_API_KEY: ${{ steps.nuget.outputs.NUGET_API_KEY }}
+        run: dotnet nuget push "artifacts/packages/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Set up Node for npm
+        if: vars.NPM_SCOPE_OWNED == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing once npm has a policy for this workflow; NPM_TOKEN of the environment for the first publish. A rerun
+      # skips a version that is there already, as nuget.org does.
+      - name: Publish @fluentcms/client to npm
+        if: vars.NPM_SCOPE_OWNED == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$(npm view "@fluentcms/client@$VERSION" version 2> /dev/null)" ]; then
+            echo "@fluentcms/client $VERSION is on npm already."
+          else
+            npm publish "artifacts/packages/fluentcms-client-$VERSION.tgz" --access public --tag "$NPM_TAG" --provenance
+          fi
+
+      - name: Sign out of ghcr.io
+        if: always()
+        run: docker logout ghcr.io
+
+  release:
+    name: GitHub release
+    needs: [check, publish]
+    if: github.event_name == 'push' && needs.check.outputs.dry-run == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+      TAG: ${{ needs.check.outputs.tag }}
+      PREVIEW: ${{ needs.check.outputs.preview }}
+      NPM: ${{ vars.NPM_SCOPE_OWNED == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Download the packages
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: packages
+          path: artifacts/packages
+
+      - name: Make the GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          options=(--verify-tag --title "FluentCMS $VERSION" --notes-file "docs/releases/$VERSION.md")
+          if [ "$PREVIEW" = true ]; then options+=(--prerelease); fi
+          if [ "$NPM" != true ]; then options+=("artifacts/packages/fluentcms-client-$VERSION.tgz"); fi
+          gh release create "$TAG" "${options[@]}"

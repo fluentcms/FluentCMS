@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <Description>Full-text search for FluentCMS: an index of the fields marked Searchable, on PostgreSQL full-text search, SQLite FTS5 or a match on SQL Server.</Description>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
   </ItemGroup>
