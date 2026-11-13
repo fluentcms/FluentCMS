@@ -150,7 +150,7 @@ The instructions of an action are the system message, and the text is the user m
 
 ## Usage
 
-Every call that is sent to a provider writes one row to `cms_ai_usage`: the site, the principal by kind and id, the action, the type and field, the provider and model, the prompt and completion tokens, the duration and whether it succeeded. A call that failed, timed out or was cancelled writes its row too. A request that was refused before the provider was asked writes none.
+Every call that is sent to a provider writes one row to `cms_ai_usage`: the site, the principal by kind and id, the action, the type and field, the provider and model, the prompt and completion tokens, the duration and whether it succeeded. A call that failed, timed out or was cancelled writes its row too. A request that was refused before the provider was asked writes none. A provider that reports no usage leaves 0 prompt and 0 completion tokens in the row and in the answer, and the call still succeeds.
 
 `GET /api/management/v1/ai/usage` pages the rows of the site, the newest first, with the permission `ai.usage.read`:
 
@@ -192,9 +192,15 @@ builder.Services.AddFluentCms(cms =>
 
 The factory is a singleton and owns its clients: the plugin calls a client and does not dispose it. Returning `null` leaves AI assist off for that site (`FCMS1682`). The allow-list is the default factory's, so a factory of the host's own decides itself which endpoints it calls. The permission, the opt-in, the limits and the usage log stay the plugin's.
 
+The plugin ends a call at the site's `requestTimeout`, and when the caller goes away, through the cancellation token it passes to the client, so the host's client must honour that token: one that ignores it can run past `requestTimeout`. The client must also have no network timeout of its own that is shorter than `requestTimeout`, which goes up to 600 seconds. The clients built on `System.ClientModel`, such as OpenAI's, stop a request after 100 seconds unless told otherwise, and a call that such a timeout ends is answered as a failure of the provider (`FCMS1689`), not as a timeout (`FCMS1688`). The default factory gives its client no timeout of its own.
+
 ## Telemetry
 
 A call is a span of the `FluentCMS` activity source named `ai {action}`, with `fluentcms.operation`, `fluentcms.site`, `fluentcms.type`, `fluentcms.provider` and `fluentcms.outcome` (`succeeded`, `failed`, `timeout` or `cancelled`), and for a failure the Error status and `fluentcms.code`. The counter `fluentcms.ai.calls` of the `FluentCMS` meter counts the calls by `fluentcms.operation`, `fluentcms.provider` and `fluentcms.outcome`. Log event ids 9360 to 9368.
+
+## Verification
+
+CI calls no provider. [Verifying AI assist against real endpoints](../../../docs/ai-assist-verification.md) records what the plugin has been run against and holds the walk-through for a run against Ollama or a paid endpoint. Neither has been run yet, and Azure OpenAI is not verified.
 
 ## Codes
 

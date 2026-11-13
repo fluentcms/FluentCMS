@@ -75,7 +75,7 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
             throw NotConfigured("hold an API key of the site's own: the key it inherits from the instance defaults is used with the provider and the endpoint of the defaults only");
         }
 
-        var client = OpenAiClient(endpoint ?? OpenAiEndpoint, key, model, TimeSpan.FromSeconds(settings.RequestTimeout));
+        var client = OpenAiClient(endpoint ?? OpenAiEndpoint, key, model);
         return new AiClient(client, NameOf(provider), model);
     }
 
@@ -124,14 +124,16 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
         return endpoint;
     }
 
-    // A client of a call over the shared handler, which holds the connections. The time a call may take is the plugin's.
-    private IChatClient OpenAiClient(Uri endpoint, string? key, string model, TimeSpan timeout)
+    // A client of a call over the shared handler, which holds the connections. The time a call may take is the plugin's
+    // alone: a timeout of the package's own, even of the same length, races it, and a call that passed requestTimeout would
+    // then end as a failure of the provider.
+    private IChatClient OpenAiClient(Uri endpoint, string? key, string model)
     {
         var clientOptions = new OpenAIClientOptions
         {
             Endpoint = endpoint,
             Transport = new HttpClientPipelineTransport(new HttpClient(_handler, disposeHandler: false) { Timeout = Timeout.InfiniteTimeSpan }),
-            NetworkTimeout = timeout,
+            NetworkTimeout = Timeout.InfiniteTimeSpan,
             RetryPolicy = new ClientRetryPolicy(maxRetries: 0),
         };
 
