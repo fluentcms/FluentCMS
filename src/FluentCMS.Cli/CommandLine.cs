@@ -20,7 +20,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
 {
     public const string Description = "The fluentcms tool. Project commands build the host project and run inside it, with its configuration and plugins.";
 
-    private readonly Func<Instance, HttpClient> _connect = connect ?? (_ => new HttpClient());
+    private readonly Func<Instance, HttpClient> _connect = connect ?? (_ => new HttpClient(InstanceAnswer.Handler()));
 
     public static Task<int> RunAsync(string[] args, TextWriter output, TextWriter error, IHostLauncher? launcher = null, CancellationToken cancellationToken = default) =>
         RunAsync(args, output, error, launcher, connect: null, cancellationToken);
@@ -344,7 +344,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
             }
             catch (JsonException)
             {
-                throw new CliException(CliErrorCodes.InstanceUnreachable, $"{target} answered schema/snapshot with something that is not a schema snapshot.");
+                throw new CliException(CliErrorCodes.UnexpectedAnswer, $"{target} answered schema/snapshot with something that is not a schema snapshot.");
             }
 
             return await SchemaSources.WriteDiffAsync(report, result.GetValue(json), $"the instance at {target}", toLabel, output, error);
@@ -418,7 +418,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
 
             if (report is null)
             {
-                throw new CliException(CliErrorCodes.InstanceUnreachable, $"{target} answered system/diagnostics with something that is not a startup report.");
+                throw new CliException(CliErrorCodes.UnexpectedAnswer, $"{target} answered system/diagnostics with something that is not a startup report.");
             }
 
             // The JSON as the instance sent it, so that what a newer instance adds is kept. An instance that answers has
@@ -576,10 +576,22 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         }
     }
 
+    // Checked before anything is written with it, in the shape schema diff reads, which comparing it with itself walks.
     private async Task<byte[]> InstanceSnapshotAsync(Instance target, CancellationToken cancellationToken)
     {
         using var http = _connect(target);
-        return await new InstanceClient(target, http).GetAsync("schema/snapshot", "schema.read", cancellationToken);
+        var snapshot = await new InstanceClient(target, http).GetAsync("schema/snapshot", "schema.read", cancellationToken);
+        try
+        {
+            var text = Encoding.UTF8.GetString(snapshot);
+            _ = SchemaSnapshotDiff.Report(text, text);
+        }
+        catch (JsonException)
+        {
+            throw new CliException(CliErrorCodes.UnexpectedAnswer, $"{target} answered schema/snapshot with something that is not a schema snapshot.");
+        }
+
+        return snapshot;
     }
 
     // The host writes its snapshot to a file of the tool's, which keeps it apart from anything else the host prints.

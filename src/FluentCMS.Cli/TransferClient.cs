@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
@@ -13,6 +14,10 @@ internal sealed class TransferClient : IDisposable
     public const string SiteHeader = "X-Cms-Site";
 
     private const string Transfer = "api/management/v1/transfer/";
+    private const string ZipType = "application/zip";
+
+    // The signature of a zip's first local file header, which a package starts with.
+    private static readonly byte[] ZipSignature = [0x50, 0x4B, 0x03, 0x04];
 
     private readonly HttpClient _http;
     private readonly Uri _url;
@@ -37,7 +42,8 @@ internal sealed class TransferClient : IDisposable
 
     public void Dispose() => _http.Dispose();
 
-    // The package as the endpoint writes it, into a file beside the target that is moved over it once complete.
+    // The package as the endpoint writes it, into a file beside the target that is moved over it once complete and once it
+    // opens as a zip. An answer that is not a zip, such as a proxy's sign-in page, is refused before any file is made.
     public async Task ExportAsync(JsonObject body, string? site, string path, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(Transfer + "export", UriKind.Relative))
@@ -46,6 +52,18 @@ internal sealed class TransferClient : IDisposable
         };
         AddSite(request, site);
         using var response = await SendAsync(request, cancellationToken);
+        if (!InstanceAnswer.Is(response, ZipType))
+        {
+            throw NotAPackage($"{InstanceAnswer.MediaTypeOf(response)} and not a package ({ZipType})", path);
+        }
+
+        await using var package = await Reading(() => response.Content.ReadAsStreamAsync(cancellationToken));
+        var start = new byte[ZipSignature.Length];
+        var read = await Reading(() => package.ReadAtLeastAsync(start, start.Length, throwOnEndOfStream: false, cancellationToken).AsTask());
+        if (!start.AsSpan(0, read).SequenceEqual(ZipSignature))
+        {
+            throw NotAPackage($"{ZipType} that is not a zip", path);
+        }
 
         var temporary = $"{path}.{Guid.NewGuid():N}.tmp";
         try
@@ -53,9 +71,11 @@ internal sealed class TransferClient : IDisposable
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             await using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous))
             {
-                await Reading(() => response.Content.CopyToAsync(file, cancellationToken));
+                await file.WriteAsync(start, cancellationToken);
+                await Reading(() => package.CopyToAsync(file, cancellationToken));
             }
 
+            await OpensAsync(temporary, path, cancellationToken);
             File.Move(temporary, path, overwrite: true);
         }
         finally
@@ -154,9 +174,31 @@ internal sealed class TransferClient : IDisposable
 
         using (response)
         {
+            if (InstanceAnswer.IsRedirect(response))
+            {
+                throw new CliException(CliErrorCodes.TransferAnswerUnexpected, $"the instance answered {InstanceAnswer.Redirect(response)}.");
+            }
+
             throw await RefusedAsync(response, cancellationToken);
         }
     }
+
+    // The central directory is at the end of a zip, so a package that was cut off does not open.
+    private static async Task OpensAsync(string temporary, string path, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var archive = await ZipFile.OpenReadAsync(temporary, cancellationToken);
+            _ = archive.Entries.Count;
+        }
+        catch (InvalidDataException exception)
+        {
+            throw new CliException(CliErrorCodes.TransferAnswerUnexpected, $"the package the instance answered does not open as a zip ({exception.Message}), so {path} was not written; it may have been cut off on the way.");
+        }
+    }
+
+    private static CliException NotAPackage(string answer, string path) =>
+        new(CliErrorCodes.TransferAnswerUnexpected, $"the instance answered {answer}, so {path} was not written; is the address that of a FluentCMS instance?");
 
     // A connection that breaks while the answer is read.
     private async Task Reading(Func<Task> read)
@@ -164,6 +206,18 @@ internal sealed class TransferClient : IDisposable
         try
         {
             await read();
+        }
+        catch (Exception exception) when (exception is HttpRequestException or HttpIOException)
+        {
+            throw Unreachable(exception);
+        }
+    }
+
+    private async Task<T> Reading<T>(Func<Task<T>> read)
+    {
+        try
+        {
+            return await read();
         }
         catch (Exception exception) when (exception is HttpRequestException or HttpIOException)
         {

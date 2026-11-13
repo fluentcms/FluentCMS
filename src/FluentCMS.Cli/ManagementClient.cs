@@ -112,6 +112,11 @@ internal sealed class ManagementClient : IDisposable
     {
         ArgumentNullException.ThrowIfNull(response);
 
+        if (InstanceAnswer.IsRedirect(response))
+        {
+            return new CliException(CliErrorCodes.UnexpectedAnswer, $"the instance answered {InstanceAnswer.Redirect(response)}.");
+        }
+
         var status = $"{(int)response.StatusCode} {response.ReasonPhrase}".Trim();
         try
         {

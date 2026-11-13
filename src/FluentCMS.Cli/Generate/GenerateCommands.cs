@@ -189,7 +189,8 @@ internal sealed partial class GenerateCommands(
         }
     }
 
-    // The key goes in the Authorization header only, and neither it nor a response body is written out.
+    // The key goes in the Authorization header only, and neither it nor a response body is written out. Only a JSON object
+    // with the "openapi" version is the instance's document.
     private async Task<string> GetAsync(Instance instance, string path, CancellationToken cancellationToken)
     {
         using var client = connect(instance);
@@ -213,13 +214,40 @@ internal sealed partial class GenerateCommands(
 
         using (response)
         {
+            if (InstanceAnswer.IsRedirect(response))
+            {
+                throw new CliException(CliErrorCodes.UnexpectedAnswer, $"GET {path} of {instance} answered {InstanceAnswer.Redirect(response)}.");
+            }
+
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
                 throw new CliException(CliErrorCodes.InstanceRequestFailed, $"GET {path} of {instance} answered {(int)response.StatusCode}{ProblemCode(body)}.");
             }
 
+            if (!InstanceAnswer.Is(response, InstanceAnswer.Json) || !IsOpenApiDocument(body))
+            {
+                throw new CliException(
+                    CliErrorCodes.UnexpectedAnswer,
+                    $"GET {path} of {instance} answered {InstanceAnswer.MediaTypeOf(response)} that is not an OpenAPI document, so nothing was written; is it a FluentCMS instance?");
+            }
+
             return body;
+        }
+    }
+
+    private static bool IsOpenApiDocument(string body)
+    {
+        try
+        {
+            using var json = JsonDocument.Parse(body);
+            return json.RootElement.ValueKind == JsonValueKind.Object
+                && json.RootElement.TryGetProperty("openapi", out var version)
+                && version.ValueKind == JsonValueKind.String;
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 
