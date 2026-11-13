@@ -10,9 +10,9 @@ namespace FluentCMS.Plugins.Media;
 // The assets of the library of the site of the current operation, as content shows them. On the Delivery API they are the
 // public ones, whoever reads, which is what its media route serves to anyone; a private one is never shown there, and no
 // grant is asked, since a Delivery principal holds none but reading content (4.8). So it is elsewhere, on /graphql say, for
-// a principal that may not manage, which reads as on Delivery. In a site where the plugin is disabled, whose media routes
-// answer 404, none is shown by that rule. Otherwise they are those the caller reaches with media.read, and a caller with no
-// grant of it reaches none. A public asset has the URLs the Delivery API gives it; a private one has none, since only a
+// a principal that may not manage, which reads as on Delivery. Otherwise they are those the caller reaches with media.read,
+// and a caller with no grant of it reaches none. In a site where the plugin is disabled, whose media routes answer 404, none
+// is shown, whoever reads. A public asset has the URLs the Delivery API gives it; a private one has none, since only a
 // download URL serves it.
 internal sealed class MediaResolver(
     PluginDbContext<MediaPlugin> database,
@@ -60,9 +60,14 @@ internal sealed class MediaResolver(
     // Which assets of the library the operation shows, or null for none.
     private async Task<Func<Asset, bool>?> ShownAsync(OperationContext operation, SiteId library, CancellationToken cancellationToken)
     {
+        if (!await plugins.IsEnabledAsync(MediaPlugin.Name, operation.Site, cancellationToken))
+        {
+            return null;
+        }
+
         if (operation.IsDelivery || !await permissions.CanManageAsync(cancellationToken))
         {
-            return await plugins.IsEnabledAsync(MediaPlugin.Name, operation.Site, cancellationToken) ? asset => !asset.IsPrivate : null;
+            return asset => !asset.IsPrivate;
         }
 
         try

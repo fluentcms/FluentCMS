@@ -90,7 +90,7 @@ The request is authenticated as the REST APIs authenticate it, with a bearer tok
 
 - A Delivery key or an anonymous caller reads published entries only (`FCMS2209` for a draft) and is refused every mutation (`FCMS3103`, or `FCMS3102` when not signed in).
 - A Preview key or the `draft` scope reads drafts. A principal with the `management` scope runs the mutations its roles allow.
-- A media field, and an image of rich text, show to a caller without the `management` scope (an anonymous caller, a Delivery or Preview key, a preview token) a public asset of the site's library, as the Delivery API shows it, and never a private one. A caller with the scope sees the assets its `media.read` reaches, as on the Management API.
+- A media field, and an image of rich text, show to a caller without the `management` scope (an anonymous caller, a Delivery or Preview key, a preview token) a public asset of the site's library, as the Delivery API shows it, and never a private one. A caller with the scope sees the assets its `media.read` reaches, as on the Management API. Where the media plugin is disabled for the site, no asset shows.
 - A type the principal may not read is null with `FCMS3104`, and a field it may not read is null with `FCMS2202`, each reported once in a response. The rest of the response is answered.
 
 The endpoint takes the Management rate limit for a caller with the `management` scope and the Delivery rate limit for any other, in buckets of its own, and is never in the output cache. Where the plugin is disabled for a site, `/graphql` answers 404 (`FCMS1550`).

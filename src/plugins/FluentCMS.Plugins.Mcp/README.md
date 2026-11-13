@@ -107,6 +107,8 @@ Each exposed content type the caller may read has tools of its own:
 | `{type}_discard_draft` | `content.{type}.update` | Goes back to what is published. |
 | `{type}_delete` | `content.{type}.delete` | Moves the entry to the trash, after a [dry run](#dry-runs). |
 
+A read that populates a media field shows the assets the media plugin gives the caller: a caller with the `mcp` scope or a management key gets those its `media.read` reaches, and a Delivery or Preview key, which reads content alone, gets the public assets of the site's library, as the Delivery API gives them.
+
 A singleton has `{type}_get`, `{type}_update_draft` and `{type}_discard_draft` only, without an `id`. Its `{type}_update_draft` creates the entry when it has none and `expectedVersion` is 0, and `FCMS1613` says that it has none.
 
 The shared tools take a `type`:

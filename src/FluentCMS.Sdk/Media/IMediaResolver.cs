@@ -8,7 +8,7 @@ namespace FluentCMS.Media;
 /// for a principal that may not manage (<see cref="Authorization.IPermissionChecker.CanManageAsync"/>), which reads as on
 /// the Delivery API. Otherwise it needs <c>media.read</c> and keeps to the folders that a grant limited to folders reaches,
 /// so an asset the caller cannot read is left out, and a private asset has no URLs. An asset of another site's library and
-/// one that is deleted are always left out.
+/// one that is deleted are always left out, and in a site where the media plugin is disabled every asset is.
 /// </summary>
 public interface IMediaResolver
 {

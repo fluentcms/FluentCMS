@@ -213,16 +213,21 @@ public sealed class MediaDeliveryReferenceTests(PublicStoryHost media) : IClassF
         managed[secret].Urls.ShouldBeNull();
     }
 
-    // The media routes of a site where the plugin is disabled answer 404, so its references resolve to nothing on Delivery there.
+    // The media routes of a site where the plugin is disabled answer 404, so its references resolve to nothing there, whoever
+    // reads and through whichever API: the same callers resolved the asset while the plugin was enabled.
     [Fact]
-    public async Task InASiteWhereThePluginIsDisabledNoMediaReferenceResolvesOnDelivery()
+    public async Task InASiteWhereThePluginIsDisabledNoMediaReferenceResolves()
     {
         await using var off = new PublicStoryHost();
         using var admin = await off.AdminAsync();
         using var anonymous = off.Host.CreateClient();
+        var managing = off.Host.As(await off.Host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token));
         var hero = await AssetAsync(admin, "hero.png");
         var id = await PublishedAsync(admin, Story(hero, [hero], [hero], banner: hero));
         var enabled = await GetAsync(anonymous, $"{Delivery}/{id:D}?{Populated}");
+        var enabledManaged = await GetAsync(admin, $"{Stories}/{id:D}?{Populated}");
+        var enabledAnonymous = await ResolveAsync(off.Host.Anonymous, [hero]);
+        var enabledManaging = await ResolveAsync(managing, [hero]);
 
         using (var disabled = await admin.PutAsJsonAsync(new Uri($"/api/management/v1/plugins/media/sites/{DefaultSite.Id:D}", UriKind.Relative), new { enabled = false }, Token))
         {
@@ -231,15 +236,23 @@ public sealed class MediaDeliveryReferenceTests(PublicStoryHost media) : IClassF
 
         await off.DrainOutboxAsync();
         var entry = await GetAsync(anonymous, $"{Delivery}/{id:D}?{Populated}");
+        var managed = await GetAsync(admin, $"{Stories}/{id:D}?{Populated}");
         using var route = await anonymous.GetAsync(new Uri($"/api/delivery/v1/media/{hero:D}", UriKind.Relative), Token);
 
         enabled["hero"]!["urls"].ShouldNotBeNull();
+        Id(enabledManaged["hero"]!).ShouldBe(hero);
+        enabledAnonymous.Keys.ShouldBe([hero]);
+        enabledManaging.Keys.ShouldBe([hero]);
         route.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await ResolveAsync(off.Host.Anonymous, [hero])).ShouldBeEmpty();
-        entry["hero"].ShouldBeNull();
-        entry["gallery"]!.AsArray().ShouldBeEmpty();
-        entry["sections"]![0]!["image"].ShouldBeNull();
-        entry["body"]!.GetValue<string>().ShouldNotContain("src=");
+        (await ResolveAsync(managing, [hero])).ShouldBeEmpty();
+        foreach (var read in new[] { entry, managed })
+        {
+            read["hero"].ShouldBeNull();
+            read["gallery"]!.AsArray().ShouldBeEmpty();
+            read["sections"]![0]!["image"].ShouldBeNull();
+            read["body"]!.GetValue<string>().ShouldNotContain("src=");
+        }
     }
 
     [Fact]

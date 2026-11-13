@@ -82,6 +82,8 @@ public class ManagementAuthorityTests
     [InlineData("openid management", Origin.Api, true)]
     [InlineData("management", Origin.Admin, true)]
     [InlineData("mcp", Origin.Mcp, true)]
+    [InlineData("delivery", Origin.Mcp, false)]
+    [InlineData("management", Origin.Mcp, true)]
     public async Task OnlyAPrincipalWhoseTokenIsForManagingMayManage(string? scope, Origin origin, bool manages)
     {
         var principal = scope is null ? Principal.Anonymous : new Principal(PrincipalKind.ApiKey, Guid.CreateVersion7(), "key", [new(TokenScopes.Claim, scope)]);
