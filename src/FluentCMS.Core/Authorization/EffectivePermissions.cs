@@ -64,13 +64,15 @@ internal sealed class EffectiveGrant(string pattern, PermissionConstraints const
 // also held to the role of its client (limit): every answer is what both the principal's grants and that role's give, each
 // worked out as for a principal of its own, so the client's role only removes. A row rule reads the principal with the
 // names of the member groups it is in (groups, which the evaluator reads for a member), and only that principal carries
-// them, so Principal.IsInGroup throws on the principal of the operation itself.
+// them, so Principal.IsInGroup throws on the principal of the operation itself. A preview token reads the targets of its
+// entry with permissions of their own (publishedTargets).
 internal sealed class EffectivePermissions(
     OperationContext context,
     IReadOnlyList<EffectiveGrant> grants,
     RowRuleRegistry rules,
     EffectivePermissions? limit = null,
-    IReadOnlyList<string>? groups = null)
+    IReadOnlyList<string>? groups = null,
+    EffectivePermissions? publishedTargets = null)
 {
     private readonly Dictionary<Asked, IReadOnlyList<EffectiveGrant>> _grantsOf = [];
 
@@ -90,6 +92,11 @@ internal sealed class EffectivePermissions(
 
     // The role of the client the principal came through, as permissions of its own; null when there is none.
     public EffectivePermissions? Limit => limit;
+
+    // What a preview token reads the targets of its entry's relations and rich text links with, in their published rows
+    // alone (spec 4.7): the principal that minted it, with no scope and no binding to the entry. Null for every other
+    // principal, which reads targets as itself.
+    public EffectivePermissions? PublishedTargets => publishedTargets;
 
     // Everything beyond reading content needs a scope that says the token is for managing; a Delivery principal has none.
     public bool CanManage =>

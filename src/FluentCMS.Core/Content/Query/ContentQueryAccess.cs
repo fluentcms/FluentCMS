@@ -32,6 +32,10 @@ internal sealed class ContentQueryAccess(IAuthorizationEvaluator evaluator, IOpe
     // belong to no site, and the question is then about the site the operation runs in.
     private sealed class Bound(EffectivePermissions permissions, SiteId operationSite, SiteId? site, string locale) : IContentQueryAccess
     {
+        private readonly Bound? _publishedTargets = permissions.PublishedTargets is { } targets ? new(targets, operationSite, site, locale) : null;
+
+        public IContentQueryAccess? PublishedTargets => _publishedTargets;
+
         public bool CanReadType(SchemaType type) => permissions.Allows(type, ContentOperation.Read, Target(type));
 
         public bool CanReadDraft(SchemaType type) => permissions.CanReadDraft(type, Target(type));

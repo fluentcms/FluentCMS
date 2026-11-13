@@ -54,6 +54,18 @@ public sealed class PreviewBindingTests
         Permissions(principal).RowRuleOf(Page, ContentOperation.Read, new AccessTarget(Site, "en")).ShouldBeNull();
     }
 
+    // A host without the identity knows a principal by its claims alone, so a preview token's targets stay held to the
+    // type of its entry there; with the identity, the minter's own binding is read instead.
+    [Fact]
+    public async Task WithoutTheIdentityTheTargetsStayHeldToTheTypeOfTheEntry()
+    {
+        var roles = new ClaimPrincipalRoles();
+        var preview = new Principal(PrincipalKind.AdminUser, Guid.CreateVersion7(), "editor", new Dictionary<string, string> { [CmsClaimTypes.Types] = "page" });
+
+        (await roles.TypesOfAsync(preview, TestContext.Current.CancellationToken)).ShouldBe(new HashSet<string> { "page" });
+        (await roles.TypesOfAsync(new Principal(PrincipalKind.AdminUser, Guid.CreateVersion7(), "admin"), TestContext.Current.CancellationToken)).ShouldBeNull();
+    }
+
     private static EffectivePermissions Permissions(string entry, string? locale)
     {
         Dictionary<string, string> claims = new()

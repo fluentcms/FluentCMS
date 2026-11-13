@@ -336,7 +336,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
                 return true;
             case FieldPath { Stored.Kind: FieldStorageKind.Reference, Stored.Field.Relation: { } relation } hop when hops < options.MaxPopulateDepth:
                 var target = schema.FindContentType(relation.Target);
-                return target is not null && scope.Access.CanReadType(target) && CheckSelection(scope, target, string.Join('.', hop.Rest), hops + 1, out reverse);
+                return target is not null && scope.Targets.Access.CanReadType(target) && CheckSelection(scope.Targets, target, string.Join('.', hop.Rest), hops + 1, out reverse);
             case null when scope.Paths.Reverse(type, path) is { } named:
                 reverse = (type, named);
                 return false;
@@ -406,12 +406,12 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         }
 
         var target = field.Stored.Field.Relation is { } relation ? schema.FindContentType(relation.Target) : null;
-        if (target is null || !scope.Access.CanReadType(target))
+        if (target is null || !scope.Targets.Access.CanReadType(target))
         {
             return (QueryErrorCodes.NotARelation, $"'{field.ApiPath}' of {type.Name} cannot be populated further.");
         }
 
-        return AddPopulatePath(scope, target, child, string.Join('.', field.Rest), depth, level + 1);
+        return AddPopulatePath(scope.Targets, target, child, string.Join('.', field.Rest), depth, level + 1);
     }
 
     // An entry with the documents its references and the block lists to resolve inside go into, and the ids above it, which
@@ -465,7 +465,8 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     private static bool IsAbsent(GroupOutput group, ContentDocument document) =>
         group.Children.All(child => child is ValueOutput) && document.Values.All(value => value is null or JsonArray { Count: 0 });
 
-    // knownReferences are those of the one root entry, when its reader has them.
+    // knownReferences are those of the one root entry, when its reader has them. The query is the scope the entries were read
+    // in, whose state their references are in; their targets are read in its Targets.
     private async Task FillReferencesAsync(QueryScope query, EntryPlan plan, List<Materialized> entries, ReadableTargets readable, ResolvableReferences resolvable, CancellationToken cancellationToken, IReadOnlyList<Reference>? knownReferences = null)
     {
         foreach (var (value, holder) in entries.SelectMany(entry => entry.Inside))
@@ -518,14 +519,15 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             }
         }
 
+        var targets = query.Targets;
         foreach (var group in asked.GroupBy(item => item.Target))
         {
-            await ReadableIdsAsync(query, group.Key, [.. group.SelectMany(item => item.Ids).Distinct()], readable, cancellationToken);
+            await ReadableIdsAsync(targets, group.Key, [.. group.SelectMany(item => item.Ids).Distinct()], readable, cancellationToken);
         }
 
         foreach (var output in outputs)
         {
-            var known = await ReadableTargetsAsync(query, output, references, readable, cancellationToken);
+            var known = await ReadableTargetsAsync(targets, output, references, readable, cancellationToken);
 
             List<(Materialized Parent, ContentDocument Reference, Guid Target)> wanted = [];
             foreach (var entry in entries)
@@ -551,8 +553,8 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
             if (output.Plan is { } child && wanted.Count > 0)
             {
-                query.CountPopulated(wanted.Count);
-                await PopulateAsync(query, child, wanted, readable, resolvable, cancellationToken);
+                targets.CountPopulated(wanted.Count);
+                await PopulateAsync(targets, child, wanted, readable, resolvable, cancellationToken);
             }
         }
     }
@@ -593,7 +595,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         foreach (var (name, ids) in readable.ToList())
         {
             readable[name] = schema.FindContentType(name) is { } target
-                ? await ReadableIdsAsync(query, target, [.. ids!], known, cancellationToken)
+                ? await ReadableIdsAsync(query.Targets, target, [.. ids!], known, cancellationToken)
                 : [];
         }
 
@@ -671,6 +673,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     }
 
     // A target that has no row in this state and locale stays a reference: in a published read, one published in another locale.
+    // The query is the scope the targets are read in.
     private async Task PopulateAsync(QueryScope query, EntryPlan plan, List<(Materialized Parent, ContentDocument Reference, Guid Target)> wanted, ReadableTargets readable, ResolvableReferences resolvable, CancellationToken cancellationToken)
     {
         var ids = wanted.Select(item => item.Target).Distinct().ToList();
