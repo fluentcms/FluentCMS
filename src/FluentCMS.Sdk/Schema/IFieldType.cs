@@ -11,7 +11,10 @@ namespace FluentCMS.Schema;
 /// </summary>
 public interface IFieldType
 {
-    /// <summary>The name used in <see cref="SchemaField.FieldType"/>, in camelCase.</summary>
+    /// <summary>
+    /// The name used in <see cref="SchemaField.FieldType"/>, in camelCase: an ASCII letter followed by ASCII letters,
+    /// digits, <c>.</c>, <c>-</c> or <c>_</c>, because generated code names it. A plugin's type with another name stops the host.
+    /// </summary>
     string Name { get; }
 
     /// <summary>The property types a class may use for a field of this type. An open generic type, such as <c>Ref&lt;&gt;</c>, stands for every closed form.</summary>

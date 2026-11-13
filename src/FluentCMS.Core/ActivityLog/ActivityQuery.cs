@@ -8,7 +8,7 @@ namespace FluentCMS.Core.ActivityLog;
 
 internal sealed class ActivityQuery(SystemDbContext context, IOperationContextAccessor operation) : IActivityQuery
 {
-    public async Task<PagedResult<ActivityItem>> QueryAsync(ActivityFilter? filter = null, PageRequest? page = null, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<ActivityItem>> QueryAsync(ActivityFilter? filter, PageRequest? page, CancellationToken cancellationToken = default)
     {
         var site = (operation.Current ?? throw new InvalidOperationException("The activity log is read for the site of an operation, and none is running.")).Site.Value;
         var (number, offset, size) = Paging(page);

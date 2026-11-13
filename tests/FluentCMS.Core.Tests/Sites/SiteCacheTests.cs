@@ -60,6 +60,41 @@ public sealed class SiteCacheTests
         _cache.TryGet<string>(SiteCache.LocalesKey(Site), out _).ShouldBeFalse();
     }
 
+    // A host resolver may give any id, so what is kept of the sites that are gone stays bounded whatever it gives.
+    [Fact]
+    public void AtMostMaxGoneSitesIdsAreKeptAsGoneUntilOneExpires()
+    {
+        var ids = Enumerable.Range(0, SiteCache.MaxGoneSites + 1).Select(_ => Guid.CreateVersion7()).ToList();
+        foreach (var id in ids)
+        {
+            _cache.SetGone(id, _cache.Generation);
+        }
+
+        ids.Take(SiteCache.MaxGoneSites).ShouldAllBe(id => _cache.IsGone(id));
+        _cache.IsGone(ids[^1]).ShouldBeFalse();
+
+        _cache.SetGone(ids[0], _cache.Generation);
+        _cache.IsGone(ids[0]).ShouldBeTrue();
+
+        _clock.Now += SiteCache.CacheDuration;
+        _cache.SetGone(ids[^1], _cache.Generation);
+        _cache.IsGone(ids[^1]).ShouldBeTrue();
+        _cache.IsGone(ids[1]).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void InvalidateAndAReadUnderWayDropWhatIsGone()
+    {
+        _cache.SetGone(Site, _cache.Generation);
+        _cache.Invalidate();
+        _cache.IsGone(Site).ShouldBeFalse();
+
+        var generation = _cache.Generation;
+        _cache.Invalidate();
+        _cache.SetGone(Site, generation);
+        _cache.IsGone(Site).ShouldBeFalse();
+    }
+
     private sealed class Clock(DateTimeOffset now) : TimeProvider
     {
         public DateTimeOffset Now { get; set; } = now;

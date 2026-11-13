@@ -547,7 +547,7 @@ internal sealed class TransferImporter(
             return true;
         }
 
-        public void Report(string section, string id, TransferOutcome outcome, string? code = null, string? message = null)
+        public void Report(string section, string id, TransferOutcome outcome, string? code, string? message)
         {
             report.Add(section, id, outcome, code, message);
             if (outcome is TransferOutcome.Created or TransferOutcome.Updated or TransferOutcome.Skipped && Guid.TryParse(id, out var target))

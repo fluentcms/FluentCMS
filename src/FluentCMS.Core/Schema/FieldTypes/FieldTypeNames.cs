@@ -18,4 +18,8 @@ internal static class FieldTypeNames
     public const string Relation = "relation";
     public const string Component = "component";
     public const string Blocks = "blocks";
+
+    // The rule of IFieldType.Name, which generate holds a schema snapshot to before it writes a field type into code.
+    public static bool IsValid(string? name) =>
+        !string.IsNullOrEmpty(name) && char.IsAsciiLetter(name[0]) && name.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_');
 }

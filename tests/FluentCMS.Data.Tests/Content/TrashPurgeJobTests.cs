@@ -104,7 +104,7 @@ public sealed class TrashPurgeJobTests
     public async Task EachTypeKeepsItsTrashForItsOwnPeriod()
     {
         var model = SampleSchema.NewBuilder()
-            .AddCollection("note", type => type.PublishPolicy(trashRetentionDays: 3).Field("name", "text"))
+            .AddCollection("note", type => type.PublishPolicy(UnpublishedReferencePolicy.Warn, PublishPolicyAttribute.DefaultMaxVersions, 3).Field("name", "text"))
             .AddCollection("memo", type => type.Field("name", "text"))
             .Build();
         using var database = new ServiceDatabase(schema: model);
@@ -222,7 +222,7 @@ public sealed class TrashPurgeJobTests
     public async Task OneTypeThatFailsDoesNotStopTheOthers()
     {
         var model = SampleSchema.NewBuilder()
-            .AddCollection("note", type => type.PublishPolicy(trashRetentionDays: PublishPolicyAttribute.MaxTrashRetentionDays).Field("name", "text"))
+            .AddCollection("note", type => type.PublishPolicy(UnpublishedReferencePolicy.Warn, PublishPolicyAttribute.DefaultMaxVersions, PublishPolicyAttribute.MaxTrashRetentionDays).Field("name", "text"))
             .AddCollection("memo", type => type.Field("name", "text"))
             .Build();
         var faults = new JobFaults();
@@ -257,7 +257,7 @@ public sealed class TrashPurgeJobTests
     public async Task TheLongestRetentionStillWorksOutAMoment()
     {
         var model = SampleSchema.NewBuilder()
-            .AddCollection("note", type => type.PublishPolicy(trashRetentionDays: PublishPolicyAttribute.MaxTrashRetentionDays).Field("name", "text"))
+            .AddCollection("note", type => type.PublishPolicy(UnpublishedReferencePolicy.Warn, PublishPolicyAttribute.DefaultMaxVersions, PublishPolicyAttribute.MaxTrashRetentionDays).Field("name", "text"))
             .AddCollection("memo", type => type.Field("name", "text"))
             .Build();
         using var database = new ServiceDatabase(schema: model);

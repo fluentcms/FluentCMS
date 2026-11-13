@@ -57,7 +57,7 @@ public interface IMediaService
     /// <param name="force">Whether to delete an asset that entries refer to.</param>
     /// <param name="cancellationToken">Cancels the work.</param>
     /// <returns>A task that completes when the asset is deleted.</returns>
-    Task DeleteAsync(Guid id, bool force = false, CancellationToken cancellationToken = default);
+    Task DeleteAsync(Guid id, bool force, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Replaces the file of an asset. It needs <c>media.update</c>. The new file passes the checks of an upload, and its name,

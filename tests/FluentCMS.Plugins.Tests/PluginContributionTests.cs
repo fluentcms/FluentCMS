@@ -171,6 +171,25 @@ public sealed class PluginContributionTests(PluginContributionFixture fixture) :
         Refused(cms => cms.AddPlugin<ExcerptImpostorPlugin>(), "FCMS1521", "'excerpt'", "'sampleExcerpt'", "the plugin 'sample'");
     }
 
+    // generate refuses a schema snapshot whose field type generated code cannot name, so the host refuses the type first.
+    [Fact]
+    public void AFieldTypeNameThatIsNotANameStopsTheHost()
+    {
+        Refused(cms => cms.AddPlugin<NamedFieldTypePlugin>(named => named.AddFieldType = plugin => plugin.AddFieldType<ColonFieldType>()), "FCMS1528", "'named'", "'acme:geo'", nameof(ColonFieldType));
+        Refused(cms => cms.AddPlugin<NamedFieldTypePlugin>(named => named.AddFieldType = plugin => plugin.AddFieldType<DigitFirstFieldType>()), "FCMS1528", "'3d'");
+        Refused(cms => cms.AddPlugin<NamedFieldTypePlugin>(named => named.AddFieldType = plugin => plugin.AddFieldType<CommentFieldType>()), "FCMS1528", "'geo*/'");
+    }
+
+    [Fact]
+    public async Task AFieldTypeNameMayHoldDigitsDotsHyphensAndUnderscoresAfterItsFirstLetter()
+    {
+        await using var provider = new ServiceCollection()
+            .AddFluentCms(cms => cms.UseSqlite("Data Source=:memory:").AddPlugin<NamedFieldTypePlugin>(named => named.AddFieldType = plugin => plugin.AddFieldType<DottedFieldType>()))
+            .BuildServiceProvider();
+
+        provider.GetRequiredService<IFieldTypeRegistry>().Find("acme.geo-point_2").ShouldBeOfType<DottedFieldType>();
+    }
+
     [Fact]
     public void TheTableContributionsNeedTheBuilderOfAHost() =>
         Should.Throw<InvalidOperationException>(() => new FakeServiceBuilder().AddModel<SampleModel>()).Message.ShouldContain(nameof(FakeServiceBuilder));

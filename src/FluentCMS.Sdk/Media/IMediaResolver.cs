@@ -13,5 +13,5 @@ public interface IMediaResolver
     /// <param name="locale">The locale of the alternative text and caption, or <see langword="null"/> for that of the operation.</param>
     /// <param name="cancellationToken">Cancels the work.</param>
     /// <returns>The assets the caller may read, by id.</returns>
-    Task<IReadOnlyDictionary<Guid, MediaDelivery>> ResolveAsync(IReadOnlyCollection<Guid> ids, string? locale = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<Guid, MediaDelivery>> ResolveAsync(IReadOnlyCollection<Guid> ids, string? locale, CancellationToken cancellationToken = default);
 }

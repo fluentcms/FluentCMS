@@ -9,14 +9,17 @@ namespace FluentCMS.Core.Sites;
 // drop all of it at once, and a read that was under way then is not kept, because it may have read the old rows. No signal
 // reaches another instance, so it sees a change when its copy expires, CacheDuration at the most. What is not found is not
 // kept, so a site that another instance created is found at once; only that the site of a host name is gone is, since that
-// site's id is never given again.
+// site's id is never given again, and for MaxGoneSites ids at the most, since a host resolver may give any number of them.
 internal sealed class SiteCache(TimeProvider time)
 {
     public static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(30);
 
     public const string DefaultKey = "default";
 
+    public const int MaxGoneSites = 1000;
+
     private readonly ConcurrentDictionary<string, (object Value, DateTimeOffset Expires)> _entries = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<Guid, DateTimeOffset> _gone = new();
     private long _generation;
 
     // Taken before the database is read, and given back to Set.
@@ -51,10 +54,40 @@ internal sealed class SiteCache(TimeProvider time)
         }
     }
 
+    public bool IsGone(Guid site) => _gone.TryGetValue(site, out var expires) && expires > time.GetUtcNow();
+
+    // With MaxGoneSites ids kept and none expired, one more is not kept, and is read again on its next request.
+    public void SetGone(Guid site, long generation)
+    {
+        var now = time.GetUtcNow();
+        if (!_gone.ContainsKey(site) && _gone.Count >= MaxGoneSites)
+        {
+            foreach (var entry in _gone)
+            {
+                if (entry.Value <= now)
+                {
+                    _gone.TryRemove(entry);
+                }
+            }
+
+            if (_gone.Count >= MaxGoneSites)
+            {
+                return;
+            }
+        }
+
+        _gone[site] = now + CacheDuration;
+        if (Generation != generation)
+        {
+            _gone.TryRemove(site, out _);
+        }
+    }
+
     public void Invalidate()
     {
         Interlocked.Increment(ref _generation);
         _entries.Clear();
+        _gone.Clear();
     }
 }
 

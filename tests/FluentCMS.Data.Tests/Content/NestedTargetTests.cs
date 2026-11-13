@@ -613,7 +613,7 @@ public sealed class NestedTargetTests : IDisposable
     {
         var schema = SampleSchema.NewBuilder()
             .AddCollection("author", type => type.Field("name", "text"))
-            .AddCollection("page", type => type.PublishPolicy(UnpublishedReferencePolicy.Block).Field("title", "text").Field("author", "relation", field => field.Relation("author")))
+            .AddCollection("page", type => type.PublishPolicy(UnpublishedReferencePolicy.Block, PublishPolicyAttribute.DefaultMaxVersions, PublishPolicyAttribute.DefaultTrashRetentionDays).Field("title", "text").Field("author", "relation", field => field.Relation("author")))
             .Build();
         using var database = new ServiceDatabase(schema: schema);
         var limited = WithRole(database.Database.AddRoleForTest(

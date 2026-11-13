@@ -22,7 +22,7 @@ internal sealed class TypeBuilder(TypeDraft draft) : ITypeBuilder
         return this;
     }
 
-    public ITypeBuilder PublishPolicy(UnpublishedReferencePolicy unpublishedReferences = UnpublishedReferencePolicy.Warn, int maxVersions = PublishPolicyAttribute.DefaultMaxVersions, int trashRetentionDays = PublishPolicyAttribute.DefaultTrashRetentionDays)
+    public ITypeBuilder PublishPolicy(UnpublishedReferencePolicy unpublishedReferences, int maxVersions, int trashRetentionDays)
     {
         if (!draft.IsContentType)
         {
