@@ -76,7 +76,7 @@ public sealed class SearchIndexTests
     }
 
     [Fact]
-    public async Task AnEntryIsNoLongerFoundOnceUnpublishedDeletedOrPurgedAndIsFoundInTheTrash()
+    public async Task AnEntryIsNoLongerFoundOnceUnpublishedDeletedOrPurgedAndIsFoundAgainOnceRestored()
     {
         await using var search = new SearchHost();
         var editor = await search.EditorAsync();
@@ -94,8 +94,11 @@ public sealed class SearchIndexTests
         await articles.DeleteAsync(article.Id, Token);
         await search.PumpAsync();
         (await FindAsync(editor, "article", "ephemeral", status: QueryStatus.Draft)).ShouldBeEmpty();
+        (await search.RowsAsync()).ShouldBeEmpty();
+
+        // A deleted entry has no rows, so a search of the trash finds nothing.
         var trash = await editor.Content().QueryTrashAsync("article", new ContentQuery { Search = "ephemeral", Locale = "en" }, Token);
-        trash.Items.Select(item => (Guid)item["id"]!).ShouldBe([article.Id]);
+        trash.Items.ShouldBeEmpty();
 
         await articles.RestoreAsync(article.Id, Token);
         await search.PumpAsync();
@@ -162,6 +165,23 @@ public sealed class SearchIndexTests
         (await FindAsync(editor, "article", "shared", status: QueryStatus.Draft)).Count.ShouldBe(2);
         (await FindAsync(editor, "article", "shared", status: QueryStatus.Draft, filter: new FieldFilter("views", FilterOperator.GreaterThan, 5L))).ShouldBe([popular.Id]);
         (await FindAsync(elsewhere, "article", "shared", status: QueryStatus.Draft)).ShouldBe([abroad.Id]);
+    }
+
+    // The index finds both entries; the row rule of the reader, which the engine adds to the narrowed query, keeps one.
+    [Fact]
+    public async Task AReaderUnderARowRuleFindsOnlyTheEntriesTheRuleLetsItRead()
+    {
+        await using var search = new SearchHost();
+        var editor = await search.EditorAsync();
+        var articles = editor.Content<Article>();
+        var popular = await articles.CreateAsync(new Article { Title = "Ruled word", Views = 10 }, Token);
+        var quiet = await articles.CreateAsync(new Article { Title = "Ruled word", Views = 1 }, Token);
+        await articles.PublishAsync(popular.Id, cancellationToken: Token);
+        await articles.PublishAsync(quiet.Id, cancellationToken: Token);
+        await search.PumpAsync();
+
+        (await FindAsync(editor, "article", "ruled")).ShouldBe([popular.Id, quiet.Id], ignoreOrder: true);
+        (await FindAsync(await search.RuledReaderAsync(), "article", "ruled")).ShouldBe([popular.Id]);
     }
 
     [Fact]

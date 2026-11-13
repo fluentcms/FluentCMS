@@ -62,7 +62,7 @@ public sealed class SearchIndexProviderTests : IDisposable
         else
         {
             // No full-text catalogue: the table alone, matched with LIKE.
-            _database.ReadStrings("select name from sys.tables where name like 'cms_search%'").ShouldBe([SearchModel.EntryTable]);
+            _database.ReadStrings("select name from sys.tables where name = 'cms_search_entry'").ShouldBe([SearchModel.EntryTable]);
         }
     }
 

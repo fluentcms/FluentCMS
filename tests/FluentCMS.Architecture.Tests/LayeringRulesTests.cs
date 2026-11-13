@@ -291,7 +291,7 @@ public class LayeringRulesTests
             .AndShould().NotDependOnAnyTypesThat().HaveName("CmsDbContext")
             .Check(everything.Value);
         ServiceCalls.In(SearchPlugin).ShouldBe(
-            ["FluentCMS.Content.IContentService.GetAsync", "FluentCMS.Content.IContentService.QueryAsync", "FluentCMS.Content.IContentService.QueryTrashAsync"],
+            ["FluentCMS.Content.IContentService.GetAsync", "FluentCMS.Content.IContentService.QueryAsync"],
             ignoreOrder: true);
     }
 

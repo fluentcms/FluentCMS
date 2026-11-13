@@ -7,6 +7,7 @@ using FluentCMS.Core.Events;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Sites;
+using FluentCMS.Core.Storage;
 using FluentCMS.Sites;
 using FluentCMS.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -14,23 +15,29 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
+using Role = FluentCMS.Core.Storage.Entities.Role;
+using RoleGrant = FluentCMS.Core.Storage.Entities.RoleGrant;
 
 namespace FluentCMS.Plugins.Search.Tests;
 
-// A host with the search plugin, discovered, on three types. Its job runner has no workers, so a test runs the outbox and
-// the jobs itself, and an entry is found only once the test has delivered its events.
+// A host with the search plugin, discovered, on four types, and a row rule that lets through articles with 5 views or
+// more. Its job runner has no workers, so a test runs the outbox and the jobs itself, and an entry is found only once the
+// test has delivered its events.
 public sealed class SearchHost : IAsyncDisposable
 {
+    public const string PopularRule = "popular";
+
     public SearchHost(Action<FluentCmsTestHost>? seed = null)
     {
         Host = new FluentCmsTestHost()
-            .WithContentTypes(typeof(Article), typeof(Note), typeof(Tag))
+            .WithContentTypes(typeof(Article), typeof(Note), typeof(Tag), typeof(Term))
             .WithServices(services => services.AddSingleton<ILoggerProvider>(Logs))
             .Configure(cms =>
             {
                 cms.Jobs.Options.MaintenanceInterval = TimeSpan.FromDays(1);
                 cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
                 cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
+                cms.Authorization.AddRowRule<Article>(PopularRule, _ => article => article.Views >= 5);
             });
         seed?.Invoke(Host);
     }
@@ -76,6 +83,28 @@ public sealed class SearchHost : IAsyncDisposable
     {
         await using var scope = Services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<SiteManager>().EnsureLocaleAsync(site, locale, Token);
+    }
+
+    public async Task DisableLocaleAsync(Guid site, string locale)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+        await scope.ServiceProvider.GetRequiredService<SiteManager>().UpdateLocaleAsync(site, locale, new SiteLocaleChange { Enabled = false }, Token);
+    }
+
+    // A reader through a Delivery key whose one grant reads articles under the row rule.
+    public async Task<TestActor> RuledReaderAsync()
+    {
+        var role = new Role { Id = Guid.CreateVersion7(), Name = $"ruled-{Guid.NewGuid():N}" };
+        await using (var scope = Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            context.Set<Role>().Add(role);
+            context.Set<RoleGrant>().Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = role.Id, Permission = "content.article.read", Constraints = new PermissionConstraints { RowRule = PopularRule }.ToJson() });
+            await context.SaveChangesAsync(Token);
+        }
+
+        return Host.As(await Host.CreateApiKeyAsync(ApiKeyClass.Delivery, role.Name, cancellationToken: Token));
     }
 
     public async Task SetEnabledAsync(Guid site, bool enabled)

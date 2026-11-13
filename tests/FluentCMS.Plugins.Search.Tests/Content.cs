@@ -39,3 +39,11 @@ public sealed class Tag : ContentItem
     [Text, Searchable]
     public string Name { get; set; } = "";
 }
+
+// A global type in the locales of every site.
+[Collection("term", Scope = ContentScope.Global, Localized = true)]
+public sealed class Term : ContentItem
+{
+    [Text, Localizable, Searchable]
+    public string Name { get; set; } = "";
+}

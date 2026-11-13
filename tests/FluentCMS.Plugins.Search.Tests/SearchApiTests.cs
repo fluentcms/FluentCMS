@@ -122,7 +122,7 @@ public sealed class SearchApiTests
     }
 
     [Fact]
-    public async Task TheRebuildIndexesEveryLocaleAndTheDraftsInTheTrash()
+    public async Task TheRebuildIndexesEveryLocaleAndNothingInTheTrash()
     {
         await using var search = new SearchHost();
         await search.AddLocaleAsync(DefaultSite.Id, "fr");
@@ -148,7 +148,67 @@ public sealed class SearchApiTests
 
         (await search.RowsAsync()).Select(row => (row.DocumentId, row.Locale, row.State, row.Text)).ShouldBe(indexed.Select(row => (row.DocumentId, row.Locale, row.State, row.Text)), ignoreOrder: true);
         (await FindAsync(editor, "article", "seulement", "fr", QueryStatus.Draft)).ShouldBe([onlyFrench.Id]);
-        indexed.ShouldContain(row => row.DocumentId == trashed.Id && row.State == SearchStates.Draft);
+        indexed.ShouldNotContain(row => row.DocumentId == trashed.Id);
+        indexed.Count.ShouldBe(3);
+    }
+
+    // The index holds a locale that the site then stops allowing, which a list of the site refuses: the rebuild leaves it
+    // out and removes the site's rows in it.
+    [Fact]
+    public async Task TheRebuildRemovesTheRowsOfALocaleTheSiteNoLongerAllows()
+    {
+        await using var search = new SearchHost();
+        await search.AddLocaleAsync(DefaultSite.Id, "fr");
+        var editor = await search.EditorAsync();
+        var article = await editor.Content<Article>().CreateAsync(new Article { Title = "Hello" }, Token);
+        await editor.In("fr").Content<Article>().UpdateAsync(article.Id, new Article { Title = "Bonjour" }, 0, Token);
+        await search.PumpAsync();
+        (await search.RowsAsync()).Select(row => row.Locale).ShouldBe(["en", "fr"], ignoreOrder: true);
+
+        // A row written at the moment a rebuild starts is kept as one an event may have written meanwhile.
+        search.Host.Time.Advance(TimeSpan.FromMinutes(1));
+        await search.DisableLocaleAsync(DefaultSite.Id, "fr");
+        using var management = await search.ClientAsync(ApiKeyClass.Management);
+        using (var response = await PostAsync(management, Rebuild))
+        {
+            response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
+        }
+
+        await search.PumpAsync();
+
+        search.Logs.Of(9380).ShouldHaveSingleItem().ShouldContain("wrote 0 rows and removed 1");
+        (await search.RowsAsync()).ShouldHaveSingleItem().Locale.ShouldBe("en");
+    }
+
+    // A global entry is read from every site, each in the locales it allows. Neither a rebuild of a site without French nor
+    // a change made there takes the French rows that another site reads.
+    [Fact]
+    public async Task ASiteLeavesTheRowsOfAGlobalTypeInALocaleOnlyAnotherSiteAllows()
+    {
+        await using var search = new SearchHost();
+        await search.AddLocaleAsync(DefaultSite.Id, "fr");
+        var other = await search.SiteAsync();
+        var editor = await search.EditorAsync();
+        var term = await editor.Content<Term>().CreateAsync(new Term { Name = "Glossary" }, Token);
+        await editor.In("fr").Content<Term>().UpdateAsync(term.Id, new Term { Name = "Glossaire" }, 0, Token);
+        await search.PumpAsync();
+
+        search.Host.Time.Advance(TimeSpan.FromMinutes(1));
+        using var elsewhere = await search.ClientAsync(ApiKeyClass.Management, site: other);
+        using (var response = await PostAsync(elsewhere, Rebuild, new { type = "term" }))
+        {
+            response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
+        }
+
+        await search.PumpAsync();
+        search.Logs.Of(9380).ShouldHaveSingleItem().ShouldContain("wrote 0 rows and removed 0");
+
+        var current = await (await search.EditorAsync(other)).Content<Term>().GetAsync(term.Id, new GetOptions { Status = QueryStatus.Draft }, Token);
+        await (await search.EditorAsync(other)).Content<Term>().UpdateAsync(term.Id, new Term { Name = "Lexicon" }, current!.Version, Token);
+        await search.PumpAsync();
+
+        (await search.RowsAsync()).Select(row => (row.Locale, row.Text)).ShouldBe([("en", "lexicon"), ("fr", "glossaire")], ignoreOrder: true);
+        (await FindAsync(editor, "term", "glossaire", "fr", QueryStatus.Draft)).ShouldBe([term.Id]);
     }
 
     [Fact]

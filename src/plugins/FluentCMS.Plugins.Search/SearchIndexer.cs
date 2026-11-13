@@ -20,8 +20,9 @@ internal sealed class SearchIndexer(
     private const int MaxBatchSize = 100;
 
     // The rows of the entry in the locale of an event, and in every other locale the index holds for it, since a field
-    // that is not localizable is shared by the locales. The draft of an entry in the trash stays, so that the trash can be
-    // searched; the engine keeps it out of every other list.
+    // that is not localizable is shared by the locales. An entry in the trash is not read, so its rows go, and a restore
+    // writes them again. A locale the site does not allow is not read either: the rows of a site's entry in it go, while
+    // those of a global entry stay for the sites that allow it.
     public async Task IndexAsync(string typeName, Guid id, string locale, Guid site, CancellationToken cancellationToken)
     {
         if (schema.FindContentType(typeName) is not { } type)
@@ -35,17 +36,32 @@ internal sealed class SearchIndexer(
         var rows = new List<SearchRow>();
         foreach (var code in codes)
         {
-            var (draft, published) = fields.Count == 0 ? (null, null) : await ReadAsync(type, fields, id, code, cancellationToken);
-            rows.Add(new SearchRow(id, code, SearchStates.Draft, type.Name, SiteOf(type, site), draft));
-            rows.Add(new SearchRow(id, code, SearchStates.Published, type.Name, SiteOf(type, site), published));
+            var read = (Read: true, Draft: (string?)null, Published: (string?)null);
+            if (type.Localized && await AllowedAsync(new SiteId(site), code, cancellationToken) is null)
+            {
+                read.Read = false;
+            }
+            else if (fields.Count > 0)
+            {
+                read = await ReadAsync(type, fields, id, code, cancellationToken);
+            }
+
+            if (!read.Read && type.Scope == ContentScope.Global)
+            {
+                continue;
+            }
+
+            rows.Add(new SearchRow(id, code, SearchStates.Draft, type.Name, SiteOf(type, site), read.Draft));
+            rows.Add(new SearchRow(id, code, SearchStates.Published, type.Name, SiteOf(type, site), read.Published));
         }
 
         await store.WriteAsync(rows, cancellationToken);
     }
 
-    // Every entry of the type, or of every type with a searchable field, in the site and of the global types: the drafts,
-    // the published versions and the drafts in the trash, a page at a time. Then the rows that no entry had are removed.
-    // A second run writes nothing.
+    // Every entry of the type, or of every type with a searchable field, in the site and of the global types: the drafts
+    // and the published versions, a page at a time, in each locale the site allows. Then the rows that no entry had are
+    // removed: of a site's type every such row, a row in a locale the site no longer allows included, and of a global type
+    // only those in the locales the site allows, since another site may allow the others. A second run writes nothing.
     public async Task<(int Written, int Removed)> RebuildAsync(string? typeName, SiteId site, CancellationToken cancellationToken)
     {
         var started = time.GetUtcNow();
@@ -58,14 +74,15 @@ internal sealed class SearchIndexer(
         {
             var fields = SearchText.Fields(type);
             var seen = new HashSet<(Guid DocumentId, string Locale, int State)>();
-            foreach (var locale in await LocalesAsync(type, site, cancellationToken))
+            var allowed = await LocalesAsync(type, site, cancellationToken);
+            foreach (var locale in allowed)
             {
-                written += await IndexListAsync(type, fields, locale, QueryStatus.Draft, trash: false, site, seen, cancellationToken);
-                written += await IndexListAsync(type, fields, locale, QueryStatus.Published, trash: false, site, seen, cancellationToken);
-                written += await IndexListAsync(type, fields, locale, QueryStatus.Draft, trash: true, site, seen, cancellationToken);
+                written += await IndexListAsync(type, fields, locale, QueryStatus.Draft, site, seen, cancellationToken);
+                written += await IndexListAsync(type, fields, locale, QueryStatus.Published, site, seen, cancellationToken);
             }
 
-            removed += await store.SweepAsync(type.Name, SiteOf(type, site.Value), seen, started, cancellationToken);
+            var swept = type.Localized && type.Scope == ContentScope.Global ? allowed.Select(locale => locale!).ToList() : null;
+            removed += await store.SweepAsync(type.Name, SiteOf(type, site.Value), swept, seen, started, cancellationToken);
         }
 
         if (typeName is null)
@@ -78,40 +95,37 @@ internal sealed class SearchIndexer(
 
     private static Guid? SiteOf(SchemaType type, Guid site) => type.Scope == ContentScope.Global ? null : site;
 
-    private async Task<(string? Draft, string? Published)> ReadAsync(SchemaType type, IReadOnlyList<SchemaField> fields, Guid id, string locale, CancellationToken cancellationToken)
+    // The code as the site allows it, or null for a locale the site does not allow.
+    private async Task<string?> AllowedAsync(SiteId site, string code, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await locales.ResolveAsync(new LocaleRequest(site) { Parameter = code }, cancellationToken);
+        }
+        catch (ValidationException)
+        {
+            return null;
+        }
+    }
+
+    private async Task<(bool Read, string? Draft, string? Published)> ReadAsync(SchemaType type, IReadOnlyList<SchemaField> fields, Guid id, string locale, CancellationToken cancellationToken)
     {
         var options = new GetOptions { Locale = type.Localized ? locale : null, Fallback = LocaleFallback.None, Select = [.. fields.Select(field => field.Name)] };
         try
         {
-            var draft = await content.GetAsync(type.Name, id, options with { Status = QueryStatus.Draft }, cancellationToken)
-                ?? await TrashedAsync(type, id, options, cancellationToken);
+            var draft = await content.GetAsync(type.Name, id, options with { Status = QueryStatus.Draft }, cancellationToken);
             var published = await content.GetAsync(type.Name, id, options with { Status = QueryStatus.Published }, cancellationToken);
-            return (draft is null ? null : SearchText.Of(draft, fields), published is null ? null : SearchText.Of(published, fields));
+            return (true, draft is null ? null : SearchText.Of(draft, fields), published is null ? null : SearchText.Of(published, fields));
         }
         catch (ValidationException exception)
         {
-            // Such as a locale that the site no longer has.
             SearchLog.NotRead(logger, type.Name, id, locale, exception.Errors[0].Code);
-            return (null, null);
+            return (false, null, null);
         }
     }
 
-    private async Task<ContentDocument?> TrashedAsync(SchemaType type, Guid id, GetOptions options, CancellationToken cancellationToken)
-    {
-        var query = new ContentQuery
-        {
-            Filter = new FieldFilter("id", FilterOperator.Equal, id),
-            Locale = options.Locale,
-            Fallback = LocaleFallback.None,
-            Select = options.Select,
-            Page = new PageRequest { Size = 1, WithTotal = false },
-        };
-        var items = (await content.QueryTrashAsync(type.Name, query, cancellationToken)).Items;
-        return items.Count > 0 ? items[0] : null;
-    }
-
-    // The locales to list a localized type in: the site's default, those of the entries that have it, and those the index
-    // already holds. A list reads one locale, and the SDK has no list of a site's locales.
+    // The locales the site allows among those a localized type is found in: the site's default, those of the entries that
+    // have it, and those the index already holds. A list reads one locale, and the SDK has no list of a site's locales.
     private async Task<IReadOnlyList<string?>> LocalesAsync(SchemaType type, SiteId site, CancellationToken cancellationToken)
     {
         if (!type.Localized)
@@ -141,18 +155,26 @@ internal sealed class SearchIndexer(
         }
         while (cursor is not null);
 
-        return [.. codes];
+        var allowed = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var code in codes)
+        {
+            if (await AllowedAsync(site, code, cancellationToken) is { } canonical)
+            {
+                allowed.Add(canonical);
+            }
+        }
+
+        return [.. allowed];
     }
 
-    private async Task<int> IndexListAsync(SchemaType type, IReadOnlyList<SchemaField> fields, string? locale, QueryStatus status, bool trash, SiteId site, HashSet<(Guid, string, int)> seen, CancellationToken cancellationToken)
+    private async Task<int> IndexListAsync(SchemaType type, IReadOnlyList<SchemaField> fields, string? locale, QueryStatus status, SiteId site, HashSet<(Guid, string, int)> seen, CancellationToken cancellationToken)
     {
         var state = status == QueryStatus.Draft ? SearchStates.Draft : SearchStates.Published;
         var written = 0;
         string? cursor = null;
         do
         {
-            var query = Query(locale, status, ["id", .. fields.Select(field => field.Name)], cursor);
-            var page = trash ? await content.QueryTrashAsync(type.Name, query, cancellationToken) : await content.QueryAsync(type.Name, query, cancellationToken);
+            var page = await content.QueryAsync(type.Name, Query(locale, status, ["id", .. fields.Select(field => field.Name)], cursor), cancellationToken);
             var rows = page.Items.Select(item => new SearchRow((Guid)item["id"]!, locale ?? "", state, type.Name, SiteOf(type, site.Value), SearchText.Of(item, fields))).ToList();
             foreach (var row in rows)
             {

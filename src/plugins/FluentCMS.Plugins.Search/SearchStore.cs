@@ -100,15 +100,22 @@ internal sealed class SearchStore(PluginDbContext<SearchPlugin> database, TimePr
         await database.Set<SearchEntry>().Where(entry => entry.SiteId == site).ExecuteDeleteAsync(cancellationToken);
 
     // The rows of the type in the site, or of the global type, that a rebuild did not see and that nothing wrote since it
-    // started, which are of entries that no longer exist. Read by key in batches, so that a large index is not held at once.
-    public async Task<int> SweepAsync(string type, Guid? site, IReadOnlySet<(Guid DocumentId, string Locale, int State)> seen, DateTimeOffset started, CancellationToken cancellationToken)
+    // started, which are of entries that no longer exist. With locales, only the rows in those. Read by key in batches, so
+    // that a large index is not held at once.
+    public async Task<int> SweepAsync(string type, Guid? site, IReadOnlyCollection<string>? locales, IReadOnlySet<(Guid DocumentId, string Locale, int State)> seen, DateTimeOffset started, CancellationToken cancellationToken)
     {
         var removed = 0;
         var after = 0L;
+        var only = locales?.ToList();
         while (true)
         {
-            var batch = await database.Set<SearchEntry>().AsNoTracking()
-                .Where(entry => entry.Type == type && entry.SiteId == site && entry.Id > after)
+            var rows = database.Set<SearchEntry>().AsNoTracking().Where(entry => entry.Type == type && entry.SiteId == site && entry.Id > after);
+            if (only is not null)
+            {
+                rows = rows.Where(entry => only.Contains(entry.Locale));
+            }
+
+            var batch = await rows
                 .OrderBy(entry => entry.Id)
                 .Select(entry => new { entry.Id, entry.DocumentId, entry.Locale, entry.State, entry.UpdatedAt })
                 .Take(DeleteBatch)
