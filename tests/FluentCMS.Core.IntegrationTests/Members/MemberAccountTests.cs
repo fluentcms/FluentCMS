@@ -353,34 +353,56 @@ public sealed class MemberAccountTests(MemberFixture fixture) : IClassFixture<Me
         updated.Details!.ShouldNotContain(MemberFixture.NewPassword);
     }
 
+    // On a host of its own, since it moves the clock by a day, past the tokens of the shared host's admin. Of two links made
+    // at once, one is used at the end of its lifetime and the other a tick later.
     [Fact]
-    public async Task AVerificationOrResetTokenIsRefusedAfterItsLifetime()
+    public async Task AVerificationLinkWorksForTwentyFourHoursAndAResetLinkForAnHourOnTheHostsClock()
     {
-        // The tokens are Identity's, which read the system clock, so the lifetime is the shortest there is: a token is past
-        // it by the time a second request arrives.
         var emails = new HostedPagesTests.CapturedEmails();
-        await using var host = MemberFixture.NewHost(emails, configure: cms =>
-        {
-            cms.Members.EmailVerificationLifetime = TimeSpan.FromTicks(1);
-            cms.Members.PasswordResetLifetime = TimeSpan.FromTicks(1);
-        });
-        var address = MemberFixture.NewAddress();
+        await using var host = MemberFixture.NewHost(emails);
         using var client = host.CreateSecureClient();
+        async Task<Management.ApiResponse> CallAsync(string route, string json)
+        {
+            var response = await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + route, json);
+            await AccountMailJobs.RunAsync(host);
+            return response;
+        }
 
-        (await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "register", $$"""{ "email": "{{address}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
-        var expired = await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "verify-email", $$"""{ "email": "{{address}}", "token": "{{TokenOf(emails, address)}}" }""");
+        Task<Management.ApiResponse> VerifyAsync(string address) =>
+            CallAsync("verify-email", $$"""{ "email": "{{address}}", "token": "{{TokenOf(emails, address)}}" }""");
+
+        Task<Management.ApiResponse> ResetAsync(string address) =>
+            CallAsync("reset-password", $$"""{ "email": "{{address}}", "token": "{{TokenOf(emails, address)}}", "password": "{{MemberFixture.NewPassword}}" }""");
+
+        var (verified, unverified) = (MemberFixture.NewAddress(), MemberFixture.NewAddress());
+        foreach (var address in (string[])[verified, unverified])
+        {
+            (await CallAsync("register", $$"""{ "email": "{{address}}", "password": "{{Password}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        }
+
+        host.Time.Advance(TimeSpan.FromHours(24));
+        (await VerifyAsync(verified)).Status.ShouldBe(HttpStatusCode.NoContent);
+        host.Time.Advance(TimeSpan.FromTicks(1));
+        var expired = await VerifyAsync(unverified);
         expired.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
         expired.Json["code"]!.GetValue<string>().ShouldBe("FCMS3166");
+        (await MemberFixture.DirectLoginAsync(host, unverified, Password)).Status.ShouldBe(HttpStatusCode.BadRequest);
 
-        host.Time.Advance(MemberMailLimiter.Window + TimeSpan.FromSeconds(1));
-        (await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "forgot-password", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
-        var late = await MemberFixture.SendAsync(client, HttpMethod.Post, MemberFixture.Api + "reset-password", $$"""{ "email": "{{address}}", "token": "{{TokenOf(emails, address)}}", "password": "{{MemberFixture.NewPassword}}" }""");
+        var (reset, kept) = (verified, (await host.CreateMemberAsync(password: Password, cancellationToken: Token)).Email);
+        foreach (var address in (string[])[reset, kept])
+        {
+            (await CallAsync("forgot-password", $$"""{ "email": "{{address}}" }""")).Status.ShouldBe(HttpStatusCode.Accepted);
+        }
+
+        host.Time.Advance(TimeSpan.FromHours(1));
+        (await ResetAsync(reset)).Status.ShouldBe(HttpStatusCode.NoContent);
+        host.Time.Advance(TimeSpan.FromTicks(1));
+        var late = await ResetAsync(kept);
         late.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
         late.Json["code"]!.GetValue<string>().ShouldBe("FCMS3166");
 
-        await using var scope = host.Services.CreateAsyncScope();
-        var member = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<CmsMember>().AsNoTracking().SingleAsync(Token);
-        member.EmailConfirmed.ShouldBeFalse();
+        (await MemberFixture.DirectLoginAsync(host, reset, MemberFixture.NewPassword)).Status.ShouldBe(HttpStatusCode.OK);
+        (await MemberFixture.DirectLoginAsync(host, kept, Password)).Status.ShouldBe(HttpStatusCode.OK);
     }
 
     // The owner registers first, and someone else registers the address before the owner verifies.

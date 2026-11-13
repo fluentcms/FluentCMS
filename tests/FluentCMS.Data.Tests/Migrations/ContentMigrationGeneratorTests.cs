@@ -78,6 +78,18 @@ public sealed class ContentMigrationGeneratorTests : IDisposable
         second.MigrationCode.ShouldNotContain("CreateTable");
     }
 
+    // EF would take a dropped column and an added one of the same store type for one column renamed, and hand the values of
+    // a removed field to an unrelated new one; only a field's former name makes a rename.
+    [Fact]
+    public void AFieldRemovedBesideOneAddedWithoutTheAttributeIsADropAndAnAdd()
+    {
+        var migration = GeneratedMigrations.Scaffold(ArticleSchemas.Article("title", "summary"), "Replace", GeneratedMigrations.CompileFirst(ArticleSchemas.WithSubtitle));
+
+        migration.MigrationCode.ShouldContain("migrationBuilder.DropColumn(");
+        migration.MigrationCode.ShouldContain("migrationBuilder.AddColumn<string>(");
+        migration.MigrationCode.ShouldNotContain("RenameColumn");
+    }
+
     [Fact]
     public async Task AGeneratedMigrationOfTheSampleSchemaCompilesAndApplies()
     {
@@ -115,18 +127,51 @@ public sealed class ContentMigrationGeneratorTests : IDisposable
         migration.MigrationCode.ShouldNotContain("cms_document");
     }
 
+    // A widened column renamed is renamed and then altered, except on SQLite, whose text has no length.
+    [Theory]
+    [InlineData("sqlite")]
+    [InlineData("postgresql")]
+    [InlineData("sqlserver")]
+    public void EveryProvidersMigrationRenamesAFieldWithFormerNamesBothWays(string name)
+    {
+        var before = SampleSchema.NewBuilder()
+            .AddCollection("author", type => type.Field("name", "text"))
+            .AddCollection("article", type => type
+                .Field("code", "text", field => field.Required().Indexed().Length(null, 20))
+                .Field("writer", "relation", field => field.Relation("author")))
+            .Build();
+        var after = SampleSchema.NewBuilder()
+            .AddCollection("author", type => type.Field("name", "text"))
+            .AddCollection("article", type => type
+                .Field("key", "text", field => field.Required().Indexed().Length(null, 40).FormerNames("code"))
+                .Field("author", "relation", field => field.Relation("author").FormerNames("writer")))
+            .Build();
+        var first = GeneratedMigrations.Scaffold(before, "Initial", provider: Provider(name));
+        var initial = GeneratedMigrations.Compile(first.MigrationCode, first.MetadataCode, first.SnapshotCode);
+
+        var second = GeneratedMigrations.Scaffold(after, "Rename", initial, Provider(name));
+        var migration = (Migration)Activator.CreateInstance(GeneratedMigrations.Compile(second.MigrationCode).GetTypes().Single(type => type.IsSubclassOf(typeof(Migration))))!;
+
+        migration.UpOperations.ShouldNotContain(operation => operation is DropColumnOperation || operation is AddColumnOperation);
+        migration.UpOperations.OfType<RenameColumnOperation>().ShouldHaveSingleItem().NewName.ShouldBe("key");
+        migration.UpOperations.OfType<AlterColumnOperation>().Select(alter => alter.Name).ShouldBe(name == "sqlite" ? [] : ["key"]);
+        migration.UpOperations.OfType<RenameIndexOperation>().ShouldHaveSingleItem().NewName.ShouldBe("ix_cms_article_key");
+        var moved = migration.UpOperations.OfType<UpdateDataOperation>().ShouldHaveSingleItem();
+        moved.Table.ShouldBe("cms_reference");
+        moved.KeyValues.Cast<object>().ShouldBe(["article", "writer"]);
+        moved.Values.Cast<object>().ShouldBe(["author"]);
+
+        migration.DownOperations.OfType<RenameColumnOperation>().ShouldHaveSingleItem().NewName.ShouldBe("code");
+        migration.DownOperations.OfType<UpdateDataOperation>().ShouldHaveSingleItem().Values.Cast<object>().ShouldBe(["writer"]);
+    }
+
     [Theory]
     [InlineData("sqlite")]
     [InlineData("postgresql")]
     [InlineData("sqlserver")]
     public void EveryProvidersMigrationHoldsTheSiteInTheUniqueKeysOfASiteScopedType(string name)
     {
-        IDataProvider provider = name switch
-        {
-            "sqlite" => new SqliteDataProvider("Data Source=:memory:"),
-            "postgresql" => new PostgreSqlDataProvider("Host=localhost;Database=never_opened"),
-            _ => new SqlServerDataProvider("Server=localhost;Database=never_opened"),
-        };
+        var provider = Provider(name);
         var schema = SampleSchema.FromClasses().Build();
         var migrations = GeneratedMigrations.CompileFirst(schema, provider: provider);
         var migration = (Migration)Activator.CreateInstance(migrations.GetTypes().Single(type => type.IsSubclassOf(typeof(Migration))))!;
@@ -140,4 +185,11 @@ public sealed class ContentMigrationGeneratorTests : IDisposable
         keys.Where(index => global.Contains(index.Table)).ShouldNotBeEmpty();
         keys.Where(index => global.Contains(index.Table)).ShouldAllBe(index => !index.Columns.Contains("site_id"));
     }
+
+    private static IDataProvider Provider(string name) => name switch
+    {
+        "sqlite" => new SqliteDataProvider("Data Source=:memory:"),
+        "postgresql" => new PostgreSqlDataProvider("Host=localhost;Database=never_opened"),
+        _ => new SqlServerDataProvider("Server=localhost;Database=never_opened"),
+    };
 }

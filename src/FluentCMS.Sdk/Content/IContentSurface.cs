@@ -28,7 +28,7 @@ public interface IContentSurface
     /// <param name="locale">The locale of the read, or <see langword="null"/> for the locale of the operation.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The names, or <see langword="null"/> when there is no such type or the principal may not read it.</returns>
-    ValueTask<IReadOnlySet<string>?> ReadableFieldsAsync(string type, string? locale = null, CancellationToken cancellationToken = default);
+    ValueTask<IReadOnlySet<string>?> ReadableFieldsAsync(string type, string? locale, CancellationToken cancellationToken = default);
 
     /// <summary>Writes an entry as the REST APIs do: system and content fields side by side, with relations as they were populated.</summary>
     /// <param name="entry">The entry, as the content service returned it.</param>

@@ -121,7 +121,7 @@ public sealed class MemberManagementTests(MemberFixture fixture) : IClassFixture
     }
 
     [Fact]
-    public async Task BindingARoleToAGroupAndPuttingAMemberInItNeedEveryGrantOfThatRole()
+    public async Task BindingARoleToAGroupAndPuttingAMemberInOrOutOfItNeedEveryGrantOfThatRole()
     {
         using var manager = await fixture.AdminWithAsync(CorePermissions.MembersManage, "content.bulletin.read");
         var readerRole = $"bulletin-reader-{Guid.NewGuid():N}";
@@ -140,18 +140,59 @@ public sealed class MemberManagementTests(MemberFixture fixture) : IClassFixture
         (await fixture.ManageAsync(HttpMethod.Put, $"member-groups/{id}", $$"""{ "name": "{{name}}", "roleId": "{{BuiltInRoles.SuperAdmin:D}}" }""", manager)).Status.ShouldBe(HttpStatusCode.Forbidden);
         (await fixture.ManageAsync(HttpMethod.Get, $"member-groups/{id}", client: manager)).Json["roleId"]!.GetValue<string>().ShouldBe(readerRoleId.ToString("D"));
 
-        // A group whose role the caller does not hold is neither renamed nor given a member by it, but a member is taken out.
+        // A group whose role the caller does not hold is neither renamed nor given a member by it.
         (await fixture.ManageAsync(HttpMethod.Put, $"member-groups/{fixture.Insiders:D}", $$"""{ "name": "insiders-renamed", "roleId": "{{readerRoleId:D}}" }""", manager)).Status.ShouldBe(HttpStatusCode.Forbidden);
-        (await fixture.ManageAsync(HttpMethod.Put, $"members/{member.Id:D}/groups/{fixture.Insiders:D}", client: manager)).Status.ShouldBe(HttpStatusCode.Forbidden);
+        var notGiven = await fixture.ManageAsync(HttpMethod.Put, $"members/{member.Id:D}/groups/{fixture.Insiders:D}", client: manager);
+        notGiven.Status.ShouldBe(HttpStatusCode.Forbidden);
         (await fixture.ManageAsync(HttpMethod.Put, $"members/{member.Id:D}/groups/{id}", client: manager)).Status.ShouldBe(HttpStatusCode.OK);
 
+        // Nor is a member taken out of it, or the group deleted, since a row rule that negates the group would then let the
+        // member read more. Both are refused as putting a member in is.
         (await fixture.ManageAsync(HttpMethod.Put, $"members/{member.Id:D}/groups/{fixture.Insiders:D}")).Status.ShouldBe(HttpStatusCode.OK);
-        (await fixture.ManageAsync(HttpMethod.Delete, $"members/{member.Id:D}/groups/{fixture.Insiders:D}", client: manager)).Status.ShouldBe(HttpStatusCode.OK);
+        var notTaken = await fixture.ManageAsync(HttpMethod.Delete, $"members/{member.Id:D}/groups/{fixture.Insiders:D}", client: manager);
+        notTaken.Status.ShouldBe(HttpStatusCode.Forbidden);
+        notTaken.Json["code"]!.GetValue<string>().ShouldBe(notGiven.Json["code"]!.GetValue<string>());
+        var notDeleted = await fixture.ManageAsync(HttpMethod.Delete, $"member-groups/{fixture.Insiders:D}", client: manager);
+        notDeleted.Status.ShouldBe(HttpStatusCode.Forbidden);
+        notDeleted.Json["code"]!.GetValue<string>().ShouldBe(notGiven.Json["code"]!.GetValue<string>());
+        (await fixture.ManageAsync(HttpMethod.Get, $"members/{member.Id:D}", client: manager)).Json["groups"]!.AsArray()
+            .Select(group => group!["name"]!.GetValue<string>()).ShouldContain("insiders");
 
-        // The member got what the caller held, and nothing of the group it was refused.
         using var client = await fixture.Host.AsMemberAsync(member);
+        (await MemberFixture.TitlesAsync(client, "dossier")).Status.ShouldBe(HttpStatusCode.OK);
+        (await fixture.ManageAsync(HttpMethod.Delete, $"members/{member.Id:D}/groups/{fixture.Insiders:D}")).Status.ShouldBe(HttpStatusCode.OK);
         (await MemberFixture.TitlesAsync(client, "dossier")).Status.ShouldBe(HttpStatusCode.NotFound);
-        (await MemberFixture.TitlesAsync(client, "bulletin")).Status.ShouldBe(HttpStatusCode.OK);
+
+        // A group whose role the caller holds is emptied and deleted by it.
+        (await fixture.ManageAsync(HttpMethod.Delete, $"members/{member.Id:D}/groups/{id}", client: manager)).Json["groups"]!.AsArray().ShouldBeEmpty();
+        (await fixture.ManageAsync(HttpMethod.Delete, $"member-groups/{id}", client: manager)).Status.ShouldBe(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task TheMembersOfAGroupWhoseRoleHoldsNoGrantAreManagedWithMembersManageAlone()
+    {
+        using var manager = await fixture.AdminWithAsync(CorePermissions.MembersManage);
+        var member = await fixture.Host.CreateMemberAsync(groups: ["gold"], cancellationToken: Token);
+        using var client = await fixture.Host.AsMemberAsync(member);
+
+        // Gold's role holds no grant, so the caller holds all of it, both ways, and the row rule that reads the group answers otherwise.
+        (await MemberFixture.TitlesAsync(client, "perk")).Titles.ShouldBe(["Gold perk"]);
+        (await fixture.ManageAsync(HttpMethod.Delete, $"members/{member.Id:D}/groups/{fixture.Gold:D}", client: manager)).Status.ShouldBe(HttpStatusCode.OK);
+        (await MemberFixture.TitlesAsync(client, "perk")).Titles.ShouldBe(["Standard perk"]);
+        (await fixture.ManageAsync(HttpMethod.Put, $"members/{member.Id:D}/groups/{fixture.Gold:D}", client: manager)).Status.ShouldBe(HttpStatusCode.OK);
+        (await MemberFixture.TitlesAsync(client, "perk")).Titles.ShouldBe(["Gold perk"]);
+
+        // Insiders' role holds a grant the caller lacks: refused whether or not the member is in the group.
+        (await fixture.ManageAsync(HttpMethod.Delete, $"members/{member.Id:D}/groups/{fixture.Insiders:D}", client: manager)).Json["code"]!.GetValue<string>().ShouldBe("FCMS3103");
+        (await fixture.ManageAsync(HttpMethod.Put, $"members/{member.Id:D}/groups/{fixture.Insiders:D}")).Status.ShouldBe(HttpStatusCode.OK);
+        var refused = await fixture.ManageAsync(HttpMethod.Delete, $"members/{member.Id:D}/groups/{fixture.Insiders:D}", client: manager);
+        refused.Status.ShouldBe(HttpStatusCode.Forbidden);
+        refused.Json["code"]!.GetValue<string>().ShouldBe("FCMS3103");
+
+        // A group that does not exist is not found, before any grant is looked at.
+        var unknown = Guid.NewGuid();
+        (await fixture.ManageAsync(HttpMethod.Delete, $"members/{member.Id:D}/groups/{unknown:D}", client: manager)).Json["code"]!.GetValue<string>().ShouldBe("FCMS3168");
+        (await fixture.ManageAsync(HttpMethod.Delete, $"member-groups/{unknown:D}", client: manager)).Json["code"]!.GetValue<string>().ShouldBe("FCMS3168");
     }
 
     [Fact]
@@ -230,6 +271,7 @@ public sealed class MemberManagementTests(MemberFixture fixture) : IClassFixture
         read.Json.ToJsonString().ShouldNotContain("securityStamp", Case.Insensitive);
 
         (await fixture.ManageAsync(HttpMethod.Patch, $"members/{first.Id:D}", """{ "displayName": "Renamed" }""")).Json["displayName"]!.GetValue<string>().ShouldBe("Renamed");
+        (await ListAsync("search=NAME")).ShouldContain(first.Email);
         (await fixture.ManageAsync(HttpMethod.Patch, $"members/{first.Id:D}", """{ "email": "moved@example.com" }""")).Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
 
         (await fixture.ManageAsync(HttpMethod.Post, $"members/{first.Id:D}/deactivate")).Json["deactivatedAt"].ShouldNotBeNull();

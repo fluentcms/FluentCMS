@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Management;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
@@ -16,6 +17,7 @@ internal sealed class ContentSurface(
     ContentQueryOptions options,
     IContentQueryAccess access,
     IOperationContextAccessor operations,
+    ManagementShape shape,
     ErrorCodeCatalogue codes) : IContentSurface
 {
     public int DefaultPageSize => options.DefaultPageSize;
@@ -24,7 +26,7 @@ internal sealed class ContentSurface(
 
     public int MaxPopulateDepth => options.MaxPopulateDepth;
 
-    public async ValueTask<IReadOnlySet<string>?> ReadableFieldsAsync(string type, string? locale = null, CancellationToken cancellationToken = default)
+    public async ValueTask<IReadOnlySet<string>?> ReadableFieldsAsync(string type, string? locale, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(type);
 
@@ -40,7 +42,7 @@ internal sealed class ContentSurface(
             return null;
         }
 
-        return SystemField.Fields.Select(field => field.Name)
+        return SystemField.Fields.Where(field => shape.Applies || !field.Management).Select(field => field.Name)
             .Concat(found.Fields.Where(field => !field.Hidden).Select(field => field.Name))
             .Where(name => query.CanReadField(found, name))
             .ToHashSet(StringComparer.Ordinal);

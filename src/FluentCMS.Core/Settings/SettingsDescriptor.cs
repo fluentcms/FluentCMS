@@ -16,6 +16,7 @@ namespace FluentCMS.Core.Settings;
 internal sealed class SettingsDescriptor
 {
     private readonly Lazy<JsonNode> _schema;
+    private readonly FrozenDictionary<string, string> _secretProperties;
 
     public SettingsDescriptor(string area, Type type)
     {
@@ -26,6 +27,10 @@ internal sealed class SettingsDescriptor
         var properties = SettingsJson.Strict.GetTypeInfo(type).Properties.Where(property => property.Get is not null && property.Set is not null).ToList();
         KnownKeys = properties.Select(property => property.Name).ToFrozenSet(StringComparer.Ordinal);
         SecretKeys = properties.Where(IsSecret).Select(property => property.Name).ToFrozenSet(StringComparer.Ordinal);
+        _secretProperties = properties.Where(IsSecret).ToFrozenDictionary(
+            property => property.Name,
+            property => (property.AttributeProvider as MemberInfo)?.Name ?? property.Name,
+            StringComparer.Ordinal);
         foreach (var property in properties)
         {
             RejectNestedSecrets(property.PropertyType, property.Name, [type]);
@@ -45,6 +50,9 @@ internal sealed class SettingsDescriptor
 
     // The keys whose values are never put in an event, an activity row, a log line or a schema.
     public IReadOnlySet<string> SecretKeys { get; }
+
+    // The name in C# of a secret key, which is how ISettings<T> names it.
+    public string PropertyOf(string secretKey) => _secretProperties[secretKey];
 
     public object CreateDefault() => Activator.CreateInstance(Type)!;
 
@@ -181,12 +189,13 @@ internal sealed class SettingsDescriptor
                 return json;
             }
 
+            // A stored null is kept too: it is a site's word that it has no secret, which a code default must not replace.
             List<string> lost = [];
-            foreach (var key in SecretKeys.Order(StringComparer.Ordinal).Where(key => !target.ContainsKey(key) && source[key] is not null))
+            foreach (var key in SecretKeys.Order(StringComparer.Ordinal).Where(key => !target.ContainsKey(key) && source.ContainsKey(key)))
             {
-                if (StillAcceptable(key, source[key]!))
+                if (StillAcceptable(key, source[key]))
                 {
-                    target[key] = source[key]!.DeepClone();
+                    target[key] = source[key]?.DeepClone();
                 }
                 else
                 {
@@ -222,11 +231,71 @@ internal sealed class SettingsDescriptor
         }
     }
 
+    // The secret keys that a site's stored document does not hold, which the site takes from the instance default at every
+    // read: all of them for a site with no document of its own.
+    public IReadOnlyList<string> SecretsInherited(string? own)
+    {
+        if (own is null)
+        {
+            return [.. SecretKeys.Order(StringComparer.Ordinal)];
+        }
+
+        try
+        {
+            return JsonNode.Parse(own) is JsonObject document ? [.. SecretKeys.Order(StringComparer.Ordinal).Where(key => !document.ContainsKey(key))] : [];
+        }
+        catch (Exception exception) when (exception is JsonException or ArgumentException)
+        {
+            return [];
+        }
+    }
+
+    // The secret keys that a write of a site leaves to the instance default: those the document does not name and the site
+    // does not hold either. A key that is named, even as null, is the site's own from then on.
+    public IReadOnlyList<string> SecretsLeftToDefault(string json, string? own)
+    {
+        var named = JsonNode.Parse(json, documentOptions: new JsonDocumentOptions { MaxDepth = SettingsJson.MaxDepth })!.AsObject();
+        return [.. SecretsInherited(own).Where(key => !named.ContainsKey(key))];
+    }
+
+    // A site's document with the secrets it inherits as the instance default holds them now. One that the default does not
+    // hold stays out, so that a read gives its code default.
+    public static string ReadThrough(string own, string instance, IReadOnlyList<string> inherited)
+    {
+        var document = JsonNode.Parse(own)!.AsObject();
+        var source = JsonNode.Parse(instance)!.AsObject();
+        foreach (var key in inherited)
+        {
+            if (source.TryGetPropertyValue(key, out var value))
+            {
+                document[key] = value?.DeepClone();
+            }
+        }
+
+        return document.ToJsonString();
+    }
+
+    public static string Without(string json, IReadOnlyList<string> keys)
+    {
+        if (keys.Count == 0)
+        {
+            return json;
+        }
+
+        var document = JsonNode.Parse(json)!.AsObject();
+        foreach (var key in keys)
+        {
+            document.Remove(key);
+        }
+
+        return document.ToJsonString();
+    }
+
     // Whether the value of a secret key reads into the class and holds its validation attributes, by itself: a problem of
     // another key does not count against it.
-    private bool StillAcceptable(string key, JsonNode value)
+    private bool StillAcceptable(string key, JsonNode? value)
     {
-        var probe = new JsonObject { [key] = value.DeepClone() };
+        var probe = new JsonObject { [key] = value?.DeepClone() };
         try
         {
             Canonicalize(probe.ToJsonString());

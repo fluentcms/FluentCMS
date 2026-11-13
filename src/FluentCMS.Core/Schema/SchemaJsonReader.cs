@@ -164,7 +164,7 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
             type.Scope(scope);
             if (kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton)
             {
-                type.PublishPolicy(unpublishedReferences, maxVersions, trashRetentionDays);
+                type.PublishPolicy(new PublishPolicyOptions { UnpublishedReferences = unpublishedReferences, MaxVersions = maxVersions, TrashRetentionDays = trashRetentionDays });
             }
 
             if (fields is { } list)

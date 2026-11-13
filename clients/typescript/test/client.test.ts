@@ -44,12 +44,14 @@ test("createClient binds the content types and a typed query reaches the Deliver
 });
 
 test("a write sends the fields with the locale and the version, without the system fields", async () => {
-  const { fetch, sent } = answering(200, { id: "1", version: 4 });
+  const { fetch, sent } = answering(200, { id: "1", version: 4, scheduledPublishAt: null, scheduledUnpublishAt: "2027-03-01T09:00:00Z" });
   const cms = createClient(new FluentCmsClient({ baseUrl: "https://cms.example.com/", fetch }));
 
   const updated = await cms.article.update("1", { title: "Hello", author: "0192f2a4-1111-7000-8000-000000000001", sections: [{ type: "quote", text: "Typed." }] }, 3, { locale: "fr" });
 
   assert.equal(updated.version, 4);
+  assert.equal(updated.scheduledPublishAt, null);
+  assert.equal(updated.scheduledUnpublishAt, "2027-03-01T09:00:00Z");
   assert.equal(sent[0]?.method, "PUT");
   assert.equal(sent[0]?.url, "https://cms.example.com/api/management/v1/content/article/1?locale=fr");
   assert.equal(sent[0]?.headers["If-Match"], "\"3\"");

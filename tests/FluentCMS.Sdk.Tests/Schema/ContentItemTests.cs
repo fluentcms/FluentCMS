@@ -15,10 +15,10 @@ public class ContentItemTests
     }
 
     [Fact]
-    public void ReservedFieldNamesAreTheNineSystemFieldsAndFallbacks()
+    public void ReservedFieldNamesAreTheSystemFieldsFallbacksTheSchedulesAndTheTrashMarks()
     {
         ContentItem.ReservedFieldNames.Order(StringComparer.Ordinal).ShouldBe(
-            ["createdAt", "createdBy", "fallbacks", "id", "locale", "publishedAt", "status", "updatedAt", "updatedBy", "version"]);
+            ["createdAt", "createdBy", "deletedAt", "deletedBy", "fallbacks", "id", "locale", "publishedAt", "scheduledPublishAt", "scheduledUnpublishAt", "status", "updatedAt", "updatedBy", "version"]);
     }
 
     [Fact]

@@ -2,6 +2,7 @@ using System.Data.SqlTypes;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
@@ -279,6 +280,29 @@ public partial class OfflineProviderTests
             .ShouldContain("[key] = N'labels'");
         Sql(services, (dialect, row) => dialect.ListContains(Metadata(row), Bind("x")))
             .ShouldContain("OPENJSON([c].[metadata])");
+    }
+
+    // #3012: a part of a text, without regard to case as each server compares text, with an escaped pattern.
+    [Fact]
+    public void BothProvidersMatchAPartOfATextInAnyCase()
+    {
+        using var postgreSql = PostgreSql();
+        using var sqlServer = SqlServer();
+
+        var onPostgreSql = DisplayNameHolding(postgreSql, "50%");
+        onPostgreSql.ShouldContain(@"c.display_name ILIKE @pattern ESCAPE '\'");
+        onPostgreSql.ShouldContain(@"'%50\%%'");
+
+        var onSqlServer = DisplayNameHolding(sqlServer, "50%");
+        onSqlServer.ShouldContain(@"[c].[display_name] COLLATE Latin1_General_100_CI_AS LIKE @pattern ESCAPE N'\'");
+        onSqlServer.ShouldContain(@"N'%50\%%'");
+    }
+
+    private static string DisplayNameHolding(ServiceProvider services, string fragment)
+    {
+        using var scope = services.CreateScope();
+        var holds = scope.ServiceProvider.GetRequiredService<IDataProvider>().ContainsIgnoringCase(fragment);
+        return scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<CmsMember>().Select(member => member.DisplayName).Where(holds).ToQueryString();
     }
 
     [Fact]

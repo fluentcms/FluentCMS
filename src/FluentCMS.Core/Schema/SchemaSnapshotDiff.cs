@@ -8,13 +8,15 @@ namespace FluentCMS.Core.Schema;
 internal static class SchemaSnapshotDiff
 {
     public const string ContentFamily = "type";
+    public const string ComponentFamily = "component";
+    public const string BlockFamily = "block";
 
     private static readonly (string Group, string Family)[] Groups =
     [
         ("collections", ContentFamily),
         ("singletons", ContentFamily),
-        ("components", "component"),
-        ("blocks", "block"),
+        ("components", ComponentFamily),
+        ("blocks", BlockFamily),
     ];
 
     public static IReadOnlyList<SchemaChange> Compare(string before, string after) => Report(before, after).Changes;

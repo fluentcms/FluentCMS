@@ -61,6 +61,7 @@ public static class ErrorCodeRegistry
         Startup(SchemaErrorCodes.InvalidProperty, "Invalid property"),
         Startup(SchemaErrorCodes.ReverseRelationOutsideContentType, "Reverse relation outside a content type"),
         Startup(SchemaErrorCodes.NameTooLong, "Name too long"),
+        Startup(SchemaErrorCodes.FormerNameInUse, "Former name in use"),
 
         // 13xx storage
         Startup(StorageErrorCodes.MissingContentSchema, "Content tables out of date"),
@@ -97,6 +98,7 @@ public static class ErrorCodeRegistry
         Startup(PluginErrorCodes.SecondMigrations, "Plugin migrations added twice"),
         Startup(PluginErrorCodes.RequiredFieldReference, "Required field reference"),
         Startup(PluginErrorCodes.InvalidProtectedResource, "Invalid protected resource"),
+        Startup(PluginErrorCodes.InvalidFieldTypeName, "Invalid field type name"),
         new(PluginErrorCodes.PluginDisabled, StatusCodes.Status404NotFound, "Plugin not enabled"),
         new(PluginErrorCodes.PluginNotFound, StatusCodes.Status404NotFound, "Plugin not found"),
 

@@ -270,22 +270,4 @@ public sealed class AiActionTests : IClassFixture<AiHost>
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         return await response.Content.ReadAsStringAsync(Token);
     }
-
-    private static async Task<Guid> UploadAsync(HttpClient client, string name, byte[] bytes)
-    {
-        using var form = new MultipartFormDataContent();
-        var content = new ByteArrayContent(bytes);
-        content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-        form.Add(content, "files", name);
-        using var response = await client.PostAsync(new Uri("/api/management/v1/media", UriKind.Relative), form, Token);
-        return Guid.Parse((await JsonAsync(response, HttpStatusCode.Created))["items"]![0]!["id"]!.GetValue<string>());
-    }
-
-    private static byte[] Picture(int width, int height)
-    {
-        using var bitmap = new SKBitmap(width, height);
-        bitmap.Erase(new SKColor(20, 90, 160));
-        using var data = bitmap.Encode(SKEncodedImageFormat.Png, 90);
-        return data.ToArray();
-    }
 }

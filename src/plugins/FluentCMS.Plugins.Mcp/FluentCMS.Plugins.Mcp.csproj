@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <Description>The Model Context Protocol server of FluentCMS: Streamable HTTP at /mcp, with the tools, resources and prompts that plugins offer, run as the caller.</Description>
+    <PackageTags>$(PackageTags) mcp ai agents</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

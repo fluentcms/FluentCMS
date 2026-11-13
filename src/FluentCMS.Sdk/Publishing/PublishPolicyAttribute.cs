@@ -4,11 +4,11 @@ namespace FluentCMS.Publishing;
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class PublishPolicyAttribute : Attribute
 {
-    /// <summary>The number of versions kept per entry and locale when a type does not say.</summary>
-    public const int DefaultMaxVersions = 50;
+    /// <summary>The number of versions kept per entry and locale when a type does not say. It is read from the SDK, not compiled into callers, so a later version may change it.</summary>
+    public static int DefaultMaxVersions { get; } = 50;
 
-    /// <summary>The number of days an entry stays in the trash when a type does not say.</summary>
-    public const int DefaultTrashRetentionDays = 30;
+    /// <summary>The number of days an entry stays in the trash when a type does not say. It is read from the SDK, not compiled into callers, so a later version may change it.</summary>
+    public static int DefaultTrashRetentionDays { get; } = 30;
 
     /// <summary>The most days a type can keep its trash, a hundred years.</summary>
     public const int MaxTrashRetentionDays = 36500;

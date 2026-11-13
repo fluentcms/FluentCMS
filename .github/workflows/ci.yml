@@ -77,7 +77,7 @@ jobs:
           - group: integration
             projects: tests/FluentCMS.Core.IntegrationTests tests/FluentCMS.Cli.Tests tests/FluentCMS.Client.Tests
           - group: plugins
-            projects: tests/FluentCMS.Plugins.Tests tests/FluentCMS.Plugins.Media.Tests tests/FluentCMS.Plugins.Webhooks.Tests tests/FluentCMS.Plugins.Mcp.Tests tests/FluentCMS.Plugins.GraphQL.Tests tests/FluentCMS.Plugins.MultiSite.Tests tests/FluentCMS.Plugins.AiAssist.Tests tests/FluentCMS.Host.Tests
+            projects: tests/FluentCMS.Plugins.Tests tests/FluentCMS.Plugins.Media.Tests tests/FluentCMS.Plugins.Webhooks.Tests tests/FluentCMS.Plugins.Mcp.Tests tests/FluentCMS.Plugins.GraphQL.Tests tests/FluentCMS.Plugins.MultiSite.Tests tests/FluentCMS.Plugins.AiAssist.Tests tests/FluentCMS.Plugins.Search.Tests tests/FluentCMS.Host.Tests
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -252,6 +252,13 @@ jobs:
       - name: Build
         run: dotnet build -c Release
 
+      # The version prefix of Directory.Build.props with the suffix of this run, which no release has.
+      - name: Read the version of this build
+        shell: bash
+        run: |
+          version=$(dotnet msbuild src/FluentCMS.Sdk/FluentCMS.Sdk.csproj -getProperty:Version | tail -n 1)
+          echo "PACKAGE_VERSION=$version" >> "$GITHUB_ENV"
+
       - name: Check deprecated packages
         continue-on-error: true
         shell: bash
@@ -264,7 +271,7 @@ jobs:
       - name: Pack
         run: dotnet pack -c Release --no-build -o artifacts/packages
 
-      # Packed beside the NuGet packages and, like them, not published.
+      # Packed beside the NuGet packages at their version. CI publishes neither; the Publish workflow does, from a tag.
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -275,9 +282,38 @@ jobs:
       - name: Pack the TypeScript client
         working-directory: clients/typescript
         run: |
+          npm version "$PACKAGE_VERSION" --no-git-tag-version --allow-same-version
           npm ci
           npm run build
           npm pack --pack-destination ../../artifacts/packages
+
+      - name: Check the metadata of the packages
+        run: dotnet run eng/check-packages.cs -- artifacts/packages "$PACKAGE_VERSION"
+
+      # A copy of FluentCMS.Sdk without each part in turn, which the check must refuse and name: an element of its .nuspec, or
+      # SourceLink, with the symbols package left out.
+      - name: Check that a package without a part fails the check
+        shell: bash
+        run: |
+          declare -A expected=([description]="a description" [readme]="a README" [tags]="its tags" [icon]="the icon" [license]="the licence expression MIT" [sourcelink]="SourceLink in the PDB")
+          for part in "${!expected[@]}"; do
+            broken="$RUNNER_TEMP/broken-package/$part"
+            mkdir -p "$broken"
+            cp "artifacts/packages/FluentCMS.Sdk.$PACKAGE_VERSION.nupkg" "$broken/"
+            if [ "$part" != sourcelink ]; then
+              cp "artifacts/packages/FluentCMS.Sdk.$PACKAGE_VERSION.snupkg" "$broken/"
+              (cd "$broken" && unzip -q "FluentCMS.Sdk.$PACKAGE_VERSION.nupkg" FluentCMS.Sdk.nuspec \
+                && sed -i -E "s#<$part( [^>]*)?>[^<]*</$part>##" FluentCMS.Sdk.nuspec \
+                && zip -q "FluentCMS.Sdk.$PACKAGE_VERSION.nupkg" FluentCMS.Sdk.nuspec && rm FluentCMS.Sdk.nuspec)
+            fi
+            if dotnet run eng/check-packages.cs -- "$broken" "$PACKAGE_VERSION" > "$broken.log"; then
+              cat "$broken.log"
+              echo "::error::The check passed FluentCMS.Sdk without its $part."
+              exit 1
+            fi
+            grep -q "misses ${expected[$part]}" "$broken.log" || { cat "$broken.log"; echo "::error::The check did not name the missing $part."; exit 1; }
+            echo "Without its $part, FluentCMS.Sdk fails the check, as expected."
+          done
 
       - name: Upload packages
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -287,7 +323,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  # The packages of this build in a folder feed, with a version of the run, and FluentCMS.Templates installed from it: every
+  # The packages of this build in a folder feed, at the version of the run, and FluentCMS.Templates installed from it: every
   # combination of the templates is created, built with warnings as errors and the plugin's tests run, the SQLite hosts start
   # in Development, and a PostgreSQL host is brought up with `fluentcms migrations add Initial` and `fluentcms migrate`.
   templates:
@@ -309,8 +345,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
-    env:
-      PACKAGE_VERSION: 1.0.0-ci.${{ github.run_number }}.${{ github.run_attempt }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -324,8 +358,14 @@ jobs:
             Directory.Packages.props
             **/*.csproj
 
+      - name: Read the version of this build
+        shell: bash
+        run: |
+          version=$(dotnet msbuild src/FluentCMS.Sdk/FluentCMS.Sdk.csproj -getProperty:Version | tail -n 1)
+          echo "PACKAGE_VERSION=$version" >> "$GITHUB_ENV"
+
       - name: Pack to a folder feed
-        run: dotnet pack FluentCMS.slnx -c Release -o "$RUNNER_TEMP/feed" -p:Version="$PACKAGE_VERSION"
+        run: dotnet pack FluentCMS.slnx -c Release -o "$RUNNER_TEMP/feed"
 
       - name: Create, build and test every combination
         env:

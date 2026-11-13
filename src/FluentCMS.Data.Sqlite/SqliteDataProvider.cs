@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Reflection;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
@@ -40,6 +41,13 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
 
     // A writer takes the lock at BEGIN IMMEDIATE and holds it to the end, so writers queue and never deadlock.
     public bool IsDeadlock(Exception exception) => false;
+
+    // SQLite's LIKE folds the case of ASCII letters only.
+    public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment)
+    {
+        var pattern = LikePattern.Containing(fragment);
+        return text => EF.Functions.Like(text, pattern, LikePattern.Escape);
+    }
 
     public void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly) =>
         options.UseSqlite(connectionString, sqlite => sqlite

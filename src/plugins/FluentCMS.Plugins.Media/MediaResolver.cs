@@ -15,7 +15,7 @@ internal sealed class MediaResolver(
     MediaLibraries libraries,
     MediaService media) : IMediaResolver
 {
-    public async Task<IReadOnlyDictionary<Guid, MediaDelivery>> ResolveAsync(IReadOnlyCollection<Guid> ids, string? locale = null, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyDictionary<Guid, MediaDelivery>> ResolveAsync(IReadOnlyCollection<Guid> ids, string? locale, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(ids);
 

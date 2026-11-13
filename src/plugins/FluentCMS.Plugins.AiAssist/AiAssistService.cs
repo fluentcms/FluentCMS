@@ -170,6 +170,12 @@ internal sealed class AiAssistService(
             message.Add(new TextContent(text));
         }
 
+        // Whichever factory fills the slot: a host's own may not look at the provider.
+        if (AiProviders.IsRemoved(current.Provider))
+        {
+            throw AiProviders.Refuse(logger, site, current.Provider);
+        }
+
         var client = await clients.CreateAsync(site, current, cancellationToken)
             ?? throw new PluginException(AiErrorCodes.NoProvider, "The site has no AI provider. An administrator names one in the AI settings of the site.");
 

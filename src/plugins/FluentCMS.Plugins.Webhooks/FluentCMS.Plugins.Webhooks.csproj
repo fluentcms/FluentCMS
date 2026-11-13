@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <Description>Webhooks for FluentCMS: signed deliveries of content and cache events, with retries and a delivery log.</Description>
+    <PackageTags>$(PackageTags) webhooks</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

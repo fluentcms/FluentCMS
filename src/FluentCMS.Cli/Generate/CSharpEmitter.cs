@@ -1,4 +1,5 @@
 using System.Text;
+using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Generators.Emit;
 using FluentCMS.Generators.Snapshot;
 using FluentCMS.Schema;
@@ -29,7 +30,7 @@ internal static class CSharpEmitter
         // The builders' emitter warns of a field type it does not know by its text, so it gets no field whose type is not
         // a name; such a field has no builder either way.
         var descriptions = SchemaDescriptions.Of(schema.Model, @namespace)
-            .Select(type => type with { Fields = type.Fields.Where(field => ClientSchema.IsFieldTypeName(field.FieldType)).ToEquatableArray() });
+            .Select(type => type with { Fields = type.Fields.Where(field => FieldTypeNames.IsValid(field.FieldType)).ToEquatableArray() });
         var builders = FieldsEmitter.Emit(descriptions, new EmitOptions(ClientNamespace));
         diagnostics.AddRange(builders.Diagnostics.Select(diagnostic => new GenerateDiagnostic(diagnostic.Code, diagnostic.Message)));
 
@@ -71,7 +72,7 @@ internal static class CSharpEmitter
 
     private sealed class Writer(ClientSchema schema, string @namespace, TypeNames names, HashSet<string> classNames, List<GenerateDiagnostic> diagnostics)
     {
-        private static readonly string[] EntryMembers = ["Id", "Status", "Locale", "Version", "CreatedAt", "CreatedBy", "UpdatedAt", "UpdatedBy", "PublishedAt", "Fallbacks"];
+        private static readonly string[] EntryMembers = ["Id", "Status", "Locale", "Version", "CreatedAt", "CreatedBy", "UpdatedAt", "UpdatedBy", "PublishedAt", "ScheduledPublishAt", "ScheduledUnpublishAt", "Fallbacks"];
 
         // A property with one of these names would hide a member of object.
         private static readonly string[] ObjectMembers = ["Equals", "GetHashCode", "ToString", "GetType", "ReferenceEquals", "MemberwiseClone", "Finalize"];

@@ -19,6 +19,7 @@ internal static class PluginErrorCodes
     public const string SecondMigrations = "FCMS1525";
     public const string RequiredFieldReference = "FCMS1526";
     public const string InvalidProtectedResource = "FCMS1527";
+    public const string InvalidFieldTypeName = "FCMS1528";
 
     public const string PluginDisabled = "FCMS1550";
     public const string PluginNotFound = "FCMS1551";

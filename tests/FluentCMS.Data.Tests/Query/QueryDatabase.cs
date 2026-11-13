@@ -124,7 +124,8 @@ internal sealed class QueryDatabase : IDisposable
         access ?? new OpenContentQueryAccess(),
         options ?? new ContentQueryOptions(),
         search ?? Services.GetRequiredService<ISearchIndex>(),
-        Services.GetRequiredService<ReferenceResolvers>());
+        Services.GetRequiredService<ReferenceResolvers>(),
+        Services.GetRequiredService<ManagementShape>());
 
     public Guid AddArticle(string title, Dictionary<string, object?>? values = null, string locale = "en", short state = ContentState.Published, Guid? id = null, Guid? site = null, Guid? createdBy = null)
     {
@@ -330,6 +331,8 @@ internal sealed class QueryAccess : IContentQueryAccess
     public HashSet<string> DeniedFields { get; } = [];
 
     public Dictionary<string, ContentFilter> RowRules { get; } = [];
+
+    public IContentQueryAccess? PublishedTargets { get; init; }
 
     public bool CanReadType(SchemaType type) => !DeniedTypes.Contains(type.Name);
 

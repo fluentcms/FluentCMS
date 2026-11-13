@@ -20,7 +20,7 @@ namespace FluentCMS.Core.Api.Management;
 // instance defaults. A read is redacted, and a write names the version it read as If-Match.
 internal static class SiteEndpoints
 {
-    private const string SettingsDocument = "The whole settings document of the area, as the JSON schema of the read describes it. A secret it leaves out keeps the value that is stored.";
+    private const string SettingsDocument = "The whole settings document of the area, as the JSON schema of the read describes it. A secret it leaves out keeps what is stored, and one that a site inherits from the instance defaults stays inherited; a secret it names, even as null, replaces it and is no longer inherited.";
 
     public static IServiceCollection AddManagementSiteApi(this IServiceCollection services) =>
         services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.Management, Map);
@@ -120,7 +120,7 @@ internal static class SiteEndpoints
         return Setting(httpContext, descriptor, site, await service.ResolveRedactedAsync(descriptor, site, httpContext.RequestAborted));
     }
 
-    // The body is the whole document; a secret it leaves out keeps the value that is stored.
+    // The body is the whole document; a secret it leaves out keeps what is stored, an inherited one staying inherited.
     private static async Task<IResult> WriteSettingAsync(string area, bool instance, HttpContext httpContext, SettingsService service)
     {
         ManagementQuery.Only(httpContext.Request);

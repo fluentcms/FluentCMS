@@ -107,30 +107,30 @@ public class PrincipalTests
         principal.Claim("missing").ShouldBeNull();
     }
 
+    // Only the principal the engine gives a row rule carries the groups (FluentCMS.Core.Tests, MemberGroupRowRuleTests), so
+    // a principal made any other way, a groups claim or not, throws rather than answer false.
     [Fact]
-    public void AMemberIsInTheGroupsItsGroupsClaimNames()
-    {
-        var member = new Principal(PrincipalKind.Member, UserId, "Sam", new Dictionary<string, string> { [Principal.GroupsClaim] = "gold early-access" });
-
-        member.IsInGroup("gold").ShouldBeTrue();
-        member.IsInGroup("early-access").ShouldBeTrue();
-        member.IsInGroup("Gold").ShouldBeFalse();
-        member.IsInGroup("early").ShouldBeFalse();
-        member.IsInGroup("gold early-access").ShouldBeFalse();
-        member.IsInGroup("").ShouldBeFalse();
-        Should.Throw<ArgumentNullException>(() => member.IsInGroup(null!));
-    }
-
-    [Fact]
-    public void OnlyAMemberIsInGroups()
+    public void IsInGroupThrowsOutsideARowRule()
     {
         var claims = new Dictionary<string, string> { [Principal.GroupsClaim] = "gold" };
+        Principal[] outside =
+        [
+            new(PrincipalKind.Member, UserId, "Sam", claims),
+            new(PrincipalKind.Member, UserId, "Sam"),
+            new(PrincipalKind.AdminUser, UserId, "Amir", claims),
+            new(PrincipalKind.ApiKey, UserId, "Key"),
+            Principal.Anonymous,
+            Principal.System,
+        ];
 
-        new Principal(PrincipalKind.Member, UserId, "Sam").IsInGroup("gold").ShouldBeFalse();
-        new Principal(PrincipalKind.AdminUser, UserId, "Amir", claims).IsInGroup("gold").ShouldBeFalse();
-        new Principal(PrincipalKind.ApiKey, UserId, "Key", claims).IsInGroup("gold").ShouldBeFalse();
-        Principal.Anonymous.IsInGroup("gold").ShouldBeFalse();
-        Principal.System.IsInGroup("gold").ShouldBeFalse();
+        foreach (var principal in outside)
+        {
+            var thrown = Should.Throw<InvalidOperationException>(() => principal.IsInGroup("gold"));
+            thrown.Message.ShouldStartWith("Principal.IsInGroup was called outside a row rule.");
+            thrown.Message.ShouldContain("Member groups are read inside a row rule only");
+        }
+
+        Should.Throw<ArgumentNullException>(() => Principal.Anonymous.IsInGroup(null!));
     }
 
     [Fact]

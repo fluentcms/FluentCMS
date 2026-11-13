@@ -144,6 +144,34 @@ public sealed partial class HostedPagesTests : IClassFixture<HostedPagesFixture>
         rows.Count(row => Details(row)["reason"] == LoginFailureReasons.LockedOut).ShouldBeGreaterThanOrEqualTo(1);
     }
 
+    // On a host of its own, since it moves the clock past the lockout. The lockout is Identity's rule on the host's clock:
+    // still on at its end, and over a tick later.
+    [Fact]
+    public async Task ALockedOutUserIsRefusedUntilTheLockoutEndsAndSignsInAfterIt()
+    {
+        await using var host = NewHost(new CapturedEmails());
+        var editor = await CreateUserAsync(host);
+        using var browser = new HostedPagesBrowser(host);
+        var page = await browser.PageAsync("/account/login");
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            using var wrong = await browser.PostAsync("/account/login", page, Credentials(editor.Email, "not the password"));
+            wrong.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        host.Time.Advance(new AdminUserOptions().Lockout.DefaultLockoutTimeSpan);
+        using (var locked = await browser.PostAsync("/account/login", page, Credentials(editor.Email, Password)))
+        {
+            locked.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await locked.Content.ReadAsStringAsync(Token)).ShouldContain("Sign-in failed.");
+        }
+
+        host.Time.Advance(TimeSpan.FromTicks(1));
+        using var signedIn = await browser.PostAsync("/account/login", page, Credentials(editor.Email, Password));
+        signedIn.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+    }
+
     [Fact]
     public async Task AReturnUrlOfAnotherSiteIsNotFollowed()
     {
@@ -225,6 +253,46 @@ public sealed partial class HostedPagesTests : IClassFixture<HostedPagesFixture>
 
         using var current = await browser.SubmitAsync("/account/login", Credentials(editor.Email, NewPassword));
         current.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+    }
+
+    // On a host of its own, since it moves the clock by an hour. Of two links mailed at once, one is used at the end of its
+    // lifetime and the other a tick later.
+    [Fact]
+    public async Task AResetLinkWorksForAnHourOnTheHostsClock()
+    {
+        var emails = new CapturedEmails();
+        await using var host = NewHost(emails);
+        var (reset, kept) = (await CreateUserAsync(host), await CreateUserAsync(host));
+        using var browser = new HostedPagesBrowser(host);
+        foreach (var editor in (TestUser[])[reset, kept])
+        {
+            using var sent = await browser.SubmitAsync("/account/forgot-password", new Dictionary<string, string> { ["Input.Email"] = editor.Email });
+            sent.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        (await AccountMailJobs.RunAsync(host)).ShouldBe(2);
+
+        host.Time.Advance(TimeSpan.FromHours(1));
+        using (var done = await browser.SubmitAsync(emails.LinkTo(reset.Email).PathAndQuery, NewPasswordFields(NewPassword)))
+        {
+            done.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+            done.Headers.Location!.OriginalString.ShouldBe("/account/login?Status=password-reset");
+        }
+
+        host.Time.Advance(TimeSpan.FromTicks(1));
+        using (var late = await browser.SubmitAsync(emails.LinkTo(kept.Email).PathAndQuery, NewPasswordFields(NewPassword)))
+        {
+            late.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await late.Content.ReadAsStringAsync(Token)).ShouldContain("Invalid token.");
+        }
+
+        using (var signedIn = await browser.SubmitAsync("/account/login", Credentials(reset.Email, NewPassword)))
+        {
+            signedIn.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        }
+
+        using var other = new HostedPagesBrowser(host);
+        await SignInAsync(other, kept.Email);
     }
 
     [Fact]

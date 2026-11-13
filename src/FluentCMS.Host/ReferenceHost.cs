@@ -11,6 +11,7 @@ using FluentCMS.Plugins.Mcp;
 using FluentCMS.Plugins.Media;
 using FluentCMS.Plugins.Media.S3;
 using FluentCMS.Plugins.MultiSite;
+using FluentCMS.Plugins.Search;
 using FluentCMS.Plugins.Webhooks;
 using FluentCMS.Samples.Blog;
 using FluentCMS.Schema;
@@ -60,6 +61,7 @@ public static class ReferenceHost
             cms.AddPlugin<MultiSitePlugin>();
             cms.AddPlugin<GraphQLPlugin>();
             cms.AddPlugin<AiAssistPlugin>();
+            cms.AddPlugin<SearchPlugin>();
 
             // Types that are data have no compiled migrations, so on SQLite their tables follow the schema at start (Q2).
             // A server database changes only when an operator runs `fluentcms schema apply` (decision 55).

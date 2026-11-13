@@ -2,6 +2,16 @@
 
 The reference host, `src/FluentCMS.Host`, is FluentCMS as one container: the Delivery and Management APIs, the authorization server and its hosted pages, and health probes. It is configured entirely by environment variables, so nothing has to be compiled to run it.
 
+## The published image
+
+Each release pushes the image to `ghcr.io/fluentcms/fluentcms`, for `linux/amd64` and `linux/arm64`, with three kinds of tag: the version, such as `1.0.0-preview.1`; `preview`, the newest preview; and `latest`, the newest release that is not a preview, which comes with 1.0.0. Pin a version in production. The commands on this page name the image `fluentcms`, as a local build tags it; use the published name in its place:
+
+```bash
+docker pull ghcr.io/fluentcms/fluentcms:1.0.0-preview.1
+```
+
+The `Publish` workflow builds it from the tag, with the version of the packages in the host ([releasing](releasing.md)).
+
 ## Build and run
 
 Build the image from the repository root:
@@ -10,7 +20,7 @@ Build the image from the repository root:
 docker build -f src/FluentCMS.Host/Dockerfile -t fluentcms .
 ```
 
-The Dockerfile builds for the platform it runs on, and for both `linux/amd64` and `linux/arm64` with `docker buildx build --platform linux/amd64,linux/arm64`. The SDK compiles for the target on the build machine, so no emulation is needed. The image is `mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra`: no shell and no package manager, ICU and time zone data for localized content and schedules, and the non-root user `app` (uid 1654).
+The Dockerfile builds for the platform it runs on, and for both `linux/amd64` and `linux/arm64` with `docker buildx build --platform linux/amd64,linux/arm64`. The SDK compiles for the target on the build machine, so no emulation is needed. A local build is version `1.0.0-dev`; `--build-arg VERSION=1.0.0-preview.1` gives another, as the `Publish` workflow does. The image is `mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra`: no shell and no package manager, ICU and time zone data for localized content and schedules, and the non-root user `app` (uid 1654).
 
 The image runs in the Production environment, which refuses to start on the defaults that are only safe for a trial. Run with nothing set, it stops before it touches the database, exits with code 1 and prints one line per refusal, each naming the setting and the key that lifts it:
 
@@ -238,7 +248,7 @@ initContainers:
         readOnly: true
 ```
 
-A new type, field or index is applied, and so is a renamed field that lists its old name in `formerNames`, which keeps its values. A required field added to a table with rows gets an empty value in them: `''` for text, the empty document for rich text. A change that loses data, such as a removed type or field or a changed field type, is listed and refused with `FCMS3337`, and nothing is applied, unless `--allow-destructive` is given. So is a renamed field whose values are not a column of its own, such as a relation, or a field of a component or block, which may be kept in JSON. The operations of a run are one transaction, so a database that refuses one keeps none (`FCMS3339`); on SQLite a table rebuild commits what came before it, which the next run then leaves out, and runs started together apply each operation once.
+A new type, field or index is applied, and so is a renamed field that lists its old name in `formerNames`, which keeps its values, its columns in a component and the references `cms_reference` keeps under its path. A required field added to a table with rows gets an empty value in them: `''` for text, the empty document for rich text. A change that loses data, such as a removed type or field or a changed field type, is listed and refused with `FCMS3337`, and nothing is applied, unless `--allow-destructive` is given. So is a renamed field whose values are kept in JSON under its old name: a field of a block, or of a component that is repeated or sits in a block. The operations of a run are one transaction, so a database that refuses one keeps none (`FCMS3339`); on SQLite a table rebuild commits what came before it, which the next run then leaves out, and runs started together apply each operation once.
 
 `--dry-run` prints the operations and applies nothing, and exits with 1 when the run would be refused. `--script --output /out/schema.sql` writes the SQL for the database as it is now and applies nothing, for a database that only an administrator may change; the next `fluentcms schema apply` finds nothing to do and records the schema, and after a script with a change that loses data it needs `--allow-destructive` too. A host built with content migrations of its own is refused with `FCMS3335`, since its content tables belong to those migrations.
 
@@ -263,6 +273,13 @@ docker compose up -d --build
 
 `docker compose` refuses to start while a value is missing or empty, and names it. The example also sets the two opt-ins of an evaluation, `FLUENTCMS_ALLOW_GENERATED_SIGNING_KEY` and `FLUENTCMS_ALLOW_UNENCRYPTED_KEY_RING`; without them the host stops with `FCMS1102` and `FCMS1106`. The public origin is `https://localhost` and `AllowedHosts` is `localhost` unless `FLUENTCMS_PUBLIC_ORIGIN` and `FLUENTCMS_ALLOWED_HOSTS` say otherwise. `GET http://localhost:8080/health/ready` answers `Healthy` once the database, the job runner and the bucket (`media-storage`) answer. PostgreSQL takes its password when it creates its volume, so a changed `FLUENTCMS_POSTGRES_PASSWORD` needs `docker compose down -v`, which deletes the data too.
 
+To run the published image instead of building one, set `FLUENTCMS_IMAGE=ghcr.io/fluentcms/fluentcms:1.0.0-preview.1` in `.env` and start without a build; `migrate`, `schema-apply` and `cms` all run it:
+
+```bash
+docker compose pull
+docker compose up -d --no-build
+```
+
 Make the first administrator and a deploy key with the image while the services run. `--no-deps` keeps `run` from running `migrate` and the other steps again. The key is printed alone on standard output:
 
 ```bash
@@ -270,7 +287,7 @@ docker compose run --rm -T --no-deps cms fluentcms user create --email ada@examp
 docker compose run --rm -T --no-deps cms fluentcms apikey create --name deploy --class management --role "Super Admin"
 ```
 
-The key works over plain http at once. Signing in on the hosted pages needs https, so it waits for the proxy below. The `Compose` workflow in CI starts this file with throwaway values on every push to `main` and to a `feature/*` branch, signs an administrator in through the hosted pages with a proxy's forwarded headers, publishes an article through the Management API, reads it through the Delivery API, and uploads an image that it reads back from MinIO.
+The key works over plain http at once. Signing in on the hosted pages needs https, so it waits for the proxy below. The `Compose` workflow in CI starts this file with throwaway values on every push to `main` and to a `feature/*` branch, signs an administrator in through the hosted pages with a proxy's forwarded headers, publishes an article through the Management API, reads it through the Delivery API, and uploads an image that it reads back from MinIO. **Actions → Compose → Run workflow** with an image, such as `ghcr.io/fluentcms/fluentcms:1.0.0-preview.1`, runs the same test on the published image instead of a build.
 
 What to change for production:
 
@@ -278,4 +295,4 @@ What to change for production:
 - **Address and TLS.** Put a proxy that ends TLS in front of `cms`, set `FLUENTCMS_PUBLIC_ORIGIN` to its https address and `FLUENTCMS_ALLOWED_HOSTS` to its host name with `localhost`, and forward the scheme ([reverse proxy](reverse-proxy.md)).
 - **Content types.** Replace `FLUENTCMS_SAMPLE: blog` in `x-host-environment` with `FLUENTCMS_SCHEMA` and mount the schema file into `migrate`, `schema-apply` and `cms`, since each of them loads it. A change that loses data stops `schema-apply` with `FCMS3337`, and `cms` then does not start; add `--allow-destructive` to its command only for that run.
 - **Storage.** For S3 or another managed service, drop `minio` and `minio-init` and set the `FluentCms__Media__S3__*` keys of `cms` to its bucket and an access key limited to it.
-- **Email, backups and the image.** Set the SMTP keys, back up the database with `pg_dump` ([backups](backups.md); `fluentcms backup` refuses on PostgreSQL) and the bucket with the tools of its service, and set `FLUENTCMS_IMAGE` to an image of your registry with its tag.
+- **Email, backups and the image.** Set the SMTP keys, back up the database with `pg_dump` ([backups](backups.md); `fluentcms backup` refuses on PostgreSQL) and the bucket with the tools of its service, and set `FLUENTCMS_IMAGE` to the published image at a version, or to an image of your registry with its tag.

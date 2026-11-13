@@ -25,6 +25,7 @@ COPY src/plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj src/plugins/
 COPY src/plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj src/plugins/FluentCMS.Plugins.Media/
 COPY src/plugins/FluentCMS.Plugins.Media.S3/FluentCMS.Plugins.Media.S3.csproj src/plugins/FluentCMS.Plugins.Media.S3/
 COPY src/plugins/FluentCMS.Plugins.MultiSite/FluentCMS.Plugins.MultiSite.csproj src/plugins/FluentCMS.Plugins.MultiSite/
+COPY src/plugins/FluentCMS.Plugins.Search/FluentCMS.Plugins.Search.csproj src/plugins/FluentCMS.Plugins.Search/
 COPY src/plugins/FluentCMS.Plugins.Webhooks/FluentCMS.Plugins.Webhooks.csproj src/plugins/FluentCMS.Plugins.Webhooks/
 COPY samples/Blog/Blog.csproj samples/Blog/
 COPY src/FluentCMS.Host/FluentCMS.Host.csproj src/FluentCMS.Host/
@@ -32,12 +33,19 @@ RUN dotnet restore src/FluentCMS.Host/FluentCMS.Host.csproj -a $TARGETARCH
 
 COPY src/ src/
 COPY samples/Blog/ samples/Blog/
+# The Publish workflow passes the version of the release; without it the host is the 1.0.0-dev of a local build.
+ARG VERSION
 RUN dotnet publish src/FluentCMS.Host/FluentCMS.Host.csproj -c Release -a $TARGETARCH --no-restore -o /app -p:UseAppHost=false \
+        ${VERSION:+-p:Version=$VERSION} \
     && mkdir /data
 
 # Chiseled: no shell, no package manager, a non-root user. The extra variant adds ICU and time zone data, which
 # localized content and schedules in a time zone need.
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra
+LABEL org.opencontainers.image.title="FluentCMS" \
+      org.opencontainers.image.description="The reference host of FluentCMS, a headless CMS for .NET: the Delivery and Management APIs, the authorization server and health probes, configured by environment variables." \
+      org.opencontainers.image.source="https://github.com/fluentcms/FluentCMS" \
+      org.opencontainers.image.licenses="MIT"
 WORKDIR /app
 COPY --from=build /app .
 COPY --from=build --chown=$APP_UID:$APP_UID /data /data

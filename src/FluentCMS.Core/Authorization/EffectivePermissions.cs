@@ -62,8 +62,17 @@ internal sealed class EffectiveGrant(string pattern, PermissionConstraints const
 // on top of everything else. It lives for one request, so the content answers are kept per type, operation, site and
 // locale: a list asks the same questions for every entry and field. A token of an MCP client that registered itself is
 // also held to the role of its client (limit): every answer is what both the principal's grants and that role's give, each
-// worked out as for a principal of its own, so the client's role only removes.
-internal sealed class EffectivePermissions(OperationContext context, IReadOnlyList<EffectiveGrant> grants, RowRuleRegistry rules, EffectivePermissions? limit = null)
+// worked out as for a principal of its own, so the client's role only removes. A row rule reads the principal with the
+// names of the member groups it is in (groups, which the evaluator reads for a member), and only that principal carries
+// them, so Principal.IsInGroup throws on the principal of the operation itself. A preview token reads the targets of its
+// entry with permissions of their own (publishedTargets).
+internal sealed class EffectivePermissions(
+    OperationContext context,
+    IReadOnlyList<EffectiveGrant> grants,
+    RowRuleRegistry rules,
+    EffectivePermissions? limit = null,
+    IReadOnlyList<string>? groups = null,
+    EffectivePermissions? publishedTargets = null)
 {
     private readonly Dictionary<Asked, IReadOnlyList<EffectiveGrant>> _grantsOf = [];
 
@@ -77,10 +86,17 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
 
     private readonly PrincipalBinding _binding = PrincipalBinding.Of(context.Principal);
 
+    private OperationContext? _ruleContext;
+
     public bool IsSystem => context.Principal.IsSystem;
 
     // The role of the client the principal came through, as permissions of its own; null when there is none.
     public EffectivePermissions? Limit => limit;
+
+    // What a preview token reads the targets of its entry's relations and rich text links with, in their published rows
+    // alone (spec 4.7): the principal that minted it, with no scope and no binding to the entry. Null for every other
+    // principal, which reads targets as itself.
+    public EffectivePermissions? PublishedTargets => publishedTargets;
 
     // Everything beyond reading content needs a scope that says the token is for managing; a Delivery principal has none.
     public bool CanManage =>
@@ -303,7 +319,8 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
     }
 
     // An allow-list is about the fields of the type. System fields are the same for every type, and only the two that
-    // identify a person are closed: they are outside the Delivery response shape and exist for row rules.
+    // identify a person, which exist for row rules, and the pending schedules are closed: they are outside the Delivery
+    // response shape.
     public bool CanReadField(SchemaType type, string field, AccessTarget target)
     {
         if (!Allows(type, ContentOperation.Read, target))
@@ -313,7 +330,7 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
 
         if (SystemField.Find(field) is not null)
         {
-            return CanManage || !SystemField.NamesAPerson(field);
+            return CanManage || !SystemField.OnlyForManagers(field);
         }
 
         return ReadableFieldsOf(type, target) is not { } fields || fields.Contains(field);
@@ -409,7 +426,9 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
 
     // One rule for this operation, or null when it can match no row.
     public ContentFilter? RuleFilter(string name, SchemaType type) =>
-        rules.Find(name, type.Name)?.For(context) is { } filter && !ReferenceEquals(filter, RowRule.NoRows) ? filter : null;
+        rules.Find(name, type.Name)?.For(RuleContext) is { } filter && !ReferenceEquals(filter, RowRule.NoRows) ? filter : null;
+
+    private OperationContext RuleContext => _ruleContext ??= context with { Principal = context.Principal.InRowRule(groups ?? []) };
 
     private bool Permits(string permission, AccessTarget target) => ScopeAllows(permission) && _binding.Allows(permission, target);
 

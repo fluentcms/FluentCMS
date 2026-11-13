@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using FluentCMS.Cli.Generate;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Schema;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -276,7 +277,7 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
         var fieldTypes = blog.Host.Services.GetRequiredService<IFieldTypeRegistry>().All.Select(fieldType => fieldType.Name).ToList();
 
         fieldTypes.ShouldContain("media");
-        fieldTypes.ShouldAllBe(name => ClientSchema.IsFieldTypeName(name));
+        fieldTypes.ShouldAllBe(name => FieldTypeNames.IsValid(name));
     }
 
     // Names that clash with an export of @fluentcms/client, a member of BlocksField or object, or a builder of another type.

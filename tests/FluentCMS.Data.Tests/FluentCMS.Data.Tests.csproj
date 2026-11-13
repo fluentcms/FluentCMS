@@ -35,6 +35,7 @@
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj" />
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.MultiSite/FluentCMS.Plugins.MultiSite.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Search/FluentCMS.Plugins.Search.csproj" />
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Webhooks/FluentCMS.Plugins.Webhooks.csproj" />
     <RuntimeHostConfigurationOption Include="FluentCMS.Plugins.DisableDiscovery" Value="true" />
   </ItemGroup>

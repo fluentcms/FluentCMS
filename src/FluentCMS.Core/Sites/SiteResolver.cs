@@ -9,7 +9,9 @@ namespace FluentCMS.Core.Sites;
 // The first of these that names a site wins, and a later one is not looked at: the API key binding, the header, the
 // parameter, the host (the multi-site plugin's resolvers), the default site. What it finds is kept in SiteCache. A key, a
 // header or a parameter that names no site is refused; a host name whose site is gone is a host name no site has, which
-// reads the default site, since a resolver may still hold the host of a site that was deleted.
+// reads the default site, since a resolver may still hold the host of a site that was deleted. That such a site is gone is
+// kept as well, for the host only: an id is never given to another site, and a key, a header or a parameter could name any
+// number of them. A resolver could give any number too, so SiteCache keeps MaxGoneSites of them at the most.
 internal sealed class SiteResolver(CmsDbContext context, IEnumerable<ISiteHostResolver> hosts, SiteCache cache) : ISiteResolver
 {
     public async ValueTask<SiteId> ResolveAsync(SiteRequest request, CancellationToken cancellationToken = default)
@@ -35,7 +37,7 @@ internal sealed class SiteResolver(CmsDbContext context, IEnumerable<ISiteHostRe
         {
             foreach (var resolver in hosts)
             {
-                if (await resolver.ResolveAsync(host, cancellationToken) is { } found && await ExistsAsync(found, cancellationToken))
+                if (await resolver.ResolveAsync(host, cancellationToken) is { } found && await ExistsAsync(found, keepAbsence: true, cancellationToken))
                 {
                     return found;
                 }
@@ -92,9 +94,9 @@ internal sealed class SiteResolver(CmsDbContext context, IEnumerable<ISiteHostRe
     }
 
     private async ValueTask<SiteId> ExistingAsync(SiteId site, string source, CancellationToken cancellationToken) =>
-        await ExistsAsync(site, cancellationToken) ? site : throw NotFound(source, $"There is no site {site}.");
+        await ExistsAsync(site, keepAbsence: false, cancellationToken) ? site : throw NotFound(source, $"There is no site {site}.");
 
-    private async ValueTask<bool> ExistsAsync(SiteId site, CancellationToken cancellationToken)
+    private async ValueTask<bool> ExistsAsync(SiteId site, bool keepAbsence, CancellationToken cancellationToken)
     {
         var id = site.Value;
         var key = SiteCache.SiteKey(id);
@@ -103,14 +105,23 @@ internal sealed class SiteResolver(CmsDbContext context, IEnumerable<ISiteHostRe
             return true;
         }
 
-        var generation = cache.Generation;
-        if (!await context.Set<Site>().AsNoTracking().AnyAsync(item => item.Id == id, cancellationToken))
+        if (keepAbsence && cache.IsGone(id))
         {
             return false;
         }
 
-        cache.Set(key, true, generation);
-        return true;
+        var generation = cache.Generation;
+        var exists = await context.Set<Site>().AsNoTracking().AnyAsync(item => item.Id == id, cancellationToken);
+        if (exists)
+        {
+            cache.Set(key, true, generation);
+        }
+        else if (keepAbsence)
+        {
+            cache.SetGone(id, generation);
+        }
+
+        return exists;
     }
 
     private static ValidationException NotFound(string source, string message) => new([new ValidationError(source, SiteErrorCodes.SiteNotFound, message)]);

@@ -28,7 +28,7 @@ fluentcms migrations add AddSubtitle
 
 This builds the project and writes the migration to `Migrations/Content`. `migrations add` and `migrations remove` run in the tool's own process, because they need EF Core's design-time package, which a host does not get: the tool loads the host beside its own FluentCMS.Core and EF Core, so a host built against another version stops with both versions named, such as `MyHost could not be used by this fluentcms, which has FluentCMS.Core 1.2.0; the host has 1.3.0, so use fluentcms 1.3.0`. The other commands run inside the host and have no such limit. The runner looks for content migrations in the entry assembly; call `cms.UseContentMigrations(assembly)` inside `AddFluentCms` if they live elsewhere.
 
-Before it writes, `migrations add` prints what the migration changes in the schema, in the words of `fluentcms schema diff` below, from the schema the newest migration was generated from, which every content model snapshot carries, to the host's. It refuses with `FCMS3327`, and writes nothing, when the change loses data: a type or a field removed, a field whose type, `multiple` or `localizable` changed, a type whose kind, `localized` or scope changed, or a renamed field. A field removed beside a field added of the same kind is reported as a possible rename with the attribute to add:
+Before it writes, `migrations add` prints what the migration changes in the schema, in the words of `fluentcms schema diff` below, from the schema the newest migration was generated from, which every content model snapshot carries, to the host's. It refuses with `FCMS3327`, and writes nothing, when the change loses data: a type or a field removed, a field whose type, `multiple` or `localizable` changed, a type whose kind, `localized` or scope changed, or a renamed field whose values are kept in JSON (below). A field removed beside a field added of the same kind is reported as a possible rename with the attribute to add:
 
 ```text
 field 'article.summary' added
@@ -37,7 +37,29 @@ possible rename: field 'article.subtitle' to 'summary'; add [FormerNames("subtit
 FCMS3327: the migration loses data: field 'article.subtitle' removed; nothing was written. Pass --allow-destructive to generate it.
 ```
 
-With `[FormerNames("subtitle")]` on `Summary` the change is reported as `field 'article.subtitle' renamed to 'summary'`. The generated migration does not rename the column yet, though: it drops `subtitle` and adds `summary`, so a rename is refused too. Edit the migration to rename the column with `migrationBuilder.RenameColumn` and pass `--allow-destructive`. A model snapshot generated before the snapshot carried the schema cannot be compared, so the next migration is refused with `FCMS3328` until `--allow-destructive` is given once.
+Without the attribute the migration drops `subtitle` and adds `summary`, so `--allow-destructive` generates exactly that; a column is never taken for another by its type alone. With `[FormerNames("subtitle")]` on `Summary` the change is reported as `field 'article.subtitle' renamed to 'summary'`, and the migration is generated without `--allow-destructive`: it renames the column `subtitle` to `summary`, which keeps its values, and what is named after it.
+
+- The indexes of the column take the new name (`ix_cms_article_summary`, `ux_cms_article_summary`). An index whose filter names the column, which a `[Unique]` index on a nullable column has, is dropped and made again, since it holds no data. A JSON column's check constraint is dropped and added under the new name.
+- A localizable field's column is renamed in the `_i18n` table.
+- A single component's columns follow both its field and the fields inside it: `meta` renamed to `seo` and the component's `metaTitle` to `pageTitle` turn `meta_meta_title` into `seo_page_title`.
+- `cms_reference` keeps the references of a relation or media field under its path, and those that a rich text, blocks or repeated component field holds under that field's path. The migration moves them to the new path for the type, as `UPDATE cms_reference SET field = 'author' WHERE source_type = 'article' AND field = 'writer'`, and its `Down` moves them back.
+
+A field of a block, or of a component that is repeated or sits in a block, keeps its values under its name in the JSON of the field that holds it, which a migration does not rewrite. Such a rename is refused, with the field named:
+
+```text
+FCMS3327: the migration loses data: field 'block hero.heading' renamed to 'title', whose values are kept in JSON under 'heading', which the migration does not rename; nothing was written. Pass --allow-destructive to generate it.
+```
+
+The versions in `cms_version` keep the values of a renamed field under its former name, and reading, diffing or restoring a version finds them there: a field missing under its name is read under each of its former names in order, at the top level and in a single component. A field kept in JSON keeps its former name in a version as in the entry. A role whose grant allows a list of fields still names the former one, so the renamed field drops out of that list until the role is changed.
+
+A former name must not be the name of another field of the type, component or block: the migration would leave the values under that field, while a version read would move them to the renamed one. Nor may two fields list the same former name, since a version would give its values to the first of them declared. Schema validation refuses each, and a swap of two names, with `FCMS1219`:
+
+```text
+FCMS1219: former name 'subtitle' of article.summary is the name of field article.subtitle; a former name must not be the name of another field of collection 'article'
+FCMS1219: former name 'subtitle' of article.teaser is also a former name of article.summary; a former name must belong to one field of collection 'article'
+```
+
+A model snapshot generated before the snapshot carried the schema cannot be compared, so the next migration is refused with `FCMS3328` until `--allow-destructive` is given once.
 
 `fluentcms migrations remove` deletes the newest content migration and writes the snapshot back as the migration before it left it. It first asks the host, with `fluentcms migrations list`, whether its database has the migration, and refuses with `FCMS3314` when it has: add a migration that undoes it instead. `--force` removes the files without asking, and leaves the database as it is.
 
@@ -88,7 +110,7 @@ A command runs before any hosted service starts, so nothing migrates on start, l
 | `fluentcms schema snapshot [--output <file>]` | The canonical snapshot of the host's schema, whose SHA-256 is the schema hash. |
 | `fluentcms schema validate [--schema <file>]` | Builds the host's schema, or a schema file, and prints every `FCMS12xx` error; exits with 1 when there is one (`FCMS3320`). A schema file is checked by the tool without a host, with core's field types, unless `--project` or `--assembly` is given. |
 | `fluentcms schema diff --applied \| --schema <file> [--json]` | What differs from the schema in the newest row of the schema history, or from a schema file, to the host's schema, and from the history to a file with both. Destructive changes are marked and possible renames suggested; exits with 1 when anything differs (`FCMS3322`), so CI can gate a deploy. |
-| `fluentcms schema apply [--script [--output <file>]] [--dry-run] [--allow-destructive]` | For a host whose types are data and so have no content migrations, such as the [Docker image](docker.md#apply-a-schema-file) with a schema file: compares the schema with the content tables, applies the difference in one transaction (on SQLite, committed in parts around a table rebuild) and records the schema in the schema history, on every provider. A renamed field with `formerNames` keeps its values; a change that loses data is refused (`FCMS3337`) unless `--allow-destructive` is given. `--dry-run` prints the operations, and `--script` writes their SQL, applying nothing. It refuses a host with content migrations (`FCMS3335`) and runs after `fluentcms migrate` (`FCMS3336`). |
+| `fluentcms schema apply [--script [--output <file>]] [--dry-run] [--allow-destructive]` | For a host whose types are data and so have no content migrations, such as the [Docker image](docker.md#apply-a-schema-file) with a schema file: compares the schema with the content tables, applies the difference in one transaction (on SQLite, committed in parts around a table rebuild) and records the schema in the schema history, on every provider. A renamed field with `formerNames` keeps its values and its references, as in a content migration, and a rename whose values are kept in JSON counts as lost; a change that loses data is refused (`FCMS3337`) unless `--allow-destructive` is given. `--dry-run` prints the operations, and `--script` writes their SQL, applying nothing. It refuses a host with content migrations (`FCMS3335`) and runs after `fluentcms migrate` (`FCMS3336`). |
 | `fluentcms doctor [--json]` | The startup report without starting the host: providers, plugins, assemblies, pending migrations, schema drift and insecure defaults. Exits with 1 when the host would not start (`FCMS3325`) or a migration is pending (`FCMS3303`). |
 
 `schema snapshot`, `schema diff` and `doctor` also take `--url <url>` with a management API key in `--token` or `FLUENTCMS_TOKEN`: the snapshot and the diagnostics of a running instance, and the diff from that instance to the host's schema, or to a schema file with `--schema`. The key needs `schema.read` for the schema and `system.read` for `doctor`.

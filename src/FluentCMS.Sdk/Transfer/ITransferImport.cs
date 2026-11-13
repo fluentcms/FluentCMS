@@ -30,6 +30,12 @@ public interface ITransferImport
     /// <returns><see langword="true"/> when the file is in the package and was read; otherwise <see langword="false"/>.</returns>
     Task<bool> ReadAsync(string path, Func<Stream, CancellationToken, Task> read, CancellationToken cancellationToken);
 
+    /// <summary>The same as <c>Report(section, id, outcome, null, null)</c>, for an item that has no code or message.</summary>
+    /// <param name="section">The kind of item, such as <c>media</c> for an asset.</param>
+    /// <param name="id">The id of the item.</param>
+    /// <param name="outcome">What happened to it.</param>
+    void Report(string section, string id, TransferOutcome outcome) => Report(section, id, outcome, null, null);
+
     /// <summary>
     /// Reports what happened to one item. The report counts the outcomes by section and names the items that were not
     /// created, updated or skipped. An item reported as created, updated or skipped under the name of a reference target,
@@ -40,5 +46,5 @@ public interface ITransferImport
     /// <param name="outcome">What happened to it.</param>
     /// <param name="code">The code of a conflict or an error, or <see langword="null"/>.</param>
     /// <param name="message">What went wrong, for people, or <see langword="null"/>.</param>
-    void Report(string section, string id, TransferOutcome outcome, string? code = null, string? message = null);
+    void Report(string section, string id, TransferOutcome outcome, string? code, string? message);
 }

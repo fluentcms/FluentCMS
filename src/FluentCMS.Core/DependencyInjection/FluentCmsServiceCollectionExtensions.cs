@@ -184,6 +184,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.TryAddScoped<IContentSurface, ContentSurface>();
         services.AddScoped<ReferenceResolvers>();
         services.AddHostedService<ReferenceResolversStartupCheck>();
+        services.AddScoped<ManagementShape>();
         services.AddScoped<ContentQueryEngine>();
 
         services.TryAddSingleton(TimeProvider.System);

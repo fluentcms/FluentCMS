@@ -17,7 +17,7 @@ dotnet new fluentcms -n FluentCms-App --provider sqlite --sample none
 | File | Holds |
 | --- | --- |
 | `Program.cs` | `AddFluentCms`, the command entry point of the `fluentcms` tool, `UseFluentCms`, `MapFluentCms` and the OpenAPI document |
-| `CmsSetup.cs` | the content types of the project, the data provider and the plugins: media and webhooks |
+| `CmsSetup.cs` | the content types of the project, the data provider and the plugins: media, webhooks and search |
 | `Content/Article.cs`, or `Blog/` | the content types: each class with `[Collection]`, `[Singleton]`, `[Component]` or `[Block]` is one |
 | `CmsContextFactory.cs` | the design-time factory that `fluentcms migrations add` builds the content model with |
 | `Migrations/Content/` | the content migrations, empty until the first `fluentcms migrations add` |

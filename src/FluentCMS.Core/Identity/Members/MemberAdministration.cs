@@ -1,9 +1,11 @@
+using System.Linq.Expressions;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Storage;
 using FluentCMS.Events;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 
 namespace FluentCMS.Core.Identity.Members;
 
@@ -24,7 +26,8 @@ internal sealed class MemberAdministration(
     IdentityChanges changes,
     MemberSessions sessions,
     MemberLogins logins,
-    MemberMail mail)
+    MemberMail mail,
+    IDataProvider provider)
 {
     public async Task<MemberPage> ListAsync(MemberFilter filter, int page, int pageSize, CancellationToken cancellationToken)
     {
@@ -33,9 +36,9 @@ internal sealed class MemberAdministration(
         await RequireAsync(cancellationToken);
 
         var query = context.Set<CmsMember>().AsNoTracking();
-        if (!string.IsNullOrWhiteSpace(filter.Search) && members.NormalizeEmail(filter.Search.Trim()) is { } term)
+        if (!string.IsNullOrWhiteSpace(filter.Search))
         {
-            query = query.Where(member => member.NormalizedEmail!.Contains(term));
+            query = query.Where(Matching(filter.Search.Trim()));
         }
 
         if (filter.GroupId is { } groupId)
@@ -184,12 +187,13 @@ internal sealed class MemberAdministration(
         return await InfoAsync(member, cancellationToken);
     }
 
-    // Taking a member out of a group only takes away, so it needs no grant of the group's role.
+    // Taking a member out of a group needs the grants of its role as putting one in does: a row rule that negates the group
+    // gives the member more without it.
     public async Task<MemberInfo> RemoveFromGroupAsync(Guid id, Guid groupId, CancellationToken cancellationToken)
     {
         await RequireAsync(cancellationToken);
         var member = await FindAsync(id);
-        var group = await groups.FindAsync(groupId, cancellationToken);
+        var group = await groups.RequireAssignableAsync(groupId, cancellationToken);
 
         await changes.RunAsync(
             async () =>
@@ -208,6 +212,19 @@ internal sealed class MemberAdministration(
             cancellationToken);
 
         return await InfoAsync(member, cancellationToken);
+    }
+
+    // A part of the address, in its normalized form, or a part of the display name, as the database compares text without
+    // regard to case. Neither can use an index, so a search reads every member that the other filters leave.
+    private Expression<Func<CmsMember, bool>> Matching(string search)
+    {
+        var address = members.NormalizeEmail(search);
+        var name = provider.ContainsIgnoringCase(search);
+        Expression<Func<CmsMember, bool>> byAddress = member => member.NormalizedEmail!.Contains(address);
+
+        var member = byAddress.Parameters[0];
+        var byName = ReplacingExpressionVisitor.Replace(name.Parameters[0], Expression.Property(member, nameof(CmsMember.DisplayName)), name.Body);
+        return Expression.Lambda<Func<CmsMember, bool>>(Expression.OrElse(byAddress.Body, byName), member);
     }
 
     private ValueTask RequireAsync(CancellationToken cancellationToken) =>

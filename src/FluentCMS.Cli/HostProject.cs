@@ -38,7 +38,7 @@ internal sealed class HostProject : IDisposable
         return (IReadOnlyList<string>)[files.MigrationFile, files.MetadataFile, files.SnapshotFile];
     });
 
-    public SchemaDiffReport? ReviewMigration() => WithFactory(factory => ContentMigrationGenerator.Review(() => factory.CreateDbContext([])));
+    public MigrationReview? ReviewMigration() => WithFactory(factory => ContentMigrationGenerator.Review(() => factory.CreateDbContext([])));
 
     public string? NewestMigration() => WithFactory(factory => ContentMigrationGenerator.Newest(() => factory.CreateDbContext([])));
 

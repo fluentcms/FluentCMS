@@ -233,6 +233,9 @@ public sealed class TransferTests : IDisposable
         result.Items.ShouldBeEmpty();
         result.Sections.ShouldHaveSingleItem().ShouldBe(new KeyValuePair<string, TransferCounts>(TransferImporter.SettingsSection, TransferCounts.None with { Created = 1 }));
         target.Read(context => context.Set<SettingRow>().Single().Json).ShouldContain("news@example.com");
+
+        // The site of the target holds no password: it reads that of the target's instance defaults.
+        target.Read(context => context.Set<SettingRow>().Single().Json).ShouldNotContain("password");
     }
 
     [Fact]

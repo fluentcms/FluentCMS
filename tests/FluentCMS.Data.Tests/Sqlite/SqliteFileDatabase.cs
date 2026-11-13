@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Linq.Expressions;
 using System.Reflection;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
@@ -60,6 +61,8 @@ internal sealed class SqliteFileDatabase(bool writeAheadLog = true) : TestDataba
         public bool IsUniqueViolation(Exception exception) => inner.IsUniqueViolation(exception);
 
         public bool IsDeadlock(Exception exception) => inner.IsDeadlock(exception);
+
+        public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment) => inner.ContainsIgnoringCase(fragment);
 
         public string? FilePath => ((IDatabaseFile)inner).FilePath;
 

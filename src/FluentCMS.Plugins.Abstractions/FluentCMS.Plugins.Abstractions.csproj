@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <Description>The plugin contracts that need EF Core or ASP.NET Core: model contributors, migration streams and endpoint mapping.</Description>
+    <PackageTags>$(PackageTags) plugins efcore aspnetcore</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- Add PackageValidationBaselineVersion here once 1.0.0 ships. -->
     <EnablePackageValidation>true</EnablePackageValidation>

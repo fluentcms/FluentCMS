@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using FluentCMS.Settings;
 
 namespace FluentCMS.Plugins.AiAssist;
@@ -12,18 +13,18 @@ public sealed class AiSettings : IValidatableObject
     public const int MaxFieldsPerType = 100;
     public const int NameMaxLength = 64;
 
+    [JsonConverter(typeof(AiProviderJsonConverter))]
     public AiProvider Provider { get; set; } = AiProvider.None;
 
     // The model, or for Azure OpenAI the deployment.
     [StringLength(128)]
     public string? Model { get; set; }
 
-    // One of FluentCms:Ai:AllowedEndpoints. OpenAI and Anthropic use their own endpoint when it is unset; the other
-    // providers need one.
+    // One of FluentCms:Ai:AllowedEndpoints. OpenAI uses its own endpoint when it is unset; the other providers need one.
     [StringLength(2048)]
     public string? Endpoint { get; set; }
 
-    // Unset, the key comes from FluentCms:Ai:{Provider}:ApiKey.
+    // Unset, the key comes from FluentCms:Ai:{Provider}:ApiKey. An OpenAI-compatible endpoint, such as Ollama's, may take none.
     [SettingsSecret]
     [StringLength(512)]
     public string? ApiKey { get; set; }
@@ -44,6 +45,15 @@ public sealed class AiSettings : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
+        if (AiProviders.IsRemoved(Provider))
+        {
+            yield return new ValidationResult($"The plugin no longer has this provider. {AiProviders.Instead}", [nameof(Provider)]);
+        }
+        else if (!Enum.IsDefined(Provider))
+        {
+            yield return new ValidationResult("The provider is none, openAi, azureOpenAi or openAiCompatible.", [nameof(Provider)]);
+        }
+
         if (!string.IsNullOrWhiteSpace(Endpoint) && AiProviderEndpoints.Parse(Endpoint) is null)
         {
             yield return new ValidationResult(AiProviderEndpoints.Shape, [nameof(Endpoint)]);
@@ -72,10 +82,7 @@ public enum AiProvider
     // Through its OpenAI-compatible endpoint, with the deployment as the model and an API key.
     AzureOpenAi,
 
-    Anthropic,
-
-    Ollama,
-
-    // Any other endpoint that speaks the OpenAI chat completions API.
-    OpenAiCompatible,
+    // Any other endpoint that speaks the OpenAI chat completions API, such as Ollama's /v1 or a gateway. 3 and 4 were
+    // Anthropic and Ollama, which settings may still name.
+    OpenAiCompatible = 5,
 }

@@ -49,6 +49,18 @@ internal sealed class ContentSchemas(SchemaModel schema, OpenApiDocumentOptions 
             ["updatedAt"] = System(new JsonObject { ["type"] = "string", ["format"] = "date-time" }),
             ["updatedBy"] = System(new JsonObject { ["type"] = "string", ["format"] = "uuid", ["description"] = "Only when fields= asks for it." }),
             ["publishedAt"] = System(new JsonObject { ["type"] = new JsonArray("string", "null"), ["format"] = "date-time" }),
+            ["scheduledPublishAt"] = System(new JsonObject
+            {
+                ["type"] = new JsonArray("string", "null"),
+                ["format"] = "date-time",
+                ["description"] = "When the pending scheduled publish of this locale runs, or null when none is pending. Management API only.",
+            }),
+            ["scheduledUnpublishAt"] = System(new JsonObject
+            {
+                ["type"] = new JsonArray("string", "null"),
+                ["format"] = "date-time",
+                ["description"] = "When the pending scheduled unpublish of this locale runs, or null when none is pending. Management API only.",
+            }),
             ["fallbacks"] = System(new JsonObject
             {
                 ["type"] = "object",
@@ -116,9 +128,10 @@ internal sealed class ContentSchemas(SchemaModel schema, OpenApiDocumentOptions 
 
     // The field type's fragment, widened on a read where a query changes the value: populate turns a relation into the
     // entry, and richText=html or markdown turns a document into a string. Nullability belongs to the object that holds it.
+    // The fragment is a copy, since what follows changes it and a field type may hand out the same node every time.
     private JsonObject Field(SchemaField field, bool read = true)
     {
-        var fragment = FieldType(field)?.OpenApiSchema(field) ?? [];
+        var fragment = FieldType(field)?.OpenApiSchema(field).DeepClone().AsObject() ?? [];
         fragment = !read ? fragment : field.FieldType switch
         {
             FieldTypeNames.Relation when field.Relation is { } relation && schema.FindContentType(relation.Target) is not null =>

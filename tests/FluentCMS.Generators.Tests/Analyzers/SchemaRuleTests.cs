@@ -15,6 +15,17 @@ public sealed class ReservedFieldNameTests
         }
         """, "FCMS1206");
 
+    // A read of the Management API or of the trash adds these to an entry.
+    [Fact]
+    public Task AScheduleOrTrashFieldNameIsReported() => Analysis.Reports("""
+        [Collection("page")]
+        public sealed class Page : ContentItem
+        {
+            [DateTime] public DateTimeOffset? {|FCMS0020:ScheduledPublishAt|} { get; set; }
+            [Text] public string {|FCMS0020:DeletedBy|} { get; set; } = "";
+        }
+        """, "FCMS1206");
+
     [Fact]
     public Task TheDiscriminatorOfABlockIsReported() => Analysis.Reports("""
         [Block("hero")]

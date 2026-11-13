@@ -5,12 +5,14 @@
 # TypeScript of the instance generated and compiled, the site exported and imported into a second new host and compared there
 # through the Delivery API, and a plugin made with `dotnet new fluentcms-plugin`, built and tested.
 #
-#   pwsh eng/fresh-machine.ps1 [-WorkDirectory <dir>] [-Version <version>] [-Feed <dir>]
+#   pwsh eng/fresh-machine.ps1 [-WorkDirectory <dir>] [-Version <version>] [-Feed <dir or URL>] [-Client <.tgz or npm spec>]
 #                              [-PostgreSql <connection string> -PostgreSqlImport <connection string>]
 #
 # SQLite always runs. PostgreSQL runs when both connection strings are given (or FLUENTCMS_FRESH_POSTGRES and
 # FLUENTCMS_FRESH_POSTGRES_IMPORT hold them): two empty databases, one for each host. -Feed takes a feed that holds the packages
-# of -Version and skips packing. It needs the .NET SDK and Node.js with npm.
+# of -Version and skips packing: a folder, or the URL of a NuGet feed, such as https://api.nuget.org/v3/index.json after a
+# release, which needs -Version. -Client is the @fluentcms/client to compile against: by default the fluentcms-client-*.tgz of a
+# folder feed, and @fluentcms/client@<Version> from npm with a feed at a URL. It needs the .NET SDK and Node.js with npm.
 #
 # Past the pack, which builds the repository as `dotnet pack` always does (its bin/ and obj/, and its packages in the NuGet
 # cache), everything it writes is under the work directory, which it keeps for its logs: the NuGet packages, the installed
@@ -20,6 +22,7 @@ param(
     [string] $WorkDirectory,
     [string] $Version,
     [string] $Feed,
+    [string] $Client,
     [string] $PostgreSql = $env:FLUENTCMS_FRESH_POSTGRES,
     [string] $PostgreSqlImport = $env:FLUENTCMS_FRESH_POSTGRES_IMPORT
 )
@@ -33,9 +36,23 @@ $repository = Split-Path $PSScriptRoot -Parent
 $onGitHub = $env:GITHUB_ACTIONS -eq 'true'
 $adminEmail = 'admin@example.com'
 $welcomeSlug = 'welcome-to-fluentcms'
+$nugetOrg = 'https://api.nuget.org/v3/index.json'
+$feedIsUrl = $Feed -match '^https?://'
 
+if ($feedIsUrl -and -not $Version) {
+    [Console]::Error.WriteLine("A feed at a URL needs -Version, the version of its packages.")
+    exit 2
+}
+
+# The version prefix of Directory.Build.props, with a suffix of this run that no release has.
 if (-not $Version) {
-    $Version = '1.0.0-fresh.' + [DateTime]::UtcNow.ToString('yyyyMMddHHmmss')
+    $prefix = & dotnet msbuild (Join-Path $repository 'src/FluentCMS.Sdk/FluentCMS.Sdk.csproj') -getProperty:VersionPrefix | Select-Object -Last 1
+    if ($LASTEXITCODE -ne 0 -or -not $prefix) {
+        [Console]::Error.WriteLine('Could not read the version prefix of Directory.Build.props.')
+        exit 1
+    }
+
+    $Version = "$prefix-fresh." + [DateTime]::UtcNow.ToString('yyyyMMddHHmmss')
 }
 
 if (-not $WorkDirectory) {
@@ -44,8 +61,13 @@ if (-not $WorkDirectory) {
 
 # Relative to PowerShell's location, which .NET's current directory need not be.
 $WorkDirectory = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($WorkDirectory)
-if ($Feed) {
+if ($Feed -and -not $feedIsUrl) {
     $Feed = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Feed)
+}
+
+$feedName = if ($feedIsUrl) { $Feed } else { 'the folder feed' }
+if ($Client -and (Test-Path $Client)) {
+    $Client = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Client)
 }
 $withPostgreSql = [bool]$PostgreSql -and [bool]$PostgreSqlImport
 if ([bool]$PostgreSql -ne [bool]$PostgreSqlImport) {
@@ -168,8 +190,8 @@ function Format-Path([string] $path) {
     [IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($path))
 }
 
-# Every FluentCMS package the project restored is a package of -Version that NuGet took from the folder feed, which the
-# package source mapping of nuget.config allows and this proves.
+# Every FluentCMS package the project restored is a package of -Version that NuGet took from the feed, which the package
+# source mapping of nuget.config allows and this proves.
 function Assert-FromFeed([string] $projectDirectory) {
     $assetsFile = Join-Path $projectDirectory 'obj/project.assets.json'
     if (-not (Test-Path $assetsFile)) {
@@ -195,18 +217,27 @@ function Assert-FromFeed([string] $projectDirectory) {
         Assert-PackageSource (Join-Path $env:NUGET_PACKAGES $package.Value.path) $name
     }
 
-    Write-Host "$($packages.Count) FluentCMS packages of $Version, all from the folder feed: $(($packages | ForEach-Object { ($_.Key -split '/')[0] }) -join ', ')"
+    Write-Host "$($packages.Count) FluentCMS packages of $Version, all from $feedName`: $(($packages | ForEach-Object { ($_.Key -split '/')[0] }) -join ', ')"
 }
 
 # The restored package is the feed's file byte for byte, and NuGet names the feed as its source where it records one (a
-# local tool's package has no source in its metadata).
+# local tool's package has no source in its metadata). A feed at a URL has no file to compare, so its name is the proof.
 function Assert-PackageSource([string] $packageDirectory, [string] $name) {
     $restored = Join-Path $packageDirectory "$($name.ToLowerInvariant()).$($Version.ToLowerInvariant()).nupkg"
-    $fed = Join-Path $Feed "$name.$Version.nupkg"
     if (-not (Test-Path $restored)) {
         Fail "$name $Version is not restored in $packageDirectory"
     }
 
+    if ($feedIsUrl) {
+        $source = (Get-Content -Raw (Join-Path $packageDirectory '.nupkg.metadata') | ConvertFrom-Json -AsHashtable)['source']
+        if ($source -and $source.TrimEnd('/') -ne $Feed.TrimEnd('/')) {
+            Fail "$name came from '$source', not from $Feed"
+        }
+
+        return
+    }
+
+    $fed = Join-Path $Feed "$name.$Version.nupkg"
     if (-not (Test-Path $fed)) {
         Fail "the folder feed has no $name.$Version.nupkg"
     }
@@ -239,7 +270,7 @@ function New-Host([string] $name, [string] $provider, [string] $directory) {
 
 # Restored from the feed, built with warnings as errors, and the tool of .config/dotnet-tools.json restored, from the feed too.
 function Initialize-Host([string] $name, [string] $directory) {
-    Start-Step "Restore $name and check that its FluentCMS packages come from the folder feed"
+    Start-Step "Restore $name and check that its FluentCMS packages come from $feedName"
     Assert-TemplateVersions $directory
     Invoke-Checked dotnet @('restore', $directory)
     Assert-FromFeed $directory
@@ -251,7 +282,7 @@ function Initialize-Host([string] $name, [string] $directory) {
     Start-Step "Build $name"
     Invoke-Checked dotnet @('build', $directory, '--no-restore', '-warnaserror')
 
-    Start-Step "Restore the fluentcms tool of $name from the folder feed"
+    Start-Step "Restore the fluentcms tool of $name from $feedName"
     Use-Location $directory { Invoke-Checked dotnet @('tool', 'restore') }
     Assert-PackageSource (Join-Path $env:NUGET_PACKAGES "fluentcms.cli/$($Version.ToLowerInvariant())") 'FluentCMS.Cli'
 }
@@ -459,7 +490,15 @@ function Test-TypeScript($cms, [string] $directory) {
         Fail 'generate typescript wrote no src/cms/fluentcms.ts'
     }
 
-    $client = Get-ChildItem $Feed -Filter 'fluentcms-client-*.tgz' | Select-Object -First 1
+    $client = if ($Client) {
+        $Client
+    }
+    elseif ($feedIsUrl) {
+        "@fluentcms/client@$Version"
+    }
+    else {
+        Get-ChildItem $Feed -Filter 'fluentcms-client-*.tgz' | Select-Object -First 1 -ExpandProperty FullName
+    }
     if (-not $client) {
         Fail "the feed $Feed has no fluentcms-client-*.tgz"
     }
@@ -494,11 +533,11 @@ export const hash: string = schemaHash;
 export const titleOf = (article: Article): string => article.title ?? "";
 '@
     Use-Location $web {
-        Invoke-Checked npm @('install', '--no-audit', '--no-fund', '--save-exact', $client.FullName, "typescript@$typescript")
+        Invoke-Checked npm @('install', '--no-audit', '--no-fund', '--save-exact', $client, "typescript@$typescript")
         Invoke-Checked node @((Join-Path $web 'node_modules/typescript/bin/tsc'), '-p', 'tsconfig.json')
     }
 
-    Write-Host "The generated module compiles with @fluentcms/client from $($client.Name) and TypeScript $typescript."
+    Write-Host "The generated module compiles with @fluentcms/client from $client and TypeScript $typescript."
 }
 
 # One provider: a source host with the Blog seed, its TypeScript, an export with the media files, a target host with the Blog
@@ -635,6 +674,7 @@ try {
 
         Use-Variables @{ npm_config_cache = (Join-Path $WorkDirectory 'npm-cache') } {
             Use-Location $clientSource {
+                Invoke-Checked npm @('version', $Version, '--no-git-tag-version', '--allow-same-version')
                 Invoke-Checked npm @('ci', '--no-audit', '--no-fund')
                 Invoke-Checked npm @('run', 'build')
                 Invoke-Checked npm @('pack', '--pack-destination', $Feed)
@@ -642,9 +682,11 @@ try {
         }
     }
 
-    $Feed = Format-Path $Feed
-    if (-not (Get-ChildItem $Feed -Filter "FluentCMS.Templates.$Version.nupkg")) {
-        Fail "the feed $Feed has no FluentCMS.Templates.$Version.nupkg"
+    if (-not $feedIsUrl) {
+        $Feed = Format-Path $Feed
+        if (-not (Get-ChildItem $Feed -Filter "FluentCMS.Templates.$Version.nupkg")) {
+            Fail "the feed $Feed has no FluentCMS.Templates.$Version.nupkg"
+        }
     }
 
     # A new user's machine from here on: nothing of the repository, and NuGet, npm, dotnet new and MSBuild keep their state in
@@ -672,18 +714,17 @@ try {
         FLUENTCMS_TOKEN = $null
         ConnectionStrings__FluentCms = $null
     }
+    # nuget.org alone when it is the feed, as on a new user's machine.
+    $feedSource = if ($Feed -eq $nugetOrg) { '' } else { "`n    <add key=`"feed`" value=`"$Feed`" />" }
+    $feedMapping = if ($Feed -eq $nugetOrg) { '' } else { "`n    <packageSource key=`"feed`">`n      <package pattern=`"FluentCMS.*`" />`n    </packageSource>" }
     Set-Content (Join-Path $WorkDirectory 'nuget.config') @"
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
-    <clear />
-    <add key="feed" value="$Feed" />
-    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+    <clear />$feedSource
+    <add key="nuget.org" value="$nugetOrg" />
   </packageSources>
-  <packageSourceMapping>
-    <packageSource key="feed">
-      <package pattern="FluentCMS.*" />
-    </packageSource>
+  <packageSourceMapping>$feedMapping
     <packageSource key="nuget.org">
       <package pattern="*" />
     </packageSource>
@@ -692,7 +733,7 @@ try {
 "@
     Write-Host "nuget.config maps FluentCMS.* to $Feed only; NuGet packages in $env:NUGET_PACKAGES."
 
-    Start-Step "dotnet new install FluentCMS.Templates@$Version from the folder feed"
+    Start-Step "dotnet new install FluentCMS.Templates@$Version from $feedName"
     Use-Location $WorkDirectory {
         Invoke-Checked dotnet @('new', 'install', "FluentCMS.Templates@$Version", '--debug:custom-hive', $hive)
     }

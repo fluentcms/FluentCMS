@@ -9,6 +9,9 @@ export interface Entry {
   updatedAt?: string;
   updatedBy?: string;
   publishedAt?: string | null;
+  // The pending schedules of the locale, which only the Management API answers.
+  scheduledPublishAt?: string | null;
+  scheduledUnpublishAt?: string | null;
 }
 
 export interface Reference<TType extends string = string> {

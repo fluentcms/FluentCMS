@@ -36,12 +36,17 @@ internal sealed class AuthorizationEvaluator(
             {
                 // The row rules of the operation read the principal with the groups it has now.
                 var (roles, groups) = await MemberRolesAsync(context.Principal.Id, context.Site.Value, cancellationToken);
-                permissions = new EffectivePermissions(context with { Principal = InGroups(context.Principal, groups) }, await GrantsOfAsync(roles, cancellationToken), rules);
+                permissions = new EffectivePermissions(context, await GrantsOfAsync(roles, cancellationToken), rules, groups: groups);
             }
             else
             {
                 var (grants, clientGrants) = await GrantsAsync(context, cancellationToken);
-                permissions = new EffectivePermissions(context, grants, rules, clientGrants is null ? null : new EffectivePermissions(context, clientGrants, rules));
+                permissions = new EffectivePermissions(
+                    context,
+                    grants,
+                    rules,
+                    clientGrants is null ? null : new EffectivePermissions(context, clientGrants, rules),
+                    publishedTargets: await PublishedTargetsAsync(context, grants, clientGrants, cancellationToken));
             }
 
             _resolved[context] = permissions;
@@ -297,6 +302,29 @@ internal sealed class AuthorizationEvaluator(
             await GrantsOfAsync([.. stamps.Where(stamp => stamp.Id == clientRole)], cancellationToken));
     }
 
+    // A preview token reads the targets of its entry as the principal that minted it reads published content (spec 4.7):
+    // with the grants just read for that principal, in the token's site, and with no scope, so that nothing but published
+    // rows is read. The binding to the entry and to its type is left behind. An API key that minted the token stays held to
+    // the types it is bound to, which the token does not carry, so they are read again here. Anything else reads its targets
+    // as itself.
+    private async Task<EffectivePermissions?> PublishedTargetsAsync(OperationContext context, List<EffectiveGrant> grants, List<EffectiveGrant>? clientGrants, CancellationToken cancellationToken)
+    {
+        var principal = context.Principal;
+        if (principal.Claim(CmsClaimTypes.Entry) is null)
+        {
+            return null;
+        }
+
+        IEnumerable<KeyValuePair<string, string>> claims = principal.Claims.Where(claim => claim.Key is not (CmsClaimTypes.Scope or CmsClaimTypes.Entry or CmsClaimTypes.Types));
+        if (await principalRoles.TypesOfAsync(principal, cancellationToken) is { } types)
+        {
+            claims = claims.Append(KeyValuePair.Create(CmsClaimTypes.Types, string.Join(' ', types)));
+        }
+
+        var minter = context with { Principal = new Principal(principal.Kind, principal.Id, principal.Name, claims) };
+        return new EffectivePermissions(minter, grants, rules, clientGrants is null ? null : new EffectivePermissions(minter, clientGrants, rules));
+    }
+
     // What a member holds, read on every request so that a change holds from the next one: the Public role of the site,
     // the Member role and the roles of the groups it is in, with their stamps, and the names of those groups, in one query.
     // A member that is deactivated or gone holds nothing, not even what a visitor reads; its tokens are revoked as well.
@@ -320,12 +348,6 @@ internal sealed class AuthorizationEvaluator(
             .Select(row => new RoleStamp(row.Id, row.PermissionsVersion, row.SiteId))];
         List<string> groups = [.. rows.Select(row => row.Group).OfType<string>().Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
         return (roles, groups);
-    }
-
-    private static Principal InGroups(Principal member, List<string> groups)
-    {
-        var claims = member.Claims.Where(claim => claim.Key != Principal.GroupsClaim);
-        return new Principal(member.Kind, member.Id, member.Name, groups.Count == 0 ? claims : claims.Append(KeyValuePair.Create(Principal.GroupsClaim, string.Join(' ', groups))));
     }
 
     private async Task<List<EffectiveGrant>> GrantsOfAsync(List<RoleStamp> roles, CancellationToken cancellationToken)

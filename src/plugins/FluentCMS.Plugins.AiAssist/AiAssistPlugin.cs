@@ -1,6 +1,7 @@
 using FluentCMS.Authorization;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.AiAssist;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 [assembly: FluentCmsPlugin(typeof(AiAssistPlugin))]
@@ -18,12 +19,7 @@ public sealed class AiAssistPlugin : IPlugin
     {
         ArgumentNullException.ThrowIfNull(plugin);
 
-        plugin.Services.AddOptions<AiOptions>()
-            .BindConfiguration(AiOptions.Section)
-            .Validate(
-                options => options.IsValid(),
-                $"{AiOptions.Section}: AllowedEndpoints holds absolute http or https URLs with no user, query or fragment, MaxInputLength is from 1 to 1000000 and UsageRetention is positive.")
-            .ValidateOnStart();
+        AddOptions(plugin.Services);
         plugin.Services.AddScoped<AiAssistService>();
         plugin.Services.AddScoped<AiUsageService>();
         plugin.Services.AddSingleton<AiCallLimits>();
@@ -47,7 +43,8 @@ public sealed class AiAssistPlugin : IPlugin
             .AddErrorCode(AiErrorCodes.TimedOut, 504, "AI provider timed out")
             .AddErrorCode(AiErrorCodes.ProviderFailed, 502, "AI provider failed")
             .AddErrorCode(AiErrorCodes.AnswerUnusable, 502, "AI answer not usable")
-            .AddErrorCode(AiErrorCodes.ImageNotAvailable, 422, "Image not available");
+            .AddErrorCode(AiErrorCodes.ImageNotAvailable, 422, "Image not available")
+            .AddErrorCode(AiErrorCodes.ProviderRemoved, 409, "AI provider removed");
     }
 
     public void Configure(IPluginAppBuilder app)
@@ -56,6 +53,19 @@ public sealed class AiAssistPlugin : IPlugin
 
         app.MapManagement(Prefix).MapAiEndpoints();
     }
+
+    // A value that cannot be used stops the host, and so does a section of a provider the plugin no longer has, such as
+    // FluentCms:Ai:Anthropic, so that its key is not left there unread.
+    internal static void AddOptions(IServiceCollection services) =>
+        services.AddOptions<AiOptions>()
+            .BindConfiguration(AiOptions.Section)
+            .Validate(
+                options => options.IsValid(),
+                $"{AiOptions.Section}: AllowedEndpoints holds absolute http or https URLs with no user, query or fragment, MaxInputLength is from 1 to 1000000 and UsageRetention is positive.")
+            .Validate<IConfiguration>(
+                (_, configuration) => !AiProviders.AreNamedIn(configuration),
+                $"{AiOptions.Section}: Anthropic and Ollama are no longer providers of the plugin ({AiErrorCodes.ProviderRemoved}), so their sections are refused. {AiProviders.Instead}")
+            .ValidateOnStart();
 }
 
 public sealed class AiPermissions : IPermissionProvider

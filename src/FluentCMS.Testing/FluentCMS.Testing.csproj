@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <Description>The FluentCMS test host: an instance on SQLite with a clock the test sets, and users, keys and members to act as, for the tests of a host or a plugin.</Description>
+    <PackageTags>$(PackageTags) testing</PackageTags>
+  </PropertyGroup>
+
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

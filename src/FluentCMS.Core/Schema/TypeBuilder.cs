@@ -22,20 +22,21 @@ internal sealed class TypeBuilder(TypeDraft draft) : ITypeBuilder
         return this;
     }
 
-    public ITypeBuilder PublishPolicy(UnpublishedReferencePolicy unpublishedReferences = UnpublishedReferencePolicy.Warn, int maxVersions = PublishPolicyAttribute.DefaultMaxVersions, int trashRetentionDays = PublishPolicyAttribute.DefaultTrashRetentionDays)
+    public ITypeBuilder PublishPolicy(PublishPolicyOptions options)
     {
+        ArgumentNullException.ThrowIfNull(options);
         if (!draft.IsContentType)
         {
-            throw new ArgumentException($"{draft.Kind.ToString().ToLowerInvariant()} '{draft.Name}' is not published; only collections and singletons are.", nameof(unpublishedReferences));
+            throw new ArgumentException($"{draft.Kind.ToString().ToLowerInvariant()} '{draft.Name}' is not published; only collections and singletons are.", nameof(options));
         }
 
-        ArgumentOutOfRangeException.ThrowIfLessThan(maxVersions, 1);
-        ArgumentOutOfRangeException.ThrowIfLessThan(trashRetentionDays, 1);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(trashRetentionDays, PublishPolicyAttribute.MaxTrashRetentionDays);
+        ArgumentOutOfRangeException.ThrowIfLessThan(options.MaxVersions, 1, nameof(options));
+        ArgumentOutOfRangeException.ThrowIfLessThan(options.TrashRetentionDays, 1, nameof(options));
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(options.TrashRetentionDays, PublishPolicyAttribute.MaxTrashRetentionDays, nameof(options));
 
-        draft.UnpublishedReferences = unpublishedReferences;
-        draft.MaxVersions = maxVersions;
-        draft.TrashRetentionDays = trashRetentionDays;
+        draft.UnpublishedReferences = options.UnpublishedReferences;
+        draft.MaxVersions = options.MaxVersions;
+        draft.TrashRetentionDays = options.TrashRetentionDays;
         return this;
     }
 

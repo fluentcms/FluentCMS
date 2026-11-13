@@ -30,7 +30,7 @@ public interface IPluginServiceBuilder
     Providers.IProviderSlots Providers { get; }
 
     /// <summary>
-    /// Adds a field type. Its name must not be one of core's or another plugin's. A setting of kind
+    /// Adds a field type. Its name follows the rule of <see cref="IFieldType.Name"/> and must not be one of core's or another plugin's. A setting of kind
     /// <see cref="FieldSettingKind.FieldReference"/> must name a sibling field, and is optional.
     /// </summary>
     /// <typeparam name="TFieldType">The field type, created once with its parameterless constructor.</typeparam>

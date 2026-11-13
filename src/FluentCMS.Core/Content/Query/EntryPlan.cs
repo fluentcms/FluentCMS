@@ -100,7 +100,7 @@ internal sealed class EntryPlan
         foreach (var system in SystemField.Fields)
         {
             var wanted = select.Whole ? isRoot && (system.Default || select.EverySystemField) : select.Includes(system.Name);
-            if (wanted && system.Name != "id" && query.Access.CanReadField(type, system.Name))
+            if (wanted && system.Name != "id" && (query.Management || !system.Management) && query.Access.CanReadField(type, system.Name))
             {
                 nodes.Add(new ValueOutput(system.Name, AddColumn(system.ReadFrom(row, query.State)), value => value));
             }
@@ -182,17 +182,19 @@ internal sealed class EntryPlan
     private bool Populates(string apiPath, PopulateNode populate, int level) =>
         populate.Child(apiPath) is not null && level < _query.Options.MaxPopulateDepth;
 
+    // A populated target is read in the scope of targets, which for a preview token is not the scope of its entry.
     private EntryPlan? ChildPlan(StoredField stored, string apiPath, SelectNode select, PopulateNode populate, int level)
     {
         var child = populate.Child(apiPath);
         var target = stored.Field.Relation is { } relation ? _query.Schema.FindContentType(relation.Target) : null;
-        if (child is null || target is null || level >= _query.Options.MaxPopulateDepth || !_query.Access.CanReadType(target))
+        var targets = _query.Targets;
+        if (child is null || target is null || level >= _query.Options.MaxPopulateDepth || !targets.Access.CanReadType(target))
         {
             return null;
         }
 
-        return _query.CanEnter(target)
-            ? new EntryPlan(_query, target, select, child, level + 1, isRoot: false, Expression.Parameter(typeof(QueryRow), "row"))
+        return targets.CanEnter(target)
+            ? new EntryPlan(targets, target, select, child, level + 1, isRoot: false, Expression.Parameter(typeof(QueryRow), "row"))
             : null;
     }
 

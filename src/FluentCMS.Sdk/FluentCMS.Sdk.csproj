@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <Description>The public contract for FluentCMS plugins and host code: interfaces, attributes, base classes, DTOs, events and permission names.</Description>
+    <PackageTags>$(PackageTags) sdk plugins</PackageTags>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- Add PackageValidationBaselineVersion here once 1.0.0 ships. -->
     <EnablePackageValidation>true</EnablePackageValidation>

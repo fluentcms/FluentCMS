@@ -18,6 +18,8 @@ public sealed partial class MigrationsAddCommandTests : IDisposable
 {
     private static readonly string HostAssembly = typeof(MigrationsAddCommandTests).Assembly.Location;
 
+    private static readonly string[] Hero = ["hero"];
+
     private readonly TestDatabase _database = TestDatabase.Create();
     private readonly DirectoryInfo _project = Directory.CreateTempSubdirectory("fluentcms-cli-tests-");
     private readonly DirectoryInfo _hosts = Directory.CreateTempSubdirectory("fluentcms-cli-hosts-");
@@ -145,7 +147,7 @@ public sealed partial class MigrationsAddCommandTests : IDisposable
     }
 
     [Fact]
-    public async Task ARenamedFieldIsSuggestedAsARenameAndWithTheAttributeReportedAsOne()
+    public async Task ARenameWithoutTheAttributeIsRefusedAndWithItIsGeneratedAsARename()
     {
         (await Add("Initial", ArticleSchemas.WithSubtitle)).ShouldBe(0, _error.ToString());
         var first = CompileGeneratedFiles();
@@ -153,17 +155,60 @@ public sealed partial class MigrationsAddCommandTests : IDisposable
         (await Add("Rename", ArticleSchemas.Article("title", "summary"), first)).ShouldBe(1);
 
         _output.ToString().ShouldContain("possible rename: field 'article.subtitle' to 'summary'; add [FormerNames(\"subtitle\")] to 'summary' to make it one");
-        _error.ToString().ShouldStartWith("FCMS3327: ");
+        _error.ToString().ShouldStartWith("FCMS3327: the migration loses data: field 'article.subtitle' removed; nothing was written.");
+        GeneratedFiles().Length.ShouldBe(3);
 
         var declared = SampleSchema.NewBuilder()
             .AddCollection("article", type => type.Field("title", "text").Field("summary", "text", field => field.FormerNames("subtitle")))
             .Build();
-        (await Add("Rename", declared, first)).ShouldBe(1);
+        (await Add("Rename", declared, first)).ShouldBe(0, _error.ToString());
 
-        // The generated migration does not read [FormerNames], so the rename would still drop the column.
-        _output.ToString().Trim().ShouldBe("field 'article.subtitle' renamed to 'summary'");
-        _error.ToString().ShouldStartWith("FCMS3327: the migration loses data: field 'article.subtitle' renamed to 'summary'; a renamed field is still a dropped column");
+        _output.ToString().ShouldStartWith($"field 'article.subtitle' renamed to 'summary'{Environment.NewLine}");
+        _error.ToString().ShouldBeEmpty();
+        var migration = File.ReadAllText(GeneratedFiles().Single(file => file.EndsWith("_Rename.cs", StringComparison.Ordinal)));
+        migration.ShouldContain("migrationBuilder.RenameColumn(");
+        migration.ShouldNotContain("DropColumn");
+        migration.ShouldNotContain("AddColumn");
+    }
+
+    // A block's fields and a repeated component's are kept in the JSON of the field that holds them; a component kept in
+    // columns only has its columns renamed.
+    [Fact]
+    public async Task ARenameWhoseValuesAreKeptInJsonIsRefusedWithTheFieldItNames()
+    {
+        (await Add("Initial", JsonHeld("heading", "street", "metaTitle", rename: false))).ShouldBe(0, _error.ToString());
+        var first = CompileGeneratedFiles();
+
+        (await Add("Rename", JsonHeld("title", "road", "pageTitle", rename: true), first)).ShouldBe(1);
+
+        var error = _error.ToString();
+        error.ShouldStartWith("FCMS3327: the migration loses data: ");
+        error.ShouldContain("field 'block hero.heading' renamed to 'title', whose values are kept in JSON under 'heading', which the migration does not rename");
+        error.ShouldContain("field 'component address.street' renamed to 'road', whose values are kept in JSON under 'street'");
+        error.ShouldNotContain("component seo");
+        error.ShouldContain("nothing was written. Pass --allow-destructive to generate it.");
         GeneratedFiles().Length.ShouldBe(3);
+
+        (await Add("Rename", JsonHeld("title", "road", "pageTitle", rename: true), first, "--allow-destructive")).ShouldBe(0, _error.ToString());
+
+        _error.ToString().ShouldStartWith("FCMS3327: warning: the migration loses data: field 'block hero.heading' renamed");
+        File.ReadAllText(GeneratedFiles().Single(file => file.EndsWith("_Rename.cs", StringComparison.Ordinal))).ShouldContain("newName: \"seo_page_title\"");
+    }
+
+    private static SchemaModel JsonHeld(string heading, string street, string metaTitle, bool rename)
+    {
+        Action<IFieldBuilder> Former(string name) => field => field.FormerNames(rename ? [name] : []);
+
+        return SampleSchema.NewBuilder()
+            .AddBlock("hero", block => block.Field(heading, "text", Former("heading")))
+            .AddComponent("address", component => component.Field(street, "text", Former("street")))
+            .AddComponent("seo", component => component.Field(metaTitle, "text", Former("metaTitle")))
+            .AddCollection("article", type => type
+                .Field("title", "text")
+                .Field("sections", "blocks", field => field.Setting(FieldSettings.Blocks, Hero))
+                .Field("places", "component", field => field.Multiple().Setting(FieldSettings.Component, "address"))
+                .Field("seo", "component", field => field.Setting(FieldSettings.Component, "seo")))
+            .Build();
     }
 
     [Fact]

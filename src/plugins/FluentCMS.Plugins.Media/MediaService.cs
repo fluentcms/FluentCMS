@@ -378,7 +378,7 @@ internal sealed class MediaService(
     // The references go before the asset, so that a delete that fails between the two is tried again rather than leaving
     // references to an asset that is gone; whether an entry refers to it is asked across sites, as an id is unique.
     // A request that read the old row of a replaced asset just before the save may find its file gone and answer 404.
-    public async Task DeleteAsync(Guid id, bool force = false, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(Guid id, bool force, CancellationToken cancellationToken = default)
     {
         var operation = Operation();
         var (site, library) = await ScopeAsync(operation, cancellationToken);

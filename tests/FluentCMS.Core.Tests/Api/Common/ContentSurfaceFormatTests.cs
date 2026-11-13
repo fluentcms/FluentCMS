@@ -14,7 +14,7 @@ namespace FluentCMS.Core.Tests.Api.Common;
 // The REST forms of content as another surface gets them (spec 4.4, 5.4): the same query and the same JSON as the routes.
 public class ContentSurfaceFormatTests
 {
-    private static readonly ContentSurface Surface = new(new SchemaBuilder().Build(), new ContentQueryOptions(), new ContentQueryAccess.Closed(), new OperationContextAccessor(), ErrorCodeCatalogue.Core);
+    private static readonly ContentSurface Surface = new(new SchemaBuilder().Build(), new ContentQueryOptions(), new ContentQueryAccess.Closed(), new OperationContextAccessor(), new ManagementShape(new OperationContextAccessor()), ErrorCodeCatalogue.Core);
 
     [Fact]
     public void TheParametersOfAListAreTheQueryTheRoutesParse()

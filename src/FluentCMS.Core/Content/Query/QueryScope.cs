@@ -7,10 +7,17 @@ using FluentCMS.Sites;
 namespace FluentCMS.Core.Content.Query;
 
 // What one compilation shares: the state, locale and site every joined row must have, and the errors found so far.
-internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, short state, string locale, SiteId? site, bool reachesTrash = false)
+internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, short state, string locale, SiteId? site, bool reachesTrash = false, bool management = false)
 {
-    private readonly List<ValidationError> _errors = [];
-    private int _populated;
+    private Tally _tally = new();
+    private QueryScope? _targets;
+
+    // Where the targets of relations, and the entry links of rich text, are read and populated at every level: this scope,
+    // or for a preview token one of published rows as its minter reads them, which has the errors and the count of
+    // populated entries of this one, so that the caps hold for the whole read.
+    public QueryScope Targets => _targets ??= access.PublishedTargets is { } published
+        ? new QueryScope(context, schema, dialect, published, options, ContentState.Published, locale, site, reachesTrash) { _tally = _tally }
+        : this;
 
     public CmsDbContext Context => context;
 
@@ -32,7 +39,10 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
     // is the root's; every row reached through a relation says explicitly that it is not in it.
     public bool ReachesTrash => reachesTrash;
 
-    public QueryPaths Paths { get; } = new(schema, access);
+    // Whether the read answers the Management shape, with the pending schedules of each entry (ManagementShape).
+    public bool Management => management;
+
+    public QueryPaths Paths { get; } = new(schema, access, management);
 
     // A site's query reads that site's entries on every level. Global entries belong to no site, and any site may read them.
     public IQueryable<QueryRow> Rows(SchemaType type, bool trashedRoot = false)
@@ -67,9 +77,9 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
     public void Report(string path, string code, string message)
     {
         ValidationError error = new(path, code, message);
-        if (!_errors.Contains(error))
+        if (!_tally.Errors.Contains(error))
         {
-            _errors.Add(error);
+            _tally.Errors.Add(error);
         }
     }
 
@@ -94,8 +104,8 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
 
     public void CountPopulated(int entries)
     {
-        _populated += entries;
-        if (_populated > options.MaxPopulatedEntries)
+        _tally.Populated += entries;
+        if (_tally.Populated > options.MaxPopulatedEntries)
         {
             Report("populate", QueryErrorCodes.LimitExceeded, $"The query inlines more than the {options.MaxPopulatedEntries} related entries allowed.");
             ThrowIfInvalid();
@@ -104,9 +114,16 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
 
     public void ThrowIfInvalid()
     {
-        if (_errors.Count > 0)
+        if (_tally.Errors.Count > 0)
         {
-            throw new ValidationException(_errors);
+            throw new ValidationException(_tally.Errors);
         }
+    }
+
+    private sealed class Tally
+    {
+        public List<ValidationError> Errors { get; } = [];
+
+        public int Populated { get; set; }
     }
 }

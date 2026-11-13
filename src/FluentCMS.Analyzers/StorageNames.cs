@@ -12,6 +12,7 @@ internal static class StorageNames
     public static readonly HashSet<string> ReservedFieldNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "id", "status", "locale", "version", "createdAt", "createdBy", "updatedAt", "updatedBy", "publishedAt", "fallbacks",
+        "scheduledPublishAt", "scheduledUnpublishAt", "deletedAt", "deletedBy",
     };
 
     public static readonly HashSet<string> SystemColumns = new(StringComparer.Ordinal) { "id", "document_id", "site_id", "state" };

@@ -20,9 +20,11 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Shouldly;
+using SkiaSharp;
 using Xunit;
 using Role = FluentCMS.Core.Storage.Entities.Role;
 using RoleGrant = FluentCMS.Core.Storage.Entities.RoleGrant;
+using SettingRow = FluentCMS.Core.Storage.Entities.SettingRow;
 
 namespace FluentCMS.Plugins.AiAssist.Tests;
 
@@ -39,7 +41,10 @@ public sealed class AiHost : IAsyncDisposable
     {
     }
 
-    internal AiHost(bool scripted, Action<AiOptions>? configure = null)
+    // At LogLevel.Trace the log holds every line the host's loggers write, the debug lines of ASP.NET Core and EF Core
+    // included. The OpenAI client of the default factory writes none: it has no logger factory, and its HttpClient is not
+    // one of IHttpClientFactory.
+    internal AiHost(bool scripted, Action<AiOptions>? configure = null, LogLevel minimumLevel = LogLevel.Information)
     {
         Host = new FluentCmsTestHost()
             .WithContentTypes<Article>()
@@ -47,6 +52,7 @@ public sealed class AiHost : IAsyncDisposable
             {
                 services.AddSingleton(Chat);
                 services.AddSingleton<ILoggerProvider>(Logs);
+                services.AddLogging(logging => logging.SetMinimumLevel(minimumLevel));
                 services.PostConfigure<MediaOptions>(options => options.Local.Root = _media.FullName);
                 if (configure is not null)
                 {
@@ -112,6 +118,16 @@ public sealed class AiHost : IAsyncDisposable
         await using var scope = Services.CreateAsyncScope();
         using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(site));
         await scope.ServiceProvider.GetRequiredService<ISettings<AiSettings>>().SetAsync(new SiteId(site), settings, Token);
+    }
+
+    // Settings of a site as an earlier version of the plugin stored them, written past the settings service, which would
+    // refuse them now.
+    public async Task StoreSettingsAsync(Guid site, string json)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        context.Add(new SettingRow { Id = Guid.CreateVersion7(), SiteId = site, Key = "ai", Json = json, Version = 1, UpdatedAt = DateTimeOffset.UtcNow });
+        await context.SaveChangesAsync(Token);
     }
 
     public async Task SetEnabledAsync(string plugin, Guid site, bool enabled)
@@ -225,6 +241,26 @@ internal static class AiTesting
     }
 
     public static string Text(ChatMessage message) => string.Concat(message.Contents.OfType<TextContent>().Select(content => content.Text));
+
+    // A file uploaded to the media library of the site of the client, and its id.
+    public static async Task<Guid> UploadAsync(HttpClient client, string name, byte[] bytes)
+    {
+        using var form = new MultipartFormDataContent();
+        var content = new ByteArrayContent(bytes);
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        form.Add(content, "files", name);
+        using var response = await client.PostAsync(new Uri("/api/management/v1/media", UriKind.Relative), form, Token);
+        return Guid.Parse((await JsonAsync(response, HttpStatusCode.Created))["items"]![0]!["id"]!.GetValue<string>());
+    }
+
+    // A PNG of one colour.
+    public static byte[] Picture(int width, int height)
+    {
+        using var bitmap = new SKBitmap(width, height);
+        bitmap.Erase(new SKColor(20, 90, 160));
+        using var data = bitmap.Encode(SKEncodedImageFormat.Png, 90);
+        return data.ToArray();
+    }
 }
 
 // What the scripted client was asked.
@@ -330,12 +366,14 @@ internal sealed class ScriptedFactory(ScriptedChat chat) : IAiClientFactory
 
 public sealed class LogCapture : ILoggerProvider
 {
-    private readonly ConcurrentQueue<(int Id, string Line)> _lines = new();
+    private readonly ConcurrentQueue<(int Id, LogLevel Level, string Line)> _lines = new();
     private readonly ConcurrentDictionary<int, TaskCompletionSource> _waiting = new();
 
     public IReadOnlyList<string> Lines => [.. _lines.Select(line => line.Line)];
 
     public IReadOnlyList<string> Of(int eventId) => [.. _lines.Where(line => line.Id == eventId).Select(line => line.Line)];
+
+    public IReadOnlyList<string> At(LogLevel level) => [.. _lines.Where(line => line.Level == level).Select(line => line.Line)];
 
     // Completes when the next line with the event id is written.
     public Task NextAsync(int eventId) => _waiting.GetOrAdd(eventId, _ => new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).Task;
@@ -355,7 +393,7 @@ public sealed class LogCapture : ILoggerProvider
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
-            capture._lines.Enqueue((eventId.Id, $"{eventId.Id} {formatter(state, exception)} {exception}"));
+            capture._lines.Enqueue((eventId.Id, logLevel, $"{eventId.Id} {formatter(state, exception)} {exception}"));
             if (capture._waiting.TryRemove(eventId.Id, out var waiting))
             {
                 waiting.TrySetResult();

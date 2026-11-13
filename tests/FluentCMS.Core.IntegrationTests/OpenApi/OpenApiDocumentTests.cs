@@ -158,8 +158,17 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         article["seo"]!.ToJsonString().ShouldContain("#/components/schemas/component-seo");
         article["author"]!.ToJsonString().ShouldContain("#/components/schemas/entry-author");
 
+        foreach (var name in new[] { "scheduledPublishAt", "scheduledUnpublishAt" })
+        {
+            article[name]!["readOnly"]!.GetValue<bool>().ShouldBeTrue();
+            article[name]!["type"]!.ToJsonString().ShouldBe("""["null","string"]""");
+            article[name]!["format"]!.GetValue<string>().ShouldBe("date-time");
+            article[name]!["description"]!.GetValue<string>().ShouldContain("Management API only");
+        }
+
         var input = Schemas["input-article"]!["properties"]!.AsObject();
         input.ContainsKey("id").ShouldBeFalse();
+        input.ContainsKey("scheduledPublishAt").ShouldBeFalse();
         input["author"]!.ToJsonString().ShouldBe("""{"type":["null","string"],"format":"uuid"}""");
         input["body"]!["anyOf"].ShouldBeNull();
     }
@@ -438,12 +447,13 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         var read = Response(Paths[$"{Management}/settings/{{area}}"]!["get"]!, "200");
         var properties = read["properties"]!;
 
-        read["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["area", "siteId", "source", "version", "value", "secretsSet", "schema"]);
+        read["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["area", "siteId", "source", "version", "value", "secretsSet", "secretsInherited", "schema"]);
         Resolve(properties["source"]!)["enum"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["code", "default", "site"]);
         properties["version"]!["type"]!.GetValue<string>().ShouldBe("integer");
         properties["siteId"]!["type"]!.ToJsonString().ShouldBe("""["null","string"]""");
         Resolve(properties["value"]!)["type"]!.GetValue<string>().ShouldBe("object");
         properties["value"]!["description"]!.GetValue<string>().ShouldContain("JSON schema under schema");
+        properties["secretsInherited"]!["description"]!.GetValue<string>().ShouldContain("read from the instance defaults");
         Resolve(properties["schema"]!)["type"]!.GetValue<string>().ShouldBe("object");
         properties["schema"]!["description"]!.GetValue<string>().ShouldContain("JSON schema of the area's settings");
 

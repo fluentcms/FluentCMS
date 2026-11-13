@@ -9,7 +9,7 @@ using static FluentCMS.Plugins.AiAssist.Tests.AiTesting;
 namespace FluentCMS.Plugins.AiAssist.Tests;
 
 // The default of the slot, which builds the client of the provider a site names. The providers are local stand-ins that
-// answer in the wire format of each, so the provider packages run for real and no provider is called.
+// answer in the chat completions format of OpenAI, so the package runs for real and no provider is called.
 public sealed class AiProviderTests : IAsyncLifetime
 {
     private const string Marker = "ships-that-must-not-be-logged";
@@ -29,8 +29,7 @@ public sealed class AiProviderTests : IAsyncLifetime
         _ai = new AiHost(scripted: false, options =>
         {
             options.AllowedEndpoints.Add(_first.Url("v1"));
-            options.AllowedEndpoints.Add(_first.Url());
-            options.AllowedEndpoints.Add(_second.Url());
+            options.AllowedEndpoints.Add(_second.Url("v1"));
         });
     }
 
@@ -46,9 +45,9 @@ public sealed class AiProviderTests : IAsyncLifetime
     public async Task TwoSitesWithDifferentProvidersAndModelsEachUseTheirOwn()
     {
         var compatible = await _ai.SiteAsync(settings => Use(settings, AiProvider.OpenAiCompatible, "model-of-the-first", _first.Url("v1"), "key-of-the-first-site"));
-        var ollama = await _ai.SiteAsync(settings => Use(settings, AiProvider.Ollama, "model-of-the-second", _second.Url()));
+        var azure = await _ai.SiteAsync(settings => Use(settings, AiProvider.AzureOpenAi, "model-of-the-second", _second.Url("v1"), "key-of-the-second-site"));
         using var first = await _ai.AdminAsync(compatible);
-        using var second = await _ai.AdminAsync(ollama);
+        using var second = await _ai.AdminAsync(azure);
         _first.Answer = "From the first.";
         _second.Answer = "From the second.";
 
@@ -61,7 +60,7 @@ public sealed class AiProviderTests : IAsyncLifetime
         one["usage"]!["promptTokens"]!.GetValue<long>().ShouldBe(StubProvider.PromptTokens);
         one["usage"]!["completionTokens"]!.GetValue<long>().ShouldBe(StubProvider.CompletionTokens);
         two["suggestion"]!.GetValue<string>().ShouldBe("From the second.");
-        two["usage"]!["provider"]!.GetValue<string>().ShouldBe("ollama");
+        two["usage"]!["provider"]!.GetValue<string>().ShouldBe("azureOpenAi");
         two["usage"]!["model"]!.GetValue<string>().ShouldBe("model-of-the-second");
         two["usage"]!["promptTokens"]!.GetValue<long>().ShouldBe(StubProvider.PromptTokens);
 
@@ -78,33 +77,64 @@ public sealed class AiProviderTests : IAsyncLifetime
         ContentOf(messages[1]!).ShouldBe("Ships are big boats.");
 
         var other = _second.Requests.ShouldHaveSingleItem();
-        other.Path.ShouldBe("/api/chat");
+        other.Path.ShouldBe("/v1/chat/completions");
+        other.Headers["Authorization"].ShouldBe("Bearer key-of-the-second-site");
         other.Body!["model"]!.GetValue<string>().ShouldBe("model-of-the-second");
         other.Body["tools"].ShouldBeNull();
 
         (await _ai.UsageAsync(compatible)).ShouldHaveSingleItem().Provider.ShouldBe("openAiCompatible");
-        (await _ai.UsageAsync(ollama)).ShouldHaveSingleItem().Model.ShouldBe("model-of-the-second");
+        (await _ai.UsageAsync(azure)).ShouldHaveSingleItem().Model.ShouldBe("model-of-the-second");
     }
 
+    // Ollama is reached at its /v1 endpoint, which takes no key.
     [Fact]
-    public async Task AnthropicIsReachedThroughItsOwnPackage()
+    public async Task AnOpenAiCompatibleEndpointWithoutAKeyIsCalledStreamedAndNot()
     {
-        var site = await _ai.SiteAsync(settings => Use(settings, AiProvider.Anthropic, "model-of-anthropic", _first.Url(), "key-of-the-anthropic-site"));
+        var site = await _ai.SiteAsync(settings => Use(settings, AiProvider.OpenAiCompatible, "llama3.2", _second.Url("v1")));
+        using var admin = await _ai.AdminAsync(site);
+        _second.Answer = "Ships are large vessels.";
+        var body = new { type = "article", field = "summary", text = "Ships are big boats." };
+
+        var plain = await SuggestAsync(admin, "rewrite", body);
+        using var response = await ActAsync(admin, "rewrite", body, stream: true);
+        var events = StreamEvents(await response.Content.ReadAsStringAsync(Token));
+
+        plain["suggestion"]!.GetValue<string>().ShouldBe("Ships are large vessels.");
+        plain["usage"]!["provider"]!.GetValue<string>().ShouldBe("openAiCompatible");
+        plain["usage"]!["model"]!.GetValue<string>().ShouldBe("llama3.2");
+        events[^1].Event.ShouldBe("done");
+        events[^1].Data["suggestion"]!.GetValue<string>().ShouldBe("Ships are large vessels.");
+        events[^1].Data["usage"]!["completionTokens"]!.GetValue<long>().ShouldBe(StubProvider.CompletionTokens);
+        _second.Requests.Count.ShouldBe(2);
+        _second.Requests.ShouldAllBe(request => request.Path == "/v1/chat/completions" && !request.Headers.ContainsKey("Authorization"));
+        _second.Requests.Select(request => request.Body!["stream"]?.GetValue<bool>() == true).ShouldBe([false, true]);
+        var usage = await _ai.UsageAsync(site);
+        usage.Count.ShouldBe(2);
+        usage.ShouldAllBe(row => row.Succeeded && row.Provider == "openAiCompatible" && row.Model == "llama3.2" && row.PromptTokens == StubProvider.PromptTokens && row.CompletionTokens == StubProvider.CompletionTokens);
+    }
+
+    // A site whose settings were saved while the plugin had Anthropic and Ollama keeps them, and is told what to use.
+    [Theory]
+    [InlineData("anthropic")]
+    [InlineData("ollama")]
+    public async Task ASiteThatNamesARemovedProviderIsRefusedWithWhatToUse(string provider)
+    {
+        var site = await _ai.BareSiteAsync();
+        await _ai.StoreSettingsAsync(site, $$$"""{"provider":"{{{provider}}}","model":"a-model","endpoint":"{{{_first.Url("v1")}}}","apiKey":"key-of-the-site","fields":{"article":["summary"]}}""");
         using var admin = await _ai.AdminAsync(site);
 
-        var answer = await SuggestAsync(admin, "summary", new { type = "article", field = "summary", text = "Ships are big boats." });
+        using var settings = await admin.GetAsync(new Uri("/api/management/v1/settings/ai", UriKind.Relative), Token);
+        using var refused = await ActAsync(admin, "rewrite", new { type = "article", field = "summary", text = "Ships are big boats." });
+        var problem = await JsonAsync(refused, HttpStatusCode.Conflict);
 
-        answer["suggestion"]!.GetValue<string>().ShouldBe("From the stub.");
-        answer["usage"]!["provider"]!.GetValue<string>().ShouldBe("anthropic");
-        answer["usage"]!["promptTokens"]!.GetValue<long>().ShouldBe(StubProvider.PromptTokens);
-        answer["usage"]!["completionTokens"]!.GetValue<long>().ShouldBe(StubProvider.CompletionTokens);
-        var sent = _first.Requests.ShouldHaveSingleItem();
-        sent.Path.ShouldBe("/v1/messages");
-        sent.Headers["Authorization"].ShouldBe("Bearer key-of-the-anthropic-site");
-        sent.Body!["model"]!.GetValue<string>().ShouldBe("model-of-anthropic");
-        sent.Body["tools"].ShouldBeNull();
-        sent.Body["system"]!.ToJsonString().ShouldContain("Summarise the text");
-        sent.Body["messages"]!.AsArray().ShouldHaveSingleItem()!["role"]!.GetValue<string>().ShouldBe("user");
+        (await JsonAsync(settings))["value"]!["provider"]!.GetValue<string>().ShouldBe(provider);
+        problem["code"]!.GetValue<string>().ShouldBe("FCMS1692");
+        problem["detail"]!.GetValue<string>().ShouldContain("openAiCompatible");
+        problem["detail"]!.GetValue<string>().ShouldContain(nameof(IAiClientFactory));
+        _ai.Logs.Of(9368).ShouldHaveSingleItem().ShouldContain(provider);
+        _ai.Logs.Lines.ShouldNotContain(line => line.Contains("key-of-the-site", StringComparison.Ordinal));
+        _first.Requests.ShouldBeEmpty();
+        (await _ai.UsageAsync(site)).ShouldBeEmpty();
     }
 
     [Fact]
@@ -147,7 +177,7 @@ public sealed class AiProviderTests : IAsyncLifetime
         var unlisted = await _ai.SiteAsync(settings => Use(settings, AiProvider.OpenAiCompatible, "a-model", _unlisted.Url("v1"), "key-of-the-site"));
         var otherPath = await _ai.SiteAsync(settings => Use(settings, AiProvider.OpenAiCompatible, "a-model", _first.Url("internal/v1"), "key-of-the-site"));
         var ownEndpoint = await _ai.SiteAsync(settings => Use(settings, AiProvider.OpenAi, "a-model", _unlisted.Url("v1"), "key-of-the-site"));
-        var metadata = await _ai.SiteAsync(settings => Use(settings, AiProvider.Ollama, "a-model", "http://169.254.169.254/"));
+        var metadata = await _ai.SiteAsync(settings => Use(settings, AiProvider.OpenAiCompatible, "a-model", "http://169.254.169.254/"));
 
         (await RefusalAsync(unlisted)).ShouldBe((HttpStatusCode.Conflict, "FCMS1684"));
         (await RefusalAsync(otherPath)).ShouldBe((HttpStatusCode.Conflict, "FCMS1684"));
@@ -198,11 +228,12 @@ public sealed class AiProviderTests : IAsyncLifetime
         (await _ai.UsageAsync(site)).ShouldHaveSingleItem().Succeeded.ShouldBeFalse();
     }
 
-    // A site's first save without a key takes the key of the instance defaults with it, since a form never shows a secret
-    // and must not wipe it (spec 4.13). A site administrator who then names another endpoint does not get that key sent
-    // there: it stays with the provider and the endpoint of the defaults.
+    // A site that saves its settings without a key goes on reading the key of the instance defaults, since a form never shows
+    // a secret and must not wipe it (spec 4.13). A site administrator who then names another endpoint does not get that key
+    // sent there: it stays with the provider and the endpoint of the defaults, also once it is replaced there, and the
+    // replaced key reaches every site that inherits it.
     [Fact]
-    public async Task AKeyASiteTookFromTheInstanceDefaultsIsNeverSentToAnEndpointTheSiteNames()
+    public async Task AKeyASiteInheritsFromTheInstanceDefaultsIsNeverSentToAnEndpointTheSiteNames()
     {
         await _ai.SetDefaultsAsync(new AiSettings
         {
@@ -217,31 +248,57 @@ public sealed class AiProviderTests : IAsyncLifetime
         var movedSite = await _ai.BareSiteAsync();
         using var moved = await _ai.AdminAsync(movedSite);
         using var owning = await _ai.AdminAsync(await _ai.BareSiteAsync());
+        using var keyless = await _ai.AdminAsync(await _ai.BareSiteAsync());
         var fields = new { article = SummaryOnly };
         var body = new { type = "article", field = "summary", text = "Ships are big boats." };
 
-        // None of the first three sends a key; the last brings its own.
+        // None of the first three sends a key; the fourth brings its own, and the last clears the key, as for Ollama.
         await SaveAsync(sameEndpoint, new { provider = "openAiCompatible", model = "model-of-the-site", endpoint = _first.Url("v1"), fields });
-        var saved = await SaveAsync(moved, new { provider = "ollama", model = "model-of-the-site", endpoint = _second.Url(), fields });
-        await SaveAsync(owning, new { provider = "ollama", model = "model-of-the-site", endpoint = _second.Url(), apiKey = "key-of-the-site", fields });
+        var saved = await SaveAsync(moved, new { provider = "openAiCompatible", model = "model-of-the-site", endpoint = _second.Url("v1"), fields });
+        var owned = await SaveAsync(owning, new { provider = "openAiCompatible", model = "model-of-the-site", endpoint = _second.Url("v1"), apiKey = "key-of-the-site", fields });
+        var cleared = await SaveAsync(keyless, new { provider = "openAiCompatible", model = "model-without-a-key", endpoint = _second.Url("v1"), apiKey = (string?)null, fields });
 
         var followed = await SuggestAsync(inheriting, "rewrite", body);
         var kept = await SuggestAsync(sameEndpoint, "rewrite", body);
         using var refused = await ActAsync(moved, "rewrite", body);
         var problem = await JsonAsync(refused, HttpStatusCode.Conflict);
         var own = await SuggestAsync(owning, "rewrite", body);
+        var withoutKey = await SuggestAsync(keyless, "rewrite", body);
 
-        // The site did take the key with it, which is what makes the refusal necessary.
+        // The site reads the key of the defaults without holding it, which is what makes the refusal necessary.
         saved["secretsSet"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldContain("apiKey");
+        saved["secretsInherited"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldContain("apiKey");
+        owned["secretsInherited"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldNotContain("apiKey");
+        cleared["secretsInherited"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldNotContain("apiKey");
+        cleared["secretsSet"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldNotContain("apiKey");
         problem["code"]!.GetValue<string>().ShouldBe("FCMS1685");
         problem.ToJsonString().ShouldNotContain("key-of-the-instance");
         followed["usage"]!["model"]!.GetValue<string>().ShouldBe("model-of-the-instance");
         kept["usage"]!["model"]!.GetValue<string>().ShouldBe("model-of-the-site");
-        own["usage"]!["provider"]!.GetValue<string>().ShouldBe("ollama");
+        own["usage"]!["model"]!.GetValue<string>().ShouldBe("model-of-the-site");
+        withoutKey["usage"]!["model"]!.GetValue<string>().ShouldBe("model-without-a-key");
         _first.Requests.Select(request => request.Headers["Authorization"]).ShouldBe(["Bearer key-of-the-instance", "Bearer key-of-the-instance"]);
-        _second.Requests.ShouldHaveSingleItem().Headers["Authorization"].ShouldBe("Bearer key-of-the-site");
+        _second.Requests.Select(request => request.Headers.GetValueOrDefault("Authorization")).ShouldBe(["Bearer key-of-the-site", null]);
+
+        // The operator replaces the key: the sites that inherit it send the new one, and the one that names another endpoint
+        // is refused as before.
+        await _ai.SetDefaultsAsync(new AiSettings
+        {
+            Provider = AiProvider.OpenAiCompatible,
+            Model = "model-of-the-instance",
+            Endpoint = _first.Url("v1"),
+            ApiKey = "key-that-replaced-it",
+            Fields = { ["article"] = ["summary"] },
+        });
+        await SuggestAsync(inheriting, "rewrite", body);
+        await SuggestAsync(sameEndpoint, "rewrite", body);
+        using var stillRefused = await ActAsync(moved, "rewrite", body);
+
+        (await JsonAsync(stillRefused, HttpStatusCode.Conflict))["code"]!.GetValue<string>().ShouldBe("FCMS1685");
+        _first.Requests.Skip(2).Select(request => request.Headers["Authorization"]).ShouldBe(["Bearer key-that-replaced-it", "Bearer key-that-replaced-it"]);
+        _second.Requests.Count.ShouldBe(2);
         (await _ai.UsageAsync(movedSite)).ShouldBeEmpty();
-        _ai.Logs.Lines.ShouldNotContain(line => line.Contains("key-of-the-instance", StringComparison.Ordinal));
+        _ai.Logs.Lines.ShouldNotContain(line => line.Contains("key-of-the-instance", StringComparison.Ordinal) || line.Contains("key-that-replaced-it", StringComparison.Ordinal));
     }
 
     // The slot keeps the plugin's default until a host fills it.

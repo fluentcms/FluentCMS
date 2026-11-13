@@ -5,6 +5,11 @@
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <Description>The engine of FluentCMS and its HTTP surfaces: schema, content, versions, publishing, sites, identity and the authorization server, roles, jobs, plugins, and the Delivery and Management APIs.</Description>
+    <PackageTags>$(PackageTags) aspnetcore efcore</PackageTags>
+  </PropertyGroup>
+
   <!-- The tool diffs and prints for an instance what the schema commands and doctor do inside a host, with the same code. -->
   <ItemGroup>
     <InternalsVisibleTo Include="FluentCMS.Cli" />
@@ -23,6 +28,7 @@
     <InternalsVisibleTo Include="FluentCMS.Plugins.Mcp.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Plugins.MultiSite.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Plugins.AiAssist.Tests" />
+    <InternalsVisibleTo Include="FluentCMS.Plugins.Search.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Host.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Generators.Tests" />
     <!-- For the database file slot of backup and restore, IDatabaseFile, which only the SQLite provider fills. -->
