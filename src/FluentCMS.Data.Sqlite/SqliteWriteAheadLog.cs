@@ -1,5 +1,7 @@
 using System.Data.Common;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using SQLitePCL;
 
 namespace FluentCMS.Data.Sqlite;
 
@@ -34,7 +36,9 @@ internal sealed class SqliteWriteAheadLog : DbConnectionInterceptor
         command.CommandText = BusyTimeout;
         command.ExecuteNonQuery();
 
-        if (!_wal)
+        // Leaving the rollback journal writes to the file, which a read-only connection is refused, and EF opens one to see
+        // whether the database exists before anything else. So the first connection that may write switches the file.
+        if (!_wal && !IsReadOnly(connection))
         {
             command.CommandText = "PRAGMA journal_mode = WAL";
             _wal = command.ExecuteScalar() is "wal";
@@ -48,4 +52,8 @@ internal sealed class SqliteWriteAheadLog : DbConnectionInterceptor
             command.ExecuteNonQuery();
         }
     }
+
+    // SQLite also opens a file read-only that the connection string lets write when the file system does not.
+    private static bool IsReadOnly(DbConnection connection) =>
+        connection is SqliteConnection { Handle: { } handle } && raw.sqlite3_db_readonly(handle, "main") == 1;
 }
