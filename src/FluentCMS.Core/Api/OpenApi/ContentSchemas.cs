@@ -49,6 +49,18 @@ internal sealed class ContentSchemas(SchemaModel schema, OpenApiDocumentOptions 
             ["updatedAt"] = System(new JsonObject { ["type"] = "string", ["format"] = "date-time" }),
             ["updatedBy"] = System(new JsonObject { ["type"] = "string", ["format"] = "uuid", ["description"] = "Only when fields= asks for it." }),
             ["publishedAt"] = System(new JsonObject { ["type"] = new JsonArray("string", "null"), ["format"] = "date-time" }),
+            ["scheduledPublishAt"] = System(new JsonObject
+            {
+                ["type"] = new JsonArray("string", "null"),
+                ["format"] = "date-time",
+                ["description"] = "When the pending scheduled publish of this locale runs, or null when none is pending. Management API only.",
+            }),
+            ["scheduledUnpublishAt"] = System(new JsonObject
+            {
+                ["type"] = new JsonArray("string", "null"),
+                ["format"] = "date-time",
+                ["description"] = "When the pending scheduled unpublish of this locale runs, or null when none is pending. Management API only.",
+            }),
             ["fallbacks"] = System(new JsonObject
             {
                 ["type"] = "object",

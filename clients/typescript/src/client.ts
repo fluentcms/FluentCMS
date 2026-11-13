@@ -17,7 +17,7 @@ export interface WriteOptions {
 
 const delivery = "api/delivery/v1/";
 const management = "api/management/v1/content/";
-const systemFields = ["id", "status", "locale", "version", "createdAt", "createdBy", "updatedAt", "updatedBy", "publishedAt", "fallbacks"];
+const systemFields = ["id", "status", "locale", "version", "createdAt", "createdBy", "updatedAt", "updatedBy", "publishedAt", "scheduledPublishAt", "scheduledUnpublishAt", "fallbacks"];
 
 // The Delivery reads and the content group of the Management API over fetch. An answer that is not a success throws
 // FluentCmsProblem.

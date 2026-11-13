@@ -100,7 +100,7 @@ internal sealed class EntryPlan
         foreach (var system in SystemField.Fields)
         {
             var wanted = select.Whole ? isRoot && (system.Default || select.EverySystemField) : select.Includes(system.Name);
-            if (wanted && system.Name != "id" && query.Access.CanReadField(type, system.Name))
+            if (wanted && system.Name != "id" && (query.Management || !system.Management) && query.Access.CanReadField(type, system.Name))
             {
                 nodes.Add(new ValueOutput(system.Name, AddColumn(system.ReadFrom(row, query.State)), value => value));
             }

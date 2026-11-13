@@ -66,7 +66,7 @@ internal static class CSharpEmitter
 
     private sealed class Writer(ClientSchema schema, string @namespace, TypeNames names, HashSet<string> classNames, List<GenerateDiagnostic> diagnostics)
     {
-        private static readonly string[] EntryMembers = ["Id", "Status", "Locale", "Version", "CreatedAt", "CreatedBy", "UpdatedAt", "UpdatedBy", "PublishedAt", "Fallbacks"];
+        private static readonly string[] EntryMembers = ["Id", "Status", "Locale", "Version", "CreatedAt", "CreatedBy", "UpdatedAt", "UpdatedBy", "PublishedAt", "ScheduledPublishAt", "ScheduledUnpublishAt", "Fallbacks"];
 
         // A property with one of these names would hide a member of object.
         private static readonly string[] ObjectMembers = ["Equals", "GetHashCode", "ToString", "GetType", "ReferenceEquals", "MemberwiseClone", "Finalize"];

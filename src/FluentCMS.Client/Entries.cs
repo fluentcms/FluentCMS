@@ -6,7 +6,7 @@ namespace FluentCMS.Client;
 // The system fields of an entry, which the server sets; a write leaves them out.
 public class Entry
 {
-    internal static readonly string[] SystemFields = ["id", "status", "locale", "version", "createdAt", "createdBy", "updatedAt", "updatedBy", "publishedAt", "fallbacks"];
+    internal static readonly string[] SystemFields = ["id", "status", "locale", "version", "createdAt", "createdBy", "updatedAt", "updatedBy", "publishedAt", "scheduledPublishAt", "scheduledUnpublishAt", "fallbacks"];
 
     [JsonPropertyName("id")]
     public Guid Id { get; set; }
@@ -34,6 +34,13 @@ public class Entry
 
     [JsonPropertyName("publishedAt")]
     public DateTimeOffset? PublishedAt { get; set; }
+
+    // The pending schedules of the locale, which only the Management API answers.
+    [JsonPropertyName("scheduledPublishAt")]
+    public DateTimeOffset? ScheduledPublishAt { get; set; }
+
+    [JsonPropertyName("scheduledUnpublishAt")]
+    public DateTimeOffset? ScheduledUnpublishAt { get; set; }
 }
 
 // The content type a generated class is an entry of, so that the client's calls need no type name.

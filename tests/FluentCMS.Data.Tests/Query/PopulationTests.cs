@@ -1,9 +1,11 @@
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Storage;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 
@@ -75,6 +77,30 @@ public sealed class PopulationTests : IDisposable
         entry["metadata"].ShouldBeOfType<JsonObject>()["a"]!.GetValue<int>().ShouldBe(1);
         entry["sections"].ShouldBeOfType<JsonArray>().Count.ShouldBe(1);
         entry.ContainsKey("createdBy").ShouldBeFalse();
+    }
+
+    // The pending schedules that cms_document mirrors are fields of the Management shape alone (#3094).
+    [Fact]
+    public async Task OnlyTheManagementShapeHasThePendingSchedulesOfTheLocale()
+    {
+        var at = new DateTimeOffset(2027, 3, 1, 9, 0, 0, TimeSpan.Zero);
+        var document = _database.Context.Documents.Single(item => item.DocumentId == _article && item.Locale == "en");
+        document.ScheduleUnpublishAt = at;
+        _database.Context.SaveChanges();
+
+        var plain = await Entry("sort=title");
+        var unknown = await Should.ThrowAsync<ValidationException>(() => Entry("fields=scheduledUnpublishAt"));
+        _database.Services.GetRequiredService<ManagementShape>().Asked = true;
+        var managed = await Entry("sort=title");
+        var selected = await Entry("fields=title,scheduledUnpublishAt");
+
+        plain.ContainsKey("scheduledPublishAt").ShouldBeFalse();
+        plain.ContainsKey("scheduledUnpublishAt").ShouldBeFalse();
+        unknown.Errors.ShouldHaveSingleItem().Code.ShouldBe(QueryErrorCodes.UnknownField);
+        managed.Keys.Take(9).ShouldBe(["id", "status", "locale", "version", "createdAt", "updatedAt", "publishedAt", "scheduledPublishAt", "scheduledUnpublishAt"]);
+        managed["scheduledPublishAt"].ShouldBeNull();
+        managed["scheduledUnpublishAt"].ShouldBe(at);
+        selected.Keys.ShouldBe(["id", "scheduledUnpublishAt", "title"], ignoreOrder: true);
     }
 
     [Fact]

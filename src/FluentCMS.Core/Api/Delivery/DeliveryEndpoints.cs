@@ -116,7 +116,7 @@ internal static class DeliveryEndpoints
 
         var dot = field.IndexOf('.', StringComparison.Ordinal);
         var top = dot < 0 ? field : field[..dot];
-        var readable = (SystemField.Find(top) is not null || type.FindField(top) is { Hidden: false }) && access.CanReadField(type, top);
+        var readable = (SystemField.Find(top) is { Management: false } || type.FindField(top) is { Hidden: false }) && access.CanReadField(type, top);
         throw new ValidationException([readable
             ? new ValidationError(RequestErrors.Field, DeliveryErrorCodes.FieldNotUnique, $"'{field}' is not a unique field of {type.Name}.")
             : new ValidationError(field, QueryErrorCodes.UnknownField, $"'{field}' is not a field of {type.Name} that can be read.")]);

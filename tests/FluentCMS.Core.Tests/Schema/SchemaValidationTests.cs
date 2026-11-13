@@ -122,6 +122,10 @@ public class SchemaValidationTests
     [InlineData("createdAt")]
     [InlineData("publishedAt")]
     [InlineData("status")]
+    [InlineData("scheduledPublishAt")]
+    [InlineData("scheduledUnpublishAt")]
+    [InlineData("deletedAt")]
+    [InlineData("deletedBy")]
     public void ReservedFieldNameIsFCMS1206(string name)
     {
         var builder = new SchemaBuilder().AddCollection("article", type => type.Field(name, "text"));

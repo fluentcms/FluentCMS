@@ -52,6 +52,10 @@ public sealed class ContentSurfaceTests : IAsyncDisposable
         string[] every = ["id", "status", "version", "createdAt", "title", "views"];
         every.ShouldBeSubsetOf(ofEverything);
 
+        // A surface such as GraphQL does not answer the Management shape, so the pending schedules are no fields of it.
+        ofEverything.ShouldNotContain("scheduledPublishAt");
+        ofEverything.ShouldNotContain("scheduledUnpublishAt");
+
         // A type the principal may not read and one that does not exist are the same answer.
         (await ReadableAsync(_host.Anonymous, "note")).ShouldBeNull();
         (await ReadableAsync(everything, "nothing")).ShouldBeNull();

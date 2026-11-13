@@ -16,8 +16,9 @@ internal sealed record GroupPath(SchemaType Component) : ResolvedPath;
 internal sealed record FieldPath(StoredField Stored, string ApiPath, string[] Rest) : ResolvedPath;
 
 // Reads a dotted path of a type. A path that does not exist and one the principal may not read look the same, so
-// that a client cannot probe for a field. Trusted paths, which come from a row rule, skip the access checks.
-internal sealed class QueryPaths(SchemaModel schema, IContentQueryAccess access)
+// that a client cannot probe for a field. Trusted paths, which come from a row rule, skip the access checks. A field of
+// the Management shape does not exist outside it.
+internal sealed class QueryPaths(SchemaModel schema, IContentQueryAccess access, bool management = false)
 {
     public ResolvedPath? Resolve(SchemaType type, string path, bool trusted = false)
     {
@@ -29,7 +30,7 @@ internal sealed class QueryPaths(SchemaModel schema, IContentQueryAccess access)
 
         if (segments.Length == 1 && SystemField.Find(path) is { } system)
         {
-            return trusted || access.CanReadField(type, path) ? new SystemPath(system) : null;
+            return (management || !system.Management) && (trusted || access.CanReadField(type, path)) ? new SystemPath(system) : null;
         }
 
         if (!trusted && !access.CanReadField(type, segments[0]))

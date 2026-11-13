@@ -1,6 +1,7 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.OpenApi;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity.PreviewTokens;
@@ -18,7 +19,8 @@ namespace FluentCMS.Core.Api.Management;
 // The content group of spec 4.10: every operation of IContentService over HTTP, as the request's principal. The routes
 // carry identity and intent only, and the content service decides the rest. Reads default to the draft, which is what
 // an editor works on, and answer an unknown type and one the principal cannot read with the same 404, as Delivery does.
-// A write leaves an unreadable type to the engine, since a principal may hold a write without the read.
+// A write leaves an unreadable type to the engine, since a principal may hold a write without the read. Every entry the
+// group answers is in the Management shape, with the pending schedules of its locale.
 internal static class ContentEndpoints
 {
     private static readonly string Prefix = FluentCmsEndpointGroups.Prefixes.Single(item => item.Group == FluentCmsEndpointGroup.Management).Prefix;
@@ -28,7 +30,12 @@ internal static class ContentEndpoints
 
     private static void Map(RouteGroupBuilder management)
     {
-        var content = management.MapGroup("/content/{type}").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
+        var content = management.MapGroup("/content/{type}").WithFluentCmsOperation(Origin.Api).RequireManagementScope()
+            .AddEndpointFilter((context, next) =>
+            {
+                context.HttpContext.RequestServices.GetRequiredService<ManagementShape>().Asked = true;
+                return next(context);
+            });
 
         content.MapGet("", ListAsync)
             .Describe(new("list", "Lists the entries, drafts unless status=published is asked") { Query = ContentParameters.List, Response = ContentPayload.List });
