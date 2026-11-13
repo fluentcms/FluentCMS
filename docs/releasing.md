@@ -65,6 +65,8 @@ No workflow can do these; each is done once, before the first release, by an own
 
 A run that fails after the approval is rerun with **Re-run failed jobs**: the image tags are pushed again, and nuget.org skips the packages it holds already. A version that reached nuget.org is never published again; the next preview takes the next number. A tag that the check refused is deleted and made again on the right commit.
 
+A release is checked once both runs of step 6 pass: the two `Published packages` jobs of `Fresh machine of the published {version}`, on Linux with SQLite and PostgreSQL and on Windows with SQLite, and the `Compose` run on the published image, which brings it to ready on PostgreSQL. To check the image by hand, set `FLUENTCMS_IMAGE` to it in the `.env` of `src/FluentCMS.Host`, run `docker compose pull` and `docker compose up -d --no-build` there, and wait until `GET http://localhost:8080/health/ready` answers `Healthy` ([compose](docker.md#compose-with-postgresql-and-minio)). A check that fails on what was published, and not on the runner, is fixed in the next preview.
+
 ## Breaking changes
 
 - A breaking change to a shipped member lands only in a major version.
