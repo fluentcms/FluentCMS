@@ -331,6 +331,8 @@ internal sealed class QueryAccess : IContentQueryAccess
 
     public Dictionary<string, ContentFilter> RowRules { get; } = [];
 
+    public IContentQueryAccess? PublishedTargets { get; init; }
+
     public bool CanReadType(SchemaType type) => !DeniedTypes.Contains(type.Name);
 
     public bool CanReadDraft(SchemaType type) => !DeniedDrafts.Contains(type.Name);

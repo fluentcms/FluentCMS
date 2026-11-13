@@ -16,6 +16,11 @@ internal sealed class FieldAccess(EffectivePermissions permissions, SchemaModel 
 {
     private const string Discriminator = "type";
 
+    private FieldAccess? _targets;
+
+    // A preview token reads the targets of its entry with permissions of their own (spec 4.7), at every level below it.
+    private FieldAccess Targets => _targets ??= permissions.PublishedTargets is { } published ? new FieldAccess(published, schema) : this;
+
     // Omits, not blanks, what the principal cannot read, here and in populated entries, and any key that is not a field,
     // so a hook's extra key does not get past an allow-list. Whatever the service adds to a response, such as the
     // fallbacks of spec 4.4, comes after this. A target of a type the principal cannot read goes too. A row rule on a
@@ -207,11 +212,12 @@ internal sealed class FieldAccess(EffectivePermissions permissions, SchemaModel 
 
     private void OmitInRelation(ContentDocument document, string key, SchemaType related, AccessTarget target)
     {
-        var readable = permissions.Allows(related, ContentOperation.Read, target);
+        var targets = Targets;
+        var readable = targets.CanRead(related, target);
         switch (document[key])
         {
             case ContentDocument single when readable:
-                OmitInEntry(single, related, target, isTarget: true);
+                targets.OmitInEntry(single, related, target, isTarget: true);
                 break;
             case ContentDocument:
                 document[key] = null;
@@ -219,7 +225,7 @@ internal sealed class FieldAccess(EffectivePermissions permissions, SchemaModel 
             case IEnumerable<ContentDocument> many when readable:
                 foreach (var item in many)
                 {
-                    OmitInEntry(item, related, target, isTarget: true);
+                    targets.OmitInEntry(item, related, target, isTarget: true);
                 }
 
                 break;
@@ -228,6 +234,8 @@ internal sealed class FieldAccess(EffectivePermissions permissions, SchemaModel 
                 break;
         }
     }
+
+    private bool CanRead(SchemaType type, AccessTarget target) => permissions.Allows(type, ContentOperation.Read, target);
 
     // A component or block arrives whole, in any of the forms its field type coerces, so its fields are reached only
     // by reading it the way the coercion will.

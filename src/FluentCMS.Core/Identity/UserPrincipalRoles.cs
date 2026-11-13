@@ -20,8 +20,8 @@ internal sealed class UserPrincipalRoles(CmsDbContext context, ApiKeyPrincipals 
 
         if (principal.Kind == PrincipalKind.ApiKey)
         {
-            var key = ApiKeyAuthentication.Verified(http.HttpContext, principal.Id) ?? await keys.ActiveAsync(principal.Id, cancellationToken);
-            return key is not null && key.IsActive(time.GetUtcNow()) ? [key.RoleId] : [];
+            var key = await KeyAsync(principal, cancellationToken);
+            return key is not null ? [key.RoleId] : [];
         }
 
         if (principal.Kind == PrincipalKind.Member)
@@ -39,5 +39,27 @@ internal sealed class UserPrincipalRoles(CmsDbContext context, ApiKeyPrincipals 
                 && context.Set<CmsUser>().Any(user => user.Id == membership.UserId && user.DeactivatedAt == null))
             .Select(membership => membership.RoleId)
             .ToListAsync(cancellationToken);
+    }
+
+    // Only an API key is bound to types, and one that is revoked, expired or gone binds to none of them. A user and a service
+    // account are bound by their roles alone. A member mints no preview token, and its claim stays what it is.
+    public async ValueTask<IReadOnlySet<string>?> TypesOfAsync(Principal principal, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        return principal.Kind switch
+        {
+            PrincipalKind.ApiKey => await KeyAsync(principal, cancellationToken) is { } key
+                ? ApiKeyClaims.TypesOf(key)?.ToHashSet(StringComparer.Ordinal)
+                : new HashSet<string>(),
+            PrincipalKind.AdminUser or PrincipalKind.ServiceAccount => null,
+            _ => PrincipalBinding.Of(principal).Types,
+        };
+    }
+
+    private async ValueTask<ApiKey?> KeyAsync(Principal principal, CancellationToken cancellationToken)
+    {
+        var key = ApiKeyAuthentication.Verified(http.HttpContext, principal.Id) ?? await keys.ActiveAsync(principal.Id, cancellationToken);
+        return key is not null && key.IsActive(time.GetUtcNow()) ? key : null;
     }
 }

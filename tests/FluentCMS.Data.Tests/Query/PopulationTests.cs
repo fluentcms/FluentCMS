@@ -376,6 +376,46 @@ public sealed class PopulationTests : IDisposable
         Doc((await Entry("populate=author", access))["author"])["name"].ShouldBe("Ann");
     }
 
+    // As a preview token reads its entry: the draft with its own access, which reads no target, and the targets published,
+    // with the access of the principal that minted it, which is never asked about drafts.
+    [Fact]
+    public async Task PublishedTargetsAreReadWithTheirOwnAccessAtEveryLevel()
+    {
+        var draft = _database.AddArticle("Draft", state: ContentState.Draft);
+        var unpublished = _database.AddAuthor("Unpublished", state: ContentState.Draft);
+        _database.Relate("article", draft, "author", "author", _author, state: ContentState.Draft);
+        _database.Relate("article", draft, "sponsor", "author", unpublished, state: ContentState.Draft, locale: "en");
+        _database.Relate("article", draft, "tags", "tag", _firstTag, position: 0, state: ContentState.Draft);
+        _database.Relate("article", draft, "tags", "tag", _secondTag, position: 1, state: ContentState.Draft);
+        var minter = new QueryAccess();
+        minter.DeniedDrafts.UnionWith(["author", "company", "tag"]);
+        minter.RowRules["tag"] = new FieldFilter("name", FilterOperator.Equal, "one");
+        var token = new QueryAccess { PublishedTargets = minter };
+        token.DeniedTypes.UnionWith(["author", "company", "tag"]);
+
+        var entry = await Entry($"status=draft&populate=author.company,sponsor,tags&fields=title,author.name,author.company,sponsor,tags&filter[id][eq]={draft}", token);
+
+        entry["title"].ShouldBe("Draft");
+        var author = Doc(entry["author"]);
+        author["name"].ShouldBe("Ann");
+        Doc(author["company"])["name"].ShouldBe("Acme");
+        entry["sponsor"].ShouldBeNull();
+        entry["tags"].ShouldBeAssignableTo<IReadOnlyList<ContentDocument>>()!.Select(tag => tag["name"]).ShouldBe(["one"]);
+        (await Entry($"status=draft&populate=author&filter[id][eq]={draft}", new QueryAccess { DeniedTypes = { "author" } }))["author"].ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task TheCapsAndErrorsOfPublishedTargetsAreTheQuerys()
+    {
+        var token = new QueryAccess { PublishedTargets = new QueryAccess() };
+
+        await Should.ThrowAsync<ValidationException>(() => _database.RunAsync("locale=en&populate=author.company,tags", token, new ContentQueryOptions { MaxPopulatedEntries = 3 }));
+        (await _database.RunAsync("locale=en&populate=author.company,tags", token, new ContentQueryOptions { MaxPopulatedEntries = 4 })).Items.Count.ShouldBe(1);
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => _database.RunAsync("populate=latest", token, type: "author"));
+        refused.Errors.ShouldContain(error => error.Path == "locale");
+    }
+
     [Fact]
     public async Task FieldSelectionKeepsTheIdAndWhatIsNamed()
     {

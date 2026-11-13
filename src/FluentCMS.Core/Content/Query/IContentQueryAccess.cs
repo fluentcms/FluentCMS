@@ -25,4 +25,9 @@ internal interface IContentQueryAccess
 
     // Joins the client's filter in an And node before compilation, on the queried type and on every relation target.
     ContentFilter? RowRule(SchemaType type);
+
+    // What the targets of relations and rich text links are read with, in their published rows alone, when that is not this
+    // access in the state of the read: a preview token reads its entry's targets as the principal that minted it reads
+    // published content (spec 4.7). Null for every other principal. A filter or sort through a relation stays with this one.
+    IContentQueryAccess? PublishedTargets => null;
 }
