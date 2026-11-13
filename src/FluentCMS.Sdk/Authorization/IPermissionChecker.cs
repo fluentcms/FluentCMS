@@ -41,4 +41,16 @@ public interface IPermissionChecker
     /// </returns>
     /// <exception cref="InvalidOperationException">There is no current operation.</exception>
     ValueTask<IReadOnlySet<string>?> ResourcesAsync(string permission, SiteId? site, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Whether the principal may manage: whether its token or key is for managing, by the <c>management</c> scope (or the
+    /// <c>mcp</c> scope on the MCP server), or it is the system. A principal that may not, such as the anonymous caller,
+    /// a Delivery or preview key, a preview token or a token without the scope, holds no permission but reading content,
+    /// whatever its roles grant, so every other check refuses it. A plugin whose answer to such a reader is the one the
+    /// Delivery API gives anyone reads this, as the media plugin does for media references.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the check.</param>
+    /// <returns><see langword="true"/> when a grant may give the principal more than reading content.</returns>
+    /// <exception cref="InvalidOperationException">There is no current operation.</exception>
+    ValueTask<bool> CanManageAsync(CancellationToken cancellationToken = default);
 }

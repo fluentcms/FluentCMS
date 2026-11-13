@@ -3,9 +3,11 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json.Nodes;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Media;
 using FluentCMS.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -173,6 +175,44 @@ public sealed class MediaDeliveryReferenceTests(PublicStoryHost media) : IClassF
         after["hero"]!["urls"]!["presets"]![preset]!.GetValue<string>().ShouldContain($"preset={preset}");
     }
 
+    // Outside the Delivery API, on /graphql say, a principal that may not manage reads as on Delivery: the anonymous caller
+    // and a Delivery key, whose role holds media.read or not, get the public asset by the same rule, and a managing key
+    // resolves by its grants.
+    [Fact]
+    public async Task OutsideTheDeliveryApiAPrincipalThatMayNotManageResolvesByTheSameRule()
+    {
+        using var admin = await media.AdminAsync();
+        var hero = await AssetAsync(admin, "hero.png");
+        var secret = await PrivateAsync(admin, "secret.png");
+        var gone = await AssetAsync(admin, "gone.png");
+        var elsewhere = await AssetAsync(admin, "elsewhere.png");
+        using (var deleted = await admin.DeleteAsync(new Uri($"{Root}/{gone:D}", UriKind.Relative), Token))
+        {
+            deleted.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        }
+
+        await MoveToAnotherLibraryAsync(elsewhere, await MediaLibraryTesting.CreateSiteAsync(media));
+        using var anonymous = media.Host.CreateClient();
+        var original = (await GetAsync(anonymous, $"/api/delivery/v1/media/{hero:D}"))["urls"]!["original"]!.GetValue<string>();
+        var deliveryKey = await DeliveryKeyOfAsync(admin, new { permission = "content.story.read" });
+        var withMediaRead = await DeliveryKeyOfAsync(admin, new { permission = "content.story.read" }, new { permission = "media.read" });
+        var managing = await media.Host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token);
+        Guid[] ids = [hero, secret, gone, elsewhere];
+
+        foreach (var actor in new[] { media.Host.Anonymous, media.Host.As(deliveryKey), media.Host.As(withMediaRead) })
+        {
+            var resolved = await ResolveAsync(actor, ids);
+
+            resolved.Keys.ShouldBe([hero]);
+            resolved[hero].Urls!.Original.ShouldBe(original);
+        }
+
+        var managed = await ResolveAsync(media.Host.As(managing), ids);
+        managed.Keys.ShouldBe([hero, secret], ignoreOrder: true);
+        managed[hero].Urls!.Original.ShouldBe(original);
+        managed[secret].Urls.ShouldBeNull();
+    }
+
     // The media routes of a site where the plugin is disabled answer 404, so its references resolve to nothing on Delivery there.
     [Fact]
     public async Task InASiteWhereThePluginIsDisabledNoMediaReferenceResolvesOnDelivery()
@@ -195,6 +235,7 @@ public sealed class MediaDeliveryReferenceTests(PublicStoryHost media) : IClassF
 
         enabled["hero"]!["urls"].ShouldNotBeNull();
         route.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await ResolveAsync(off.Host.Anonymous, [hero])).ShouldBeEmpty();
         entry["hero"].ShouldBeNull();
         entry["gallery"]!.AsArray().ShouldBeEmpty();
         entry["sections"]![0]!["image"].ShouldBeNull();
@@ -243,12 +284,18 @@ public sealed class MediaDeliveryReferenceTests(PublicStoryHost media) : IClassF
         preset.StatusCode.ShouldBe(HttpStatusCode.OK, await preset.Content.ReadAsStringAsync(Token));
     }
 
-    private async Task<HttpClient> DeliveryKeyAsync(HttpClient admin, params object[] grants)
+    private static Task<IReadOnlyDictionary<Guid, MediaDelivery>> ResolveAsync(TestActor actor, Guid[] ids) =>
+        actor.RunAsync<IMediaResolver, IReadOnlyDictionary<Guid, MediaDelivery>>(resolver => resolver.ResolveAsync(ids, null, Token));
+
+    private async Task<HttpClient> DeliveryKeyAsync(HttpClient admin, params object[] grants) =>
+        media.Host.AsKey(await DeliveryKeyOfAsync(admin, grants));
+
+    private async Task<TestApiKey> DeliveryKeyOfAsync(HttpClient admin, params object[] grants)
     {
         var name = "role-" + Guid.NewGuid().ToString("N");
         using var role = await admin.PostAsJsonAsync(new Uri("/api/management/v1/roles", UriKind.Relative), new { name, grants }, Token);
         role.StatusCode.ShouldBe(HttpStatusCode.Created, await role.Content.ReadAsStringAsync(Token));
-        return media.Host.AsKey(await media.Host.CreateApiKeyAsync(ApiKeyClass.Delivery, name, cancellationToken: Token));
+        return await media.Host.CreateApiKeyAsync(ApiKeyClass.Delivery, name, cancellationToken: Token);
     }
 
     // The row of an asset of another site's library, as a site keeps while the library is per site (5.1).

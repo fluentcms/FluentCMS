@@ -352,6 +352,7 @@ FluentCMS.Authorization.IEffectiveAccess.ContentAsync(System.Threading.Cancellat
 FluentCMS.Authorization.IEffectiveAccess.HeldAsync(System.Collections.Generic.IEnumerable<string!>! permissions, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlySet<string!>!>
 FluentCMS.Authorization.IPermissionChecker
 FluentCMS.Authorization.IPermissionChecker.AllowsAsync(string! permission, FluentCMS.Sites.SiteId? site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
+FluentCMS.Authorization.IPermissionChecker.CanManageAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
 FluentCMS.Authorization.IPermissionChecker.RequireAsync(string! permission, FluentCMS.Sites.SiteId? site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 FluentCMS.Authorization.IPermissionChecker.ResourcesAsync(string! permission, FluentCMS.Sites.SiteId? site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.IReadOnlySet<string!>?>
 FluentCMS.Authorization.IPermissionProvider
