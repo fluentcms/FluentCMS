@@ -64,7 +64,7 @@ A collection has a list field and a single field, and a singleton one field:
 - **Sort** takes the sortable fields of the type and `ID`, `CREATED_AT`, `UPDATED_AT` and `PUBLISHED_AT`.
 - **Pagination** is REST's: `page` or `offset` with `pageSize`, or `cursor` with the `nextCursor` of the page before. `total` runs its count only when it is selected. A page over `FluentCms:Query:MaxPageSize` is refused with `FCMS2207`, as in REST.
 - **Single entries** are read by `id` or by one unique field, such as `slug`. An entry that is not there is null.
-- **Population** follows the selection: a relation whose fields are selected is populated with those fields, a level at a time, and a media field, a block list and a repeated component with the references inside them. A selection deeper than `FluentCms:Query:MaxPopulateDepth` is refused with `FCMS2207`. A relation selected for its `id` alone costs no read.
+- **Population** follows the selection: a relation whose fields are selected is populated with those fields, a level at a time, and a media field, a block list and a repeated component with the references inside them. A selection deeper than `FluentCms:Query:MaxPopulateDepth` is refused with `FCMS2207` before anything runs. A relation selected for its `id` alone costs no read.
 
 ## Mutations
 
@@ -81,6 +81,7 @@ mutation {
 - `update` is a merge patch, as `PATCH` on the Management API: a field the input leaves out keeps its value and `null` clears it. `expectedVersion` is required, and `0` adds a locale the entry does not have. A stale version is refused with `FCMS3105`, with the current entry in `extensions.current`.
 - A relation and a media field are written as ids, and a block list as JSON, each block an object with its `type`, since a GraphQL input cannot be a union.
 - `delete` moves the entry to the trash and answers its id. `locale` names the locale of a write.
+- A write answers the entry it wrote. A selection that goes into a relation or a media field reads it again, as a draft, with that population; one deeper than `MaxPopulateDepth` is refused with `FCMS2207` before anything is written. If that read fails after the write, for instance over `FluentCms:Query:MaxPopulatedEntries`, the write stands: the entry is answered, and each field the read was to populate is null with the error at its path.
 - Scheduling, versions, bulk writes, the trash and discarding a draft stay with the Management API. Subscriptions and uploads are not served.
 
 ## Who may do what

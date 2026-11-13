@@ -1,6 +1,10 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text.Json.Nodes;
+using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Jobs;
@@ -8,6 +12,7 @@ using FluentCMS.Plugins.Media;
 using FluentCMS.Samples.Blog;
 using FluentCMS.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 
@@ -133,4 +138,58 @@ internal static class GraphQLClient
     public static List<string> Codes(this JsonArray errors) => [.. errors.Select(error => error.Code())];
 
     public static List<string> Strings(this JsonNode? items, string field) => [.. items!.AsArray().Select(item => item![field]!.GetValue<string>())];
+}
+
+// The content service of the host, with every read that populates failing as no refusal does.
+public class FailingPopulation : DispatchProxy
+{
+    private IContentService _inner = null!;
+
+    public static IContentService Wrap(IContentService inner)
+    {
+        var proxy = Create<IContentService, FailingPopulation>();
+        ((FailingPopulation)(object)proxy)._inner = inner;
+        return proxy;
+    }
+
+    protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+    {
+        ArgumentNullException.ThrowIfNull(targetMethod);
+        if (targetMethod.Name == nameof(IContentService.GetAsync) && args?.OfType<GetOptions>().FirstOrDefault() is { Populate.Count: > 0 })
+        {
+            throw new InvalidOperationException("The read failed.");
+        }
+
+        try
+        {
+            return targetMethod.Invoke(_inner, args);
+        }
+        catch (TargetInvocationException exception) when (exception.InnerException is { } inner)
+        {
+            ExceptionDispatchInfo.Throw(inner);
+            throw;
+        }
+    }
+}
+
+public sealed class LogCapture : ILoggerProvider
+{
+    public ConcurrentQueue<(int Id, LogLevel Level, string Message)> Lines { get; } = new();
+
+    public ILogger CreateLogger(string categoryName) => new Logger(this);
+
+    public void Dispose()
+    {
+    }
+
+    private sealed class Logger(LogCapture capture) : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            capture.Lines.Enqueue((eventId.Id, logLevel, formatter(state, exception)));
+    }
 }

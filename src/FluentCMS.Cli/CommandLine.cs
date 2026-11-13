@@ -21,7 +21,9 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
 {
     public const string Description = "The fluentcms tool. Project commands build the host project and run inside it, with its configuration and plugins.";
 
-    private readonly Func<Instance, HttpClient> _connect = connect ?? (_ => new HttpClient());
+    private static readonly string[] SnapshotGroups = ["collections", "singletons", "components", "blocks"];
+
+    private readonly Func<Instance, HttpClient> _connect = connect ?? (_ => new HttpClient(InstanceAnswer.Handler()));
 
     public static Task<int> RunAsync(string[] args, TextWriter output, TextWriter error, IHostLauncher? launcher = null, CancellationToken cancellationToken = default) =>
         RunAsync(args, output, error, launcher, connect: null, cancellationToken);
@@ -346,7 +348,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
             }
             catch (JsonException)
             {
-                throw new CliException(CliErrorCodes.InstanceUnreachable, $"{target} answered schema/snapshot with something that is not a schema snapshot.");
+                throw new CliException(CliErrorCodes.UnexpectedAnswer, $"{target} answered schema/snapshot with something that is not a schema snapshot.");
             }
 
             return await SchemaSources.WriteDiffAsync(report, result.GetValue(json), $"the instance at {target}", toLabel, output, error);
@@ -418,9 +420,10 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
                 report = null;
             }
 
-            if (report is null)
+            // Every report names the version of core, and any other JSON object would read as an empty report.
+            if (report is null || string.IsNullOrEmpty(report.Version))
             {
-                throw new CliException(CliErrorCodes.InstanceUnreachable, $"{target} answered system/diagnostics with something that is not a startup report.");
+                throw new CliException(CliErrorCodes.UnexpectedAnswer, $"{target} answered system/diagnostics with something that is not a startup report.");
             }
 
             // The JSON as the instance sent it, so that what a newer instance adds is kept. An instance that answers has
@@ -492,7 +495,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         var file = new Argument<string>("file") { Description = "The package to import." };
         var dryRun = new Option<bool>("--dry-run") { Description = "Checks everything and writes nothing; the report is the one the import would give." };
         var site = SiteOption("import into");
-        var types = TypesOption("The content types to import, separated by commas; every type of the package when left out.");
+        var types = TypesOption("The content types to import, separated by commas; every type of the package when left out. With --url, a key with transfer.manage in the site only names the types it may import: an export has a file for every global type, empty or not, and importing one needs transfer.manage for the instance.");
         var overwrite = new Option<bool>("--overwrite") { Description = "Takes the package's copy of an entry that is newer in the instance, which is otherwise a conflict." };
         var webhooks = new Option<bool>("--webhooks") { Description = "Delivers the webhooks of what the import writes, which are otherwise not delivered." };
         var missingLocales = new Option<string>("--missing-locales") { Description = "refuse (the default) or skip: whether the locales the site does not allow refuse the import or are left out.", HelpName = "mode" };
@@ -578,10 +581,40 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         }
     }
 
+    // Checked before anything is written with it: an object of the groups SchemaJsonWriter writes and nothing else, which
+    // the strict reader of `generate` asks too, and in them the types and fields schema diff reads, which comparing the
+    // snapshot with itself walks. The writer leaves out an empty group, so {} is the snapshot of an empty schema.
     private async Task<byte[]> InstanceSnapshotAsync(Instance target, CancellationToken cancellationToken)
     {
         using var http = _connect(target);
-        return await new InstanceClient(target, http).GetAsync("schema/snapshot", "schema.read", cancellationToken);
+        var snapshot = await new InstanceClient(target, http).GetAsync("schema/snapshot", "schema.read", cancellationToken);
+        if (!IsSnapshot(Encoding.UTF8.GetString(snapshot)))
+        {
+            throw new CliException(CliErrorCodes.UnexpectedAnswer, $"{target} answered schema/snapshot with something that is not a schema snapshot.");
+        }
+
+        return snapshot;
+    }
+
+    private static bool IsSnapshot(string text)
+    {
+        try
+        {
+            using (var json = JsonDocument.Parse(text))
+            {
+                if (json.RootElement.ValueKind != JsonValueKind.Object || json.RootElement.EnumerateObject().Any(group => !SnapshotGroups.Contains(group.Name)))
+                {
+                    return false;
+                }
+            }
+
+            _ = SchemaSnapshotDiff.Report(text, text);
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     // The host writes its snapshot to a file of the tool's, which keeps it apart from anything else the host prints.

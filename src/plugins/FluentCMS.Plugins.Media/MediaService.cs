@@ -794,13 +794,19 @@ internal sealed class MediaService(
 
     private static PluginException NameTaken(string name) => new(MediaErrorCodes.FolderNameTaken, $"The folder already holds a folder named '{name}'.");
 
-    // Read once to a temporary file, counting and hashing on the way, so that a file over its limit is refused without
-    // reading it to the end, and its type and image size are read from the bytes as stored.
-    private async Task<Upload> PrepareAsync(MediaUploadFile file, int index, MediaSettings rules, long requestLeft, CancellationToken cancellationToken)
+    private Task<Upload> PrepareAsync(MediaUploadFile file, int index, MediaSettings rules, long requestLeft, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(file);
 
         var name = FileNameOf(file.FileName) ?? throw Invalid($"files[{index}].fileName", $"A file needs a name of at most {MediaModel.FileNameMaxLength} characters, without control characters.");
+        return PrepareAsync(name, file.Content, rules, requestLeft, Math.Min(rules.MaxRequestSize, options.Value.MaxRequestBodySize), cancellationToken);
+    }
+
+    // The checks of an upload, which a replace and an import (MediaTransfer) run too. Read once to a temporary file, counting
+    // and hashing on the way, so that a file over its limit is refused without reading it to the end, and its type and image
+    // size are read from the bytes as stored.
+    internal static async Task<Upload> PrepareAsync(string name, Stream source, MediaSettings rules, long requestLeft, long requestLimit, CancellationToken cancellationToken)
+    {
         Stream content = new FileStream(Path.Combine(Path.GetTempPath(), $"fluentcms-media-{Guid.NewGuid():N}.tmp"), FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 81920, FileOptions.Asynchronous | FileOptions.DeleteOnClose);
         try
         {
@@ -808,7 +814,7 @@ internal sealed class MediaService(
             var buffer = new byte[81920];
             long size = 0;
             int read;
-            while ((read = await file.Content.ReadAsync(buffer, cancellationToken)) > 0)
+            while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
             {
                 size += read;
                 if (size > rules.MaxFileSize)
@@ -818,7 +824,7 @@ internal sealed class MediaService(
 
                 if (size > requestLeft)
                 {
-                    throw new PluginException(MediaErrorCodes.TooLarge, $"The files of the upload are over the limit of {Math.Min(rules.MaxRequestSize, options.Value.MaxRequestBodySize)} bytes a request.");
+                    throw new PluginException(MediaErrorCodes.TooLarge, $"The files of the upload are over the limit of {requestLimit} bytes a request.");
                 }
 
                 hash.AppendData(buffer, 0, read);
@@ -850,7 +856,7 @@ internal sealed class MediaService(
                     var sanitized = SvgDocument.Save(svg);
                     await content.DisposeAsync();
                     content = new MemoryStream(sanitized, writable: false);
-                    return new Upload(name, MediaTypes.Svg, content, sanitized.Length, Convert.ToHexStringLower(SHA256.HashData(sanitized)), null);
+                    return new Upload(name, MediaTypes.Svg, content, sanitized.Length, Convert.ToHexStringLower(SHA256.HashData(sanitized)), checksum, null);
                 }
             }
 
@@ -861,7 +867,7 @@ internal sealed class MediaService(
             }
 
             var dimensions = type.IsImage ? await ImageSize.ReadAsync(content, type, cancellationToken) : null;
-            return new Upload(name, type, content, size, checksum, dimensions);
+            return new Upload(name, type, content, size, checksum, checksum, dimensions);
         }
         catch
         {
@@ -902,7 +908,7 @@ internal sealed class MediaService(
     }
 
     // The name without a directory, from either kind of separator, since browsers on Windows may send the whole path.
-    private static string? FileNameOf(string? given)
+    internal static string? FileNameOf(string? given)
     {
         var name = given?[(given.LastIndexOfAny(['/', '\\']) + 1)..].Trim();
         return string.IsNullOrEmpty(name) || name.Length > MediaModel.FileNameMaxLength || name is "." or ".." || name.Any(char.IsControl) ? null : name;
@@ -972,7 +978,12 @@ internal sealed class MediaService(
 
     private static MediaFolder Info(Folder folder) => new(folder.Id, folder.SiteId, folder.ParentId, folder.Name);
 
-    private sealed record Upload(string FileName, MediaType Type, Stream Content, long Size, string Checksum, (int Width, int Height)? Dimensions);
+    // A file that passed the checks of an upload. Received is the SHA-256 of the bytes as they came, which differs from
+    // Checksum, that of the bytes to store, only for an SVG that sanitising changed.
+    internal sealed record Upload(string FileName, MediaType Type, Stream Content, long Size, string Checksum, string Received, (int Width, int Height)? Dimensions) : IAsyncDisposable
+    {
+        public ValueTask DisposeAsync() => Content.DisposeAsync();
+    }
 }
 
 // The folders a permission reaches: all of them and the root, or a set of folders.

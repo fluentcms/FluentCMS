@@ -70,6 +70,22 @@ public sealed class AiSiteTests : IClassFixture<AiHost>
         slot["source"]!.GetValue<string>().ShouldBe("host");
     }
 
+    // Its name ends in tokens, but a number is never a secret by its name.
+    [Fact]
+    public async Task TheMostTokensOfAnAnswerIsReturnedLikeAnyOtherSetting()
+    {
+        var site = await _ai.SiteAsync(settings => settings.MaxOutputTokens = 321);
+        using var admin = await _ai.AdminAsync(site);
+
+        var read = await ReadAsync(admin);
+
+        read["value"]!["maxOutputTokens"]!.GetValue<int>().ShouldBe(321);
+        read["secretsSet"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldNotContain("maxOutputTokens");
+        var schema = read["schema"]!["properties"]!["maxOutputTokens"]!.AsObject();
+        schema.ContainsKey("writeOnly").ShouldBeFalse();
+        schema["default"]!.GetValue<int>().ShouldBe(1024);
+    }
+
     [Fact]
     public async Task TheKeyOfASiteIsWrittenAndNeverReturned()
     {

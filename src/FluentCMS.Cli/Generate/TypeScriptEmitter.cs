@@ -125,7 +125,11 @@ internal static class TypeScriptEmitter
 
             foreach (var field in type.Fields.Where(field => FieldsEmitter.IsFieldName(field.Name)))
             {
-                _body.Line($"/** {field.FieldType}{(field.Multiple ? ", multiple" : "")}{(field.Localizable ? ", localizable" : "")} */");
+                if (FieldTypeText.Traits(field) is { Length: > 0 } traits)
+                {
+                    _body.Line($"/** {traits} */");
+                }
+
                 _body.Line($"{field.Name}?: {ValueType(type, field)} | null;");
             }
 
@@ -162,7 +166,7 @@ internal static class TypeScriptEmitter
             {
                 if (field.FieldType != "component")
                 {
-                    diagnostics.Add(new(CliErrorCodes.NoGeneratedType, $"The field '{owner.Name}.{field.Name}' is unknown, because the field type '{field.FieldType}' has no type in generated code."));
+                    diagnostics.Add(new(CliErrorCodes.NoGeneratedType, $"The field '{owner.Name}.{field.Name}' is unknown, because {FieldTypeText.Of(field)} has no type in generated code."));
                 }
 
                 return "unknown";

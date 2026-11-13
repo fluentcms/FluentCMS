@@ -25,7 +25,12 @@ internal static class CSharpEmitter
         ArgumentNullException.ThrowIfNull(schema);
 
         List<GenerateDiagnostic> diagnostics = [];
-        var builders = FieldsEmitter.Emit(SchemaDescriptions.Of(schema.Model, @namespace), new EmitOptions(ClientNamespace));
+
+        // The builders' emitter warns of a field type it does not know by its text, so it gets no field whose type is not
+        // a name; such a field has no builder either way.
+        var descriptions = SchemaDescriptions.Of(schema.Model, @namespace)
+            .Select(type => type with { Fields = type.Fields.Where(field => ClientSchema.IsFieldTypeName(field.FieldType)).ToEquatableArray() });
+        var builders = FieldsEmitter.Emit(descriptions, new EmitOptions(ClientNamespace));
         diagnostics.AddRange(builders.Diagnostics.Select(diagnostic => new GenerateDiagnostic(diagnostic.Code, diagnostic.Message)));
 
         var prefix = @namespace + ".";
@@ -125,7 +130,8 @@ internal static class CSharpEmitter
                 }
 
                 first = false;
-                code.Line($"/// <summary>The field <c>{field.Name}</c> ({field.FieldType}{(field.Multiple ? ", multiple" : "")}{(field.Localizable ? ", localizable" : "")}).</summary>");
+                var traits = FieldTypeText.Traits(field);
+                code.Line($"/// <summary>The field <c>{field.Name}</c>{(traits.Length > 0 ? $" ({traits})" : "")}.</summary>");
                 code.Line($"[{Property}({Literal(field.Name)})]");
                 code.Line($"public {ClrType(type, field)} {member} {{ get; set; }}");
             }
@@ -212,7 +218,7 @@ internal static class CSharpEmitter
             {
                 if (field.FieldType != "component")
                 {
-                    diagnostics.Add(new(CliErrorCodes.NoGeneratedType, $"The field '{owner.Name}.{field.Name}' is JSON, because the field type '{field.FieldType}' has no type in generated code."));
+                    diagnostics.Add(new(CliErrorCodes.NoGeneratedType, $"The field '{owner.Name}.{field.Name}' is JSON, because {FieldTypeText.Of(field)} has no type in generated code."));
                 }
 
                 return Json + "?";

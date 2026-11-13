@@ -1067,6 +1067,81 @@ public sealed class SettingsTests
         descriptor.CreateSchema()["properties"]!["keywords"]!.AsObject().ContainsKey("writeOnly").ShouldBeFalse();
     }
 
+    [Theory]
+    [InlineData(typeof(int))]
+    [InlineData(typeof(int?))]
+    [InlineData(typeof(long))]
+    [InlineData(typeof(double))]
+    [InlineData(typeof(bool))]
+    [InlineData(typeof(bool?))]
+    [InlineData(typeof(TokenKind))]
+    [InlineData(typeof(TokenKind?))]
+    [InlineData(typeof(DateTimeOffset))]
+    [InlineData(typeof(DateOnly))]
+    [InlineData(typeof(TimeSpan))]
+    [InlineData(typeof(int[]))]
+    [InlineData(typeof(List<int?>))]
+    [InlineData(typeof(IReadOnlyList<TokenKind>))]
+    [InlineData(typeof(HashSet<bool>))]
+    public void AValueThatCannotBeTextIsOutsideTheNameRule(Type type) => SettingsSecretNames.AppliesTo(type).ShouldBeFalse();
+
+    [Theory]
+    [InlineData(typeof(string))]
+    [InlineData(typeof(string[]))]
+    [InlineData(typeof(List<string>))]
+    [InlineData(typeof(Dictionary<string, string>))]
+    [InlineData(typeof(Dictionary<string, int>))]
+    [InlineData(typeof(IReadOnlyDictionary<string, bool>))]
+    [InlineData(typeof(List<Dictionary<string, int>>))]
+    [InlineData(typeof(byte[]))]
+    [InlineData(typeof(sbyte[]))]
+    [InlineData(typeof(List<byte>))]
+    [InlineData(typeof(List<byte?>))]
+    [InlineData(typeof(IReadOnlyList<byte>))]
+    [InlineData(typeof(System.Collections.Immutable.ImmutableArray<byte>))]
+    [InlineData(typeof(ArraySegment<byte>))]
+    [InlineData(typeof(ReadOnlyMemory<byte>))]
+    [InlineData(typeof(Guid))]
+    [InlineData(typeof(Int128))]
+    [InlineData(typeof(UInt128))]
+    [InlineData(typeof(decimal))]
+    [InlineData(typeof(SelfEnumerating))]
+    [InlineData(typeof(List<SelfEnumerating>))]
+    [InlineData(typeof(Uri))]
+    [InlineData(typeof(Credentials))]
+    [InlineData(typeof(object))]
+    [InlineData(typeof(System.Text.Json.JsonElement))]
+    public void AValueThatCanBeTextIsUnderTheNameRule(Type type) => SettingsSecretNames.AppliesTo(type).ShouldBeTrue();
+
+    [Fact]
+    public async Task ATypeThatEnumeratesItselfDoesNotHangTheRegistrationAndStaysUnderTheNameRule()
+    {
+        var descriptor = await Task.Run(() => new SettingsRegistry([typeof(SelfEnumeratingSettings)], TimeSpan.Zero).Find("self-enumerating")!, Token)
+            .WaitAsync(TimeSpan.FromSeconds(30), Token);
+
+        descriptor.SecretKeys.ShouldBe(["tokens"]);
+    }
+
+    [Fact]
+    public void ANumberABooleanAnEnumOrADateIsNeverASecretByItsNameAndAStringStillIs()
+    {
+        var descriptor = Should.NotThrow(() => new SettingsRegistry([typeof(NamedLikeSecretsButNotText)], TimeSpan.Zero)).Find("named-not-text")!;
+
+        descriptor.SecretKeys.Order(StringComparer.Ordinal).ShouldBe(["pin", "smtpPassword"]);
+
+        var properties = descriptor.CreateSchema()["properties"]!.AsObject();
+        foreach (var key in new[] { "maxOutputTokens", "hasApiKey", "accessToken", "rotatedSecret", "retryTokens", "budget" })
+        {
+            properties[key]!.AsObject().ContainsKey("writeOnly").ShouldBeFalse(key);
+        }
+
+        properties["maxOutputTokens"]!["default"]!.GetValue<int>().ShouldBe(1024);
+        properties["budget"]!["properties"]!["maxTokens"]!.AsObject().ContainsKey("writeOnly").ShouldBeFalse();
+        properties["smtpPassword"]!["writeOnly"]!.GetValue<bool>().ShouldBeTrue();
+        properties["pin"]!["writeOnly"]!.GetValue<bool>().ShouldBeTrue();
+        properties["pin"]!.AsObject().ContainsKey("default").ShouldBeFalse();
+    }
+
     [Fact]
     public async Task TheRedactedVersionOfARowThatCannotBeReadCanBeWrittenBack()
     {

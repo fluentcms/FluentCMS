@@ -8,6 +8,7 @@ using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
+using FluentCMS.Core.Tests.Transfer;
 using FluentCMS.Core.Transfer;
 using FluentCMS.Data.Tests.Authorization;
 using FluentCMS.Hooks;
@@ -52,8 +53,8 @@ public sealed class TransferTests : IDisposable
 
         var result = await ImportAsync(target, await ExportAsync(_source));
 
-        result.Items.Count(item => item.Section != TransferImporter.SettingsSection).ShouldBe(ids.Count);
-        result.Items.Where(item => item.Section != TransferImporter.SettingsSection).ShouldAllBe(item => item.Outcome == TransferOutcome.Created);
+        result.Items.ShouldBeEmpty();
+        ContentCounts(result).ShouldBe(TransferCounts.None with { Created = ids.Count });
         result.Total.Errors.ShouldBe(0);
         await ShouldReadAlikeAsync(_source, target, ids);
         target.Read(context => context.Versions.AsNoTracking().Select(version => version.Origin).Distinct().ToList()).ShouldBe([Origin.Import]);
@@ -70,8 +71,9 @@ public sealed class TransferTests : IDisposable
 
         var again = await ImportAsync(target, package);
 
-        again.Items.ShouldAllBe(item => item.Outcome == TransferOutcome.Skipped);
-        again.Items.Count(item => item.Section != TransferImporter.SettingsSection).ShouldBe(ids.Count);
+        again.Items.ShouldBeEmpty();
+        again.Total.ShouldBe(TransferCounts.None with { Skipped = again.Total.Skipped });
+        ContentCounts(again).ShouldBe(TransferCounts.None with { Skipped = ids.Count });
         target.Footprint().ShouldBe(footprint);
     }
 
@@ -97,8 +99,9 @@ public sealed class TransferTests : IDisposable
 
         var rest = await ImportAsync(target, package);
 
-        rest.Items.Where(item => item.Section == "article").ShouldAllBe(item => item.Outcome == TransferOutcome.Skipped);
-        rest.Items.Where(item => item.Section is "author" or "tag").ShouldAllBe(item => item.Outcome == TransferOutcome.Created);
+        rest.Sections["article"].ShouldBe(TransferCounts.None with { Skipped = 2 });
+        rest.Sections["author"].ShouldBe(TransferCounts.None with { Created = 2 });
+        rest.Sections["tag"].ShouldBe(TransferCounts.None with { Created = 1 });
         await ShouldReadAlikeAsync(_source, target, ids);
     }
 
@@ -135,7 +138,8 @@ public sealed class TransferTests : IDisposable
         var taken = await ImportAsync(target, package, new TransferImportRequest { Overwrite = true });
 
         kept.Items.Single(item => item.Id == author.ToString("D")).Outcome.ShouldBe(TransferOutcome.Conflict);
-        taken.Items.Single(item => item.Id == author.ToString("D")).Outcome.ShouldBe(TransferOutcome.Updated);
+        taken.Items.ShouldBeEmpty();
+        taken.Sections["author"].Updated.ShouldBe(1);
         (await target.GetAsync(Admin, author, type: "author"))!["name"].ShouldBe("Ada");
     }
 
@@ -150,7 +154,8 @@ public sealed class TransferTests : IDisposable
 
         var result = await ImportAsync(target, await ExportAsync(source));
 
-        result.Items.Single(item => item.Id == IdOf(good).ToString("D")).Outcome.ShouldBe(TransferOutcome.Created);
+        result.Items.ShouldNotContain(item => item.Id == IdOf(good).ToString("D"));
+        result.Sections["note"].ShouldBe(TransferCounts.None with { Created = 1, Errors = 2 });
         var rule = result.Items.Single(item => item.Id == IdOf(tooLong).ToString("D"));
         rule.Outcome.ShouldBe(TransferOutcome.Error);
         rule.Code.ShouldBe(ValidationErrorCodes.MaxLength);
@@ -184,7 +189,8 @@ public sealed class TransferTests : IDisposable
 
         var result = await ImportAsync(wider, await ExportAsync(source));
 
-        result.Items.Single().Outcome.ShouldBe(TransferOutcome.Created);
+        result.Items.ShouldBeEmpty();
+        result.Sections["note"].ShouldBe(TransferCounts.None with { Created = 1 });
         (await wider.GetAsync(Admin, IdOf(note), type: "note"))!["title"].ShouldBe("One");
     }
 
@@ -224,7 +230,8 @@ public sealed class TransferTests : IDisposable
 
         var result = await ImportAsync(target, package);
 
-        result.Items.Single().ShouldBe(new TransferItem(TransferImporter.SettingsSection, MailSettings.Area, TransferOutcome.Created, null, null));
+        result.Items.ShouldBeEmpty();
+        result.Sections.ShouldHaveSingleItem().ShouldBe(new KeyValuePair<string, TransferCounts>(TransferImporter.SettingsSection, TransferCounts.None with { Created = 1 }));
         target.Read(context => context.Set<SettingRow>().Single().Json).ShouldContain("news@example.com");
 
         // The site of the target holds no password: it reads that of the target's instance defaults.
@@ -252,12 +259,262 @@ public sealed class TransferTests : IDisposable
         var siteRole = AddRole(target, Guid.CreateVersion7(), SiteA.Value, CorePermissions.TransferManage);
         var siteAdmin = WithRole(siteRole);
 
-        await Should.ThrowAsync<ManagementAccessDeniedException>(() => ImportAsync(target, package, principal: siteAdmin));
+        var denied = await Should.ThrowAsync<ManagementAccessDeniedException>(() => ImportAsync(target, package, principal: siteAdmin));
         var taken = await ImportAsync(target, package, new TransferImportRequest { Types = ["article", "author", "settings"] }, principal: siteAdmin);
 
+        denied.Message.ShouldContain("types= of the endpoint or --types of fluentcms import");
         taken.Total.Errors.ShouldBe(0);
-        taken.Items.ShouldNotContain(item => item.Section == "tag");
+        taken.Sections.ShouldNotContainKey("tag");
         target.Read(context => context.Documents.Count(document => document.Type == "tag")).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AGlobalTypeWhoseStoredFileDeclaresNoBytesStillNeedsTransferManageForTheInstanceAndNothingIsWritten()
+    {
+        await SeedAsync();
+        var package = Craft(await ExportAsync(_source), TransferPackage.ContentPath("tag"), 0);
+        using (var archive = new ZipArchive(new MemoryStream(package), ZipArchiveMode.Read))
+        {
+            archive.GetEntry(TransferPackage.ContentPath("tag"))!.Length.ShouldBe(0);
+        }
+
+        var target = Target();
+        var siteAdmin = WithRole(AddRole(target, Guid.CreateVersion7(), SiteA.Value, CorePermissions.TransferManage));
+
+        await Should.ThrowAsync<ManagementAccessDeniedException>(() => ImportAsync(target, package, new TransferImportRequest { Overwrite = true }, principal: siteAdmin));
+
+        target.Read(context => context.Documents.Count()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AGlobalTypeWithAnEmptyFileStillNeedsTransferManageForTheInstanceAndTheOtherTypesAreTakenWithTypes()
+    {
+        await CreateAsSystemAsync(_source, "author", new ContentDocument { ["name"] = "Ada" });
+        var package = await ExportAsync(_source);
+        Entries(package)[TransferPackage.ContentPath("tag")].ShouldBeEmpty();
+        var target = Target();
+        var siteAdmin = WithRole(AddRole(target, Guid.CreateVersion7(), SiteA.Value, CorePermissions.TransferManage));
+
+        await Should.ThrowAsync<ManagementAccessDeniedException>(() => ImportAsync(target, package, principal: siteAdmin));
+        var taken = await ImportAsync(target, package, new TransferImportRequest { Types = ["author"] }, principal: siteAdmin);
+
+        taken.Total.Created.ShouldBe(1);
+        taken.Total.Errors.ShouldBe(0);
+        target.Read(context => context.Documents.Count(document => document.Type == "author")).ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData("content/tag.jsonl", 0u)]
+    [InlineData("content/article.jsonl", 10u)]
+    [InlineData("manifest.json", 10u)]
+    [InlineData("settings.json", 0u)]
+    public async Task AFileThatHoldsMoreThanItsZipEntryDeclaresIsRefusedBeforeAnyWrite(string path, uint declared)
+    {
+        await SeedAsync();
+        var package = Craft(await ExportAsync(_source), path, declared);
+        var target = Target();
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(target, package, new TransferImportRequest { Overwrite = true }));
+
+        refused.Errors.Single().Code.ShouldBe(TransferErrorCodes.InvalidPackage);
+        refused.Errors.Single().Message.ShouldContain(path);
+        target.Read(context => context.Documents.Count()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task APackageWithACraftedFileIsRefusedWholeEvenWhenTypesLeavesItsTypeOut()
+    {
+        await SeedAsync();
+        var package = Craft(await ExportAsync(_source), TransferPackage.ContentPath("tag"), 0);
+        var target = Target();
+        var siteAdmin = WithRole(AddRole(target, Guid.CreateVersion7(), SiteA.Value, CorePermissions.TransferManage));
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(target, package, new TransferImportRequest { Types = ["article", "author", "settings"] }, principal: siteAdmin));
+
+        refused.Errors.Single().Code.ShouldBe(TransferErrorCodes.InvalidPackage);
+        refused.Errors.Single().Message.ShouldContain(TransferPackage.ContentPath("tag"));
+        target.Read(context => context.Documents.Count()).ShouldBe(0);
+    }
+
+    // What the central directory shows is refused before any file is read, a dry run as well.
+    [Theory]
+    [InlineData(nameof(TransferOptions.MaxEntries), false)]
+    [InlineData(nameof(TransferOptions.MaxEntries), true)]
+    [InlineData(nameof(TransferOptions.MaxUnpackedSize), false)]
+    [InlineData(nameof(TransferOptions.MaxUnpackedSize), true)]
+    [InlineData(nameof(TransferOptions.MaxJsonSize), false)]
+    [InlineData(nameof(TransferOptions.MaxJsonSize), true)]
+    public async Task APackageOverABoundOfItsCentralDirectoryIsRefusedBeforeAnyWrite(string bound, bool dryRun)
+    {
+        await SeedAsync();
+        var package = await ExportAsync(_source);
+        var target = Target(configure: cms => cms.Services.Configure<TransferOptions>(options =>
+        {
+            options.MaxEntries = bound == nameof(TransferOptions.MaxEntries) ? 3 : options.MaxEntries;
+            options.MaxUnpackedSize = bound == nameof(TransferOptions.MaxUnpackedSize) ? 1000 : null;
+            options.MaxJsonSize = bound == nameof(TransferOptions.MaxJsonSize) ? 100 : options.MaxJsonSize;
+        }));
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(target, package, new TransferImportRequest { DryRun = dryRun }));
+
+        refused.Errors.Single().Code.ShouldBe(TransferErrorCodes.InvalidPackage);
+        refused.Errors.Single().Message.ShouldContain($"FluentCms:Transfer:{bound}");
+        target.Read(context => context.Documents.Count() + context.Set<SettingRow>().Count()).ShouldBe(0);
+    }
+
+    // Many files of a zip can point at the data of one, which an import would read once for each.
+    [Fact]
+    public async Task FilesWhoseCompressedSizesAddUpToMoreThanThePackageAreRefusedBeforeAnyWrite()
+    {
+        await SeedAsync();
+        var exported = await ExportAsync(_source);
+        var package = ZipCentralDirectory.DeclareCompressed(exported, TransferPackage.ContentPath("article"), (uint)exported.Length);
+        var target = Target();
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(target, package));
+
+        refused.Errors.Single().Code.ShouldBe(TransferErrorCodes.InvalidPackage);
+        refused.Errors.Single().Message.ShouldContain("share their data");
+        target.Read(context => context.Documents.Count()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AFileOfACompressionMethodThatCannotBeReadIsRefusedBeforeAnyWriteWhateverTypesSays()
+    {
+        await SeedAsync();
+        var exported = await ExportAsync(_source);
+        using (var archive = new ZipArchive(new MemoryStream(exported), ZipArchiveMode.Read))
+        {
+            var tag = archive.GetEntry(TransferPackage.ContentPath("tag"))!;
+            tag.CompressedLength.ShouldBeLessThanOrEqualTo(tag.Length);
+        }
+
+        var package = ZipCentralDirectory.Method(exported, TransferPackage.ContentPath("tag"), 14);
+        var target = Target();
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(target, package, new TransferImportRequest { Types = ["article"] }));
+
+        refused.Errors.Single().Code.ShouldBe(TransferErrorCodes.InvalidPackage);
+        refused.Errors.Single().Message.ShouldContain(TransferPackage.ContentPath("tag"));
+        target.Read(context => context.Documents.Count() + context.Set<SettingRow>().Count()).ShouldBe(0);
+    }
+
+    // schema.json is read only when its hash is not the instance's, so a file that cannot be read is no matter then.
+    [Fact]
+    public async Task TheSchemaOfThePackageIsReadOnlyWhenItsHashIsNotTheInstances()
+    {
+        await CreateAsSystemAsync(_source, "author", new ContentDocument { ["name"] = "Ada" });
+        var package = ZipCentralDirectory.Corrupt(await ExportAsync(_source), TransferPackage.Schema);
+        var same = Target();
+        var other = Target(NoteSchema(maxLength: null));
+
+        var taken = await ImportAsync(same, package);
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(other, package));
+
+        taken.Sections["author"].Created.ShouldBe(1);
+        refused.Errors.Single().Code.ShouldBe(TransferErrorCodes.InvalidPackage);
+        refused.Errors.Single().Message.ShouldContain(TransferPackage.Schema);
+    }
+
+    // A bound that only reading shows stops the import where it is reached: what was written stays, and the last item of the
+    // report, which a dry run gives alike, says why.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ALineLongerThanTheLimitStopsTheImportWithTheErrorAsTheLastItem(bool dryRun)
+    {
+        await SeedAsync();
+        var package = await ExportAsync(_source);
+        var target = Target(configure: cms => cms.Services.Configure<TransferOptions>(options => options.MaxLineLength = 200));
+
+        var result = await ImportAsync(target, package, new TransferImportRequest { DryRun = dryRun });
+
+        result.Items[^1].ShouldBe(new TransferItem(TransferImporter.PackageSection, TransferPackage.ContentPath("article"), TransferOutcome.Error, TransferErrorCodes.InvalidPackage, result.Items[^1].Message));
+        result.Items[^1].Message!.ShouldContain("FluentCms:Transfer:MaxLineLength");
+        result.Sections.Keys.Where(section => section != TransferImporter.SettingsSection).ShouldBe([TransferImporter.PackageSection]);
+        target.Read(context => context.Documents.Count()).ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TheImportStopsAtTheFirstFileThatTakesItOverTheCompressedBytesItMayRead(bool dryRun)
+    {
+        await SeedAsync();
+        var package = await ExportAsync(_source);
+        long read;
+        using (var archive = new ZipArchive(new MemoryStream(package), ZipArchiveMode.Read))
+        {
+            read = new[] { TransferPackage.Manifest, TransferPackage.Settings, TransferPackage.ContentPath("article") }.Sum(path => archive.GetEntry(path)!.CompressedLength);
+        }
+
+        var target = Target(configure: cms => cms.Services.Configure<TransferOptions>(options => options.MaxReadSize = read));
+
+        var result = await ImportAsync(target, package, new TransferImportRequest { DryRun = dryRun });
+
+        result.Sections["article"].ShouldBe(TransferCounts.None with { Created = 2 });
+        result.Sections.ShouldNotContainKey("author");
+        var stop = result.Items.ShouldHaveSingleItem();
+        (stop.Section, stop.Id, stop.Code).ShouldBe((TransferImporter.PackageSection, TransferPackage.ContentPath("author"), TransferErrorCodes.InvalidPackage));
+        stop.Message!.ShouldContain("FluentCms:Transfer:MaxReadSize");
+        target.Read(context => context.Documents.Select(document => document.Type).Distinct().ToList()).ShouldBe(dryRun ? [] : ["article"]);
+    }
+
+    [Fact]
+    public async Task AFileWhoseCompressedDataCannotBeReadStopsTheImportWithTheErrorAsTheLastItem()
+    {
+        await SeedAsync();
+        var package = ZipCentralDirectory.Corrupt(await ExportAsync(_source), TransferPackage.ContentPath("author"));
+        var target = Target();
+
+        var result = await ImportAsync(target, package);
+
+        var stop = result.Items[^1];
+        (stop.Section, stop.Id, stop.Code).ShouldBe((TransferImporter.PackageSection, TransferPackage.ContentPath("author"), TransferErrorCodes.InvalidPackage));
+        result.Sections["article"].ShouldBe(TransferCounts.None with { Created = 2 });
+        result.Sections.ShouldNotContainKey("author");
+    }
+
+    [Fact]
+    public async Task TheReportListsNoMoreErrorsThanItsLimitAndCountsThemAll()
+    {
+        await SeedAsync();
+        var package = Rewrite(await ExportAsync(_source), TransferPackage.ContentPath("article"), "x\ny\n{}\n[]\n");
+        var target = Target(configure: cms => cms.Services.Configure<TransferOptions>(options => options.MaxReportItems = 2));
+
+        var result = await ImportAsync(target, package);
+
+        result.Items.Count.ShouldBe(2);
+        result.Omitted.ShouldBe(2);
+        result.Items.ShouldAllBe(item => item.Section == "article" && item.Code == TransferErrorCodes.InvalidItem);
+        result.Sections["article"].ShouldBe(TransferCounts.None with { Errors = 4 });
+        result.Sections["author"].ShouldBe(TransferCounts.None with { Created = 2 });
+    }
+
+    // One line of many values can break a rule once for each, and its item names the first of them only.
+    [Fact]
+    public async Task TheItemOfAnEntryWithManyErrorsNamesTheFirstTwentyAndCountsTheRest()
+    {
+        await SeedAsync();
+        var exported = await ExportAsync(_source);
+        var line = JsonNode.Parse(Entries(exported)[TransferPackage.ContentPath("article")].Split('\n')[0])!;
+        foreach (var locale in line["locales"]!.AsArray())
+        {
+            if (locale!["draft"] is JsonObject draft)
+            {
+                draft["tags"] = new JsonArray([.. Enumerable.Repeat(1, 20_000).Select(value => (JsonNode)JsonValue.Create(value))]);
+            }
+        }
+
+        var target = Target();
+
+        var result = await ImportAsync(target, Rewrite(exported, TransferPackage.ContentPath("article"), line.ToJsonString()));
+
+        var item = result.Items.Single(item => item.Section == "article");
+        item.Outcome.ShouldBe(TransferOutcome.Error);
+        item.Message!.Length.ShouldBeLessThanOrEqualTo(TransferReport.MaxTextLength + 1);
+        item.Message.ShouldEndWith(" more");
+        item.Message.Split("; ").Length.ShouldBe(21);
     }
 
     [Fact]
@@ -272,13 +529,14 @@ public sealed class TransferTests : IDisposable
         AddRole(target, own, SiteA.Value, CorePermissions.TransferManage);
 
         var without = await ImportAsync(target, package);
-        var limited = await ImportAsync(target, package, new TransferImportRequest { Roles = true }, principal: WithRole(own));
+        var limited = await ImportAsync(target, package, new TransferImportRequest { Roles = true, Types = ["author"] }, principal: WithRole(own));
         var full = await ImportAsync(target, package, new TransferImportRequest { Roles = true });
 
-        without.Items.ShouldNotContain(item => item.Section == TransferImporter.RolesSection);
+        without.Sections.ShouldNotContainKey(TransferImporter.RolesSection);
+        limited.Sections[TransferImporter.RolesSection].ShouldBe(TransferCounts.None with { Errors = 2 });
         limited.Items.Where(item => item.Section == TransferImporter.RolesSection).ShouldAllBe(item => item.Outcome == TransferOutcome.Error && item.Code == "FCMS3103");
-        full.Items.Single(item => item.Id == own.ToString("D")).Outcome.ShouldBe(TransferOutcome.Updated);
-        full.Items.Single(item => item.Id == other.ToString("D")).Outcome.ShouldBe(TransferOutcome.Created);
+        full.Sections[TransferImporter.RolesSection].ShouldBe(TransferCounts.None with { Created = 1, Updated = 1 });
+        full.Items.ShouldNotContain(item => item.Section == TransferImporter.RolesSection);
         target.Read(context => context.Set<RoleGrant>().Count(grant => grant.RoleId == own)).ShouldBe(3);
         target.Read(context => context.Set<Role>().Single(role => role.Id == other).SiteId).ShouldBe(SiteA.Value);
     }
@@ -296,7 +554,7 @@ public sealed class TransferTests : IDisposable
 
         var result = await ImportAsync(wider, package, new TransferImportRequest { Overwrite = true });
 
-        result.Items.Single().Outcome.ShouldBe(TransferOutcome.Updated);
+        result.Sections["note"].ShouldBe(TransferCounts.None with { Updated = 1 });
         var read = (await wider.GetAsync(Admin, note, type: "note"))!;
         read["title"].ShouldBe("One");
         read["subtitle"].ShouldBe("Only here");
@@ -315,8 +573,8 @@ public sealed class TransferTests : IDisposable
         var overwritten = await ImportAsync(target, package, new TransferImportRequest { Overwrite = true });
         var again = await ImportAsync(target, package);
 
-        overwritten.Items.Single().Outcome.ShouldBe(TransferOutcome.Updated);
-        again.Items.Single().Outcome.ShouldBe(TransferOutcome.Skipped);
+        overwritten.Sections["note"].ShouldBe(TransferCounts.None with { Updated = 1 });
+        again.Sections["note"].ShouldBe(TransferCounts.None with { Skipped = 1 });
         target.Read(context => context.Documents.Single().Status).ShouldBe(EntryStatus.Draft);
     }
 
@@ -428,6 +686,10 @@ public sealed class TransferTests : IDisposable
 
     private static string Report(TransferResult result) => JsonSerializer.Serialize(result with { DryRun = false }, TransferPackage.Json);
 
+    // The counts of the content types and the contributors, without the settings.
+    private static TransferCounts ContentCounts(TransferResult result) =>
+        TransferCounts.Sum(result.Sections.Where(section => section.Key != TransferImporter.SettingsSection).Select(section => section.Value));
+
     private static Dictionary<string, string> Entries(byte[] package)
     {
         using var archive = new ZipArchive(new MemoryStream(package), ZipArchiveMode.Read);
@@ -449,18 +711,27 @@ public sealed class TransferTests : IDisposable
         return id;
     }
 
-    private static byte[] Rewrite(byte[] package, string path, string content)
+    private static byte[] Rewrite(byte[] package, string path, string content, CompressionLevel level = CompressionLevel.Optimal)
     {
         using var stream = new MemoryStream();
         stream.Write(package);
         using (var archive = new ZipArchive(stream, ZipArchiveMode.Update, leaveOpen: true))
         {
             archive.GetEntry(path)!.Delete();
-            using var writer = new StreamWriter(archive.CreateEntry(path).Open());
+            using var writer = new StreamWriter(archive.CreateEntry(path, level).Open());
             writer.Write(content);
         }
 
         return stream.ToArray();
+    }
+
+    // The file at the path as a stored entry whose central directory declares the size given, which System.IO.Compression
+    // does not hold a stored entry to: it yields the whole file whatever the size declared.
+    private static byte[] Craft(byte[] package, string path, uint declared)
+    {
+        var content = Entries(package)[path];
+        content.Length.ShouldBeGreaterThan((int)declared);
+        return ZipCentralDirectory.Declare(Rewrite(package, path, content, CompressionLevel.NoCompression), path, declared);
     }
 
     private static Task<byte[]> ExportAsync(ServiceDatabase database, TransferExportRequest? request = null) =>

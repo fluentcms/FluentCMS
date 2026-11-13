@@ -9,6 +9,27 @@ public sealed class Note : ContentItem
 {
     [Text, Required]
     public string Title { get; set; } = "";
+
+    // A note under another, so that a selection can go as deep as a test needs, and the two kinds of component a selection
+    // passes through: a repeated one is populated for the references inside it, and a single one is part of its entry.
+    [Relation]
+    public Ref<Note> Parent { get; set; }
+
+    [Component]
+    public List<Link> Links { get; set; } = [];
+
+    [Component]
+    public Aside? Aside { get; set; }
+}
+
+[Component]
+public sealed class Aside
+{
+    [Text]
+    public string? Label { get; set; }
+
+    [Relation]
+    public Ref<Note> Note { get; set; }
 }
 
 // The shapes the Blog sample does not have: a singleton, numbers, a date, JSON, a repeated select and a repeated component

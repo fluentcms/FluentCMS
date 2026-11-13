@@ -28,4 +28,7 @@ internal static partial class TransferLog
 
     [LoggerMessage(EventId = 9187, Level = LogLevel.Warning, Message = "The transfer activity row of site {Site} could not be written.")]
     public static partial void ActivityFailed(ILogger logger, Exception exception, Guid site);
+
+    [LoggerMessage(EventId = 9188, Level = LogLevel.Warning, Message = "{Code}: import into site {Site} stopped at a bound of its package: {Detail}")]
+    public static partial void ImportRefused(ILogger logger, string code, Guid site, string detail);
 }

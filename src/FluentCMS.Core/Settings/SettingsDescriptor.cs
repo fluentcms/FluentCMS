@@ -374,10 +374,12 @@ internal sealed class SettingsDescriptor
         }
     }
 
-    // The type of the items of a list or the values of a dictionary, until it is neither.
+    // The type of the items of a list or the values of a dictionary, until it is neither or comes back to a type it has
+    // passed, as one that enumerates itself does.
     private static Type Peel(Type type)
     {
-        while (true)
+        HashSet<Type> seen = [];
+        while (seen.Add(type))
         {
             var next = Nullable.GetUnderlyingType(type) ?? ItemTypeOf(type);
             if (next is null)
@@ -387,6 +389,8 @@ internal sealed class SettingsDescriptor
 
             type = next;
         }
+
+        return type;
     }
 
     private static Type? ItemTypeOf(Type type)
@@ -426,8 +430,10 @@ internal sealed class SettingsDescriptor
         NamesSecret(property)
         || (property.AttributeProvider?.IsDefined(typeof(SettingsSecretAttribute), inherit: true) ?? false);
 
-    // By the name in JSON and by the name in C#, since [JsonPropertyName] must not hide a secret from the rule.
+    // By the name in JSON and by the name in C#, since [JsonPropertyName] must not hide a secret from the rule, and only for a
+    // value that can be text.
     private static bool NamesSecret(JsonPropertyInfo property) =>
-        SettingsSecretNames.Matches(property.Name)
-        || ((property.AttributeProvider as MemberInfo)?.Name is { } member && SettingsSecretNames.Matches(member));
+        SettingsSecretNames.AppliesTo(property.PropertyType)
+        && (SettingsSecretNames.Matches(property.Name)
+            || ((property.AttributeProvider as MemberInfo)?.Name is { } member && SettingsSecretNames.Matches(member)));
 }

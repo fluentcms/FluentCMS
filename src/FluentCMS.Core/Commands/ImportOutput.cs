@@ -65,6 +65,11 @@ internal static class ImportOutput
                     await output.WriteLineAsync($"{Text(item, "outcome")} {Text(item, "section")} {Text(item, "id")}: {Text(item, "code")} {Text(item, "message")}".TrimEnd());
                 }
             }
+
+            if (Number(report, "omitted") is > 0 and var omitted)
+            {
+                await output.WriteLineAsync($"{Count(omitted, "more conflict or error is", "more conflicts and errors are")} counted and not listed.");
+            }
         }
 
         var conflicts = Number(total, "conflicts");

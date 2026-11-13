@@ -6,15 +6,17 @@ using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Plugins.Media;
 
-// An original file to send: the bytes, which the caller disposes, their type and checksum, the file name, and whether a
-// download URL asked for it.
-internal sealed record OriginalFile(Stream Content, string MimeType, string Checksum, string FileName, bool Download);
+// An original file to send: the bytes, which the caller disposes, the type to send them as, their checksum, the file name,
+// whether a download URL asked for it, and whether they are sent as an attachment.
+internal sealed record OriginalFile(Stream Content, string MimeType, string Checksum, string FileName, bool Download, bool Attachment);
 
 // GET /media/{id}/original/{fileName} in the site of the operation, for any caller: as for transforms, the URL is the
 // authority and the file name is ignored. A URL with exp is a download URL, whose signature is checked whatever
 // RequireSignedUrls says; it serves a private asset too, and is refused from its expiry on. A URL without it serves a public
 // asset only, signed unless signed URLs are off. A soft-deleted asset is never served. The canonical string of a signature
-// starts with the id and "/original", so a transform's signature, which follows the id with "?", never fits it.
+// starts with the id and "/original", so a transform's signature, which follows the id with "?", never fits it. A file is
+// sent inline only as a type the plugin finds from bytes, named as the plugin names it; one stored with any other type, such
+// as an import took from a package before it checked the files, is sent as application/octet-stream, as an attachment.
 internal sealed class MediaOriginals(
     PluginDbContext<MediaPlugin> database,
     IOperationContextAccessor operations,
@@ -25,6 +27,8 @@ internal sealed class MediaOriginals(
     TimeProvider time)
 {
     public const string Expires = "exp";
+
+    public const string OctetStream = "application/octet-stream";
 
     public static string Canonical(Guid id, long? expires) =>
         expires is { } at ? $"{id:D}/original?{Expires}={at.ToString(CultureInfo.InvariantCulture)}" : $"{id:D}/original";
@@ -82,6 +86,7 @@ internal sealed class MediaOriginals(
 
         var content = await storages.Of(asset.StorageProvider).OpenReadAsync(asset.StorageKey, cancellationToken)
             ?? throw new PluginException(MediaErrorCodes.AssetNotFound, $"The bytes of the media asset {asset.Id:D} are missing from the storage.");
-        return new OriginalFile(content, asset.MimeType, asset.Checksum, asset.FileName, download);
+        var type = MediaTypes.Find(asset.MimeType);
+        return new OriginalFile(content, type?.MimeType ?? OctetStream, asset.Checksum, asset.FileName, download, download || type is null);
     }
 }

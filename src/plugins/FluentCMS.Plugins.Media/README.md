@@ -164,7 +164,7 @@ The URLs are signed. `presets` has one transform URL for each preset of the site
 
 ## Original files and private downloads
 
-`GET /media/{id}/original/{fileName}` sends a file as it was stored, with `X-Content-Type-Options: nosniff`, and an SVG with a `Content-Security-Policy` that runs nothing. Without `exp`, it serves a public asset with a signature that the Delivery API's `urls.original` carries. A private asset is served only by a download URL:
+`GET /media/{id}/original/{fileName}` sends a file as it was stored, with `X-Content-Type-Options: nosniff`, and an SVG with a `Content-Security-Policy` that runs nothing. A file whose stored type is none the plugin reads from bytes is sent as `application/octet-stream`, as an attachment. Without `exp`, it serves a public asset with a signature that the Delivery API's `urls.original` carries. A private asset is served only by a download URL:
 
 ```bash
 curl -X POST -H "Authorization: ApiKey $KEY" https://cms.example.com/api/management/v1/media/$ID/download-url

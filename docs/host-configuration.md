@@ -63,6 +63,7 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | `FluentCms:Activity` | the activity log: `Enabled`, `Retention`, `SiteRetention`, `PruneSchedule` |
 | `FluentCms:Idempotency` | `Window` (24 hours), `InProgressTimeout` (5 minutes) (see [idempotency keys](#idempotency-keys)) |
 | `FluentCms:Health` | `JobRunnerHeartbeatTimeout`, `PendingJobAgeLimit` |
+| `FluentCms:Transfer` | the bounds of an import: `MaxPackageSize` (1 GiB, the body), `MaxUnpackedSize` (the sum of the sizes the files of a package declare unpacked; `MaxPackageSize` when not set), `MaxEntries` (100,000 files), `MaxJsonSize` (64 MiB for each of `manifest.json`, `schema.json`, `settings.json` and `roles.json`), `MaxReadSize` (the compressed bytes an import reads, a file counting each time it is opened; twice `MaxPackageSize` when not set), `MaxLineLength` (16 MiB for a line of a `.jsonl` file), `MaxReportItems` (1,000 conflicts and errors listed in the report; every item is counted). A package over a bound is refused with `FCMS3200`, and an import that reaches one once it has started stops with it as the last item of its report |
 
 A key the configuration sets wins over what the host set in code inside `AddFluentCms`; a key it leaves out keeps the code's value. The options are checked when the host starts, and an invalid value stops it with an `FCMS` code and the key, for example `FCMS1101: FluentCms:Query:MaxPageSize: The field MaxPageSize must be between 1 and 2147483647.`
 
