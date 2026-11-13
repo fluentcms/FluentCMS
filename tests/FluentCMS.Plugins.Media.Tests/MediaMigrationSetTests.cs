@@ -19,7 +19,7 @@ public sealed class MediaMigrationSetTests
         using var context = new MediaDbContextFactory().CreateDbContext([set]);
         using var sqlite = new MediaDbContextFactory().CreateDbContext([PluginMigrationSets.Sqlite]);
 
-        context.Database.GetMigrations().Select(id => id[15..]).ShouldBe(["InitialMedia", "MediaTransforms"]);
+        context.Database.GetMigrations().Select(id => id[15..]).ShouldBe(["Initial"]);
         PluginMigrationSetChecks.IsTheSetOf(context, set);
         PluginMigrationSetChecks.MatchesTheSqliteSet(context, sqlite);
     }

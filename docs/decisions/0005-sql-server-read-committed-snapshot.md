@@ -32,6 +32,7 @@ We will adopt option C, and keep the content service's deadlock reruns as a back
   - Otherwise it runs `ALTER DATABASE CURRENT SET READ_COMMITTED_SNAPSHOT ON WITH ROLLBACK IMMEDIATE`, which needs `ALTER` on the database.
   - Without that permission it fails before the `ALTER` with error 50000. The message names the statement for an administrator to run. The migration is not recorded, so startup or `MigrateAsync` stops as it does for any failed migration. A host that does not migrate on start refuses with `FCMS1305`, naming the pending migration.
   - `Down` leaves it on.
+  - Since the baseline of [#3052](https://github.com/fluentcms/FluentCMS/issues/3052), the statement is the first step of the SQL Server system migration `Initial`, so a failure leaves nothing applied.
 - **Locks that stay.** `READ_COMMITTED_SNAPSHOT` changes only reads at `READ COMMITTED`:
   - The job claim keeps `UPDLOCK, READPAST, ROWLOCK`. `UPDLOCK` makes its read a locking read of the latest committed row, and `READPAST` skips rows another claimer holds, so two claimers still never take one job.
   - Writes still take update and exclusive locks, and an `UPDATE` qualifies rows on the latest committed version. So every conditional update still matches nothing once another writer has changed the row: the outbox claim and settles, job leases and settles, and the distributed lock's take, renewal and release.

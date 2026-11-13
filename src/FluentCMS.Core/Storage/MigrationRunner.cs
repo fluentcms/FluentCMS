@@ -65,6 +65,7 @@ public sealed class MigrationRunner(
         // Schema sync leaves the content stream out, so a host may sync on SQLite with content migrations of its server provider.
         var sync = options.MigrateOnStartup && options.SchemaSync == SchemaSyncMode.Auto;
         await RefuseForeignMigrationsAsync(sync ? Plugins : [.. Plugins, Content], cancellationToken);
+        await RefuseMigrationsBeforeBaselineAsync(cancellationToken);
 
         if (options.MigrateOnStartup)
         {
@@ -96,6 +97,7 @@ public sealed class MigrationRunner(
     public async Task<IReadOnlyList<StreamMigration>> MigrateAsync(CancellationToken cancellationToken = default)
     {
         await RefuseForeignMigrationsAsync(cancellationToken);
+        await RefuseMigrationsBeforeBaselineAsync(cancellationToken);
         var applied = await ApplyAsync([.. SystemAndPlugins, Content], cancellationToken);
 
         // A database that lacks a column of the schema has not been brought up to it, so the history keeps its old row.
@@ -316,6 +318,36 @@ public sealed class MigrationRunner(
             throw new FluentCmsConfigurationException(
                 StorageErrorCodes.ForeignMigrations,
                 $"{string.Join("; ", foreign)}; this host runs {provider.Name}, and a migration set applies only to the provider it was scaffolded for");
+        }
+    }
+
+    // Each system and plugin stream starts with one baseline migration (#3052). A history that holds migrations but not the
+    // baseline was written by the chain from before it, and EF would apply the baseline over tables that exist. Previews
+    // do not upgrade a database until 1.0.0, so it is refused before anything is applied.
+    private async Task RefuseMigrationsBeforeBaselineAsync(CancellationToken cancellationToken)
+    {
+        var refused = new List<string>();
+        foreach (var stream in SystemAndPlugins)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var database = stream.ResolveContext(scope.ServiceProvider).Database;
+            if (database.GetMigrations().FirstOrDefault() is not { } baseline)
+            {
+                continue;
+            }
+
+            var applied = (await database.GetAppliedMigrationsAsync(cancellationToken)).ToList();
+            if (applied.Count > 0 && !applied.Contains(baseline, StringComparer.Ordinal))
+            {
+                refused.Add($"stream {stream.Name} has applied {applied[0]} but not its baseline {baseline}");
+            }
+        }
+
+        if (refused.Count > 0)
+        {
+            throw new FluentCmsConfigurationException(
+                StorageErrorCodes.MigrationsBeforeBaseline,
+                $"{string.Join("; ", refused)}; nothing was applied: the database was made by the migrations from before the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again");
         }
     }
 

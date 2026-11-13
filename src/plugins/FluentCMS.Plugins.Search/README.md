@@ -29,7 +29,7 @@ The text is folded the same way for every database: lower case, the accents take
 | PostgreSQL | a GIN index over `to_tsvector('simple', text)` |
 | SQL Server | none: `LIKE '%word%'` over the text, which reads every row of the type, locale and state. A full-text catalogue is not used, so the plugin runs on every edition and on Azure SQL; with a large index, search on PostgreSQL or SQLite is faster |
 
-The tables are the stream `cms_search__migrations`, one migration, `InitialSearch`, in a set per provider. The FTS5 table and the GIN index are written by hand into the SQLite and PostgreSQL migrations.
+The tables are the stream `cms_search__migrations`, one migration, the baseline `Initial`, in a set per provider. The FTS5 table and the GIN index are written by hand into the SQLite and PostgreSQL migrations.
 
 ## Keeping the index current
 

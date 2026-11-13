@@ -175,7 +175,7 @@ public partial class OfflineProviderTests
         using var scope = services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database;
 
-        database.GetMigrations().Count().ShouldBe(20);
+        database.GetMigrations().ShouldHaveSingleItem().ShouldEndWith("_Initial");
         database.HasPendingModelChanges().ShouldBeFalse();
     }
 
@@ -186,7 +186,7 @@ public partial class OfflineProviderTests
         using var scope = services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database;
 
-        database.GetMigrations().Count().ShouldBe(21);
+        database.GetMigrations().ShouldHaveSingleItem().ShouldEndWith("_Initial");
         database.HasPendingModelChanges().ShouldBeFalse();
     }
 
@@ -208,19 +208,6 @@ public partial class OfflineProviderTests
 
         SchemaHistoryColumns(scope.ServiceProvider.GetRequiredService<SystemDbContext>()).ShouldBe(
             ["id:bigint", "hash:nvarchar(64)", "snapshot:nvarchar(max)", "applied_at:datetimeoffset", "fluentcms_version:nvarchar(64)"], ignoreOrder: true);
-    }
-
-    [Fact]
-    public void EveryProviderHasTheSchemaHistoryMigration()
-    {
-        using var postgreSql = PostgreSql();
-        using var sqlServer = SqlServer();
-
-        foreach (var services in new[] { postgreSql, sqlServer })
-        {
-            using var scope = services.CreateScope();
-            scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.GetMigrations().ShouldContain(id => id.EndsWith("_AddSchemaHistory", StringComparison.Ordinal));
-        }
     }
 
     [Fact]

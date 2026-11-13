@@ -6,8 +6,6 @@ using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -75,8 +73,8 @@ public sealed class RoleTests : IDisposable
             ignoreOrder: true);
         roles.ShouldAllBe(role => role.BuiltIn && role.SiteId == (role.Id == DefaultSite.PublicRole ? DefaultSite.Id : null));
 
-        // Author's seeded grants changed in a later migration, which raises its stamp.
-        roles.ShouldAllBe(role => role.PermissionsVersion == (role.Id == BuiltInRoles.Author ? 2 : 1));
+        // The baseline seeds every role at its first stamp; the chain before it had raised Author's when its grants changed.
+        roles.ShouldAllBe(role => role.PermissionsVersion == 1);
     }
 
     [Fact]
@@ -116,37 +114,6 @@ public sealed class RoleTests : IDisposable
         {
             var rule = PermissionConstraints.FromJson(grant.Constraints).RowRule;
             rule.ShouldBe(grant.Permission is "content.*.read" or "content.*.update" or "content.*.delete" ? "own-entries" : null);
-        }
-    }
-
-    [Fact]
-    public void TheMigrationRaisesTheStampOfALiveAuthorRoleRelativeToWhereItIs()
-    {
-        using var database = TestDatabase.Create();
-        using var services = database.CreateServices();
-        using (var scope = services.CreateScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
-            var migrator = context.GetInfrastructure().GetRequiredService<IMigrator>();
-            var migrations = context.Database.GetMigrations().ToList();
-            var authorAt = migrations.FindIndex(name => name.EndsWith("_AuthorReadsOwnEntries", StringComparison.Ordinal));
-            migrator.Migrate(migrations[authorAt - 1]);
-
-            context.Set<Role>().Where(role => role.Id == BuiltInRoles.Author).ExecuteUpdate(role => role.SetProperty(item => item.PermissionsVersion, 7));
-            context.Set<RoleGrant>().AsNoTracking().Single(grant => grant.RoleId == BuiltInRoles.Author && grant.Permission == "content.*.read").Constraints.ShouldBeNull();
-
-            migrator.Migrate(migrations[authorAt]);
-
-            // The columns this migration knows; later ones add more.
-            var author = context.Set<Role>().AsNoTracking().Where(role => role.Id == BuiltInRoles.Author).Select(role => new { role.PermissionsVersion, role.Description }).Single();
-            author.PermissionsVersion.ShouldBe(8);
-            author.Description.ShouldNotBeNull().ShouldContain("reads");
-            PermissionConstraints.FromJson(context.Set<RoleGrant>().AsNoTracking().Single(grant => grant.RoleId == BuiltInRoles.Author && grant.Permission == "content.*.read").Constraints).RowRule.ShouldBe("own-entries");
-
-            migrator.Migrate(migrations[authorAt - 1]);
-
-            context.Set<Role>().AsNoTracking().Where(role => role.Id == BuiltInRoles.Author).Select(role => role.PermissionsVersion).Single().ShouldBe(9);
-            context.Set<RoleGrant>().AsNoTracking().Single(grant => grant.RoleId == BuiltInRoles.Author && grant.Permission == "content.*.read").Constraints.ShouldBeNull();
         }
     }
 

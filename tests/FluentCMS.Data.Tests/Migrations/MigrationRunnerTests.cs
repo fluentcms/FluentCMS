@@ -41,7 +41,7 @@ public sealed class MigrationRunnerTests : IDisposable
         }
 
         _database.Tables().ShouldBe(tables, ignoreOrder: true);
-        _database.ReadStrings("select \"MigrationId\" from cms__migrations").ShouldContain(id => id.EndsWith("_InitialSystem", StringComparison.Ordinal));
+        _database.ReadStrings("select \"MigrationId\" from cms__migrations").ShouldHaveSingleItem().ShouldEndWith("_Initial");
         _database.ReadStrings("select \"MigrationId\" from cms_content__migrations").ShouldHaveSingleItem().ShouldEndWith("_Initial");
         (await host.Services.GetRequiredService<MigrationRunner>().GetPendingMigrationsAsync(Token)).ShouldBeEmpty();
     }

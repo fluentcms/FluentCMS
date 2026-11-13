@@ -117,6 +117,28 @@ internal abstract class TestDatabase : IDisposable
         return values;
     }
 
+    // Each row as its columns in name order, "name=value" joined by "|", for a test that compares rows whatever the column order.
+    public List<string> ReadRows(string sql)
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+#pragma warning disable CA2100 // Constants of the tests.
+        command.CommandText = sql;
+#pragma warning restore CA2100
+        using var reader = command.ExecuteReader();
+
+        var rows = new List<string>();
+        while (reader.Read())
+        {
+            var columns = Enumerable.Range(0, reader.FieldCount)
+                .Select(index => $"{reader.GetName(index)}={Text(reader.GetValue(index))}")
+                .Order(StringComparer.Ordinal);
+            rows.Add(string.Join("|", columns));
+        }
+
+        return rows;
+    }
+
     public void Execute(string sql)
     {
         using var connection = OpenConnection();
@@ -145,6 +167,15 @@ internal abstract class TestDatabase : IDisposable
 
 
     protected abstract DbConnection NewConnection();
+
+    private static string Text(object value) => value switch
+    {
+        DBNull => "null",
+        byte[] bytes => Convert.ToHexString(bytes),
+        DateTime time => time.ToString("O", CultureInfo.InvariantCulture),
+        DateTimeOffset time => time.ToString("O", CultureInfo.InvariantCulture),
+        _ => Convert.ToString(value, CultureInfo.InvariantCulture)!,
+    };
 
     private DbConnection OpenConnection()
     {

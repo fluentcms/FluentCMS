@@ -211,7 +211,7 @@ public sealed class WebhookManagementTests(WebhookFixture hosts) : IClassFixture
         await using var scope = host.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<WebhooksPlugin>>();
         var applied = await Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetAppliedMigrationsAsync(database.Database, Token);
-        applied.Select(migration => migration[15..]).ShouldBe(["InitialWebhooks", "AddDeliveryClaim", "AddPreviousSecret"]);
+        applied.Select(migration => migration[15..]).ShouldBe(["Initial"]);
         Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.HasPendingModelChanges(database.Database).ShouldBeFalse();
     }
 

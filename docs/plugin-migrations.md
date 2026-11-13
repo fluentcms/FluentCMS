@@ -2,6 +2,10 @@
 
 A plugin with tables has a migration stream of its own: the migrations in its assembly that name `PluginDbContext<TPlugin>` in `[DbContext]`, with the history table `cms_{plugin}__migrations` ([ADR 0003](decisions/0003-plugin-contribution-contracts.md)).
 
+## The baseline
+
+The first migration of each set of the first-party plugins (media, webhooks, MCP, multi-site, AI assist and search) is the baseline, `Initial`, scaffolded from the plugin's model of the first preview, as the system stream's is ([system migrations](system-migrations.md#the-baseline), [#3052](https://github.com/fluentcms/FluentCMS/issues/3052)). It replaced the nine migrations of those plugins, none of which was published. Previews make no promise to upgrade a database until 1.0.0. A host refuses, with `FCMS1307` at start and in `fluentcms migrate`, a plugin stream whose history holds migrations but not the first of its set, which is also what a plugin that replaces its migrations with a new first one gets for every database of the old ones. The search baseline keeps the SQL written by hand that its first migration had (below), and the webhooks baseline leaves out the default that the chain gave `cms_webhooks_delivery.manual` when it added the column to a table with rows.
+
 ## A set per provider
 
 A migration set applies only to the provider it was scaffolded for, because it carries that provider's store types. So one plugin assembly holds a set per provider, each in a namespace that ends in the provider's set name:
