@@ -18,7 +18,7 @@ using static FluentCMS.Data.Tests.Identity.IdentityFixture;
 namespace FluentCMS.Data.Tests.Identity;
 
 // The member tables on every provider: Identity's store over them, what the database keeps unique and removes with a
-// member, and the one query in which the evaluator reads a member's groups and roles.
+// member, the search of the member list, and the one query in which the evaluator reads a member's groups and roles.
 public sealed class MemberStoreTests : IDisposable
 {
     private static readonly AccessTarget InSiteA = new(ServiceDatabase.SiteA, null);
@@ -221,6 +221,47 @@ public sealed class MemberStoreTests : IDisposable
         (await PermissionsAsync(Guid.CreateVersion7(), ServiceDatabase.SiteA)).Allows("content.bulletin.read", InSiteA).ShouldBeFalse();
     }
 
+    // #3012: search reads a part of the display name, without regard to case as the database compares text, or a part of the
+    // address. What a LIKE pattern gives a meaning is literal, and each such search has a member it would find otherwise.
+    [Fact]
+    public async Task TheListFindsAMemberByAPartOfItsDisplayNameOrOfItsAddressInAnyCase()
+    {
+        await MembersAsync(async members =>
+        {
+            (string Email, string? Name)[] pool =
+            [
+                ("zq@example.com", "Zoë Quinn"),
+                ("ann@example.com", "Ann_Marie O'Neil"),
+                ("x1@example.com", "AnnXMarie"),
+                ("deals@example.org", "50% Off [Sales]"),
+                ("club@example.com", "500 Club"),
+                ("quinn.fan@example.net", null),
+                ("slash@example.com", @"Back\Slash"),
+            ];
+            foreach (var (email, name) in pool)
+            {
+                Succeeded(await members.CreateAsync(new CmsMember { Email = email, DisplayName = name }));
+            }
+
+            return true;
+        });
+
+        (await SearchAsync("quinn")).ShouldBe(["zq@example.com", "quinn.fan@example.net"], ignoreOrder: true);
+        (await SearchAsync(" QUINN ")).ShouldBe(["zq@example.com", "quinn.fan@example.net"], ignoreOrder: true);
+        (await SearchAsync("zoë")).ShouldBe(["zq@example.com"]);
+        (await SearchAsync("n_m")).ShouldBe(["ann@example.com"]);
+        (await SearchAsync("50%")).ShouldBe(["deals@example.org"]);
+        (await SearchAsync("[sales]")).ShouldBe(["deals@example.org"]);
+        (await SearchAsync(@"\")).ShouldBe(["slash@example.com"]);
+        (await SearchAsync("EXAMPLE.ORG")).ShouldBe(["deals@example.org"]);
+        (await SearchAsync("nobody")).ShouldBeEmpty();
+
+        // The list stays paged, and its total counts every member found.
+        var page = await _fixture.WithAsync(services => services.GetRequiredService<MemberAdministration>().ListAsync(new MemberFilter("example"), 3, 3, Token));
+        page.Total.ShouldBe(7);
+        page.Items.ShouldHaveSingleItem();
+    }
+
     [Fact]
     public async Task ARoleIsNotDeletedWhileAMemberGroupIsBoundToIt()
     {
@@ -241,6 +282,12 @@ public sealed class MemberStoreTests : IDisposable
             return true;
         });
         _fixture.Read(context => context.Set<Role>().Count(row => row.Id == role)).ShouldBe(0);
+    }
+
+    private async Task<List<string>> SearchAsync(string search)
+    {
+        var page = await _fixture.WithAsync(services => services.GetRequiredService<MemberAdministration>().ListAsync(new MemberFilter(search), 1, 50, Token));
+        return [.. page.Items.Select(member => member.Email)];
     }
 
     private Task<T> MembersAsync<T>(Func<UserManager<CmsMember>, Task<T>> work) =>

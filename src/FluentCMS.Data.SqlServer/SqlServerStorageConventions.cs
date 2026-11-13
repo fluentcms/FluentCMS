@@ -13,6 +13,9 @@ public sealed class SqlServerStorageConventions : StorageConventions
     // The other providers compare text case-sensitively, and a database's default collation usually does not.
     internal const string BinaryCollation = "Latin1_General_100_BIN2";
 
+    // For a comparison that ignores case on purpose, such as the search of the member list.
+    internal const string CaseInsensitiveCollation = "Latin1_General_100_CI_AS";
+
     // datetimeoffset keeps the offset it is given, so a date would read back in the writer's offset.
     public override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
         configurationBuilder.Properties<DateTimeOffset>().HaveConversion<UtcConverter>();

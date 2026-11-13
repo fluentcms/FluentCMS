@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Reflection;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
@@ -37,6 +38,12 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
         }
 
         return false;
+    }
+
+    public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment)
+    {
+        var pattern = LikePattern.Containing(fragment);
+        return text => EF.Functions.ILike(text!, pattern, LikePattern.Escape);
     }
 
     public void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly) =>

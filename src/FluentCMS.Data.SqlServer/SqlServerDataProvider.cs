@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Reflection;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
@@ -38,6 +39,13 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
         }
 
         return false;
+    }
+
+    // Under a case-insensitive collation of its own, so that a database whose default compares case does not change it.
+    public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment)
+    {
+        var pattern = LikePattern.Containing(fragment);
+        return text => EF.Functions.Like(EF.Functions.Collate(text, SqlServerStorageConventions.CaseInsensitiveCollation), pattern, LikePattern.Escape);
     }
 
     public void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly) =>

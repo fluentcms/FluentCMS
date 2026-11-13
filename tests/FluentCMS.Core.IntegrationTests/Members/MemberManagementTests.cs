@@ -271,6 +271,7 @@ public sealed class MemberManagementTests(MemberFixture fixture) : IClassFixture
         read.Json.ToJsonString().ShouldNotContain("securityStamp", Case.Insensitive);
 
         (await fixture.ManageAsync(HttpMethod.Patch, $"members/{first.Id:D}", """{ "displayName": "Renamed" }""")).Json["displayName"]!.GetValue<string>().ShouldBe("Renamed");
+        (await ListAsync("search=NAME")).ShouldContain(first.Email);
         (await fixture.ManageAsync(HttpMethod.Patch, $"members/{first.Id:D}", """{ "email": "moved@example.com" }""")).Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
 
         (await fixture.ManageAsync(HttpMethod.Post, $"members/{first.Id:D}/deactivate")).Json["deactivatedAt"].ShouldNotBeNull();

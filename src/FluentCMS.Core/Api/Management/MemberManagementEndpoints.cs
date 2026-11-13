@@ -31,7 +31,7 @@ internal static class MemberManagementEndpoints
         var members = management.MapGroup("/members").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
         members.MapGet("", ListMembersAsync)
             .Query([
-                QueryParameter.Text("search", "Only the members whose email address contains this, in any case."),
+                QueryParameter.Text("search", "Only the members whose display name or email address contains this, in any case."),
                 QueryParameter.Id("group", "Only the members of this member group."),
                 QueryParameter.OneOf("verified", TrueOrFalse, "Only the members whose address is verified, or only those whose address is not."),
                 QueryParameter.OneOf("active", TrueOrFalse, "Only the members that are not deactivated, or only those that are."),
