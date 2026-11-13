@@ -175,16 +175,22 @@ public sealed class MemberFixture : IAsyncLifetime
     }
 
     // The token endpoint, answered with its status and JSON whatever it says.
-    public async Task<ApiResponse> TokenAsync(IReadOnlyDictionary<string, string> form, string? address = null)
+    public Task<ApiResponse> TokenAsync(IReadOnlyDictionary<string, string> form, string? address = null) => TokenAsync(Host, form, address);
+
+    internal static async Task<ApiResponse> TokenAsync(FluentCmsTestHost host, IReadOnlyDictionary<string, string> form, string? address = null)
     {
-        using var browser = new HostedPagesBrowser(Host, address ?? "10.9.0.1");
+        using var browser = new HostedPagesBrowser(host, address ?? "10.9.0.1");
         using var response = await browser.PostAsync("/connect/token", form);
         var text = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         return new ApiResponse(response.StatusCode, text.Length == 0 ? null : JsonNode.Parse(text), response.Headers);
     }
 
     public Task<ApiResponse> DirectLoginAsync(string email, string password, string clientId = DirectClientId, string scope = "openid offline_access", string? address = null) =>
+        DirectLoginAsync(Host, email, password, clientId, scope, address);
+
+    internal static Task<ApiResponse> DirectLoginAsync(FluentCmsTestHost host, string email, string password, string clientId = DirectClientId, string scope = "openid offline_access", string? address = null) =>
         TokenAsync(
+            host,
             new Dictionary<string, string>
             {
                 ["grant_type"] = "member_password",

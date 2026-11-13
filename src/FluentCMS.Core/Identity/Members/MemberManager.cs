@@ -6,7 +6,8 @@ using Microsoft.Extensions.Options;
 namespace FluentCMS.Core.Identity.Members;
 
 // Identity's user manager for members, on the options of cms.Members and not on those of the admin users, which the
-// container's IdentityOptions are. It adds deactivation, and it spends a verification link when it is used.
+// container's IdentityOptions are. It adds deactivation, it spends a verification link when it is used, and its lockout
+// runs on the host's clock.
 internal sealed class MemberManager : UserManager<CmsMember>
 {
     private readonly MemberOptions _members;
@@ -175,6 +176,23 @@ internal sealed class MemberManager : UserManager<CmsMember>
         return result;
     }
 
+    public override async Task<bool> IsLockedOutAsync(CmsMember user)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(user);
+
+        return await ClockedLockout.IsLockedOutAsync(MemberStore, user, _time, CancellationToken);
+    }
+
+    public override async Task<IdentityResult> AccessFailedAsync(CmsMember user)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(user);
+
+        await ClockedLockout.CountFailureAsync(MemberStore, user, Options.Lockout, _time, CancellationToken);
+        return await UpdateUserAsync(user);
+    }
+
     public override async Task<bool> CheckPasswordAsync(CmsMember user, string password)
     {
         MemberStore.Rehashing = true;
@@ -255,22 +273,22 @@ internal sealed class MemberValidator : IUserValidator<CmsMember>
         name is null || (name.Length <= MaxDisplayNameLength && !name.Any(char.IsControl));
 }
 
-// Identity's Data Protection tokens with the lifetimes of cms.Members and a purpose of their own, so that a token of the
-// admin pool is never one of a member. A token carries the member's security stamp, which verifying the address and
-// resetting the password both change, so it is spent once it is used. A token of a member that is not verified also ends
-// when the job may remove the member, as its mail says (MemberMail).
+// Identity's Data Protection tokens on the host's clock, with the lifetimes of cms.Members and a purpose of their own, so
+// that a token of the admin pool is never one of a member. A token carries the member's security stamp, which verifying
+// the address and resetting the password both change, so it is spent once it is used. A token of a member that is not
+// verified also ends when the job may remove the member, as its mail says (MemberMail).
 internal sealed class MemberEmailTokenProvider(
     IDataProtectionProvider dataProtectionProvider,
     IOptions<MemberEmailTokenProviderOptions> options,
     MemberOptions members,
     TimeProvider time,
     ILogger<DataProtectorTokenProvider<CmsMember>> logger)
-    : DataProtectorTokenProvider<CmsMember>(dataProtectionProvider, options, logger)
+    : ClockedTokenProvider<CmsMember>(dataProtectionProvider, options, time, logger)
 {
     public const string ProviderName = "FluentCmsMemberEmail";
 
     public override async Task<bool> ValidateAsync(string purpose, string token, UserManager<CmsMember> manager, CmsMember user) =>
-        MemberTokenLifetime.Open(user, members, time) && await base.ValidateAsync(purpose, token, manager, user);
+        MemberTokenLifetime.Open(user, members, Time) && await base.ValidateAsync(purpose, token, manager, user);
 }
 
 internal sealed class MemberEmailTokenProviderOptions : DataProtectionTokenProviderOptions;
@@ -281,12 +299,12 @@ internal sealed class MemberPasswordResetTokenProvider(
     MemberOptions members,
     TimeProvider time,
     ILogger<DataProtectorTokenProvider<CmsMember>> logger)
-    : DataProtectorTokenProvider<CmsMember>(dataProtectionProvider, options, logger)
+    : ClockedTokenProvider<CmsMember>(dataProtectionProvider, options, time, logger)
 {
     public const string ProviderName = "FluentCmsMemberPasswordReset";
 
     public override async Task<bool> ValidateAsync(string purpose, string token, UserManager<CmsMember> manager, CmsMember user) =>
-        MemberTokenLifetime.Open(user, members, time) && await base.ValidateAsync(purpose, token, manager, user);
+        MemberTokenLifetime.Open(user, members, Time) && await base.ValidateAsync(purpose, token, manager, user);
 }
 
 internal sealed class MemberPasswordResetTokenProviderOptions : DataProtectionTokenProviderOptions;
