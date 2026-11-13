@@ -17,6 +17,7 @@
     <PackageReference Include="FluentCMS.Data.SqlServer" Version="{{version:FluentCMS}}" />
 <!--#endif -->
     <PackageReference Include="FluentCMS.Plugins.Media" Version="{{version:FluentCMS}}" />
+    <PackageReference Include="FluentCMS.Plugins.Search" Version="{{version:FluentCMS}}" />
     <PackageReference Include="FluentCMS.Plugins.Webhooks" Version="{{version:FluentCMS}}" />
   </ItemGroup>
 

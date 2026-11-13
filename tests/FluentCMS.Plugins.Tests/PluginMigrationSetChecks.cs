@@ -60,14 +60,25 @@ internal static class PluginMigrationSetChecks
 
     // Each migration of the set makes the tables, columns, keys and indexes of the SQLite migration of the same name, so a
     // database of any provider goes through the same steps. Store types and index filters are the provider's own: SQL Server
-    // adds IS NOT NULL to a unique index over a nullable column.
-    public static void MatchesTheSqliteSet(DbContext context, DbContext sqlite) =>
-        Operations(context).ShouldBe(Operations(sqlite));
+    // adds IS NOT NULL to a unique index over a nullable column. With exceptSql, the SQL that a set runs for its provider
+    // alone, such as the full-text objects of the search plugin, is left out, and the plugin's tests check it apart.
+    public static void MatchesTheSqliteSet(DbContext context, DbContext sqlite, bool exceptSql = false) =>
+        Operations(context, exceptSql).ShouldBe(Operations(sqlite, exceptSql));
 
-    private static List<string> Operations(DbContext context)
+    // The SQL that the migrations of the set run as written, by migration.
+    public static List<string> Sql(DbContext context)
     {
         var migrations = context.GetService<IMigrationsAssembly>();
         return [.. migrations.Migrations.SelectMany(migration => migrations.CreateMigration(migration.Value, context.Database.ProviderName!).UpOperations
+            .OfType<SqlOperation>()
+            .Select(operation => $"{migration.Key[15..]}: {operation.Sql}"))];
+    }
+
+    private static List<string> Operations(DbContext context, bool exceptSql)
+    {
+        var migrations = context.GetService<IMigrationsAssembly>();
+        return [.. migrations.Migrations.SelectMany(migration => migrations.CreateMigration(migration.Value, context.Database.ProviderName!).UpOperations
+            .Where(operation => !exceptSql || operation is not SqlOperation)
             .Select(operation => $"{migration.Key[15..]}: {Describe(operation)}"))];
     }
 

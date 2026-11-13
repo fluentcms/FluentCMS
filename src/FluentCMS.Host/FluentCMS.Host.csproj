@@ -12,6 +12,7 @@
     <ProjectReference Include="../plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
     <ProjectReference Include="../plugins/FluentCMS.Plugins.Media.S3/FluentCMS.Plugins.Media.S3.csproj" />
     <ProjectReference Include="../plugins/FluentCMS.Plugins.MultiSite/FluentCMS.Plugins.MultiSite.csproj" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.Search/FluentCMS.Plugins.Search.csproj" />
     <ProjectReference Include="../plugins/FluentCMS.Plugins.Webhooks/FluentCMS.Plugins.Webhooks.csproj" />
     <ProjectReference Include="../../samples/Blog/Blog.csproj" />
   </ItemGroup>
