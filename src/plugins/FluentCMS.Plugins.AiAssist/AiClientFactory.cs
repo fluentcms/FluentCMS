@@ -40,8 +40,7 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
 
         if (AiProviders.IsRemoved(provider))
         {
-            AiLog.ProviderRemoved(logger, site.Value, AiProviders.RemovedName(provider)!);
-            throw new PluginException(AiErrorCodes.ProviderRemoved, $"The AI settings of the site name a provider the plugin no longer has. {AiProviders.Instead}");
+            throw AiProviders.Refuse(logger, site, provider);
         }
 
         if (!Enum.IsDefined(provider))

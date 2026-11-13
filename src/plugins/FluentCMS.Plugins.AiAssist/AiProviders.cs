@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FluentCMS.Sites;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Plugins.AiAssist;
 
@@ -25,6 +27,13 @@ internal static class AiProviders
     public static bool TryParseRemoved(string? name, out AiProvider provider) => Removed.TryGetValue(name ?? "", out provider);
 
     public static string? RemovedName(AiProvider provider) => Removed.FirstOrDefault(pair => pair.Value == provider).Key;
+
+    // The refusal of a call in a site whose settings name a removed provider, logged so that the operator finds the site.
+    public static PluginException Refuse(ILogger logger, SiteId site, AiProvider provider)
+    {
+        AiLog.ProviderRemoved(logger, site.Value, RemovedName(provider)!);
+        return new PluginException(AiErrorCodes.ProviderRemoved, $"The AI settings of the site name a provider the plugin no longer has. {Instead}");
+    }
 
     // A section such as FluentCms:Ai:Anthropic, which held the key of a removed provider.
     public static bool AreNamedIn(IConfiguration configuration) =>

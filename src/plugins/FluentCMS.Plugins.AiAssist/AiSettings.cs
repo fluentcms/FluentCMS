@@ -49,6 +49,10 @@ public sealed class AiSettings : IValidatableObject
         {
             yield return new ValidationResult($"The plugin no longer has this provider. {AiProviders.Instead}", [nameof(Provider)]);
         }
+        else if (!Enum.IsDefined(Provider))
+        {
+            yield return new ValidationResult("The provider is none, openAi, azureOpenAi or openAiCompatible.", [nameof(Provider)]);
+        }
 
         if (!string.IsNullOrWhiteSpace(Endpoint) && AiProviderEndpoints.Parse(Endpoint) is null)
         {

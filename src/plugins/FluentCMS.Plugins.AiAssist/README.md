@@ -50,6 +50,8 @@ and name it in the settings of the site:
 
 When the instance defaults hold a key, a site's first save without `apiKey` keeps that key (see below), and the call is refused with `FCMS1685` because the key belongs to the endpoint of the defaults. Send `"apiKey": null` to save the site with no key.
 
+A site with no key of its own gets `FluentCms:Ai:OpenAiCompatible:ApiKey` from the configuration, and so does every `openAiCompatible` site, a keyless Ollama site included: a site cannot decline it. An operator who serves Ollama sites therefore sets no configuration key for `OpenAiCompatible`, and gives each site that needs a key its own.
+
 ### Other models
 
 A model that has no OpenAI-compatible endpoint is reached in one of two ways:
@@ -57,7 +59,7 @@ A model that has no OpenAI-compatible endpoint is reached in one of two ways:
 - through a gateway that gives it one, such as a proxy in front of several providers, named as `openAiCompatible` with the gateway's endpoint and key. Many providers also serve an OpenAI-compatible endpoint of their own, which is used the same way;
 - through a [factory of the host's own](#a-provider-of-the-hosts-own), which brings any `IChatClient`, such as the client of the provider's own package that the host references.
 
-`anthropic` and `ollama` were providers of the plugin until M7. Settings that name one are refused when they are saved (`FCMS2805` on `provider`), and a site that still holds them is refused at every call (`FCMS1692`), each time with what to use instead. A section `FluentCms:Ai:Anthropic` or `FluentCms:Ai:Ollama` in the configuration stops the host.
+`anthropic` and `ollama` were providers of the plugin until M7. Settings that name one are refused when they are saved (`FCMS2805` on `provider`), and a site that still holds them is refused at every call (`FCMS1692`), each time with what to use instead. A site that moves off `anthropic` sends a new key with its new provider, or `"apiKey": null`, since a save without `apiKey` keeps its stored Anthropic key, which would then go to the new endpoint. A section `FluentCms:Ai:Anthropic` or `FluentCms:Ai:Ollama` in the configuration stops the host.
 
 ## Settings of the host
 

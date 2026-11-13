@@ -93,6 +93,9 @@ public sealed class AiSiteTests : IClassFixture<AiHost>
         after["value"]!["apiKey"].ShouldBeNull();
         after["secretsSet"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldContain("apiKey");
         after["schema"]!["properties"]!["apiKey"]!["writeOnly"]!.GetValue<bool>().ShouldBeTrue();
+        var provider = after["schema"]!["properties"]!["provider"]!;
+        provider["enum"]!.AsArray().Select(value => value!.GetValue<string>()).ShouldBe(["none", "openAi", "azureOpenAi", "openAiCompatible"]);
+        provider["default"]!.GetValue<string>().ShouldBe("none");
         _ai.Logs.Lines.ShouldNotContain(line => line.Contains("key-that-is-never-returned", StringComparison.Ordinal));
     }
 
@@ -107,6 +110,8 @@ public sealed class AiSiteTests : IClassFixture<AiHost>
     [InlineData("""{ "maxOutputTokens": 0 }""")]
     [InlineData("""{ "requestTimeout": 0 }""")]
     [InlineData("""{ "callsPerMinute": 0 }""")]
+    [InlineData("""{ "provider": 7 }""")]
+    [InlineData("""{ "provider": "gemini" }""")]
     public async Task SettingsThatCannotBeUsedAreRefused(string document)
     {
         var site = await _ai.SiteAsync();
@@ -143,6 +148,25 @@ public sealed class AiSiteTests : IClassFixture<AiHost>
         problem.ToJsonString().ShouldContain("openAiCompatible");
         problem.ToJsonString().ShouldContain(nameof(IAiClientFactory));
         (await ReadAsync(admin))["value"]!["provider"]!.GetValue<string>().ShouldBe("openAi");
+    }
+
+    // The plugin refuses a removed provider before it asks the slot, so a host's own factory, which may not look at the
+    // provider, never gets the call.
+    [Fact]
+    public async Task ASiteThatNamesARemovedProviderIsRefusedWhateverFillsTheSlot()
+    {
+        var site = await _ai.BareSiteAsync();
+        await _ai.StoreSettingsAsync(site, """{"provider":"anthropic","model":"a-model","fields":{"article":["title"]}}""");
+        using var admin = await _ai.AdminAsync(site);
+
+        using var refused = await ActAsync(admin, "title", new { type = "article", field = "title", text = "Ships are big boats." });
+        var problem = await JsonAsync(refused, HttpStatusCode.Conflict);
+
+        problem["code"]!.GetValue<string>().ShouldBe("FCMS1692");
+        problem["detail"]!.GetValue<string>().ShouldContain("openAiCompatible");
+        _ai.Chat.Calls.ShouldBeEmpty();
+        _ai.Logs.Of(9368).ShouldContain(line => line.Contains(site.ToString(), StringComparison.Ordinal) && line.Contains("anthropic", StringComparison.Ordinal));
+        (await _ai.UsageAsync(site)).ShouldBeEmpty();
     }
 
     private static async Task<JsonNode> ReadAsync(HttpClient client)
