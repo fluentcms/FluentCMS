@@ -72,6 +72,48 @@ public sealed class AnswerCheckTests : IDisposable
 
     [Theory]
     [MemberData(nameof(Commands))]
+    public async Task ARedirectOnTheOriginOfTheUrlSaysSoWithoutItsPath(string command)
+    {
+        var file = Path.Combine(_directory.FullName, "out");
+        var redirect = new Answer(HttpStatusCode.Found, "text/html", [], new Uri("https://cms.example.com/account/login?return=%2F"));
+
+        (await RunAsync(command, file, redirect)).ShouldBe(1);
+
+        _error.ToString().ShouldContain("302 Found, a redirect to its own host, which the tool does not follow; check the path of --url, or a proxy in front of it.");
+        _error.ToString().ShouldNotContain("account");
+        File.Exists(file).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task TheSnapshotOfAnEmptySchemaIsWritten()
+    {
+        var file = Path.Combine(_directory.FullName, "out");
+        var empty = new Answer(HttpStatusCode.OK, "application/json", "{}"u8.ToArray());
+
+        (await RunAsync("snapshot", file, empty)).ShouldBe(0, _error.ToString());
+
+        (await File.ReadAllTextAsync(file, Token)).ShouldBe("{}");
+    }
+
+    [Fact]
+    public async Task DiffAndDoctorRefuseAJsonAnswerThatIsNotTheirDocument()
+    {
+        var schema = Path.Combine(_directory.FullName, "schema.json");
+        await File.WriteAllTextAsync(schema, """{"collections":[{"name":"article","fields":[{"name":"title","type":"text"}]}]}""", Token);
+        var wrongShape = new Answer(HttpStatusCode.OK, "application/json", """{"collections":"article"}"""u8.ToArray());
+        var signIn = new Answer(HttpStatusCode.OK, "application/json", """{"title":"Sign in"}"""u8.ToArray());
+
+        (await CommandLine.RunAsync(["schema", "diff", "--schema", schema, "--url", Url, "--token", Key], _output, _error, launcher: null, _ => new HttpClient(wrongShape, disposeHandler: false), Token)).ShouldBe(1);
+        _error.ToString().ShouldStartWith($"FCMS3361: {Url} answered schema/snapshot with something that is not a schema snapshot.");
+
+        _error.GetStringBuilder().Clear();
+        (await CommandLine.RunAsync(["doctor", "--url", Url, "--token", Key], _output, _error, launcher: null, _ => new HttpClient(signIn, disposeHandler: false), Token)).ShouldBe(1);
+        _error.ToString().ShouldStartWith($"FCMS3361: {Url} answered system/diagnostics with something that is not a startup report.");
+        _output.ToString().ShouldBeEmpty();
+    }
+
+    [Theory]
+    [MemberData(nameof(Commands))]
     public async Task TheInstancesAnswerIsWrittenOverTheFile(string command)
     {
         var file = Path.Combine(_directory.FullName, "out");
@@ -140,7 +182,8 @@ public sealed class AnswerCheckTests : IDisposable
         await serving;
 
         exitCode.ShouldBe(1);
-        _error.ToString().ShouldStartWith($"FCMS3361: http://127.0.0.1:{port}/ answered schema/snapshot with 302 Found, a redirect to http://127.0.0.1:{port}, which the tool does not follow");
+        _error.ToString().ShouldStartWith($"FCMS3361: http://127.0.0.1:{port}/ answered schema/snapshot with 302 Found, a redirect to its own host, which the tool does not follow; check the path of --url, or a proxy in front of it.");
+        _error.ToString().ShouldNotContain("login");
         Volatile.Read(ref requests).ShouldBe(1);
         File.Exists(file).ShouldBeFalse();
     }
@@ -161,7 +204,7 @@ public sealed class AnswerCheckTests : IDisposable
         var (mediaType, valid, notADocument) = command switch
         {
             "export" => ("application/zip", Package(), Encoding.UTF8.GetBytes("<html>Sign in</html>")),
-            "snapshot" => ("application/json", Encoding.UTF8.GetBytes("""{"collections":[{"name":"article","fields":[{"name":"title","type":"text"}]}]}"""), Encoding.UTF8.GetBytes("""{"collections":"article"}""")),
+            "snapshot" => ("application/json", Encoding.UTF8.GetBytes("""{"collections":[{"name":"article","fields":[{"name":"title","type":"text"}]}]}"""), Encoding.UTF8.GetBytes("""{"title":"Sign in"}""")),
             _ => ("application/json", Encoding.UTF8.GetBytes("""{"openapi":"3.1.1","info":{"title":"FluentCMS","version":"v1"},"paths":{}}"""), Encoding.UTF8.GetBytes("""{"title":"Sign in"}""")),
         };
 

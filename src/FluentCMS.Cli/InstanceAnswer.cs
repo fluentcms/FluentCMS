@@ -10,19 +10,30 @@ internal static class InstanceAnswer
 
     public static bool IsRedirect(HttpResponseMessage response) => (int)response.StatusCode is >= 300 and <= 399;
 
-    // Of the address it points to only the scheme, host and port, since its path and query can carry a sign-in's state.
+    // Of the address it points to only the scheme, host and port, since its path and query can carry a sign-in's state; a
+    // redirect on the origin of --url names none.
     public static string Redirect(HttpResponseMessage response)
     {
+        const UriComponents Origin = UriComponents.Scheme | UriComponents.Host | UriComponents.StrongPort;
         var status = $"{(int)response.StatusCode} {response.ReasonPhrase}".Trim();
+        var requested = response.RequestMessage?.RequestUri is { IsAbsoluteUri: true } uri ? uri : null;
         var location = response.Headers.Location;
-        if (location is { IsAbsoluteUri: false } && response.RequestMessage?.RequestUri is { IsAbsoluteUri: true } requested)
+        if (location is { IsAbsoluteUri: false } && requested is not null)
         {
             location = new Uri(requested, location);
         }
 
-        return location is { IsAbsoluteUri: true }
-            ? $"{status}, a redirect to {location.GetComponents(UriComponents.Scheme | UriComponents.Host | UriComponents.StrongPort, UriFormat.UriEscaped)}, which the tool does not follow; give --url the address the instance answers at"
-            : $"{status}, a redirect, which the tool does not follow; give --url the address the instance answers at";
+        if (location is not { IsAbsoluteUri: true })
+        {
+            return $"{status}, a redirect, which the tool does not follow; give --url the address the instance answers at";
+        }
+
+        if (requested is not null && Uri.Compare(location, requested, Origin, UriFormat.UriEscaped, StringComparison.OrdinalIgnoreCase) == 0)
+        {
+            return $"{status}, a redirect to its own host, which the tool does not follow; check the path of --url, or a proxy in front of it";
+        }
+
+        return $"{status}, a redirect to {location.GetComponents(Origin, UriFormat.UriEscaped)}, which the tool does not follow; give --url the address the instance answers at";
     }
 
     public static bool Is(HttpResponseMessage response, string mediaType) =>
