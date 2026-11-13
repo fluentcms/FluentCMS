@@ -188,16 +188,15 @@ internal sealed class SchemaApplyCommand : HostCommand
     };
 
     // What the tables lose, and what the history says is lost although the tables keep it: a removed field or type, a
-    // changed kind, and a renamed field whose values no column of its own holds.
+    // changed kind, and a renamed field whose values are kept in JSON under its former name.
     private static List<string> Losses(IReadOnlyList<SchemaApplyStep> steps, SchemaDiffReport? report, bool unreadable, SchemaModel schema)
     {
         List<string> losses = [.. steps.Where(step => step.IsDestructive).Select(step => step.Description)];
         if (report is not null)
         {
             losses.AddRange(report.Destructive.Select(change => change.ToString()));
-            losses.AddRange(report.Changes
-                .Where(change => change.Kind == SchemaChangeKind.FieldRenamed && !HasColumns(change, schema))
-                .Select(change => $"{change}, whose values are kept in JSON or as relations under '{change.FormerField}', which schema apply does not rename"));
+            losses.AddRange(ContentRenames.Of(schema, report.Changes).InJson
+                .Select(change => $"{change}, whose values are kept in JSON under '{change.FormerField}', which schema apply does not rename"));
         }
 
         if (unreadable)
@@ -206,21 +205,6 @@ internal sealed class SchemaApplyCommand : HostCommand
         }
 
         return losses;
-    }
-
-    // A field of a content type that is a column, or single components of columns, whose columns the plan renames. A
-    // component or block field may be kept in JSON, and a relation is rows of cms_reference.
-    private static bool HasColumns(SchemaChange change, SchemaModel schema)
-    {
-        if (change.Family != SchemaSnapshotDiff.ContentFamily || schema.FindContentType(change.Type) is not { } type)
-        {
-            return false;
-        }
-
-        var leaves = FieldStorage.ByPath(schema, type)
-            .Where(leaf => leaf.Key == change.Field || leaf.Key.StartsWith($"{change.Field}.", StringComparison.Ordinal))
-            .ToList();
-        return leaves.Count > 0 && leaves.All(leaf => leaf.Value.Kind != FieldStorageKind.Reference);
     }
 
     private static async Task<int> WriteScriptAsync(CommandContext context, MigrationRunner runner, SchemaModel schema, IReadOnlyList<SchemaApplyStep> steps, string? file, CancellationToken cancellationToken)

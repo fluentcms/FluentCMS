@@ -18,6 +18,9 @@ public sealed record GeneratedMigrationFiles(string MigrationFile, string Metada
 // or deleted with the first.
 public sealed record RemovedMigrationFiles(string? MigrationFile, string? MetadataFile, string? SnapshotFile);
 
+// The schema change a migration carries, and the renamed fields whose values are kept in JSON, which it does not rename.
+internal sealed record MigrationReview(SchemaDiffReport Changes, IReadOnlyList<SchemaChange> RenamesInJson);
+
 // The design-time services behind `fluentcms migrations add` and `remove`. They need Microsoft.EntityFrameworkCore.Design, which
 // this package does not pass on to a host: only the CLI and tests carry it, so only they can call this class.
 public static class ContentMigrationGenerator
@@ -50,21 +53,21 @@ public static class ContentMigrationGenerator
     }
 
     // What the next migration carries, as the schema tools word it: from the schema on the model snapshot to the context's
-    // schema, and from nothing for the first migration. Null when the snapshot carries no schema, as one written before
-    // the schema was put on the model, so the change cannot be named.
-    internal static SchemaDiffReport? Review(Func<CmsDbContext> createContext)
+    // schema, and from nothing for the first migration, with the renamed fields whose values it cannot carry. Null when the
+    // snapshot carries no schema, as one written before the schema was put on the model, so the change cannot be named.
+    internal static MigrationReview? Review(Func<CmsDbContext> createContext)
     {
         ArgumentNullException.ThrowIfNull(createContext);
 
         using var context = createContext();
-        var after = SchemaSnapshot.Of(context.Schema).Json;
         var snapshot = context.GetService<IMigrationsAssembly>().ModelSnapshot;
-        if (snapshot is null)
+        if ((snapshot is null ? "{}" : snapshot.Model.FindAnnotation(CmsDbContext.SchemaAnnotation)?.Value as string) is not { } before)
         {
-            return SchemaSnapshotDiff.Report("{}", after);
+            return null;
         }
 
-        return snapshot.Model.FindAnnotation(CmsDbContext.SchemaAnnotation)?.Value is string before ? SchemaSnapshotDiff.Report(before, after) : null;
+        var report = SchemaSnapshotDiff.Report(before, SchemaSnapshot.Of(context.Schema).Json);
+        return new MigrationReview(report, ContentRenames.Of(context.Schema, report.Changes).InJson);
     }
 
     // The id of the newest content migration of the factory's assembly, or null when it has none.
@@ -119,6 +122,7 @@ public static class ContentMigrationGenerator
             ?? throw new InvalidOperationException($"{providerAssembly.GetName().Name} declares no design-time services.");
         var designTimeServices = (IDesignTimeServices)Activator.CreateInstance(providerAssembly.GetType(attribute.TypeName, throwOnError: true)!)!;
         designTimeServices.ConfigureDesignTimeServices(services);
+        services.AddSingleton<IMigrationsModelDiffer>(ContentModelDiffer.For(context));
         replace?.Invoke(services);
 
         using var provider = services.BuildServiceProvider();
