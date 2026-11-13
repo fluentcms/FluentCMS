@@ -33,6 +33,12 @@ internal sealed class ManagementAuthority(IAuthorizationEvaluator evaluator, IOp
         }
     }
 
+    public async ValueTask<bool> CanManageAsync(CancellationToken cancellationToken)
+    {
+        var permissions = await evaluator.ResolveAsync(Operation(), cancellationToken);
+        return permissions.CanManage;
+    }
+
     // Whether any grant of the caller reaches the site, whatever it permits there.
     public async ValueTask<bool> HoldsGrantInAsync(Guid site, CancellationToken cancellationToken)
     {

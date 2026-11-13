@@ -4,9 +4,11 @@ namespace FluentCMS.Media;
 /// Reads assets as content shows them: their metadata, with the alternative text and caption in a locale, and the signed
 /// URLs that serve them, as the Delivery API gives them. Population of a <c>media</c> field and the rich text renderers use
 /// it. On the Delivery API (<see cref="Content.OperationContext.IsDelivery"/>) it gives the public assets, whoever reads,
-/// as the Delivery API's media route serves them to anyone, and never a private one. Elsewhere it needs <c>media.read</c>
-/// and keeps to the folders that a grant limited to folders reaches, so an asset the caller cannot read is left out, and a
-/// private asset has no URLs. An asset of another site's library and one that is deleted are always left out.
+/// as the Delivery API's media route serves them to anyone, and never a private one; so it does elsewhere, on GraphQL say,
+/// for a principal that may not manage (<see cref="Authorization.IPermissionChecker.CanManageAsync"/>), which reads as on
+/// the Delivery API. Otherwise it needs <c>media.read</c> and keeps to the folders that a grant limited to folders reaches,
+/// so an asset the caller cannot read is left out, and a private asset has no URLs. An asset of another site's library and
+/// one that is deleted are always left out, and in a site where the media plugin is disabled every asset is.
 /// </summary>
 public interface IMediaResolver
 {

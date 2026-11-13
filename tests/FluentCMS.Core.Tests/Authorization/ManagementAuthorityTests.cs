@@ -53,6 +53,7 @@ public class ManagementAuthorityTests
 
                 (await authority.AllowsAsync(CorePermissions.UsersManage, site: null, Token)).ShouldBeTrue();
                 (await checker.AllowsAsync("media.manage", Site, Token)).ShouldBeTrue();
+                (await checker.CanManageAsync(Token)).ShouldBeTrue();
             }
 
             await Should.ThrowAsync<InvalidOperationException>(() => authority.AllowsAsync(CorePermissions.UsersManage, site: null, Token).AsTask());
@@ -70,6 +71,27 @@ public class ManagementAuthorityTests
         await Should.ThrowAsync<PermissionDeniedException>(() => new PermissionChecker(authority).RequireAsync("media.manage", Site, Token).AsTask());
     }
 
+    // Only a token or key for managing may manage, and the mcp scope on the MCP server: the anonymous caller, a Delivery or
+    // Preview key, a preview token and a token without the scope read content alone, whatever their roles grant.
+    [Theory]
+    [InlineData(null, Origin.Api, false)]
+    [InlineData("delivery", Origin.Api, false)]
+    [InlineData("preview", Origin.Api, false)]
+    [InlineData("openid draft", Origin.Api, false)]
+    [InlineData("mcp", Origin.Api, false)]
+    [InlineData("openid management", Origin.Api, true)]
+    [InlineData("management", Origin.Admin, true)]
+    [InlineData("mcp", Origin.Mcp, true)]
+    [InlineData("delivery", Origin.Mcp, false)]
+    [InlineData("management", Origin.Mcp, true)]
+    public async Task OnlyAPrincipalWhoseTokenIsForManagingMayManage(string? scope, Origin origin, bool manages)
+    {
+        var principal = scope is null ? Principal.Anonymous : new Principal(PrincipalKind.ApiKey, Guid.CreateVersion7(), "key", [new(TokenScopes.Claim, scope)]);
+        var accessor = new OperationContextAccessor { Current = new OperationContext(principal, origin, Site, "en", null, "test", DateTimeOffset.UtcNow) };
+
+        (await new PermissionChecker(new ManagementAuthority(new Evaluator(), accessor)).CanManageAsync(Token)).ShouldBe(manages);
+    }
+
     private static Func<Task>[] Checks(ManagementAuthority authority, PermissionChecker checker) =>
     [
         () => authority.AllowsAsync(CorePermissions.UsersManage, site: null, Token).AsTask(),
@@ -77,6 +99,7 @@ public class ManagementAuthorityTests
         () => authority.CoversAsync([("content.page.read", PermissionConstraints.None)], null, Unbound, Token).AsTask(),
         () => checker.AllowsAsync("media.manage", Site, Token).AsTask(),
         () => checker.RequireAsync("media.manage", site: null, Token).AsTask(),
+        () => checker.CanManageAsync(Token).AsTask(),
     ];
 
     // The system principal holds every grant without any being stored, and any other holds none here.

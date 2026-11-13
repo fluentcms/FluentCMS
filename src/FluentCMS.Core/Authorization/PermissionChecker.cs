@@ -20,6 +20,8 @@ internal sealed class PermissionChecker(ManagementAuthority authority) : IPermis
         return authority.ResourcesAsync(permission, site?.Value, cancellationToken);
     }
 
+    public ValueTask<bool> CanManageAsync(CancellationToken cancellationToken = default) => authority.CanManageAsync(cancellationToken);
+
     public async ValueTask RequireAsync(string permission, SiteId? site, CancellationToken cancellationToken = default)
     {
         if (!await AllowsAsync(permission, site, cancellationToken))
