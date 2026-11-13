@@ -150,7 +150,7 @@ The instructions of an action are the system message, and the text is the user m
 
 ## Usage
 
-Every call that is sent to a provider writes one row to `cms_ai_usage`: the site, the principal by kind and id, the action, the type and field, the provider and model, the prompt and completion tokens, the duration and whether it succeeded. A call that failed, timed out or was cancelled writes its row too. A request that was refused before the provider was asked writes none.
+Every call that is sent to a provider writes one row to `cms_ai_usage`: the site, the principal by kind and id, the action, the type and field, the provider and model, the prompt and completion tokens, the duration and whether it succeeded. A call that failed, timed out or was cancelled writes its row too. A request that was refused before the provider was asked writes none. A provider that reports no usage leaves 0 prompt and 0 completion tokens in the row and in the answer, and the call still succeeds.
 
 `GET /api/management/v1/ai/usage` pages the rows of the site, the newest first, with the permission `ai.usage.read`:
 
@@ -195,6 +195,10 @@ The factory is a singleton and owns its clients: the plugin calls a client and d
 ## Telemetry
 
 A call is a span of the `FluentCMS` activity source named `ai {action}`, with `fluentcms.operation`, `fluentcms.site`, `fluentcms.type`, `fluentcms.provider` and `fluentcms.outcome` (`succeeded`, `failed`, `timeout` or `cancelled`), and for a failure the Error status and `fluentcms.code`. The counter `fluentcms.ai.calls` of the `FluentCMS` meter counts the calls by `fluentcms.operation`, `fluentcms.provider` and `fluentcms.outcome`. Log event ids 9360 to 9368.
+
+## Verification
+
+CI calls no provider. [Verifying AI assist against real endpoints](../../../docs/ai-assist-verification.md) records what the plugin has been run against and holds the walk-through for a run against Ollama or a paid endpoint. Neither has been run yet, and Azure OpenAI is not verified.
 
 ## Codes
 
