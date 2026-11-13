@@ -1,3 +1,4 @@
+using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Generators.Emit;
 using FluentCMS.Schema;
 
@@ -19,13 +20,13 @@ internal static class FieldTypeText
     // "text, multiple, localizable".
     public static string Traits(SchemaField field) => string.Join(", ", new[]
     {
-        ClientSchema.IsFieldTypeName(field.FieldType) ? field.FieldType : null,
+        FieldTypeNames.IsValid(field.FieldType) ? field.FieldType : null,
         field.Multiple ? "multiple" : null,
         field.Localizable ? "localizable" : null,
     }.OfType<string>());
 
     // "the field type 'geo'".
-    public static string Of(SchemaField field) => ClientSchema.IsFieldTypeName(field.FieldType) ? $"the field type '{field.FieldType}'" : "its field type";
+    public static string Of(SchemaField field) => FieldTypeNames.IsValid(field.FieldType) ? $"the field type '{field.FieldType}'" : "its field type";
 }
 
 // The class names of the types of a schema, shared by both emitters so that a type has one name in C# and in TypeScript:
