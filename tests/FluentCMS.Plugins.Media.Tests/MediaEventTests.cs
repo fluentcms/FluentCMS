@@ -35,7 +35,7 @@ public sealed class MediaEventTests(MediaHost media) : IClassFixture<MediaHost>
         await using var scope = media.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
         var applied = await database.Database.GetAppliedMigrationsAsync(Token);
-        applied.Select(migration => migration[15..]).ShouldBe(["InitialMedia", "MediaTransforms"]);
+        applied.Select(migration => migration[15..]).ShouldBe(["Initial"]);
         database.Database.HasPendingModelChanges().ShouldBeFalse();
     }
 }

@@ -22,7 +22,7 @@ public sealed class McpMigrationSetTests
         using var context = new McpDbContextFactory().CreateDbContext([set]);
         using var sqlite = new McpDbContextFactory().CreateDbContext([PluginMigrationSets.Sqlite]);
 
-        context.Database.GetMigrations().Select(id => id[15..]).ShouldBe(["InitialMcp"]);
+        context.Database.GetMigrations().Select(id => id[15..]).ShouldBe(["Initial"]);
         PluginMigrationSetChecks.IsTheSetOf(context, set);
         PluginMigrationSetChecks.MatchesTheSqliteSet(context, sqlite);
     }
@@ -53,7 +53,7 @@ public sealed class McpMigrationSetTests
 
         await using var scope = host.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<McpPlugin>>();
-        (await database.Database.GetAppliedMigrationsAsync(Token)).ShouldHaveSingleItem().ShouldEndWith("_InitialMcp");
+        (await database.Database.GetAppliedMigrationsAsync(Token)).ShouldHaveSingleItem().ShouldEndWith("_Initial");
         (await database.Set<McpInstruction>().CountAsync(instruction => instruction.SiteId == site, Token)).ShouldBe(3);
         (await database.Set<McpPrompt>().CountAsync(prompt => prompt.SiteId == site, Token)).ShouldBe(2);
     }

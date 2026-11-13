@@ -20,6 +20,11 @@
     <Compile Include="../FluentCMS.Core.Tests/Transfer/ZipCentralDirectory.cs" Link="Transfer/ZipCentralDirectory.cs" />
   </ItemGroup>
 
+  <!-- The SQL of the migration chains that the baselines replaced (#3052), which BaselineTests compares them with. -->
+  <ItemGroup>
+    <None Update="Migrations/BeforeBaseline/**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../src/FluentCMS.Cli/FluentCMS.Cli.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Data.PostgreSql/FluentCMS.Data.PostgreSql.csproj" />

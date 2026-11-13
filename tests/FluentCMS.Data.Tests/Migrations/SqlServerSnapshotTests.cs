@@ -7,14 +7,14 @@ using Shouldly;
 
 namespace FluentCMS.Data.Tests.Migrations;
 
-// ADR 0005. The run's databases have READ_COMMITTED_SNAPSHOT on from model, so each test forgets the migration that turns it
-// on, and turns it off where it needs to. No connection is pooled: turning it on or off ends the other sessions of the database.
+// ADR 0005. The run's databases have READ_COMMITTED_SNAPSHOT on from model, so each test takes an empty database and turns it
+// off where it needs to. The baseline turns it on before it creates anything. No connection is pooled: turning it on or off
+// ends the other sessions of the database.
 public sealed class SqlServerSnapshotTests : IDisposable
 {
-    private const string Because = "the system migration that turns READ_COMMITTED_SNAPSHOT on";
-    private const string Migration = "20261109212001_EnableReadCommittedSnapshot";
+    private const string Because = "the system baseline, which turns READ_COMMITTED_SNAPSHOT on";
 
-    private readonly TestDatabase _database = TestDatabase.Create(forSystemTables: true);
+    private readonly TestDatabase _database = TestDatabase.Create();
     private string? _login;
 
     private string Admin => new SqlConnectionStringBuilder(_database.ConnectionString) { Pooling = false }.ToString();
@@ -45,11 +45,10 @@ public sealed class SqlServerSnapshotTests : IDisposable
     }
 
     [SqlServerFact(Because)]
-    public void TheSystemMigrationsTurnItOnAndRollBackTheOtherSessionsOfTheDatabase()
+    public void TheBaselineTurnsItOnAndRollsBackTheOtherSessionsOfTheDatabase()
     {
-        Migrate(Admin);
         SetSnapshot(false);
-        Forget();
+        Run(Admin, "CREATE TABLE held (name nvarchar(64) NOT NULL)");
 
         using var other = new SqlConnection(Admin);
         other.Open();
@@ -58,35 +57,30 @@ public sealed class SqlServerSnapshotTests : IDisposable
         using (var command = other.CreateCommand())
         {
             command.Transaction = transaction;
-            command.CommandText = "INSERT INTO cms_lock (name) VALUES (N'held')";
+            command.CommandText = "INSERT INTO held (name) VALUES (N'held')";
             command.ExecuteNonQuery();
         }
 
         Migrate(Admin);
 
         IsOn().ShouldBeTrue();
-        Applied().ShouldContain(Migration);
-        Read("SELECT COUNT(*) FROM cms_lock WHERE name = N'held'").ShouldBe(0);
+        Applied().ShouldBe([Baseline()]);
+        Read("SELECT COUNT(*) FROM held").ShouldBe(0);
     }
 
     [SqlServerFact(Because)]
-    public void WhereItIsOnAlreadyTheMigrationNeedsNoPermissionOnTheDatabase()
+    public void WhereItIsOnAlreadyTheBaselineNeedsNoAlterOnTheDatabase()
     {
-        Migrate(Admin);
-        Forget();
-
         Migrate(LimitedUser());
 
         IsOn().ShouldBeTrue();
-        Applied().ShouldContain(Migration);
+        Applied().ShouldBe([Baseline()]);
     }
 
     [SqlServerFact(Because)]
-    public void WhereItIsOffAndTheUserMayNotTurnItOnTheMigrationFailsAndSaysWhatToRun()
+    public void WhereItIsOffAndTheUserMayNotTurnItOnTheBaselineFailsSaysWhatToRunAndCreatesNothing()
     {
-        Migrate(Admin);
         SetSnapshot(false);
-        Forget();
 
         var exception = Should.Throw<SqlException>(() => Migrate(LimitedUser()));
 
@@ -94,20 +88,34 @@ public sealed class SqlServerSnapshotTests : IDisposable
         exception.Message.ShouldBe(
             $"FluentCMS needs READ_COMMITTED_SNAPSHOT on in its SQL Server database, and the user that applies the migrations has no ALTER permission on the database to turn it on. Run ALTER DATABASE [{Name}] SET READ_COMMITTED_SNAPSHOT ON WITH ROLLBACK IMMEDIATE as a user that has it, then apply the migrations again.");
         IsOn().ShouldBeFalse();
-        Applied().ShouldNotContain(Migration);
+        Applied().ShouldBeEmpty();
+
+        // EF creates its history table before it applies anything.
+        Strings("SELECT name FROM sys.tables").ShouldBe([SystemDbContext.HistoryTable]);
+    }
+
+    private static string Baseline()
+    {
+        using var context = Context("Server=localhost;Database=never_opened");
+        return context.Database.GetMigrations().ShouldHaveSingleItem();
     }
 
     private static void Migrate(string connectionString)
+    {
+        using var context = Context(connectionString);
+        context.Database.Migrate();
+    }
+
+    private static SystemDbContext Context(string connectionString)
     {
         var provider = new SqlServerDataProvider(connectionString);
         var options = new DbContextOptionsBuilder<SystemDbContext>();
         provider.ConfigureSystemMigrations(options);
         options.UseSystemModel(provider.Conventions);
-        using var context = new SystemDbContext(options.Options);
-        context.Database.Migrate();
+        return new SystemDbContext(options.Options);
     }
 
-    // A user that reads and writes the tables, as one that applies only migrations without DDL would, with no ALTER on the database.
+    // A user that may create the tables and write their rows, with no ALTER on the database itself.
     private string LimitedUser()
     {
         _login = $"l_{Guid.NewGuid():N}";
@@ -117,6 +125,8 @@ public sealed class SqlServerSnapshotTests : IDisposable
             CREATE USER [{_login}] FOR LOGIN [{_login}];
             ALTER ROLE db_datareader ADD MEMBER [{_login}];
             ALTER ROLE db_datawriter ADD MEMBER [{_login}];
+            GRANT CREATE TABLE TO [{_login}];
+            GRANT ALTER, REFERENCES ON SCHEMA::dbo TO [{_login}];
             """);
 
         return new SqlConnectionStringBuilder(Admin) { UserID = _login, Password = password }.ToString();
@@ -125,26 +135,10 @@ public sealed class SqlServerSnapshotTests : IDisposable
     private void SetSnapshot(bool on) =>
         Run(Admin, $"ALTER DATABASE CURRENT SET READ_COMMITTED_SNAPSHOT {(on ? "ON" : "OFF")} WITH ROLLBACK IMMEDIATE");
 
-    private void Forget() => Run(Admin, $"DELETE FROM {SystemDbContext.HistoryTable} WHERE MigrationId = N'{Migration}'");
-
     private bool IsOn() => Read("SELECT CAST(is_read_committed_snapshot_on AS int) FROM sys.databases WHERE database_id = DB_ID()") == 1;
 
-    private List<string> Applied()
-    {
-        using var connection = new SqlConnection(Admin);
-        connection.Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT MigrationId FROM {SystemDbContext.HistoryTable}";
-        using var reader = command.ExecuteReader();
-
-        var ids = new List<string>();
-        while (reader.Read())
-        {
-            ids.Add(reader.GetString(0));
-        }
-
-        return ids;
-    }
+    private List<string> Applied() =>
+        Strings($"IF OBJECT_ID(N'{SystemDbContext.HistoryTable}') IS NOT NULL SELECT MigrationId FROM {SystemDbContext.HistoryTable}");
 
     private int Read(string sql)
     {
@@ -155,6 +149,25 @@ public sealed class SqlServerSnapshotTests : IDisposable
         command.CommandText = sql;
 #pragma warning restore CA2100
         return (int)command.ExecuteScalar()!;
+    }
+
+    private List<string> Strings(string sql)
+    {
+        using var connection = new SqlConnection(Admin);
+        connection.Open();
+        using var command = connection.CreateCommand();
+#pragma warning disable CA2100 // Constants of the tests.
+        command.CommandText = sql;
+#pragma warning restore CA2100
+        using var reader = command.ExecuteReader();
+
+        var values = new List<string>();
+        while (reader.Read())
+        {
+            values.Add(reader.GetString(0));
+        }
+
+        return values;
     }
 
     private static void Run(string connectionString, string sql)

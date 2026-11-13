@@ -20,7 +20,7 @@ public sealed class MultiSiteMigrationSetTests
         using var context = new MultiSiteDbContextFactory().CreateDbContext([set]);
         using var sqlite = new MultiSiteDbContextFactory().CreateDbContext([PluginMigrationSets.Sqlite]);
 
-        context.Database.GetMigrations().Select(id => id[15..]).ShouldBe(["InitialMultiSite"]);
+        context.Database.GetMigrations().Select(id => id[15..]).ShouldBe(["Initial"]);
         PluginMigrationSetChecks.IsTheSetOf(context, set);
         PluginMigrationSetChecks.MatchesTheSqliteSet(context, sqlite);
     }

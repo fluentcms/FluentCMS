@@ -70,6 +70,7 @@ public static class ErrorCodeRegistry
         Startup(StorageErrorCodes.InvalidDatabaseSetting, "Invalid database setting"),
         Startup(StorageErrorCodes.PendingStreamMigrations, "Pending stream migrations"),
         Startup(StorageErrorCodes.ForeignMigrations, "Migrations of another provider"),
+        Startup(StorageErrorCodes.MigrationsBeforeBaseline, "Migrations from before the baseline"),
 
         // 14xx authorization and content writes
         Startup(AuthorizationErrorCodes.DuplicatePermission, "Duplicate permission"),

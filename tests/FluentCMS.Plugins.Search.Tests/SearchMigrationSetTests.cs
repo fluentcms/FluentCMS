@@ -23,7 +23,7 @@ public sealed class SearchMigrationSetTests
         using var context = new SearchDbContextFactory().CreateDbContext([set]);
         using var sqlite = new SearchDbContextFactory().CreateDbContext([PluginMigrationSets.Sqlite]);
 
-        context.Database.GetMigrations().Select(id => id[15..]).ShouldBe(["InitialSearch"]);
+        context.Database.GetMigrations().Select(id => id[15..]).ShouldBe(["Initial"]);
         PluginMigrationSetChecks.IsTheSetOf(context, set);
         PluginMigrationSetChecks.MatchesTheSqliteSet(context, sqlite, exceptSql: true);
     }
@@ -63,7 +63,7 @@ public sealed class SearchMigrationSetTests
         await using var scope = search.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<SearchPlugin>>();
 
-        (await database.Database.GetAppliedMigrationsAsync(Token)).ShouldHaveSingleItem().ShouldEndWith("_InitialSearch");
+        (await database.Database.GetAppliedMigrationsAsync(Token)).ShouldHaveSingleItem().ShouldEndWith("_Initial");
         database.Model.GetEntityTypes().Select(entity => entity.GetTableName()).ShouldBe([SearchModel.EntryTable]);
         (await database.Set<SearchEntry>().CountAsync(Token)).ShouldBe(0);
         (await database.Database.SqlQuery<long>($"SELECT count(*) AS \"Value\" FROM cms_search_entry_fts").SingleAsync(Token)).ShouldBe(0);

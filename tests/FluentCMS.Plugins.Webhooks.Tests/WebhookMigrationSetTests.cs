@@ -19,7 +19,7 @@ public sealed class WebhookMigrationSetTests
         using var context = new WebhooksDbContextFactory().CreateDbContext([set]);
         using var sqlite = new WebhooksDbContextFactory().CreateDbContext([PluginMigrationSets.Sqlite]);
 
-        context.Database.GetMigrations().Select(id => id[15..]).ShouldBe(["InitialWebhooks", "AddDeliveryClaim", "AddPreviousSecret"]);
+        context.Database.GetMigrations().Select(id => id[15..]).ShouldBe(["Initial"]);
         PluginMigrationSetChecks.IsTheSetOf(context, set);
         PluginMigrationSetChecks.MatchesTheSqliteSet(context, sqlite);
     }

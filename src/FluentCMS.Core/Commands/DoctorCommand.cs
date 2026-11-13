@@ -12,8 +12,9 @@ using Microsoft.Extensions.Logging;
 namespace FluentCMS.Core.Commands;
 
 // The startup report of 4.15 without starting the host: it runs before any hosted service, so nothing listens, migrates or
-// writes, and it reads the database only for the pending migrations and the schema history. It also asks what would stop
-// the host from starting: a schema with errors, a Production check that refuses, and a migration set of another provider.
+// writes, and it reads the database only for the applied and pending migrations and the schema history. It also asks what
+// would stop the host from starting: a schema with errors, a Production check that refuses, a migration set of another
+// provider, and a database of the migrations from before the baseline.
 internal sealed class DoctorCommand : HostCommand
 {
     public const string Json = "--json";
@@ -47,9 +48,19 @@ internal sealed class DoctorCommand : HostCommand
             refusals.AddRange(services.GetServices<IProductionStartupCheck>().Select(Refusal).OfType<string>());
         }
 
+        var runner = services.GetRequiredService<MigrationRunner>();
         try
         {
-            await services.GetRequiredService<MigrationRunner>().RefuseForeignMigrationsAtStartupAsync(cancellationToken);
+            await runner.RefuseForeignMigrationsAtStartupAsync(cancellationToken);
+        }
+        catch (FluentCmsConfigurationException exception)
+        {
+            refusals.Add(exception.Message);
+        }
+
+        try
+        {
+            await runner.RefuseMigrationsBeforeBaselineAsync(cancellationToken);
         }
         catch (FluentCmsConfigurationException exception)
         {

@@ -21,7 +21,7 @@ public sealed class AiMigrationSetTests
         using var context = new AiAssistDbContextFactory().CreateDbContext([set]);
         using var sqlite = new AiAssistDbContextFactory().CreateDbContext([PluginMigrationSets.Sqlite]);
 
-        context.Database.GetMigrations().Select(id => id[15..]).ShouldBe(["InitialAi"]);
+        context.Database.GetMigrations().Select(id => id[15..]).ShouldBe(["Initial"]);
         PluginMigrationSetChecks.IsTheSetOf(context, set);
         PluginMigrationSetChecks.MatchesTheSqliteSet(context, sqlite);
     }
@@ -43,7 +43,7 @@ public sealed class AiMigrationSetTests
         await using var scope = ai.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<AiAssistPlugin>>();
 
-        (await database.Database.GetAppliedMigrationsAsync(Token)).ShouldHaveSingleItem().ShouldEndWith("_InitialAi");
+        (await database.Database.GetAppliedMigrationsAsync(Token)).ShouldHaveSingleItem().ShouldEndWith("_Initial");
         database.Model.GetEntityTypes().Select(entity => entity.GetTableName()).ShouldBe([AiUsageModel.UsageTable]);
         (await database.Set<AiUsage>().CountAsync(Token)).ShouldBe(0);
     }
