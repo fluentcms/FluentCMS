@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO.Compression;
 using System.Text.Json;
@@ -24,7 +25,8 @@ namespace FluentCMS.Core.Transfer;
 // file for the length of the request only, because a zip is read from its end. Everything that refuses the whole package is
 // asked before the first write and before the first line of the answer. Then the settings, the roles when asked, the
 // contributors and the content are imported in that order, each entry in a transaction and a scope of its own, as the system
-// under Origin.Import for the caller, so an import that stopped is finished by running it again.
+// under Origin.Import for the caller, so an import that stopped is finished by running it again. A bound of the package that
+// only reading shows, such as a line too long, stops the run, and the report ends with it as the item of @package.
 internal sealed class TransferImporter(
     IOperationContextAccessor accessor,
     ManagementAuthority authority,
@@ -50,7 +52,13 @@ internal sealed class TransferImporter(
     public const string SettingsSection = "@settings";
     public const string RolesSection = "@roles";
     public const string PluginsSection = "@plugins";
+
+    // The package itself, whose only item is the bound that stopped an import once it had started.
+    public const string PackageSection = "@package";
     private const int ProgressEvery = 100;
+
+    // The validation errors of one item that its message names; a line can hold one per value it has.
+    private const int ErrorsNamed = 20;
 
     public async Task<TransferImportRun> PrepareAsync(Stream body, long? declaredLength, TransferImportRequest request, CancellationToken cancellationToken)
     {
@@ -92,6 +100,7 @@ internal sealed class TransferImporter(
             var archive = await OpenAsync(file, cancellationToken);
             try
             {
+                await CheckEntryCountAsync(file, cancellationToken);
                 return await PlanAsync(operation, request, archive, file, held, cancellationToken);
             }
             catch
@@ -124,7 +133,7 @@ internal sealed class TransferImporter(
         };
 
         TransferLog.ImportStarted(logger, site.Value, correlation, run.Request.DryRun);
-        var report = new TransferReport(run.Request.DryRun);
+        var report = new TransferReport(run.Request.DryRun, options.MaxReportItems);
         var previous = accessor.Current;
         accessor.Current = import;
         try
@@ -145,6 +154,13 @@ internal sealed class TransferImporter(
                 await ImportTypeAsync(run, type, siteLocales, provided, report, progress, cancellationToken);
                 await progress(new { section = type, counts = report.Of(type) }, cancellationToken);
             }
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException && run.Budget.Refusal is { } refusal)
+        {
+            // A bound of the package that the run reached: what was written stays, and the report says where it stopped.
+            var error = refusal.Errors[0];
+            TransferLog.ImportRefused(logger, error.Code, site.Value, error.Message);
+            report.Stop(PackageSection, run.Budget.RefusedPath ?? "", error.Code, error.Message);
         }
         catch (Exception exception) when (exception is OperationCanceledException or IOException)
         {
@@ -168,21 +184,17 @@ internal sealed class TransferImporter(
 
     private async Task<TransferImportRun> PlanAsync(OperationContext operation, TransferImportRequest request, ZipArchive archive, FileStream file, IDistributedLockHandle held, CancellationToken cancellationToken)
     {
-        // A file of the package is never larger, unpacked, than the package may be.
-        if (archive.Entries.FirstOrDefault(entry => entry.Length > options.MaxPackageSize) is { } large)
-        {
-            throw Invalid($"{large.FullName} of the package is larger, unpacked, than {options.MaxPackageSize.ToString(CultureInfo.InvariantCulture)} bytes.");
-        }
+        CheckDirectory(archive, file.Length);
+        var budget = new PackageBudget(options);
 
-        var manifest = await ReadJsonAsync<TransferManifest>(archive, TransferPackage.Manifest, cancellationToken)
+        var manifest = await ReadJsonAsync<TransferManifest>(archive, TransferPackage.Manifest, budget, cancellationToken)
             ?? throw Invalid($"The package has no {TransferPackage.Manifest}.");
         if (manifest.FormatVersion != TransferPackage.FormatVersion)
         {
             throw new ValidationException([new ValidationError("formatVersion", TransferErrorCodes.UnsupportedFormat, $"The package has the format {manifest.FormatVersion}; this instance reads the format {TransferPackage.FormatVersion}.")]);
         }
 
-        var packageSchema = await ReadTextAsync(archive, TransferPackage.Schema, cancellationToken)
-            ?? throw Invalid($"The package has no {TransferPackage.Schema}.");
+        var schemaEntry = archive.GetEntry(TransferPackage.Schema) ?? throw Invalid($"The package has no {TransferPackage.Schema}.");
 
         var inPackage = archive.Entries
             .Select(entry => entry.FullName)
@@ -203,16 +215,17 @@ internal sealed class TransferImporter(
         var global = types.Where(type => schema.FindContentType(type)?.Scope == ContentScope.Global).ToList();
         if (global.Count > 0 && !await authority.AllowsAsync(CorePermissions.TransferManage, null, cancellationToken))
         {
-            throw new ManagementAccessDeniedException($"The package has the global types {string.Join(", ", global)}, whose import needs the instance-wide permission {CorePermissions.TransferManage}; import the other types with types=.");
+            throw new ManagementAccessDeniedException($"The package has the global types {string.Join(", ", global)}, whose import needs the instance-wide permission {CorePermissions.TransferManage}; import the other types by naming them, with types= of the endpoint or --types of fluentcms import.");
         }
 
-        await CheckSizesAsync(archive, cancellationToken);
+        await CheckEntriesAsync(archive, cancellationToken);
 
+        // The schema of the package is read only when it is not the instance's.
         var instance = SchemaSnapshot.Of(schema);
         List<ValidationError> errors;
         try
         {
-            errors = manifest.SchemaHash == instance.Hash ? [] : SchemaCompatibility.Check(packageSchema, instance.Json, types);
+            errors = manifest.SchemaHash == instance.Hash ? [] : SchemaCompatibility.Check(await ReadTextAsync(schemaEntry, budget, cancellationToken), instance.Json, types);
         }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException or ArgumentException or InvalidCastException)
         {
@@ -225,8 +238,8 @@ internal sealed class TransferImporter(
         }
 
         // Read whole before any write, so that a package that cannot be read is refused before it changes anything.
-        var settingsFile = await ReadJsonAsync<List<TransferSetting>>(archive, TransferPackage.Settings, cancellationToken) ?? [];
-        var rolesFile = request.Roles ? await ReadJsonAsync<List<TransferRole>>(archive, TransferPackage.Roles, cancellationToken) ?? [] : [];
+        var settingsFile = await ReadJsonAsync<List<TransferSetting>>(archive, TransferPackage.Settings, budget, cancellationToken) ?? [];
+        var rolesFile = request.Roles ? await ReadJsonAsync<List<TransferRole>>(archive, TransferPackage.Roles, budget, cancellationToken) ?? [] : [];
         if (settingsFile.Any(item => item is null || string.IsNullOrEmpty(item.Area)) || rolesFile.Any(item => item is null || item.Name is null || item.Grants is null || item.Grants.Any(grant => grant is null || grant.Permission is null)))
         {
             throw Invalid($"{TransferPackage.Settings} or {TransferPackage.Roles} of the package has an item without its name.");
@@ -239,7 +252,7 @@ internal sealed class TransferImporter(
             throw new ValidationException([.. missing.Select(code => new ValidationError("locales", TransferErrorCodes.LocaleNotInSite, $"The site does not allow the locale '{code}' of the package; allow it, or import with missingLocales=skip."))]);
         }
 
-        return new TransferImportRun(operation, request, manifest, types, settingsFile, rolesFile, archive, file, held);
+        return new TransferImportRun(operation, request, manifest, types, settingsFile, rolesFile, archive, budget, file, held);
     }
 
     private async Task ImportSettingsAsync(TransferImportRun run, TransferReport report, CancellationToken cancellationToken)
@@ -312,6 +325,7 @@ internal sealed class TransferImporter(
         {
             var context = new ImportContext(run, contributor.Name, report, provided);
             await contributor.Contributor.ImportAsync(context, cancellationToken);
+            run.Budget.ThrowIfRefused();
             await progress(new { section = PluginsSection + "/" + contributor.Name }, cancellationToken);
         }
 
@@ -322,7 +336,7 @@ internal sealed class TransferImporter(
     {
         var localized = schema.FindContentType(type)?.Localized ?? false;
         var entry = run.Archive.GetEntry(TransferPackage.ContentPath(type))!;
-        await using var stream = await PackageEntryStream.OpenAsync(entry, cancellationToken);
+        await using var stream = await PackageEntryStream.OpenAsync(entry, run.Budget, cancellationToken);
         using var reader = new StreamReader(stream);
         var number = 0;
         var done = 0;
@@ -412,7 +426,8 @@ internal sealed class TransferImporter(
             }
 
             var message = problem.Errors is { Count: > 0 } errors
-                ? string.Join("; ", errors.Select(error => error.Path.Length > 0 ? $"{error.Path}: {error.Message}" : error.Message))
+                ? string.Join("; ", errors.Take(ErrorsNamed).Select(error => error.Path.Length > 0 ? $"{error.Path}: {error.Message}" : error.Message))
+                    + (errors.Count > ErrorsNamed ? $"; and {(errors.Count - ErrorsNamed).ToString(CultureInfo.InvariantCulture)} more" : "")
                 : problem.Detail;
             report.Add(section, id, TransferOutcome.Error, problem.Code, message);
         }
@@ -477,17 +492,87 @@ internal sealed class TransferImporter(
         }
     }
 
+    // Before ZipArchive reads the central directory, which it holds whole.
+    private async Task CheckEntryCountAsync(FileStream file, CancellationToken cancellationToken)
+    {
+        var declared = await PackageDirectory.DeclaredEntriesAsync(file, cancellationToken)
+            ?? throw Invalid("The end of the central directory of the package cannot be read.");
+        if (declared > options.MaxEntries)
+        {
+            throw TooManyEntries();
+        }
+    }
+
+    // What the central directory shows, before any file is read: the number of files, the size of each and their sum
+    // unpacked, the four JSON files, and compressed sizes that fit in the package. The data of the files of a zip never
+    // overlap, so files whose compressed sizes add up to more than the package share their data, which would have an import
+    // read the same bytes once for each of them.
+    private void CheckDirectory(ZipArchive archive, long packageLength)
+    {
+        ReadOnlyCollection<ZipArchiveEntry> entries;
+        try
+        {
+            entries = archive.Entries;
+        }
+        catch (InvalidDataException exception)
+        {
+            throw Invalid($"The central directory of the package cannot be read: {exception.Message}");
+        }
+
+        if (entries.Count > options.MaxEntries)
+        {
+            throw TooManyEntries();
+        }
+
+        long unpacked = 0;
+        long compressed = 0;
+        foreach (var entry in entries)
+        {
+            // A file of the package is never larger, unpacked, than the package may be.
+            if (entry.Length > options.MaxPackageSize)
+            {
+                throw Invalid($"{entry.FullName} of the package is larger, unpacked, than {options.MaxPackageSize.ToString(CultureInfo.InvariantCulture)} bytes.");
+            }
+
+            if (entry.FullName is TransferPackage.Manifest or TransferPackage.Schema or TransferPackage.Settings or TransferPackage.Roles && entry.Length > options.MaxJsonSize)
+            {
+                throw Invalid($"{entry.FullName} of the package is larger than {options.MaxJsonSize.ToString(CultureInfo.InvariantCulture)} bytes, FluentCms:Transfer:MaxJsonSize.");
+            }
+
+            unpacked += entry.Length;
+            compressed += entry.CompressedLength;
+            if (unpacked > options.UnpackedLimit)
+            {
+                throw Invalid($"The files of the package are larger, unpacked, than {options.UnpackedLimit.ToString(CultureInfo.InvariantCulture)} bytes, FluentCms:Transfer:MaxUnpackedSize.");
+            }
+
+            if (compressed > packageLength)
+            {
+                throw Invalid($"The files of the package declare more compressed bytes than the package holds, so some of them share their data, which no package does; {entry.FullName} is one of them.");
+            }
+        }
+    }
+
     // Every file is read through PackageEntryStream, so none yields more than it declares. A stored file yields its compressed
     // size and a deflated one stops at its declared size, so only a file whose compressed size is the larger can hold more.
     // Each such file is read through here, at no more cost than the package, so that the package is refused before any write.
-    private static async Task CheckSizesAsync(ZipArchive archive, CancellationToken cancellationToken)
+    // Every other file is opened, which reads its local header only, so that a compression method System.IO.Compression
+    // cannot read is refused before any write too.
+    private static async Task CheckEntriesAsync(ZipArchive archive, CancellationToken cancellationToken)
     {
-        foreach (var entry in archive.Entries.Where(entry => entry.CompressedLength > entry.Length))
+        foreach (var entry in archive.Entries)
         {
             try
             {
-                await using var stream = await PackageEntryStream.OpenAsync(entry, cancellationToken);
-                await stream.CopyToAsync(Stream.Null, cancellationToken);
+                if (entry.CompressedLength > entry.Length)
+                {
+                    await using var stream = await PackageEntryStream.OpenAsync(entry, cancellationToken);
+                    await stream.CopyToAsync(Stream.Null, cancellationToken);
+                }
+                else
+                {
+                    await using var stream = await entry.OpenAsync(cancellationToken);
+                }
             }
             catch (Exception exception) when (exception is InvalidDataException or NotSupportedException)
             {
@@ -496,19 +581,22 @@ internal sealed class TransferImporter(
         }
     }
 
-    private static async Task<string?> ReadTextAsync(ZipArchive archive, string path, CancellationToken cancellationToken)
+    // The file was held to MaxJsonSize, and yields no more than it declares, so the text is never larger.
+    private static async Task<string> ReadTextAsync(ZipArchiveEntry entry, PackageBudget budget, CancellationToken cancellationToken)
     {
-        if (archive.GetEntry(path) is not { } entry)
+        try
         {
-            return null;
+            await using var stream = await PackageEntryStream.OpenAsync(entry, budget, cancellationToken);
+            using var reader = new StreamReader(stream);
+            return await reader.ReadToEndAsync(cancellationToken);
         }
-
-        await using var stream = await PackageEntryStream.OpenAsync(entry, cancellationToken);
-        using var reader = new StreamReader(stream);
-        return await reader.ReadToEndAsync(cancellationToken);
+        catch (Exception exception) when (exception is InvalidDataException or NotSupportedException)
+        {
+            throw Invalid($"{entry.FullName} of the package cannot be read: {exception.Message}");
+        }
     }
 
-    private static async Task<T?> ReadJsonAsync<T>(ZipArchive archive, string path, CancellationToken cancellationToken)
+    private static async Task<T?> ReadJsonAsync<T>(ZipArchive archive, string path, PackageBudget budget, CancellationToken cancellationToken)
         where T : class
     {
         if (archive.GetEntry(path) is not { } entry)
@@ -518,7 +606,7 @@ internal sealed class TransferImporter(
 
         try
         {
-            await using var stream = await PackageEntryStream.OpenAsync(entry, cancellationToken);
+            await using var stream = await PackageEntryStream.OpenAsync(entry, budget, cancellationToken);
             return await JsonSerializer.DeserializeAsync<T>(stream, TransferPackage.Json, cancellationToken)
                 ?? throw Invalid($"{path} of the package is empty.");
         }
@@ -528,7 +616,10 @@ internal sealed class TransferImporter(
         }
     }
 
-    private static ValidationException Invalid(string message) => new([new ValidationError("", TransferErrorCodes.InvalidPackage, message)]);
+    internal static ValidationException Invalid(string message) => new([new ValidationError("", TransferErrorCodes.InvalidPackage, message)]);
+
+    private ValidationException TooManyEntries() =>
+        Invalid($"The package has more than {options.MaxEntries.ToString(CultureInfo.InvariantCulture)} files, FluentCms:Transfer:MaxEntries.");
 
     private ValidationException TooLarge() =>
         new([new ValidationError("", TransferErrorCodes.PackageTooLarge, $"The package is larger than {options.MaxPackageSize.ToString(CultureInfo.InvariantCulture)} bytes, FluentCms:Transfer:MaxPackageSize.")]);
@@ -564,13 +655,15 @@ internal sealed class TransferImporter(
                 return false;
             }
 
-            await using var stream = await PackageEntryStream.OpenAsync(entry, cancellationToken);
+            await using var stream = await PackageEntryStream.OpenAsync(entry, run.Budget, cancellationToken);
             await read(stream, cancellationToken);
             return true;
         }
 
         public void Report(string section, string id, TransferOutcome outcome, string? code = null, string? message = null)
         {
+            // A contributor that caught the refusal of a bound reports no more.
+            run.Budget.ThrowIfRefused();
             report.Add(section, id, outcome, code, message);
             if (outcome is TransferOutcome.Created or TransferOutcome.Updated or TransferOutcome.Skipped && Guid.TryParse(id, out var target))
             {
@@ -588,6 +681,7 @@ internal sealed class TransferImportRun(
     IReadOnlyList<TransferSetting> settings,
     IReadOnlyList<TransferRole> roles,
     ZipArchive archive,
+    PackageBudget budget,
     FileStream file,
     IDistributedLockHandle held) : IAsyncDisposable
 {
@@ -604,6 +698,8 @@ internal sealed class TransferImportRun(
     public IReadOnlyList<string> Types => types;
 
     public ZipArchive Archive => archive;
+
+    public PackageBudget Budget => budget;
 
     public async ValueTask DisposeAsync()
     {

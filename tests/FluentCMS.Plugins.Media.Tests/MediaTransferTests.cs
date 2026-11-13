@@ -39,8 +39,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         var real = Items(await ImportAsync(admin, package));
 
         dry.ShouldBe(real);
-        real[page].ShouldBe(("error", MediaErrorCodes.TypeNotAllowed));
-        real[image].ShouldBe(("created", null));
+        real.ShouldBe(new Dictionary<Guid, (string, string?)> { [page] = ("error", MediaErrorCodes.TypeNotAllowed) });
         (await AssetAsync(page)).ShouldBeNull();
         var stored = (await AssetAsync(image)).ShouldNotBeNull();
         (stored.MimeType, stored.Size, stored.Width, stored.Height, stored.Checksum).ShouldBe(("image/png", png.LongLength, 3, 2, Sha256(png)));
@@ -109,7 +108,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         var id = Guid.CreateVersion7();
         var package = await PackageAsync(admin, [Line(id, "logo.svg", "image/png", svg)], (FileOf(id, ".svg"), svg));
 
-        Items(await ImportAsync(admin, package))[id].ShouldBe(("created", null));
+        Counts(await ImportAsync(admin, package)).ShouldBe((1, 0, 0));
 
         var stored = (await AssetAsync(id)).ShouldNotBeNull();
         stored.MimeType.ShouldBe("image/svg+xml");
@@ -120,7 +119,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
 
         // A sanitised file is sanitised to the same bytes, so a line can take its key as it is.
         var copy = Guid.CreateVersion7();
-        Items(await ImportAsync(admin, await PackageAsync(admin, [Line(copy, "copy.svg", "image/png", bytes, key: stored.StorageKey)])))[copy].ShouldBe(("created", null));
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(copy, "copy.svg", "image/png", bytes, key: stored.StorageKey)]))).ShouldBe((1, 0, 0));
         var copied = (await AssetAsync(copy)).ShouldNotBeNull();
         (copied.MimeType, copied.StorageKey, copied.Checksum).ShouldBe(("image/svg+xml", stored.StorageKey, stored.Checksum));
     }
@@ -142,18 +141,81 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
                 Line(wrong, "wrong.png", "image/png", Files.Png(1, 1), key: key),
             ]);
 
-        var dry = Items(await ImportAsync(admin, package, dryRun: true));
-        var real = Items(await ImportAsync(admin, package));
+        var dryReport = await ImportAsync(admin, package, dryRun: true);
+        var realReport = await ImportAsync(admin, package);
+        var (dry, real) = (Items(dryReport), Items(realReport));
 
         dry.ShouldBe(real);
-        real[uploaded.Id].ShouldBe(("updated", null));
-        real[sharing].ShouldBe(("created", null));
-        real[wrong].ShouldBe(("error", MediaErrorCodes.TransferFileMissing));
+        Counts(realReport).ShouldBe((1, 1, 1));
+        real.ShouldBe(new Dictionary<Guid, (string, string?)> { [wrong] = ("error", MediaErrorCodes.TransferFileMissing) });
         var own = (await AssetAsync(uploaded.Id)).ShouldNotBeNull();
         (own.Title, own.MimeType, own.Size, own.Width, own.Height, own.StorageKey).ShouldBe(("kept", "image/png", png.LongLength, 6, 5, key));
         var shared = (await AssetAsync(sharing)).ShouldNotBeNull();
         (shared.MimeType, shared.Size, shared.Width, shared.Height, shared.StorageKey).ShouldBe(("image/png", png.LongLength, 6, 5, key));
         (await AssetAsync(wrong)).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task AFileOfThePackageOrAKeyOfTheStorageIsTakenByOneLineOfAnImport()
+    {
+        using var admin = await media.AdminAsync();
+        var png = Files.Png(2, 2);
+        var key = (await AssetAsync((await UploadAsync(admin, png, "photo.png")).Id)).ShouldNotBeNull().StorageKey;
+        Guid[] ids = [Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7()];
+        var again = Line(ids[1], "again.png", "image/png", png);
+        again["file"] = FileOf(ids[0], ".png");
+        var package = await PackageAsync(
+            admin,
+            [Line(ids[0], "first.png", "image/png", png), again, Line(ids[2], "keyed.png", "image/png", png, key: key), Line(ids[3], "keyed-again.png", "image/png", png, key: key)],
+            (FileOf(ids[0], ".png"), png));
+
+        var dryReport = await ImportAsync(admin, package, dryRun: true);
+        var realReport = await ImportAsync(admin, package);
+        var (dry, real) = (Items(dryReport), Items(realReport));
+
+        dry.ShouldBe(real);
+        Counts(realReport).ShouldBe((2, 0, 2));
+        real.ShouldBe(new Dictionary<Guid, (string, string?)>
+        {
+            [ids[1]] = ("error", MediaErrorCodes.TransferFileMissing),
+            [ids[3]] = ("error", MediaErrorCodes.TransferFileMissing),
+        });
+        (await AssetAsync(ids[0])).ShouldNotBeNull();
+        (await AssetAsync(ids[1])).ShouldBeNull();
+        (await AssetAsync(ids[2])).ShouldNotBeNull().StorageKey.ShouldBe(key);
+        (await AssetAsync(ids[3])).ShouldBeNull();
+    }
+
+    // Windows and macOS read the three spellings of a key as one file, so only the first is read.
+    [Fact]
+    public async Task AKeySpelledWithATrailingDotOrInAnotherCaseIsNotReadAgain()
+    {
+        using var admin = await media.AdminAsync();
+        var png = Files.Png(3, 3);
+        var key = (await AssetAsync((await UploadAsync(admin, png, "photo.png")).Id)).ShouldNotBeNull().StorageKey;
+        key.ShouldEndWith("/original.png");
+        Guid[] ids = [Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7()];
+        var package = await PackageAsync(
+            admin,
+            [
+                Line(ids[0], "first.png", "image/png", png, key: key),
+                Line(ids[1], "dotted.png", "image/png", png, key: key + "."),
+                Line(ids[2], "upper.png", "image/png", png, key: key[..^"original.png".Length] + "ORIGINAL.png"),
+            ]);
+
+        var dryReport = await ImportAsync(admin, package, dryRun: true);
+        var realReport = await ImportAsync(admin, package);
+
+        Items(dryReport).ShouldBe(Items(realReport));
+        Counts(realReport).ShouldBe((1, 0, 2));
+        var messages = realReport["items"]!.AsArray().ToDictionary(item => Guid.Parse(item!["id"]!.GetValue<string>()), item => (item!["code"]!.GetValue<string>(), item["message"]!.GetValue<string>()));
+        messages[ids[1]].Item1.ShouldBe(MediaErrorCodes.TransferFileMissing);
+        messages[ids[1]].Item2.ShouldContain("ends with a dot");
+        messages[ids[2]].Item1.ShouldBe(MediaErrorCodes.TransferFileMissing);
+        messages[ids[2]].Item2.ShouldContain("earlier line");
+        (await AssetAsync(ids[0])).ShouldNotBeNull();
+        (await AssetAsync(ids[1])).ShouldBeNull();
+        (await AssetAsync(ids[2])).ShouldBeNull();
     }
 
     // A package of the default site, exported by the host, whose media folder holds the lines and files given. It carries no
@@ -227,6 +289,12 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         return JsonNode.Parse(text.Split('\n', StringSplitOptions.RemoveEmptyEntries)[^1])!["report"]!;
     }
 
+    private static (int Created, int Updated, int Errors) Counts(JsonNode report) =>
+        report["sections"]![MediaTransfer.AssetsSection] is { } counts
+            ? (counts["created"]!.GetValue<int>(), counts["updated"]!.GetValue<int>(), counts["errors"]!.GetValue<int>())
+            : (0, 0, 0);
+
+    // The conflicts and errors of the assets, which are what a report lists.
     private static Dictionary<Guid, (string Outcome, string? Code)> Items(JsonNode report) =>
         report["items"]!.AsArray()
             .Where(item => item!["section"]!.GetValue<string>() == MediaTransfer.AssetsSection)

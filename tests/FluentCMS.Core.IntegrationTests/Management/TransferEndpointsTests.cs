@@ -101,12 +101,14 @@ public sealed class TransferEndpointsTests : IAsyncLifetime
     [Fact]
     public async Task AnAssetOfThePackageIsReadableInTheTargetAndAMissingFileIsReported()
     {
-        var withFiles = await ImportAsync(_targetAdmin, await ExportAsync(_sourceAdmin, """{"options":{"mediaFiles":"true"}}"""));
-        var assets = withFiles[^1]["report"]!["items"]!.AsArray().Where(item => item!["section"]!.GetValue<string>() == "media").ToList();
+        var package = await ExportAsync(_sourceAdmin, """{"options":{"mediaFiles":"true"}}""");
+        var withFiles = await ImportAsync(_targetAdmin, package);
+        var assets = AssetIds(package);
         assets.ShouldNotBeEmpty();
+        withFiles[^1]["report"]!["sections"]!["media"]!["created"]!.GetValue<int>().ShouldBe(assets.Count);
         foreach (var asset in assets)
         {
-            using var response = await _targetAdmin.GetAsync(new Uri($"/api/management/v1/media/{asset!["id"]!.GetValue<string>()}", UriKind.Relative), Token);
+            using var response = await _targetAdmin.GetAsync(new Uri($"/api/management/v1/media/{asset}", UriKind.Relative), Token);
             response.StatusCode.ShouldBe(HttpStatusCode.OK);
         }
 
@@ -190,6 +192,14 @@ public sealed class TransferEndpointsTests : IAsyncLifetime
         response.StatusCode.ShouldBe(HttpStatusCode.OK, text);
         response.Content.Headers.ContentType!.MediaType.ShouldBe("application/x-ndjson");
         return [.. text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => JsonNode.Parse(line)!)];
+    }
+
+    // The ids of the assets.jsonl lines of a package, as the report lists only the assets that were not imported.
+    private static List<string> AssetIds(byte[] package)
+    {
+        using var archive = new System.IO.Compression.ZipArchive(new MemoryStream(package), System.IO.Compression.ZipArchiveMode.Read);
+        using var reader = new StreamReader(archive.GetEntry("plugins/media/assets.jsonl")!.Open());
+        return [.. reader.ReadToEnd().Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => JsonNode.Parse(line)!["id"]!.GetValue<string>())];
     }
 
     private static ByteArrayContent Zip(byte[] package)
