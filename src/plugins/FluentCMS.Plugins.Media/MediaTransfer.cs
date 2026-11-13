@@ -16,6 +16,8 @@ namespace FluentCMS.Plugins.Media;
 // update replaces stays in the storage. The import has checked transfer.manage, so the media permissions are not asked; the
 // rules of an upload still hold: every file an asset takes, from the package or at a key of the storage, passes the checks
 // of an upload in the site of the import, and its type, size and image size are those the checks find, never its line's.
+// The lines are imported as they are read, and a file of the package or a key of the storage is taken by one line of an
+// import only, so that what an import reads and writes is never more than the package holds.
 internal sealed class MediaTransfer(
     PluginDbContext<MediaPlugin> database,
     MediaLibraries libraries,
@@ -102,21 +104,16 @@ internal sealed class MediaTransfer(
 
         var library = (await libraries.OfAsync(context.Site, cancellationToken)).Value;
         var rules = await settings.GetAsync(context.Site, cancellationToken);
-        List<FolderLine> folders = [];
-        List<AssetLine> assets = [];
-        await context.ReadAsync(Folders, (stream, token) => ReadLinesAsync(stream, folders, context, FoldersSection, token), cancellationToken);
-        await context.ReadAsync(Assets, (stream, token) => ReadLinesAsync(stream, assets, context, AssetsSection, token), cancellationToken);
-
         HashSet<Guid> known = [.. await database.Set<Folder>().AsNoTracking().Where(folder => folder.SiteId == library).Select(folder => folder.Id).ToListAsync(cancellationToken)];
-        foreach (var folder in folders)
-        {
-            await ItemAsync(context, FoldersSection, folder.Id, () => ImportFolderAsync(context, library, folder, known, cancellationToken));
-        }
-
-        foreach (var asset in assets)
-        {
-            await ItemAsync(context, AssetsSection, asset.Id, () => ImportAssetAsync(context, library, rules, asset, known, cancellationToken));
-        }
+        HashSet<string> taken = new(StringComparer.Ordinal);
+        await context.ReadAsync(
+            Folders,
+            (stream, token) => ReadLinesAsync<FolderLine>(stream, context, FoldersSection, folder => ItemAsync(context, FoldersSection, folder.Id, () => ImportFolderAsync(context, library, folder, known, token)), token),
+            cancellationToken);
+        await context.ReadAsync(
+            Assets,
+            (stream, token) => ReadLinesAsync<AssetLine>(stream, context, AssetsSection, asset => ItemAsync(context, AssetsSection, asset.Id, () => ImportAssetAsync(context, library, rules, asset, known, taken, token)), token),
+            cancellationToken);
     }
 
     // A folder whose parent is neither in the instance nor imported before it is an error, as is a name its siblings have.
@@ -179,7 +176,7 @@ internal sealed class MediaTransfer(
         return existing is null ? TransferOutcome.Created : TransferOutcome.Updated;
     }
 
-    private async Task<TransferOutcome> ImportAssetAsync(ITransferImport context, Guid library, MediaSettings rules, AssetLine line, HashSet<Guid> folders, CancellationToken cancellationToken)
+    private async Task<TransferOutcome> ImportAssetAsync(ITransferImport context, Guid library, MediaSettings rules, AssetLine line, HashSet<Guid> folders, HashSet<string> taken, CancellationToken cancellationToken)
     {
         var existing = await database.Set<Asset>().FirstOrDefaultAsync(asset => asset.Id == line.Id, cancellationToken);
         if (existing is not null && (existing.SiteId != library || existing.DeletedAt is not null))
@@ -210,7 +207,7 @@ internal sealed class MediaTransfer(
 
         // The file of the package, held to the checksum it was exported with and to the checks of an upload, or the one the
         // instance has.
-        await using var file = line.File is { } path ? await PackageFileAsync(context, path, name, rules, cancellationToken) : null;
+        await using var file = line.File is { } path ? await PackageFileAsync(context, line.Id, path, name, rules, taken, cancellationToken) : null;
         if (file is not null && !string.Equals(file.Received, line.Checksum, StringComparison.OrdinalIgnoreCase))
         {
             throw Refused(MediaErrorCodes.TransferFileMissing, $"The file of the asset {line.Id:D} in the package does not have the checksum of the asset.");
@@ -229,7 +226,7 @@ internal sealed class MediaTransfer(
         }
         else
         {
-            stored = await StoredFileAsync(line, library, name, rules, cancellationToken)
+            stored = await StoredFileAsync(line, library, name, rules, taken, cancellationToken)
                 ?? throw Refused(MediaErrorCodes.TransferFileMissing, $"The file of the asset {line.Id:D} is neither in the package nor in the storage of this instance; export with {FilesOption}=true to bring it.");
         }
 
@@ -287,7 +284,9 @@ internal sealed class MediaTransfer(
         }
     }
 
-    private static async Task ReadLinesAsync<T>(Stream stream, List<T> into, ITransferImport context, string section, CancellationToken cancellationToken)
+    // Core holds each line of a .jsonl file to FluentCms:Transfer:MaxLineLength as the stream is read.
+    private static async Task ReadLinesAsync<T>(Stream stream, ITransferImport context, string section, Func<T, Task> import, CancellationToken cancellationToken)
+        where T : class
     {
         using var reader = new StreamReader(stream);
         var number = 0;
@@ -299,21 +298,35 @@ internal sealed class MediaTransfer(
                 continue;
             }
 
+            T line;
             try
             {
-                into.Add(JsonSerializer.Deserialize<T>(text, Json) ?? throw new JsonException("The line is null."));
+                line = JsonSerializer.Deserialize<T>(text, Json) ?? throw new JsonException("The line is null.");
             }
             catch (JsonException exception)
             {
                 context.Report(section, $"line {number.ToString(CultureInfo.InvariantCulture)}", TransferOutcome.Error, MediaErrorCodes.InvalidField, exception.Message);
+                continue;
             }
+
+            await import(line);
+        }
+    }
+
+    // A file of the package or a key of the storage that an earlier line of the import took, whatever became of it.
+    private static void Take(HashSet<string> taken, string slot, string file, Guid asset)
+    {
+        if (!taken.Add(slot))
+        {
+            throw Refused(MediaErrorCodes.TransferFileMissing, $"The file {file} of the asset {asset:D} is the file of an earlier line of the package; one asset of an import takes a file.");
         }
     }
 
     // The file of the package through the checks of an upload in the site of the import, with no limit of a request; null
     // when the package does not have it.
-    private static async Task<MediaService.Upload?> PackageFileAsync(ITransferImport context, string path, string name, MediaSettings rules, CancellationToken cancellationToken)
+    private static async Task<MediaService.Upload?> PackageFileAsync(ITransferImport context, Guid asset, string path, string name, MediaSettings rules, HashSet<string> taken, CancellationToken cancellationToken)
     {
+        Take(taken, "package/" + path, path, asset);
         MediaService.Upload? file = null;
         try
         {
@@ -334,7 +347,7 @@ internal sealed class MediaTransfer(
     // A line without a file may name a key of the site's library in a storage of the instance, as a storage that instances
     // share has. The file there passes the same checks, so that a line cannot give it another type, and must be the file of
     // the line as the checks would store it.
-    private async Task<StoredFile?> StoredFileAsync(AssetLine line, Guid library, string name, MediaSettings rules, CancellationToken cancellationToken)
+    private async Task<StoredFile?> StoredFileAsync(AssetLine line, Guid library, string name, MediaSettings rules, HashSet<string> taken, CancellationToken cancellationToken)
     {
         if (line.StorageProvider is not { } provider
             || line.StorageKey is not { } key
@@ -344,6 +357,8 @@ internal sealed class MediaTransfer(
         {
             return null;
         }
+
+        Take(taken, $"storage/{provider}/{key}", key, line.Id);
 
         await using var content = await storage.OpenReadAsync(key, cancellationToken);
         if (content is null)

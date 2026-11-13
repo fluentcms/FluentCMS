@@ -46,7 +46,7 @@ internal static class TransferEndpoints
                 QueryParameter.OneOf("missingLocales", MissingLocales, "skip leaves out the locales of the package that the site does not allow, which otherwise refuse the import."),
                 QueryParameter.OneOf("webhooks", Flags, "true delivers the webhooks of what the import writes, which are otherwise not delivered."),
                 QueryParameter.OneOf("roles", Flags, "true imports the roles of the package too."),
-                QueryParameter.Text("types", "The content types to import, separated by commas; every type of the package when left out."),
+                QueryParameter.Text("types", "The content types to import, separated by commas; every type of the package when left out. A caller with transfer.manage in the site only names the types it may import: an export has a file for every global type, empty or not, and importing one needs transfer.manage for the instance."),
                 QueryParameter.Text("options", "Options of the plugins' contributors, as name=value pairs separated by commas."),
             ])
             .Produces<string>(StatusCodes.Status200OK, LinesType);

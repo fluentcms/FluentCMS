@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Transfer;
 using FluentCMS.Plugins.Sample;
 using FluentCMS.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -47,14 +48,45 @@ public sealed class PluginTransferTests
         var dry = await ImportAsync(targetAdmin, package, "?dryRun=true");
         var real = await ImportAsync(targetAdmin, package, "");
 
-        dry["items"]!.ToJsonString().ShouldBe(real["items"]!.ToJsonString());
-        var item = real["items"]!.AsArray().Single(item => item!["section"]!.GetValue<string>() == SampleTransfer.Section)!;
-        item["id"]!.GetValue<string>().ShouldBe(note.Id.ToString("D"));
-        item["outcome"]!.GetValue<string>().ShouldBe("created");
+        dry["sections"]!.ToJsonString().ShouldBe(real["sections"]!.ToJsonString());
+        real["items"]!.AsArray().ShouldBeEmpty();
+        real["sections"]![SampleTransfer.Section]!["created"]!.GetValue<int>().ShouldBe(1);
         await using (var scope = target.Services.CreateAsyncScope())
         {
             var notes = await scope.ServiceProvider.GetRequiredService<PluginDbContext<SamplePlugin>>().Set<SampleNote>().AsNoTracking().ToListAsync(Token);
             notes.ShouldHaveSingleItem().Text.ShouldBe("carried");
+        }
+    }
+
+    // Core holds every line of a .jsonl file to the limit, a contributor's too, and the import stops at the first that is over.
+    [Fact]
+    public async Task ALineOfAContributorsFileOverTheLimitStopsTheImportWithTheError()
+    {
+        await using var source = new FluentCmsTestHost();
+        await using var target = new FluentCmsTestHost().WithServices(services => services.Configure<TransferOptions>(options => options.MaxLineLength = 20));
+        await using (var scope = source.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<SamplePlugin>>();
+            database.Add(new SampleNote { Id = Guid.CreateVersion7(), Text = "a note longer than the limit", CreatedAt = DateTimeOffset.UnixEpoch });
+            await database.SaveChangesAsync(Token);
+        }
+
+        using var sourceAdmin = source.AsKey(await source.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token));
+        using var exported = await sourceAdmin.PostAsync(new Uri("/api/management/v1/transfer/export", UriKind.Relative), new StringContent("{}", Encoding.UTF8, "application/json"), Token);
+        var package = await exported.Content.ReadAsByteArrayAsync(Token);
+        using var targetAdmin = target.AsKey(await target.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token));
+
+        var dry = await ImportAsync(targetAdmin, package, "?dryRun=true");
+        var real = await ImportAsync(targetAdmin, package, "");
+
+        dry["items"]!.ToJsonString().ShouldBe(real["items"]!.ToJsonString());
+        var stop = real["items"]!.AsArray()[^1]!;
+        stop["section"]!.GetValue<string>().ShouldBe("@package");
+        stop["id"]!.GetValue<string>().ShouldBe("plugins/sample/notes.jsonl");
+        stop["code"]!.GetValue<string>().ShouldBe("FCMS3200");
+        await using (var scope = target.Services.CreateAsyncScope())
+        {
+            (await scope.ServiceProvider.GetRequiredService<PluginDbContext<SamplePlugin>>().Set<SampleNote>().CountAsync(Token)).ShouldBe(0);
         }
     }
 

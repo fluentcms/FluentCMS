@@ -490,7 +490,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         var file = new Argument<string>("file") { Description = "The package to import." };
         var dryRun = new Option<bool>("--dry-run") { Description = "Checks everything and writes nothing; the report is the one the import would give." };
         var site = SiteOption("import into");
-        var types = TypesOption("The content types to import, separated by commas; every type of the package when left out.");
+        var types = TypesOption("The content types to import, separated by commas; every type of the package when left out. With --url, a key with transfer.manage in the site only names the types it may import: an export has a file for every global type, empty or not, and importing one needs transfer.manage for the instance.");
         var overwrite = new Option<bool>("--overwrite") { Description = "Takes the package's copy of an entry that is newer in the instance, which is otherwise a conflict." };
         var webhooks = new Option<bool>("--webhooks") { Description = "Delivers the webhooks of what the import writes, which are otherwise not delivered." };
         var missingLocales = new Option<string>("--missing-locales") { Description = "refuse (the default) or skip: whether the locales the site does not allow refuse the import or are left out.", HelpName = "mode" };

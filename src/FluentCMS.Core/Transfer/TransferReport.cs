@@ -2,8 +2,10 @@ using FluentCMS.Transfer;
 
 namespace FluentCMS.Core.Transfer;
 
-// What an import did, item by item, in the order it did it, so that a dry run and the import that follows give the same report.
-internal sealed class TransferReport(bool dryRun)
+// What an import did, in the order it did it, so that a dry run and the import that follows give the same report. Every item
+// is counted by section, and only the conflicts and errors are listed, up to FluentCms:Transfer:MaxReportItems, so that the
+// answer does not grow with the entries that were imported.
+internal sealed class TransferReport(bool dryRun, int maxItems)
 {
     private readonly List<TransferItem> _items = [];
     private readonly Dictionary<string, TransferCounts> _sections = new(StringComparer.Ordinal);
@@ -25,8 +27,18 @@ internal sealed class TransferReport(bool dryRun)
             throw new ArgumentOutOfRangeException(nameof(outcome), outcome, "An outcome is one of TransferOutcome.");
         }
 
-        _items.Add(new TransferItem(section, id, outcome, code, message));
         _sections[section] = (_sections.GetValueOrDefault(section) ?? TransferCounts.None).With(outcome);
+        if (outcome is TransferOutcome.Conflict or TransferOutcome.Error && _items.Count < maxItems)
+        {
+            _items.Add(new TransferItem(section, id, outcome, code, message));
+        }
+    }
+
+    // The error that stopped the import, listed whatever the number of items already listed.
+    public void Stop(string section, string id, string code, string message)
+    {
+        _sections[section] = (_sections.GetValueOrDefault(section) ?? TransferCounts.None).With(TransferOutcome.Error);
+        _items.Add(new TransferItem(section, id, TransferOutcome.Error, code, message));
     }
 
     public TransferCounts Of(string section) => _sections.GetValueOrDefault(section) ?? TransferCounts.None;
