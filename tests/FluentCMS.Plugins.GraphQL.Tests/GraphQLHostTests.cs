@@ -2,11 +2,13 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Sites;
 using FluentCMS.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 
@@ -217,6 +219,75 @@ public sealed class GraphQLHostTests : IDisposable
     }
 
     [Fact]
+    public async Task TheDepthOfASelectionCountsRelationsAndRepeatedComponentsAndNotASingleComponent()
+    {
+        await using var host = Host();
+        using var admin = await AdminAsync(host);
+        string? id = null;
+        foreach (var title in (string[])["One", "Two", "Three", "Four"])
+        {
+            var input = new { title, parent = id, links = new[] { new { label = title } }, aside = new { label = title, note = id } };
+            id = (await admin.QueryAsync("mutation($input: NoteInput!) { createNote(input: $input) { id } }", new { input }))["createNote"]!["id"]!.GetValue<string>();
+        }
+
+        // A repeated component is a level of its own, a single one is not, and each alias of a field is counted on its own.
+        var total = 5;
+        foreach (var selection in (string[])[
+            "parent { parent { parent { links { label } } } }",
+            "parent { parent { aside { note { links { label } } } } }",
+            "parent { shallow: parent { links { label } } deep: parent { parent { links { label } } } }"])
+        {
+            var (data, errors) = await admin.FailAsync($"mutation($id: ID!) {{ createNote(input: {{ title: \"Five\", parent: $id }}) {{ {selection} }} }}", new { id });
+            data!["createNote"].ShouldBeNull(selection);
+            errors.Codes().ShouldBe(["FCMS2207"], selection);
+            (await TotalAsync()).ShouldBe(total, selection);
+        }
+
+        (await CreateAsync("parent { parent { links { label } } }"))["parent"]!["parent"]!["links"].Strings("label").ShouldBe(["Three"]);
+        (await CreateAsync("parent { aside { note { links { label } } } }"))["parent"]!["aside"]!["note"]!["links"].Strings("label").ShouldBe(["Three"]);
+        var aliased = (await CreateAsync("parent { shallow: parent { links { label } } deep: parent { parent { title } } }"))["parent"]!;
+        aliased["shallow"]!["links"].Strings("label").ShouldBe(["Three"]);
+        aliased["deep"]!["parent"]!["title"]!.GetValue<string>().ShouldBe("Two");
+        (await TotalAsync()).ShouldBe(total);
+
+        async Task<JsonNode> CreateAsync(string selection)
+        {
+            total++;
+            return (await admin.QueryAsync($"mutation($id: ID!) {{ createNote(input: {{ title: \"Five\", parent: $id }}) {{ {selection} }} }}", new { id }))["createNote"]!;
+        }
+
+        async Task<long> TotalAsync() => (await admin.QueryAsync("{ noteList(status: DRAFT) { total } }"))["noteList"]!["total"]!.GetValue<long>();
+    }
+
+    [Fact]
+    public async Task AnUnexpectedFailureOfTheReadAfterAWriteIsLoggedOnceAndReportedAtEachFieldItWasToPopulate()
+    {
+        var logs = new LogCapture();
+        await using var host = Host(configure: services =>
+        {
+            services.AddSingleton<ILoggerProvider>(logs);
+            services.AddScoped(provider => FailingPopulation.Wrap(provider.GetRequiredService<ContentService>()));
+        });
+        using var admin = await AdminAsync(host);
+        var one = (await admin.QueryAsync("mutation { createNote(input: { title: \"One\" }) { id } }"))["createNote"]!["id"]!.GetValue<string>();
+
+        var (data, errors) = await admin.FailAsync(
+            "mutation($id: ID!) { createNote(input: { title: \"Full\", parent: $id, aside: { label: \"Aside\", note: $id } }) { title parent { title } aside { label note { title } } } }",
+            new { id = one });
+        var created = data!["createNote"]!;
+        created["title"]!.GetValue<string>().ShouldBe("Full");
+        created["parent"].ShouldBeNull();
+        created["aside"]!["label"]!.GetValue<string>().ShouldBe("Aside");
+        created["aside"]!["note"].ShouldBeNull();
+        errors.Codes().ShouldBe(["FCMS3199", "FCMS3199"]);
+        errors.Select(error => string.Join('.', error!["path"]!.AsArray().Select(part => part!.ToString()))).ShouldBe(["createNote.parent", "createNote.aside.note"], ignoreOrder: true);
+        errors.ToJsonString().ShouldNotContain("The read failed.");
+
+        // One read failed, so one line, whatever the number of fields that report it.
+        logs.Lines.Where(line => line.Id == 9321).Select(line => line.Message).ShouldBe(["The GraphQL field createNote failed and was answered as FCMS3199."]);
+    }
+
+    [Fact]
     public async Task AWriteWhoseReadFailsAfterItCommittedAnswersTheWrittenEntryWithTheErrorAtTheField()
     {
         // One related entry at most in a read, so that a read that populates two fails once the write is done.
@@ -299,7 +370,7 @@ public sealed class GraphQLHostTests : IDisposable
 
     private static FluentCmsTestHost Host(Action<GraphQLOptions>? options = null, Action<IServiceCollection>? configure = null) =>
         new FluentCmsTestHost()
-            .WithContentTypes(typeof(Note), typeof(SiteSettings), typeof(Link))
+            .WithContentTypes(typeof(Note), typeof(SiteSettings), typeof(Link), typeof(Aside))
             .WithServices(services =>
             {
                 if (options is not null)

@@ -237,7 +237,7 @@ internal static class ContentResolvers
 
         if (Access(context)?.ReadFailure is { } failure && ReadPlan.Populates(context, context.Selection, field))
         {
-            Report(context, failure);
+            Report(context, failure, logged: true);
             return null;
         }
 
@@ -321,6 +321,8 @@ internal static class ContentResolvers
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
+                // Logged once, here: the fields that report it do not log it, and an answer may reach none of them.
+                Describe(context, exception, log: true);
                 plan.Access.ReadFailure = exception;
             }
         }
@@ -345,15 +347,21 @@ internal static class ContentResolvers
         }
     }
 
-    private static void Report(IResolverContext context, Exception exception)
+    private static ProblemDescription Describe(IResolverContext context, Exception exception, bool log)
     {
         var problem = context.RequestServices.GetRequiredService<IProblemDescriber>().Describe(exception);
-        if (problem.Status >= 500)
+        if (log && problem.Status >= 500)
         {
             var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger<GraphQLPlugin>();
             GraphQLLog.FieldFailed(logger, exception, context.Selection.Field.Name, problem.Code);
         }
 
+        return problem;
+    }
+
+    private static void Report(IResolverContext context, Exception exception, bool logged = false)
+    {
+        var problem = Describe(context, exception, log: !logged);
         var error = Error(context, problem.Code, problem.Detail).SetExtension("status", problem.Status);
         if (problem.Errors.Count > 0)
         {
