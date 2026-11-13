@@ -245,7 +245,7 @@ public class LayeringRulesTests
         ai.ProjectReferences.ShouldBe([Sdk, PluginAbstractions], ignoreOrder: true);
         // The providers of its PostgreSQL and SQL Server migration sets are compiled against and not depended on.
         ai.PackageReferences.Where(package => !package.DevelopmentOnly).Select(package => package.Name)
-            .ShouldBe(["Anthropic", "Microsoft.Extensions.AI", "Microsoft.Extensions.AI.OpenAI", "OllamaSharp"], ignoreOrder: true);
+            .ShouldBe(["Microsoft.Extensions.AI", "Microsoft.Extensions.AI.OpenAI"], ignoreOrder: true);
     }
 
     // Spec 5.5: the AI assist plugin reads content and media through their services, as the caller, and writes nothing to

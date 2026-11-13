@@ -10,10 +10,10 @@ The settings area `ai` (`GET` and `PUT /api/management/v1/settings/ai`, permissi
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `provider` | `none` | `openAi`, `azureOpenAi`, `anthropic`, `ollama`, `openAiCompatible`, or `none`, which leaves AI assist off. |
+| `provider` | `none` | `openAi`, `azureOpenAi`, `openAiCompatible`, or `none`, which leaves AI assist off. |
 | `model` | unset | The model, or for Azure OpenAI the deployment. |
-| `endpoint` | unset | The endpoint of the provider, one of `FluentCms:Ai:AllowedEndpoints`. OpenAI and Anthropic use their own when it is unset; the other providers need one. |
-| `apiKey` | unset | The key, a secret: it is written and never returned. Unset, the key is `FluentCms:Ai:{Provider}:ApiKey`. |
+| `endpoint` | unset | The endpoint of the provider, one of `FluentCms:Ai:AllowedEndpoints`. OpenAI uses its own when it is unset; the other providers need one. |
+| `apiKey` | unset | The key, a secret: it is written and never returned. Unset, the key is `FluentCms:Ai:{Provider}:ApiKey`. `openAiCompatible` also works with no key at all. |
 | `maxOutputTokens` | `1024` | The most tokens an answer has, from 1 to 32000. |
 | `requestTimeout` | `60` | How long a call may take, in seconds, from 1 to 600. |
 | `callsPerMinute` | `20` | The calls a principal may make in a minute in the site, counted on each instance. |
@@ -21,7 +21,45 @@ The settings area `ai` (`GET` and `PUT /api/management/v1/settings/ai`, permissi
 
 A field that takes actions is a text, long text or rich text field of a content type. A rich text field is sent and answered as Markdown.
 
-Azure OpenAI is reached through its OpenAI-compatible endpoint, `https://{resource}.openai.azure.com/openai/v1`, with the deployment as the model and an API key. Signing in to Azure with an identity instead of a key is a factory of the host's own (below).
+## Providers
+
+The plugin speaks the chat completions API of OpenAI, through `Microsoft.Extensions.AI.OpenAI`, and nothing else:
+
+- `openAi` is OpenAI, at `https://api.openai.com/v1` unless the site names another endpoint. It needs a key.
+- `azureOpenAi` is Azure OpenAI through its OpenAI-compatible endpoint, `https://{resource}.openai.azure.com/openai/v1`, with the deployment as the model and an API key. Signing in to Azure with an identity instead of a key is a [factory of the host's own](#a-provider-of-the-hosts-own).
+- `openAiCompatible` is any other endpoint that speaks that API. It works with a key or without one, and without one the request carries no `Authorization` header.
+
+### Ollama
+
+Ollama serves the OpenAI API under `/v1`, without a key. Allow the endpoint in the host:
+
+```text
+FluentCms__Ai__AllowedEndpoints__0=http://ollama:11434/v1
+```
+
+and name it in the settings of the site:
+
+```json
+{
+  "provider": "openAiCompatible",
+  "model": "llama3.2",
+  "endpoint": "http://ollama:11434/v1",
+  "fields": { "article": ["title", "summary"] }
+}
+```
+
+When the instance defaults hold a key, a site's first save without `apiKey` keeps that key (see below), and the call is refused with `FCMS1685` because the key belongs to the endpoint of the defaults. Send `"apiKey": null` to save the site with no key.
+
+A site with no key of its own gets `FluentCms:Ai:OpenAiCompatible:ApiKey` from the configuration, and so does every `openAiCompatible` site, a keyless Ollama site included: a site cannot decline it. An operator who serves Ollama sites therefore sets no configuration key for `OpenAiCompatible`, and gives each site that needs a key its own.
+
+### Other models
+
+A model that has no OpenAI-compatible endpoint is reached in one of two ways:
+
+- through a gateway that gives it one, such as a proxy in front of several providers, named as `openAiCompatible` with the gateway's endpoint and key. Many providers also serve an OpenAI-compatible endpoint of their own, which is used the same way;
+- through a [factory of the host's own](#a-provider-of-the-hosts-own), which brings any `IChatClient`, such as the client of the provider's own package that the host references.
+
+`anthropic` and `ollama` were providers of the plugin until M7. Settings that name one are refused when they are saved (`FCMS2805` on `provider`), and a site that still holds them is refused at every call (`FCMS1692`), each time with what to use instead. A site that moves off `anthropic` sends a new key with its new provider, or `"apiKey": null`, since a save without `apiKey` keeps its stored Anthropic key, which would then go to the new endpoint. A section `FluentCms:Ai:Anthropic` or `FluentCms:Ai:Ollama` in the configuration stops the host.
 
 ## Settings of the host
 
@@ -29,14 +67,14 @@ The options are in `FluentCms:Ai`:
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `AllowedEndpoints` | empty | The endpoints a site may name in its settings, each an absolute `http` or `https` URL with no user, query or fragment. Empty leaves a site OpenAI and Anthropic at their own endpoints. |
+| `AllowedEndpoints` | empty | The endpoints a site may name in its settings, each an absolute `http` or `https` URL with no user, query or fragment. Empty leaves a site OpenAI at its own endpoint. |
 | `{Provider}:ApiKey` | unset | The key of a provider for the sites whose settings hold none, such as `FluentCms:Ai:OpenAi:ApiKey`. Keep it in a secret store, not in a file of the repository. |
 | `MaxInputLength` | `20000` | The most characters of text an action takes. |
 | `UsageRetention` | `90.00:00:00` | How long the usage log keeps a row. |
 
 The allow-list is a security control. A site administrator who could name any endpoint could make the server call an address inside the network, so an endpoint is used only when it is on the list: the same scheme, host, port and path, whatever the case of the host and with or without a slash at the end. The list is read when the host starts, so a change to it applies after a restart. An endpoint is checked against it at every call and not only when the settings are saved, so an endpoint that was saved while it was on the list is refused once the host runs with a list that no longer holds it. Redirects are not followed, and a refusal is `FCMS1684`.
 
-The key of the configuration for `OpenAi` or `Anthropic` is the operator's account with that provider, so it is sent to the provider's own endpoint only. A site that names another endpoint for one of them holds its own key. The key of the configuration for `AzureOpenAi`, `OpenAiCompatible` or `Ollama` goes to whichever allowed endpoint a site names for that provider, so give each site its own key when the list holds endpoints of more than one party.
+The key of the configuration for `OpenAi` is the operator's account with OpenAI, so it is sent to OpenAI's own endpoint only. A site that names another endpoint for it holds its own key. The key of the configuration for `AzureOpenAi` or `OpenAiCompatible` goes to whichever allowed endpoint a site names for that provider, so give each site its own key when the list holds endpoints of more than one party.
 
 A key in the instance defaults of the settings is the operator's as well. A site with no settings of its own follows the defaults whole. When such a site first saves its settings without a key, it keeps the key of the defaults, because a secret that is not sent is kept, as for every settings area. The plugin sends that key only to the provider and the endpoint the defaults name: a site that names another provider or endpoint sets a key of its own, and is refused with `FCMS1685` until it does. An inherited key is told by comparing it with the key the defaults hold now. So a key that is replaced in the defaults is also revoked at the provider: a site that saved its settings before holds a copy of the old one, which from then on counts as its own.
 
@@ -104,7 +142,7 @@ With `documentId` the content service decides whether the caller may read the dr
 - The answer has at most `maxOutputTokens` tokens.
 - A call ends at `requestTimeout` (`FCMS1688`) or when the caller goes away.
 - A principal makes at most `callsPerMinute` calls in a site (`FCMS1687`). The count is kept in memory on each instance, and a refused call takes nothing from it. The Management rate limit holds beside it.
-- A call is one request to the provider: the retries of the provider packages are off.
+- A call is one request to the provider: the retries of the client package are off.
 
 ### The text is content
 
@@ -129,21 +167,26 @@ The recurring job `ai.usage-retention` (daily at 04:30 UTC) removes the rows old
 
 ## A provider of the host's own
 
-The plugin declares the provider slot `IAiClientFactory`, which gives the `IChatClient` and the model of a site:
+The plugin declares the provider slot `IAiClientFactory`, which gives the `IChatClient` and the model of a site. A host fills it to reach a model that has no OpenAI-compatible endpoint, or to sign in another way than with a key. The host references the package of that client itself, and the plugin depends on none. Here every site that names a provider gets the one client the host registers, under the model its settings name:
 
 ```csharp
-public sealed class FoundryClientFactory(IChatClient client) : IAiClientFactory
+public sealed class HostClientFactory(IChatClient client) : IAiClientFactory
 {
     public ValueTask<AiClient?> CreateAsync(SiteId site, AiSettings settings, CancellationToken cancellationToken = default) =>
-        ValueTask.FromResult<AiClient?>(new AiClient(client, "foundry", "gpt-5"));
+        ValueTask.FromResult<AiClient?>(settings.Provider == AiProvider.None
+            ? null
+            : new AiClient(client, "host", settings.Model ?? "default"));
 }
 ```
 
 ```csharp
+// Any IChatClient, such as the one of a provider's own package.
+builder.Services.AddSingleton<IChatClient>(services => CreateChatClient(builder.Configuration));
+
 builder.Services.AddFluentCms(cms =>
 {
     cms.AddPlugin<AiAssistPlugin>();
-    cms.Providers.Use<IAiClientFactory, FoundryClientFactory>();
+    cms.Providers.Use<IAiClientFactory, HostClientFactory>();
 });
 ```
 
@@ -151,7 +194,7 @@ The factory is a singleton and owns its clients: the plugin calls a client and d
 
 ## Telemetry
 
-A call is a span of the `FluentCMS` activity source named `ai {action}`, with `fluentcms.operation`, `fluentcms.site`, `fluentcms.type`, `fluentcms.provider` and `fluentcms.outcome` (`succeeded`, `failed`, `timeout` or `cancelled`), and for a failure the Error status and `fluentcms.code`. The counter `fluentcms.ai.calls` of the `FluentCMS` meter counts the calls by `fluentcms.operation`, `fluentcms.provider` and `fluentcms.outcome`. Log event ids 9360 to 9367.
+A call is a span of the `FluentCMS` activity source named `ai {action}`, with `fluentcms.operation`, `fluentcms.site`, `fluentcms.type`, `fluentcms.provider` and `fluentcms.outcome` (`succeeded`, `failed`, `timeout` or `cancelled`), and for a failure the Error status and `fluentcms.code`. The counter `fluentcms.ai.calls` of the `FluentCMS` meter counts the calls by `fluentcms.operation`, `fluentcms.provider` and `fluentcms.outcome`. Log event ids 9360 to 9368.
 
 ## Codes
 
@@ -169,5 +212,6 @@ A call is a span of the `FluentCMS` activity source named `ai {action}`, with `f
 | `FCMS1689` | 502 | The provider failed the call. |
 | `FCMS1690` | 502 | The provider answered with no text, or for `seo` with no title and description. |
 | `FCMS1691` | 422 | The media asset is not an image, or the site has no media library. |
+| `FCMS1692` | 409 | The settings of the site name `anthropic` or `ollama`, which are no longer providers of the plugin. |
 
 Where the plugin is disabled for a site, its endpoints answer 404 (`FCMS1550`).

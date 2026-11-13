@@ -6,8 +6,8 @@ public sealed class AiOptions
 {
     public const string Section = "FluentCms:Ai";
 
-    // The endpoints a site may name in its settings. Empty, the default, leaves a site OpenAI and Anthropic at their own
-    // endpoints only, so that a site administrator cannot point the server at an address inside the network.
+    // The endpoints a site may name in its settings. Empty, the default, leaves a site OpenAI at its own endpoint only, so
+    // that a site administrator cannot point the server at an address inside the network.
     public IList<string> AllowedEndpoints { get; } = [];
 
     // The most characters of text an action takes.

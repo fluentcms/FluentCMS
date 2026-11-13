@@ -14,9 +14,8 @@ namespace FluentCMS.Plugins.AiAssist.Tests;
 public sealed record StubRequest(string Method, string Path, IReadOnlyDictionary<string, string> Headers, JsonNode? Body);
 
 // A local stand-in for a provider on a loopback port of its own, so that the default client factory is run for real and
-// no provider is called. It records every request and answers Answer in the wire format of the path it is asked on: the
-// chat completions of OpenAI, the chat of Ollama or the messages of Anthropic. Status answers a failure instead, and
-// RedirectTo a redirect.
+// no provider is called. It records every request and answers Answer in the chat completions format of OpenAI, streamed or
+// not. Status answers a failure instead, and RedirectTo a redirect.
 public sealed class StubProvider : IAsyncDisposable
 {
     public const int PromptTokens = 11;
@@ -102,37 +101,6 @@ public sealed class StubProvider : IAsyncDisposable
                     model,
                     choices = new[] { new { index = 0, message = new { role = "assistant", content = Answer }, finish_reason = "stop" } },
                     usage = new { prompt_tokens = PromptTokens, completion_tokens = CompletionTokens, total_tokens = PromptTokens + CompletionTokens },
-                },
-                context.RequestAborted);
-        }
-        else if (path.EndsWith("/api/chat", StringComparison.Ordinal))
-        {
-            await context.Response.WriteAsJsonAsync(
-                new
-                {
-                    model,
-                    created_at = "2026-11-01T00:00:00Z",
-                    message = new { role = "assistant", content = Answer },
-                    done = true,
-                    done_reason = "stop",
-                    prompt_eval_count = PromptTokens,
-                    eval_count = CompletionTokens,
-                },
-                context.RequestAborted);
-        }
-        else if (path.EndsWith("/v1/messages", StringComparison.Ordinal))
-        {
-            await context.Response.WriteAsJsonAsync(
-                new
-                {
-                    id = "msg_stub",
-                    type = "message",
-                    role = "assistant",
-                    model,
-                    content = new[] { new { type = "text", text = Answer } },
-                    stop_reason = "end_turn",
-                    stop_sequence = (string?)null,
-                    usage = new { input_tokens = PromptTokens, output_tokens = CompletionTokens },
                 },
                 context.RequestAborted);
         }

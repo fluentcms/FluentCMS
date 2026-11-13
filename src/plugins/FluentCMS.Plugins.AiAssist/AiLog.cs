@@ -30,4 +30,7 @@ internal static partial class AiLog
 
     [LoggerMessage(EventId = 9367, Level = LogLevel.Error, Message = "The AI action {Action} failed while it streamed with {Failure}, answered as {Code}.")]
     public static partial void StreamFailed(ILogger logger, string action, string failure, string code);
+
+    [LoggerMessage(EventId = 9368, Level = LogLevel.Warning, Message = "Site {SiteId} names the AI provider {Provider}, which the plugin no longer has, so its AI calls are refused until it names openAiCompatible.")]
+    public static partial void ProviderRemoved(ILogger logger, Guid siteId, string provider);
 }
