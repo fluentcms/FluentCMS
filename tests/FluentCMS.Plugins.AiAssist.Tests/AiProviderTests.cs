@@ -228,11 +228,12 @@ public sealed class AiProviderTests : IAsyncLifetime
         (await _ai.UsageAsync(site)).ShouldHaveSingleItem().Succeeded.ShouldBeFalse();
     }
 
-    // A site's first save without a key takes the key of the instance defaults with it, since a form never shows a secret
-    // and must not wipe it (spec 4.13). A site administrator who then names another endpoint does not get that key sent
-    // there: it stays with the provider and the endpoint of the defaults.
+    // A site that saves its settings without a key goes on reading the key of the instance defaults, since a form never shows
+    // a secret and must not wipe it (spec 4.13). A site administrator who then names another endpoint does not get that key
+    // sent there: it stays with the provider and the endpoint of the defaults, also once it is replaced there, and the
+    // replaced key reaches every site that inherits it.
     [Fact]
-    public async Task AKeyASiteTookFromTheInstanceDefaultsIsNeverSentToAnEndpointTheSiteNames()
+    public async Task AKeyASiteInheritsFromTheInstanceDefaultsIsNeverSentToAnEndpointTheSiteNames()
     {
         await _ai.SetDefaultsAsync(new AiSettings
         {
@@ -254,8 +255,8 @@ public sealed class AiProviderTests : IAsyncLifetime
         // None of the first three sends a key; the fourth brings its own, and the last clears the key, as for Ollama.
         await SaveAsync(sameEndpoint, new { provider = "openAiCompatible", model = "model-of-the-site", endpoint = _first.Url("v1"), fields });
         var saved = await SaveAsync(moved, new { provider = "openAiCompatible", model = "model-of-the-site", endpoint = _second.Url("v1"), fields });
-        await SaveAsync(owning, new { provider = "openAiCompatible", model = "model-of-the-site", endpoint = _second.Url("v1"), apiKey = "key-of-the-site", fields });
-        await SaveAsync(keyless, new { provider = "openAiCompatible", model = "model-without-a-key", endpoint = _second.Url("v1"), apiKey = (string?)null, fields });
+        var owned = await SaveAsync(owning, new { provider = "openAiCompatible", model = "model-of-the-site", endpoint = _second.Url("v1"), apiKey = "key-of-the-site", fields });
+        var cleared = await SaveAsync(keyless, new { provider = "openAiCompatible", model = "model-without-a-key", endpoint = _second.Url("v1"), apiKey = (string?)null, fields });
 
         var followed = await SuggestAsync(inheriting, "rewrite", body);
         var kept = await SuggestAsync(sameEndpoint, "rewrite", body);
@@ -264,8 +265,12 @@ public sealed class AiProviderTests : IAsyncLifetime
         var own = await SuggestAsync(owning, "rewrite", body);
         var withoutKey = await SuggestAsync(keyless, "rewrite", body);
 
-        // The site did take the key with it, which is what makes the refusal necessary.
+        // The site reads the key of the defaults without holding it, which is what makes the refusal necessary.
         saved["secretsSet"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldContain("apiKey");
+        saved["secretsInherited"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldContain("apiKey");
+        owned["secretsInherited"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldNotContain("apiKey");
+        cleared["secretsInherited"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldNotContain("apiKey");
+        cleared["secretsSet"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldNotContain("apiKey");
         problem["code"]!.GetValue<string>().ShouldBe("FCMS1685");
         problem.ToJsonString().ShouldNotContain("key-of-the-instance");
         followed["usage"]!["model"]!.GetValue<string>().ShouldBe("model-of-the-instance");
@@ -274,8 +279,26 @@ public sealed class AiProviderTests : IAsyncLifetime
         withoutKey["usage"]!["model"]!.GetValue<string>().ShouldBe("model-without-a-key");
         _first.Requests.Select(request => request.Headers["Authorization"]).ShouldBe(["Bearer key-of-the-instance", "Bearer key-of-the-instance"]);
         _second.Requests.Select(request => request.Headers.GetValueOrDefault("Authorization")).ShouldBe(["Bearer key-of-the-site", null]);
+
+        // The operator replaces the key: the sites that inherit it send the new one, and the one that names another endpoint
+        // is refused as before.
+        await _ai.SetDefaultsAsync(new AiSettings
+        {
+            Provider = AiProvider.OpenAiCompatible,
+            Model = "model-of-the-instance",
+            Endpoint = _first.Url("v1"),
+            ApiKey = "key-that-replaced-it",
+            Fields = { ["article"] = ["summary"] },
+        });
+        await SuggestAsync(inheriting, "rewrite", body);
+        await SuggestAsync(sameEndpoint, "rewrite", body);
+        using var stillRefused = await ActAsync(moved, "rewrite", body);
+
+        (await JsonAsync(stillRefused, HttpStatusCode.Conflict))["code"]!.GetValue<string>().ShouldBe("FCMS1685");
+        _first.Requests.Skip(2).Select(request => request.Headers["Authorization"]).ShouldBe(["Bearer key-that-replaced-it", "Bearer key-that-replaced-it"]);
+        _second.Requests.Count.ShouldBe(2);
         (await _ai.UsageAsync(movedSite)).ShouldBeEmpty();
-        _ai.Logs.Lines.ShouldNotContain(line => line.Contains("key-of-the-instance", StringComparison.Ordinal));
+        _ai.Logs.Lines.ShouldNotContain(line => line.Contains("key-of-the-instance", StringComparison.Ordinal) || line.Contains("key-that-replaced-it", StringComparison.Ordinal));
     }
 
     // The slot keeps the plugin's default until a host fills it.

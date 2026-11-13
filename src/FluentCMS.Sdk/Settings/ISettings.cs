@@ -5,9 +5,11 @@ namespace FluentCMS.Settings;
 /// <summary>
 /// Reads and writes the settings of one area. A read gives the settings of the site if it has any, otherwise the instance
 /// defaults if there are any, otherwise a new instance of the class, whose property values are the code defaults. The
-/// choice is of a whole document and never of single properties. Reads are cached for a short time and are not checked
-/// against permissions, because they are for code that runs in the host; whatever shows settings to a person must check
-/// <c>settings.{area}.manage</c> first.
+/// choice is of a whole document and never of single properties, with one exception: a secret property that the site does
+/// not set itself is not copied into its settings, and a read gives the value the instance defaults hold at that time, so a
+/// secret replaced there reaches every site that inherits it (<see cref="ResolveAsync"/> tells which ones). Reads are cached
+/// for a short time and are not checked against permissions, because they are for code that runs in the host; whatever shows
+/// settings to a person must check <c>settings.{area}.manage</c> first.
 /// </summary>
 /// <typeparam name="T">The settings class, marked with <see cref="SettingsAttribute"/> and added with <c>cms.Settings.Add</c>.</typeparam>
 public interface ISettings<T>
@@ -20,6 +22,17 @@ public interface ISettings<T>
     /// <exception cref="Content.ValidationException">There is no such site.</exception>
     ValueTask<T> GetAsync(SiteId site, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Gets the settings that apply to a site, as <see cref="GetAsync"/> does, and from the same read the secret properties
+    /// whose values the site takes from the instance defaults. Code that sends a secret to a place the site's settings name,
+    /// such as an endpoint, asks it whether the secret is the site's own: one the site inherits is the operator's.
+    /// </summary>
+    /// <param name="site">The site.</param>
+    /// <param name="cancellationToken">A token to cancel the work.</param>
+    /// <returns>The settings, and the inherited secret properties: every one of them for a site with no settings of its own.</returns>
+    /// <exception cref="Content.ValidationException">There is no such site.</exception>
+    ValueTask<ResolvedSettings<T>> ResolveAsync(SiteId site, CancellationToken cancellationToken = default);
+
     /// <summary>Gets the instance defaults, which apply to every site that has no settings of its own.</summary>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>A new instance; the code defaults when no instance default was set.</returns>
@@ -27,7 +40,10 @@ public interface ISettings<T>
 
     /// <summary>
     /// Replaces the settings of a site, which then no longer follow the instance defaults. The write is the whole document, it is
-    /// atomic, and when two writes meet the last one stands. Raises <c>SettingsChangedEvent</c> and records an activity row.
+    /// atomic, and when two writes meet the last one stands. Every secret property of the value, a <see langword="null"/> one
+    /// included, is the site's own from then on; since a read gives the secrets a site inherits, writing back a value that was
+    /// read makes them its own. <see cref="ResetAsync"/> makes a site inherit them again. Raises <c>SettingsChangedEvent</c>
+    /// and records an activity row.
     /// </summary>
     /// <param name="site">The site.</param>
     /// <param name="value">The new settings.</param>

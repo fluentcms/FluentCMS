@@ -217,12 +217,14 @@ internal sealed record SettingResponse(
     [property: Description("The settings of the area, as the JSON schema under schema describes them. A secret key is left out; secretsSet names those that hold a value.")]
     JsonObject Value,
     IReadOnlyList<string> SecretsSet,
+    [property: Description("The secret keys that the site does not set itself, whose values are read from the instance defaults at every use; empty for the instance defaults. A write that leaves such a key out keeps it inherited, and one that names it, null included, makes it the site's own.")]
+    IReadOnlyList<string> SecretsInherited,
     [property: Description("The JSON schema of the area's settings, which value and a write follow.")]
     JsonObject Schema)
 {
     // A redacted document and a settings class's schema are both objects.
     public static SettingResponse From(SettingsDescriptor descriptor, Guid? site, RedactedSetting setting) =>
-        new(descriptor.Area, site, setting.Source, setting.Version, JsonNode.Parse(setting.Json)!.AsObject(), setting.SecretsSet, descriptor.CreateSchema().AsObject());
+        new(descriptor.Area, site, setting.Source, setting.Version, JsonNode.Parse(setting.Json)!.AsObject(), setting.SecretsSet, setting.SecretsInherited, descriptor.CreateSchema().AsObject());
 }
 
 // A job as JobInfo has it, with its attempts as history and never its payload.

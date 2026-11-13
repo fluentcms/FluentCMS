@@ -224,8 +224,8 @@ public sealed class AiClientFactoryTests
         refusal.Code.ShouldBe("FCMS1684");
     }
 
-    // A site's first save without a key takes the key of the instance defaults with it (spec 4.13). That key is the
-    // operator's for the provider and endpoint of the defaults, so it is not a site's to send anywhere else.
+    // A site that sets no key reads the key of the instance defaults (spec 4.13), which is the operator's for the provider
+    // and the endpoint of the defaults, so it is not a site's to send anywhere else.
     [Fact]
     public async Task AKeyInheritedFromTheInstanceDefaultsGoesToTheProviderAndEndpointOfTheDefaultsOnly()
     {
@@ -235,11 +235,11 @@ public sealed class AiClientFactoryTests
         using var factory = Factory([theirs.Url("v1"), other.Url("v1"), other.Url()], [], defaults);
         List<ChatMessage> messages = [new(ChatRole.User, "Ships are big boats.")];
 
-        var inherited = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "another-model", Endpoint = theirs.Url("v1/"), ApiKey = "key-of-the-instance" }, Token);
+        var inherited = await factory.CreateInheritingAsync(new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "another-model", Endpoint = theirs.Url("v1/"), ApiKey = "key-of-the-instance" });
         await inherited!.Client.GetResponseAsync(messages, cancellationToken: Token);
-        var otherEndpoint = await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = other.Url("v1"), ApiKey = "key-of-the-instance" }, Token));
-        var otherProvider = await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.AzureOpenAi, Model = "a-model", Endpoint = other.Url(), ApiKey = "key-of-the-instance" }, Token));
-        var sameEndpointOtherProvider = await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.AzureOpenAi, Model = "a-model", Endpoint = theirs.Url("v1"), ApiKey = "key-of-the-instance" }, Token));
+        var otherEndpoint = await Should.ThrowAsync<PluginException>(async () => await factory.CreateInheritingAsync(new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = other.Url("v1"), ApiKey = "key-of-the-instance" }));
+        var otherProvider = await Should.ThrowAsync<PluginException>(async () => await factory.CreateInheritingAsync(new AiSettings { Provider = AiProvider.AzureOpenAi, Model = "a-model", Endpoint = other.Url(), ApiKey = "key-of-the-instance" }));
+        var sameEndpointOtherProvider = await Should.ThrowAsync<PluginException>(async () => await factory.CreateInheritingAsync(new AiSettings { Provider = AiProvider.AzureOpenAi, Model = "a-model", Endpoint = theirs.Url("v1"), ApiKey = "key-of-the-instance" }));
         var own = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = other.Url("v1"), ApiKey = "key-of-the-site" }, Token);
         await own!.Client.GetResponseAsync(messages, cancellationToken: Token);
 
@@ -251,6 +251,46 @@ public sealed class AiClientFactoryTests
         other.Requests.ShouldHaveSingleItem().Headers["Authorization"].ShouldBe("Bearer key-of-the-site");
     }
 
+    // After the defaults' key is replaced, a site that inherits it reads the new one and is held to the defaults just the
+    // same, whatever key it was given; a key that a site set itself is its own, even one that equals the key of the defaults.
+    [Fact]
+    public async Task WhetherAKeyIsInheritedIsWhatTheSettingsSayAndNotWhatItEquals()
+    {
+        await using var theirs = await StubProvider.StartAsync();
+        await using var other = await StubProvider.StartAsync();
+        var defaults = new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = theirs.Url("v1"), ApiKey = "key-of-the-instance" };
+        using var factory = Factory([theirs.Url("v1"), other.Url("v1")], [], defaults);
+
+        var replaced = await Should.ThrowAsync<PluginException>(async () => await factory.CreateInheritingAsync(new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = other.Url("v1"), ApiKey = "key-that-was-replaced" }));
+        var current = await Should.ThrowAsync<PluginException>(async () => await factory.CreateInheritingAsync(new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = other.Url("v1"), ApiKey = "key-of-the-instance" }));
+        var setItself = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = other.Url("v1"), ApiKey = "key-of-the-instance" }, Token);
+        await setItself!.Client.GetResponseAsync([new(ChatRole.User, "Ships are big boats.")], cancellationToken: Token);
+
+        replaced.Code.ShouldBe("FCMS1685");
+        current.Code.ShouldBe("FCMS1685");
+        theirs.Requests.ShouldBeEmpty();
+        other.Requests.ShouldHaveSingleItem().Headers["Authorization"].ShouldBe("Bearer key-of-the-instance");
+    }
+
+    // The settings the factory is given were read before it asks. A key that the site inherited then is not its own because
+    // the site has set another key since: only a key the site holds as its own now goes to an endpoint of its choosing.
+    [Fact]
+    public async Task AKeyIsTheSitesOwnOnlyWhenTheSiteHoldsThatKeyAsItsOwn()
+    {
+        await using var theirs = await StubProvider.StartAsync();
+        await using var other = await StubProvider.StartAsync();
+        var defaults = new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = theirs.Url("v1"), ApiKey = "key-of-the-instance" };
+        using var factory = Factory([theirs.Url("v1"), other.Url("v1")], [], defaults);
+        var readEarlier = new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = other.Url("v1"), ApiKey = "key-of-the-instance" };
+        factory.Store.Site = new ResolvedSettings<AiSettings>(new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = other.Url("v1"), ApiKey = "key-of-the-site" }, []);
+
+        var refusal = await Should.ThrowAsync<PluginException>(async () => await factory.Inner.CreateAsync(Site, readEarlier, Token));
+
+        refusal.Code.ShouldBe("FCMS1685");
+        other.Requests.ShouldBeEmpty();
+        theirs.Requests.ShouldBeEmpty();
+    }
+
     // The provider's own endpoint is an endpoint like any other: a key the defaults hold for OpenAI stays there.
     [Fact]
     public async Task AKeyInheritedForAProvidersOwnEndpointIsNotSentToAnEndpointASiteNames()
@@ -259,15 +299,15 @@ public sealed class AiClientFactoryTests
         var defaults = new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model", ApiKey = "key-of-the-instance" };
         using var factory = Factory([other.Url("v1")], [], defaults);
 
-        var atItsOwn = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "another-model", ApiKey = "key-of-the-instance" }, Token);
-        var elsewhere = await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model", Endpoint = other.Url("v1"), ApiKey = "key-of-the-instance" }, Token));
+        var atItsOwn = await factory.CreateInheritingAsync(new AiSettings { Provider = AiProvider.OpenAi, Model = "another-model", ApiKey = "key-of-the-instance" });
+        var elsewhere = await Should.ThrowAsync<PluginException>(async () => await factory.CreateInheritingAsync(new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model", Endpoint = other.Url("v1"), ApiKey = "key-of-the-instance" }));
 
         atItsOwn.ShouldNotBeNull();
         elsewhere.Code.ShouldBe("FCMS1685");
         other.Requests.ShouldBeEmpty();
     }
 
-    private static AiClientFactory Factory(string[] allowed, Dictionary<string, string?> configuration, AiSettings? defaults = null)
+    private static TestFactory Factory(string[] allowed, Dictionary<string, string?> configuration, AiSettings? defaults = null)
     {
         var options = new AiOptions();
         foreach (var endpoint in allowed)
@@ -275,18 +315,49 @@ public sealed class AiClientFactoryTests
             options.AllowedEndpoints.Add(endpoint);
         }
 
-        var services = new ServiceCollection().AddSingleton<ISettings<AiSettings>>(new InstanceDefaults(defaults ?? new AiSettings())).BuildServiceProvider();
-        return new AiClientFactory(
-            Options.Create(options),
-            new ConfigurationBuilder().AddInMemoryCollection(configuration).Build(),
-            services.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<AiClientFactory>.Instance);
+        var store = new Store(defaults ?? new AiSettings());
+        var services = new ServiceCollection().AddSingleton<ISettings<AiSettings>>(store).BuildServiceProvider();
+        return new TestFactory(
+            new AiClientFactory(
+                Options.Create(options),
+                new ConfigurationBuilder().AddInMemoryCollection(configuration).Build(),
+                services.GetRequiredService<IServiceScopeFactory>(),
+                NullLogger<AiClientFactory>.Instance),
+            store);
     }
 
-    // The instance defaults of the settings area, which is all the factory reads of it.
-    private sealed class InstanceDefaults(AiSettings defaults) : ISettings<AiSettings>
+    // The default factory, given settings as the site holds them: the key is the site's own unless the test says the site
+    // inherits it.
+    private sealed class TestFactory(AiClientFactory inner, Store store) : IDisposable
     {
+        public AiClientFactory Inner => inner;
+
+        public Store Store => store;
+
+        public ValueTask<AiClient?> CreateAsync(SiteId site, AiSettings settings, CancellationToken cancellationToken)
+        {
+            store.Site = new ResolvedSettings<AiSettings>(settings, []);
+            return inner.CreateAsync(site, settings, cancellationToken);
+        }
+
+        public ValueTask<AiClient?> CreateInheritingAsync(AiSettings settings)
+        {
+            store.Site = new ResolvedSettings<AiSettings>(settings, [nameof(AiSettings.ApiKey)]);
+            return inner.CreateAsync(Site, settings, Token);
+        }
+
+        public void Dispose() => inner.Dispose();
+    }
+
+    // What the factory reads of the settings area: the instance defaults, and the settings of the site as they are now.
+    private sealed class Store(AiSettings defaults) : ISettings<AiSettings>
+    {
+        public ResolvedSettings<AiSettings>? Site { get; set; }
+
         public ValueTask<AiSettings> GetDefaultAsync(CancellationToken cancellationToken = default) => ValueTask.FromResult(defaults);
+
+        public ValueTask<ResolvedSettings<AiSettings>> ResolveAsync(SiteId site, CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(Site ?? throw new InvalidOperationException("The test did not say what the site holds."));
 
         public ValueTask<AiSettings> GetAsync(SiteId site, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
