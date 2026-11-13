@@ -12,9 +12,10 @@ namespace FluentCMS.Core.Settings;
 // secret, token, pwd or apikey, or when its last two words are api, private, secret, access, signing or encryption followed by
 // key, or client followed by secret, or connection followed by string. A plural counts too.
 //
-// The rule is for a property whose value can be text, which a secret is: a number, a Boolean, an enum, a date, a time or a
-// duration never is, alone, nullable or as the items of a list, so MaxOutputTokens is not a secret. A dictionary always can be,
-// since its keys are text, and so can a byte array (base64 in JSON), a Guid and an object.
+// The rule is for a property whose value can be text or key material, which a secret is: a Boolean, an enum, a number of up to
+// 64 bits, a date, a time or a duration never is, alone, nullable or as the items of a list, so MaxOutputTokens is not a
+// secret. A dictionary always can be, since its keys are text, and so can bytes as the items of any list or array, a Guid,
+// an Int128, a UInt128, a decimal, an object, and a type that enumerates itself.
 internal static partial class SettingsSecretNames
 {
     private static readonly HashSet<string> LastWord = WithPlurals("password", "passphrase", "secret", "token", "pwd", "apikey");
@@ -27,7 +28,7 @@ internal static partial class SettingsSecretNames
     private static readonly HashSet<Type> NeverText =
     [
         typeof(bool), typeof(byte), typeof(sbyte), typeof(short), typeof(ushort), typeof(int), typeof(uint), typeof(long), typeof(ulong),
-        typeof(nint), typeof(nuint), typeof(Int128), typeof(UInt128), typeof(Half), typeof(float), typeof(double), typeof(decimal),
+        typeof(nint), typeof(nuint), typeof(Half), typeof(float), typeof(double),
         typeof(DateTime), typeof(DateTimeOffset), typeof(DateOnly), typeof(TimeOnly), typeof(TimeSpan),
     ];
 
@@ -36,10 +37,14 @@ internal static partial class SettingsSecretNames
 
     public static bool AppliesTo(Type type)
     {
-        while (true)
+        HashSet<Type> seen = [];
+        var isItem = false;
+        while (seen.Add(type))
         {
             type = Nullable.GetUnderlyingType(type) ?? type;
-            if (type == typeof(byte[]))
+
+            // Bytes in a list may be a key, whether JSON holds them as base64 or as numbers.
+            if (isItem && (type == typeof(byte) || type == typeof(sbyte)))
             {
                 return true;
             }
@@ -56,7 +61,10 @@ internal static partial class SettingsSecretNames
             }
 
             type = item;
+            isItem = true;
         }
+
+        return true;
     }
 
     public static bool Matches(string name)

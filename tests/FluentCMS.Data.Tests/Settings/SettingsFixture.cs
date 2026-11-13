@@ -336,3 +336,19 @@ internal sealed class NamedLikeSecretsButNotText
     [SettingsSecret]
     public int Pin { get; set; } = 1234;
 }
+
+// Like the JSON token of a library, which enumerates its children.
+internal sealed class SelfEnumerating : IEnumerable<SelfEnumerating>
+{
+    public IEnumerator<SelfEnumerating> GetEnumerator() => Enumerable.Empty<SelfEnumerating>().GetEnumerator();
+
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
+[Settings("self-enumerating")]
+internal sealed class SelfEnumeratingSettings
+{
+    public SelfEnumerating Tokens { get; set; } = new();
+
+    public string Name { get; set; } = "n";
+}

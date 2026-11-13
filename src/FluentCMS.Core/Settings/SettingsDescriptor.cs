@@ -305,10 +305,12 @@ internal sealed class SettingsDescriptor
         }
     }
 
-    // The type of the items of a list or the values of a dictionary, until it is neither.
+    // The type of the items of a list or the values of a dictionary, until it is neither or comes back to a type it has
+    // passed, as one that enumerates itself does.
     private static Type Peel(Type type)
     {
-        while (true)
+        HashSet<Type> seen = [];
+        while (seen.Add(type))
         {
             var next = Nullable.GetUnderlyingType(type) ?? ItemTypeOf(type);
             if (next is null)
@@ -318,6 +320,8 @@ internal sealed class SettingsDescriptor
 
             type = next;
         }
+
+        return type;
     }
 
     private static Type? ItemTypeOf(Type type)

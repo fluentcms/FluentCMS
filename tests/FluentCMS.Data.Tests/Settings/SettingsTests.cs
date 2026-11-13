@@ -1064,7 +1064,6 @@ public sealed class SettingsTests
     [InlineData(typeof(int?))]
     [InlineData(typeof(long))]
     [InlineData(typeof(double))]
-    [InlineData(typeof(decimal))]
     [InlineData(typeof(bool))]
     [InlineData(typeof(bool?))]
     [InlineData(typeof(TokenKind))]
@@ -1087,13 +1086,33 @@ public sealed class SettingsTests
     [InlineData(typeof(IReadOnlyDictionary<string, bool>))]
     [InlineData(typeof(List<Dictionary<string, int>>))]
     [InlineData(typeof(byte[]))]
+    [InlineData(typeof(sbyte[]))]
+    [InlineData(typeof(List<byte>))]
+    [InlineData(typeof(List<byte?>))]
+    [InlineData(typeof(IReadOnlyList<byte>))]
+    [InlineData(typeof(System.Collections.Immutable.ImmutableArray<byte>))]
+    [InlineData(typeof(ArraySegment<byte>))]
     [InlineData(typeof(ReadOnlyMemory<byte>))]
     [InlineData(typeof(Guid))]
+    [InlineData(typeof(Int128))]
+    [InlineData(typeof(UInt128))]
+    [InlineData(typeof(decimal))]
+    [InlineData(typeof(SelfEnumerating))]
+    [InlineData(typeof(List<SelfEnumerating>))]
     [InlineData(typeof(Uri))]
     [InlineData(typeof(Credentials))]
     [InlineData(typeof(object))]
     [InlineData(typeof(System.Text.Json.JsonElement))]
     public void AValueThatCanBeTextIsUnderTheNameRule(Type type) => SettingsSecretNames.AppliesTo(type).ShouldBeTrue();
+
+    [Fact]
+    public async Task ATypeThatEnumeratesItselfDoesNotHangTheRegistrationAndStaysUnderTheNameRule()
+    {
+        var descriptor = await Task.Run(() => new SettingsRegistry([typeof(SelfEnumeratingSettings)], TimeSpan.Zero).Find("self-enumerating")!, Token)
+            .WaitAsync(TimeSpan.FromSeconds(30), Token);
+
+        descriptor.SecretKeys.ShouldBe(["tokens"]);
+    }
 
     [Fact]
     public void ANumberABooleanAnEnumOrADateIsNeverASecretByItsNameAndAStringStillIs()
