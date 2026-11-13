@@ -18,12 +18,12 @@ CI tests the [AI assist plugin](../src/plugins/FluentCMS.Plugins.AiAssist/README
 - No usage at all, streamed or not: the suggestion is answered, with 0 prompt and 0 completion tokens in the answer and in a row that succeeded.
 - `altText`: the reduced copy of the image goes as the one `image_url` part of the user message, a `data:` URI.
 - A slow provider: a call past `requestTimeout` is `FCMS1688` (504, or the `error` event of a stream) with one failed row, and a caller that goes away ends the call as cancelled with one failed row. Neither is logged as a failure of the provider.
-- With the host logging at `Trace`, no log line and no usage row holds the text or the suggestion of an answer, a stream, `seo`, or a provider that refuses with what it was sent.
+- With the host logging at `Trace`, no log line and no usage row holds the text or the suggestion of an answer, any piece of a stream, `seo`, or a provider that refuses with what it was sent. The lines are those of ASP.NET Core, EF Core and the plugin: the OpenAI client has no logger factory, and its `HttpClient` is not one of `IHttpClientFactory`, so it writes none.
 - The answer is capped with `max_completion_tokens`, not the older `max_tokens`.
 
 ## Dry run of the reference host, 12 Nov 2026
 
-The [walk-through](#walk-through) against a local stand-in in the chat completions format, which answers 21 prompt and 6 completion tokens, to check the walk-through and the reference host's own wiring before a real endpoint: SQLite, Development, the Blog sample, `Logging__LogLevel__Default=Debug`, `openAiCompatible` with no key.
+The [walk-through](#walk-through), step by step, against `eng/ai-stand-in.cs`, to check the walk-through and the reference host's own wiring before a real endpoint: the Release build of the host, SQLite, Development, the Blog sample, `Logging__LogLevel__Default=Debug`, and `openAiCompatible` with no key at `http://127.0.0.1:18434/v1`. The stand-in is a file-based app of the repository that answers in the chat completions format with 21 prompt and 6 completion tokens, and it waits 30 seconds for a model whose name holds `slow`, before a plain answer or after the first chunk of a stream. To repeat the run, start it with `dotnet run eng/ai-stand-in.cs -- 18434`, allow its endpoint, and name `stand-in-model` in the settings, `stand-in-vision` for `altText` and `stand-in-slow` for steps 6 and 7.
 
 | Step | Answer | Usage row |
 | --- | --- | --- |
@@ -35,11 +35,11 @@ The [walk-through](#walk-through) against a local stand-in in the chat completio
 | `expand` past `requestTimeout` 1 | 504, `FCMS1688` | failed, 0 and 0, about 1010 ms |
 | `expand` streamed past `requestTimeout` 1 | 200, `delta`, then `error` with `FCMS1688` | failed, 0 and 0 |
 | `expand`, the client gives up after 2 s | the connection is closed | failed, 0 and 0, about 2000 ms; event 9360 says `cancelled` |
-| `expand` streamed, closed after the first event | the connection is closed | failed, 0 and 0; event 9360 says `cancelled` |
+| `expand` streamed, the client gives up after 2 s | the first `delta`, then the connection is closed | failed, 0 and 0, about 2000 ms; event 9360 says `cancelled` |
 
-The log at `Debug`, over 5,000 debug lines of the framework, EF Core and the plugin, held neither the texts sent nor the suggestions. Event 9360 named the action, the field, the caller, the provider, the model, the outcome, the duration and the tokens of each call.
+The stand-in printed the shape of each request: no `Authorization` header, `max_completion_tokens` 1024 and no `max_tokens`, `stream_options` `{"include_usage":true}` on each stream, the system message and the text as the user message, and for `altText` a user message of one `image_url` part, a PNG `data:` URI of the reduced copy. The log at `Debug`, over 26,000 debug lines of ASP.NET Core, EF Core and the plugin, held neither the texts sent nor the suggestions; the OpenAI client writes no log line. Event 9360 named the action, the field, the caller, the provider, the model, the outcome, the duration and the tokens of each call, and there was no event 9361 or 9367.
 
-The first run found a bug. A call past `requestTimeout` was answered now as `FCMS1688` and now as `FCMS1689` (502), with a 9361 warning for a `TaskCanceledException`: the client of the package had a network timeout of the same length as `requestTimeout`, and whichever fired first decided the answer. The factory now gives the client no timeout of its own, so the plugin's timeout alone ends a call, and `AiClientFactoryTests.TheClientEndsASlowCallOnlyWhenItsCallerCancelsIt` holds it.
+An earlier run that day, against a stand-in of the lane's own, found a bug. A call past `requestTimeout` was answered now as `FCMS1688` and now as `FCMS1689` (502), with a 9361 warning for a `TaskCanceledException`: the client of the package had a network timeout of the same length as `requestTimeout`, and whichever fired first decided the answer. The factory now gives the client no timeout of its own, so the plugin's timeout alone ends a call, and `AiClientFactoryTests.TheClientEndsASlowCallOnlyWhenItsCallerCancelsIt` holds it.
 
 A stand-in cannot tell what a real endpoint does, so a real run checks in particular:
 

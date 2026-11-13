@@ -24,7 +24,8 @@ public sealed class AiWireTests : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         _stub = await StubProvider.StartAsync();
-        _stub.Answer = $"Ships are large {AnswerMarker}.";
+        // The stand-in streams the answer in two halves, and each holds the whole marker, so a leak of any piece shows.
+        _stub.Answer = $"{AnswerMarker} and {AnswerMarker}";
         _ai = new AiHost(scripted: false, options => options.AllowedEndpoints.Add(_stub.Url("v1")), LogLevel.Trace);
     }
 
@@ -129,6 +130,7 @@ public sealed class AiWireTests : IAsyncLifetime
         {
             var events = await StreamAsync(admin, "rewrite");
             events.Select(sent => sent.Event).ShouldBe(["delta", "error"]);
+            events[0].Data["text"]!.GetValue<string>().ShouldContain(AnswerMarker);
             events[^1].Data["code"]!.GetValue<string>().ShouldBe("FCMS1688");
             events[^1].Data["status"]!.GetValue<int>().ShouldBe(504);
         }
@@ -164,6 +166,7 @@ public sealed class AiWireTests : IAsyncLifetime
             await using var events = await response.Content.ReadAsStreamAsync(Token);
             using var reader = new StreamReader(events);
             (await reader.ReadLineAsync(Token)).ShouldBe("event: delta");
+            (await reader.ReadLineAsync(Token) ?? "").ShouldContain(AnswerMarker);
         }
         else
         {
@@ -187,8 +190,9 @@ public sealed class AiWireTests : IAsyncLifetime
         ShouldHoldNothingOfTheCall();
     }
 
-    // With the debug lines of the framework and the packages: the text and the suggestion of an answer, a stream, seo and
-    // a provider that refuses with what it was sent are in no line and no row.
+    // With the debug lines of ASP.NET Core, EF Core and the plugin: the text and the suggestion of an answer, each piece of a
+    // stream, seo and a provider that refuses with what it was sent are in no line and no row. The OpenAI client of the
+    // default factory writes no line at all, since it has no logger factory and its HttpClient is not one of IHttpClientFactory.
     [Fact]
     public async Task WithDebugLoggingNoLineOrRowHoldsTheTextOrTheSuggestion()
     {
@@ -196,7 +200,9 @@ public sealed class AiWireTests : IAsyncLifetime
         using var admin = await _ai.AdminAsync(site);
 
         await SuggestAsync(admin, "rewrite", Body());
-        await StreamAsync(admin, "shorten");
+        var pieces = (await StreamAsync(admin, "shorten")).Where(sent => sent.Event == "delta").Select(sent => sent.Data["text"]!.GetValue<string>()).ToList();
+        pieces.Count.ShouldBe(2);
+        pieces.ShouldAllBe(piece => piece.Contains(AnswerMarker, StringComparison.Ordinal));
         _stub.Answer = $$"""{"metaTitle": "Ships", "metaDescription": "Large {{AnswerMarker}}."}""";
         (await SuggestAsync(admin, "seo", Body()))["suggestion"]!["metaDescription"]!.GetValue<string>().ShouldContain(AnswerMarker);
         _stub.Status = 400;

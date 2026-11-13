@@ -41,7 +41,9 @@ public sealed class AiHost : IAsyncDisposable
     {
     }
 
-    // At LogLevel.Trace the log holds every line of the host, the debug lines of the framework and the packages included.
+    // At LogLevel.Trace the log holds every line the host's loggers write, the debug lines of ASP.NET Core and EF Core
+    // included. The OpenAI client of the default factory writes none: it has no logger factory, and its HttpClient is not
+    // one of IHttpClientFactory.
     internal AiHost(bool scripted, Action<AiOptions>? configure = null, LogLevel minimumLevel = LogLevel.Information)
     {
         Host = new FluentCmsTestHost()
