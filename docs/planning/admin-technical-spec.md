@@ -6,7 +6,7 @@ This document takes the approved [feature specification](specification/README.md
 
 How to read it: sections 1 to 3 set scope, architecture, packages and layout; section 4 describes each area of the admin with the rows it implements and the endpoints it calls; section 5 is the contract of a plugin's admin half and the admin half of each first-party plugin; section 6 the three distributions; section 7 testing; section 8 maps every row to an area and a milestone; section 9 sequences the work in milestones A0 onward; section 10 is the proposed issue list, numbered `A-nn`; section 11 holds the open questions, each with a recommendation. Everything marked *proposed* is open to change during review.
 
-Endpoints are named as they are on `feature/m7` at `8aea4aca`, which holds what the audit read, relative to `/api/management/v1` unless they start with another prefix of the route map (backend Appendix B). Section numbers without a document name are this document's; "backend 4.10" is section 4.10 of the backend specification.
+Endpoints are named as they are on `feature/m7` at `e31e894b`, whose routes are those the audit read at `8aea4aca`, relative to `/api/management/v1` unless they start with another prefix of the route map (backend Appendix B). Section numbers without a document name are this document's; "backend 4.10" is section 4.10 of the backend specification.
 
 ## 1. Scope
 
@@ -71,8 +71,8 @@ The audit of B-105 ([#3050], comment of 13 Nov 2026) walked the nineteen Must ro
 | [#3100] | Management reads of an asset carry no URL | none | A-20, A-21, A-25 |
 | [#3101] | An editor cannot learn which fields take AI actions | none | A-38 |
 | [#3102] | No registration of an MCP client, and no change of its role | none | A-37 |
-| [#3103] | The built-in Editor and Author roles hold no media or AI permission | none | A-20, A-38 |
-| [#3104] | 45 plugin operations declare no body in the OpenAPI document | none | A-20, A-35 to A-38 |
+| [#3103] | The built-in Editor and Author roles hold no media or AI permission | none | A-20, A-21, A-38 |
+| [#3104] | 45 plugin operations declare no body in the OpenAPI document | none | A-20, A-21, A-35 to A-38 |
 
 An admin issue that needs a gap starts once the gap is merged. Where an area can work without it, it says how (section 4). Where the gap issues run is AQ13.
 
@@ -341,7 +341,7 @@ Sign-in, refresh, sign-out and expiry with the draft kept are as in 2.4. The acc
 | `/account/change-password` | the hosted page, opened in the same tab | exists |
 | `GET` and `PUT /me/preferences` | interface culture, time zone, formats (4.17) | [#3096] |
 
-A key or a service account cannot sign in to the admin: the admin is a code-flow client, and the `/me` routes of a user answer 403 to them.
+A key or a service account cannot sign in to the admin, which is a code-flow client. Called with one, `GET /me` answers 200 with `{ id, kind, name }` and `GET /me/sessions` an empty list; only the two-factor and logins routes answer 403.
 
 ### 4.4 Generated list views
 
@@ -349,7 +349,7 @@ Rows 3.4, 7.7 (locale switcher and translation status in lists), 6.5 (schedules 
 
 - **Columns.** The system fields (status, locale, updated at and by) and the type's fields that a cell can show, chosen per user, site and type and kept in the browser; saved views are row 3.22, a Should. Columns read only what they show: `fields=` lists them, and `populate` with `fields` reads the label of a relation.
 - **Sort.** Several keys, `sort=-updatedAt,title`, on the system fields and the fields whose type sorts.
-- **Filters.** Built from the field type: the admin holds a table of the operators of the query grammar (backend 2.4) that each core field type takes, such as `eq`, `contains` and `startsWith` for text, `lt` to `between` for numbers and dates, `in` for select and relation, and `null` for any. A plugin field type names its operators in its admin half (5.1). A filter on a field the caller may not read is not offered, since the field is not in its schema.
+- **Filters.** Built from the field type: the admin holds a table of the operators of the query model (backend 4.4, row 2.4) that each core field type takes, such as `eq`, `contains` and `startsWith` for text, `lt` to `between` for numbers and dates, `in` for select and relation, and `null` for any. A plugin field type names its operators in its admin half (5.1). A filter on a field the caller may not read is not offered, since the field is not in its schema.
 - **Search.** A search box sends `q=` when the type is `searchable` in its schema, and is hidden otherwise (`FCMS1700`).
 - **Paging.** `page`, `pageSize` and `withTotal` for page numbers; pickers use `cursor` for "load more".
 - **Badges.** Status (draft, published, modified, unpublished); with `locale=all`, one badge per locale of the site with its status, and a missing translation as an empty badge (row 7.7). A pending schedule shows as a badge with its time once #3094 is merged.
@@ -367,7 +367,7 @@ Rows 3.4, 7.7 (locale switcher and translation status in lists), 6.5 (schedules 
 
 Rows 3.5, 1.8 (conditional fields enforced in the admin), 1.10 (field metadata and hints), 4.5 (hidden fields omitted from forms), 6.8 (conflicting saves with both versions).
 
-- **Layout from metadata.** `display` gives label, help, placeholder, group, tab and width; fields without a group form the main group; tabs follow the order of their first field. `readOnly` fields show as text; `hidden` fields and fields the caller may not read are absent, since the schema leaves them out.
+- **Layout from metadata.** `display` gives label, help, placeholder, group, tab and width; fields without a group form the main group; tabs follow the order of their first field. `readOnly` fields show as text. Fields the caller may not read are absent, since the schema leaves them out; `hidden` fields stay in the schema with `hidden: true`, and the form leaves them out itself.
 - **Defaults.** A new entry starts from each field's `defaultValue`.
 - **Conditions.** `visibleWhen` and `requiredWhen`, as `{ "operator", "field", "values", "operands" }`, are evaluated on every change against the form's values, so a field appears, hides or turns required at once. The server enforces them again at publish (backend 4.4); the form's evaluation is a convenience.
 - **Validation.** Lengths, range and pattern of `validation` are checked inline as the user leaves a field, without a request. `required` is marked while editing and checked before a publish only, since a draft skips it (row 1.7); `unique` is the server's to check. A 422's `errors[].path` (`sections[0].text`, `seo.metaTitle`) is mapped to the field, block or component at that path, which is scrolled to and focused; an error whose path matches no field shows above the form.
@@ -519,12 +519,12 @@ Rows 3.14, 8.8, 2.14.
 
 - On a selection of the list (4.4): publish, unpublish, delete (to the trash) and the bulk actions of plugin admin halves for the type (5.1).
 - A confirmation names the action, the type and the count; a selection by filter shows the filter.
-- **Progress.** A bulk call answers only when it ends, so the admin sends the selected ids in chunks of 50 entries (`entries`; *proposed*), one chunk at a time, and shows a progress bar and the per-entry results as they come: id, status, warnings, and for a failed entry the problem it got. Cancel stops after the current chunk. Each chunk carries its own `Idempotency-Key`.
+- **Progress.** A bulk call answers only when it ends, so the admin sends the selected ids in chunks of 50 (`items: [{ "id" }]`; the size is *proposed*), one chunk at a time, and shows a progress bar and the per-entry results as they come: id, status, warnings, and for a failed entry the problem it got. Cancel stops after the current chunk. Each chunk carries its own `Idempotency-Key`.
 - A selection by filter is sent as the filter with a `cap` of at most 1000, and its result is shown when it ends.
 
 | Endpoint | Use | Status |
 | --- | --- | --- |
-| `POST /content/{type}/bulk` (`operation`, `entries`, `cap`; `filter[...]` in the query) | core's actions | exists |
+| `POST /content/{type}/bulk` (`operation`, `items` by id, or `cap` with `filter[...]` in the query; `entries` holds the documents of a `create` only) | core's actions | exists |
 | a plugin's own `MapManagement` routes | plugin actions | the plugin's |
 
 ### 4.14 Media library
@@ -551,12 +551,12 @@ The media library is a page of the media plugin's admin half (5.2), described he
 
 ### 4.15 Users, roles, keys and administration
 
-Rows 3.16, 4.2 to 4.9, 4.14 (activity queryable), 8.14 (plugin permissions in role editing), 8.10 and 6.6 (a visible job log), 10.14 (startup report visible in the admin), 8.15.
+Rows 3.16, 4.2 to 4.9, 4.14 (activity queryable), 8.14 (plugin permissions in role editing), 8.10 and 6.6 (a visible job log), 10.14 (startup report visible in the admin), 8.15, and the members and groups pages of row 4.22, a Should taken early (AQ11).
 
 - **Users.** List with search, detail with roles, deactivate and reactivate, sessions with revoke, external logins, two-factor reset (which needs the caller signed in with a second factor), forced password change; invitations with roles, pending list and revoke.
-- **Roles.** List and editor: name, description, site, `requireTwoFactor`, and grants. The site's Public role is edited here too, which is the public access of row 4.8. A grant picks a permission or pattern from the catalogue, core's and the plugins' (row 8.14), and its constraints: sites, locales, fields and a registered row rule. The editor offers only what the caller holds, since a role must give nothing beyond the caller's grants, and shows the server's refusal (`FCMS3043`, `FCMS3044`, `FCMS3052`) by its code.
+- **Roles.** List and editor: name, description, site, `requireTwoFactor`, and grants. The site's Public role is edited here too, which is the public access of row 4.8. A grant picks a permission or pattern from the catalogue, core's and the plugins' (row 8.14), and its constraints: sites, locales, fields and a registered row rule. The editor offers only what the caller holds, since a role must give nothing beyond the caller's grants; the server refuses such a role with a 403 `FCMS3103`. Other refusals are shown by their code: a built-in role changed or deleted (`FCMS3043`), a role still held (`FCMS3044`), the last active Super Admin (`FCMS3052`).
 - **API keys.** Create with class, role, sites, types, expiry, rate limit and allowed addresses; the secret is shown once with a copy button and is not kept by the admin; rotate with overlap, expire, revoke.
-- **Members and member groups.** List with search and filters, detail with sessions, logins and groups, create, deactivate, delete; groups with their role (AQ11).
+- **Members and member groups.** Row 4.22 (Should): list with search and filters, detail with sessions, logins and groups, create, deactivate, delete; groups with their role, and group assignment. Its custom profile fields stay a Should without an issue (AQ11).
 - **Plugins.** The plugins of `GET /plugins` with version, SDK range, contributions and enablement per site, with a switch for each site where the caller holds `plugins.manage`.
 - **Jobs.** Jobs by status, type and queue, a job's attempts, the dead letters with retry, cancel of a pending job; the event dead letters with retry, remove and purge by handler. A running job's status refreshes as 2.7 says.
 - **Diagnostics.** The startup report of `GET /system/diagnostics`: providers, plugins, pending migrations, schema drift and insecure defaults (row 10.14), and the detailed health of `GET /system/health`.
@@ -766,7 +766,7 @@ An admin served from another origin than the API needs two settings on the API h
 
 Signed asset URLs (#3100) are relative to the API's origin, so the admin resolves them against `apiBaseUrl`, and the page's `img-src` must allow that origin.
 
-For the local loop (row 11.4): `dotnet watch` on the app project, with `config.json` pointing at a reference host run in Development, whose `appsettings.Development.json` lists the app's development origin and redirect URI; or `dotnet watch` on the reference host, which serves the referenced app with hot reload.
+For the local loop (row 11.4, A-10): `dotnet watch` on the app project, with `config.json` pointing at a reference host run in Development, whose `appsettings.Development.json` lists the app's development origin and redirect URI; or `dotnet watch` on the reference host, which serves the referenced app with hot reload.
 
 ## 7. Testing
 
@@ -788,7 +788,7 @@ Tests use xUnit v3 and Shouldly, as the backend's do. The API tests need no brow
 
 ## 8. Feature inventory
 
-Every Must row of category 3, every admin-only row of the other categories, and the admin part of the other Must rows that have one, with its area and milestone.
+Every Must row of category 3, every admin-only row of the other categories, and the admin part of the other Must rows that have one, with its area and milestone. A row the admin only relies on, such as the query model (2.4, 2.5, 2.19) or the authorization server (4.1), is named by the area that calls it, not here.
 
 ### 8.1 Category 3, Admin UI
 
@@ -814,7 +814,7 @@ Every Must row of category 3, every admin-only row of the other categories, and 
 | 3.18 | Admin localization | 4.17, 2.3 | A0 (groundwork), A7 | #3096 |
 | 3.19 | Accessibility baseline | 4.18, 2.3 | A0 (groundwork), A7 | |
 
-Should, kept possible: 3.20 autosave (the form's draft store of 2.4 and `If-Match` already carry it), 3.21 locking indicator (SignalR), 3.22 saved views (columns are already per user), 3.23 live preview (`draft` message of 4.12), 3.24 dashboard (the home page of A-22 holds the widgets), 3.25 command palette, 3.26 activity log viewer, 3.27 trash (the trash routes exist). Could and Won't rows are omitted.
+Should, kept possible: 3.20 autosave (the form's draft store of 2.4 and `If-Match` already carry it), 3.21 locking indicator (SignalR), 3.22 saved views (columns are already per user), 3.23 live preview (`draft` message of 4.12), 3.24 dashboard (the home page of A-22 holds the widgets), 3.25 command palette, 3.26 activity log viewer, 3.27 trash (the trash routes of content exist; media has none, since its trash is row 5.19, a Could). Could and Won't rows are omitted.
 
 ### 8.2 Admin-only rows of other categories
 
@@ -832,19 +832,31 @@ Should, kept possible: 3.20 autosave (the form's draft store of 2.4 and `If-Matc
 
 | Row | Feature | Admin part | Area | Milestone |
 | --- | --- | --- | --- | --- |
+| 1.3 | Core scalar fields | an editor and a list cell for each | 4.6 | A2 |
+| 1.4 | Media and relation fields | the relation picker, the media field editor | 4.9, 5.2 | A2, A3 |
+| 1.5 | Components | the component editor | 4.8 | A4 |
+| 1.6 | Typed block field | the block editor | 4.8 | A4 |
 | 1.8 | Conditional fields | enforced in the form | 4.5 | A2 |
+| 1.9 | Structured rich text | the rich text editor on the stored JSON | 4.7 | A4 |
 | 1.10 | Field metadata and admin hints | the form's layout | 4.5 | A2 |
+| 2.8 | Error model | problems by code, errors on their fields | 2.7, 4.5 | A0, A2 |
+| 2.14 | Bulk operations | bulk actions in chunks | 4.13 | A5 |
+| 2.15 | Optimistic concurrency | `If-Match` on every save | 2.7 | A0 |
+| 2.23 | Full-text search parameter | the search box of lists | 4.4 | A2 |
 | 4.2 | Admin users | users, invitations, sessions | 4.3, 4.15 | A1, A6 |
 | 4.3 to 4.8 | Roles, type, field, row, locale and site permissions, public access | the role editor | 4.15 | A6 |
 | 4.5 | Field-level permissions | hidden fields absent from forms | 4.5 | A2 |
 | 4.9 | API keys | keys | 4.15 | A6 |
-| 4.10 | Member authentication | members and groups | 4.15 | A6 |
+| 4.10 | Member authentication | members and groups, the pages of row 4.22 (Should, taken early: AQ11) | 4.15 | A6 |
 | 4.12 | Permission checks in one place | the admin hides what the user cannot do | 4.1 | A1 |
 | 4.15 | Admin SSO | buttons on the hosted login | 4.3 | A1 |
 | 4.16 | Two-factor authentication | enrolment in the account page | 4.3 | A1 |
 | 5.2 | Upload | drag-and-drop and paste | 4.14 | A3 |
+| 5.3 | Asset metadata | the detail panel, alt and caption per locale | 4.14 | A3 |
+| 5.4 | Folders | the folder tree and its actions | 4.14 | A3 |
 | 5.7 | Focal point and crop presets | set in the admin | 4.14, 5.2 | A3 |
 | 5.10 | Usage tracking | usage and replace | 4.14 | A3 |
+| 5.11 | Private assets | the private flag, download by signed URL | 4.14 | A3 |
 | 5.12 | Media in rich text and blocks | the same picker | 4.7, 4.8 | A4 |
 | 6.1, 6.2 | Draft and published states; publish, unpublish, discard | controls | 4.10 | A2 |
 | 6.3, 6.4 | Version on every write; diff and restore | the panel | 4.11 | A5 |
@@ -852,16 +864,24 @@ Should, kept possible: 3.20 autosave (the form's draft store of 2.4 and `If-Matc
 | 6.6, 8.10 | Job runner and plugin jobs, a visible job log | the jobs page | 4.15 | A6 |
 | 6.7 | Publish-time validation | warnings and errors | 4.10 | A2 |
 | 6.8 | Optimistic concurrency | the conflict dialog | 4.5 | A2 |
+| 7.1 | Locales per site | the site's locales | 4.16 | A6 |
+| 7.10 | Multi-site model | sites and host names | 4.16, 5.6 | A6 |
+| 7.11 | Site context in APIs | the shell's site as `X-Cms-Site` on every call | 2.7, 4.1 | A0 |
 | 7.13 | Site switcher and per-site admin | switcher, per-site settings | 4.1, 4.16 | A1, A6 |
 | 8.1 | Plugin package model | the admin half | 5.1 | A3 |
 | 8.5 | Custom field types | editor and list cell | 5.1 | A3 |
 | 8.14 | Plugin permissions in RBAC | in the role editor | 4.15 | A6 |
 | 8.15 | Enable and disable per site | gating and the plugins page | 2.6, 4.15 | A3, A6 |
 | 8.17 | Plugin template | the admin half of `fluentcms-plugin` | 5.1, 6.2 | A3 |
+| 9.10 | Per-type agent instructions | instructions of the site and per type | 5.4 | A6 |
+| 9.11 | Prompts | stored prompts | 5.4 | A6 |
+| 9.15 | Provider-agnostic AI layer | provider, model and key per site; usage per user and action | 5.5 | A6 |
 | 10.2 | Reference host image | admin and API built together | 6.1 | A1 |
 | 10.14 | Startup diagnostics | visible in the admin | 4.15 | A6 |
+| 10.15 | Supported platforms | the admin on .NET 10 LTS | 1.3 | A0 |
 | 11.1 | Project templates | `fluentcms` with admin, `fluentcms-admin` | 6.2 | A7 |
 | 11.4 | Fast local loop | `dotnet watch` for the admin | 6.4 | A1 |
+| 11.11 | Semantic versioning and compatibility policy | the admin's contract packages under the policy | 2.8, 3.1 | A7 |
 
 ## 9. Milestones
 
@@ -890,7 +910,7 @@ Grouped by milestone, as the backend's section 9: each becomes one GitHub issue 
 | --- | --- | --- | --- | --- | --- |
 | A-01 | Admin projects of 2.8 as stubs in `FluentCMS.slnx`, with an admin shard in CI and the component and API test projects | 3, 7 | 10.15 | S | |
 | A-02 | Wrapped component set over the library of decision 26, with theme tokens, light and dark, logical CSS and icons | 2.3 | 3.1, 3.19, d26 | M | |
-| A-03 | Management API client: headers, problems, `ETag` and `If-Match`, idempotency keys, rate limits, source-generated JSON | 2.7 | 2.8, 2.15 | M | |
+| A-03 | Management API client: headers, problems, `ETag` and `If-Match`, idempotency keys, rate limits, source-generated JSON | 2.7 | 2.8, 2.15, 7.11 | M | |
 | A-04 | Runtime `config.json` with validation and an error page | 2.5 | 3.2 | S | |
 | A-05 | Localization and accessibility groundwork: resources, culture choice, pseudo-cultures, focus, live regions, the cost of culture data | 4.17, 4.18 | 3.18, 3.19 | S | |
 | A-06 | Architecture rules of the admin and a download size budget | 3.3, 7 | d4 | S | |
@@ -902,7 +922,7 @@ Grouped by milestone, as the backend's section 9: each becomes one GitHub issue 
 | A-07 | Sign-in with the code flow and PKCE, refresh, sign-out, and expiry with the draft kept, after the library spike of AQ2 | 2.4 | 3.3, d7 | M | |
 | A-08 | Shell: layout, sidebar, site switcher, user menu, breadcrumbs, themes, tablet layout | 4.1 | 3.1, 7.13, 4.12 | M | #3096 |
 | A-09 | Account page: sessions, two-factor, external logins, password change link | 4.3 | 4.2, 4.16 | S | |
-| A-10 | `FluentCMS.Admin.Hosting` and the admin of the reference host at `/admin`, with the client registration | 6.1 | 10.2, d5 | M | |
+| A-10 | `FluentCMS.Admin.Hosting` and the admin of the reference host at `/admin`, with the client registration and the local loop with `dotnet watch` | 6.1, 6.4 | 10.2, 11.4, d5 | M | |
 | A-11 | End-to-end harness on the reference host, with sign-in through the hosted page | 7 | 3.3 | S | |
 
 ### 10.3 A2 Lists and forms
@@ -922,8 +942,8 @@ Grouped by milestone, as the backend's section 9: each becomes one GitHub issue 
 | --- | --- | --- | --- | --- | --- |
 | A-18 | `FluentCMS.Admin.Abstractions`: manifest, registration and contributions of an admin half | 5.1 | 8.1, 8.5, 8.7 to 8.9, d12 | M | |
 | A-19 | Lazy loading per plugin assembly with the build-time manifest, gated by enablement and access | 2.6 | 8.15, d29 | M | |
-| A-20 | Media admin half: field editor, list cell and the media picker | 5.2 | 3.10, 5.7 | M | #3100, #3103, #3104 |
-| A-21 | Media library: grid and list, folders, upload by drop and paste, metadata, usage, replace, presets | 4.14 | 3.15, 5.2 to 5.4, 5.10 | L | #3100 |
+| A-20 | Media admin half: field editor, list cell and the media picker | 5.2 | 3.10, 1.4, 5.7 | M | #3100, #3103, #3104 |
+| A-21 | Media library: grid and list, folders, upload by drop and paste, metadata, private flag, usage, replace, presets | 4.14 | 3.15, 5.2 to 5.4, 5.10, 5.11 | L | #3100, #3103, #3104 |
 | A-22 | Home page with plugin dashboard widgets | 5.1 | 8.9 | S | #3096 |
 | A-23 | Admin half in the `fluentcms-plugin` template | 5.1, 6.2 | 8.17 | S | |
 
@@ -955,9 +975,9 @@ Grouped by milestone, as the backend's section 9: each becomes one GitHub issue 
 | A-35 | Sites and locales, and the multi-site admin half | 4.16, 5.6 | 3.17, 7.1, 7.10 | M | #3104 |
 | A-36 | Webhooks admin half | 5.3 | 3.17 | M | #3104 |
 | A-37 | MCP admin half: clients, instructions, prompts, agent writes | 5.4 | 9.13, 9.10, 9.11, 3.17 | M | #3102, #3104 |
-| A-38 | AI assist admin half: field actions with streaming, usage | 5.5 | 9.14 | M | #3101, #3103, #3104 |
+| A-38 | AI assist admin half: field actions with streaming, usage | 5.5 | 9.14, 9.15 | M | #3101, #3103, #3104 |
 | A-39 | Plugins, jobs, event dead letters and diagnostics pages, and the search rebuild | 4.15, 5.7 | 6.6, 8.10, 8.15, 10.14 | M | |
-| A-40 | Members and member groups | 4.15 | 4.10 | M | |
+| A-40 | Members and member groups, a Should row taken early (AQ11) | 4.15 | 4.10, 4.22 | M | |
 
 ### 10.8 A7 Distributions and admin preview
 
@@ -971,7 +991,7 @@ Grouped by milestone, as the backend's section 9: each becomes one GitHub issue 
 | A-46 | Admin guides in `docs/`: hosting, configuration, writing an admin half | 5.1, 6 | 8.1 | S | |
 | A-47 | Release of the admin with a preview of the packages | 6 | 10.2, 11.11 | S | |
 
-47 issues. Should rows get issues when their milestone is planned, not now.
+47 issues. Should rows get issues when their milestone is planned, not now. The one exception is A-40, which takes the members and groups pages of row 4.22 early, for the reason AQ11 gives.
 
 ## 11. Open questions
 
@@ -989,9 +1009,9 @@ Each question has a recommendation. A question that the decisions log settles is
 | AQ8 | How do the static build and `dotnet new fluentcms` get the first-party admin? | Ship the static build twice: as a zip on each GitHub release for static hosts and CDNs, and as static web assets inside `FluentCMS.Admin.Hosting`, so that a host that wants the first-party admin adds one package and `MapFluentCmsAdmin()`. A host with its own admin halves points the hosting package at its own app project instead. |
 | AQ9 | Test tooling. New dependencies for component, browser and accessibility tests. | bUnit for component tests, `Microsoft.Playwright` for end-to-end tests and `Deque.AxeCore.Playwright` for axe-core checks, each named with its version in the issue that adds it (A-01, A-11, A-42), as CONTRIBUTING asks. Chromium in full CI, Firefox and WebKit nightly. |
 | AQ10 | Display labels. Types have no display name and entries no title field in the schema. Derive them in the admin, or add schema metadata? | Derive them in the first release (4.1), with an optional resource key per type. Propose additive schema metadata (a display name per type, a title field) as a backend issue without a milestone, since it only adds. |
-| AQ11 | Do members and member groups get admin pages in the first release? No Must row of category 3 names them, but row 4.10 has no other UI and the routes exist. | Yes, as A-40 in A6: a list, a detail page and groups. |
+| AQ11 | Do members and member groups get admin pages in the first release? They are row 4.22, a Should, and no Must row of category 3 names them; but row 4.10 (Must) has no other UI, its groups are what row rules and public access read (rows 4.6, 4.8), and the routes exist. | Yes, as A-40 in A6: a list, a detail page, and groups with their role and group assignment, so that an administrator sets up what roles and public access read without the CLI, as A6's exit asks. That takes part of a Should row early, against the rule that ends section 10; the custom profile fields of row 4.22 stay a Should, with no issue now. |
 | AQ12 | Browser support. | The last two versions of Chrome, Edge, Firefox and Safari, on desktop and tablet; phones get a readable layout without a test of their own. |
-| AQ13 | Where do the gap issues and the admin's work run, and how are its issues labelled? | Each gap issue of 1.4 takes the admin milestone that first needs it and runs on that milestone's integration branch (`feature/a1` and so on), merged into `main` after full CI, as M6 and M7 did (H11); bugs go to `main`. Add an `area:admin` label and one tracking issue per admin milestone. |
+| AQ13 | Where do the gap issues and the admin's work run, and how are its issues labelled? | Each gap issue of 1.4 other than #3094 and #3095, which are in M7, takes the admin milestone that first needs it and runs on that milestone's integration branch (`feature/a1` and so on), merged into `main` after full CI, as M6 and M7 did (H11); bugs go to `main`. Add an `area:admin` label and one tracking issue per admin milestone. |
 | AQ14 | Which interface cultures ship in the first release? | English, with every string in resources and a contribution guide for translations; left-to-right and right-to-left pseudo-cultures in the tests. A real right-to-left translation is welcome before 1.0.0 and does not block A7. |
 | AQ15 | The published view of the preview needs the front end's URL without a token, and #3099 gives the URL only in the token's answer. | Ask #3099 to answer both: `url` with the token and `publishedUrl` without it, filled from the same template, or to give the template a `{status}` placeholder. Decide it in #3099 before A-29. |
 | AQ16 | Where do the plugin admin halves live: under `admin/src/plugins/`, or beside their server halves in `src/plugins/`? | Under `admin/` (3), so that a path filter tells admin work from backend work and the admin's CI shard builds what it tests. The shared ID prefix (row 8.1) keeps the two halves together in NuGet. |
