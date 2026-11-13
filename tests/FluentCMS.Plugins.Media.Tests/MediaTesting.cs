@@ -116,6 +116,13 @@ public class MediaHost : IAsyncDisposable
         return await scope.ServiceProvider.GetRequiredService<CmsDbContext>().References.CountAsync(reference => reference.TargetType == MediaService.ReferenceTarget && reference.TargetId == asset, Token);
     }
 
+    // A stored type written straight into the row, as an import wrote the type of its line before it checked the files.
+    public async Task SetMimeTypeAsync(Guid asset, string mimeType)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().Where(item => item.Id == asset).ExecuteUpdateAsync(set => set.SetProperty(item => item.MimeType, mimeType), Token);
+    }
+
     public async Task DrainOutboxAsync()
     {
         while (await Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token) > 0)

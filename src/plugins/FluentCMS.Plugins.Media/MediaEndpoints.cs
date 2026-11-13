@@ -155,7 +155,8 @@ internal static class MediaEndpoints
     // /media/{id}/{fileName} and /media/{id}/original/{fileName}, outside the APIs and open to anyone: the signature of the
     // URL is the authority, and the file name is there for the reader and is ignored. The transform says whether the type
     // depends on Accept. An original is sent as it is stored, with nosniff and, for an SVG, a policy that runs nothing; a
-    // download URL's answer is an attachment that no cache keeps.
+    // download URL's answer is an attachment that no cache keeps, and a file of a type the plugin does not find from bytes is
+    // an attachment too (MediaOriginals).
     public static RouteGroupBuilder MapImageEndpoints(this RouteGroupBuilder group)
     {
         group.MapGet("/{id:guid}/original/{fileName}", async (Guid id, HttpContext context, MediaOriginals originals, IOptions<MediaOptions> options, CancellationToken cancellationToken) =>
@@ -171,7 +172,7 @@ internal static class MediaEndpoints
                 headers.ContentSecurityPolicy = SvgPolicy;
             }
 
-            return Results.Stream(file.Content, file.MimeType, file.Download ? file.FileName : null, entityTag: new EntityTagHeaderValue($"\"{file.Checksum}\""));
+            return Results.Stream(file.Content, file.MimeType, file.Attachment ? file.FileName : null, entityTag: new EntityTagHeaderValue($"\"{file.Checksum}\""));
         }).AllowAnonymous();
 
         group.MapGet("/{id:guid}/{fileName}", async (Guid id, HttpContext context, MediaTransforms transforms, IOptions<MediaOptions> options, CancellationToken cancellationToken) =>

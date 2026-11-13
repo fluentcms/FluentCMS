@@ -373,6 +373,27 @@ public sealed class MediaTransformTests(TransformHosts hosts) : IClassFixture<Tr
         (await CodeAsync(headerOnly)).ShouldBe(MediaErrorCodes.NotTransformable);
     }
 
+    // The route sends what the processor makes, as a type it encodes, never the stored bytes as the stored type.
+    [Fact]
+    public async Task AStoredTypeTheProcessorDoesNotReadIsRefusedAndAVariantMadeBeforeIsNotSent()
+    {
+        var media = hosts.Media;
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var asset = await UploadAsync(admin, Bands(8, 8), "bands.png");
+        var url = await UrlAsync(media, asset, new MediaImageOptions { Width = 4 });
+        using (var made = await FetchAsync(anonymous, url))
+        {
+            made.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        await media.SetMimeTypeAsync(asset.Id, "text/html");
+        using var refused = await FetchAsync(anonymous, url);
+
+        refused.StatusCode.ShouldBe(HttpStatusCode.UnsupportedMediaType);
+        (await CodeAsync(refused)).ShouldBe(MediaErrorCodes.NotTransformable);
+    }
+
     [Fact]
     public async Task AnUnknownRepeatedOrInvalidParameterIsRefused()
     {

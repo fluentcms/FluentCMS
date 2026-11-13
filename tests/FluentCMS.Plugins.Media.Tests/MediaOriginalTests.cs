@@ -111,4 +111,39 @@ public sealed class MediaOriginalTests(MediaHost media) : IClassFixture<MediaHos
         served.Headers.GetValues("Content-Security-Policy").ShouldBe([MediaEndpoints.SvgPolicy]);
         served.Headers.GetValues("X-Content-Type-Options").ShouldBe(["nosniff"]);
     }
+
+    [Fact]
+    public async Task AStoredTypeThePluginDoesNotFindIsSentAsAnAttachmentAndAnSvgTypeInAnyCaseGetsThePolicy()
+    {
+        await using var sanitised = await media.ConfigureAsync(settings => settings.Svg = SvgHandling.Sanitize);
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var png = Files.Png(4, 4);
+        var page = Id((await UploadedAsync(admin, null, ("page.png", png))).Single()!);
+        var logo = Id((await UploadedAsync(admin, null, ("logo.svg", Files.Svg("""<rect width="10" height="10"/>""")))).Single()!);
+        var upper = Id((await UploadedAsync(admin, null, ("upper.png", png))).Single()!);
+        await media.SetMimeTypeAsync(page, "text/html");
+        await media.SetMimeTypeAsync(logo, "IMAGE/SVG+XML");
+        await media.SetMimeTypeAsync(upper, "Image/PNG");
+
+        using var html = await FetchAsync(anonymous, await OriginalAsync(anonymous, page));
+        using var svg = await FetchAsync(anonymous, await OriginalAsync(anonymous, logo));
+        using var image = await FetchAsync(anonymous, await OriginalAsync(anonymous, upper));
+
+        html.StatusCode.ShouldBe(HttpStatusCode.OK);
+        html.Content.Headers.ContentType!.MediaType.ShouldBe("application/octet-stream");
+        html.Content.Headers.ContentDisposition!.DispositionType.ShouldBe("attachment");
+        html.Content.Headers.ContentDisposition.FileName.ShouldBe("page.png");
+        html.Headers.Contains("Content-Security-Policy").ShouldBeFalse();
+        html.Headers.GetValues("X-Content-Type-Options").ShouldBe(["nosniff"]);
+        (await html.Content.ReadAsByteArrayAsync(Token)).ShouldBe(png);
+        svg.Content.Headers.ContentType!.MediaType.ShouldBe("image/svg+xml");
+        svg.Content.Headers.ContentDisposition.ShouldBeNull();
+        svg.Headers.GetValues("Content-Security-Policy").ShouldBe([MediaEndpoints.SvgPolicy]);
+        image.Content.Headers.ContentType!.MediaType.ShouldBe("image/png");
+        image.Content.Headers.ContentDisposition.ShouldBeNull();
+    }
+
+    private static async Task<string> OriginalAsync(HttpClient client, Guid asset) =>
+        (await GetAsync(client, $"/api/delivery/v1/media/{asset:D}"))["urls"]!["original"]!.GetValue<string>();
 }

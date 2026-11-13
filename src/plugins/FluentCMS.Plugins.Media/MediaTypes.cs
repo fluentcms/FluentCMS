@@ -26,6 +26,8 @@ internal static class MediaTypes
     // What a site's allow-list may hold. SVG is governed by its own setting.
     public static readonly IReadOnlyList<MediaType> Allowable = [Jpeg, Png, Gif, WebP, Avif, Pdf, Mp4, WebM, Mp3, Wav];
 
+    private static readonly IReadOnlyList<MediaType> Known = [.. Allowable, Svg];
+
     private static readonly HashSet<string> ExecutableExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".exe", ".dll", ".com", ".scr", ".msi", ".msp", ".bat", ".cmd", ".ps1", ".psm1", ".vbs", ".vbe", ".js", ".jse", ".wsf", ".wsh", ".hta", ".cpl", ".sh", ".bash", ".jar", ".apk", ".app", ".dmg", ".so", ".dylib", ".elf",
@@ -97,6 +99,10 @@ internal static class MediaTypes
     }
 
     public static bool HasExecutableName(string fileName) => ExecutableExtensions.Contains(Path.GetExtension(fileName));
+
+    // The type a stored MIME type names, without regard to case, or null when it is none the plugin finds from bytes.
+    public static MediaType? Find(string mimeType) =>
+        Known.FirstOrDefault(type => string.Equals(type.MimeType, mimeType, StringComparison.OrdinalIgnoreCase));
 
     // Text that starts with markup, after a byte order mark and white space.
     public static bool MayBeSvg(ReadOnlySpan<byte> header)
