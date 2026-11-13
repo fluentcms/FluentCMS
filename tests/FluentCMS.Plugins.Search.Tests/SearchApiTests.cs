@@ -211,6 +211,30 @@ public sealed class SearchApiTests
         (await FindAsync(editor, "term", "glossaire", "fr", QueryStatus.Draft)).ShouldBe([term.Id]);
     }
 
+    // A delete and a purge act on the whole entry, so the rows of a global entry go in every locale, including those the
+    // site that purges it does not allow.
+    [Fact]
+    public async Task APurgeOfAGlobalEntryFromASiteWithOneOfItsLocalesLeavesNoRowOfIt()
+    {
+        await using var search = new SearchHost();
+        await search.AddLocaleAsync(DefaultSite.Id, "fr");
+        var other = await search.SiteAsync();
+        var editor = await search.EditorAsync();
+        var term = await editor.Content<Term>().CreateAsync(new Term { Name = "Glossary" }, Token);
+        await editor.In("fr").Content<Term>().UpdateAsync(term.Id, new Term { Name = "Glossaire" }, 0, Token);
+        await search.PumpAsync();
+        (await search.RowsAsync()).Count.ShouldBe(2);
+
+        var terms = (await search.EditorAsync(other)).Content<Term>();
+        await terms.DeleteAsync(term.Id, Token);
+        await search.PumpAsync();
+        (await search.RowsAsync()).ShouldBeEmpty();
+
+        await terms.PurgeAsync(term.Id, Token);
+        await search.PumpAsync();
+        (await search.RowsAsync()).ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task TheRebuildNeedsSearchManageAndATypeWithASearchableField()
     {

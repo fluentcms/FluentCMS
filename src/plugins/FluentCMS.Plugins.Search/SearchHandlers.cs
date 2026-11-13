@@ -5,11 +5,21 @@ using Microsoft.Extensions.Logging;
 namespace FluentCMS.Plugins.Search;
 
 // The outbox handler of each entry event. An import and a seed raise the same events, so what they write is indexed too.
+// A delete and a purge remove the whole entry.
 internal sealed class SearchEventHandler<TEvent>(SearchIndexer indexer) : IOutboxEventHandler<TEvent>
     where TEvent : EntryEvent
 {
-    public async ValueTask HandleAsync(TEvent message, EventDelivery delivery, CancellationToken cancellationToken) =>
-        await indexer.IndexAsync(message.Type, message.EntryId, message.Locale, message.Source.SiteId, cancellationToken);
+    public async ValueTask HandleAsync(TEvent message, EventDelivery delivery, CancellationToken cancellationToken)
+    {
+        if (message is EntryTrashedEvent or EntryPurgedEvent)
+        {
+            await indexer.RemoveAsync(message.Type, message.EntryId, message.Locale, message.Source.SiteId, cancellationToken);
+        }
+        else
+        {
+            await indexer.IndexAsync(message.Type, message.EntryId, message.Locale, message.Source.SiteId, cancellationToken);
+        }
+    }
 }
 
 // The rows of a site go with it, through the outbox, so a failure is tried again. A site is deleted only when it has no

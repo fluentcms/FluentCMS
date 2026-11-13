@@ -20,9 +20,9 @@ internal sealed class SearchIndexer(
     private const int MaxBatchSize = 100;
 
     // The rows of the entry in the locale of an event, and in every other locale the index holds for it, since a field
-    // that is not localizable is shared by the locales. An entry in the trash is not read, so its rows go, and a restore
-    // writes them again. A locale the site does not allow is not read either: the rows of a site's entry in it go, while
-    // those of a global entry stay for the sites that allow it.
+    // that is not localizable is shared by the locales. A restore writes the rows again in the locales the site allows. A
+    // locale the site does not allow is not read: the rows of a site's entry in it go, while those of a global entry stay
+    // for the sites that allow it.
     public async Task IndexAsync(string typeName, Guid id, string locale, Guid site, CancellationToken cancellationToken)
     {
         if (schema.FindContentType(typeName) is not { } type)
@@ -56,6 +56,19 @@ internal sealed class SearchIndexer(
         }
 
         await store.WriteAsync(rows, cancellationToken);
+    }
+
+    // A delete or a purge acts on the whole entry, so every row of it goes, in every locale, whatever the site allows. A
+    // restore delivered before the delete's own event has brought the entry back, which a read in the event's locale shows.
+    public async Task RemoveAsync(string typeName, Guid id, string locale, Guid site, CancellationToken cancellationToken)
+    {
+        if (schema.FindContentType(typeName) is { } type && await ExistsAsync(type, id, locale, site, cancellationToken))
+        {
+            await IndexAsync(typeName, id, locale, site, cancellationToken);
+            return;
+        }
+
+        await store.RemoveDocumentAsync(id, cancellationToken);
     }
 
     // Every entry of the type, or of every type with a searchable field, in the site and of the global types: the drafts
@@ -105,6 +118,25 @@ internal sealed class SearchIndexer(
         catch (ValidationException)
         {
             return null;
+        }
+    }
+
+    // Whether the entry is out of the trash in that locale. A locale the site does not allow cannot tell, and counts as gone.
+    private async Task<bool> ExistsAsync(SchemaType type, Guid id, string locale, Guid site, CancellationToken cancellationToken)
+    {
+        if (type.Localized && await AllowedAsync(new SiteId(site), locale, cancellationToken) is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            var options = new GetOptions { Status = QueryStatus.Draft, Locale = type.Localized ? locale : null, Fallback = LocaleFallback.None, Select = ["id"] };
+            return await content.GetAsync(type.Name, id, options, cancellationToken) is not null;
+        }
+        catch (ValidationException)
+        {
+            return false;
         }
     }
 

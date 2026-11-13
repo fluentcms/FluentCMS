@@ -33,7 +33,7 @@ The tables are the stream `cms_search__migrations`, one migration, `InitialSearc
 
 ## Keeping the index current
 
-The outbox handlers of the entry events (a draft saved, published, unpublished, a draft discarded, a version restored, trashed, restored and purged) read the entry again through the content service and write its rows, one for each locale and state. So a change is found once its events are delivered, a moment after the write, and a delivery that fails is tried again by the outbox. An import and a seed raise the same events. A deleted entry, in the trash, has no rows, and a restore writes them again, so `q=` on the trash list finds nothing. A purge removes the rows too. The rows of a site go with the site.
+The outbox handlers of the entry events (a draft saved, published, unpublished, a draft discarded, a version restored, trashed, restored and purged) read the entry again through the content service and write its rows, one for each locale and state. So a change is found once its events are delivered, a moment after the write, and a delivery that fails is tried again by the outbox. An import and a seed raise the same events. A delete or a purge removes every row of the entry, in every locale, whatever the site allows, so `q=` on the trash list finds nothing. A restore writes the rows again in the locales the restoring site allows; the other locales of a global entry come back when a site that allows them rebuilds, or when the entry changes there. The rows of a site go with the site.
 
 A delete or a purge made while the plugin is disabled in the site reaches no handler of the plugin, so the entry's rows stay until the plugin is enabled there again, whose rebuild removes them, or the site is deleted. They are never served: the site refuses `q=` meanwhile, and in another site the list keeps out an entry that is deleted or gone. The plugin hears nothing when it is disabled in a site, since core gives none of the site's events to a plugin disabled there, so it cannot remove the rows at that moment.
 
@@ -59,7 +59,7 @@ A list reads one locale, so the job lists a localized type in each locale the si
 
 ## Per site
 
-Where the plugin is disabled in a site, `q=` is refused there, and its handlers hear nothing of the site (4.13). Enabling it again queues a rebuild of the site (event 9382). The rows of a global type are shared by every site, so a change to a global entry made in a site where the plugin is disabled reaches them only with a rebuild. A change to a global entry made in a site rewrites its rows in the locales that site allows, and leaves those in other locales to the sites that allow them.
+Where the plugin is disabled in a site, `q=` is refused there, and its handlers hear nothing of the site (4.13). Enabling it again queues a rebuild of the site (event 9382). The rows of a global type are shared by every site, so a change to a global entry made in a site where the plugin is disabled reaches them only with a rebuild. A change to a global entry made in a site rewrites its rows in the locales that site allows, and leaves those in other locales to the sites that allow them; a delete or a purge removes them all.
 
 ## Codes and log events
 
