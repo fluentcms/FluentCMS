@@ -1,5 +1,10 @@
+using System.Net;
+using System.Text;
 using System.Text.Json.Nodes;
 using FluentCMS.Cli.Generate;
+using FluentCMS.Core.Schema;
+using FluentCMS.Schema;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 
@@ -201,15 +206,77 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
     [Fact]
     public void AFieldTypeWithoutATypeIsJsonWithAWarning()
     {
-        var schema = BlogInstance.Schema("""{ "collections": [ { "name": "place", "fields": [ { "name": "where", "type": "geo", "radius": 5 } ] } ] }""");
+        var schema = BlogInstance.Schema("""{ "collections": [ { "name": "place", "fields": [ { "name": "where", "type": "acme.geo-point_2", "radius": 5 } ] } ] }""");
 
         var typeScript = TypeScriptEmitter.Emit(schema);
-        typeScript.Files.Single().Text.ShouldContain("where?: unknown | null;");
-        typeScript.Diagnostics.ShouldContain(diagnostic => diagnostic.Code == "FCMS3375");
+        typeScript.Files.Single().Text.ShouldContain("/** acme.geo-point_2 */\n    where?: unknown | null;");
+        typeScript.Diagnostics.ShouldContain(diagnostic => diagnostic.Code == "FCMS3375" && diagnostic.Message.Contains("'acme.geo-point_2'", StringComparison.Ordinal));
 
         var csharp = CSharpEmitter.Emit(schema, "Places");
-        csharp.Files.Single(file => file.Name == "Place.g.cs").Text.ShouldContain("public global::System.Text.Json.JsonElement? Where { get; set; }");
-        csharp.Diagnostics.ShouldContain(diagnostic => diagnostic.Code == "FCMS3375");
+        var place = csharp.Files.Single(file => file.Name == "Place.g.cs").Text;
+        place.ShouldContain("/// <summary>The field <c>where</c> (acme.geo-point_2).</summary>");
+        place.ShouldContain("public global::System.Text.Json.JsonElement? Where { get; set; }");
+        csharp.Diagnostics.ShouldContain(diagnostic => diagnostic.Code == "FCMS3375" && diagnostic.Message.Contains("'acme.geo-point_2'", StringComparison.Ordinal));
+    }
+
+    // A field type is text of the snapshot that the emitters write into comments, so one that is not a name is refused
+    // before anything is written, whether the snapshot comes from a file or from an instance.
+    [Theory]
+    [InlineData("typescript")]
+    [InlineData("csharp")]
+    public async Task AFieldTypeThatIsNotANameIsRefusedAndNothingIsWritten(string language)
+    {
+        string[] options = language == "csharp" ? ["--namespace", "Posts"] : [];
+        foreach (var fieldType in InjectedFieldTypes)
+        {
+            var snapshot = Snapshot(fieldType);
+            var fromFile = await blog.RunAsync(["generate", language, "--output", Out("file"), "--schema", WriteSnapshot(snapshot), .. options]);
+            var fromInstance = await RunAgainstAsync(snapshot, ["generate", language, "--output", Out("url"), "--url", BlogInstance.Url, "--token", "fcms_mk_unused", .. options]);
+
+            foreach (var (exitCode, error) in new[] { (fromFile.ExitCode, fromFile.Error), fromInstance })
+            {
+                exitCode.ShouldBe(1);
+                error.ShouldStartWith("FCMS3370: ");
+                error.ShouldContain("the field 'post.title' has a field type that is not a name");
+                error.ShouldNotContain("njected");
+            }
+
+            Directory.Exists(Out("file")).ShouldBeFalse();
+            Directory.Exists(Out("url")).ShouldBeFalse();
+        }
+    }
+
+    // The emitters check a field type themselves too, so a model that did not come through ClientSchema.Read writes none
+    // that is not a name, in code or in a warning.
+    [Fact]
+    public void TheEmittersWriteNoFieldTypeThatIsNotAName()
+    {
+        foreach (var fieldType in InjectedFieldTypes)
+        {
+            var schema = new ClientSchema(new SchemaBuilder(new UncheckedFieldTypes()).AddSchemaJson(Snapshot(fieldType)).Build(), "hash");
+
+            var typeScript = TypeScriptEmitter.Emit(schema);
+            typeScript.Files.Single().Text.ShouldContain("    title?: unknown | null;");
+            var csharp = CSharpEmitter.Emit(schema, "Posts");
+            csharp.Files.Single(file => file.Name == "Post.g.cs").Text.ShouldContain("/// <summary>The field <c>title</c>.</summary>");
+
+            foreach (var code in new[] { typeScript, csharp })
+            {
+                code.Files.ShouldAllBe(file => !file.Text.Contains("njected", StringComparison.Ordinal));
+                code.Diagnostics.ShouldAllBe(diagnostic => !diagnostic.Message.Contains("njected", StringComparison.Ordinal));
+                code.Diagnostics.ShouldContain(diagnostic => diagnostic.Code == "FCMS3375" && diagnostic.Message.Contains("'post.title'", StringComparison.Ordinal));
+            }
+        }
+    }
+
+    // The field types of the host, core's and the first-party plugins', pass the check, so they generate as before.
+    [Fact]
+    public void TheFieldTypesOfCoreAndOfThePluginsAreNames()
+    {
+        var fieldTypes = blog.Host.Services.GetRequiredService<IFieldTypeRegistry>().All.Select(fieldType => fieldType.Name).ToList();
+
+        fieldTypes.ShouldContain("media");
+        fieldTypes.ShouldAllBe(name => ClientSchema.IsFieldTypeName(name));
     }
 
     // Names that clash with an export of @fluentcms/client, a member of BlocksField or object, or a builder of another type.
@@ -264,6 +331,33 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
         await GenerateAsync(["generate", "csharp", "--schema", schema, "--namespace", "Cases", "--output", directory, "--check"]);
     }
 
+    // A field type that closes the TypeScript comment, one whose line break ends the C# comment before a module
+    // initializer, and one that opens an XML element in it.
+    private static readonly string[] InjectedFieldTypes =
+    [
+        "x */ } console.log(\"injected\"); export interface Injected { /*",
+        "x)\n[global::System.Runtime.CompilerServices.ModuleInitializer] internal static void Injected() { }\n/// (",
+        "x<see cref=\"Injected\"/>",
+    ];
+
+    private static string Snapshot(string fieldType) => new JsonObject
+    {
+        ["collections"] = new JsonArray(new JsonObject
+        {
+            ["name"] = "post",
+            ["fields"] = new JsonArray(new JsonObject { ["name"] = "title", ["type"] = fieldType }),
+        }),
+    }.ToJsonString();
+
+    // Runs the tool against an instance that answers every request with the snapshot given.
+    private static async Task<(int ExitCode, string Error)> RunAgainstAsync(string snapshot, string[] args)
+    {
+        using var output = new StringWriter();
+        using var error = new StringWriter();
+        var exitCode = await CommandLine.RunAsync(args, output, error, null, _ => new HttpClient(new SnapshotAnswer(snapshot)), TestContext.Current.CancellationToken);
+        return (exitCode, error.ToString());
+    }
+
     private async Task GenerateAsync(string[] args)
     {
         var result = await blog.RunAsync(args);
@@ -281,4 +375,10 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
 
     private static Dictionary<string, string> Read(string directory) =>
         Directory.EnumerateFiles(directory).ToDictionary(path => Path.GetFileName(path), File.ReadAllText);
+
+    private sealed class SnapshotAnswer(string snapshot) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(snapshot, Encoding.UTF8, "application/json") });
+    }
 }

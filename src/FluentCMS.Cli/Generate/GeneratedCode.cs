@@ -12,6 +12,22 @@ internal sealed record GenerateDiagnostic(string Code, string Message)
 
 internal sealed record GeneratedCode(IReadOnlyList<GeneratedFile> Files, IReadOnlyList<GenerateDiagnostic> Diagnostics);
 
+// What both emitters write of a field's type, in a comment and in a warning: the field type only when it passes the check
+// of ClientSchema.Read, so that no other text of a snapshot reaches either.
+internal static class FieldTypeText
+{
+    // "text, multiple, localizable".
+    public static string Traits(SchemaField field) => string.Join(", ", new[]
+    {
+        ClientSchema.IsFieldTypeName(field.FieldType) ? field.FieldType : null,
+        field.Multiple ? "multiple" : null,
+        field.Localizable ? "localizable" : null,
+    }.OfType<string>());
+
+    // "the field type 'geo'".
+    public static string Of(SchemaField field) => ClientSchema.IsFieldTypeName(field.FieldType) ? $"the field type '{field.FieldType}'" : "its field type";
+}
+
 // The class names of the types of a schema, shared by both emitters so that a type has one name in C# and in TypeScript:
 // the name in PascalCase, with Component or Block after a component or a block type, whose names may be those of a
 // collection. A name that gives no identifier or that another type took gets nothing, with FCMS3376.
