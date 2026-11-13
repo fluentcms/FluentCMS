@@ -96,7 +96,7 @@ jobs:
               echo "::error::$TAG is a version of ${BASH_REMATCH[1]}, and Directory.Build.props holds the version prefix $prefix."
               exit 1
             fi
-            case "${BASH_REMATCH[3]}" in
+            case "${BASH_REMATCH[3],,}" in
               ci | ci.* | dev | dev.* | fresh | fresh.*)
                 echo "::error::The pre-release ${BASH_REMATCH[3]} is for the builds that are not releases."
                 exit 1
@@ -114,9 +114,18 @@ jobs:
           if [ "$EVENT" = pull_request ]; then
             echo "A pull request: whether the commit is on main and its CI and Fresh machine passed is checked for a tag."
           else
-            if ! git merge-base --is-ancestor "$commit" origin/main; then refuse "$commit is not on main"; fi
-            runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$commit&status=success&per_page=100" \
-              --jq '.workflow_runs[] | select(.path | startswith(".github/workflows/ci.yml") or startswith(".github/workflows/fresh-machine.yml")) | "\(.id) \(.path)"')
+            if git merge-base --is-ancestor "$commit" origin/main; then
+              echo "- The commit $commit is on main." >> "$GITHUB_STEP_SUMMARY"
+            else
+              refuse "$commit is not on main"
+            fi
+
+            # The runs that tested the packages of this commit: CI, which calls Fresh machine, and Fresh machine on a push or
+            # a manual run without a feed. A run with a feed tested packages published before, under names of its own.
+            runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$commit&status=success&per_page=100" --jq '.workflow_runs[]
+              | select((.path | startswith(".github/workflows/ci.yml"))
+                  or ((.path | startswith(".github/workflows/fresh-machine.yml")) and (.display_title | startswith("Fresh machine of the published") | not)))
+              | "\(.id) \(.path)"')
             echo "Successful runs of $commit:"
             echo "$runs"
             if ! grep -q ' \.github/workflows/ci\.yml' <<< "$runs"; then refuse "$commit has no successful run of CI"; fi
@@ -129,6 +138,23 @@ jobs:
             for os in ubuntu-latest windows-latest; do
               if ! grep -qF "Fresh machine ($os" <<< "$jobs"; then refuse "$commit has no successful Fresh machine job on $os"; fi
             done
+
+            # The release environment with a required reviewer, before any job names it: GitHub would make a missing one with
+            # no reviewer. Its deployments are limited to the tags v* where the token can read the policies.
+            if environment=$(gh api "repos/$GITHUB_REPOSITORY/environments/release" 2> /dev/null); then
+              reviewers=$(jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length' <<< "$environment")
+              if [ "$reviewers" -lt 1 ]; then refuse "the release environment has no required reviewer"; fi
+              if [ "$(jq -r '.deployment_branch_policy.custom_branch_policies // false' <<< "$environment")" != true ]; then
+                refuse "the release environment does not limit its deployments to the tags v*"
+              elif policies=$(gh api "repos/$GITHUB_REPOSITORY/environments/release/deployment-branch-policies" \
+                  --jq '[.branch_policies[] | "\(.type) \(.name)"] | join(", ")' 2> /dev/null); then
+                if [ "$policies" != "tag v*" ]; then refuse "the release environment deploys to $policies, not the tags v* only"; fi
+              else
+                echo "::warning::The deployment policies of the release environment could not be read; check that they are the tags v* only."
+              fi
+            else
+              refuse "the release environment does not exist, or cannot be read"
+            fi
           fi
 
           preview=false
@@ -291,7 +317,7 @@ jobs:
       TAGS: ${{ needs.check.outputs.tags }}
       NPM_TAG: ${{ needs.check.outputs.npm-tag }}
     steps:
-      # GitHub makes an environment that does not exist, with no reviewer and no secret: stop before any push then.
+      # The check job refused a release environment without a reviewer; this stops before any push when it has no secret.
       - name: Check the release environment
         env:
           NUGET_USER: ${{ secrets.NUGET_USER }}

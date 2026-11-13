@@ -4,7 +4,9 @@ name: Fresh machine
 # folder feed, on clean runners. Linux runs it on SQLite and PostgreSQL, then checks that broken feeds fail it; Windows runs
 # SQLite. It runs on pushes to feature branches and when dispatched; CI calls it on pushes to main, on manual runs and on the
 # pull request of a feature branch into main. Issue pull requests do not run it. After a release, a manual run with a feed and
-# a version runs it against the published packages, such as nuget.org (docs/releasing.md).
+# a version runs it against the published packages, such as nuget.org (docs/releasing.md). That run and its jobs have names of
+# their own, so that the check of the Publish workflow never takes it for a run of the packages of its commit.
+run-name: ${{ inputs.feed && format('Fresh machine of the published {0} from {1}', inputs.version, inputs.feed) || '' }}
 on:
   push:
     branches: ["feature/**"]
@@ -32,7 +34,7 @@ permissions:
 
 jobs:
   linux:
-    name: Fresh machine (ubuntu-latest, SQLite and PostgreSQL)
+    name: ${{ inputs.feed && 'Published packages' || 'Fresh machine' }} (ubuntu-latest, SQLite and PostgreSQL)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     # At job level: a called workflow shares the caller's workflow name, so a workflow-level group would hold CI's own.
@@ -126,7 +128,7 @@ jobs:
           retention-days: 7
 
   windows:
-    name: Fresh machine (windows-latest, SQLite)
+    name: ${{ inputs.feed && 'Published packages' || 'Fresh machine' }} (windows-latest, SQLite)
     runs-on: windows-latest
     timeout-minutes: 45
     concurrency:

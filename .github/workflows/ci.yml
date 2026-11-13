@@ -290,18 +290,22 @@ jobs:
       - name: Check the metadata of the packages
         run: dotnet run eng/check-packages.cs -- artifacts/packages "$PACKAGE_VERSION"
 
-      # A copy of FluentCMS.Sdk without each part in turn, which the check must refuse and name.
+      # A copy of FluentCMS.Sdk without each part in turn, which the check must refuse and name: an element of its .nuspec, or
+      # SourceLink, with the symbols package left out.
       - name: Check that a package without a part fails the check
         shell: bash
         run: |
-          declare -A expected=([description]="a description" [readme]="a README" [tags]="its tags" [icon]="the icon" [license]="the licence expression MIT")
+          declare -A expected=([description]="a description" [readme]="a README" [tags]="its tags" [icon]="the icon" [license]="the licence expression MIT" [sourcelink]="SourceLink in the PDB")
           for part in "${!expected[@]}"; do
             broken="$RUNNER_TEMP/broken-package/$part"
             mkdir -p "$broken"
-            cp "artifacts/packages/FluentCMS.Sdk.$PACKAGE_VERSION.nupkg" "artifacts/packages/FluentCMS.Sdk.$PACKAGE_VERSION.snupkg" "$broken/"
-            (cd "$broken" && unzip -q "FluentCMS.Sdk.$PACKAGE_VERSION.nupkg" FluentCMS.Sdk.nuspec \
-              && sed -i -E "s#<$part( [^>]*)?>[^<]*</$part>##" FluentCMS.Sdk.nuspec \
-              && zip -q "FluentCMS.Sdk.$PACKAGE_VERSION.nupkg" FluentCMS.Sdk.nuspec && rm FluentCMS.Sdk.nuspec)
+            cp "artifacts/packages/FluentCMS.Sdk.$PACKAGE_VERSION.nupkg" "$broken/"
+            if [ "$part" != sourcelink ]; then
+              cp "artifacts/packages/FluentCMS.Sdk.$PACKAGE_VERSION.snupkg" "$broken/"
+              (cd "$broken" && unzip -q "FluentCMS.Sdk.$PACKAGE_VERSION.nupkg" FluentCMS.Sdk.nuspec \
+                && sed -i -E "s#<$part( [^>]*)?>[^<]*</$part>##" FluentCMS.Sdk.nuspec \
+                && zip -q "FluentCMS.Sdk.$PACKAGE_VERSION.nupkg" FluentCMS.Sdk.nuspec && rm FluentCMS.Sdk.nuspec)
+            fi
             if dotnet run eng/check-packages.cs -- "$broken" "$PACKAGE_VERSION" > "$broken.log"; then
               cat "$broken.log"
               echo "::error::The check passed FluentCMS.Sdk without its $part."

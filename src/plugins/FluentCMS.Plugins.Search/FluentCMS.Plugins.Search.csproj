@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <Description>Full-text search for FluentCMS: an index of the fields marked Searchable, on PostgreSQL full-text search, SQLite FTS5 or a match on SQL Server.</Description>
+    <PackageTags>$(PackageTags) search full-text</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

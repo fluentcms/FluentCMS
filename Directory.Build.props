@@ -15,10 +15,10 @@
   </PropertyGroup>
 
   <!-- One version for every package. A release passes the version of its tag (-p:Version=1.0.0-preview.1); any other build
-       is a pre-release that no release has: ci.{run}.{attempt} on GitHub Actions, dev elsewhere. -->
+       is a pre-release that no release has: ci.{run id}.{attempt} on GitHub Actions, which no two runs share, and dev elsewhere. -->
   <PropertyGroup>
     <VersionPrefix>1.0.0</VersionPrefix>
-    <VersionSuffix Condition="'$(VersionSuffix)' == '' And '$(GITHUB_ACTIONS)' == 'true'">ci.$(GITHUB_RUN_NUMBER).$(GITHUB_RUN_ATTEMPT)</VersionSuffix>
+    <VersionSuffix Condition="'$(VersionSuffix)' == '' And '$(GITHUB_ACTIONS)' == 'true'">ci.$(GITHUB_RUN_ID).$(GITHUB_RUN_ATTEMPT)</VersionSuffix>
     <VersionSuffix Condition="'$(VersionSuffix)' == ''">dev</VersionSuffix>
   </PropertyGroup>
 

@@ -8,6 +8,8 @@
 // A file-based app publishes with Native AOT by default, which would restore the ILCompiler package for nothing.
 #:property PublishAot=false
 
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Formats.Tar;
 using System.IO.Compression;
 using System.Reflection.Metadata;
@@ -56,6 +58,9 @@ internal static class Checks
     private const string Repository = "https://github.com/fluentcms/FluentCMS";
     private const string PluginTag = "fluentcms-plugin";
     private static readonly Guid SourceLinkKind = new("CC110556-A091-4D38-9FEC-25AB9A351A6A");
+
+    // SourceLink points the PDBs at the origin of the clone that built them: fluentcms/FluentCMS in CI, a fork's own on a fork.
+    private static readonly string SourceRepository = GitHubOrigin() ?? "fluentcms/FluentCMS";
 
     public static (string Name, List<string> Problems) NuGet(string path, string version)
     {
@@ -131,7 +136,7 @@ internal static class Checks
             {
                 problems.Add($"SourceLink in the PDB of {assembly.FullName}");
             }
-            else if (!sourceLink.Contains($"https://raw.githubusercontent.com/fluentcms/FluentCMS/{commit}/", StringComparison.OrdinalIgnoreCase))
+            else if (!sourceLink.Contains($"https://raw.githubusercontent.com/{SourceRepository}/{commit}/", StringComparison.OrdinalIgnoreCase))
             {
                 problems.Add($"SourceLink to the commit {commit} in the PDB of {assembly.FullName}");
             }
@@ -238,6 +243,36 @@ internal static class Checks
         }
 
         return null;
+    }
+
+    // owner/repository of the origin of the clone in the current directory, from https://github.com/... or git@github.com:...
+    private static string? GitHubOrigin()
+    {
+        var start = new ProcessStartInfo("git", "remote get-url origin") { RedirectStandardOutput = true, RedirectStandardError = true };
+        try
+        {
+            using var git = Process.Start(start);
+            if (git is null)
+            {
+                return null;
+            }
+
+            var url = git.StandardOutput.ReadToEnd().Trim();
+            git.WaitForExit();
+            var host = url.IndexOf("github.com", StringComparison.OrdinalIgnoreCase);
+            if (git.ExitCode != 0 || host < 0)
+            {
+                return null;
+            }
+
+            var path = url[(host + "github.com".Length)..].TrimStart(':', '/').TrimEnd('/');
+            path = path.EndsWith(".git", StringComparison.OrdinalIgnoreCase) ? path[..^4] : path;
+            return path.Count(character => character == '/') == 1 ? path : null;
+        }
+        catch (Win32Exception)
+        {
+            return null;
+        }
     }
 
     // PEReader and the PDB reader need a stream they can seek in.
