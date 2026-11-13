@@ -1,6 +1,9 @@
-﻿using System.Data.Common;
+using System.Data.Common;
+using System.Diagnostics;
 using System.Net;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using FluentCMS.Content;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Events;
@@ -137,11 +140,44 @@ public sealed class HostMapTests : IAsyncLifetime
         }
     }
 
+    // A key, a header or a parameter can name any id, so that one names no site is never kept: each request reads the site
+    // again, and the cache holds nothing for the id.
+    [Theory]
+    [InlineData("apiKey")]
+    [InlineData("X-Cms-Site")]
+    [InlineData("site")]
+    public async Task AMissingSiteNamedByAKeyAHeaderOrAParameterIsReadEveryTimeAndNotKept(string source)
+    {
+        var missing = Guid.CreateVersion7();
+        var request = source switch
+        {
+            "apiKey" => new SiteRequest { ApiKeySite = new SiteId(missing) },
+            "X-Cms-Site" => new SiteRequest { Header = missing.ToString() },
+            _ => new SiteRequest { Parameter = missing.ToString() },
+        };
+
+        for (var i = 0; i < 2; i++)
+        {
+            var reads = await _writer.SiteReads.CountAsync(async () =>
+            {
+                var error = (await Should.ThrowAsync<ValidationException>(() => ResolveAsync(_writer.Host, request))).Errors.ShouldHaveSingleItem();
+                (error.Path, error.Code).ShouldBe((source, "FCMS2301"));
+            });
+            reads.ShouldBeGreaterThan(0);
+        }
+
+        _writer.Host.Services.GetRequiredService<SiteCache>().TryGet<bool>(SiteCache.SiteKey(missing), out _).ShouldBeFalse();
+    }
+
     // A host in the stored form is found as it is, and one that no site has is found in that form to be no one's, so
-    // neither puts anything on the heap once the map is read.
+    // neither puts anything on the heap once the map is read. Unoptimised code keeps the async state machines on the heap.
     [Fact]
     public async Task AHostNameInTheStoredFormIsLookedUpWithoutAllocating()
     {
+        Assert.SkipWhen(
+            typeof(SiteHostMap).Assembly.GetCustomAttribute<DebuggableAttribute>()?.IsJITOptimizerDisabled == true,
+            "The plugin is built without optimisation, whose async state machines are classes and allocate.");
+
         using var admin = await AdminAsync(_writer.Host);
         var site = new SiteId(await CreateSiteAsync(admin));
         var name = HostName();
@@ -179,10 +215,12 @@ public sealed class HostMapTests : IAsyncLifetime
         await scope.ServiceProvider.GetRequiredService<SiteManager>().DeleteAsync(site, Token);
     }
 
-    private static async Task<Guid> SiteOfAsync(FluentCmsTestHost host, string hostname)
+    private static Task<Guid> SiteOfAsync(FluentCmsTestHost host, string hostname) => ResolveAsync(host, new SiteRequest { Host = hostname });
+
+    private static async Task<Guid> ResolveAsync(FluentCmsTestHost host, SiteRequest request)
     {
         await using var scope = host.Services.CreateAsyncScope();
-        return (await scope.ServiceProvider.GetRequiredService<ISiteResolver>().ResolveAsync(new SiteRequest { Host = hostname }, Token)).Value;
+        return (await scope.ServiceProvider.GetRequiredService<ISiteResolver>().ResolveAsync(request, Token)).Value;
     }
 
     private sealed class Instance : MultiSiteHost
