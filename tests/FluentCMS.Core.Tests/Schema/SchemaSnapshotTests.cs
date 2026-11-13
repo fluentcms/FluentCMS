@@ -1,5 +1,6 @@
 using FluentCMS.Core.Schema;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentCMS.Schema;
 using Shouldly;
 using Xunit;
@@ -88,13 +89,16 @@ public class SchemaSnapshotTests
         Diff(before, after).ShouldBe(["field 'article.subtitle' renamed to 'summary'", "field 'article.summary' changed (maxLength)"]);
     }
 
+    // Validation refuses such a schema (FCMS1219), so the snapshot is edited by hand, as one stored before that rule may be.
     [Fact]
     public void AFormerNameThatIsStillAFieldIsNotARename()
     {
-        var before = Article(type => type.Field("subtitle", "text"));
-        var after = Article(type => type.Field("subtitle", "text").Field("summary", "text", field => field.FormerNames("subtitle")));
+        var before = SchemaSnapshot.Of(Article(type => type.Field("subtitle", "text"))).Json;
+        var after = JsonNode.Parse(SchemaSnapshot.Of(Article(type => type.Field("subtitle", "text").Field("summary", "text"))).Json)!;
+        var article = after["collections"]!.AsArray().Single(type => (string?)type!["name"] == "article")!;
+        article["fields"]![1]!["formerNames"] = new JsonArray("subtitle");
 
-        Diff(before, after).ShouldBe(["field 'article.summary' added"]);
+        SchemaSnapshotDiff.Compare(before, after.ToJsonString()).Select(change => change.ToString()).ShouldBe(["field 'article.summary' added"]);
     }
 
     [Fact]
