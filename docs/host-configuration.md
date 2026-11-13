@@ -534,7 +534,7 @@ The media plugin (`FluentCMS.Plugins.Media`, which the reference host adds) keep
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `Library` | `Shared` | `Shared`: every site reads and writes the media library of the default site, and each site's roles still decide who uploads and who reads there. `PerSite`: each site keeps its own library. An instance with several sites that each have assets sets `PerSite`. |
+| `Library` | `Shared` | `Shared`: every site reads and writes the media library of the default site, and each site's roles still decide who uploads and who reads there. `PerSite`: each site keeps its own library. An instance with several sites that each have assets sets `PerSite`. With `Shared`, the startup report lists `media-shared-library-hides-sites` and names those sites while a site other than the default still has assets of its own. |
 | `Local:Root` | `App_Data/media` | The directory of the local storage, under the content root unless it is absolute. The startup report lists `media-local-storage` in Production. |
 | `MaxRequestBodySize` | `268435456` | The largest upload request, in bytes. |
 | `RequireSignedUrls` | `true` | `false` serves unsigned transform URLs. The startup report lists `media-unsigned-urls` while it is off in Production. |

@@ -46,6 +46,7 @@ public sealed class MediaPlugin : IPlugin
         plugin.Services.AddScoped<MediaCache>();
         plugin.Services.AddSingleton<MediaSigning>();
         plugin.Services.AddSingleton<IInsecureDefaultSource, MediaInsecureDefaults>();
+        plugin.Services.AddSingleton<IInsecureDefaultSource, SharedLibraryReport>();
         plugin.Services.AddHostedService<MediaStartup>();
         plugin.Services.AddSingleton<MediaStorage>();
         plugin.Services.AddKeyedSingleton<IFileStorage, LocalFileStorage>(LocalFileStorage.ProviderName);

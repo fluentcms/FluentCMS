@@ -22,6 +22,8 @@ With `Library` set to `Shared`, the default, the sites of an instance share one 
 
 With `PerSite`, each site keeps its own library, and an asset of one site is unknown in another. An instance with one site behaves the same either way. An instance that already has several sites, each with assets of its own, sets `PerSite` to keep reading them: with `Shared`, only the library of the default site is read. The option adds no table and moves no row, so it can be changed back.
 
+A host that turns `PerSite` back to `Shared` hides the assets its sites uploaded while each had its own library: they are not found, and entries that refer to them show missing media. Nothing is moved or deleted. At start, with `Shared`, the plugin looks for assets of a site other than the default, and when it finds some, the startup report lists `media-shared-library-hides-sites` (a warning with event id 9131 in the log, and an entry of `insecureDefaults` in `fluentcms doctor` and `GET /api/management/v1/system/diagnostics`). It names `FluentCms:Media:Library=PerSite` and up to five of those sites, by id and name, with "and more" when there are others. Set `PerSite` again to read each site's own library; the plugin does not move assets into the shared library. With `PerSite`, with one site, or when no other site has an asset, the report says nothing. The check is one query that reads none of the library's own rows, so a large library does not slow the start; if it cannot run, the log says so (event id 9273) and the report says nothing of it.
+
 ## Site settings
 
 The rules of uploads are each site's, in the settings area `media` (`settings.media.manage`):
