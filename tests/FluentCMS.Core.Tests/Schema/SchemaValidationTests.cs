@@ -415,6 +415,53 @@ public class SchemaValidationTests
     }
 
     [Fact]
+    public void AFormerNameThatIsTheNameOfAnotherFieldIsFCMS1219()
+    {
+        var builder = new SchemaBuilder().AddCollection("article", type => type
+            .Field("summary", "text", field => field.FormerNames("subtitle"))
+            .Field("subtitle", "text"));
+
+        Fails(builder).Errors.ShouldHaveSingleItem().ToString().ShouldBe(
+            "FCMS1219: former name 'subtitle' of article.summary is the name of field article.subtitle; a former name must not be the name of another field of collection 'article'");
+    }
+
+    [Fact]
+    public void TwoFieldsThatSwapNamesAreOneFCMS1219()
+    {
+        var builder = new SchemaBuilder().AddCollection("article", type => type
+            .Field("title", "text", field => field.FormerNames("heading"))
+            .Field("heading", "text", field => field.FormerNames("title")));
+
+        Fails(builder).Errors.ShouldHaveSingleItem().ToString().ShouldBe(
+            "FCMS1219: fields article.title and article.heading list each other's names as former names; a former name must not be the name of another field of collection 'article'");
+    }
+
+    [Fact]
+    public void AFormerNameThatAnotherFieldOfAComponentOrBlockHasIsFCMS1219()
+    {
+        var builder = new SchemaBuilder()
+            .AddComponent("seo", type => type.Field("pageTitle", "text", field => field.FormerNames("metaTitle")).Field("metaTitle", "text"))
+            .AddBlock("hero", type => type.Field("title", "text", field => field.FormerNames("Heading")).Field("heading", "text"));
+
+        Fails(builder).Errors.Select(error => error.ToString()).ShouldBe(
+        [
+            "FCMS1219: former name 'metaTitle' of seo.pageTitle is the name of field seo.metaTitle; a former name must not be the name of another field of component 'seo'",
+            "FCMS1219: former name 'Heading' of hero.title is the name of field hero.heading; a former name must not be the name of another field of block 'hero'",
+        ]);
+    }
+
+    [Fact]
+    public void FormerNamesThatNoOtherFieldHasBuild()
+    {
+        var model = new SchemaBuilder().AddCollection("article", type => type
+            .Field("summary", "text", field => field.FormerNames("teaser", "summary", "subtitle"))
+            .Field("title", "text", field => field.FormerNames("heading")))
+            .Build();
+
+        model.FindContentType("article")!.FindField("summary")!.FormerNames.ShouldBe(["teaser", "summary", "subtitle"]);
+    }
+
+    [Fact]
     public void AllErrorsAreReportedTogether()
     {
         var builder = new SchemaBuilder()

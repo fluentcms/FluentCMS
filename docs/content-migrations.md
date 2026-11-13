@@ -50,7 +50,15 @@ A field of a block, or of a component that is repeated or sits in a block, keeps
 FCMS3327: the migration loses data: field 'block hero.heading' renamed to 'title', whose values are kept in JSON under 'heading', which the migration does not rename; nothing was written. Pass --allow-destructive to generate it.
 ```
 
-The versions in `cms_version` keep the values of a renamed field under its former name. A model snapshot generated before the snapshot carried the schema cannot be compared, so the next migration is refused with `FCMS3328` until `--allow-destructive` is given once.
+The versions in `cms_version` keep the values of a renamed field under its former name, and reading, diffing or restoring a version finds them there: a field missing under its name is read under each of its former names in order, at the top level and in a single component. A field kept in JSON keeps its former name in a version as in the entry. A role whose grant allows a list of fields still names the former one, so the renamed field drops out of that list until the role is changed.
+
+A former name must not be the name of another field of the type, component or block, since the migration would leave the values under that field and a version would give them to both. Schema validation refuses it, and a swap of two names, with `FCMS1219`:
+
+```text
+FCMS1219: former name 'subtitle' of article.summary is the name of field article.subtitle; a former name must not be the name of another field of collection 'article'
+```
+
+A model snapshot generated before the snapshot carried the schema cannot be compared, so the next migration is refused with `FCMS3328` until `--allow-destructive` is given once.
 
 `fluentcms migrations remove` deletes the newest content migration and writes the snapshot back as the migration before it left it. It first asks the host, with `fluentcms migrations list`, whether its database has the migration, and refuses with `FCMS3314` when it has: add a migration that undoes it instead. `--force` removes the files without asking, and leaves the database as it is.
 

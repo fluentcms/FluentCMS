@@ -714,7 +714,7 @@ internal sealed partial class ContentService
     // Hidden fields show to no one, the system principal included.
     private JsonObject VisibleFieldsOf(WriteScope write, ContentVersion version)
     {
-        var snapshot = ParseSnapshot(version);
+        var snapshot = VersionSnapshot.Parse(schema, write.Type, version.Snapshot);
         JsonObject fields = [];
         foreach (var field in write.Type.Fields)
         {
@@ -733,7 +733,7 @@ internal sealed partial class ContentService
     private async Task<ContentDocument> RestorableFieldsAsync(WriteScope write, ContentVersion version, WritableFields writable, CancellationToken cancellationToken)
     {
         var isSystem = write.Permissions.IsSystem;
-        var snapshot = ParseSnapshot(version);
+        var snapshot = VersionSnapshot.Parse(schema, write.Type, version.Snapshot);
         var taken = write.Type.Fields.Where(field => isSystem || !Keeps(write, field, writable, addsLocale: false)).ToList();
         JsonObject fields = [];
         foreach (var field in taken)
@@ -755,9 +755,6 @@ internal sealed partial class ContentService
 
         return restored;
     }
-
-    private static JsonObject ParseSnapshot(ContentVersion version) =>
-        JsonDepth.Parse(version.Snapshot) as JsonObject ?? [];
 
     // Fails closed on a target since trashed, which only a draft read of the entry itself would show. The targets of all the
     // snapshots are asked together, one query or two per target type.

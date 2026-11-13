@@ -81,24 +81,8 @@ public class ContentRenamesTests
         renames.InJson.ShouldBeEmpty();
     }
 
-    [Fact]
-    public void AFieldWithAFormerNameOfAFieldTheSchemaStillHasIsNoRename()
-    {
-        var schema = SampleSchema.NewBuilder()
-            .AddCollection("article", type => type.Field("title", "text").Field("summary", "text", field => field.FormerNames("title")))
-            .Build();
-
-        var renames = Renames(ArticleWith("title"), schema);
-
-        renames.Columns.ShouldBeEmpty();
-        renames.Paths.ShouldBeEmpty();
-    }
-
     private static ContentRenames Renames(SchemaModel before, SchemaModel after) =>
         ContentRenames.Of(after, SchemaSnapshotDiff.Compare(SchemaSnapshot.Of(before).Json, SchemaSnapshot.Of(after).Json));
-
-    private static SchemaModel ArticleWith(string field) =>
-        SampleSchema.NewBuilder().AddCollection("article", type => type.Field(field, "text")).Build();
 
     private static SchemaModel Held(string heading, string street, string line, string metaTitle, bool former = false)
     {

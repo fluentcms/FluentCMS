@@ -107,6 +107,37 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
 
             ValidateField(type, field, contentTypes, components, blocks);
         }
+
+        ValidateFormerNames(type);
+    }
+
+    // A migration and a version read the values stored under a former name as the field's, so the name must be free. A swap
+    // of two names is reported once, by the field declared first.
+    private void ValidateFormerNames(TypeDraft type)
+    {
+        List<FieldDraft> fields = [.. DistinctFields(type)];
+        for (var index = 0; index < fields.Count; index++)
+        {
+            var field = fields[index];
+            foreach (var former in field.FormerNames.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var holder = fields.FindIndex(candidate => candidate != field && string.Equals(candidate.Name, former, StringComparison.OrdinalIgnoreCase));
+                if (holder < 0)
+                {
+                    continue;
+                }
+
+                var other = fields[holder];
+                if (!other.FormerNames.Contains(field.Name, StringComparer.OrdinalIgnoreCase))
+                {
+                    Report(SchemaErrorCodes.FormerNameInUse, $"former name '{former}' of {type.Name}.{field.Name} is the name of field {type.Name}.{other.Name}; a former name must not be the name of another field of {Describe(type)}");
+                }
+                else if (holder > index)
+                {
+                    Report(SchemaErrorCodes.FormerNameInUse, $"fields {type.Name}.{field.Name} and {type.Name}.{other.Name} list each other's names as former names; a former name must not be the name of another field of {Describe(type)}");
+                }
+            }
+        }
     }
 
     private void ValidateField(TypeDraft type, FieldDraft field, Dictionary<string, TypeDraft> contentTypes, Dictionary<string, TypeDraft> components, Dictionary<string, TypeDraft> blocks)

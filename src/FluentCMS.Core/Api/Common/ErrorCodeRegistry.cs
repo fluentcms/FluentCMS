@@ -61,6 +61,7 @@ public static class ErrorCodeRegistry
         Startup(SchemaErrorCodes.InvalidProperty, "Invalid property"),
         Startup(SchemaErrorCodes.ReverseRelationOutsideContentType, "Reverse relation outside a content type"),
         Startup(SchemaErrorCodes.NameTooLong, "Name too long"),
+        Startup(SchemaErrorCodes.FormerNameInUse, "Former name in use"),
 
         // 13xx storage
         Startup(StorageErrorCodes.MissingContentSchema, "Content tables out of date"),
