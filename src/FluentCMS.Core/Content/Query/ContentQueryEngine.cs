@@ -14,7 +14,7 @@ namespace FluentCMS.Core.Content.Query;
 // Runs a ContentQuery. IContentService (#2693) is its caller, and resolves the locale and site first. Bad input is a
 // ValidationException, before anything runs. RichTextFormat and Fallback are carried, not applied: this returns the
 // stored rich text and the requested locale's values. LocaleFallbackReader fills the fields that fall back.
-internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, ISearchIndex search, ReferenceResolvers resolvers, ManagementShape shape)
+internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, ISearchIndex search, ReferenceResolvers resolvers, ManagementShape shape, TargetTypes targetTypes)
 {
     private const string All = "*";
     private const string EveryLocale = "all";
@@ -522,7 +522,13 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         var targets = query.Targets;
         foreach (var group in asked.GroupBy(item => item.Target))
         {
-            await ReadableIdsAsync(targets, group.Key, [.. group.SelectMany(item => item.Ids).Distinct()], readable, cancellationToken);
+            List<Guid> ids = [.. group.SelectMany(item => item.Ids).Distinct()];
+            if (ids.Count > 0)
+            {
+                targetTypes.Add(group.Key);
+            }
+
+            await ReadableIdsAsync(targets, group.Key, ids, readable, cancellationToken);
         }
 
         foreach (var output in outputs)
