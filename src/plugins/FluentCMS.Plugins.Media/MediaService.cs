@@ -67,6 +67,9 @@ internal sealed class MediaService(
     public const int MaxTags = 50;
     public const int TagMaxLength = 64;
 
+    internal static readonly string FolderNameRule = $"A folder needs a name of at most {MediaModel.FolderNameMaxLength} characters, without slashes or control characters.";
+    internal static readonly string TagRule = $"A tag has from 1 to {TagMaxLength} characters, without quotes, backslashes or control characters.";
+
     public async Task<IReadOnlyList<MediaAsset>> UploadAsync(MediaUpload upload, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(upload);
@@ -807,7 +810,7 @@ internal sealed class MediaService(
     // size are read from the bytes as stored.
     internal static async Task<Upload> PrepareAsync(string name, Stream source, MediaSettings rules, long requestLeft, long requestLimit, CancellationToken cancellationToken)
     {
-        Stream content = new FileStream(Path.Combine(Path.GetTempPath(), $"fluentcms-media-{Guid.NewGuid():N}.tmp"), FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 81920, FileOptions.Asynchronous | FileOptions.DeleteOnClose);
+        Stream content = TemporaryFile();
         try
         {
             using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
@@ -907,6 +910,26 @@ internal sealed class MediaService(
         }
     }
 
+    // A media file in the temporary folder, readable by the owner only where the platform sets a mode, since the folder is
+    // shared on Unix.
+    internal static FileStream TemporaryFile()
+    {
+        var file = new FileStreamOptions
+        {
+            Mode = FileMode.CreateNew,
+            Access = FileAccess.ReadWrite,
+            Share = FileShare.None,
+            BufferSize = 81920,
+            Options = FileOptions.Asynchronous | FileOptions.DeleteOnClose,
+        };
+        if (!OperatingSystem.IsWindows())
+        {
+            file.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        }
+
+        return new FileStream(Path.Combine(Path.GetTempPath(), $"fluentcms-media-{Guid.NewGuid():N}.tmp"), file);
+    }
+
     // The name without a directory, from either kind of separator, since browsers on Windows may send the whole path.
     internal static string? FileNameOf(string? given)
     {
@@ -914,21 +937,23 @@ internal sealed class MediaService(
         return string.IsNullOrEmpty(name) || name.Length > MediaModel.FileNameMaxLength || name is "." or ".." || name.Any(char.IsControl) ? null : name;
     }
 
-    private static string ValidName(string? name)
+    // The name trimmed, or null for one the service refuses.
+    internal static string? FolderNameOf(string? name)
     {
         var trimmed = name?.Trim();
-        return string.IsNullOrEmpty(trimmed) || trimmed.Length > MediaModel.FolderNameMaxLength || trimmed.Any(character => char.IsControl(character) || character is '/' or '\\')
-            ? throw Invalid("name", $"A folder needs a name of at most {MediaModel.FolderNameMaxLength} characters, without slashes or control characters.")
-            : trimmed;
+        return string.IsNullOrEmpty(trimmed) || trimmed.Length > MediaModel.FolderNameMaxLength || trimmed.Any(character => char.IsControl(character) || character is '/' or '\\') ? null : trimmed;
     }
 
-    private static string ValidTag(string? tag, string path)
+    // The tag trimmed, or null for one the service refuses.
+    internal static string? TagOf(string? tag)
     {
         var trimmed = tag?.Trim();
-        return string.IsNullOrEmpty(trimmed) || trimmed.Length > TagMaxLength || trimmed.Any(character => char.IsControl(character) || character is '"' or '\\')
-            ? throw Invalid(path, $"A tag has from 1 to {TagMaxLength} characters, without quotes, backslashes or control characters.")
-            : trimmed;
+        return string.IsNullOrEmpty(trimmed) || trimmed.Length > TagMaxLength || trimmed.Any(character => char.IsControl(character) || character is '"' or '\\') ? null : trimmed;
     }
+
+    private static string ValidName(string? name) => FolderNameOf(name) ?? throw Invalid("name", FolderNameRule);
+
+    private static string ValidTag(string? tag, string path) => TagOf(tag) ?? throw Invalid(path, TagRule);
 
     private static void Check(List<ValidationError> errors, string path, string? value, int maxLength)
     {
@@ -940,7 +965,7 @@ internal sealed class MediaService(
 
     private static string? Clear(string value) => value.Trim() is { Length: > 0 } trimmed ? trimmed : null;
 
-    private static int Depth(string path) => path.Count(character => character == '/') - 1;
+    internal static int Depth(string path) => path.Count(character => character == '/') - 1;
 
     public static ValidationException Invalid(string path, string message) => new([new ValidationError(path, MediaErrorCodes.InvalidField, message)]);
 

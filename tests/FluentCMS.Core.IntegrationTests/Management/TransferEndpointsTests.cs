@@ -7,6 +7,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.IntegrationTests.Blog;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
+using FluentCMS.Core.Transfer;
 using FluentCMS.Providers;
 using FluentCMS.Samples.Blog;
 using FluentCMS.Sites;
@@ -177,6 +178,21 @@ public sealed class TransferEndpointsTests : IAsyncLifetime
         (await response.Content.ReadAsStringAsync(Token)).ShouldContain("FCMS3200");
     }
 
+    // A chunked body declares no length, so only the bytes read tell its size.
+    [Fact]
+    public async Task AChunkedBodyOverMaxPackageSizeIsRefusedWithItsCode()
+    {
+        await using var host = new FluentCmsTestHost().Configure(cms => cms.Services.Configure<TransferOptions>(options => options.MaxPackageSize = 1024));
+        using var admin = host.AsKey(await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token));
+        using var body = new ChunkedContent(new byte[4096]);
+        body.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+
+        using var response = await admin.PostAsync(new Uri(Import, UriKind.Relative), body, Token);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
+        (await response.Content.ReadAsStringAsync(Token)).ShouldContain("FCMS3204");
+    }
+
     private static async Task<byte[]> ExportAsync(HttpClient client, string body)
     {
         using var response = await client.PostAsync(new Uri(Export, UriKind.Relative), new StringContent(body, Encoding.UTF8, "application/json"), Token);
@@ -207,6 +223,18 @@ public sealed class TransferEndpointsTests : IAsyncLifetime
         var content = new ByteArrayContent(package);
         content.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
         return content;
+    }
+
+    // A body whose length is not known before it is sent, which HTTP/1.1 sends chunked.
+    private sealed class ChunkedContent(byte[] bytes) : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context) => stream.WriteAsync(bytes).AsTask();
+
+        protected override bool TryComputeLength(out long length)
+        {
+            length = 0;
+            return false;
+        }
     }
 
     private static async Task<string> ReadAsync(HttpClient client, string path)

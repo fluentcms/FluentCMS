@@ -35,13 +35,13 @@ internal static class TransferEndpoints
     {
         var transfer = management.MapGroup("/transfer").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
         transfer.MapPost("/export", ExportAsync)
-            .Takes<TransferExportBody>(optional: true, "What to export: the content types, whether global types and roles are in, whether only published entries are, and the options of the plugins' contributors, such as mediaFiles.")
+            .Takes<TransferExportBody>(optional: true, "What to export: the content types, whether global types and roles are in, whether only published entries are, and the options of the plugins' contributors, such as mediaFiles. A global type needs transfer.manage for the instance, so a caller with it in the site only gives globalTypes false or names the site's own types.")
             .Produces<Stream>(StatusCodes.Status200OK, ZipType);
         transfer.MapPost("/import", ImportAsync)
             .WithMetadata(new PackageSizeLimit())
             .Query(
             [
-                QueryParameter.OneOf("dryRun", Flags, "true checks everything and writes nothing, and answers the same report."),
+                QueryParameter.OneOf("dryRun", Flags, "true runs every step of the import, the content hooks included, and writes nothing, so the report is the one the import would give; a hook that acts outside the database, such as one that calls another service, acts in a dry run too."),
                 QueryParameter.OneOf("overwrite", Flags, "true takes the package's copy of an entry that is newer in the instance, which is otherwise a conflict."),
                 QueryParameter.OneOf("missingLocales", MissingLocales, "skip leaves out the locales of the package that the site does not allow, which otherwise refuse the import."),
                 QueryParameter.OneOf("webhooks", Flags, "true delivers the webhooks of what the import writes, which are otherwise not delivered."),
