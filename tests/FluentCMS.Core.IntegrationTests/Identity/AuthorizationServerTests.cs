@@ -123,8 +123,12 @@ public sealed partial class AuthorizationServerTests(AuthorizationServerFixture 
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Token));
         var access = await JsonAsync(response);
-        access.GetProperty("permissions").EnumerateArray().Select(item => item.GetString()).ShouldBe([CorePermissions.SchemaRead]);
-        access.GetProperty("instancePermissions").EnumerateArray().Select(item => item.GetString()).ShouldBe([CorePermissions.SchemaRead]);
+        // Editor is an instance-wide role: what it holds in the site it holds for the instance, the default grants of the
+        // media plugin included, and nothing that administers.
+        var held = access.GetProperty("permissions").EnumerateArray().Select(item => item.GetString()).ToList();
+        held.ShouldContain(CorePermissions.SchemaRead);
+        held.ShouldNotContain(CorePermissions.UsersManage);
+        access.GetProperty("instancePermissions").EnumerateArray().Select(item => item.GetString()).ShouldBe(held);
         var note = access.GetProperty("types").GetProperty("note");
         note.GetProperty("publish").GetBoolean().ShouldBeTrue();
         note.GetProperty("conditional").GetArrayLength().ShouldBe(0);
