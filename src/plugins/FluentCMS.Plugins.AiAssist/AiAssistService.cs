@@ -28,6 +28,10 @@ public sealed record AiSeoSuggestion(string MetaTitle, string MetaDescription);
 
 public sealed record AiUsageInfo(string Provider, string Model, long PromptTokens, long CompletionTokens, long DurationMs);
 
+// The answer of GET /ai/fields: whether the site names a provider, and by content type the opted-in fields that the caller
+// may run actions on in Locale, the locale of the request. Nothing of the provider's configuration.
+public sealed record AiFields(bool Enabled, string Locale, IReadOnlyDictionary<string, IReadOnlyList<string>> Fields);
+
 // A call that passed every check and is ready for its provider.
 internal sealed record AiCall(
     string Action,
@@ -77,6 +81,37 @@ internal sealed class AiAssistService(
 
     private const string RichTextFieldType = "richText";
 
+    // The fields that pass the checks of PrepareAsync in the locale of the request, so that an editor offers the actions
+    // only where they work. A field the caller may set on a new entry only is left out, since PrepareAsync refuses it too.
+    public async Task<AiFields> FieldsAsync(CancellationToken cancellationToken)
+    {
+        var operation = operations.Current ?? throw new InvalidOperationException("The AI fields are read inside an operation, which names the site and the caller.");
+        await permissions.RequireAsync(AiPermissions.Use, operation.Site, cancellationToken);
+
+        var current = await settings.GetAsync(operation.Site, cancellationToken);
+        var enabled = current.Provider != AiProvider.None && !AiProviders.IsRemoved(current.Provider);
+        Dictionary<string, IReadOnlyList<string>> fields = new(StringComparer.Ordinal);
+        if (enabled)
+        {
+            var held = await access.ContentAsync(cancellationToken);
+            foreach (var (name, typeAccess) in held.Types)
+            {
+                if (schema.FindContentType(name) is not { } type)
+                {
+                    continue;
+                }
+
+                var offered = type.Fields.Where(field => IsOptedIn(current, type, field) && MayUpdate(typeAccess, field)).Select(field => field.Name).ToList();
+                if (offered.Count > 0)
+                {
+                    fields[type.Name] = offered;
+                }
+            }
+        }
+
+        return new AiFields(enabled, operation.Locale, fields);
+    }
+
     public async Task<AiCall> PrepareAsync(string action, AiActionRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -97,8 +132,7 @@ internal sealed class AiAssistService(
         var current = await settings.GetAsync(site, cancellationToken);
         var type = schema.FindContentType(request.Type.Trim());
         var field = type?.FindField(request.Field.Trim());
-        if (type is null || field is null || !TakesActions(field)
-            || !current.Fields.TryGetValue(type.Name, out var optedIn) || !optedIn.Contains(field.Name, StringComparer.Ordinal))
+        if (type is null || field is null || !IsOptedIn(current, type, field))
         {
             throw new PluginException(AiErrorCodes.FieldNotOptedIn, "The AI settings of the site do not opt this field in. A field that takes AI actions is a text, long text or rich text field of a content type, named under 'fields'.");
         }
@@ -113,7 +147,7 @@ internal sealed class AiAssistService(
         }
 
         var held = await AccessInAsync(operation, type.Localized ? locale : operation.Locale, cancellationToken);
-        if (!held.Types.TryGetValue(type.Name, out var typeAccess) || !typeAccess.Update || !typeAccess.UpdatableFields.Contains(field.Name))
+        if (!held.Types.TryGetValue(type.Name, out var typeAccess) || !MayUpdate(typeAccess, field))
         {
             throw new ContentAccessDeniedException(type.Name, "update");
         }
@@ -170,13 +204,13 @@ internal sealed class AiAssistService(
             message.Add(new TextContent(text));
         }
 
-        // Whichever factory fills the slot: a host's own may not look at the provider.
+        // Whichever factory fills the slot: a host's own may not look at the provider, and none is off as FieldsAsync says.
         if (AiProviders.IsRemoved(current.Provider))
         {
             throw AiProviders.Refuse(logger, site, current.Provider);
         }
 
-        var client = await clients.CreateAsync(site, current, cancellationToken)
+        var client = (current.Provider == AiProvider.None ? null : await clients.CreateAsync(site, current, cancellationToken))
             ?? throw new PluginException(AiErrorCodes.NoProvider, "The site has no AI provider. An administrator names one in the AI settings of the site.");
 
         if (limits.Take(site, operation.Principal, current.CallsPerMinute) is { } refusal)
@@ -299,6 +333,11 @@ internal sealed class AiAssistService(
 
     private static bool TakesActions(SchemaField field) =>
         TextFieldTypes.Contains(field.FieldType, StringComparer.Ordinal) && !field.Multiple && !field.Hidden && !field.ReadOnly;
+
+    private static bool IsOptedIn(AiSettings settings, SchemaType type, SchemaField field) =>
+        TakesActions(field) && settings.Fields.TryGetValue(type.Name, out var optedIn) && optedIn.Contains(field.Name, StringComparer.Ordinal);
+
+    private static bool MayUpdate(ContentTypeAccess access, SchemaField field) => access.Update && access.UpdatableFields.Contains(field.Name);
 
     private static ValidationError Invalid(string path, string message) => new(path, AiErrorCodes.InvalidRequest, message);
 

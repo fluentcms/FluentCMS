@@ -18,6 +18,9 @@ internal static class AiEndpoints
     {
         group.MapPost("/actions/{action}", ActAsync);
 
+        group.MapGet("/fields", async (AiAssistService ai, CancellationToken cancellationToken) =>
+            Results.Ok(await ai.FieldsAsync(cancellationToken))).Produces<AiFields>();
+
         group.MapGet("/usage", async (string? principalId, string? action, string? from, string? to, string? page, string? pageSize, AiUsageService usage, CancellationToken cancellationToken) =>
             Results.Ok(await usage.QueryAsync(new AiUsageQuery(principalId, action, from, to, page, pageSize), cancellationToken)));
 
