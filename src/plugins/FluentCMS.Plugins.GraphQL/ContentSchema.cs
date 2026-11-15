@@ -184,7 +184,7 @@ internal sealed class ContentSchema(ContentModel model, int defaultPageSize)
         {
             descriptor.Name(list);
             descriptor.Field(ContentResolvers.Items).Type(Required(ListOf(type.Name))).Cost(0).Resolve(context => context.Parent<EntryList>().Items);
-            descriptor.Field(ContentResolvers.Total).Type<LongType>().Description("The number of entries the filter matches. Selecting it runs a second query.").Resolve(context => context.Parent<EntryList>().Total);
+            descriptor.Field(ContentResolvers.Total).Type<LongType>().Description("The number of entries the filter matches. Selecting it runs a second query.").Cost(0).Resolve(context => context.Parent<EntryList>().Total);
             descriptor.Field("page").Type<IntType>().Cost(0).Resolve(context => context.Parent<EntryList>().Page);
             descriptor.Field("pageSize").Type<NonNullType<IntType>>().Cost(0).Resolve(context => context.Parent<EntryList>().PageSize);
             descriptor.Field("nextCursor").Type<StringType>().Description("The cursor of the next page, to send back as it came.").Cost(0).Resolve(context => context.Parent<EntryList>().NextCursor);
@@ -426,12 +426,25 @@ internal sealed class ContentSchema(ContentModel model, int defaultPageSize)
         }
     }
 
-    // The sort keys of a type: its sortable system fields and fields, as the values of an enum.
+    // The sort keys of a type: its sortable system fields and fields, as the values of an enum. A field whose name gives no
+    // value, such as null, or one value that two names give, stops the host as two types of one GraphQL name do.
     private (string Input, IReadOnlyDictionary<string, string> Paths) Sort(TypeModel type)
     {
-        var paths = SystemFieldModel.All.Where(system => system.Sortable).Select(system => system.Name)
-            .Concat(type.Fields.Where(field => field.Sortable).Select(field => field.Name))
-            .ToImmutableSortedDictionary(name => GraphQLNames.EnumValue(name)!, name => name, StringComparer.Ordinal);
+        Dictionary<string, string> byValue = new(StringComparer.Ordinal);
+        foreach (var name in SystemFieldModel.All.Where(system => system.Sortable).Select(system => system.Name).Concat(type.Fields.Where(field => field.Sortable).Select(field => field.Name)))
+        {
+            var value = GraphQLNames.EnumValue(name);
+            if (value is null || !byValue.TryAdd(value, name))
+            {
+                throw new PluginException(
+                    GraphQLErrorCodes.SchemaConflict,
+                    value is null
+                        ? $"{GraphQLErrorCodes.SchemaConflict}: The field '{type.SchemaName}.{name}' gives no GraphQL enum value to sort by. Rename it there."
+                        : $"{GraphQLErrorCodes.SchemaConflict}: The fields '{type.SchemaName}.{byValue[value]}' and '{type.SchemaName}.{name}' give one GraphQL sort value, '{value}'. Rename one of the two there.");
+            }
+        }
+
+        var paths = byValue.ToImmutableSortedDictionary(StringComparer.Ordinal);
 
         var keys = Claim(type.Name + "SortField", type.SchemaName);
         _types.Add(new EnumType(descriptor =>

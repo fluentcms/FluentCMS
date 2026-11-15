@@ -14,7 +14,7 @@ namespace FluentCMS.Core.Content.Query;
 // Runs a ContentQuery. IContentService (#2693) is its caller, and resolves the locale and site first. Bad input is a
 // ValidationException, before anything runs. RichTextFormat and Fallback are carried, not applied: this returns the
 // stored rich text and the requested locale's values. LocaleFallbackReader fills the fields that fall back.
-internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, ISearchIndex search, ReferenceResolvers resolvers, ManagementShape shape)
+internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, ISearchIndex search, ReferenceResolvers resolvers, ManagementShape shape, TargetTypes targetTypes)
 {
     private const string All = "*";
     private const string EveryLocale = "all";
@@ -609,15 +609,19 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     }
 
     // Asks the database only about the ids this run has not asked about yet. What is returned is to be asked whether it
-    // contains an id, and may hold more than the ids given.
+    // contains an id, and may hold more than the ids given. Every relation target and entry link, at every level, is asked
+    // about here, so a type of which the caller reads one of them is recorded as shown.
     private async Task<HashSet<Guid>?> ReadableIdsAsync(QueryScope query, SchemaType target, List<Guid> ids, ReadableTargets readable, CancellationToken cancellationToken)
     {
-        if (readable.TryAnswer(target, ids, out var answer, out var unknown))
+        var answer = readable.TryAnswer(target, ids, out var known, out var unknown)
+            ? known
+            : readable.Add(target, unknown, await ReadableIdsAsync(query, target, unknown, cancellationToken));
+        if (answer is null ? ids.Count > 0 : ids.Any(answer.Contains))
         {
-            return answer;
+            targetTypes.Add(target);
         }
 
-        return readable.Add(target, unknown, await ReadableIdsAsync(query, target, unknown, cancellationToken));
+        return answer;
     }
 
     private async Task<HashSet<Guid>?> ReadableIdsAsync(QueryScope query, SchemaType target, List<Guid> ids, CancellationToken cancellationToken)

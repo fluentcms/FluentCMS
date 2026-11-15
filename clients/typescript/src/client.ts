@@ -108,7 +108,17 @@ export class FluentCmsClient {
       throw new FluentCmsProblem(response.status, parse(text));
     }
 
-    return (text.length > 0 ? JSON.parse(text) : undefined) as T;
+    // An empty body answers nothing, as a delete does. A body this client cannot read, such as a page of a proxy, is a
+    // problem with no code, as an answer that is not one is.
+    if (text.length === 0) {
+      return undefined as T;
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new FluentCmsProblem(response.status, { detail: "The answer is not JSON." });
+    }
   }
 
   async #resolveHeaders(): Promise<Record<string, string>> {

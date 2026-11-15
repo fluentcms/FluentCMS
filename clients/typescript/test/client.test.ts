@@ -87,6 +87,19 @@ test("a problem of the API surfaces with its FCMS code", async () => {
     && error.message.startsWith("FCMS2202: "));
 });
 
+test("a success that is not JSON is a problem with no code, and an empty one answers nothing", async () => {
+  const proxy = createClient({ baseUrl: "https://cms.example.com/", fetch: answering(200, "<html>a proxy</html>", "text/html").fetch });
+  const empty = createClient({ baseUrl: "https://cms.example.com/", fetch: answering(200, "").fetch });
+
+  await assert.rejects(proxy.author.get("1"), (error) =>
+    error instanceof FluentCmsProblem
+    && error.status === 200
+    && error.code === undefined
+    && error.detail === "The answer is not JSON."
+    && error.message === "200: The answer is not JSON.");
+  assert.equal(await empty.article.delete("1"), undefined);
+});
+
 test("an answer that is not a problem has no code", async () => {
   const { fetch } = answering(502, "<html>gateway</html>", "text/html");
   const cms = createClient({ baseUrl: "https://cms.example.com/", fetch });

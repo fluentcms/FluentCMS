@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentCMS.Agents;
+using FluentCMS.Authorization;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -37,9 +38,9 @@ internal sealed record McpStoredArgument(string Name, string? Description, bool 
 
 internal sealed record McpStoredPrompt(string Name, string? Title, string? Description, IReadOnlyList<McpStoredArgument> Arguments, string Template);
 
-// The stored prompts of a site as its agents get them, read once per request. They are for every agent of the site, so
-// nothing is checked here.
-internal sealed class McpStoredPrompts(PluginDbContext<McpPlugin> database, ILogger<McpStoredPrompts> logger)
+// The stored prompts of a site as its agents get them, read once per request. A caller that is no agent of the site, as
+// McpInstructions decides, gets none.
+internal sealed class McpStoredPrompts(PluginDbContext<McpPlugin> database, IPermissionChecker permissions, ILogger<McpStoredPrompts> logger)
 {
     private readonly Dictionary<Guid, IReadOnlyList<McpStoredPrompt>> _sites = [];
 
@@ -47,6 +48,11 @@ internal sealed class McpStoredPrompts(PluginDbContext<McpPlugin> database, ILog
     {
         if (!_sites.TryGetValue(site.Value, out var prompts))
         {
+            if (!await McpInstructions.IsAgentOfAsync(permissions, site, cancellationToken))
+            {
+                return _sites[site.Value] = [];
+            }
+
             var rows = await database.Set<McpPrompt>().AsNoTracking().Where(prompt => prompt.SiteId == site.Value).ToListAsync(cancellationToken);
             List<McpStoredPrompt> read = [];
             foreach (var row in rows.OrderBy(row => row.Name, StringComparer.Ordinal))

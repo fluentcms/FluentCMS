@@ -125,7 +125,8 @@ internal sealed class QueryDatabase : IDisposable
         options ?? new ContentQueryOptions(),
         search ?? Services.GetRequiredService<ISearchIndex>(),
         Services.GetRequiredService<ReferenceResolvers>(),
-        Services.GetRequiredService<ManagementShape>());
+        Services.GetRequiredService<ManagementShape>(),
+        Services.GetRequiredService<TargetTypes>());
 
     public Guid AddArticle(string title, Dictionary<string, object?>? values = null, string locale = "en", short state = ContentState.Published, Guid? id = null, Guid? site = null, Guid? createdBy = null)
     {

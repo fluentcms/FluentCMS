@@ -73,15 +73,46 @@ public sealed class GraphQLGuardTests(GuardedHost blog) : IClassFixture<GuardedH
         costly["errors"]!.AsArray().Codes().ShouldBe(["FCMS1645"]);
         (await client.QueryAsync("{ articleList(pageSize: 20) { items { hero } } }"))["articleList"]!["items"]!.AsArray().Count.ShouldBe(2);
 
-        // The root field weighs 10, and each populated field 1 for every entry the page may hold; the others nothing.
-        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(Endpoint, UriKind.Relative))
-        {
-            Content = System.Net.Http.Json.JsonContent.Create(new { query = "{ articleList(pageSize: 20) { items { title slug hero } } }" }),
-        };
-        request.Headers.Add("GraphQL-Cost", "report");
-        using var response = await client.SendAsync(request, Token);
-        var report = JsonNode.Parse(await response.Content.ReadAsStringAsync(Token))!;
-        report["extensions"]?["operationCost"]?["fieldCost"]?.GetValue<double>().ShouldBe(30, report.ToJsonString());
+        // The root field weighs 10, and each populated field 1 for every entry the page may hold; the others nothing, the
+        // total among them.
+        (await CostAsync(client, "{ articleList(pageSize: 20) { items { title slug hero } } }")).ShouldBe(30);
+        (await CostAsync(client, "{ articleList(pageSize: 20) { total page pageSize nextCursor items { title slug } } }")).ShouldBe(10);
+
+        // A page size sent as a variable is weighed by its value.
+        var (variableStatus, variable) = await client.SendAsync("query($size: Int) { articleList(pageSize: $size) { items { hero } } }", new { size = 100 });
+        variableStatus.ShouldBe(HttpStatusCode.BadRequest);
+        variable["errors"]!.AsArray().Codes().ShouldBe(["FCMS1645"]);
+        (await client.QueryAsync("query($size: Int) { articleList(pageSize: $size) { items { hero } } }", new { size = 20 }))["articleList"]!["items"]!.AsArray().Count.ShouldBe(2);
+    }
+
+    // MaxDepth does not count the fields of introspection, so a caller that may introspect is held by the introspection
+    // depth rule, whose refusal has the code of a query too deep.
+    [Fact]
+    public async Task ACallerThatMayIntrospectIsRefusedAnIntrospectionThatGoesTooDeep()
+    {
+        using var reader = await blog.KeyAsync(ApiKeyClass.Management, "schema.read");
+
+        (await reader.QueryAsync("""{ __type(name: "Article") { fields { name type { name ofType { name } } } } }"""))["__type"]!["fields"]!.AsArray().ShouldNotBeEmpty();
+
+        var (status, body) = await reader.SendAsync("""{ __type(name: "Article") { fields { type { fields { type { fields { name } } } } } } }""");
+        status.ShouldBe(HttpStatusCode.BadRequest);
+        body["data"].ShouldBeNull();
+        body["errors"]!.AsArray().Codes().ShouldBe(["FCMS1644"]);
+    }
+
+    [Fact]
+    public async Task IntrospectionOverGetIsRefusedAsOverPost()
+    {
+        using var anonymous = blog.Anonymous();
+        using var reader = await blog.KeyAsync(ApiKeyClass.Management, "schema.read");
+        var path = new Uri($"{Endpoint}?query={Uri.EscapeDataString(Introspection)}", UriKind.Relative);
+
+        using var refused = await anonymous.GetAsync(path, Token);
+        using var answered = await reader.GetAsync(path, Token);
+
+        JsonNode.Parse(await refused.Content.ReadAsStringAsync(Token))!["errors"]!.AsArray().Codes().Distinct().ShouldBe(["FCMS1643"]);
+        answered.StatusCode.ShouldBe(HttpStatusCode.OK);
+        JsonNode.Parse(await answered.Content.ReadAsStringAsync(Token))!["data"]!["__schema"]!["queryType"]!["name"]!.GetValue<string>().ShouldBe("Query");
     }
 
     [Fact]
@@ -97,6 +128,28 @@ public sealed class GraphQLGuardTests(GuardedHost blog) : IClassFixture<GuardedH
 
         response.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
         JsonNode.Parse(await response.Content.ReadAsStringAsync(Token))!["code"]!.GetValue<string>().ShouldBe("FCMS3111");
+    }
+
+    // A body that names no length is read up to the limit before the query is parsed, so it is refused as one that does.
+    [Fact]
+    public async Task ARequestSentInChunksOverTheSizeLimitIsRefusedAsOneWithALength()
+    {
+        using var client = await blog.KeyAsync(ApiKeyClass.Delivery, "content.*.read");
+
+        using var large = await PostChunkedAsync(client, "{ articleList { items { title } } } #" + new string('x', 5000));
+        using var small = await PostChunkedAsync(client, "{ articleList { items { title } } }");
+
+        large.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
+        JsonNode.Parse(await large.Content.ReadAsStringAsync(Token))!["code"]!.GetValue<string>().ShouldBe("FCMS3111");
+        small.StatusCode.ShouldBe(HttpStatusCode.OK, await small.Content.ReadAsStringAsync(Token));
+        JsonNode.Parse(await small.Content.ReadAsStringAsync(Token))!["data"]!["articleList"]!["items"]!.AsArray().Count.ShouldBe(2);
+
+        static Task<HttpResponseMessage> PostChunkedAsync(HttpClient client, string query)
+        {
+            var content = new StreamContent(new Unseekable(Encoding.UTF8.GetBytes(new JsonObject { ["query"] = query }.ToJsonString())));
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+            return client.PostAsync(new Uri(Endpoint, UriKind.Relative), content, Token);
+        }
     }
 
     [Fact]
@@ -127,5 +180,32 @@ public sealed class GraphQLGuardTests(GuardedHost blog) : IClassFixture<GuardedH
             new StringContent("""[{ "query": "{ __typename }" }, { "query": "{ __typename }" }]""", Encoding.UTF8, "application/json"),
             Token);
         batch.IsSuccessStatusCode.ShouldBeFalse();
+    }
+
+    // The cost HotChocolate reports for a query, which the request asks for with the GraphQL-Cost header.
+    private static async Task<double> CostAsync(HttpClient client, string query)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(Endpoint, UriKind.Relative))
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new { query }),
+        };
+        request.Headers.Add("GraphQL-Cost", "report");
+        using var response = await client.SendAsync(request, Token);
+        var report = JsonNode.Parse(await response.Content.ReadAsStringAsync(Token))!;
+        return report["extensions"]!["operationCost"]!["fieldCost"]!.GetValue<double>();
+    }
+
+    // A body whose length the client cannot tell, which it sends in chunks.
+    private sealed class Unseekable(byte[] bytes) : MemoryStream(bytes)
+    {
+        public override bool CanSeek => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
     }
 }

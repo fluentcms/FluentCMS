@@ -7,7 +7,6 @@ using HotChocolate.Execution;
 using HotChocolate.Language;
 using HotChocolate.PersistedOperations;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -38,7 +37,7 @@ internal sealed class GraphQLRequestInterceptor : DefaultHttpRequestInterceptor
 
     // Introspection shows every type and field of the one schema, whatever the caller may read of them, so outside
     // Development it is for a signed-in caller that holds schema.read in the site of the request. The checker decides.
-    private static async ValueTask<bool> MayIntrospectAsync(IServiceProvider services, GraphQLOptions options, CancellationToken cancellationToken)
+    internal static async ValueTask<bool> MayIntrospectAsync(IServiceProvider services, GraphQLOptions options, CancellationToken cancellationToken)
     {
         if (options.OpenIntrospection ?? services.GetRequiredService<IHostEnvironment>().IsDevelopment())
         {
@@ -56,6 +55,9 @@ internal static class GraphQLRequests
     private static readonly FrozenDictionary<string, string> Codes = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         [ErrorCodes.Validation.IntrospectionNotAllowed] = GraphQLErrorCodes.IntrospectionNotAllowed,
+
+        // MaxDepth does not count introspection fields, so this rule is what holds a caller that may introspect.
+        [ErrorCodes.Validation.MaxIntrospectionDepthOverflow] = GraphQLErrorCodes.DepthExceeded,
         [ErrorCodes.Execution.CostExceeded] = GraphQLErrorCodes.CostExceeded,
         [ErrorCodes.Execution.OnlyPersistedOperationsAllowed] = GraphQLErrorCodes.OnlyPersistedQueries,
         [ErrorCodes.Execution.PersistedOperationNotFound] = GraphQLErrorCodes.PersistedQueryNotFound,
@@ -87,19 +89,79 @@ internal static class GraphQLRequests
         : error.Extensions?.ContainsKey("allowedExecutionDepth") == true ? GraphQLErrorCodes.DepthExceeded
         : null;
 
-    // A body over the limit is refused as the REST APIs refuse one over theirs. The server's own limit is lowered where it
-    // has one, so that a body sent in chunks ends there too.
-    public static void LimitBody(HttpContext context, long limit)
+    // A body over the limit is refused as the REST APIs refuse one over theirs. One sent in chunks, which names no length,
+    // is read here up to the limit, before HotChocolate parses it: a body cut while its parser reads it would be answered
+    // as a request that is not well-formed, and some servers do not cut it at all.
+    public static async ValueTask LimitBodyAsync(HttpContext context, long limit)
     {
-        if (context.Request.ContentLength > limit)
+        var request = context.Request;
+        if (request.ContentLength > limit)
         {
-            throw new BadHttpRequestException($"The request body is larger than the {limit} bytes allowed.", StatusCodes.Status413PayloadTooLarge);
+            throw TooLarge(limit);
         }
 
-        if (context.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } feature)
+        if (request.ContentLength is not null || HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method))
         {
-            feature.MaxRequestBodySize = Math.Min(feature.MaxRequestBodySize ?? long.MaxValue, limit);
+            return;
         }
+
+        var buffered = new MemoryStream();
+        var chunk = new byte[16 * 1024];
+        int read;
+        while ((read = await request.Body.ReadAsync(chunk, context.RequestAborted)) > 0)
+        {
+            if (buffered.Length + read > limit)
+            {
+                await buffered.DisposeAsync();
+                throw TooLarge(limit);
+            }
+
+            buffered.Write(chunk, 0, read);
+        }
+
+        buffered.Position = 0;
+        context.Response.RegisterForDisposeAsync(buffered);
+        request.Body = buffered;
+    }
+
+    private static BadHttpRequestException TooLarge(long limit) =>
+        new($"The request body is larger than the {limit} bytes allowed.", StatusCodes.Status413PayloadTooLarge);
+}
+
+// A failure that no resolver answered, such as a stored value below a root field that does not read as its scalar, is
+// what REST answers it with, FCMS3199 for an exception that says nothing of its cause, and is logged. The root fields
+// report what the content service throws themselves, with its code, so an error with a code is left as it is, and so is
+// a cancellation, which the timeout of the request answers.
+internal sealed class UnexpectedErrors(IProblemDescriber problems, ILoggerFactory loggers) : IErrorFilter
+{
+    public IError OnError(IError error)
+    {
+        if (error.Exception is not { } exception || exception is OperationCanceledException || error.Code is not null)
+        {
+            return error;
+        }
+
+        var problem = problems.Describe(exception);
+        if (problem.Status >= 500)
+        {
+            GraphQLLog.FieldFailed(loggers.CreateLogger<GraphQLPlugin>(), exception, FieldOf(error.Path), problem.Code);
+        }
+
+        return ErrorBuilder.FromError(error).SetMessage(problem.Detail).SetCode(problem.Code).SetExtension("status", problem.Status).Build();
+    }
+
+    // The field that failed, by its name, with no index of a list: a path holds no value of content, but a name is all the log needs.
+    private static string FieldOf(HotChocolate.Path? path)
+    {
+        for (var segment = path; segment is not null; segment = segment.Parent)
+        {
+            if (segment is NamePathSegment named)
+            {
+                return named.Name;
+            }
+        }
+
+        return "(request)";
     }
 }
 

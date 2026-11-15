@@ -17,11 +17,12 @@ internal sealed class McpDownloadTransport(HttpMessageHandler handler)
     public HttpMessageHandler Handler { get; } = handler;
 }
 
-// Fetches the file a media_upload names by URL, without letting the URL reach the host's own network: https only, no
-// user name or password, and every address the host name resolves to must be public, checked on the connection itself, so
-// that DNS cannot answer one address to a check and another to the connection. A redirect is followed up to
-// MaxRedirects times and held to the same rules, so none leads to a private address. No proxy, no cookies and no
-// credentials are used. The body is read by whoever reads the stream, which is where the upload limits apply.
+// Fetches the file a media_upload names by URL, without letting the URL reach the host's own network: https on its own
+// port only, no user name or password, and every address the host name resolves to must be public, checked on the
+// connection itself, so that DNS cannot answer one address to a check and another to the connection. A redirect is
+// followed up to MaxRedirects times and held to the same rules, so none leads to a private address. No proxy, no cookies
+// and no credentials are used. A failure does not say what the host answered, so the server is no probe of the services
+// public hosts run. The body is read by whoever reads the stream, which is where the upload limits apply.
 internal sealed class McpDownloads : IDisposable
 {
     public const int MaxRedirects = 3;
@@ -100,7 +101,12 @@ internal sealed class McpDownloads : IDisposable
         }
 
         // A name is resolved and checked when the connection is made; an address is known now.
-        return IPAddress.TryParse(uri.IdnHost, out var literal) && !PublicAddresses.IsPublic(literal) ? throw Refused(NotPublic) : uri;
+        if (IPAddress.TryParse(uri.IdnHost, out var literal) && !PublicAddresses.IsPublic(literal))
+        {
+            throw Refused(NotPublic);
+        }
+
+        return uri.Port == 443 ? uri : throw Refused("The URL must use the port of https, 443.");
     }
 
     private static McpDownloadException Refused(string reason) => new(McpErrorCodes.UploadSourceRefused, reason);
@@ -146,9 +152,8 @@ internal sealed class McpDownloads : IDisposable
 
             if (!response.IsSuccessStatusCode)
             {
-                var status = (int)response.StatusCode;
                 response.Dispose();
-                throw Failed($"The URL answered {status}.");
+                throw Failed("The URL did not answer with a file.");
             }
 
             return response;

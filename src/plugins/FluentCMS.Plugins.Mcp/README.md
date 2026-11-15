@@ -128,7 +128,7 @@ Which types the tools reach is set in `FluentCms:Mcp`:
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `ExposedTypes` | empty | The content types the tools reach, by name. Empty is every type the caller may read. A name the schema does not have stops the host. |
-| `MaxExposedTypes` | `10` | How many of those types get tools of their own, in the order of the schema, which is by name. A type over it is reached through `query`, and a warning (event 9288) names it once. |
+| `MaxExposedTypes` | `10` | How many of those types get tools of their own, in the order of the schema, which is by name. A type over it is reached through `query`, its own tools are unknown even when called by name, and a warning (event 9288) names it once. |
 | `UploadTimeout` | `00:00:30` | The longest `media_upload` waits for a URL, connection and body together. |
 
 A type that is not exposed, that does not exist or that the caller may not read is answered alike: its own tools are unknown (`FCMS1600`), and a shared tool answers `FCMS1612`.
@@ -143,7 +143,7 @@ The media tools work through `IMediaService`. They are listed only in a host tha
 | `media_upload` | `media.upload` | Stores a file from `url` or from `data` in base64, under `fileName`, in `folderId` or the root. |
 | `media_update` | `media.update` | Changes `title`, `alt`, `caption`, `credit`, `tags`, `focalPoint` and `isPrivate`. |
 
-An upload from a URL never reaches the host's own network. The URL must use `https`, carry no user name or password, and resolve to public addresses only: every address the name resolves to is checked on the connection itself, which is then made to one of them. A redirect is followed up to three times and held to the same rules. No proxy, cookie or credential is used. A URL that breaks a rule is refused with `FCMS1614` before anything is sent to it, and one that does not answer with a file fails with `FCMS1615`. The media service checks the caller's permission before it reads the file, and the URL is fetched only then. The service reads the type from the bytes and stops at the upload limits of the site's media settings, so a file over them is refused with the media plugin's code (`FCMS1582`). The log names the host of a refused URL and never the URL (event 9289).
+An upload from a URL never reaches the host's own network. The URL must use `https` on its own port, 443, carry no user name or password, and resolve to public addresses only: every address the name resolves to is checked on the connection itself, which is then made to one of them. The prefixes of a translator of the network's own, the local-use NAT64 prefix `64:ff9b:1::/48` and the IPv4-translated form `::ffff:0:0:0/96`, are not public, whatever address they carry. A redirect is followed up to three times and held to the same rules. No proxy, cookie or credential is used. A URL that breaks a rule is refused with `FCMS1614` before anything is sent to it, and one that does not answer with a file fails with `FCMS1615`, which does not say what the host answered, so that the server is no probe of what public hosts run. The media service checks the caller's permission before it reads the file, and the URL is fetched only then. The service reads the type from the bytes and stops at the upload limits of the site's media settings, so a file over them is refused with the media plugin's code (`FCMS1582`). The log names the host of a refused URL and never the URL (event 9289).
 
 Every tool carries its hints. The read tools are read-only. `{type}_create_draft` and `media_upload` add and are not destructive, and `media_upload` is open world. The others change or remove what is there and are destructive, the two with a dry run among them, whose descriptions say that a confirmation is needed.
 
@@ -159,7 +159,7 @@ An agent acts fast and can be wrong. The tools that remove an entry or change ma
 | `Limits:CallsPerMinute` | `120` | The tool calls a client may make in a minute. |
 | `Limits:WritesPerMinute` | `30` | The calls of tools that change data a client may make in a minute, at most `CallsPerMinute`. |
 | `MaxRequestBytes` | `1048576` | The largest body of a request to `/mcp`, 4096 or more. |
-| `MaxResultBytes` | `262144` | The largest list a content tool answers, in bytes of its JSON, 4096 or more. |
+| `MaxResultBytes` | `262144` | The largest list a content tool answers, and the size its dry runs keep to, in bytes as sent: its JSON as structured content and again as text, 4096 or more. |
 | `MaxListTextLength` | `500` | The characters of a text a list shows before it shortens it, 16 or more. |
 
 ### Dry runs
@@ -180,6 +180,7 @@ An agent acts fast and can be wrong. The tools that remove an entry or change ma
 ```
 
 - `entries` are the entries the call would touch, as the caller reads them: the draft where it may read drafts, in the locale of the connection. The schema names no title, so `title` is the text field called `title` or `name`, or else the first text field.
+- A plan names every entry, since the token is of them all, so its titles keep it to `MaxResultBytes`: a title longer than `MaxListTextLength` is shortened as a list shortens a text, and where the plan is still over the limit every title is null and the plan says `"titlesOmitted": true`. A plan over the limit even then is answered whole.
 - `references` are the entries whose relation would break: for a delete the entries that point to one of the plan, for an unpublish the published ones, and none for a publish. They are entries of the exposed types that the caller may read, found by the relation fields of a type itself, in the locale of the connection; a relation inside a component or a block is not looked for. A plan lists 50 at most and says `moreReferences` when there may be more. An entry of the plan is not a reference of it.
 - The same call with `dryRun: false` and the `confirmationToken` runs it. A delete then answers `{ "type", "id", "deleted" }`.
 
@@ -211,7 +212,9 @@ A `limit` over `MaxBulkItems`, more `ids` than the limit, and a filter that matc
 
 ### Call limits
 
-The server counts the tool calls of each client: the client id of a token, or the key for an API key. A client may make `Limits:CallsPerMinute` calls a minute, and `Limits:WritesPerMinute` calls of tools that are not listed as read-only, which count as calls too; a dry run counts as a call of its tool, and a name that is no tool counts as one that changes data. A bucket holds the limit and fills again over a minute, as core's rate limits do. A call over a limit is not an HTTP 429: it is a tool error, `FCMS1634`, whose text says in how many seconds to retry, with the seconds under `_meta` as `fluentcms/retryAfter`. No tool runs for it.
+The server counts the tool calls of each client: the client id of a token, or the key for an API key. A client may make `Limits:CallsPerMinute` calls a minute, and `Limits:WritesPerMinute` calls of tools that are not listed as read-only, which count as calls too; a dry run counts as a call of its tool, and a name that is no tool counts as one that changes data. A bucket holds the limit and fills again over a minute, as core's rate limits do. A call over a limit is not an HTTP 429: it is a tool error, `FCMS1634`, whose text says in how many seconds to retry, with the seconds under `_meta` as `fluentcms/retryAfter`. No tool runs for it. A write of a listed tool that its limit refuses takes nothing from the limit of calls, so a client that retries a refused write keeps its reads; a name that is no tool keeps the call it took, so made-up names run out of calls.
+
+Whether a tool is read-only is how its provider lists it for the caller. The first call of a name the server does not know yet lists the tools, and what that list showed of every tool holds for that principal in that site for a minute; a name no provider lists is not kept.
 
 The limits are counted per instance, as core's are, so a client spread over three instances may make three times the limit. They come on top of core's Management rate limit, which counts a principal across its clients, so a principal with several clients is still held to that. A client id that many users share, such as one registered for an IDE, is one client here. A client over a limit is logged once a minute (event id 9295).
 
@@ -219,7 +222,7 @@ The limits are counted per instance, as core's are, so a client spread over thre
 
 - A request to `/mcp` whose body is over `MaxRequestBytes` is refused before it is read, with 413 and `FCMS3111`, the code of core's body cap. Core's cap (`FluentCms:Limits:MaxBodySize`) applies as well, so the lower of the two holds.
 - `{type}_list`, `{type}_search` and `query` page by `page` and `pageSize` or by `cursor`. A page has the engine's default size and at most its largest (`FluentCms:Query:DefaultPageSize` and `MaxPageSize`, 20 and 100), which the input schema names.
-- A list whose JSON is over `MaxResultBytes` ends at an entry, never inside one, with `"truncated": true`, the number of entries it kept as `pageSize` and the `nextCursor` of the rest; the next call sends that cursor and goes on from there. An entry that is over the limit alone is answered alone.
+- A list over `MaxResultBytes` as it is sent, its JSON as structured content and again as text, ends at an entry, never inside one, with `"truncated": true`, the number of entries it kept as `pageSize` and the `nextCursor` of the rest; the next call sends that cursor and goes on from there. An entry that is over the limit alone is answered alone.
 - In a list, a text longer than `MaxListTextLength` is shortened and ends with a marker that says how long it is, such as `… [shortened: 4210 characters in all; post_get reads it whole]`. `{type}_get` answers it whole, and so does `query` for a type over `MaxExposedTypes`, which has no `{type}_get`.
 - The media lists are pages of at most 100 assets and are not cut.
 
@@ -255,7 +258,7 @@ The server offers these resources itself:
 | `fluentcms://sites/{site}/guidelines` | The guidelines of the site, named by its id: how the site wants its content written. |
 | `fluentcms://types/{type}/instructions` | The instructions of the site for one content type. |
 
-The schema is what the caller may read: a type it may not read is left out and answers as an unknown resource (`FCMS1601`), and a field it may not read is left out. A caller without `schema.read` is refused the schema (`FCMS3103`) and is not listed it. The guidelines are for every agent of the site, and a request reads those of its own site only. The instructions of a type are served to a caller that reads the type. The guidelines and the instructions that are saved are listed as resources, and the two forms with `{type}` as resource templates.
+The schema is what the caller may read: a type it may not read is left out and answers as an unknown resource (`FCMS1601`), and a field it may not read is left out. A caller without `schema.read` is refused the schema (`FCMS3103`) and is not listed it. The guidelines, the instructions and the stored prompts of a site are for its agents: a caller that may manage, with the `mcp` scope or a Management key, and holds some grant in that site. A principal whose grants are all in other sites gets none of them for a site it names, and neither does a Delivery or Preview key, even one of the instance. A request reads those of its own site only, and the instructions of a type are served to an agent that reads the type. The guidelines and the instructions that are saved are listed as resources, and the two forms with `{type}` as resource templates.
 
 The guidelines are also the `instructions` of the server's answer to `initialize`. The instructions of a type also follow the description of each tool of that type in the tool list, such as `article_list` and `article_create_draft`, and of a plugin's tool whose descriptor names the type in `ContentType`; a tool that is not listed for a caller, a tool of another type and a shared tool such as `publish` carry none. The text is data shown to an agent and is never run.
 
@@ -272,7 +275,7 @@ A text has at most 4000 characters, with no control characters other than line b
 
 ## Stored prompts
 
-A site stores prompts for its agents, which `prompts/list` and `prompts/get` serve beside the prompts of the plugins' providers, to every agent of the site.
+A site stores prompts for its agents, which `prompts/list` and `prompts/get` serve beside the prompts of the plugins' providers, to the agents of the site as the guidelines are.
 
 ```json
 {

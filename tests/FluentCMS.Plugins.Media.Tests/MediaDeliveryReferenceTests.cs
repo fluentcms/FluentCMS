@@ -1,12 +1,15 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Events;
 using FluentCMS.Media;
 using FluentCMS.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -277,6 +280,55 @@ public sealed class MediaDeliveryReferenceTests(PublicStoryHost media) : IClassF
         plain.Headers.GetValues("Cache-Tag").ShouldHaveSingleItem().ShouldNotContain("media");
     }
 
+    // Fifty assets pass the budget of the tag header. Unpopulated, the story's type stands for them, which forcing an asset's
+    // delete evicts as it removes the reference. Populated, their tags pass it still, so the read is private and names only
+    // its site, while the copy the server keeps still leaves when an asset changes.
+    [Fact]
+    public async Task AReadWhoseMediaTagsPassTheBudgetIsPrivateAndItsCopyStillLeavesWhenAnAssetChanges()
+    {
+        ConcurrentQueue<IReadOnlyList<string>> invalidated = new();
+        await using var tagged = new PublicStoryHost();
+        tagged.Host
+            .WithServices(services => services.AddSingleton(invalidated))
+            .Configure(cms =>
+            {
+                cms.DeliveryCache.CacheTagHeader = "Cache-Tag";
+                cms.Events.AddHandler<CacheInvalidatedEvent, InvalidationRecorder>();
+            });
+        using var admin = await tagged.AdminAsync();
+        using var anonymous = tagged.Host.CreateClient();
+        List<Guid> gallery = [];
+        foreach (var count in new[] { 20, 20, 10 })
+        {
+            var uploaded = await UploadedAsync(admin, null, [.. Enumerable.Range(0, count).Select(i => ($"g{i}.png", Files.Png(4, 2)))]);
+            gallery.AddRange(uploaded.Select(item => Id(item!)));
+        }
+
+        var id = await PublishedAsync(admin, Story(null, [.. gallery]));
+        await tagged.DrainOutboxAsync();
+        invalidated.Clear();
+        string[] site = [$"site:{DefaultSite.Id:D}"];
+        var storyType = $"type:{DefaultSite.Id:D}:story";
+
+        using var plain = await anonymous.GetAsync(new Uri($"{Delivery}/{id:D}", UriKind.Relative), Token);
+        using var populated = await anonymous.GetAsync(new Uri($"{Delivery}/{id:D}?populate=gallery", UriKind.Relative), Token);
+        using var cached = await anonymous.GetAsync(new Uri($"{Delivery}/{id:D}?populate=gallery", UriKind.Relative), Token);
+        (await admin.DeleteAsync(new Uri($"{Root}/{gallery[0]:D}?force=true", UriKind.Relative), Token)).Dispose();
+        await tagged.DrainOutboxAsync();
+        using var evicted = await anonymous.GetAsync(new Uri($"{Delivery}/{id:D}?populate=gallery", UriKind.Relative), Token);
+
+        plain.Headers.GetValues("Cache-Tag").ShouldHaveSingleItem().Split(',').ShouldBe([.. site, storyType], ignoreOrder: true);
+        plain.Headers.CacheControl!.Public.ShouldBeTrue();
+        populated.Headers.GetValues("Cache-Tag").ShouldHaveSingleItem().Split(',').ShouldBe(site);
+        populated.Headers.CacheControl!.Private.ShouldBeTrue();
+        populated.Headers.CacheControl.Public.ShouldBeFalse();
+        cached.Headers.Age.ShouldNotBeNull();
+        cached.Headers.CacheControl!.Private.ShouldBeTrue();
+        invalidated.ShouldContain(tags => tags.Contains(storyType));
+        evicted.Headers.Age.ShouldBeNull();
+        (await JsonAsync(evicted))["gallery"]!.AsArray().Count.ShouldBe(49);
+    }
+
     private static (string Original, string? Card) Urls(JsonNode? asset) =>
         (asset!["urls"]!["original"]!.GetValue<string>(), asset["urls"]!["presets"]!["card"]?.GetValue<string>());
 
@@ -357,5 +409,14 @@ public sealed class MediaDeliveryReferenceTests(PublicStoryHost media) : IClassF
         }
 
         return story;
+    }
+
+    private sealed class InvalidationRecorder(ConcurrentQueue<IReadOnlyList<string>> invalidated) : IEventHandler<CacheInvalidatedEvent>
+    {
+        public ValueTask HandleAsync(CacheInvalidatedEvent message, CancellationToken cancellationToken)
+        {
+            invalidated.Enqueue(message.Tags);
+            return ValueTask.CompletedTask;
+        }
     }
 }

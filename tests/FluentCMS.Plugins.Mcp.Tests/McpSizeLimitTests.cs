@@ -4,7 +4,9 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using ModelContextProtocol;
 using ModelContextProtocol.Client;
+using ModelContextProtocol.Protocol;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Plugins.Mcp.Tests.McpTesting;
@@ -29,7 +31,8 @@ public sealed class McpSizeLimitTests
         await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
         var titles = await SeedAsync(client);
 
-        var first = await OkAsync(client, "essay_list", new { sort = ByTitle, pageSize = Essays });
+        var sent = await CallAsync(client, "essay_list", new { sort = ByTitle, pageSize = Essays });
+        var first = sent.StructuredContent.ShouldNotBeNull();
         List<JsonElement> answers = [first];
         while (answers[^1].TryGetProperty("nextCursor", out var cursor))
         {
@@ -42,6 +45,9 @@ public sealed class McpSizeLimitTests
         first.GetProperty("items").GetArrayLength().ShouldBeInRange(2, Essays - 1);
         answers.Count.ShouldBeGreaterThan(2);
         answers.ShouldAllBe(answer => Encoding.UTF8.GetByteCount(answer.GetRawText()) <= MaxResultBytes);
+
+        // The answer goes as structured content and again as its text, and both copies are within the size.
+        Sent(sent).ShouldBeLessThanOrEqualTo(MaxResultBytes);
 
         // Every entry is whole, and the answers together are the list: none twice and none left out.
         var entries = answers.SelectMany(answer => answer.GetProperty("items").EnumerateArray()).ToList();
@@ -120,6 +126,43 @@ public sealed class McpSizeLimitTests
         queried.GetProperty("body").GetString().ShouldBe(body);
     }
 
+    // A plan names every entry it would touch, since its token is of them all, so its titles are what holds it to the size:
+    // each is shortened as a list shortens a text, and they are left out where the plan is still over the limit.
+    [Fact]
+    public async Task ADryRunPlanIsHeldToTheResultSizeByItsTitles()
+    {
+        await using var host = Host();
+        using var http = await KeyAsync(host);
+        await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+        var title = "Plan " + new string('t', 300);
+        List<Guid> ids = [];
+        for (var number = 0; number < 10; number++)
+        {
+            ids.Add((await OkAsync(client, "essay_create_draft", new { fields = new { title, body = "x" } })).GetProperty("id").GetGuid());
+        }
+
+        var single = await OkAsync(client, "essay_delete", new { id = ids[0] });
+        var arguments = new { type = "essay", action = "publish", filter = new { title = new { startsWith = "Plan " } }, limit = 20 };
+        var sent = await CallAsync(client, McpContentTools.Bulk, arguments);
+        var many = sent.StructuredContent.ShouldNotBeNull();
+        var ran = await OkAsync(client, McpContentTools.Bulk, Confirmed(arguments, TokenOf(many)));
+
+        var shortened = single.GetProperty("entries")[0].GetProperty("title").GetString().ShouldNotBeNull();
+        shortened.ShouldStartWith(title[..40]);
+        shortened.ShouldEndWith($"… [shortened: {title.Length} characters in all; essay_get reads it whole]");
+        single.TryGetProperty(McpDryRuns.TitlesOmitted, out _).ShouldBeFalse();
+
+        many.GetProperty(McpDryRuns.TitlesOmitted).GetBoolean().ShouldBeTrue();
+        many.GetProperty("count").GetInt32().ShouldBe(10);
+        many.GetProperty("entries").EnumerateArray().Select(entry => entry.GetProperty("id").GetGuid()).ShouldBe(ids, ignoreOrder: true);
+        many.GetProperty("entries").EnumerateArray().ShouldAllBe(entry => entry.GetProperty("title").ValueKind == JsonValueKind.Null);
+        Sent(sent).ShouldBeLessThanOrEqualTo(MaxResultBytes);
+
+        // The token is of the entries, not of their titles, so the plan without them still runs.
+        ran.GetProperty("items").EnumerateArray().ShouldAllBe(item => item.GetProperty("status").GetString() == "succeeded");
+        ran.GetProperty("items").GetArrayLength().ShouldBe(10);
+    }
+
     [Fact]
     public async Task ARequestOverTheSizeLimitIsRefusedWithItsCode()
     {
@@ -134,6 +177,9 @@ public sealed class McpSizeLimitTests
         (await CodeAsync(large)).ShouldBe("FCMS3111");
         (await JsonAsync(large))["detail"]!.GetValue<string>().ShouldContain("4096");
     }
+
+    // The bytes of a result as the protocol package writes it, its text and its structured content.
+    private static int Sent(CallToolResult result) => JsonSerializer.SerializeToUtf8Bytes(result, McpJsonUtilities.DefaultOptions).Length;
 
     private static FluentCMS.Testing.FluentCmsTestHost Host() => McpSafetyTesting.Host(options =>
     {

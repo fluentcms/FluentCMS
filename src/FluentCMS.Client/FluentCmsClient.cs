@@ -114,13 +114,22 @@ public sealed class FluentCmsClient(HttpClient http)
             throw FluentCmsProblemException.From(response.StatusCode, await response.Content.ReadAsStringAsync(cancellationToken));
         }
 
-        if (response.Content.Headers.ContentLength == 0 || response.StatusCode == System.Net.HttpStatusCode.NoContent)
+        // An empty body answers nothing, whether it says so by its length or ends at once, as a delete does. A body this
+        // client cannot read, such as a page of a proxy, is a problem with no code, as an answer that is not one is.
+        var answer = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        if (answer.Length == 0 || response.StatusCode == System.Net.HttpStatusCode.NoContent)
         {
             return default;
         }
 
-        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        return await JsonSerializer.DeserializeAsync<TResult>(stream, Json, cancellationToken);
+        try
+        {
+            return JsonSerializer.Deserialize<TResult>(answer, Json);
+        }
+        catch (JsonException exception)
+        {
+            throw FluentCmsProblemException.NotJson(response.StatusCode, exception);
+        }
     }
 
     // The fields of the entry; the system fields are the server's.

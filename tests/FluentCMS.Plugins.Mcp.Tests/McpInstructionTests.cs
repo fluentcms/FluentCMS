@@ -1,8 +1,10 @@
 using System.Net;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Sites;
+using FluentCMS.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using ModelContextProtocol;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Plugins.Mcp.Tests.McpSiteTesting;
@@ -74,6 +76,47 @@ public sealed class McpInstructionTests(McpSiteFixture fixture) : IClassFixture<
         // A type the caller may not read answers as one with no instructions, and is not listed.
         (await reader.ListResourcesAsync(cancellationToken: Token)).Select(resource => resource.Uri).ShouldNotContain(uri);
         (await RefusalAsync(reader, uri)).ShouldContain(McpErrorCodes.UnknownResource);
+    }
+
+    // What a site tells its agents reaches a caller that may manage and holds a grant there, and no other caller that names
+    // the site: not a principal whose grants are all in another site, and not a Delivery key, even one of the instance.
+    [Fact]
+    public async Task TheGuidelinesInstructionsAndStoredPromptsOfASiteReachOnlyItsAgents()
+    {
+        var host = fixture.Host;
+        var site = await CreateSiteAsync(host);
+        var other = await CreateSiteAsync(host);
+        using var admin = await KeyInAsync(host, site);
+        await SendAsync(admin, HttpMethod.Put, Instructions, new { text = "Titles are sentence case." });
+        await SendAsync(admin, HttpMethod.Put, $"{Instructions}/article", new { text = "Articles are short." });
+        await SendAsync(admin, HttpMethod.Post, Prompts, new { name = "sum-up", template = "Sum it up." }, HttpStatusCode.Created);
+
+        using var ofSite = await KeyInAsync(host, site, await CreateRoleAsync(host, ("content.*.read", new PermissionConstraints { Sites = [new SiteId(site)] })));
+        using var ofOther = await KeyInAsync(host, site, await CreateRoleAsync(host, ("content.*.*", new PermissionConstraints { Sites = [new SiteId(other)] }), ("schema.read", new PermissionConstraints { Sites = [new SiteId(other)] })));
+        using var delivery = await KeyAsync(host, ApiKeyClass.Delivery);
+        delivery.DefaultRequestHeaders.Add("X-Cms-Site", site.ToString());
+
+        await using var agent = await ConnectAsync(ofSite, protocolVersion: InitializeProtocol);
+        agent.ServerInstructions.ShouldBe("Titles are sentence case.");
+        (await ReadAsync(agent, McpSiteResources.Guidelines(site))).ShouldBe("Titles are sentence case.");
+        (await agent.ListPromptsAsync(cancellationToken: Token)).Select(prompt => prompt.Name).ShouldContain("sum-up");
+        (await agent.ListToolsAsync(cancellationToken: Token)).Single(tool => tool.Name == "article_list").Description.ShouldContain("Articles are short.");
+
+        foreach (var outsider in (HttpClient[])[ofOther, delivery])
+        {
+            await using var client = await ConnectAsync(outsider, protocolVersion: InitializeProtocol);
+            client.ServerInstructions.ShouldBeNull();
+            (await client.ListResourcesAsync(cancellationToken: Token)).ShouldAllBe(resource => !resource.Uri.EndsWith("/guidelines", StringComparison.Ordinal) && !resource.Uri.EndsWith("/instructions", StringComparison.Ordinal));
+            (await RefusalAsync(client, McpSiteResources.Guidelines(site))).ShouldContain(McpErrorCodes.UnknownResource);
+            (await RefusalAsync(client, McpSiteResources.Instructions("article"))).ShouldNotContain("Articles are short.");
+            (await client.ListPromptsAsync(cancellationToken: Token)).Select(prompt => prompt.Name).ShouldNotContain("sum-up");
+            (await Should.ThrowAsync<McpProtocolException>(async () => await client.GetPromptAsync("sum-up", cancellationToken: Token))).Message.ShouldContain(McpErrorCodes.UnknownPrompt);
+            (await client.ListToolsAsync(cancellationToken: Token)).ShouldAllBe(tool => tool.Description == null || !tool.Description.Contains("Articles are short.", StringComparison.Ordinal));
+        }
+
+        // The Delivery key reads the site's articles all the same, through tools that carry no instructions.
+        await using var reader = await ConnectAsync(delivery, protocolVersion: InitializeProtocol);
+        (await reader.ListToolsAsync(cancellationToken: Token)).Select(tool => tool.Name).ShouldContain("article_list");
     }
 
     [Fact]

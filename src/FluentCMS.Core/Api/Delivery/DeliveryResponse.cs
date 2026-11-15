@@ -5,6 +5,7 @@ using System.Text.Json.Nodes;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Caching;
 using FluentCMS.Core.Content;
+using FluentCMS.Core.Content.Query;
 using FluentCMS.Schema;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Json;
@@ -21,7 +22,9 @@ namespace FluentCMS.Core.Api.Delivery;
 // changes what the caller reads, so a 304 by date would keep a stale copy. A response the output cache is about to store
 // is sent whole even to a matching If-None-Match, so that the copy exists for the next request. A published read sends
 // its tags in the configured tag header, the site's included, for a CDN to purge by the CacheInvalidatedEvent. Its tags
-// include those of the targets of other kinds it resolved, such as media, so that their plugin's evictions reach it.
+// include those of the targets of other kinds it resolved, such as media, so that their plugin's evictions reach it. The
+// header is held to a budget, past which the types of its entries stand for the entries; past it still, the response is
+// private, so that no CDN keeps a copy it could not purge. The copy in the output cache keeps every tag.
 internal sealed class DeliveryResponse : IResult
 {
     public const string Vary = "Authorization, X-Api-Key, X-Cms-Site, X-Cms-Locale";
@@ -62,7 +65,8 @@ internal sealed class DeliveryResponse : IResult
         if (cache is { EnableOutputCaching: true } || header is not null)
         {
             var site = api.Operation.Site.Value;
-            string[] tags = [CacheTags.Type(_type, site), .. EntryIds(_body).Select(CacheTags.Entry), .. services.GetRequiredService<ReferenceResolvers>().CacheTags];
+            var resolved = services.GetRequiredService<ReferenceResolvers>().CacheTags;
+            string[] tags = [CacheTags.Type(_type, site), .. EntryIds(_body).Select(CacheTags.Entry), .. resolved];
             if (cache is { EnableOutputCaching: true })
             {
                 foreach (var tag in tags)
@@ -74,7 +78,16 @@ internal sealed class DeliveryResponse : IResult
             // The site's tag is the one the output cache policy adds.
             if (header is not null)
             {
-                response.Headers[header] = CacheTags.HeaderValue(header, [CacheTags.Site(site), .. tags]);
+                var value = CacheTags.HeaderValueWithinBudget(header, [CacheTags.Site(site), .. tags])
+                    ?? CacheTags.HeaderValueWithinBudget(header, [CacheTags.Site(site), .. TypeTags(services, site), .. resolved]);
+                if (value is null)
+                {
+                    // No tags within the budget reach every change that makes the copy stale, so no CDN may keep it.
+                    response.Headers.CacheControl = options.PrivateCacheControl;
+                    value = CacheTags.Site(site);
+                }
+
+                response.Headers[header] = value;
             }
         }
 
@@ -88,6 +101,10 @@ internal sealed class DeliveryResponse : IResult
         response.ContentLength = bytes.Length;
         await response.Body.WriteAsync(bytes, httpContext.RequestAborted);
     }
+
+    // The tags of the types of every entry in the body, which a change to any of them evicts as it evicts the entry's.
+    private IEnumerable<string> TypeTags(IServiceProvider services, Guid site) =>
+        services.GetRequiredService<TargetTypes>().Types.Prepend(_type).Select(type => CacheTags.Type(type, site)).Distinct();
 
     // Every entry in the body, populated targets and references included, so that a change to one evicts what shows it.
     private static HashSet<Guid> EntryIds(JsonNode body)

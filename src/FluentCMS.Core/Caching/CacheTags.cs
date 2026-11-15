@@ -9,6 +9,10 @@ internal static class CacheTags
 {
     public const string GlobalSite = "global";
 
+    // The most the tag header's value holds, in bytes, which are its characters since every tag is ASCII. With the status
+    // line and the other headers it fits the 4 KB that nginx buffers a response's headers in by default.
+    public const int HeaderBudget = 2048;
+
     private const string SurrogateKey = "Surrogate-Key";
 
     // What a Delivery response writes itself, what the server or a proxy owns, or what would keep it out of the output cache.
@@ -28,6 +32,9 @@ internal static class CacheTags
 
     public static string HeaderValue(string header, IEnumerable<string> tags) =>
         string.Join(string.Equals(header, SurrogateKey, StringComparison.OrdinalIgnoreCase) ? ' ' : ',', tags);
+
+    public static string? HeaderValueWithinBudget(string header, IEnumerable<string> tags) =>
+        HeaderValue(header, tags) is { Length: <= HeaderBudget } value ? value : null;
 
     // A token of RFC 9110 (5.6.2).
     public static bool IsHeaderName(string name) =>

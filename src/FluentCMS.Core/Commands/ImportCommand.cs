@@ -26,7 +26,7 @@ internal sealed class ImportCommand : HostCommand
 
     public override IReadOnlyList<CommandOption> Options { get; } =
     [
-        new(DryRun, "Checks everything and writes nothing; the report is the one the import would give."),
+        new(DryRun, "Runs every step of the import, the content hooks included, and writes nothing, so the report is the one the import would give; a hook that acts outside the database, such as one that calls another service, acts in a dry run too."),
         TransferCommands.SiteOption("import into"),
         new(TransferCommands.Types, "The content types to import, separated by commas; every type of the package when left out.", "list"),
         new(Overwrite, "Takes the package's copy of an entry that is newer in the instance, which is otherwise a conflict."),

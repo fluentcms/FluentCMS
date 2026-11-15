@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 [assembly: FluentCmsPlugin(typeof(GraphQLPlugin))]
@@ -81,6 +82,7 @@ public sealed class GraphQLPlugin : IPlugin
                     contributor.Configure(schema);
                 }
             })
+            .AddErrorFilter(services => new UnexpectedErrors(Application(services).GetRequiredService<IProblemDescriber>(), Application(services).GetRequiredService<ILoggerFactory>()))
             .AddHttpRequestInterceptor<GraphQLRequestInterceptor>()
             .UsePersistedOperationPipeline()
             .UseRequest(GraphQLRequests.WithCodes, key: nameof(GraphQLRequests.WithCodes), before: WellKnownRequestMiddleware.InstrumentationMiddleware);
@@ -108,7 +110,7 @@ public sealed class GraphQLPlugin : IPlugin
         var group = app.MapGroup(Prefix).AllowAnonymous().RequireCallerRateLimit();
         group.AddEndpointFilter(async (context, next) =>
         {
-            GraphQLRequests.LimitBody(context.HttpContext, limit);
+            await GraphQLRequests.LimitBodyAsync(context.HttpContext, limit);
             return await next(context);
         });
         group.MapGraphQLHttp("", SchemaName).WithOptions(server =>

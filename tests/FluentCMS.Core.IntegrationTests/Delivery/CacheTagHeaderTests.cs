@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Caching;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
@@ -22,6 +23,8 @@ public sealed class CacheTagHeaderTests : IAsyncDisposable
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
     private static readonly string Site = $"site:{DefaultSite.Id:D}";
     private static readonly string NoteType = $"type:{DefaultSite.Id:D}:note";
+    private static readonly string TopicType = $"type:{DefaultSite.Id:D}:topic";
+    private static readonly string PinType = $"type:{DefaultSite.Id:D}:pin";
 
     private readonly ConcurrentQueue<IReadOnlyList<string>> _invalidated = new();
     private FluentCmsTestHost? _host;
@@ -113,10 +116,89 @@ public sealed class CacheTagHeaderTests : IAsyncDisposable
         invalidated.ShouldAllBe(tags => tags.All(tag => noteTags.Contains(tag) || topicTags.Contains(tag)) && tags.Any(noteTags.Contains));
     }
 
-    private async Task<(Guid Note, Guid Topic)> StartAsync(string? header, bool outputCache)
+    // A list whose tags would pass the budget carries the types of its entries in their place, the populated ones' and the
+    // references' included, from the cache too.
+    [Theory]
+    [InlineData("Cache-Tag", ',', "note?limit=60&populate=topic")]
+    [InlineData("Surrogate-Key", ' ', "note?limit=60")]
+    public async Task AListWhoseTagsPassTheBudgetCarriesTheTypesOfItsEntriesWithinIt(string header, char separator, string path)
+    {
+        await StartAsync(header, outputCache: true, more: 50);
+        using var client = _host!.CreateClient();
+        string[] tags = [Site, NoteType, TopicType];
+
+        using var first = await GetAsync(client, path);
+        var value = first.Headers.GetValues(header).ShouldHaveSingleItem();
+        var cached = await GetAsync(client, path);
+
+        value.Length.ShouldBeLessThanOrEqualTo(CacheTags.HeaderBudget);
+        value.Split(separator).ShouldBe(tags, ignoreOrder: true);
+        first.Headers.CacheControl!.Public.ShouldBeTrue();
+        cached.Headers.Age.ShouldNotBeNull();
+        Tags(cached, header, separator).ShouldBe(tags, ignoreOrder: true);
+    }
+
+    // A change to a listed note or to the topic they populate evicts the copy, and its event names a tag the header carried,
+    // so that a CDN that purges by it drops its copy too.
+    [Fact]
+    public async Task AnEntryThatChangesEvictsTheCopyWhoseHeaderCarriesTheTypes()
+    {
+        var (note, topic) = await StartAsync("Cache-Tag", outputCache: true, more: 50);
+        using var client = _host!.CreateClient();
+        const string path = "note?limit=60&populate=topic";
+        var sent = Tags(await GetAsync(client, path), "Cache-Tag", ',');
+        var editor = _host.As(await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token));
+
+        var topics = editor.Content<Topic>();
+        var current = await topics.GetAsync(topic, cancellationToken: Token);
+        await topics.PatchAsync(topic, new ContentDocument { ["name"] = "Baking" }, current!.Version, Token);
+        await topics.PublishAsync(topic, cancellationToken: Token);
+        await DrainAsync();
+        using var afterTopic = await GetAsync(client, path);
+        var notes = editor.Content<Note>();
+        var title = await notes.GetAsync(note, cancellationToken: Token);
+        await notes.PatchAsync(note, new ContentDocument { ["title"] = "Broth" }, title!.Version, Token);
+        await notes.PublishAsync(note, cancellationToken: Token);
+        await DrainAsync();
+        using var afterNote = await GetAsync(client, path);
+
+        afterTopic.Headers.Age.ShouldBeNull();
+        (await afterTopic.Content.ReadAsStringAsync(Token)).ShouldContain("Baking");
+        afterNote.Headers.Age.ShouldBeNull();
+        (await afterNote.Content.ReadAsStringAsync(Token)).ShouldContain("Broth");
+        var invalidated = _invalidated.ToArray();
+        invalidated.Length.ShouldBe(2);
+        invalidated.ShouldAllBe(tags => tags.Any(sent.Contains));
+    }
+
+    // The type of a target a level down is named too: the topic of the note each pin populates, as a reference or populated.
+    [Theory]
+    [InlineData("pin?limit=60&populate=note")]
+    [InlineData("pin?limit=60&populate=note.topic")]
+    public async Task TheTypesOfTheTargetsOfPopulatedEntriesAreNamedToo(string path)
+    {
+        await StartAsync("Cache-Tag", outputCache: true, pins: 50);
+        using var client = _host!.CreateClient();
+
+        Tags(await GetAsync(client, path), "Cache-Tag", ',').ShouldBe([Site, PinType, NoteType, TopicType], ignoreOrder: true);
+    }
+
+    // A type the caller cannot read is not named: none of its entries is in the answer, so no change to one makes it stale.
+    [Fact]
+    public async Task ATargetTypeTheCallerCannotReadIsNotNamed()
+    {
+        var (_, topic) = await StartAsync("Cache-Tag", outputCache: true, more: 50, readTopics: false);
+        using var client = _host!.CreateClient();
+
+        var response = await GetAsync(client, "note?limit=60");
+        (await response.Content.ReadAsStringAsync(Token)).ShouldNotContain(topic.ToString("D"));
+        Tags(response, "Cache-Tag", ',').ShouldBe([Site, NoteType], ignoreOrder: true);
+    }
+
+    private async Task<(Guid Note, Guid Topic)> StartAsync(string? header, bool outputCache, int more = 0, int pins = 0, bool readTopics = true)
     {
         _host = new FluentCmsTestHost()
-            .WithContentTypes<Note, Topic>()
+            .WithContentTypes<Note, Topic, Pin>()
             .WithServices(services =>
             {
                 TestScheme.Add(services);
@@ -136,7 +218,12 @@ public sealed class CacheTagHeaderTests : IAsyncDisposable
             var context = services.GetRequiredService<CmsDbContext>();
             context.Set<RoleGrant>().AddRange(
                 new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.note.read" },
-                new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.topic.read" });
+                new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.pin.read" });
+            if (readTopics)
+            {
+                context.Set<RoleGrant>().Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.topic.read" });
+            }
+
             await context.SaveChangesAsync();
 
             var topics = services.GetRequiredService<IContentService<Topic>>();
@@ -145,6 +232,16 @@ public sealed class CacheTagHeaderTests : IAsyncDisposable
             var notes = services.GetRequiredService<IContentService<Note>>();
             note = (await notes.CreateAsync(new Note { Title = "Soup", Slug = "soup", Topic = new Ref<Topic>(topic) })).Id;
             await notes.PublishAsync(note);
+            for (var i = 0; i < more; i++)
+            {
+                await notes.PublishAsync((await notes.CreateAsync(new Note { Title = "Stew", Slug = $"stew-{i}", Topic = new Ref<Topic>(topic) })).Id);
+            }
+
+            var pinned = services.GetRequiredService<IContentService<Pin>>();
+            for (var i = 0; i < pins; i++)
+            {
+                await pinned.PublishAsync((await pinned.CreateAsync(new Pin { Title = "Pin", Note = new Ref<Note>(note) })).Id);
+            }
         });
 
         _host.CreateClient().Dispose();
