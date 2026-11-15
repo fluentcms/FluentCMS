@@ -44,16 +44,15 @@ internal sealed class MediaTransforms(
     private const string Webp = "image/webp";
     private const string Png = "image/png";
 
-    public static string ThumbnailCanonical(Guid id, long? expires) =>
-        expires is { } at ? $"{id:D}/{Thumbnail}?{MediaOriginals.Expires}={at.ToString(CultureInfo.InvariantCulture)}" : $"{id:D}/{Thumbnail}";
+    public static string ThumbnailCanonical(Guid id, long? expires, string? version) =>
+        MediaOriginals.WithQuery($"{id:D}/{Thumbnail}", MediaOriginals.SignedQuery(expires, inline: false, version));
 
-    public static async Task<string> ThumbnailUrlAsync(MediaSigning signing, Guid id, string fileName, long? expires, CancellationToken cancellationToken)
+    public static async Task<string> ThumbnailUrlAsync(MediaSigning signing, Guid id, string fileName, long? expires, string? version, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(signing);
 
-        var signature = await signing.SignAsync(ThumbnailCanonical(id, expires), cancellationToken);
-        var query = expires is { } at ? $"{MediaOriginals.Expires}={at.ToString(CultureInfo.InvariantCulture)}&" : "";
-        return $"/media/{id:D}/{Thumbnail}/{Uri.EscapeDataString(fileName)}?{query}{ImageQuery.Signature}={signature}";
+        var signature = await signing.SignAsync(ThumbnailCanonical(id, expires, version), cancellationToken);
+        return MediaOriginals.SignedUrl($"/media/{id:D}/{Thumbnail}/{Uri.EscapeDataString(fileName)}", MediaOriginals.SignedQuery(expires, inline: false, version), signature);
     }
 
     public async Task<TransformedImage> TransformAsync(Guid id, IEnumerable<KeyValuePair<string, string?>> query, IReadOnlyCollection<string> accepted, CancellationToken cancellationToken)
@@ -88,11 +87,11 @@ internal sealed class MediaTransforms(
     // GET /media/{id}/thumbnail/{fileName}: the signature is always checked, whatever RequireSignedUrls says, since the size is
     // the plugin's and not held to the site's transform limits; MaxSourcePixels still guards the decoding. With exp, the URL
     // serves a private asset too, until it expires, as the Management API gives it to a caller who may read the asset. The
-    // canonical string, {id}/thumbnail, is neither a transform's {id}?… nor an original's {id}/original….
+    // canonical string, {id}/thumbnail with exp and v, is neither a transform's {id}?… nor an original's {id}/original….
     public async Task<(TransformedImage Image, long? Expires)> ThumbnailAsync(Guid id, IEnumerable<KeyValuePair<string, string?>> query, CancellationToken cancellationToken)
     {
-        var (signature, expires, _) = MediaOriginals.ReadQuery(query, "a thumbnail", takesDisposition: false);
-        if (!await signing.VerifyAsync(ThumbnailCanonical(id, expires), signature, cancellationToken))
+        var (signature, expires, _, version) = MediaOriginals.ReadQuery(query, "a thumbnail", takesDisposition: false);
+        if (!await signing.VerifyAsync(ThumbnailCanonical(id, expires, version), signature, cancellationToken))
         {
             throw new PluginException(MediaErrorCodes.SignatureInvalid, signature is null ? "The URL of the thumbnail is not signed." : "The signature of the URL of the thumbnail is not valid.");
         }

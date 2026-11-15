@@ -162,14 +162,14 @@ The URLs are signed. `presets` has one transform URL for each preset of the site
 {
   "id": "0193a0c2-...", "fileName": "hero.jpg", "mimeType": "image/jpeg", "isPrivate": false,
   "urls": {
-    "original": "/media/0193a0c2-.../original/hero.jpg?sig=...",
-    "thumbnail": "/media/0193a0c2-.../thumbnail/hero.jpg?sig=...",
+    "original": "/media/0193a0c2-.../original/hero.jpg?v=3f2a9c0d41b7e8a6&sig=...",
+    "thumbnail": "/media/0193a0c2-.../thumbnail/hero.jpg?v=3f2a9c0d41b7e8a6&sig=...",
     "expiresAt": null
   }
 }
 ```
 
-`thumbnail` is the image fitted inside 320 by 320 pixels, as WebP, for an image the processor reads, and null for any other file. Its URL takes no size and is always signed, whatever `RequireSignedUrls` says, so it serves that thumbnail of that asset only; it is not held to the site's transform limits, but still to `maxSourcePixels`. A public asset's URLs do not expire. A private asset's live for `downloadUrlSeconds`, until `expiresAt`, and serve the file inline to whoever holds them, with `Cache-Control: private` for the seconds left: the original as `/media/{id}/original/{fileName}?disposition=inline&exp=...&sig=...` and the thumbnail with `exp`. Read the asset again for new ones. Only a caller whose `media.read` reaches the asset's folder reads it, so no other caller gets its URLs.
+`thumbnail` is the image fitted inside 320 by 320 pixels, as WebP, for an image the processor reads, and null for any other file. Its URL takes no size and is always signed, whatever `RequireSignedUrls` says, so it serves that thumbnail of that asset only; it is not held to the site's transform limits, but still to `maxSourcePixels`. A public asset's URLs do not expire. A private asset's work until `expiresAt`, which is more than half of `downloadUrlSeconds` away and never more than all of it, so reads within that half give the same URLs. They serve the file inline to whoever holds them, with `Cache-Control: private` for the seconds left: the original as `/media/{id}/original/{fileName}?disposition=inline&exp=...&v=...&sig=...` and the thumbnail with `exp`. Read the asset again for new ones. Only a caller whose `media.read` reaches the asset's folder reads it, so no other caller gets its URLs. `v` is part of the checksum, so a replace gives new URLs. With `Library` set to `PerSite`, the URLs end with `site`, the site of the read, since an `<img>` sends no `X-Cms-Site`. The MCP tools answer the same assets without `urls`.
 
 ## Usage, delete and replace
 

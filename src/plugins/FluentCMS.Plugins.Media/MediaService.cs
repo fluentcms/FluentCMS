@@ -279,30 +279,41 @@ internal sealed class MediaService(
 
     // The assets of a read, each one the caller's media.read reaches, with the URLs of their files: the original and, for an
     // image the processor reads, the thumbnail, signed and relative to the base of the CMS. A public asset's URLs do not
-    // expire, as the Delivery API's original does not. A private asset's live as long as a download URL, from the site's
-    // media settings, and serve inline, since the library shows them; the settings are read once, and only for a read that
-    // has a private asset.
+    // expire, as the Delivery API's original does not. A private asset's live about as long as a download URL, from the
+    // site's media settings (PrivateExpiry), and serve inline, since the library shows them; the settings are read once, and
+    // only for a read that has a private asset. Each URL carries v from the checksum, so a replace gives new ones, and with a
+    // library per site the site of the request, which an image the browser asks for names in no header.
     private async Task<List<ManagedAsset>> ManagedAsync(List<Asset> assets, CancellationToken cancellationToken)
     {
         var operation = Operation();
-        long? lifetimeEnd = null;
+        var site = options.Value.Library == MediaLibrary.PerSite ? $"&{ImageQuery.Site}={operation.Site.Value:D}" : "";
+        long? privateExpiry = null;
         List<ManagedAsset> managed = new(assets.Count);
         foreach (var asset in assets)
         {
             long? expires = null;
             if (asset.IsPrivate)
             {
-                lifetimeEnd ??= time.GetUtcNow().ToUnixTimeSeconds() + (await settings.GetAsync(operation.Site, cancellationToken)).DownloadUrlSeconds;
-                expires = lifetimeEnd;
+                privateExpiry ??= PrivateExpiry(time.GetUtcNow().ToUnixTimeSeconds(), (await settings.GetAsync(operation.Site, cancellationToken)).DownloadUrlSeconds);
+                expires = privateExpiry;
             }
 
-            var original = await MediaOriginals.UrlAsync(signing, asset.Id, asset.FileName, expires, cancellationToken, inline: expires is not null);
-            var thumbnail = processor.CanDecode(asset.MimeType) ? await MediaTransforms.ThumbnailUrlAsync(signing, asset.Id, asset.FileName, expires, cancellationToken) : null;
-            var urls = new MediaAssetUrls(original, thumbnail, expires is { } at ? DateTimeOffset.FromUnixTimeSeconds(at) : null);
+            var version = MediaOriginals.VersionOf(asset.Checksum);
+            var original = await MediaOriginals.UrlAsync(signing, asset.Id, asset.FileName, expires, cancellationToken, inline: expires is not null, version);
+            var thumbnail = processor.CanDecode(asset.MimeType) ? await MediaTransforms.ThumbnailUrlAsync(signing, asset.Id, asset.FileName, expires, version, cancellationToken) + site : null;
+            var urls = new MediaAssetUrls(original + site, thumbnail, expires is { } at ? DateTimeOffset.FromUnixTimeSeconds(at) : null);
             managed.Add(new ManagedAsset(Info(asset, operation.Locale), urls));
         }
 
         return managed;
+    }
+
+    // Now plus the lifetime, rounded down to a multiple of half of it, so that the reads within that half give the same URLs
+    // and a browser keeps the files it fetched, while a URL still lives more than half the lifetime and never longer.
+    internal static long PrivateExpiry(long now, int lifetime)
+    {
+        var latest = now + lifetime;
+        return latest - (latest % Math.Max(1, lifetime / 2));
     }
 
     public async Task<MediaAsset> UpdateAsync(Guid id, MediaAssetChanges changes, CancellationToken cancellationToken = default)

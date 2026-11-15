@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json.Nodes;
 using FluentCMS.Media;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -35,9 +36,11 @@ public sealed class MediaManagementUrlTests(TransformHosts hosts) : IClassFixtur
         presets.ShouldBeEmpty();
         body.AsObject().Select(pair => pair.Key).ShouldBe(["id", "siteId", "folderId", "fileName", "mimeType", "size", "checksum", "width", "height", "title", "locale", "alt", "caption", "credit", "tags", "focalPoint", "isPrivate", "createdAt", "createdBy", "updatedAt", "updatedBy", "urls"]);
         (body["fileName"]!.GetValue<string>(), body["width"]!.GetValue<int>(), body["checksum"]!.GetValue<string>().Length).ShouldBe(("bands.png", 400, 64));
+        var version = body["checksum"]!.GetValue<string>()[..16];
         read.Headers.CacheControl!.NoStore.ShouldBeTrue();
-        urls["original"]!.GetValue<string>().ShouldStartWith($"/media/{image:D}/original/bands.png?sig=");
-        urls["thumbnail"]!.GetValue<string>().ShouldStartWith($"/media/{image:D}/thumbnail/bands.png?sig=");
+        urls["original"]!.GetValue<string>().ShouldStartWith($"/media/{image:D}/original/bands.png?v={version}&sig=");
+        urls["thumbnail"]!.GetValue<string>().ShouldStartWith($"/media/{image:D}/thumbnail/bands.png?v={version}&sig=");
+        urls.ToJsonString().ShouldNotContain("site=");
         urls["expiresAt"].ShouldBeNull();
         var (type, thumb) = await ImageAsync(thumbnail);
         type.ShouldBe("image/webp");
@@ -72,25 +75,28 @@ public sealed class MediaManagementUrlTests(TransformHosts hosts) : IClassFixtur
         (await admin.PatchAsJsonAsync(new Uri($"{Root}/{asset:D}", UriKind.Relative), new { isPrivate = true }, Token)).Dispose();
         using var editor = await media.ClientWithAsync(admin, new { permission = "media.read", constraints = new { resources = new[] { team.ToString("D") } } });
         var now = media.Host.Time.GetUtcNow().ToUnixTimeSeconds();
+        var expires = MediaService.PrivateExpiry(now, 60);
 
         using var read = await editor.GetAsync(new Uri($"{Root}/{asset:D}", UriKind.Relative), Token);
-        var urls = (await JsonAsync(read))["urls"]!;
+        var body = await JsonAsync(read);
+        var urls = body["urls"]!;
+        var version = body["checksum"]!.GetValue<string>()[..16];
         var listed = (await GetAsync(editor, $"{Root}?folder={team:D}"))["items"]!.AsArray().Single()!["urls"]!;
         var delivered = await GetAsync(editor, $"/api/delivery/v1/media/{asset:D}");
         var original = urls["original"]!.GetValue<string>();
         var thumbnail = urls["thumbnail"]!.GetValue<string>();
         using var servedOriginal = await FetchAsync(anonymous, original);
         using var servedThumbnail = await FetchAsync(anonymous, thumbnail);
-        media.Host.Time.Advance(TimeSpan.FromSeconds(59));
+        media.Host.Time.Advance(TimeSpan.FromSeconds(expires - now - 1));
         using var lastSecond = await FetchAsync(anonymous, thumbnail);
         media.Host.Time.Advance(TimeSpan.FromSeconds(1));
         using var expiredOriginal = await FetchAsync(anonymous, original);
         using var expiredThumbnail = await FetchAsync(anonymous, thumbnail);
 
         read.Headers.CacheControl!.NoStore.ShouldBeTrue();
-        original.ShouldStartWith($"/media/{asset:D}/original/secret.png?disposition=inline&exp={now + 60}&sig=");
-        thumbnail.ShouldStartWith($"/media/{asset:D}/thumbnail/secret.png?exp={now + 60}&sig=");
-        urls["expiresAt"]!.GetValue<DateTimeOffset>().ShouldBe(DateTimeOffset.FromUnixTimeSeconds(now + 60));
+        original.ShouldStartWith($"/media/{asset:D}/original/secret.png?disposition=inline&exp={expires}&v={version}&sig=");
+        thumbnail.ShouldStartWith($"/media/{asset:D}/thumbnail/secret.png?exp={expires}&v={version}&sig=");
+        urls["expiresAt"]!.GetValue<DateTimeOffset>().ShouldBe(DateTimeOffset.FromUnixTimeSeconds(expires));
         listed.ToJsonString().ShouldBe(urls.ToJsonString());
         delivered["urls"].ShouldBeNull();
 
@@ -102,7 +108,7 @@ public sealed class MediaManagementUrlTests(TransformHosts hosts) : IClassFixtur
             served.StatusCode.ShouldBe(HttpStatusCode.OK);
             served.Headers.CacheControl!.Private.ShouldBeTrue();
             served.Headers.CacheControl.Public.ShouldBeFalse();
-            served.Headers.CacheControl.MaxAge.ShouldBe(TimeSpan.FromSeconds(60));
+            served.Headers.CacheControl.MaxAge.ShouldBe(TimeSpan.FromSeconds(expires - now));
         }
 
         (await ImageAsync(servedThumbnail)).Type.ShouldBe("image/webp");
@@ -171,10 +177,11 @@ public sealed class MediaManagementUrlTests(TransformHosts hosts) : IClassFixtur
         using var extended = await FetchAsync(anonymous, WithParameter(hiddenThumbnail, "exp", later));
         using var asDownload = await FetchAsync(anonymous, WithoutParameter(hiddenOriginal, "disposition"));
         using var downloadInline = await FetchAsync(anonymous, WithParameter(download, "disposition", "inline"));
+        using var otherVersion = await FetchAsync(anonymous, WithParameter(thumbnail, "v", "0000000000000000"));
         using var inlineWithoutExpiry = await FetchAsync(anonymous, $"/media/{first:D}/original/first.png?disposition=inline&sig={signature}");
 
         good.StatusCode.ShouldBe(HttpStatusCode.OK);
-        foreach (var forbidden in (HttpResponseMessage[])[otherAsset, unsigned, asTransform, asWholeImage, asOriginal, publicForm, extended, asDownload, downloadInline])
+        foreach (var forbidden in (HttpResponseMessage[])[otherAsset, unsigned, asTransform, asWholeImage, asOriginal, publicForm, extended, asDownload, downloadInline, otherVersion])
         {
             forbidden.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
             (await CodeAsync(forbidden)).ShouldBe(MediaErrorCodes.SignatureInvalid);
@@ -221,7 +228,7 @@ public sealed class MediaManagementUrlTests(TransformHosts hosts) : IClassFixtur
         string pdfThumbnail;
         await using (var scope = media.Services.CreateAsyncScope())
         {
-            pdfThumbnail = await MediaTransforms.ThumbnailUrlAsync(scope.ServiceProvider.GetRequiredService<MediaSigning>(), pdf, "plan.pdf", null, Token);
+            pdfThumbnail = await MediaTransforms.ThumbnailUrlAsync(scope.ServiceProvider.GetRequiredService<MediaSigning>(), pdf, "plan.pdf", null, null, Token);
         }
 
         HttpResponseMessage limited, transform;
@@ -288,6 +295,158 @@ public sealed class MediaManagementUrlTests(TransformHosts hosts) : IClassFixtur
         again.StatusCode.ShouldBe(HttpStatusCode.OK);
         again.Headers.ETag.ShouldBe(first.Headers.ETag);
         calls().ShouldBe((1, 1));
+    }
+
+    [Fact]
+    public async Task APrivateAssetKeepsItsUrlsForHalfTheirLifetimeAndEachLivesLongerThanThat()
+    {
+        var media = hosts.Media;
+        await using var lifetime = await media.ConfigureAsync(settings => settings.DownloadUrlSeconds = 60);
+        using var admin = await media.AdminAsync();
+        var asset = Id((await UploadedAsync(admin, null, ("held.png", Bands(8, 8)))).Single()!);
+        (await admin.PatchAsJsonAsync(new Uri($"{Root}/{asset:D}", UriKind.Relative), new { isPrivate = true }, Token)).Dispose();
+        var time = media.Host.Time;
+
+        async Task<(JsonNode Urls, long Left)> ReadAsync()
+        {
+            var urls = (await GetAsync(admin, $"{Root}/{asset:D}"))["urls"]!;
+            return (urls, urls["expiresAt"]!.GetValue<DateTimeOffset>().ToUnixTimeSeconds() - time.GetUtcNow().ToUnixTimeSeconds());
+        }
+
+        var first = await ReadAsync();
+        var windowEnd = time.GetUtcNow().ToUnixTimeSeconds() + first.Left - 30;
+        time.Advance(TimeSpan.FromSeconds(windowEnd - time.GetUtcNow().ToUnixTimeSeconds() - 1));
+        var lastOfWindow = await ReadAsync();
+        time.Advance(TimeSpan.FromSeconds(1));
+        var next = await ReadAsync();
+
+        first.Left.ShouldBeInRange(31, 60);
+        lastOfWindow.Urls.ToJsonString().ShouldBe(first.Urls.ToJsonString());
+        lastOfWindow.Left.ShouldBe(31);
+        next.Urls["thumbnail"]!.GetValue<string>().ShouldNotBe(first.Urls["thumbnail"]!.GetValue<string>());
+        next.Left.ShouldBe(60);
+    }
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(61)]
+    [InlineData(300)]
+    [InlineData(86400)]
+    public void APrivateExpiryLivesMoreThanHalfTheLifetimeAndNeverLonger(int lifetime)
+    {
+        var start = 1_763_000_000L;
+        for (var now = start; now < start + lifetime + 3; now++)
+        {
+            var left = MediaService.PrivateExpiry(now, lifetime) - now;
+            left.ShouldBeGreaterThan(lifetime / 2);
+            left.ShouldBeLessThanOrEqualTo(lifetime);
+        }
+    }
+
+    [Fact]
+    public async Task AReplaceGivesTheAssetNewUrlsSoNoCacheServesTheOldFile()
+    {
+        var media = hosts.Media;
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var asset = Id((await UploadedAsync(admin, null, ("wide.png", Bands(400, 200)))).Single()!);
+        var before = (await GetAsync(admin, $"{Root}/{asset:D}"))["urls"]!;
+        using var oldThumbnail = await FetchAsync(anonymous, before["thumbnail"]!.GetValue<string>());
+
+        using var form = new MultipartFormDataContent();
+        var content = new ByteArrayContent(Bands(200, 400));
+        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        form.Add(content, "file", "tall.png");
+        using var replace = await admin.PostAsync(new Uri($"{Root}/{asset:D}/replace", UriKind.Relative), form, Token);
+        var replaced = await JsonAsync(replace);
+        var after = (await GetAsync(admin, $"{Root}/{asset:D}"))["urls"]!;
+        using var newThumbnail = await FetchAsync(anonymous, after["thumbnail"]!.GetValue<string>());
+
+        after["original"]!.GetValue<string>().ShouldNotBe(before["original"]!.GetValue<string>());
+        after["original"]!.GetValue<string>().ShouldContain($"v={replaced["checksum"]!.GetValue<string>()[..16]}&");
+        after["thumbnail"]!.GetValue<string>().ShouldNotBe(before["thumbnail"]!.GetValue<string>());
+        newThumbnail.Headers.ETag.ShouldNotBe(oldThumbnail.Headers.ETag);
+        using var image = Decode((await ImageAsync(newThumbnail)).Bytes);
+        (image.Width, image.Height).ShouldBe((160, 320));
+    }
+
+    [Fact]
+    public async Task ASmallImageIsEnlargedToTheBoxAndADeletedAssetHasNoThumbnail()
+    {
+        var media = hosts.Media;
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var wide = Id((await UploadedAsync(admin, null, ("small-wide.png", Bands(40, 20)))).Single()!);
+        var square = Id((await UploadedAsync(admin, null, ("small-square.png", Bands(8, 8)))).Single()!);
+        var hidden = Id((await UploadedAsync(admin, null, ("small-hidden.png", Bands(8, 8)))).Single()!);
+        (await admin.PatchAsJsonAsync(new Uri($"{Root}/{hidden:D}", UriKind.Relative), new { isPrivate = true }, Token)).Dispose();
+        var wideThumbnail = (await GetAsync(admin, $"{Root}/{wide:D}"))["urls"]!["thumbnail"]!.GetValue<string>();
+        var squareThumbnail = (await GetAsync(admin, $"{Root}/{square:D}"))["urls"]!["thumbnail"]!.GetValue<string>();
+        var hiddenUrls = (await GetAsync(admin, $"{Root}/{hidden:D}"))["urls"]!;
+
+        using var wideServed = await FetchAsync(anonymous, wideThumbnail);
+        using var squareServed = await FetchAsync(anonymous, squareThumbnail);
+        foreach (var id in (Guid[])[square, hidden])
+        {
+            (await admin.DeleteAsync(new Uri($"{Root}/{id:D}", UriKind.Relative), Token)).Dispose();
+        }
+
+        using var deleted = await FetchAsync(anonymous, squareThumbnail);
+        using var deletedPrivate = await FetchAsync(anonymous, hiddenUrls["thumbnail"]!.GetValue<string>());
+        using var deletedOriginal = await FetchAsync(anonymous, hiddenUrls["original"]!.GetValue<string>());
+
+        using (var image = Decode((await ImageAsync(wideServed)).Bytes))
+        {
+            (image.Width, image.Height).ShouldBe((320, 160));
+        }
+
+        using (var image = Decode((await ImageAsync(squareServed)).Bytes))
+        {
+            (image.Width, image.Height).ShouldBe((320, 320));
+        }
+
+        foreach (var gone in (HttpResponseMessage[])[deleted, deletedPrivate, deletedOriginal])
+        {
+            gone.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+            (await CodeAsync(gone)).ShouldBe(MediaErrorCodes.AssetNotFound);
+        }
+    }
+
+    // A browser asks for an image without the X-Cms-Site of the read, so with a library per site the URLs name the site.
+    [Fact]
+    public async Task WithALibraryPerSiteTheUrlsOfAnotherSiteServeWithoutItsHeader()
+    {
+        await using var media = new PerSiteMediaHost();
+        var site = await MediaLibraryTesting.CreateSiteAsync(media);
+        using var second = await MediaLibraryTesting.InSiteAsync(media, site);
+        using var anonymous = media.Host.CreateClient();
+        var bytes = Bands(400, 200);
+        var open = Id((await UploadedAsync(second, null, ("open.png", bytes))).Single()!);
+        var hidden = Id((await UploadedAsync(second, null, ("hidden.png", bytes))).Single()!);
+        (await second.PatchAsJsonAsync(new Uri($"{Root}/{hidden:D}", UriKind.Relative), new { isPrivate = true }, Token)).Dispose();
+        var urls = (await GetAsync(second, Root))["items"]!.AsArray().SelectMany(item => (string[])[item!["urls"]!["original"]!.GetValue<string>(), item["urls"]!["thumbnail"]!.GetValue<string>()]).ToList();
+
+        List<HttpResponseMessage> served = [];
+        List<HttpResponseMessage> withoutSite = [];
+        foreach (var url in urls)
+        {
+            served.Add(await FetchAsync(anonymous, url));
+            withoutSite.Add(await FetchAsync(anonymous, WithoutParameter(url, "site")));
+        }
+
+        urls.Count.ShouldBe(4);
+        urls.ShouldAllBe(url => url.EndsWith($"&site={site:D}", StringComparison.Ordinal));
+        foreach (var response in served)
+        {
+            response.StatusCode.ShouldBe(HttpStatusCode.OK);
+            response.Dispose();
+        }
+
+        foreach (var response in withoutSite)
+        {
+            response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+            response.Dispose();
+        }
     }
 
     // An AVIF header, a type the plugin finds from bytes and the default image processor does not read.

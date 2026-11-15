@@ -12,7 +12,7 @@ internal sealed record MediaAssetUrls(
     string Original,
     [property: Description("For an image the image processor reads, /media/{id}/thumbnail/{fileName}, signed: the image fitted inside 320 by 320 pixels, as WebP where the processor encodes it. Null for any other file.")]
     string? Thumbnail,
-    [property: Description("For a private asset, when both URLs stop working, after the site's media setting downloadUrlSeconds; null for a public asset, whose URLs do not expire.")]
+    [property: Description("For a private asset, when both URLs stop working: at most the site's media setting downloadUrlSeconds after the read, and more than half of it. Null for a public asset, whose URLs do not expire.")]
     DateTimeOffset? ExpiresAt);
 
 // The bodies of GET /media/{id} and GET /media: the members of MediaAsset as they were written before, and urls.
