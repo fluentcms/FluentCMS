@@ -5,6 +5,7 @@
 // dotnet run eng/ai-stand-in.cs -- [port], 18434 by default, on 127.0.0.1. It answers in the chat completions format with
 // 21 prompt and 6 completion tokens, the usage of a stream in a chunk of its own, and prints the shape of each request
 // without its text. A model whose name holds "slow" waits 30 s before a plain answer, and a stream after its first chunk.
+// As OpenRouter does, a plain answer opens with blank lines and a stream with a comment line, which a client skips.
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -39,12 +40,16 @@ static async Task AnswerAsync(HttpContext context)
     {
         if (body["stream"]?.GetValue<bool>() != true)
         {
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsync("\n         \n", context.RequestAborted);
+            await context.Response.Body.FlushAsync(context.RequestAborted);
             await PauseAsync(slow, context);
-            await context.Response.WriteAsJsonAsync(new { id = "stand-in", @object = "chat.completion", created = 1, model, choices = new[] { new { index = 0, message = new { role = "assistant", content = answer }, finish_reason = "stop" } }, usage }, context.RequestAborted);
+            await context.Response.WriteAsync(JsonSerializer.Serialize(new { id = "stand-in", @object = "chat.completion", created = 1, model, choices = new[] { new { index = 0, message = new { role = "assistant", content = answer }, finish_reason = "stop" } }, usage }), context.RequestAborted);
             return;
         }
 
         context.Response.ContentType = "text/event-stream";
+        await context.Response.WriteAsync(": OPENROUTER PROCESSING\n\n", context.RequestAborted);
         var half = answer.Length / 2;
         await ChunkAsync(context, new { id = "stand-in", @object = "chat.completion.chunk", created = 1, model, choices = new[] { new { index = 0, delta = new { role = "assistant", content = answer[..half] }, finish_reason = (string?)null } } });
         await PauseAsync(slow, context);

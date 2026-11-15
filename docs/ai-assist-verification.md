@@ -6,20 +6,21 @@ CI tests the [AI assist plugin](../src/plugins/FluentCMS.Plugins.AiAssist/README
 | --- | --- |
 | Stand-ins in the tests | Every CI run; see [On the wire](#on-the-wire). |
 | Reference host against a stand-in | Run on 12 Nov 2026; see [Dry run](#dry-run-of-the-reference-host-12-nov-2026). |
-| Local Ollama through `/v1` | Not run yet. |
-| A paid OpenAI-compatible endpoint with a key | Not run yet: it waits for a key from the maintainer. |
+| Local Ollama through `/v1` | Run on 15 Nov 2026; see [Ollama](#ollama-through-v1-15-nov-2026). It found that Ollama does not read `max_completion_tokens`, which is fixed. |
+| A paid OpenAI-compatible endpoint with a key | Run on 15 Nov 2026 against OpenRouter; see [OpenRouter](#openrouter-15-nov-2026). |
 | Azure OpenAI | Not verified, and named as such in the notes of the preview. It is verified before 1.0.0. |
 
 ## On the wire
 
 `AiWireTests`, `AiProviderTests` and `AiClientFactoryTests` run the plugin's own client factory against `StubProvider`, a local server on a loopback port:
 
-- The usage of a stream in a chunk of its own after the end of the answer, as OpenAI sends it when it is asked to (the client asks with `stream_options.include_usage` on every stream); on the chunk that ends the answer; and late, after a pause, which `done` waits for.
+- The usage of a stream in a chunk of its own after the end of the answer, as OpenAI and Ollama send it when they are asked to (the client asks with `stream_options.include_usage` on every stream); on the chunk that ends the answer; and late, after a pause, which `done` waits for.
+- As OpenRouter answers: blank lines before the body of a plain answer, a comment line in a stream, and a stream that ends twice, the second time with the usage. The suggestion is the answer once, and the tokens are counted once.
 - No usage at all, streamed or not: the suggestion is answered, with 0 prompt and 0 completion tokens in the answer and in a row that succeeded.
 - `altText`: the reduced copy of the image goes as the one `image_url` part of the user message, a `data:` URI.
 - A slow provider: a call past `requestTimeout` is `FCMS1688` (504, or the `error` event of a stream) with one failed row, and a caller that goes away ends the call as cancelled with one failed row. Neither is logged as a failure of the provider.
 - With the host logging at `Trace`, no log line and no usage row holds the text or the suggestion of an answer, any piece of a stream, `seo`, or a provider that refuses with what it was sent. The lines are those of ASP.NET Core, EF Core and the plugin: the OpenAI client has no logger factory, and its `HttpClient` is not one of `IHttpClientFactory`, so it writes none.
-- The answer is capped with `max_completion_tokens`, not the older `max_tokens`.
+- The answer is capped with `max_completion_tokens`. An `openAiCompatible` endpoint is sent the older `max_tokens` too, the only one Ollama reads; `openAi` and `azureOpenAi` are not, since the reasoning models of OpenAI refuse it.
 
 ## Dry run of the reference host, 12 Nov 2026
 
@@ -47,6 +48,64 @@ A stand-in cannot tell what a real endpoint does, so a real run checks in partic
 - whether a stream carries the usage when it is asked for, and in which chunk;
 - whether the model answers `seo` with the JSON object it is asked for;
 - whether a vision model reads the image as a `data:` URI.
+
+The runs of 15 Nov 2026 below answer them for OpenRouter and Ollama.
+
+## OpenRouter, 15 Nov 2026
+
+The [walk-through](#walk-through) on the Release build of the host as in the dry run, with `openAiCompatible` at `https://openrouter.ai/api/v1` and the maintainer's key in `FluentCms__Ai__OpenAiCompatible__ApiKey`. One model served every step: `google/gemma-3-4b-it`, the cheapest small model on OpenRouter that reads images and is not a reasoning model, which OpenRouter routed to DeepInfra. The texts were those of the walk-through, a longer text of four sentences for `expand`, and for `altText` a JPEG of 1600 by 1200 pixels of a stop sign on a post against the sky. The whole run, with the requests sent to the endpoint directly and the check of the fix below, cost about 0.00015 USD.
+
+| Step | Answer | Usage row |
+| --- | --- | --- |
+| `rewrite` | 200, `{ "suggestion", "usage" }`; the model put the text in a fenced block and added an image link of its own | succeeded, 153 and 89 tokens, 1680 ms |
+| `rewrite` streamed | 200, `delta` events, then `done` with the body of the plain answer | succeeded, 153 and 93 |
+| `translate` to `fr` | 200, `Navires en mer` | succeeded, 132 and 6 |
+| `seo` | 200, `metaTitle` and `metaDescription` | succeeded, 147 and 57 |
+| `seo` streamed | 200, `done` only, with both members | succeeded, 147 and 61 |
+| `altText` of the photograph | 200, a red stop sign with the word "STOP" on a pole | succeeded, 434 and 17 |
+| `expand` past `requestTimeout` 1 | 504, `FCMS1688`, after 1.06 s | failed, 0 and 0, 1010 ms; event 9360 says `timeout` |
+| `expand` streamed past `requestTimeout` 1 | 200, 55 `delta` events, then `error` with `FCMS1688` | failed, 0 and 0, 1003 ms; `timeout` |
+| `expand`, the client gives up after 1 s | the connection is closed | failed, 0 and 0, 1022 ms; `cancelled` |
+| `expand` streamed, the client gives up after 1 s | 11 `delta` events, then the connection is closed | failed, 0 and 0, 997 ms; `cancelled` |
+
+OpenRouter answers within a second or two, so the client of step 7 gave up after 1 s, not 2. The usage listed ten rows, the four of steps 6 and 7 failed, and the totals were 10 calls, 1166 prompt and 323 completion tokens. The log at `Debug`, 87,974 lines of which 29,533 debug lines, held none of the texts sent, no suggestion, no `data:` URI, no key and no `Bearer`, and there was no event 9361 to 9367. Each plain call past `requestTimeout` writes one error line of core's problem handler (event 9110, "An unhandled exception became FCMS1688"), as on the stand-in; it holds no text.
+
+The four points, from requests sent to the endpoint as the client sends them:
+
+- `max_completion_tokens` is read: a cap of 5 ended the answer with `finish_reason` `length` and 5 completion tokens.
+- A stream carries the usage whether it is asked for or not, on a last chunk that ends the answer a second time: a chunk with `finish_reason` `stop` and an empty delta, then the same again with `usage`, then `[DONE]`.
+- `seo` came back as the JSON object asked for, plain and streamed.
+- The model read the image as a `data:` URI.
+
+What is particular to the router: each chunk and answer has members of its own (`provider`, `native_finish_reason`, `service_tier`, `reasoning`, and `cost`, `is_byok` and `cost_details` in `usage`), which the client ignores; a plain answer opens with blank lines that OpenRouter writes while the model works; the model in the answer is the one asked for. OpenRouter documents comment lines (`: OPENROUTER PROCESSING`) in a stream while a model is slow to start; none came in this run, whose answers started at once. `StubProvider` and `eng/ai-stand-in.cs` now answer with the blank lines and the comment line, and the stub, with `Router` set, ends a stream twice as OpenRouter does; `AiWireTests.ARoutersKeepAlivesAndItsSecondEndOfAStreamAreRead` holds that the suggestion and the tokens are read once.
+
+A row of a call that ended at `requestTimeout` or because its caller went away counts 0 tokens, although a provider may bill what the model generated before the call ended.
+
+## Ollama through `/v1`, 15 Nov 2026
+
+The walk-through as above with Ollama 0.40.16 in Docker Desktop (`ollama/ollama`, CPU only), `openAiCompatible` at `http://127.0.0.1:11434/v1`, no key in the host's environment and `"apiKey": null` in the settings. The text model was `qwen2.5:0.5b`, and `altText` used `moondream`.
+
+| Step | Answer | Usage row |
+| --- | --- | --- |
+| `rewrite` | 200; the model made a Markdown list of the text | succeeded, 158 and 26 tokens, 3461 ms with the load of the model |
+| `rewrite` streamed | 200, `delta` events, then `done`; the model gave the text back unchanged | succeeded, 158 and 21 |
+| `translate` to `fr` | 200, `boats at sea`: the model did not translate | succeeded, 136 and 4 |
+| `seo` | 200, `metaTitle` and `metaDescription` | succeeded, 151 and 31 |
+| `seo` streamed | 200, `done` only, with both members | succeeded, 151 and 48 |
+| `altText` of the photograph with `moondream` | 200, a paragraph on a stop sign in a green field under a blue sky | succeeded, 736 and 157, 64,677 ms with the load of the model |
+| `expand` past `requestTimeout` 1 | 504, `FCMS1688` | failed, 0 and 0, 1015 ms; `timeout` |
+| `expand` streamed past `requestTimeout` 1 | 200, `error` with `FCMS1688` and no `delta` before it | failed, 0 and 0, 1012 ms; `timeout` |
+| `expand`, the client gives up after 2 s | the connection is closed | failed, 0 and 0, 2008 ms; `cancelled` |
+| `expand` streamed, the client gives up after 1 s | 34 `delta` events, then the connection is closed | failed, 0 and 0, 1000 ms; `cancelled` |
+
+The streamed `expand` with a client that gives up after 2 s was answered in 1.87 s, a row that succeeded with 186 and 50 tokens, so it was repeated with 1 s. The answers of the 0.5b model are poor, but each was a suggestion of the shape the action asks for. The log at `Debug`, 32,973 lines of which 11,305 debug lines, held none of the texts, no suggestion and no `data:` URI, and there was no event 9361 to 9367; the line of event 9110 is there as on OpenRouter.
+
+The four points:
+
+- Ollama does not read `max_completion_tokens`: a cap of 5 was answered with 141 tokens and `finish_reason` `stop`, so `maxOutputTokens` did not cap an answer. It reads `max_tokens`, which ended the same request at 5 tokens with `length`. An `openAiCompatible` endpoint is now sent both (`AiClientFactory`), and `openAi` and `azureOpenAi` `max_completion_tokens` alone, which `AiClientFactoryTests.OnlyAnOpenAiCompatibleEndpointIsSentTheOlderCapToo` and `AiWireTests` hold. With the fix and `maxOutputTokens` 8, `rewrite` plain and streamed came back with 8 completion tokens on Ollama and on OpenRouter.
+- A stream carries the usage only when it is asked for, in a chunk of its own with no choices after the chunk that ends the answer, with a member `timings` of Ollama's own; the stub's `OwnChunk` is that form.
+- `seo` came back as the JSON object asked for, plain and streamed, even from the 0.5b model.
+- `moondream` read the image as a `data:` URI.
 
 ## Walk-through
 
@@ -126,7 +185,7 @@ TEXT='Ships is big boats what carry many things across the sea, and they goes sl
    ```
 
 6. The timeout. Set `requestTimeout` to 1 and ask for `expand` of the body, plain and streamed, with a text whose answer takes more than a second; on Ollama the first call after a change of model loads it, which takes longer. The plain call is 504 with `FCMS1688`, and the stream ends with an `error` event of `FCMS1688`.
-7. A caller that goes away. Set `requestTimeout` back to 120 and give up on `expand` before it ends, plain and streamed:
+7. A caller that goes away. Set `requestTimeout` back to 120 and give up on `expand` before it ends, plain and streamed, after 2 s, or after 1 s against an endpoint that answers sooner:
 
    ```bash
    curl -s --max-time 2 "${A[@]}" $H/api/management/v1/ai/actions/expand -d "{\"type\":\"article\",\"field\":\"body\",\"text\":\"$TEXT\"}"

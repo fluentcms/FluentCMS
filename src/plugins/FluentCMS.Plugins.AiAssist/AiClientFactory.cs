@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenAI;
+using OpenAI.Chat;
 
 namespace FluentCMS.Plugins.AiAssist;
 
@@ -76,6 +77,11 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
         }
 
         var client = OpenAiClient(endpoint ?? OpenAiEndpoint, key, model);
+        if (provider == AiProvider.OpenAiCompatible)
+        {
+            client = WithMaxTokens(client);
+        }
+
         return new AiClient(client, NameOf(provider), model);
     }
 
@@ -146,6 +152,26 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
 
         return new OpenAIClient(new ApiKeyCredential(key ?? NoKey.Placeholder), clientOptions).GetChatClient(model).AsIChatClient();
     }
+
+    // The package caps the answer with max_completion_tokens, which Ollama's /v1 does not read (0.40, #3008), so an
+    // OpenAI-compatible endpoint gets the older max_tokens too. OpenAI and Azure do not: their reasoning models refuse it.
+    private static IChatClient WithMaxTokens(IChatClient client) => client.AsBuilder().ConfigureOptions(options =>
+    {
+        if (options.MaxOutputTokens is not { } max)
+        {
+            return;
+        }
+
+        var raw = options.RawRepresentationFactory;
+        options.RawRepresentationFactory = chat =>
+        {
+            var completion = raw?.Invoke(chat) as ChatCompletionOptions ?? new ChatCompletionOptions();
+#pragma warning disable SCME0001 // JsonPatch is experimental; it is the package's way to send a member it has no property for.
+            completion.Patch.Set("$.max_tokens"u8, max);
+#pragma warning restore SCME0001
+            return completion;
+        };
+    }).Build();
 
     private static PluginException NotConfigured(string missing) =>
         new(AiErrorCodes.ProviderNotConfigured, $"The AI settings of the site do not {missing}.");

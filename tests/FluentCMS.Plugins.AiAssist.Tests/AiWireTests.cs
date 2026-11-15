@@ -52,6 +52,25 @@ public sealed class AiWireTests : IAsyncLifetime
         (row.Succeeded, row.PromptTokens, row.CompletionTokens).ShouldBe((true, StubProvider.PromptTokens, StubProvider.CompletionTokens));
     }
 
+    // OpenRouter writes blank lines while the model works and a comment line into a stream, and ends a stream twice, the
+    // second time with the usage. The suggestion is the answer once, and the tokens are counted once.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ARoutersKeepAlivesAndItsSecondEndOfAStreamAreRead(bool stream)
+    {
+        var site = await SiteAsync();
+        using var admin = await _ai.AdminAsync(site);
+        _stub.Router = true;
+
+        var answer = stream ? (await StreamAsync(admin, "rewrite"))[^1].Data : await SuggestAsync(admin, "rewrite", Body());
+
+        answer["suggestion"]!.GetValue<string>().ShouldBe(_stub.Answer);
+        Tokens(answer["usage"]!).ShouldBe((StubProvider.PromptTokens, StubProvider.CompletionTokens));
+        var row = (await _ai.UsageAsync(site)).ShouldHaveSingleItem();
+        (row.Succeeded, row.PromptTokens, row.CompletionTokens).ShouldBe((true, StubProvider.PromptTokens, StubProvider.CompletionTokens));
+    }
+
     // The answer has ended, but the usage is still on its way: done waits for it.
     [Fact]
     public async Task AStreamWhoseUsageArrivesLateEndsOnceItHasArrived()
@@ -69,12 +88,12 @@ public sealed class AiWireTests : IAsyncLifetime
         var row = (await _ai.UsageAsync(site)).ShouldHaveSingleItem();
         (row.Succeeded, row.PromptTokens, row.CompletionTokens).ShouldBe((true, StubProvider.PromptTokens, StubProvider.CompletionTokens));
 
-        // The stream asks for its usage, which OpenAI sends only when asked, and the answer is capped with
-        // max_completion_tokens rather than the older max_tokens, so the cap holds only where an endpoint reads it.
+        // The stream asks for its usage, which OpenAI sends only when asked. The answer of an OpenAI-compatible endpoint is
+        // capped with max_completion_tokens and with the older max_tokens, the only one Ollama's /v1 reads.
         var sent = _stub.Requests.ShouldHaveSingleItem().Body!;
         sent["stream_options"]!["include_usage"]!.GetValue<bool>().ShouldBeTrue();
         sent["max_completion_tokens"]!.GetValue<int>().ShouldBe(1024);
-        sent["max_tokens"].ShouldBeNull();
+        sent["max_tokens"]!.GetValue<int>().ShouldBe(1024);
     }
 
     // The image is a part of the user message, as a data URI of the reduced copy, the form OpenAI and Ollama's /v1 read.

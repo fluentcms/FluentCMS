@@ -46,6 +46,11 @@ public sealed class StubProvider : IAsyncDisposable
 
     public StubUsage Usage { get; set; } = StubUsage.OwnChunk;
 
+    // As OpenRouter answers (#3008): blank lines before the body of a plain answer, which it writes while the model works,
+    // a stream that opens with a comment line, and the usage on a second chunk that ends the answer again with an empty
+    // delta, not on a chunk of its own.
+    public bool Router { get; set; }
+
     // How long a stream waits before the chunk of its own that carries the usage.
     public TimeSpan UsageDelay { get; set; }
 
@@ -122,7 +127,7 @@ public sealed class StubProvider : IAsyncDisposable
             else if (path.EndsWith("/chat/completions", StringComparison.Ordinal))
             {
                 await WaitAsync(Pause, context);
-                await context.Response.WriteAsJsonAsync(
+                var completion = JsonSerializer.Serialize(
                     new
                     {
                         id = "chatcmpl-stub",
@@ -132,8 +137,9 @@ public sealed class StubProvider : IAsyncDisposable
                         choices = new[] { new { index = 0, message = new { role = "assistant", content = Answer }, finish_reason = "stop" } },
                         usage = Usage == StubUsage.None ? null : Used(),
                     },
-                    WithoutNulls,
-                    context.RequestAborted);
+                    WithoutNulls);
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsync((Router ? "\n         \n" : "") + completion, context.RequestAborted);
             }
             else
             {
@@ -149,11 +155,20 @@ public sealed class StubProvider : IAsyncDisposable
     private async Task StreamCompletionAsync(HttpContext context, string model)
     {
         context.Response.ContentType = "text/event-stream";
+        if (Router)
+        {
+            await context.Response.WriteAsync(": OPENROUTER PROCESSING\n\n", context.RequestAborted);
+        }
+
         var half = Answer.Length / 2;
         await ChunkAsync(context, new { id = "chatcmpl-stub", @object = "chat.completion.chunk", created = 1_700_000_000, model, choices = new[] { new { index = 0, delta = new { role = "assistant", content = Answer[..half] }, finish_reason = (string?)null } } });
         await WaitAsync(Pause, context);
-        await ChunkAsync(context, new { id = "chatcmpl-stub", @object = "chat.completion.chunk", created = 1_700_000_000, model, choices = new[] { new { index = 0, delta = new { content = Answer[half..] }, finish_reason = "stop" } }, usage = Usage == StubUsage.LastChunk ? Used() : null });
-        if (Usage == StubUsage.OwnChunk)
+        await ChunkAsync(context, new { id = "chatcmpl-stub", @object = "chat.completion.chunk", created = 1_700_000_000, model, choices = new[] { new { index = 0, delta = new { content = Answer[half..] }, finish_reason = "stop" } }, usage = Usage == StubUsage.LastChunk && !Router ? Used() : null });
+        if (Router)
+        {
+            await ChunkAsync(context, new { id = "chatcmpl-stub", @object = "chat.completion.chunk", created = 1_700_000_000, model, provider = "a-provider", choices = new[] { new { index = 0, delta = new { content = "", role = "assistant" }, finish_reason = "stop", native_finish_reason = "stop" } }, usage = Used() });
+        }
+        else if (Usage == StubUsage.OwnChunk)
         {
             await WaitAsync(UsageDelay, context);
             await ChunkAsync(context, new { id = "chatcmpl-stub", @object = "chat.completion.chunk", created = 1_700_000_000, model, choices = Array.Empty<object>(), usage = Used() });
