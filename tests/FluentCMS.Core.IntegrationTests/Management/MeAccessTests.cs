@@ -67,7 +67,7 @@ public sealed class MeAccessTests(AdminFixture fixture) : IClassFixture<AdminFix
         var personId = someone.Json["id"]!.GetValue<string>();
         (await AdminFixture.SendAsync(editor, HttpMethod.Post, $"content/person/{personId}/publish", ifMatch: "\"1\"")).Status.ShouldBe(HttpStatusCode.Forbidden);
         // The row rule refuses an entry the editor did not create, which is what "conditional" warned of.
-        (await AdminFixture.SendAsync(editor, HttpMethod.Patch, $"content/person/{personId}", """{ "name": "Other" }""", "\"1\"")).Status.ShouldNotBe(HttpStatusCode.OK);
+        (await AdminFixture.SendAsync(editor, HttpMethod.Patch, $"content/person/{personId}", """{ "name": "Other" }""", "\"1\"")).Status.ShouldBe(HttpStatusCode.NotFound);
     }
 
     // A grant shows nothing of a type the caller may not read, not even a write it holds on it.

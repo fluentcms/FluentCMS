@@ -50,7 +50,9 @@ public sealed class MePreferencesTests(AdminFixture fixture) : IClassFixture<Adm
         (await fixture.PutAsync("me/preferences", """{ "timeZone": "W. Europe Standard Time" }""", user)).Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
         (await fixture.PutAsync("me/preferences", """{ "culture": " en-US" }""", user)).Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
         (await fixture.PutAsync("me/preferences", """{ "culture": 1 }""", user)).Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
-        (await fixture.PutAsync("me/preferences", """{ "theme": "dark" }""", user)).Status.ShouldNotBe(HttpStatusCode.OK);
+        var unknown = await fixture.PutAsync("me/preferences", """{ "theme": "dark" }""", user);
+        unknown.Status.ShouldBe(HttpStatusCode.UnprocessableEntity, unknown.Body?.ToJsonString());
+        unknown.Json["code"]!.GetValue<string>().ShouldBe("FCMS2108");
         (await fixture.GetAsync("me/preferences", user)).Json.ToJsonString().ShouldBe(Nothing);
     }
 

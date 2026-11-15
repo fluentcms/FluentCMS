@@ -17,7 +17,8 @@ internal sealed class EffectiveAccess(
     IOperationContextAccessor accessor,
     ISearchIndex search) : IEffectiveAccess
 {
-    private static readonly ContentOperation[] Described =
+    // The operations ContentTypeAccess describes, in the order an answer lists them.
+    internal static readonly ContentOperation[] Described =
     [
         ContentOperation.Read, ContentOperation.Create, ContentOperation.Update, ContentOperation.Delete, ContentOperation.Publish, ContentOperation.Unpublish,
     ];

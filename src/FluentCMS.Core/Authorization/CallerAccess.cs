@@ -28,7 +28,7 @@ internal sealed record CallerTypeAccess(
 // nothing beyond the caller's own reach: no other principal's grants, and only the types and fields it may read.
 internal sealed class CallerAccess(IEffectiveAccess access, IAuthorizationEvaluator evaluator, IOperationContextAccessor accessor, PermissionCatalogue catalogue)
 {
-    private static readonly string[] Operations = ["read", "create", "update", "delete", "publish", "unpublish"];
+    private static readonly string[] Operations = [.. EffectiveAccess.Described.Select(CorePermissions.OperationName)];
 
     public async Task<CallerAccessResponse> GetAsync(CancellationToken cancellationToken)
     {
