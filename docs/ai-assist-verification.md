@@ -6,7 +6,7 @@ CI tests the [AI assist plugin](../src/plugins/FluentCMS.Plugins.AiAssist/README
 | --- | --- |
 | Stand-ins in the tests | Every CI run; see [On the wire](#on-the-wire). |
 | Reference host against a stand-in | Run on 12 Nov 2026; see [Dry run](#dry-run-of-the-reference-host-12-nov-2026). |
-| Local Ollama through `/v1` | Run on 15 Nov 2026; see [Ollama](#ollama-through-v1-15-nov-2026). It found that Ollama does not read `max_completion_tokens`, which is fixed. |
+| Local Ollama through `/v1` | Run on 15 Nov 2026; see [Ollama](#ollama-through-v1-15-nov-2026). It found that Ollama does not read `max_completion_tokens`, for which a site turns `legacyMaxTokens` on. |
 | A paid OpenAI-compatible endpoint with a key | Run on 15 Nov 2026 against OpenRouter; see [OpenRouter](#openrouter-15-nov-2026). |
 | Azure OpenAI | Not verified, and named as such in the notes of the preview. It is verified before 1.0.0. |
 
@@ -15,12 +15,12 @@ CI tests the [AI assist plugin](../src/plugins/FluentCMS.Plugins.AiAssist/README
 `AiWireTests`, `AiProviderTests` and `AiClientFactoryTests` run the plugin's own client factory against `StubProvider`, a local server on a loopback port:
 
 - The usage of a stream in a chunk of its own after the end of the answer, as OpenAI and Ollama send it when they are asked to (the client asks with `stream_options.include_usage` on every stream); on the chunk that ends the answer; and late, after a pause, which `done` waits for.
-- As OpenRouter answers: blank lines before the body of a plain answer, a comment line in a stream, and a stream that ends twice, the second time with the usage. The suggestion is the answer once, and the tokens are counted once.
+- As OpenRouter answers: blank lines before the body of a plain answer, a comment line in a stream, and after the text a stream that ends twice with no text, the second time with the usage, which it sends only there. The suggestion is the answer, and the usage that of the second end.
 - No usage at all, streamed or not: the suggestion is answered, with 0 prompt and 0 completion tokens in the answer and in a row that succeeded.
 - `altText`: the reduced copy of the image goes as the one `image_url` part of the user message, a `data:` URI.
 - A slow provider: a call past `requestTimeout` is `FCMS1688` (504, or the `error` event of a stream) with one failed row, and a caller that goes away ends the call as cancelled with one failed row. Neither is logged as a failure of the provider.
 - With the host logging at `Trace`, no log line and no usage row holds the text or the suggestion of an answer, any piece of a stream, `seo`, or a provider that refuses with what it was sent. The lines are those of ASP.NET Core, EF Core and the plugin: the OpenAI client has no logger factory, and its `HttpClient` is not one of `IHttpClientFactory`, so it writes none.
-- The answer is capped with `max_completion_tokens`. An `openAiCompatible` endpoint is sent the older `max_tokens` too, the only one Ollama reads; `openAi` and `azureOpenAi` are not, since the reasoning models of OpenAI refuse it.
+- The answer is capped with `max_completion_tokens` alone, for every provider. A site that turns `legacyMaxTokens` on sends the older `max_tokens` alone instead, plain and streamed, and never both.
 
 ## Dry run of the reference host, 12 Nov 2026
 
@@ -53,7 +53,7 @@ The runs of 15 Nov 2026 below answer them for OpenRouter and Ollama.
 
 ## OpenRouter, 15 Nov 2026
 
-The [walk-through](#walk-through) on the Release build of the host as in the dry run, with `openAiCompatible` at `https://openrouter.ai/api/v1` and the maintainer's key in `FluentCms__Ai__OpenAiCompatible__ApiKey`. One model served every step: `google/gemma-3-4b-it`, the cheapest small model on OpenRouter that reads images and is not a reasoning model, which OpenRouter routed to DeepInfra. The texts were those of the walk-through, a longer text of four sentences for `expand`, and for `altText` a JPEG of 1600 by 1200 pixels of a stop sign on a post against the sky. The whole run, with the requests sent to the endpoint directly and the check of the fix below, cost about 0.00015 USD.
+The [walk-through](#walk-through) on the Release build of the host as in the dry run, with `openAiCompatible` at `https://openrouter.ai/api/v1` and the maintainer's key in `FluentCms__Ai__OpenAiCompatible__ApiKey`. One model served every step: `google/gemma-3-4b-it`, the cheapest small model on OpenRouter that reads images and is not a reasoning model, which OpenRouter routed to DeepInfra. The texts were those of the walk-through, a longer text of four sentences for `expand`, and for `altText` a JPEG of 1600 by 1200 pixels of a stop sign on a post against the sky. The whole run, with the requests sent to the endpoint directly and the check of the fix below, cost about 0.00016 USD.
 
 | Step | Answer | Usage row |
 | --- | --- | --- |
@@ -77,7 +77,7 @@ The four points, from requests sent to the endpoint as the client sends them:
 - `seo` came back as the JSON object asked for, plain and streamed.
 - The model read the image as a `data:` URI.
 
-What is particular to the router: each chunk and answer has members of its own (`provider`, `native_finish_reason`, `service_tier`, `reasoning`, and `cost`, `is_byok` and `cost_details` in `usage`), which the client ignores; a plain answer opens with blank lines that OpenRouter writes while the model works; the model in the answer is the one asked for. OpenRouter documents comment lines (`: OPENROUTER PROCESSING`) in a stream while a model is slow to start; none came in this run, whose answers started at once. `StubProvider` and `eng/ai-stand-in.cs` now answer with the blank lines and the comment line, and the stub, with `Router` set, ends a stream twice as OpenRouter does; `AiWireTests.ARoutersKeepAlivesAndItsSecondEndOfAStreamAreRead` holds that the suggestion and the tokens are read once.
+What is particular to the router: each chunk and answer has members of its own (`provider`, `native_finish_reason`, `service_tier`, `reasoning`, and `cost`, `is_byok` and `cost_details` in `usage`), which the client ignores; a plain answer opens with blank lines that OpenRouter writes while the model works; the model in the answer is the one asked for. OpenRouter documents comment lines (`: OPENROUTER PROCESSING`) in a stream while a model is slow to start; none came in this run, whose answers started at once. `StubProvider` and `eng/ai-stand-in.cs` now answer with the blank lines and the comment line, and the stub, with `Router` set, ends a stream as OpenRouter did: two chunks with an empty delta and `finish_reason` `stop`, the second with the usage, which it sent only there. `AiWireTests.ARoutersKeepAlivesAndTheUsageOnTheSecondEndOfAStreamAreRead` holds that both are read.
 
 A row of a call that ended at `requestTimeout` or because its caller went away counts 0 tokens, although a provider may bill what the model generated before the call ended.
 
@@ -102,7 +102,7 @@ The streamed `expand` with a client that gives up after 2 s was answered in 1.87
 
 The four points:
 
-- Ollama does not read `max_completion_tokens`: a cap of 5 was answered with 141 tokens and `finish_reason` `stop`, so `maxOutputTokens` did not cap an answer. It reads `max_tokens`, which ended the same request at 5 tokens with `length`. An `openAiCompatible` endpoint is now sent both (`AiClientFactory`), and `openAi` and `azureOpenAi` `max_completion_tokens` alone, which `AiClientFactoryTests.OnlyAnOpenAiCompatibleEndpointIsSentTheOlderCapToo` and `AiWireTests` hold. With the fix and `maxOutputTokens` 8, `rewrite` plain and streamed came back with 8 completion tokens on Ollama and on OpenRouter.
+- Ollama does not read `max_completion_tokens`: a cap of 5 was answered with 141 tokens and `finish_reason` `stop`, so `maxOutputTokens` did not cap an answer. It reads `max_tokens`, which ended the same request at 5 tokens with `length`. A site of such an endpoint turns the setting `legacyMaxTokens` on, and the cap then goes as `max_tokens` alone (`AiClientFactory`); it is off by default, since OpenAI's reasoning models refuse `max_tokens` and a gateway may pass a request on to them. `AiClientFactoryTests.TheCapIsMaxCompletionTokensUnlessTheSiteAsksForTheOlderMaxTokens` and `AiWireTests.TheCapGoesUnderTheNameTheSiteChose` hold it. The check of the cap, run again on 15 Nov 2026 with that setting and `maxOutputTokens` 8 on `rewrite` plain and streamed: on Ollama with `legacyMaxTokens` off, 21 and 20 completion tokens, so the cap was ignored; on, 8 and 8; on OpenRouter with the default, 8 and 8.
 - A stream carries the usage only when it is asked for, in a chunk of its own with no choices after the chunk that ends the answer, with a member `timings` of Ollama's own; the stub's `OwnChunk` is that form.
 - `seo` came back as the JSON object asked for, plain and streamed, even from the 0.5b model.
 - `moondream` read the image as a `data:` URI.
@@ -145,7 +145,7 @@ docker exec fluentcms-ollama ollama pull qwen2.5:0.5b
 docker exec fluentcms-ollama ollama pull moondream
 ```
 
-The settings of the site name `openAiCompatible`, the model, the endpoint and `"apiKey": null`. The text model is `qwen2.5:0.5b`, or the smallest that answers `seo` with the JSON object, and `altText` uses `moondream` or another vision model of at most about 3 GB.
+The settings of the site name `openAiCompatible`, the model, the endpoint, `"apiKey": null` and `"legacyMaxTokens": true`, since Ollama caps an answer only by `max_tokens`. The text model is `qwen2.5:0.5b`, or the smallest that answers `seo` with the JSON object, and `altText` uses `moondream` or another vision model of at most about 3 GB.
 
 ### A paid endpoint
 
@@ -164,7 +164,7 @@ TEXT='Ships is big boats what carry many things across the sea, and they goes sl
    ```bash
    curl -s "${A[@]}" $H/api/management/v1/settings/ai
    curl -s "${A[@]}" -X PUT -H 'If-Match: "<version>"' $H/api/management/v1/settings/ai \
-     -d '{"provider":"openAiCompatible","model":"qwen2.5:0.5b","endpoint":"http://127.0.0.1:11434/v1","apiKey":null,"requestTimeout":120,"fields":{"article":["title","body"]}}'
+     -d '{"provider":"openAiCompatible","model":"qwen2.5:0.5b","endpoint":"http://127.0.0.1:11434/v1","apiKey":null,"legacyMaxTokens":true,"requestTimeout":120,"fields":{"article":["title","body"]}}'
    ```
 
    Each later change of the model or of `requestTimeout` is the same `PUT` with the new version.

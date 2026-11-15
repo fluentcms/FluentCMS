@@ -121,17 +121,20 @@ public sealed class AiClientFactoryTests
         stub.Requests.ShouldHaveSingleItem();
     }
 
-    // Ollama's /v1 caps an answer only by max_tokens, so an OpenAI-compatible endpoint is sent both caps. OpenAI and Azure
-    // get max_completion_tokens alone, since their reasoning models refuse max_tokens. A call without a cap sends neither.
+    // The cap is max_completion_tokens for every provider. Ollama's /v1 reads only max_tokens, so a site that turns
+    // legacyMaxTokens on sends that one alone, plain and streamed. A call without a cap sends neither.
     [Theory]
-    [InlineData(AiProvider.OpenAiCompatible, true)]
+    [InlineData(AiProvider.OpenAiCompatible, false)]
     [InlineData(AiProvider.AzureOpenAi, false)]
     [InlineData(AiProvider.OpenAi, false)]
-    public async Task OnlyAnOpenAiCompatibleEndpointIsSentTheOlderCapToo(AiProvider provider, bool both)
+    [InlineData(AiProvider.OpenAiCompatible, true)]
+    [InlineData(AiProvider.OpenAi, true)]
+    public async Task TheCapIsMaxCompletionTokensUnlessTheSiteAsksForTheOlderMaxTokens(AiProvider provider, bool legacy)
     {
         await using var stub = await StubProvider.StartAsync();
         using var factory = Factory([stub.Url("v1")], []);
-        var client = await factory.CreateAsync(Site, new AiSettings { Provider = provider, Model = "a-model", Endpoint = stub.Url("v1"), ApiKey = "key-of-the-site" }, Token);
+        var settings = new AiSettings { Provider = provider, Model = "a-model", Endpoint = stub.Url("v1"), ApiKey = "key-of-the-site", LegacyMaxTokens = legacy };
+        var client = await factory.CreateAsync(Site, settings, Token);
         List<ChatMessage> messages = [new(ChatRole.User, "Ships are big boats.")];
         var capped = new ChatOptions { MaxOutputTokens = 300 };
 
@@ -146,13 +149,13 @@ public sealed class AiClientFactoryTests
         sent.Count.ShouldBe(3);
         foreach (var body in sent[..2])
         {
-            body["max_completion_tokens"]!.GetValue<int>().ShouldBe(300);
-            (body["max_tokens"]?.GetValue<int>()).ShouldBe(both ? 300 : null);
+            (body["max_completion_tokens"]?.GetValue<int>()).ShouldBe(legacy ? null : 300);
+            (body["max_tokens"]?.GetValue<int>()).ShouldBe(legacy ? 300 : null);
         }
 
         sent[2]["max_completion_tokens"].ShouldBeNull();
         sent[2]["max_tokens"].ShouldBeNull();
-        capped.RawRepresentationFactory.ShouldBeNull();
+        (capped.MaxOutputTokens, capped.RawRepresentationFactory).ShouldBe((300, null));
     }
 
     [Fact]

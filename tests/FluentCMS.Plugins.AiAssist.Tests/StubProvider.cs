@@ -46,9 +46,9 @@ public sealed class StubProvider : IAsyncDisposable
 
     public StubUsage Usage { get; set; } = StubUsage.OwnChunk;
 
-    // As OpenRouter answers (#3008): blank lines before the body of a plain answer, which it writes while the model works,
-    // a stream that opens with a comment line, and the usage on a second chunk that ends the answer again with an empty
-    // delta, not on a chunk of its own.
+    // As OpenRouter answered in #3008: blank lines before the body of a plain answer, which it writes while the model works,
+    // a stream that opens with a comment line, and after the text two chunks that end the answer with an empty delta, the
+    // second with the usage, which it sends only there.
     public bool Router { get; set; }
 
     // How long a stream waits before the chunk of its own that carries the usage.
@@ -163,9 +163,10 @@ public sealed class StubProvider : IAsyncDisposable
         var half = Answer.Length / 2;
         await ChunkAsync(context, new { id = "chatcmpl-stub", @object = "chat.completion.chunk", created = 1_700_000_000, model, choices = new[] { new { index = 0, delta = new { role = "assistant", content = Answer[..half] }, finish_reason = (string?)null } } });
         await WaitAsync(Pause, context);
-        await ChunkAsync(context, new { id = "chatcmpl-stub", @object = "chat.completion.chunk", created = 1_700_000_000, model, choices = new[] { new { index = 0, delta = new { content = Answer[half..] }, finish_reason = "stop" } }, usage = Usage == StubUsage.LastChunk && !Router ? Used() : null });
+        await ChunkAsync(context, new { id = "chatcmpl-stub", @object = "chat.completion.chunk", created = 1_700_000_000, model, choices = new[] { new { index = 0, delta = new { content = Answer[half..] }, finish_reason = Router ? null : "stop" } }, usage = Usage == StubUsage.LastChunk && !Router ? Used() : null });
         if (Router)
         {
+            await ChunkAsync(context, new { id = "chatcmpl-stub", @object = "chat.completion.chunk", created = 1_700_000_000, model, provider = "a-provider", choices = new[] { new { index = 0, delta = new { content = "", role = "assistant" }, finish_reason = "stop", native_finish_reason = "stop" } } });
             await ChunkAsync(context, new { id = "chatcmpl-stub", @object = "chat.completion.chunk", created = 1_700_000_000, model, provider = "a-provider", choices = new[] { new { index = 0, delta = new { content = "", role = "assistant" }, finish_reason = "stop", native_finish_reason = "stop" } }, usage = Used() });
         }
         else if (Usage == StubUsage.OwnChunk)

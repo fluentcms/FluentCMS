@@ -77,9 +77,9 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
         }
 
         var client = OpenAiClient(endpoint ?? OpenAiEndpoint, key, model);
-        if (provider == AiProvider.OpenAiCompatible)
+        if (settings.LegacyMaxTokens)
         {
-            client = WithMaxTokens(client);
+            client = WithLegacyMaxTokens(client);
         }
 
         return new AiClient(client, NameOf(provider), model);
@@ -153,15 +153,18 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
         return new OpenAIClient(new ApiKeyCredential(key ?? NoKey.Placeholder), clientOptions).GetChatClient(model).AsIChatClient();
     }
 
-    // The package caps the answer with max_completion_tokens, which Ollama's /v1 does not read (0.40, #3008), so an
-    // OpenAI-compatible endpoint gets the older max_tokens too. OpenAI and Azure do not: their reasoning models refuse it.
-    private static IChatClient WithMaxTokens(IChatClient client) => client.AsBuilder().ConfigureOptions(options =>
+    // The package caps the answer with max_completion_tokens, which Ollama's /v1 does not read (0.40, #3008). A site that
+    // turns legacyMaxTokens on sends the older max_tokens alone: an endpoint that reads only max_tokens needs nothing more,
+    // and some refuse a request that holds both. It stays off by default, since OpenAI's reasoning models refuse max_tokens
+    // and a gateway or a compatible endpoint may pass a request on to them.
+    private static IChatClient WithLegacyMaxTokens(IChatClient client) => client.AsBuilder().ConfigureOptions(options =>
     {
         if (options.MaxOutputTokens is not { } max)
         {
             return;
         }
 
+        options.MaxOutputTokens = null;
         var raw = options.RawRepresentationFactory;
         options.RawRepresentationFactory = chat =>
         {
