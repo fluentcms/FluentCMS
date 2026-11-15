@@ -28,7 +28,7 @@ public sealed class MediaOptions
     // Base64 of at least 32 bytes. Set, it replaces the key the plugin generates; changing it invalidates every signed URL.
     public string? SigningKey { get; set; }
 
-    // The Cache-Control of a transformed image and of the original file of a public asset.
+    // The Cache-Control of a transformed image and of the original file and the thumbnail of a public asset.
     public string CacheControl { get; set; } = "public, max-age=86400";
 
     // How long after its delete the daily cleanup removes an asset's bytes and its row.

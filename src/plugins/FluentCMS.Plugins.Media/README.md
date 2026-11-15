@@ -1,6 +1,6 @@
 # FluentCMS.Plugins.Media
 
-Assets and folders for the sites of an instance: uploads whose type is read from their bytes, metadata with alternative text and captions per locale, file storage on the local disk, signed image transforms with stored variants and presets, usage, replace, private downloads, and the `media` field type for content. The media is managed under `/api/management/v1/media`, clients read it at `/api/delivery/v1/media/{id}`, images are served at `/media/{id}/{fileName}` and original files at `/media/{id}/original/{fileName}`. Section 5.1 of the [backend technical specification](../../../docs/planning/backend-technical-spec.md) has the full design.
+Assets and folders for the sites of an instance: uploads whose type is read from their bytes, metadata with alternative text and captions per locale, file storage on the local disk, signed image transforms with stored variants and presets, usage, replace, private downloads, and the `media` field type for content. The media is managed under `/api/management/v1/media`, clients read it at `/api/delivery/v1/media/{id}`, images are served at `/media/{id}/{fileName}`, original files at `/media/{id}/original/{fileName}` and the thumbnails of the media library at `/media/{id}/thumbnail/{fileName}`. Section 5.1 of the [backend technical specification](../../../docs/planning/backend-technical-spec.md) has the full design.
 
 ## Options
 
@@ -13,7 +13,7 @@ The instance's options are in `FluentCms:Media`:
 | `MaxRequestBodySize` | `268435456` | The largest upload request, in bytes. A site's `MaxRequestSize` above it is cut to it. |
 | `RequireSignedUrls` | `true` | `false` serves unsigned transform URLs, for a setup where every client is trusted. The startup report lists `media-unsigned-urls` in Production. |
 | `SigningKey` | none | The base64 of at least 32 bytes that signs transform URLs. Left out, the plugin generates one key (see below). |
-| `CacheControl` | `public, max-age=86400` | The `Cache-Control` of a transformed image and of the original file of a public asset. |
+| `CacheControl` | `public, max-age=86400` | The `Cache-Control` of a transformed image and of the original file and the thumbnail of a public asset. |
 | `DeletedRetention` | `30.00:00:00` | How long a deleted asset keeps its file and its row before the daily cleanup purges them. |
 
 ## One library or one per site
@@ -154,6 +154,23 @@ var url = await media.GetImageUrlAsync(asset, new MediaImageOptions { Width = 12
 
 The URLs are signed. `presets` has one transform URL for each preset of the site, for an image the processor reads, and `template`, only where `RequireSignedUrls` is `false`, is a transform URL whose `{w}`, `{h}`, `{fit}`, `{q}` and `{f}` a client fills in or leaves out. The answer has the cache headers of content: an `ETag`, the `Cache-Control` of `FluentCms:Delivery:Cache`, and a copy in the output cache that a change to the asset or to the site's presets evicts. A private asset is answered, without URLs, only to a caller whose `media.read` reaches its folder; the anonymous caller and Delivery keys hold no permission but reading content, so they never read one.
 
+## URLs for the media library and the picker
+
+`GET /api/management/v1/media` and `GET /api/management/v1/media/{id}` give each asset its `urls`, signed and relative to the base of the CMS, so a grid of a page of assets needs no call per asset and no preset:
+
+```json
+{
+  "id": "0193a0c2-...", "fileName": "hero.jpg", "mimeType": "image/jpeg", "isPrivate": false,
+  "urls": {
+    "original": "/media/0193a0c2-.../original/hero.jpg?sig=...",
+    "thumbnail": "/media/0193a0c2-.../thumbnail/hero.jpg?sig=...",
+    "expiresAt": null
+  }
+}
+```
+
+`thumbnail` is the image fitted inside 320 by 320 pixels, as WebP, for an image the processor reads, and null for any other file. Its URL takes no size and is always signed, whatever `RequireSignedUrls` says, so it serves that thumbnail of that asset only; it is not held to the site's transform limits, but still to `maxSourcePixels`. A public asset's URLs do not expire. A private asset's live for `downloadUrlSeconds`, until `expiresAt`, and serve the file inline to whoever holds them, with `Cache-Control: private` for the seconds left: the original as `/media/{id}/original/{fileName}?disposition=inline&exp=...&sig=...` and the thumbnail with `exp`. Read the asset again for new ones. Only a caller whose `media.read` reaches the asset's folder reads it, so no other caller gets its URLs.
+
 ## Usage, delete and replace
 
 `GET /api/management/v1/media/{id}/usage` lists the entries whose fields, blocks or rich text refer to the asset, as `{ "items": [{ "type", "entryId", "status", "locale", "field" }] }`, without the entries, locales and fields the caller cannot read. Entries in the trash are left out.
@@ -187,7 +204,7 @@ A signed URL with `preset=hero` then serves that size.
 
 A signature is the HMAC-SHA256 of the asset id and the URL's parameters, sorted by name, without `sig`, `site` and the file name. The key is `FluentCms:Media:SigningKey` when it is set. Otherwise the plugin generates one 256-bit key at its first start, and stores it in `cms_media_signing_key`, protected by Data Protection. Instances that start together share one key, created under a lock. Data Protection protects the key only at rest, so signed URLs keep working when its key ring rotates.
 
-Download URLs and the URLs of original files are signed with the same key. Replacing the key invalidates every URL signed before, in content and in CDN caches. To replace it, set `SigningKey`, or delete the row of `cms_media_signing_key`, and restart every instance. Keep the Data Protection key ring in backups: without the key that protected the signing key, the instance cannot read it, and only setting `SigningKey` or deleting the row brings transforms back.
+Download URLs and the URLs of original files and thumbnails are signed with the same key. Replacing the key invalidates every URL signed before, in content and in CDN caches. To replace it, set `SigningKey`, or delete the row of `cms_media_signing_key`, and restart every instance. Keep the Data Protection key ring in backups: without the key that protected the signing key, the instance cannot read it, and only setting `SigningKey` or deleting the row brings transforms back.
 
 ## Media fields
 

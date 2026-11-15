@@ -161,14 +161,35 @@ internal sealed class MediaService(
         }
     }
 
-    public async Task<MediaAsset> GetAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<MediaAsset> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Info(await ReadAsync(id, cancellationToken), Operation().Locale);
+
+    // GET /api/management/v1/media/{id}: the asset with the URLs of the media library and the picker.
+    internal async Task<ManagedAsset> GetWithUrlsAsync(Guid id, CancellationToken cancellationToken = default) =>
+        (await ManagedAsync([await ReadAsync(id, cancellationToken)], cancellationToken))[0];
+
+    public async Task<PagedResult<MediaAsset>> ListAsync(MediaQuery query, CancellationToken cancellationToken = default)
+    {
+        var (rows, total) = await PageAsync(query, cancellationToken);
+        var locale = Operation().Locale;
+        return new PagedResult<MediaAsset>([.. rows.Select(asset => Info(asset, locale))], total, query.Page, query.PageSize, null);
+    }
+
+    // GET /api/management/v1/media: the page with the URLs of each asset, signed without a transform or a read of a file.
+    internal async Task<PagedResult<ManagedAsset>> ListWithUrlsAsync(MediaQuery query, CancellationToken cancellationToken = default)
+    {
+        var (rows, total) = await PageAsync(query, cancellationToken);
+        return new PagedResult<ManagedAsset>(await ManagedAsync(rows, cancellationToken), total, query.Page, query.PageSize, null);
+    }
+
+    private async Task<Asset> ReadAsync(Guid id, CancellationToken cancellationToken)
     {
         var (site, library) = await ScopeAsync(Operation(), cancellationToken);
         var reach = await ReachAsync(MediaPermissions.Read, site, library, cancellationToken);
-        return Info(await FindAssetAsync(library, id, reach, tracked: false, cancellationToken), Operation().Locale);
+        return await FindAssetAsync(library, id, reach, tracked: false, cancellationToken);
     }
 
-    public async Task<PagedResult<MediaAsset>> ListAsync(MediaQuery query, CancellationToken cancellationToken = default)
+    private async Task<(List<Asset> Rows, long Total)> PageAsync(MediaQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
 
@@ -253,8 +274,35 @@ internal sealed class MediaService(
         var rows = await assets.OrderByDescending(asset => asset.CreatedAt).ThenByDescending(asset => asset.Id)
             .Skip((query.Page - 1) * query.PageSize).Take(query.PageSize)
             .ToListAsync(cancellationToken);
-        var locale = Operation().Locale;
-        return new PagedResult<MediaAsset>([.. rows.Select(asset => Info(asset, locale))], total, query.Page, query.PageSize, null);
+        return (rows, total);
+    }
+
+    // The assets of a read, each one the caller's media.read reaches, with the URLs of their files: the original and, for an
+    // image the processor reads, the thumbnail, signed and relative to the base of the CMS. A public asset's URLs do not
+    // expire, as the Delivery API's original does not. A private asset's live as long as a download URL, from the site's
+    // media settings, and serve inline, since the library shows them; the settings are read once, and only for a read that
+    // has a private asset.
+    private async Task<List<ManagedAsset>> ManagedAsync(List<Asset> assets, CancellationToken cancellationToken)
+    {
+        var operation = Operation();
+        long? lifetimeEnd = null;
+        List<ManagedAsset> managed = new(assets.Count);
+        foreach (var asset in assets)
+        {
+            long? expires = null;
+            if (asset.IsPrivate)
+            {
+                lifetimeEnd ??= time.GetUtcNow().ToUnixTimeSeconds() + (await settings.GetAsync(operation.Site, cancellationToken)).DownloadUrlSeconds;
+                expires = lifetimeEnd;
+            }
+
+            var original = await MediaOriginals.UrlAsync(signing, asset.Id, asset.FileName, expires, cancellationToken, inline: expires is not null);
+            var thumbnail = processor.CanDecode(asset.MimeType) ? await MediaTransforms.ThumbnailUrlAsync(signing, asset.Id, asset.FileName, expires, cancellationToken) : null;
+            var urls = new MediaAssetUrls(original, thumbnail, expires is { } at ? DateTimeOffset.FromUnixTimeSeconds(at) : null);
+            managed.Add(new ManagedAsset(Info(asset, operation.Locale), urls));
+        }
+
+        return managed;
     }
 
     public async Task<MediaAsset> UpdateAsync(Guid id, MediaAssetChanges changes, CancellationToken cancellationToken = default)

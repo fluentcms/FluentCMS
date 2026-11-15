@@ -463,6 +463,22 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         write["responses"]!["200"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/SettingResponse");
     }
 
+    // The media plugin, which the Blog sample brings, declares the bodies of its reads with the URLs of each asset (#3100).
+    [Fact]
+    public void TheMediaReadsDescribeTheUrlsOfEachAsset()
+    {
+        var read = Response(Paths[$"{Management}/media/{{id}}"]!["get"]!, "200");
+        var list = Response(Paths[$"{Management}/media"]!["get"]!, "200");
+        var urls = Resolve(read["properties"]!["urls"]!);
+
+        read["properties"]!.AsObject().Select(item => item.Key).ShouldContain("checksum");
+        Resolve(list["properties"]!["items"]!["items"]!)["properties"]!["urls"]!.ToJsonString().ShouldBe(read["properties"]!["urls"]!.ToJsonString());
+        list["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["items", "total", "page", "pageSize"]);
+        urls["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["original", "thumbnail", "expiresAt"]);
+        urls["properties"]!["thumbnail"]!["description"]!.GetValue<string>().ShouldContain("320 by 320");
+        urls["properties"]!["expiresAt"]!["description"]!.GetValue<string>().ShouldContain("downloadUrlSeconds");
+    }
+
     [Fact]
     public void TheListOfSettingsAreasAndTheResetsAreDocumented()
     {
