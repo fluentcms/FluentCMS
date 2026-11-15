@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Tests.Schema;
@@ -44,6 +45,10 @@ public sealed class NestedReadOnlyTests : IDisposable
     private static readonly string[] AllPlaces = ["seo", "list", "cards", "body", "nested"];
 
     private static readonly string[] Stamps = ["ONE", "TWO"];
+
+    // Where a stamp is in JSON, as a value with its quotes, which a string inside the JSON escapes: a block id is random
+    // letters and can hold the bare word.
+    private static int At(string json, string stamp) => Regex.Unescape(json).IndexOf($"\"{stamp}\"", StringComparison.Ordinal);
 
     public static TheoryData<string> Places() => new(AllPlaces);
 
@@ -205,7 +210,7 @@ public sealed class NestedReadOnlyTests : IDisposable
         await _database.PatchAsync(Editor, id, new() { [Field(place)] = Value(place, sent) }, 1);
 
         var read = JsonSerializer.Serialize((await _database.GetAsync(Editor, id))![Field(place)]);
-        Stamps.Where(read.Contains).OrderBy(stamp => read.IndexOf(stamp, StringComparison.Ordinal)).ShouldBe(stamps);
+        Stamps.Where(stamp => At(read, stamp) >= 0).OrderBy(stamp => At(read, stamp)).ShouldBe(stamps);
     }
 
     [Theory]
@@ -217,7 +222,8 @@ public sealed class NestedReadOnlyTests : IDisposable
         await _database.PatchAsync(Editor, id, new() { [Field(place)] = Value(place, """{"label":"B"}""", """{"label":"A"}""") }, 1);
 
         var stored = Stored(id);
-        stored.IndexOf("TWO", StringComparison.Ordinal).ShouldBeLessThan(stored.IndexOf("ONE", StringComparison.Ordinal));
+        At(stored, "TWO").ShouldBeGreaterThanOrEqualTo(0);
+        At(stored, "TWO").ShouldBeLessThan(At(stored, "ONE"));
     }
 
     [Theory]
