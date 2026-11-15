@@ -118,6 +118,33 @@ public sealed class McpCallLimitTests
         lists.Count.ShouldBe(2);
     }
 
+    // A made-up name costs a list of the tools on each call, so once the write limit refuses it, it keeps the call it took
+    // and runs out of calls, after which nothing is listed.
+    [Fact]
+    public async Task MadeUpNamesOverTheWriteLimitRunOutOfCalls()
+    {
+        var lists = new ListCount();
+        await using var host = McpSafetyTesting.Host(options => options.Limits = new McpCallLimitOptions { CallsPerMinute = 3, WritesPerMinute = 1 })
+            .Configure(cms => cms.AddPlugin<CountedPlugin>())
+            .WithServices(services => services.AddSingleton(lists));
+        using var http = await KeyAsync(host);
+        await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+
+        (await Should.ThrowAsync<McpProtocolException>(async () => await CallAsync(client, "made_up_0"))).Message.ShouldContain("FCMS1600");
+        Text(await CallAsync(client, "made_up_1")).ShouldContain("tools that change data");
+        Text(await CallAsync(client, "made_up_2")).ShouldContain("tools that change data");
+        lists.Count.ShouldBe(3);
+
+        for (var name = 3; name < 8; name++)
+        {
+            var refused = await CallAsync(client, $"made_up_{name}");
+            Code(refused).ShouldBe("FCMS1634");
+            Text(refused).ShouldContain("3 tool calls");
+        }
+
+        lists.Count.ShouldBe(3);
+    }
+
     // A name no provider lists counts as a tool that changes data, so made-up names cannot be called without end.
     [Fact]
     public async Task ACallOfANameThatIsNoToolCountsAsOneThatChangesData()
@@ -159,7 +186,7 @@ public sealed class McpCallLimitTests
         Enumerable.Range(0, 60).Select(_ => limits.Call("client:a")).ShouldAllBe(refusal => refusal == null);
         var refused = limits.Call("client:a").ShouldNotBeNull();
         limits.Call("client:b").ShouldBeNull();
-        limits.Write("client:a").ShouldBeNull();
+        limits.Write("client:a", refund: true).ShouldBeNull();
 
         refused.Limit.ShouldBe(60);
         refused.Write.ShouldBeFalse();
@@ -184,14 +211,22 @@ public sealed class McpCallLimitTests
         var limits = new McpCallLimits(Options.Create(new McpOptions { Limits = new McpCallLimitOptions { CallsPerMinute = 3, WritesPerMinute = 1 } }), new ControllableTimeProvider());
 
         limits.Call("client:a").ShouldBeNull();
-        limits.Write("client:a").ShouldBeNull();
+        limits.Write("client:a", refund: true).ShouldBeNull();
         limits.Call("client:a").ShouldBeNull();
-        limits.Write("client:a").ShouldNotBeNull().Write.ShouldBeTrue();
+        limits.Write("client:a", refund: true).ShouldNotBeNull().Write.ShouldBeTrue();
 
         // The refused write took no call: two of the three are left.
         limits.Call("client:a").ShouldBeNull();
         limits.Call("client:a").ShouldBeNull();
         limits.Call("client:a").ShouldNotBeNull().Write.ShouldBeFalse();
+
+        // A refused write of a name no provider listed keeps the call it took: one of the three is left.
+        limits.Call("client:b").ShouldBeNull();
+        limits.Write("client:b", refund: false).ShouldBeNull();
+        limits.Call("client:b").ShouldBeNull();
+        limits.Write("client:b", refund: false).ShouldNotBeNull();
+        limits.Call("client:b").ShouldBeNull();
+        limits.Call("client:b").ShouldNotBeNull().Write.ShouldBeFalse();
     }
 
     [Fact]

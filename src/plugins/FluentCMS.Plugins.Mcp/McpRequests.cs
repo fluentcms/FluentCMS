@@ -299,33 +299,39 @@ internal sealed class McpRequests(
     private async ValueTask<CallToolResult?> LimitedAsync(OperationContext operation, string name, System.Diagnostics.Activity? span, CancellationToken cancellationToken)
     {
         var client = McpCallLimits.ClientOf(operation);
-        if ((limits.Call(client) ?? (await ChangesAsync(operation, name, cancellationToken) ? limits.Write(client) : null)) is not { } refused)
+        var refused = limits.Call(client);
+        if (refused is null && await ChangesAsync(operation, name, cancellationToken) is (true, var listed))
+        {
+            refused = limits.Write(client, refund: listed);
+        }
+
+        if (refused is not { } over)
         {
             return null;
         }
 
-        var seconds = refused.RetryAfterSeconds;
-        var kind = refused.Write ? "calls of tools that change data" : "tool calls";
-        if (refused.Report)
+        var seconds = over.RetryAfterSeconds;
+        var kind = over.Write ? "calls of tools that change data" : "tool calls";
+        if (over.Report)
         {
-            McpLog.CallLimitExceeded(logger, operation.ClientId, operation.Principal.Kind, operation.Principal.Id, refused.Limit, kind, operation.Site.Value, seconds);
+            McpLog.CallLimitExceeded(logger, operation.ClientId, operation.Principal.Kind, operation.Principal.Id, over.Limit, kind, operation.Site.Value, seconds);
         }
 
         McpTelemetry.Fail(span, McpErrorCodes.CallLimitExceeded);
-        var result = ResultOf(McpToolResult.Error(McpErrorCodes.CallLimitExceeded, $"The client is over its limit of {refused.Limit} {kind} a minute. Retry in {seconds} seconds."));
+        var result = ResultOf(McpToolResult.Error(McpErrorCodes.CallLimitExceeded, $"The client is over its limit of {over.Limit} {kind} a minute. Retry in {seconds} seconds."));
         result.Meta![RetryAfterMeta] = seconds;
         return result;
     }
 
-    // Whether the tool may change data, which is how its provider lists it for the caller. A tool that no provider
-    // lists counts as one that does. A provider that fails to list is passed over, as a list passes over it. Every tool a
-    // provider listed on the way is remembered as it was listed, the first provider's where two list one name, so that
-    // the next calls of the client's tools within the window list nothing.
-    private async ValueTask<bool> ChangesAsync(OperationContext operation, string name, CancellationToken cancellationToken)
+    // Whether the tool may change data, which is how its provider lists it for the caller, and whether a provider listed
+    // it at all. A tool that no provider lists counts as one that does. A provider that fails to list is passed over, as
+    // a list passes over it. Every tool a provider listed on the way is remembered as it was listed, the first provider's
+    // where two list one name, so that the next calls of the client's tools within the window list nothing.
+    private async ValueTask<(bool Changes, bool Listed)> ChangesAsync(OperationContext operation, string name, CancellationToken cancellationToken)
     {
         if (limits.KnownReadOnly(operation, name) is { } known)
         {
-            return !known;
+            return (!known, true);
         }
 
         var request = new McpListRequest(operation);
@@ -349,11 +355,11 @@ internal sealed class McpRequests(
 
             if (tools.FirstOrDefault(tool => tool.Name == name) is { } listed)
             {
-                return !listed.Annotations.ReadOnly;
+                return (!listed.Annotations.ReadOnly, true);
             }
         }
 
-        return true;
+        return (true, false);
     }
 
     // The operation the request bridge of core opened for the request, which every provider call runs in.

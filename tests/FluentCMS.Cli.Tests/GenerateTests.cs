@@ -349,6 +349,23 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
         typeScript.Diagnostics.ShouldContain(diagnostic => diagnostic.Code == "FCMS3376" && diagnostic.Message.Contains("'foobar'", StringComparison.Ordinal));
     }
 
+    // The identifiers TypeScript reserves, createClient and schemaHash, are no names of files, so they are taken as written
+    // and the types create-client and schema-hash keep their classes, in TypeScript as in C#.
+    [Fact]
+    public void AReservedIdentifierOfTheModuleTakesNoTypeWhoseNameDiffersFromItInCase()
+    {
+        var schema = BlogInstance.Schema("""{ "collections": [ { "name": "create-client", "fields": [ { "name": "title", "type": "text" } ] }, { "name": "schema-hash", "fields": [ { "name": "title", "type": "text" } ] } ] }""");
+
+        var csharp = CSharpEmitter.Emit(schema, "Cases");
+        var typeScript = TypeScriptEmitter.Emit(schema);
+
+        csharp.Files.Select(file => file.Name).ShouldContain("CreateClient.g.cs");
+        csharp.Files.Select(file => file.Name).ShouldContain("SchemaHash.g.cs");
+        typeScript.Files.Single().Text.ShouldContain("export interface CreateClient ", Case.Sensitive);
+        typeScript.Files.Single().Text.ShouldContain("export interface SchemaHash ", Case.Sensitive);
+        csharp.Diagnostics.Concat(typeScript.Diagnostics).ShouldNotContain(diagnostic => diagnostic.Code == "FCMS3376");
+    }
+
     // Whatever gave them, two files whose names differ in case alone are not written, and --check says why.
     [Fact]
     public void FilesWhoseNamesDifferInCaseAloneAreRefusedAndNothingIsWritten()
@@ -359,9 +376,9 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
         var written = Should.Throw<CliException>(() => GeneratedFiles.Write(directory, files, [], TextWriter.Null));
         var checkedOnly = Should.Throw<CliException>(() => GeneratedFiles.Differences(directory, files, []));
 
-        written.Code.ShouldBe("FCMS3390");
+        written.Code.ShouldBe("FCMS3380");
         written.Message.ShouldContain("FooBar.g.cs and Foobar.g.cs");
-        checkedOnly.Code.ShouldBe("FCMS3390");
+        checkedOnly.Code.ShouldBe("FCMS3380");
         Directory.Exists(directory).ShouldBeFalse();
     }
 
@@ -384,7 +401,7 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
         before["Article.g.cs"].ShouldContain("namespace One");
         before["Page.g.cs"].ShouldContain("namespace Two");
         over.ExitCode.ShouldBe(1);
-        over.Error.ShouldContain("FCMS3391");
+        over.Error.ShouldContain("FCMS3381");
         over.Error.ShouldContain("namespace One");
         Read(directory).ShouldBe(before);
     }

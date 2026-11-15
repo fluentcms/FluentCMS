@@ -26,8 +26,10 @@ internal readonly record struct McpCallRefusal(bool Write, int Limit, TimeSpan R
 // The tool calls of each client, counted on this instance, as core counts its rate limits (spec 4.10): a bucket holds the
 // limit and fills again over a minute, kept as the time it is next full, so a quiet client may send the limit at once and
 // then one call per minute divided by the limit. A client is the client id of a token, or the key of an API key, which
-// the caller does not choose. A call that is refused takes nothing from a bucket: a write is taken from the bucket of
-// calls first, so that a client over that limit costs no lookup of the tool, and given back when its own limit refuses it.
+// the caller does not choose. A write is taken from the bucket of calls first, so that a client over that limit costs no
+// lookup of the tool. A write of a tool a provider listed takes nothing from the bucket of calls when its own limit
+// refuses it, so a client that retries it keeps its reads; a name no provider listed keeps the call it took, so that
+// made-up names, each of which costs a lookup, run out of calls.
 internal sealed class McpCallLimits(IOptions<McpOptions> options, TimeProvider time)
 {
     public static readonly TimeSpan Window = TimeSpan.FromMinutes(1);
@@ -47,11 +49,12 @@ internal sealed class McpCallLimits(IOptions<McpOptions> options, TimeProvider t
 
     public McpCallRefusal? Call(string client) => Take(_calls, client, options.Value.Limits.CallsPerMinute, write: false);
 
-    // A call of a tool that changes data, which Call has already counted: the call is given back when this refuses it.
-    public McpCallRefusal? Write(string client)
+    // A call of a tool that changes data, which Call has already counted. When this refuses it, the call is given back
+    // for a tool a provider listed (refund), and kept for a name no provider did.
+    public McpCallRefusal? Write(string client, bool refund)
     {
         var refused = Take(_writes, client, options.Value.Limits.WritesPerMinute, write: true);
-        if (refused is not null && _calls.TryGetValue(client, out var calls))
+        if (refused is not null && refund && _calls.TryGetValue(client, out var calls))
         {
             calls.GiveBack(Interval(options.Value.Limits.CallsPerMinute));
         }
