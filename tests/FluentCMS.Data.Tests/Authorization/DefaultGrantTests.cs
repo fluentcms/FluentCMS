@@ -5,14 +5,17 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Data.Tests.Jobs;
 using FluentCMS.Data.Tests.Migrations;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.AiAssist;
 using FluentCMS.Plugins.Media;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 
@@ -104,22 +107,81 @@ public sealed class DefaultGrantTests : IDisposable
         state.Records.ShouldBe([(BuiltInRoles.Editor, NotesPermissions.Read, "notes"), (BuiltInRoles.Editor, NotesPermissions.Write, "notes")], ignoreOrder: true);
     }
 
-    // An operator who limited a grant of the permission before the plugin's first start keeps that limit, and a grant with a
-    // wildcard counts as holding the permission.
+    // An operator who limited any grant of a plugin's permissions before its first start keeps that limit for all of them, a
+    // grant with a wildcard counts as holding the permission, and the defaults of another plugin are given as before.
     [Fact]
-    public async Task ARoleThatHoldsAGrantOfThePermissionKeepsWhatItHas()
+    public async Task ARoleWithALimitedGrantOfAPluginGetsNoneOfItsDefaults()
     {
         await StartAsync(_ => { });
-        await GiveAsync(BuiltInRoles.Editor, "media.read", new PermissionConstraints { Resources = ["folder-1"] });
+        await GiveAsync(BuiltInRoles.Editor, "media.delete", new PermissionConstraints { Resources = ["folder-1"] });
         await GiveAsync(BuiltInRoles.Author, "media.*", null);
 
-        var state = await StartAsync(cms => cms.AddPlugin<MediaPlugin>());
+        var state = await StartAsync(cms => cms.AddPlugin<MediaPlugin>().AddPlugin<AiAssistPlugin>());
 
+        state.Grants[BuiltInRoles.Editor].ShouldBe([.. EditorSeed, "ai.use", "media.delete"], ignoreOrder: true);
+        state.Limited.ShouldBe([(BuiltInRoles.Editor, "media.delete", "folder-1")]);
+        state.Grants[BuiltInRoles.Author].ShouldBe([.. AuthorSeed, "ai.use", "media.*"], ignoreOrder: true);
+        state.Records.Count.ShouldBe(7);
+        state.Activity.ShouldBe([("role.updated", BuiltInRoles.Editor, "ai.use"), ("role.updated", BuiltInRoles.Author, "ai.use")], ignoreOrder: true);
+    }
+
+    // A provider that names a default after the catalogue was built, for a permission of another provider or for one the
+    // catalogue does not hold, gives nothing and records nothing.
+    [Fact]
+    public async Task ADefaultThatIsNotAPermissionOfItsProviderInTheCatalogueIsRefused()
+    {
+        var late = new LateDefaults();
+        var logs = new RecordingLogs();
+
+        var state = await StartAsync(
+            _ => { },
+            services => services
+                .AddSingleton(late)
+                .AddSingleton<ILoggerProvider>(logs)
+                .AddSingleton<IPermissionProvider, HostPermissions>()
+                .AddSingleton<IPermissionProvider, LatePermissions>(),
+            host =>
+            {
+                host.Services.GetRequiredService<PermissionCatalogue>();
+                late.On = true;
+            });
+
+        state.Grants[BuiltInRoles.Editor].ShouldBe(EditorSeed, ignoreOrder: true);
+        state.Grants[BuiltInRoles.Author].ShouldBe([.. AuthorSeed, HostPermissions.Export], ignoreOrder: true);
+        state.Records.ShouldBe([(BuiltInRoles.Author, HostPermissions.Export, (string?)null)]);
+        logs.Count("DefaultGrantRefused").ShouldBe(2);
+    }
+
+    // Another instance applies the same defaults between this start's read and its save, which then fails on the key of a
+    // record; the start reads again and finds nothing left to give.
+    [Fact]
+    public async Task AStartThatSavesAfterAnotherGivesNothingTwice()
+    {
+        var race = new Race(keepRacing: false);
+
+        var state = await StartAsync(cms => cms.AddPlugin<MediaPlugin>(), race.Join);
+
+        race.Runs.ShouldBe(1);
         state.Grants[BuiltInRoles.Editor].ShouldBe([.. EditorSeed, "media.read", "media.update", "media.upload"], ignoreOrder: true);
-        state.Limited.ShouldBe([(BuiltInRoles.Editor, "media.read", "folder-1")]);
-        state.Grants[BuiltInRoles.Author].ShouldBe([.. AuthorSeed, "media.*"], ignoreOrder: true);
+        state.Grants[BuiltInRoles.Author].ShouldBe([.. AuthorSeed, "media.read", "media.upload"], ignoreOrder: true);
         state.Records.Count.ShouldBe(5);
-        state.Activity.ShouldBe([("role.updated", BuiltInRoles.Editor, "media.update; media.upload")]);
+        state.Activity.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AStartWhoseSaveKeepsConflictingStopsAndGivesNothing()
+    {
+        var race = new Race(keepRacing: true);
+        using (var host = _database.CreateHost(ArticleSchemas.NoTypes, "Production", services: race.Join, configure: cms => cms.AddPlugin<MediaPlugin>()))
+        {
+            var exception = await Should.ThrowAsync<InvalidOperationException>(() => host.StartAsync(Token));
+            exception.Message.ShouldStartWith("The default grants of the permission providers were not saved after 5 attempts");
+        }
+
+        race.Runs.ShouldBe(5);
+        var state = await StartAsync(_ => { });
+        state.Grants[BuiltInRoles.Editor].ShouldBe(EditorSeed, ignoreOrder: true);
+        state.Records.ShouldBeEmpty();
     }
 
     [Fact]
@@ -134,9 +196,10 @@ public sealed class DefaultGrantTests : IDisposable
     private static Action<IServiceCollection> Version(int version) => services => services.AddSingleton(new NotesVersion(version));
 
     // Starts and stops a host of the instance, and reads what the start left.
-    private async Task<InstanceState> StartAsync(Action<FluentCmsBuilder> configure, Action<IServiceCollection>? services = null)
+    private async Task<InstanceState> StartAsync(Action<FluentCmsBuilder> configure, Action<IServiceCollection>? services = null, Action<IHost>? beforeStart = null)
     {
         using var host = _database.CreateHost(ArticleSchemas.NoTypes, "Production", services: services, configure: configure);
+        beforeStart?.Invoke(host);
         await host.StartAsync(Token);
         await host.StopAsync(Token);
 
@@ -180,6 +243,75 @@ public sealed class DefaultGrantTests : IDisposable
         List<(Guid Role, string Permission, string? Plugin)> Records,
         Dictionary<Guid, long> Versions,
         List<(string Action, Guid Role, string Added)> Activity);
+
+    // Another instance on the database, which saves the records of the defaults, and the grants unless it keeps racing, in
+    // the moment between a start's read and its save. One that keeps racing takes its records away again once the start's
+    // save has failed, so that every attempt conflicts.
+    private sealed class Race(bool keepRacing)
+    {
+        private readonly List<DefaultGrantRow> _saved = [];
+
+        public bool KeepRacing { get; } = keepRacing;
+
+        public int Runs { get; private set; }
+
+        public void Join(IServiceCollection services) =>
+            services.ConfigureDbContext<CmsDbContext>((provider, options) => options.AddInterceptors(new Racer(this, provider.GetRequiredService<IServiceScopeFactory>())));
+
+        private sealed class Racer(Race race, IServiceScopeFactory scopes) : SaveChangesInterceptor
+        {
+            public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+            {
+                var tracker = eventData.Context!.ChangeTracker;
+                List<DefaultGrantRow> records = [.. tracker.Entries<DefaultGrantRow>().Where(entry => entry.State == EntityState.Added).Select(entry => entry.Entity)];
+                if (records.Count == 0 || (!race.KeepRacing && race.Runs > 0))
+                {
+                    return result;
+                }
+
+                race.Runs++;
+                await using var scope = scopes.CreateAsyncScope();
+                var other = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+                race._saved.Clear();
+                race._saved.AddRange(records.Select(record => new DefaultGrantRow { RoleId = record.RoleId, Permission = record.Permission, Plugin = record.Plugin, AppliedAt = record.AppliedAt }));
+                other.AddRange(race._saved);
+                if (!race.KeepRacing)
+                {
+                    other.AddRange(tracker.Entries<RoleGrant>().Where(entry => entry.State == EntityState.Added)
+                        .Select(entry => new RoleGrant { Id = Guid.CreateVersion7(), RoleId = entry.Entity.RoleId, Permission = entry.Entity.Permission }));
+                }
+
+                await other.SaveChangesAsync(cancellationToken);
+                return result;
+            }
+
+            public override async Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
+            {
+                if (race.KeepRacing && race._saved.Count > 0)
+                {
+                    await using var scope = scopes.CreateAsyncScope();
+                    var other = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+                    other.RemoveRange(race._saved);
+                    await other.SaveChangesAsync(cancellationToken);
+                    race._saved.Clear();
+                }
+            }
+        }
+    }
+}
+
+public sealed class LateDefaults
+{
+    public bool On { get; set; }
+}
+
+// Names defaults only once the catalogue was built: one for a permission of HostPermissions and one for a permission that
+// no provider declared when the catalogue was built.
+public sealed class LatePermissions(LateDefaults late) : IPermissionProvider
+{
+    public IEnumerable<Permission> GetPermissions() => late.On
+        ? [new Permission(HostPermissions.Export, "Export reports.") { DefaultRoles = [BuiltInRole.Editor] }, new Permission("reports.purge", "Purge reports.") { DefaultRoles = [BuiltInRole.Editor] }]
+        : [];
 }
 
 public sealed record NotesVersion(int Value);

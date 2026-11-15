@@ -180,6 +180,35 @@ public sealed partial class BaselineTests : IDisposable
         DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
     }
 
+    // Until 1.0.0 a change of the model goes into the baseline, so a database made by an earlier build of it holds the
+    // baseline in its history, has nothing pending and lacks what came since, as one without the dropped tables does.
+    [Fact]
+    public async Task ADatabaseOfAnEarlierBuildOfTheBaselineIsRefusedAndNothingIsApplied()
+    {
+        using (var built = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => cms.AddPlugin<MediaPlugin>()))
+        {
+            await built.StartAsync(Token);
+            await built.StopAsync(Token);
+        }
+
+        _database.Execute($"drop table {TestProvider.Quote(TablesAddedToTheBaseline[0])}");
+        _database.Execute($"drop table {TestProvider.Quote("cms_media_preset")}");
+        var before = DatabaseCatalog.Of(_database, historyRows: true);
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => cms.AddPlugin<MediaPlugin>());
+        var refusal = $"FCMS1308: stream system has applied its baseline {BaselineOf<SystemDbContext>(host.Services)} but lacks cms_default_grant; " +
+            $"stream media has applied its baseline {BaselineOf<PluginDbContext<MediaPlugin>>(host.Services)} but lacks cms_media_preset; " +
+            "nothing was applied: the database was made by an earlier build of the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again";
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
+        var (exitCode, _, error) = await RunAsync(host, "migrate");
+
+        exception.Code.ShouldBe("FCMS1308");
+        exception.Message.ShouldBe(refusal);
+        exitCode.ShouldBe(1);
+        error.ShouldBe(refusal + Environment.NewLine);
+        DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
+    }
+
     private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "false" };
 
     private const string WhatToDo = "nothing was applied: the database was made by the migrations from before the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again";

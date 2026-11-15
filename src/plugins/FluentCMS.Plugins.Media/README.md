@@ -104,6 +104,8 @@ Each asset records the storage it was written with. An asset written on the loca
 
 Presets are the site's, so only a grant of `media.presets.manage` without a folder limit changes them.
 
+The first time the plugin starts on an instance, the built-in Editor gets `media.read`, `media.upload` and `media.update`, and the built-in Author gets `media.read` and `media.upload`, each with no constraints. Each default is given once, so a grant you take away later is not given back at the next start. A role that already holds a limited grant of any media permission, such as one limited to folders, gets none of these defaults.
+
 ## Upload
 
 `POST /api/management/v1/media` with a `multipart/form-data` body. Every file part is a file of the upload, and the field `folderId` names the folder, or leave it out for the root. A request stores all its files or none, and answers 201 with the new assets:

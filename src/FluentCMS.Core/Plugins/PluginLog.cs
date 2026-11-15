@@ -31,4 +31,7 @@ internal static partial class PluginLog
 
     [LoggerMessage(EventId = 9238, Level = LogLevel.Information, Message = "The built-in role {Role} was given the permissions {Permissions}, which their providers name for it by default.")]
     public static partial void DefaultGrantsGiven(ILogger logger, string role, string permissions);
+
+    [LoggerMessage(EventId = 9239, Level = LogLevel.Warning, Message = "The default grant of {Permission}, which {Provider} names, was not applied, because the permission catalogue does not hold it as a permission of that provider.")]
+    public static partial void DefaultGrantRefused(ILogger logger, string permission, string provider);
 }

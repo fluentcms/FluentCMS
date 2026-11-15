@@ -18,8 +18,13 @@ internal sealed record PermissionGrant(string Permission, PermissionConstraints 
 
 internal sealed record RoleInfo(Guid Id, Guid? SiteId, string Name, string? Description, bool BuiltIn, bool RequireTwoFactor, IReadOnlyList<PermissionGrant> Grants);
 
-// A permission that a provider names for a built-in role by default, with the plugin of the provider, if any.
-internal sealed record DefaultGrant(Guid RoleId, string Permission, string? Plugin);
+// A permission that a provider names for a built-in role by default: the provider, the plugin that added it, if any, and
+// every permission of that plugin in the catalogue (of the provider alone for one the host registered itself).
+internal sealed record DefaultGrant(Guid RoleId, string Permission, Type Provider, string? Plugin, IReadOnlyCollection<string> PluginPermissions);
+
+// What a start gave, by the name of the role, and the defaults it refused because the catalogue does not hold them as
+// permissions of the provider that names them.
+internal sealed record DefaultGrantOutcome(IReadOnlyList<(string Role, IReadOnlyList<string> Permissions)> Given, IReadOnlyList<DefaultGrant> Refused);
 
 // A role as it is to be. The site is the new role's; an update keeps the site the role has, and the two-factor flag when
 // the request leaves it out.
@@ -51,6 +56,9 @@ internal sealed class RoleService(
     private const int DescriptionLength = 512;
     private const int MaxResources = 100;
     private const int ResourceLength = 128;
+
+    // Each attempt reads what another start saved in between, so only roles that keep changing use them all.
+    private const int DefaultGrantAttempts = 5;
 
     private static readonly PrincipalBinding Unbound = new(null, null);
 
@@ -275,23 +283,31 @@ internal sealed class RoleService(
 
     // For the start of the host, as the system: the defaults this instance has not applied are given and recorded in
     // cms_default_grant, so that none is given twice and a grant an operator took away is not given again. A role that holds
-    // a grant of the permission, limited or not, gets nothing new. Of two instances that start together, the one that saves
-    // second fails on the record's key and reads again. Answers the permissions given, by the name of the role.
-    public async Task<IReadOnlyList<(string Role, IReadOnlyList<string> Permissions)>> ApplyDefaultsAsync(IReadOnlyList<DefaultGrant> defaults, CancellationToken cancellationToken)
+    // a grant of the permission, limited or not, or a limited grant of any permission of the same plugin gets nothing new, so
+    // a default never widens what an operator limited. A default that the catalogue does not hold as a permission of the
+    // provider that names it is refused and not recorded. Of two starts that save at once, the second fails on the record's
+    // key and reads again.
+    public async Task<DefaultGrantOutcome> ApplyDefaultsAsync(IReadOnlyList<DefaultGrant> defaults, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(defaults);
 
-        List<(Role Role, List<string> Permissions)> given;
-        for (var attempt = 0; ; attempt++)
+        var refused = defaults.Where(item => catalogue.Find(item.Permission) is not { Source: PermissionSource.Plugin } || catalogue.ProviderOf(item.Permission) != item.Provider).ToList();
+        List<DefaultGrant> valid = [.. defaults.Except(refused)];
+
+        List<(Role Role, List<string> Permissions)>? given = null;
+        for (var attempt = 1; given is null; attempt++)
         {
             try
             {
-                given = await GiveDefaultsAsync(defaults, cancellationToken);
-                break;
+                given = await GiveDefaultsAsync(valid, cancellationToken);
             }
-            catch (DbUpdateException) when (attempt == 0)
+            catch (DbUpdateException exception)
             {
                 context.ChangeTracker.Clear();
+                if (attempt == DefaultGrantAttempts)
+                {
+                    throw new InvalidOperationException($"The default grants of the permission providers were not saved after {DefaultGrantAttempts} attempts, because the built-in roles or the records of their defaults kept changing; nothing was given, and the next start tries again.", exception);
+                }
             }
         }
 
@@ -300,10 +316,10 @@ internal sealed class RoleService(
             await LogAsync("role.updated", role, new Dictionary<string, string?> { ["added"] = string.Join("; ", permissions), ["removed"] = "" }, cancellationToken);
         }
 
-        return [.. given.Select(item => (item.Role.Name, (IReadOnlyList<string>)item.Permissions))];
+        return new DefaultGrantOutcome([.. given.Select(item => (item.Role.Name, (IReadOnlyList<string>)item.Permissions))], refused);
     }
 
-    private async Task<List<(Role Role, List<string> Permissions)>> GiveDefaultsAsync(IReadOnlyList<DefaultGrant> defaults, CancellationToken cancellationToken)
+    private async Task<List<(Role Role, List<string> Permissions)>> GiveDefaultsAsync(List<DefaultGrant> defaults, CancellationToken cancellationToken)
     {
         List<Guid> roleIds = [.. defaults.Select(item => item.RoleId).Distinct()];
         var applied = (await context.Set<DefaultGrantRow>().AsNoTracking()
@@ -322,9 +338,9 @@ internal sealed class RoleService(
         var roles = await context.Set<Role>().AsNoTracking().Where(role => roleIds.Contains(role.Id)).ToDictionaryAsync(role => role.Id, cancellationToken);
         var held = (await context.Set<RoleGrant>().AsNoTracking()
                 .Where(grant => roleIds.Contains(grant.RoleId))
-                .Select(grant => new { grant.RoleId, grant.Permission })
+                .Select(grant => new { grant.RoleId, grant.Permission, grant.Constraints })
                 .ToListAsync(cancellationToken))
-            .ToLookup(grant => grant.RoleId, grant => grant.Permission);
+            .ToLookup(grant => grant.RoleId, grant => (grant.Permission, Limited: !PermissionConstraints.FromJson(grant.Constraints).IsEmpty));
 
         var now = time.GetUtcNow();
         Dictionary<Guid, List<string>> given = [];
@@ -337,7 +353,9 @@ internal sealed class RoleService(
             }
 
             context.Add(new DefaultGrantRow { RoleId = item.RoleId, Permission = item.Permission, Plugin = item.Plugin, AppliedAt = now });
-            if (held[item.RoleId].Any(grant => PermissionPattern.Matches(grant, item.Permission)))
+            var grants = held[item.RoleId];
+            if (grants.Any(grant => PermissionPattern.Matches(grant.Permission, item.Permission))
+                || grants.Any(grant => grant.Limited && item.PluginPermissions.Any(permission => PermissionPattern.Matches(grant.Permission, permission))))
             {
                 continue;
             }

@@ -12,6 +12,12 @@ Previews make no promise to upgrade a database until 1.0.0: a later preview may 
 FCMS1307: stream system has applied 20261102151133_InitialSystem but not its baseline 20261113071031_Initial; nothing was applied: the database was made by the migrations from before the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again
 ```
 
+Until 1.0.0 a change of the model goes into the baseline itself, so a database made by an earlier build of `Initial` has it in its history, has nothing pending and lacks what was added since. Such a database is refused the same way, at start, by `fluentcms migrate` and by `fluentcms doctor`, when a system or plugin stream whose history holds its baseline lacks a table of its model:
+
+```text
+FCMS1308: stream system has applied its baseline 20261113071031_Initial but lacks cms_default_grant; nothing was applied: the database was made by an earlier build of the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again
+```
+
 The baseline carries what the model cannot say and the scaffold therefore does not write: on SQL Server its first step turns `READ_COMMITTED_SNAPSHOT` on, outside a transaction ([ADR 0005](decisions/0005-sql-server-read-committed-snapshot.md)), so that a user without `ALTER` on the database stops it before anything is created. Because that step runs outside the transaction of the others, EF logs `NonTransactionalMigrationOperationWarning` once when it applies `Initial` on SQL Server; the warning is expected. It leaves out what the chain left only because it upgraded databases that had rows: the default of `cms_role.require_two_factor`, a column it added to a table with rows, and the raised stamp of the Author role, whose seeded grants it changed. EF writes every column on insert, and a new database caches no grant. `BaselineTests` in `tests/FluentCMS.Data.Tests/Migrations` compares a database built by the baseline with one built by the SQL of the old chain, which the test project keeps as test data in `Migrations/BeforeBaseline`, on the provider of the run. It leaves out of the comparison the tables added to the baseline since the squash, such as `cms_default_grant` ([#3103](https://github.com/fluentcms/FluentCMS/issues/3103)), after checking that the baseline makes them.
 
 ## Adding a migration

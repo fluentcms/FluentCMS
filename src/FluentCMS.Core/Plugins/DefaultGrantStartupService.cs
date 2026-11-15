@@ -17,25 +17,6 @@ internal sealed class DefaultGrantStartupService(
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        var defaults = Declared();
-        if (defaults.Count == 0)
-        {
-            return;
-        }
-
-        await using var scope = scopes.CreateAsyncScope();
-        foreach (var (role, permissions) in await scope.ServiceProvider.GetRequiredService<RoleService>().ApplyDefaultsAsync(defaults, cancellationToken))
-        {
-            var given = string.Join(", ", permissions);
-            PluginLog.DefaultGrantsGiven(logger, role, given);
-        }
-    }
-
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-    // Each default with the plugin whose provider declares it, none for a provider the host registered itself.
-    private List<DefaultGrant> Declared()
-    {
         Dictionary<Type, string> owners = [];
         foreach (var plugin in registry?.Plugins ?? [])
         {
@@ -45,7 +26,40 @@ internal sealed class DefaultGrantStartupService(
             }
         }
 
-        return [.. providers.SelectMany(provider => provider.GetPermissions().SelectMany(permission => permission.DefaultRoles
-            .Select(role => new DefaultGrant(BuiltInRoles.Of(role), permission.Name, owners.GetValueOrDefault(provider.GetType())))))];
+        var declared = providers
+            .SelectMany(provider => provider.GetPermissions().SelectMany(permission => permission.DefaultRoles.Select(role => (Role: BuiltInRoles.Of(role), permission.Name, Provider: provider.GetType()))))
+            .ToList();
+        if (declared.Count == 0)
+        {
+            return;
+        }
+
+        await using var scope = scopes.CreateAsyncScope();
+        var catalogue = scope.ServiceProvider.GetRequiredService<PermissionCatalogue>();
+        List<DefaultGrant> defaults = [.. declared.Select(item =>
+        {
+            var plugin = owners.GetValueOrDefault(item.Provider);
+            return new DefaultGrant(item.Role, item.Name, item.Provider, plugin, PermissionsOf(catalogue, item.Provider, plugin, owners));
+        })];
+
+        var outcome = await scope.ServiceProvider.GetRequiredService<RoleService>().ApplyDefaultsAsync(defaults, cancellationToken);
+        foreach (var (role, permissions) in outcome.Given)
+        {
+            var given = string.Join(", ", permissions);
+            PluginLog.DefaultGrantsGiven(logger, role, given);
+        }
+
+        foreach (var refused in outcome.Refused)
+        {
+            PluginLog.DefaultGrantRefused(logger, refused.Permission, refused.Provider.FullName ?? refused.Provider.Name);
+        }
     }
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    // The permissions of the plugin that added the provider, or of the provider alone when the host registered it itself.
+    private static HashSet<string> PermissionsOf(PermissionCatalogue catalogue, Type provider, string? plugin, Dictionary<Type, string> owners) =>
+        [.. catalogue.Entries
+            .Select(entry => entry.Name)
+            .Where(name => catalogue.ProviderOf(name) is { } declaring && (plugin is null ? declaring == provider : owners.GetValueOrDefault(declaring) == plugin))];
 }

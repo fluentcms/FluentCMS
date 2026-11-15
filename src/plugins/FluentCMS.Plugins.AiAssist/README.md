@@ -136,6 +136,8 @@ The checks run in this order:
 
 With `documentId` the content service decides whether the caller may read the draft, and with `mediaId` the media service whether it may read the image.
 
+The first time the plugin starts on an instance, the built-in Editor and Author get `ai.use` with no constraints. The default is given once, so a grant you take away later is not given back at the next start, and a role that already holds a limited grant of an AI permission does not get it. `ai.usage.read` goes to no role by default.
+
 ### Limits
 
 - The text has at most `MaxInputLength` characters (`FCMS1686`).
