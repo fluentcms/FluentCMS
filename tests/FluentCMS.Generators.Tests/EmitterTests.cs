@@ -47,6 +47,19 @@ public sealed class EmitterTests
         diagnostic.TypeName.ShouldBe("a1");
     }
 
+    // The generator's sources and the tool's files are named after the classes and compared ignoring case.
+    [Fact]
+    public void TwoBuilderNamesThatDifferInCaseAloneKeepTheFirst()
+    {
+        var result = FieldsEmitter.Emit(
+            [Type("xy", BuilderKind.Collection), Type("x-y", BuilderKind.Collection), Type("xy", BuilderKind.Component), Type("x-y", BuilderKind.Component)],
+            EmitOptions.Sdk);
+
+        result.Sources.Select(source => source.HintName).ShouldBe(["Client.XYFields.g.cs", "Client.XYComponentFields.g.cs"]);
+        result.Diagnostics.Select(diagnostic => (diagnostic.Code, diagnostic.Kind, diagnostic.TypeName))
+            .ShouldBe([("FCMS0100", BuilderKind.Collection, "xy"), ("FCMS0100", BuilderKind.Component, "xy")]);
+    }
+
     [Fact]
     public void ATypeWhoseNameGivesNoClassNameIsReported()
     {
@@ -93,6 +106,16 @@ public sealed class EmitterTests
         source.Text.ShouldNotContain("CallToActionBlockFields");
         var diagnostic = result.Diagnostics.ShouldHaveSingleItem();
         (diagnostic.Code, diagnostic.TypeName, diagnostic.Kind).ShouldBe(("FCMS0104", "call-to-action", BuilderKind.Block));
+    }
+
+    // a-b takes ABBlockFields though it gets no builder, as it takes ABBlock in the tool, so ab gets neither.
+    [Fact]
+    public void ABlockTypeWithAHyphenTakesItsNameFromAnotherInAnyCase()
+    {
+        var result = FieldsEmitter.Emit([Type("ab", BuilderKind.Block, Field("label", "text")), Type("a-b", BuilderKind.Block, Field("label", "text"))], EmitOptions.Sdk);
+
+        result.Sources.ShouldBeEmpty();
+        result.Diagnostics.Select(diagnostic => (diagnostic.Code, diagnostic.TypeName)).ShouldBe([("FCMS0104", "a-b"), ("FCMS0100", "ab")]);
     }
 
     [Fact]

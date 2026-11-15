@@ -244,6 +244,12 @@ public class AttributeReaderTests
     }
 
     [Fact]
+    public void BlocksFieldWithANullListIsFCMS1211()
+    {
+        ShouldReport(typeof(NullBlocks), "FCMS1211", "blocks field NullBlocks.Sections must list the block types");
+    }
+
+    [Fact]
     public void SelectWithoutOptionsOnAStringIsFCMS1216()
     {
         ShouldReport(typeof(SelectWithoutOptions), "FCMS1216", "SelectWithoutOptions.Kind is not an enum, so [Select] must list its options");
@@ -253,6 +259,13 @@ public class AttributeReaderTests
     public void SelectWithOptionsOnAnEnumIsFCMS1216()
     {
         ShouldReport(typeof(SelectEnumWithOptions), "FCMS1216", "SelectEnumWithOptions.Kind is an enum");
+    }
+
+    [Fact]
+    public void SelectWithANullListIsFCMS1216OnAStringAndOnAnEnum()
+    {
+        ShouldReport(typeof(SelectWithNullOptions), "FCMS1216", "SelectWithNullOptions.Kind is not an enum, so [Select] must list its options");
+        ShouldReport(typeof(SelectEnumWithNullOptions), "FCMS1216", "SelectEnumWithNullOptions.Kind is an enum");
     }
 
     [Fact]
@@ -453,6 +466,13 @@ public class AttributeReaderTests
     }
 
     [Collection]
+    private sealed class NullBlocks : ContentItem
+    {
+        [Blocks(null!)]
+        public BlockList Sections { get; set; } = [];
+    }
+
+    [Collection]
     private sealed class SelectWithoutOptions : ContentItem
     {
         [Select]
@@ -463,6 +483,20 @@ public class AttributeReaderTests
     private sealed class SelectEnumWithOptions : ContentItem
     {
         [Select("a")]
+        public ArticleCategory Kind { get; set; }
+    }
+
+    [Collection]
+    private sealed class SelectWithNullOptions : ContentItem
+    {
+        [Select(null!)]
+        public string Kind { get; set; } = "";
+    }
+
+    [Collection]
+    private sealed class SelectEnumWithNullOptions : ContentItem
+    {
+        [Select(null!)]
         public ArticleCategory Kind { get; set; }
     }
 
