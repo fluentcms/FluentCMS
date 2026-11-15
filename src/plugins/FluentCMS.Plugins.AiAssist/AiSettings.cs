@@ -32,6 +32,10 @@ public sealed class AiSettings : IValidatableObject
     [Range(1, 32000)]
     public int MaxOutputTokens { get; set; } = 1024;
 
+    // Sends MaxOutputTokens as the older max_tokens instead of max_completion_tokens, for an endpoint that reads only that
+    // one, such as Ollama's /v1.
+    public bool LegacyMaxTokens { get; set; }
+
     // In seconds.
     [Range(1, 600)]
     public int RequestTimeout { get; set; } = 60;

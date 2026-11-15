@@ -52,6 +52,46 @@ public sealed class AiWireTests : IAsyncLifetime
         (row.Succeeded, row.PromptTokens, row.CompletionTokens).ShouldBe((true, StubProvider.PromptTokens, StubProvider.CompletionTokens));
     }
 
+    // OpenRouter writes blank lines while the model works and a comment line into a stream, and ends a stream twice, the
+    // second time with no text and with the usage, which it sends only there. Both are read: the suggestion is the answer
+    // and the usage that of the second end.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ARoutersKeepAlivesAndTheUsageOnTheSecondEndOfAStreamAreRead(bool stream)
+    {
+        var site = await SiteAsync();
+        using var admin = await _ai.AdminAsync(site);
+        _stub.Router = true;
+
+        var answer = stream ? (await StreamAsync(admin, "rewrite"))[^1].Data : await SuggestAsync(admin, "rewrite", Body());
+
+        answer["suggestion"]!.GetValue<string>().ShouldBe(_stub.Answer);
+        Tokens(answer["usage"]!).ShouldBe((StubProvider.PromptTokens, StubProvider.CompletionTokens));
+        var row = (await _ai.UsageAsync(site)).ShouldHaveSingleItem();
+        (row.Succeeded, row.PromptTokens, row.CompletionTokens).ShouldBe((true, StubProvider.PromptTokens, StubProvider.CompletionTokens));
+    }
+
+    // maxOutputTokens goes as max_completion_tokens alone, or with legacyMaxTokens as max_tokens alone, which Ollama's /v1
+    // reads; never both, which some endpoints refuse.
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task TheCapGoesUnderTheNameTheSiteChose(bool legacyMaxTokens, bool stream)
+    {
+        var site = await SiteAsync(legacyMaxTokens: legacyMaxTokens);
+        using var admin = await _ai.AdminAsync(site);
+
+        var answer = stream ? (await StreamAsync(admin, "rewrite"))[^1].Data : await SuggestAsync(admin, "rewrite", Body());
+
+        answer["suggestion"]!.GetValue<string>().ShouldBe(_stub.Answer);
+        var sent = _stub.Requests.ShouldHaveSingleItem().Body!;
+        (sent["max_completion_tokens"]?.GetValue<int>()).ShouldBe(legacyMaxTokens ? null : 1024);
+        (sent["max_tokens"]?.GetValue<int>()).ShouldBe(legacyMaxTokens ? 1024 : null);
+    }
+
     // The answer has ended, but the usage is still on its way: done waits for it.
     [Fact]
     public async Task AStreamWhoseUsageArrivesLateEndsOnceItHasArrived()
@@ -70,7 +110,7 @@ public sealed class AiWireTests : IAsyncLifetime
         (row.Succeeded, row.PromptTokens, row.CompletionTokens).ShouldBe((true, StubProvider.PromptTokens, StubProvider.CompletionTokens));
 
         // The stream asks for its usage, which OpenAI sends only when asked, and the answer is capped with
-        // max_completion_tokens rather than the older max_tokens, so the cap holds only where an endpoint reads it.
+        // max_completion_tokens alone unless the site turns legacyMaxTokens on.
         var sent = _stub.Requests.ShouldHaveSingleItem().Body!;
         sent["stream_options"]!["include_usage"]!.GetValue<bool>().ShouldBeTrue();
         sent["max_completion_tokens"]!.GetValue<int>().ShouldBe(1024);
@@ -221,8 +261,8 @@ public sealed class AiWireTests : IAsyncLifetime
         ShouldHoldNothingOfTheCall();
     }
 
-    private async Task<Guid> SiteAsync(int timeout = 60) =>
-        await _ai.SiteAsync(settings => (settings.Provider, settings.Model, settings.Endpoint, settings.ApiKey, settings.RequestTimeout) = (AiProvider.OpenAiCompatible, "a-model", _stub.Url("v1"), null, timeout));
+    private async Task<Guid> SiteAsync(int timeout = 60, bool legacyMaxTokens = false) =>
+        await _ai.SiteAsync(settings => (settings.Provider, settings.Model, settings.Endpoint, settings.ApiKey, settings.RequestTimeout, settings.LegacyMaxTokens) = (AiProvider.OpenAiCompatible, "a-model", _stub.Url("v1"), null, timeout, legacyMaxTokens));
 
     private static object Body() => new { type = "article", field = "summary", text = Text };
 

@@ -15,6 +15,7 @@ The settings area `ai` (`GET` and `PUT /api/management/v1/settings/ai`, permissi
 | `endpoint` | unset | The endpoint of the provider, one of `FluentCms:Ai:AllowedEndpoints`. OpenAI uses its own when it is unset; the other providers need one. |
 | `apiKey` | unset | The key, a secret: it is written and never returned. Unset, the key is `FluentCms:Ai:{Provider}:ApiKey`. `openAiCompatible` also works with no key at all. |
 | `maxOutputTokens` | `1024` | The most tokens an answer has, from 1 to 32000. |
+| `legacyMaxTokens` | `false` | Sends `maxOutputTokens` as the older `max_tokens` instead of `max_completion_tokens`, for an endpoint that reads only that one, such as Ollama's. |
 | `requestTimeout` | `60` | How long a call may take, in seconds, from 1 to 600. |
 | `callsPerMinute` | `20` | The calls a principal may make in a minute in the site, counted on each instance. |
 | `fields` | empty | The opt-in: a map of content type to the fields that take actions, such as `{ "article": ["title", "summary", "body"] }`. |
@@ -44,6 +45,7 @@ and name it in the settings of the site:
   "provider": "openAiCompatible",
   "model": "llama3.2",
   "endpoint": "http://ollama:11434/v1",
+  "legacyMaxTokens": true,
   "fields": { "article": ["title", "summary"] }
 }
 ```
@@ -159,7 +161,7 @@ The answer holds nothing of the provider's configuration: not the provider, the 
 ### Limits
 
 - The text has at most `MaxInputLength` characters (`FCMS1686`).
-- The answer has at most `maxOutputTokens` tokens.
+- The answer has at most `maxOutputTokens` tokens, sent as `max_completion_tokens`, or with `legacyMaxTokens` as `max_tokens` alone. Ollama reads only `max_tokens`, so an Ollama site turns it on; it stays off elsewhere, since OpenAI's reasoning models refuse `max_tokens`, also through a gateway.
 - A call ends at `requestTimeout` (`FCMS1688`) or when the caller goes away.
 - A principal makes at most `callsPerMinute` calls in a site (`FCMS1687`). The count is kept in memory on each instance, and a refused call takes nothing from it. The Management rate limit holds beside it.
 - A call is one request to the provider: the retries of the client package are off.
@@ -220,7 +222,7 @@ A call is a span of the `FluentCMS` activity source named `ai {action}`, with `f
 
 ## Verification
 
-CI calls no provider. [Verifying AI assist against real endpoints](../../../docs/ai-assist-verification.md) records what the plugin has been run against and holds the walk-through for a run against Ollama or a paid endpoint. Neither has been run yet, and Azure OpenAI is not verified.
+CI calls no provider. [Verifying AI assist against real endpoints](../../../docs/ai-assist-verification.md) records what the plugin has been run against and holds the walk-through for a run against Ollama or a paid endpoint. Both were run on 15 Nov 2026, against OpenRouter and a local Ollama, and Azure OpenAI is not verified.
 
 ## Codes
 
