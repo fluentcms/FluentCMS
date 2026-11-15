@@ -156,7 +156,7 @@ public sealed class SchemaCommandTests : IDisposable
         var result = await host.RunCommandAsync("schema", "diff", "--applied");
 
         result.ExitCode.ShouldBe(1);
-        result.Error.ShouldStartWith("FCMS3323: the schema history of the host's database is empty");
+        result.Error.ShouldStartWith("FCMS3323: the schema history of the host's database is empty; run 'fluentcms schema apply' to apply the schema and record it");
     }
 
     [Fact]

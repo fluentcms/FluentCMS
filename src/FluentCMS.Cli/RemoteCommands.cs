@@ -1,13 +1,17 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using FluentCMS.Core.Diagnostics;
 
 namespace FluentCMS.Cli;
 
 // The commands that reach a running instance with --url. They call the Management API as the key's principal, so the API
-// decides what the key may do; they print what the same command prints inside a host, and --json is the API's answer.
+// decides what the key may do; they print what the same command prints inside a host, and --json is the API's answer. What
+// the instance answers is made printable before it is written.
 internal sealed class RemoteCommands(ManagementClient client, TextWriter output, TextWriter error)
 {
+    private const int UserPageSize = 100;
+
     public async Task<int> ApiKeyCreateAsync(string name, string keyClass, string role, string? site, IReadOnlyList<string>? types, DateTimeOffset? expires, bool json, CancellationToken cancellationToken)
     {
         var siteId = await SiteAsync(site, cancellationToken);
@@ -24,8 +28,8 @@ internal sealed class RemoteCommands(ManagementClient client, TextWriter output,
             return ExitCodes.Success;
         }
 
-        await output.WriteLineAsync(ManagementClient.Text(created, "secret") ?? throw Unexpected("POST api-keys"));
-        await error.WriteLineAsync($"Created the {keyClass} key '{ManagementClient.Text(created, "name")}' ({ManagementClient.Text(created, "id")}). The key above is shown only once; keep it in a secret store.");
+        await WriteLineAsync(output, ManagementClient.Text(created, "secret") ?? throw Unexpected("POST api-keys"));
+        await WriteLineAsync(error, $"Created the {keyClass} key '{ManagementClient.Text(created, "name")}' ({ManagementClient.Text(created, "id")}). The key above is shown only once; keep it in a secret store.");
         return ExitCodes.Success;
     }
 
@@ -57,7 +61,7 @@ internal sealed class RemoteCommands(ManagementClient client, TextWriter output,
     public async Task<int> ApiKeyRevokeAsync(Guid id, CancellationToken cancellationToken)
     {
         await client.SendAsync(HttpMethod.Delete, $"api-keys/{id:D}", null, cancellationToken);
-        await output.WriteLineAsync($"The API key {id:D} is revoked.");
+        await WriteLineAsync(output, $"The API key {id:D} is revoked.");
         return ExitCodes.Success;
     }
 
@@ -66,22 +70,17 @@ internal sealed class RemoteCommands(ManagementClient client, TextWriter output,
     {
         var roleId = await RoleAsync(role, await SiteAsync(site, cancellationToken), instanceWideToo: false, cancellationToken);
         var sent = await client.SendAsync(HttpMethod.Post, "invitations", new { email, roleIds = new[] { roleId } }, cancellationToken) ?? throw Unexpected("POST invitations");
-        await output.WriteLineAsync($"Invited {Text(sent, "email")}; the invitation {Text(sent, "id")} expires at {Moment(Time(sent, "expiresAt"))} UTC.");
+        await WriteLineAsync(output, $"Invited {Text(sent, "email")}; the invitation {Text(sent, "id")} expires at {Moment(Time(sent, "expiresAt"))} UTC.");
         return ExitCodes.Success;
     }
 
     public async Task<int> UserAddRoleAsync(string email, string role, string? site, CancellationToken cancellationToken)
     {
         var roleId = await RoleAsync(role, await SiteAsync(site, cancellationToken), instanceWideToo: false, cancellationToken);
-        var users = await client.GetAsync($"users?search={Uri.EscapeDataString(email)}&pageSize=100", cancellationToken);
-        var user = Items(users).FirstOrDefault(item => string.Equals(ManagementClient.Text(item, "email"), email.Trim(), StringComparison.OrdinalIgnoreCase));
-        if (user.ValueKind != JsonValueKind.Object)
-        {
-            throw new CliException(CliErrorCodes.UserNotFound, $"there is no user with the address {email}.");
-        }
+        var user = await UserAsync(email.Trim(), cancellationToken) ?? throw new CliException(CliErrorCodes.UserNotFound, $"there is no user with the address {email}.");
 
         await client.SendAsync(HttpMethod.Put, $"users/{Text(user, "id")}/roles/{roleId:D}", null, cancellationToken);
-        await output.WriteLineAsync($"Gave {Text(user, "userName")} the role {role}.");
+        await WriteLineAsync(output, $"Gave {Text(user, "userName")} the role {role}.");
         return ExitCodes.Success;
     }
 
@@ -120,7 +119,7 @@ internal sealed class RemoteCommands(ManagementClient client, TextWriter output,
             ]));
         if (jobs.TryGetProperty("total", out var total) && total.TryGetInt64(out var count) && count > items.Count)
         {
-            await error.WriteLineAsync($"The newest {items.Count} of {count} jobs are shown.");
+            await WriteLineAsync(error, $"The newest {items.Count} of {count} jobs are shown.");
         }
 
         return ExitCodes.Success;
@@ -129,8 +128,30 @@ internal sealed class RemoteCommands(ManagementClient client, TextWriter output,
     public async Task<int> JobsRetryAsync(Guid id, CancellationToken cancellationToken)
     {
         var job = await client.SendAsync(HttpMethod.Post, $"jobs/{id:D}/retry", null, cancellationToken) ?? throw Unexpected("POST jobs/retry");
-        await output.WriteLineAsync($"Queued the job {Text(job, "id")} ({Text(job, "type")}) again on the queue {Text(job, "queue")}.");
+        await WriteLineAsync(output, $"Queued the job {Text(job, "id")} ({Text(job, "type")}) again on the queue {Text(job, "queue")}.");
         return ExitCodes.Success;
+    }
+
+    // The search matches a part of the user name or the address, oldest first, so the pages are read until the address is
+    // found or the total is reached; addresses are unique.
+    private async Task<JsonElement?> UserAsync(string email, CancellationToken cancellationToken)
+    {
+        for (var page = 1; ; page++)
+        {
+            var users = await client.GetAsync(string.Create(CultureInfo.InvariantCulture, $"users?search={Uri.EscapeDataString(email)}&page={page}&pageSize={UserPageSize}"), cancellationToken);
+            var items = Items(users);
+            var user = items.FirstOrDefault(item => string.Equals(ManagementClient.Text(item, "email"), email, StringComparison.OrdinalIgnoreCase));
+            if (user.ValueKind == JsonValueKind.Object)
+            {
+                return user;
+            }
+
+            var total = users.TryGetProperty("total", out var count) && count.TryGetInt64(out var value) ? value : 0;
+            if (items.Count < UserPageSize || (long)page * UserPageSize >= total)
+            {
+                return null;
+            }
+        }
     }
 
     // The sites the key holds a grant in, which are the ones it can bind a key or a role to.
@@ -145,7 +166,7 @@ internal sealed class RemoteCommands(ManagementClient client, TextWriter output,
         var site = sites.FirstOrDefault(item => string.Equals(ManagementClient.Text(item, "slug"), slug, StringComparison.OrdinalIgnoreCase));
         return site.ValueKind == JsonValueKind.Object && Guid.TryParse(ManagementClient.Text(site, "id"), out var id)
             ? id
-            : throw new CliException(CliErrorCodes.UnknownSite, $"there is no site '{slug}' that the key reaches; the sites are {string.Join(", ", sites.Select(item => Text(item, "slug")))}", ExitCodes.BadUsage);
+            : throw new CliException(CliErrorCodes.UnknownSite, $"there is no site '{slug}' that the key reaches; the sites are {PrintableText.Escape(string.Join(", ", sites.Select(item => Text(item, "slug"))))}", ExitCodes.BadUsage);
     }
 
     // As inside the host: a role of the site, or an instance-wide one when no site is given; a key's role may be instance-wide
@@ -165,7 +186,7 @@ internal sealed class RemoteCommands(ManagementClient client, TextWriter output,
         var candidates = roles.Where(role => role.Site == site || (instanceWideToo && role.Site is null)).Select(role => role.Name).Distinct();
         throw new CliException(
             CliErrorCodes.UnknownRole,
-            $"there is no role '{name}' {(site is null ? "for the instance" : "in the site")}; the roles are {string.Join(", ", candidates)}",
+            $"there is no role '{name}' {(site is null ? "for the instance" : "in the site")}; the roles are {PrintableText.Escape(string.Join(", ", candidates))}",
             ExitCodes.BadUsage);
     }
 
@@ -181,7 +202,7 @@ internal sealed class RemoteCommands(ManagementClient client, TextWriter output,
 
     private async Task WriteTableAsync(IReadOnlyList<string> headers, IEnumerable<IReadOnlyList<string>> rows)
     {
-        var all = rows.ToList();
+        var all = rows.Select(row => (IReadOnlyList<string>)[.. row.Select(cell => PrintableText.Escape(cell))]).ToList();
         var widths = headers.Select((header, column) => all.Select(row => row[column].Length).Append(header.Length).Max()).ToList();
         foreach (var row in all.Prepend(headers))
         {
@@ -194,6 +215,8 @@ internal sealed class RemoteCommands(ManagementClient client, TextWriter output,
             await output.WriteLineAsync(line.ToString().TrimEnd());
         }
     }
+
+    private static Task WriteLineAsync(TextWriter writer, string line) => writer.WriteLineAsync(PrintableText.Escape(line));
 
     private CliException Unexpected(string call) => new(CliErrorCodes.UnexpectedAnswer, $"{client.Instance} answered {call} with no body.");
 

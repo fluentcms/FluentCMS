@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using FluentCMS.Core.Diagnostics;
 using FluentCMS.Generators.Emit;
 using FluentCMS.Generators.Snapshot;
 using FluentCMS.Schema;
@@ -411,7 +412,8 @@ internal static class TypeScriptEmitter
         };
     }
 
-    // A JSON string, which is also a TypeScript string literal.
+    // A JSON string, which is also a TypeScript string literal. A control character or a bidi control, such as one in a
+    // select option, is escaped, so that an editor shows the union as it compiles.
     internal static string Literal(string text)
     {
         var builder = new StringBuilder("\"");
@@ -424,9 +426,7 @@ internal static class TypeScriptEmitter
                 '\n' => "\\n",
                 '\r' => "\\r",
                 '\t' => "\\t",
-                '\u2028' => "\\u2028",
-                '\u2029' => "\\u2029",
-                < ' ' => "\\u" + ((int)character).ToString("x4", CultureInfo.InvariantCulture),
+                _ when PrintableText.IsUnsafe(character) => "\\u" + ((int)character).ToString("x4", CultureInfo.InvariantCulture),
                 _ => character.ToString(),
             });
         }

@@ -23,8 +23,8 @@ namespace FluentCMS.Core.Plugins;
 
 // What every plugin of the host contributed that core reads after the plugins have run: field type names and error codes,
 // which must be unique across core and the plugins, the tables of each plugin in plugin order, and the permission providers,
-// jobs and outbox handlers of each plugin, which the plugin list shows and per-site enablement gates, and the MCP providers,
-// which the MCP plugin serves.
+// jobs and outbox handlers of each plugin, which the plugin list shows and per-site enablement gates, the settings classes of
+// each plugin, which the list of settings areas shows, and the MCP providers, which the MCP plugin serves.
 internal sealed class PluginContributions : IMcpProviders
 {
     private static readonly Regex CodePattern = new("^[A-Z]{2,}[0-9]{4}\\z", RegexOptions.CultureInvariant);
@@ -36,6 +36,7 @@ internal sealed class PluginContributions : IMcpProviders
     private readonly List<(Type Provider, string Plugin)> _permissions = [];
     private readonly Dictionary<string, string> _jobs = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _outboxHandlers = new(StringComparer.Ordinal);
+    private readonly Dictionary<Type, string> _settings = [];
     private readonly List<McpProviderRegistration> _mcpTools = [];
     private readonly List<McpProviderRegistration> _mcpResources = [];
     private readonly List<McpProviderRegistration> _mcpPrompts = [];
@@ -67,9 +68,14 @@ internal sealed class PluginContributions : IMcpProviders
 
     public string? OutboxHandlerOwner(string name) => _outboxHandlers.GetValueOrDefault(name);
 
+    // The plugin that added the settings class; null for core's and the host's.
+    public string? SettingsOwner(Type settings) => _settings.GetValueOrDefault(settings);
+
     public void AddPermissions(RegisteredPlugin plugin, Type provider) => _permissions.Add((provider, plugin.Name));
 
     public void AddJob(RegisteredPlugin plugin, string type) => _jobs[type] = plugin.Name;
+
+    public void AddSettings(RegisteredPlugin plugin, Type settings) => _settings[settings] = plugin.Name;
 
     public void AddOutboxHandler(RegisteredPlugin plugin, string name) => _outboxHandlers[name] = plugin.Name;
 
@@ -211,6 +217,7 @@ internal sealed class PluginServiceBuilder(FluentCmsBuilder cms, RegisteredPlugi
         where TSettings : class, new()
     {
         cms.Settings.Add<TSettings>();
+        contributions.AddSettings(plugin, typeof(TSettings));
         return this;
     }
 

@@ -309,6 +309,22 @@ public sealed class PluginContributionTests(PluginContributionFixture fixture) :
         (settings.Greeting, settings.MaxNotes).ShouldBe(("hi", 3));
     }
 
+    // The settings menu of the admin groups the areas by the plugin that registers each, and core's under none.
+    [Fact]
+    public async Task TheListOfSettingsAreasNamesThePluginOfEach()
+    {
+        var key = await fixture.Host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token);
+        using var client = fixture.Host.AsKey(key);
+
+        using var response = await client.GetAsync(new Uri("/api/management/v1/settings", UriKind.Relative), Token);
+
+        var body = await response.Content.ReadAsStringAsync(Token);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK, body);
+        var items = JsonNode.Parse(body)!["items"]!.AsArray();
+        items.Single(item => item!["area"]!.GetValue<string>() == "sample")!["plugin"]!.GetValue<string>().ShouldBe("sample");
+        items.Single(item => item!["area"]!.GetValue<string>() == "branding")!["plugin"].ShouldBeNull();
+    }
+
     [Fact]
     public async Task ThePluginsJobRunsAndItsEventReachesItsOutboxHandlerAndTheActivityLog()
     {

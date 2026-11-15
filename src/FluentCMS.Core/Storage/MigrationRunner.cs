@@ -49,7 +49,9 @@ public sealed class MigrationRunner(
 
     private readonly SchemaHistory _history = new(scopes, time ?? TimeProvider.System, logger);
 
-    private IEnumerable<Stream> Plugins => plugins.Select(plugin => new Stream(plugin.Name, plugin.ResolveContext));
+    private readonly IPluginMigrations[] _plugins = Checked(plugins);
+
+    private IEnumerable<Stream> Plugins => _plugins.Select(plugin => new Stream(plugin.Name, plugin.ResolveContext));
 
     private IEnumerable<Stream> SystemAndPlugins => [System, .. Plugins];
 
@@ -73,10 +75,10 @@ public sealed class MigrationRunner(
 
             if (sync)
             {
-                var report = await SyncAsync(schema, cancellationToken);
-                if (report.NotApplied.Count > 0)
+                var (_, recorded) = await SyncAsync(schema, cancellationToken);
+                if (!recorded)
                 {
-                    await _history.CheckDriftAsync(schema, cancellationToken);
+                    await _history.CheckDriftAsync(schema, UsesSchemaApplyAsync, cancellationToken);
                 }
 
                 return;
@@ -84,13 +86,21 @@ public sealed class MigrationRunner(
 
             await ApplyAsync([Content], cancellationToken);
             await ValidateContentSchemaAsync(cancellationToken);
-            await _history.RecordAsync(schema, cancellationToken);
+            if (await HasContentMigrationsAsync(cancellationToken))
+            {
+                await _history.RecordAsync(schema, cancellationToken);
+            }
+            else
+            {
+                await _history.CheckDriftAsync(schema, _ => Task.FromResult(true), cancellationToken);
+            }
+
             return;
         }
 
         await ValidateSystemAndPluginStreamsAsync(cancellationToken);
         await ValidateContentSchemaAsync(cancellationToken);
-        await _history.CheckDriftAsync(schema, cancellationToken);
+        await _history.CheckDriftAsync(schema, UsesSchemaApplyAsync, cancellationToken);
     }
 
     // Whatever FluentCms:Database:MigrateOnStartup says.
@@ -99,6 +109,10 @@ public sealed class MigrationRunner(
         await RefuseForeignMigrationsAsync(cancellationToken);
         await RefuseMigrationsBeforeBaselineAsync(cancellationToken);
         var applied = await ApplyAsync([.. SystemAndPlugins, Content], cancellationToken);
+        if (!await HasContentMigrationsAsync(cancellationToken))
+        {
+            return applied;
+        }
 
         // A database that lacks a column of the schema has not been brought up to it, so the history keeps its old row.
         await using var scope = scopes.CreateAsyncScope();
@@ -164,6 +178,14 @@ public sealed class MigrationRunner(
         return [.. database.GetMigrations().Union(await database.GetAppliedMigrationsAsync(cancellationToken), StringComparer.Ordinal)];
     }
 
+    // Content migrations bring a host's content tables up to its schema, so migrate and a start that migrates record the
+    // schema history. Without them schema apply or schema sync does, and only they record it, so that the newest row keeps
+    // telling schema apply what it still has to change.
+    private async Task<bool> HasContentMigrationsAsync(CancellationToken cancellationToken) =>
+        (await GetContentMigrationsAsync(cancellationToken)).Count > 0;
+
+    private async Task<bool> UsesSchemaApplyAsync(CancellationToken cancellationToken) => !await HasContentMigrationsAsync(cancellationToken);
+
     internal Task<IReadOnlyList<StreamMigration>> GetPendingSystemAndPluginMigrationsAsync(CancellationToken cancellationToken = default) =>
         GetPendingAsync(SystemAndPlugins, cancellationToken);
 
@@ -173,13 +195,13 @@ public sealed class MigrationRunner(
         ?? throw new InvalidOperationException($"The lock {SchemaSyncLock} was not taken.");
 
     // The steps that bring the content tables up to the host's schema: schema sync's comparison, with renames and the
-    // changes sync leaves undone.
-    internal async Task<IReadOnlyList<SchemaApplyStep>> PlanContentSchemaAsync(CancellationToken cancellationToken = default)
+    // changes sync leaves undone. The applied snapshot tells which tables under a plugin's prefix are content tables.
+    internal async Task<SchemaApplyPlan> PlanContentSchemaAsync(string? appliedSnapshot, CancellationToken cancellationToken = default)
     {
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
-        var diff = await ContentSchemaDiff.PlanAsync(context, schema, provider.SchemaReader, PluginTablePrefixes(scope.ServiceProvider), cancellationToken);
-        return diff.Steps;
+        var diff = await ContentSchemaDiff.PlanAsync(context, schema, appliedSnapshot, provider.SchemaReader, PluginTablePrefixes(scope.ServiceProvider), cancellationToken);
+        return new SchemaApplyPlan(diff.Steps, diff.LeftAlone);
     }
 
     // With the SQL of the provider's migrations generator, which EF's executor runs in one transaction; it commits early
@@ -231,14 +253,14 @@ public sealed class MigrationRunner(
 
     // Applies the additive changes a schema needs and reports the rest. Startup calls this for the host's schema;
     // passing another applies a changed schema without a restart. Refuses where schema sync is not Auto.
-    public Task<SchemaSyncReport> SyncContentSchemaAsync(SchemaModel? changedSchema = null, CancellationToken cancellationToken = default)
+    public async Task<SchemaSyncReport> SyncContentSchemaAsync(SchemaModel? changedSchema = null, CancellationToken cancellationToken = default)
     {
         if (ResolveOptions().SchemaSync != SchemaSyncMode.Auto)
         {
             throw new InvalidOperationException($"Schema sync needs {DatabaseOptions.SchemaSyncKey} = Auto, on SQLite in Development or with AllowSchemaSyncOutsideDevelopment.");
         }
 
-        return SyncAsync(changedSchema ?? schema, cancellationToken);
+        return (await SyncAsync(changedSchema ?? schema, cancellationToken)).Report;
     }
 
     // Fails with FCMS1301 if the database lacks a table or column of the content model.
@@ -261,6 +283,23 @@ public sealed class MigrationRunner(
             : $"run 'fluentcms schema apply', or 'fluentcms migrations add {diff.SuggestedMigrationName}' to give the host content migrations";
 
         throw new FluentCmsConfigurationException(StorageErrorCodes.MissingContentSchema, $"{string.Join("; ", diff.Missing)}; {fix}");
+    }
+
+    // A plugin's name is its stream's, which names its history table and what the commands take, so core's are not one.
+    internal static bool IsCoreStream(string name) => name is SystemStream or ContentStream;
+
+    // The plugin host checks the names of its plugins; a stream registered through the seam is checked here.
+    private static IPluginMigrations[] Checked(IEnumerable<IPluginMigrations> plugins)
+    {
+        IPluginMigrations[] streams = [.. plugins];
+        if (streams.FirstOrDefault(stream => IsCoreStream(stream.Name)) is { } taken)
+        {
+            throw new FluentCmsConfigurationException(
+                PluginErrorCodes.InvalidName,
+                $"The plugin stream {taken.GetType().FullName} is named '{taken.Name}', which is a stream of core; '{SystemStream}' and '{ContentStream}' are not plugin names.");
+        }
+
+        return streams;
     }
 
     private Stream Find(string stream) =>
@@ -353,7 +392,7 @@ public sealed class MigrationRunner(
 
     // Every plugin's tables belong to its own stream: the plugins of the plugin host and the streams registered through the seam.
     private List<string> PluginTablePrefixes(IServiceProvider services) =>
-        [.. plugins.Select(plugin => plugin.Name)
+        [.. _plugins.Select(plugin => plugin.Name)
             .Concat(services.GetService<PluginRegistry>()?.Plugins.Select(plugin => plugin.Name) ?? [])
             .Distinct(StringComparer.Ordinal)
             .Select(PluginStorage.TablePrefixOf)];
@@ -397,7 +436,9 @@ public sealed class MigrationRunner(
         return applied;
     }
 
-    private async Task<SchemaSyncReport> SyncAsync(SchemaModel target, CancellationToken cancellationToken)
+    // With whether it recorded the schema history, which it does when it applied every change and, for a host that schema
+    // apply serves, the history says none is lost.
+    private async Task<(SchemaSyncReport Report, bool Recorded)> SyncAsync(SchemaModel target, CancellationToken cancellationToken)
     {
         // The host's context for the target schema, so that its model maps the plugins' tables as the host's does.
         await using var scope = scopes.CreateAsyncScope();
@@ -432,12 +473,8 @@ public sealed class MigrationRunner(
             MigrationLog.SchemaSyncNotApplied(logger, change);
         }
 
-        if (diff.NotApplied.Count == 0)
-        {
-            await _history.RecordAsync(target, cancellationToken);
-        }
-
-        return new SchemaSyncReport(applied, diff.NotApplied);
+        var recorded = diff.NotApplied.Count == 0 && await _history.RecordAfterSyncAsync(target, UsesSchemaApplyAsync, cancellationToken);
+        return (new SchemaSyncReport(applied, diff.NotApplied), recorded);
     }
 
     private static string Describe(MigrationOperation operation) => operation switch

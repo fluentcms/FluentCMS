@@ -1,9 +1,11 @@
+using FluentCMS.Core.Settings;
 using FluentCMS.Settings;
 
 namespace FluentCMS.Core.Seeding;
 
 // The instance-wide record of which seeders were applied, in the settings area "seeding". It is registered only when a host adds a seeder.
 [Settings("seeding")]
+[UnlistedSettings]
 internal sealed class SeedingState
 {
     public Dictionary<string, SeedRecord> Seeders { get; set; } = [];

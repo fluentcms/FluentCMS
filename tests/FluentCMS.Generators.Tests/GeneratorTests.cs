@@ -309,6 +309,66 @@ public sealed class GeneratorTests
         diagnostic.Location.GetLineSpan().StartLinePosition.Line.ShouldBe(13);
     }
 
+    // The names of the sources are compared ignoring case, so x-y and xy, XYFields and XyFields, would be one source.
+    [Fact]
+    public void TwoBuildersWhoseNamesDifferInCaseAloneKeepTheFirstAndStopNoOther()
+    {
+        const string source = """
+            using FluentCMS.Schema;
+
+            namespace Shop;
+
+            [Collection("x-y")]
+            public sealed class First : ContentItem
+            {
+            }
+
+            [Collection("xy")]
+            public sealed class Second : ContentItem
+            {
+            }
+            """;
+
+        var result = Generation.Run(Generation.Compile(("Shop.cs", source), ("Product.cs", Product)));
+
+        result.Exception.ShouldBeNull();
+        result.GeneratedSources.Select(generated => generated.HintName).ShouldBe(["Shop.ProductFields.g.cs", "Shop.XYFields.g.cs", "Shop.SizeComponentFields.g.cs"], ignoreOrder: true);
+        var diagnostic = result.Diagnostics.ShouldHaveSingleItem();
+        diagnostic.Id.ShouldBe("FCMS0100");
+        diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("'xy'");
+        diagnostic.Location.GetLineSpan().StartLinePosition.Line.ShouldBe(10);
+    }
+
+    // The host refuses [Blocks(null)] at start and the analyzers in the editor, so the field gets no builder and no word.
+    [Fact]
+    public void ABlocksFieldWithoutAListOfBlockTypesGetsNoBuilderAndStopsNoOther()
+    {
+        const string source = """
+            using FluentCMS.Schema;
+
+            namespace Shop;
+
+            [Collection("page")]
+            public sealed class Page : ContentItem
+            {
+                [Text]
+                public string? Title { get; set; }
+
+                [Blocks(null)]
+                public BlockList Body { get; set; } = [];
+            }
+            """;
+
+        var result = Generation.Run(Generation.Compile(("Page.cs", source), ("Product.cs", Product)));
+
+        result.Exception.ShouldBeNull();
+        result.Diagnostics.ShouldBeEmpty();
+        result.GeneratedSources.Select(generated => generated.HintName).ShouldBe(["Shop.PageFields.g.cs", "Shop.ProductFields.g.cs", "Shop.SizeComponentFields.g.cs"], ignoreOrder: true);
+        var text = Generation.Generated(result, "Shop.PageFields.g.cs");
+        text.ShouldContain("TextField Title");
+        text.ShouldNotContain("Body");
+    }
+
     [Fact]
     public void AClassTheAttributeReaderRefusesGetsNoBuilder()
     {

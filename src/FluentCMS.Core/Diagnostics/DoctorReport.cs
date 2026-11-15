@@ -32,26 +32,26 @@ internal static class DoctorReport
         var exitCode = CommandExitCodes.Success;
         foreach (var refusal in refusals)
         {
-            await error.WriteLineAsync($"{CommandErrorCodes.HostWouldNotStart}: the host would not start: {refusal}");
+            await WriteLineAsync(error, $"{CommandErrorCodes.HostWouldNotStart}: the host would not start: {refusal}", keepLineBreaks: true);
             exitCode = CommandExitCodes.Failure;
         }
 
         if (report.Failure is { } failure)
         {
-            await error.WriteLineAsync($"{CommandErrorCodes.HostWouldNotStart}: the report is incomplete ({failure}), so whether the host starts is not known; the log has the exception");
+            await WriteLineAsync(error, $"{CommandErrorCodes.HostWouldNotStart}: the report is incomplete ({failure}), so whether the host starts is not known; the log has the exception");
             exitCode = CommandExitCodes.Failure;
         }
 
         if (report.PendingMigrations.Count > 0)
         {
-            await error.WriteLineAsync($"{CommandErrorCodes.MigrationsPending}: {MigrateCommand.Count(report.PendingMigrations.Count)} pending; run 'fluentcms migrate' to apply them");
+            await WriteLineAsync(error, $"{CommandErrorCodes.MigrationsPending}: {MigrateCommand.Count(report.PendingMigrations.Count)} pending; run 'fluentcms migrate' to apply them");
             exitCode = CommandExitCodes.Failure;
         }
 
         if (report.Assemblies.Select(assembly => assembly.Version).Distinct(StringComparer.Ordinal).Count() > 1)
         {
             var versions = string.Join(", ", report.Assemblies.Select(assembly => $"{assembly.Name} {assembly.Version}"));
-            await error.WriteLineAsync($"{CommandErrorCodes.MixedVersions}: warning: the FluentCMS assemblies have different versions ({versions}); update them together");
+            await WriteLineAsync(error, $"{CommandErrorCodes.MixedVersions}: warning: the FluentCMS assemblies have different versions ({versions}); update them together");
         }
 
         return exitCode;
@@ -60,8 +60,8 @@ internal static class DoctorReport
     public static async Task WriteTextAsync(StartupReport report, TextWriter output)
     {
         var provider = report.DataProvider;
-        await output.WriteLineAsync($"FluentCMS {report.Version} in {report.Environment}");
-        await output.WriteLineAsync($"Data provider: {provider.Provider} {provider.ProviderVersion}, migrate on startup {(provider.MigrateOnStartup ? "on" : "off")}, schema sync {Or(provider.SchemaSync, "unknown")}");
+        await WriteLineAsync(output, $"FluentCMS {report.Version} in {report.Environment}");
+        await WriteLineAsync(output, $"Data provider: {provider.Provider} {provider.ProviderVersion}, migrate on startup {(provider.MigrateOnStartup ? "on" : "off")}, schema sync {Or(provider.SchemaSync, "unknown")}");
 
         await ListAsync(output, "Assemblies", report.Assemblies.Select(assembly => $"{assembly.Name} {assembly.Version}"));
         await ListAsync(output, "Plugins", report.Plugins.Select(plugin => $"{plugin.Name} {plugin.Version}"));
@@ -69,18 +69,18 @@ internal static class DoctorReport
         await ListAsync(output, "Pending migrations", report.PendingMigrations.Select(migration => $"{migration.Stream}  {migration.Id}"));
 
         var schema = report.Schema;
-        await output.WriteLineAsync("Schema:");
-        await output.WriteLineAsync($"  hash {Or(schema.Hash, "unknown")}");
-        await output.WriteLineAsync(schema.AppliedHash is null
+        await WriteLineAsync(output, "Schema:");
+        await WriteLineAsync(output, $"  hash {Or(schema.Hash, "unknown")}");
+        await WriteLineAsync(output, schema.AppliedHash is null
             ? "  not in the schema history"
             : string.Create(CultureInfo.InvariantCulture, $"  applied {schema.AppliedHash} on {schema.AppliedAt:u} by FluentCMS {schema.AppliedVersion}"));
         if (schema.Drifted)
         {
-            await output.WriteLineAsync($"  drift: {schema.Changes}");
+            await WriteLineAsync(output, $"  drift: {schema.Changes}");
         }
         else if (schema.Changes is { } note)
         {
-            await output.WriteLineAsync($"  {note}");
+            await WriteLineAsync(output, $"  {note}");
         }
 
         await ListAsync(output, "Insecure defaults", report.InsecureDefaults.Select(item => $"{item.Id}: {item.Message}"));
@@ -88,19 +88,24 @@ internal static class DoctorReport
 
     private static async Task ListAsync(TextWriter output, string title, IEnumerable<string> lines)
     {
-        await output.WriteLineAsync($"{title}:");
+        await WriteLineAsync(output, $"{title}:");
         var any = false;
         foreach (var line in lines)
         {
-            await output.WriteLineAsync($"  {line}");
+            await WriteLineAsync(output, $"  {line}");
             any = true;
         }
 
         if (!any)
         {
-            await output.WriteLineAsync("  none");
+            await WriteLineAsync(output, "  none");
         }
     }
 
     private static string Or(string value, string fallback) => value.Length == 0 ? fallback : value;
+
+    // The report of an instance reached with --url is its text, which is made printable. Only a refusal, which is the host's
+    // own and never an instance's, keeps the lines of a message such as that of a schema with errors.
+    private static Task WriteLineAsync(TextWriter writer, string line, bool keepLineBreaks = false) =>
+        writer.WriteLineAsync(PrintableText.Escape(line, keepLineBreaks));
 }

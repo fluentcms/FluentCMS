@@ -272,12 +272,6 @@ internal static class SchemaReader
         var attribute = field.FieldAttribute;
         var (element, multiple) = Unwrap(property.Type);
 
-        // [Select(null)] or [Blocks(null)] stops the reader with an exception rather than a code, so nothing is reported.
-        if (field.FieldType is "select" or "blocks" && attribute.ConstructorArguments is { Length: 1 } arguments && arguments[0].IsNull)
-        {
-            return false;
-        }
-
         switch (field.FieldType)
         {
             case "decimal":
@@ -285,9 +279,11 @@ internal static class SchemaReader
                 field.SlugSource = Named(attribute, "Source") as string;
                 return true;
 
+            // As the reader does, [Select(null)] is refused as a list on an enum and as no options elsewhere.
             case "select":
                 var options = Array(attribute).Length;
-                if (element.TypeKind == TypeKind.Enum && options > 0)
+                var isNull = attribute.ConstructorArguments is { Length: 1 } arguments && arguments[0].IsNull;
+                if (element.TypeKind == TypeKind.Enum && (options > 0 || isNull))
                 {
                     findings?.Add(new Finding(Rules.EnumWithOptions, LocationOf(attribute), [location]));
                     return false;
@@ -385,9 +381,10 @@ internal static class SchemaReader
         return true;
     }
 
-    // The values of a params array, such as the options of [Select] or the block types of [Blocks].
+    // The values of a params array, such as the options of [Select] or the block types of [Blocks]; none for a null array,
+    // whose Values throw when used.
     private static ImmutableArray<TypedConstant> Array(AttributeData attribute) =>
-        attribute.ConstructorArguments.Length == 1 && attribute.ConstructorArguments[0].Kind == TypedConstantKind.Array
+        attribute.ConstructorArguments.Length == 1 && attribute.ConstructorArguments[0] is { Kind: TypedConstantKind.Array, IsNull: false }
             ? attribute.ConstructorArguments[0].Values
             : ImmutableArray<TypedConstant>.Empty;
 

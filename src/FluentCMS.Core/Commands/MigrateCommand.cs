@@ -12,7 +12,7 @@ internal sealed class MigrateCommand : HostCommand
 
     public override string Name => "migrate";
 
-    public override string Description => "Applies the pending migrations of every stream, in the order system, plugins, content, and records the schema in the schema history.";
+    public override string Description => "Applies the pending migrations of every stream, in the order system, plugins, content, and records the schema in the schema history when the host has content migrations.";
 
     public override IReadOnlyList<CommandOption> Options { get; } =
     [

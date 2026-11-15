@@ -301,6 +301,46 @@ public sealed class AiProviderTests : IAsyncLifetime
         _ai.Logs.Lines.ShouldNotContain(line => line.Contains("key-of-the-instance", StringComparison.Ordinal) || line.Contains("key-that-replaced-it", StringComparison.Ordinal));
     }
 
+    // A site that set a key of its own goes back to the key of the defaults by a reset of its area over the Management API,
+    // and keeps following the defaults when they replace it (#3098).
+    [Fact]
+    public async Task ASiteThatResetsItsSettingsInheritsTheKeyOfTheDefaultsAgain()
+    {
+        var defaults = new AiSettings
+        {
+            Provider = AiProvider.OpenAiCompatible,
+            Model = "model-of-the-instance",
+            Endpoint = _first.Url("v1"),
+            ApiKey = "key-of-the-instance",
+            Fields = { ["article"] = ["summary"] },
+        };
+        await _ai.SetDefaultsAsync(defaults);
+        using var admin = await _ai.AdminAsync(await _ai.BareSiteAsync());
+        var body = new { type = "article", field = "summary", text = "Ships are big boats." };
+        var owned = await SaveAsync(admin, new { provider = "openAiCompatible", model = "model-of-the-site", endpoint = _second.Url("v1"), apiKey = "key-of-the-site", fields = new { article = SummaryOnly } });
+        var own = await SuggestAsync(admin, "rewrite", body);
+
+        var path = new Uri("/api/management/v1/settings/ai", UriKind.Relative);
+        using var reset = new HttpRequestMessage(HttpMethod.Delete, path);
+        reset.Headers.IfMatch.Add(new EntityTagHeaderValue($"\"{owned["version"]!.GetValue<long>()}\""));
+        using var answer = await admin.SendAsync(reset, Token);
+        using var read = await admin.GetAsync(path, Token);
+        var after = await JsonAsync(read);
+        var followed = await SuggestAsync(admin, "rewrite", body);
+        defaults.ApiKey = "key-that-replaced-it";
+        await _ai.SetDefaultsAsync(defaults);
+        await SuggestAsync(admin, "rewrite", body);
+
+        answer.StatusCode.ShouldBe(HttpStatusCode.NoContent, await answer.Content.ReadAsStringAsync(Token));
+        owned["secretsInherited"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldNotContain("apiKey");
+        after["source"]!.GetValue<string>().ShouldBe("default");
+        after["secretsInherited"]!.AsArray().Select(key => key!.GetValue<string>()).ShouldContain("apiKey");
+        own["usage"]!["model"]!.GetValue<string>().ShouldBe("model-of-the-site");
+        followed["usage"]!["model"]!.GetValue<string>().ShouldBe("model-of-the-instance");
+        _second.Requests.Select(request => request.Headers["Authorization"]).ShouldBe(["Bearer key-of-the-site"]);
+        _first.Requests.Select(request => request.Headers["Authorization"]).ShouldBe(["Bearer key-of-the-instance", "Bearer key-that-replaced-it"]);
+    }
+
     // The slot keeps the plugin's default until a host fills it.
     [Fact]
     public async Task TheStartupReportListsTheDefaultOfTheSlotWithThePlugin()

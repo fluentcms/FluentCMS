@@ -6,15 +6,16 @@ namespace FluentCMS.Data.Sqlite;
 
 // The database file behind `fluentcms backup` and `fluentcms restore`. The snapshot goes through SQLite's online backup,
 // which copies the pages under a read transaction, so it is consistent while the host writes, in WAL mode without stopping
-// it. A restore replaces the file and removes the journal files of the database it replaces, whose pages would otherwise be
-// read into the new one. The file keeps the journal mode of the backup until the provider opens it to write, which puts it
-// in WAL mode when the provider uses it.
+// it. A restore checks the snapshot, then replaces the file and removes the journal files of the database it replaces, whose
+// pages would otherwise be read into the new one. The file keeps the journal mode of the backup until the provider opens it
+// to write, which puts it in WAL mode when the provider uses it.
 internal sealed class SqliteDatabaseFile(string connectionString) : IDatabaseFile
 {
     private const string BusyTimeout = "PRAGMA busy_timeout = 5000";
     private const int SnapshotAttempts = 10;
 
-    private static readonly string[] JournalSuffixes = ["-wal", "-shm", "-journal"];
+    // The database and its journal files.
+    private static readonly string[] FileSuffixes = ["", "-wal", "-shm", "-journal"];
 
     private readonly Lazy<string?> _path = new(() => PathOf(connectionString));
 
@@ -78,37 +79,85 @@ internal sealed class SqliteDatabaseFile(string connectionString) : IDatabaseFil
         }
     }
 
+    // quick_check reads every page, so a file that is not a SQLite database, or one that was cut off, is found before the
+    // database it would replace is touched. The connection is the file's alone and closes it, which leaves no journal.
+    public string? Check(string snapshot)
+    {
+        if (new FileInfo(snapshot).Length == 0)
+        {
+            return "the file is empty";
+        }
+
+        try
+        {
+            using var connection = new SqliteConnection(Unpooled(snapshot, SqliteOpenMode.ReadWrite));
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA quick_check";
+            var problems = new List<string>();
+            using (var reader = command.ExecuteReader())
+            {
+                while (reader.Read() && problems.Count < 3)
+                {
+                    problems.Add(reader.GetString(0));
+                }
+            }
+
+            return problems is ["ok"] ? null : string.Join("; ", problems);
+        }
+        catch (SqliteException exception)
+        {
+            return exception.Message;
+        }
+    }
+
+    // The database it replaces is moved aside with its journal files, and back when one of them or the snapshot cannot be
+    // moved, so a failed restore loses nothing, not even what the WAL of a host that was killed holds. They are deleted once
+    // the snapshot is in place. When they cannot be moved back, the error says where they are.
     public void Restore(string snapshot)
     {
         var path = FilePath ?? throw new InvalidOperationException("An in-memory database has no file to restore.");
 
         SqliteConnection.ClearAllPools();
 
-        // The database it replaces is moved aside first and back when a later step fails, so a failed restore loses nothing.
-        var aside = File.Exists(path) ? $"{path}.{Guid.NewGuid():N}.replaced" : null;
-        if (aside is not null)
-        {
-            File.Move(path, aside);
-        }
-
+        var aside = $"{path}.{Guid.NewGuid():N}.replaced";
+        var moved = new List<string>();
         try
         {
-            foreach (var suffix in JournalSuffixes)
+            foreach (var suffix in FileSuffixes.Where(suffix => File.Exists(path + suffix)))
             {
-                File.Delete(path + suffix);
+                File.Move(path + suffix, aside + suffix);
+                moved.Add(suffix);
             }
 
             File.Move(snapshot, path);
         }
-        catch when (aside is not null && !File.Exists(path))
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            File.Move(aside, path);
+            var left = new List<string>();
+            foreach (var suffix in Enumerable.Reverse(moved))
+            {
+                try
+                {
+                    File.Move(aside + suffix, path + suffix);
+                }
+                catch (Exception back) when (back is IOException or UnauthorizedAccessException)
+                {
+                    left.Add(aside + suffix);
+                }
+            }
+
+            if (left.Count > 0)
+            {
+                throw new IOException($"{exception.Message} The database it replaces could not be put back either; it is in {string.Join(", ", left)}, to rename to {path} with its suffix.", exception);
+            }
+
             throw;
         }
 
-        if (aside is not null)
+        foreach (var suffix in moved)
         {
-            File.Delete(aside);
+            File.Delete(aside + suffix);
         }
     }
 

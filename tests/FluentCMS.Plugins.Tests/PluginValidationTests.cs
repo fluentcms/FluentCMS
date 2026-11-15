@@ -32,6 +32,8 @@ public sealed class PluginValidationTests
     public void ABadManifestStopsTheHost()
     {
         Refused(cms => cms.AddPlugin<BadNamePlugin>(), "FCMS1502", "'Bad_Name'");
+        Refused(cms => cms.AddPlugin<ContentNamedPlugin>(), "FCMS1502", "'content', which is a migration stream of core");
+        Refused(cms => cms.AddPlugin<SystemNamedPlugin>(), "FCMS1502", "'system', which is a migration stream of core");
         Refused(cms => cms.AddPlugin<BadVersionPlugin>(), "FCMS1503", "'versioned'", "'one'");
         Refused(cms => cms.AddPlugin<NoRangePlugin>(), "FCMS1504", "'unranged'", "no SdkRange");
         Refused(cms => cms.AddPlugin<BadRangePlugin>(), "FCMS1504", "'misranged'", "[2.0.0,1.0.0]");

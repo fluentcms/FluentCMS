@@ -112,8 +112,10 @@ internal static class FieldsEmitter
                 .ThenBy(type => type.Namespace, StringComparer.Ordinal)
                 .ToList();
 
+            // A source is named after its class, and Roslyn compares the names of sources ignoring case, as the tool compares
+            // its files, so XYFields and XyFields are one name.
             List<Builder> builders = [];
-            var classNames = new HashSet<string>(StringComparer.Ordinal);
+            var classNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var type in ordered)
             {
                 var group = GroupOf(type.Kind);
@@ -130,17 +132,19 @@ internal static class FieldsEmitter
                     _ => "Fields",
                 };
 
+                // The name is taken before a block type with a hyphen is left out, since the tool gives that type its class:
+                // the class and the builder of a name then belong to one type.
+                var builder = new Builder(type, className);
+                if (_builders.ContainsKey((group, type.Name)) || !classNames.Add(builder.FullName))
+                {
+                    Report(EmitCodes.TypeSkipped, $"The {Label(type.Kind)} '{type.Name}' gets no field builder, because another type takes the name {className}, in this case or another.", type, null);
+                    continue;
+                }
+
                 // A filter path names the block type as a segment, which may hold only letters, digits and underscores.
                 if (group == Group.Block && type.Name.Contains('-'))
                 {
                     Report(EmitCodes.BlockNotReachable, $"The block type '{type.Name}' gets no field builder, because a filter path cannot name a block type with a hyphen; a block list still has Has{Pascal(type.Name)}().", type, null);
-                    continue;
-                }
-
-                var builder = new Builder(type, className);
-                if (_builders.ContainsKey((group, type.Name)) || !classNames.Add(builder.FullName))
-                {
-                    Report(EmitCodes.TypeSkipped, $"The {Label(type.Kind)} '{type.Name}' gets no field builder, because {className} is the builder of another type.", type, null);
                     continue;
                 }
 
