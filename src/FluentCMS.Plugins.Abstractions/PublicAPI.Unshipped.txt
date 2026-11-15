@@ -22,3 +22,4 @@ static FluentCMS.Plugins.PluginServiceBuilderExtensions.AddMigrations(this Fluen
 static FluentCMS.Plugins.PluginServiceBuilderExtensions.AddModel<TContributor>(this FluentCMS.Plugins.IPluginServiceBuilder! plugin) -> FluentCMS.Plugins.IPluginServiceBuilder!
 static FluentCMS.Plugins.PluginAppBuilderExtensions.RequireCallerRateLimit<TBuilder>(this TBuilder builder) -> TBuilder
 static FluentCMS.Plugins.PublicAddresses.IsPublic(System.Net.IPAddress! address) -> bool
+static FluentCMS.Plugins.PluginAppBuilderExtensions.Takes<T>(this Microsoft.AspNetCore.Builder.RouteHandlerBuilder! builder, bool optional = false, string? description = null, string? mediaType = null) -> Microsoft.AspNetCore.Builder.RouteHandlerBuilder!

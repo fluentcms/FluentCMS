@@ -1,3 +1,4 @@
+using FluentCMS.Plugins;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
@@ -44,15 +45,15 @@ internal static class SiteEndpoints
         settings.MapGet("", (string area, HttpContext httpContext, [FromServices] SettingsService service) => ReadSettingAsync(area, instance: false, httpContext, service))
             .Produces<SettingResponse>();
         settings.MapPut("", (string area, HttpContext httpContext, [FromServices] SettingsService service) => WriteSettingAsync(area, instance: false, httpContext, service))
-            .Takes<JsonObject>(description: SettingsDocument).Produces<SettingResponse>();
+            .Takes<JsonObject>(description: SettingsDocument).WithParameter(SharedComponents.SettingsIfMatch).Produces<SettingResponse>();
         settings.MapDelete("", (string area, HttpContext httpContext, [FromServices] SettingsService service) => ResetSettingAsync(area, instance: false, httpContext, service))
-            .Produces(StatusCodes.Status204NoContent);
+            .WithParameter(SharedComponents.SettingsIfMatch).Produces(StatusCodes.Status204NoContent);
         settings.MapGet("/defaults", (string area, HttpContext httpContext, [FromServices] SettingsService service) => ReadSettingAsync(area, instance: true, httpContext, service))
             .Produces<SettingResponse>();
         settings.MapPut("/defaults", (string area, HttpContext httpContext, [FromServices] SettingsService service) => WriteSettingAsync(area, instance: true, httpContext, service))
-            .Takes<JsonObject>(description: SettingsDocument).Produces<SettingResponse>();
+            .Takes<JsonObject>(description: SettingsDocument).WithParameter(SharedComponents.SettingsIfMatch).Produces<SettingResponse>();
         settings.MapDelete("/defaults", (string area, HttpContext httpContext, [FromServices] SettingsService service) => ResetSettingAsync(area, instance: true, httpContext, service))
-            .Produces(StatusCodes.Status204NoContent);
+            .WithParameter(SharedComponents.SettingsIfMatch).Produces(StatusCodes.Status204NoContent);
     }
 
     private static async Task<IResult> ListAsync(HttpContext httpContext, [FromServices] SiteManager sites)

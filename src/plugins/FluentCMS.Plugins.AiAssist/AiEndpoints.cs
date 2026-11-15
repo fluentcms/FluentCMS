@@ -16,13 +16,15 @@ internal static class AiEndpoints
 
     public static RouteGroupBuilder MapAiEndpoints(this RouteGroupBuilder group)
     {
-        group.MapPost("/actions/{action}", ActAsync);
+        group.MapPost("/actions/{action}", ActAsync)
+            .Produces<AiActionResult>()
+            .WithDescription($"A request that accepts {EventStream} is answered with events once the provider is asked: delta with each piece of text, then done with this body, or error with the problem.");
 
         group.MapGet("/fields", async (AiAssistService ai, CancellationToken cancellationToken) =>
             Results.Ok(await ai.FieldsAsync(cancellationToken))).Produces<AiFields>();
 
         group.MapGet("/usage", async (string? principalId, string? action, string? from, string? to, string? page, string? pageSize, AiUsageService usage, CancellationToken cancellationToken) =>
-            Results.Ok(await usage.QueryAsync(new AiUsageQuery(principalId, action, from, to, page, pageSize), cancellationToken)));
+            Results.Ok(await usage.QueryAsync(new AiUsageQuery(principalId, action, from, to, page, pageSize), cancellationToken))).Produces<AiUsagePage>();
 
         return group;
     }

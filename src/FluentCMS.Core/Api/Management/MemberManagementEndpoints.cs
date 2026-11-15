@@ -1,3 +1,4 @@
+using FluentCMS.Plugins;
 using System.ComponentModel;
 using System.Text.Json.Serialization;
 using FluentCMS.Content;

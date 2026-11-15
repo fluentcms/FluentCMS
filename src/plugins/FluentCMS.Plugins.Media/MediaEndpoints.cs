@@ -29,6 +29,8 @@ internal static class MediaEndpoints
     // An SVG is a document that can carry script, so a browser that opens one gets nothing to run and nowhere to send.
     public const string SvgPolicy = "default-src 'none'; img-src data:; style-src 'unsafe-inline'; sandbox";
 
+    private const string MultipartForm = "multipart/form-data";
+
     private static readonly JsonSerializerOptions PresetJson = new(JsonSerializerDefaults.Web)
     {
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
@@ -52,68 +54,56 @@ internal static class MediaEndpoints
             return Results.Ok(MediaAssetPage.From(await media.ListWithUrlsAsync(query, cancellationToken)));
         }).Produces<MediaAssetPage>();
 
-        group.MapPost("", UploadAsync);
+        group.MapPost("", UploadAsync)
+            .Takes<MediaUploadForm>(mediaType: MultipartForm).Produces<MediaAssetList>(StatusCodes.Status201Created);
 
         group.MapGet("/{id:guid}", async (Guid id, MediaService media, CancellationToken cancellationToken) =>
             Results.Ok(MediaAssetResponse.From(await media.GetWithUrlsAsync(id, cancellationToken))))
             .Produces<MediaAssetResponse>();
 
         group.MapPatch("/{id:guid}", async (Guid id, MediaAssetChanges changes, IMediaService media, CancellationToken cancellationToken) =>
-            Results.Ok(await media.UpdateAsync(id, changes, cancellationToken)));
+            Results.Ok(await media.UpdateAsync(id, changes, cancellationToken))).Produces<MediaAsset>();
 
         group.MapPost("/{id:guid}/move", async (Guid id, AssetMove move, IMediaService media, CancellationToken cancellationToken) =>
-            Results.Ok(await media.MoveAsync(id, move.FolderId, cancellationToken)));
+            Results.Ok(await media.MoveAsync(id, move.FolderId, cancellationToken))).Produces<MediaAsset>();
 
         group.MapDelete("/{id:guid}", async (Guid id, bool? force, IMediaService media, CancellationToken cancellationToken) =>
         {
             await media.DeleteAsync(id, force ?? false, cancellationToken);
             return Results.NoContent();
-        });
+        }).Produces(StatusCodes.Status204NoContent);
 
-        group.MapPost("/{id:guid}/replace", ReplaceAsync);
+        group.MapPost("/{id:guid}/replace", ReplaceAsync).Takes<MediaReplaceForm>(mediaType: MultipartForm).Produces<MediaAsset>();
 
         group.MapGet("/{id:guid}/usage", async (Guid id, IMediaService media, CancellationToken cancellationToken) =>
-        {
-            var usage = await media.GetUsageAsync(id, cancellationToken);
-            return Results.Ok(new
-            {
-                items = usage.Select(reference => new
-                {
-                    type = reference.Type,
-                    entryId = reference.EntryId,
-                    status = reference.Status == QueryStatus.Published ? "published" : "draft",
-                    locale = reference.Locale,
-                    field = reference.Field,
-                }),
-            });
-        });
+            Results.Ok(MediaUsageList.From(await media.GetUsageAsync(id, cancellationToken)))).Produces<MediaUsageList>();
 
         group.MapPost("/{id:guid}/download-url", async (Guid id, IMediaService media, CancellationToken cancellationToken) =>
-            Results.Ok(await media.GetDownloadUrlAsync(id, cancellationToken)));
+            Results.Ok(await media.GetDownloadUrlAsync(id, cancellationToken))).Produces<MediaDownloadUrl>();
 
         group.MapGet("/folders", async (IMediaService media, CancellationToken cancellationToken) =>
-            Results.Ok(new { items = await media.ListFoldersAsync(cancellationToken) }));
+            Results.Ok(new MediaFolderList(await media.ListFoldersAsync(cancellationToken)))).Produces<MediaFolderList>();
 
         group.MapPost("/folders", async (FolderCreate request, IMediaService media, CancellationToken cancellationToken) =>
         {
             var created = await media.CreateFolderAsync(request.Name ?? "", request.ParentId, cancellationToken);
             return Results.Created($"media/folders/{created.Id:D}", created);
-        });
+        }).Produces<MediaFolder>(StatusCodes.Status201Created);
 
         group.MapPatch("/folders/{id:guid}", async (Guid id, FolderRename request, IMediaService media, CancellationToken cancellationToken) =>
-            Results.Ok(await media.RenameFolderAsync(id, request.Name ?? "", cancellationToken)));
+            Results.Ok(await media.RenameFolderAsync(id, request.Name ?? "", cancellationToken))).Produces<MediaFolder>();
 
         group.MapPost("/folders/{id:guid}/move", async (Guid id, FolderMove request, IMediaService media, CancellationToken cancellationToken) =>
-            Results.Ok(await media.MoveFolderAsync(id, request.ParentId, cancellationToken)));
+            Results.Ok(await media.MoveFolderAsync(id, request.ParentId, cancellationToken))).Produces<MediaFolder>();
 
         group.MapDelete("/folders/{id:guid}", async (Guid id, IMediaService media, CancellationToken cancellationToken) =>
         {
             await media.DeleteFolderAsync(id, cancellationToken);
             return Results.NoContent();
-        });
+        }).Produces(StatusCodes.Status204NoContent);
 
         group.MapGet("/presets", async (IMediaService media, CancellationToken cancellationToken) =>
-            Results.Json(new { items = await media.ListPresetsAsync(cancellationToken) }, PresetJson));
+            Results.Json(new MediaPresetList(await media.ListPresetsAsync(cancellationToken)), PresetJson)).Produces<MediaPresetList>();
 
         group.MapPut("/presets/{name}", async (string name, HttpRequest request, IMediaService media, CancellationToken cancellationToken) =>
         {
@@ -128,13 +118,13 @@ internal static class MediaEndpoints
             }
 
             return Results.Json(await media.SetPresetAsync(name, options ?? throw Invalid("", "The body is a JSON object of the parameters of the preset."), cancellationToken), PresetJson);
-        });
+        }).Takes<MediaImageOptions>().Produces<MediaPreset>();
 
         group.MapDelete("/presets/{name}", async (string name, IMediaService media, CancellationToken cancellationToken) =>
         {
             await media.DeletePresetAsync(name, cancellationToken);
             return Results.NoContent();
-        });
+        }).Produces(StatusCodes.Status204NoContent);
 
         return group;
     }
@@ -147,7 +137,7 @@ internal static class MediaEndpoints
             var delivered = await media.DeliverAsync(id, cancellationToken);
             var operation = operations.Current ?? throw new InvalidOperationException("A Delivery read runs inside an operation.");
             return new MediaDeliveryResponse(delivered, operation.Site.Value, shared: operation.Principal.IsAnonymous && !delivered.Asset.IsPrivate);
-        });
+        }).Produces<MediaDeliveryResponse.DeliveredAsset>();
 
         return group;
     }
@@ -230,7 +220,7 @@ internal static class MediaEndpoints
             }
 
             var created = await media.UploadAsync(new MediaUpload(folderId, files), cancellationToken);
-            return Results.Created((string?)null, new { items = created });
+            return Results.Created((string?)null, new MediaAssetList(created));
         }
         finally
         {

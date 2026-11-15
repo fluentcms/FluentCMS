@@ -1,3 +1,4 @@
+using FluentCMS.Plugins;
 using System.Text.Json;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
