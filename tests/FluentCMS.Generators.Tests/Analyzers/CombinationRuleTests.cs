@@ -183,6 +183,17 @@ public sealed class EnumWithOptionsTests
         """, "FCMS1216");
 
     [Fact]
+    public Task ANullListOnAnEnumIsReported() => Analysis.Reports("""
+        public enum Kind { News, Blog }
+
+        [Collection("page")]
+        public sealed class Page : ContentItem
+        {
+            [{|FCMS0007:Select(null!)|}] public Kind Kind { get; set; }
+        }
+        """, "FCMS1216");
+
+    [Fact]
     public Task AnEnumWithoutOptionsIsAccepted() => Analysis.Accepts("""
         public enum Kind { News, Blog }
 
@@ -206,6 +217,15 @@ public sealed class NoOptionsTests
         """, "FCMS1216");
 
     [Fact]
+    public Task AStringWithANullListIsReported() => Analysis.Reports("""
+        [Collection("page")]
+        public sealed class Page : ContentItem
+        {
+            [{|FCMS0008:Select(null!)|}] public string Kind { get; set; } = "";
+        }
+        """, "FCMS1216");
+
+    [Fact]
     public Task AStringWithOptionsIsAccepted() => Analysis.Accepts("""
         [Collection("page")]
         public sealed class Page : ContentItem
@@ -215,18 +235,9 @@ public sealed class NoOptionsTests
         """);
 }
 
-// What the reader cannot read without an exception, or what depends on a plugin the analyzers cannot see, is left to the host.
+// What depends on a plugin the analyzers cannot see is left to the host.
 public sealed class LeftToTheHostTests
 {
-    [Fact]
-    public Task ANullListOfOptionsIsNotReported() => Analysis.Verify<Analyzers::FluentCMS.Analyzers.SchemaAttributeAnalyzer>(Analysis.Usings + """
-        [Collection("page")]
-        public sealed class Page : ContentItem
-        {
-            [Select(null!)] public string Kind { get; set; } = "";
-        }
-        """);
-
     [Fact]
     public Task AUniqueMediaFieldIsNotReported() => Analysis.Verify<Analyzers::FluentCMS.Analyzers.SchemaAttributeAnalyzer>(Analysis.Usings + """
         [Collection("page")]

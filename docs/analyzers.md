@@ -44,11 +44,11 @@ Error, for `FCMS1216`. A field property has no public getter or no public setter
 
 ### FCMS0007
 
-Error, for `FCMS1216`. `[Select]` on an enum lists options. The members of the enum are the options; remove the list.
+Error, for `FCMS1216`. `[Select]` on an enum lists options, or is given `null` for them. The members of the enum are the options; remove the list.
 
 ### FCMS0008
 
-Error, for `FCMS1216`. `[Select]` on a property that is not an enum lists no options. List them, as in `[Select("news", "blog")]`.
+Error, for `FCMS1216`. `[Select]` on a property that is not an enum lists no options, or is given `null` for them. List them, as in `[Select("news", "blog")]`.
 
 ### FCMS0009
 

@@ -262,6 +262,13 @@ public class AttributeReaderTests
     }
 
     [Fact]
+    public void SelectWithANullListIsFCMS1216OnAStringAndOnAnEnum()
+    {
+        ShouldReport(typeof(SelectWithNullOptions), "FCMS1216", "SelectWithNullOptions.Kind is not an enum, so [Select] must list its options");
+        ShouldReport(typeof(SelectEnumWithNullOptions), "FCMS1216", "SelectEnumWithNullOptions.Kind is an enum");
+    }
+
+    [Fact]
     public void TwoMaximumLengthsAreFCMS1216()
     {
         ShouldReport(typeof(ConflictingLengths), "FCMS1216", "ConflictingLengths.Code sets the maximum length to 10 and to 20");
@@ -476,6 +483,20 @@ public class AttributeReaderTests
     private sealed class SelectEnumWithOptions : ContentItem
     {
         [Select("a")]
+        public ArticleCategory Kind { get; set; }
+    }
+
+    [Collection]
+    private sealed class SelectWithNullOptions : ContentItem
+    {
+        [Select(null!)]
+        public string Kind { get; set; } = "";
+    }
+
+    [Collection]
+    private sealed class SelectEnumWithNullOptions : ContentItem
+    {
+        [Select(null!)]
         public ArticleCategory Kind { get; set; }
     }
 

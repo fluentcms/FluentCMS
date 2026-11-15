@@ -272,13 +272,6 @@ internal static class SchemaReader
         var attribute = field.FieldAttribute;
         var (element, multiple) = Unwrap(property.Type);
 
-        // [Select(null)] stops the reader with an exception rather than a code, so nothing is reported. [Blocks(null)] is
-        // read as no block types, as the reader reads it.
-        if (field.FieldType == "select" && attribute.ConstructorArguments is { Length: 1 } arguments && arguments[0].IsNull)
-        {
-            return false;
-        }
-
         switch (field.FieldType)
         {
             case "decimal":
@@ -286,9 +279,11 @@ internal static class SchemaReader
                 field.SlugSource = Named(attribute, "Source") as string;
                 return true;
 
+            // As the reader does, [Select(null)] is refused as a list on an enum and as no options elsewhere.
             case "select":
                 var options = Array(attribute).Length;
-                if (element.TypeKind == TypeKind.Enum && options > 0)
+                var isNull = attribute.ConstructorArguments is { Length: 1 } arguments && arguments[0].IsNull;
+                if (element.TypeKind == TypeKind.Enum && (options > 0 || isNull))
                 {
                     findings?.Add(new Finding(Rules.EnumWithOptions, LocationOf(attribute), [location]));
                     return false;
