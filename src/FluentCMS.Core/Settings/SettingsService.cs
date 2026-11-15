@@ -1,7 +1,9 @@
+using System.ComponentModel;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Transfer;
@@ -15,6 +17,15 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Settings;
 
+internal sealed record SettingsAreaInfo(
+    string Area,
+    [property: Description("The plugin that registers the area; null for an area of core or of the host.")]
+    string? Plugin,
+    [property: Description("Whether the caller may read, write and reset the area in the site of the request, at /settings/{area}.")]
+    bool Site,
+    [property: Description("Whether the caller may read, write and reset the instance defaults of the area, at /settings/{area}/defaults.")]
+    bool Defaults);
+
 // The settings of every area, as documents. ISettings<T> is a typed face on it, and the Management endpoint (B-50) is another.
 // A typed read is not checked against permissions; the redacted read and a write need settings.{area}.manage for the site, or with no site limit for the
 // instance defaults. A write goes through a context of its own, as the outbox does, so that it saves nothing the caller has
@@ -25,6 +36,7 @@ internal sealed class SettingsService(
     SystemDbContext context,
     IServiceScopeFactory scopes,
     SettingsRegistry registry,
+    PluginRegistry plugins,
     SettingsCache cache,
     IAuthorizationEvaluator authorization,
     IOperationContextAccessor accessor,
@@ -48,6 +60,28 @@ internal sealed class SettingsService(
 
     public SettingsDescriptor Require(string area) =>
         registry.Find(area) ?? throw SettingsDescriptor.Fail("area", SettingsErrorCodes.UnknownArea, $"There is no settings area '{area}'.");
+
+    // For the settings menu of the admin: the areas the caller may manage in the site, for the instance defaults or both, so an
+    // area it may not manage stays unknown to it, as on the routes of an area. One that core keeps for its own state is left out.
+    public async Task<IReadOnlyList<SettingsAreaInfo>> ListManagedAsync(SiteId site, CancellationToken cancellationToken)
+    {
+        var operation = accessor.Current
+            ?? throw new InvalidOperationException("Managing settings runs inside an operation; the entry point sets IOperationContextAccessor.Current.");
+
+        var permissions = await authorization.ResolveAsync(operation, cancellationToken);
+        List<SettingsAreaInfo> areas = [];
+        foreach (var descriptor in registry.Descriptors.Where(descriptor => descriptor.Listed))
+        {
+            var inSite = permissions.Allows(descriptor.Permission, new AccessTarget(site, null));
+            var defaults = permissions.Allows(descriptor.Permission, new AccessTarget(null, null));
+            if (inSite || defaults)
+            {
+                areas.Add(new SettingsAreaInfo(descriptor.Area, plugins.Contributions.SettingsOwner(descriptor.Type), inSite, defaults));
+            }
+        }
+
+        return areas;
+    }
 
     // Site override, then instance default, then code default. A null site is the instance defaults. The document that is
     // returned is one the class can read, so a damaged row is skipped and never takes a site down. A secret that the site's

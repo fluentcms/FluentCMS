@@ -140,7 +140,7 @@ public sealed class AdminFixture : IAsyncLifetime
 
     public Task<ApiResponse> PatchAsync(string path, string json, HttpClient? client = null) => SendAsync(client ?? Admin, HttpMethod.Patch, path, json);
 
-    public Task<ApiResponse> DeleteAsync(string path, HttpClient? client = null) => SendAsync(client ?? Admin, HttpMethod.Delete, path);
+    public Task<ApiResponse> DeleteAsync(string path, HttpClient? client = null, string? ifMatch = null) => SendAsync(client ?? Admin, HttpMethod.Delete, path, ifMatch: ifMatch);
 
     public async Task<string> CreateRoleAsync(string json, HttpClient? client = null)
     {

@@ -46,7 +46,8 @@ public interface IPluginServiceBuilder
 
     /// <summary>
     /// Adds a settings class, read through <see cref="Settings.ISettings{T}"/> and served by the Management API under
-    /// <c>/settings/{area}</c>. Its permission <c>settings.{area}.manage</c> joins the catalogue.
+    /// <c>/settings/{area}</c>, where <c>/settings</c> lists it with the plugin's name. Its permission
+    /// <c>settings.{area}.manage</c> joins the catalogue.
     /// </summary>
     /// <typeparam name="TSettings">A class with <see cref="Settings.SettingsAttribute"/> and a parameterless constructor.</typeparam>
     /// <returns>This builder.</returns>

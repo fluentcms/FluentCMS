@@ -15,9 +15,10 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FluentCMS.Core.Api.Management;
 
 // The sites and settings groups of spec 4.10. Sites are read and changed, and their locales added, changed and removed, with
-// sites.manage; creating and deleting sites, and hostnames, are the multi-site plugin's (Q6a). Settings are read and written
-// per area with settings.{area}.manage: /settings/{area} for the site of the request and /settings/{area}/defaults for the
-// instance defaults. A read is redacted, and a write names the version it read as If-Match.
+// sites.manage; creating and deleting sites, and hostnames, are the multi-site plugin's (Q6a). Settings are read, written and
+// reset per area with settings.{area}.manage: /settings/{area} for the site of the request and /settings/{area}/defaults for
+// the instance defaults, and /settings lists the areas the caller may manage. A read is redacted, and a write or a reset names
+// the version it read as If-Match.
 internal static class SiteEndpoints
 {
     private const string SettingsDocument = "The whole settings document of the area, as the JSON schema of the read describes it. A secret it leaves out keeps what is stored, and one that a site inherits from the instance defaults stays inherited; a secret it names, even as null, replaces it and is no longer inherited.";
@@ -36,15 +37,22 @@ internal static class SiteEndpoints
         sites.MapPatch("/{id}/locales/{code}", UpdateLocaleAsync).Takes<SiteLocaleUpdateRequest>().Produces<SiteLocaleInfo>();
         sites.MapDelete("/{id}/locales/{code}", RemoveLocaleAsync).Produces(StatusCodes.Status204NoContent);
 
-        var settings = management.MapGroup("/settings/{area}").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
+        var areas = management.MapGroup("/settings").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
+        areas.MapGet("", ListSettingsAsync).Produces<ItemList<SettingsAreaInfo>>();
+
+        var settings = areas.MapGroup("/{area}");
         settings.MapGet("", (string area, HttpContext httpContext, [FromServices] SettingsService service) => ReadSettingAsync(area, instance: false, httpContext, service))
             .Produces<SettingResponse>();
         settings.MapPut("", (string area, HttpContext httpContext, [FromServices] SettingsService service) => WriteSettingAsync(area, instance: false, httpContext, service))
             .Takes<JsonObject>(description: SettingsDocument).Produces<SettingResponse>();
+        settings.MapDelete("", (string area, HttpContext httpContext, [FromServices] SettingsService service) => ResetSettingAsync(area, instance: false, httpContext, service))
+            .Produces(StatusCodes.Status204NoContent);
         settings.MapGet("/defaults", (string area, HttpContext httpContext, [FromServices] SettingsService service) => ReadSettingAsync(area, instance: true, httpContext, service))
             .Produces<SettingResponse>();
         settings.MapPut("/defaults", (string area, HttpContext httpContext, [FromServices] SettingsService service) => WriteSettingAsync(area, instance: true, httpContext, service))
             .Takes<JsonObject>(description: SettingsDocument).Produces<SettingResponse>();
+        settings.MapDelete("/defaults", (string area, HttpContext httpContext, [FromServices] SettingsService service) => ResetSettingAsync(area, instance: true, httpContext, service))
+            .Produces(StatusCodes.Status204NoContent);
     }
 
     private static async Task<IResult> ListAsync(HttpContext httpContext, [FromServices] SiteManager sites)
@@ -131,6 +139,24 @@ internal static class SiteEndpoints
 
         await service.WriteAsync(descriptor, site, document.GetRawText(), expected, httpContext.RequestAborted);
         return Setting(httpContext, descriptor, site, await service.ResolveRedactedAsync(descriptor, site, httpContext.RequestAborted));
+    }
+
+    private static async Task<IResult> ListSettingsAsync(HttpContext httpContext, [FromServices] SettingsService service)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        return AdminJson.Items(await service.ListManagedAsync(ApiRequest.Of(httpContext).Operation.Site, httpContext.RequestAborted));
+    }
+
+    // A reset names the version it read, as a write does: "0" when there was no row, which resets nothing.
+    private static async Task<IResult> ResetSettingAsync(string area, bool instance, HttpContext httpContext, SettingsService service)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        var site = instance ? (SiteId?)null : ApiRequest.Of(httpContext).Operation.Site;
+        var descriptor = await service.RequireManagedAsync(area, site, httpContext.RequestAborted);
+        var expected = IfMatch.Required(httpContext.Request);
+
+        await service.ResetAsync(descriptor, site, expected, httpContext.RequestAborted);
+        return Results.NoContent();
     }
 
     private static IResult Setting(HttpContext httpContext, SettingsDescriptor descriptor, SiteId? site, RedactedSetting setting)

@@ -464,6 +464,25 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
     }
 
     [Fact]
+    public void TheListOfSettingsAreasAndTheResetsAreDocumented()
+    {
+        var list = Response(Paths[$"{Management}/settings"]!["get"]!, "200");
+        var area = Resolve(list["properties"]!["items"]!["items"]!);
+        area["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["area", "plugin", "site", "defaults"]);
+        area["properties"]!["plugin"]!["description"]!.GetValue<string>().ShouldContain("null for an area of core");
+        area["properties"]!["site"]!["description"]!.GetValue<string>().ShouldContain("/settings/{area}");
+        area["properties"]!["defaults"]!["description"]!.GetValue<string>().ShouldContain("/settings/{area}/defaults");
+
+        foreach (var path in new[] { $"{Management}/settings/{{area}}", $"{Management}/settings/{{area}}/defaults" })
+        {
+            var reset = Paths[path]!["delete"]!;
+            reset["operationId"]!.GetValue<string>().ShouldStartWith("deleteSettingsByArea");
+            reset["responses"]!["204"].ShouldNotBeNull(path);
+            reset["requestBody"].ShouldBeNull(path);
+        }
+    }
+
+    [Fact]
     public void TheIdentityAndJobRoutesHaveTheirSchemas()
     {
         var users = Response(Paths[$"{Management}/users"]!["get"]!, "200");
