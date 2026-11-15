@@ -136,7 +136,7 @@ internal sealed class MediaTransfer(
 
         var name = MediaService.FolderNameOf(line.Name)
             ?? throw Refused(MediaErrorCodes.InvalidField, $"The folder {line.Id:D} has a name the service refuses. {MediaService.FolderNameRule}");
-        var existing = await database.Set<Folder>().FirstOrDefaultAsync(folder => folder.Id == line.Id, cancellationToken);
+        var existing = await DatabaseAsync(() => database.Set<Folder>().FirstOrDefaultAsync(folder => folder.Id == line.Id, cancellationToken));
         if (existing is not null && existing.SiteId != library)
         {
             throw Refused(MediaErrorCodes.TransferIdTaken, $"The folder {line.Id:D} is one of another site of this instance.");
@@ -172,7 +172,7 @@ internal sealed class MediaTransfer(
             throw Refused(MediaErrorCodes.InvalidField, $"Folders nest at most {MediaModel.MaxDepth} deep, and the folder {line.Id:D} would take them deeper.");
         }
 
-        if (await database.Set<Folder>().AnyAsync(folder => folder.SiteId == library && folder.ParentId == line.ParentId && folder.Name == name && folder.Id != line.Id, cancellationToken))
+        if (await DatabaseAsync(() => database.Set<Folder>().AnyAsync(folder => folder.SiteId == library && folder.ParentId == line.ParentId && folder.Name == name && folder.Id != line.Id, cancellationToken)))
         {
             throw Refused(MediaErrorCodes.FolderNameTaken, $"A folder named '{name}' is in the same parent in this instance.");
         }
@@ -187,7 +187,7 @@ internal sealed class MediaTransfer(
             {
                 // A folder that moves takes its subtree with it, as a move through the service does.
                 var oldPrefix = existing.Path;
-                var subtree = await database.Set<Folder>().Where(folder => folder.SiteId == library && folder.Path.StartsWith(oldPrefix) && folder.Id != existing.Id).ToListAsync(cancellationToken);
+                var subtree = await DatabaseAsync(() => database.Set<Folder>().Where(folder => folder.SiteId == library && folder.Path.StartsWith(oldPrefix) && folder.Id != existing.Id).ToListAsync(cancellationToken));
                 foreach (var item in subtree)
                 {
                     item.Path = path + item.Path[oldPrefix.Length..];
@@ -223,7 +223,7 @@ internal sealed class MediaTransfer(
     private async Task<TransferOutcome> ImportAssetAsync(ITransferImport context, Guid library, MediaSettings rules, AssetLine line, Dictionary<Guid, string> folders, HashSet<string> taken, CancellationToken cancellationToken)
     {
         var fields = Checked(line);
-        var existing = await database.Set<Asset>().FirstOrDefaultAsync(asset => asset.Id == line.Id, cancellationToken);
+        var existing = await DatabaseAsync(() => database.Set<Asset>().FirstOrDefaultAsync(asset => asset.Id == line.Id, cancellationToken));
         if (existing is not null && (existing.SiteId != library || existing.DeletedAt is not null))
         {
             throw Refused(MediaErrorCodes.TransferIdTaken, $"The asset {line.Id:D} is one of another site of this instance, or deleted in it.");
@@ -320,10 +320,10 @@ internal sealed class MediaTransfer(
         return existing is null ? TransferOutcome.Created : TransferOutcome.Updated;
     }
 
-    // An item the instance refuses is reported, and the others go on. The checks of a line leave a save that fails only when
-    // another writer took the id at the same time or the database fails (FCMS3221), and a read or a write of the storage that
-    // fails (FCMS3220); their messages, which can name the server's paths, go to the log only. Report throws again a bound of
-    // the package that a read reached.
+    // An item the instance refuses is reported, and the others go on. The checks of a line leave a read or a save of the
+    // database that fails, as when another writer took the id at the same time (FCMS3221), and a read or a write of the
+    // storage that fails (FCMS3220); their messages, which can name the server's paths, go to the log only. Report throws
+    // again a bound of the package that a read reached.
     private async Task ItemAsync(ITransferImport context, string section, Guid id, Func<Task<TransferOutcome>> import)
     {
         try
@@ -349,16 +349,19 @@ internal sealed class MediaTransfer(
         }
     }
 
-    // Any failure of the save is one of the database, so that the item is reported by the step that failed.
-    private async Task SaveAsync(CancellationToken cancellationToken)
+    private Task<int> SaveAsync(CancellationToken cancellationToken) => DatabaseAsync(() => database.SaveChangesAsync(cancellationToken));
+
+    // Any failure of a read or of the save of an item is one of the database, so that the item is reported by the step that
+    // failed.
+    private static async Task<T> DatabaseAsync<T>(Func<Task<T>> work)
     {
         try
         {
-            await database.SaveChangesAsync(cancellationToken);
+            return await work();
         }
         catch (Exception exception) when (exception is not DbUpdateException and not OperationCanceledException)
         {
-            throw new DbUpdateException("The media rows of the item were not saved.", exception);
+            throw new DbUpdateException("The database failed on the media rows of the item.", exception);
         }
     }
 

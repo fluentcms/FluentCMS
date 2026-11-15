@@ -12,6 +12,10 @@ using FluentCMS.Providers;
 using FluentCMS.Samples.Blog;
 using FluentCMS.Sites;
 using FluentCMS.Testing;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -178,17 +182,24 @@ public sealed class TransferEndpointsTests : IAsyncLifetime
         (await response.Content.ReadAsStringAsync(Token)).ShouldContain("FCMS3200");
     }
 
-    // A chunked body declares no length, so only the bytes read tell its size.
+    // A chunked body declares no length, so only the bytes read tell its size. The test server has no limit of the body, so
+    // a stub stands in for Kestrel's: it refuses with 413 once the body passes the limit its feature has when it is read. The
+    // endpoint lifts that limit, so that the importer's own count answers, with its code.
     [Fact]
     public async Task AChunkedBodyOverMaxPackageSizeIsRefusedWithItsCode()
     {
-        await using var host = new FluentCmsTestHost().Configure(cms => cms.Services.Configure<TransferOptions>(options => options.MaxPackageSize = 1024));
+        var server = new ServerBodyLimit(16);
+        await using var host = new FluentCmsTestHost()
+            .WithServices(services => services.AddSingleton<IStartupFilter>(server))
+            .Configure(cms => cms.Services.Configure<TransferOptions>(options => options.MaxPackageSize = 1024));
         using var admin = host.AsKey(await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token));
         using var body = new ChunkedContent(new byte[4096]);
         body.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
 
         using var response = await admin.PostAsync(new Uri(Import, UriKind.Relative), body, Token);
 
+        server.Read.ShouldBeTrue();
+        server.LimitAtRead.ShouldBeNull();
         response.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
         (await response.Content.ReadAsStringAsync(Token)).ShouldContain("FCMS3204");
     }
@@ -223,6 +234,82 @@ public sealed class TransferEndpointsTests : IAsyncLifetime
         var content = new ByteArrayContent(package);
         content.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
         return content;
+    }
+
+    // The limit of the body a server such as Kestrel holds a request to, in front of the host's pipeline.
+    private sealed class ServerBodyLimit(long limit) : IStartupFilter
+    {
+        public bool Read { get; private set; }
+
+        public long? LimitAtRead { get; private set; }
+
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use((context, following) =>
+            {
+                var feature = new BodySizeFeature(limit);
+                context.Features.Set<IHttpMaxRequestBodySizeFeature>(feature);
+                context.Request.Body = new LimitedBody(context.Request.Body, feature, this);
+                return following(context);
+            });
+            next(app);
+        };
+
+        public void Reading(long? current)
+        {
+            if (!Read)
+            {
+                (Read, LimitAtRead) = (true, current);
+            }
+        }
+    }
+
+    private sealed class BodySizeFeature(long? limit) : IHttpMaxRequestBodySizeFeature
+    {
+        public bool IsReadOnly => false;
+
+        public long? MaxRequestBodySize { get; set; } = limit;
+    }
+
+    // As Kestrel does, a read that takes the body past the limit the feature has then is refused with 413.
+    private sealed class LimitedBody(Stream inner, IHttpMaxRequestBodySizeFeature feature, ServerBodyLimit server) : Stream
+    {
+        private long _read;
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            server.Reading(feature.MaxRequestBodySize);
+            var read = await inner.ReadAsync(buffer, cancellationToken);
+            _read += read;
+            return feature.MaxRequestBodySize is { } max && _read > max
+                ? throw new BadHttpRequestException("Request body too large.", StatusCodes.Status413PayloadTooLarge)
+                : read;
+        }
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 
     // A body whose length is not known before it is sent, which HTTP/1.1 sends chunked.

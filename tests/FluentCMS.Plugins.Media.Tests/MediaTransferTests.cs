@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.IO.Compression;
 using System.Net;
 using System.Net.Http.Headers;
@@ -434,6 +435,27 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         files.Where(path => path.Contains(replaced.Id.ToString("N"), StringComparison.Ordinal)).Select(path => Path.GetRelativePath(host.StorageRoot, path).Replace('\\', '/')).ShouldBe([key]);
     }
 
+    // A read of the database that fails is one of the database, as a failed save is, and not one of the storage.
+    [Fact]
+    public async Task AReadOfTheDatabaseThatFailsIsReportedAsOneOfTheDatabaseWithNoDetailOfTheServer()
+    {
+        var (folder, asset) = (Guid.CreateVersion7(), Guid.CreateVersion7());
+        var read = new FailingRead(folder, asset);
+        await using var host = new MediaHost();
+        host.Host.Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(read)));
+        using var admin = await host.AdminAsync();
+        var png = Files.Png(2, 3);
+        var package = await PackageAsync(admin, [Line(asset, "read.png", "image/png", png)], [FolderLine(folder, null, Unique("read"))], withSettings: false, [(FileOf(asset, ".png"), png)]);
+
+        var report = await ImportAsync(admin, package);
+        read.Armed = false;
+
+        Items(report, MediaTransfer.FoldersSection).ShouldBe(new Dictionary<Guid, (string, string?)> { [folder] = ("error", MediaErrorCodes.TransferIdTaken) });
+        Items(report).ShouldBe(new Dictionary<Guid, (string, string?)> { [asset] = ("error", MediaErrorCodes.TransferIdTaken) });
+        report["items"]!.ToJsonString().ShouldNotContain(FailingRead.Detail);
+        (await AssetAsync(host, asset)).ShouldBeNull();
+    }
+
     // With Shared, imports into two sites write one library while each holds the lock of its own site, so both can find no
     // row of an asset and write its file. The one whose save then fails deletes only the file it wrote, under a key of its
     // own, and the file the other's row names stays.
@@ -645,6 +667,28 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
                 : saved.Any(Failed.Contains) ? throw new InvalidOperationException($"The server failed at {Detail}.")
                 : base.SavingChangesAsync(eventData, result, cancellationToken);
         }
+    }
+
+    // A query of the media rows that fails, with a detail of the server, whenever it names one of the ids given.
+    private sealed class FailingRead(params Guid[] ids) : DbCommandInterceptor
+    {
+        public const string Detail = "/srv/fluentcms/read-secret";
+
+        // Off once the import is done, so that the test reads the rows itself.
+        public bool Armed { get; set; } = true;
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default) =>
+            Armed && command.Parameters.Cast<DbParameter>().Any(parameter => Names(parameter.Value))
+                ? throw new InvalidOperationException($"The database failed at {Detail}.")
+                : base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+
+        private bool Names(object? value) => value switch
+        {
+            Guid id => ids.Contains(id),
+            string text => Guid.TryParse(text, out var id) && ids.Contains(id),
+            byte[] { Length: 16 } bytes => ids.Contains(new Guid(bytes)),
+            _ => false,
+        };
     }
 
     // The first save that adds the asset runs the other import before it goes on, as when two imports find no row of the
