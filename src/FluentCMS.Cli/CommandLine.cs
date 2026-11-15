@@ -447,7 +447,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
     {
         var file = new Option<string>("--output") { Description = "The package file to write.", HelpName = "file", Required = true };
         var site = SiteOption("export");
-        var types = TypesOption("The content types to export, separated by commas; every type when left out.");
+        var types = TypesOption("The content types to export, separated by commas; every type when left out. With --url, a key with transfer.manage in the site only names the site's own types, since exporting a global type needs transfer.manage for the instance.");
         var publishedOnly = new Option<bool>("--published-only") { Description = "Leaves out the drafts and the entries that are not published." };
         var roles = new Option<bool>("--roles") { Description = "Adds the site's roles." };
         var mediaFiles = new Option<bool>("--media-files") { Description = "Adds the files of the media assets, not only their metadata." };
@@ -493,7 +493,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
     private Command Import()
     {
         var file = new Argument<string>("file") { Description = "The package to import." };
-        var dryRun = new Option<bool>("--dry-run") { Description = "Checks everything and writes nothing; the report is the one the import would give." };
+        var dryRun = new Option<bool>("--dry-run") { Description = "Runs every step of the import, the content hooks included, and writes nothing, so the report is the one the import would give; a hook that acts outside the database, such as one that calls another service, acts in a dry run too." };
         var site = SiteOption("import into");
         var types = TypesOption("The content types to import, separated by commas; every type of the package when left out. With --url, a key with transfer.manage in the site only names the types it may import: an export has a file for every global type, empty or not, and importing one needs transfer.manage for the instance.");
         var overwrite = new Option<bool>("--overwrite") { Description = "Takes the package's copy of an entry that is newer in the instance, which is otherwise a conflict." };

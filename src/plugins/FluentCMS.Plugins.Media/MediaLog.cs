@@ -47,4 +47,7 @@ internal static partial class MediaLog
     // The type only: the message can name the connection, and under `fluentcms doctor` a database not yet migrated is expected.
     [LoggerMessage(EventId = 9273, Level = LogLevel.Warning, Message = "Whether the shared media library hides the assets of other sites could not be checked ({ExceptionType}); the startup report says nothing of it.")]
     public static partial void SharedLibraryNotChecked(ILogger logger, string exceptionType);
+
+    [LoggerMessage(EventId = 9274, Level = LogLevel.Warning, Message = "{Code}: the item {Id} of {Section} of an import failed in the database or the storage; the import goes on.")]
+    public static partial void TransferItemFailed(ILogger logger, Exception exception, string code, string section, Guid id);
 }

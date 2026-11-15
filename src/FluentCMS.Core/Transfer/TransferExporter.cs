@@ -21,8 +21,8 @@ using Microsoft.Extensions.Logging;
 namespace FluentCMS.Core.Transfer;
 
 // An export of the site of the request (spec 4.14), streamed as it is written: nothing is stored, and a caller that goes
-// away cancels it. It needs transfer.manage in the site and reads as the system, so the package is whole whatever the
-// caller may read. One export of a site runs at a time, across every instance.
+// away cancels it. It needs transfer.manage in the site, and for the instance when it has a global type, and reads as the
+// system, so the package is whole whatever the caller may read. One export of a site runs at a time, across every instance.
 internal sealed class TransferExporter(
     IOperationContextAccessor accessor,
     ManagementAuthority authority,
@@ -64,6 +64,16 @@ internal sealed class TransferExporter(
             .Where(type => request.Types is null ? request.GlobalTypes || type.Scope == ContentScope.Site : request.Types.Contains(type.Name, StringComparer.Ordinal))
             .OrderBy(type => type.Name, StringComparer.Ordinal)
             .ToList();
+
+        // The entries of a global type are every site's, so reading them needs transfer.manage for the instance, as importing
+        // them does. A site's administrator is refused rather than given a package without them, so that a request gives the
+        // same package to whoever may make it.
+        var global = types.Where(type => type.Scope == ContentScope.Global).Select(type => type.Name).ToList();
+        if (global.Count > 0 && !await authority.AllowsAsync(CorePermissions.TransferManage, null, cancellationToken))
+        {
+            throw new ManagementAccessDeniedException($"The export has the global types {string.Join(", ", global)}, whose export needs the instance-wide permission {CorePermissions.TransferManage}; export the site's own types with \"globalTypes\": false of the endpoint, or name them with \"types\" or --types of fluentcms export.");
+        }
+
         var site = await sites.FindInfoAsync(operation.Site.Value, cancellationToken)
             ?? throw new ValidationException([new ValidationError("site", SiteErrorCodes.SiteNotFound, $"There is no site {operation.Site}.")]);
         var enabled = await contributors.EnabledInAsync(operation.Site, cancellationToken);

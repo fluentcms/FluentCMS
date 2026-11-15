@@ -122,7 +122,7 @@ internal sealed class MediaTransforms(
             }
         }
 
-        Stream output = new FileStream(Path.Combine(Path.GetTempPath(), $"fluentcms-media-{Guid.NewGuid():N}.tmp"), FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 81920, FileOptions.Asynchronous | FileOptions.DeleteOnClose);
+        Stream output = MediaService.TemporaryFile();
         try
         {
             await using (var source = await OpenAsync(assetStorage, asset, cancellationToken))
