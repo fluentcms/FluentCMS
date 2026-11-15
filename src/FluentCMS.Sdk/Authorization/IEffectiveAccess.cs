@@ -69,8 +69,10 @@ public sealed record ContentTypeAccess
 
     /// <summary>
     /// The operations of those the principal may do, by name (<c>read</c>, <c>create</c>, <c>update</c>, <c>delete</c>,
-    /// <c>publish</c> and <c>unpublish</c>), that a row rule or the locales of a grant may still refuse for a single entry,
-    /// since no grant behind them holds for every entry.
+    /// <c>publish</c> and <c>unpublish</c>), that a row rule or the locales of a grant may still refuse for a single entry:
+    /// those no grant behind them holds for every entry, and a create or an update for which a grant with a row rule or a
+    /// locale limit adds fields that the grants with neither do not give. A create counts its row rules too, although a new
+    /// entry is not asked them, since adding a locale to an existing entry is.
     /// </summary>
     public IReadOnlySet<string> Conditional { get; init; } = new HashSet<string>(StringComparer.Ordinal);
 }

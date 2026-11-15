@@ -71,8 +71,12 @@ internal sealed class UserPreferences(SystemDbContext context, TimeProvider cloc
         {
             try
             {
-                // The platform keeps the zones it found and finds them again in any case, so its own id is the one kept.
-                timeZone = ScheduleTime.FindZone(timeZone, "timeZone").Id;
+                // The platform finds a zone it has already found in any case, so only the exact id is taken, whatever came before.
+                var zone = ScheduleTime.FindZone(timeZone, "timeZone");
+                if (!zone.HasIanaId || !string.Equals(zone.Id, timeZone, StringComparison.Ordinal))
+                {
+                    errors.Add(new ValidationError("timeZone", ValidationErrorCodes.InvalidValue, "The time zone is an IANA id, such as Europe/Berlin."));
+                }
             }
             catch (ValidationException refused)
             {

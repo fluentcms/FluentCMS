@@ -56,19 +56,22 @@ public sealed class MePreferencesTests(AdminFixture fixture) : IClassFixture<Adm
         (await fixture.GetAsync("me/preferences", user)).Json.ToJsonString().ShouldBe(Nothing);
     }
 
-    // Once the platform has found a zone it finds it again in any case; the id kept is the platform's own.
+    // The platform finds a zone it has already found in any case; another case is refused before and after that.
     [Fact]
-    public async Task ATimeZoneIsKeptByItsOwnId()
+    public async Task ATimeZoneInAnotherCaseIsRefusedBeforeAndAfterItsExactIdIsTaken()
     {
         using var user = await fixture.ClientForAsync(BuiltInRoles.EditorName);
-        (await fixture.PutAsync("me/preferences", """{ "timeZone": "Europe/Berlin" }""", user)).Status.ShouldBe(HttpStatusCode.OK);
 
-        var cased = await fixture.PutAsync("me/preferences", """{ "timeZone": "europe/BERLIN" }""", user);
+        var first = await fixture.PutAsync("me/preferences", """{ "timeZone": "pacific/CHATHAM" }""", user);
+        first.Status.ShouldBe(HttpStatusCode.UnprocessableEntity, first.Body?.ToJsonString());
+        first.Json["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("timeZone");
 
-        cased.Status.ShouldBe(HttpStatusCode.OK, cased.Body?.ToJsonString());
-        cased.Json["timeZone"]!.GetValue<string>().ShouldBe("Europe/Berlin");
+        (await fixture.PutAsync("me/preferences", """{ "timeZone": "Pacific/Chatham" }""", user)).Status.ShouldBe(HttpStatusCode.OK);
 
-        (await fixture.GetAsync("me/preferences", user)).Json["timeZone"]!.GetValue<string>().ShouldBe("Europe/Berlin");
+        var after = await fixture.PutAsync("me/preferences", """{ "timeZone": "pacific/CHATHAM" }""", user);
+        after.Status.ShouldBe(HttpStatusCode.UnprocessableEntity, after.Body?.ToJsonString());
+        after.Json["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("timeZone");
+        (await fixture.GetAsync("me/preferences", user)).Json["timeZone"]!.GetValue<string>().ShouldBe("Pacific/Chatham");
     }
 
     [Fact]
