@@ -18,9 +18,8 @@ internal sealed class Asset
 
     public string StorageKey { get; set; } = "";
 
-    // Whether the instance wrote the file at StorageKey, so that an import that replaces the file deletes it. A key that a line
-    // of an import named, which a storage shared with another instance can hold, is never the instance's, and neither is the
-    // key of a row from before the column, which cannot be told.
+    // Whether the instance wrote the file at StorageKey, so that a replace, through the service or by an import, deletes it. A
+    // key that a line of an import named, which a storage shared with another instance can hold, is never the instance's.
     public bool OwnsFile { get; set; }
 
     public string MimeType { get; set; } = "";

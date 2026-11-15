@@ -30,18 +30,22 @@ internal sealed class ReplacedFiles
 
         List<string> keys = [asset.StorageKey, .. variants.Select(variant => variant.StorageKey)];
 
-        var named = await OthersNaming(database, asset, keys).AnyAsync(cancellationToken);
+        var named = await NamedByOthers(database, asset, keys).AnyAsync(cancellationToken);
         return new ReplacedFiles(asset.Id, asset.StorageProvider, named ? [] : keys);
     }
 
-    // The other assets of the library that name one of the keys. Only an asset whose key a line named can: every key the
-    // instance writes is in its asset's folder under a name of its own. Keys are compared without regard to case, as a disk
-    // that ignores it reads them; they are ASCII, so lower() is the same everywhere.
-    internal static IQueryable<Asset> OthersNaming(PluginDbContext<MediaPlugin> database, Asset asset, IEnumerable<string> keys)
+    // The keys that other assets of the library name, as their file or a variant's. Only an asset whose key a line named can:
+    // every key the instance writes is in its asset's folder under a name of its own, and a variant goes in the folder of its
+    // asset's key, so an asset that names another's key, with the same bytes, makes variants at the other's keys. Keys are
+    // compared without regard to case, as a disk that ignores it reads them; they are ASCII, so lower() is the same
+    // everywhere.
+    internal static IQueryable<string> NamedByOthers(PluginDbContext<MediaPlugin> database, Asset asset, IEnumerable<string> keys)
     {
         var lowered = keys.Select(key => key.ToLowerInvariant()).ToList();
+        var others = database.Set<Asset>().Where(other => other.SiteId == asset.SiteId && !other.OwnsFile && other.Id != asset.Id);
 #pragma warning disable CA1304, CA1311 // The database lowers the column, where lower() takes no culture.
-        return database.Set<Asset>().Where(other => other.SiteId == asset.SiteId && !other.OwnsFile && other.Id != asset.Id && lowered.Contains(other.StorageKey.ToLower()));
+        return others.Where(other => lowered.Contains(other.StorageKey.ToLower())).Select(other => other.StorageKey)
+            .Concat(database.Set<Variant>().Where(variant => others.Select(other => other.Id).Contains(variant.AssetId) && lowered.Contains(variant.StorageKey.ToLower())).Select(variant => variant.StorageKey));
 #pragma warning restore CA1304, CA1311
     }
 

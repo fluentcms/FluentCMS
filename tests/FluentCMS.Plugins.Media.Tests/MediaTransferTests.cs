@@ -592,6 +592,39 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         FilesOf(media, uploaded.Id).ShouldBe([key, stored.StorageKey], ignoreOrder: true);
     }
 
+    // An asset that names another's key makes its variants in the other's folder, so when the other holds the same bytes
+    // again its variants take the same keys; the next replace of the other keeps the variant files the first names.
+    [Fact]
+    public async Task AVariantKeyAnotherAssetsVariantNamesStays()
+    {
+        using var admin = await media.AdminAsync();
+        var bands = Bands(8, 8);
+        var uploaded = await UploadAsync(admin, bands, "bands.png");
+        var key = (await AssetAsync(uploaded.Id)).ShouldNotBeNull().StorageKey;
+        var sharing = Guid.CreateVersion7();
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(sharing, "shared.png", "image/png", bands, key: key)]))).ShouldBe((1, 0, 0));
+        await VariantAsync(media, admin, sharing);
+        string variant;
+        await using (var scope = media.Services.CreateAsyncScope())
+        {
+            variant = (await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Variant>().AsNoTracking().SingleAsync(item => item.AssetId == sharing, Token)).StorageKey;
+        }
+
+        await ReplaceThroughTheServiceAsync(admin, uploaded.Id, Bands(12, 4));
+        await ReplaceThroughTheServiceAsync(admin, uploaded.Id, bands);
+        await VariantAsync(media, admin, uploaded.Id);
+        await using (var scope = media.Services.CreateAsyncScope())
+        {
+            (await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Variant>().AsNoTracking().SingleAsync(item => item.AssetId == uploaded.Id, Token)).StorageKey.ShouldBe(variant);
+        }
+
+        await ReplaceThroughTheServiceAsync(admin, uploaded.Id, Bands(16, 4));
+
+        File.Exists(Path.Combine(media.StorageRoot, variant)).ShouldBeTrue();
+        File.Exists(Path.Combine(media.StorageRoot, key)).ShouldBeTrue();
+        (await VariantsAsync(media, uploaded.Id)).ShouldBe(0);
+    }
+
     // A replace through the service reads owns_file as the import does: a key a line named stays, and so do the variant files
     // beside it, which can be another instance's too; only their rows go.
     [Fact]

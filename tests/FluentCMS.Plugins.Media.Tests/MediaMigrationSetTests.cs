@@ -42,6 +42,10 @@ public sealed class MediaMigrationSetTests
         using var context = new MediaDbContextFactory().CreateDbContext([set]);
         var asset = new Asset { Id = Guid.CreateVersion7(), SiteId = Guid.CreateVersion7(), StorageKey = "a/b/original.png" };
 
-        ReplacedFiles.OthersNaming(context, asset, [asset.StorageKey, "a/b/variant.webp"]).ToQueryString().ShouldContain("storage_key", Case.Insensitive);
+        var sql = ReplacedFiles.NamedByOthers(context, asset, [asset.StorageKey, "a/b/variant.webp"]).ToQueryString();
+
+        sql.ShouldContain("cms_media_variant", Case.Insensitive);
+        sql.ShouldContain("storage_key", Case.Insensitive);
+        sql.ShouldContain("owns_file", Case.Insensitive);
     }
 }
