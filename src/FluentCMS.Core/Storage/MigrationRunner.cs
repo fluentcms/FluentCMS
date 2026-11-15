@@ -173,13 +173,13 @@ public sealed class MigrationRunner(
         ?? throw new InvalidOperationException($"The lock {SchemaSyncLock} was not taken.");
 
     // The steps that bring the content tables up to the host's schema: schema sync's comparison, with renames and the
-    // changes sync leaves undone.
-    internal async Task<IReadOnlyList<SchemaApplyStep>> PlanContentSchemaAsync(CancellationToken cancellationToken = default)
+    // changes sync leaves undone. The applied snapshot tells which tables under a plugin's prefix are content tables.
+    internal async Task<SchemaApplyPlan> PlanContentSchemaAsync(string? appliedSnapshot, CancellationToken cancellationToken = default)
     {
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
-        var diff = await ContentSchemaDiff.PlanAsync(context, schema, provider.SchemaReader, PluginTablePrefixes(scope.ServiceProvider), cancellationToken);
-        return diff.Steps;
+        var diff = await ContentSchemaDiff.PlanAsync(context, schema, appliedSnapshot, provider.SchemaReader, PluginTablePrefixes(scope.ServiceProvider), cancellationToken);
+        return new SchemaApplyPlan(diff.Steps, diff.LeftAlone);
     }
 
     // With the SQL of the provider's migrations generator, which EF's executor runs in one transaction; it commits early

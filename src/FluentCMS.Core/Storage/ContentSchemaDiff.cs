@@ -1,3 +1,7 @@
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using FluentCMS.Core.Plugins;
+using FluentCMS.Core.Schema;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
@@ -25,9 +29,12 @@ internal sealed record SchemaApplyStep(string Description, SchemaStepKind Kind, 
     public bool IsDestructive => Kind == SchemaStepKind.Destructive;
 }
 
+// What schema apply does, and the tables it leaves alone, each with the reason.
+internal sealed record SchemaApplyPlan(IReadOnlyList<SchemaApplyStep> Steps, IReadOnlyList<string> LeftAlone);
+
 // The content model against the database. It starts from the operations that would create the whole content model,
 // which leave out what ExcludeFromMigrations marks, and keeps the ones the database has not got.
-internal sealed class ContentSchemaDiff
+internal sealed partial class ContentSchemaDiff
 {
     // The order schema apply runs its operations in: each frees a name or adds a column that a later one needs.
     private const int DropIndexPhase = 0;
@@ -45,10 +52,16 @@ internal sealed class ContentSchemaDiff
     private readonly List<string> _missing = [];
     private readonly List<string> _notApplied = [];
     private readonly List<SchemaApplyStep> _steps = [];
+    private readonly List<string> _leftAlone = [];
     private readonly Dictionary<string, Dictionary<string, StoredField>>? _fields;
+    private readonly HashSet<string> _appliedTables;
     private string? _firstMissingName;
 
-    private ContentSchemaDiff(Dictionary<string, Dictionary<string, StoredField>>? fields) => _fields = fields;
+    private ContentSchemaDiff(Dictionary<string, Dictionary<string, StoredField>>? fields, HashSet<string> appliedTables)
+    {
+        _fields = fields;
+        _appliedTables = appliedTables;
+    }
 
     // What schema sync may apply.
     public IReadOnlyList<MigrationOperation> Additive => _additive;
@@ -65,20 +78,25 @@ internal sealed class ContentSchemaDiff
     // What schema apply does, from PlanAsync only.
     public IReadOnlyList<SchemaApplyStep> Steps => _steps;
 
+    // The tables under the prefix of a plugin the host does not register, which schema apply leaves alone, from PlanAsync only.
+    public IReadOnlyList<string> LeftAlone => _leftAlone;
+
     // The operations of the steps in the order they run.
     public static IReadOnlyList<MigrationOperation> OperationsOf(IEnumerable<SchemaApplyStep> steps) =>
         [.. steps.SelectMany(step => step.Operations).OrderBy(operation => operation.Phase).Select(operation => operation.Operation)];
 
-    // A table under a plugin's prefix belongs to the plugin, whether it maps the table, migrates it or neither.
+    // A table under a plugin's prefix belongs to the plugin, whether it maps the table, migrates it or neither, and so does
+    // one under the prefix of a plugin the host does not register whose history table the database has.
     public static Task<ContentSchemaDiff> CompareAsync(CmsDbContext context, IDatabaseSchemaReader reader, IReadOnlyCollection<string> pluginTablePrefixes, CancellationToken cancellationToken) =>
-        CompareAsync(new ContentSchemaDiff(null), context, reader, pluginTablePrefixes, cancellationToken);
+        CompareAsync(new ContentSchemaDiff(null, []), context, reader, pluginTablePrefixes, cancellationToken);
 
     // The same comparison with the steps of schema apply, which also renames a column of a field's former name, moves the
     // references kept under its former path, drops what the schema no longer has and changes what differs. The context's
-    // model must be the schema's.
-    public static async Task<ContentSchemaDiff> PlanAsync(CmsDbContext context, SchemaModel schema, IDatabaseSchemaReader reader, IReadOnlyCollection<string> pluginTablePrefixes, CancellationToken cancellationToken)
+    // model must be the schema's. A table of a type of the applied snapshot, the newest row of the schema history, is a
+    // content table even under a plugin's prefix.
+    public static async Task<ContentSchemaDiff> PlanAsync(CmsDbContext context, SchemaModel schema, string? appliedSnapshot, IDatabaseSchemaReader reader, IReadOnlyCollection<string> pluginTablePrefixes, CancellationToken cancellationToken)
     {
-        var diff = await CompareAsync(new ContentSchemaDiff(FieldsByTable(schema)), context, reader, pluginTablePrefixes, cancellationToken);
+        var diff = await CompareAsync(new ContentSchemaDiff(FieldsByTable(schema), TablesOf(appliedSnapshot)), context, reader, pluginTablePrefixes, cancellationToken);
         await diff.PlanReferencesAsync(context, schema, cancellationToken);
         return diff;
     }
@@ -96,13 +114,69 @@ internal sealed class ContentSchemaDiff
         }
 
         var known = model.Tables.Select(table => table.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var table in database.Tables.Keys.Where(table => IsStaleContentTable(table, known, pluginTablePrefixes)).Order(StringComparer.Ordinal))
+        var unregistered = PluginHistoryTables(database).Where(plugin => !pluginTablePrefixes.Contains(plugin.Prefix, StringComparer.Ordinal)).ToList();
+        foreach (var table in database.Tables.Keys.Where(table => IsUnknownTable(table, known)).Order(StringComparer.Ordinal))
         {
+            // A removed type's table can fall under a plugin's prefix, as cms_seo_meta of a type seo-meta does under cms_seo_.
+            if (!diff._appliedTables.Contains(table))
+            {
+                if (pluginTablePrefixes.Any(prefix => table.StartsWith(prefix, StringComparison.Ordinal)))
+                {
+                    continue;
+                }
+
+                // The longest prefix, since one plugin's can hold another's (cms_ai_ holds cms_ai_assist_).
+                var owner = unregistered.Where(plugin => table.StartsWith(plugin.Prefix, StringComparison.Ordinal)).OrderByDescending(plugin => plugin.Prefix.Length).FirstOrDefault();
+                if (owner.Prefix is not null)
+                {
+                    diff.LeaveAlone($"table {table}, under {owner.Prefix}, the prefix of a plugin that this host does not register and whose history table {owner.HistoryTable} the database has");
+                    continue;
+                }
+            }
+
             diff._notApplied.Add($"drop table {table}");
             diff.Step($"drop table {table}", SchemaStepKind.Destructive, (DropTablePhase, new DropTableOperation { Name = table }));
         }
 
         return diff;
+    }
+
+    // cms_{plugin}__migrations, the history table of a plugin's stream, which a plugin the host no longer registers leaves
+    // behind. The system's (cms__migrations) and the content stream's are not a plugin's.
+    private static IEnumerable<(string Prefix, string HistoryTable)> PluginHistoryTables(DatabaseSchema database) =>
+        database.Tables.Keys
+            .Where(table => table != CmsDbContext.HistoryTable)
+            .Select(table => (Table: table, Match: PluginHistoryTable().Match(table)))
+            .Where(history => history.Match.Success)
+            .Select(history => (PluginStorage.TablePrefixOf(history.Match.Groups[1].Value), history.Table));
+
+    // The tables of the content types of a snapshot. None when there is none or it cannot be read, which leaves a table
+    // under a plugin's prefix to the plugin.
+    private static HashSet<string> TablesOf(string? snapshot)
+    {
+        if (snapshot is null)
+        {
+            return [];
+        }
+
+        var tables = new HashSet<string>(StringComparer.Ordinal);
+        try
+        {
+            foreach (var (name, localized) in SchemaSnapshotDiff.ContentTypesOf(snapshot))
+            {
+                tables.Add(StorageNames.Table(name));
+                if (localized)
+                {
+                    tables.Add(StorageNames.LocaleTable(name));
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            tables.Clear();
+        }
+
+        return tables;
     }
 
     private static async Task<DatabaseSchema> ReadDatabaseAsync(CmsDbContext context, IDatabaseSchemaReader reader, CancellationToken cancellationToken)
@@ -210,15 +284,16 @@ internal sealed class ContentSchemaDiff
                 columnsAfterSync.Add(wanted.Name);
 
                 // A check named for the former column is made again under the model's name, unless the column is changed,
-                // which does that already. Only SQL Server's reader reports checks.
-                var checks = Differs(wanted, former) ? [] : DropChecks(table, former.Name).ToList();
+                // which does that already. Only SQL Server's reader reports checks to drop; SQLite renames the column in
+                // its check and keeps the check's name, so the add rebuilds the table with the model's.
+                var unchanged = !Differs(wanted, former);
                 Step(
                     $"rename column {former.Name} to {wanted.Name} on table {create.Name}",
                     SchemaStepKind.Rename,
                     [
                         (RenamePhase, new RenameColumnOperation { Table = create.Name, Schema = create.Schema, Name = former.Name, NewName = wanted.Name }),
-                        .. checks,
-                        .. checks.Count == 0 ? [] : AddChecks(create.CheckConstraints.Where(check => References(check, wanted.Name))),
+                        .. unchanged ? DropChecks(table, former.Name) : [],
+                        .. unchanged ? AddChecks(create.CheckConstraints.Where(check => References(check, wanted.Name))) : [],
                     ]);
                 CompareColumn(create, table, wanted, former);
             }
@@ -404,14 +479,26 @@ internal sealed class ContentSchemaDiff
         return alter;
     }
 
-    private static bool IsStaleContentTable(string table, HashSet<string> known, IReadOnlyCollection<string> pluginTablePrefixes) =>
+    // A table of the cms_ prefix that neither the model nor the system has: a stale content table, or a plugin's.
+    private static bool IsUnknownTable(string table, HashSet<string> known) =>
         table.StartsWith(StorageNames.Prefix, StringComparison.Ordinal)
         && !table.EndsWith(StorageNames.HistoryTableSuffix, StringComparison.Ordinal)
         && !known.Contains(table)
-        && !StorageNames.SystemTables.Contains(table)
-        && !pluginTablePrefixes.Any(prefix => table.StartsWith(prefix, StringComparison.Ordinal));
+        && !StorageNames.SystemTables.Contains(table);
+
+    private void LeaveAlone(string description)
+    {
+        if (Applying)
+        {
+            _leftAlone.Add(description);
+        }
+    }
 
     private static bool Same(string? left, string? right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
 
     private static string Describe(string? storeType, bool isNullable) => $"{storeType} {(isNullable ? "NULL" : "NOT NULL")}";
+
+    // A plugin name with its hyphens as underscores, as PluginStorage.HistoryTableOf writes it.
+    [GeneratedRegex("^cms_([a-z][a-z0-9]*(?:_[a-z0-9]+)*)__migrations\\z", RegexOptions.CultureInvariant)]
+    private static partial Regex PluginHistoryTable();
 }

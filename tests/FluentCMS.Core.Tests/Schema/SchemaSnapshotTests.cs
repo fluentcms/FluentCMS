@@ -190,6 +190,29 @@ public class SchemaSnapshotTests
         Should.Throw<JsonException>(() => SchemaSnapshotDiff.Compare(current, stored));
     }
 
+    // What names the tables of a removed type for schema apply.
+    [Fact]
+    public void TheContentTypesOfASnapshotAreItsCollectionsAndSingletonsWithWhetherEachIsLocalized()
+    {
+        var schema = SampleSchema.NewBuilder()
+            .AddComponent("seo", type => type.Field("title", "text"))
+            .AddBlock("hero", type => type.Field("heading", "text"))
+            .AddCollection("article", type => type.Localized().Field("title", "text", field => field.Localizable()))
+            .AddSingleton("settings", type => type.Field("name", "text"))
+            .Build();
+
+        SchemaSnapshotDiff.ContentTypesOf(SchemaSnapshot.Of(schema).Json).ShouldBe([("article", true), ("settings", false)], ignoreOrder: true);
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("{\"singletons\":5}")]
+    [InlineData("{\"collections\":[{\"fields\":[]}]}")]
+    [InlineData("{\"collections\":[{\"name\":\"\\ud800\"}]}")]
+    [InlineData("not json")]
+    public void TheContentTypesOfASnapshotOfAnotherShapeFailAsJson(string stored) =>
+        Should.Throw<JsonException>(() => SchemaSnapshotDiff.ContentTypesOf(stored));
+
     [Fact]
     public void FormerNamesOfTheWrongShapeFailAsJson()
     {

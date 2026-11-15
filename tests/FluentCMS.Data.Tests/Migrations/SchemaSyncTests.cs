@@ -252,6 +252,27 @@ public sealed class SchemaSyncTests : IDisposable
         await host.StopAsync(Token);
     }
 
+    // The database has the plugin's history table, which tells that the table is the plugin's.
+    [SqliteFact("schema sync, which only SQLite supports")]
+    public async Task ATableOfAPluginTheHostNoLongerRegistersIsNotAStaleContentTable()
+    {
+        using (var withPlugin = _database.CreateHost(ArticleSchemas.Titled, Environments.Development, services: services => DemoPlugin.Add(services, _database)))
+        {
+            await withPlugin.StartAsync(Token);
+            await withPlugin.StopAsync(Token);
+        }
+
+        using var host = DevelopmentHost(ArticleSchemas.WithSubtitle);
+        await host.StartAsync(Token);
+
+        _database.ReadStrings("select hash from cms_schema_history").Count.ShouldBe(2);
+        var report = await Runner(host).SyncContentSchemaAsync(cancellationToken: Token);
+
+        report.NotApplied.ShouldBeEmpty();
+        _database.Tables().ShouldContain(DemoPlugin.Table);
+        await host.StopAsync(Token);
+    }
+
     [SqliteFact("schema sync, which only SQLite supports")]
     public async Task SyncingTwiceAppliesNothingTheSecondTime()
     {

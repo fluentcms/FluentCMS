@@ -36,6 +36,22 @@ internal static class SchemaSnapshotDiff
         }
     }
 
+    // The collections and singletons of a snapshot, with whether each is localized, which is what names their tables.
+    public static IReadOnlyList<(string Name, bool Localized)> ContentTypesOf(string snapshot)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(snapshot);
+            return [.. TypesOf(document.RootElement)
+                .Where(type => type.Key.Family == ContentFamily)
+                .Select(type => (type.Key.Name, type.Value.Element.TryGetProperty("localized", out var localized) && localized.ValueKind == JsonValueKind.True))];
+        }
+        catch (InvalidOperationException)
+        {
+            throw Unexpected();
+        }
+    }
+
     private static List<SchemaChange> CompareCore(string before, string after, List<PossibleRename> renames)
     {
         using var previous = JsonDocument.Parse(before);

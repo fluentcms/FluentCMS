@@ -55,11 +55,13 @@ internal sealed class SchemaApplyCommand : HostCommand
         await using var held = applying ? await runner.LockContentSchemaAsync(cancellationToken) : null;
         using var guarded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, held?.Lost ?? CancellationToken.None);
 
-        var steps = await runner.PlanContentSchemaAsync(guarded.Token);
-        var (report, unreadable) = await ReportAsync(runner, schema, guarded.Token);
+        var applied = await runner.GetAppliedSnapshotAsync(guarded.Token);
+        var plan = await runner.PlanContentSchemaAsync(applied, guarded.Token);
+        var steps = plan.Steps;
+        var (report, unreadable) = Report(applied, schema);
         if (!script)
         {
-            await WritePlanAsync(context.Output, report, steps);
+            await WritePlanAsync(context.Output, report, plan);
         }
 
         var refused = steps.Where(step => step.Kind == SchemaStepKind.Refused).Select(step => step.Description).ToList();
@@ -90,7 +92,7 @@ internal sealed class SchemaApplyCommand : HostCommand
 
         if (script)
         {
-            return await WriteScriptAsync(context, runner, schema, steps, file, cancellationToken);
+            return await WriteScriptAsync(context, runner, schema, plan, file, cancellationToken);
         }
 
         if (steps.Count > 0)
@@ -145,9 +147,9 @@ internal sealed class SchemaApplyCommand : HostCommand
 
     // From the newest row of the schema history to the host's schema, which tells a renamed field and a changed kind that
     // the tables alone do not. Null while the history is empty; unreadable when its snapshot is not in the form of a schema.
-    private static async Task<(SchemaDiffReport? Report, bool Unreadable)> ReportAsync(MigrationRunner runner, SchemaModel schema, CancellationToken cancellationToken)
+    private static (SchemaDiffReport? Report, bool Unreadable) Report(string? applied, SchemaModel schema)
     {
-        if (await runner.GetAppliedSnapshotAsync(cancellationToken) is not { } applied)
+        if (applied is null)
         {
             return (null, false);
         }
@@ -162,7 +164,7 @@ internal sealed class SchemaApplyCommand : HostCommand
         }
     }
 
-    private static async Task WritePlanAsync(TextWriter output, SchemaDiffReport? report, IReadOnlyList<SchemaApplyStep> steps)
+    private static async Task WritePlanAsync(TextWriter output, SchemaDiffReport? report, SchemaApplyPlan plan)
     {
         if (report is { HasChanges: true })
         {
@@ -170,12 +172,21 @@ internal sealed class SchemaApplyCommand : HostCommand
             await report.WriteTextAsync(output);
         }
 
-        if (steps.Count > 0)
+        if (plan.Steps.Count > 0)
         {
             await output.WriteLineAsync("Operations:");
-            foreach (var step in steps)
+            foreach (var step in plan.Steps)
             {
                 await output.WriteLineAsync($"  {step.Description}{Mark(step)}");
+            }
+        }
+
+        if (plan.LeftAlone.Count > 0)
+        {
+            await output.WriteLineAsync("Left alone:");
+            foreach (var table in plan.LeftAlone)
+            {
+                await output.WriteLineAsync($"  {table}");
             }
         }
     }
@@ -207,14 +218,15 @@ internal sealed class SchemaApplyCommand : HostCommand
         return losses;
     }
 
-    private static async Task<int> WriteScriptAsync(CommandContext context, MigrationRunner runner, SchemaModel schema, IReadOnlyList<SchemaApplyStep> steps, string? file, CancellationToken cancellationToken)
+    private static async Task<int> WriteScriptAsync(CommandContext context, MigrationRunner runner, SchemaModel schema, SchemaApplyPlan plan, string? file, CancellationToken cancellationToken)
     {
         IEnumerable<string> header =
         [
             $"-- fluentcms schema apply: the content tables to schema {SchemaSnapshot.Of(schema).Hash}.",
-            .. steps.Count == 0 ? ["-- Nothing to apply."] : steps.Select(step => $"-- {step.Description}"),
+            .. plan.Steps.Count == 0 ? ["-- Nothing to apply."] : plan.Steps.Select(step => $"-- {step.Description}"),
+            .. plan.LeftAlone.Select(table => $"-- Left alone: {table}"),
         ];
-        var sql = string.Join(Environment.NewLine, header) + Environment.NewLine + runner.ScriptContentSchema(steps);
+        var sql = string.Join(Environment.NewLine, header) + Environment.NewLine + runner.ScriptContentSchema(plan.Steps);
 
         if (file is null)
         {
