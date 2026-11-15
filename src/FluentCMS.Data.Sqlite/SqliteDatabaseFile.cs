@@ -111,8 +111,9 @@ internal sealed class SqliteDatabaseFile(string connectionString) : IDatabaseFil
         }
     }
 
-    // The database it replaces is moved aside with its journal files, and back when a later step fails, so a failed restore
-    // loses nothing, not even what the WAL of a host that was killed holds. They are deleted once the snapshot is in place.
+    // The database it replaces is moved aside with its journal files, and back when one of them or the snapshot cannot be
+    // moved, so a failed restore loses nothing, not even what the WAL of a host that was killed holds. They are deleted once
+    // the snapshot is in place. When they cannot be moved back, the error says where they are.
     public void Restore(string snapshot)
     {
         var path = FilePath ?? throw new InvalidOperationException("An in-memory database has no file to restore.");
@@ -131,11 +132,24 @@ internal sealed class SqliteDatabaseFile(string connectionString) : IDatabaseFil
 
             File.Move(snapshot, path);
         }
-        catch
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            foreach (var suffix in Enumerable.Reverse(moved).Where(suffix => !File.Exists(path + suffix)))
+            var left = new List<string>();
+            foreach (var suffix in Enumerable.Reverse(moved))
             {
-                File.Move(aside + suffix, path + suffix);
+                try
+                {
+                    File.Move(aside + suffix, path + suffix);
+                }
+                catch (Exception back) when (back is IOException or UnauthorizedAccessException)
+                {
+                    left.Add(aside + suffix);
+                }
+            }
+
+            if (left.Count > 0)
+            {
+                throw new IOException($"{exception.Message} The database it replaces could not be put back either; it is in {string.Join(", ", left)}, to rename to {path} with its suffix.", exception);
             }
 
             throw;

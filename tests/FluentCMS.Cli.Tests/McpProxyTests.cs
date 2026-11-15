@@ -1,4 +1,6 @@
+using System.IO.Pipes;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using FluentCMS.Core.Authorization;
 using Shouldly;
@@ -163,8 +165,8 @@ public sealed class McpProxyTests(InstanceFixture instance) : IClassFixture<Inst
 
         var answer = Messages(run.Output.ToString()).Single();
         answer.GetProperty("id").GetInt32().ShouldBe(2);
-        answer.GetProperty("error").GetProperty("message").GetString()!.ShouldStartWith("FCMS3381: /mcp answered more than 16 MiB");
-        run.Error.ToString().ShouldStartWith("FCMS3381: ");
+        answer.GetProperty("error").GetProperty("message").GetString()!.ShouldStartWith("FCMS3317: /mcp answered more than 16 MiB");
+        run.Error.ToString().ShouldStartWith("FCMS3317: ");
     }
 
     [Fact]
@@ -173,7 +175,7 @@ public sealed class McpProxyTests(InstanceFixture instance) : IClassFixture<Inst
         using var output = new StringWriter();
         using var error = new StringWriter();
         var client = new ManagementClient(new Instance(new Uri(InstanceFixture.Url), "fcms_mk_drain"), new HttpClient(new Answering(_ => null)));
-        using var proxy = new McpProxy(client, new StringReader(ListTools + "\n"), output, error, TimeSpan.FromMilliseconds(500));
+        using var proxy = new McpProxy(client, BoundedLineReader.Of(new StringReader(ListTools + "\n"), McpProxy.MaxMessageLength), output, error, TimeSpan.FromMilliseconds(500));
 
         (await proxy.RunAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
 
@@ -209,7 +211,7 @@ public sealed class McpProxyTests(InstanceFixture instance) : IClassFixture<Inst
     [Fact]
     public async Task ALineOverTheBoundIsGivenAsTooLongWithoutItsText()
     {
-        var lines = new BoundedLineReader(new StringReader("short\n" + new string('x', 20) + "\nfits\r\n0123456789\nend"), 10);
+        var lines = BoundedLineReader.Of(new StringReader("short\n" + new string('x', 20) + "\nfits\r\n0123456789\nend"), 10);
         List<BoundedLine> read = [];
         while (await lines.ReadLineAsync(TestContext.Current.CancellationToken) is { } line)
         {
@@ -217,6 +219,128 @@ public sealed class McpProxyTests(InstanceFixture instance) : IClassFixture<Inst
         }
 
         read.ShouldBe([new("short", false), new("", true), new("fits", false), new("0123456789", false), new("end", false)]);
+    }
+
+    // A line ends at a line feed, a carriage return or both, as an event stream may end its lines.
+    [Fact]
+    public async Task ALoneCarriageReturnEndsALineAndALineFeedAfterOneDoesNot()
+    {
+        var lines = BoundedLineReader.Of(new MemoryStream(Encoding.UTF8.GetBytes("one\rtwo\r\n\rthree\nfour")), 100);
+        List<string> read = [];
+        while (await lines.ReadLineAsync(TestContext.Current.CancellationToken) is { } line)
+        {
+            read.Add(line.Text);
+        }
+
+        read.ShouldBe(["one", "two", "", "three", "four"]);
+    }
+
+    // A client keeps its end of standard input open while it waits for the answer, so a line is read as soon as it is
+    // there, whatever its length; StreamReader went on reading while each read filled its buffer of 1024 bytes.
+    [Theory]
+    [InlineData(1023, 1)]
+    [InlineData(1024, 1)]
+    [InlineData(2048, 1)]
+    [InlineData(4096, 1)]
+    [InlineData(8192, 1)]
+    [InlineData(65536, 1)]
+    [InlineData(1024, 3)]
+    [InlineData(3072, 3)]
+    public async Task ALineOnAPipeIsReadWhileTheWriterIsStillOpen(int bytes, int bytesPerCharacter)
+    {
+        using var writer = new AnonymousPipeServerStream(PipeDirection.Out);
+        using var reader = new AnonymousPipeClientStream(PipeDirection.In, writer.ClientSafePipeHandle);
+        var character = bytesPerCharacter == 3 ? ((char)0x20AC).ToString() : "x";
+        var line = string.Concat(Enumerable.Repeat(character, (bytes - 1) / bytesPerCharacter)) + new string('y', (bytes - 1) % bytesPerCharacter);
+        var lines = BoundedLineReader.Of(reader, McpProxy.MaxMessageLength);
+
+        var reading = lines.ReadLineAsync(TestContext.Current.CancellationToken).AsTask();
+        await writer.WriteAsync(Encoding.UTF8.GetBytes(line + "\n"), TestContext.Current.CancellationToken);
+        await writer.FlushAsync(TestContext.Current.CancellationToken);
+
+        var read = await reading.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+        read.ShouldBe(new BoundedLine(line, TooLong: false));
+    }
+
+    // The event stream of an answer is read as it comes, while the server keeps it open.
+    [Fact]
+    public async Task AnEventOfAKibibyteIsRelayedWhileTheStreamIsStillOpen()
+    {
+        using var writer = new AnonymousPipeServerStream(PipeDirection.Out);
+        var reader = new AnonymousPipeClientStream(PipeDirection.In, writer.ClientSafePipeHandle);
+        var run = new InstanceRun(new Answering(_ =>
+        {
+            var content = new StreamContent(reader);
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+        }));
+        var frame = "data: {\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"pad\":\"PAD\"}}\n\n";
+        var padded = frame.Replace("PAD", new string('p', 1024 - Encoding.UTF8.GetByteCount(frame) + 3), StringComparison.Ordinal);
+        Encoding.UTF8.GetByteCount(padded).ShouldBe(1024);
+
+        var running = run.RunAsync(new StringReader(ListTools + "\n"), "mcp", "--url", InstanceFixture.Url, "--token", "fcms_mk_pipe");
+        await writer.WriteAsync(Encoding.UTF8.GetBytes(padded), TestContext.Current.CancellationToken);
+        await writer.FlushAsync(TestContext.Current.CancellationToken);
+
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (run.Output.Lines < 1 && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(10, TestContext.Current.CancellationToken);
+        }
+
+        var relayed = run.Output.Lines;
+        writer.Dispose();
+        (await running).ShouldBe(0, run.Error.ToString());
+        relayed.ShouldBe(1);
+        Messages(run.Output.ToString()).Single().GetProperty("result").GetProperty("pad").GetString()!.ShouldStartWith("ppp");
+    }
+
+    // The answer was written before the stream broke, so the request gets no error as well.
+    [Fact]
+    public async Task ARequestAnsweredBeforeItsStreamBrokeGetsNoErrorToo()
+    {
+        var run = new InstanceRun(new Answering(_ =>
+        {
+            var content = new StreamContent(new BreakingStream(Encoding.UTF8.GetBytes("data: {\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}\n\n")));
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/event-stream");
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+        }));
+
+        (await run.RunAsync(new StringReader(ListTools + "\n"), "mcp", "--url", InstanceFixture.Url, "--token", "fcms_mk_broken")).ShouldBe(0, run.Error.ToString());
+
+        Messages(run.Output.ToString()).Single().TryGetProperty("result", out _).ShouldBeTrue();
+        run.Error.ToString().ShouldStartWith("FCMS3329: ");
+    }
+
+    // A server may write an id as 1 where the request wrote 1.0; the ids are compared by value.
+    [Fact]
+    public async Task AnAnswerWhoseIdIsWrittenOtherwiseStillAnswersItsRequest()
+    {
+        var run = new InstanceRun(new Answering(_ => Events("""{"jsonrpc":"2.0","id":1,"result":{}}""")));
+        const string Request = """{"jsonrpc":"2.0","id":1.0,"method":"tools/list"}""";
+
+        (await run.RunAsync(new StringReader(Request + "\n"), "mcp", "--url", InstanceFixture.Url, "--token", "fcms_mk_ids")).ShouldBe(0, run.Error.ToString());
+
+        Messages(run.Output.ToString()).Single().TryGetProperty("result", out _).ShouldBeTrue();
+    }
+
+    // A JSON answer that leaves out a request of the batch: that request gets an error.
+    [Fact]
+    public async Task ARequestThatAJsonAnswerLeavesOutGetsAJsonRpcError()
+    {
+        var run = new InstanceRun(new Answering(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("""[{"jsonrpc":"2.0","id":1,"result":{}}]""", Encoding.UTF8, "application/json"),
+        }));
+        const string Batch = """[{"jsonrpc":"2.0","id":1,"method":"tools/list"},{"jsonrpc":"2.0","id":2,"method":"prompts/list"}]""";
+
+        (await run.RunAsync(new StringReader(Batch + "\n"), "mcp", "--url", InstanceFixture.Url, "--token", "fcms_mk_partial")).ShouldBe(0, run.Error.ToString());
+
+        var messages = Messages(run.Output.ToString());
+        messages.Count.ShouldBe(2);
+        messages[0][0].GetProperty("id").GetInt32().ShouldBe(1);
+        messages[1][0].GetProperty("id").GetInt32().ShouldBe(2);
+        messages[1][0].GetProperty("error").GetProperty("message").GetString()!.ShouldStartWith("FCMS3361: /mcp answered without the answer to this request");
     }
 
     private static List<JsonElement> Messages(string output) =>
@@ -294,6 +418,49 @@ public sealed class McpProxyTests(InstanceFixture instance) : IClassFixture<Inst
             length = McpProxy.MaxMessageLength + 1L;
             return true;
         }
+    }
+
+    // A stream that gives its bytes and then breaks, as a connection that drops does.
+    private sealed class BreakingStream(byte[] bytes) : Stream
+    {
+        private bool _given;
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (_given)
+            {
+                throw new IOException("The connection broke.");
+            }
+
+            _given = true;
+            bytes.CopyTo(buffer);
+            return ValueTask.FromResult(bytes.Length);
+        }
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override void Flush()
+        {
+        }
+
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 
     // Standard input that gives its lines and then stays open, as a client's does until it stops the proxy.

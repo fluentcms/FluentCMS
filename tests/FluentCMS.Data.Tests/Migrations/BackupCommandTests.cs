@@ -140,8 +140,9 @@ public sealed class BackupCommandTests : IDisposable
     }
 
     // A backup of another schema, or with a migration the host does not have, would leave tables that a start refuses.
+    // --force replaces the database only, so it does not allow that.
     [SqliteFact("the backup of a SQLite database")]
-    public async Task RestoreRefusesABackupOfAnotherSchemaOrOfMigrationsTheHostDoesNotHaveUnlessForced()
+    public async Task RestoreRefusesABackupOfAnotherSchemaOrOfMigrationsTheHostDoesNotHaveUnlessAllowed()
     {
         using var host = Host(_database);
         (await RunAsync(host, "migrate")).ExitCode.ShouldBe(0);
@@ -149,12 +150,25 @@ public sealed class BackupCommandTests : IDisposable
         _database.Execute("CREATE TABLE restore_probe (value TEXT);");
 
         await EditManifestAsync(manifest => manifest["schemaHash"] = new string('0', 64));
-        var schema = await RunAsync(host, "restore", Archive);
+        var schema = await RunAsync(host, "restore", Archive, "--force");
         schema.ExitCode.ShouldBe(1);
-        schema.Error.ShouldStartWith("FCMS3380: ");
+        schema.Error.ShouldStartWith("FCMS3249: ");
         schema.Error.ShouldContain($"the schema hash is {new string('0', 64)} in the backup and ");
-        schema.Error.ShouldContain("--force");
+        schema.Error.ShouldContain("--allow-schema-mismatch");
         _database.Tables().ShouldContain("restore_probe");
+
+        // A refusal after the check says nothing of restoring.
+        using (var running = new Microsoft.Data.Sqlite.SqliteConnection(_database.ConnectionString))
+        {
+            running.Open();
+            using var read = running.CreateCommand();
+            read.CommandText = "SELECT count(*) FROM sqlite_master";
+            read.ExecuteScalar();
+            var inUse = await RunAsync(host, "restore", Archive, "--force", "--allow-schema-mismatch");
+            inUse.ExitCode.ShouldBe(1);
+            inUse.Error.ShouldStartWith("FCMS3245: ");
+            inUse.Error.ShouldNotContain("FCMS3249");
+        }
 
         await EditManifestAsync(manifest =>
         {
@@ -163,14 +177,35 @@ public sealed class BackupCommandTests : IDisposable
             streams.Add(new JsonObject { ["name"] = "acme.gone", ["applied"] = new JsonArray("20260101000000_Initial") });
             streams.Single(stream => stream!["name"]!.GetValue<string>() == "system")!["applied"]!.AsArray().Add("29990101000000_FromTheFuture");
         });
-        var migrations = await RunAsync(host, "restore", Archive, "--force");
+        var migrations = await RunAsync(host, "restore", Archive, "--force", "--allow-schema-mismatch");
         migrations.ExitCode.ShouldBe(0, migrations.Error);
-        migrations.Error.ShouldStartWith("FCMS3380: warning: ");
+        migrations.Error.ShouldStartWith("FCMS3249: warning: ");
         migrations.Error.ShouldContain("the schema hash is missing in the backup");
         migrations.Error.ShouldContain("the backup has the stream acme.gone, which the host does not have");
         migrations.Error.ShouldContain("stream system has applied 29990101000000_FromTheFuture, which the host does not have");
-        migrations.Error.ShouldContain("restored because of --force");
+        migrations.Error.ShouldContain("restored because of --allow-schema-mismatch");
         _database.Tables().ShouldNotContain("restore_probe");
+    }
+
+    // Restoring into a newer host is what restore is for: a migration the host has and the backup had not is pending.
+    [SqliteFact("the backup of a SQLite database")]
+    public async Task AMigrationTheHostHasAndTheBackupHadNotIsNoDifference()
+    {
+        using var host = Host(_database);
+        (await RunAsync(host, "migrate")).ExitCode.ShouldBe(0);
+        (await RunAsync(host, "backup", "--output", Archive)).ExitCode.ShouldBe(0);
+        await EditManifestAsync(manifest =>
+        {
+            foreach (var stream in manifest["migrations"]!.AsArray())
+            {
+                stream!["applied"] = new JsonArray();
+            }
+        });
+
+        var (exitCode, _, error) = await RunAsync(host, "restore", Archive, "--force");
+
+        exitCode.ShouldBe(0, error);
+        error.ShouldNotContain("FCMS3249");
     }
 
     // The database of the archive is read whole before the database it replaces is moved, which stays as it was.

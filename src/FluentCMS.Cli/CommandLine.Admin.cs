@@ -216,9 +216,10 @@ internal sealed partial class CommandLine
 
             // On the console the protocol's UTF-8 is written and read as bytes, whatever the console's own encoding is.
             var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
-            using var reader = input is null ? new StreamReader(Console.OpenStandardInput(), encoding) : null;
+            await using var standardInput = input is null ? Console.OpenStandardInput() : null;
+            var lines = standardInput is null ? BoundedLineReader.Of(input!, McpProxy.MaxMessageLength) : BoundedLineReader.Of(standardInput, McpProxy.MaxMessageLength);
             await using var writer = ReferenceEquals(output, Console.Out) ? new StreamWriter(Console.OpenStandardOutput(), encoding) { AutoFlush = true } : null;
-            using var proxy = new McpProxy(client, input ?? reader!, writer ?? output, error);
+            using var proxy = new McpProxy(client, lines, writer ?? output, error);
             return await proxy.RunAsync(cancellationToken);
         }));
         return command;

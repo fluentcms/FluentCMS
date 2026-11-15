@@ -13,7 +13,7 @@ namespace FluentCMS.Cli;
 // to standard error. The proxy reads no content and adds no tool: it looks only at the ids of requests and answers, so that
 // each request gets an answer, at the session id the instance gives, and at the protocol version of the answer to
 // initialize, which later requests name.
-internal sealed class McpProxy(ManagementClient client, TextReader input, TextWriter output, TextWriter error, TimeSpan? drainTimeout = null) : IDisposable
+internal sealed class McpProxy(ManagementClient client, BoundedLineReader input, TextWriter output, TextWriter error, TimeSpan? drainTimeout = null) : IDisposable
 {
     public const string Endpoint = "mcp";
 
@@ -41,11 +41,10 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
     {
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var stopped = Task.Delay(Timeout.Infinite, stop.Token);
-        var lines = new BoundedLineReader(input, MaxMessageLength);
         List<Task> forwarding = [];
 
         // Messages are forwarded as they come, so that a cancellation reaches the instance while a call is running.
-        while (await ReadLineAsync(lines, stopped, stop.Token) is { } line)
+        while (await ReadLineAsync(input, stopped, stop.Token) is { } line)
         {
             if (line.TooLong)
             {
@@ -107,6 +106,9 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
     private async Task ForwardAsync(string line, CancellationTokenSource stop)
     {
         var sent = Sent.Of(line);
+
+        // The requests answered so far, so that a failure after an answer was written errs only for the others.
+        var answered = new HashSet<string>(StringComparer.Ordinal);
         try
         {
             using var request = client.Request(HttpMethod.Post, Endpoint);
@@ -167,7 +169,7 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
 
             if (response.IsSuccessStatusCode && response.Content.Headers.ContentType?.MediaType == "text/event-stream")
             {
-                var answered = await RelayEventsAsync(response, sent, stop.Token);
+                await RelayEventsAsync(response, sent, answered, stop.Token);
                 await AnswerWithErrorAsync(sent, $"{CliErrorCodes.UnexpectedAnswer}: the event stream of /{Endpoint} ended without the answer.", answered);
                 return;
             }
@@ -176,6 +178,8 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
             if (Message(text, sent) is { } message)
             {
                 await WriteAsync(message.Text);
+                answered.UnionWith(message.Answered);
+                await AnswerWithErrorAsync(sent, $"{CliErrorCodes.UnexpectedAnswer}: /{Endpoint} answered without the answer to this request.", answered);
                 return;
             }
 
@@ -195,24 +199,23 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
         {
             // The instance could not be reached for this request, or its answer was too large; the next one may do.
             await WriteErrorAsync(exception.Message);
-            await AnswerWithErrorAsync(sent, exception.Message);
+            await AnswerWithErrorAsync(sent, exception.Message, answered);
         }
         catch (Exception exception) when (exception is HttpRequestException or IOException)
         {
             // The answer broke off while it was read.
             var reason = new CliException(CliErrorCodes.InstanceUnreachable, $"{client.Instance} could not be reached: {exception.Message}");
             await WriteErrorAsync(reason.Message);
-            await AnswerWithErrorAsync(sent, reason.Message);
+            await AnswerWithErrorAsync(sent, reason.Message, answered);
         }
     }
 
-    // Server-sent events: the data lines of an event, joined, are one message. Returns the ids of the requests it answered.
-    private async Task<HashSet<string>> RelayEventsAsync(HttpResponseMessage response, Sent sent, CancellationToken cancellationToken)
+    // Server-sent events: the data lines of an event, joined, are one message. The ids of the requests it answers are added
+    // as each is written.
+    private async Task RelayEventsAsync(HttpResponseMessage response, Sent sent, HashSet<string> answered, CancellationToken cancellationToken)
     {
-        var answered = new HashSet<string>(StringComparer.Ordinal);
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var reader = new StreamReader(stream, Encoding.UTF8);
-        var lines = new BoundedLineReader(reader, MaxMessageLength);
+        var lines = BoundedLineReader.Of(stream, MaxMessageLength);
         var data = new StringBuilder();
         var tooLarge = false;
         while (true)
@@ -234,7 +237,7 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
                 tooLarge = false;
                 if (line is null)
                 {
-                    return answered;
+                    return;
                 }
 
                 continue;
@@ -274,7 +277,7 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
             }
 
             // An answer has an id and no method; a request or a notification of the instance has a method.
-            var answered = items.Where(item => item.TryGetProperty("id", out _) && !item.TryGetProperty("method", out _)).Select(item => item.GetProperty("id").GetRawText()).ToList();
+            var answered = items.Where(item => item.TryGetProperty("id", out _) && !item.TryGetProperty("method", out _)).Select(item => IdKey(item.GetProperty("id"))).ToList();
             return (JsonSerializer.Serialize(root), answered);
         }
         catch (JsonException)
@@ -285,12 +288,20 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
 
     private static bool IsJsonRpc(JsonElement element) => ManagementClient.Text(element, "jsonrpc") == "2.0";
 
+    // An id is a string, a number or null, compared by value, so that a server that writes 1 for 1.0 still answers it.
+    private static string IdKey(JsonElement id) => id.ValueKind switch
+    {
+        JsonValueKind.String => "s" + id.GetString(),
+        JsonValueKind.Number when id.TryGetDecimal(out var number) => "n" + number.ToString("G29", CultureInfo.InvariantCulture),
+        _ => "r" + id.GetRawText(),
+    };
+
     // A request whose answer never came gets an error, so that the client does not wait for it; the requests of a batch get
     // a batch of errors.
     private async Task AnswerWithErrorAsync(Sent sent, string reason, HashSet<string>? answered = null)
     {
         var errors = sent.Ids
-            .Where(id => answered is null || !answered.Contains(id.GetRawText()))
+            .Where(id => answered is null || !answered.Contains(IdKey(id)))
             .Select(id => new { jsonrpc = "2.0", id, error = new { code = InternalError, message = reason } })
             .ToList();
         if (errors.Count > 0)
@@ -400,70 +411,3 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
         }
     }
 }
-
-// The lines of a reader, each at most a bound long: a longer line is read to its end and given as too long, without its
-// text, so that what is held stays bounded.
-internal sealed class BoundedLineReader(TextReader reader, int maxLength)
-{
-    private readonly char[] _buffer = new char[8192];
-    private int _start;
-    private int _end;
-    private bool _ended;
-
-    // Null once the reader has ended and every line is read.
-    public async ValueTask<BoundedLine?> ReadLineAsync(CancellationToken cancellationToken)
-    {
-        var line = new StringBuilder();
-        var tooLong = false;
-        var any = false;
-        while (true)
-        {
-            if (_start == _end)
-            {
-                if (_ended)
-                {
-                    return any ? Line(line, tooLong) : null;
-                }
-
-                _start = 0;
-                _end = await reader.ReadAsync(_buffer.AsMemory(), cancellationToken);
-                _ended = _end == 0;
-                continue;
-            }
-
-            any = true;
-            var span = _buffer.AsSpan(_start, _end - _start);
-            var newline = span.IndexOf('\n');
-            var part = newline < 0 ? span : span[..newline];
-            if (!tooLong && line.Length + part.Length > maxLength + 1)
-            {
-                tooLong = true;
-                line.Clear();
-            }
-            else if (!tooLong)
-            {
-                line.Append(part);
-            }
-
-            _start += part.Length;
-            if (newline < 0)
-            {
-                continue;
-            }
-
-            _start++;
-            if (!tooLong && line.Length > 0 && line[line.Length - 1] == '\r')
-            {
-                line.Length--;
-            }
-
-            return Line(line, tooLong);
-        }
-    }
-
-    // One character more than the bound is held while reading, for the carriage return before a line feed.
-    private BoundedLine Line(StringBuilder line, bool tooLong) =>
-        tooLong || line.Length > maxLength ? new BoundedLine("", TooLong: true) : new BoundedLine(line.ToString(), TooLong: false);
-}
-
-internal readonly record struct BoundedLine(string Text, bool TooLong);

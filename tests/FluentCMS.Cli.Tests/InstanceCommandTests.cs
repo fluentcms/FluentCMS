@@ -254,11 +254,11 @@ public sealed class InstanceCommandTests(InstanceFixture instance) : IClassFixtu
     public async Task TheReportOfDoctorAndTheDiffOfAnInstanceArePrintedWithTheirControlCharactersEscaped()
     {
         var esc = (char)0x1B;
-        var doctor = new InstanceRun(new JsonAnswer(new JsonObject { ["version"] = "1.0.0", ["environment"] = $"Production{esc}[2J" }.ToJsonString()));
+        var doctor = new InstanceRun(new JsonAnswer(new JsonObject { ["version"] = "1.0.0", ["environment"] = $"Production{esc}[2J\nPlugins:" }.ToJsonString()));
 
         (await doctor.RunAsync("doctor", "--url", "https://cms.example.com", "--token", "fcms_mk_secret")).ShouldBe(0, doctor.Error.ToString());
 
-        doctor.Output.ToString().ShouldStartWith("FluentCMS 1.0.0 in Production\\u001B[2J");
+        doctor.Output.ToString().ShouldStartWith($"FluentCMS 1.0.0 in Production\\u001B[2J\\u000APlugins:{Environment.NewLine}");
         doctor.Output.ToString().ShouldNotContain(esc);
 
         var deployed = Path.Combine(Path.GetTempPath(), $"fluentcms-empty-{Guid.NewGuid():N}.json");

@@ -23,6 +23,9 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
 
     private static readonly string[] SnapshotGroups = ["collections", "singletons", "components", "blocks"];
 
+    // No response file is read: the tool has no use for one, and a key in one would be repeated by a usage error.
+    private static readonly ParserConfiguration Parsing = new() { ResponseFileTokenReplacer = null };
+
     private readonly Func<Instance, HttpClient> _connect = connect ?? (_ => new HttpClient(InstanceAnswer.Handler()));
 
     public static Task<int> RunAsync(string[] args, TextWriter output, TextWriter error, IHostLauncher? launcher = null, CancellationToken cancellationToken = default) =>
@@ -40,7 +43,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
 
     private async Task<int> RunAsync(string[] args, CancellationToken cancellationToken)
     {
-        var result = Build().Parse(args);
+        var result = Build().Parse(args, Parsing);
         if (result.Errors.Count > 0)
         {
             return await BadUsageAsync(args, cancellationToken);
@@ -59,10 +62,16 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
     }
 
     // The tool waits for a host it started, which gets Ctrl+C itself, so the parser neither ends the process first nor
-    // cancels the command, which would stop the host. A command with --url runs in the tool alone: Ctrl+C or SIGTERM cancels
-    // it, and it has this long to clean up, so that an export removes its temporary file and mcp ends its session.
-    internal static TimeSpan? TerminationTimeout(ParseResult result) =>
-        result.CommandResult.Command.Options.Any(option => option.Name == "--url" && result.GetResult(option) is not null) ? CleanUpTimeout : null;
+    // cancels the command, which would kill the host. A command with --url runs in the tool alone, except `schema diff`
+    // without --schema, which runs the host for its schema: Ctrl+C or SIGTERM cancels it, and it has this long to clean up,
+    // so that an export removes its temporary file and mcp ends its session.
+    internal static TimeSpan? TerminationTimeout(ParseResult result)
+    {
+        var command = result.CommandResult.Command;
+        bool Given(string name) => command.Options.Any(option => option.Name == name && result.GetResult(option) is not null);
+        var runsHost = command.Name == "diff" && command.Parents.OfType<Command>().Any(parent => parent.Name == "schema") && !Given("--schema");
+        return Given("--url") && !runsHost ? CleanUpTimeout : null;
+    }
 
     internal static readonly TimeSpan CleanUpTimeout = TimeSpan.FromSeconds(10);
 
@@ -70,7 +79,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
     // the key after --token of a command that runs in the host only, so the key is replaced first.
     private async Task<int> BadUsageAsync(string[] args, CancellationToken cancellationToken)
     {
-        var shown = Build().Parse(WithoutKey(args));
+        var shown = Build().Parse(WithoutKey(args), Parsing);
         if (shown.Errors.Count == 0)
         {
             await error.WriteLineAsync($"The arguments are not valid; the value of {InstanceOptions.TokenOption} is not repeated here.");
@@ -610,9 +619,11 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
     {
         var file = new Argument<string>("file") { Description = "The archive of 'fluentcms backup'." };
         var force = new Option<bool>("--force") { Description = "Replaces the database and the media files the host has." };
-        var command = new Command("restore", "Restores a backup into a host on SQLite that is stopped: the database and the local media files.") { file, force };
+        var allowMismatch = new Option<bool>("--allow-schema-mismatch") { Description = "Restores a backup of another schema or with migrations the host does not have, which is refused otherwise." };
+        var command = new Command("restore", "Restores a backup into a host on SQLite that is stopped: the database and the local media files.") { file, force, allowMismatch };
         var project = ProjectOptions.AddTo(command);
-        command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["restore", Path.GetFullPath(result.GetValue(file)!), .. Flag(result, force)], cancellationToken));
+        command.SetAction((result, cancellationToken) => HandOverAsync(
+            result, project, ["restore", Path.GetFullPath(result.GetValue(file)!), .. Flag(result, force), .. Flag(result, allowMismatch)], cancellationToken));
         return command;
     }
 
@@ -738,7 +749,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
     {
         foreach (var name in fieldTypes.Unchecked)
         {
-            await error.WriteLineAsync($"note: field type '{name}' is not one of core's, so its fields were checked only as fields; give --project or --assembly to check them with the host's field types.");
+            await error.WriteLineAsync($"note: field type '{PrintableText.Escape(name)}' is not one of core's, so its fields were checked only as fields; give --project or --assembly to check them with the host's field types.");
         }
     }
 

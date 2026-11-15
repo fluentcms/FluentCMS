@@ -32,7 +32,7 @@ internal static class DoctorReport
         var exitCode = CommandExitCodes.Success;
         foreach (var refusal in refusals)
         {
-            await WriteLineAsync(error, $"{CommandErrorCodes.HostWouldNotStart}: the host would not start: {refusal}");
+            await WriteLineAsync(error, $"{CommandErrorCodes.HostWouldNotStart}: the host would not start: {refusal}", keepLineBreaks: true);
             exitCode = CommandExitCodes.Failure;
         }
 
@@ -104,6 +104,8 @@ internal static class DoctorReport
 
     private static string Or(string value, string fallback) => value.Length == 0 ? fallback : value;
 
-    // The report of an instance reached with --url is its text, which is made printable; a refusal may span lines.
-    private static Task WriteLineAsync(TextWriter writer, string line) => writer.WriteLineAsync(PrintableText.Escape(line, keepLineBreaks: true));
+    // The report of an instance reached with --url is its text, which is made printable. Only a refusal, which is the host's
+    // own and never an instance's, keeps the lines of a message such as that of a schema with errors.
+    private static Task WriteLineAsync(TextWriter writer, string line, bool keepLineBreaks = false) =>
+        writer.WriteLineAsync(PrintableText.Escape(line, keepLineBreaks));
 }

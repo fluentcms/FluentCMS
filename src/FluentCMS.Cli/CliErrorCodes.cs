@@ -1,10 +1,10 @@
 namespace FluentCMS.Cli;
 
-// The 331x codes, and those of 3327 to 3334 that the schema tools and doctor have in the tool; the commands inside the host
-// have the 330x codes and the rest of 3320 to 3334. Of the commands that administer an instance, the 336x codes are the
-// tool's, and the 335x codes are the host's and the tool's alike, since an instance reached with --url answers the same way.
-// Export and import at an instance have 3251 to 3253, and share 3248 with the commands inside the host. The generate
-// commands have 3370 to 3378, and 3381 is the MCP proxy's.
+// The 331x codes, of which 3317 is the MCP proxy's, and those of 3327 to 3334 that the schema tools and doctor have in the
+// tool; the commands inside the host have the 330x codes and the rest of 3320 to 3334. Of the commands that administer an
+// instance, the 336x codes are the tool's, and the 335x codes are the host's and the tool's alike, since an instance reached
+// with --url answers the same way. Export and import at an instance have 3251 to 3253, and share 3248 with the commands
+// inside the host. The generate commands have 3370 to 3378.
 internal static class CliErrorCodes
 {
     public const string UnknownRole = "FCMS3350";
@@ -13,7 +13,6 @@ internal static class CliErrorCodes
     public const string UnexpectedAnswer = "FCMS3361";
     public const string McpKeyRefused = "FCMS3362";
     public const string KeyWithoutTls = "FCMS3363";
-    public const string McpMessageTooLarge = "FCMS3381";
 
     public const string ProjectNotBuilt = "FCMS3310";
     public const string AssemblyNotFound = "FCMS3311";
@@ -22,6 +21,7 @@ internal static class CliErrorCodes
     public const string MigrationApplied = "FCMS3314";
     public const string AppliedMigrationsUnknown = "FCMS3315";
     public const string InvalidInstance = "FCMS3316";
+    public const string McpMessageTooLarge = "FCMS3317";
     public const string DestructiveMigration = "FCMS3327";
     public const string MigrationUnchecked = "FCMS3328";
     public const string InstanceUnreachable = "FCMS3329";

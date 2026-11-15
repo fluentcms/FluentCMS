@@ -341,6 +341,7 @@ public static class ErrorCodeRegistry
         Startup(TransferCommandErrorCodes.MediaNotEmpty, "Media directory not empty"),
         Startup(TransferCommandErrorCodes.NoLocalMedia, "No local media storage"),
         Startup(TransferCommandErrorCodes.FileNotRead, "File not read"),
+        Startup(TransferCommandErrorCodes.BackupOfAnotherSchema, "Backup of another schema or migrations"),
         Startup(TransferCommandErrorCodes.ImportNotClean, "Import reported conflicts or errors"),
         Startup("FCMS3251", "Instance refused the transfer"),
         Startup("FCMS3252", "Instance not reached for a transfer"),
@@ -371,6 +372,7 @@ public static class ErrorCodeRegistry
         Startup("FCMS3314", "Content migration applied"),
         Startup("FCMS3315", "Applied migrations unknown"),
         Startup("FCMS3316", "Invalid instance address or token"),
+        Startup("FCMS3317", "MCP message too large"),
 
         // 3320 to 3334 the schema tools and doctor, inside the host and in the tool
         Startup(CommandErrorCodes.SchemaInvalid, "Schema invalid"),
@@ -419,10 +421,6 @@ public static class ErrorCodeRegistry
         Startup("FCMS3377", "Conflicting schema sources"),
         Startup("FCMS3378", "Host gave no generator input"),
         Startup(GenerateErrorCodes.OpenApiUnavailable, "OpenAPI document unavailable"),
-
-        // 338x restore inside the host, and the MCP proxy of the tool, whose code is written out
-        Startup(TransferCommandErrorCodes.BackupOfAnotherSchema, "Backup of another schema or migrations"),
-        Startup("FCMS3381", "MCP message too large"),
     ];
 
     private static readonly FrozenDictionary<string, ErrorCodeInfo> byCode = All.ToFrozenDictionary(info => info.Code);
