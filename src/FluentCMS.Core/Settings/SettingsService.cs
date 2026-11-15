@@ -42,6 +42,7 @@ internal sealed class SettingsService(
     IOperationContextAccessor accessor,
     IEventBus bus,
     ITransactionProbe transaction,
+    IEnumerable<ISettingsCheck> checks,
     TimeProvider time,
     ILogger<SettingsService> logger)
 {
@@ -150,7 +151,7 @@ internal sealed class SettingsService(
         var operation = await AuthorizeAsync(descriptor, site, cancellationToken);
 
         // Refused before the database is touched; the document that is stored is built again from the row it replaces.
-        descriptor.Canonicalize(json);
+        Checked(descriptor, json);
 
         await StoreAsync(descriptor, site, json, expectedVersion, operation.AuditPrincipal.Id, cancellationToken);
         await ChangedAsync(descriptor, site, operation, "changed", cancellationToken);
@@ -204,7 +205,7 @@ internal sealed class SettingsService(
             throw new SettingsAccessDeniedException(descriptor.Area, site);
         }
 
-        var canonical = descriptor.Canonicalize(json);
+        var canonical = Checked(descriptor, json);
 
         Guid? siteId = site.Value;
         var stored = await context.Set<SettingRow>().AsNoTracking()
@@ -224,6 +225,14 @@ internal sealed class SettingsService(
         }
 
         return stored is null ? TransferOutcome.Created : TransferOutcome.Updated;
+    }
+
+    // The document in canonical form, once its class and the checks of its area have found nothing wrong with it.
+    private string Checked(SettingsDescriptor descriptor, string json)
+    {
+        var canonical = descriptor.Canonicalize(json);
+        List<ValidationError> errors = [.. checks.Where(check => check.Area == descriptor.Area).SelectMany(check => check.Check(descriptor.Read(canonical)))];
+        return errors.Count > 0 ? throw new ValidationException(errors) : canonical;
     }
 
     private ResolvedSetting? Pick(SettingsDescriptor descriptor, SettingRow? row, SettingsSource source, int version, Guid scope)

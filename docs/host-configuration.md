@@ -210,6 +210,8 @@ A key can be limited to IP addresses and CIDR ranges with `allowedAddresses`, on
 
 `POST /api/management/v1/content/{type}/{id}/preview-token` mints a token that reads the draft of that one entry, optionally of one locale (`{ "minutes", "locale" }`, both optional). The caller needs the `management` scope and the permission to read that draft. A front end sends it as `Authorization: Preview <token>` to `GET /api/delivery/v1/{type}/{id}?status=draft`, and every other read with it is refused with `FCMS3028`. It is signed with the authorization server's key and nothing is stored, so it cannot be revoked: keep the lifetimes short. It stops working at once if its user is deactivated, its key revoked or its role loses the read.
 
+The settings area `preview` (`settings.preview.manage`) names the front end's page for each content type, per site with instance defaults, such as `{ "templates": { "article": "https://www.example.com/{locale}/articles/{slug}?preview={token}" } }`. A template is an absolute `http` or `https` URL whose placeholders, `{id}`, `{locale}`, `{token}` and a single-value field of the type, stand in its path, query or fragment, with `{token}` as the whole value of one query parameter. The answer then carries `url`, filled in for the draft with the token, and `publishedUrl`, filled in for the published entry without the token's parameter; each is null when the type has no template or a value is missing.
+
 | `FluentCms:PreviewTokens:` | Default | Meaning |
 | --- | --- | --- |
 | `DefaultLifetime` | `00:10:00` | How long a token lasts when the request names no `minutes`, in whole minutes from one minute to `MaximumLifetime`. |

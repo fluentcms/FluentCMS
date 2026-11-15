@@ -1,11 +1,13 @@
 using FluentCMS.Content;
 using FluentCMS.Schema;
+using FluentCMS.Settings;
+using FluentCMS.Sites;
 
 namespace FluentCMS.Core.Identity.PreviewTokens;
 
 internal sealed record PreviewTokenRequest(int? Minutes, string? Locale);
 
-internal sealed record IssuedPreviewToken(string Token, DateTimeOffset ExpiresAt, PreviewBinding Binding);
+internal sealed record IssuedPreviewToken(string Token, DateTimeOffset ExpiresAt, PreviewBinding Binding, string? Url = null, string? PublishedUrl = null);
 
 // Mints a token that reads the draft of one entry in the operation's site, and of one locale when the request names it,
 // on the Delivery API. Minting reads that draft as the caller first, so a caller who may not read it gets the 404 the read
@@ -17,6 +19,7 @@ internal sealed class PreviewTokenService(
     SchemaModel schema,
     PreviewTokenIssuer issuer,
     PreviewTokenOptions options,
+    ISettings<PreviewSettings> settings,
     TimeProvider time)
 {
     public async Task<IssuedPreviewToken> MintAsync(string type, Guid id, PreviewTokenRequest request, CancellationToken cancellationToken = default)
@@ -38,12 +41,29 @@ internal sealed class PreviewTokenService(
         }
 
         var read = new GetOptions { Status = QueryStatus.Draft, Locale = locale, Fallback = locale is null ? LocaleFallback.Chain : LocaleFallback.None };
-        _ = await content.GetAsync(found.Name, id, read, cancellationToken) ?? throw new EntryNotFoundException(found.Name, id);
+        var draft = await content.GetAsync(found.Name, id, read, cancellationToken) ?? throw new EntryNotFoundException(found.Name, id);
 
         var binding = new PreviewBinding(operation.Site.Value, found.Name, id, locale);
         // A JWT holds whole seconds, so the answer says the expiry the token has.
         var expires = DateTimeOffset.FromUnixTimeSeconds((time.GetUtcNow() + lifetime).ToUnixTimeSeconds());
-        return new IssuedPreviewToken(issuer.Create(PreviewTokenIssuer.ClaimsOf(operation.Principal, binding), expires), expires, binding);
+        var token = issuer.Create(PreviewTokenIssuer.ClaimsOf(operation.Principal, binding), expires);
+        if (await TemplateAsync(found, operation.Site, cancellationToken) is not { } template)
+        {
+            return new IssuedPreviewToken(token, expires, binding);
+        }
+
+        // Filled from what the caller's reads show, which is what the token's own read shows, so a field the caller may not read
+        // leaves no URL rather than putting its value in one. The published page is at the published entry's values, if any.
+        var urlLocale = found.Localized ? locale ?? operation.Locale : null;
+        var published = await content.GetAsync(found.Name, id, read with { Status = QueryStatus.Published }, cancellationToken);
+        return new IssuedPreviewToken(token, expires, binding, template.Fill(draft, id, urlLocale, token), published is null ? null : template.Fill(published, id, urlLocale, token: null));
+    }
+
+    // The type's template in the site, or in the instance defaults. One that the schema no longer fits, since it was saved, is none.
+    private async Task<PreviewUrlTemplate?> TemplateAsync(SchemaType type, SiteId site, CancellationToken cancellationToken)
+    {
+        var templates = (await settings.GetAsync(site, cancellationToken)).Templates;
+        return templates.TryGetValue(type.Name, out var template) ? PreviewUrlTemplate.Parse(template, type, "", []) : null;
     }
 
     private TimeSpan Lifetime(int? minutes)

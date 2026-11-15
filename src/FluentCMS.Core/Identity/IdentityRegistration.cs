@@ -5,6 +5,7 @@ using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Core.Identity.Sso;
+using FluentCMS.Core.Settings;
 using FluentCMS.Providers;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
@@ -54,6 +55,7 @@ internal static class IdentityRegistration
         services.AddScoped<ApiKeyPrincipals>();
         services.AddSingleton<PreviewTokenIssuer>();
         services.AddScoped<PreviewTokenService>();
+        services.AddSingleton<ISettingsCheck, PreviewSettingsCheck>();
         services.AddSingleton<ApiKeyRefusals>();
         services.AddHttpContextAccessor();
         services.TryAddScoped<IPrincipalRoles, UserPrincipalRoles>();

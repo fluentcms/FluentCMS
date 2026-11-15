@@ -6,4 +6,6 @@ internal static class PreviewTokenErrorCodes
     public const string OutsideToken = "FCMS3028";
     public const string InvalidToken = "FCMS3029";
     public const string Expired = "FCMS3030";
+    public const string InvalidUrlTemplate = "FCMS3031";
+    public const string UnknownTemplateName = "FCMS3032";
 }
