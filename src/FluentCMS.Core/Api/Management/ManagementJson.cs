@@ -35,6 +35,8 @@ internal static class ManagementJson
         ["id"] = issued.Binding.Entry,
         ["site"] = issued.Binding.Site,
         ["locale"] = issued.Binding.Locale,
+        ["url"] = issued.Url,
+        ["publishedUrl"] = issued.PublishedUrl,
     };
 
     public static JsonObject Versions(IReadOnlyList<VersionInfo> versions) => new()

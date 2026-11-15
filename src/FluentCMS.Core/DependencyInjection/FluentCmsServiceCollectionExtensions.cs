@@ -24,6 +24,7 @@ using FluentCMS.Core.Idempotency;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Identity.Oidc;
+using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.Plugins;
@@ -133,6 +134,7 @@ public static class FluentCmsServiceCollectionExtensions
         }
 
         builder.Settings.Add<BrandingSettings>();
+        builder.Settings.Add<PreviewSettings>();
         var settings = builder.Settings.Build();
         services.AddSingleton(settings);
 

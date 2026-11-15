@@ -224,6 +224,8 @@ public static class ErrorCodeRegistry
         new(PreviewTokenErrorCodes.OutsideToken, StatusCodes.Status403Forbidden, "Outside the preview token"),
         new(PreviewTokenErrorCodes.InvalidToken, StatusCodes.Status401Unauthorized, "Preview token not valid"),
         new(PreviewTokenErrorCodes.Expired, StatusCodes.Status401Unauthorized, "Preview token expired"),
+        Invalid(PreviewTokenErrorCodes.InvalidUrlTemplate, "Invalid preview URL template"),
+        Invalid(PreviewTokenErrorCodes.UnknownTemplateName, "Unknown type or field in a preview URL template"),
         new(RoleErrorCodes.RoleNotFound, StatusCodes.Status404NotFound, "Role not found"),
         Invalid(RoleErrorCodes.InvalidRole, "Invalid role"),
         Invalid(RoleErrorCodes.InvalidGrant, "Invalid grant"),

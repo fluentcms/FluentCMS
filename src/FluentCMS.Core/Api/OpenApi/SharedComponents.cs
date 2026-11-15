@@ -114,6 +114,18 @@ internal static class SharedComponents
                 ["id"] = Uuid(),
                 ["site"] = Uuid(),
                 ["locale"] = new JsonObject { ["type"] = new JsonArray("string", "null") },
+                ["url"] = new JsonObject
+                {
+                    ["type"] = new JsonArray("string", "null"),
+                    ["format"] = "uri",
+                    ["description"] = "The type's template of the settings area preview, filled with the draft's values and the token; null when the type has no template or a placeholder has no value the caller may read.",
+                },
+                ["publishedUrl"] = new JsonObject
+                {
+                    ["type"] = new JsonArray("string", "null"),
+                    ["format"] = "uri",
+                    ["description"] = "The same template filled with the published row of the locale that gave the draft, without the token's query parameter; null as url is, or when that locale has no published row.",
+                },
             },
             ["required"] = new JsonArray("token", "scheme", "expiresAt", "type", "id", "site"),
         });
