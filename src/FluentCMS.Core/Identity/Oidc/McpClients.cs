@@ -24,6 +24,7 @@ internal sealed record RegisteredClient(string ClientId, DateTimeOffset IssuedAt
 // A change and its event commit together, and nothing here checks a permission: the plugin's service does.
 internal sealed class McpClients(
     IOpenIddictApplicationManager applications,
+    IOpenIddictAuthorizationManager authorizations,
     IOpenIddictTokenManager tokens,
     SystemDbContext context,
     IdentityChanges changes,
@@ -181,8 +182,10 @@ internal sealed class McpClients(
             cancellationToken);
     }
 
-    // The tokens of a client carry the role they were issued with, so a new role ends them with the change: the client's
-    // next token comes from a new authorization request, or a refresh token issued since, and carries the new role.
+    // The tokens of a client carry the role they were issued with, so a new role ends them with the change, and ends the
+    // authorizations they were issued under, the users' consents among them. A refresh that read the old role just before
+    // the change still issues its tokens, under an authorization that is revoked, so they are refused at their first use.
+    // The client's next token comes from a new authorization request, which asks the user's consent again.
     public async Task<McpClientChange> ChangeRoleAsync(Guid id, string role, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(role);
@@ -214,6 +217,7 @@ internal sealed class McpClients(
 
                     var changed = state with { RoleId = found.Id };
                     await StoreAsync(application, changed, cancellationToken);
+                    await authorizations.RevokeByApplicationIdAsync(id.ToString("D"), cancellationToken);
                     await tokens.RevokeByApplicationIdAsync(id.ToString("D"), cancellationToken);
                     await changes.RaiseAsync(new McpClientRoleChangedEvent(client.Id, client.ClientId, client.Name, found.Id, found.Name, state.RoleId!.Value), cancellationToken);
                     return new McpClientChange(McpClientChangeOutcome.Done, With(client, changed) with { RoleName = found.Name });

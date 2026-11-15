@@ -23,7 +23,7 @@ public sealed record McpClientRegisteredEvent(Guid Id, string ClientId, string N
 /// <param name="RoleName">The name of that role.</param>
 public sealed record McpClientApprovedEvent(Guid Id, string ClientId, string Name, Guid RoleId, string RoleName) : CmsEvent;
 
-/// <summary>An administrator changed the role of an approved MCP client, which ended its tokens.</summary>
+/// <summary>An administrator changed the role of an approved MCP client, which ended its tokens and the users' consents to it.</summary>
 /// <param name="Id">The id of the client in the store.</param>
 /// <param name="ClientId">Its OAuth client id.</param>
 /// <param name="Name">Its name.</param>

@@ -34,8 +34,9 @@ public interface IMcpClients
     Task<McpClientChange> RegisterAsync(McpClientRegistration registration, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Changes the role of an approved client and ends its tokens, access and refresh tokens alike, so that its next token
-    /// carries the new role. Setting the role it has changes nothing. Raises <see cref="Events.McpClientRoleChangedEvent"/>.
+    /// Changes the role of an approved client and ends its tokens, access and refresh tokens alike, and the users' consents
+    /// to it, so that its next token comes from a new sign-in, where the user consents again, and carries the new role.
+    /// Setting the role it has changes nothing. Raises <see cref="Events.McpClientRoleChangedEvent"/>.
     /// </summary>
     /// <param name="id">The id of the client.</param>
     /// <param name="role">The id of a role, or the exact name of an instance-wide role.</param>

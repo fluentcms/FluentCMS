@@ -182,6 +182,10 @@ public sealed class McpClientAdministrationTests(McpClientFixture fixture) : ICl
         using var untouched = await PostAsync(otherHttp);
         untouched.StatusCode.ShouldBe(HttpStatusCode.OK);
 
+        // The consent went with the old role, so the user is asked again; the other client keeps its consent.
+        (await agent.AuthorizeAsync(clientId, allow: false)).Error.ShouldBe("access_denied");
+        (await agent.AuthorizeAsync(otherId, allow: false)).Code.ShouldNotBeNull();
+
         // The next sign-in through the client gets a token with the new role, and its refresh keeps it.
         var after = await agent.TokensAsync(clientId, superAdmin);
         using (var http = agent.Bearer(after["access_token"]!.GetValue<string>()))

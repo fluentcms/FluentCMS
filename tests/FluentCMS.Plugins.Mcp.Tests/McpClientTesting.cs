@@ -1,8 +1,10 @@
 using System.Buffers.Text;
+using System.Collections.Immutable;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using FluentCMS.Activity;
@@ -18,7 +20,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
+using OpenIddict.Core;
+using OpenIddict.EntityFrameworkCore.Models;
 using Shouldly;
 using static FluentCMS.Plugins.Mcp.Tests.McpTesting;
 
@@ -32,6 +38,70 @@ public sealed class McpClientFixture : IAsyncDisposable
         .WithServices(services => services.PostConfigure<RateLimitOptions>(limits => limits.Auth.PermitLimit = 10_000));
 
     public ValueTask DisposeAsync() => Host.DisposeAsync();
+}
+
+// The host of the tests that cross two changes of a client: the same host, with the application manager of OpenIddict
+// behind hooks that a test arms for one call.
+public sealed class McpClientHookFixture : IAsyncDisposable
+{
+    public McpClientHookFixture()
+    {
+        Host = McpTesting.Host().WithServices(services =>
+        {
+            services.PostConfigure<RateLimitOptions>(limits => limits.Auth.PermitLimit = 10_000);
+            // The manager of the interface is resolved by its closed type, which comes before OpenIddict's open registration.
+            services.AddSingleton(Hooks);
+            services.AddScoped<OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>, HookedApplicationManager>();
+        });
+    }
+
+    public FluentCmsTestHost Host { get; }
+
+    public ApplicationManagerHooks Hooks { get; } = new();
+
+    public ValueTask DisposeAsync() => Host.DisposeAsync();
+}
+
+// What runs, once, in place of the next call of the application manager: work before the next read of a client's
+// properties, which then answers what it read before the work, as a request that read them just before a change does;
+// or a refusal of the next update, as when another change of the application got there first.
+public sealed class ApplicationManagerHooks
+{
+    private Func<Task>? _beforeRead;
+    private int _failUpdate;
+
+    public void BeforeNextPropertiesRead(Func<Task> work) => _beforeRead = work;
+
+    public void FailNextUpdate() => _failUpdate = 1;
+
+    internal Func<Task>? TakeBeforeRead() => Interlocked.Exchange(ref _beforeRead, null);
+
+    internal bool TakeFailUpdate() => Interlocked.Exchange(ref _failUpdate, 0) == 1;
+}
+
+public sealed class HookedApplicationManager(
+    IOpenIddictApplicationCache<OpenIddictEntityFrameworkCoreApplication<Guid>> cache,
+    ILogger<OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>> logger,
+    IOptionsMonitor<OpenIddictCoreOptions> options,
+    IOpenIddictApplicationStore<OpenIddictEntityFrameworkCoreApplication<Guid>> store,
+    ApplicationManagerHooks hooks) : OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>(cache, logger, options, store)
+{
+    public override async ValueTask<ImmutableDictionary<string, JsonElement>> GetPropertiesAsync(OpenIddictEntityFrameworkCoreApplication<Guid> application, CancellationToken cancellationToken = default)
+    {
+        var properties = await base.GetPropertiesAsync(application, cancellationToken);
+        if (hooks.TakeBeforeRead() is { } work)
+        {
+            await work();
+        }
+
+        return properties;
+    }
+
+    // Every update of an application ends here, the one with a descriptor included.
+    public override ValueTask UpdateAsync(OpenIddictEntityFrameworkCoreApplication<Guid> application, CancellationToken cancellationToken = default) =>
+        hooks.TakeFailUpdate()
+            ? ValueTask.FromException(new OpenIddictExceptions.ConcurrencyException("The application was changed by another request."))
+            : base.UpdateAsync(application, cancellationToken);
 }
 
 // What an authorization request came to: a code at the client's redirect URI, the error the client or the error page

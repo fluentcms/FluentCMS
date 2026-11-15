@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using FluentCMS.Agents;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
@@ -134,6 +135,34 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         widened.StatusCode.ShouldBe(HttpStatusCode.OK);
         removed.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         removedRegistered.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    }
+
+    // The clients belong to no site, so mcp.manage from a grant limited to a site, or from a key bound to a site, neither
+    // registers a client nor changes a client's role, even in that site.
+    [Fact]
+    public async Task ARegistrationAndARoleChangeNeedAGrantWithNoSiteLimit()
+    {
+        var host = fixture.Host;
+        using var admin = await KeyAsync(host);
+        var (clientId, id) = await RegisteredByAdminAsync(admin, BuiltInRoles.EditorName, "Instance agent");
+        var siteManager = await McpSiteTesting.CreateRoleAsync(host, (McpPermissions.Manage, new PermissionConstraints { Sites = [new SiteId(DefaultSite.Id)] }));
+        using var siteGrant = await McpSiteTesting.KeyInAsync(host, DefaultSite.Id, siteManager);
+        using var boundKey = await BoundKeyAsync(admin, DefaultSite.Id);
+
+        foreach (var caller in new[] { siteGrant, boundKey })
+        {
+            using var registered = await RegisterAsync(caller, Registration("Site agent", BuiltInRoles.EditorName, McpAgent.RedirectUri));
+            using var changed = await ChangeRoleAsync(caller, id, BuiltInRoles.AuthorName);
+
+            registered.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+            (await CodeAsync(registered)).ShouldBe("FCMS3103");
+            changed.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+            (await CodeAsync(changed)).ShouldBe("FCMS3103");
+        }
+
+        var clients = await ListAsync(admin);
+        clients.ShouldNotContain(item => item!["name"]!.GetValue<string>() == "Site agent");
+        clients.Single(item => item!["clientId"]!.GetValue<string>() == clientId)!["roleName"]!.GetValue<string>().ShouldBe(BuiltInRoles.EditorName);
     }
 
     [Fact]
@@ -288,6 +317,20 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
     {
         await using var scope = fixture.Host.Services.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<UserSessions>().ListAsync(user, Token);
+    }
+
+    // A Management key of Super Admin bound to one site, made through the Management API as an administrator would.
+    private async Task<HttpClient> BoundKeyAsync(HttpClient admin, Guid site)
+    {
+        var key = await McpSiteTesting.SendAsync(
+            admin,
+            HttpMethod.Post,
+            "/api/management/v1/api-keys",
+            new { name = "bound-" + Guid.NewGuid().ToString("N"), @class = "management", roleId = BuiltInRoles.SuperAdmin, siteIds = new[] { site } },
+            HttpStatusCode.Created);
+        var client = fixture.Host.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("ApiKey", key!["secret"]!.GetValue<string>());
+        return client;
     }
 
     // The job as the runner runs it: as the system, in a scope of its own.
