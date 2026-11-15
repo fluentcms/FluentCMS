@@ -4,7 +4,7 @@ namespace FluentCMS.Cli;
 // have the 330x codes and the rest of 3320 to 3334. Of the commands that administer an instance, the 336x codes are the
 // tool's, and the 335x codes are the host's and the tool's alike, since an instance reached with --url answers the same way.
 // Export and import at an instance have 3251 to 3253, and share 3248 with the commands inside the host. The generate
-// commands have 3370 to 3378.
+// commands have 3370 to 3378, and 3381 is the MCP proxy's.
 internal static class CliErrorCodes
 {
     public const string UnknownRole = "FCMS3350";
@@ -13,6 +13,7 @@ internal static class CliErrorCodes
     public const string UnexpectedAnswer = "FCMS3361";
     public const string McpKeyRefused = "FCMS3362";
     public const string KeyWithoutTls = "FCMS3363";
+    public const string McpMessageTooLarge = "FCMS3381";
 
     public const string ProjectNotBuilt = "FCMS3310";
     public const string AssemblyNotFound = "FCMS3311";

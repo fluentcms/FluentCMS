@@ -1,11 +1,13 @@
 using System.Globalization;
 using System.Text.Json;
+using FluentCMS.Core.Diagnostics;
 
 namespace FluentCMS.Core.Commands;
 
 // What `fluentcms import` prints, the same whether the import ran inside the host or at an instance with --url: the
 // progress lines of the transfer endpoint on standard error, and its report at the end, as text or as the endpoint's last
-// line. The tool uses it for the lines it reads from the endpoint.
+// line. The tool uses it for the lines it reads from the endpoint. The names and messages of a package or an instance are
+// made printable.
 internal static class ImportOutput
 {
     public const string NotClean = "FCMS3250";
@@ -21,11 +23,11 @@ internal static class ImportOutput
 
         if (line.TryGetProperty("counts", out var counts))
         {
-            await error.WriteLineAsync($"{section.GetString()}: {Counts(counts)}");
+            await error.WriteLineAsync($"{PrintableText.Escape(section.GetString())}: {Counts(counts)}");
         }
         else if (line.TryGetProperty("done", out var done))
         {
-            await error.WriteLineAsync($"{section.GetString()}: {done.GetRawText()} done");
+            await error.WriteLineAsync($"{PrintableText.Escape(section.GetString())}: {PrintableText.Escape(done.GetRawText())} done");
         }
     }
 
@@ -54,7 +56,7 @@ internal static class ImportOutput
             {
                 foreach (var section in sections.EnumerateObject())
                 {
-                    await output.WriteLineAsync($"  {section.Name}: {Counts(section.Value)}");
+                    await output.WriteLineAsync($"  {PrintableText.Escape(section.Name)}: {Counts(section.Value)}");
                 }
             }
 
@@ -91,7 +93,7 @@ internal static class ImportOutput
         element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.TryGetInt32(out var number) ? number : 0;
 
     private static string Text(JsonElement element, string name) =>
-        element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString()! : "";
+        element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? PrintableText.Escape(value.GetString()) : "";
 
     private static string Count(int count, string one, string many) => $"{count.ToString(CultureInfo.InvariantCulture)} {(count == 1 ? one : many)}";
 }

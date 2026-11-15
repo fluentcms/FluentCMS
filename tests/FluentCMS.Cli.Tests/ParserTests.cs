@@ -198,6 +198,44 @@ public sealed partial class ParserTests : IDisposable
         CommandRegistry.Usage.ShouldNotContain("openapi document");
     }
 
+    // The parser repeats a token it did not match, as `user create`, which runs in the host only, does not match --token.
+    [Theory]
+    [InlineData("--token", "fcms_mk_usage-secret")]
+    [InlineData("--token=fcms_mk_usage-secret")]
+    [InlineData("--token:fcms_mk_usage-secret")]
+    public async Task AUsageErrorDoesNotRepeatTheKey(params string[] token)
+    {
+        (await RunAsync(["user", "create", "--email", "a@example.com", "--role", "Admin", "--url", "https://cms.example.com", .. token])).ShouldBe(2);
+
+        _tool.Error.ToString().ShouldContain("Usage:");
+        _tool.Error.ToString().ShouldContain("***");
+        _tool.Error.ToString().ShouldNotContain("usage-secret");
+        _launcher.Arguments.ShouldBeNull();
+    }
+
+    [Fact]
+    public void TheKeyIsTheValueAfterTokenUnlessThatIsAnOption()
+    {
+        CommandLine.WithoutKey(["jobs", "list", "--token", "key", "--json"]).ShouldBe(["jobs", "list", "--token", "***", "--json"]);
+        CommandLine.WithoutKey(["--token=key", "--token:key", "--tokens=x"]).ShouldBe(["--token=***", "--token:***", "--tokens=x"]);
+        CommandLine.WithoutKey(["--token", "--url", "https://cms.example.com"]).ShouldBe(["--token", "--url", "https://cms.example.com"]);
+        CommandLine.WithoutKey(["--token"]).ShouldBe(["--token"]);
+    }
+
+    // A command with --url runs in the tool alone, so Ctrl+C cancels it and it cleans up; a project command waits for the
+    // host it started, which gets Ctrl+C itself.
+    [Theory]
+    [InlineData(true, "export", "--output", "out.zip", "--url", "https://cms.example.com")]
+    [InlineData(true, "mcp", "--url", "https://cms.example.com")]
+    [InlineData(true, "generate", "typescript", "--output", "out", "--url", "https://cms.example.com")]
+    [InlineData(false, "export", "--output", "out.zip")]
+    [InlineData(false, "migrate")]
+    [InlineData(false, "generate", "typescript", "--output", "out")]
+    public void OnlyACommandWithUrlIsCancelledByCtrlC(bool cancelled, params string[] args)
+    {
+        CommandLine.TerminationTimeout(CommandLine.Tree().Parse(args)).ShouldBe(cancelled ? CommandLine.CleanUpTimeout : null);
+    }
+
     [Theory]
     [InlineData("typescript")]
     [InlineData("openapi")]

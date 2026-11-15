@@ -70,6 +70,8 @@ internal sealed class SqliteFileDatabase(bool writeAheadLog = true) : TestDataba
 
         public bool IsInUse() => ((IDatabaseFile)inner).IsInUse();
 
+        public string? Check(string snapshot) => ((IDatabaseFile)inner).Check(snapshot);
+
         public void Restore(string snapshot) => ((IDatabaseFile)inner).Restore(snapshot);
 
         public void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly)

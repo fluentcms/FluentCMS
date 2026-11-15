@@ -419,6 +419,10 @@ public static class ErrorCodeRegistry
         Startup("FCMS3377", "Conflicting schema sources"),
         Startup("FCMS3378", "Host gave no generator input"),
         Startup(GenerateErrorCodes.OpenApiUnavailable, "OpenAPI document unavailable"),
+
+        // 338x restore inside the host, and the MCP proxy of the tool, whose code is written out
+        Startup(TransferCommandErrorCodes.BackupOfAnotherSchema, "Backup of another schema or migrations"),
+        Startup("FCMS3381", "MCP message too large"),
     ];
 
     private static readonly FrozenDictionary<string, ErrorCodeInfo> byCode = All.ToFrozenDictionary(info => info.Code);

@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using FluentCMS.Core.Diagnostics;
 
 namespace FluentCMS.Cli;
 
@@ -20,13 +21,6 @@ internal sealed class ManagementClient : IDisposable
     {
         ArgumentNullException.ThrowIfNull(instance);
         ArgumentNullException.ThrowIfNull(http);
-
-        // A header cannot carry it, and HttpClient would refuse it with a message that repeats it.
-        if (instance.Token.Any(character => character is < '!' or > '~'))
-        {
-            http.Dispose();
-            throw new CliException(CliErrorCodes.InvalidInstance, "the key holds a character that no API key has; the value is not repeated here.", ExitCodes.BadUsage);
-        }
 
         Instance = instance;
         _http = http;
@@ -107,7 +101,8 @@ internal sealed class ManagementClient : IDisposable
         }
     }
 
-    // The API's problem: its code, title and detail, and the errors of a validation problem, one per line.
+    // The API's problem: its code, title and detail, and the errors of a validation problem, one per line. Its text is the
+    // instance's, so each part is made printable.
     public static CliException Problem(HttpResponseMessage response, string body)
     {
         ArgumentNullException.ThrowIfNull(response);
@@ -117,23 +112,23 @@ internal sealed class ManagementClient : IDisposable
             return new CliException(CliErrorCodes.UnexpectedAnswer, $"the instance answered {InstanceAnswer.Redirect(response)}.");
         }
 
-        var status = $"{(int)response.StatusCode} {response.ReasonPhrase}".Trim();
+        var status = PrintableText.Escape($"{(int)response.StatusCode} {response.ReasonPhrase}".Trim());
         try
         {
             using var json = JsonDocument.Parse(body);
             var problem = json.RootElement;
             if (problem.ValueKind == JsonValueKind.Object && Text(problem, "code") is { } code)
             {
-                var message = new StringBuilder(Text(problem, "detail") ?? Text(problem, "title") ?? status);
+                var message = new StringBuilder(PrintableText.Escape(Text(problem, "detail") ?? Text(problem, "title") ?? status));
                 if (problem.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var error in errors.EnumerateArray().Where(error => error.ValueKind == JsonValueKind.Object))
                     {
-                        message.Append(Environment.NewLine).Append(CultureInvariant($"  {Text(error, "code")}: {Text(error, "path")}: {Text(error, "message")}"));
+                        message.Append(Environment.NewLine).Append(PrintableText.Escape(CultureInvariant($"  {Text(error, "code")}: {Text(error, "path")}: {Text(error, "message")}")));
                     }
                 }
 
-                return new CliException(code, message.ToString());
+                return new CliException(PrintableText.Escape(code), message.ToString());
             }
         }
         catch (JsonException)

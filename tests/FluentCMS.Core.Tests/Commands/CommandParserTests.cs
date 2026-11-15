@@ -57,6 +57,22 @@ public sealed class CommandParserTests
             parsed => parsed.Help.ShouldBeTrue(),
             parsed => parsed.Command!.Name.ShouldBe("migrate"));
         CommandParser.Parse(Commands, ["-h"]).Help.ShouldBeTrue();
+        CommandParser.Parse(Commands, ["migrate", "--force", "--help"]).Help.ShouldBeTrue();
+        CommandParser.Parse(Commands, ["jobs", "run", "-?"]).Help.ShouldBeTrue();
+        CommandParser.Parse(Commands, ["seed", "--name", "--help"]).Help.ShouldBeTrue();
+    }
+
+    // The tool hands "--name=-h" on as "--name -h", which names a seeder and asks for no help.
+    [Theory]
+    [InlineData("--name", "-h")]
+    [InlineData("--name=-h")]
+    public void AHelpWordIsTheValueOfAnOptionThatTakesOne(params string[] option)
+    {
+        var parsed = CommandParser.Parse(Commands, ["seed", .. option]);
+
+        parsed.Help.ShouldBeFalse();
+        parsed.Error.ShouldBeNull();
+        parsed.Arguments!.Value("--name").ShouldBe("-h");
     }
 
     [Fact]

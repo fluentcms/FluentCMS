@@ -43,15 +43,66 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         var result = Build().Parse(args);
         if (result.Errors.Count > 0)
         {
-            // The parser's own action writes the errors and the help of the command.
-            await result.InvokeAsync(new InvocationConfiguration { Output = error, Error = error }, cancellationToken);
+            return await BadUsageAsync(args, cancellationToken);
+        }
+
+        try
+        {
+            return await result.InvokeAsync(
+                new InvocationConfiguration { Output = output, Error = error, EnableDefaultExceptionHandler = false, ProcessTerminationTimeout = TerminationTimeout(result) },
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return ExitCodes.Failure;
+        }
+    }
+
+    // The tool waits for a host it started, which gets Ctrl+C itself, so the parser neither ends the process first nor
+    // cancels the command, which would stop the host. A command with --url runs in the tool alone: Ctrl+C or SIGTERM cancels
+    // it, and it has this long to clean up, so that an export removes its temporary file and mcp ends its session.
+    internal static TimeSpan? TerminationTimeout(ParseResult result) =>
+        result.CommandResult.Command.Options.Any(option => option.Name == "--url" && result.GetResult(option) is not null) ? CleanUpTimeout : null;
+
+    internal static readonly TimeSpan CleanUpTimeout = TimeSpan.FromSeconds(10);
+
+    // The parser's own action writes the errors and the help of the command. It repeats a token it did not match, such as
+    // the key after --token of a command that runs in the host only, so the key is replaced first.
+    private async Task<int> BadUsageAsync(string[] args, CancellationToken cancellationToken)
+    {
+        var shown = Build().Parse(WithoutKey(args));
+        if (shown.Errors.Count == 0)
+        {
+            await error.WriteLineAsync($"The arguments are not valid; the value of {InstanceOptions.TokenOption} is not repeated here.");
             return ExitCodes.BadUsage;
         }
 
-        // The tool waits for a host it started, which gets Ctrl+C itself, so the parser does not end the process first.
-        return await result.InvokeAsync(
-            new InvocationConfiguration { Output = output, Error = error, EnableDefaultExceptionHandler = false, ProcessTerminationTimeout = null },
-            cancellationToken);
+        await shown.InvokeAsync(new InvocationConfiguration { Output = error, Error = error }, cancellationToken);
+        return ExitCodes.BadUsage;
+    }
+
+    // A value that starts with '-' is an option, which the parser does not take as the value of --token.
+    internal static string[] WithoutKey(IReadOnlyList<string> args)
+    {
+        const string Hidden = "***";
+        var shown = args.ToArray();
+        for (var i = 0; i < shown.Length; i++)
+        {
+            if (shown[i] == InstanceOptions.TokenOption)
+            {
+                if (i + 1 < shown.Length && !shown[i + 1].StartsWith('-'))
+                {
+                    shown[++i] = Hidden;
+                }
+            }
+            else if (shown[i].Length > InstanceOptions.TokenOption.Length && shown[i].StartsWith(InstanceOptions.TokenOption, StringComparison.Ordinal)
+                && shown[i][InstanceOptions.TokenOption.Length] is '=' or ':')
+            {
+                shown[i] = shown[i][..(InstanceOptions.TokenOption.Length + 1)] + Hidden;
+            }
+        }
+
+        return shown;
     }
 
     // A command named fluentcms rather than a RootCommand, which would take its name from the assembly, FluentCMS.Cli.
@@ -240,7 +291,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         command.SetAction((result, cancellationToken) => GuardAsync(async () =>
         {
             var path = result.GetValue(file) is { } given ? Path.GetFullPath(given) : null;
-            if (instance.Resolve(result) is not { } target)
+            if (instance.Resolve(result, error) is not { } target)
             {
                 return await HandOverAsync(result, project, ["schema", "snapshot", .. path is null ? Array.Empty<string>() : ["--output", path]], cancellationToken);
             }
@@ -327,7 +378,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         command.SetAction((result, cancellationToken) => GuardAsync(async () =>
         {
             var file = result.GetValue(schema) is { } given ? Path.GetFullPath(given) : null;
-            if (instance.Resolve(result) is not { } target)
+            if (instance.Resolve(result, error) is not { } target)
             {
                 return await HandOverAsync(
                     result,
@@ -403,7 +454,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         var instance = InstanceOptions.AddTo(command);
         command.SetAction((result, cancellationToken) => GuardAsync(async () =>
         {
-            if (instance.Resolve(result) is not { } target)
+            if (instance.Resolve(result, error) is not { } target)
             {
                 return await HandOverAsync(result, project, ["doctor", .. Flag(result, json)], cancellationToken);
             }
@@ -460,7 +511,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         command.SetAction((result, cancellationToken) => GuardAsync(async () =>
         {
             var path = Path.GetFullPath(result.GetValue(file)!);
-            if (instance.Resolve(result) is not { } at)
+            if (instance.Resolve(result, error) is not { } at)
             {
                 return await launcher.RunAsync(
                     project.Resolve(result, error),
@@ -511,7 +562,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         command.SetAction((result, cancellationToken) => GuardAsync(async () =>
         {
             var path = Path.GetFullPath(result.GetValue(file)!);
-            if (instance.Resolve(result) is not { } at)
+            if (instance.Resolve(result, error) is not { } at)
             {
                 return await launcher.RunAsync(
                     project.Resolve(result, error),
@@ -565,8 +616,19 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
         return command;
     }
 
-    private static Option<string> SiteOption(string verb) =>
-        new("--site") { Description = $"The site to {verb}, by slug or id; the default site when left out.", HelpName = "slug" };
+    // With --url the site goes in the X-Cms-Site header, which cannot carry a line break; no slug or id has a space either.
+    private static Option<string> SiteOption(string verb)
+    {
+        var site = new Option<string>("--site") { Description = $"The site to {verb}, by slug or id; the default site when left out.", HelpName = "slug" };
+        site.Validators.Add(result =>
+        {
+            if (result.GetValueOrDefault<string>() is { } value && value.Any(character => character is < '!' or > '~'))
+            {
+                result.AddError("--site takes the slug or the id of a site, which has no space, control character or character outside ASCII.");
+            }
+        });
+        return site;
+    }
 
     private static Option<string> TypesOption(string description) => new("--types") { Description = description, HelpName = "list" };
 
@@ -763,9 +825,12 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
 
     private int Report(Exception exception)
     {
-        error.WriteLine(exception.Message);
+        error.WriteLine(Printable(exception));
         return exception is CliException cli ? cli.ExitCode : ExitCodes.Failure;
     }
+
+    // A message may repeat what an instance answered, such as a reason phrase; the lines it has of its own stay.
+    internal static string Printable(Exception exception) => PrintableText.Escape(exception.Message, keepLineBreaks: true);
 
     private static string[] Flag(ParseResult result, Option<bool> option) => result.GetValue(option) ? [option.Name] : [];
 

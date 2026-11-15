@@ -85,6 +85,7 @@ public sealed class BackupCommandTests : IDisposable
         existing.ExitCode.ShouldBe(1);
         existing.Error.ShouldStartWith("FCMS3244: ");
         existing.Error.ShouldContain("--force");
+        existing.Error.ShouldContain("one that keeps the rollback journal holds no lock while it is idle, so it is not seen");
 
         await SetVersionAsync("999.0.0");
         var newer = await RunAsync(host, "restore", Archive, "--force");
@@ -138,7 +139,86 @@ public sealed class BackupCommandTests : IDisposable
         error.ShouldStartWith("FCMS3245: ");
     }
 
-    private async Task SetVersionAsync(string version)
+    // A backup of another schema, or with a migration the host does not have, would leave tables that a start refuses.
+    [SqliteFact("the backup of a SQLite database")]
+    public async Task RestoreRefusesABackupOfAnotherSchemaOrOfMigrationsTheHostDoesNotHaveUnlessForced()
+    {
+        using var host = Host(_database);
+        (await RunAsync(host, "migrate")).ExitCode.ShouldBe(0);
+        (await RunAsync(host, "backup", "--output", Archive)).ExitCode.ShouldBe(0);
+        _database.Execute("CREATE TABLE restore_probe (value TEXT);");
+
+        await EditManifestAsync(manifest => manifest["schemaHash"] = new string('0', 64));
+        var schema = await RunAsync(host, "restore", Archive);
+        schema.ExitCode.ShouldBe(1);
+        schema.Error.ShouldStartWith("FCMS3380: ");
+        schema.Error.ShouldContain($"the schema hash is {new string('0', 64)} in the backup and ");
+        schema.Error.ShouldContain("--force");
+        _database.Tables().ShouldContain("restore_probe");
+
+        await EditManifestAsync(manifest =>
+        {
+            manifest["schemaHash"] = null;
+            var streams = manifest["migrations"]!.AsArray();
+            streams.Add(new JsonObject { ["name"] = "acme.gone", ["applied"] = new JsonArray("20260101000000_Initial") });
+            streams.Single(stream => stream!["name"]!.GetValue<string>() == "system")!["applied"]!.AsArray().Add("29990101000000_FromTheFuture");
+        });
+        var migrations = await RunAsync(host, "restore", Archive, "--force");
+        migrations.ExitCode.ShouldBe(0, migrations.Error);
+        migrations.Error.ShouldStartWith("FCMS3380: warning: ");
+        migrations.Error.ShouldContain("the schema hash is missing in the backup");
+        migrations.Error.ShouldContain("the backup has the stream acme.gone, which the host does not have");
+        migrations.Error.ShouldContain("stream system has applied 29990101000000_FromTheFuture, which the host does not have");
+        migrations.Error.ShouldContain("restored because of --force");
+        _database.Tables().ShouldNotContain("restore_probe");
+    }
+
+    // The database of the archive is read whole before the database it replaces is moved, which stays as it was.
+    [SqliteTheory("the backup of a SQLite database")]
+    [InlineData("not a database, but long enough to look like the start of a file of SQLite")]
+    [InlineData("")]
+    public async Task RestoreRefusesADatabaseThatSqliteDoesNotReadWholeAndKeepsTheOneItHas(string database)
+    {
+        using var host = Host(_database);
+        (await RunAsync(host, "migrate")).ExitCode.ShouldBe(0);
+        (await RunAsync(host, "backup", "--output", Archive)).ExitCode.ShouldBe(0);
+        _database.Execute("CREATE TABLE restore_probe (value TEXT);");
+        await using (var zip = await ZipArchive.CreateAsync(File.Open(Archive, FileMode.Open), ZipArchiveMode.Update, leaveOpen: false, entryNameEncoding: null, Token))
+        {
+            zip.GetEntry(BackupArchive.Database)!.Delete();
+            await using var write = await zip.CreateEntry(BackupArchive.Database).OpenAsync(Token);
+            await write.WriteAsync(System.Text.Encoding.UTF8.GetBytes(database), Token);
+        }
+
+        var (exitCode, _, error) = await RunAsync(host, "restore", Archive, "--force");
+
+        exitCode.ShouldBe(1);
+        error.ShouldStartWith("FCMS3242: ");
+        error.ShouldContain("its database is not a whole SQLite database");
+        _database.Tables().ShouldContain("restore_probe");
+        var path = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(_database.ConnectionString).DataSource;
+        Directory.EnumerateFiles(Path.GetDirectoryName(path)!).Where(file => file.Contains(".restore", StringComparison.Ordinal) || file.Contains(".replaced", StringComparison.Ordinal)).ShouldBeEmpty();
+    }
+
+    // The archive holds password hashes, key hashes, tokens and the key ring.
+    [SqliteFact("the backup of a SQLite database")]
+    [System.Runtime.Versioning.UnsupportedOSPlatform("windows")]
+    public async Task TheArchiveIsReadableByItsOwnerOnly()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Windows has no file mode; the archive takes the permissions of its folder.");
+        using var host = Host(_database);
+        (await RunAsync(host, "migrate")).ExitCode.ShouldBe(0);
+        File.WriteAllText(Archive, "an older backup");
+        File.SetUnixFileMode(Archive, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead | UnixFileMode.OtherRead);
+
+        (await RunAsync(host, "backup", "--output", Archive)).ExitCode.ShouldBe(0);
+
+        File.GetUnixFileMode(Archive).ShouldBe(UnixFileMode.UserRead | UnixFileMode.UserWrite);
+    }
+
+    private Task SetVersionAsync(string version) => EditManifestAsync(manifest => manifest["fluentCmsVersion"] = version);
+
+    private async Task EditManifestAsync(Action<JsonNode> edit)
     {
         await using var zip = await ZipArchive.CreateAsync(File.Open(Archive, FileMode.Open), ZipArchiveMode.Update, leaveOpen: false, entryNameEncoding: null, Token);
         var entry = zip.GetEntry(BackupArchive.Manifest)!;
@@ -148,7 +228,7 @@ public sealed class BackupCommandTests : IDisposable
             manifest = (await JsonNode.ParseAsync(read, cancellationToken: Token))!;
         }
 
-        manifest["fluentCmsVersion"] = version;
+        edit(manifest);
         entry.Delete();
         await using var write = await zip.CreateEntry(BackupArchive.Manifest).OpenAsync(Token);
         await write.WriteAsync(System.Text.Encoding.UTF8.GetBytes(manifest.ToJsonString()), Token);

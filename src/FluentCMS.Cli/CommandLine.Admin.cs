@@ -211,7 +211,7 @@ internal sealed partial class CommandLine
         instance.Url.Required = true;
         command.SetAction((result, cancellationToken) => GuardAsync(async () =>
         {
-            var target = instance.Resolve(result) ?? throw new CliException(CliErrorCodes.InvalidInstance, "mcp needs --url.", ExitCodes.BadUsage);
+            var target = instance.Resolve(result, error) ?? throw new CliException(CliErrorCodes.InvalidInstance, "mcp needs --url.", ExitCodes.BadUsage);
             using var client = Connect(target, Timeout.InfiniteTimeSpan);
 
             // On the console the protocol's UTF-8 is written and read as bytes, whatever the console's own encoding is.
@@ -249,7 +249,7 @@ internal sealed partial class CommandLine
         CancellationToken cancellationToken) =>
         GuardAsync(async () =>
         {
-            if (instance.Resolve(result) is not { } target)
+            if (instance.Resolve(result, error) is not { } target)
             {
                 return await launcher.RunAsync(project.Resolve(result, error), project.EnvironmentOf(result), arguments, output, error, cancellationToken);
             }
@@ -258,18 +258,7 @@ internal sealed partial class CommandLine
             return await remote(new RemoteCommands(client, output, error));
         });
 
-    // A key sent over plain http to another machine can be read on the way, which the caller is told; on this machine it is
-    // a local instance, such as one in development.
-    private ManagementClient Connect(Instance target, TimeSpan? timeout = null)
-    {
-        var client = new ManagementClient(target, _connect(target), timeout);
-        if (target.Url.Scheme == Uri.UriSchemeHttp && !target.Url.IsLoopback)
-        {
-            error.WriteLine($"{CliErrorCodes.KeyWithoutTls}: {target} is http, so the key is sent without TLS; use https outside a trusted network.");
-        }
-
-        return client;
-    }
+    private ManagementClient Connect(Instance target, TimeSpan? timeout = null) => new(target, _connect(target), timeout);
 
     private static Option<string> Text(string name, string description, string valueName, bool required = false) =>
         new(name) { Description = description, HelpName = valueName, Required = required };
