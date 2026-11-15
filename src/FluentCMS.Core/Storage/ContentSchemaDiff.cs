@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Schema.FieldTypes;
@@ -117,6 +118,13 @@ internal sealed partial class ContentSchemaDiff
         var unregistered = PluginHistoryTables(database).Where(plugin => !pluginTablePrefixes.Contains(plugin.Prefix, StringComparer.Ordinal)).ToList();
         foreach (var table in database.Tables.Keys.Where(table => IsUnknownTable(table, known)).Order(StringComparer.Ordinal))
         {
+            // No content type has such a name, and a line of its own in a script, such as GO on SQL Server, would run.
+            if (table.Any(PrintableText.IsUnsafe))
+            {
+                diff.LeaveAlone($"table {table}, whose name has a control character, which no content table has");
+                continue;
+            }
+
             // A removed type's table can fall under a plugin's prefix, as cms_seo_meta of a type seo-meta does under cms_seo_.
             if (!diff._appliedTables.Contains(table))
             {

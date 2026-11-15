@@ -78,7 +78,7 @@ public sealed class MigrationRunner(
                 var (_, recorded) = await SyncAsync(schema, cancellationToken);
                 if (!recorded)
                 {
-                    await _history.CheckDriftAsync(schema, !await HasContentMigrationsAsync(cancellationToken), cancellationToken);
+                    await _history.CheckDriftAsync(schema, UsesSchemaApplyAsync, cancellationToken);
                 }
 
                 return;
@@ -92,7 +92,7 @@ public sealed class MigrationRunner(
             }
             else
             {
-                await _history.CheckDriftAsync(schema, schemaApply: true, cancellationToken);
+                await _history.CheckDriftAsync(schema, _ => Task.FromResult(true), cancellationToken);
             }
 
             return;
@@ -100,7 +100,7 @@ public sealed class MigrationRunner(
 
         await ValidateSystemAndPluginStreamsAsync(cancellationToken);
         await ValidateContentSchemaAsync(cancellationToken);
-        await _history.CheckDriftAsync(schema, !await HasContentMigrationsAsync(cancellationToken), cancellationToken);
+        await _history.CheckDriftAsync(schema, UsesSchemaApplyAsync, cancellationToken);
     }
 
     // Whatever FluentCms:Database:MigrateOnStartup says.
@@ -183,6 +183,8 @@ public sealed class MigrationRunner(
     // telling schema apply what it still has to change.
     private async Task<bool> HasContentMigrationsAsync(CancellationToken cancellationToken) =>
         (await GetContentMigrationsAsync(cancellationToken)).Count > 0;
+
+    private async Task<bool> UsesSchemaApplyAsync(CancellationToken cancellationToken) => !await HasContentMigrationsAsync(cancellationToken);
 
     internal Task<IReadOnlyList<StreamMigration>> GetPendingSystemAndPluginMigrationsAsync(CancellationToken cancellationToken = default) =>
         GetPendingAsync(SystemAndPlugins, cancellationToken);
@@ -434,7 +436,8 @@ public sealed class MigrationRunner(
         return applied;
     }
 
-    // With whether it recorded the schema history, which it does when it applied every change and the history says none is lost.
+    // With whether it recorded the schema history, which it does when it applied every change and, for a host that schema
+    // apply serves, the history says none is lost.
     private async Task<(SchemaSyncReport Report, bool Recorded)> SyncAsync(SchemaModel target, CancellationToken cancellationToken)
     {
         // The host's context for the target schema, so that its model maps the plugins' tables as the host's does.
@@ -470,7 +473,7 @@ public sealed class MigrationRunner(
             MigrationLog.SchemaSyncNotApplied(logger, change);
         }
 
-        var recorded = diff.NotApplied.Count == 0 && await _history.RecordUnlessLostAsync(target, cancellationToken);
+        var recorded = diff.NotApplied.Count == 0 && await _history.RecordAfterSyncAsync(target, UsesSchemaApplyAsync, cancellationToken);
         return (new SchemaSyncReport(applied, diff.NotApplied), recorded);
     }
 

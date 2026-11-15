@@ -443,18 +443,26 @@ public sealed partial class SchemaApplyTests : IDisposable
         _database.Tables().ShouldNotContain("cms_tag");
     }
 
-    // A name read from the database can hold a line break, which would end a comment of the script and run the rest as SQL.
+    // No content table has a control character in its name, and a GO on a line of its own would split a SQL Server script,
+    // so such a table is left alone. A line break in a name would also end a comment of the script, so names are escaped.
     [Fact]
-    public async Task TheCommentsOfAScriptEscapeALineBreakInATableName()
+    public async Task ATableWhoseNameHasAControlCharacterIsLeftAloneAndItsNameEscaped()
     {
         await MigrateAndApplyAsync(ArticleSchemas.Titled);
-        _database.Execute("create table \"cms_bad\nname\" (id int)");
+        _database.Execute("create table \"cms_bad\nGO\nname\" (id int)");
+        const string LeftAlone = "table cms_bad\\u000AGO\\u000Aname, whose name has a control character, which no content table has";
 
-        var (exitCode, output, error) = await RunAsync(ArticleSchemas.Titled, "schema", "apply", "--script", "--allow-destructive");
+        var (exitCode, output, error) = await RunAsync(ArticleSchemas.Titled, "schema", "apply", "--script");
 
         exitCode.ShouldBe(0, error);
-        output.ShouldContain($"-- drop table cms_bad\\u000aname{Environment.NewLine}");
-        output.ShouldNotContain("-- drop table cms_bad\n");
+        output.ShouldContain($"-- Left alone: {LeftAlone}{Environment.NewLine}");
+        output.ShouldNotContain("cms_bad\nGO");
+
+        (exitCode, output, error) = await RunAsync(ArticleSchemas.Titled, "schema", "apply");
+
+        exitCode.ShouldBe(0, error);
+        output.ShouldStartWith($"Left alone:{Environment.NewLine}  {LeftAlone}{Environment.NewLine}Nothing to apply;");
+        _database.Tables().ShouldContain("cms_bad\nGO\nname");
     }
 
     [Fact]
@@ -534,6 +542,28 @@ public sealed partial class SchemaApplyTests : IDisposable
         error.ShouldStartWith("FCMS3339: the database refused an operation (");
         _database.Columns("cms_article").ShouldNotContain("subtitle");
         History().ShouldHaveSingleItem();
+    }
+
+    // schema diff --applied names what records the history: schema apply for a host without content migrations.
+    [Fact]
+    public async Task ADiffFromAnEmptyOrUnreadableHistoryNamesWhatRecordsItForTheHost()
+    {
+        await MigrateAsync(ArticleSchemas.Titled);
+
+        (await RunAsync(ArticleSchemas.Titled, "schema", "diff", "--applied")).Error
+            .ShouldStartWith("FCMS3323: the schema history of the host's database is empty; run 'fluentcms schema apply' to apply the schema and record it");
+        using (var withMigrations = Host(ArticleSchemas.Titled, GeneratedMigrations.CompileFirst(ArticleSchemas.Titled)))
+        {
+            (await RunAsync(withMigrations, "schema", "diff", "--applied")).Error
+                .ShouldStartWith("FCMS3323: the schema history of the host's database is empty; run 'fluentcms migrate' to apply the schema and record it");
+        }
+
+        _database.Execute("drop table cms_schema_history");
+
+        var unreadable = (await RunAsync(ArticleSchemas.Titled, "schema", "diff", "--applied")).Error;
+
+        unreadable.ShouldStartWith("FCMS3324: the schema history of the host's database could not be read (");
+        unreadable.ShouldContain("; run 'fluentcms migrate' to create it, then 'fluentcms schema apply' to record the schema");
     }
 
     [Fact]

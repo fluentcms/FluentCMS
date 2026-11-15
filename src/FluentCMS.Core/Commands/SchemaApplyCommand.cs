@@ -1,4 +1,5 @@
 using System.Data.Common;
+using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
@@ -157,7 +158,7 @@ internal sealed class SchemaApplyCommand : HostCommand
             await output.WriteLineAsync("Operations:");
             foreach (var step in plan.Steps)
             {
-                await output.WriteLineAsync($"  {step.Description}{Mark(step)}");
+                await output.WriteLineAsync($"  {PrintableText.Escape(step.Description)}{Mark(step)}");
             }
         }
 
@@ -166,7 +167,7 @@ internal sealed class SchemaApplyCommand : HostCommand
             await output.WriteLineAsync("Left alone:");
             foreach (var table in plan.LeftAlone)
             {
-                await output.WriteLineAsync($"  {table}");
+                await output.WriteLineAsync($"  {PrintableText.Escape(table)}");
             }
         }
     }
@@ -205,8 +206,7 @@ internal sealed class SchemaApplyCommand : HostCommand
 
     // A description holds names read from the database, and a line break in one would end the comment and run the rest
     // of the line as SQL.
-    private static string Comment(string text) =>
-        "-- " + string.Concat(text.Select(c => char.IsControl(c) || c is '\u2028' or '\u2029' ? $"\\u{(int)c:x4}" : c.ToString()));
+    private static string Comment(string text) => "-- " + PrintableText.Escape(text);
 
     private static string Count(int count) => count == 1 ? "1 change" : $"{count} changes";
 }

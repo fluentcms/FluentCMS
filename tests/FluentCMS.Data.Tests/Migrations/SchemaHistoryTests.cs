@@ -22,6 +22,8 @@ public sealed class SchemaHistoryTests : IDisposable
 
     private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "false" };
 
+    private static readonly Dictionary<string, string?> MigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "true" };
+
     private readonly TestDatabase _database = TestDatabase.Create();
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -141,6 +143,36 @@ public sealed class SchemaHistoryTests : IDisposable
         drift.ShouldContain(SchemaSnapshot.Of(ArticleSchemas.Titled).Hash);
         drift.ShouldContain(SchemaSnapshot.Of(ArticleSchemas.TitledAndRequired).Hash);
         (await RowsAsync(host)).Count.ShouldBe(1);
+    }
+
+    // A host without content migrations has its schema recorded by schema apply, which a start of either kind asks for: one
+    // that migrates records nothing, so it logs what one that does not would. Neither type needs a table.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AStartOfAHostWithoutContentMigrationsRecordsNothingAndAsksForSchemaApply(bool migrateOnStartup)
+    {
+        Dictionary<string, string?> settings = new() { ["FluentCms:Database:MigrateOnStartup"] = migrateOnStartup ? "true" : "false" };
+        await StartAndStopAsync(_database.CreateHost(ArticleSchemas.NoTypes, Production, settings: MigrationOnStartup));
+        var empty = new CapturedLogs();
+
+        using (var host = _database.CreateHost(ArticleSchemas.NoTypes, Production, settings: settings, services: Capture(empty)))
+        {
+            await host.StartAsync(Token);
+            (await RowsAsync(host)).ShouldBeEmpty();
+            await host.Services.GetRequiredService<MigrationRunner>().RecordSchemaAsync(Token);
+            await host.StopAsync(Token);
+        }
+
+        empty.Informations.ShouldContain("The schema history is empty, so the schema in code cannot be compared; run 'fluentcms schema apply' to record it.");
+        var drifted = new CapturedLogs();
+        var withComponent = SampleSchema.NewBuilder().AddComponent("seo", type => type.Field("title", "text")).Build();
+
+        using var changed = _database.CreateHost(withComponent, Production, settings: settings, services: Capture(drifted));
+        await changed.StartAsync(Token);
+
+        drifted.Warnings.ShouldHaveSingleItem().ShouldEndWith("component 'seo' added. Run 'fluentcms schema apply' to apply and record it.");
+        (await RowsAsync(changed)).ShouldHaveSingleItem();
     }
 
     [Fact]

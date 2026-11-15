@@ -47,6 +47,18 @@ public sealed class SchemaSyncTests : IDisposable
             .AddCollection("article", type => type.Field("title", "text").Field("sections", "blocks", sections => sections.Setting(FieldSettings.Blocks, HeroBlock)))
             .Build();
 
+    private static SchemaModel Hero(params string[] fields) =>
+        SampleSchema.NewBuilder()
+            .AddBlock("hero", block =>
+            {
+                foreach (var field in fields)
+                {
+                    block.Field(field, "text");
+                }
+            })
+            .AddCollection("article", type => type.Field("title", "text").Field("sections", "blocks", sections => sections.Setting(FieldSettings.Blocks, HeroBlock)))
+            .Build();
+
     private void InsertArticle(string column, string value) =>
         _database.Execute($"insert into cms_article (id, document_id, site_id, state, {column}) values ('{Guid.CreateVersion7()}', '{Guid.CreateVersion7()}', '{Guid.Empty}', 0, '{value}')");
 
@@ -270,6 +282,40 @@ public sealed class SchemaSyncTests : IDisposable
 
         _database.ReadStrings("select hash from cms_schema_history").ShouldHaveSingleItem();
         logs.Messages.ShouldContain(message => message.Contains("field 'block hero.heading' renamed to 'title'", StringComparison.Ordinal) && message.Contains("Run 'fluentcms schema apply' to apply and record it", StringComparison.Ordinal));
+        await host.StopAsync(Token);
+    }
+
+    // Nothing but sync would record past the loss on a host with content migrations, which schema apply refuses.
+    [SqliteFact("schema sync, which only SQLite supports")]
+    public async Task AHostWithContentMigrationsRecordsASyncThatRemovesABlockField()
+    {
+        var migrations = GeneratedMigrations.CompileFirst(Hero("heading", "caption"));
+        using (var first = _database.CreateHost(Hero("heading", "caption"), Environments.Development, migrations))
+        {
+            await first.StartAsync(Token);
+            await first.StopAsync(Token);
+        }
+
+        using var host = _database.CreateHost(Hero("heading"), Environments.Development, migrations);
+        await host.StartAsync(Token);
+
+        _database.ReadStrings("select hash from cms_schema_history").Count.ShouldBe(2);
+        await host.StopAsync(Token);
+    }
+
+    // A history that cannot be read is logged, as the other records of the runner log it, and the sync goes on.
+    [SqliteFact("schema sync, which only SQLite supports")]
+    public async Task ASyncWhoseHistoryCannotBeReadIsNotRecordedAndDoesNotFail()
+    {
+        var logs = new ListLoggerProvider();
+        using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development, services: services => services.AddSingleton<ILoggerProvider>(logs));
+        await host.StartAsync(Token);
+        _database.Execute("drop table cms_schema_history");
+
+        var report = await Runner(host).SyncContentSchemaAsync(ArticleSchemas.WithSubtitle, Token);
+
+        report.Applied.ShouldBe(["add column subtitle to table cms_article"]);
+        logs.Messages.ShouldContain(message => message.StartsWith("The schema was not recorded in the schema history (", StringComparison.Ordinal));
         await host.StopAsync(Token);
     }
 

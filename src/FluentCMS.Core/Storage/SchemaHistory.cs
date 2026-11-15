@@ -39,16 +39,20 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
     public Task RecordOrThrowAsync(SchemaModel schema, CancellationToken cancellationToken) =>
         RecordWithRetriesAsync(SchemaSnapshot.Of(schema), cancellationToken);
 
-    // Schema sync's record. Sync moves no value, so a schema that loses data by the newest row keeps that row, which tells
-    // schema apply what is lost, and only schema apply records past it. Returns whether it recorded.
-    public async Task<bool> RecordUnlessLostAsync(SchemaModel schema, CancellationToken cancellationToken)
+    // Schema sync's record. Sync moves no value, so for a host that schema apply serves, a schema that loses data by the
+    // newest row keeps that row, which tells schema apply what is lost, and only schema apply records past it. A host with
+    // content migrations has nothing that would record past it, so it records as before. Returns whether it recorded.
+    public async Task<bool> RecordAfterSyncAsync(SchemaModel schema, Func<CancellationToken, Task<bool>> usesSchemaApply, CancellationToken cancellationToken)
     {
         try
         {
-            var (report, unreadable) = Compare(await AppliedSnapshotAsync(cancellationToken), schema);
-            if (Losses(report, unreadable, schema).Count > 0)
+            if (await usesSchemaApply(cancellationToken))
             {
-                return false;
+                var (report, unreadable) = Compare(await AppliedSnapshotAsync(cancellationToken), schema);
+                if (Losses(report, unreadable, schema).Count > 0)
+                {
+                    return false;
+                }
             }
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -102,16 +106,16 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
     }
 
     // Logs what differs between the code and the newest row. It never fails startup: a schema that drifted is the
-    // operator's to apply, and a missing check must not stop a host that works. A host without content migrations has its
-    // content tables brought up to the schema by schema apply, which is what it is asked to run.
-    public async Task CheckDriftAsync(SchemaModel schema, bool schemaApply, CancellationToken cancellationToken)
+    // operator's to apply, and a missing check must not stop a host that works. A host that schema apply serves is asked to
+    // run it; usesSchemaApply is asked only when there is something to log.
+    public async Task CheckDriftAsync(SchemaModel schema, Func<CancellationToken, Task<bool>> usesSchemaApply, CancellationToken cancellationToken)
     {
         try
         {
             var status = await StatusAsync(schema, cancellationToken);
             if (status.AppliedHash is null)
             {
-                SchemaHistoryLog.NoHistory(logger, schemaApply ? "run 'fluentcms schema apply' to record it" : $"run 'fluentcms migrate' to record it, or start with {DatabaseOptions.MigrateOnStartupKey} = true");
+                SchemaHistoryLog.NoHistory(logger, await usesSchemaApply(cancellationToken) ? "run 'fluentcms schema apply' to record it" : $"run 'fluentcms migrate' to record it, or start with {DatabaseOptions.MigrateOnStartupKey} = true");
             }
             else if (status.Drifted)
             {
@@ -122,7 +126,7 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
                     status.AppliedHash,
                     status.Hash,
                     status.Changes!,
-                    schemaApply ? "Run 'fluentcms schema apply' to apply and record it" : $"Run 'fluentcms migrate' to apply and record it, or start with {DatabaseOptions.MigrateOnStartupKey} = true");
+                    await usesSchemaApply(cancellationToken) ? "Run 'fluentcms schema apply' to apply and record it" : $"Run 'fluentcms migrate' to apply and record it, or start with {DatabaseOptions.MigrateOnStartupKey} = true");
             }
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
