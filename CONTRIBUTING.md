@@ -58,11 +58,11 @@ Every issue has one `type:*` label. Issues that belong to a part of the codebase
 | `type:adr` | A proposal for an architecture decision. |
 | `type:question` | A question or a request for clarification. |
 
-`area:*` labels name the part of the codebase: `build`, `sdk`, `schema`, `storage`, `content`, `publishing`, `localization`, `identity`, `authorization`, `jobs`, `events`, `settings` and `testing`.
+`area:*` labels name the part of the codebase: `build`, `sdk`, `schema`, `storage`, `content`, `publishing`, `localization`, `identity`, `authorization`, `jobs`, `events`, `settings`, `testing` and `admin`.
 
 ## Milestones and tracking issues
 
-Work is planned in milestones, `M0 Foundation` first. The goal and exit criteria of each are in section 8 of the [backend technical specification](docs/planning/backend-technical-spec.md). Each milestone has one tracking issue holding a checklist of its issues, for example [#2707](https://github.com/fluentcms/FluentCMS/issues/2707) for M0 and [#2708](https://github.com/fluentcms/FluentCMS/issues/2708) for M1. Issues are created milestone by milestone, so later milestones appear when they start. Tick the tracking issue when your pull request merges.
+Work is planned in milestones, `M0 Foundation` first. The goal and exit criteria of the backend's milestones, M0 to M7, are in section 8 of the [backend technical specification](docs/planning/backend-technical-spec.md); those of the admin's, A0 onward, in section 9 of the [admin technical specification](docs/planning/admin-technical-spec.md), whose issues are numbered `A-nn` and labelled `area:admin`. Each milestone has one tracking issue holding a checklist of its issues, for example [#2707](https://github.com/fluentcms/FluentCMS/issues/2707) for M0, [#2708](https://github.com/fluentcms/FluentCMS/issues/2708) for M1 and [#3151](https://github.com/fluentcms/FluentCMS/issues/3151) for A0. Issues are created milestone by milestone, so later milestones appear when they start. Tick the tracking issue when your pull request merges.
 
 ## Dependencies
 

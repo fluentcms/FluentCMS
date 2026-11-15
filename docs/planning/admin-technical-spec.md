@@ -1,10 +1,10 @@
 # FluentCMS admin: technical specification (draft for review)
 
-Draft 1, 13 Nov 2026. Status: **draft for review**. Nothing in it is decided until it is approved; the GitHub issues of section 10 are created once it is, milestone by milestone, as the backend's were.
+Draft 1, 13 Nov 2026; approved 15 Nov 2026 with the decisions of section 11. Status: **approved**. The GitHub issues of section 10 are created milestone by milestone, as the backend's were; those of A0 and A1 were created on 15 Nov 2026.
 
 This document takes the approved [feature specification](specification/README.md) and keeps what the [backend specification](backend-technical-spec.md) left to a document of its own (1.1 there): the Blazor WebAssembly admin, its generated views, the admin halves of the plugins, the admin distributions and the preview protocol. It is drafted beside M7, as decided when M7 was planned (backend 10.4, H10), and its input is the audit of the Management API against the admin's rows (B-105, [#3050]).
 
-How to read it: sections 1 to 3 set scope, architecture, packages and layout; section 4 describes each area of the admin with the rows it implements and the endpoints it calls; section 5 is the contract of a plugin's admin half and the admin half of each first-party plugin; section 6 the three distributions; section 7 testing; section 8 maps every row to an area and a milestone; section 9 sequences the work in milestones A0 onward; section 10 is the proposed issue list, numbered `A-nn`; section 11 holds the open questions, each with a recommendation. Everything marked *proposed* is open to change during review.
+How to read it: sections 1 to 3 set scope, architecture, packages and layout; section 4 describes each area of the admin with the rows it implements and the endpoints it calls; section 5 is the contract of a plugin's admin half and the admin half of each first-party plugin; section 6 the three distributions; section 7 testing; section 8 maps every row to an area and a milestone; section 9 sequences the work in milestones A0 onward; section 10 is the issue list, numbered `A-nn`; section 11 holds the questions that were open in the draft, each with its decision. What the draft marked *proposed* was adopted as written unless section 11 says otherwise.
 
 Endpoints are named as they are on `feature/m7` at `e31e894b`, whose routes are those the audit read at `8aea4aca`, relative to `/api/management/v1` unless they start with another prefix of the route map (backend Appendix B). Section numbers without a document name are this document's; "backend 4.10" is section 4.10 of the backend specification.
 
@@ -62,9 +62,9 @@ The audit of B-105 ([#3050], comment of 13 Nov 2026) walked the nineteen Must ro
 
 | Issue | Gap | Milestone | Needed by |
 | --- | --- | --- | --- |
-| [#3094] | No response shows a pending schedule; system field names to reserve | M7 | A-12, A-27 |
+| [#3094] | No response shows a pending schedule; system field names to reserve | M7 | A-48, A-27 |
 | [#3095] | A preview token populates no relation | M7 | A-29 |
-| [#3096] | No route gives the caller's access, the locales of its sites or its preferences | none | A-08, A-13, A-16, A-17, A-22, A-41 |
+| [#3096] | No route gives the caller's access, the locales of its sites or its preferences | A1 | A-08, A-49, A-16, A-17, A-22, A-41 |
 | [#3097] | A version names its author by id only | none | A-28 |
 | [#3098] | No reset of a settings area, and no list of the areas | none | A-34 |
 | [#3099] | No per-type preview URL template | none | A-29 |
@@ -74,7 +74,7 @@ The audit of B-105 ([#3050], comment of 13 Nov 2026) walked the nineteen Must ro
 | [#3103] | The built-in Editor and Author roles hold no media or AI permission | none | A-20, A-21, A-38 |
 | [#3104] | 45 plugin operations declare no body in the OpenAPI document | none | A-20, A-21, A-35 to A-38 |
 
-An admin issue that needs a gap starts once the gap is merged. Where an area can work without it, it says how (section 4). Where the gap issues run is AQ13.
+An admin issue that needs a gap starts once the gap is merged. Where an area can work without it, it says how (section 4). Where the gap issues run is AQ13. By 15 Nov 2026 every gap but #3096 was merged into `main`; #3096 is in milestone A1 (10.2).
 
 The audit also named points that are awkward but need no new route. The admin answers them itself:
 
@@ -143,7 +143,7 @@ An entry is edited as a JSON document (`JsonObject`), driven by the schema descr
 
 ### 2.3 The wrapped component library
 
-The component library is decision 26's: Fluent UI Blazor, wrapped behind FluentCMS components so that it can be swapped. Decision 26 is a recommendation adopted unless changed, and this draft does not settle it further: AQ1 asks to confirm it and to pin its major version before A0.
+The component library is decision 26's: Fluent UI Blazor, wrapped behind FluentCMS components so that it can be swapped. Decision 26 is confirmed (AQ1): `Microsoft.FluentUI.AspNetCore.Components` 5.0.1, pinned in `Directory.Packages.props` by A-02, which opens with a check of the data grid, tree, drawer, dialog, menu and date picker against the rules of 4.18; MudBlazor is the fallback behind the same wrappers if the check fails. The library's own script is on the allow-list of 3.1 and is loaded by `FluentCMS.Admin.Components` only.
 
 - `FluentCMS.Admin.Components` holds the wrapped set: buttons, inputs, selects, date and time pickers, checkboxes, dialogs, drawers, toasts, menus, tabs, a data grid, a tree, a file drop zone, layout primitives and icons. Each FluentCMS component exposes the parameters the admin needs, not those of the library, and names them for FluentCMS (`CmsButton`, `CmsDataGrid`).
 - The core areas and every plugin admin half use only the wrapped set. An architecture test refuses a reference from an admin half to the library itself (3.3), so swapping the library touches `FluentCMS.Admin.Components` only.
@@ -164,8 +164,8 @@ The admin is the public OAuth client `fluentcms-admin`, the default of `cms.Clie
 | Sign-out | Revokes the refresh token, then ends the session on the server and returns to the admin. | `POST /connect/revoke`, `/connect/logout` |
 
 - **No iframe.** The hosted pages send `frame-ancestors 'none'` by default (`FluentCms:Security:FrameAncestors`), so renewal through a hidden iframe with `prompt=none` cannot work, and the admin renews with refresh tokens only.
-- **Library.** The framework's `Microsoft.AspNetCore.Components.WebAssembly.Authentication`, or a small implementation of the flow in the admin. A-07 starts with a spike that checks the framework's package against the rules above (AQ2).
-- **Token storage.** The access token in memory, the refresh token in `sessionStorage`, and a strict `Content-Security-Policy` on the admin page (AQ3).
+- **Library.** The flow is written in the admin, in C# (AQ2): the framework's `Microsoft.AspNetCore.Components.WebAssembly.Authentication` renews through a hidden iframe with `prompt=none`, which the rule above forbids, and brings a script of its own. A-07 records the choice as a decision record and tests the flow against the test host.
+- **Token storage.** The access token in memory, the refresh token in `sessionStorage`, and a strict `Content-Security-Policy` on the admin page (AQ3). A new tab holds no token and goes through `/connect/authorize`, which the server's session answers without a prompt; two tabs therefore hold two refresh tokens, and a refresh in one does not touch the other.
 - **Expiry with the draft kept (row 3.3).** When a refresh fails, the session is over. Before the admin redirects to sign in, it writes every unsaved form to `sessionStorage`, keyed by user, site, type, entry, locale and the version the form was based on. After sign-in it returns to the same route and restores the form. The save that follows sends `If-Match` with the old version, so a change made meanwhile is a 412 with `current`, which the conflict dialog of 4.5 shows. A restored draft is removed once saved or discarded.
 - **Password and two-factor.** A forced password change and an enrolment that a role requires happen on the hosted pages during sign-in (`/account/change-password`, `/account/enable-two-factor`). Enrolment by choice is in the user's account page (4.3).
 
@@ -189,7 +189,7 @@ A missing or invalid member shows a static error page that names it, before anyt
 
 Decision 29: each plugin admin half is one assembly, loaded with `LazyAssemblyLoader` the first time one of its contributions is used, and listed as `BlazorWebAssemblyLazyLoad` in the app. The first download holds the shell and the core areas only. The rich text editor is loaded the same way, the first time a form has a rich text field (4.7).
 
-The shell needs a plugin's contributions, its menu items, pages and the field types it edits, before the assembly is loaded. *Proposed* (AQ4): the build of each admin half writes a manifest, `fluentcms-admin.json`, from the contribution attributes of its assembly, as a static web asset of the package (`_content/{PackageId}/fluentcms-admin.json`). The app's build gathers the manifests of the halves it references into one file, which the shell reads at start with one request.
+The shell needs a plugin's contributions, its menu items, pages and the field types it edits, before the assembly is loaded. Decided (AQ4): each admin half ships a manifest, `fluentcms-admin.json`, written by hand as a static web asset of the package (`_content/{PackageId}/fluentcms-admin.json`), which lists the server plugin's name, the admin range and the contributions of the table below. A test helper of `FluentCMS.Admin.Abstractions` fails the half's tests when the file and the contribution attributes of its assembly disagree, and the plugin template carries that test (A-23). The app's build gathers the manifests of the halves it references into one file, which the shell reads at start with one request. A build step that writes the manifest from the attributes can replace the hand-written file later without a change to the shell.
 
 | Contribution | Declared by | Loads the assembly when |
 | --- | --- | --- |
@@ -272,7 +272,7 @@ Elsewhere: the admin's rules join `tests/FluentCMS.Architecture.Tests` (3.3); `t
 - The app publishes trimmed. Records are serialized through source-generated contexts, and trim warnings are errors.
 - Static web assets are fingerprinted and compressed at publish, so the host can cache them for a year and `index.html` and `config.json` not at all.
 - Strings shown to a user come from resources (4.17); a test with a pseudo-culture fails on a hard-coded one (7).
-- No JavaScript outside an allow-list: the rich text bundle, and small interop modules for focus, clipboard, file drop and `BroadcastChannel`, each in `FluentCMS.Admin` or `FluentCMS.Admin.RichText`.
+- No JavaScript outside an allow-list: the script of the component library, loaded by `FluentCMS.Admin.Components` (2.3); the rich text bundle; and small interop modules for focus, clipboard, file drop and `BroadcastChannel`, each in `FluentCMS.Admin` or `FluentCMS.Admin.RichText`.
 
 ### 3.2 Naming conventions
 
@@ -652,7 +652,7 @@ public partial class LatestReviewsWidget : ComponentBase { }
 - **Manifest.** The name is the server plugin's name, so the shell matches it with `GET /plugins`: enabled in the site, version, contributions. `AdminRange` is the range of `FluentCMS.Admin.Abstractions` it was built for; a half outside the running range is not loaded, and the shell lists it on an error page instead of failing.
 - **Contributions** (2.6): pages with a route under `/{plugin}/`, menu items in a section (content, media, administration, settings), settings pages that replace the generated page of an area the plugin registers, field editors and list cells for the plugin's field types, with the filter operators of each (4.4), entry actions and bulk actions targeted by content type, with a confirmation text and progress reported through the bulk service of 4.13, field actions on fields of given field types (AI assist, 5.5), dashboard widgets with a size hint (small, medium, wide) and a visibility by permission or role (row 8.9), and services other halves may ask for, such as the media picker.
 - **What the admin gives a component.** The API client of 2.7, already set to the site and locale; `IAdminContext` with the user, the site, the content locale and the caller's access; `IAdminAccess.Allows(permission)` (#3096); notifications, dialogs, confirmation, navigation and the bulk progress service; the pickers (`IRelationPicker`, and `IMediaPicker`, which the media half implements); `IStringLocalizer<T>` over the plugin's own resources; the wrapped components. The interfaces are in `FluentCMS.Admin.Abstractions`, so a half names a service of another half without referencing it, and asking for it loads the half that provides it.
-- **Services of a half.** The app's container is built before a lazy assembly loads, so a half adds nothing to it. `Configure` runs once, when the assembly first loads, into a provider of the plugin that falls back to the admin's services; the half's components reach it through `IAdminPluginServices`. *Proposed*, with AQ4.
+- **Services of a half.** The app's container is built before a lazy assembly loads, so a half adds nothing to it. `Configure` runs once, when the assembly first loads, into a provider of the plugin that falls back to the admin's services; the half's components reach it through `IAdminPluginServices`. Decided with AQ4.
 - **Field editors.** A field editor derives from `FieldEditorBase<TValue>`: it gets the field's description, value, errors, read-only, locale and direction (4.6), raises `ValueChanged`, and meets the accessibility rules of 4.18. A list cell derives from `ListCellBase<TValue>`.
 - **Gating.** The shell shows a contribution only while the plugin is enabled in the site and the caller holds its permission; a disabled plugin's half is not loaded there (row 8.15). The server still checks every call.
 - **No JavaScript contract.** A component may use JS interop internally, but the admin offers no slot for script, and a plugin cannot extend the rich text editor (decisions 12 and 27).
@@ -741,7 +741,7 @@ Decision 5 names three. All three are the same app built from the same libraries
 
 - `src/FluentCMS.Host` references `FluentCMS.Admin.App`, which references the first-party admin halves, and `FluentCMS.Admin.Hosting`. `dotnet publish` of the host compiles the WebAssembly app with them and publishes its static web assets under `admin/`, so one build gives both, and the Dockerfile keeps its stages. No Node is needed in the image's build (AQ7).
 - `ReferenceHost.Build` calls `cms.AddAdmin()` and `app.MapFluentCmsAdmin()` with the path `/admin`, which Appendix B of the backend reserves, under `FluentCms:ReverseProxy:PathBase` when set.
-- `MapFluentCmsAdmin` serves `index.html` with its `<base href>` set to the path base and `/admin/`, the framework files with long caching, a fallback to `index.html` for client routes, and `config.json` built from `FluentCms:Admin` (`ApiBaseUrl` defaults to the public origin and path base, or the request's in Development, `ClientId` to `cms.Clients.AdminClientId`, `Branding`, `Cultures`, `PreviewOrigins`). It sends the admin page's headers: `Content-Security-Policy` with `script-src 'self' 'wasm-unsafe-eval'`, `connect-src` of the API, `img-src` of the API and `data:` and `blob:`, `frame-src` of the preview origins, `frame-ancestors 'none'`, and the FluentCMS security headers.
+- `MapFluentCmsAdmin` serves `index.html` with its `<base href>` set to the path base and `/admin/`, the framework files with long caching, a fallback to `index.html` for client routes, and `config.json` built from `FluentCms:Admin` (`ApiBaseUrl` defaults to the public origin and path base, or the request's in Development, `ClientId` to `cms.Clients.AdminClientId`, `Branding`, `Cultures`, `PreviewOrigins`). It sends the admin page's headers: `Content-Security-Policy` with `script-src 'self' 'wasm-unsafe-eval'`, the `style-src` the component library needs (A-10 measures it and keeps it as narrow as the library allows), `connect-src` of the API, `img-src` of the API and `data:` and `blob:`, `frame-src` of the preview origins, `frame-ancestors 'none'`, and the FluentCMS security headers.
 - `AddAdmin` registers `fluentcms-admin` as a public client of the admin pool when `FluentCms:Clients:Applications:fluentcms-admin` is not configured, with the redirect URI `{origin}{path base}/admin/authentication/login-callback`, the post-logout URI `{origin}{path base}/admin/`, and the scopes of 2.4; the origin is `FluentCms:PublicOrigin`, which Production requires (`FCMS1105`), and the request's in Development. A configured client wins, as any client of `cms.Clients.Applications` does.
 - `FluentCms:Admin:Enabled` (true by default) set to false turns the admin off in the image, for a team that hosts its own.
 
@@ -890,7 +890,7 @@ The admin's milestones follow the editor's daily loop of category 3, "find an en
 | Milestone | Goal | Exit criteria |
 | --- | --- | --- |
 | A0 Admin foundation | The admin projects build and test in CI; nothing is usable yet. | The projects of 2.8 build with `-warnaserror` in CI; the app starts from `config.json` and shows a page of the wrapped components in both themes and in a right-to-left pseudo-culture; the API client reads `/me` from the test host; the architecture tests of 3.3 pass. |
-| A1 Shell and sign-in | An editor signs in to the admin of the reference image. | From the reference image on SQLite, an editor signs in at `/admin` through the hosted login with PKCE, sees the sidebar of the types it may read in each of its sites, switches site, stays signed in across a token refresh in two tabs, enrols in two-factor, and signs out; a session that ends keeps the unsaved form. |
+| A1 Shell and sign-in | An editor signs in to the admin of the reference image. | From the reference image on SQLite, an editor signs in at `/admin` through the hosted login with PKCE, sees the sidebar of the types it may read in each of its sites, switches site, stays signed in across a token refresh in each of two tabs, enrols in two-factor, and signs out; a session that ends keeps the unsaved form. |
 | A2 Lists and forms | The daily loop without rich text. | On the Blog sample an editor finds an article by search and filter, edits it with the core field editors and a relation, sees errors from the API on their fields, saves, publishes, unpublishes and discards in two locales, copies a locale, and gets the conflict dialog when another tab saved first. |
 | A3 Plugin contract and media | Plugins extend the admin, proven by the media plugin. | The media half loads only on first use; an editor uploads, picks and edits the image of `Article.Hero` and manages the library; a plugin from the template shows a page, a menu item, a settings page and a widget, and none of them in a site where it is disabled. |
 | A4 Rich text and blocks | The editor is complete. | An editor writes an article body with headings, lists, links to entries, an embedded image and an inline block, and builds content from blocks and components to depth 3, all saved and read back unchanged. |
@@ -898,39 +898,48 @@ The admin's milestones follow the editor's daily loop of category 3, "find an en
 | A6 Administration and plugin halves | Nothing a Must row needs takes the CLI or a direct API call. | An administrator manages users, roles, keys, members, settings, locales, sites and host names, webhooks, MCP clients, plugins and jobs, and reads the startup report, from the admin alone; an editor runs AI actions on the opted-in fields. |
 | A7 Distributions and admin preview | The admin ships. | The admin is in its three distributions with a preview of the packages; the end-to-end and accessibility checks pass on the image; the admin runs in English and a right-to-left pseudo-culture with each user's formats; the screen reader pass is done. |
 
-A1 to A2 are the critical path. The gaps of 1.4 run before the admin issue that needs them (AQ13): #3096 before A1 ends, #3100, #3103 and #3104 before A3, #3094 and #3095 with M7, #3097 and #3099 before A5, and #3098, #3101 and #3102 before A6.
+A1 to A2 are the critical path. The gaps of 1.4 run before the admin issue that needs them (AQ13): #3096 in A1, beside A0, since A-08 and three issues of A2 wait for it; the others were merged into `main` on 13 and 15 Nov 2026, before A0 started.
 
 ## 10. Proposed issues
 
-Grouped by milestone, as the backend's section 9: each becomes one GitHub issue with the Feature template, labelled `type:feature` and an area label (AQ13), with the milestone. One tracking issue per milestone holds the checklist. "Section" is this document's; "Rows" names rows of the feature specification and, with a `d`, decisions of the log. Sizes: S under two days, M a week, L more than a week. "Needs" names the backend issue that must be merged first.
+Grouped by milestone, as the backend's section 9: each becomes one GitHub issue with the Feature template, labelled `type:feature` and `area:admin` (AQ13), with the milestone. One tracking issue per milestone holds the checklist. "Section" is this document's; "Rows" names rows of the feature specification and, with a `d`, decisions of the log. Sizes: S under two days, M a week, L more than a week. "Needs" names the backend issue that must be merged first.
 
 ### 10.1 A0 Admin foundation
 
+Tracking issue: [#3151]. Created on 15 Nov 2026, when the document was approved. The issues run on `feature/a0`, cut from `main`.
+
 | Id | Issue | Section | Rows | Size | Needs |
 | --- | --- | --- | --- | --- | --- |
-| A-01 | Admin projects of 2.8 as stubs in `FluentCMS.slnx`, with an admin shard in CI and the component and API test projects | 3, 7 | 10.15 | S | |
-| A-02 | Wrapped component set over the library of decision 26, with theme tokens, light and dark, logical CSS and icons | 2.3 | 3.1, 3.19, d26 | M | |
-| A-03 | Management API client: headers, problems, `ETag` and `If-Match`, idempotency keys, rate limits, source-generated JSON | 2.7 | 2.8, 2.15, 7.11 | M | |
-| A-04 | Runtime `config.json` with validation and an error page | 2.5 | 3.2 | S | |
-| A-05 | Localization and accessibility groundwork: resources, culture choice, pseudo-cultures, focus, live regions, the cost of culture data | 4.17, 4.18 | 3.18, 3.19 | S | |
-| A-06 | Architecture rules of the admin and a download size budget | 3.3, 7 | d4 | S | |
+| A-01 [#3139] | Admin projects of 2.8 as stubs in `FluentCMS.slnx`, with an admin shard in CI and the component and API test projects; the plugin admin halves are created by the issues that fill them | 3, 7 | 10.15 | S | |
+| A-02 [#3140] | Wrapped component set over the library of decision 26, with theme tokens, light and dark, logical CSS and icons, after the check of AQ1 | 2.3 | 3.1, 3.19, d26 | M | |
+| A-03 [#3141] | Management API client: headers, problems, `ETag` and `If-Match`, idempotency keys, rate limits, source-generated JSON | 2.7 | 2.8, 2.15, 7.11 | M | |
+| A-04 [#3142] | Runtime `config.json` with validation and an error page | 2.5 | 3.2 | S | |
+| A-05 [#3143] | Localization and accessibility groundwork: resources, culture choice, pseudo-cultures, focus, live regions, the cost of culture data | 4.17, 4.18 | 3.18, 3.19 | S | |
+| A-06 [#3144] | Architecture rules of the admin and a download size budget | 3.3, 7 | d4 | S | |
+
+Beside A0, without a milestone: [#3150], the display name and title field of a content type (AQ10).
 
 ### 10.2 A1 Shell and sign-in
 
+Tracking issue: [#3152]. Created on 15 Nov 2026, with A0. The issues run on `feature/a1`, cut from `main` after `feature/a0` is merged; #3096 runs beside A0 and goes into `main` directly (AQ13).
+
 | Id | Issue | Section | Rows | Size | Needs |
 | --- | --- | --- | --- | --- | --- |
-| A-07 | Sign-in with the code flow and PKCE, refresh, sign-out, and expiry with the draft kept, after the library spike of AQ2 | 2.4 | 3.3, d7 | M | |
-| A-08 | Shell: layout, sidebar, site switcher, user menu, breadcrumbs, themes, tablet layout | 4.1 | 3.1, 7.13, 4.12 | M | #3096 |
-| A-09 | Account page: sessions, two-factor, external logins, password change link | 4.3 | 4.2, 4.16 | S | |
-| A-10 | `FluentCMS.Admin.Hosting` and the admin of the reference host at `/admin`, with the client registration and the local loop with `dotnet watch` | 6.1, 6.4 | 10.2, 11.4, d5 | M | |
-| A-11 | End-to-end harness on the reference host, with sign-in through the hosted page | 7 | 3.3 | S | |
+| [#3096] | Caller's access, the locales of its sites and its preferences (a gap of the audit, backend 4.10) | 1.4 | 3.1, 7.7 | M | |
+| A-07 [#3145] | Sign-in with the code flow and PKCE, refresh, sign-out, and expiry with the draft kept, written in the admin (AQ2) | 2.4 | 3.3, d7 | M | |
+| A-08 [#3146] | Shell: layout, sidebar, site switcher, user menu, breadcrumbs, themes, tablet layout | 4.1 | 3.1, 7.13, 4.12 | M | #3096 |
+| A-09 [#3147] | Account page: sessions, two-factor, external logins, password change link | 4.3 | 4.2, 4.16 | S | |
+| A-10 [#3148] | `FluentCMS.Admin.Hosting` and the admin of the reference host at `/admin`, with the client registration and the local loop with `dotnet watch` | 6.1, 6.4 | 10.2, 11.4, d5 | M | |
+| A-11 [#3149] | End-to-end harness on the reference host, with sign-in through the hosted page | 7 | 3.3 | S | |
 
 ### 10.3 A2 Lists and forms
 
 | Id | Issue | Section | Rows | Size | Needs |
 | --- | --- | --- | --- | --- | --- |
-| A-12 | Generated list views: columns, multi-sort, filters by field type, search, paging, badges, selection | 4.4 | 3.4, 2.23 | L | #3094 (badge only) |
-| A-13 | Generated edit forms: layout from metadata, conditions, validation and error mapping, dirty guard, shortcuts, conflicts | 4.5 | 3.5, 1.8, 1.10, 4.5, 6.8 | L | #3096 |
+| A-12 | Generated list views: columns, multi-sort, paging, selection, row actions | 4.4 | 3.4 | M | |
+| A-48 | List filters by field type, search, status and locale badges | 4.4 | 3.4, 2.23, 7.7 | M | #3094 (badge only) |
+| A-13 | Generated edit forms: layout from metadata, defaults, save with `If-Match`, error mapping by path | 4.5 | 3.5, 1.10 | M | |
+| A-49 | Form behaviours: conditions, inline validation, changeable fields, dirty guard, shortcuts, conflict dialog | 4.5 | 1.8, 4.5, 6.8 | M | #3096 |
 | A-14 | Field editors and list cells for the core field types | 4.6 | 3.6, 1.3 | M | |
 | A-15 | Relation picker with inline create and side panel | 4.9 | 3.9, 1.4 | M | |
 | A-16 | Draft, publish, unpublish, discard and status per locale, with publish warnings | 4.10 | 3.11, 6.1, 6.2, 6.7 | M | #3096 |
@@ -991,30 +1000,31 @@ Grouped by milestone, as the backend's section 9: each becomes one GitHub issue 
 | A-46 | Admin guides in `docs/`: hosting, configuration, writing an admin half | 5.1, 6 | 8.1 | S | |
 | A-47 | Release of the admin with a preview of the packages | 6 | 10.2, 11.11 | S | |
 
-47 issues. Should rows get issues when their milestone is planned, not now. The one exception is A-40, which takes the members and groups pages of row 4.22 early, for the reason AQ11 gives.
+49 issues: the 47 of the draft, and A-48 and A-49, split from A-12 and A-13 when the document was approved (AQ17) and numbered after A-47 so that no other reference moves. Should rows get issues when their milestone is planned, not now. The one exception is A-40, which takes the members and groups pages of row 4.22 early, for the reason AQ11 gives.
 
-## 11. Open questions
+## 11. Decisions on the open questions
 
-Each question has a recommendation. A question that the decisions log settles is asked only to confirm it.
+The draft asked sixteen questions, each with a recommendation. All were decided on 15 Nov 2026, when the document was approved, and AQ17 was added the same day. The table keeps each question and its decision; where the decision differs from the recommendation of the draft, it says so.
 
-| Id | Question | Recommendation |
+| Id | Question | Decision (15 Nov 2026) |
 | --- | --- | --- |
-| AQ1 | Component library. Decision 26 recommends Fluent UI Blazor wrapped behind FluentCMS components, adopted unless changed. Is it confirmed, and at which major version? | Confirm decision 26, with the current major of `Microsoft.FluentUI.AspNetCore.Components` that supports .NET 10, pinned in `Directory.Packages.props` and named in A-02. Keep the wrapping of 2.3 and its architecture test whatever the library, so that the choice stays reversible. |
-| AQ2 | Sign-in library: the framework's `Microsoft.AspNetCore.Components.WebAssembly.Authentication`, or the admin's own code flow? | Start A-07 with a spike of the framework's package against the rules of 2.4: renewal with refresh tokens and no iframe, `S256` only, sign-out with revocation, two tabs refreshing within the reuse leeway. Take it if it passes; otherwise write the flow in the admin, in C#, with its tests against the test host. |
-| AQ3 | Where does the admin keep its tokens? | The access token in memory and the refresh token in `sessionStorage`, so a reload does not sign in again and a closed tab forgets it, with a strict `Content-Security-Policy` on the admin page (6.1). Not `localStorage`, which every tab of the origin shares and which keeps the refresh token after the browser closes. |
-| AQ4 | How does the shell learn a lazy plugin's contributions before loading its assembly, and where do the half's own services live? A build-time manifest per admin half, two assemblies per half (a small eager one and the lazy rest), or the server's `contributions`? | The build-time manifest of 2.6, written from the contribution attributes by a build step in `FluentCMS.Admin.Abstractions` and gathered into one file by the app's build, and a provider per half for its services (5.1). Two assemblies double the packages of every plugin, and the server knows nothing of admin pages. A-19 proves the provider with the media half before the contract is published. |
-| AQ5 | API client: build the admin's calls on `FluentCMS.Client`, or keep a client of its own? | Reuse `FluentCMS.Client`'s query writer and problem type for content reads, which `clients/filter-cases.json` already tests, if it trims cleanly; keep the admin's own typed calls for the other groups in `FluentCMS.Admin`, so that `FluentCMS.Client` stays the small client of generated code (backend 1.1). |
-| AQ6 | Records shared with the server: reference `FluentCMS.Sdk` for `SchemaDescription` and the like, or declare the admin's own? | The admin's own records in `FluentCMS.Admin.Abstractions`, checked against the OpenAPI document by the API tests (7). A reference to the SDK would put its service interfaces within reach of every admin half, which decision 4 forbids, and the architecture test of 3.3 could no longer refuse it by package. |
-| AQ7 | How is the Tiptap bundle built and shipped? | An npm project in `admin/src/FluentCMS.Admin.RichText/js` with a lockfile and pinned versions, bundled into one ES module that is committed, with a CI job that rebuilds it and fails on any difference. So `dotnet build`, the Docker build and a contributor who does not touch the editor need no Node, and a change to the editor is a change to its npm project, whose bundle CI checks. No CDN at run time. |
-| AQ8 | How do the static build and `dotnet new fluentcms` get the first-party admin? | Ship the static build twice: as a zip on each GitHub release for static hosts and CDNs, and as static web assets inside `FluentCMS.Admin.Hosting`, so that a host that wants the first-party admin adds one package and `MapFluentCmsAdmin()`. A host with its own admin halves points the hosting package at its own app project instead. |
-| AQ9 | Test tooling. New dependencies for component, browser and accessibility tests. | bUnit for component tests, `Microsoft.Playwright` for end-to-end tests and `Deque.AxeCore.Playwright` for axe-core checks, each named with its version in the issue that adds it (A-01, A-11, A-42), as CONTRIBUTING asks. Chromium in full CI, Firefox and WebKit nightly. |
-| AQ10 | Display labels. Types have no display name and entries no title field in the schema. Derive them in the admin, or add schema metadata? | Derive them in the first release (4.1), with an optional resource key per type. Propose additive schema metadata (a display name per type, a title field) as a backend issue without a milestone, since it only adds. |
-| AQ11 | Do members and member groups get admin pages in the first release? They are row 4.22, a Should, and no Must row of category 3 names them; but row 4.10 (Must) has no other UI, its groups are what row rules and public access read (rows 4.6, 4.8), and the routes exist. | Yes, as A-40 in A6: a list, a detail page, and groups with their role and group assignment, so that an administrator sets up what roles and public access read without the CLI, as A6's exit asks. That takes part of a Should row early, against the rule that ends section 10; the custom profile fields of row 4.22 stay a Should, with no issue now. |
-| AQ12 | Browser support. | The last two versions of Chrome, Edge, Firefox and Safari, on desktop and tablet; phones get a readable layout without a test of their own. |
-| AQ13 | Where do the gap issues and the admin's work run, and how are its issues labelled? | Each gap issue of 1.4 other than #3094 and #3095, which are in M7, takes the admin milestone that first needs it and runs on that milestone's integration branch (`feature/a1` and so on), merged into `main` after full CI, as M6 and M7 did (H11); bugs go to `main`. Add an `area:admin` label and one tracking issue per admin milestone. |
-| AQ14 | Which interface cultures ship in the first release? | English, with every string in resources and a contribution guide for translations; left-to-right and right-to-left pseudo-cultures in the tests. A real right-to-left translation is welcome before 1.0.0 and does not block A7. |
-| AQ15 | The published view of the preview needs the front end's URL without a token, and #3099 gives the URL only in the token's answer. | Settled by #3099: the token's answer carries `url` with the token and `publishedUrl` without it, filled from the same template with the published row of the same locale, or null when that locale has no published row. A `{status}` placeholder was not taken, since the published page needs no token and the admin cannot fill a template itself. |
-| AQ16 | Where do the plugin admin halves live: under `admin/src/plugins/`, or beside their server halves in `src/plugins/`? | Under `admin/` (3), so that a path filter tells admin work from backend work and the admin's CI shard builds what it tests. The shared ID prefix (row 8.1) keeps the two halves together in NuGet. |
+| AQ1 | Component library. Decision 26 recommends Fluent UI Blazor wrapped behind FluentCMS components, adopted unless changed. Is it confirmed, and at which major version? | Confirmed: `Microsoft.FluentUI.AspNetCore.Components` 5.0.1, pinned in `Directory.Packages.props` and named in A-02. Version 5 is a rewrite of version 4 on web-components 3 and is weeks old, so A-02 opens with a check of the data grid, tree, drawer, dialog, menu and date picker against the rules of 4.18, with MudBlazor as the fallback behind the same wrappers. The wrapping of 2.3 and its architecture test hold whatever the library, so that the choice stays reversible. The library's script joins the allow-list of 3.1. |
+| AQ2 | Sign-in library: the framework's `Microsoft.AspNetCore.Components.WebAssembly.Authentication`, or the admin's own code flow? | **The flow is written in the admin, in C#, without the spike.** The recommendation to spike the framework's package was not taken: it renews through a hidden iframe with `prompt=none`, which the hosted pages' `frame-ancestors 'none'` forbids, and brings a script of its own. PKCE, the code exchange, a single-flight refresh with rotation, revocation and sign-out are tested against the test host, whose `OAuthFlows` helper exists. A-07 records the choice as a decision record. |
+| AQ3 | Where does the admin keep its tokens? | As recommended: the access token in memory and the refresh token in `sessionStorage`, with a strict `Content-Security-Policy` on the admin page (6.1); not `localStorage`. A new tab goes through the authorize redirect, which the server's session answers without a prompt, so two tabs hold two refresh tokens, and the 30-second reuse leeway is for a retry of one tab, not for two tabs sharing a token. |
+| AQ4 | How does the shell learn a lazy plugin's contributions before loading its assembly, and where do the half's own services live? A build-time manifest per admin half, two assemblies per half (a small eager one and the lazy rest), or the server's `contributions`? | **A hand-written manifest checked by a test**, not the build step the draft recommended. Each half ships `fluentcms-admin.json` as a static web asset; a test helper of `FluentCMS.Admin.Abstractions` fails the half's tests when the file and the contribution attributes disagree, and the plugin template carries the test (2.6). A build step can replace the file later without a change to the shell. Two assemblies and the server's `contributions` were not taken, for the reasons the draft gave. The provider per half for its services (5.1) stands, and A-19 proves it with the media half. |
+| AQ5 | API client: build the admin's calls on `FluentCMS.Client`, or keep a client of its own? | As recommended: reuse `FluentCMS.Client`'s query writer and problem type for content reads, which `clients/filter-cases.json` already tests, if it trims cleanly; keep the admin's own typed calls for the other groups in `FluentCMS.Admin`, so that `FluentCMS.Client` stays the small client of generated code (backend 1.1). |
+| AQ6 | Records shared with the server: reference `FluentCMS.Sdk` for `SchemaDescription` and the like, or declare the admin's own? | As recommended: the admin's own records in `FluentCMS.Admin.Abstractions`, checked against the OpenAPI document by the API tests (7). A reference to the SDK would put its service interfaces within reach of every admin half, which decision 4 forbids, and the architecture test of 3.3 could no longer refuse it by package. |
+| AQ7 | How is the Tiptap bundle built and shipped? | As recommended: an npm project in `admin/src/FluentCMS.Admin.RichText/js` with a lockfile and pinned versions, bundled into one ES module that is committed, with a CI job that rebuilds it and fails on any difference. So `dotnet build`, the Docker build and a contributor who does not touch the editor need no Node. No CDN at run time. |
+| AQ8 | How do the static build and `dotnet new fluentcms` get the first-party admin? | As recommended: the static build ships twice, as a zip on each GitHub release and as static web assets inside `FluentCMS.Admin.Hosting`, so that a host that wants the first-party admin adds one package and `MapFluentCmsAdmin()`. A host with its own admin halves points the hosting package at its own app project instead. |
+| AQ9 | Test tooling. New dependencies for component, browser and accessibility tests. | As recommended, with the versions pinned: bUnit 2.15.2 for component tests (A-01), `Microsoft.Playwright` 1.64.1 for end-to-end tests (A-11) and `Deque.AxeCore.Playwright` 4.14.0 for axe-core checks (A-42), each named in the issue that adds it, as CONTRIBUTING asks. Chromium in full CI, Firefox and WebKit nightly. |
+| AQ10 | Display labels. Types have no display name and entries no title field in the schema. Derive them in the admin, or add schema metadata? | As recommended: derive them in the first release (4.1), with an optional resource key per type. The additive schema metadata (a display name per type, a title field) is a backend issue without a milestone, created with A0. |
+| AQ11 | Do members and member groups get admin pages in the first release? They are row 4.22, a Should, and no Must row of category 3 names them; but row 4.10 (Must) has no other UI, its groups are what row rules and public access read (rows 4.6, 4.8), and the routes exist. | Yes, as recommended: A-40 in A6, a list, a detail page, and groups with their role and group assignment. The custom profile fields of row 4.22 stay a Should, with no issue now. |
+| AQ12 | Browser support. | As recommended: the last two versions of Chrome, Edge, Firefox and Safari, on desktop and tablet; phones get a readable layout without a test of their own. |
+| AQ13 | Where do the gap issues and the admin's work run, and how are its issues labelled? | As recommended: a gap issue takes the admin milestone that first needs it and runs on that milestone's integration branch (`feature/a0`, `feature/a1` and so on), merged into `main` after full CI, as M6 and M7 did (H11); bugs go to `main`. The `area:admin` label and one tracking issue per admin milestone. As decided, only #3096 was still open: it takes milestone A1 and runs beside A0, since A-08 and three issues of A2 wait for it; because it touches the backend only and `feature/a1` does not exist until A0 is merged, its pull request goes into `main` directly, as bugs do. |
+| AQ14 | Which interface cultures ship in the first release? | As recommended: English, with every string in resources and a contribution guide for translations; left-to-right and right-to-left pseudo-cultures in the tests. A real right-to-left translation is welcome before 1.0.0 and does not block A7. |
+| AQ15 | The published view of the preview needs the front end's URL without a token, and #3099 gives the URL only in the token's answer. | Settled by #3099, as the draft said: the token's answer carries `url` with the token and `publishedUrl` without it, filled from the same template with the published row of the same locale, or null when that locale has no published row. |
+| AQ16 | Where do the plugin admin halves live: under `admin/src/plugins/`, or beside their server halves in `src/plugins/`? | As recommended: under `admin/` (3), so that a path filter tells admin work from backend work and the admin's CI shard builds what it tests. The shared ID prefix (row 8.1) keeps the two halves together in NuGet. |
+| AQ17 | A-12 and A-13 were L and both on the critical path of A2, and the sizing rule of section 10 says an L issue probably splits during implementation. | Split when the document was approved, so that the lanes of A2 stay parallel: A-12 keeps columns, sort, paging, selection and row actions, and A-48 takes filters, search and badges; A-13 keeps layout, defaults, save and error mapping, and A-49 takes conditions, inline validation, changeable fields, the dirty guard, shortcuts and the conflict dialog (10.3). The new issues are numbered after A-47 so that no other reference moves. |
 
 [#3050]: https://github.com/fluentcms/FluentCMS/issues/3050
 [#3094]: https://github.com/fluentcms/FluentCMS/issues/3094
@@ -1028,3 +1038,17 @@ Each question has a recommendation. A question that the decisions log settles is
 [#3102]: https://github.com/fluentcms/FluentCMS/issues/3102
 [#3103]: https://github.com/fluentcms/FluentCMS/issues/3103
 [#3104]: https://github.com/fluentcms/FluentCMS/issues/3104
+[#3139]: https://github.com/fluentcms/FluentCMS/issues/3139
+[#3140]: https://github.com/fluentcms/FluentCMS/issues/3140
+[#3141]: https://github.com/fluentcms/FluentCMS/issues/3141
+[#3142]: https://github.com/fluentcms/FluentCMS/issues/3142
+[#3143]: https://github.com/fluentcms/FluentCMS/issues/3143
+[#3144]: https://github.com/fluentcms/FluentCMS/issues/3144
+[#3145]: https://github.com/fluentcms/FluentCMS/issues/3145
+[#3146]: https://github.com/fluentcms/FluentCMS/issues/3146
+[#3147]: https://github.com/fluentcms/FluentCMS/issues/3147
+[#3148]: https://github.com/fluentcms/FluentCMS/issues/3148
+[#3149]: https://github.com/fluentcms/FluentCMS/issues/3149
+[#3150]: https://github.com/fluentcms/FluentCMS/issues/3150
+[#3151]: https://github.com/fluentcms/FluentCMS/issues/3151
+[#3152]: https://github.com/fluentcms/FluentCMS/issues/3152
