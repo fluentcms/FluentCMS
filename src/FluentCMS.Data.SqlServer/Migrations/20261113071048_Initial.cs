@@ -433,6 +433,8 @@ namespace FluentCMS.Data.SqlServer.Migrations
                     snapshot = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     status_after = table.Column<string>(type: "nvarchar(16)", maxLength: 16, nullable: false),
                     author_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    author_kind = table.Column<string>(type: "nvarchar(16)", maxLength: 16, nullable: false),
+                    author_name = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
                     origin = table.Column<string>(type: "nvarchar(16)", maxLength: 16, nullable: false),
                     client_id = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     message = table.Column<string>(type: "nvarchar(max)", nullable: true),

@@ -409,6 +409,8 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                     snapshot = table.Column<string>(type: "jsonb", nullable: false),
                     status_after = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     author_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    author_kind = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
+                    author_name = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
                     origin = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     client_id = table.Column<string>(type: "text", nullable: true),
                     message = table.Column<string>(type: "text", nullable: true),

@@ -43,6 +43,10 @@ public sealed partial class BaselineTests : IDisposable
     // added to a table with rows got a default for those rows; EF writes the column's value on every insert.
     private static readonly (string Table, string Column)[] DefaultsOfAddedColumns = [("cms_role", "require_two_factor"), ("cms_webhooks_delivery", "manual")];
 
+    // Columns a preview added to the baseline after the squash, which the chain never made: a preview does not upgrade a
+    // database (10.4, H5), so a change of the model goes into the baseline until 1.0.0.
+    private static readonly (string Table, string Column)[] ColumnsAddedToTheBaseline = [("cms_version", "author_kind"), ("cms_version", "author_name")];
+
     // The chain raised the stamp of the Author role when it changed that role's seeded grants, so that a cached grant was
     // read again; the baseline seeds every role at its first stamp.
     private const string AuthorRole = "00000000-0000-7000-8000-000000000003";
@@ -91,7 +95,7 @@ public sealed partial class BaselineTests : IDisposable
         }
 
         var chain = WithoutWhatTheModelDoesNotSay(DatabaseCatalog.Of(_database, historyRows: false));
-        var built = DatabaseCatalog.Of(baseline, historyRows: false);
+        var built = WithoutColumnsAddedToTheBaseline(DatabaseCatalog.Of(baseline, historyRows: false));
 
         chain.Except(built).ShouldBeEmpty("made by the chain and not by the baseline");
         built.Except(chain).ShouldBeEmpty("made by the baseline and not by the chain");
@@ -242,6 +246,16 @@ public sealed partial class BaselineTests : IDisposable
         result[author] = result[author].Replace("|permissions_version=2|", "|permissions_version=1|", StringComparison.Ordinal);
 
         return [.. result.Order(StringComparer.Ordinal)];
+    }
+
+    private static List<string> WithoutColumnsAddedToTheBaseline(List<string> catalog)
+    {
+        foreach (var (table, column) in ColumnsAddedToTheBaseline)
+        {
+            catalog.ShouldContain(line => line.StartsWith($"column:{table}.{column}:", StringComparison.Ordinal), $"{table}.{column}");
+        }
+
+        return [.. catalog.Where(line => !ColumnsAddedToTheBaseline.Any(added => line.StartsWith($"column:{added.Table}.{added.Column}:", StringComparison.Ordinal)))];
     }
 
     private static void SetSnapshot(TestDatabase database, bool on)

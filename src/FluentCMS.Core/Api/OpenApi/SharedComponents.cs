@@ -147,6 +147,8 @@ internal static class SharedComponents
                             ["locale"] = String(),
                             ["status"] = Enum<EntryStatus>(),
                             ["authorId"] = Uuid(),
+                            ["authorKind"] = Enum<PrincipalKind>(),
+                            ["authorName"] = String(),
                             ["origin"] = Enum<Origin>(),
                             ["clientId"] = new JsonObject { ["type"] = new JsonArray("string", "null") },
                             ["message"] = new JsonObject { ["type"] = new JsonArray("string", "null") },

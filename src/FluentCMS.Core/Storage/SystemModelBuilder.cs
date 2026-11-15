@@ -179,6 +179,8 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         conventions.ConfigureKey(entity.Property(version => version.Id));
         entity.Property(version => version.Locale).HasMaxLength(StorageNames.LocaleLength);
         entity.Property(version => version.StatusAfter).HasConversion<string>().HasMaxLength(StatusLength);
+        entity.Property(version => version.AuthorKind).HasConversion<string>().HasMaxLength(StatusLength);
+        entity.Property(version => version.AuthorName).HasMaxLength(ActorNameLength);
         entity.Property(version => version.Origin).HasConversion<string>().HasMaxLength(StatusLength);
         conventions.ConfigureJsonColumn(entity, entity.Property(version => version.Snapshot));
 

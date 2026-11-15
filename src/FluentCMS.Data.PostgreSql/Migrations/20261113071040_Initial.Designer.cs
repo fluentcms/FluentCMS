@@ -670,6 +670,18 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("author_id");
 
+                    b.Property<string>("AuthorKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("author_kind");
+
+                    b.Property<string>("AuthorName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("author_name");
+
                     b.Property<string>("ClientId")
                         .HasColumnType("text")
                         .HasColumnName("client_id");

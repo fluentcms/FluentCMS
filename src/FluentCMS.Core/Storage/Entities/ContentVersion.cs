@@ -22,6 +22,11 @@ public sealed class ContentVersion
 
     public Guid AuthorId { get; set; }
 
+    public PrincipalKind AuthorKind { get; set; }
+
+    // The name the author had when the version was written, as cms_activity keeps it.
+    public string AuthorName { get; set; } = "";
+
     public Origin Origin { get; set; }
 
     public string? ClientId { get; set; }

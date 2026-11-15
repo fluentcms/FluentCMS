@@ -236,6 +236,16 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
     }
 
     [Fact]
+    public void AVersionNamesTheKindAndTheNameOfItsAuthor()
+    {
+        var item = Schemas["versions"]!["properties"]!["items"]!["items"]!["properties"]!;
+
+        item.AsObject().Select(property => property.Key).ShouldBe(["number", "locale", "status", "authorId", "authorKind", "authorName", "origin", "clientId", "message", "createdAt"]);
+        item["authorKind"]!["enum"]!.AsArray().Select(value => value!.GetValue<string>()).ShouldBe(["adminUser", "member", "apiKey", "serviceAccount", "system", "anonymous"]);
+        item["authorName"]!["type"]!.GetValue<string>().ShouldBe("string");
+    }
+
+    [Fact]
     public void TheFilterParametersAreDocumented()
     {
         var filter = Parameters["filter-article"]!;
