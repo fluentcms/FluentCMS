@@ -17,7 +17,7 @@ public sealed partial class PluginOpenApiTests : IAsyncDisposable
 {
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
 
-    // The writes that read no body.
+    // The writes that read no body: their handlers take no body parameter, HttpRequest or HttpContext.
     private static readonly string[] TakeNoBody =
     [
         "post /api/management/v1/media/{id}/download-url",
@@ -25,6 +25,12 @@ public sealed partial class PluginOpenApiTests : IAsyncDisposable
         "post /api/management/v1/webhooks/{id}/ping",
         "post /api/management/v1/mcp/clients/{id}/reject",
     ];
+
+    // Handlers that take HttpRequest or HttpContext without Takes<T>, and why the document misses nothing they read.
+    private static readonly Dictionary<string, string> ReadTheRequestOnlyForHeaders = new(StringComparer.Ordinal)
+    {
+        ["post /api/management/v1/ai/actions/{action}"] = "it reads Accept to choose the event stream; the body is its AiActionRequest parameter",
+    };
 
     private readonly HostUnderTest _host = new();
 
@@ -45,9 +51,24 @@ public sealed partial class PluginOpenApiTests : IAsyncDisposable
             .ShouldBe(["FluentCMS.Plugins.AiAssist", "FluentCMS.Plugins.Mcp", "FluentCMS.Plugins.Media", "FluentCMS.Plugins.MultiSite", "FluentCMS.Plugins.Search", "FluentCMS.Plugins.Webhooks"], ignoreOrder: true);
 
         List<string> gaps = [];
-        foreach (var (_, method, path) in operations)
+        foreach (var (_, method, path, endpoint) in operations)
         {
             var name = $"{method} {path}";
+            var handler = endpoint.Metadata.OfType<MethodInfo>().First();
+            var readsTheRequest = handler.GetParameters().Any(parameter => parameter.ParameterType == typeof(HttpRequest) || parameter.ParameterType == typeof(HttpContext));
+
+            // Takes<T> is the one IAcceptsMetadata that names no content type to routing; a bound body names application/json.
+            var takes = endpoint.Metadata.OfType<IAcceptsMetadata>().Any(accepts => accepts.RequestType is not null && accepts.ContentTypes.Count == 0);
+            if (readsTheRequest && !takes && !ReadTheRequestOnlyForHeaders.ContainsKey(name))
+            {
+                gaps.Add($"{name} reads the request by itself and declares no Takes<T>");
+            }
+
+            if (TakeNoBody.Contains(name) && (readsTheRequest || endpoint.Metadata.OfType<IAcceptsMetadata>().Any()))
+            {
+                gaps.Add($"{name} is listed as taking no body but its handler can read one");
+            }
+
             if (paths[path]?[method] is not { } operation)
             {
                 gaps.Add($"{name} is not in the document");
@@ -76,6 +97,8 @@ public sealed partial class PluginOpenApiTests : IAsyncDisposable
             }
         }
 
+        var names = operations.Select(operation => $"{operation.Method} {operation.Path}").ToHashSet(StringComparer.Ordinal);
+        gaps.AddRange(TakeNoBody.Concat(ReadTheRequestOnlyForHeaders.Keys).Where(listed => !names.Contains(listed)).Select(listed => $"{listed} is listed but not mapped"));
         gaps.ShouldBeEmpty();
     }
 
@@ -109,7 +132,7 @@ public sealed partial class PluginOpenApiTests : IAsyncDisposable
     }
 
     // The routes under /api that a plugin's own code maps, by the method that handles them, as the document names their paths.
-    private static IEnumerable<(string Plugin, string Method, string Path)> PluginOperations(EndpointDataSource endpoints)
+    private static IEnumerable<(string Plugin, string Method, string Path, RouteEndpoint Endpoint)> PluginOperations(EndpointDataSource endpoints)
     {
         foreach (var endpoint in endpoints.Endpoints.OfType<RouteEndpoint>())
         {
@@ -125,7 +148,7 @@ public sealed partial class PluginOpenApiTests : IAsyncDisposable
             {
                 if (!HttpMethods.IsHead(method))
                 {
-                    yield return (plugin, method.ToLowerInvariant(), path);
+                    yield return (plugin, method.ToLowerInvariant(), path, endpoint);
                 }
             }
         }

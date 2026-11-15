@@ -1,4 +1,3 @@
-using FluentCMS.Plugins;
 using System.Text.Json;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
@@ -8,6 +7,7 @@ using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Identity.Oidc;
+using FluentCMS.Plugins;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

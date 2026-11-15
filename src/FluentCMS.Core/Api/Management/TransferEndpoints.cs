@@ -1,4 +1,3 @@
-using FluentCMS.Plugins;
 using System.Globalization;
 using System.Text.Json;
 using FluentCMS.Content;
@@ -7,6 +6,7 @@ using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Transfer;
+using FluentCMS.Plugins;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
