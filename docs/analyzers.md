@@ -60,7 +60,7 @@ Error, for `FCMS1210`. A `[Component]` property holds a class, or a list of a cl
 
 ### FCMS0011
 
-Error, for `FCMS1211`. `[Blocks]` lists no block types. List them, as in `[Blocks(typeof(HeroBlock))]`.
+Error, for `FCMS1211`. `[Blocks]` lists no block types, or is given `null` for them. List them, as in `[Blocks(typeof(HeroBlock))]`.
 
 ### FCMS0012
 

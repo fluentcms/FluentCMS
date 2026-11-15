@@ -244,6 +244,12 @@ public class AttributeReaderTests
     }
 
     [Fact]
+    public void BlocksFieldWithANullListIsFCMS1211()
+    {
+        ShouldReport(typeof(NullBlocks), "FCMS1211", "blocks field NullBlocks.Sections must list the block types");
+    }
+
+    [Fact]
     public void SelectWithoutOptionsOnAStringIsFCMS1216()
     {
         ShouldReport(typeof(SelectWithoutOptions), "FCMS1216", "SelectWithoutOptions.Kind is not an enum, so [Select] must list its options");
@@ -449,6 +455,13 @@ public class AttributeReaderTests
     private sealed class EmptyBlocks : ContentItem
     {
         [Blocks]
+        public BlockList Sections { get; set; } = [];
+    }
+
+    [Collection]
+    private sealed class NullBlocks : ContentItem
+    {
+        [Blocks(null!)]
         public BlockList Sections { get; set; } = [];
     }
 

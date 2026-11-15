@@ -219,13 +219,11 @@ public sealed class NoOptionsTests
 public sealed class LeftToTheHostTests
 {
     [Fact]
-    public Task ANullListOfOptionsOrBlockTypesIsNotReported() => Analysis.Verify<Analyzers::FluentCMS.Analyzers.SchemaAttributeAnalyzer>(Analysis.Usings + """
+    public Task ANullListOfOptionsIsNotReported() => Analysis.Verify<Analyzers::FluentCMS.Analyzers.SchemaAttributeAnalyzer>(Analysis.Usings + """
         [Collection("page")]
         public sealed class Page : ContentItem
         {
             [Select(null!)] public string Kind { get; set; } = "";
-
-            [Blocks(null!)] public BlockList Body { get; set; } = new();
         }
         """);
 
@@ -316,6 +314,15 @@ public sealed class NoBlockTypesTests
         public sealed class Page : ContentItem
         {
             [{|FCMS0011:Blocks|}] public BlockList Body { get; set; } = new();
+        }
+        """, "FCMS1211");
+
+    [Fact]
+    public Task BlocksWithANullListAreReported() => Analysis.Reports("""
+        [Collection("page")]
+        public sealed class Page : ContentItem
+        {
+            [{|FCMS0011:Blocks(null!)|}] public BlockList Body { get; set; } = new();
         }
         """, "FCMS1211");
 

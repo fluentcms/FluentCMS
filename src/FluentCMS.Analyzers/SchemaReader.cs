@@ -272,8 +272,9 @@ internal static class SchemaReader
         var attribute = field.FieldAttribute;
         var (element, multiple) = Unwrap(property.Type);
 
-        // [Select(null)] or [Blocks(null)] stops the reader with an exception rather than a code, so nothing is reported.
-        if (field.FieldType is "select" or "blocks" && attribute.ConstructorArguments is { Length: 1 } arguments && arguments[0].IsNull)
+        // [Select(null)] stops the reader with an exception rather than a code, so nothing is reported. [Blocks(null)] is
+        // read as no block types, as the reader reads it.
+        if (field.FieldType == "select" && attribute.ConstructorArguments is { Length: 1 } arguments && arguments[0].IsNull)
         {
             return false;
         }
@@ -385,9 +386,10 @@ internal static class SchemaReader
         return true;
     }
 
-    // The values of a params array, such as the options of [Select] or the block types of [Blocks].
+    // The values of a params array, such as the options of [Select] or the block types of [Blocks]; none for a null array,
+    // whose Values throw when used.
     private static ImmutableArray<TypedConstant> Array(AttributeData attribute) =>
-        attribute.ConstructorArguments.Length == 1 && attribute.ConstructorArguments[0].Kind == TypedConstantKind.Array
+        attribute.ConstructorArguments.Length == 1 && attribute.ConstructorArguments[0] is { Kind: TypedConstantKind.Array, IsNull: false }
             ? attribute.ConstructorArguments[0].Values
             : ImmutableArray<TypedConstant>.Empty;
 

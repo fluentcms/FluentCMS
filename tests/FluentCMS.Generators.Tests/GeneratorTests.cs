@@ -339,7 +339,7 @@ public sealed class GeneratorTests
         diagnostic.Location.GetLineSpan().StartLinePosition.Line.ShouldBe(10);
     }
 
-    // [Blocks(null)] stops the attribute reader at start, so the field gets no builder and no word.
+    // The host refuses [Blocks(null)] at start and the analyzers in the editor, so the field gets no builder and no word.
     [Fact]
     public void ABlocksFieldWithoutAListOfBlockTypesGetsNoBuilderAndStopsNoOther()
     {

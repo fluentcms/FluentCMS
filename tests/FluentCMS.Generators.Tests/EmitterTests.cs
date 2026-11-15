@@ -108,6 +108,16 @@ public sealed class EmitterTests
         (diagnostic.Code, diagnostic.TypeName, diagnostic.Kind).ShouldBe(("FCMS0104", "call-to-action", BuilderKind.Block));
     }
 
+    // a-b takes ABBlockFields though it gets no builder, as it takes ABBlock in the tool, so ab gets neither.
+    [Fact]
+    public void ABlockTypeWithAHyphenTakesItsNameFromAnotherInAnyCase()
+    {
+        var result = FieldsEmitter.Emit([Type("ab", BuilderKind.Block, Field("label", "text")), Type("a-b", BuilderKind.Block, Field("label", "text"))], EmitOptions.Sdk);
+
+        result.Sources.ShouldBeEmpty();
+        result.Diagnostics.Select(diagnostic => (diagnostic.Code, diagnostic.TypeName)).ShouldBe([("FCMS0104", "a-b"), ("FCMS0100", "ab")]);
+    }
+
     [Fact]
     public void AMemberNameThatClashesWithObjectOrTheBuilderIsReported()
     {

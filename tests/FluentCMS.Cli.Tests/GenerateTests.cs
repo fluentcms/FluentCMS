@@ -363,6 +363,23 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
         result.Error.ShouldContain("FCMS0100: The collection 'foobar' gets no field builder");
     }
 
+    // The block type a-b has a class and, for its hyphen, no builder; it takes its name from ab in both, so ab gets neither
+    // its class nor its builder, in C# and in TypeScript alike.
+    [Fact]
+    public void ABlockTypeWithAHyphenTakesTheNameOfItsClassAndOfItsBuilder()
+    {
+        var schema = BlogInstance.Schema("""{ "blocks": [ { "name": "a-b", "fields": [ { "name": "label", "type": "text" } ] }, { "name": "ab", "fields": [ { "name": "label", "type": "text" } ] } ] }""");
+
+        var csharp = CSharpEmitter.Emit(schema, "Cases");
+        var typeScript = TypeScriptEmitter.Emit(schema).Files.Single().Text;
+
+        csharp.Files.Select(file => file.Name).Order(StringComparer.Ordinal).ShouldBe(["ABBlock.g.cs", "Block.g.cs"]);
+        csharp.Diagnostics.ShouldContain(diagnostic => diagnostic.Code == "FCMS0100" && diagnostic.Message.Contains("'ab'", StringComparison.Ordinal));
+        csharp.Diagnostics.ShouldContain(diagnostic => diagnostic.Code == "FCMS3376" && diagnostic.Message.Contains("'ab'", StringComparison.Ordinal));
+        typeScript.ShouldContain("export interface ABBlock ", Case.Sensitive);
+        typeScript.ShouldNotContain("AbBlock", Case.Sensitive);
+    }
+
     // The identifiers TypeScript reserves, createClient and schemaHash, are no names of files, so they are taken as written
     // and the types create-client and schema-hash keep their classes, in TypeScript as in C#.
     [Fact]

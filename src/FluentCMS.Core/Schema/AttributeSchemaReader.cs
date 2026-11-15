@@ -350,7 +350,8 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
 
     private void ReadBlocks(BlocksAttribute blocks, string location, List<Action<IFieldBuilder>> steps, Action<string, string> fail)
     {
-        if (blocks.BlockTypes.Count == 0)
+        // [Blocks(null)] gives no list at all.
+        if (blocks.BlockTypes is not { Count: > 0 })
         {
             fail(SchemaErrorCodes.InvalidField, $"blocks field {location} must list the block types it accepts");
             return;
