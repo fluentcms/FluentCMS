@@ -192,6 +192,7 @@ internal static class AiTesting
 {
     public const string Actions = "/api/management/v1/ai/actions/";
     public const string Usage = "/api/management/v1/ai/usage";
+    public const string Fields = "/api/management/v1/ai/fields";
 
     public static CancellationToken Token => TestContext.Current.CancellationToken;
 

@@ -38,11 +38,13 @@ public sealed class AiSiteTests : IClassFixture<AiHost>
 
         using var action = await ActAsync(there, "rewrite", body);
         using var usage = await there.GetAsync(new Uri(Usage, UriKind.Relative), Token);
+        using var fields = await there.GetAsync(new Uri(Fields, UriKind.Relative), Token);
         using var notSignedIn = await ActAsync(anonymous, "rewrite", body);
         using var elsewhere = await ActAsync(here, "rewrite", body);
 
         (await RefusedAsync(action, HttpStatusCode.NotFound)).ShouldBe("FCMS1550");
         (await RefusedAsync(usage, HttpStatusCode.NotFound)).ShouldBe("FCMS1550");
+        (await RefusedAsync(fields, HttpStatusCode.NotFound)).ShouldBe("FCMS1550");
         notSignedIn.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         elsewhere.StatusCode.ShouldBe(HttpStatusCode.OK);
         _ai.Chat.Calls.ShouldHaveSingleItem();

@@ -136,6 +136,24 @@ The checks run in this order:
 
 With `documentId` the content service decides whether the caller may read the draft, and with `mediaId` the media service whether it may read the image.
 
+### Which fields take actions
+
+`GET /api/management/v1/ai/fields`, with the permission `ai.use`, tells an editor where to offer the actions, without the settings area and its `settings.ai.manage`:
+
+```json
+{
+  "enabled": true,
+  "locale": "en",
+  "fields": { "article": ["title", "summary"] }
+}
+```
+
+- `enabled` is whether the site names a provider. A site whose `provider` is `none` is off and lists no field.
+- `locale` is the locale of the request, which `?locale=` or `X-Cms-Locale` names.
+- `fields` maps each content type to the fields, in the order of the schema, that pass the checks above for the caller in that locale: opted in, a field that takes actions, and one the caller may update. A type the caller may not read is left out, and so is a field it may set on a new entry only, which an action refuses too.
+
+The answer holds nothing of the provider's configuration: not the provider, the model, the endpoint or the key, nor whether a key is set. A provider that is not configured well enough to answer is learnt at the call (`FCMS1684`, `FCMS1685`).
+
 ### Limits
 
 - The text has at most `MaxInputLength` characters (`FCMS1686`).
