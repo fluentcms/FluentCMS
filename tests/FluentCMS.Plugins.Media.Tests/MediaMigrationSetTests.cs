@@ -33,4 +33,15 @@ public sealed class MediaMigrationSetTests
 
         PluginMigrationSetChecks.IsTheSetOf(scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>(), set);
     }
+
+    // The check of a replace for other assets that name the old keys is SQL on every provider.
+    [Theory]
+    [MemberData(nameof(Sets))]
+    public void TheCheckForOtherAssetsThatNameAKeyTranslatesOnEachProvider(string set)
+    {
+        using var context = new MediaDbContextFactory().CreateDbContext([set]);
+        var asset = new Asset { Id = Guid.CreateVersion7(), SiteId = Guid.CreateVersion7(), StorageKey = "a/b/original.png" };
+
+        ReplacedFiles.OthersNaming(context, asset, [asset.StorageKey, "a/b/variant.webp"]).ToQueryString().ShouldContain("storage_key", Case.Insensitive);
+    }
 }

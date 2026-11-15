@@ -29,13 +29,18 @@ internal sealed class ReplacedFiles
 
         List<string> keys = [asset.StorageKey, .. variants.Select(variant => variant.StorageKey)];
 
-        // Keys are compared without regard to case, as a disk that ignores it reads them; they are ASCII, so lower() is the
-        // same everywhere.
+        var named = await OthersNaming(database, asset, keys).AnyAsync(cancellationToken);
+        return new ReplacedFiles(asset.Id, asset.StorageProvider, named ? [] : keys);
+    }
+
+    // The other assets of the library that name one of the keys. Keys are compared without regard to case, as a disk that
+    // ignores it reads them; they are ASCII, so lower() is the same everywhere.
+    internal static IQueryable<Asset> OthersNaming(PluginDbContext<MediaPlugin> database, Asset asset, IEnumerable<string> keys)
+    {
         var lowered = keys.Select(key => key.ToLowerInvariant()).ToList();
 #pragma warning disable CA1304, CA1311 // The database lowers the column, where lower() takes no culture.
-        var named = await database.Set<Asset>().AnyAsync(other => other.SiteId == asset.SiteId && other.Id != asset.Id && lowered.Contains(other.StorageKey.ToLower()), cancellationToken);
+        return database.Set<Asset>().Where(other => other.SiteId == asset.SiteId && other.Id != asset.Id && lowered.Contains(other.StorageKey.ToLower()));
 #pragma warning restore CA1304, CA1311
-        return new ReplacedFiles(asset.Id, asset.StorageProvider, named ? [] : keys);
     }
 
     // After the save.
