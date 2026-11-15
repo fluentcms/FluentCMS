@@ -15,7 +15,7 @@
 - **The backend.** The engine with the Delivery and Management APIs and the authorization server (`FluentCMS.Core`), the contract packages `FluentCMS.Sdk` and `FluentCMS.Plugins.Abstractions`, the data providers for SQLite, PostgreSQL and SQL Server, and the reference host as an image.
 - **Its first-party plugins.** Media (with S3 and Azure Blob storage), webhooks, GraphQL, MCP, AI assist, multi-site and search.
 - **The CLI and the templates.** The `fluentcms` tool, and the `dotnet new` templates `fluentcms` for a host and `fluentcms-plugin` for a plugin.
-- **Two minimal clients.** `FluentCMS.Client` for C# and `@fluentcms/client` for TypeScript, which generated code compiles against. `@fluentcms/client` is on npm; a preview is under the dist-tag `next`.
+- **Two minimal clients.** `FluentCMS.Client` for C# and `@fluentcms/client` for TypeScript, which generated code compiles against. `@fluentcms/client` is published to npm with each release; a preview is under the dist-tag `next`.
 
 The admin, the documentation site and the starters are not part of the preview.
 
