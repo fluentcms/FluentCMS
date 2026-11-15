@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.DataProtection.XmlEncryption;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -184,6 +185,46 @@ public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fix
         if (reported)
         {
             insecure.ShouldNotBeNull().Message.ShouldContain("AspNet.Security.OAuth.Apple");
+        }
+        else
+        {
+            insecure.ShouldBeNull();
+        }
+    }
+
+    [Theory]
+    [InlineData("Production", true, false, true)]
+    [InlineData("Production", false, false, false)]
+    [InlineData("Production", true, true, false)]
+    [InlineData("Staging", true, false, false)]
+    public async Task TheMemberMailLimitInTheInMemoryCacheIsReportedInProductionWhileMailGoesOut(string environment, bool smtp, bool sharedCache, bool reported)
+    {
+        var settings = new Dictionary<string, string?>();
+        if (smtp)
+        {
+            settings["FluentCms:Email:Smtp:Host"] = "smtp.example.com";
+            settings["FluentCms:Email:Smtp:From"] = "cms@example.com";
+        }
+
+        var app = await webHosts.StartAsync(CmsWebHosts.SetUp(environment, settings, sharedCache ? "shared-cache" : null), async host =>
+        {
+            var started = host.Build(environment, settings, cms: cms =>
+            {
+                if (sharedCache)
+                {
+                    cms.Providers.Use<IDistributedCache, SharedCache>();
+                }
+            });
+            await started.StartAsync(Token);
+            return started;
+        });
+
+        var insecure = app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.SingleOrDefault(item => item.Id == "member-mail-limit-per-instance");
+        if (reported)
+        {
+            var message = insecure.ShouldNotBeNull().Message;
+            message.ShouldContain("holds per instance");
+            message.ShouldContain("With several instances, register a shared IDistributedCache");
         }
         else
         {
@@ -435,5 +476,31 @@ public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fix
     private sealed class CertificateKey : ISigningKeyStatus
     {
         public bool IsGenerated => false;
+    }
+
+    // A cache of the host's own, as Redis would be; the report only asks for its type.
+    private sealed class SharedCache : IDistributedCache
+    {
+        public byte[]? Get(string key) => null;
+
+        public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => Task.FromResult<byte[]?>(null);
+
+        public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
+        {
+        }
+
+        public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default) => Task.CompletedTask;
+
+        public void Refresh(string key)
+        {
+        }
+
+        public Task RefreshAsync(string key, CancellationToken token = default) => Task.CompletedTask;
+
+        public void Remove(string key)
+        {
+        }
+
+        public Task RemoveAsync(string key, CancellationToken token = default) => Task.CompletedTask;
     }
 }
