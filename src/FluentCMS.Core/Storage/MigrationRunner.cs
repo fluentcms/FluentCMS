@@ -395,7 +395,7 @@ public sealed class MigrationRunner(
     // Until 1.0.0 a change of the model goes into each stream's baseline (10.4, H5), so a database made by an earlier build of
     // a baseline holds it in its history with nothing pending and lacks what was added to it since, on which the first query
     // would fail with a raw missing relation. A stream whose history holds its baseline and that has nothing pending must
-    // therefore hold every table of its model, or the database is refused before anything is applied.
+    // therefore hold every table and column of its model, or the database is refused before anything is applied.
     internal async Task RefuseEarlierBaselineAsync(CancellationToken cancellationToken = default)
     {
         var refused = new List<string>();
@@ -412,14 +412,7 @@ public sealed class MigrationRunner(
             }
 
             database ??= await ReadDatabaseAsync(context, cancellationToken);
-            var missing = context.GetService<IDesignTimeModel>().Model.GetEntityTypes()
-                .Where(entity => entity.GetViewName() is null && !entity.IsTableExcludedFromMigrations())
-                .Select(entity => entity.GetTableName())
-                .OfType<string>()
-                .Distinct(StringComparer.Ordinal)
-                .Where(table => !database.Tables.ContainsKey(table))
-                .Order(StringComparer.Ordinal)
-                .ToList();
+            var missing = MissingFrom(database, context.GetService<IDesignTimeModel>().Model);
             if (missing.Count > 0)
             {
                 refused.Add($"stream {stream.Name} has applied its baseline {baseline} but lacks {string.Join(", ", missing)}");
@@ -432,6 +425,41 @@ public sealed class MigrationRunner(
                 StorageErrorCodes.EarlierBaseline,
                 $"{string.Join("; ", refused)}; nothing was applied: the database was made by an earlier build of the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again");
         }
+    }
+
+    // A table of the model the database lacks, or a column of one it has, as table.column. The columns of the schema history
+    // are not asked for: a history that cannot be read or written is logged and the start goes on.
+    private static List<string> MissingFrom(DatabaseSchema database, IModel model)
+    {
+        var missing = new List<string>();
+        var tables = model.GetEntityTypes()
+            .Where(entity => entity.GetViewName() is null && !entity.IsTableExcludedFromMigrations() && entity.GetTableName() is not null)
+            .GroupBy(entity => entity.GetTableName()!, StringComparer.Ordinal);
+        foreach (var table in tables)
+        {
+            if (!database.Tables.TryGetValue(table.Key, out var found))
+            {
+                missing.Add(table.Key);
+                continue;
+            }
+
+            if (table.Key == StorageNames.SchemaHistory)
+            {
+                continue;
+            }
+
+            var columns = found.Columns.Select(column => column.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var store = StoreObjectIdentifier.Table(table.Key, table.First().GetSchema());
+            missing.AddRange(table
+                .SelectMany(entity => entity.GetProperties())
+                .Select(property => property.GetColumnName(store))
+                .OfType<string>()
+                .Distinct(StringComparer.Ordinal)
+                .Where(column => !columns.Contains(column))
+                .Select(column => $"{table.Key}.{column}"));
+        }
+
+        return [.. missing.Order(StringComparer.Ordinal)];
     }
 
     private async Task<DatabaseSchema> ReadDatabaseAsync(DbContext context, CancellationToken cancellationToken)

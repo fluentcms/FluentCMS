@@ -665,7 +665,7 @@ internal sealed partial class ContentService
         document.Status = status;
         document.UpdatedAt = write.Operation.Timestamp;
         document.UpdatedBy = write.Operation.AuditPrincipal.Id;
-        await store.WriteDraftAsync(write.Type, document, isNewDocument: false, rows, working, fields, write.Operation.Origin, write.Operation.ClientId, cancellationToken, message);
+        await store.WriteDraftAsync(write.Type, document, isNewDocument: false, rows, working, fields, write.Operation, cancellationToken, message);
     }
 
     // Asked after the entry's draft was written over, so it is known to be in its site.

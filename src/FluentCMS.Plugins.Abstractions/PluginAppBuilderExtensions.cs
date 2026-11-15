@@ -58,6 +58,24 @@ public static class PluginAppBuilderExtensions
         where TBuilder : IEndpointConventionBuilder => builder.RequireRateLimiting(PluginRateLimits.CallerPolicy);
 
     /// <summary>
+    /// Describes the body an endpoint reads by itself, from the request rather than a parameter, in the OpenAPI document.
+    /// Routing is not told the media type, so a request of another type still reaches the endpoint, which answers it with
+    /// its own problem rather than a bare 415.
+    /// </summary>
+    /// <typeparam name="T">The type whose schema describes the body.</typeparam>
+    /// <param name="builder">An endpoint of a plugin.</param>
+    /// <param name="optional">Whether a request may leave the body out.</param>
+    /// <param name="description">What the document says of the body.</param>
+    /// <param name="mediaType">The media type the document names, such as <c>multipart/form-data</c>; <c>application/json</c> when null.</param>
+    /// <returns>The builder.</returns>
+    public static RouteHandlerBuilder Takes<T>(this RouteHandlerBuilder builder, bool optional = false, string? description = null, string? mediaType = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        return builder.WithMetadata(new RequestBodyMetadata(typeof(T), optional, description, mediaType));
+    }
+
+    /// <summary>
     /// A group under the route group of FluentCMS that is an OAuth protected resource of its own (RFC 9728), as <c>/mcp</c>
     /// is. Its endpoints run inside the operation of their request with the origin of <paramref name="resource"/>, the
     /// Management rate limit and CORS policy, and no output cache. They need a caller the FluentCMS authentication scheme

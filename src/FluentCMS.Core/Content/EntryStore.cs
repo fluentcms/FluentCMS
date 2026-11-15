@@ -2,11 +2,13 @@ using System.Globalization;
 using System.Linq.Expressions;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.ActivityLog;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Events;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
@@ -299,9 +301,10 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
     // version, in one save, and prunes the versions over the cap of the type. over holds the draft rows this transaction
     // read, which are the rows written over, and fields is EntryJson.Fields of the entry.
     // Returns the references written, in position order within each field.
-    public async Task<IReadOnlyList<Reference>> WriteDraftAsync(SchemaType type, Document row, bool isNewDocument, StoredRows over, ContentDocument entry, JsonObject fields, Origin origin, string? clientId, CancellationToken cancellationToken, string? message = null)
+    public async Task<IReadOnlyList<Reference>> WriteDraftAsync(SchemaType type, Document row, bool isNewDocument, StoredRows over, ContentDocument entry, JsonObject fields, OperationContext operation, CancellationToken cancellationToken, string? message = null)
     {
         List<Reference> written = [];
+        var author = EventSource.From(operation);
         await SaveOwnRowsAsync(
             async () =>
             {
@@ -326,9 +329,11 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
                     Number = row.DraftVersion,
                     Snapshot = EntryJson.Text(fields),
                     StatusAfter = row.Status == EntryStatus.Published ? EntryStatus.Modified : row.Status,
-                    AuthorId = row.UpdatedBy,
-                    Origin = origin,
-                    ClientId = clientId,
+                    AuthorId = author.ActorId,
+                    AuthorKind = author.ActorKind,
+                    AuthorName = ActivityText.Required(author.ActorName, ActivityText.ActorNameMaxLength),
+                    Origin = author.Origin,
+                    ClientId = author.ClientId,
                     Message = message,
                     CreatedAt = row.UpdatedAt,
                 });
@@ -459,7 +464,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         context.Versions.AsNoTracking()
             .Where(version => version.DocumentId == id && version.Locale == locale)
             .OrderByDescending(version => version.Number)
-            .Select(version => new VersionInfo(version.Number, version.Locale, version.StatusAfter, version.AuthorId, version.Origin, version.ClientId, version.Message, version.CreatedAt))
+            .Select(version => new VersionInfo(version.Number, version.Locale, version.StatusAfter, version.AuthorId, version.AuthorKind, version.AuthorName, version.Origin, version.ClientId, version.Message, version.CreatedAt))
             .ToListAsync(cancellationToken);
 
     public Task<ContentVersion?> VersionAsync(Guid id, string locale, int number, CancellationToken cancellationToken) =>
