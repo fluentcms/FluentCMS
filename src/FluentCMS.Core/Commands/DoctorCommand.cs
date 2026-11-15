@@ -61,6 +61,7 @@ internal sealed class DoctorCommand : HostCommand
         try
         {
             await runner.RefuseMigrationsBeforeBaselineAsync(cancellationToken);
+            await runner.RefuseEarlierBaselineAsync(cancellationToken);
         }
         catch (FluentCmsConfigurationException exception)
         {

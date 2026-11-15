@@ -183,6 +183,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<CallerAccess>();
         services.AddScoped<RoleService>();
         services.AddScoped<SuperAdminGuard>();
+        services.AddHostedService<DefaultGrantStartupService>();
         services.TryAddScoped<IContentQueryAccess, ContentQueryAccess>();
         services.TryAddScoped<IContentSurface, ContentSurface>();
         services.AddScoped<ReferenceResolvers>();

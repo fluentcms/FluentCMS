@@ -80,7 +80,7 @@ public sealed class StartupReportTests : IDisposable
             await first.StopAsync(Token);
         }
 
-        _database.Execute("drop table cms_schema_history");
+        _database.Execute(SchemaHistoryTests.UnreadableHistory);
 
         using var host = _database.CreateHost(ArticleSchemas.Titled, Production, migrations);
         await host.StartAsync(Token);

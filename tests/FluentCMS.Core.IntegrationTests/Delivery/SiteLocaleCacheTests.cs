@@ -52,6 +52,14 @@ public sealed class SiteLocaleCacheTests : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
+        // The start gave the built-in roles the default grants of the media plugin, which the Blog sample brings, and that
+        // evicts the site once per role.
+        while (await _host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token) > 0)
+        {
+        }
+
+        _invalidations.Forget();
+
         await using (var scope = _host.Services.CreateAsyncScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
@@ -205,6 +213,13 @@ public sealed class SiteLocaleCacheTests : IAsyncLifetime
         private readonly Channel<IReadOnlyList<string>> _tags = Channel.CreateUnbounded<IReadOnlyList<string>>();
 
         public ValueTask AddAsync(IReadOnlyList<string> tags) => _tags.Writer.WriteAsync(tags);
+
+        public void Forget()
+        {
+            while (_tags.Reader.TryRead(out _))
+            {
+            }
+        }
 
         public async Task<IReadOnlyList<string>> NextAsync(CancellationToken cancellationToken)
         {

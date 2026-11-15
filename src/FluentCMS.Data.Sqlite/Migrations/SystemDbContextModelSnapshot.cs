@@ -730,6 +730,31 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.DefaultGrantRow", b =>
+                {
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("role_id");
+
+                    b.Property<string>("Permission")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("permission");
+
+                    b.Property<long>("AppliedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("applied_at");
+
+                    b.Property<string>("Plugin")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("plugin");
+
+                    b.HasKey("RoleId", "Permission");
+
+                    b.ToTable("cms_default_grant", (string)null);
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.Document", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2209,6 +2234,15 @@ namespace FluentCMS.Data.Sqlite.Migrations
                     b.HasOne("FluentCMS.Core.Identity.Members.CmsMember", null)
                         .WithMany()
                         .HasForeignKey("MemberId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.DefaultGrantRow", b =>
+                {
+                    b.HasOne("FluentCMS.Core.Storage.Entities.Role", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

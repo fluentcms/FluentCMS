@@ -17,6 +17,7 @@ internal static class StorageNames
     public const string Version = "cms_version";
     public const string Role = "cms_role";
     public const string RolePermission = "cms_role_permission";
+    public const string DefaultGrant = "cms_default_grant";
     public const string Job = "cms_job";
     public const string JobAttempt = "cms_job_attempt";
     public const string RecurringJob = "cms_recurring_job";
@@ -74,7 +75,7 @@ internal static class StorageNames
     public static readonly FrozenSet<string> SystemTables = new[]
     {
         "site", "site_locale", "schedule", "schema_history",
-        "user", "user_role", "user_preference", "user_claim", "user_login", "user_token", "invitation", "role", "role_permission",
+        "user", "user_role", "user_preference", "user_claim", "user_login", "user_token", "invitation", "role", "role_permission", "default_grant",
         "oidc_application", "oidc_authorization", "oidc_scope", "oidc_token", "signing_key", "data_protection_key",
         "api_key",
         "member", "member_login", "member_token", "member_group", "member_group_member",

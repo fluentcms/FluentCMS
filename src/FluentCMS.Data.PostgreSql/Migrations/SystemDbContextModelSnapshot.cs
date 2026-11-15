@@ -719,6 +719,31 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                     b.ToTable("cms_version", (string)null);
                 });
 
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.DefaultGrantRow", b =>
+                {
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_id");
+
+                    b.Property<string>("Permission")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("permission");
+
+                    b.Property<DateTimeOffset>("AppliedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("applied_at");
+
+                    b.Property<string>("Plugin")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("plugin");
+
+                    b.HasKey("RoleId", "Permission");
+
+                    b.ToTable("cms_default_grant", (string)null);
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.Document", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2181,6 +2206,15 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                     b.HasOne("FluentCMS.Core.Identity.Members.CmsMember", null)
                         .WithMany()
                         .HasForeignKey("MemberId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.DefaultGrantRow", b =>
+                {
+                    b.HasOne("FluentCMS.Core.Storage.Entities.Role", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

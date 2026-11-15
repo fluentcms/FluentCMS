@@ -71,6 +71,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<ContentVersion>(MapVersion);
         modelBuilder.Entity<Role>(MapRole);
         modelBuilder.Entity<RoleGrant>(MapRoleGrant);
+        modelBuilder.Entity<DefaultGrantRow>(MapDefaultGrant);
         modelBuilder.Entity<CmsUser>(MapUser);
         modelBuilder.Entity<CmsUserRole>(MapUserRole);
         modelBuilder.Entity<UserPreferenceRow>(MapUserPreference);
@@ -223,6 +224,18 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.HasOne<Role>().WithMany().HasForeignKey(grant => grant.RoleId).OnDelete(DeleteBehavior.Cascade);
         entity.HasIndex(grant => new { grant.RoleId, grant.Permission })
             .HasDatabaseName("ix_cms_role_permission_role_permission");
+    }
+
+    // One row per role and permission, so that of two instances that start together only one records a default.
+    private static void MapDefaultGrant(EntityTypeBuilder<DefaultGrantRow> entity)
+    {
+        entity.ToTable(StorageNames.DefaultGrant);
+        MapColumnNames(entity);
+        entity.HasKey(row => new { row.RoleId, row.Permission });
+        entity.Property(row => row.Permission).HasMaxLength(PermissionLength);
+        entity.Property(row => row.Plugin).HasMaxLength(PluginSiteRow.PluginMaxLength);
+
+        entity.HasOne<Role>().WithMany().HasForeignKey(row => row.RoleId).OnDelete(DeleteBehavior.Cascade);
     }
 
     private void MapUser(EntityTypeBuilder<CmsUser> entity)

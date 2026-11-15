@@ -80,13 +80,13 @@ public sealed class MediaDeliveryTests(MediaHost media) : IClassFixture<MediaHos
         await using var media = new MediaHost();
         media.Host.WithServices(services => services.PostConfigure<DeliveryCacheControl>(options => options.OutputCache = false));
         using var admin = await media.AdminAsync();
+        var before = await EvictionsAsync(media, admin);
         var asset = await UploadAsync(admin, Bands(8, 8), "bands.png");
 
         (await admin.PatchAsJsonAsync(new Uri($"{Root}/{asset.Id:D}", UriKind.Relative), new { title = "Changed" }, Token)).Dispose();
         (await admin.PutAsJsonAsync(new Uri($"{Root}/presets/hero", UriKind.Relative), new { width = 4 }, Token)).Dispose();
-        await media.DrainOutboxAsync();
 
-        (await GetAsync(admin, "/api/management/v1/activity?action=cache.invalidated"))["items"]!.AsArray().ShouldBeEmpty();
+        (await EvictionsAsync(media, admin)).Except(before).ShouldBeEmpty();
     }
 
     // With the output cache off a CDN still holds what the header tagged, so each eviction is still raised, with those tags.
@@ -101,15 +101,14 @@ public sealed class MediaDeliveryTests(MediaHost media) : IClassFixture<MediaHos
         }));
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
+        var before = await EvictionsAsync(media, admin);
         var asset = await UploadAsync(admin, Bands(8, 8), "bands.png");
 
         using var response = await anonymous.GetAsync(new Uri($"{Delivery}/{asset.Id:D}", UriKind.Relative), Token);
         var sent = response.Headers.GetValues("Cache-Tag").ShouldHaveSingleItem().Split(',');
         (await admin.PatchAsJsonAsync(new Uri($"{Root}/{asset.Id:D}", UriKind.Relative), new { title = "Changed" }, Token)).Dispose();
         (await admin.PutAsJsonAsync(new Uri($"{Root}/presets/hero", UriKind.Relative), new { width = 4 }, Token)).Dispose();
-        await media.DrainOutboxAsync();
-        var evicted = (await GetAsync(admin, "/api/management/v1/activity?action=cache.invalidated"))["items"]!.AsArray()
-            .Select(row => row!["details"]!["tags"]!.GetValue<string>()).ToList();
+        var evicted = (await EvictionsAsync(media, admin)).Except(before).Select(row => row.Tags).ToList();
 
         sent.ShouldBe([$"site:{DefaultSite.Id:D}", $"media:{asset.Id:D}", $"media-presets:{DefaultSite.Id:D}"], ignoreOrder: true);
         evicted.ShouldBe([$"media:{asset.Id:D}", $"media-presets:{DefaultSite.Id:D}"], ignoreOrder: true);
@@ -160,6 +159,15 @@ public sealed class MediaDeliveryTests(MediaHost media) : IClassFixture<MediaHos
         template.ShouldBe($"/media/{image.Id:D}/bands.png?w={{w}}&h={{h}}&fit={{fit}}&q={{q}}&f={{f}}");
         Decode((await ImageAsync(filled)).Bytes).Width.ShouldBe(4);
         (await GetAsync(anonymous, $"{Delivery}/{pdf:D}"))["urls"]!["template"].ShouldBeNull();
+    }
+
+    // The evictions recorded once the outbox is drained. The start evicts the site first, since it gives the built-in roles
+    // the plugin's default grants (4.8), so a test counts the rows its own writes add.
+    private static async Task<List<(string Id, string Tags)>> EvictionsAsync(MediaHost media, HttpClient admin)
+    {
+        await media.DrainOutboxAsync();
+        return [.. (await GetAsync(admin, "/api/management/v1/activity?action=cache.invalidated"))["items"]!.AsArray()
+            .Select(row => (row!["id"]!.GetValue<string>(), row["details"]!["tags"]!.GetValue<string>()))];
     }
 
     private static async Task<HttpClient> DeliveryClientWithAsync(MediaHost media, HttpClient admin, params object[] grants)

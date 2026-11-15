@@ -78,7 +78,7 @@ public sealed class AiPermissions : IPermissionProvider
 
     public IEnumerable<Permission> GetPermissions() =>
     [
-        new Permission(Use, "Run AI actions on the fields a site opted in."),
+        new Permission(Use, "Run AI actions on the fields a site opted in.") { DefaultRoles = [BuiltInRole.Editor, BuiltInRole.Author] },
         new Permission(ReadUsage, "Read the AI usage log of a site."),
     ];
 }
