@@ -210,6 +210,33 @@ public sealed partial class BaselineTests : IDisposable
         DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
     }
 
+    // A column folded into a table the earlier build already made, as cms_version.author_kind (#3097), is missed the same way.
+    [Fact]
+    public async Task ADatabaseOfAnEarlierBuildOfTheBaselineThatLacksAColumnIsRefused()
+    {
+        using (var built = _database.CreateHost(ArticleSchemas.NoTypes, Production))
+        {
+            await built.StartAsync(Token);
+            await built.StopAsync(Token);
+        }
+
+        var (table, column) = ColumnsAddedToTheBaseline[0];
+        _database.Execute($"alter table {TestProvider.Quote(table)} drop column {TestProvider.Quote(column)}");
+        var before = DatabaseCatalog.Of(_database, historyRows: true);
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production);
+        var refusal = $"FCMS1308: stream system has applied its baseline {BaselineOf<SystemDbContext>(host.Services)} but lacks {table}.{column}; " +
+            "nothing was applied: the database was made by an earlier build of the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again";
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
+        var (exitCode, _, error) = await RunAsync(host, "migrate");
+
+        exception.Code.ShouldBe("FCMS1308");
+        exception.Message.ShouldBe(refusal);
+        exitCode.ShouldBe(1);
+        error.ShouldBe(refusal + Environment.NewLine);
+        DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
+    }
+
     private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "false" };
 
     private const string WhatToDo = "nothing was applied: the database was made by the migrations from before the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again";

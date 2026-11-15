@@ -1,5 +1,7 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Content;
+using FluentCMS.Data.Tests.Authorization;
 using FluentCMS.Publishing;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -96,6 +98,24 @@ public sealed class VersionAuthorTests : IDisposable
         var (_, version) = await SavedByAsync(Of(PrincipalKind.ServiceAccount, new string('n', 200)));
 
         version.AuthorName.ShouldBe(new string('n', 128));
+    }
+
+    // The author is named to whoever may list versions, which needs the management scope and a read of the type: such a
+    // principal reads updatedBy, which a field limit never hides, so the version names no one the entry would not.
+    [Fact]
+    public async Task AReaderOfVersionsWithAFieldLimitSeesTheAuthorAsItSeesUpdatedBy()
+    {
+        var key = Of(PrincipalKind.ApiKey, "Build key");
+        var entry = await _database.CreateAsync(key, new() { ["title"] = $"T {Guid.CreateVersion7()}" });
+        var limited = WithRole(_database.Database.AddRoleForTest("Titles", ("content.article.read", new PermissionConstraints { Fields = ["title"] })));
+        var unscoped = AuthorizationDatabase.User([BuiltInRoles.Editor], [TokenScopes.Delivery]);
+
+        var read = (await _database.AsAsync(limited, services => ((ContentService)services.GetRequiredService<IContentService>()).GetAsync("article", IdOf(entry), new GetOptions { Status = QueryStatus.Draft }, everySystemField: true, Token)))!;
+        var version = (await _database.AsAsync(limited, services => services.GetRequiredService<IContentService>().GetVersionsAsync("article", IdOf(entry), cancellationToken: Token))).ShouldHaveSingleItem();
+
+        read["updatedBy"].ShouldBe(key.Id);
+        (version.AuthorId, version.AuthorKind, version.AuthorName).ShouldBe((key.Id, PrincipalKind.ApiKey, "Build key"));
+        await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.AsAsync(unscoped, services => services.GetRequiredService<IContentService>().GetVersionsAsync("article", IdOf(entry), cancellationToken: Token)));
     }
 
     private async Task<VersionInfo> AsSystemAsync(Origin origin, Principal? actor)

@@ -18,7 +18,7 @@ namespace FluentCMS.Data.Tests.Migrations;
 public sealed class SchemaHistoryTests : IDisposable
 {
     // Leaves a history that no read or write of it can use. Its table stays, since a start refuses a system stream that lacks
-    // a table of its baseline (FCMS1308).
+    // a table of its baseline (FCMS1308); its columns are the one set that check leaves out.
     internal const string UnreadableHistory = "alter table cms_schema_history drop column hash";
 
     private const string Production = "Production";
