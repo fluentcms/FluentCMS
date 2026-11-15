@@ -18,6 +18,10 @@ internal sealed class Asset
 
     public string StorageKey { get; set; } = "";
 
+    // Whether the instance wrote the file at StorageKey, so that a replace, through the service or by an import, deletes it. A
+    // key that a line of an import named, which a storage shared with another instance can hold, is never the instance's.
+    public bool OwnsFile { get; set; }
+
     public string MimeType { get; set; } = "";
 
     public long Size { get; set; }
@@ -141,6 +145,7 @@ internal sealed class MediaModel : IPluginModelContributor
             asset.Property(item => item.FileName).HasColumnName("file_name").HasMaxLength(FileNameMaxLength).IsRequired();
             asset.Property(item => item.StorageProvider).HasColumnName("storage_provider").HasMaxLength(StorageProviderMaxLength).IsRequired();
             asset.Property(item => item.StorageKey).HasColumnName("storage_key").HasMaxLength(StorageKeyMaxLength).IsRequired();
+            asset.Property(item => item.OwnsFile).HasColumnName("owns_file");
             asset.Property(item => item.MimeType).HasColumnName("mime_type").HasMaxLength(MimeTypeMaxLength).IsRequired();
             asset.Property(item => item.Size).HasColumnName("size");
             asset.Property(item => item.Checksum).HasColumnName("checksum").HasMaxLength(64).IsRequired();
@@ -162,6 +167,9 @@ internal sealed class MediaModel : IPluginModelContributor
             asset.Property(item => item.DeletedAt).HasColumnName("deleted_at");
             asset.HasIndex(item => new { item.SiteId, item.FolderId }).HasDatabaseName("ix_cms_media_asset_site_folder");
             asset.HasIndex(item => new { item.SiteId, item.CreatedAt }).HasDatabaseName("ix_cms_media_asset_site_created_at");
+
+            // The assets whose key a line named, which are the only ones that can share a key (ReplacedFiles).
+            asset.HasIndex(item => new { item.SiteId, item.OwnsFile }).HasDatabaseName("ix_cms_media_asset_site_owns_file");
         });
 
         modelBuilder.Entity<Folder>(folder =>

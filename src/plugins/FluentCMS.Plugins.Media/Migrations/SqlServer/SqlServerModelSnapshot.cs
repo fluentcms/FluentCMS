@@ -97,6 +97,10 @@ namespace FluentCMS.Plugins.Media.Migrations.SqlServer
                         .HasColumnType("nvarchar(128)")
                         .HasColumnName("mime_type");
 
+                    b.Property<bool>("OwnsFile")
+                        .HasColumnType("bit")
+                        .HasColumnName("owns_file");
+
                     b.Property<Guid>("SiteId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("site_id");
@@ -146,6 +150,9 @@ namespace FluentCMS.Plugins.Media.Migrations.SqlServer
 
                     b.HasIndex("SiteId", "FolderId")
                         .HasDatabaseName("ix_cms_media_asset_site_folder");
+
+                    b.HasIndex("SiteId", "OwnsFile")
+                        .HasDatabaseName("ix_cms_media_asset_site_owns_file");
 
                     b.ToTable("cms_media_asset", (string)null);
                 });
