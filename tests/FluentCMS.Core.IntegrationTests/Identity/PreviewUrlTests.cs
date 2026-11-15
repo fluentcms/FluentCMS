@@ -77,6 +77,37 @@ public sealed class PreviewUrlTests : IAsyncLifetime
         minted["publishedUrl"].ShouldBeNull();
     }
 
+    // {locale} is the site's code of the locale whose row gave the values, and the published page is that locale's alone.
+    [Fact]
+    public async Task TheLocaleIsTheSitesCodeOfTheRowThatGaveTheValues()
+    {
+        await SaveAsync("settings/preview/defaults", Template);
+        var english = (await _stories.CreateAsync(new Story { Title = "Fish", Slug = "fish" }, Token)).Id;
+        await _stories.PublishAsync(english, cancellationToken: Token);
+
+        var upper = await MintAsync(_editor, "story", english, """{ "locale": "EN" }""");
+        upper["url"]!.GetValue<string>().ShouldBe($"https://www.example.com/en/stories/fish?title=Fish&preview={upper["token"]!.GetValue<string>()}");
+        upper["publishedUrl"]!.GetValue<string>().ShouldBe("https://www.example.com/en/stories/fish?title=Fish");
+
+        // Read in French, an entry with no French row is served by English, and so are both of its pages.
+        var served = await MintAsync(_editor, "story", english, query: "?locale=fr");
+        served["url"]!.GetValue<string>().ShouldBe($"https://www.example.com/en/stories/fish?title=Fish&preview={served["token"]!.GetValue<string>()}");
+        served["publishedUrl"]!.GetValue<string>().ShouldBe("https://www.example.com/en/stories/fish?title=Fish");
+
+        // An entry with a French draft has a French page, which is published only once French is.
+        var bilingual = (await _stories.CreateAsync(new Story { Title = "Chips", Slug = "chips" }, Token)).Id;
+        await _stories.PublishAsync(bilingual, cancellationToken: Token);
+        (await AdminFixture.SendAsync(_editor, HttpMethod.Put, $"content/story/{bilingual}?locale=fr", """{ "title": "Frites", "slug": "chips" }""", "\"0\"")).Status.ShouldBe(HttpStatusCode.OK);
+
+        var french = await MintAsync(_editor, "story", bilingual, query: "?locale=fr");
+        french["url"]!.GetValue<string>().ShouldBe($"https://www.example.com/fr/stories/chips?title=Frites&preview={french["token"]!.GetValue<string>()}");
+        french["publishedUrl"].ShouldBeNull();
+
+        var publish = await AdminFixture.SendAsync(_editor, HttpMethod.Post, $"content/story/{bilingual}/publish?locale=fr");
+        publish.Status.ShouldBe(HttpStatusCode.OK, publish.Body?.ToJsonString());
+        (await MintAsync(_editor, "story", bilingual, query: "?locale=fr"))["publishedUrl"]!.GetValue<string>().ShouldBe("https://www.example.com/fr/stories/chips?title=Frites");
+    }
+
     [Fact]
     public async Task ATypeWithoutATemplateHasNoUrl()
     {
@@ -123,6 +154,7 @@ public sealed class PreviewUrlTests : IAsyncLifetime
     [InlineData("story", "/stories/{slug}?preview={token}", PreviewTokenErrorCodes.InvalidUrlTemplate)]
     [InlineData("story", "https://{slug}.example.com/?preview={token}", PreviewTokenErrorCodes.InvalidUrlTemplate)]
     [InlineData("story", "https://www.example.com/{token}/{slug}", PreviewTokenErrorCodes.InvalidUrlTemplate)]
+    [InlineData("story", "https://www.example.com/.%{slug}?preview={token}", PreviewTokenErrorCodes.InvalidUrlTemplate)]
     [InlineData("story", "https://www.example.com/{body}?preview={token}", PreviewTokenErrorCodes.UnknownTemplateName)]
     [InlineData("note", "https://www.example.com/{locale}?preview={token}", PreviewTokenErrorCodes.UnknownTemplateName)]
     [InlineData("nope", "https://www.example.com/?preview={token}", PreviewTokenErrorCodes.UnknownTemplateName)]
@@ -198,9 +230,9 @@ public sealed class PreviewUrlTests : IAsyncLifetime
         saved.Status.ShouldBe(HttpStatusCode.OK, saved.Body?.ToJsonString());
     }
 
-    private static async Task<JsonObject> MintAsync(HttpClient client, string type, Guid id, string? body = null)
+    private static async Task<JsonObject> MintAsync(HttpClient client, string type, Guid id, string? body = null, string query = "")
     {
-        var minted = await AdminFixture.SendAsync(client, HttpMethod.Post, $"content/{type}/{id}/preview-token", body);
+        var minted = await AdminFixture.SendAsync(client, HttpMethod.Post, $"content/{type}/{id}/preview-token{query}", body);
         minted.Status.ShouldBe(HttpStatusCode.OK, minted.Body?.ToJsonString());
         return minted.Json.AsObject();
     }

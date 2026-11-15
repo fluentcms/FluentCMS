@@ -71,6 +71,14 @@ public sealed class PreviewUrlTemplateTests
     }
 
     [Fact]
+    public void AnEscapeOfTheTemplateStaysAsItIs()
+    {
+        var template = Parse("https://www.example.com/a%20b/{slug}?q=%2Fx&preview={token}");
+
+        template.Fill(Entry(("slug", "fish")), Id, null, Token).ShouldBe($"https://www.example.com/a%20b/fish?q=%2Fx&preview={Token}");
+    }
+
+    [Fact]
     public void AScalarFieldIsWrittenAsItsJsonIs()
     {
         var template = Parse("https://www.example.com/{day}/{rank}?featured={featured}&preview={token}");
@@ -111,6 +119,13 @@ public sealed class PreviewUrlTemplateTests
     [InlineData("https://user@www.example.com/?preview={token}")]
     [InlineData("https://www.example.com\\@evil.example/?preview={token}")]
     [InlineData("https://www.example.com/a b?preview={token}")]
+    [InlineData("https://www.example.com/%{slug}?preview={token}")]
+    [InlineData("https://www.example.com/.%{slug}?preview={token}")]
+    [InlineData("https://www.example.com/%2{slug}?preview={token}")]
+    [InlineData("https://www.example.com/%zz/{slug}?preview={token}")]
+    [InlineData("https://www.example.com/{slug}?preview={token}&x=%")]
+    [InlineData("https://www.example.com//{slug}?preview={token}")]
+    [InlineData("https://www.example.com//?preview={token}")]
     [InlineData("https://www.example.com/{slug?preview={token}")]
     [InlineData("https://www.example.com/{Slug}?preview={token}")]
     [InlineData("https://www.example.com/}?preview={token}")]

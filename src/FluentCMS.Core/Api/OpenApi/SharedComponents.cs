@@ -124,7 +124,7 @@ internal static class SharedComponents
                 {
                     ["type"] = new JsonArray("string", "null"),
                     ["format"] = "uri",
-                    ["description"] = "The same template filled with the published entry's values, without the token's query parameter; null as url is, or when the entry has no published row in that locale.",
+                    ["description"] = "The same template filled with the published row of the locale that gave the draft, without the token's query parameter; null as url is, or when that locale has no published row.",
                 },
             },
             ["required"] = new JsonArray("token", "scheme", "expiresAt", "type", "id", "site"),

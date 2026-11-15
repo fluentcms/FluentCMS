@@ -116,6 +116,15 @@ internal sealed partial class PreviewUrlTemplate
             return "A template holds the characters of a URL only; escape any other, such as a space as %20.";
         }
 
+        // A % of the template is a whole escape, so that no value can finish one, as 2e after .% would make a step up the path.
+        for (var at = template.IndexOf('%', StringComparison.Ordinal); at >= 0; at = template.IndexOf('%', at + 1))
+        {
+            if (at + 2 >= template.Length || !char.IsAsciiHexDigit(template[at + 1]) || !char.IsAsciiHexDigit(template[at + 2]))
+            {
+                return "A % in a template starts an escape, such as %20, so two hexadecimal digits follow it.";
+            }
+        }
+
         if (Placeholder().Replace(template, "").AsSpan().IndexOfAny('{', '}') >= 0)
         {
             return "A brace opens a placeholder, which is a name of letters and digits such as {slug}, and closes it.";
@@ -135,6 +144,12 @@ internal sealed partial class PreviewUrlTemplate
             || sample.Host.Length == 0)
         {
             return "A template is an absolute http or https URL with a host of its own, no user name, and placeholders in its path, query or fragment only.";
+        }
+
+        // A path that starts with // reads as another host to a front end that sends the path on as a relative redirect.
+        if (end >= 0 && rest.AsSpan(end).StartsWith("//", StringComparison.Ordinal))
+        {
+            return "The path of a template does not start with an empty segment (//).";
         }
 
         var fragment = template.IndexOf('#', StringComparison.Ordinal);

@@ -5,6 +5,7 @@ using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Identity.PreviewTokens;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
@@ -236,6 +237,21 @@ public sealed class TransferTests : IDisposable
 
         // The site of the target holds no password: it reads that of the target's instance defaults.
         target.Read(context => context.Set<SettingRow>().Single().Json).ShouldNotContain("password");
+    }
+
+    // The checks of an area hold for an import as for a write, in a dry run too: a preview template that is not an http URL.
+    [Fact]
+    public async Task ASettingsDocumentThatTheChecksOfItsAreaRefuseIsReportedByADryRun()
+    {
+        var package = Rewrite(await ExportAsync(_source), TransferPackage.Settings, """[{"area":"preview","value":{"templates":{"article":"ftp://www.example.com/?preview={token}"}}}]""");
+        var target = Target();
+
+        var dry = await ImportAsync(target, package, new TransferImportRequest { DryRun = true });
+
+        var item = dry.Items.ShouldHaveSingleItem();
+        (item.Section, item.Id, item.Outcome, item.Code).ShouldBe((TransferImporter.SettingsSection, "preview", TransferOutcome.Error, PreviewTokenErrorCodes.InvalidUrlTemplate));
+        item.Message.ShouldStartWith("templates.article: ");
+        target.Read(context => context.Set<SettingRow>().Count()).ShouldBe(0);
     }
 
     [Fact]
