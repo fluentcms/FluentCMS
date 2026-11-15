@@ -68,7 +68,7 @@ internal sealed record ProjectFile(
         return string.Equals(privateAssets, "all", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string FindRepositoryRoot()
+    public static string FindRepositoryRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
         {

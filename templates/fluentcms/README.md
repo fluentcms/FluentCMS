@@ -24,6 +24,7 @@ dotnet new fluentcms -n FluentCms-App --provider sqlite --sample none
 | `.config/dotnet-tools.json` | the `fluentcms` tool, at the version of the FluentCMS packages |
 | `appsettings.json`, `appsettings.Development.json` | the connection string `ConnectionStrings:FluentCms` and the `FluentCms` options |
 | `Dockerfile` | a multi-stage image on the chiseled ASP.NET Core runtime, as a non-root user |
+| `.dockerignore` | what stays out of the image's build context: build output, the local database, and secrets and local settings such as `.env`, `*.pfx`, `*.key` and `*.local.json` |
 
 The project references `FluentCMS.Generators`, which writes a typed filter and sort builder per content type (`ArticleFields.Title.Contains("x")`), and `FluentCMS.Analyzers`, which reports a wrong schema attribute in the editor. Both run in the build only.
 
@@ -42,6 +43,8 @@ On PostgreSQL or SQL Server, `appsettings.Development.json` names a local server
 ```bash
 dotnet user-secrets set "ConnectionStrings:FluentCms" "Host=localhost;Database=fluentcms;Username=postgres;Password=<password>"
 ```
+
+Those names are the administrators that a local server or its container image starts with, `postgres` and `sa`. Outside development, connect with a login of the application's own.
 
 Schema sync is for SQLite only, so a server database gets its tables from migrations, as below, before the host starts.
 

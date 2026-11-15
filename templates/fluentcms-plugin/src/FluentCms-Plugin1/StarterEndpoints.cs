@@ -1,6 +1,7 @@
 using FluentCMS.Authorization;
 using FluentCMS.Content;
 using FluentCMS.Plugins;
+using FluentCMS.Providers;
 using FluentCMS.Settings;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -15,6 +16,10 @@ public sealed record StarterNoteResponse(Guid Id, string Text, DateTimeOffset Cr
 
 public static class StarterEndpoints
 {
+    private const string NotesLock = StarterPlugin.Name + ".notes";
+
+    private static readonly TimeSpan NotesLockWait = TimeSpan.FromSeconds(10);
+
     // The group checks that the caller has the management scope; what the caller may do is the plugin's to check. Each
     // request runs in the operation of its site, so the notes are the site's.
     public static RouteGroupBuilder MapStarterEndpoints(this RouteGroupBuilder group)
@@ -32,7 +37,7 @@ public static class StarterEndpoints
             return Results.Ok(notes);
         });
 
-        group.MapPost("/notes", async (StarterNoteRequest request, PluginDbContext<StarterPlugin> database, IPermissionChecker permissions, IOperationContextAccessor operations, ISettings<StarterSettings> settings, TimeProvider time, CancellationToken cancellationToken) =>
+        group.MapPost("/notes", async (StarterNoteRequest request, PluginDbContext<StarterPlugin> database, IPermissionChecker permissions, IOperationContextAccessor operations, ISettings<StarterSettings> settings, IDistributedLock locks, TimeProvider time, CancellationToken cancellationToken) =>
         {
             var site = Site(operations);
             await permissions.RequireAsync(StarterPermissions.NotesManage, new(site), cancellationToken);
@@ -43,14 +48,25 @@ public static class StarterEndpoints
             }
 
             var max = (await settings.GetAsync(new(site), cancellationToken)).MaxNotes;
-            if (await database.Set<StarterNote>().CountAsync(note => note.SiteId == site, cancellationToken) >= max)
+
+            // Posts sent together would each count the notes before any of them is saved, and pass MaxNotes between them,
+            // so the count and the insert hold the plugin's lock, across every instance. The lock has one name for the
+            // task, not one per site, so the posts of every site take turns.
+            await using var held = await locks.TryAcquireAsync(NotesLock, NotesLockWait, cancellationToken);
+            if (held is null)
+            {
+                return Results.Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Notes busy", detail: "Other notes were being added; try again.");
+            }
+
+            using var guarded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, held.Lost);
+            if (await database.Set<StarterNote>().CountAsync(note => note.SiteId == site, guarded.Token) >= max)
             {
                 return Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Too many notes", detail: $"The site has {max} notes, the most its settings allow.");
             }
 
             var note = new StarterNote { Id = Guid.CreateVersion7(), SiteId = site, Text = request.Text, CreatedAt = time.GetUtcNow() };
             database.Add(note);
-            await database.SaveChangesAsync(cancellationToken);
+            await database.SaveChangesAsync(guarded.Token);
             return Results.Json(new StarterNoteResponse(note.Id, note.Text, note.CreatedAt), statusCode: StatusCodes.Status201Created);
         });
 

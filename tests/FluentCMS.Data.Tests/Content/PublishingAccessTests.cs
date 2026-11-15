@@ -40,10 +40,11 @@ public sealed class PublishingAccessTests : IDisposable
         ["sections"] = new object[] { new ContentDocument { ["type"] = "hero", ["heading"] = heading, ["internal"] = inner } },
     };
 
+    // The hidden values have a space, which no id of an answer has, so that a search of an answer for them finds them only.
     private async Task<Guid> SecretiveEntryAsync()
     {
-        var id = IdOf(await _database.AsAsync(Principal.System, services => services.GetRequiredService<IContentService>().CreateAsync("article", Secretive("One", "s1"), Token), origin: Origin.Seed));
-        await _database.AsAsync(Principal.System, services => services.GetRequiredService<IContentService>().UpdateAsync("article", id, Secretive("Two", "s2", 2, "Hi2", "hidden-2"), 1, Token), origin: Origin.Seed);
+        var id = IdOf(await _database.AsAsync(Principal.System, services => services.GetRequiredService<IContentService>().CreateAsync("article", Secretive("One", "top secret 1"), Token), origin: Origin.Seed));
+        await _database.AsAsync(Principal.System, services => services.GetRequiredService<IContentService>().UpdateAsync("article", id, Secretive("Two", "top secret 2", 2, "Hi2", "hidden-2"), 1, Token), origin: Origin.Seed);
         return id;
     }
 
@@ -65,7 +66,7 @@ public sealed class PublishingAccessTests : IDisposable
             all.ShouldNotContain("hidden-in-block");
             all.ShouldNotContain("hidden-2");
             all.ShouldNotContain("hidden-in-group");
-            all.ShouldNotContain("s1");
+            all.ShouldNotContain("top secret");
             changes.Select(change => change.Path).ShouldContain("sections[0].heading");
             changes.Select(change => change.Path).ShouldNotContain("secret");
             changes.Select(change => change.Path).ShouldNotContain("sections[0].internal");
@@ -518,7 +519,7 @@ public sealed class PublishingAccessTests : IDisposable
         // Its own fields came back; views, the hidden field and the hidden value inside the block did not.
         var row = _database.Row("cms_article", id);
         row["views"].ShouldBe(2L);
-        row["secret"].ShouldBe("s2");
+        row["secret"].ShouldBe("top secret 2");
         var sections = row["sections"].ShouldBeOfType<string>();
         StoredJson.Parse(sections)[0]!["heading"]!.GetValue<string>().ShouldBe("Hi");
         sections.ShouldContain("hidden-2");
@@ -581,7 +582,7 @@ public sealed class PublishingAccessTests : IDisposable
         await _database.AsAsync(Principal.System, services => services.GetRequiredService<IContentService>().RestoreVersionAsync("article", id, 1, null, Token), origin: Origin.Seed);
 
         var row = _database.Row("cms_article", id);
-        row["secret"].ShouldBe("s1");
+        row["secret"].ShouldBe("top secret 1");
         row["sections"].ShouldBeOfType<string>().ShouldContain("hidden-in-block");
     }
 

@@ -491,7 +491,7 @@ Row 3.13; decision 28; rows 3.23 (live preview, Should) and 3.30 (click-to-edit,
 - **URL.** The admin mints a preview token for the entry and the form's locale, and the answer carries the type's preview URL with the token filled in (#3099). A type without a template has no preview button. The page reads the draft from the Delivery API with `Authorization: Preview <token>`; a front end that holds a preview key (row 3.13, "works with external frontends via preview key") reads the draft with it and ignores the token.
 - **Token lifetime.** The admin asks for the default lifetime (ten minutes) and mints a new token when the pane reloads after it expired.
 - **Populated relations.** Until #3095 (M7) is merged, a page read with a token gets no populated relation, so the preview is not the page; A-29 waits for it.
-- **Published view.** #3099 gives the URL only with a token. The published view needs the URL without one, or a template that reads the state; AQ15 asks #3099 to settle it.
+- **Published view.** The token's answer also carries `publishedUrl` (#3099, AQ15): the same template, without the token's parameter, filled from the published row of the locale that gave the draft, or null when that locale was never published. The toggle loads it, and is off while it is null.
 - **Content Security Policy.** The admin page allows the preview origins of `config.json` in `frame-src` (2.5); the reference host builds them from its configuration (6.1). The front end must allow the admin's origin in its own `frame-ancestors`.
 
 **`postMessage` contract, version 1 (proposed).** Decision 28 asks for it now, so that live preview is additive. Every message is a JSON object `{ "protocol": "fluentcms-preview", "version": 1, "type", ... }`. Each side checks `event.origin` against the origin it expects (the admin: the origin of the URL it loaded; the page: the admin origins it is configured with) and ignores a message of another protocol, a higher version or an unknown type. No message carries a token.
@@ -510,7 +510,7 @@ A page that sends no `ready` within five seconds is shown as it is, with a note 
 | Endpoint | Use | Status |
 | --- | --- | --- |
 | `POST /content/{type}/{id}/preview-token` (`minutes`, `locale`) | the token | exists |
-| `url` in its answer, from the per-type template | the frame's URL | [#3099] |
+| `url` and `publishedUrl` in its answer, from the per-type template | the frame's URL, draft and published | [#3099] |
 | populated relations under a token | the page as it will look | [#3095] (M7) |
 
 ### 4.13 Bulk actions
@@ -1013,7 +1013,7 @@ Each question has a recommendation. A question that the decisions log settles is
 | AQ12 | Browser support. | The last two versions of Chrome, Edge, Firefox and Safari, on desktop and tablet; phones get a readable layout without a test of their own. |
 | AQ13 | Where do the gap issues and the admin's work run, and how are its issues labelled? | Each gap issue of 1.4 other than #3094 and #3095, which are in M7, takes the admin milestone that first needs it and runs on that milestone's integration branch (`feature/a1` and so on), merged into `main` after full CI, as M6 and M7 did (H11); bugs go to `main`. Add an `area:admin` label and one tracking issue per admin milestone. |
 | AQ14 | Which interface cultures ship in the first release? | English, with every string in resources and a contribution guide for translations; left-to-right and right-to-left pseudo-cultures in the tests. A real right-to-left translation is welcome before 1.0.0 and does not block A7. |
-| AQ15 | The published view of the preview needs the front end's URL without a token, and #3099 gives the URL only in the token's answer. | Ask #3099 to answer both: `url` with the token and `publishedUrl` without it, filled from the same template, or to give the template a `{status}` placeholder. Decide it in #3099 before A-29. |
+| AQ15 | The published view of the preview needs the front end's URL without a token, and #3099 gives the URL only in the token's answer. | Settled by #3099: the token's answer carries `url` with the token and `publishedUrl` without it, filled from the same template with the published row of the same locale, or null when that locale has no published row. A `{status}` placeholder was not taken, since the published page needs no token and the admin cannot fill a template itself. |
 | AQ16 | Where do the plugin admin halves live: under `admin/src/plugins/`, or beside their server halves in `src/plugins/`? | Under `admin/` (3), so that a path filter tells admin work from backend work and the admin's CI shard builds what it tests. The shared ID prefix (row 8.1) keeps the two halves together in NuGet. |
 
 [#3050]: https://github.com/fluentcms/FluentCMS/issues/3050

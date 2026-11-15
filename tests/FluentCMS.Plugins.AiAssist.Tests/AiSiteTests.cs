@@ -38,11 +38,13 @@ public sealed class AiSiteTests : IClassFixture<AiHost>
 
         using var action = await ActAsync(there, "rewrite", body);
         using var usage = await there.GetAsync(new Uri(Usage, UriKind.Relative), Token);
+        using var fields = await there.GetAsync(new Uri(Fields, UriKind.Relative), Token);
         using var notSignedIn = await ActAsync(anonymous, "rewrite", body);
         using var elsewhere = await ActAsync(here, "rewrite", body);
 
         (await RefusedAsync(action, HttpStatusCode.NotFound)).ShouldBe("FCMS1550");
         (await RefusedAsync(usage, HttpStatusCode.NotFound)).ShouldBe("FCMS1550");
+        (await RefusedAsync(fields, HttpStatusCode.NotFound)).ShouldBe("FCMS1550");
         notSignedIn.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         elsewhere.StatusCode.ShouldBe(HttpStatusCode.OK);
         _ai.Chat.Calls.ShouldHaveSingleItem();
@@ -182,6 +184,24 @@ public sealed class AiSiteTests : IClassFixture<AiHost>
         problem["detail"]!.GetValue<string>().ShouldContain("openAiCompatible");
         _ai.Chat.Calls.ShouldBeEmpty();
         _ai.Logs.Of(9368).ShouldContain(line => line.Contains(site.ToString(), StringComparison.Ordinal) && line.Contains("anthropic", StringComparison.Ordinal));
+        (await _ai.UsageAsync(site)).ShouldBeEmpty();
+    }
+
+    // A host's own factory may hand out a client whatever the settings name, so the plugin refuses none itself, before it
+    // asks the slot, and the actions agree with GET /ai/fields that the site is off.
+    [Fact]
+    public async Task ASiteWithNoProviderIsOffWhateverFillsTheSlot()
+    {
+        var site = await _ai.SiteAsync(settings => settings.Provider = AiProvider.None);
+        using var admin = await _ai.AdminAsync(site);
+        _ai.Chat.ForEverySite = true;
+
+        using var refused = await ActAsync(admin, "title", new { type = "article", field = "title", text = "Ships are big boats." });
+        using var fields = await admin.GetAsync(new Uri(Fields, UriKind.Relative), Token);
+
+        (await RefusedAsync(refused, HttpStatusCode.Conflict)).ShouldBe("FCMS1682");
+        (await JsonAsync(fields))["enabled"]!.GetValue<bool>().ShouldBeFalse();
+        _ai.Chat.Calls.ShouldBeEmpty();
         (await _ai.UsageAsync(site)).ShouldBeEmpty();
     }
 

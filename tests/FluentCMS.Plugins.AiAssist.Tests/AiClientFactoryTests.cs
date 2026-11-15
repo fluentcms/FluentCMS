@@ -81,6 +81,8 @@ public sealed class AiClientFactoryTests
 
     // The time a call may take is the plugin's. A timeout of the client's own, even of the same length, races it, and a
     // call that passed requestTimeout then ended as a failure of the provider (FCMS1689) rather than a timeout (FCMS1688).
+    // A timeout of the client would end the call on the real clock, so the call must still be open a little past
+    // requestTimeout, at its least of one second, and end only when the caller cancels it.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -89,27 +91,33 @@ public sealed class AiClientFactoryTests
         await using var stub = await StubProvider.StartAsync();
         stub.Pause = TimeSpan.FromSeconds(30);
         using var factory = Factory([stub.Url("v1")], []);
-        var client = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = stub.Url("v1"), RequestTimeout = 1 }, Token);
+        var settings = new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = stub.Url("v1"), RequestTimeout = 1 };
+        var client = await factory.CreateAsync(Site, settings, Token);
         List<ChatMessage> messages = [new(ChatRole.User, "Ships are big boats.")];
         using var caller = CancellationTokenSource.CreateLinkedTokenSource(Token);
-        caller.CancelAfter(TimeSpan.FromSeconds(3));
-        var started = TimeProvider.System.GetTimestamp();
+        var received = stub.Received;
 
-        await Should.ThrowAsync<OperationCanceledException>(async () =>
-        {
-            if (stream)
+        var call = Task.Run(
+            async () =>
             {
-                await foreach (var _ in client!.Client.GetStreamingResponseAsync(messages, cancellationToken: caller.Token))
+                if (stream)
                 {
+                    await foreach (var _ in client!.Client.GetStreamingResponseAsync(messages, cancellationToken: caller.Token))
+                    {
+                    }
                 }
-            }
-            else
-            {
-                await client!.Client.GetResponseAsync(messages, cancellationToken: caller.Token);
-            }
-        });
+                else
+                {
+                    await client!.Client.GetResponseAsync(messages, cancellationToken: caller.Token);
+                }
+            },
+            Token);
+        await Task.WhenAny(received, call).WaitAsync(Token);
+        await Task.Delay(TimeSpan.FromSeconds(settings.RequestTimeout) + TimeSpan.FromMilliseconds(250), Token);
+        call.IsCompleted.ShouldBeFalse();
 
-        TimeProvider.System.GetElapsedTime(started).ShouldBeGreaterThan(TimeSpan.FromSeconds(2.5));
+        await caller.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(() => call);
         stub.Requests.ShouldHaveSingleItem();
     }
 
