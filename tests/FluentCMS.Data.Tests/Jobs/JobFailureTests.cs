@@ -430,9 +430,10 @@ public sealed class JobFailureTests : IDisposable
         };
         var id = await _fixture.EnqueueAsync();
 
-        var first = _fixture.NewInstance(configure: options => options.Queues[Queue] = 1, faults: _faults).GetRequiredService<IJobRunner>();
+        var firstInstance = _fixture.NewInstance(configure: options => options.Queues[Queue] = 1, faults: _faults);
+        var first = firstInstance.GetRequiredService<IJobRunner>();
         await first.StartAsync(Token);
-        await Eventually.HoldsAsync(() => !_fixture.Probe.Runs.IsEmpty);
+        await _fixture.FirstRunAsync(firstInstance);
         _faults.FailEverything();
 
         var second = _fixture.NewInstance(configure: options => options.Queues[Queue] = 1).GetRequiredService<IJobRunner>();

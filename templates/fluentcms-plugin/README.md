@@ -16,7 +16,7 @@ The last segment of the name gives the plugin its classes and its name: `Acme.Re
 | `src/FluentCms-Plugin1/StarterPlugin.cs` | the plugin class with its manifest, `[FluentCmsPlugin]`, and what it adds in `ConfigureServices` and `Configure`; the assembly attribute lets a host discover it |
 | `src/FluentCms-Plugin1/StarterContributions.cs` | a permission, `starter-plugin.notes.manage`, and the settings class of the area `starter-plugin` |
 | `src/FluentCms-Plugin1/StarterModel.cs` | the plugin's table, `cms_starter_plugin_note`, mapped on `PluginDbContext<StarterPlugin>` |
-| `src/FluentCms-Plugin1/StarterEndpoints.cs` | the Management endpoints `GET` and `POST /api/management/v1/starter-plugin/notes`, which check the permission and the settings |
+| `src/FluentCms-Plugin1/StarterEndpoints.cs` | the Management endpoints `GET` and `POST /api/management/v1/starter-plugin/notes`, which check the permission and the settings; a post counts and adds under the plugin's `IDistributedLock`, so posts sent together cannot pass `MaxNotes` |
 | `src/FluentCms-Plugin1/StarterHook.cs` | a hook that runs after an entry of any type is published |
 | `src/FluentCms-Plugin1/Migrations/` | the plugin's migration stream, a set per provider: `Sqlite`, `PostgreSql` and `SqlServer` |
 | `tests/FluentCms-Plugin1.Tests/` | tests on `FluentCMS.Testing` that boot the plugin in the test host, and the design-time factory of its migrations |

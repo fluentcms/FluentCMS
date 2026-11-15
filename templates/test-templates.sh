@@ -108,6 +108,10 @@ for host in "${hosts[@]}"; do
   if grep -q '^#if\|^#else\|^#endif' "$work/$host/Dockerfile"; then
     fail "the Dockerfile of $host kept a template conditional"
   fi
+  # The build stage copies the whole folder, so secrets stay out of the build context.
+  for ignored in '**/.env' '**/*.pfx' '**/*.key' '**/*.local.json'; do
+    grep -qxF "$ignored" "$work/$host/.dockerignore" || fail "the .dockerignore of $host does not leave out $ignored"
+  done
 done
 end
 

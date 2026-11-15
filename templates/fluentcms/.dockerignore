@@ -11,3 +11,13 @@ Dockerfile
 .vscode/
 .idea/
 *.user
+
+# Secrets and local settings, which the build stage would copy with the rest of the folder
+**/.env
+**/.env.*
+**/*.pfx
+**/*.p12
+**/*.key
+**/*.local.json
+**/*.Local.json
+**/secrets.json

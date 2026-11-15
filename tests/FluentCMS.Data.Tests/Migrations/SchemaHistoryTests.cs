@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using FluentCMS.Core.DependencyInjection;
-using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -337,8 +336,9 @@ public sealed class SchemaHistoryTests : IDisposable
 
         public IReadOnlyList<string> Informations => Of(LogLevel.Information);
 
-        // The startup report has its own tests; here only what the history logs counts.
-        public ILogger CreateLogger(string categoryName) => categoryName == typeof(StartupReportService).FullName ? NullLogger.Instance : new Logger(_messages);
+        // Only what the history logs counts, through the logger of MigrationRunner. The rest of a started host logs too, in
+        // the background: EF Core warns of a Take without OrderBy when the first host of the process compiles such a query.
+        public ILogger CreateLogger(string categoryName) => categoryName == typeof(MigrationRunner).FullName ? new Logger(_messages) : NullLogger.Instance;
 
         public void Dispose()
         {

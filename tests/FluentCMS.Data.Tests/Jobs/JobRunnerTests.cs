@@ -114,6 +114,10 @@ public sealed class JobRunnerTests : IDisposable
         var bad = await _fixture.EnqueueAsync("bad", new JobOptions { MaxAttempts = 1, Priority = 1 });
         var unknown = _fixture.AddRow("unknown", "{}", maxAttempts: 1);
         var unreadable = _fixture.AddRow(JobFixture.ProbeType, """{"key":5}""", maxAttempts: 1);
+
+        // Due after the others, so that the claim (priority, run_at, id) takes it last. At the same run_at the ids would
+        // decide, and two ids made in the same millisecond are in random order.
+        _fixture.Clock.Advance(TimeSpan.FromSeconds(1));
         var good = await _fixture.EnqueueAsync("good");
 
         var runner = QuickInstance(workers: 1).GetRequiredService<IJobRunner>();
@@ -200,9 +204,10 @@ public sealed class JobRunnerTests : IDisposable
         _fixture.Probe.Behavior = (_, _) => gate.Task;
         var id = await _fixture.EnqueueAsync();
 
-        var runner = ManualInstance().GetRequiredService<IJobRunner>();
+        var instance = ManualInstance();
+        var runner = instance.GetRequiredService<IJobRunner>();
         await runner.StartAsync(Token);
-        await Eventually.HoldsAsync(() => !_fixture.Probe.Runs.IsEmpty);
+        await _fixture.FirstRunAsync(instance);
 
         // The job outlives its first lease several times over.
         var beats = (int)(options.LeaseDuration / options.HeartbeatInterval) * 3;
@@ -244,9 +249,10 @@ public sealed class JobRunnerTests : IDisposable
         _fixture.Probe.Behavior = (_, _) => gate.Task;
         var running = await _fixture.EnqueueAsync("running");
 
-        var runner = ManualInstance().GetRequiredService<IJobRunner>();
+        var instance = ManualInstance();
+        var runner = instance.GetRequiredService<IJobRunner>();
         await runner.StartAsync(Token);
-        await Eventually.HoldsAsync(() => !_fixture.Probe.Runs.IsEmpty);
+        await _fixture.FirstRunAsync(instance);
 
         var waiting = await _fixture.EnqueueAsync("waiting");
         var stopping = runner.StopAsync(Token);
@@ -268,13 +274,14 @@ public sealed class JobRunnerTests : IDisposable
         var id = await _fixture.EnqueueAsync(options: new JobOptions { MaxAttempts = 1 });
 
         // The clock moves on while the release is written, however long that takes, so the runner must not give up on it.
-        var runner = _fixture.NewInstance(configure: options =>
+        var instance = _fixture.NewInstance(configure: options =>
         {
             options.Queues[JobRunnerOptions.DefaultQueue] = 1;
             options.ReleaseTimeout = TimeSpan.FromDays(30);
-        }).GetRequiredService<IJobRunner>();
+        });
+        var runner = instance.GetRequiredService<IJobRunner>();
         await runner.StartAsync(Token);
-        await Eventually.HoldsAsync(() => !_fixture.Probe.Runs.IsEmpty);
+        await _fixture.FirstRunAsync(instance);
 
         await Eventually.CompletesAsync(runner.StopAsync(Token), WakeTheLoops);
 
@@ -301,9 +308,10 @@ public sealed class JobRunnerTests : IDisposable
         _fixture.Probe.Behavior = (_, context) => Task.Delay(Timeout.Infinite, context.CancellationToken);
         var id = await _fixture.EnqueueAsync();
 
-        var runner = ManualInstance().GetRequiredService<IJobRunner>();
+        var instance = ManualInstance();
+        var runner = instance.GetRequiredService<IJobRunner>();
         await runner.StartAsync(Token);
-        await Eventually.HoldsAsync(() => !_fixture.Probe.Runs.IsEmpty);
+        await _fixture.FirstRunAsync(instance);
 
         await Eventually.CompletesAsync(runner.StopAsync(new CancellationToken(canceled: true)));
 
@@ -317,9 +325,10 @@ public sealed class JobRunnerTests : IDisposable
         _fixture.Probe.Behavior = (_, _) => gate.Task;
         var id = await _fixture.EnqueueAsync();
 
-        var runner = ManualInstance().GetRequiredService<IJobRunner>();
+        var instance = ManualInstance();
+        var runner = instance.GetRequiredService<IJobRunner>();
         await runner.StartAsync(Token);
-        await Eventually.HoldsAsync(() => !_fixture.Probe.Runs.IsEmpty);
+        await _fixture.FirstRunAsync(instance);
 
         await Eventually.CompletesAsync(runner.StopAsync(Token), WakeTheLoops);
 

@@ -183,6 +183,15 @@ jobs:
         if: env.FULL_TESTS != 'true'
         run: dotnet test --project tests/FluentCMS.Architecture.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results
 
+      # As in the fast checks of Feature CI: the tool, and the host's commands with export and import on SQLite.
+      - name: Test the tool
+        if: env.FULL_TESTS != 'true'
+        run: dotnet test --project tests/FluentCMS.Cli.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results
+
+      - name: Test the commands
+        if: env.FULL_TESTS != 'true'
+        run: dotnet test --project tests/FluentCMS.Core.IntegrationTests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --filter-namespace FluentCMS.Core.IntegrationTests.Commands
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

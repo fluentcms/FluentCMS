@@ -29,7 +29,7 @@ jobs:
     # Separate names keep these checks from satisfying main's full-suite requirements.
     name: Fast checks (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -73,6 +73,13 @@ jobs:
 
       - name: Test architecture
         run: dotnet test --project tests/FluentCMS.Architecture.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results
+
+      # The tool, and the host's commands with export and import on SQLite, so that a crash of either shows before full CI.
+      - name: Test the tool
+        run: dotnet test --project tests/FluentCMS.Cli.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results
+
+      - name: Test the commands
+        run: dotnet test --project tests/FluentCMS.Core.IntegrationTests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --filter-namespace FluentCMS.Core.IntegrationTests.Commands
 
       - name: Upload test results
         if: always()

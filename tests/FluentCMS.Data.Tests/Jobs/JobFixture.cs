@@ -228,6 +228,12 @@ internal sealed class JobFixture : IDisposable
         return scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<RecurringJob>().AsNoTracking().Single(job => job.Name == name);
     }
 
+    // Waits for the probe's first run once a runner of the instance has started. The manual clock stands still, so a first
+    // pass of the worker that missed the job, such as a claim chosen as a deadlock victim on SQL Server, would wait for a
+    // poll that never comes; a wake of the instance sends the worker back without moving the clock.
+    public Task FirstRunAsync(IServiceProvider instance) =>
+        Eventually.HoldsAsync(() => !Probe.Runs.IsEmpty, () => instance.GetRequiredService<JobWake>().Signal(JobRunnerOptions.DefaultQueue));
+
     // A row that no scheduler would write, through EF as cms_job needs.
     public Guid AddRow(string type, string payload, int maxAttempts = 3)
     {
