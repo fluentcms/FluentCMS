@@ -168,6 +168,9 @@ internal sealed class MediaModel : IPluginModelContributor
             asset.Property(item => item.DeletedAt).HasColumnName("deleted_at");
             asset.HasIndex(item => new { item.SiteId, item.FolderId }).HasDatabaseName("ix_cms_media_asset_site_folder");
             asset.HasIndex(item => new { item.SiteId, item.CreatedAt }).HasDatabaseName("ix_cms_media_asset_site_created_at");
+
+            // The assets whose key a line named, which are the only ones that can share a key (ReplacedFiles).
+            asset.HasIndex(item => new { item.SiteId, item.OwnsFile }).HasDatabaseName("ix_cms_media_asset_site_owns_file");
         });
 
         modelBuilder.Entity<Folder>(folder =>

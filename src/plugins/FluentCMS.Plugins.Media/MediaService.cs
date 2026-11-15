@@ -38,8 +38,8 @@ internal sealed class MediaPermissions : IPermissionProvider
 // media.presets.manage. Uploads are read to a temporary file, where their type, size, checksum and image size are found,
 // and only when every file of a request passes are they written to the storage, then recorded; a file written for a
 // request that fails is deleted again. A replace writes its file under a key of its own, so that the old file serves until
-// the row names the new one; the old file and the variants are deleted after (ReplacedFiles). New files go to the storage in
-// the slot.
+// the row names the new one; the old file and the variants are deleted after, when the instance wrote the old file, and only
+// the variant rows go when a line of an import named it (ReplacedFiles). New files go to the storage in the slot.
 internal sealed class MediaService(
     PluginDbContext<MediaPlugin> database,
     IPermissionChecker permissions,
@@ -484,7 +484,7 @@ internal sealed class MediaService(
             await storages.Current.WriteAsync(key, prepared.Content, cancellationToken);
             written = key;
 
-            var replaced = await ReplacedFiles.TakeAsync(database, asset, deleteFiles: true, cancellationToken);
+            var replaced = await ReplacedFiles.TakeAsync(database, asset, asset.OwnsFile, cancellationToken);
             asset.FileName = prepared.FileName;
             asset.StorageProvider = storages.Current.Name;
             asset.StorageKey = key;
@@ -500,7 +500,7 @@ internal sealed class MediaService(
             await database.SaveChangesAsync(cancellationToken);
             written = null;
 
-            await replaced.DeleteAsync(storages, logger);
+            await replaced.DeleteAsync(asset, storages, logger);
             await events.PublishAsync(new MediaAssetReplacedEvent(asset.Id, asset.FolderId, asset.FileName, asset.MimeType, asset.Size), cancellationToken);
             return Info(asset, operation.Locale);
         }

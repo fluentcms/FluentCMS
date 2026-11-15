@@ -151,6 +151,9 @@ namespace FluentCMS.Plugins.Media.Migrations.PostgreSql
                     b.HasIndex("SiteId", "FolderId")
                         .HasDatabaseName("ix_cms_media_asset_site_folder");
 
+                    b.HasIndex("SiteId", "OwnsFile")
+                        .HasDatabaseName("ix_cms_media_asset_site_owns_file");
+
                     b.ToTable("cms_media_asset", (string)null);
                 });
 

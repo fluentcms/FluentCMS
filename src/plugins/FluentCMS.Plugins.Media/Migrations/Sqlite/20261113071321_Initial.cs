@@ -22,6 +22,7 @@ namespace FluentCMS.Plugins.Media.Migrations.Sqlite
                     file_name = table.Column<string>(type: "TEXT", maxLength: 255, nullable: false),
                     storage_provider = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
                     storage_key = table.Column<string>(type: "TEXT", maxLength: 512, nullable: false),
+                    owns_file = table.Column<bool>(type: "INTEGER", nullable: false),
                     mime_type = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
                     size = table.Column<long>(type: "INTEGER", nullable: false),
                     checksum = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
@@ -112,6 +113,11 @@ namespace FluentCMS.Plugins.Media.Migrations.Sqlite
                 name: "ix_cms_media_asset_site_folder",
                 table: "cms_media_asset",
                 columns: new[] { "site_id", "folder_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_cms_media_asset_site_owns_file",
+                table: "cms_media_asset",
+                columns: new[] { "site_id", "owns_file" });
 
             migrationBuilder.CreateIndex(
                 name: "ix_cms_media_folder_site_path",

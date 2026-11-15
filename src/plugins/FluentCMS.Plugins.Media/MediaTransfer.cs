@@ -321,7 +321,7 @@ internal sealed class MediaTransfer(
 
         if (replaced is not null)
         {
-            await replaced.DeleteAsync(storages, logger);
+            await replaced.DeleteAsync(asset, storages, logger);
         }
 
         MediaAssetEvent raised = existing is null

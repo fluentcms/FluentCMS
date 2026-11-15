@@ -584,17 +584,63 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         var uploaded = await UploadAsync(admin, bands, "bands.png");
         var key = (await AssetAsync(uploaded.Id)).ShouldNotBeNull().StorageKey;
         Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(Guid.CreateVersion7(), "shared.png", "image/png", bands, key: key)]))).ShouldBe((1, 0, 0));
-        using var form = new MultipartFormDataContent();
-        var file = new ByteArrayContent(Files.Png(5, 5));
-        file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
-        form.Add(file, "file", "new.png");
 
-        using var replaced = await admin.PostAsync(new Uri($"{Root}/{uploaded.Id:D}/replace", UriKind.Relative), form, Token);
+        await ReplaceThroughTheServiceAsync(admin, uploaded.Id, Files.Png(5, 5));
 
-        replaced.StatusCode.ShouldBe(HttpStatusCode.OK);
         var stored = (await AssetAsync(uploaded.Id)).ShouldNotBeNull();
         (stored.StorageKey == key, stored.OwnsFile).ShouldBe((false, true));
         FilesOf(media, uploaded.Id).ShouldBe([key, stored.StorageKey], ignoreOrder: true);
+    }
+
+    // A replace through the service reads owns_file as the import does: a key a line named stays, and so do the variant files
+    // beside it, which can be another instance's too; only their rows go.
+    [Fact]
+    public async Task AReplaceThroughTheServiceKeepsAKeyALineNamed()
+    {
+        using var admin = await media.AdminAsync();
+        var id = Guid.CreateVersion7();
+        var bands = Bands(8, 8);
+        var named = $"{DefaultSite.Id:N}/{id:N}/original.png";
+        Directory.CreateDirectory(Path.Combine(media.StorageRoot, DefaultSite.Id.ToString("N"), id.ToString("N")));
+        await File.WriteAllBytesAsync(Path.Combine(media.StorageRoot, named), bands, Token);
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(id, "shared.png", "image/png", bands, key: named)]))).ShouldBe((1, 0, 0));
+        await VariantAsync(media, admin, id);
+        var shared = FilesOf(media, id);
+
+        await ReplaceThroughTheServiceAsync(admin, id, Files.Png(5, 5));
+
+        var stored = (await AssetAsync(id)).ShouldNotBeNull();
+        stored.OwnsFile.ShouldBeTrue();
+        FilesOf(media, id).ShouldBe([.. shared, stored.StorageKey], ignoreOrder: true);
+        (await VariantsAsync(media, id)).ShouldBe(0);
+    }
+
+    // A line may name a variant of the asset as its file. The saved row then names that key, which is never deleted with
+    // the files the old file leaves, while the old original, which no line named, goes.
+    [Fact]
+    public async Task ALineThatNamesAVariantOfTheAssetKeepsThatFile()
+    {
+        using var admin = await media.AdminAsync();
+        var uploaded = await UploadAsync(admin, Bands(8, 8), "bands.png");
+        var key = (await AssetAsync(uploaded.Id)).ShouldNotBeNull().StorageKey;
+        await VariantAsync(media, admin, uploaded.Id);
+        string variant;
+        await using (var scope = media.Services.CreateAsyncScope())
+        {
+            variant = (await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Variant>().AsNoTracking().SingleAsync(item => item.AssetId == uploaded.Id, Token)).StorageKey;
+        }
+
+        var bytes = await StoredAsync(variant);
+        var line = Line(uploaded.Id, "small" + Path.GetExtension(variant), "image/png", bytes, updatedAt: media.Host.Time.GetUtcNow().AddMinutes(5), key: variant);
+
+        var report = await ImportAsync(admin, await PackageAsync(admin, [line]));
+
+        Items(report).ShouldBeEmpty();
+        Counts(report).ShouldBe((0, 1, 0));
+        var stored = (await AssetAsync(uploaded.Id)).ShouldNotBeNull();
+        (stored.StorageKey, stored.Checksum, stored.OwnsFile).ShouldBe((variant, Sha256(bytes), false));
+        FilesOf(media, uploaded.Id).ShouldBe([variant]);
+        FilesOf(media, uploaded.Id).ShouldNotContain(key);
     }
 
     // A line that names the asset's own key, whose file is not the one the row says, takes the key as named and deletes
@@ -979,6 +1025,16 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         public Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default) => inner.ExistsAsync(key, cancellationToken);
 
         public Task<FileStorageMetadata?> GetMetadataAsync(string key, CancellationToken cancellationToken = default) => inner.GetMetadataAsync(key, cancellationToken);
+    }
+
+    private static async Task ReplaceThroughTheServiceAsync(HttpClient admin, Guid id, byte[] png)
+    {
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(png);
+        file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        form.Add(file, "file", "new.png");
+        using var replaced = await admin.PostAsync(new Uri($"{Root}/{id:D}/replace", UriKind.Relative), form, Token);
+        replaced.StatusCode.ShouldBe(HttpStatusCode.OK, await replaced.Content.ReadAsStringAsync(Token));
     }
 
     // An import that may stop part-way, whose response then ends without a report.

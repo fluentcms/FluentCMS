@@ -47,6 +47,9 @@ public sealed partial class BaselineTests : IDisposable
     // database (10.4, H5), so a change of the model goes into the baseline until 1.0.0.
     private static readonly string[] TablesAddedToTheBaseline = ["cms_default_grant"];
 
+    // Columns and indexes of a table of the chain added the same way, by the prefix of their catalog lines.
+    private static readonly string[] LinesAddedToTheBaseline = ["column:cms_media_asset.owns_file:", "index:cms_media_asset.ix_cms_media_asset_site_owns_file:"];
+
     // The chain raised the stamp of the Author role when it changed that role's seeded grants, so that a cached grant was
     // read again; the baseline seeds every role at its first stamp.
     private const string AuthorRole = "00000000-0000-7000-8000-000000000003";
@@ -285,7 +288,12 @@ public sealed partial class BaselineTests : IDisposable
             catalog.Any(line => line.StartsWith("table:", StringComparison.Ordinal) && OfTable(line, table)).ShouldBeTrue(table);
         }
 
-        return [.. catalog.Where(line => !TablesAddedToTheBaseline.Any(table => OfTable(line, table)))];
+        foreach (var added in LinesAddedToTheBaseline)
+        {
+            catalog.Any(line => line.StartsWith(added, StringComparison.Ordinal)).ShouldBeTrue(added);
+        }
+
+        return [.. catalog.Where(line => !TablesAddedToTheBaseline.Any(table => OfTable(line, table)) && !LinesAddedToTheBaseline.Any(added => line.StartsWith(added, StringComparison.Ordinal)))];
 
         static bool OfTable(string line, string table)
         {
