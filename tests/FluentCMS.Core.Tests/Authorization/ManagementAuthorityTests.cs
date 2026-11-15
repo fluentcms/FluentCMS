@@ -54,6 +54,7 @@ public class ManagementAuthorityTests
                 (await authority.AllowsAsync(CorePermissions.UsersManage, site: null, Token)).ShouldBeTrue();
                 (await checker.AllowsAsync("media.manage", Site, Token)).ShouldBeTrue();
                 (await checker.CanManageAsync(Token)).ShouldBeTrue();
+                (await checker.HoldsGrantInAsync(new SiteId(Guid.CreateVersion7()), Token)).ShouldBeTrue();
             }
 
             await Should.ThrowAsync<InvalidOperationException>(() => authority.AllowsAsync(CorePermissions.UsersManage, site: null, Token).AsTask());
@@ -69,6 +70,27 @@ public class ManagementAuthorityTests
         (await authority.AllowsAsync(CorePermissions.UsersManage, site: null, Token)).ShouldBeFalse();
         (await authority.CoversAsync([("content.page.read", PermissionConstraints.None)], null, Unbound, Token)).ShouldBeFalse();
         await Should.ThrowAsync<PermissionDeniedException>(() => new PermissionChecker(authority).RequireAsync("media.manage", Site, Token).AsTask());
+        (await new PermissionChecker(authority).HoldsGrantInAsync(Site, Token)).ShouldBeFalse();
+    }
+
+    // A grant reaches a site through a role of that site or of the instance, within its own site limit, whatever it permits.
+    [Fact]
+    public async Task AGrantReachesTheSitesOfItsRoleAndOfItsLimitWhateverItPermits()
+    {
+        var other = new SiteId(Guid.CreateVersion7());
+        var principal = new Principal(PrincipalKind.ApiKey, Guid.CreateVersion7(), "key", [new(TokenScopes.Claim, "management")]);
+        var accessor = new OperationContextAccessor { Current = new OperationContext(principal, Origin.Api, Site, "en", null, "test", DateTimeOffset.UtcNow) };
+
+        async Task<(bool Site, bool Other)> ReachAsync(params EffectiveGrant[] grants)
+        {
+            var checker = new PermissionChecker(new ManagementAuthority(new Evaluator(grants), accessor));
+            return (await checker.HoldsGrantInAsync(Site, Token), await checker.HoldsGrantInAsync(other, Token));
+        }
+
+        (await ReachAsync(new EffectiveGrant("media.read", PermissionConstraints.None, Site.Value))).ShouldBe((true, false));
+        (await ReachAsync(new EffectiveGrant("content.*.read", new PermissionConstraints { Sites = [other] }, roleSite: null))).ShouldBe((false, true));
+        (await ReachAsync(new EffectiveGrant("schema.read", PermissionConstraints.None, roleSite: null))).ShouldBe((true, true));
+        (await ReachAsync()).ShouldBe((false, false));
     }
 
     // Only a token or key for managing may manage, and the mcp scope on the MCP server: the anonymous caller, a Delivery or
@@ -100,15 +122,16 @@ public class ManagementAuthorityTests
         () => checker.AllowsAsync("media.manage", Site, Token).AsTask(),
         () => checker.RequireAsync("media.manage", site: null, Token).AsTask(),
         () => checker.CanManageAsync(Token).AsTask(),
+        () => checker.HoldsGrantInAsync(Site, Token).AsTask(),
     ];
 
-    // The system principal holds every grant without any being stored, and any other holds none here.
-    private sealed class Evaluator : IAuthorizationEvaluator
+    // The system principal holds every grant without any being stored, and any other holds the grants given, none by default.
+    private sealed class Evaluator(params EffectiveGrant[] grants) : IAuthorizationEvaluator
     {
         private static readonly RowRuleRegistry Rules = new(new SchemaBuilder().Build(), new ContentQueryOptions(), []);
 
         public ValueTask<EffectivePermissions> ResolveAsync(OperationContext context, CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(new EffectivePermissions(context, [], Rules));
+            ValueTask.FromResult(new EffectivePermissions(context, grants, Rules));
 
         public ValueTask<bool> CanAccessEntryAsync(OperationContext context, SchemaType type, ContentOperation operation, Guid entry, AccessTarget target, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();

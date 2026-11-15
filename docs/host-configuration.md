@@ -496,7 +496,7 @@ The MCP plugin (`FluentCMS.Plugins.Mcp`, which the reference host adds) serves t
 | `Limits:CallsPerMinute` | `120` | The tool calls a client may make in a minute, counted per client id or API key on each instance. A call over it is a tool error (`FCMS1634`) that says when to retry. |
 | `Limits:WritesPerMinute` | `30` | The calls of tools that change data a client may make in a minute, at most `CallsPerMinute`. |
 | `MaxRequestBytes` | `1048576` | The body of a request to `/mcp`, in bytes, refused with 413 and `FCMS3111` when larger. `FluentCms:Limits:MaxBodySize` still caps it. |
-| `MaxResultBytes` | `262144` | The largest list a content tool answers, in bytes of its JSON. A longer one ends at an entry, with `truncated` and the cursor of the rest. |
+| `MaxResultBytes` | `262144` | The largest list a content tool answers, in bytes as sent, its JSON as structured content and again as text. A longer one ends at an entry, with `truncated` and the cursor of the rest. A dry run's plan keeps to it by shortening its titles, or leaving them out. |
 | `MaxListTextLength` | `500` | The characters of a text a list shows before it shortens it. |
 
 The `{type}_delete` and `bulk` tools answer a plan first and run only with its confirmation token, which is signed with a key that Data Protection wraps. The instances of a host share the key ring, which is in the database ([authorization server](#authorization-server)), so each accepts the tokens of the others and nothing is stored.
@@ -516,7 +516,7 @@ With the plugin, the authorization server takes dynamic client registration (RFC
 
 The role of a client limits its tokens: a call through the client is allowed what both the user's roles and the client's role allow. An administrator with `mcp.manage` for the instance lists the clients at `GET /api/management/v1/mcp/clients`, approves one with `POST /mcp/clients/{id}/approve` and `{ "role" }`, rejects one with `POST /mcp/clients/{id}/reject`, and removes one with its sessions and tokens with `DELETE /mcp/clients/{id}`. A client that is not approved within 7 days is removed by the daily job `mcp.client-cleanup`. The startup report lists `mcp-open-client-registration` while the policy is `open` in Production; it is made once per start, so a change of the setting shows at the next one.
 
-The plugin keeps the guidelines, the type instructions and the stored prompts of a site in two tables of its own, `cms_mcp_instruction` and `cms_mcp_prompt`. They are a [migration stream](plugin-migrations.md) of the plugin, `cms_mcp__migrations`, which the host applies with its other migrations (`FluentCms:Database:MigrateOnStartup`), so a host that already runs the plugin has one migration to apply after it updates.
+The guidelines, the type instructions and the stored prompts of a site reach only the agents of that site: a caller that may manage and holds some grant there, so not a Delivery key and not a principal whose roles are all in other sites. The plugin keeps them in two tables of its own, `cms_mcp_instruction` and `cms_mcp_prompt`. They are a [migration stream](plugin-migrations.md) of the plugin, `cms_mcp__migrations`, which the host applies with its other migrations (`FluentCms:Database:MigrateOnStartup`), so a host that already runs the plugin has one migration to apply after it updates.
 
 ## Multi-site
 
@@ -558,7 +558,7 @@ The GraphQL plugin (`FluentCMS.Plugins.GraphQL`, which the reference host adds) 
 | `MaxDepth` | `12` | The deepest a query may nest its fields. |
 | `MaxFieldCost` | `1000` | The most a query may cost by HotChocolate's cost analysis: 10 for a root field, and 1 for a populated relation or media field for each entry of the page above it. |
 | `MaxTypeCost` | `1000` | The most objects a query may return, by the same analysis. |
-| `MaxRequestSize` | `262144` | The body of a request, in bytes, refused with 413 and `FCMS3111` when larger. `FluentCms:Limits:MaxBodySize` still caps it. |
+| `MaxRequestSize` | `262144` | The body of a request, in bytes, refused with 413 and `FCMS3111` when larger, also when it is sent in chunks. `FluentCms:Limits:MaxBodySize` still caps it. |
 | `ExecutionTimeout` | `00:00:30` | How long a request may run. |
 | `OpenIntrospection` | unset | Whether any caller may introspect the schema. Unset, it is open in Development, and elsewhere needs a signed-in caller with `schema.read`. |
 | `PersistedQueries` | unset | A folder of query files, each named `{id}.graphql`, that a request names by `id`. A relative path is under the content root. |

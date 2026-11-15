@@ -53,4 +53,15 @@ public interface IPermissionChecker
     /// <returns><see langword="true"/> when a grant may give the principal more than reading content.</returns>
     /// <exception cref="InvalidOperationException">There is no current operation.</exception>
     ValueTask<bool> CanManageAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Whether some grant of the principal reaches a site, whatever it permits there: through a role of that site or of the
+    /// instance, within the grant's own site limit, the sites a key is bound to and the role of the client a token came
+    /// through. A plugin that serves what belongs to a site, rather than what a permission names, asks this.
+    /// </summary>
+    /// <param name="site">The site.</param>
+    /// <param name="cancellationToken">Cancels the check.</param>
+    /// <returns><see langword="true"/> when a grant of the principal reaches the site, or the principal is the system.</returns>
+    /// <exception cref="InvalidOperationException">There is no current operation.</exception>
+    ValueTask<bool> HoldsGrantInAsync(SiteId site, CancellationToken cancellationToken = default);
 }

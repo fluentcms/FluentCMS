@@ -1,3 +1,5 @@
+using System.Text.Json;
+using FluentCMS.Agents;
 using FluentCMS.Plugins.Sample;
 using FluentCMS.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -74,6 +76,75 @@ public sealed class McpCallLimitTests
         (await OkAsync(client, "post_list")).GetProperty("items").EnumerateArray().Select(entry => entry.GetProperty("title").GetString()).ShouldBe(["One", "Later"], ignoreOrder: true);
     }
 
+    // A client that keeps retrying a write the write limit refuses keeps the calls of its reads.
+    [Fact]
+    public async Task AWriteThatTheWriteLimitRefusesSpendsNoCall()
+    {
+        await using var host = McpSafetyTesting.Host(options => options.Limits = new McpCallLimitOptions { CallsPerMinute = 3, WritesPerMinute = 1 });
+        using var http = await KeyAsync(host);
+        await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+
+        await OkAsync(client, "post_create_draft", new { fields = new { title = "One" } });
+        for (var retry = 0; retry < 5; retry++)
+        {
+            Code(await CallAsync(client, "post_create_draft", new { fields = new { title = "Again" } })).ShouldBe("FCMS1634");
+        }
+
+        (await CallAsync(client, "post_list")).IsError.ShouldNotBe(true);
+        (await CallAsync(client, "post_list")).IsError.ShouldNotBe(true);
+        var overCalls = await CallAsync(client, "post_list");
+        Code(overCalls).ShouldBe("FCMS1634");
+        Text(overCalls).ShouldContain("3 tool calls");
+    }
+
+    // The first call of a tool lists the tools, and what that list showed of each holds for the next calls of the window.
+    [Fact]
+    public async Task AListOfTheToolsHoldsForTheCallsOfAWindow()
+    {
+        var lists = new ListCount();
+        await using var host = McpSafetyTesting.Host(_ => { })
+            .Configure(cms => cms.AddPlugin<CountedPlugin>())
+            .WithServices(services => services.AddSingleton(lists));
+        using var http = await KeyAsync(host);
+        await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+
+        await OkAsync(client, CountedTools.Write);
+        await OkAsync(client, CountedTools.Read);
+        await OkAsync(client, CountedTools.Write);
+        lists.Count.ShouldBe(1);
+
+        host.Time.Advance(McpCallLimits.Window + TimeSpan.FromSeconds(1));
+        await OkAsync(client, CountedTools.Read);
+        lists.Count.ShouldBe(2);
+    }
+
+    // A made-up name costs a list of the tools on each call, so once the write limit refuses it, it keeps the call it took
+    // and runs out of calls, after which nothing is listed.
+    [Fact]
+    public async Task MadeUpNamesOverTheWriteLimitRunOutOfCalls()
+    {
+        var lists = new ListCount();
+        await using var host = McpSafetyTesting.Host(options => options.Limits = new McpCallLimitOptions { CallsPerMinute = 3, WritesPerMinute = 1 })
+            .Configure(cms => cms.AddPlugin<CountedPlugin>())
+            .WithServices(services => services.AddSingleton(lists));
+        using var http = await KeyAsync(host);
+        await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+
+        (await Should.ThrowAsync<McpProtocolException>(async () => await CallAsync(client, "made_up_0"))).Message.ShouldContain("FCMS1600");
+        Text(await CallAsync(client, "made_up_1")).ShouldContain("tools that change data");
+        Text(await CallAsync(client, "made_up_2")).ShouldContain("tools that change data");
+        lists.Count.ShouldBe(3);
+
+        for (var name = 3; name < 8; name++)
+        {
+            var refused = await CallAsync(client, $"made_up_{name}");
+            Code(refused).ShouldBe("FCMS1634");
+            Text(refused).ShouldContain("3 tool calls");
+        }
+
+        lists.Count.ShouldBe(3);
+    }
+
     // A name no provider lists counts as a tool that changes data, so made-up names cannot be called without end.
     [Fact]
     public async Task ACallOfANameThatIsNoToolCountsAsOneThatChangesData()
@@ -115,7 +186,7 @@ public sealed class McpCallLimitTests
         Enumerable.Range(0, 60).Select(_ => limits.Call("client:a")).ShouldAllBe(refusal => refusal == null);
         var refused = limits.Call("client:a").ShouldNotBeNull();
         limits.Call("client:b").ShouldBeNull();
-        limits.Write("client:a").ShouldBeNull();
+        limits.Write("client:a", refund: true).ShouldBeNull();
 
         refused.Limit.ShouldBe(60);
         refused.Write.ShouldBeFalse();
@@ -132,6 +203,30 @@ public sealed class McpCallLimitTests
 
         time.Advance(TimeSpan.FromMinutes(1));
         Enumerable.Range(0, 60).Select(_ => limits.Call("client:a")).ShouldAllBe(refusal => refusal == null);
+    }
+
+    [Fact]
+    public void AWriteTheWriteBucketRefusesGivesItsCallBack()
+    {
+        var limits = new McpCallLimits(Options.Create(new McpOptions { Limits = new McpCallLimitOptions { CallsPerMinute = 3, WritesPerMinute = 1 } }), new ControllableTimeProvider());
+
+        limits.Call("client:a").ShouldBeNull();
+        limits.Write("client:a", refund: true).ShouldBeNull();
+        limits.Call("client:a").ShouldBeNull();
+        limits.Write("client:a", refund: true).ShouldNotBeNull().Write.ShouldBeTrue();
+
+        // The refused write took no call: two of the three are left.
+        limits.Call("client:a").ShouldBeNull();
+        limits.Call("client:a").ShouldBeNull();
+        limits.Call("client:a").ShouldNotBeNull().Write.ShouldBeFalse();
+
+        // A refused write of a name no provider listed keeps the call it took: one of the three is left.
+        limits.Call("client:b").ShouldBeNull();
+        limits.Write("client:b", refund: false).ShouldBeNull();
+        limits.Call("client:b").ShouldBeNull();
+        limits.Write("client:b", refund: false).ShouldNotBeNull();
+        limits.Call("client:b").ShouldBeNull();
+        limits.Call("client:b").ShouldNotBeNull().Write.ShouldBeFalse();
     }
 
     [Fact]
@@ -183,4 +278,45 @@ public sealed class McpCallLimitTests
             }
         }
     }
+}
+
+// A tool provider that counts how often it is asked to list, with a tool that reads and one that changes data.
+[FluentCmsPlugin("counted", SdkRange = "[1.0.0,2.0.0)")]
+public sealed class CountedPlugin : IPlugin
+{
+    public void ConfigureServices(IPluginServiceBuilder plugin) => plugin.AddMcpTools<CountedTools>();
+
+    public void Configure(IPluginAppBuilder app)
+    {
+    }
+}
+
+public sealed class ListCount
+{
+    private int _count;
+
+    public int Count => Volatile.Read(ref _count);
+
+    public void Add() => Interlocked.Increment(ref _count);
+}
+
+public sealed class CountedTools(ListCount lists) : IMcpToolProvider
+{
+    public const string Read = "counted_read";
+    public const string Write = "counted_write";
+
+    private static readonly JsonElement ObjectSchema = JsonSerializer.SerializeToElement(new { type = "object" });
+
+    public ValueTask<IReadOnlyList<McpToolDescriptor>> ListToolsAsync(McpListRequest request, CancellationToken cancellationToken = default)
+    {
+        lists.Add();
+        return ValueTask.FromResult<IReadOnlyList<McpToolDescriptor>>(
+        [
+            new(Read, "Reads.", ObjectSchema) { Annotations = new McpToolAnnotations { ReadOnly = true, Idempotent = true } },
+            new(Write, "Writes.", ObjectSchema),
+        ]);
+    }
+
+    public ValueTask<McpToolResult?> CallToolAsync(McpToolCall request, CancellationToken cancellationToken = default) =>
+        ValueTask.FromResult<McpToolResult?>(request.Name is Read or Write ? McpToolResult.FromJson(JsonSerializer.SerializeToElement(new { tool = request.Name })) : null);
 }

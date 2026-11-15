@@ -29,7 +29,8 @@ public sealed class McpOptions
     // The largest body of a request to /mcp, in bytes. Core's cap applies as well, so the lower of the two holds.
     public long MaxRequestBytes { get; set; } = 1024 * 1024;
 
-    // The largest list a content tool answers, in bytes of its JSON. A longer one ends at an entry, with the cursor of the rest.
+    // The largest list a content tool answers, in bytes as sent, its JSON as structured content and as text. A longer one
+    // ends at an entry, with the cursor of the rest, and a dry run's plan keeps to it by its titles.
     public int MaxResultBytes { get; set; } = 256 * 1024;
 
     // The characters of a text that a list shows before it shortens it. {type}_get reads it whole.

@@ -172,6 +172,49 @@ public class FailingPopulation : DispatchProxy
     }
 }
 
+// The content service of the host, with every date of site-settings a read returns stored as text that is not a date.
+public class UnreadableDates : DispatchProxy
+{
+    public const string Value = "not a date";
+
+    private IContentService _inner = null!;
+
+    public static IContentService Wrap(IContentService inner)
+    {
+        var proxy = Create<IContentService, UnreadableDates>();
+        ((UnreadableDates)(object)proxy)._inner = inner;
+        return proxy;
+    }
+
+    protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+    {
+        ArgumentNullException.ThrowIfNull(targetMethod);
+        object? result;
+        try
+        {
+            result = targetMethod.Invoke(_inner, args);
+        }
+        catch (TargetInvocationException exception) when (exception.InnerException is { } inner)
+        {
+            ExceptionDispatchInfo.Throw(inner);
+            throw;
+        }
+
+        return result is Task<PagedResult<ContentDocument>> page && args?[0] is "site-settings" ? SpoilAsync(page) : result;
+    }
+
+    private static async Task<PagedResult<ContentDocument>> SpoilAsync(Task<PagedResult<ContentDocument>> read)
+    {
+        var page = await read;
+        foreach (var entry in page.Items.Where(entry => entry.ContainsKey("founded")))
+        {
+            entry["founded"] = Value;
+        }
+
+        return page;
+    }
+}
+
 public sealed class LogCapture : ILoggerProvider
 {
     public ConcurrentQueue<(int Id, LogLevel Level, string Message)> Lines { get; } = new();
