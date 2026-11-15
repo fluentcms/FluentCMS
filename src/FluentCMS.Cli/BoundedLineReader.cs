@@ -2,14 +2,14 @@ using System.Text;
 
 namespace FluentCMS.Cli;
 
-// The lines of standard input or of an event stream, each at most a bound long: a longer line is read to its end and given
-// as too long, without its text, so that what is held stays bounded. A line ends at a line feed, a carriage return or both,
-// as TextReader.ReadLine has it. Each read takes what is there: StreamReader.ReadAsync goes on reading while every read
-// fills its buffer, so on a pipe whose writer waits for an answer it would wait for bytes that never come.
+// The lines of standard input or of an event stream, each at most a bound of UTF-8 bytes long: a longer line is read to its
+// end and given as too long, without its text, so that what is held stays bounded. A line ends at a line feed, a carriage
+// return or both, as TextReader.ReadLine has it. Each read takes what is there: StreamReader.ReadAsync goes on reading while
+// every read fills its buffer, so on a pipe whose writer waits for an answer it would wait for bytes that never come.
 internal sealed class BoundedLineReader
 {
     private readonly Func<Memory<char>, CancellationToken, ValueTask<int>> _read;
-    private readonly int _maxLength;
+    private readonly long _maxBytes;
     private readonly char[] _buffer = new char[8192];
     private int _start;
     private int _end;
@@ -18,29 +18,30 @@ internal sealed class BoundedLineReader
     // A line that ended with a carriage return owns the line feed that may follow it.
     private bool _afterCarriageReturn;
 
-    private BoundedLineReader(Func<Memory<char>, CancellationToken, ValueTask<int>> read, int maxLength)
+    private BoundedLineReader(Func<Memory<char>, CancellationToken, ValueTask<int>> read, long maxBytes)
     {
         _read = read;
-        _maxLength = maxLength;
+        _maxBytes = maxBytes;
     }
 
-    public static BoundedLineReader Of(TextReader reader, int maxLength)
+    public static BoundedLineReader Of(TextReader reader, long maxBytes)
     {
         ArgumentNullException.ThrowIfNull(reader);
-        return new BoundedLineReader(reader.ReadAsync, maxLength);
+        return new BoundedLineReader(reader.ReadAsync, maxBytes);
     }
 
     // UTF-8, decoded here, with a byte order mark at the start left out.
-    public static BoundedLineReader Of(Stream stream, int maxLength)
+    public static BoundedLineReader Of(Stream stream, long maxBytes)
     {
         ArgumentNullException.ThrowIfNull(stream);
-        return new BoundedLineReader(new Utf8Chunks(stream).ReadAsync, maxLength);
+        return new BoundedLineReader(new Utf8Chunks(stream).ReadAsync, maxBytes);
     }
 
     // Null once the source has ended and every line is read.
     public async ValueTask<BoundedLine?> ReadLineAsync(CancellationToken cancellationToken)
     {
         var line = new StringBuilder();
+        long bytes = 0;
         var tooLong = false;
         var any = false;
         while (true)
@@ -72,7 +73,8 @@ internal sealed class BoundedLineReader
             var span = _buffer.AsSpan(_start, _end - _start);
             var end = span.IndexOfAny('\r', '\n');
             var part = end < 0 ? span : span[..end];
-            if (!tooLong && line.Length + part.Length > _maxLength)
+            bytes += Encoding.UTF8.GetByteCount(part);
+            if (!tooLong && bytes > _maxBytes)
             {
                 tooLong = true;
                 line.Clear();

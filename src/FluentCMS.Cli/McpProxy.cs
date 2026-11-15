@@ -17,9 +17,9 @@ internal sealed class McpProxy(ManagementClient client, BoundedLineReader input,
 {
     public const string Endpoint = "mcp";
 
-    // A line of standard input, an answer and an event of a stream are each held whole, so each is bounded; the MCP plugin
-    // takes 1 MiB in a request unless configured otherwise.
-    public const int MaxMessageLength = 16 * 1024 * 1024;
+    // A line of standard input, an answer and an event of a stream are each held whole, so each is bounded, in UTF-8 bytes;
+    // the MCP plugin takes 1 MiB in a request unless configured otherwise.
+    public const int MaxMessageBytes = 16 * 1024 * 1024;
 
     // Standard input ends when the client stops the proxy; the calls in flight have this long to answer, then are cancelled.
     public static readonly TimeSpan DrainTimeout = TimeSpan.FromSeconds(30);
@@ -215,8 +215,9 @@ internal sealed class McpProxy(ManagementClient client, BoundedLineReader input,
     private async Task RelayEventsAsync(HttpResponseMessage response, Sent sent, HashSet<string> answered, CancellationToken cancellationToken)
     {
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        var lines = BoundedLineReader.Of(stream, MaxMessageLength);
+        var lines = BoundedLineReader.Of(stream, MaxMessageBytes);
         var data = new StringBuilder();
+        long dataBytes = 0;
         var tooLarge = false;
         while (true)
         {
@@ -234,6 +235,7 @@ internal sealed class McpProxy(ManagementClient client, BoundedLineReader input,
                 }
 
                 data.Clear();
+                dataBytes = 0;
                 tooLarge = false;
                 if (line is null)
                 {
@@ -243,7 +245,7 @@ internal sealed class McpProxy(ManagementClient client, BoundedLineReader input,
                 continue;
             }
 
-            if (read.TooLong || (!tooLarge && data.Length + read.Text.Length > MaxMessageLength))
+            if (read.TooLong)
             {
                 tooLarge = true;
                 data.Clear();
@@ -251,7 +253,17 @@ internal sealed class McpProxy(ManagementClient client, BoundedLineReader input,
             else if (!tooLarge && read.Text.StartsWith("data:", StringComparison.Ordinal))
             {
                 var value = read.Text.AsSpan(5);
-                data.Append(value.StartsWith(" ") ? value[1..] : value).Append('\n');
+                value = value.StartsWith(" ") ? value[1..] : value;
+                dataBytes += Encoding.UTF8.GetByteCount(value) + 1;
+                if (dataBytes > MaxMessageBytes)
+                {
+                    tooLarge = true;
+                    data.Clear();
+                }
+                else
+                {
+                    data.Append(value).Append('\n');
+                }
             }
         }
     }
@@ -289,12 +301,38 @@ internal sealed class McpProxy(ManagementClient client, BoundedLineReader input,
     private static bool IsJsonRpc(JsonElement element) => ManagementClient.Text(element, "jsonrpc") == "2.0";
 
     // An id is a string, a number or null, compared by value, so that a server that writes 1 for 1.0 still answers it.
-    private static string IdKey(JsonElement id) => id.ValueKind switch
+    internal static string IdKey(JsonElement id) => id.ValueKind switch
     {
         JsonValueKind.String => "s" + id.GetString(),
-        JsonValueKind.Number when id.TryGetDecimal(out var number) => "n" + number.ToString("G29", CultureInfo.InvariantCulture),
+        JsonValueKind.Number => "n" + NumberKey(id.GetRawText()),
         _ => "r" + id.GetRawText(),
     };
+
+    // A JSON number as its significant digits and exponent, exact at any size: 1, 1.0 and 10e-1 are 1e0, and 1e-30 is not 0.
+    // An exponent too large to shift is compared as it is written.
+    private static string NumberKey(string number)
+    {
+        var negative = number.StartsWith('-');
+        var text = negative ? number[1..] : number;
+        var e = text.IndexOfAny(['e', 'E']);
+        var mantissa = e < 0 ? text : text[..e];
+        if (!long.TryParse(e < 0 ? "0" : text[(e + 1)..], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var exponent)
+            || exponent is > 1_000_000_000 or < -1_000_000_000)
+        {
+            return number;
+        }
+
+        var dot = mantissa.IndexOf('.', StringComparison.Ordinal);
+        var digits = (dot < 0 ? mantissa : mantissa.Remove(dot, 1)).TrimStart('0');
+        if (digits.Length == 0)
+        {
+            return "0";
+        }
+
+        var significant = digits.TrimEnd('0');
+        exponent += digits.Length - significant.Length - (dot < 0 ? 0 : mantissa.Length - dot - 1);
+        return string.Create(CultureInfo.InvariantCulture, $"{(negative ? "-" : "")}{significant}e{exponent}");
+    }
 
     // A request whose answer never came gets an error, so that the client does not wait for it; the requests of a batch get
     // a batch of errors.
@@ -313,7 +351,7 @@ internal sealed class McpProxy(ManagementClient client, BoundedLineReader input,
     // An answer longer than the bound is refused as it is read rather than held.
     private static async Task<string> ReadAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
-        if (response.Content.Headers.ContentLength > MaxMessageLength)
+        if (response.Content.Headers.ContentLength > MaxMessageBytes)
         {
             throw TooLarge();
         }
@@ -325,7 +363,7 @@ internal sealed class McpProxy(ManagementClient client, BoundedLineReader input,
         int read;
         while ((read = await stream.ReadAsync(chunk, cancellationToken)) > 0)
         {
-            if (buffer.Length + read > MaxMessageLength)
+            if (buffer.Length + read > MaxMessageBytes)
             {
                 throw TooLarge();
             }

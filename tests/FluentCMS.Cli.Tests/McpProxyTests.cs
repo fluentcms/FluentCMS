@@ -16,6 +16,8 @@ public sealed class McpProxyTests(InstanceFixture instance) : IClassFixture<Inst
     private const string ListTools = """{"jsonrpc":"2.0","id":2,"method":"tools/list"}""";
     private const string CallTool = """{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"note_list","arguments":{}}}""";
 
+    private static readonly string[] OneWrittenOtherwise = ["1", "1.0", "10e-1", "0.1e1", "1.000E+0"];
+
     [Fact]
     public async Task AStdioClientListsTheToolsOfAnInstanceAndCallsOne()
     {
@@ -175,7 +177,7 @@ public sealed class McpProxyTests(InstanceFixture instance) : IClassFixture<Inst
         using var output = new StringWriter();
         using var error = new StringWriter();
         var client = new ManagementClient(new Instance(new Uri(InstanceFixture.Url), "fcms_mk_drain"), new HttpClient(new Answering(_ => null)));
-        using var proxy = new McpProxy(client, BoundedLineReader.Of(new StringReader(ListTools + "\n"), McpProxy.MaxMessageLength), output, error, TimeSpan.FromMilliseconds(500));
+        using var proxy = new McpProxy(client, BoundedLineReader.Of(new StringReader(ListTools + "\n"), McpProxy.MaxMessageBytes), output, error, TimeSpan.FromMilliseconds(500));
 
         (await proxy.RunAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
 
@@ -252,7 +254,7 @@ public sealed class McpProxyTests(InstanceFixture instance) : IClassFixture<Inst
         using var reader = new AnonymousPipeClientStream(PipeDirection.In, writer.ClientSafePipeHandle);
         var character = bytesPerCharacter == 3 ? ((char)0x20AC).ToString() : "x";
         var line = string.Concat(Enumerable.Repeat(character, (bytes - 1) / bytesPerCharacter)) + new string('y', (bytes - 1) % bytesPerCharacter);
-        var lines = BoundedLineReader.Of(reader, McpProxy.MaxMessageLength);
+        var lines = BoundedLineReader.Of(reader, McpProxy.MaxMessageBytes);
 
         var reading = lines.ReadLineAsync(TestContext.Current.CancellationToken).AsTask();
         await writer.WriteAsync(Encoding.UTF8.GetBytes(line + "\n"), TestContext.Current.CancellationToken);
@@ -322,6 +324,44 @@ public sealed class McpProxyTests(InstanceFixture instance) : IClassFixture<Inst
         (await run.RunAsync(new StringReader(Request + "\n"), "mcp", "--url", InstanceFixture.Url, "--token", "fcms_mk_ids")).ShouldBe(0, run.Error.ToString());
 
         Messages(run.Output.ToString()).Single().TryGetProperty("result", out _).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void AnIdIsComparedByItsValueExactly()
+    {
+        static string Key(string json)
+        {
+            using var document = JsonDocument.Parse(json);
+            return McpProxy.IdKey(document.RootElement);
+        }
+
+        OneWrittenOtherwise.Select(Key).Distinct().ShouldHaveSingleItem();
+        Key("0").ShouldBe(Key("-0.0"));
+        Key("1e-30").ShouldNotBe(Key("0"));
+        Key("1e-30").ShouldNotBe(Key("1e-31"));
+        Key("1e30").ShouldBe(Key("1000000000000000000000000000000"));
+        Key("1.0000000000000000000000000000001").ShouldNotBe(Key("1"));
+        Key("123456789012345678901234567890123").ShouldNotBe(Key("123456789012345678901234567890124"));
+        Key("\"1\"").ShouldNotBe(Key("1"));
+        Key("null").ShouldNotBe(Key("\"null\""));
+    }
+
+    // The bound is of UTF-8 bytes, as for an answer: three characters of three bytes each are nine bytes.
+    [Fact]
+    public async Task TheBoundOfALineIsInBytes()
+    {
+        var euro = ((char)0x20AC).ToString();
+        var text = string.Concat(Enumerable.Repeat(euro, 3)) + "\n" + string.Concat(Enumerable.Repeat(euro, 4)) + "\n0123456789\n";
+        foreach (var lines in new[] { BoundedLineReader.Of(new MemoryStream(Encoding.UTF8.GetBytes(text)), 10), BoundedLineReader.Of(new StringReader(text), 10) })
+        {
+            List<BoundedLine> read = [];
+            while (await lines.ReadLineAsync(TestContext.Current.CancellationToken) is { } line)
+            {
+                read.Add(line);
+            }
+
+            read.ShouldBe([new(string.Concat(Enumerable.Repeat(euro, 3)), false), new("", true), new("0123456789", false)]);
+        }
     }
 
     // A JSON answer that leaves out a request of the batch: that request gets an error.
@@ -415,7 +455,7 @@ public sealed class McpProxyTests(InstanceFixture instance) : IClassFixture<Inst
 
         protected override bool TryComputeLength(out long length)
         {
-            length = McpProxy.MaxMessageLength + 1L;
+            length = McpProxy.MaxMessageBytes + 1L;
             return true;
         }
     }
