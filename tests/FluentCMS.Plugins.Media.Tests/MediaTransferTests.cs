@@ -9,6 +9,7 @@ using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Sites;
 using FluentCMS.Media;
+using FluentCMS.Providers;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
@@ -483,6 +484,202 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         Directory.EnumerateFiles(host.StorageRoot, "*", SearchOption.AllDirectories).Count(path => path.Contains(id.ToString("N"), StringComparison.Ordinal)).ShouldBe(1);
     }
 
+    // A file the instance wrote, by an upload or an import, goes with its variants once the row names the new file, as after a
+    // replace, and a dry run deletes nothing.
+    [Fact]
+    public async Task AnImportThatReplacesAFileTheInstanceWroteLeavesOnlyTheNewOriginalAndNoVariant()
+    {
+        using var admin = await media.AdminAsync();
+        var uploaded = await UploadAsync(admin, Bands(8, 8), "bands.png");
+        (await AssetAsync(uploaded.Id)).ShouldNotBeNull().OwnsFile.ShouldBeTrue();
+        await VariantAsync(media, admin, uploaded.Id);
+        var before = FilesOf(media, uploaded.Id);
+        before.Count.ShouldBe(2);
+
+        foreach (var (png, minutes) in new[] { (Bands(12, 4), 5), (Bands(16, 4), 10) })
+        {
+            var package = await PackageAsync(admin, [Line(uploaded.Id, "new.png", "image/png", png, updatedAt: media.Host.Time.GetUtcNow().AddMinutes(minutes))], (FileOf(uploaded.Id, ".png"), png));
+
+            Counts(await ImportAsync(admin, package, dryRun: true)).ShouldBe((0, 1, 0));
+            FilesOf(media, uploaded.Id).ShouldBe(before, ignoreOrder: true);
+
+            Counts(await ImportAsync(admin, package)).ShouldBe((0, 1, 0));
+            var stored = (await AssetAsync(uploaded.Id)).ShouldNotBeNull();
+            (stored.Checksum, stored.OwnsFile).ShouldBe((Sha256(png), true));
+            FilesOf(media, uploaded.Id).ShouldBe([stored.StorageKey]);
+            (await VariantsAsync(media, uploaded.Id)).ShouldBe(0);
+
+            await VariantAsync(media, admin, uploaded.Id);
+            before = FilesOf(media, uploaded.Id);
+        }
+    }
+
+    // A key a line named may be a file of another instance that shares the storage, so neither it nor the variants beside it
+    // are deleted when an import replaces the asset's file, then or after a later import replaced the file again; only the
+    // rows of those variants go.
+    [Fact]
+    public async Task AKeyALineNamedIsNeverDeletedNorTheVariantsBesideIt()
+    {
+        using var admin = await media.AdminAsync();
+        var id = Guid.CreateVersion7();
+        var bands = Bands(8, 8);
+        var named = $"{DefaultSite.Id:N}/{id:N}/original.png";
+        Directory.CreateDirectory(Path.Combine(media.StorageRoot, DefaultSite.Id.ToString("N"), id.ToString("N")));
+        await File.WriteAllBytesAsync(Path.Combine(media.StorageRoot, named), bands, Token);
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(id, "shared.png", "image/png", bands, key: named)]))).ShouldBe((1, 0, 0));
+        (await AssetAsync(id)).ShouldNotBeNull().OwnsFile.ShouldBeFalse();
+        await VariantAsync(media, admin, id);
+        var shared = FilesOf(media, id);
+        shared.Count.ShouldBe(2);
+
+        string? written = null;
+        foreach (var (png, minutes) in new[] { (Files.Png(5, 5), 5), (Files.Png(6, 6), 10) })
+        {
+            var package = await PackageAsync(admin, [Line(id, "new.png", "image/png", png, updatedAt: media.Host.Time.GetUtcNow().AddMinutes(minutes))], (FileOf(id, ".png"), png));
+
+            Counts(await ImportAsync(admin, package)).ShouldBe((0, 1, 0));
+
+            var stored = (await AssetAsync(id)).ShouldNotBeNull();
+            stored.OwnsFile.ShouldBeTrue();
+            stored.StorageKey.ShouldNotBe(written);
+            FilesOf(media, id).ShouldBe([.. shared, stored.StorageKey], ignoreOrder: true);
+            (await VariantsAsync(media, id)).ShouldBe(0);
+            written = stored.StorageKey;
+        }
+    }
+
+    // Another asset that names the key keeps the file and the variants of that file, whose keys it shares; the rows of the
+    // replaced file's variants go.
+    [Fact]
+    public async Task AFileAnotherAssetNamesStaysWithItsVariants()
+    {
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var bands = Bands(8, 8);
+        var uploaded = await UploadAsync(admin, bands, "bands.png");
+        var key = (await AssetAsync(uploaded.Id)).ShouldNotBeNull().StorageKey;
+        var sharing = Guid.CreateVersion7();
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(sharing, "shared.png", "image/png", bands, key: key)]))).ShouldBe((1, 0, 0));
+        await VariantAsync(media, admin, uploaded.Id);
+        var before = FilesOf(media, uploaded.Id);
+        var png = Files.Png(5, 5);
+
+        var report = await ImportAsync(admin, await PackageAsync(admin, [Line(uploaded.Id, "new.png", "image/png", png, updatedAt: media.Host.Time.GetUtcNow().AddMinutes(5))], (FileOf(uploaded.Id, ".png"), png)));
+
+        Counts(report).ShouldBe((0, 1, 0));
+        var stored = (await AssetAsync(uploaded.Id)).ShouldNotBeNull();
+        FilesOf(media, uploaded.Id).ShouldBe([.. before, stored.StorageKey], ignoreOrder: true);
+        (await VariantsAsync(media, uploaded.Id)).ShouldBe(0);
+        var original = (await GetAsync(anonymous, $"/api/delivery/v1/media/{sharing:D}"))["urls"]!["original"]!.GetValue<string>();
+        using var served = await FetchAsync(anonymous, original);
+        (await served.Content.ReadAsByteArrayAsync(Token)).ShouldBe(bands);
+    }
+
+    // A replace through the service shares the code, so it too keeps a file that another asset names.
+    [Fact]
+    public async Task AReplaceThroughTheServiceKeepsAFileAnotherAssetNames()
+    {
+        using var admin = await media.AdminAsync();
+        var bands = Bands(8, 8);
+        var uploaded = await UploadAsync(admin, bands, "bands.png");
+        var key = (await AssetAsync(uploaded.Id)).ShouldNotBeNull().StorageKey;
+        Counts(await ImportAsync(admin, await PackageAsync(admin, [Line(Guid.CreateVersion7(), "shared.png", "image/png", bands, key: key)]))).ShouldBe((1, 0, 0));
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(Files.Png(5, 5));
+        file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        form.Add(file, "file", "new.png");
+
+        using var replaced = await admin.PostAsync(new Uri($"{Root}/{uploaded.Id:D}/replace", UriKind.Relative), form, Token);
+
+        replaced.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var stored = (await AssetAsync(uploaded.Id)).ShouldNotBeNull();
+        (stored.StorageKey == key, stored.OwnsFile).ShouldBe((false, true));
+        FilesOf(media, uploaded.Id).ShouldBe([key, stored.StorageKey], ignoreOrder: true);
+    }
+
+    // A line that names the asset's own key, whose file is not the one the row says, takes the key as named and deletes
+    // nothing.
+    [Fact]
+    public async Task ALineThatNamesTheKeyOfTheAssetDeletesNothing()
+    {
+        using var admin = await media.AdminAsync();
+        var png = Files.Png(4, 5);
+        var uploaded = await UploadAsync(admin, png, "photo.png");
+        var key = (await AssetAsync(uploaded.Id)).ShouldNotBeNull().StorageKey;
+        await using (var scope = media.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().Where(item => item.Id == uploaded.Id).ExecuteUpdateAsync(set => set.SetProperty(item => item.Checksum, new string('0', 64)), Token);
+        }
+
+        var report = await ImportAsync(admin, await PackageAsync(admin, [Line(uploaded.Id, "photo.png", "image/png", png, updatedAt: media.Host.Time.GetUtcNow().AddMinutes(5), key: key)]));
+
+        Counts(report).ShouldBe((0, 1, 0));
+        var stored = (await AssetAsync(uploaded.Id)).ShouldNotBeNull();
+        (stored.Checksum, stored.OwnsFile).ShouldBe((Sha256(png), false));
+        FilesOf(media, uploaded.Id).ShouldBe([key]);
+    }
+
+    // The import is still updated when the old file cannot be deleted, as a replace is, and the file stays.
+    [Fact]
+    public async Task AnOldFileTheStorageFailsToDeleteStaysAndTheItemIsUpdated()
+    {
+        await using var host = new MediaHost();
+        host.Host.WithServices(services => services.AddKeyedSingleton<IFileStorage>(UndeletableStorage.Name, (provider, _) => new UndeletableStorage(provider.GetRequiredService<IFileStorage>())));
+        using var admin = await host.AdminAsync();
+        var uploaded = await UploadAsync(admin, Files.Png(4, 4), "photo.png");
+        var key = (await AssetAsync(host, uploaded.Id)).ShouldNotBeNull().StorageKey;
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().Where(item => item.Id == uploaded.Id).ExecuteUpdateAsync(set => set.SetProperty(item => item.StorageProvider, UndeletableStorage.Name), Token);
+        }
+
+        var png = Files.Png(5, 5);
+        var report = await ImportAsync(admin, await PackageAsync(admin, [Line(uploaded.Id, "new.png", "image/png", png, updatedAt: host.Host.Time.GetUtcNow().AddMinutes(5))], (FileOf(uploaded.Id, ".png"), png)));
+
+        Items(report).ShouldBeEmpty();
+        Counts(report).ShouldBe((0, 1, 0));
+        var stored = (await AssetAsync(host, uploaded.Id)).ShouldNotBeNull();
+        (stored.StorageProvider, stored.Checksum).ShouldBe(("local", Sha256(png)));
+        FilesOf(host, uploaded.Id).ShouldBe([key, stored.StorageKey], ignoreOrder: true);
+    }
+
+    // An import whose lock is lost stops at its next step. Before the save the row names the old file, which stays, and the
+    // file written for it goes; after the save the old file goes, since no row names it. Every file a row names is there.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AnImportWhoseLockIsLostLeavesTheFileTheRowNames(bool afterSave)
+    {
+        await using var host = new MediaHost();
+        var save = new LosingSave(afterSave);
+        host.Host.Configure(cms =>
+        {
+            cms.Providers.Use<IDistributedLock, LosingLock>();
+            cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(save));
+        });
+        using var admin = await host.AdminAsync();
+        var uploaded = await UploadAsync(admin, Files.Png(4, 4), "photo.png");
+        var key = (await AssetAsync(host, uploaded.Id)).ShouldNotBeNull().StorageKey;
+        var png = Files.Png(5, 5);
+        var package = await PackageAsync(admin, [Line(uploaded.Id, "new.png", "image/png", png, updatedAt: host.Host.Time.GetUtcNow().AddMinutes(5))], (FileOf(uploaded.Id, ".png"), png));
+        save.Asset = uploaded.Id;
+        save.Lose = ((LosingLock)host.Services.GetRequiredService<IDistributedLock>()).Lose;
+
+        await StoppedImportAsync(admin, package);
+
+        var stored = (await AssetAsync(host, uploaded.Id)).ShouldNotBeNull();
+        if (afterSave)
+        {
+            (stored.Checksum, stored.StorageKey == key).ShouldBe((Sha256(png), false));
+        }
+        else
+        {
+            stored.StorageKey.ShouldBe(key);
+        }
+
+        FilesOf(host, uploaded.Id).ShouldBe([stored.StorageKey]);
+    }
+
     // Core reads no path out of the folder of the contributor, so such a line has no file, even when the package has a file
     // of that very name, which would pass every other check.
     [Theory]
@@ -710,6 +907,116 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
 
             return await base.SavingChangesAsync(eventData, result, cancellationToken);
         }
+    }
+
+    // A save of the asset that loses the lock of the import, before the save, which then stops, or after it.
+    private sealed class LosingSave(bool afterSave) : SaveChangesInterceptor
+    {
+        public Guid Asset { get; set; }
+
+        public Action? Lose { get; set; }
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (!afterSave && Saves(eventData))
+            {
+                Lose!();
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+
+        public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            if (afterSave && Saves(eventData))
+            {
+                Lose!();
+            }
+
+            return base.SavedChangesAsync(eventData, result, cancellationToken);
+        }
+
+        private bool Saves(DbContextEventData eventData) =>
+            Lose is not null && eventData.Context!.ChangeTracker.Entries<Asset>().Any(entry => entry.State == EntityState.Modified && entry.Entity.Id == Asset);
+    }
+
+    // A lock that is always free and that the test loses, as when another holder took it after the lease ran out.
+    public sealed class LosingLock : IDistributedLock, IDisposable
+    {
+        private readonly CancellationTokenSource _lost = new();
+
+        public void Lose() => _lost.Cancel();
+
+        public Task<IDistributedLockHandle?> TryAcquireAsync(string name, TimeSpan timeout, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IDistributedLockHandle?>(new Handle(name, _lost.Token));
+
+        public void Dispose() => _lost.Dispose();
+
+        private sealed class Handle(string name, CancellationToken lost) : IDistributedLockHandle
+        {
+            public string Name => name;
+
+            public CancellationToken Lost => lost;
+
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        }
+    }
+
+    // The local disk under another name, which refuses every delete.
+    private sealed class UndeletableStorage(IFileStorage inner) : IFileStorage
+    {
+        public const string Name = "undeletable";
+
+        string IFileStorage.Name => Name;
+
+        public Task<Stream?> OpenReadAsync(string key, CancellationToken cancellationToken = default) => inner.OpenReadAsync(key, cancellationToken);
+
+        public Task WriteAsync(string key, Stream content, CancellationToken cancellationToken = default) => inner.WriteAsync(key, content, cancellationToken);
+
+        public Task<bool> DeleteAsync(string key, CancellationToken cancellationToken = default) => throw new IOException("The storage refused the delete.");
+
+        public Task<bool> ExistsAsync(string key, CancellationToken cancellationToken = default) => inner.ExistsAsync(key, cancellationToken);
+
+        public Task<FileStorageMetadata?> GetMetadataAsync(string key, CancellationToken cancellationToken = default) => inner.GetMetadataAsync(key, cancellationToken);
+    }
+
+    // An import that may stop part-way, whose response then ends without a report.
+    private static async Task StoppedImportAsync(HttpClient admin, byte[] package)
+    {
+        try
+        {
+            using var body = new ByteArrayContent(package);
+            body.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+            using var response = await admin.PostAsync(new Uri(Import, UriKind.Relative), body, Token);
+            await response.Content.ReadAsStringAsync(Token);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or IOException || (exception is OperationCanceledException && !Token.IsCancellationRequested))
+        {
+        }
+    }
+
+    // The keys of the files in the folder of the asset in the local storage: its originals and its variants.
+    private static List<string> FilesOf(MediaHost host, Guid id)
+    {
+        var directory = Path.Combine(host.StorageRoot, DefaultSite.Id.ToString("N"), id.ToString("N"));
+        return Directory.Exists(directory) ? [.. Directory.EnumerateFiles(directory).Select(path => Path.GetRelativePath(host.StorageRoot, path).Replace('\\', '/'))] : [];
+    }
+
+    // A variant of the asset, made by a request for its image two pixels wide.
+    private static async Task VariantAsync(MediaHost host, HttpClient admin, Guid id)
+    {
+        var asset = (await GetAsync(admin, $"{Root}/{id:D}")).Deserialize<MediaAsset>(JsonSerializerOptions.Web)!;
+        using var anonymous = host.Host.CreateClient();
+        using var response = await FetchAsync(anonymous, await UrlAsync(host, asset, new MediaImageOptions { Width = 2 }));
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await VariantsAsync(host, id)).ShouldBe(1);
+    }
+
+    private static async Task<int> VariantsAsync(MediaHost host, Guid id)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Variant>().AsNoTracking().CountAsync(variant => variant.AssetId == id, Token);
     }
 
     private async Task<byte[]> StoredAsync(string key)

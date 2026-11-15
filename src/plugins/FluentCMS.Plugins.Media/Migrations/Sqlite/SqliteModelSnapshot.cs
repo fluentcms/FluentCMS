@@ -92,6 +92,10 @@ namespace FluentCMS.Plugins.Media.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("mime_type");
 
+                    b.Property<bool>("OwnsFile")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("owns_file");
+
                     b.Property<Guid>("SiteId")
                         .HasColumnType("TEXT")
                         .HasColumnName("site_id");

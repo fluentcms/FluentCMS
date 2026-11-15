@@ -13,9 +13,10 @@ namespace FluentCMS.Plugins.Media;
 // The media of a site in a transfer package: plugins/media/folders.jsonl, plugins/media/assets.jsonl and, with the option
 // mediaFiles=true, the files under plugins/media/files/{id}/. An import keeps the ids, times and authors of the package. An
 // asset whose file is neither in the package nor in the storage of the instance, under a key of the site's library that
-// the package names, is reported and not imported, so that no entry refers to an asset that cannot be served. A file that an
-// update replaces stays in the storage; only a file the import wrote for a row it then did not save is deleted again, as for
-// an upload. The import has checked transfer.manage, so the media permissions are not asked; the rules of an upload still hold: every file an asset takes, from the package or at a key of the storage, passes the checks
+// the package names, is reported and not imported, so that no entry refers to an asset that cannot be served. A file the
+// import wrote for a row it then did not save is deleted again, as for an upload, and a file that an update replaces, with
+// its variants, after the save as by a replace, when the instance wrote it; a key that a line named is never deleted. The
+// import has checked transfer.manage, so the media permissions are not asked; the rules of an upload still hold: every file an asset takes, from the package or at a key of the storage, passes the checks
 // of an upload in the site of the import, and its type, size and image size are those the checks find, never its line's.
 // The fields of a line and a folder's place are held to what the service allows, so that the database refuses none of them.
 // The lines are imported as they are read, and a file of the package or a key of the storage is taken by one line of an
@@ -263,7 +264,7 @@ internal sealed class MediaTransfer(
         {
             // A key of this write's own, as a replace through the service has, so that the deletion of a file whose row was
             // not saved never takes one that another import, of another site of a shared library, wrote for its own row.
-            stored = new StoredFile(storages.Current.Name, $"{library:N}/{line.Id:N}/original-{Guid.CreateVersion7():N}{file.Type.Extension}", file);
+            stored = new StoredFile(storages.Current.Name, $"{library:N}/{line.Id:N}/original-{Guid.CreateVersion7():N}{file.Type.Extension}", file, owned: true);
         }
         else if (existing is not null && !replacesFile)
         {
@@ -280,6 +281,13 @@ internal sealed class MediaTransfer(
         {
             return existing is null ? TransferOutcome.Created : TransferOutcome.Updated;
         }
+
+        // The file the asset leaves and its variants go as after a replace through the service, once the row names the new
+        // file, but only the files the instance wrote: a key that a line named, and the variants beside it, may be files of
+        // another instance, so only their rows go, and no later replace deletes them.
+        var replaced = existing is not null && replacesFile && !SameKey(existing, stored)
+            ? await DatabaseAsync(() => ReplacedFiles.TakeAsync(database, existing, existing.OwnsFile, cancellationToken))
+            : null;
 
         // A file the import wrote is deleted again when its row is not saved, as for an upload.
         string? written = null;
@@ -309,6 +317,11 @@ internal sealed class MediaTransfer(
             }
 
             throw;
+        }
+
+        if (replaced is not null)
+        {
+            await replaced.DeleteAsync(storages, logger);
         }
 
         MediaAssetEvent raised = existing is null
@@ -543,8 +556,11 @@ internal sealed class MediaTransfer(
             throw Refused(MediaErrorCodes.TransferFileMissing, $"The file at {key} in the storage is not the file of the asset {line.Id:D} as the media settings of the site store it; export with {FilesOption}=true to bring it.");
         }
 
-        return new StoredFile(provider, key, file);
+        return new StoredFile(provider, key, file, owned: false);
     }
+
+    private static bool SameKey(Asset asset, StoredFile file) =>
+        asset.StorageProvider == file.Provider && string.Equals(asset.StorageKey, file.Key, StringComparison.OrdinalIgnoreCase);
 
     private static async Task WriteLineAsync<T>(Stream stream, T line, CancellationToken cancellationToken)
     {
@@ -629,6 +645,7 @@ internal sealed class MediaTransfer(
             asset.FileName = file.FileName;
             asset.StorageProvider = file.Provider;
             asset.StorageKey = file.Key;
+            asset.OwnsFile = file.Owned;
             asset.MimeType = file.MimeType;
             asset.Size = file.Size;
             asset.Checksum = file.Checksum;
@@ -650,17 +667,17 @@ internal sealed class MediaTransfer(
         }
     }
 
-    // The file an asset takes, where it is stored and what is known of it. The checks of an upload find no duration, so a
-    // file they passed has none, as after a replace through the service.
-    private sealed record StoredFile(string FileName, string Provider, string Key, string MimeType, long Size, string Checksum, int? Width, int? Height, double? Duration)
+    // The file an asset takes, where it is stored, whether the instance wrote it and what is known of it. The checks of an
+    // upload find no duration, so a file they passed has none, as after a replace through the service.
+    private sealed record StoredFile(string FileName, string Provider, string Key, bool Owned, string MimeType, long Size, string Checksum, int? Width, int? Height, double? Duration)
     {
-        public StoredFile(string provider, string key, MediaService.Upload file)
-            : this(file.FileName, provider, key, file.Type.MimeType, file.Size, file.Checksum, file.Dimensions?.Width, file.Dimensions?.Height, null)
+        public StoredFile(string provider, string key, MediaService.Upload file, bool owned)
+            : this(file.FileName, provider, key, owned, file.Type.MimeType, file.Size, file.Checksum, file.Dimensions?.Width, file.Dimensions?.Height, null)
         {
         }
 
         public static StoredFile Of(Asset asset) =>
-            new(asset.FileName, asset.StorageProvider, asset.StorageKey, asset.MimeType, asset.Size, asset.Checksum, asset.Width, asset.Height, asset.Duration);
+            new(asset.FileName, asset.StorageProvider, asset.StorageKey, asset.OwnsFile, asset.MimeType, asset.Size, asset.Checksum, asset.Width, asset.Height, asset.Duration);
     }
 
     // What the checks of a line give: the file name, and the alternative texts, captions and tags as their columns hold them.

@@ -38,8 +38,8 @@ internal sealed class MediaPermissions : IPermissionProvider
 // media.presets.manage. Uploads are read to a temporary file, where their type, size, checksum and image size are found,
 // and only when every file of a request passes are they written to the storage, then recorded; a file written for a
 // request that fails is deleted again. A replace writes its file under a key of its own, so that the old file serves until
-// the row names the new one; the old file and the variants are deleted after, from the storage the asset recorded. New files
-// go to the storage in the slot.
+// the row names the new one; the old file and the variants are deleted after (ReplacedFiles). New files go to the storage in
+// the slot.
 internal sealed class MediaService(
     PluginDbContext<MediaPlugin> database,
     IPermissionChecker permissions,
@@ -123,6 +123,7 @@ internal sealed class MediaService(
                     FileName = file.FileName,
                     StorageProvider = storages.Current.Name,
                     StorageKey = key,
+                    OwnsFile = true,
                     MimeType = file.Type.MimeType,
                     Size = file.Size,
                     Checksum = file.Checksum,
@@ -483,12 +484,11 @@ internal sealed class MediaService(
             await storages.Current.WriteAsync(key, prepared.Content, cancellationToken);
             written = key;
 
-            var (oldStorage, oldKey) = (asset.StorageProvider, asset.StorageKey);
-            var variants = await database.Set<Variant>().Where(variant => variant.AssetId == id).ToListAsync(cancellationToken);
-            database.RemoveRange(variants);
+            var replaced = await ReplacedFiles.TakeAsync(database, asset, deleteFiles: true, cancellationToken);
             asset.FileName = prepared.FileName;
             asset.StorageProvider = storages.Current.Name;
             asset.StorageKey = key;
+            asset.OwnsFile = true;
             asset.MimeType = prepared.Type.MimeType;
             asset.Size = prepared.Size;
             asset.Checksum = prepared.Checksum;
@@ -500,11 +500,7 @@ internal sealed class MediaService(
             await database.SaveChangesAsync(cancellationToken);
             written = null;
 
-            foreach (var stale in variants.Select(variant => variant.StorageKey).Prepend(oldKey))
-            {
-                await ForgetReplacedAsync(id, oldStorage, stale);
-            }
-
+            await replaced.DeleteAsync(storages, logger);
             await events.PublishAsync(new MediaAssetReplacedEvent(asset.Id, asset.FolderId, asset.FileName, asset.MimeType, asset.Size), cancellationToken);
             return Info(asset, operation.Locale);
         }
@@ -935,24 +931,6 @@ internal sealed class MediaService(
         {
             await content.DisposeAsync();
             throw;
-        }
-    }
-
-    private async Task ForgetReplacedAsync(Guid id, string provider, string key)
-    {
-        if (storages.Find(provider) is not { } storage)
-        {
-            MediaLog.ReplacedNotDeleted(logger, id, provider, key, null);
-            return;
-        }
-
-        try
-        {
-            await storage.DeleteAsync(key, CancellationToken.None);
-        }
-        catch (Exception exception)
-        {
-            MediaLog.ReplacedNotDeleted(logger, id, provider, key, exception);
         }
     }
 

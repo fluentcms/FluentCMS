@@ -97,6 +97,10 @@ namespace FluentCMS.Plugins.Media.Migrations.SqlServer
                         .HasColumnType("nvarchar(128)")
                         .HasColumnName("mime_type");
 
+                    b.Property<bool>("OwnsFile")
+                        .HasColumnType("bit")
+                        .HasColumnName("owns_file");
+
                     b.Property<Guid>("SiteId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("site_id");

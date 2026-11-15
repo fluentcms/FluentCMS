@@ -97,6 +97,10 @@ namespace FluentCMS.Plugins.Media.Migrations.PostgreSql
                         .HasColumnType("character varying(128)")
                         .HasColumnName("mime_type");
 
+                    b.Property<bool>("OwnsFile")
+                        .HasColumnType("boolean")
+                        .HasColumnName("owns_file");
+
                     b.Property<Guid>("SiteId")
                         .HasColumnType("uuid")
                         .HasColumnName("site_id");

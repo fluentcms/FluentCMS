@@ -179,7 +179,7 @@ The URLs are signed. `presets` has one transform URL for each preset of the site
 
 `DELETE /api/management/v1/media/{id}` refuses an asset that entries refer to (`FCMS1594`, 409). `?force=true` deletes it anyway and removes the references, so the fields that held it read as empty. A deleted asset keeps its file until `DeletedRetention` has passed, when the daily cleanup purges the file and the row.
 
-`POST /api/management/v1/media/{id}/replace` with a `multipart/form-data` body of one file replaces the file of an asset (`media.update`). The file passes the checks of an upload. The id, the metadata and the references stay, the variants of the old file are removed, and `media.replaced` is raised.
+`POST /api/management/v1/media/{id}/replace` with a `multipart/form-data` body of one file replaces the file of an asset (`media.update`). The file passes the checks of an upload. The id, the metadata and the references stay, the variants of the old file are removed, and `media.replaced` is raised. The old file and the variant files are deleted, unless another asset of the library names one of their keys, as a line of an import can.
 
 ## Original files and private downloads
 
