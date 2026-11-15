@@ -5,10 +5,10 @@ CI tests the [member providers](host-configuration.md#member-sign-in-with-an-ext
 | Provider | Status |
 | --- | --- |
 | Stand-ins in the tests | Every CI run; see [On the wire](#on-the-wire). |
-| Google | Not run yet. |
-| Microsoft, through Entra ID | Not run yet. |
-| GitHub | Not run yet. |
-| Generic OIDC, against Entra ID | Not run yet. |
+| Google | Run on 15 Nov 2026; see [Real providers](#real-providers-15-nov-2026). |
+| Microsoft, through Entra ID | Run on 15 Nov 2026 with a personal account; the deny of the consent could not be exercised, since Microsoft asks for no consent for `user.read`. |
+| GitHub | Run on 15 Nov 2026 with a personal account and an enterprise-managed one. |
+| Generic OIDC, against Entra ID | Run on 15 Nov 2026 with a personal account and a user of the tenant. It found that Entra ID sends no `email` for a user without a mail attribute, even with the optional claim on. |
 | Apple | Not verified, and named as such in the notes of the preview. It is verified before 1.0.0. |
 
 ## On the wire
@@ -30,6 +30,39 @@ A stand-in cannot tell what a real provider does, so a real run checks in partic
 - whether GitHub's `user/emails` answers with the `user:email` scope alone, and how an account whose primary address is not verified is listed;
 - whether a cancelled consent comes back as `error=access_denied` on the callback, and whether the provider sends the `state` back with it;
 - whether the `redirect_uri` the provider sees is the public origin, behind the tunnel.
+
+## Real providers, 15 Nov 2026
+
+The [walk-through](#walk-through) on the Release build of the host: SQLite in the directory of the run, Development, `Logging__LogLevel__Default=Debug`, behind an ngrok static domain with the forwarded headers on and `FluentCms__PublicOrigin` set to it, Mailpit in Docker, and the providers `google`, `microsoft`, `entra` (`Oidc` against the tenant of the registration, with the optional claim `email` on the id token) and `github`. One Chrome profile walked every step, signed out of the host between them at `/account/members/logout`. The accounts: a Google account that is a test user of a consent screen in Testing, the maintainer's personal Microsoft account, a user made in the tenant for the run, a GitHub account with three verified addresses, and an enterprise-managed GitHub account of another company. The personal Microsoft account and the GitHub account shared an address at first, so some steps ran as the collision of an address that is a member's; the record says so where they did.
+
+| Step | What the provider sent | What the host decided |
+| --- | --- | --- |
+| 1. Google, a new visitor | The account chooser, then the consent, whose address bar held the `redirect_uri` on the public origin, `scope=openid profile email`, PKCE S256 and the `state`. The callback is a GET with `state`, `iss=https://accounts.google.com`, `code`, `scope` (the granted scopes by their long names, `.../auth/userinfo.email` and `.../auth/userinfo.profile`, with `openid`), `authuser` and `prompt`. | Event 9090, `Verified: True`; the rows `member.registered`, `member.verified`, `member.login_linked` and `member.login_succeeded` with method `google`; no mail. |
+| 2. The code flow | `/connect/authorize` sent the signed-in browser to `/signed-in?code=...&state=verify&iss=https://<origin>/`; `/connect/token` answered `access_token`, `id_token` and `scope` `openid profile email`. | The id token's `iss` is `https://<origin>/`, its `aud` is `verify`, and it carries `name` and `email`; `/api/members/v1/me` says `emailVerified: true` and `/me/logins` lists `google`. |
+| 3. Microsoft, a new visitor | Asked for `https://graph.microsoft.com/user.read`; the callback is a GET with `code` and `state` only. A personal account gets no consent screen after the first time, not even after the app is removed at `account.live.com`. | Event 9090, `Verified: False`; `member.login_failed` with reason `not_allowed`; the mail "Verify your email address" names Microsoft, its link is on the origin, and the page says a mail is on its way. The link verified the address, and the login page then said "Your email address is verified. Sign in with your password"; "Continue with Microsoft" signed in, `member.login_succeeded` with method `microsoft`. |
+| 4. GitHub, a verified primary address | A page to choose between the signed-in accounts, `scope=user:email` and nothing else; the callback is a GET with `code`, `iss=https://github.com/login/oauth` and `state`. The account's primary address differed from the public one of the profile. | Event 9090, `Verified: True`, a member with the primary address and not the public one. With the primary address changed to one that is a member's, GitHub's sign-in was refused with `FCMS3182` and no mail, and the page "Sign-in not completed" pointed at the sign-in methods. |
+| 5. GitHub, no verified primary address | The enterprise-managed account: `user/emails` listed no primary verified address. | Event 9092 with `FCMS3181`, no member, `member.login_failed` with reason `not_allowed`, and the page "Sign-in not completed". |
+| 6. Generic OIDC, Entra ID | The challenge goes to `login.microsoftonline.com/<tenant>/oauth2/v2.0/authorize` with `response_mode=form_post`, a nonce, PKCE and `scope=openid profile email`; the callback is a form post of 2 to 3 KB and no query. The personal account's `email` is the address of the account, with no `email_verified`. A user of the tenant without a mail attribute gets no `email` at all, with the optional claim on. A work account of another tenant is refused by Entra ID on its own page ("does not exist in tenant"), and the host is not involved. | The personal account's address was the Microsoft member's: `FCMS3182`, the mail "You already have an account" and the page of the mail. The user without an address: event 9092 with `FCMS3181`, no member, "Sign-in not completed". A user of the tenant with a mail attribute was not run. |
+| 7. Linking, listing and removing | The link started on `/account/members/logins`, went to GitHub's account chooser and came back to the page, which named the account's address before the second post. | `Status=linked`; `GET /api/members/v1/me/logins` listed `github` and `google`; removing GitHub answered `Status=removed`, wrote `member.login_unlinked`, and the access token of step 2 was refused (`FCMS3102`, 401) from then on while the page kept its cookie; removing Google was refused on the page as the last way to sign in. |
+| 8. A cancelled consent and a stale callback | Cancel on Google's consent sends the callback `error=access_denied&state=...`, with the `state`. The deny on Microsoft was not reachable (step 3). The callback with `state=stale` was opened by hand. | Each went back to `/account/members/login?Status=external-failed` with a `member.login_failed` row of method `google` and reason `invalid_credentials`; event 9091 said "Access was denied by the resource owner or by the remote server" for the cancel and "The oauth state was missing or invalid" for the stale state. The `redirect_uri` edited on the provider's page was not run. |
+| 9. Behind the reverse proxy | The `redirect_uri` on each provider's page, the links of the mails and the `issuer` of the discovery document were all on the origin. Started again without `FluentCms__PublicOrigin`, the host sent Google a `redirect_uri` on the same https origin, built from the forwarded headers, and the `issuer` was the same. | The `member.login_succeeded` and `member.login_failed` rows carry the browser's address and not the tunnel's. The request log writes `http://` on the "Request starting" line and `https://` on "Request finished", since the forwarded headers are read after the first. |
+| 10. The log | 340,611 lines of which 126,372 at debug. | No client secret. `Bearer` on four lines: the `token_type` of the token response, in which OpenIddict writes `access_token` and `id_token` as `[redacted]`, and the names of its events. `code=` on the callback lines of Google, Microsoft and GitHub, twice each, and on the `/signed-in` of step 2, which is on this host only because the client of the run lives here. |
+
+The five points of [On the wire](#on-the-wire), from the run:
+
+- Google's flag was read as verified; the handler compares `email_verified` as text, so it does not tell a boolean from `"true"`.
+- Entra ID puts the address of a personal account in `email`, and nothing at all for a user of the tenant without a mail attribute, whatever the optional claim says; no `email_verified` came in either case. A work account lives in its own tenant, which the `Authority` of the provider does not admit unless the account is a guest there.
+- GitHub's `user/emails` answers with `user:email` alone, and a primary address that is not verified names no member. The enterprise-managed account listed no verified primary address.
+- A cancelled consent comes back as `error=access_denied` with the `state`, on Google. Microsoft asks a personal account for no consent for `user.read`, so there was nothing to deny.
+- The `redirect_uri` behind the tunnel is the public origin, and still is when the origin is not set and the forwarded headers build it.
+
+What the stand-ins now do as the providers did: `FakeMemberProviders` answers Google's callback with `iss`, the granted scopes by their long names, `authuser` and `prompt`, and its token response with the same scopes, and GitHub's callback with `iss`. The `Oidc` case of `MemberProviderTests.AnAppleProviderAndAGenericOidcProviderSignAMemberIn` now also signs in with an id token that has no `email`, as Entra ID issued it, and holds the refusal with `FCMS3181`.
+
+Not fixed, for issues of their own:
+
+- The login page after the verification link says "Sign in with your password", and the mail "You already have an account" says to sign in with a password or reset it, to a member that a provider made and that has no password; the page that sent that mail said to follow it, and it holds no link. The answer is the same whether or not the address is a member's by design (spec 10.4), so the words, not the paths, are what to change.
+- A page asked for at `http://localhost` with an https public origin is answered 500 (`FCMS3199`) from the antiforgery cookie's `Secure` policy, where a refusal that names the cause would serve better.
+- The deny on Microsoft's consent, a user of the tenant with a mail attribute, and the `redirect_uri` edited on a provider's page were not run.
 
 ## Walk-through
 
@@ -77,13 +110,13 @@ dotnet <repo>/src/FluentCMS.Host/bin/Release/net10.0/FluentCMS.Host.dll fluentcm
 dotnet <repo>/src/FluentCMS.Host/bin/Release/net10.0/FluentCMS.Host.dll > host.log 2>&1 &
 ```
 
-`https://<origin>/account/members/login` then shows one "Continue with ..." button per provider. The startup report in `host.log` (event 9130) names the public origin and no insecure default about it.
+`https://<origin>/account/members/login` then shows one "Continue with ..." button per provider. The startup report in `host.log` (event 9130) lists no insecure default about the public origin. Open the pages through the tunnel only: with an https origin the antiforgery cookie is `Secure`, so a page asked for at `http://localhost:5080` is answered 500 (`FCMS3199`).
 
 ### The steps
 
 Each step is walked on the hosted pages at `https://<origin>`, in the browser profile of the account it names. What a step sends is read in the address bar of the provider (`redirect_uri`, `scope`, `state`) before consent, and in `host.log`: the request log of ASP.NET Core writes each callback with its query, and events 9090 to 9094 say what the sign-in decided and why.
 
-1. **Google, a new visitor.** "Continue with Google", consent, back to the site signed in. The member is verified at once: `GET https://<origin>/api/members/v1/me` with the member's token (step 9) says `emailVerified: true`, no mail arrived, and event 9090 says `Verified: True`.
+1. **Google, a new visitor.** "Continue with Google", consent, back to the site signed in. The member is verified at once: `GET https://<origin>/api/members/v1/me` with the member's token (step 2) says `emailVerified: true`, no mail arrived, and event 9090 says `Verified: True`.
 2. **Google, tokens through the code flow.** In the same profile, open `/connect/authorize` for the client `verify` with PKCE, as `MemberExitCriteriaTests` does:
 
    ```bash
