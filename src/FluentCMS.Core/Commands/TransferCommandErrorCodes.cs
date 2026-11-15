@@ -13,5 +13,6 @@ internal static class TransferCommandErrorCodes
     public const string MediaNotEmpty = "FCMS3246";
     public const string NoLocalMedia = "FCMS3247";
     public const string FileNotRead = "FCMS3248";
+    public const string BackupOfAnotherSchema = "FCMS3249";
     public const string ImportNotClean = "FCMS3250";
 }

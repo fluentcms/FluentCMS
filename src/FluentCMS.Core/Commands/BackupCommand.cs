@@ -47,10 +47,12 @@ internal sealed class BackupCommand : HostCommand
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            // SQLite writes the snapshot into the empty file, which keeps its mode.
+            await OwnerOnly(snapshot).DisposeAsync();
             database.Snapshot(snapshot);
             var createdAt = DateTimeOffset.UtcNow;
 
-            await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous))
+            await using (var stream = OwnerOnly(temporary))
             await using (var archive = await ZipArchive.CreateAsync(stream, ZipArchiveMode.Create, leaveOpen: false, entryNameEncoding: null, cancellationToken))
             {
                 await AddFileAsync(archive, BackupArchive.Database, snapshot, cancellationToken);
@@ -90,6 +92,20 @@ internal sealed class BackupCommand : HostCommand
         }
 
         return CommandExitCodes.Success;
+    }
+
+    // The archive holds password hashes, key hashes, tokens and the key ring, so it and the snapshot are made readable by their
+    // owner only where files have a Unix mode; on Windows they take the permissions of their folder, which the guide covers.
+    // The move over the target keeps the mode.
+    private static FileStream OwnerOnly(string path)
+    {
+        var options = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, Share = FileShare.None, BufferSize = 81920, Options = FileOptions.Asynchronous };
+        if (!OperatingSystem.IsWindows())
+        {
+            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        }
+
+        return new FileStream(path, options);
     }
 
     // A file the local storage is still writing is a temporary file beside its target, and is left out.

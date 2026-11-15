@@ -72,5 +72,7 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
 
     bool IDatabaseFile.IsInUse() => _file.IsInUse();
 
+    string? IDatabaseFile.Check(string snapshot) => _file.Check(snapshot);
+
     void IDatabaseFile.Restore(string snapshot) => _file.Restore(snapshot);
 }

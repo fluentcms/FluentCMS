@@ -8,7 +8,6 @@ internal static class CommandParser
 {
     public static ParsedCommand Parse(IReadOnlyList<HostCommand> commands, IReadOnlyList<string> args)
     {
-        var help = args.Any(argument => argument is "--help" or "-h" or "-?");
         var command = commands
             .Where(candidate => Names(candidate, args))
             .MaxBy(candidate => candidate.Name.Length);
@@ -16,15 +15,25 @@ internal static class CommandParser
         if (command is null)
         {
             var words = string.Join(' ', args.TakeWhile(argument => !argument.StartsWith('-')));
-            return new ParsedCommand(null, null, help, words.Length == 0 ? "no command was given" : $"'{words}' is not a command that this host runs");
+            return new ParsedCommand(null, null, args.Any(IsHelp), words.Length == 0 ? "no command was given" : $"'{words}' is not a command that this host runs");
         }
 
-        var rest = args.Skip(command.Name.Split(' ').Length).Where(argument => argument is not ("--help" or "-h" or "-?")).ToList();
+        // --help, -h and -? are help where an option or an argument stands, and the value of an option that takes one, which
+        // is how the tool hands on "--name=-h". The first error is kept, and help after it is still help.
+        var rest = args.Skip(command.Name.Split(' ').Length).ToList();
+        var help = false;
+        string? error = null;
         var positional = new List<string>();
         var options = new Dictionary<string, string?>(StringComparer.Ordinal);
         for (var i = 0; i < rest.Count; i++)
         {
             var token = rest[i];
+            if (IsHelp(token))
+            {
+                help = true;
+                continue;
+            }
+
             if (!token.StartsWith("--", StringComparison.Ordinal))
             {
                 positional.Add(token);
@@ -34,57 +43,37 @@ internal static class CommandParser
             var separator = token.IndexOf('=', StringComparison.Ordinal);
             var name = separator < 0 ? token : token[..separator];
             var option = command.Options.FirstOrDefault(candidate => candidate.Name == name);
-            if (option is null)
+            string? value = null;
+            if (option is { TakesValue: true })
             {
-                return Refuse(command, help, $"{name} is not an option of 'fluentcms {command.Name}'");
+                value = separator >= 0 ? token[(separator + 1)..]
+                    : i + 1 < rest.Count && !rest[i + 1].StartsWith("--", StringComparison.Ordinal) ? rest[++i]
+                    : null;
             }
 
-            if (options.ContainsKey(name))
-            {
-                return Refuse(command, help, $"{name} is given more than once");
-            }
-
-            if (!option.TakesValue)
-            {
-                if (separator >= 0)
-                {
-                    return Refuse(command, help, $"{name} takes no value");
-                }
-
-                options[name] = null;
-            }
-            else if (separator >= 0)
-            {
-                options[name] = token[(separator + 1)..];
-            }
-            else if (i + 1 < rest.Count && !rest[i + 1].StartsWith("--", StringComparison.Ordinal))
-            {
-                options[name] = rest[++i];
-            }
-            else
-            {
-                return Refuse(command, help, $"{name} needs a value");
-            }
+            error ??= option is null ? $"{name} is not an option of 'fluentcms {command.Name}'"
+                : options.ContainsKey(name) ? $"{name} is given more than once"
+                : !option.TakesValue && separator >= 0 ? $"{name} takes no value"
+                : option.TakesValue && value is null ? $"{name} needs a value"
+                : null;
+            options[name] = value;
         }
 
-        if (positional.Count != command.Arguments.Count)
+        if (error is null && positional.Count != command.Arguments.Count)
         {
-            return Refuse(
-                command,
-                help,
-                positional.Count > command.Arguments.Count
-                    ? $"'{positional[command.Arguments.Count]}' is not an argument of 'fluentcms {command.Name}'"
-                    : $"'fluentcms {command.Name}' needs <{command.Arguments[positional.Count]}>");
+            error = positional.Count > command.Arguments.Count
+                ? $"'{positional[command.Arguments.Count]}' is not an argument of 'fluentcms {command.Name}'"
+                : $"'fluentcms {command.Name}' needs <{command.Arguments[positional.Count]}>";
         }
 
-        return new ParsedCommand(command, new CommandArguments(positional, options), help, null);
+        return error is null ? new ParsedCommand(command, new CommandArguments(positional, options), help, null) : new ParsedCommand(command, null, help, error);
     }
+
+    private static bool IsHelp(string argument) => argument is "--help" or "-h" or "-?";
 
     private static bool Names(HostCommand command, IReadOnlyList<string> args)
     {
         var words = command.Name.Split(' ');
         return args.Count >= words.Length && words.Select((word, index) => args[index] == word).All(match => match);
     }
-
-    private static ParsedCommand Refuse(HostCommand command, bool help, string error) => new(command, null, help, error);
 }

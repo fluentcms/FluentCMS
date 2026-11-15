@@ -128,6 +128,52 @@ public sealed class DatabaseFileTests : IDisposable
         Count(Database, "restored").ShouldBe(1);
     }
 
+    // A host that was killed leaves commits in its WAL, so the journal files go aside with the database and come back with it.
+    [SqliteFact("SQLite's journal files")]
+    public void ARestoreThatFailsPutsTheDatabaseAndItsJournalFilesBack()
+    {
+        using (var old = Open(Database))
+        {
+            Execute(old, "CREATE TABLE kept (id INTEGER); INSERT INTO kept VALUES (1);");
+        }
+
+        File.WriteAllText(Database + "-wal", "commits of a host that was killed");
+        File.WriteAllText(Database + "-journal", "a hot journal");
+
+        Should.Throw<FileNotFoundException>(() => Slot.Restore(Path.Combine(_directory.FullName, "missing.db")));
+
+        File.ReadAllText(Database + "-wal").ShouldBe("commits of a host that was killed");
+        File.ReadAllText(Database + "-journal").ShouldBe("a hot journal");
+        Directory.EnumerateFiles(_directory.FullName, "*.replaced*").ShouldBeEmpty();
+        File.Delete(Database + "-wal");
+        File.Delete(Database + "-journal");
+        Count(Database, "kept").ShouldBe(1);
+    }
+
+    [SqliteFact("SQLite's integrity check")]
+    public void TheCheckPassesAWholeDatabaseAndNamesWhatIsWrongWithAnyOtherFile()
+    {
+        var whole = Path.Combine(_directory.FullName, "whole.db");
+        using (var source = Open(whole, "PRAGMA journal_mode = WAL"))
+        {
+            Execute(source, "CREATE TABLE note (body TEXT); WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 2000) INSERT INTO note SELECT printf('%0500d', i) FROM n;");
+        }
+
+        var cut = Path.Combine(_directory.FullName, "cut.db");
+        var bytes = File.ReadAllBytes(whole);
+        File.WriteAllBytes(cut, bytes[..(bytes.Length / 2)]);
+        var text = Path.Combine(_directory.FullName, "text.db");
+        File.WriteAllText(text, "not a database, but long enough to look like the start of a file of SQLite");
+        var empty = Path.Combine(_directory.FullName, "empty.db");
+        File.WriteAllBytes(empty, []);
+
+        Slot.Check(whole).ShouldBeNull();
+        File.Exists(whole + "-wal").ShouldBeFalse();
+        Slot.Check(cut).ShouldNotBeNull();
+        Slot.Check(text).ShouldNotBeNull().ShouldContain("not a database");
+        Slot.Check(empty).ShouldBe("the file is empty");
+    }
+
     // `backup` leaves its copy in the rollback journal; a file put in an archive by hand may be in WAL mode.
     [SqliteTheory("SQLite's journal modes")]
     [InlineData("DELETE")]

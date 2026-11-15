@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using FluentCMS.Core.Diagnostics;
 
 namespace FluentCMS.Cli.Generate;
 
@@ -77,7 +78,7 @@ internal sealed partial class GenerateCommands(
         var project = ProjectOptions.AddTo(command);
         command.SetAction((result, cancellationToken) => GuardAsync(async () =>
         {
-            var document = instance.Resolve(result) is { } target
+            var document = instance.Resolve(result, error) is { } target
                 ? await GetAsync(target, OpenApiPath, cancellationToken)
                 : await HostDocumentAsync(result, project, cancellationToken);
 
@@ -91,9 +92,10 @@ internal sealed partial class GenerateCommands(
 
     private int Files(ParseResult result, SchemaOptions options, GeneratedCode code, string pattern, string marker)
     {
+        // A warning names a field type or a name of the snapshot.
         foreach (var diagnostic in code.Diagnostics)
         {
-            error.WriteLine(diagnostic);
+            error.WriteLine(PrintableText.Escape(diagnostic.ToString()));
         }
 
         var directory = Path.GetFullPath(result.GetValue(options.Output)!);
@@ -122,11 +124,12 @@ internal sealed partial class GenerateCommands(
     private async Task<ClientSchema> ReadSchemaAsync(ParseResult result, SchemaOptions options, CancellationToken cancellationToken)
     {
         var file = result.GetValue(options.Schema);
-        var instance = options.Instance.Resolve(result);
-        if (file is not null && instance is not null)
+        if (file is not null && result.GetValue(options.Instance.Url) is not null)
         {
             throw new CliException(CliErrorCodes.ConflictingSources, "--schema and --url each name the schema; give one of them.", ExitCodes.BadUsage);
         }
+
+        var instance = options.Instance.Resolve(result, error);
 
         if (file is not null)
         {
@@ -257,7 +260,7 @@ internal sealed partial class GenerateCommands(
         {
             using var json = JsonDocument.Parse(body);
             return json.RootElement.ValueKind == JsonValueKind.Object && json.RootElement.TryGetProperty("code", out var code) && code.ValueKind == JsonValueKind.String
-                ? $" with {code.GetString()}"
+                ? $" with {PrintableText.Escape(code.GetString())}"
                 : "";
         }
         catch (JsonException)
@@ -277,7 +280,7 @@ internal sealed partial class GenerateCommands(
         }
         catch (Exception exception) when (CommandLine.IsReported(exception))
         {
-            await error.WriteLineAsync(exception.Message);
+            await error.WriteLineAsync(CommandLine.Printable(exception));
             return exception is CliException cli ? cli.ExitCode : ExitCodes.Failure;
         }
     }

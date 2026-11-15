@@ -23,16 +23,19 @@ fluentcms restore backups/fluentcms-2026-11-12.zip
 
 `backup` takes the snapshot while the host runs. It goes through SQLite's online backup, which copies every page under one read transaction, so the copy is consistent and the host goes on writing in WAL mode meanwhile; copying `fluentcms.db` by hand is not, since recent commits are still in `fluentcms.db-wal`. Then it adds the files of the local media storage, under `FluentCms:Media:Local:Root`, leaving out the temporary files of an upload in progress. The archive is a zip with `backup.json` (the FluentCMS version, the provider, the schema hash, the applied migrations of every stream, the time and the number of media files), `database/fluentcms.db` and `media/`. When new uploads go to S3 or Azure Blob, the archive has the database and the files that are still on the local disk, and the command says that the files in the cloud storage are not in it: back those up as below.
 
+The archive is a secret: it holds the password hashes, the key hashes, the tokens and the Data Protection key ring. On Linux and macOS `backup` writes it, and the database snapshot it takes first, readable and writable by its owner only (mode `600`); on Windows the file takes the permissions of its folder, so write it to a folder that only the operators can read. Keep it that way wherever it goes: copy it with a tool that keeps the mode (`scp -p`, `rsync -p`), keep it in a store that only the operators reach, encrypt it before it leaves the machine (for example with `age` or `gpg`), and never put it in source control.
+
 `restore` puts a backup back into a host that is stopped. It refuses, before it changes anything:
 
 - an archive that is no backup of `fluentcms backup` (`FCMS3242`);
 - a backup of a newer FluentCMS than the host's (`FCMS3243`): restore into the same or a newer version, and never go back to an older one;
+- a backup of another schema, or with a migration that the host does not have, unless `--allow-schema-mismatch` is given (`FCMS3249`). The command compares the schema hash and the applied migrations of every stream in `backup.json` with the host's and names what differs. A host would refuse to start on such a database when it lacks a table or column (`FCMS1301`), and content of a type the host does not have would stay in tables that nothing reads. With `--allow-schema-mismatch` the backup is restored anyway and, once the database is in place, what differs is printed as a warning. `--force` does not allow it: it only replaces a database and media files that exist. A migration that the host has and the backup had not is no difference: it is pending, which is what restoring into a newer host is for, so a restore into a host whose schema changed since the backup needs `--allow-schema-mismatch`, then `fluentcms migrate`;
 - a database that exists, unless `--force` is given (`FCMS3244`), which replaces it and loses what was written to it since the backup;
-- a database that another process has open, such as a running host (`FCMS3245`): stop the host first. This is seen for a host in WAL mode, the default; a host that keeps the rollback journal holds no lock while idle, so make sure it is stopped;
+- a database that another process has open, such as a running host (`FCMS3245`): stop the host first. This is seen for a host in WAL mode, the default. A host that keeps the rollback journal holds no lock while idle, so it is not seen, and on Linux it would go on writing to the database it had open, which the restore deletes; the text of `FCMS3244` says so too. Make sure every such host is stopped before you pass `--force`;
 - media files over files the host has, unless `--force` is given (`FCMS3246`), which writes the backup's files over them and leaves the others;
 - media files in a host with no local media storage (`FCMS3247`).
 
-It then moves the database it replaces aside, writes the database file, removes the journal files of the old one, deletes it, writes the media files into the host's `Local:Root`, and lists the migrations the host has that the backup had not. Apply them with `fluentcms migrate`, or start the host, which migrates on start on SQLite. When a media file cannot be written, the command says how many were and exits with `FCMS3307`: fix the cause and run it again with `--force`. Restoring into an empty folder gives the same users, keys, content, versions and media files as the instance had at the backup.
+It then unpacks the database beside its file and runs `PRAGMA quick_check` on it, so that an entry that is not a SQLite database, or one cut off, is refused (`FCMS3242`) before the database it would replace is touched. It moves that database aside with its journal files (`-wal`, `-shm`, `-journal`), and moves them back when one of them or the new database file cannot be moved, so a failed move loses nothing, not even the commits that a host that was killed left in its WAL. Should they not go back either, the command (`FCMS3307`) names the files beside the database that hold them, `<database>.<id>.replaced` and its journal files, to rename by hand. Then it moves the new database file into place, deletes the old one and its journal files, writes the media files into the host's `Local:Root`, and lists the migrations the host has that the backup had not. Apply them with `fluentcms migrate`, or start the host, which migrates on start on SQLite. When a media file cannot be written, the command says how many were and exits with `FCMS3307`: fix the cause and run it again with `--force`. Restoring into an empty folder gives the same users, keys, content, versions and media files as the instance had at the backup.
 
 With the reference image, keep the media on the volume too with `FluentCms__Media__Local__Root=/data/media`. Back up a running container with `docker exec`, and restore into a stopped one with a container of its own on the same volume:
 
@@ -51,13 +54,14 @@ Copy the archive off the machine: a backup on the same disk as the database is l
 | --- | --- |
 | `FCMS3240` | The host runs on PostgreSQL or SQL Server, whose own tools back it up; see below. |
 | `FCMS3241` | The SQLite database is in memory or named by a URI, or its file does not exist. |
-| `FCMS3242` | The archive is no backup of `fluentcms backup`. |
+| `FCMS3242` | The archive is no backup of `fluentcms backup`, or its database is not a whole SQLite database. |
 | `FCMS3243` | The backup is of a newer FluentCMS than the host. |
 | `FCMS3244` | The database exists and `--force` is not given. |
 | `FCMS3245` | Another process has the database open. |
 | `FCMS3246` | The media folder has files and `--force` is not given. |
 | `FCMS3247` | The backup has media files and the host has no local media storage. |
 | `FCMS3248` | The file given cannot be read. |
+| `FCMS3249` | The backup is of another schema, or has a migration the host does not have, and `--allow-schema-mismatch` is not given; with it, a warning. |
 
 ## PostgreSQL
 

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
@@ -77,7 +78,8 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
     private static string? SettingText(FieldDraft field, string key) =>
         field.Settings.TryGetValue(key, out var value) ? value as string : null;
 
-    private void Report(string code, string message) => _errors.Add(new SchemaError(code, message));
+    // A message names what the schema holds, such as a name or an option that is not valid, so it is made printable.
+    private void Report(string code, string message) => _errors.Add(new SchemaError(code, PrintableText.Escape(message)));
 
     private void ValidateType(TypeDraft type, Dictionary<string, TypeDraft> contentTypes, Dictionary<string, TypeDraft> components, Dictionary<string, TypeDraft> blocks)
     {

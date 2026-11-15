@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using FluentCMS.Core.Diagnostics;
 
 namespace FluentCMS.Cli;
 
@@ -229,7 +230,7 @@ internal sealed class TransferClient : IDisposable
         new(CliErrorCodes.TransferUnreachable, $"{_url.GetLeftPart(UriPartial.Authority)} could not be reached or stopped answering: {exception.Message}");
 
     // A problem of the endpoint keeps its own code, such as FCMS3202 for a schema the instance cannot hold, so the message
-    // is the one the command gives inside the host.
+    // is the one the command gives inside the host. Its text is the instance's, so each part is made printable.
     private static async Task<CliException> RefusedAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var status = (int)response.StatusCode;
@@ -241,14 +242,14 @@ internal sealed class TransferClient : IDisposable
         {
             using var problem = JsonDocument.Parse(text);
             var root = problem.RootElement;
-            code = String(root, "code");
-            message = (String(root, "detail") ?? String(root, "title"))?.TrimEnd('.');
+            code = String(root, "code") is { } given ? PrintableText.Escape(given) : null;
+            message = (String(root, "detail") ?? String(root, "title")) is { } said ? PrintableText.Escape(said.TrimEnd('.')) : null;
             if (root.TryGetProperty("errors", out var list) && list.ValueKind == JsonValueKind.Array)
             {
                 foreach (var error in list.EnumerateArray())
                 {
                     var path = String(error, "path");
-                    errors.Add($"{String(error, "code")}: {(string.IsNullOrEmpty(path) ? "" : $"{path}: ")}{String(error, "message")}");
+                    errors.Add(PrintableText.Escape($"{String(error, "code")}: {(string.IsNullOrEmpty(path) ? "" : $"{path}: ")}{String(error, "message")}"));
                 }
             }
         }
@@ -265,7 +266,7 @@ internal sealed class TransferClient : IDisposable
         var lines = string.Concat(errors.Select(error => Environment.NewLine + error));
         return code is not null && code.StartsWith("FCMS", StringComparison.Ordinal)
             ? new CliException(code, $"{message ?? $"the instance answered {status}"}{hint}{lines}")
-            : new CliException(CliErrorCodes.TransferRefused, $"the instance answered {status} {response.ReasonPhrase}{(message is null ? "" : $": {message}")}{hint}{lines}");
+            : new CliException(CliErrorCodes.TransferRefused, $"the instance answered {status} {PrintableText.Escape(response.ReasonPhrase)}{(message is null ? "" : $": {message}")}{hint}{lines}");
     }
 
     private static string? String(JsonElement element, string name) =>
