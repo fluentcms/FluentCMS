@@ -14,7 +14,8 @@ namespace FluentCMS.Core.Content;
 // What cms_reference says refers to a target outside content, for the media plugin's usage and deletes. A read asks the
 // evaluator about each type, site, state and locale at once, as a read of those entries would, and leaves out a field the
 // caller may not read; a non-localized value is asked about in the locale of the operation. The trash is hidden by the
-// documents' query filter. A removal changes what the entries answer, so it evicts their tags as a publish would.
+// documents' query filter. A removal changes what the entries answer, so it evicts their tags as a publish would, and with
+// the tag header on its event names their types' too.
 internal sealed class ContentReferences(
     CmsDbContext database,
     SchemaModel schema,
@@ -95,6 +96,7 @@ internal sealed class ContentReferences(
 
         var references = database.References.Where(reference => reference.TargetType == targetType && reference.TargetId == targetId);
         var entries = await references.Select(reference => reference.SourceDocumentId).Distinct().ToListAsync(cancellationToken);
+        var types = delivery.TagHeader is not null && entries.Count > 0 ? await TypeTagsAsync(entries, cancellationToken) : [];
         var removed = await references.ExecuteDeleteAsync(cancellationToken);
         if (removed > 0 && delivery.Invalidates)
         {
@@ -104,10 +106,28 @@ internal sealed class ContentReferences(
                 await store.EvictByTagAsync(tag, CancellationToken.None);
             }
 
-            await events.PublishAsync(new CacheInvalidatedEvent(tags), CancellationToken.None);
+            await events.PublishAsync(new CacheInvalidatedEvent([.. tags, .. types]), CancellationToken.None);
         }
 
         return removed;
+    }
+
+    // A CDN's copy whose tag header would have passed its budget carries the tags of its entries' types in place of theirs,
+    // while the server's copy carries every entry's (4.10), so only the event names them.
+    private async Task<string[]> TypeTagsAsync(List<Guid> entries, CancellationToken cancellationToken)
+    {
+        var rows = await database.Documents.AsNoTracking()
+            .Where(document => entries.Contains(document.DocumentId))
+            .Select(document => new { document.Type, document.SiteId })
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        return
+        [
+            .. rows
+                .Select(row => schema.FindContentType(row.Type) is { } type ? CacheTags.Type(type, row.SiteId ?? Guid.Empty) : null)
+                .OfType<string>()
+                .Distinct(),
+        ];
     }
 
     private void Check(string targetType)
