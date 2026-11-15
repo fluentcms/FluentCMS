@@ -35,9 +35,25 @@ internal sealed class MediaTransforms(
 {
     public const int DefaultQuality = 80;
 
+    // The thumbnail the Management API's reads give each image, for the media library and the picker: fitted inside 320 by
+    // 320 pixels, as WebP where the processor encodes it. Its URL takes no size, so it serves that one and no other.
+    public const string Thumbnail = "thumbnail";
+    public const int ThumbnailSize = 320;
+
     private const string Avif = "image/avif";
     private const string Webp = "image/webp";
     private const string Png = "image/png";
+
+    public static string ThumbnailCanonical(Guid id, long? expires, string? version) =>
+        MediaOriginals.WithQuery($"{id:D}/{Thumbnail}", MediaOriginals.SignedQuery(expires, inline: false, version));
+
+    public static async Task<string> ThumbnailUrlAsync(MediaSigning signing, Guid id, string fileName, long? expires, string? version, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(signing);
+
+        var signature = await signing.SignAsync(ThumbnailCanonical(id, expires, version), cancellationToken);
+        return MediaOriginals.SignedUrl($"/media/{id:D}/{Thumbnail}/{Uri.EscapeDataString(fileName)}", MediaOriginals.SignedQuery(expires, inline: false, version), signature);
+    }
 
     public async Task<TransformedImage> TransformAsync(Guid id, IEnumerable<KeyValuePair<string, string?>> query, IReadOnlyCollection<string> accepted, CancellationToken cancellationToken)
     {
@@ -65,19 +81,54 @@ internal sealed class MediaTransforms(
             merged = ImageQuery.Merge(PresetOptions(preset), requested);
         }
 
-        return await RenderAsync(site, asset, merged, accepted, cancellationToken);
+        return await RenderAsync(site, asset, merged, accepted, limited: true, cancellationToken);
+    }
+
+    // GET /media/{id}/thumbnail/{fileName}: the signature is always checked, whatever RequireSignedUrls says, since the size is
+    // the plugin's and not held to the site's transform limits; MaxSourcePixels still guards the decoding. With exp, the URL
+    // serves a private asset too, until it expires, as the Management API gives it to a caller who may read the asset. The
+    // canonical string, {id}/thumbnail with exp and v, is neither a transform's {id}?… nor an original's {id}/original….
+    public async Task<(TransformedImage Image, long? Expires)> ThumbnailAsync(Guid id, IEnumerable<KeyValuePair<string, string?>> query, CancellationToken cancellationToken)
+    {
+        var (signature, expires, _, version) = MediaOriginals.ReadQuery(query, "a thumbnail", takesDisposition: false);
+        if (!await signing.VerifyAsync(ThumbnailCanonical(id, expires, version), signature, cancellationToken))
+        {
+            throw new PluginException(MediaErrorCodes.SignatureInvalid, signature is null ? "The URL of the thumbnail is not signed." : "The signature of the URL of the thumbnail is not valid.");
+        }
+
+        MediaOriginals.CheckExpiry(expires, time);
+
+        var site = (operations.Current ?? throw new InvalidOperationException("An image is served inside an operation, which names the site.")).Site;
+        var library = await libraries.OfAsync(site, cancellationToken);
+        var expiring = expires is not null;
+        var asset = await database.Set<Asset>().AsNoTracking()
+            .FirstOrDefaultAsync(item => item.Id == id && item.SiteId == library.Value && item.DeletedAt == null && (expiring || !item.IsPrivate), cancellationToken)
+            ?? throw new PluginException(MediaErrorCodes.AssetNotFound, $"The site has no {(expiring ? "" : "public ")}media asset {id:D}.");
+
+        var thumbnail = new MediaImageOptions
+        {
+            Width = ThumbnailSize,
+            Height = ThumbnailSize,
+            Fit = ImageFit.Contain,
+            Format = processor.CanEncode(Webp) ? MediaImageFormat.Webp : null,
+        };
+        return (await RenderAsync(site, asset, thumbnail, [], limited: false, cancellationToken), expires);
     }
 
     // IMediaService.OpenImageAsync: a copy of an asset the caller may read, private or not, for code in the host. No URL
     // asks for it, so nothing is signed, and the type follows the options alone.
     public Task<TransformedImage> OpenAsync(SiteId site, Asset asset, MediaImageOptions options, CancellationToken cancellationToken) =>
-        RenderAsync(site, asset, options, [], cancellationToken);
+        RenderAsync(site, asset, options, [], limited: true, cancellationToken);
 
-    private async Task<TransformedImage> RenderAsync(SiteId site, Asset asset, MediaImageOptions merged, IReadOnlyCollection<string> accepted, CancellationToken cancellationToken)
+    // Limited, the transform is held to the site's width, height and operations; the thumbnail, whose size is fixed, is not.
+    private async Task<TransformedImage> RenderAsync(SiteId site, Asset asset, MediaImageOptions merged, IReadOnlyCollection<string> accepted, bool limited, CancellationToken cancellationToken)
     {
         var id = asset.Id;
         var rules = await settings.GetAsync(site, cancellationToken);
-        CheckLimits(merged, rules);
+        if (limited)
+        {
+            CheckLimits(merged, rules);
+        }
         if (!processor.CanDecode(asset.MimeType))
         {
             throw new PluginException(MediaErrorCodes.NotTransformable, $"The asset {id:D} is of the type {asset.MimeType}, which the image processor does not read.");
@@ -116,7 +167,7 @@ internal sealed class MediaTransforms(
 
             // A side that follows the aspect ratio is held to the same limits as a side the URL gives.
             var (width, height) = SizeOf(transform, header.Width, header.Height);
-            if (width > rules.MaxTransformWidth || height > rules.MaxTransformHeight)
+            if (limited && (width > rules.MaxTransformWidth || height > rules.MaxTransformHeight))
             {
                 throw new PluginException(MediaErrorCodes.TransformLimit, $"The image would be {width} by {height} pixels, over the {rules.MaxTransformWidth} by {rules.MaxTransformHeight} the media settings of the site allow.");
             }

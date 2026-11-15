@@ -36,7 +36,7 @@ internal static class MediaEndpoints
 
     public static RouteGroupBuilder MapMediaEndpoints(this RouteGroupBuilder group)
     {
-        group.MapGet("", async (string? folder, bool? subfolders, string? type, string? tag, string? search, int? page, int? pageSize, IMediaService media, CancellationToken cancellationToken) =>
+        group.MapGet("", async (string? folder, bool? subfolders, string? type, string? tag, string? search, int? page, int? pageSize, MediaService media, CancellationToken cancellationToken) =>
         {
             var query = new MediaQuery
             {
@@ -49,14 +49,14 @@ internal static class MediaEndpoints
                 Page = page ?? 1,
                 PageSize = pageSize ?? 50,
             };
-            var result = await media.ListAsync(query, cancellationToken);
-            return Results.Ok(new { items = result.Items, total = result.Total, page = result.Page, pageSize = result.PageSize });
-        });
+            return Results.Ok(MediaAssetPage.From(await media.ListWithUrlsAsync(query, cancellationToken)));
+        }).Produces<MediaAssetPage>();
 
         group.MapPost("", UploadAsync);
 
-        group.MapGet("/{id:guid}", async (Guid id, IMediaService media, CancellationToken cancellationToken) =>
-            Results.Ok(await media.GetAsync(id, cancellationToken)));
+        group.MapGet("/{id:guid}", async (Guid id, MediaService media, CancellationToken cancellationToken) =>
+            Results.Ok(MediaAssetResponse.From(await media.GetWithUrlsAsync(id, cancellationToken))))
+            .Produces<MediaAssetResponse>();
 
         group.MapPatch("/{id:guid}", async (Guid id, MediaAssetChanges changes, IMediaService media, CancellationToken cancellationToken) =>
             Results.Ok(await media.UpdateAsync(id, changes, cancellationToken)));
@@ -152,20 +152,21 @@ internal static class MediaEndpoints
         return group;
     }
 
-    // /media/{id}/{fileName} and /media/{id}/original/{fileName}, outside the APIs and open to anyone: the signature of the
-    // URL is the authority, and the file name is there for the reader and is ignored. The transform says whether the type
-    // depends on Accept. An original is sent as it is stored, with nosniff and, for an SVG, a policy that runs nothing; a
-    // download URL's answer is an attachment that no cache keeps, and a file of a type the plugin does not find from bytes is
-    // an attachment too (MediaOriginals).
+    // /media/{id}/{fileName}, /media/{id}/original/{fileName} and /media/{id}/thumbnail/{fileName}, outside the APIs and open
+    // to anyone: the signature of the URL is the authority, and the file name is there for the reader and is ignored. The
+    // transform says whether the type depends on Accept. An original is sent as it is stored, with nosniff and, for an SVG, a
+    // policy that runs nothing; a download URL's answer is an attachment that no cache keeps, and a file of a type the plugin
+    // does not find from bytes is an attachment too (MediaOriginals). A URL with an expiry that serves inline is kept by no
+    // shared cache, and by a browser only until it expires.
     public static RouteGroupBuilder MapImageEndpoints(this RouteGroupBuilder group)
     {
-        group.MapGet("/{id:guid}/original/{fileName}", async (Guid id, HttpContext context, MediaOriginals originals, IOptions<MediaOptions> options, CancellationToken cancellationToken) =>
+        group.MapGet("/{id:guid}/original/{fileName}", async (Guid id, HttpContext context, MediaOriginals originals, IOptions<MediaOptions> options, TimeProvider time, CancellationToken cancellationToken) =>
         {
             var query = context.Request.Query.SelectMany(pair => pair.Value.Select(value => new KeyValuePair<string, string?>(pair.Key, value)));
             var file = await originals.OpenAsync(id, query, cancellationToken);
 
             var headers = context.Response.Headers;
-            headers.CacheControl = file.Download ? "private, no-store" : options.Value.CacheControl;
+            headers.CacheControl = file.Download ? "private, no-store" : file.Expires is { } expires ? MediaOriginals.PrivateCacheControl(expires, time) : options.Value.CacheControl;
             headers.XContentTypeOptions = "nosniff";
             if (file.MimeType == MediaTypes.Svg.MimeType)
             {
@@ -173,6 +174,17 @@ internal static class MediaEndpoints
             }
 
             return Results.Stream(file.Content, file.MimeType, file.Attachment ? file.FileName : null, entityTag: new EntityTagHeaderValue($"\"{file.Checksum}\""));
+        }).AllowAnonymous();
+
+        group.MapGet($"/{{id:guid}}/{MediaTransforms.Thumbnail}/{{fileName}}", async (Guid id, HttpContext context, MediaTransforms transforms, IOptions<MediaOptions> options, TimeProvider time, CancellationToken cancellationToken) =>
+        {
+            var query = context.Request.Query.SelectMany(pair => pair.Value.Select(value => new KeyValuePair<string, string?>(pair.Key, value)));
+            var (image, expires) = await transforms.ThumbnailAsync(id, query, cancellationToken);
+
+            var headers = context.Response.Headers;
+            headers.CacheControl = expires is { } at ? MediaOriginals.PrivateCacheControl(at, time) : options.Value.CacheControl;
+            headers.XContentTypeOptions = "nosniff";
+            return Results.Stream(image.Content, image.MimeType, entityTag: new EntityTagHeaderValue(image.ETag));
         }).AllowAnonymous();
 
         group.MapGet("/{id:guid}/{fileName}", async (Guid id, HttpContext context, MediaTransforms transforms, IOptions<MediaOptions> options, CancellationToken cancellationToken) =>

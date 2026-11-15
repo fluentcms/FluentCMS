@@ -46,7 +46,11 @@ public sealed class McpMediaToolTests(McpToolsFixture fixture) : IClassFixture<M
         updated.GetProperty("title").GetString().ShouldBe($"Dusk {name}");
         updated.GetProperty("focalPoint").GetProperty("x").GetDouble().ShouldBe(0.25);
         read.GetProperty("tags").EnumerateArray().Select(tag => tag.GetString()).ShouldBe(["boats", $"t{name}"]);
-        JsonNode.DeepEquals(JsonNode.Parse(read.GetRawText()), await http.GetFromJsonAsync<JsonNode>(new Uri($"{Media}/{id:D}", UriKind.Relative), Token)).ShouldBeTrue();
+        // The route's answer, less the signed URLs that only a browser can use.
+        var route = (await http.GetFromJsonAsync<JsonNode>(new Uri($"{Media}/{id:D}", UriKind.Relative), Token))!.AsObject();
+        route.Remove("urls").ShouldBeTrue();
+        read.TryGetProperty("urls", out _).ShouldBeFalse();
+        JsonNode.DeepEquals(JsonNode.Parse(read.GetRawText()), route).ShouldBeTrue();
         foreach (var page in (JsonElement[])[listed, byTitle, byFileName, byTag])
         {
             page.GetProperty("items").EnumerateArray().Select(asset => asset.GetProperty("id").GetGuid()).ShouldBe([id]);

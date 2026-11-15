@@ -12,7 +12,8 @@ namespace FluentCMS.Plugins.Mcp;
 // The media tools of spec 5.4, over IMediaService. They exist only where a media service is registered and the media
 // plugin is enabled for the site of the call; elsewhere the names are no tools at all. The list holds a tool when core
 // says a grant of the caller gives its permission, and the service checks every call. The answers are the JSON of the
-// media routes of the Management API.
+// media routes of the Management API, less the urls of GET /media and GET /media/{id}: signed URLs are for a browser, and
+// those of a private asset would put bearer URLs into the model's context.
 internal sealed class McpMediaTools(
     IServiceProvider services,
     IEffectiveAccess access,
