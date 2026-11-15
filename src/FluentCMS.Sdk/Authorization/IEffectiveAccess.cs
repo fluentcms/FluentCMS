@@ -66,4 +66,11 @@ public sealed record ContentTypeAccess
 
     /// <summary>The readable fields that some grant lets the principal change on an entry.</summary>
     public required IReadOnlySet<string> UpdatableFields { get; init; }
+
+    /// <summary>
+    /// The operations of those the principal may do, by name (<c>read</c>, <c>create</c>, <c>update</c>, <c>delete</c>,
+    /// <c>publish</c> and <c>unpublish</c>), that a row rule or the locales of a grant may still refuse for a single entry,
+    /// since no grant behind them holds for every entry.
+    /// </summary>
+    public IReadOnlySet<string> Conditional { get; init; } = new HashSet<string>(StringComparer.Ordinal);
 }

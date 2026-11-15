@@ -6,11 +6,11 @@ using FluentCMS.Core.Storage;
 namespace FluentCMS.Core.Identity;
 
 // The principal of the operation, as /me shows it. A stored user is shown with its roles; a key or a service account by
-// its id, kind and name. Only a user has sessions, and it may end any of its own; only a user has two-factor sign-in and
-// external logins.
+// its id, kind and name. Only a user has sessions, and it may end any of its own; only a user has two-factor sign-in,
+// external logins and preferences.
 internal sealed record CurrentPrincipal(Guid Id, PrincipalKind Kind, string Name, UserInfo? User);
 
-internal sealed class CurrentUser(IOperationContextAccessor accessor, CmsUserManager users, SystemDbContext context, UserSessions sessions, TwoFactorService twoFactor, UserLogins logins)
+internal sealed class CurrentUser(IOperationContextAccessor accessor, CmsUserManager users, SystemDbContext context, UserSessions sessions, TwoFactorService twoFactor, UserLogins logins, UserPreferences preferences)
 {
     public async Task<CurrentPrincipal> GetAsync(CancellationToken cancellationToken)
     {
@@ -52,10 +52,16 @@ internal sealed class CurrentUser(IOperationContextAccessor accessor, CmsUserMan
     public async Task RemoveLoginAsync(string provider, CancellationToken cancellationToken) =>
         await logins.RemoveAsync(await UserAsync(), provider, cancellationToken);
 
+    public async Task<UserPreferencesInfo> PreferencesAsync(CancellationToken cancellationToken) =>
+        await preferences.GetAsync((await UserAsync()).Id, cancellationToken);
+
+    public async Task<UserPreferencesInfo> SetPreferencesAsync(UserPreferencesInfo wanted, CancellationToken cancellationToken) =>
+        await preferences.SetAsync((await UserAsync()).Id, wanted, cancellationToken);
+
     private async Task<CmsUser> UserAsync() =>
         Caller() is { Kind: PrincipalKind.AdminUser } principal && await users.FindByIdAsync(principal.Id.ToString("D")) is { DeactivatedAt: null } user
             ? user
-            : throw new ManagementAccessDeniedException("Two-factor sign-in and external logins belong to a user; the caller is not one.");
+            : throw new ManagementAccessDeniedException("Two-factor sign-in, external logins and preferences belong to a user; the caller is not one.");
 
     private Principal Caller() =>
         accessor.Current?.Principal ?? throw new InvalidOperationException("The current user is that of an operation, and none is running.");

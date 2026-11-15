@@ -22,7 +22,7 @@ internal static class StorageNames
     public static readonly HashSet<string> SystemTables = new(new[]
     {
         "site", "site_locale", "schedule", "schema_history",
-        "user", "user_role", "user_claim", "user_login", "user_token", "invitation", "role", "role_permission",
+        "user", "user_role", "user_preference", "user_claim", "user_login", "user_token", "invitation", "role", "role_permission",
         "oidc_application", "oidc_authorization", "oidc_scope", "oidc_token", "signing_key", "data_protection_key",
         "api_key",
         "member", "member_login", "member_token", "member_group", "member_group_member",

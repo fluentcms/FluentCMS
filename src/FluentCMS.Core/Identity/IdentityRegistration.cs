@@ -49,6 +49,7 @@ internal static class IdentityRegistration
         services.AddScoped<PasswordResetService>();
         services.AddScoped<UserAdministration>();
         services.AddScoped<CurrentUser>();
+        services.AddScoped<UserPreferences>();
         services.AddScoped<UserLogins>();
         services.AddScoped<TwoFactorService>();
         services.AddScoped<ApiKeyService>();

@@ -73,6 +73,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<RoleGrant>(MapRoleGrant);
         modelBuilder.Entity<CmsUser>(MapUser);
         modelBuilder.Entity<CmsUserRole>(MapUserRole);
+        modelBuilder.Entity<UserPreferenceRow>(MapUserPreference);
         modelBuilder.Entity<IdentityUserClaim<Guid>>(MapUserClaim);
         modelBuilder.Entity<IdentityUserLogin<Guid>>(MapUserLogin);
         modelBuilder.Entity<IdentityUserToken<Guid>>(MapUserToken);
@@ -258,6 +259,20 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.HasOne<CmsUser>().WithMany().HasForeignKey(membership => membership.UserId).OnDelete(DeleteBehavior.Cascade);
         entity.HasOne<Role>().WithMany().HasForeignKey(membership => membership.RoleId).OnDelete(DeleteBehavior.Cascade);
         entity.HasIndex(membership => membership.RoleId).HasDatabaseName("ix_cms_user_role_role");
+    }
+
+    // One row per user, which goes with the user. A culture name and an IANA time zone id are short.
+    private static void MapUserPreference(EntityTypeBuilder<UserPreferenceRow> entity)
+    {
+        entity.ToTable(StorageNames.UserPreference);
+        MapColumnNames(entity);
+        entity.HasKey(row => row.UserId);
+        entity.Property(row => row.Culture).HasMaxLength(UserPreferences.CultureLength);
+        entity.Property(row => row.TimeZone).HasMaxLength(UserPreferences.TimeZoneLength);
+        entity.Property(row => row.DateFormat).HasMaxLength(UserPreferences.CultureLength);
+        entity.Property(row => row.NumberFormat).HasMaxLength(UserPreferences.CultureLength);
+
+        entity.HasOne<CmsUser>().WithMany().HasForeignKey(row => row.UserId).OnDelete(DeleteBehavior.Cascade);
     }
 
     private static void MapUserClaim(EntityTypeBuilder<IdentityUserClaim<Guid>> entity)

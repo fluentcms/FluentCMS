@@ -17,6 +17,11 @@ internal sealed class EffectiveAccess(
     IOperationContextAccessor accessor,
     ISearchIndex search) : IEffectiveAccess
 {
+    private static readonly ContentOperation[] Described =
+    [
+        ContentOperation.Read, ContentOperation.Create, ContentOperation.Update, ContentOperation.Delete, ContentOperation.Publish, ContentOperation.Unpublish,
+    ];
+
     public async ValueTask<ContentAccess> ContentAsync(CancellationToken cancellationToken = default)
     {
         var operation = Operation();
@@ -39,6 +44,7 @@ internal sealed class EffectiveAccess(
                 Unpublish = permissions.Allows(type, ContentOperation.Unpublish, target),
                 CreatableFields = Writable(permissions, type, shown, ContentOperation.Create, target),
                 UpdatableFields = Writable(permissions, type, shown, ContentOperation.Update, target),
+                Conditional = Conditional(permissions, type, target),
             };
         }
 
@@ -79,6 +85,36 @@ internal sealed class EffectiveAccess(
         }
 
         return writable;
+    }
+
+    // The operations the principal may do that no grant gives for every entry: each grant behind them has a row rule or a
+    // locale limit, which the service asks of the entry. Through an MCP client, a limit of either set counts.
+    private static HashSet<string> Conditional(EffectivePermissions permissions, SchemaType type, AccessTarget target)
+    {
+        HashSet<string> conditional = new(StringComparer.Ordinal);
+        if (permissions.IsSystem)
+        {
+            return conditional;
+        }
+
+        foreach (var operation in Described)
+        {
+            if (!permissions.Allows(type, operation, target))
+            {
+                continue;
+            }
+
+            for (var set = permissions; set is not null; set = set.Limit)
+            {
+                if (!set.GrantsOf(type, operation, target).Any(grant => grant.Constraints.RowRule is null && grant.Constraints.Locales is null))
+                {
+                    conditional.Add(CorePermissions.OperationName(operation));
+                    break;
+                }
+            }
+        }
+
+        return conditional;
     }
 
     // Thrown rather than answered empty, as ManagementAuthority does: code that forgot its operation fails where it runs.
