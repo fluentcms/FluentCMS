@@ -43,8 +43,9 @@ public sealed partial class BaselineTests : IDisposable
     // added to a table with rows got a default for those rows; EF writes the column's value on every insert.
     private static readonly (string Table, string Column)[] DefaultsOfAddedColumns = [("cms_role", "require_two_factor"), ("cms_webhooks_delivery", "manual")];
 
-    // Columns a preview added to the baseline after the squash, which the chain never made: a preview does not upgrade a
+    // What a preview added to the baseline after the squash, which the chain never made: a preview does not upgrade a
     // database (10.4, H5), so a change of the model goes into the baseline until 1.0.0.
+    private static readonly string[] TablesAddedToTheBaseline = ["cms_default_grant"];
     private static readonly (string Table, string Column)[] ColumnsAddedToTheBaseline = [("cms_version", "author_kind"), ("cms_version", "author_name")];
 
     // The chain raised the stamp of the Author role when it changed that role's seeded grants, so that a cached grant was
@@ -95,7 +96,7 @@ public sealed partial class BaselineTests : IDisposable
         }
 
         var chain = WithoutWhatTheModelDoesNotSay(DatabaseCatalog.Of(_database, historyRows: false));
-        var built = WithoutColumnsAddedToTheBaseline(DatabaseCatalog.Of(baseline, historyRows: false));
+        var built = WithoutWhatWasAddedToTheBaseline(DatabaseCatalog.Of(baseline, historyRows: false));
 
         chain.Except(built).ShouldBeEmpty("made by the chain and not by the baseline");
         built.Except(chain).ShouldBeEmpty("made by the baseline and not by the chain");
@@ -180,6 +181,35 @@ public sealed partial class BaselineTests : IDisposable
         DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
     }
 
+    // Until 1.0.0 a change of the model goes into the baseline, so a database made by an earlier build of it holds the
+    // baseline in its history, has nothing pending and lacks what came since, as one without the dropped tables does.
+    [Fact]
+    public async Task ADatabaseOfAnEarlierBuildOfTheBaselineIsRefusedAndNothingIsApplied()
+    {
+        using (var built = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => cms.AddPlugin<MediaPlugin>()))
+        {
+            await built.StartAsync(Token);
+            await built.StopAsync(Token);
+        }
+
+        _database.Execute($"drop table {TestProvider.Quote(TablesAddedToTheBaseline[0])}");
+        _database.Execute($"drop table {TestProvider.Quote("cms_media_preset")}");
+        var before = DatabaseCatalog.Of(_database, historyRows: true);
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => cms.AddPlugin<MediaPlugin>());
+        var refusal = $"FCMS1308: stream system has applied its baseline {BaselineOf<SystemDbContext>(host.Services)} but lacks cms_default_grant; " +
+            $"stream media has applied its baseline {BaselineOf<PluginDbContext<MediaPlugin>>(host.Services)} but lacks cms_media_preset; " +
+            "nothing was applied: the database was made by an earlier build of the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again";
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
+        var (exitCode, _, error) = await RunAsync(host, "migrate");
+
+        exception.Code.ShouldBe("FCMS1308");
+        exception.Message.ShouldBe(refusal);
+        exitCode.ShouldBe(1);
+        error.ShouldBe(refusal + Environment.NewLine);
+        DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
+    }
+
     private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "false" };
 
     private const string WhatToDo = "nothing was applied: the database was made by the migrations from before the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again";
@@ -248,14 +278,28 @@ public sealed partial class BaselineTests : IDisposable
         return [.. result.Order(StringComparer.Ordinal)];
     }
 
-    private static List<string> WithoutColumnsAddedToTheBaseline(List<string> catalog)
+    // A line names its table after its kind, as in column:cms_default_grant.role_id:..., and what was added must be there.
+    private static List<string> WithoutWhatWasAddedToTheBaseline(List<string> catalog)
     {
-        foreach (var (table, column) in ColumnsAddedToTheBaseline)
+        foreach (var table in TablesAddedToTheBaseline)
         {
-            catalog.ShouldContain(line => line.StartsWith($"column:{table}.{column}:", StringComparison.Ordinal), $"{table}.{column}");
+            catalog.Any(line => line.StartsWith("table:", StringComparison.Ordinal) && OfTable(line, table)).ShouldBeTrue(table);
         }
 
-        return [.. catalog.Where(line => !ColumnsAddedToTheBaseline.Any(added => line.StartsWith($"column:{added.Table}.{added.Column}:", StringComparison.Ordinal)))];
+        foreach (var (table, column) in ColumnsAddedToTheBaseline)
+        {
+            catalog.Any(line => OfColumn(line, table, column)).ShouldBeTrue($"{table}.{column}");
+        }
+
+        return [.. catalog.Where(line => !TablesAddedToTheBaseline.Any(table => OfTable(line, table)) && !ColumnsAddedToTheBaseline.Any(added => OfColumn(line, added.Table, added.Column)))];
+
+        static bool OfTable(string line, string table)
+        {
+            var name = line.AsSpan(line.IndexOf(':', StringComparison.Ordinal) + 1);
+            return name.StartsWith(table, StringComparison.Ordinal) && (name.Length == table.Length || name[table.Length] is '.' or ':');
+        }
+
+        static bool OfColumn(string line, string table, string column) => line.StartsWith($"column:{table}.{column}:", StringComparison.Ordinal);
     }
 
     private static void SetSnapshot(TestDatabase database, bool on)

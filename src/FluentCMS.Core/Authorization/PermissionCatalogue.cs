@@ -40,6 +40,7 @@ public sealed class PermissionCatalogue
     ];
 
     private readonly FrozenDictionary<string, PermissionEntry> _byName;
+    private readonly FrozenDictionary<string, Type> _providers;
 
     // settingsAreas are the areas of the settings classes of the host, each of which has its own settings.{area}.manage.
     public PermissionCatalogue(SchemaModel schema, IEnumerable<IPermissionProvider> providers, IEnumerable<string>? settingsAreas = null)
@@ -49,6 +50,7 @@ public sealed class PermissionCatalogue
 
         var entries = new List<PermissionEntry>();
         var names = new HashSet<string>(StringComparer.Ordinal);
+        var declaredBy = new Dictionary<string, Type>(StringComparer.Ordinal);
 
         foreach (var (name, description) in CoreEntries)
         {
@@ -82,11 +84,13 @@ public sealed class PermissionCatalogue
                 }
 
                 Add(entries, names, new PermissionEntry(permission.Name, permission.Description, PermissionSource.Plugin), owner);
+                declaredBy[permission.Name] = provider.GetType();
             }
         }
 
         Entries = entries;
         _byName = entries.ToFrozenDictionary(entry => entry.Name, StringComparer.Ordinal);
+        _providers = declaredBy.ToFrozenDictionary(StringComparer.Ordinal);
     }
 
     public IReadOnlyList<PermissionEntry> Entries { get; }
@@ -94,6 +98,9 @@ public sealed class PermissionCatalogue
     public bool Contains(string name) => _byName.ContainsKey(name);
 
     public PermissionEntry? Find(string name) => _byName.GetValueOrDefault(name);
+
+    // The type of the IPermissionProvider that declares a plugin permission; null for core's and for a name not in the catalogue.
+    public Type? ProviderOf(string name) => _providers.GetValueOrDefault(name);
 
     // Whether a grant, as stored in cms_role_permission, names at least one permission of the catalogue.
     public bool IsGrantable(string grant) =>

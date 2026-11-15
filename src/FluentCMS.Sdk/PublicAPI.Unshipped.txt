@@ -335,6 +335,9 @@ FluentCMS.Agents.McpToolResult.StructuredContent.get -> System.Text.Json.JsonEle
 FluentCMS.Agents.McpToolResult.StructuredContent.init -> void
 FluentCMS.Agents.McpToolResult.Text.get -> string!
 FluentCMS.Agents.McpToolResult.Text.init -> void
+FluentCMS.Authorization.BuiltInRole
+FluentCMS.Authorization.BuiltInRole.Author = 2 -> FluentCMS.Authorization.BuiltInRole
+FluentCMS.Authorization.BuiltInRole.Editor = 1 -> FluentCMS.Authorization.BuiltInRole
 FluentCMS.Authorization.ContentAccess
 FluentCMS.Authorization.ContentAccess.<Clone>$() -> FluentCMS.Authorization.ContentAccess!
 FluentCMS.Authorization.ContentAccess.ContentAccess() -> void
@@ -377,6 +380,8 @@ FluentCMS.Authorization.IPermissionChecker.ResourcesAsync(string! permission, Fl
 FluentCMS.Authorization.IPermissionProvider
 FluentCMS.Authorization.IPermissionProvider.GetPermissions() -> System.Collections.Generic.IEnumerable<FluentCMS.Authorization.Permission!>!
 FluentCMS.Authorization.Permission
+FluentCMS.Authorization.Permission.DefaultRoles.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Authorization.BuiltInRole>!
+FluentCMS.Authorization.Permission.DefaultRoles.init -> void
 FluentCMS.Authorization.Permission.Description.get -> string!
 FluentCMS.Authorization.Permission.Name.get -> string!
 FluentCMS.Authorization.Permission.Permission(string! name, string! description) -> void

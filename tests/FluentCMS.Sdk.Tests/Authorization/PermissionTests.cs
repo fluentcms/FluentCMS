@@ -36,4 +36,19 @@ public class PermissionTests
     [Fact]
     public void NeedsADescription() =>
         Should.Throw<ArgumentException>(() => new Permission("media.manage", " "));
+
+    [Fact]
+    public void GoesToNoRoleByDefaultAndToEachNamedRoleOnce()
+    {
+        new Permission("media.read", "Reads media.").DefaultRoles.ShouldBeEmpty();
+        new Permission("media.read", "Reads media.") { DefaultRoles = [BuiltInRole.Author, BuiltInRole.Editor, BuiltInRole.Author] }
+            .DefaultRoles.ShouldBe([BuiltInRole.Author, BuiltInRole.Editor]);
+    }
+
+    [Fact]
+    public void RefusesADefaultRoleThatIsNotBuiltIn()
+    {
+        Should.Throw<ArgumentOutOfRangeException>(() => new Permission("media.read", "Reads media.") { DefaultRoles = [(BuiltInRole)0] });
+        Should.Throw<ArgumentNullException>(() => new Permission("media.read", "Reads media.") { DefaultRoles = null! });
+    }
 }

@@ -68,6 +68,7 @@ public sealed class MigrationRunner(
         var sync = options.MigrateOnStartup && options.SchemaSync == SchemaSyncMode.Auto;
         await RefuseForeignMigrationsAsync(sync ? Plugins : [.. Plugins, Content], cancellationToken);
         await RefuseMigrationsBeforeBaselineAsync(cancellationToken);
+        await RefuseEarlierBaselineAsync(cancellationToken);
 
         if (options.MigrateOnStartup)
         {
@@ -108,6 +109,7 @@ public sealed class MigrationRunner(
     {
         await RefuseForeignMigrationsAsync(cancellationToken);
         await RefuseMigrationsBeforeBaselineAsync(cancellationToken);
+        await RefuseEarlierBaselineAsync(cancellationToken);
         var applied = await ApplyAsync([.. SystemAndPlugins, Content], cancellationToken);
         if (!await HasContentMigrationsAsync(cancellationToken))
         {
@@ -387,6 +389,61 @@ public sealed class MigrationRunner(
             throw new FluentCmsConfigurationException(
                 StorageErrorCodes.MigrationsBeforeBaseline,
                 $"{string.Join("; ", refused)}; nothing was applied: the database was made by the migrations from before the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again");
+        }
+    }
+
+    // Until 1.0.0 a change of the model goes into each stream's baseline (10.4, H5), so a database made by an earlier build of
+    // a baseline holds it in its history with nothing pending and lacks what was added to it since, on which the first query
+    // would fail with a raw missing relation. A stream whose history holds its baseline and that has nothing pending must
+    // therefore hold every table of its model, or the database is refused before anything is applied.
+    internal async Task RefuseEarlierBaselineAsync(CancellationToken cancellationToken = default)
+    {
+        var refused = new List<string>();
+        DatabaseSchema? database = null;
+        foreach (var stream in SystemAndPlugins)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var context = stream.ResolveContext(scope.ServiceProvider);
+            if (context.Database.GetMigrations().FirstOrDefault() is not { } baseline
+                || !(await context.Database.GetAppliedMigrationsAsync(cancellationToken)).Contains(baseline, StringComparer.Ordinal)
+                || (await context.Database.GetPendingMigrationsAsync(cancellationToken)).Any())
+            {
+                continue;
+            }
+
+            database ??= await ReadDatabaseAsync(context, cancellationToken);
+            var missing = context.GetService<IDesignTimeModel>().Model.GetEntityTypes()
+                .Where(entity => entity.GetViewName() is null && !entity.IsTableExcludedFromMigrations())
+                .Select(entity => entity.GetTableName())
+                .OfType<string>()
+                .Distinct(StringComparer.Ordinal)
+                .Where(table => !database.Tables.ContainsKey(table))
+                .Order(StringComparer.Ordinal)
+                .ToList();
+            if (missing.Count > 0)
+            {
+                refused.Add($"stream {stream.Name} has applied its baseline {baseline} but lacks {string.Join(", ", missing)}");
+            }
+        }
+
+        if (refused.Count > 0)
+        {
+            throw new FluentCmsConfigurationException(
+                StorageErrorCodes.EarlierBaseline,
+                $"{string.Join("; ", refused)}; nothing was applied: the database was made by an earlier build of the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again");
+        }
+    }
+
+    private async Task<DatabaseSchema> ReadDatabaseAsync(DbContext context, CancellationToken cancellationToken)
+    {
+        await context.Database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            return await provider.SchemaReader.ReadAsync(context.Database.GetDbConnection(), cancellationToken);
+        }
+        finally
+        {
+            await context.Database.CloseConnectionAsync();
         }
     }
 
