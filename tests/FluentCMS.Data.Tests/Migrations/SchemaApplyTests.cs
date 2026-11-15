@@ -25,6 +25,10 @@ public sealed partial class SchemaApplyTests : IDisposable
 
     private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "false" };
 
+    private static readonly Dictionary<string, string?> MigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "true" };
+
+    private static readonly string[] HeroBlock = ["hero"];
+
     private readonly TestDatabase _database = TestDatabase.Create();
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -360,6 +364,99 @@ public sealed partial class SchemaApplyTests : IDisposable
         (await RunAsync(after, "schema", "apply")).Output.ShouldStartWith("Nothing to apply;");
     }
 
+    // Neither migrate nor a start that migrates records a history row for a host without content migrations, so schema
+    // apply still reads the row it wrote, which names demo-post. Its table is under the prefix of demo, which the host
+    // registers, and is dropped all the same.
+    [Fact]
+    public async Task MigrateAndAStartBeforeSchemaApplyLeaveItTheRowThatNamesARemovedType()
+    {
+        var before = SampleSchema.NewBuilder()
+            .AddCollection("article", type => type.Field("title", "text"))
+            .AddCollection("demo-post", type => type.Field("title", "text"))
+            .Build();
+        await MigrateAsync(PluginHost(before));
+        (await RunWithPluginAsync(before, "schema", "apply")).ExitCode.ShouldBe(0);
+
+        await MigrateAsync(PluginHost(ArticleSchemas.Titled));
+        await StartAndStopAsync(PluginHost(ArticleSchemas.Titled, MigrationOnStartup));
+        History().ShouldHaveSingleItem();
+
+        var (exitCode, output, error) = await RunWithPluginAsync(ArticleSchemas.Titled, "schema", "apply");
+
+        exitCode.ShouldBe(1);
+        output.ShouldContain("  drop table cms_demo_post [destructive]");
+        error.ShouldContain("type 'demo-post' removed");
+
+        (exitCode, output, error) = await RunWithPluginAsync(ArticleSchemas.Titled, "schema", "apply", "--allow-destructive");
+
+        exitCode.ShouldBe(0, error);
+        output.ShouldNotContain("Left alone:");
+        _database.Tables().ShouldNotContain("cms_demo_post");
+        _database.Tables().ShouldContain(DemoPlugin.Table);
+        History().Count.ShouldBe(2);
+    }
+
+    // The values stay under the former name in the JSON of sections, so the rename loses them although no column changes.
+    [Fact]
+    public async Task ABlockFieldRenamedBeforeMigrateAndAStartIsStillALoss()
+    {
+        await MigrateAndApplyAsync(WithHero("heading"));
+        var renamed = WithHero("title", former: "heading");
+
+        await MigrateAsync(Host(renamed));
+        await StartAndStopAsync(Host(renamed, settings: MigrationOnStartup));
+        History().ShouldHaveSingleItem();
+
+        var (exitCode, output, error) = await RunAsync(renamed, "schema", "apply");
+
+        exitCode.ShouldBe(1);
+        output.ShouldContain("field 'block hero.heading' renamed to 'title'");
+        error.ShouldStartWith("FCMS3337: the schema change loses data: field 'block hero.heading' renamed to 'title', whose values are kept in JSON under 'heading', which schema apply does not rename");
+    }
+
+    // Without the types of a readable newest row, a table under a plugin's prefix may be the plugin's, so it stays.
+    [Fact]
+    public async Task WithoutAReadableHistoryRowEveryTableUnderAPluginsPrefixIsLeftAlone()
+    {
+        var before = SampleSchema.NewBuilder()
+            .AddCollection("article", type => type.Field("title", "text"))
+            .AddCollection("demo-post", type => type.Field("title", "text"))
+            .AddCollection("tag", type => type.Field("name", "text"))
+            .Build();
+        await MigrateAsync(PluginHost(before));
+        (await RunWithPluginAsync(before, "schema", "apply")).ExitCode.ShouldBe(0);
+        var leftAlone = $"Left alone:{Environment.NewLine}  table {DemoPlugin.Table}, under cms_demo_, the prefix of a plugin that this host does not register and whose history table {DemoPlugin.HistoryTable} the database has{Environment.NewLine}  table cms_demo_post, under cms_demo_, ";
+
+        _database.Execute("update cms_schema_history set snapshot = '[]'");
+        var (exitCode, output, error) = await RunAsync(ArticleSchemas.Titled, "schema", "apply", "--allow-destructive", "--dry-run");
+
+        exitCode.ShouldBe(0, error);
+        output.ShouldContain($"Operations:{Environment.NewLine}  drop table cms_tag [destructive]{Environment.NewLine}{leftAlone}");
+        error.ShouldContain("is not in the form of a schema");
+
+        _database.Execute("delete from cms_schema_history");
+        (exitCode, output, error) = await RunAsync(ArticleSchemas.Titled, "schema", "apply", "--allow-destructive");
+
+        exitCode.ShouldBe(0, error);
+        output.ShouldContain(leftAlone);
+        _database.Tables().ShouldContain("cms_demo_post");
+        _database.Tables().ShouldNotContain("cms_tag");
+    }
+
+    // A name read from the database can hold a line break, which would end a comment of the script and run the rest as SQL.
+    [Fact]
+    public async Task TheCommentsOfAScriptEscapeALineBreakInATableName()
+    {
+        await MigrateAndApplyAsync(ArticleSchemas.Titled);
+        _database.Execute("create table \"cms_bad\nname\" (id int)");
+
+        var (exitCode, output, error) = await RunAsync(ArticleSchemas.Titled, "schema", "apply", "--script", "--allow-destructive");
+
+        exitCode.ShouldBe(0, error);
+        output.ShouldContain($"-- drop table cms_bad\\u000aname{Environment.NewLine}");
+        output.ShouldNotContain("-- drop table cms_bad\n");
+    }
+
     [Fact]
     public async Task DryRunAndScriptChangeNothingAndTheScriptAppliesOnTheDatabaseItWasWrittenFor()
     {
@@ -498,17 +595,36 @@ public sealed partial class SchemaApplyTests : IDisposable
                 .Field(field, "relation", relation => relation.Relation("author").FormerNames(former is null ? [] : [former])))
             .Build();
 
-    private IHost Host(SchemaModel schema, Assembly? migrations = null) =>
-        _database.CreateHost(schema, Production, migrations, NoMigrationOnStartup);
+    private static SchemaModel WithHero(string field, string? former = null) =>
+        SampleSchema.NewBuilder()
+            .AddBlock("hero", block => block.Field(field, "text", heading => heading.FormerNames(former is null ? [] : [former])))
+            .AddCollection("article", type => type.Field("title", "text").Field("sections", "blocks", sections => sections.Setting(FieldSettings.Blocks, HeroBlock)))
+            .Build();
 
-    private IHost PluginHost(SchemaModel schema) =>
-        _database.CreateHost(schema, Production, settings: NoMigrationOnStartup, services: services => DemoPlugin.Add(services, _database));
+    private IHost Host(SchemaModel schema, Assembly? migrations = null, Dictionary<string, string?>? settings = null) =>
+        _database.CreateHost(schema, Production, migrations, settings ?? NoMigrationOnStartup);
 
-    private async Task MigrateAsync(SchemaModel schema, Assembly? migrations = null)
+    private IHost PluginHost(SchemaModel schema, Dictionary<string, string?>? settings = null) =>
+        _database.CreateHost(schema, Production, settings: settings ?? NoMigrationOnStartup, services: services => DemoPlugin.Add(services, _database));
+
+    private Task MigrateAsync(SchemaModel schema, Assembly? migrations = null) => MigrateAsync(Host(schema, migrations));
+
+    private static async Task MigrateAsync(IHost host)
     {
-        using var host = Host(schema, migrations);
-        var (exitCode, _, error) = await RunAsync(host, "migrate");
-        exitCode.ShouldBe(0, error);
+        using (host)
+        {
+            var (exitCode, _, error) = await RunAsync(host, "migrate");
+            exitCode.ShouldBe(0, error);
+        }
+    }
+
+    private static async Task StartAndStopAsync(IHost host)
+    {
+        using (host)
+        {
+            await host.StartAsync(Token);
+            await host.StopAsync(Token);
+        }
     }
 
     private async Task MigrateAndApplyAsync(SchemaModel schema)
@@ -538,6 +654,12 @@ public sealed partial class SchemaApplyTests : IDisposable
     private async Task<(int ExitCode, string Output, string Error)> RunAsync(SchemaModel schema, params string[] args)
     {
         using var host = Host(schema);
+        return await RunAsync(host, args);
+    }
+
+    private async Task<(int ExitCode, string Output, string Error)> RunWithPluginAsync(SchemaModel schema, params string[] args)
+    {
+        using var host = PluginHost(schema);
         return await RunAsync(host, args);
     }
 

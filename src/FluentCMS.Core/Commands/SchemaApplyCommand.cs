@@ -1,5 +1,4 @@
 using System.Data.Common;
-using System.Text.Json;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
@@ -58,7 +57,7 @@ internal sealed class SchemaApplyCommand : HostCommand
         var applied = await runner.GetAppliedSnapshotAsync(guarded.Token);
         var plan = await runner.PlanContentSchemaAsync(applied, guarded.Token);
         var steps = plan.Steps;
-        var (report, unreadable) = Report(applied, schema);
+        var (report, unreadable) = SchemaHistory.Compare(applied, schema);
         if (!script)
         {
             await WritePlanAsync(context.Output, report, plan);
@@ -145,25 +144,6 @@ internal sealed class SchemaApplyCommand : HostCommand
         }
     }
 
-    // From the newest row of the schema history to the host's schema, which tells a renamed field and a changed kind that
-    // the tables alone do not. Null while the history is empty; unreadable when its snapshot is not in the form of a schema.
-    private static (SchemaDiffReport? Report, bool Unreadable) Report(string? applied, SchemaModel schema)
-    {
-        if (applied is null)
-        {
-            return (null, false);
-        }
-
-        try
-        {
-            return (SchemaSnapshotDiff.Report(applied, SchemaSnapshot.Of(schema).Json), false);
-        }
-        catch (JsonException)
-        {
-            return (null, true);
-        }
-    }
-
     private static async Task WritePlanAsync(TextWriter output, SchemaDiffReport? report, SchemaApplyPlan plan)
     {
         if (report is { HasChanges: true })
@@ -198,33 +178,17 @@ internal sealed class SchemaApplyCommand : HostCommand
         _ => "",
     };
 
-    // What the tables lose, and what the history says is lost although the tables keep it: a removed field or type, a
-    // changed kind, and a renamed field whose values are kept in JSON under its former name.
-    private static List<string> Losses(IReadOnlyList<SchemaApplyStep> steps, SchemaDiffReport? report, bool unreadable, SchemaModel schema)
-    {
-        List<string> losses = [.. steps.Where(step => step.IsDestructive).Select(step => step.Description)];
-        if (report is not null)
-        {
-            losses.AddRange(report.Destructive.Select(change => change.ToString()));
-            losses.AddRange(ContentRenames.Of(schema, report.Changes).InJson
-                .Select(change => $"{change}, whose values are kept in JSON under '{change.FormerField}', which schema apply does not rename"));
-        }
-
-        if (unreadable)
-        {
-            losses.Add("the snapshot in the newest row of the schema history is not in the form of a schema, so renamed fields and changed kinds cannot be checked");
-        }
-
-        return losses;
-    }
+    // What the tables lose, and what the history says is lost although the tables keep it.
+    private static List<string> Losses(IReadOnlyList<SchemaApplyStep> steps, SchemaDiffReport? report, bool unreadable, SchemaModel schema) =>
+        [.. steps.Where(step => step.IsDestructive).Select(step => step.Description), .. SchemaHistory.Losses(report, unreadable, schema)];
 
     private static async Task<int> WriteScriptAsync(CommandContext context, MigrationRunner runner, SchemaModel schema, SchemaApplyPlan plan, string? file, CancellationToken cancellationToken)
     {
         IEnumerable<string> header =
         [
             $"-- fluentcms schema apply: the content tables to schema {SchemaSnapshot.Of(schema).Hash}.",
-            .. plan.Steps.Count == 0 ? ["-- Nothing to apply."] : plan.Steps.Select(step => $"-- {step.Description}"),
-            .. plan.LeftAlone.Select(table => $"-- Left alone: {table}"),
+            .. plan.Steps.Count == 0 ? ["-- Nothing to apply."] : plan.Steps.Select(step => Comment(step.Description)),
+            .. plan.LeftAlone.Select(table => Comment($"Left alone: {table}")),
         ];
         var sql = string.Join(Environment.NewLine, header) + Environment.NewLine + runner.ScriptContentSchema(plan.Steps);
 
@@ -238,6 +202,11 @@ internal sealed class SchemaApplyCommand : HostCommand
         await context.Output.WriteLineAsync($"Wrote {Path.GetFullPath(file)}");
         return CommandExitCodes.Success;
     }
+
+    // A description holds names read from the database, and a line break in one would end the comment and run the rest
+    // of the line as SQL.
+    private static string Comment(string text) =>
+        "-- " + string.Concat(text.Select(c => char.IsControl(c) || c is '\u2028' or '\u2029' ? $"\\u{(int)c:x4}" : c.ToString()));
 
     private static string Count(int count) => count == 1 ? "1 change" : $"{count} changes";
 }

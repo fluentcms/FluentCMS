@@ -3,6 +3,7 @@ using System.Runtime.ExceptionServices;
 using System.Text.RegularExpressions;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Diagnostics;
+using FluentCMS.Core.Storage;
 using FluentCMS.Plugins;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -169,6 +170,13 @@ internal static partial class PluginHost
             throw new FluentCmsConfigurationException(
                 PluginErrorCodes.InvalidName,
                 $"The plugin {type.FullName} is named '{name}'; a plugin name is lower case letters and digits joined by single hyphens, starts with a letter and has at most {NameMaxLength} characters, such as 'media' or 'ai-assist'.");
+        }
+
+        if (MigrationRunner.IsCoreStream(name))
+        {
+            throw new FluentCmsConfigurationException(
+                PluginErrorCodes.InvalidName,
+                $"The plugin {type.FullName} is named '{name}', which is a migration stream of core; a plugin's name is also its stream's, so '{MigrationRunner.SystemStream}' and '{MigrationRunner.ContentStream}' are not plugin names.");
         }
 
         var version = attribute.Version ?? StartupReportFactory.VersionOf(type.Assembly);

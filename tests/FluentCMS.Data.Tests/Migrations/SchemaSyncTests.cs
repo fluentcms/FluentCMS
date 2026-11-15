@@ -41,6 +41,12 @@ public sealed class SchemaSyncTests : IDisposable
         await host.StopAsync(Token);
     }
 
+    private static SchemaModel WithHero(string field, string? former = null) =>
+        SampleSchema.NewBuilder()
+            .AddBlock("hero", block => block.Field(field, "text", heading => heading.FormerNames(former is null ? [] : [former])))
+            .AddCollection("article", type => type.Field("title", "text").Field("sections", "blocks", sections => sections.Setting(FieldSettings.Blocks, HeroBlock)))
+            .Build();
+
     private void InsertArticle(string column, string value) =>
         _database.Execute($"insert into cms_article (id, document_id, site_id, state, {column}) values ('{Guid.CreateVersion7()}', '{Guid.CreateVersion7()}', '{Guid.Empty}', 0, '{value}')");
 
@@ -249,6 +255,21 @@ public sealed class SchemaSyncTests : IDisposable
         report.Applied.ShouldBe(["add column subtitle to table cms_article"]);
         report.NotApplied.ShouldBeEmpty();
         _database.ReadStrings("select hash from cms_schema_history").Count.ShouldBe(2);
+        await host.StopAsync(Token);
+    }
+
+    // Sync moves no value, and the history keeps telling schema apply that the values under heading are lost.
+    [SqliteFact("schema sync, which only SQLite supports")]
+    public async Task ABlockFieldRenamedIsNotRecordedSinceItsValuesStayUnderTheFormerName()
+    {
+        await StartAndStopAsync(WithHero("heading"));
+        var logs = new ListLoggerProvider();
+
+        using var host = _database.CreateHost(WithHero("title", former: "heading"), Environments.Development, services: services => services.AddSingleton<ILoggerProvider>(logs));
+        await host.StartAsync(Token);
+
+        _database.ReadStrings("select hash from cms_schema_history").ShouldHaveSingleItem();
+        logs.Messages.ShouldContain(message => message.Contains("field 'block hero.heading' renamed to 'title'", StringComparison.Ordinal) && message.Contains("Run 'fluentcms schema apply' to apply and record it", StringComparison.Ordinal));
         await host.StopAsync(Token);
     }
 

@@ -74,7 +74,7 @@ docker run -d -p 8080:8080 -v fluentcms-data:/data -v ./schema.json:/config/sche
 
 The format is the one `GET /api/management/v1/schema/snapshot` returns, so a snapshot of one instance is a schema file for another. A file with an error stops the container with every problem and its code, such as `FCMS1213` for a file that is not valid JSON or has an unknown property and `FCMS1203` for an unknown field type; a path that does not exist stops it with `FCMS3153`. Both may be set: the sample's types and the file's are then one schema.
 
-A schema file has no compiled migrations. On SQLite the host creates and extends its tables on start: a new type, a new optional field and a new index are applied, and a change that would drop or rewrite data, such as removing a field, changing its type or adding a required field, is logged as a warning and left undone. The startup report lists this as `schema-sync-outside-development`, a known choice of the image rather than a mistake. On PostgreSQL and SQL Server nothing changes the database on start; `fluentcms schema apply` brings the content tables up to the schema ([below](#apply-a-schema-file)), and it applies on SQLite too, where it also makes the changes that start leaves undone.
+A schema file has no compiled migrations. On SQLite the host creates and extends its tables on start: a new type, a new optional field and a new index are applied, and a change that would drop or rewrite data, such as removing a field, changing its type or adding a required field, is logged as a warning and left undone. Start records the schema history only when it applied every change and none loses data, so `fluentcms schema apply` still sees such a change. The startup report lists this as `schema-sync-outside-development`, a known choice of the image rather than a mistake. On PostgreSQL and SQL Server nothing changes the database on start; `fluentcms schema apply` brings the content tables up to the schema ([below](#apply-a-schema-file)), and it applies on SQLite too, where it also makes the changes that start leaves undone.
 
 ## Environment variables
 
@@ -223,7 +223,7 @@ The `fluentcms` tool runs `apikey`, `user invite`, `user add-role`, `jobs list` 
 
 ## Apply a schema file
 
-With `FLUENTCMS_SCHEMA` or `FLUENTCMS_SAMPLE` the content types are data, so they have no migrations. `fluentcms schema apply`, run after `fluentcms migrate` with the same image and settings, compares the schema with the content tables, applies the difference and records the schema in the schema history; when nothing differs it changes nothing and exits with 0. It refuses while the system or a plugin stream has a pending migration (`FCMS3336`), which is why it runs second:
+With `FLUENTCMS_SCHEMA` or `FLUENTCMS_SAMPLE` the content types are data, so they have no migrations. `fluentcms schema apply`, run after `fluentcms migrate` with the same image and settings, compares the schema with the content tables, applies the difference and records the schema in the schema history; when nothing differs it changes nothing and exits with 0. It is what records the schema history for these hosts, the first row of a new database too: `fluentcms migrate` and a start leave the newest row as it is, so the next `schema apply` still sees what a new schema removes or renames. It refuses while the system or a plugin stream has a pending migration (`FCMS3336`), which is why it runs second:
 
 ```yaml
 initContainers:
