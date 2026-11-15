@@ -74,7 +74,7 @@ The audit of B-105 ([#3050], comment of 13 Nov 2026) walked the nineteen Must ro
 | [#3103] | The built-in Editor and Author roles hold no media or AI permission | none | A-20, A-21, A-38 |
 | [#3104] | 45 plugin operations declare no body in the OpenAPI document | none | A-20, A-21, A-35 to A-38 |
 
-An admin issue that needs a gap starts once the gap is merged. Where an area can work without it, it says how (section 4). Where the gap issues run is AQ13. By 15 Nov 2026 every gap but #3096 was merged into `main`; #3096 is in milestone A1 (10.2).
+An admin issue that needs a gap starts once the gap is merged. Where an area can work without it, it says how (section 4). Where the gap issues run is AQ13. By 15 Nov 2026 every gap was merged into `main`, #3096 last, so none holds an admin issue back; where section 4 says that an area waits for a gap, or how it works until the gap is merged, it describes the API as the audit found it.
 
 The audit also named points that are awkward but need no new route. The admin answers them itself:
 
@@ -898,7 +898,7 @@ The admin's milestones follow the editor's daily loop of category 3, "find an en
 | A6 Administration and plugin halves | Nothing a Must row needs takes the CLI or a direct API call. | An administrator manages users, roles, keys, members, settings, locales, sites and host names, webhooks, MCP clients, plugins and jobs, and reads the startup report, from the admin alone; an editor runs AI actions on the opted-in fields. |
 | A7 Distributions and admin preview | The admin ships. | The admin is in its three distributions with a preview of the packages; the end-to-end and accessibility checks pass on the image; the admin runs in English and a right-to-left pseudo-culture with each user's formats; the screen reader pass is done. |
 
-A1 to A2 are the critical path. The gaps of 1.4 run before the admin issue that needs them (AQ13): #3096 in A1, beside A0, since A-08 and three issues of A2 wait for it; the others were merged into `main` on 13 and 15 Nov 2026, before A0 started.
+A1 to A2 are the critical path. The gaps of 1.4 run before the admin issue that needs them (AQ13): all were merged into `main` on 13 and 15 Nov 2026, before A0 started, #3096 among them, which A-08 and three issues of A2 wait for.
 
 ## 10. Proposed issues
 
