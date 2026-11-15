@@ -115,7 +115,7 @@ dotnet test --project tests/FluentCMS.Sdk.Tests -c Release --no-build
 dotnet test --project tests/FluentCMS.Core.Tests -c Release --no-build
 dotnet test --project tests/FluentCMS.Architecture.Tests -c Release --no-build
 dotnet test --project tests/FluentCMS.Cli.Tests -c Release --no-build
-dotnet test --project tests/FluentCMS.Core.IntegrationTests -c Release --no-build --filter-namespace FluentCMS.Core.IntegrationTests.Commands
+dotnet test --project tests/FluentCMS.Core.IntegrationTests -c Release --no-build --filter-namespace "FluentCMS.Core.IntegrationTests.Commands*" --minimum-expected-tests 40
 npx --yes markdownlint-cli2 "**/*.md"
 ```
 

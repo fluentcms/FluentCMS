@@ -61,8 +61,8 @@ public sealed class DeletedSitePluginTests : IDisposable
         await _host.Services.GetRequiredService<MigrationRunner>().MigrateAsync(Token);
         var gone = await AsSystemAsync<ISiteAdministration, Guid>(async sites => (await sites.CreateAsync("Gone", "gone", "en", Token)).Id);
         var kept = await AsSystemAsync<ISiteAdministration, Guid>(async sites => (await sites.CreateAsync("Kept", "kept", "en", Token)).Id);
-        var goneFiles = await AddRowsAsync(gone);
-        var keptFiles = await AddRowsAsync(kept);
+        var goneRows = await AddRowsAsync(gone);
+        var keptRows = await AddRowsAsync(kept);
 
         await AsSystemAsync<ISiteAdministration, bool>(async sites =>
         {
@@ -79,7 +79,9 @@ public sealed class DeletedSitePluginTests : IDisposable
 
         var webhooks = services.GetRequiredService<PluginDbContext<WebhooksPlugin>>();
         (await SitesOfAsync(webhooks.Set<Webhook>().Select(webhook => webhook.SiteId), both)).ShouldBe([kept]);
-        (await SitesOfAsync(webhooks.Set<WebhookDelivery>().Join(webhooks.Set<Webhook>(), delivery => delivery.WebhookId, webhook => webhook.Id, (_, webhook) => webhook.SiteId), both)).ShouldBe([kept]);
+        // The plugins' tables have no foreign keys, so a child row is found by the id of its parent, which is gone.
+        (await webhooks.Set<WebhookDelivery>().Where(delivery => delivery.WebhookId == goneRows.Webhook).CountAsync(Token)).ShouldBe(0);
+        (await webhooks.Set<WebhookDelivery>().Where(delivery => delivery.WebhookId == keptRows.Webhook).CountAsync(Token)).ShouldBe(1);
 
         var mcp = services.GetRequiredService<PluginDbContext<McpPlugin>>();
         (await SitesOfAsync(mcp.Set<McpInstruction>().Select(instruction => instruction.SiteId), both)).ShouldBe([kept, kept]);
@@ -89,14 +91,15 @@ public sealed class DeletedSitePluginTests : IDisposable
         (await SitesOfAsync(media.Set<Folder>().Select(folder => folder.SiteId), both)).ShouldBe([kept]);
         (await SitesOfAsync(media.Set<Preset>().Select(preset => preset.SiteId), both)).ShouldBe([kept]);
         (await SitesOfAsync(media.Set<Asset>().Select(asset => asset.SiteId), both)).ShouldBe([kept]);
-        (await SitesOfAsync(media.Set<Variant>().Join(media.Set<Asset>(), variant => variant.AssetId, asset => asset.Id, (_, asset) => asset.SiteId), both)).ShouldBe([kept]);
+        (await media.Set<Variant>().Where(variant => variant.AssetId == goneRows.Asset).CountAsync(Token)).ShouldBe(0);
+        (await media.Set<Variant>().Where(variant => variant.AssetId == keptRows.Asset).CountAsync(Token)).ShouldBe(1);
         var storage = services.GetRequiredKeyedService<IFileStorage>(LocalFileStorage.ProviderName);
-        foreach (var key in goneFiles)
+        foreach (var key in goneRows.Files)
         {
             (await storage.ExistsAsync(key, Token)).ShouldBeFalse(key);
         }
 
-        foreach (var key in keptFiles)
+        foreach (var key in keptRows.Files)
         {
             (await storage.ExistsAsync(key, Token)).ShouldBeTrue(key);
         }
@@ -111,8 +114,8 @@ public sealed class DeletedSitePluginTests : IDisposable
     private static Task<List<Guid>> SitesOfAsync(IQueryable<Guid> sites, Guid[] of) =>
         sites.Where(site => of.Contains(site)).ToListAsync(Token);
 
-    // A row of each table of each plugin in the site, and the files of its media; returns the keys of those files.
-    private async Task<string[]> AddRowsAsync(Guid site)
+    // A row of each table of each plugin in the site, and the files of its media.
+    private async Task<SiteRows> AddRowsAsync(Guid site)
     {
         var now = DateTimeOffset.UtcNow;
         var actor = Guid.CreateVersion7();
@@ -155,7 +158,7 @@ public sealed class DeletedSitePluginTests : IDisposable
         multiSite.Add(new SiteHost { SiteId = site, Hostname = $"{site:N}.example.com", IsPrimary = true, CreatedAt = now });
         await multiSite.SaveChangesAsync(Token);
 
-        return [asset.StorageKey, variant.StorageKey];
+        return new SiteRows(webhook.Id, asset.Id, [asset.StorageKey, variant.StorageKey]);
     }
 
     private async Task<TResult> AsSystemAsync<TService, TResult>(Func<TService, Task<TResult>> work)
@@ -165,4 +168,7 @@ public sealed class DeletedSitePluginTests : IDisposable
         using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Job, new SiteId(DefaultSite.Id));
         return await work(scope.ServiceProvider.GetRequiredService<TService>());
     }
+
+    // The parents of the rows that are found by their parent's id, and the keys of the media files.
+    private sealed record SiteRows(Guid Webhook, Guid Asset, string[] Files);
 }
