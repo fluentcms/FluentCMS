@@ -151,18 +151,28 @@ internal sealed class SchemaDiffCommand : HostCommand
     private static string FileJson(IServiceProvider services, string file) =>
         SchemaSnapshot.Of(SchemaSources.File(file, services.GetRequiredService<IFieldTypeRegistry>())).Json;
 
+    // A host without content migrations has its schema recorded by schema apply, not by migrate. A database that cannot be
+    // read cannot say which migrations it applied, so the host's own set tells.
     private static async Task<string> AppliedAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
+        var runner = services.GetRequiredService<MigrationRunner>();
         string? snapshot;
         try
         {
-            snapshot = await services.GetRequiredService<MigrationRunner>().GetAppliedSnapshotAsync(cancellationToken);
+            snapshot = await runner.GetAppliedSnapshotAsync(cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            throw new CommandException(CommandErrorCodes.AppliedSchemaUnreadable, $"the schema history of the host's database could not be read ({exception.GetType().Name}); run 'fluentcms migrate' to create it");
+            var record = runner.MigrationsOf(MigrationRunner.ContentStream).Count > 0 ? "" : ", then 'fluentcms schema apply' to record the schema";
+            throw new CommandException(CommandErrorCodes.AppliedSchemaUnreadable, $"the schema history of the host's database could not be read ({exception.GetType().Name}); run 'fluentcms migrate' to create it{record}");
         }
 
-        return snapshot ?? throw new CommandException(CommandErrorCodes.NoAppliedSchema, "the schema history of the host's database is empty; run 'fluentcms migrate' to apply the schema and record it");
+        if (snapshot is not null)
+        {
+            return snapshot;
+        }
+
+        var fix = (await runner.GetContentMigrationsAsync(cancellationToken)).Count > 0 ? "fluentcms migrate" : "fluentcms schema apply";
+        throw new CommandException(CommandErrorCodes.NoAppliedSchema, $"the schema history of the host's database is empty; run '{fix}' to apply the schema and record it");
     }
 }

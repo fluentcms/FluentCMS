@@ -97,3 +97,7 @@ A plugin that gets a migration stream is added in two places:
 A test of that class fails when a project under `src/plugins` has a `Migrations` folder and no line there.
 
 The other data tests start hosts of their own, which must not load these plugins. So the project turns plugin discovery off with the `AppContext` switch `FluentCMS.Plugins.DisableDiscovery`, set in its project file, and the hosts of `PluginStreamTests` add the plugins with `AddPlugin`.
+
+## A plugin taken out of a host
+
+A host that no longer adds a plugin leaves the plugin's tables and its history table `cms_{plugin}__migrations` in the database, and nothing drops them. The history table tells that the prefix `cms_{plugin}_` is a plugin's, so schema sync does not report those tables and `fluentcms schema apply` lists them under `Left alone:`, also with `--allow-destructive` ([#3072](https://github.com/fluentcms/FluentCMS/issues/3072)). Added back, the plugin applies only the migrations its history does not hold. To remove its data, drop its tables and its history table by hand.

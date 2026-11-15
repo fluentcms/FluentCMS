@@ -150,7 +150,7 @@ internal sealed partial class CommandLine(TextWriter output, TextWriter error, I
     private Command Migrate()
     {
         var check = new Option<bool>("--check") { Description = "Lists the pending migrations and applies nothing; exits with 1 when any is pending." };
-        var command = new Command("migrate", "Applies the pending migrations of every stream, in the order system, plugins, content, and records the schema history.") { check };
+        var command = new Command("migrate", "Applies the pending migrations of every stream, in the order system, plugins, content, and records the schema history when the host has content migrations.") { check };
         var project = ProjectOptions.AddTo(command);
         command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["migrate", .. Flag(result, check)], cancellationToken));
         return command;

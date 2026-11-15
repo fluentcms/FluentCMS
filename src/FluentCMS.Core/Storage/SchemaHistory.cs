@@ -1,6 +1,7 @@
 using System.Data;
 using System.Data.Common;
 using System.Reflection;
+using System.Text.Json;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Schema;
@@ -38,20 +39,94 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
     public Task RecordOrThrowAsync(SchemaModel schema, CancellationToken cancellationToken) =>
         RecordWithRetriesAsync(SchemaSnapshot.Of(schema), cancellationToken);
 
+    // Schema sync's record. Sync moves no value, so for a host that schema apply serves, a schema that loses data by the
+    // newest row keeps that row, which tells schema apply what is lost, and only schema apply records past it. A host with
+    // content migrations has nothing that would record past it, so it records as before. Returns whether it recorded.
+    public async Task<bool> RecordAfterSyncAsync(SchemaModel schema, Func<CancellationToken, Task<bool>> usesSchemaApply, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (await usesSchemaApply(cancellationToken))
+            {
+                var (report, unreadable) = Compare(await AppliedSnapshotAsync(cancellationToken), schema);
+                if (Losses(report, unreadable, schema).Count > 0)
+                {
+                    return false;
+                }
+            }
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            SchemaHistoryLog.NotRecorded(logger, exception.GetType().Name, exception);
+            return false;
+        }
+
+        await RecordAsync(schema, cancellationToken);
+        return true;
+    }
+
+    // From the newest row's snapshot to a schema, which tells a renamed field and a changed kind that the tables alone do
+    // not. Null while the history is empty; unreadable when its snapshot is not in the form of a schema.
+    public static (SchemaDiffReport? Report, bool Unreadable) Compare(string? applied, SchemaModel schema)
+    {
+        if (applied is null)
+        {
+            return (null, false);
+        }
+
+        try
+        {
+            return (SchemaSnapshotDiff.Report(applied, SchemaSnapshot.Of(schema).Json), false);
+        }
+        catch (JsonException)
+        {
+            return (null, true);
+        }
+    }
+
+    // What the history says is lost although the tables keep it: a removed field or type, a changed kind, and a renamed
+    // field whose values are kept in JSON under its former name. A snapshot that cannot be read counts, since renames
+    // cannot be checked.
+    public static List<string> Losses(SchemaDiffReport? report, bool unreadable, SchemaModel schema)
+    {
+        List<string> losses = [];
+        if (report is not null)
+        {
+            losses.AddRange(report.Destructive.Select(change => change.ToString()));
+            losses.AddRange(ContentRenames.Of(schema, report.Changes).InJson
+                .Select(change => $"{change}, whose values are kept in JSON under '{change.FormerField}', which schema apply does not rename"));
+        }
+
+        if (unreadable)
+        {
+            losses.Add("the snapshot in the newest row of the schema history is not in the form of a schema, so renamed fields and changed kinds cannot be checked");
+        }
+
+        return losses;
+    }
+
     // Logs what differs between the code and the newest row. It never fails startup: a schema that drifted is the
-    // operator's to apply, and a missing check must not stop a host that works.
-    public async Task CheckDriftAsync(SchemaModel schema, CancellationToken cancellationToken)
+    // operator's to apply, and a missing check must not stop a host that works. A host that schema apply serves is asked to
+    // run it; usesSchemaApply is asked only when there is something to log.
+    public async Task CheckDriftAsync(SchemaModel schema, Func<CancellationToken, Task<bool>> usesSchemaApply, CancellationToken cancellationToken)
     {
         try
         {
             var status = await StatusAsync(schema, cancellationToken);
             if (status.AppliedHash is null)
             {
-                SchemaHistoryLog.NoHistory(logger);
+                SchemaHistoryLog.NoHistory(logger, await usesSchemaApply(cancellationToken) ? "run 'fluentcms schema apply' to record it" : $"run 'fluentcms migrate' to record it, or start with {DatabaseOptions.MigrateOnStartupKey} = true");
             }
             else if (status.Drifted)
             {
-                SchemaHistoryLog.Drift(logger, status.AppliedAt!.Value, status.AppliedVersion!, status.AppliedHash, status.Hash, status.Changes!);
+                SchemaHistoryLog.Drift(
+                    logger,
+                    status.AppliedAt!.Value,
+                    status.AppliedVersion!,
+                    status.AppliedHash,
+                    status.Hash,
+                    status.Changes!,
+                    await usesSchemaApply(cancellationToken) ? "Run 'fluentcms schema apply' to apply and record it" : $"Run 'fluentcms migrate' to apply and record it, or start with {DatabaseOptions.MigrateOnStartupKey} = true");
             }
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -193,9 +268,9 @@ internal static partial class SchemaHistoryLog
     [LoggerMessage(EventId = 9313, Level = LogLevel.Warning, Message = "The schema in code could not be compared with the schema history ({ExceptionType}); the host starts without the check.")]
     public static partial void NotChecked(ILogger logger, string exceptionType, Exception exception);
 
-    [LoggerMessage(EventId = 9314, Level = LogLevel.Information, Message = "The schema history is empty, so the schema in code cannot be compared; run 'fluentcms migrate' to record it, or start with FluentCms:Database:MigrateOnStartup = true.")]
-    public static partial void NoHistory(ILogger logger);
+    [LoggerMessage(EventId = 9314, Level = LogLevel.Information, Message = "The schema history is empty, so the schema in code cannot be compared; {Fix}.")]
+    public static partial void NoHistory(ILogger logger, string fix);
 
-    [LoggerMessage(EventId = 9315, Level = LogLevel.Warning, Message = "The schema in code differs from the one applied on {AppliedAt:u} by FluentCMS {Version} (hash {Applied}, code {Current}): {Changes}. Run 'fluentcms migrate' to apply and record it, or start with FluentCms:Database:MigrateOnStartup = true.")]
-    public static partial void Drift(ILogger logger, DateTimeOffset appliedAt, string version, string applied, string current, string changes);
+    [LoggerMessage(EventId = 9315, Level = LogLevel.Warning, Message = "The schema in code differs from the one applied on {AppliedAt:u} by FluentCMS {Version} (hash {Applied}, code {Current}): {Changes}. {Fix}.")]
+    public static partial void Drift(ILogger logger, DateTimeOffset appliedAt, string version, string applied, string current, string changes, string fix);
 }

@@ -145,6 +145,20 @@ public sealed class MigrationRunnerTests : IDisposable
         exception.Message.ShouldBe($"FCMS1305: stream system has not applied {string.Join(", ", pending.Select(migration => migration.Id))}; run 'fluentcms migrate' to apply the pending migrations, or set FluentCms:Database:MigrateOnStartup to true");
     }
 
+    // A stream's name is what its history table and the commands go by, so a plugin's cannot be one of core's.
+    [Theory]
+    [InlineData("content")]
+    [InlineData("system")]
+    public void AStreamNamedAfterOneOfCoresIsRefused(string name)
+    {
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production, services: services => services.AddSingleton<IPluginMigrations>(new NamedStream(name)));
+
+        var exception = Should.Throw<FluentCmsConfigurationException>(() => host.Services.GetRequiredService<MigrationRunner>());
+
+        exception.Code.ShouldBe("FCMS1502");
+        exception.Message.ShouldContain($"is named '{name}', which is a stream of core");
+    }
+
     [Fact]
     public async Task APendingPluginMigrationFailsStartupWhenStartupDoesNotMigrate()
     {
@@ -280,4 +294,11 @@ public sealed class MigrationRunnerTests : IDisposable
     }
 
     private void AddDemoPlugin(IServiceCollection services) => DemoPlugin.Add(services, _database);
+
+    private sealed class NamedStream(string name) : IPluginMigrations
+    {
+        public string Name => name;
+
+        public DbContext ResolveContext(IServiceProvider scopedServices) => throw new NotSupportedException();
+    }
 }

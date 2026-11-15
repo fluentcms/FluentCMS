@@ -1,5 +1,5 @@
 using System.Data.Common;
-using System.Text.Json;
+using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
@@ -55,11 +55,13 @@ internal sealed class SchemaApplyCommand : HostCommand
         await using var held = applying ? await runner.LockContentSchemaAsync(cancellationToken) : null;
         using var guarded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, held?.Lost ?? CancellationToken.None);
 
-        var steps = await runner.PlanContentSchemaAsync(guarded.Token);
-        var (report, unreadable) = await ReportAsync(runner, schema, guarded.Token);
+        var applied = await runner.GetAppliedSnapshotAsync(guarded.Token);
+        var plan = await runner.PlanContentSchemaAsync(applied, guarded.Token);
+        var steps = plan.Steps;
+        var (report, unreadable) = SchemaHistory.Compare(applied, schema);
         if (!script)
         {
-            await WritePlanAsync(context.Output, report, steps);
+            await WritePlanAsync(context.Output, report, plan);
         }
 
         var refused = steps.Where(step => step.Kind == SchemaStepKind.Refused).Select(step => step.Description).ToList();
@@ -90,7 +92,7 @@ internal sealed class SchemaApplyCommand : HostCommand
 
         if (script)
         {
-            return await WriteScriptAsync(context, runner, schema, steps, file, cancellationToken);
+            return await WriteScriptAsync(context, runner, schema, plan, file, cancellationToken);
         }
 
         if (steps.Count > 0)
@@ -143,26 +145,7 @@ internal sealed class SchemaApplyCommand : HostCommand
         }
     }
 
-    // From the newest row of the schema history to the host's schema, which tells a renamed field and a changed kind that
-    // the tables alone do not. Null while the history is empty; unreadable when its snapshot is not in the form of a schema.
-    private static async Task<(SchemaDiffReport? Report, bool Unreadable)> ReportAsync(MigrationRunner runner, SchemaModel schema, CancellationToken cancellationToken)
-    {
-        if (await runner.GetAppliedSnapshotAsync(cancellationToken) is not { } applied)
-        {
-            return (null, false);
-        }
-
-        try
-        {
-            return (SchemaSnapshotDiff.Report(applied, SchemaSnapshot.Of(schema).Json), false);
-        }
-        catch (JsonException)
-        {
-            return (null, true);
-        }
-    }
-
-    private static async Task WritePlanAsync(TextWriter output, SchemaDiffReport? report, IReadOnlyList<SchemaApplyStep> steps)
+    private static async Task WritePlanAsync(TextWriter output, SchemaDiffReport? report, SchemaApplyPlan plan)
     {
         if (report is { HasChanges: true })
         {
@@ -170,12 +153,21 @@ internal sealed class SchemaApplyCommand : HostCommand
             await report.WriteTextAsync(output);
         }
 
-        if (steps.Count > 0)
+        if (plan.Steps.Count > 0)
         {
             await output.WriteLineAsync("Operations:");
-            foreach (var step in steps)
+            foreach (var step in plan.Steps)
             {
-                await output.WriteLineAsync($"  {step.Description}{Mark(step)}");
+                await output.WriteLineAsync($"  {PrintableText.Escape(step.Description)}{Mark(step)}");
+            }
+        }
+
+        if (plan.LeftAlone.Count > 0)
+        {
+            await output.WriteLineAsync("Left alone:");
+            foreach (var table in plan.LeftAlone)
+            {
+                await output.WriteLineAsync($"  {PrintableText.Escape(table)}");
             }
         }
     }
@@ -187,34 +179,19 @@ internal sealed class SchemaApplyCommand : HostCommand
         _ => "",
     };
 
-    // What the tables lose, and what the history says is lost although the tables keep it: a removed field or type, a
-    // changed kind, and a renamed field whose values are kept in JSON under its former name.
-    private static List<string> Losses(IReadOnlyList<SchemaApplyStep> steps, SchemaDiffReport? report, bool unreadable, SchemaModel schema)
-    {
-        List<string> losses = [.. steps.Where(step => step.IsDestructive).Select(step => step.Description)];
-        if (report is not null)
-        {
-            losses.AddRange(report.Destructive.Select(change => change.ToString()));
-            losses.AddRange(ContentRenames.Of(schema, report.Changes).InJson
-                .Select(change => $"{change}, whose values are kept in JSON under '{change.FormerField}', which schema apply does not rename"));
-        }
+    // What the tables lose, and what the history says is lost although the tables keep it.
+    private static List<string> Losses(IReadOnlyList<SchemaApplyStep> steps, SchemaDiffReport? report, bool unreadable, SchemaModel schema) =>
+        [.. steps.Where(step => step.IsDestructive).Select(step => step.Description), .. SchemaHistory.Losses(report, unreadable, schema)];
 
-        if (unreadable)
-        {
-            losses.Add("the snapshot in the newest row of the schema history is not in the form of a schema, so renamed fields and changed kinds cannot be checked");
-        }
-
-        return losses;
-    }
-
-    private static async Task<int> WriteScriptAsync(CommandContext context, MigrationRunner runner, SchemaModel schema, IReadOnlyList<SchemaApplyStep> steps, string? file, CancellationToken cancellationToken)
+    private static async Task<int> WriteScriptAsync(CommandContext context, MigrationRunner runner, SchemaModel schema, SchemaApplyPlan plan, string? file, CancellationToken cancellationToken)
     {
         IEnumerable<string> header =
         [
             $"-- fluentcms schema apply: the content tables to schema {SchemaSnapshot.Of(schema).Hash}.",
-            .. steps.Count == 0 ? ["-- Nothing to apply."] : steps.Select(step => $"-- {step.Description}"),
+            .. plan.Steps.Count == 0 ? ["-- Nothing to apply."] : plan.Steps.Select(step => Comment(step.Description)),
+            .. plan.LeftAlone.Select(table => Comment($"Left alone: {table}")),
         ];
-        var sql = string.Join(Environment.NewLine, header) + Environment.NewLine + runner.ScriptContentSchema(steps);
+        var sql = string.Join(Environment.NewLine, header) + Environment.NewLine + runner.ScriptContentSchema(plan.Steps);
 
         if (file is null)
         {
@@ -226,6 +203,10 @@ internal sealed class SchemaApplyCommand : HostCommand
         await context.Output.WriteLineAsync($"Wrote {Path.GetFullPath(file)}");
         return CommandExitCodes.Success;
     }
+
+    // A description holds names read from the database, and a line break in one would end the comment and run the rest
+    // of the line as SQL.
+    private static string Comment(string text) => "-- " + PrintableText.Escape(text);
 
     private static string Count(int count) => count == 1 ? "1 change" : $"{count} changes";
 }

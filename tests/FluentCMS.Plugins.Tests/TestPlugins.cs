@@ -107,6 +107,12 @@ public sealed class ImpostorPlugin : RecordingPlugin;
 [FluentCmsPlugin("Bad_Name", SdkRange = "[1.0.0,2.0.0)")]
 public sealed class BadNamePlugin : RecordingPlugin;
 
+[FluentCmsPlugin("content", SdkRange = "[1.0.0,2.0.0)")]
+public sealed class ContentNamedPlugin : RecordingPlugin;
+
+[FluentCmsPlugin("system", SdkRange = "[1.0.0,2.0.0)")]
+public sealed class SystemNamedPlugin : RecordingPlugin;
+
 [FluentCmsPlugin("versioned", Version = "one", SdkRange = "[1.0.0,2.0.0)")]
 public sealed class BadVersionPlugin : RecordingPlugin;
 
