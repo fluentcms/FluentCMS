@@ -761,6 +761,26 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "cms_default_grant",
+                columns: table => new
+                {
+                    role_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    permission = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    plugin = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: true),
+                    applied_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_cms_default_grant", x => new { x.role_id, x.permission });
+                    table.ForeignKey(
+                        name: "FK_cms_default_grant_cms_role_role_id",
+                        column: x => x.role_id,
+                        principalTable: "cms_role",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "cms_user_role",
                 columns: table => new
                 {
@@ -1186,6 +1206,9 @@ namespace FluentCMS.Data.PostgreSql.Migrations
 
             migrationBuilder.DropTable(
                 name: "cms_reference");
+
+            migrationBuilder.DropTable(
+                name: "cms_default_grant");
 
             migrationBuilder.DropTable(
                 name: "cms_role_permission");

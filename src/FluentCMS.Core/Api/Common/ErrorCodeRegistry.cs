@@ -71,6 +71,7 @@ public static class ErrorCodeRegistry
         Startup(StorageErrorCodes.PendingStreamMigrations, "Pending stream migrations"),
         Startup(StorageErrorCodes.ForeignMigrations, "Migrations of another provider"),
         Startup(StorageErrorCodes.MigrationsBeforeBaseline, "Migrations from before the baseline"),
+        Startup(StorageErrorCodes.EarlierBaseline, "Database of an earlier baseline"),
 
         // 14xx authorization and content writes
         Startup(AuthorizationErrorCodes.DuplicatePermission, "Duplicate permission"),

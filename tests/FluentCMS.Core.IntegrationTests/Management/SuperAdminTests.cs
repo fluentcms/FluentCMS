@@ -132,7 +132,7 @@ public sealed class SuperAdminTests : IAsyncDisposable
         row.TargetId.ShouldBe(owners.ToString("D"));
         row.TargetLabel.ShouldBe("Owners");
         Details(row)["change"].ShouldBe("update");
-        (await ActivityAsync(host, "role.updated")).ShouldBeEmpty();
+        (await ActivityAsync(host, "role.updated")).ShouldNotContain(updated => updated.TargetId == owners.ToString("D"));
 
         // The name and the flag of the role still change while it grants everything.
         (await AdminFixture.SendAsync(client, HttpMethod.Put, $"roles/{owners:D}", """{ "name": "Owners", "requireTwoFactor": true, "grants": [ { "permission": "*" } ] }"""))

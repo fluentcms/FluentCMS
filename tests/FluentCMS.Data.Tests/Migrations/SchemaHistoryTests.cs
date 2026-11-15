@@ -17,6 +17,10 @@ namespace FluentCMS.Data.Tests.Migrations;
 
 public sealed class SchemaHistoryTests : IDisposable
 {
+    // Leaves a history that no read or write of it can use. Its table stays, since a start refuses a system stream that lacks
+    // a table of its baseline (FCMS1308).
+    internal const string UnreadableHistory = "alter table cms_schema_history drop column hash";
+
     private const string Production = "Production";
 
     private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "false" };
@@ -238,7 +242,7 @@ public sealed class SchemaHistoryTests : IDisposable
     {
         var migrations = GeneratedMigrations.CompileFirst(ArticleSchemas.Titled);
         await StartAndStopAsync(_database.CreateHost(ArticleSchemas.Titled, Production, migrations));
-        _database.Execute("drop table cms_schema_history");
+        _database.Execute(UnreadableHistory);
         var logs = new CapturedLogs();
 
         using var host = _database.CreateHost(ArticleSchemas.TitledAndRequired, Production, migrations, services: Capture(logs));
@@ -254,7 +258,7 @@ public sealed class SchemaHistoryTests : IDisposable
     {
         var migrations = GeneratedMigrations.CompileFirst(ArticleSchemas.Titled);
         await StartAndStopAsync(_database.CreateHost(ArticleSchemas.Titled, Production, migrations));
-        _database.Execute("drop table cms_schema_history");
+        _database.Execute(UnreadableHistory);
         var logs = new CapturedLogs();
 
         using var host = _database.CreateHost(ArticleSchemas.Titled, Production, migrations, NoMigrationOnStartup, Capture(logs));
