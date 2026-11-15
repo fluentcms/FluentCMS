@@ -148,7 +148,7 @@ With `documentId` the content service decides whether the caller may read the dr
 }
 ```
 
-- `enabled` is whether the site names a provider. A site whose `provider` is `none` is off and lists no field.
+- `enabled` is whether the site names a provider the plugin has. A site whose `provider` is `none`, or a removed one (`anthropic`, `ollama`), is off and lists no field, and its actions are refused (`FCMS1682`, `FCMS1692`).
 - `locale` is the locale of the request, which `?locale=` or `X-Cms-Locale` names.
 - `fields` maps each content type to the fields, in the order of the schema, that pass the checks above for the caller in that locale: opted in, a field that takes actions, and one the caller may update. A type the caller may not read is left out, and so is a field it may set on a new entry only, which an action refuses too.
 
@@ -208,7 +208,7 @@ builder.Services.AddFluentCms(cms =>
 });
 ```
 
-The factory is a singleton and owns its clients: the plugin calls a client and does not dispose it. Returning `null` leaves AI assist off for that site (`FCMS1682`). The allow-list is the default factory's, so a factory of the host's own decides itself which endpoints it calls. The permission, the opt-in, the limits and the usage log stay the plugin's.
+The factory is a singleton and owns its clients: the plugin calls a client and does not dispose it. Returning `null` leaves AI assist off for that site (`FCMS1682`). The plugin does not ask the factory for a site whose `provider` is `none`, or a removed one, and refuses the call itself, so such a site is off whatever the factory would give. The allow-list is the default factory's, so a factory of the host's own decides itself which endpoints it calls. The permission, the opt-in, the limits and the usage log stay the plugin's.
 
 The plugin ends a call at the site's `requestTimeout`, and when the caller goes away, through the cancellation token it passes to the client, so the host's client must honour that token: one that ignores it can run past `requestTimeout`. The client must also have no network timeout of its own that is shorter than `requestTimeout`, which goes up to 600 seconds. The clients built on `System.ClientModel`, such as OpenAI's, stop a request after 100 seconds unless told otherwise, and a call that such a timeout ends is answered as a failure of the provider (`FCMS1689`), not as a timeout (`FCMS1688`). The default factory gives its client no timeout of its own.
 

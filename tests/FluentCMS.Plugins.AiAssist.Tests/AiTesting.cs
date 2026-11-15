@@ -278,6 +278,9 @@ public sealed class ScriptedChat : IChatClient
     // What the host's factory names as the provider of this client.
     public string Provider { get; set; } = ScriptedFactory.Provider;
 
+    // Whether the host's factory hands this client to a site with no provider too, as a factory of a host's own may.
+    public bool ForEverySite { get; set; }
+
     public string Answer { get; set; } = "A suggestion.";
 
     public IReadOnlyList<string>? Pieces { get; set; }
@@ -301,7 +304,7 @@ public sealed class ScriptedChat : IChatClient
     {
         _calls.Clear();
         _entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        (Answer, Pieces, PromptTokens, CompletionTokens, Failure, Hang) = ("A suggestion.", null, 12, 5, null, false);
+        (Answer, Pieces, PromptTokens, CompletionTokens, Failure, Hang, ForEverySite) = ("A suggestion.", null, 12, 5, null, false, false);
     }
 
     public async Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
@@ -362,7 +365,7 @@ internal sealed class ScriptedFactory(ScriptedChat chat) : IAiClientFactory
     public const string Provider = "scripted";
 
     public ValueTask<AiClient?> CreateAsync(SiteId site, AiSettings settings, CancellationToken cancellationToken = default) =>
-        ValueTask.FromResult(settings.Provider == AiProvider.None ? null : new AiClient(chat, chat.Provider, settings.Model ?? "scripted-model"));
+        ValueTask.FromResult(settings.Provider == AiProvider.None && !chat.ForEverySite ? null : new AiClient(chat, chat.Provider, settings.Model ?? "scripted-model"));
 }
 
 public sealed class LogCapture : ILoggerProvider

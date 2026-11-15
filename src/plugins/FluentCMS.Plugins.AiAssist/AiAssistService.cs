@@ -89,7 +89,7 @@ internal sealed class AiAssistService(
         await permissions.RequireAsync(AiPermissions.Use, operation.Site, cancellationToken);
 
         var current = await settings.GetAsync(operation.Site, cancellationToken);
-        var enabled = current.Provider != AiProvider.None && Enum.IsDefined(current.Provider);
+        var enabled = current.Provider != AiProvider.None && !AiProviders.IsRemoved(current.Provider);
         Dictionary<string, IReadOnlyList<string>> fields = new(StringComparer.Ordinal);
         if (enabled)
         {
@@ -204,13 +204,13 @@ internal sealed class AiAssistService(
             message.Add(new TextContent(text));
         }
 
-        // Whichever factory fills the slot: a host's own may not look at the provider.
+        // Whichever factory fills the slot: a host's own may not look at the provider, and none is off as FieldsAsync says.
         if (AiProviders.IsRemoved(current.Provider))
         {
             throw AiProviders.Refuse(logger, site, current.Provider);
         }
 
-        var client = await clients.CreateAsync(site, current, cancellationToken)
+        var client = (current.Provider == AiProvider.None ? null : await clients.CreateAsync(site, current, cancellationToken))
             ?? throw new PluginException(AiErrorCodes.NoProvider, "The site has no AI provider. An administrator names one in the AI settings of the site.");
 
         if (limits.Take(site, operation.Principal, current.CallsPerMinute) is { } refusal)
