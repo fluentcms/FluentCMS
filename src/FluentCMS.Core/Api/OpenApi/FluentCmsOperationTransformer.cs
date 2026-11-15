@@ -1,5 +1,6 @@
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Plugins;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
@@ -40,14 +41,33 @@ internal sealed class FluentCmsOperationTransformer : IOpenApiOperationTransform
             operation.Parameters.Add(OpenApiFragments.Read<OpenApiParameter>(parameter.ToJson(), document, $"the parameter {parameter.Name}"));
         }
 
+        foreach (var shared in description.ActionDescriptor.EndpointMetadata.OfType<SharedParameter>())
+        {
+            operation.Parameters.Add(new OpenApiParameterReference(shared.Component, document));
+        }
+
         operation.Responses ??= [];
         operation.Responses["default"] = new OpenApiResponseReference(SharedComponents.ProblemResponse, document);
-        if (operation.RequestBody is OpenApiRequestBody requestBody && description.ActionDescriptor.EndpointMetadata.OfType<JsonRequestBody>().LastOrDefault()?.Description is { } text)
+        if (operation.RequestBody is OpenApiRequestBody requestBody && description.ActionDescriptor.EndpointMetadata.OfType<RequestBodyMetadata>().LastOrDefault() is { } body)
         {
-            requestBody.Description = text;
+            requestBody.Description = body.Description ?? requestBody.Description;
+            MediaType(requestBody, body.MediaType);
         }
 
         return Task.CompletedTask;
+    }
+
+    // The API explorer names application/json for a body routing is not told the type of, so a form takes its place here.
+    private static void MediaType(OpenApiRequestBody requestBody, string? mediaType)
+    {
+        if (mediaType is null || requestBody.Content is not { Count: 1 } content || content.ContainsKey(mediaType))
+        {
+            return;
+        }
+
+        var (_, described) = content.First();
+        content.Clear();
+        content[mediaType] = described;
     }
 
     // Delivery answers anyone as the Public role, and a key or a token as itself; the Management API needs a token or a

@@ -4,13 +4,15 @@ using Microsoft.AspNetCore.Routing;
 
 namespace FluentCMS.Plugins.Mcp;
 
+internal sealed record McpClientList(IReadOnlyList<McpClientInfo> Items);
+
 // /api/management/v1/mcp/clients. The service checks mcp.manage for the instance.
 internal static class McpClientEndpoints
 {
     public static RouteGroupBuilder MapMcpClientEndpoints(this RouteGroupBuilder group)
     {
         group.MapGet("", async (McpClientService clients, CancellationToken cancellationToken) =>
-            Results.Ok(new { items = await clients.ListAsync(cancellationToken) }));
+            Results.Ok(new McpClientList(await clients.ListAsync(cancellationToken)))).Produces<McpClientList>();
 
         group.MapPost("", async (McpClientRegistrationRequest? request, McpClientService clients, CancellationToken cancellationToken) =>
         {
@@ -19,19 +21,19 @@ internal static class McpClientEndpoints
         }).Produces<McpClientInfo>(StatusCodes.Status201Created);
 
         group.MapPost("/{id:guid}/approve", async (Guid id, McpClientApproval? approval, McpClientService clients, CancellationToken cancellationToken) =>
-            Results.Ok(await clients.ApproveAsync(id, approval, cancellationToken)));
+            Results.Ok(await clients.ApproveAsync(id, approval, cancellationToken))).Produces<McpClientInfo>();
 
         group.MapPut("/{id:guid}/role", async (Guid id, McpClientRoleChange? change, McpClientService clients, CancellationToken cancellationToken) =>
             Results.Ok(await clients.ChangeRoleAsync(id, change, cancellationToken))).Produces<McpClientInfo>();
 
         group.MapPost("/{id:guid}/reject", async (Guid id, McpClientService clients, CancellationToken cancellationToken) =>
-            Results.Ok(await clients.RejectAsync(id, cancellationToken)));
+            Results.Ok(await clients.RejectAsync(id, cancellationToken))).Produces<McpClientInfo>();
 
         group.MapDelete("/{id:guid}", async (Guid id, McpClientService clients, CancellationToken cancellationToken) =>
         {
             await clients.RevokeAsync(id, cancellationToken);
             return Results.NoContent();
-        });
+        }).Produces(StatusCodes.Status204NoContent);
 
         return group;
     }

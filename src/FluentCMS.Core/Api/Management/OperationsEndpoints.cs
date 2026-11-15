@@ -13,6 +13,7 @@ using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Sites;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
+using FluentCMS.Plugins;
 using FluentCMS.Settings;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;

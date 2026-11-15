@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Routing;
 
 namespace FluentCMS.Plugins.MultiSite;
 
+internal sealed record SiteHostList(IReadOnlyList<SiteHostInfo> Items);
+
 // /api/management/v1/sites, beside the routes of core, which read and change a site and its locales. The service and core
 // check sites.manage for the instance on every route here.
 internal static class MultiSiteEndpoints
@@ -21,10 +23,10 @@ internal static class MultiSiteEndpoints
         {
             await service.DeleteSiteAsync(id, cancellationToken);
             return Results.NoContent();
-        });
+        }).Produces(StatusCodes.Status204NoContent);
 
         group.MapGet("/{id:guid}/hosts", async (Guid id, SiteHostService service, CancellationToken cancellationToken) =>
-            Results.Ok(new { items = await service.ListAsync(id, cancellationToken) }));
+            Results.Ok(new SiteHostList(await service.ListAsync(id, cancellationToken)))).Produces<SiteHostList>();
 
         group.MapPost("/{id:guid}/hosts", async (Guid id, SiteHostRequest request, SiteHostService service, CancellationToken cancellationToken) =>
         {
@@ -39,7 +41,7 @@ internal static class MultiSiteEndpoints
         {
             await service.RemoveAsync(id, hostname, cancellationToken);
             return Results.NoContent();
-        });
+        }).Produces(StatusCodes.Status204NoContent);
 
         return group;
     }

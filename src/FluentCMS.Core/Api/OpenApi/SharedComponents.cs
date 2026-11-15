@@ -15,6 +15,7 @@ internal static class SharedComponents
     public const string ProblemMediaType = "application/problem+json";
     public const string PublishWarning = "publish-warning";
     public const string BridgeLocale = "bridge-locale";
+    public const string SettingsIfMatch = "settings-if-match";
 
     public static readonly string[] SingleParameters = ["status", "fallback", "fields", "populate", "depth", "richText"];
 
@@ -230,6 +231,7 @@ internal static class SharedComponents
         yield return ("withTotal", Query("withTotal", new JsonObject { ["type"] = "boolean" }, "Whether the list carries its total, which costs a count. Delivery counts only with true, the Management API unless it is false."));
         yield return ("if-match", Header("If-Match", required: true, "The version read, as its ETag, such as \"7\"; \"0\" adds a locale the entry does not have."));
         yield return ("if-match-optional", Header("If-Match", required: false, "The version read, as its ETag, such as \"7\". Without it, or with *, the current version is used."));
+        yield return (SettingsIfMatch, Header("If-Match", required: true, "The version of the setting read, as its ETag, such as \"7\"; \"0\" when nothing is stored for it, as the read says."));
         yield return ("idempotency-key", IdempotencyKey());
     }
 
