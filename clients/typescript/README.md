@@ -10,4 +10,6 @@ import { ArticleFields, createClient } from "./cms/fluentcms.js";
 const cms = createClient({ baseUrl: "https://cms.example.com/" });
 ```
 
+An answer that is not a success throws `FluentCmsProblem` with the status and, for a problem of the API, its `code`. A success whose body is not JSON, such as a page of a proxy, throws it too, with no code and the detail `The answer is not JSON.`, and an empty success answers `undefined`.
+
 `FluentCMS.Client` on nuget.org is the same client for .NET.

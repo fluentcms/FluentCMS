@@ -4,7 +4,7 @@ namespace FluentCMS.Cli;
 // have the 330x codes and the rest of 3320 to 3334. Of the commands that administer an instance, the 336x codes are the
 // tool's, and the 335x codes are the host's and the tool's alike, since an instance reached with --url answers the same way.
 // Export and import at an instance have 3251 to 3253, and share 3248 with the commands inside the host. The generate
-// commands have 3370 to 3378.
+// commands have 3370 to 3378, and 3390 and 3391 for the files they write.
 internal static class CliErrorCodes
 {
     public const string UnknownRole = "FCMS3350";
@@ -41,6 +41,10 @@ internal static class CliErrorCodes
     public const string NameNotGenerated = "FCMS3376";
     public const string ConflictingSources = "FCMS3377";
     public const string NoHostInput = "FCMS3378";
+
+    // The files the generate commands write.
+    public const string FileNamesClash = "FCMS3390";
+    public const string FileOfAnotherNamespace = "FCMS3391";
 }
 
 internal static class ExitCodes

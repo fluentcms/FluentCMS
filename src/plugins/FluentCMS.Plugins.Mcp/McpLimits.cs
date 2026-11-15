@@ -26,7 +26,8 @@ internal readonly record struct McpCallRefusal(bool Write, int Limit, TimeSpan R
 // The tool calls of each client, counted on this instance, as core counts its rate limits (spec 4.10): a bucket holds the
 // limit and fills again over a minute, kept as the time it is next full, so a quiet client may send the limit at once and
 // then one call per minute divided by the limit. A client is the client id of a token, or the key of an API key, which
-// the caller does not choose. A call that is refused takes nothing from a bucket.
+// the caller does not choose. A call that is refused takes nothing from a bucket: a write is taken from the bucket of
+// calls first, so that a client over that limit costs no lookup of the tool, and given back when its own limit refuses it.
 internal sealed class McpCallLimits(IOptions<McpOptions> options, TimeProvider time)
 {
     public static readonly TimeSpan Window = TimeSpan.FromMinutes(1);
@@ -36,7 +37,7 @@ internal sealed class McpCallLimits(IOptions<McpOptions> options, TimeProvider t
 
     private readonly ConcurrentDictionary<string, Bucket> _calls = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, Bucket> _writes = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<(Guid Site, Principal Principal, string Tool), long> _reads = new();
+    private readonly ConcurrentDictionary<(Guid Site, Principal Principal, string Tool), (bool ReadOnly, long Until)> _tools = new();
     private long _swept;
 
     public static string ClientOf(OperationContext operation) =>
@@ -46,29 +47,41 @@ internal sealed class McpCallLimits(IOptions<McpOptions> options, TimeProvider t
 
     public McpCallRefusal? Call(string client) => Take(_calls, client, options.Value.Limits.CallsPerMinute, write: false);
 
-    public McpCallRefusal? Write(string client) => Take(_writes, client, options.Value.Limits.WritesPerMinute, write: true);
+    // A call of a tool that changes data, which Call has already counted: the call is given back when this refuses it.
+    public McpCallRefusal? Write(string client)
+    {
+        var refused = Take(_writes, client, options.Value.Limits.WritesPerMinute, write: true);
+        if (refused is not null && _calls.TryGetValue(client, out var calls))
+        {
+            calls.GiveBack(Interval(options.Value.Limits.CallsPerMinute));
+        }
 
-    // A tool that a list showed a principal as read-only in a site is taken as one for a window, so that a read does not
-    // list the tools each time. It is remembered for that principal alone, since a list is made for its caller, and only
-    // a read is remembered: a tool that changes data is looked up on every call.
-    public bool IsKnownRead(OperationContext operation, string tool) =>
-        _reads.TryGetValue((operation.Site.Value, operation.Principal, tool), out var until) && time.GetUtcNow().UtcTicks < until;
+        return refused;
+    }
 
-    public void RememberRead(OperationContext operation, string tool) =>
-        _reads[(operation.Site.Value, operation.Principal, tool)] = time.GetUtcNow().UtcTicks + Window.Ticks;
+    // Whether a list showed a principal the tool as read-only in a site, within a window, or null when it showed none of
+    // that name. What a list showed is kept for that principal alone, since a list is made for its caller, so that a call
+    // does not list the tools each time. A name no list showed is not kept, since a caller may send any name.
+    public bool? KnownReadOnly(OperationContext operation, string tool) =>
+        _tools.TryGetValue((operation.Site.Value, operation.Principal, tool), out var known) && time.GetUtcNow().UtcTicks < known.Until ? known.ReadOnly : null;
+
+    public void Remember(OperationContext operation, string tool, bool readOnly) =>
+        _tools[(operation.Site.Value, operation.Principal, tool)] = (readOnly, time.GetUtcNow().UtcTicks + Window.Ticks);
 
     private McpCallRefusal? Take(ConcurrentDictionary<string, Bucket> buckets, string client, int limit, bool write)
     {
         var now = time.GetUtcNow().UtcTicks;
         Sweep(now);
-        var wait = buckets.GetOrAdd(client, static (_, start) => new Bucket(start), now).Take(now, Math.Max(1, Window.Ticks / limit), out var report);
+        var wait = buckets.GetOrAdd(client, static (_, start) => new Bucket(start), now).Take(now, Interval(limit), out var report);
         return wait > 0 ? new McpCallRefusal(write, limit, TimeSpan.FromTicks(wait), report) : null;
     }
+
+    private static long Interval(int limit) => Math.Max(1, Window.Ticks / limit);
 
     private void Sweep(long now)
     {
         var swept = Interlocked.Read(ref _swept);
-        if (_calls.Count + _writes.Count + _reads.Count <= SweepAbove
+        if (_calls.Count + _writes.Count + _tools.Count <= SweepAbove
             || Math.Abs(now - swept) < Window.Ticks
             || Interlocked.CompareExchange(ref _swept, now, swept) != swept)
         {
@@ -86,11 +99,11 @@ internal sealed class McpCallLimits(IOptions<McpOptions> options, TimeProvider t
             }
         }
 
-        foreach (var read in _reads)
+        foreach (var tool in _tools)
         {
-            if (read.Value <= now)
+            if (tool.Value.Until <= now)
             {
-                _reads.TryRemove(read);
+                _tools.TryRemove(tool);
             }
         }
     }
@@ -125,6 +138,16 @@ internal sealed class McpCallLimits(IOptions<McpOptions> options, TimeProvider t
                 }
 
                 return wait;
+            }
+        }
+
+        // What Take took, for a call that another limit refused after it. The bucket fills from the time it is next full,
+        // so taking the interval off it is the call not taken; a bucket past full is full.
+        public void GiveBack(long interval)
+        {
+            lock (_gate)
+            {
+                _full -= interval;
             }
         }
 

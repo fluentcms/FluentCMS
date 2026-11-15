@@ -213,6 +213,13 @@ public sealed class McpContentToolListTests(McpToolsFixture fixture) : IClassFix
         Of(tools, "writer_").ShouldBeEmpty();
         Types(tools[McpContentTools.Query].InputSchema).ShouldBe(["masthead", "post", "writer"]);
         writer.GetProperty("items").GetArrayLength().ShouldBe(0);
+
+        // Called by name, a tool of a type over the cap is as unknown as it is unlisted.
+        foreach (var name in (string[])["writer_list", "writer_get", "post_create_draft", "post_delete"])
+        {
+            (await Should.ThrowAsync<McpProtocolException>(async () => await CallAsync(client, name, new { id = Guid.NewGuid() }))).Message.ShouldContain("FCMS1600", customMessage: name);
+        }
+
         logs.Lines.Where(line => line.Id == 9288).Select(line => line.Level).ShouldBe([LogLevel.Warning, LogLevel.Warning]);
         logs.Lines.Where(line => line.Id == 9288).ShouldContain(line => line.Message.Contains("writer", StringComparison.Ordinal));
         logs.Lines.Where(line => line.Id == 9288).ShouldContain(line => line.Message.Contains("post", StringComparison.Ordinal));

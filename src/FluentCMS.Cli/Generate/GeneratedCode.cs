@@ -31,14 +31,16 @@ internal static class FieldTypeText
 
 // The class names of the types of a schema, shared by both emitters so that a type has one name in C# and in TypeScript:
 // the name in PascalCase, with Component or Block after a component or a block type, whose names may be those of a
-// collection. A name that gives no identifier or that another type took gets nothing, with FCMS3376.
+// collection. A name that gives no identifier or that another type took gets nothing, with FCMS3376. A name is taken in
+// any case, since the class of a type is a file of its name and foo-bar and foobar would be FooBar.g.cs and Foobar.g.cs,
+// one file where a file system ignores case.
 internal sealed class TypeNames
 {
     private readonly Dictionary<(SchemaTypeKind Kind, string Name), string> _names = [];
 
     public TypeNames(SchemaModel schema, IEnumerable<string> reserved, List<GenerateDiagnostic> diagnostics)
     {
-        var taken = new HashSet<string>(reserved, StringComparer.Ordinal);
+        var taken = new HashSet<string>(reserved, StringComparer.OrdinalIgnoreCase);
         foreach (var type in schema.ContentTypes.Concat(schema.Components).Concat(schema.Blocks))
         {
             var suffix = type.Kind switch
@@ -51,7 +53,7 @@ internal sealed class TypeNames
             var name = FieldsEmitter.Pascal(type.Name) + suffix;
             if (!FieldsEmitter.IsTypeName(type.Name) || !taken.Add(name))
             {
-                diagnostics.Add(new(CliErrorCodes.NameNotGenerated, $"The {Label(type.Kind)} '{type.Name}' gets no type, because its name gives no identifier or {name} is taken."));
+                diagnostics.Add(new(CliErrorCodes.NameNotGenerated, $"The {Label(type.Kind)} '{type.Name}' gets no type, because its name gives no identifier or {name} is taken, in this case or another."));
                 continue;
             }
 

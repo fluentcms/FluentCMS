@@ -408,7 +408,7 @@ public static class ErrorCodeRegistry
         Startup(CommandErrorCodes.SchemaChangeNotApplicable, "Schema change cannot be applied"),
         Startup(CommandErrorCodes.SchemaApplyFailed, "Schema change failed in the database"),
         Startup(CommandErrorCodes.SchemaNotRecorded, "Schema history not written"),
-        // 337x the generate commands: the tool's codes are written out, and the host's own is FCMS3379
+        // 337x and 3390 to 3391 the generate commands: the tool's codes are written out, and the host's own is FCMS3379
         Startup("FCMS3370", "Schema snapshot unreadable"),
         Startup("FCMS3371", "Instance request failed"),
         Startup("FCMS3372", "Generated files out of date"),
@@ -418,6 +418,8 @@ public static class ErrorCodeRegistry
         Startup("FCMS3376", "Name without a generated identifier"),
         Startup("FCMS3377", "Conflicting schema sources"),
         Startup("FCMS3378", "Host gave no generator input"),
+        Startup("FCMS3390", "Generated file names differ in case alone"),
+        Startup("FCMS3391", "Generated file of another namespace"),
         Startup(GenerateErrorCodes.OpenApiUnavailable, "OpenAPI document unavailable"),
     ];
 

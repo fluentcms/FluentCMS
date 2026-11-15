@@ -52,6 +52,19 @@ internal static class McpListResults
         return Math.Max(1, kept);
     }
 
+    // The text shortened with its marker, or null when the node is not a text longer than the limit.
+    public static string? Shortened(JsonNode? node, int maxLength, string whole)
+    {
+        if (node is not JsonValue value || !value.TryGetValue<string>(out var text) || text.Length <= maxLength)
+        {
+            return null;
+        }
+
+        // Not between the two halves of a character outside the basic plane.
+        var length = char.IsHighSurrogate(text[maxLength - 1]) ? maxLength - 1 : maxLength;
+        return string.Create(CultureInfo.InvariantCulture, $"{text.AsSpan(0, length)}… [shortened: {text.Length} characters in all; {whole} reads it whole]");
+    }
+
     private static void Shorten(JsonNode? node, int maxLength, string whole)
     {
         switch (node)
@@ -85,17 +98,5 @@ internal static class McpListResults
 
                 break;
         }
-    }
-
-    private static string? Shortened(JsonNode? node, int maxLength, string whole)
-    {
-        if (node is not JsonValue value || !value.TryGetValue<string>(out var text) || text.Length <= maxLength)
-        {
-            return null;
-        }
-
-        // Not between the two halves of a character outside the basic plane.
-        var length = char.IsHighSurrogate(text[maxLength - 1]) ? maxLength - 1 : maxLength;
-        return string.Create(CultureInfo.InvariantCulture, $"{text.AsSpan(0, length)}… [shortened: {text.Length} characters in all; {whole} reads it whole]");
     }
 }

@@ -318,15 +318,18 @@ internal sealed class McpRequests(
     }
 
     // Whether the tool may change data, which is how its provider lists it for the caller. A tool that no provider
-    // lists counts as one that does. A provider that fails to list is passed over, as a list passes over it.
+    // lists counts as one that does. A provider that fails to list is passed over, as a list passes over it. Every tool a
+    // provider listed on the way is remembered as it was listed, the first provider's where two list one name, so that
+    // the next calls of the client's tools within the window list nothing.
     private async ValueTask<bool> ChangesAsync(OperationContext operation, string name, CancellationToken cancellationToken)
     {
-        if (limits.IsKnownRead(operation, name))
+        if (limits.KnownReadOnly(operation, name) is { } known)
         {
-            return false;
+            return !known;
         }
 
         var request = new McpListRequest(operation);
+        HashSet<string> seen = new(StringComparer.Ordinal);
         foreach (var provider in await EnabledAsync<IMcpToolProvider>(providers.Tools, operation, cancellationToken))
         {
             IReadOnlyList<McpToolDescriptor> tools;
@@ -339,17 +342,15 @@ internal sealed class McpRequests(
                 continue;
             }
 
-            if (tools.FirstOrDefault(tool => tool.Name == name) is not { } listed)
+            foreach (var tool in tools.Where(tool => seen.Add(tool.Name)))
             {
-                continue;
+                limits.Remember(operation, tool.Name, tool.Annotations.ReadOnly);
             }
 
-            if (listed.Annotations.ReadOnly)
+            if (tools.FirstOrDefault(tool => tool.Name == name) is { } listed)
             {
-                limits.RememberRead(operation, name);
+                return !listed.Annotations.ReadOnly;
             }
-
-            return !listed.Annotations.ReadOnly;
         }
 
         return true;
