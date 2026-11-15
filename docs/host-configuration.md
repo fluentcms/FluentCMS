@@ -31,6 +31,8 @@ app.MapFluentCms();
 
 Compression after `UseFluentCms()` would sit inside the output cache, which does not vary on `Accept-Encoding`, so a body compressed for one client would go to every other; FluentCMS does not keep such a copy, and every compressed read then runs the endpoint.
 
+A host needs ICU, as the reference image has: with `InvariantGlobalization` on, every culture of a user's admin preferences (`PUT /me/preferences`) is refused.
+
 ## Requests
 
 An endpoint runs as the principal of the `FluentCms` authentication scheme, which `AddFluentCms()` registers: the API key handler when a key is sent, otherwise the bearer scheme set in `FluentCmsAuthenticationOptions.BearerScheme`, and anonymous when neither applies. The handler writes `sub` (the id), `name`, `fcms_kind` (a `PrincipalKind` name), `roles` and `scope` (both space-separated), and `fcms_sites` for an API key bound to sites. A request without an authenticated user runs as the anonymous principal, which holds the Public role of its site, so anonymous Delivery access is what that role grants. A principal without a usable `fcms_kind` or `sub` is refused with 401.

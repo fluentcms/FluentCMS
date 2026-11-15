@@ -164,8 +164,8 @@ public sealed class OperationsEndpointsTests(AdminFixture fixture) : IClassFixtu
         (await fixture.GetAsync("me/sessions", client)).Json["items"]!.AsArray().ShouldBeEmpty();
     }
 
-    // A user with a role in each of two sites reads both, the default site first, with no sites.manage in either, and
-    // nothing of a third site. A key is held to the sites it is bound to, and a grant to the sites it is limited to.
+    // A user with a role in each of two sites reads both with their locales, the default site first, with no sites.manage in
+    // either, and nothing of a third site. A key is held to the sites it is bound to, and a grant to the sites it is limited to.
     [Fact]
     public async Task MySitesListsOnlyTheSitesInWhichTheCallerHoldsAGrant()
     {
@@ -182,8 +182,13 @@ public sealed class OperationsEndpointsTests(AdminFixture fixture) : IClassFixtu
         var all = await fixture.GetAsync("me/sites");
         all.Status.ShouldBe(HttpStatusCode.OK, all.Body?.ToJsonString());
         var listed = all.Json["items"]!.AsArray();
-        listed[0]!.ToJsonString().ShouldBe($$"""{"id":"{{DefaultSite.Id}}","name":"{{DefaultSite.Name}}","slug":"{{DefaultSite.Slug}}","defaultLocale":"{{DefaultSite.Locale}}","isDefault":true}""");
+        listed[0]!["id"]!.GetValue<string>().ShouldBe(DefaultSite.Id.ToString("D"));
+        listed[0]!["slug"]!.GetValue<string>().ShouldBe(DefaultSite.Slug);
+        listed[0]!["defaultLocale"]!.GetValue<string>().ShouldBe(DefaultSite.Locale);
+        listed[0]!["isDefault"]!.GetValue<bool>().ShouldBeTrue();
         new[] { first.Id, second.Id, third.Id }.ShouldBeSubsetOf(Ids(all));
+        var added = await fixture.PostAsync($"sites/{first.Id}/locales", """{ "code": "ar", "position": 1, "enabled": false, "fallbacks": ["en"] }""");
+        added.Status.ShouldBe(HttpStatusCode.Created, added.Body?.ToJsonString());
 
         var user = await fixture.Host.CreateUserAsync(await fixture.RoleWithAsync(), cancellationToken: token);
         foreach (var site in (Site[])[first, second])
@@ -198,7 +203,10 @@ public sealed class OperationsEndpointsTests(AdminFixture fixture) : IClassFixtu
         mine.Status.ShouldBe(HttpStatusCode.OK, mine.Body?.ToJsonString());
         Ids(mine).ShouldBe([first.Id, second.Id]);
         mine.Json["items"]![1]!["defaultLocale"]!.GetValue<string>().ShouldBe("fr");
+        mine.Json["items"]![0]!["locales"]!.ToJsonString().ShouldBe("""[{"code":"en","position":0,"enabled":true},{"code":"ar","position":1,"enabled":false}]""");
+        mine.Json["items"]![1]!["locales"]!.ToJsonString().ShouldBe("""[{"code":"fr","position":0,"enabled":true}]""");
         (await fixture.GetAsync("sites", reader)).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await fixture.GetAsync($"sites/{first.Id}/locales", reader)).Status.ShouldBe(HttpStatusCode.Forbidden);
 
         var limited = await fixture.PostAsync("roles", $$"""{ "name": "limited-{{Guid.NewGuid():N}}", "grants": [ { "permission": "content.page.read", "constraints": { "sites": ["{{third.Id}}"] } } ] }""");
         limited.Status.ShouldBe(HttpStatusCode.Created, limited.Body?.ToJsonString());

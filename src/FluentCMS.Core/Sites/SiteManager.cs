@@ -15,7 +15,10 @@ using Microsoft.EntityFrameworkCore;
 namespace FluentCMS.Core.Sites;
 
 // A site the caller holds a grant in, as GET /me/sites answers it.
-internal sealed record MySiteInfo(Guid Id, string Name, string Slug, string DefaultLocale, bool IsDefault);
+internal sealed record MySiteInfo(Guid Id, string Name, string Slug, string DefaultLocale, bool IsDefault, IReadOnlyList<MySiteLocale> Locales);
+
+// What a caller with any grant in a site reads of its locales; the fallbacks stay with sites.manage.
+internal sealed record MySiteLocale(string Code, int Position, bool Enabled);
 
 internal sealed record SiteLocaleInfo(string Code, int Position, IReadOnlyList<string>? Fallbacks, bool Enabled);
 
@@ -204,21 +207,30 @@ internal sealed partial class SiteManager(
     }
 
     // The sites in which the caller holds a grant, the default first: what an admin shows a user to choose from. A user with
-    // roles in two sites reads both without sites.manage in either.
+    // roles in two sites reads both without sites.manage in either, with their locales for a locale switcher.
     public async Task<IReadOnlyList<MySiteInfo>> MineAsync(CancellationToken cancellationToken)
     {
         var sites = await context.Set<Site>().AsNoTracking().ToListAsync(cancellationToken);
 
-        List<MySiteInfo> mine = [];
+        List<Site> held = [];
         foreach (var site in sites.OrderByDescending(item => item.IsDefault).ThenBy(item => item.Slug, StringComparer.Ordinal))
         {
             if (await authority.HoldsGrantInAsync(site.Id, cancellationToken))
             {
-                mine.Add(new MySiteInfo(site.Id, site.Name, site.Slug, site.DefaultLocale, site.IsDefault));
+                held.Add(site);
             }
         }
 
-        return mine;
+        List<Guid> ids = [.. held.Select(site => site.Id)];
+        var locales = (await context.Set<SiteLocale>().AsNoTracking().Where(item => ids.Contains(item.SiteId)).ToListAsync(cancellationToken))
+            .ToLookup(row => row.SiteId);
+        return [.. held.Select(site => new MySiteInfo(
+            site.Id,
+            site.Name,
+            site.Slug,
+            site.DefaultLocale,
+            site.IsDefault,
+            [.. locales[site.Id].OrderBy(row => row.Position).ThenBy(row => row.Code, StringComparer.Ordinal).Select(row => new MySiteLocale(row.Code, row.Position, row.Enabled))]))];
     }
 
     // Null when there is no such site. The caller checks the permission.

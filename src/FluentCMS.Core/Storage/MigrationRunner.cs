@@ -428,7 +428,8 @@ public sealed class MigrationRunner(
     }
 
     // A table of the model the database lacks, or a column of one it has, as table.column. The columns of the schema history
-    // are not asked for: a history that cannot be read or written is logged and the start goes on.
+    // are not asked for: a history that cannot be read or written is logged and the start goes on, so a column folded into
+    // that table later is not refused here.
     private static List<string> MissingFrom(DatabaseSchema database, IModel model)
     {
         var missing = new List<string>();

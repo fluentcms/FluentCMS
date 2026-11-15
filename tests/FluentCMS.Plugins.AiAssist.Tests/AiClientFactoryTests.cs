@@ -121,6 +121,43 @@ public sealed class AiClientFactoryTests
         stub.Requests.ShouldHaveSingleItem();
     }
 
+    // The cap is max_completion_tokens for every provider. Ollama's /v1 reads only max_tokens, so a site that turns
+    // legacyMaxTokens on sends that one alone, plain and streamed. A call without a cap sends neither.
+    [Theory]
+    [InlineData(AiProvider.OpenAiCompatible, false)]
+    [InlineData(AiProvider.AzureOpenAi, false)]
+    [InlineData(AiProvider.OpenAi, false)]
+    [InlineData(AiProvider.OpenAiCompatible, true)]
+    [InlineData(AiProvider.OpenAi, true)]
+    public async Task TheCapIsMaxCompletionTokensUnlessTheSiteAsksForTheOlderMaxTokens(AiProvider provider, bool legacy)
+    {
+        await using var stub = await StubProvider.StartAsync();
+        using var factory = Factory([stub.Url("v1")], []);
+        var settings = new AiSettings { Provider = provider, Model = "a-model", Endpoint = stub.Url("v1"), ApiKey = "key-of-the-site", LegacyMaxTokens = legacy };
+        var client = await factory.CreateAsync(Site, settings, Token);
+        List<ChatMessage> messages = [new(ChatRole.User, "Ships are big boats.")];
+        var capped = new ChatOptions { MaxOutputTokens = 300 };
+
+        await client!.Client.GetResponseAsync(messages, capped, Token);
+        await foreach (var _ in client.Client.GetStreamingResponseAsync(messages, capped, Token))
+        {
+        }
+
+        await client.Client.GetResponseAsync(messages, cancellationToken: Token);
+
+        var sent = stub.Requests.Select(request => request.Body!).ToList();
+        sent.Count.ShouldBe(3);
+        foreach (var body in sent[..2])
+        {
+            (body["max_completion_tokens"]?.GetValue<int>()).ShouldBe(legacy ? null : 300);
+            (body["max_tokens"]?.GetValue<int>()).ShouldBe(legacy ? 300 : null);
+        }
+
+        sent[2]["max_completion_tokens"].ShouldBeNull();
+        sent[2]["max_tokens"].ShouldBeNull();
+        (capped.MaxOutputTokens, capped.RawRepresentationFactory).ShouldBe((300, null));
+    }
+
     [Fact]
     public async Task ASiteWithNoProviderGetsNoClient()
     {

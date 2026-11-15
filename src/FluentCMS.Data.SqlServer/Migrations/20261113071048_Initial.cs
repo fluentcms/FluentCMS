@@ -814,6 +814,28 @@ namespace FluentCMS.Data.SqlServer.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "cms_user_preference",
+                columns: table => new
+                {
+                    user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    culture = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: true),
+                    time_zone = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    date_format = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: true),
+                    number_format = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: true),
+                    updated_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_cms_user_preference", x => x.user_id);
+                    table.ForeignKey(
+                        name: "FK_cms_user_preference_cms_user_user_id",
+                        column: x => x.user_id,
+                        principalTable: "cms_user",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "cms_user_role",
                 columns: table => new
                 {
@@ -1271,6 +1293,9 @@ namespace FluentCMS.Data.SqlServer.Migrations
 
             migrationBuilder.DropTable(
                 name: "cms_user_login");
+
+            migrationBuilder.DropTable(
+                name: "cms_user_preference");
 
             migrationBuilder.DropTable(
                 name: "cms_user_role");

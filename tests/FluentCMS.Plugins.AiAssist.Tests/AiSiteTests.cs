@@ -88,6 +88,20 @@ public sealed class AiSiteTests : IClassFixture<AiHost>
         schema["default"]!.GetValue<int>().ShouldBe(1024);
     }
 
+    // Off by default, and a site that turns it on reads it back; the schema says it is a Boolean.
+    [Fact]
+    public async Task TheOlderCapIsOffUnlessASiteTurnsItOn()
+    {
+        var off = await ReadAsync(await _ai.AdminAsync(await _ai.SiteAsync()));
+        var on = await ReadAsync(await _ai.AdminAsync(await _ai.SiteAsync(settings => settings.LegacyMaxTokens = true)));
+
+        off["value"]!["legacyMaxTokens"]!.GetValue<bool>().ShouldBeFalse();
+        on["value"]!["legacyMaxTokens"]!.GetValue<bool>().ShouldBeTrue();
+        var schema = off["schema"]!["properties"]!["legacyMaxTokens"]!;
+        schema["type"]!.ToJsonString().ShouldContain("boolean");
+        schema["default"]!.GetValue<bool>().ShouldBeFalse();
+    }
+
     [Fact]
     public async Task TheKeyOfASiteIsWrittenAndNeverReturned()
     {
@@ -128,6 +142,8 @@ public sealed class AiSiteTests : IClassFixture<AiHost>
     [InlineData("""{ "maxOutputTokens": 0 }""")]
     [InlineData("""{ "requestTimeout": 0 }""")]
     [InlineData("""{ "callsPerMinute": 0 }""")]
+    [InlineData("""{ "legacyMaxTokens": "yes" }""")]
+    [InlineData("""{ "legacyMaxTokens": null }""")]
     [InlineData("""{ "provider": 7 }""")]
     [InlineData("""{ "provider": "gemini" }""")]
     public async Task SettingsThatCannotBeUsedAreRefused(string document)

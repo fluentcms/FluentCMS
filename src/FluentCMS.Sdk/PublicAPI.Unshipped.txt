@@ -351,6 +351,8 @@ FluentCMS.Authorization.ContentAccess.Types.init -> void
 FluentCMS.Authorization.ContentTypeAccess
 FluentCMS.Authorization.ContentTypeAccess.<Clone>$() -> FluentCMS.Authorization.ContentTypeAccess!
 FluentCMS.Authorization.ContentTypeAccess.ContentTypeAccess() -> void
+FluentCMS.Authorization.ContentTypeAccess.Conditional.get -> System.Collections.Generic.IReadOnlySet<string!>!
+FluentCMS.Authorization.ContentTypeAccess.Conditional.init -> void
 FluentCMS.Authorization.ContentTypeAccess.CreatableFields.get -> System.Collections.Generic.IReadOnlySet<string!>!
 FluentCMS.Authorization.ContentTypeAccess.CreatableFields.init -> void
 FluentCMS.Authorization.ContentTypeAccess.Create.get -> bool

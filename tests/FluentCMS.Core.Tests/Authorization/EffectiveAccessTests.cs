@@ -66,6 +66,58 @@ public class EffectiveAccessTests
         article.CreatableFields.ShouldBe(["title", "body"], ignoreOrder: true);
     }
 
+    // An operation whose grants all have a row rule or a locale limit may still be refused for one entry, and says so; one
+    // that a grant gives for every entry does not, whatever other grants it has.
+    [Fact]
+    public async Task AnOperationThatOnlyARowRuleOrALocaleLimitGivesIsConditional()
+    {
+        var access = Access(
+            Managing(),
+            new EffectiveGrant("content.article.read", PermissionConstraints.None, null),
+            new EffectiveGrant("content.article.read", new PermissionConstraints { RowRule = "own-entries" }, null),
+            new EffectiveGrant("content.article.update", new PermissionConstraints { RowRule = "own-entries" }, null),
+            new EffectiveGrant("content.article.publish", new PermissionConstraints { Locales = ["en"] }, null),
+            new EffectiveGrant("content.article.create", PermissionConstraints.None, null));
+
+        var article = (await access.ContentAsync(Token)).Types["article"];
+
+        article.Conditional.ShouldBe(["update", "publish"], ignoreOrder: true);
+    }
+
+    // A grant for every entry gives the title, one with a row rule or a locale limit every field: the fields it adds hold on
+    // some entries only, so the write is conditional although some grant holds for every entry.
+    [Fact]
+    public async Task AWriteIsConditionalWhenOnlyAGrantForSomeEntriesGivesSomeOfItsFields()
+    {
+        var access = Access(
+            Managing(),
+            new EffectiveGrant("content.article.read", PermissionConstraints.None, null),
+            new EffectiveGrant("content.article.update", new PermissionConstraints { RowRule = "own-entries" }, null),
+            new EffectiveGrant("content.article.update", new PermissionConstraints { Fields = ["title"] }, null),
+            new EffectiveGrant("content.article.create", new PermissionConstraints { Locales = ["en"] }, null),
+            new EffectiveGrant("content.article.create", new PermissionConstraints { Fields = ["title"] }, null),
+            new EffectiveGrant("content.article.publish", new PermissionConstraints { RowRule = "own-entries" }, null),
+            new EffectiveGrant("content.article.publish", PermissionConstraints.None, null));
+
+        var article = (await access.ContentAsync(Token)).Types["article"];
+
+        article.UpdatableFields.Count.ShouldBeGreaterThan(1);
+        article.Conditional.ShouldBe(["create", "update"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task ThroughAClientAnOperationIsConditionalWhenEitherSetLimitsIt()
+    {
+        var access = Through(
+            [new EffectiveGrant("*", PermissionConstraints.None, null)],
+            [new EffectiveGrant("content.article.read", PermissionConstraints.None, null), new EffectiveGrant("content.article.delete", new PermissionConstraints { RowRule = "own-entries" }, null)]);
+
+        var article = (await access.ContentAsync(Token)).Types["article"];
+
+        article.Delete.ShouldBeTrue();
+        article.Conditional.ShouldBe(["delete"]);
+    }
+
     // A Delivery key reads what is published and manages nothing, whatever its role grants (spec 4.8).
     [Fact]
     public async Task APrincipalThatCannotManageReadsWhatIsPublishedAndWritesNothing()
