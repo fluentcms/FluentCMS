@@ -18,6 +18,9 @@ internal sealed record PermissionGrant(string Permission, PermissionConstraints 
 
 internal sealed record RoleInfo(Guid Id, Guid? SiteId, string Name, string? Description, bool BuiltIn, bool RequireTwoFactor, IReadOnlyList<PermissionGrant> Grants);
 
+// A permission that a provider names for a built-in role by default, with the plugin of the provider, if any.
+internal sealed record DefaultGrant(Guid RoleId, string Permission, string? Plugin);
+
 // A role as it is to be. The site is the new role's; an update keeps the site the role has, and the two-factor flag when
 // the request leaves it out.
 internal sealed record RoleRequest(string Name, string? Description, IReadOnlyList<PermissionGrant> Grants)
@@ -268,6 +271,88 @@ internal sealed class RoleService(
         await SaveAsync(created, cancellationToken);
         await LogAsync("role.created", created, null, cancellationToken);
         return TransferOutcome.Created;
+    }
+
+    // For the start of the host, as the system: the defaults this instance has not applied are given and recorded in
+    // cms_default_grant, so that none is given twice and a grant an operator took away is not given again. A role that holds
+    // a grant of the permission, limited or not, gets nothing new. Of two instances that start together, the one that saves
+    // second fails on the record's key and reads again. Answers the permissions given, by the name of the role.
+    public async Task<IReadOnlyList<(string Role, IReadOnlyList<string> Permissions)>> ApplyDefaultsAsync(IReadOnlyList<DefaultGrant> defaults, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(defaults);
+
+        List<(Role Role, List<string> Permissions)> given;
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                given = await GiveDefaultsAsync(defaults, cancellationToken);
+                break;
+            }
+            catch (DbUpdateException) when (attempt == 0)
+            {
+                context.ChangeTracker.Clear();
+            }
+        }
+
+        foreach (var (role, permissions) in given)
+        {
+            await LogAsync("role.updated", role, new Dictionary<string, string?> { ["added"] = string.Join("; ", permissions), ["removed"] = "" }, cancellationToken);
+        }
+
+        return [.. given.Select(item => (item.Role.Name, (IReadOnlyList<string>)item.Permissions))];
+    }
+
+    private async Task<List<(Role Role, List<string> Permissions)>> GiveDefaultsAsync(IReadOnlyList<DefaultGrant> defaults, CancellationToken cancellationToken)
+    {
+        List<Guid> roleIds = [.. defaults.Select(item => item.RoleId).Distinct()];
+        var applied = (await context.Set<DefaultGrantRow>().AsNoTracking()
+                .Where(row => roleIds.Contains(row.RoleId))
+                .Select(row => new { row.RoleId, row.Permission })
+                .ToListAsync(cancellationToken))
+            .Select(row => (row.RoleId, row.Permission))
+            .ToHashSet();
+
+        var pending = defaults.Where(item => !applied.Contains((item.RoleId, item.Permission))).ToList();
+        if (pending.Count == 0)
+        {
+            return [];
+        }
+
+        var roles = await context.Set<Role>().AsNoTracking().Where(role => roleIds.Contains(role.Id)).ToDictionaryAsync(role => role.Id, cancellationToken);
+        var held = (await context.Set<RoleGrant>().AsNoTracking()
+                .Where(grant => roleIds.Contains(grant.RoleId))
+                .Select(grant => new { grant.RoleId, grant.Permission })
+                .ToListAsync(cancellationToken))
+            .ToLookup(grant => grant.RoleId, grant => grant.Permission);
+
+        var now = time.GetUtcNow();
+        Dictionary<Guid, List<string>> given = [];
+        foreach (var item in pending)
+        {
+            // A built-in role cannot be deleted, so only a database changed by hand lacks one; it gets nothing.
+            if (!roles.ContainsKey(item.RoleId))
+            {
+                continue;
+            }
+
+            context.Add(new DefaultGrantRow { RoleId = item.RoleId, Permission = item.Permission, Plugin = item.Plugin, AppliedAt = now });
+            if (held[item.RoleId].Any(grant => PermissionPattern.Matches(grant, item.Permission)))
+            {
+                continue;
+            }
+
+            context.Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = item.RoleId, Permission = item.Permission });
+            if (!given.TryGetValue(item.RoleId, out var permissions))
+            {
+                given[item.RoleId] = permissions = [];
+            }
+
+            permissions.Add(item.Permission);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        return [.. given.Select(item => (roles[item.Key], item.Value.Order(StringComparer.Ordinal).ToList()))];
     }
 
     private async Task AsCallerAsync(OperationContext caller, Func<Task> check)

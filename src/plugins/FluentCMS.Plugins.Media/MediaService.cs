@@ -22,9 +22,9 @@ internal sealed class MediaPermissions : IPermissionProvider
 
     public IEnumerable<Permission> GetPermissions() =>
     [
-        new Permission(Read, "List and read the assets and folders of a site. A grant limited to folders reaches those and their subfolders."),
-        new Permission(Upload, "Upload assets into the folders of a site."),
-        new Permission(Update, "Change the metadata of assets, replace their files and move them between folders."),
+        new Permission(Read, "List and read the assets and folders of a site. A grant limited to folders reaches those and their subfolders.") { DefaultRoles = [BuiltInRole.Editor, BuiltInRole.Author] },
+        new Permission(Upload, "Upload assets into the folders of a site.") { DefaultRoles = [BuiltInRole.Editor, BuiltInRole.Author] },
+        new Permission(Update, "Change the metadata of assets, replace their files and move them between folders.") { DefaultRoles = [BuiltInRole.Editor] },
         new Permission(Delete, "Delete assets."),
         new Permission(ManageFolders, "Create, rename, move and delete folders."),
         new Permission(ManagePresets, "Create, change and delete the image presets of a site. A grant limited to folders gives none of it."),

@@ -1,3 +1,5 @@
+using FluentCMS.Authorization;
+
 namespace FluentCMS.Core.Authorization;
 
 // The roles that the system migration seeds, with fixed ids so that every instance and every export agrees on them.
@@ -18,4 +20,12 @@ public static class BuiltInRoles
     public static readonly Guid Author = new("00000000-0000-7000-8000-000000000003");
     public static readonly Guid Public = new("00000000-0000-7000-8000-000000000004");
     public static readonly Guid Member = new("00000000-0000-7000-8000-000000000005");
+
+    // The role a permission provider names to be given a permission by default.
+    public static Guid Of(BuiltInRole role) => role switch
+    {
+        BuiltInRole.Editor => Editor,
+        BuiltInRole.Author => Author,
+        _ => throw new ArgumentOutOfRangeException(nameof(role), role, null),
+    };
 }

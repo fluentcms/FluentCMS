@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Plugins;
 
-// Event ids 9230 to 9239: per-site enablement, and what the plugin host says of itself.
+// Event ids 9230 to 9239: per-site enablement, what the plugin host says of itself, and the default grants of the providers.
 internal static partial class PluginLog
 {
     [LoggerMessage(EventId = 9230, Level = LogLevel.Information, Message = "The plugin {Plugin} was enabled for the site {SiteId}.")]
@@ -28,4 +28,7 @@ internal static partial class PluginLog
 
     [LoggerMessage(EventId = 9237, Level = LogLevel.Information, Message = "Plugin discovery is off (FluentCMS.Plugins.DisableDiscovery), so the host runs only the plugins it adds with AddPlugin.")]
     public static partial void DiscoveryDisabled(ILogger logger);
+
+    [LoggerMessage(EventId = 9238, Level = LogLevel.Information, Message = "The built-in role {Role} was given the permissions {Permissions}, which their providers name for it by default.")]
+    public static partial void DefaultGrantsGiven(ILogger logger, string role, string permissions);
 }

@@ -140,6 +140,9 @@ public sealed class AiHost : IAsyncDisposable
     // A Management key of Super Admin whose every request names the site.
     public Task<HttpClient> AdminAsync(Guid site) => KeyAsync(site, BuiltInRoles.SuperAdminName);
 
+    // A Management key of a role that exists, such as a built-in one, whose every request names the site.
+    public Task<HttpClient> RoleAsync(Guid site, string role) => KeyAsync(site, role);
+
     // A Management key of a new instance-wide role with these grants, each a permission and its constraints, if any.
     public async Task<HttpClient> CallerAsync(Guid site, params (string Permission, PermissionConstraints? Constraints)[] grants)
     {

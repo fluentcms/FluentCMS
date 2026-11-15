@@ -43,6 +43,10 @@ public sealed partial class BaselineTests : IDisposable
     // added to a table with rows got a default for those rows; EF writes the column's value on every insert.
     private static readonly (string Table, string Column)[] DefaultsOfAddedColumns = [("cms_role", "require_two_factor"), ("cms_webhooks_delivery", "manual")];
 
+    // What a preview added to the baseline after the squash, which the chain never made: a preview does not upgrade a
+    // database (10.4, H5), so a change of the model goes into the baseline until 1.0.0.
+    private static readonly string[] TablesAddedToTheBaseline = ["cms_default_grant"];
+
     // The chain raised the stamp of the Author role when it changed that role's seeded grants, so that a cached grant was
     // read again; the baseline seeds every role at its first stamp.
     private const string AuthorRole = "00000000-0000-7000-8000-000000000003";
@@ -91,7 +95,7 @@ public sealed partial class BaselineTests : IDisposable
         }
 
         var chain = WithoutWhatTheModelDoesNotSay(DatabaseCatalog.Of(_database, historyRows: false));
-        var built = DatabaseCatalog.Of(baseline, historyRows: false);
+        var built = WithoutTablesAddedToTheBaseline(DatabaseCatalog.Of(baseline, historyRows: false));
 
         chain.Except(built).ShouldBeEmpty("made by the chain and not by the baseline");
         built.Except(chain).ShouldBeEmpty("made by the baseline and not by the chain");
@@ -242,6 +246,23 @@ public sealed partial class BaselineTests : IDisposable
         result[author] = result[author].Replace("|permissions_version=2|", "|permissions_version=1|", StringComparison.Ordinal);
 
         return [.. result.Order(StringComparer.Ordinal)];
+    }
+
+    // A line names its table after its kind, as in column:cms_default_grant.role_id:..., and the table must be there.
+    private static List<string> WithoutTablesAddedToTheBaseline(List<string> catalog)
+    {
+        foreach (var table in TablesAddedToTheBaseline)
+        {
+            catalog.Any(line => line.StartsWith("table:", StringComparison.Ordinal) && OfTable(line, table)).ShouldBeTrue(table);
+        }
+
+        return [.. catalog.Where(line => !TablesAddedToTheBaseline.Any(table => OfTable(line, table)))];
+
+        static bool OfTable(string line, string table)
+        {
+            var name = line.AsSpan(line.IndexOf(':', StringComparison.Ordinal) + 1);
+            return name.StartsWith(table, StringComparison.Ordinal) && (name.Length == table.Length || name[table.Length] is '.' or ':');
+        }
     }
 
     private static void SetSnapshot(TestDatabase database, bool on)
