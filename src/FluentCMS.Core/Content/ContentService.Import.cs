@@ -236,7 +236,7 @@ internal sealed partial class ContentService
             throw await ConflictAsync(write, id, document.DraftVersion, await store.DraftVersionAsync(id, document.Locale, cancellationToken), cancellationToken);
         }
 
-        await store.WriteDraftAsync(type, document, isNewDocument: existing is null, draft?.Rows ?? StoredRows.None, working, written, write.Operation.Origin, write.Operation.ClientId, cancellationToken);
+        await store.WriteDraftAsync(type, document, isNewDocument: existing is null, draft?.Rows ?? StoredRows.None, working, written, write.Operation, cancellationToken);
         List<EntryChange> skipped = [];
         if (!isNewEntry)
         {

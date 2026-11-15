@@ -46,6 +46,7 @@ public sealed partial class BaselineTests : IDisposable
     // What a preview added to the baseline after the squash, which the chain never made: a preview does not upgrade a
     // database (10.4, H5), so a change of the model goes into the baseline until 1.0.0.
     private static readonly string[] TablesAddedToTheBaseline = ["cms_default_grant", "cms_user_preference"];
+    private static readonly (string Table, string Column)[] ColumnsAddedToTheBaseline = [("cms_version", "author_kind"), ("cms_version", "author_name")];
 
     // The chain raised the stamp of the Author role when it changed that role's seeded grants, so that a cached grant was
     // read again; the baseline seeds every role at its first stamp.
@@ -95,7 +96,7 @@ public sealed partial class BaselineTests : IDisposable
         }
 
         var chain = WithoutWhatTheModelDoesNotSay(DatabaseCatalog.Of(_database, historyRows: false));
-        var built = WithoutTablesAddedToTheBaseline(DatabaseCatalog.Of(baseline, historyRows: false));
+        var built = WithoutWhatWasAddedToTheBaseline(DatabaseCatalog.Of(baseline, historyRows: false));
 
         chain.Except(built).ShouldBeEmpty("made by the chain and not by the baseline");
         built.Except(chain).ShouldBeEmpty("made by the baseline and not by the chain");
@@ -209,6 +210,33 @@ public sealed partial class BaselineTests : IDisposable
         DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
     }
 
+    // A column folded into a table the earlier build already made, as cms_version.author_kind (#3097), is missed the same way.
+    [Fact]
+    public async Task ADatabaseOfAnEarlierBuildOfTheBaselineThatLacksAColumnIsRefused()
+    {
+        using (var built = _database.CreateHost(ArticleSchemas.NoTypes, Production))
+        {
+            await built.StartAsync(Token);
+            await built.StopAsync(Token);
+        }
+
+        var (table, column) = ColumnsAddedToTheBaseline[0];
+        _database.Execute($"alter table {TestProvider.Quote(table)} drop column {TestProvider.Quote(column)}");
+        var before = DatabaseCatalog.Of(_database, historyRows: true);
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production);
+        var refusal = $"FCMS1308: stream system has applied its baseline {BaselineOf<SystemDbContext>(host.Services)} but lacks {table}.{column}; " +
+            "nothing was applied: the database was made by an earlier build of the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again";
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
+        var (exitCode, _, error) = await RunAsync(host, "migrate");
+
+        exception.Code.ShouldBe("FCMS1308");
+        exception.Message.ShouldBe(refusal);
+        exitCode.ShouldBe(1);
+        error.ShouldBe(refusal + Environment.NewLine);
+        DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
+    }
+
     private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "false" };
 
     private const string WhatToDo = "nothing was applied: the database was made by the migrations from before the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again";
@@ -277,21 +305,28 @@ public sealed partial class BaselineTests : IDisposable
         return [.. result.Order(StringComparer.Ordinal)];
     }
 
-    // A line names its table after its kind, as in column:cms_default_grant.role_id:..., and the table must be there.
-    private static List<string> WithoutTablesAddedToTheBaseline(List<string> catalog)
+    // A line names its table after its kind, as in column:cms_default_grant.role_id:..., and what was added must be there.
+    private static List<string> WithoutWhatWasAddedToTheBaseline(List<string> catalog)
     {
         foreach (var table in TablesAddedToTheBaseline)
         {
             catalog.Any(line => line.StartsWith("table:", StringComparison.Ordinal) && OfTable(line, table)).ShouldBeTrue(table);
         }
 
-        return [.. catalog.Where(line => !TablesAddedToTheBaseline.Any(table => OfTable(line, table)))];
+        foreach (var (table, column) in ColumnsAddedToTheBaseline)
+        {
+            catalog.Any(line => OfColumn(line, table, column)).ShouldBeTrue($"{table}.{column}");
+        }
+
+        return [.. catalog.Where(line => !TablesAddedToTheBaseline.Any(table => OfTable(line, table)) && !ColumnsAddedToTheBaseline.Any(added => OfColumn(line, added.Table, added.Column)))];
 
         static bool OfTable(string line, string table)
         {
             var name = line.AsSpan(line.IndexOf(':', StringComparison.Ordinal) + 1);
             return name.StartsWith(table, StringComparison.Ordinal) && (name.Length == table.Length || name[table.Length] is '.' or ':');
         }
+
+        static bool OfColumn(string line, string table, string column) => line.StartsWith($"column:{table}.{column}:", StringComparison.Ordinal);
     }
 
     private static void SetSnapshot(TestDatabase database, bool on)

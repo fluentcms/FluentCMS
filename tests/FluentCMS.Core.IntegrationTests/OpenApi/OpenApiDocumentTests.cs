@@ -70,6 +70,8 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
 {
     private const string Management = "/api/management/v1";
 
+    private const string SettingsIfMatch = "settings-if-match";
+
     private static readonly string[] AdminGroups = ["users", "invitations", "roles", "permissions", "api-keys", "sites", "settings", "jobs", "events", "activity", "me", "plugins", "system"];
 
     private static readonly Dictionary<string, string[]> ReadsQuery = new(StringComparer.Ordinal)
@@ -233,6 +235,16 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
             var property = schemas["preview-token"]!["properties"]![url]!;
             (property["type"]!.ToJsonString(), property["format"]!.GetValue<string>()).ShouldBe(("""["null","string"]""", "uri"));
         }
+    }
+
+    [Fact]
+    public void AVersionNamesTheKindAndTheNameOfItsAuthor()
+    {
+        var item = Schemas["versions"]!["properties"]!["items"]!["items"]!["properties"]!;
+
+        item.AsObject().Select(property => property.Key).ShouldBe(["number", "locale", "status", "authorId", "authorKind", "authorName", "origin", "clientId", "message", "createdAt"]);
+        item["authorKind"]!["enum"]!.AsArray().Select(value => value!.GetValue<string>()).ShouldBe(["adminUser", "member", "apiKey", "serviceAccount", "system", "anonymous"]);
+        item["authorName"]!["type"]!.GetValue<string>().ShouldBe("string");
     }
 
     [Fact]
@@ -523,6 +535,27 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
             reset["operationId"]!.GetValue<string>().ShouldStartWith("deleteSettingsByArea");
             reset["responses"]!["204"].ShouldNotBeNull(path);
             reset["requestBody"].ShouldBeNull(path);
+        }
+    }
+
+    // A settings write and a reset need the version they read, "0" when nothing is stored; the read needs none.
+    [Fact]
+    public void TheSettingsWritesAndResetsRequireIfMatch()
+    {
+        var header = Parameters[SettingsIfMatch]!;
+        header["name"]!.GetValue<string>().ShouldBe("If-Match");
+        header["in"]!.GetValue<string>().ShouldBe("header");
+        header["required"]!.GetValue<bool>().ShouldBeTrue();
+        header["description"]!.GetValue<string>().ShouldContain("\"0\"");
+
+        foreach (var path in new[] { $"{Management}/settings/{{area}}", $"{Management}/settings/{{area}}/defaults" })
+        {
+            foreach (var method in new[] { "put", "delete" })
+            {
+                Paths[path]![method]!["parameters"]!.ToJsonString().ShouldContain($"#/components/parameters/{SettingsIfMatch}\"", Case.Sensitive, $"{method} {path}");
+            }
+
+            Paths[path]!["get"]!["parameters"]!.ToJsonString().ShouldNotContain("if-match");
         }
     }
 

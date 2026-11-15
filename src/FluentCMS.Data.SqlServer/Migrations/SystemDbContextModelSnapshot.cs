@@ -681,6 +681,18 @@ namespace FluentCMS.Data.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("author_id");
 
+                    b.Property<string>("AuthorKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasColumnName("author_kind");
+
+                    b.Property<string>("AuthorName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("author_name");
+
                     b.Property<string>("ClientId")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("client_id");

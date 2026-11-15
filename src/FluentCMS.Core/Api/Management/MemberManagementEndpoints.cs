@@ -7,6 +7,7 @@ using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Identity.Oidc;
+using FluentCMS.Plugins;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

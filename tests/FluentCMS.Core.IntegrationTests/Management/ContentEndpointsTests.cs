@@ -1,8 +1,11 @@
 using System.Globalization;
 using System.Net;
 using System.Text.Json.Nodes;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Sites;
 using FluentCMS.Testing;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 
@@ -251,6 +254,43 @@ public sealed class ContentEndpointsTests(ManagementFixture fixture) : IClassFix
 
         (await fixture.GetAsync($"page/{id}/versions/9")).Status.ShouldBe(HttpStatusCode.NotFound);
         (await fixture.GetAsync($"page/{id}/versions?locale=all")).Status.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    // #3097: a version names the kind of its author and the name it had then, which a later rename leaves as it was.
+    [Fact]
+    public async Task AVersionNamesItsAuthorAsItWasWhenItWasSaved()
+    {
+        var user = await fixture.Host.CreateUserAsync("Editor", cancellationToken: TestContext.Current.CancellationToken);
+        var renamed = $"ada{Guid.NewGuid():N}";
+        string name;
+        var key = await fixture.Host.CreateApiKeyAsync(ApiKeyClass.Management, "Editor", "Build key", TestContext.Current.CancellationToken);
+        string id;
+        using (var before = await fixture.Host.AsUserAsync(user))
+        {
+            id = (await ManagementFixture.SendAsync(before, HttpMethod.Post, "page", """{ "title": "By Ada" }""")).Json["id"]!.GetValue<string>();
+        }
+
+        using (var client = fixture.Host.AsKey(key))
+        {
+            (await ManagementFixture.SendAsync(client, HttpMethod.Patch, $"page/{id}", """{ "title": "By a key" }""", "\"1\"")).Status.ShouldBe(HttpStatusCode.OK);
+        }
+
+        await using (var scope = fixture.Host.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<CmsUser>>();
+            var stored = (await users.FindByIdAsync(user.Id.ToString()))!;
+            name = stored.UserName!;
+            (await users.SetUserNameAsync(stored, renamed)).Succeeded.ShouldBeTrue();
+        }
+
+        using (var after = await fixture.Host.AsUserAsync(user))
+        {
+            (await ManagementFixture.SendAsync(after, HttpMethod.Post, $"page/{id}/versions/1/restore")).Status.ShouldBe(HttpStatusCode.OK);
+        }
+
+        var items = (await fixture.GetAsync($"page/{id}/versions")).Json["items"]!.AsArray();
+        items.Select(item => (item!["number"]!.GetValue<int>(), item["authorId"]!.GetValue<Guid>(), item["authorKind"]!.GetValue<string>(), item["authorName"]!.GetValue<string>()))
+            .ShouldBe([(3, user.Id, "adminUser", renamed), (2, key.Id, "apiKey", "Build key"), (1, user.Id, "adminUser", name)]);
     }
 
     [Fact]

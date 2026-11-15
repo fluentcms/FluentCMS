@@ -2091,11 +2091,15 @@ FluentCMS.Publishing.VersionInfo
 FluentCMS.Publishing.VersionInfo.<Clone>$() -> FluentCMS.Publishing.VersionInfo!
 FluentCMS.Publishing.VersionInfo.AuthorId.get -> System.Guid
 FluentCMS.Publishing.VersionInfo.AuthorId.init -> void
+FluentCMS.Publishing.VersionInfo.AuthorKind.get -> FluentCMS.Content.PrincipalKind
+FluentCMS.Publishing.VersionInfo.AuthorKind.init -> void
+FluentCMS.Publishing.VersionInfo.AuthorName.get -> string!
+FluentCMS.Publishing.VersionInfo.AuthorName.init -> void
 FluentCMS.Publishing.VersionInfo.ClientId.get -> string?
 FluentCMS.Publishing.VersionInfo.ClientId.init -> void
 FluentCMS.Publishing.VersionInfo.CreatedAt.get -> System.DateTimeOffset
 FluentCMS.Publishing.VersionInfo.CreatedAt.init -> void
-FluentCMS.Publishing.VersionInfo.Deconstruct(out int Number, out string! Locale, out FluentCMS.Publishing.EntryStatus Status, out System.Guid AuthorId, out FluentCMS.Content.Origin Origin, out string? ClientId, out string? Message, out System.DateTimeOffset CreatedAt) -> void
+FluentCMS.Publishing.VersionInfo.Deconstruct(out int Number, out string! Locale, out FluentCMS.Publishing.EntryStatus Status, out System.Guid AuthorId, out FluentCMS.Content.PrincipalKind AuthorKind, out string! AuthorName, out FluentCMS.Content.Origin Origin, out string? ClientId, out string? Message, out System.DateTimeOffset CreatedAt) -> void
 FluentCMS.Publishing.VersionInfo.Equals(FluentCMS.Publishing.VersionInfo? other) -> bool
 FluentCMS.Publishing.VersionInfo.Locale.get -> string!
 FluentCMS.Publishing.VersionInfo.Locale.init -> void
@@ -2107,7 +2111,7 @@ FluentCMS.Publishing.VersionInfo.Origin.get -> FluentCMS.Content.Origin
 FluentCMS.Publishing.VersionInfo.Origin.init -> void
 FluentCMS.Publishing.VersionInfo.Status.get -> FluentCMS.Publishing.EntryStatus
 FluentCMS.Publishing.VersionInfo.Status.init -> void
-FluentCMS.Publishing.VersionInfo.VersionInfo(int Number, string! Locale, FluentCMS.Publishing.EntryStatus Status, System.Guid AuthorId, FluentCMS.Content.Origin Origin, string? ClientId, string? Message, System.DateTimeOffset CreatedAt) -> void
+FluentCMS.Publishing.VersionInfo.VersionInfo(int Number, string! Locale, FluentCMS.Publishing.EntryStatus Status, System.Guid AuthorId, FluentCMS.Content.PrincipalKind AuthorKind, string! AuthorName, FluentCMS.Content.Origin Origin, string? ClientId, string? Message, System.DateTimeOffset CreatedAt) -> void
 FluentCMS.Schema.BlockAttribute
 FluentCMS.Schema.BlockAttribute.BlockAttribute(string? name = null) -> void
 FluentCMS.Schema.BlockAttribute.Name.get -> string?

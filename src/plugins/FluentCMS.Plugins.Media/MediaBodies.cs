@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using FluentCMS.Content;
 using FluentCMS.Media;
+using Microsoft.AspNetCore.Http;
 
 namespace FluentCMS.Plugins.Media;
 
@@ -80,3 +81,44 @@ internal sealed record MediaAssetPage(IReadOnlyList<MediaAssetResponse> Items, l
         return new([.. page.Items.Select(MediaAssetResponse.From)], page.Total ?? 0, page.Page ?? 1, page.PageSize);
     }
 }
+
+// The body of an upload: the assets it created, in the order of the files of the form.
+internal sealed record MediaAssetList(IReadOnlyList<MediaAsset> Items);
+
+internal sealed record MediaUsageList(IReadOnlyList<MediaUsage> Items)
+{
+    public static MediaUsageList From(IReadOnlyList<ContentReference> usage)
+    {
+        ArgumentNullException.ThrowIfNull(usage);
+
+        return new([.. usage.Select(reference => new MediaUsage(
+            reference.Type,
+            reference.EntryId,
+            reference.Status == QueryStatus.Published ? "published" : "draft",
+            reference.Locale,
+            reference.Field))]);
+    }
+}
+
+internal sealed record MediaUsage(
+    string Type,
+    Guid EntryId,
+    [property: Description("published or draft.")]
+    string Status,
+    string? Locale,
+    string Field);
+
+internal sealed record MediaFolderList(IReadOnlyList<MediaFolder> Items);
+
+internal sealed record MediaPresetList(IReadOnlyList<MediaPreset> Items);
+
+// The multipart forms of an upload and a replace, which the routes read by themselves.
+internal sealed record MediaUploadForm(
+    [property: Description("The files of the upload: every file part of the form is one, whatever its field name.")]
+    IReadOnlyList<IFormFile> Files,
+    [property: Description("The folder the files go in; the root when it is left out.")]
+    Guid? FolderId = null);
+
+internal sealed record MediaReplaceForm(
+    [property: Description("The new file: the one file part of the form, whatever its field name.")]
+    IFormFile File);

@@ -111,7 +111,7 @@ internal sealed class MediaDeliveryResponse(MediaDelivery delivered, Guid site, 
         && tags.Any(tag => tag.Equals(EntityTagHeaderValue.Any) || tag.Compare(etag, useStrongComparison: false));
 
     // What a client reads of an asset: no site, folder, checksum or the ids of the people who uploaded and changed it.
-    private sealed record DeliveredAsset(
+    internal sealed record DeliveredAsset(
         Guid Id,
         string FileName,
         string MimeType,
