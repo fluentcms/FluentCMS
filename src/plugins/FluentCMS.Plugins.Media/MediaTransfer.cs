@@ -198,7 +198,7 @@ internal sealed class MediaTransfer(
                 existing.Path = path;
             }
 
-            await database.SaveChangesAsync(cancellationToken);
+            await SaveAsync(cancellationToken);
         }
 
         Move(folders, line.Id, oldPath, path);
@@ -261,7 +261,9 @@ internal sealed class MediaTransfer(
         StoredFile stored;
         if (file is not null && replacesFile)
         {
-            stored = new StoredFile(storages.Current.Name, $"{library:N}/{line.Id:N}/{(existing is null ? "original" : "original-" + file.Checksum[..16])}{file.Type.Extension}", file);
+            // A key of this write's own, as a replace through the service has, so that the deletion of a file whose row was
+            // not saved never takes one that another import, of another site of a shared library, wrote for its own row.
+            stored = new StoredFile(storages.Current.Name, $"{library:N}/{line.Id:N}/original-{Guid.CreateVersion7():N}{file.Type.Extension}", file);
         }
         else if (existing is not null && !replacesFile)
         {
@@ -279,15 +281,13 @@ internal sealed class MediaTransfer(
             return existing is null ? TransferOutcome.Created : TransferOutcome.Updated;
         }
 
-        // A file the import wrote is deleted again when its row is not saved, as for an upload, unless the key held a file
-        // before, which a row may name.
+        // A file the import wrote is deleted again when its row is not saved, as for an upload.
         string? written = null;
         if (file is not null && replacesFile)
         {
-            var held = await storages.Current.ExistsAsync(stored.Key, cancellationToken);
             file.Content.Position = 0;
             await storages.Current.WriteAsync(stored.Key, file.Content, cancellationToken);
-            written = held ? null : stored.Key;
+            written = stored.Key;
         }
 
         var asset = existing ?? new Asset { Id = line.Id, SiteId = library };
@@ -299,7 +299,7 @@ internal sealed class MediaTransfer(
 
         try
         {
-            await database.SaveChangesAsync(cancellationToken);
+            await SaveAsync(cancellationToken);
         }
         catch
         {
@@ -320,9 +320,10 @@ internal sealed class MediaTransfer(
         return existing is null ? TransferOutcome.Created : TransferOutcome.Updated;
     }
 
-    // An item the instance refuses is reported, and the others go on. The checks of a line leave the database a write it
-    // refuses only when another writer took the id at the same time, and the storage one that fails; their messages, which
-    // can name the server's paths, go to the log only. Report throws again a bound of the package that a read reached.
+    // An item the instance refuses is reported, and the others go on. The checks of a line leave a save that fails only when
+    // another writer took the id at the same time or the database fails (FCMS3221), and a read or a write of the storage that
+    // fails (FCMS3220); their messages, which can name the server's paths, go to the log only. Report throws again a bound of
+    // the package that a read reached.
     private async Task ItemAsync(ITransferImport context, string section, Guid id, Func<Task<TransferOutcome>> import)
     {
         try
@@ -337,7 +338,7 @@ internal sealed class MediaTransfer(
         catch (DbUpdateException exception)
         {
             database.ChangeTracker.Clear();
-            context.Report(section, id.ToString("D"), TransferOutcome.Error, MediaErrorCodes.TransferIdTaken, "The database refused the item, as when another writer took its id at the same time; the log of the instance has the reason.");
+            context.Report(section, id.ToString("D"), TransferOutcome.Error, MediaErrorCodes.TransferIdTaken, "The database did not save the item, as when another writer took its id at the same time; the log of the instance has the reason.");
             MediaLog.TransferItemFailed(logger, exception, MediaErrorCodes.TransferIdTaken, section, id);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -345,6 +346,19 @@ internal sealed class MediaTransfer(
             database.ChangeTracker.Clear();
             context.Report(section, id.ToString("D"), TransferOutcome.Error, MediaErrorCodes.TransferFileMissing, "The file of the item could not be read or stored; the log of the instance has the reason.");
             MediaLog.TransferItemFailed(logger, exception, MediaErrorCodes.TransferFileMissing, section, id);
+        }
+    }
+
+    // Any failure of the save is one of the database, so that the item is reported by the step that failed.
+    private async Task SaveAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await database.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is not DbUpdateException and not OperationCanceledException)
+        {
+            throw new DbUpdateException("The media rows of the item were not saved.", exception);
         }
     }
 
@@ -409,7 +423,7 @@ internal sealed class MediaTransfer(
             : throw Refused(MediaErrorCodes.InvalidField, $"The {field} of the asset {id:D} is an object of a text of at most {maxLength} characters for each locale.");
     }
 
-    // Written as the service writes them, so that a list filters by a tag of an imported asset too.
+    // Written as the service writes them, once each, so that a list filters by a tag of an imported asset too.
     private static string TagsOf(Guid id, JsonElement value)
     {
         if (value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
@@ -429,7 +443,7 @@ internal sealed class MediaTransfer(
                 ?? throw Refused(MediaErrorCodes.InvalidField, $"A tag of the asset {id:D} is one the service refuses. {MediaService.TagRule}"));
         }
 
-        return MediaJson.OfTags(tags);
+        return MediaJson.OfTags([.. tags.Distinct(StringComparer.Ordinal)]);
     }
 
     // Core holds each line of a .jsonl file to FluentCms:Transfer:MaxLineLength as the stream is read.

@@ -738,7 +738,7 @@ public sealed class TransferTests : IDisposable
     }
 
     [Fact]
-    public async Task ALineWithoutAnIdOrWithAVersionNumberOutOfRangeIsAnItemError()
+    public async Task ALineWithoutAnIdOrALocaleCodeOrWithAVersionNumberOutOfRangeIsAnItemError()
     {
         var ids = await SeedAsync();
         var exported = await ExportAsync(_source);
@@ -748,22 +748,26 @@ public sealed class TransferTests : IDisposable
         withoutId.Remove("id");
         var emptyId = lines.Single(line => line["id"]!.GetValue<Guid>() == ada).DeepClone().AsObject();
         emptyId["id"] = Guid.Empty;
+        var withoutCode = lines.Single(line => line["id"]!.GetValue<Guid>() == ada).DeepClone().AsObject();
+        withoutCode["locales"]![0]!.AsObject().Remove("locale");
         var overflowing = lines.Single(line => line["id"]!.GetValue<Guid>() == ada);
         overflowing["locales"]![0]!["draftVersion"] = int.MaxValue;
         var zero = lines.Single(line => line["id"]!.GetValue<Guid>() == grace);
         zero["locales"]![0]!["publishedVersion"] = 0;
         var target = Target();
 
-        var result = await ImportAsync(target, Rewrite(exported, TransferPackage.ContentPath("author"), string.Join('\n', new[] { withoutId, emptyId, overflowing, zero }.Select(line => line.ToJsonString()))));
+        var result = await ImportAsync(target, Rewrite(exported, TransferPackage.ContentPath("author"), string.Join('\n', new[] { withoutId, emptyId, withoutCode, overflowing, zero }.Select(line => line.ToJsonString()))));
 
-        result.Sections["author"].ShouldBe(TransferCounts.None with { Errors = 4 });
+        result.Sections["author"].ShouldBe(TransferCounts.None with { Errors = 5 });
         result.Items.Where(item => item.Section == "author").Select(item => (item.Id, item.Code)).ShouldBe(
         [
             ("line 1", TransferErrorCodes.InvalidItem),
             ("line 2", TransferErrorCodes.InvalidItem),
             (ada.ToString("D"), TransferErrorCodes.InvalidItem),
+            (ada.ToString("D"), TransferErrorCodes.InvalidItem),
             (grace.ToString("D"), TransferErrorCodes.InvalidItem),
         ]);
+        result.Items.Single(item => item.Message!.StartsWith("Line 3 ", StringComparison.Ordinal)).Message!.ShouldContain("its code");
         target.Read(context => context.Documents.Count(document => document.Type == "author")).ShouldBe(0);
     }
 

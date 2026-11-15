@@ -72,7 +72,7 @@ internal static class TransferEndpoints
         await exporter.WriteAsync(run, response.Body, httpContext.RequestAborted);
     }
 
-    private static async Task ImportAsync(HttpContext httpContext, [FromServices] TransferImporter importer, [FromServices] TransferOptions options)
+    private static async Task ImportAsync(HttpContext httpContext, [FromServices] TransferImporter importer)
     {
         var request = httpContext.Request;
         ManagementQuery.Only(request);
@@ -82,9 +82,11 @@ internal static class TransferEndpoints
             throw new BadHttpRequestException($"The body is a package, sent as {ZipType}.", StatusCodes.Status415UnsupportedMediaType);
         }
 
+        // The importer counts the body against FluentCms:Transfer:MaxPackageSize itself, so that a body over it is FCMS3204
+        // whether it declares its length or comes chunked, where a server's limit would refuse it with a code of its own.
         if (httpContext.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
         {
-            limit.MaxRequestBodySize = options.MaxPackageSize;
+            limit.MaxRequestBodySize = null;
         }
 
         await using var run = await importer.PrepareAsync(request.Body, request.ContentLength, asked, httpContext.RequestAborted);
@@ -176,7 +178,7 @@ internal static class TransferEndpoints
 
     private static ValidationException Invalid(string name, string message) => new([new ValidationError(name, QueryErrorCodes.InvalidParameter, message)]);
 
-    // The import reads its body up to FluentCms:Transfer:MaxPackageSize, which it sets itself, so the cap of the other
+    // The import reads its body up to FluentCms:Transfer:MaxPackageSize, which it counts itself, so the cap of the other
     // requests does not apply.
     private sealed class PackageSizeLimit : IRequestSizeLimitMetadata
     {

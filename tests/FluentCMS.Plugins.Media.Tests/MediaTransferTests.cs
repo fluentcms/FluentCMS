@@ -48,7 +48,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         (await AssetAsync(page)).ShouldBeNull();
         var stored = (await AssetAsync(image)).ShouldNotBeNull();
         (stored.MimeType, stored.Size, stored.Width, stored.Height, stored.Checksum).ShouldBe(("image/png", png.LongLength, 3, 2, Sha256(png)));
-        stored.StorageKey.ShouldEndWith("/original.png");
+        stored.StorageKey.ShouldMatch($@"^{DefaultSite.Id:N}/{image:N}/original-[0-9a-f]{{32}}\.png$");
         var original = (await GetAsync(anonymous, $"/api/delivery/v1/media/{image:D}"))["urls"]!["original"]!.GetValue<string>();
         using var served = await FetchAsync(anonymous, original);
         served.Content.Headers.ContentType!.MediaType.ShouldBe("image/png");
@@ -117,7 +117,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
 
         var stored = (await AssetAsync(id)).ShouldNotBeNull();
         stored.MimeType.ShouldBe("image/svg+xml");
-        stored.StorageKey.ShouldEndWith("/original.svg");
+        stored.StorageKey.ShouldMatch($@"^{DefaultSite.Id:N}/{id:N}/original-[0-9a-f]{{32}}\.svg$");
         var bytes = await StoredAsync(stored.StorageKey);
         Encoding.UTF8.GetString(bytes).ShouldNotContain("script");
         (stored.Size, stored.Checksum).ShouldBe((bytes.LongLength, Sha256(bytes)));
@@ -358,7 +358,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         lines[2]["tags"] = new[] { "fine", "with \"quote\"" };
         lines[3]["focalX"] = 2.0;
         lines[3]["focalY"] = 0.5;
-        lines[4]["tags"] = new[] { " spaced ", "net" };
+        lines[4]["tags"] = new[] { " spaced ", "net", "spaced" };
         lines[4]["alt"] = new Dictionary<string, object?> { ["en"] = "An image", ["fr"] = "Une image" };
         var package = await PackageAsync(admin, lines, [.. ids.Select((id, index) => (FileOf(id, ".png"), pngs[index]))]);
 
@@ -381,29 +381,88 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
     }
 
     // A file the import wrote for a row the database does not save is deleted again, and the report says no more of the
-    // failure than its kind, since the exception can name the server's paths.
+    // failure than its kind and the step that failed, since the exception can name the server's paths. A save that fails is
+    // FCMS3221 whatever the exception, and a write of the storage FCMS3220. The file a row names before an update whose save
+    // fails stays.
     [Fact]
     public async Task AFileWhoseRowIsNotSavedIsDeletedAndTheReportNamesNoDetailOfTheServer()
     {
-        var (refused, failed) = (Guid.CreateVersion7(), Guid.CreateVersion7());
+        var (refused, failed, blocked) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
+        var save = new FailingSave();
+        save.Refused.Add(refused);
+        save.Failed.Add(failed);
         await using var host = new MediaHost();
-        host.Host.Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(new FailingSave(refused, failed))));
+        host.Host.Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(save)));
         using var admin = await host.AdminAsync();
-        var (one, two) = (Files.Png(1, 2), Files.Png(2, 1));
-        var package = await PackageAsync(admin, [Line(refused, "one.png", "image/png", one), Line(failed, "two.png", "image/png", two)], (FileOf(refused, ".png"), one), (FileOf(failed, ".png"), two));
+        var replaced = await UploadAsync(admin, Files.Png(4, 4), "kept.png");
+        var key = (await AssetAsync(host, replaced.Id)).ShouldNotBeNull().StorageKey;
+        save.Refused.Add(replaced.Id);
+
+        // A file where the storage needs the folder of the asset, so that its write fails with the path in its message.
+        var library = Path.Combine(host.StorageRoot, DefaultSite.Id.ToString("N"));
+        Directory.CreateDirectory(library);
+        await File.WriteAllBytesAsync(Path.Combine(library, blocked.ToString("N")), [1], Token);
+        var (one, two, three, four) = (Files.Png(1, 2), Files.Png(2, 1), Files.Png(3, 1), Files.Png(1, 3));
+        var package = await PackageAsync(
+            admin,
+            [
+                Line(refused, "one.png", "image/png", one),
+                Line(failed, "two.png", "image/png", two),
+                Line(blocked, "three.png", "image/png", three),
+                Line(replaced.Id, "four.png", "image/png", four, updatedAt: host.Host.Time.GetUtcNow().AddMinutes(5)),
+            ],
+            (FileOf(refused, ".png"), one),
+            (FileOf(failed, ".png"), two),
+            (FileOf(blocked, ".png"), three),
+            (FileOf(replaced.Id, ".png"), four));
 
         var report = await ImportAsync(admin, package);
 
         Items(report).ShouldBe(new Dictionary<Guid, (string, string?)>
         {
             [refused] = ("error", MediaErrorCodes.TransferIdTaken),
-            [failed] = ("error", MediaErrorCodes.TransferFileMissing),
+            [failed] = ("error", MediaErrorCodes.TransferIdTaken),
+            [blocked] = ("error", MediaErrorCodes.TransferFileMissing),
+            [replaced.Id] = ("error", MediaErrorCodes.TransferIdTaken),
         });
-        report["items"]!.ToJsonString().ShouldNotContain(FailingSave.Detail);
-        Directory.EnumerateFiles(host.StorageRoot, "*", SearchOption.AllDirectories).ShouldNotContain(path => path.Contains(refused.ToString("N"), StringComparison.Ordinal) || path.Contains(failed.ToString("N"), StringComparison.Ordinal));
+        var items = report["items"]!.ToJsonString();
+        items.ShouldNotContain(FailingSave.Detail);
+        items.ShouldNotContain(DefaultSite.Id.ToString("N"));
+        var files = Directory.EnumerateFiles(host.StorageRoot, "*", SearchOption.AllDirectories).ToList();
+        files.ShouldNotContain(path => path.Contains(refused.ToString("N"), StringComparison.Ordinal) || path.Contains(failed.ToString("N"), StringComparison.Ordinal));
+        (await AssetAsync(host, replaced.Id)).ShouldNotBeNull().StorageKey.ShouldBe(key);
+        files.Where(path => path.Contains(replaced.Id.ToString("N"), StringComparison.Ordinal)).Select(path => Path.GetRelativePath(host.StorageRoot, path).Replace('\\', '/')).ShouldBe([key]);
     }
 
-    // Core reads no path out of the folder of the contributor, so such a line has no file.
+    // With Shared, imports into two sites write one library while each holds the lock of its own site, so both can find no
+    // row of an asset and write its file. The one whose save then fails deletes only the file it wrote, under a key of its
+    // own, and the file the other's row names stays.
+    [Fact]
+    public async Task AFailedSaveLeavesTheFileThatAnImportIntoAnotherSiteOfTheLibraryWroteForTheSameAsset()
+    {
+        var id = Guid.CreateVersion7();
+        var race = new RacingSave(id);
+        await using var host = new MediaHost();
+        host.Host.Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(race)));
+        using var admin = await host.AdminAsync();
+        using var other = await MediaLibraryTesting.InSiteAsync(host, await MediaLibraryTesting.CreateSiteAsync(host));
+        var png = Files.Png(3, 4);
+        var package = await PackageAsync(admin, [Line(id, "raced.png", "image/png", png)], (FileOf(id, ".png"), png));
+        JsonNode? first = null;
+        race.Before = async () => first = await ImportAsync(other, package);
+
+        var second = await ImportAsync(admin, package);
+
+        Counts(first.ShouldNotBeNull()).ShouldBe((1, 0, 0));
+        Items(second).ShouldBe(new Dictionary<Guid, (string, string?)> { [id] = ("error", MediaErrorCodes.TransferIdTaken) });
+        var stored = (await AssetAsync(host, id)).ShouldNotBeNull();
+        stored.SiteId.ShouldBe(DefaultSite.Id);
+        (await File.ReadAllBytesAsync(Path.Combine(host.StorageRoot, stored.StorageKey), Token)).ShouldBe(png);
+        Directory.EnumerateFiles(host.StorageRoot, "*", SearchOption.AllDirectories).Count(path => path.Contains(id.ToString("N"), StringComparison.Ordinal)).ShouldBe(1);
+    }
+
+    // Core reads no path out of the folder of the contributor, so such a line has no file, even when the package has a file
+    // of that very name, which would pass every other check.
     [Theory]
     [InlineData("../../manifest.json")]
     [InlineData("files/../../schema.json")]
@@ -412,9 +471,14 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
     {
         using var admin = await media.AdminAsync();
         var id = Guid.CreateVersion7();
-        var line = Line(id, "photo.png", "image/png", Files.Png(2, 2));
+        var png = Files.Png(2, 2);
+        var line = Line(id, "photo.png", "image/png", png);
         line["file"] = path;
-        var package = await PackageAsync(admin, [line]);
+        var package = await PackageAsync(admin, [line], (path, png));
+        using (var archive = new ZipArchive(new MemoryStream(package), ZipArchiveMode.Read))
+        {
+            archive.GetEntry("plugins/media/" + path).ShouldNotBeNull();
+        }
 
         var dry = await ImportAsync(admin, package, dryRun: true);
         var real = await ImportAsync(admin, package);
@@ -535,9 +599,11 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
             .Where(item => item!["section"]!.GetValue<string>() == section)
             .ToDictionary(item => Guid.Parse(item!["id"]!.GetValue<string>()), item => (item!["outcome"]!.GetValue<string>(), item["code"]?.GetValue<string>()));
 
-    private async Task<Asset?> AssetAsync(Guid id)
+    private Task<Asset?> AssetAsync(Guid id) => AssetAsync(media, id);
+
+    private static async Task<Asset?> AssetAsync(MediaHost host, Guid id)
     {
-        await using var scope = media.Services.CreateAsyncScope();
+        await using var scope = host.Services.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().AsNoTracking().FirstOrDefaultAsync(asset => asset.Id == id, Token);
     }
 
@@ -562,18 +628,43 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
         }
     }
 
-    // A save of the media rows that the database refuses for one asset and that fails for another, both with a detail of
-    // the server that no report may carry.
-    private sealed class FailingSave(Guid refused, Guid failed) : SaveChangesInterceptor
+    // A save of the media rows that the database refuses for some assets and that fails otherwise for others, each with a
+    // detail of the server that no report may carry.
+    private sealed class FailingSave : SaveChangesInterceptor
     {
         public const string Detail = "/srv/fluentcms/secret";
+
+        public HashSet<Guid> Refused { get; } = [];
+
+        public HashSet<Guid> Failed { get; } = [];
 
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
         {
             var saved = eventData.Context!.ChangeTracker.Entries<Asset>().Select(entry => entry.Entity.Id).ToList();
-            return saved.Contains(refused) ? throw new DbUpdateException($"The database refused the row at {Detail}.")
-                : saved.Contains(failed) ? throw new InvalidOperationException($"The server failed at {Detail}.")
+            return saved.Any(Refused.Contains) ? throw new DbUpdateException($"The database refused the row at {Detail}.")
+                : saved.Any(Failed.Contains) ? throw new InvalidOperationException($"The server failed at {Detail}.")
                 : base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
+    }
+
+    // The first save that adds the asset runs the other import before it goes on, as when two imports find no row of the
+    // asset and the other saves first.
+    private sealed class RacingSave(Guid asset) : SaveChangesInterceptor
+    {
+        private int _armed = 1;
+
+        public Func<Task>? Before { get; set; }
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (Before is { } before
+                && eventData.Context!.ChangeTracker.Entries<Asset>().Any(entry => entry.State == EntityState.Added && entry.Entity.Id == asset)
+                && Interlocked.Exchange(ref _armed, 0) == 1)
+            {
+                await before();
+            }
+
+            return await base.SavingChangesAsync(eventData, result, cancellationToken);
         }
     }
 

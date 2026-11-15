@@ -139,7 +139,8 @@ internal sealed class TransferImporter(
 
         using var span = FluentCmsTelemetry.Start("transfer", "import", null, run.Operation);
 
-        // An import whose lock another holder took stops as a cancelled one does, so that two never write the site at once.
+        // An import whose lock was lost stops as a cancelled one does, at its next step, rather than going on beside the next
+        // holder. A lease without fencing cannot rule out a moment of both: Lost fires only when a renewal fails.
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, run.Lost);
         var token = stop.Token;
         var caller = run.Operation;
