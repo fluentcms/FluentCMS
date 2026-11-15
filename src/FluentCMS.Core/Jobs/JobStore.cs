@@ -196,7 +196,10 @@ internal sealed class JobStore(
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
         var now = time.GetUtcNow();
-        var stuck = await Stuck(context, now).AsNoTracking().Take(SweepBatch).ToListAsync();
+
+        // Every stuck job is swept in some pass, so any batch would do; the order keeps EF Core from warning of a Take
+        // without one.
+        var stuck = await Stuck(context, now).AsNoTracking().OrderBy(row => row.Id).Take(SweepBatch).ToListAsync();
 
         var swept = 0;
         foreach (var job in stuck)

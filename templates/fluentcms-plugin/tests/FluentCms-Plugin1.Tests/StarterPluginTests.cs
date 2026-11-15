@@ -66,14 +66,7 @@ public sealed class StarterPluginTests : IAsyncDisposable
     public async Task TheSettingsOfTheSiteLimitTheNotes()
     {
         using var client = await ClientAsync(StarterPermissions.NotesManage, "settings.starter-plugin.manage");
-
-        // A write names the version of the settings it read, 0 for a site that has none of its own yet.
-        using (var save = new HttpRequestMessage(HttpMethod.Put, new Uri(Settings, UriKind.Relative)) { Content = JsonContent.Create(new StarterSettings { MaxNotes = 1 }) })
-        {
-            save.Headers.IfMatch.Add(new EntityTagHeaderValue("\"0\""));
-            using var saved = await client.SendAsync(save, Token);
-            Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
-        }
+        await SetMaxNotesAsync(client, 1);
 
         using var first = await client.PostAsJsonAsync(Notes, new StarterNoteRequest("One"), Token);
         using var second = await client.PostAsJsonAsync(Notes, new StarterNoteRequest("Two"), Token);
@@ -82,7 +75,36 @@ public sealed class StarterPluginTests : IAsyncDisposable
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
     }
 
+    [Fact]
+    public async Task PostsSentTogetherAddNoMoreNotesThanTheSettingsAllow()
+    {
+        using var client = await ClientAsync(StarterPermissions.NotesManage, "settings.starter-plugin.manage");
+        await SetMaxNotesAsync(client, 3);
+
+        var responses = await Task.WhenAll(Enumerable.Range(1, 10).Select(number => client.PostAsJsonAsync(Notes, new StarterNoteRequest($"Note {number}"), Token)));
+        var statuses = responses.Select(response => response.StatusCode).ToList();
+        Array.ForEach(responses, response => response.Dispose());
+
+        // A post that waits too long for the lock answers 503 and adds nothing, so what holds is the limit: no more notes
+        // than MaxNotes, and one for each post answered 201.
+        HttpStatusCode[] answers = [HttpStatusCode.Created, HttpStatusCode.Conflict, HttpStatusCode.ServiceUnavailable];
+        Assert.All(statuses, status => Assert.Contains(status, answers));
+        var created = statuses.Count(status => status == HttpStatusCode.Created);
+        Assert.InRange(created, 1, 3);
+        var notes = await client.GetFromJsonAsync<List<StarterNoteResponse>>(Notes, Token);
+        Assert.Equal(created, notes!.Count);
+    }
+
     public ValueTask DisposeAsync() => _host.DisposeAsync();
+
+    // A write names the version of the settings it read, 0 for a site that has none of its own yet.
+    private static async Task SetMaxNotesAsync(HttpClient client, int max)
+    {
+        using var save = new HttpRequestMessage(HttpMethod.Put, new Uri(Settings, UriKind.Relative)) { Content = JsonContent.Create(new StarterSettings { MaxNotes = max }) };
+        save.Headers.IfMatch.Add(new EntityTagHeaderValue("\"0\""));
+        using var saved = await client.SendAsync(save, Token);
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+    }
 
     // A Management key of a new role with these permissions, as an administrator would make one.
     private async Task<HttpClient> ClientAsync(params string[] permissions)

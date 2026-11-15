@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="FluentCMS.Plugins.Webhooks.Tests" />
+    <InternalsVisibleTo Include="FluentCMS.Data.Tests" />
   </ItemGroup>
 
   <!-- The analyzers check the schema attributes in the build; PrivateAssets keeps them out of the package's dependencies. -->
