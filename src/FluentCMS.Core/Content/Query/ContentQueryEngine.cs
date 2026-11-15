@@ -522,13 +522,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         var targets = query.Targets;
         foreach (var group in asked.GroupBy(item => item.Target))
         {
-            List<Guid> ids = [.. group.SelectMany(item => item.Ids).Distinct()];
-            if (ids.Count > 0)
-            {
-                targetTypes.Add(group.Key);
-            }
-
-            await ReadableIdsAsync(targets, group.Key, ids, readable, cancellationToken);
+            await ReadableIdsAsync(targets, group.Key, [.. group.SelectMany(item => item.Ids).Distinct()], readable, cancellationToken);
         }
 
         foreach (var output in outputs)
@@ -615,15 +609,19 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     }
 
     // Asks the database only about the ids this run has not asked about yet. What is returned is to be asked whether it
-    // contains an id, and may hold more than the ids given.
+    // contains an id, and may hold more than the ids given. Every relation target and entry link, at every level, is asked
+    // about here, so a type of which the caller reads one of them is recorded as shown.
     private async Task<HashSet<Guid>?> ReadableIdsAsync(QueryScope query, SchemaType target, List<Guid> ids, ReadableTargets readable, CancellationToken cancellationToken)
     {
-        if (readable.TryAnswer(target, ids, out var answer, out var unknown))
+        var answer = readable.TryAnswer(target, ids, out var known, out var unknown)
+            ? known
+            : readable.Add(target, unknown, await ReadableIdsAsync(query, target, unknown, cancellationToken));
+        if (answer is null ? ids.Count > 0 : ids.Any(answer.Contains))
         {
-            return answer;
+            targetTypes.Add(target);
         }
 
-        return readable.Add(target, unknown, await ReadableIdsAsync(query, target, unknown, cancellationToken));
+        return answer;
     }
 
     private async Task<HashSet<Guid>?> ReadableIdsAsync(QueryScope query, SchemaType target, List<Guid> ids, CancellationToken cancellationToken)

@@ -24,6 +24,7 @@ public sealed class CacheTagHeaderTests : IAsyncDisposable
     private static readonly string Site = $"site:{DefaultSite.Id:D}";
     private static readonly string NoteType = $"type:{DefaultSite.Id:D}:note";
     private static readonly string TopicType = $"type:{DefaultSite.Id:D}:topic";
+    private static readonly string PinType = $"type:{DefaultSite.Id:D}:pin";
 
     private readonly ConcurrentQueue<IReadOnlyList<string>> _invalidated = new();
     private FluentCmsTestHost? _host;
@@ -170,10 +171,34 @@ public sealed class CacheTagHeaderTests : IAsyncDisposable
         invalidated.ShouldAllBe(tags => tags.Any(sent.Contains));
     }
 
-    private async Task<(Guid Note, Guid Topic)> StartAsync(string? header, bool outputCache, int more = 0)
+    // The type of a target a level down is named too: the topic of the note each pin populates, as a reference or populated.
+    [Theory]
+    [InlineData("pin?limit=60&populate=note")]
+    [InlineData("pin?limit=60&populate=note.topic")]
+    public async Task TheTypesOfTheTargetsOfPopulatedEntriesAreNamedToo(string path)
+    {
+        await StartAsync("Cache-Tag", outputCache: true, pins: 50);
+        using var client = _host!.CreateClient();
+
+        Tags(await GetAsync(client, path), "Cache-Tag", ',').ShouldBe([Site, PinType, NoteType, TopicType], ignoreOrder: true);
+    }
+
+    // A type the caller cannot read is not named: none of its entries is in the answer, so no change to one makes it stale.
+    [Fact]
+    public async Task ATargetTypeTheCallerCannotReadIsNotNamed()
+    {
+        var (_, topic) = await StartAsync("Cache-Tag", outputCache: true, more: 50, readTopics: false);
+        using var client = _host!.CreateClient();
+
+        var response = await GetAsync(client, "note?limit=60");
+        (await response.Content.ReadAsStringAsync(Token)).ShouldNotContain(topic.ToString("D"));
+        Tags(response, "Cache-Tag", ',').ShouldBe([Site, NoteType], ignoreOrder: true);
+    }
+
+    private async Task<(Guid Note, Guid Topic)> StartAsync(string? header, bool outputCache, int more = 0, int pins = 0, bool readTopics = true)
     {
         _host = new FluentCmsTestHost()
-            .WithContentTypes<Note, Topic>()
+            .WithContentTypes<Note, Topic, Pin>()
             .WithServices(services =>
             {
                 TestScheme.Add(services);
@@ -193,7 +218,12 @@ public sealed class CacheTagHeaderTests : IAsyncDisposable
             var context = services.GetRequiredService<CmsDbContext>();
             context.Set<RoleGrant>().AddRange(
                 new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.note.read" },
-                new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.topic.read" });
+                new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.pin.read" });
+            if (readTopics)
+            {
+                context.Set<RoleGrant>().Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.topic.read" });
+            }
+
             await context.SaveChangesAsync();
 
             var topics = services.GetRequiredService<IContentService<Topic>>();
@@ -205,6 +235,12 @@ public sealed class CacheTagHeaderTests : IAsyncDisposable
             for (var i = 0; i < more; i++)
             {
                 await notes.PublishAsync((await notes.CreateAsync(new Note { Title = "Stew", Slug = $"stew-{i}", Topic = new Ref<Topic>(topic) })).Id);
+            }
+
+            var pinned = services.GetRequiredService<IContentService<Pin>>();
+            for (var i = 0; i < pins; i++)
+            {
+                await pinned.PublishAsync((await pinned.CreateAsync(new Pin { Title = "Pin", Note = new Ref<Note>(note) })).Id);
             }
         });
 
