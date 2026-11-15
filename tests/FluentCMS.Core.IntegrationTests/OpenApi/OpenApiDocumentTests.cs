@@ -90,7 +90,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         "post /api-keys/{id}/rotate", "put /api-keys/{id}/allowed-addresses",
         "patch /sites/{id}", "post /sites/{id}/locales", "patch /sites/{id}/locales/{code}", "put /settings/{area}", "put /settings/{area}/defaults",
         "put /plugins/{name}/sites/{site}",
-        "post /me/two-factor/verify", "post /me/two-factor/recovery-codes", "post /me/two-factor/disable",
+        "post /me/two-factor/verify", "post /me/two-factor/recovery-codes", "post /me/two-factor/disable", "put /me/preferences",
     ];
 
     private JsonObject Document => fixture.Document;
@@ -456,6 +456,29 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         var disable = Paths[$"{Management}/me/two-factor/disable"]!["post"]!;
         disable["responses"]!["204"]!["content"].ShouldBeNull();
         disable["requestBody"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/TwoFactorCodeRequest");
+    }
+
+    // What the admin draws itself from (#3096): the caller's access, the locales of its sites and its preferences.
+    [Fact]
+    public void TheAccessLocalesAndPreferencesOfTheCallerHaveTheirSchemas()
+    {
+        var access = Response(Paths[$"{Management}/me/access"]!["get"]!, "200");
+        access["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["site", "locale", "permissions", "instancePermissions", "limitedPermissions", "search", "types"]);
+        access["properties"]!["permissions"]!["items"]!["type"]!.GetValue<string>().ShouldBe("string");
+        var type = Resolve(access["properties"]!["types"]!["additionalProperties"]!);
+        type["properties"]!.AsObject().Select(item => item.Key)
+            .ShouldBe(["drafts", "create", "update", "delete", "publish", "unpublish", "creatableFields", "updatableFields", "conditional"]);
+
+        var site = Resolve(Response(Paths[$"{Management}/me/sites"]!["get"]!, "200")["properties"]!["items"]!["items"]!);
+        var locale = Resolve(site["properties"]!["locales"]!["items"]!);
+        locale["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["code", "position", "enabled"]);
+
+        var read = Response(Paths[$"{Management}/me/preferences"]!["get"]!, "200");
+        read["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["culture", "timeZone", "dateFormat", "numberFormat"]);
+        var write = Paths[$"{Management}/me/preferences"]!["put"]!;
+        Resolve(write["requestBody"]!["content"]!["application/json"]!["schema"]!)["properties"]!.AsObject().Select(item => item.Key)
+            .ShouldBe(["culture", "timeZone", "dateFormat", "numberFormat"]);
+        Response(write, "200")["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["culture", "timeZone", "dateFormat", "numberFormat"]);
     }
 
     [Fact]

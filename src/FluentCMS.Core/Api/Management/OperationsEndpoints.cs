@@ -4,6 +4,7 @@ using FluentCMS.Core.ActivityLog;
 using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.OpenApi;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
@@ -26,7 +27,8 @@ namespace FluentCMS.Core.Api.Management;
 // The jobs, events, activity and me groups of spec 4.10. Jobs and the failed deliveries of the outbox need jobs.manage for the
 // instance; the activity log needs activity.read
 // in the site of the request, and shows the rows of no site only to a reader of the instance; /me is the caller itself,
-// /me/sites the sites it holds a grant in, /me/two-factor its second factor and /me/logins its external logins.
+// /me/sites the sites it holds a grant in with their locales, /me/access what it may do in the site of the request,
+// /me/preferences how a user wants the admin shown, /me/two-factor its second factor and /me/logins its external logins.
 internal static class OperationsEndpoints
 {
     public static IServiceCollection AddManagementOperationsApi(this IServiceCollection services) =>
@@ -75,6 +77,9 @@ internal static class OperationsEndpoints
         var me = management.MapGroup("/me").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
         me.MapGet("", MeAsync).Produces<MeResponse>();
         me.MapGet("/sites", MySitesAsync).Produces<ItemList<MySiteInfo>>();
+        me.MapGet("/access", MyAccessAsync).Produces<CallerAccessResponse>();
+        me.MapGet("/preferences", PreferencesAsync).Produces<UserPreferencesInfo>();
+        me.MapPut("/preferences", SetPreferencesAsync).Takes<PreferencesRequest>().Produces<UserPreferencesInfo>();
         me.MapGet("/sessions", MySessionsAsync).Produces<ItemList<UserSession>>();
         me.MapDelete("/sessions/{sessionId}", RevokeMySessionAsync).Produces(StatusCodes.Status204NoContent);
         me.MapGet("/two-factor", TwoFactorAsync).Produces<TwoFactorStatus>();
@@ -188,6 +193,27 @@ internal static class OperationsEndpoints
     {
         ManagementQuery.Only(httpContext.Request);
         return AdminJson.Items(await sites.MineAsync(httpContext.RequestAborted));
+    }
+
+    private static async Task<IResult> MyAccessAsync(HttpContext httpContext, [FromServices] CallerAccess access)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        return AdminJson.Ok(await access.GetAsync(httpContext.RequestAborted));
+    }
+
+    private static async Task<IResult> PreferencesAsync(HttpContext httpContext, [FromServices] CurrentUser current)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        return AdminJson.Ok(await current.PreferencesAsync(httpContext.RequestAborted));
+    }
+
+    private static async Task<IResult> SetPreferencesAsync(HttpContext httpContext, [FromServices] CurrentUser current)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        var body = await BodyReader.ReadAsync(httpContext.Request, "culture", "timeZone", "dateFormat", "numberFormat");
+        var wanted = new UserPreferencesInfo(body.String("culture"), body.String("timeZone"), body.String("dateFormat"), body.String("numberFormat"));
+        body.ThrowIfInvalid();
+        return AdminJson.Ok(await current.SetPreferencesAsync(wanted, httpContext.RequestAborted));
     }
 
     private static async Task<IResult> MySessionsAsync(HttpContext httpContext, [FromServices] CurrentUser current)

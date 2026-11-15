@@ -7,7 +7,7 @@ namespace FluentCMS.Core.Content;
 // instant either side of a change of clocks.
 internal static class ScheduleTime
 {
-    private const int ZoneMaxLength = 64;
+    public const int ZoneMaxLength = 64;
 
     public static (DateTimeOffset RunAt, string? Zone) Resolve(ScheduleRequest request, DateTimeOffset now)
     {
@@ -25,7 +25,7 @@ internal static class ScheduleTime
         else
         {
             var local = request.LocalTime!.Value;
-            var info = Find(request.TimeZone!);
+            var info = FindZone(request.TimeZone!, "timeZone");
             zone = request.TimeZone;
             if (info.IsInvalidTime(local))
             {
@@ -53,11 +53,12 @@ internal static class ScheduleTime
         return (runAt, zone);
     }
 
-    private static TimeZoneInfo Find(string id)
+    // An IANA id of a zone the platform knows, refused on the path given; a user's preferences take it as well.
+    public static TimeZoneInfo FindZone(string id, string path)
     {
         if (string.IsNullOrWhiteSpace(id) || id.Length > ZoneMaxLength)
         {
-            throw Refuse("timeZone", ValidationErrorCodes.InvalidValue, "The time zone is not valid.");
+            throw Refuse(path, ValidationErrorCodes.InvalidValue, "The time zone is not valid.");
         }
 
         TimeZoneInfo info;
@@ -67,13 +68,13 @@ internal static class ScheduleTime
         }
         catch (Exception exception) when (exception is TimeZoneNotFoundException or InvalidTimeZoneException)
         {
-            throw Refuse("timeZone", ValidationErrorCodes.InvalidValue, "The time zone is not known.");
+            throw Refuse(path, ValidationErrorCodes.InvalidValue, "The time zone is not known.");
         }
 
         // Each platform also finds the zones by their Windows ids, which the other does not hold, so only an IANA id is taken.
         if (!info.HasIanaId && !TimeZoneInfo.TryConvertIanaIdToWindowsId(id, out _))
         {
-            throw Refuse("timeZone", ValidationErrorCodes.InvalidValue, "The time zone is an IANA id, such as Europe/Berlin.");
+            throw Refuse(path, ValidationErrorCodes.InvalidValue, "The time zone is an IANA id, such as Europe/Berlin.");
         }
 
         return info;

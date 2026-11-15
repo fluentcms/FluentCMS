@@ -292,6 +292,19 @@ internal sealed record MeResponse
 
 internal sealed record PrincipalResponse(Guid Id, PrincipalKind Kind, string Name);
 
+// PUT /me/preferences replaces every value; one left out or null is not chosen.
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+internal sealed record PreferencesRequest
+{
+    public string? Culture { get; init; }
+
+    public string? TimeZone { get; init; }
+
+    public string? DateFormat { get; init; }
+
+    public string? NumberFormat { get; init; }
+}
+
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record TwoFactorCodeRequest
 {

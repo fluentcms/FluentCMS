@@ -180,6 +180,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<ManagementAuthority>();
         services.TryAddScoped<IPermissionChecker, PermissionChecker>();
         services.TryAddScoped<IEffectiveAccess, EffectiveAccess>();
+        services.AddScoped<CallerAccess>();
         services.AddScoped<RoleService>();
         services.AddScoped<SuperAdminGuard>();
         services.AddHostedService<DefaultGrantStartupService>();

@@ -110,6 +110,33 @@ public sealed partial class AuthorizationServerTests(AuthorizationServerFixture 
         created.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
+    // A service account reads its access as the roles of its registration give it (#3096), and has no preferences, which
+    // belong to a user.
+    [Fact]
+    public async Task AServiceAccountReadsTheAccessOfItsRolesAndHasNoPreferences()
+    {
+        using var client = _host.CreateSecureClient();
+        var tokens = await TokenAsync(client, ClientCredentials("management"), Token);
+        using var api = Bearer(tokens.AccessToken);
+
+        using var response = await api.GetAsync("/api/management/v1/me/access", Token);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Token));
+        var access = await JsonAsync(response);
+        // Editor is an instance-wide role: what it holds in the site it holds for the instance, the default grants of the
+        // media plugin included, and nothing that administers.
+        var held = access.GetProperty("permissions").EnumerateArray().Select(item => item.GetString()).ToList();
+        held.ShouldContain(CorePermissions.SchemaRead);
+        held.ShouldNotContain(CorePermissions.UsersManage);
+        access.GetProperty("instancePermissions").EnumerateArray().Select(item => item.GetString()).ShouldBe(held);
+        var note = access.GetProperty("types").GetProperty("note");
+        note.GetProperty("publish").GetBoolean().ShouldBeTrue();
+        note.GetProperty("conditional").GetArrayLength().ShouldBe(0);
+
+        using var preferences = await api.GetAsync("/api/management/v1/me/preferences", Token);
+        preferences.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
     [Fact]
     public async Task AWrongClientSecretGetsNoToken()
     {

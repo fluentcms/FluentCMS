@@ -318,7 +318,7 @@ Rows 3.1, 7.13 (site switcher and per-site admin), 4.12 (hide what the user cann
 | `GET /me/sites` | site switcher | exists |
 | `GET /schema` | sidebar, lists, forms | exists |
 | `GET /plugins` | `enabled` for the site, `contributions` | exists |
-| `GET /me/access` | what the caller may do in the site and the instance | [#3096] (name open there) |
+| `GET /me/access` | what the caller may do in the site and the instance | [#3096] |
 
 Without #3096 the shell shows every type of `/schema` and every page, and answers a 403 where it comes; A-08 waits for it.
 
