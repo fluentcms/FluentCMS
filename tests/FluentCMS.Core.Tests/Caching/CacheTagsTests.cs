@@ -15,4 +15,16 @@ public sealed class CacheTagsTests
     [InlineData("surrogate-key", "site:a type:a:note entry:b")]
     public void TheHeaderListsTheTagsAsItsCdnReadsThem(string header, string expected) =>
         CacheTags.HeaderValue(header, Tags).ShouldBe(expected);
+
+    // Two tags and the separator between them, of exactly the budget.
+    [Theory]
+    [InlineData("Cache-Tag")]
+    [InlineData("Surrogate-Key")]
+    public void TheTagsAreListedOnlyWithinTheBudget(string header)
+    {
+        string[] tags = ["site:a", new('x', CacheTags.HeaderBudget - "site:a".Length - 1)];
+
+        CacheTags.HeaderValueWithinBudget(header, tags).ShouldNotBeNull().Length.ShouldBe(CacheTags.HeaderBudget);
+        CacheTags.HeaderValueWithinBudget(header, [.. tags[..1], tags[1] + "x"]).ShouldBeNull();
+    }
 }

@@ -110,9 +110,10 @@ internal sealed class McpContentTools(
             return null;
         }
 
-        // A type the caller may not read has no tools, as a type that does not exist has none.
+        // A type the caller may not read has no tools, as a type that does not exist has none, and neither has a type over
+        // the cap, which is reached through query.
         var described = await access.ContentAsync(cancellationToken);
-        if (!IsExposed(typeName) || described.Schema.FindContentType(typeName) is not { } type)
+        if (Own(described).FirstOrDefault(own => own.Name == typeName) is not { } type)
         {
             return null;
         }
@@ -480,7 +481,7 @@ internal sealed class McpContentTools(
         var query = surface.ParseQuery(McpQueryArguments.Parameters(arguments, names));
 
         // A type over the cap has no {type}_get to read a text whole, so its texts stay as they are.
-        var own = Exposed(described).Take(options.Value.MaxExposedTypes).Any(exposed => exposed.Name == type.Name);
+        var own = Own(described).Any(exposed => exposed.Name == type.Name);
         return await PageAsync(type.Name, WithStatus(query, described.Types[type.Name].Drafts), own ? Name(type.Name, Get) : null, cancellationToken);
     }
 
@@ -493,9 +494,12 @@ internal sealed class McpContentTools(
             : NotAvailable(request.Arguments);
     }
 
-    private McpReach Reach(ContentAccess described) => new(described, [.. Exposed(described)]);
+    private McpReach Reach(ContentAccess described) => new(described, [.. Exposed(described)], Own(described).Select(type => type.Name).ToHashSet(StringComparer.Ordinal));
 
     private IEnumerable<SchemaType> Exposed(ContentAccess described) => described.Schema.ContentTypes.Where(type => IsExposed(type.Name));
+
+    // The exposed types that get tools of their own, the first MaxExposedTypes in the order of the schema.
+    private IEnumerable<SchemaType> Own(ContentAccess described) => Exposed(described).Take(options.Value.MaxExposedTypes);
 
     // The type a shared tool names, when it is exposed and the caller may read it. One that is not is answered alike
     // whether it exists or not.

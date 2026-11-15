@@ -7,13 +7,16 @@ internal interface IDatabaseFile
     // The full path of the file, or null when the database is in memory.
     string? FilePath { get; }
 
-    // Writes a consistent copy of the database to a new file, while the host may be writing to it.
+    // Writes a consistent copy of the database to a file that is new or empty, while the host may be writing to it.
     void Snapshot(string destination);
 
     // Whether another connection, such as one of a running host, has the database open.
     bool IsInUse();
 
+    // Why a snapshot is not a whole database that the provider reads, or null when it is one.
+    string? Check(string snapshot);
+
     // Moves a snapshot, a file on the same volume, in place of the database, with nothing left beside it of the database it
-    // replaces. Nothing may have the database open.
+    // replaces, which is put back when the move fails. Nothing may have the database open.
     void Restore(string snapshot);
 }

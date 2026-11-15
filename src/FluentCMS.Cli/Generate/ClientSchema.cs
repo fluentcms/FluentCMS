@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Schema;
@@ -25,7 +26,8 @@ internal sealed record ClientSchema(SchemaModel Model, string Hash)
         }
         catch (Exception exception) when (exception is JsonException or SchemaValidationException or InvalidOperationException or ArgumentException or FormatException)
         {
-            throw new CliException(CliErrorCodes.SchemaUnreadable, $"{source} is not a schema snapshot: {exception.Message}");
+            // The errors of a schema are printable and one per line; another message may repeat the snapshot's text.
+            throw new CliException(CliErrorCodes.SchemaUnreadable, $"{source} is not a schema snapshot: {PrintableText.Escape(exception.Message, keepLineBreaks: exception is SchemaValidationException)}");
         }
 
         // The type and field names are checked by now, so the message can name them.
@@ -36,7 +38,7 @@ internal sealed record ClientSchema(SchemaModel Model, string Hash)
         {
             throw new CliException(
                 CliErrorCodes.SchemaUnreadable,
-                $"{source} is not a schema snapshot: {(fields.Count == 1 ? "the field" : "the fields")} {string.Join(", ", fields)} {(fields.Count == 1 ? "has" : "have")} a field type that is not a name; a field type starts with a letter and holds only letters, digits, '.', '-' and '_'.");
+                $"{source} is not a schema snapshot: {(fields.Count == 1 ? "the field" : "the fields")} {string.Join(", ", fields)} {(fields.Count == 1 ? "has" : "have")} a field type that is not a name; a field type starts with an ASCII letter and holds only ASCII letters, digits, '.', '-' and '_'.");
         }
 
         return new ClientSchema(model, Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot))));

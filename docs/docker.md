@@ -154,6 +154,7 @@ The image serves no OpenAPI document and no Scalar UI, because the document name
 - **Signing key.** Mount a PKCS#12 (`.pfx`) file with an RSA key read-only, such as `-v ./certs:/certs:ro`, and set `FluentCms__Security__SigningCertificate__Path=/certs/signing.pfx` and `FluentCms__Security__SigningCertificate__Password` from your secret store. Drop `FluentCms__Security__AllowGeneratedSigningKey` from an evaluation setup, so that settings that lose the certificate stop the host (`FCMS1102`) instead of falling back to the generated key.
 - **Key ring.** The Data Protection key ring protects the generated keys, the sign-in cookie and reset tokens, and is kept in the database, so a reader of the database could forge a sign-in. Mount a second PKCS#12 file with an RSA key and set `FluentCms__DataProtection__Certificate__Path=/certs/ring.pfx` and `FluentCms__DataProtection__Certificate__Password` from your secret store; the ring is then encrypted for that certificate, and `FluentCms__Security__AllowUnencryptedKeyRing` can go. Keys written before stay readable. With Azure Key Vault, keep the certificate there and let the platform mount it as that file, such as the Secrets Store CSI driver on AKS or a secret volume on Azure Container Apps. To wrap the ring with a Key Vault key instead, build a host of your own on `AddFluentCms` with `ProtectKeysWithAzureKeyVault`, as [the authorization server](host-configuration.md#authorization-server) shows.
 - **Email.** Set `FluentCms__Email__Smtp__Host`, `__Port`, `__UserName`, `__Password` and `__From`; without them invitations and password resets fail with `FCMS3008`.
+- **Several instances.** The image keeps the Delivery output cache and the member mail limit, one mail a minute of each kind to an address, in memory, one of each per instance. Behind a load balancer, a publish then evicts the copies of one instance, and the others serve theirs until `FluentCms__Delivery__Cache__OutputCacheDuration` runs out; and each instance sends an address its own mail. To run several, build a host of your own on `AddFluentCms` that registers a shared `IOutputCacheStore` and a shared `IDistributedCache`, such as Redis ([provider slots](host-configuration.md#provider-slots)). Once email is set up, the startup report lists `member-mail-limit-per-instance` while the mail limit is per instance; one instance needs neither.
 
 Together, behind a proxy that ends TLS:
 
@@ -219,7 +220,23 @@ The same image runs the commands that administer the instance, as the system, wi
 
 List commands print a table, and one line of JSON in the shape of the Management API with `--json`. The invitation and reset emails link to `FluentCms__PublicOrigin`, which these commands need (`FCMS3354` otherwise). Set `Logging__Console__LogToStandardErrorThreshold=Trace` so that standard output holds only what the command prints, such as the key of `apikey create`. What a command writes to the activity log reaches it through the outbox, which a running instance delivers.
 
-The `fluentcms` tool runs `apikey`, `user invite`, `user add-role`, `jobs list` and `jobs retry` against a running instance too, with `--url https://cms.example.com` and a management API key in `FLUENTCMS_TOKEN` (or `--token`, which a process list shows). They call the Management API as that key, so a key without the permission is refused with the API's problem and exit code 1. `fluentcms mcp --url https://cms.example.com` is a proxy from standard input and output to the instance's `/mcp`, for an MCP client that speaks stdio only; a refused key ends it with `FCMS3362` on standard error.
+The `fluentcms` tool runs `apikey`, `user invite`, `user add-role`, `jobs list` and `jobs retry` against a running instance too, with `--url https://cms.example.com` and a management API key in `FLUENTCMS_TOKEN` (or `--token`, which a process list shows for as long as the command runs). They call the Management API as that key, so a key without the permission is refused with the API's problem and exit code 1. Every command with `--url` warns with `FCMS3363` when the key goes over plain http to another machine, and a usage error never repeats the value after `--token`; the tool reads no `@file` response file, so put the key in `FLUENTCMS_TOKEN` rather than in one. Ctrl+C cancels such a command, which then has 10 seconds to clean up: an export removes the file it was writing, and `mcp` ends its session.
+
+`fluentcms mcp --url https://cms.example.com` is a proxy from standard input and output to the instance's `/mcp`, for an MCP client that speaks stdio only; a refused key ends it with `FCMS3362` on standard error. It runs for the whole session of the editor, so give it the key in the `env` of the client's configuration rather than in `--token`, which would stay in the process list all that time:
+
+```json
+{
+  "mcpServers": {
+    "fluentcms": {
+      "command": "fluentcms",
+      "args": ["mcp", "--url", "https://cms.example.com"],
+      "env": { "FLUENTCMS_TOKEN": "fcms_mk_..." }
+    }
+  }
+}
+```
+
+The configuration file then holds the key, so keep it out of source control, or use the client's own way to read a secret into `env` where it has one.
 
 ## Apply a schema file
 

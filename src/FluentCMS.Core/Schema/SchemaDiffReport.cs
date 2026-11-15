@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using FluentCMS.Core.Diagnostics;
 
 namespace FluentCMS.Core.Schema;
 
@@ -31,14 +32,15 @@ internal sealed record SchemaDiffReport(IReadOnlyList<SchemaChange> Changes, IRe
             return;
         }
 
+        // The names of an instance's snapshot are text that no schema check has read.
         foreach (var change in Changes)
         {
-            await output.WriteLineAsync(change.IsDestructive ? $"{change}{DestructiveMark}" : change.ToString());
+            await output.WriteLineAsync(PrintableText.Escape(change.IsDestructive ? $"{change}{DestructiveMark}" : change.ToString()));
         }
 
         foreach (var rename in PossibleRenames)
         {
-            await output.WriteLineAsync(rename.ToString());
+            await output.WriteLineAsync(PrintableText.Escape(rename.ToString()));
         }
     }
 

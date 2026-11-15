@@ -261,8 +261,9 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
                 steps.Add(f => f.Setting(FieldSettings.Source, SchemaNaming.ToCamelCase(source)));
                 break;
 
+            // [Select(null)] gives no list at all, which is refused as a list on an enum and as no options elsewhere.
             case SelectAttribute select:
-                if (element.IsEnum && select.Options.Count > 0)
+                if (element.IsEnum && select.Options is not { Count: 0 })
                 {
                     fail(SchemaErrorCodes.InvalidProperty, $"property {location} is an enum, so its members are the options and [Select] must not list any");
                 }
@@ -270,7 +271,7 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
                 {
                     steps.Add(f => f.Setting(FieldSettings.Options, Enum.GetNames(element).Select(SchemaNaming.ToCamelCase).ToArray()));
                 }
-                else if (select.Options.Count > 0)
+                else if (select.Options is { Count: > 0 })
                 {
                     steps.Add(f => f.Setting(FieldSettings.Options, select.Options));
                 }
@@ -350,7 +351,8 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
 
     private void ReadBlocks(BlocksAttribute blocks, string location, List<Action<IFieldBuilder>> steps, Action<string, string> fail)
     {
-        if (blocks.BlockTypes.Count == 0)
+        // [Blocks(null)] gives no list at all.
+        if (blocks.BlockTypes is not { Count: > 0 })
         {
             fail(SchemaErrorCodes.InvalidField, $"blocks field {location} must list the block types it accepts");
             return;

@@ -86,6 +86,9 @@ public sealed class McpMediaToolTests(McpToolsFixture fixture) : IClassFixture<M
     [InlineData("https://169.254.169.254/latest/meta-data/{0}", "not a public address")]
     [InlineData("https://[::1]/{0}.png", "not a public address")]
     [InlineData("https://[::ffff:192.168.1.1]/{0}.png", "not a public address")]
+    [InlineData("https://[64:ff9b:1::a00:5]/{0}.png", "not a public address")]
+    [InlineData("https://cdn.example.com:8443/{0}.png", "port of https")]
+    [InlineData("https://cdn.example.com:22/{0}.png", "port of https")]
     public async Task AUrlThatIsNotAPublicHttpsAddressIsRefusedAndNothingIsFetched(string pattern, string reason)
     {
         using var http = await KeyAsync(fixture.Host);
@@ -102,7 +105,7 @@ public sealed class McpMediaToolTests(McpToolsFixture fixture) : IClassFixture<M
     }
 
     [Fact]
-    public async Task ARedirectToAPrivateAddressToHttpOrWithoutEndIsNotFollowed()
+    public async Task ARedirectToAPrivateAddressToHttpToAnotherPortOrWithoutEndIsNotFollowed()
     {
         using var http = await KeyAsync(fixture.Host);
         await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
@@ -110,17 +113,21 @@ public sealed class McpMediaToolTests(McpToolsFixture fixture) : IClassFixture<M
         fixture.Downloads.Redirect($"https://cdn.example.com/{marker}/inside", $"https://192.168.1.10/{marker}/secret.png");
         fixture.Downloads.Redirect($"https://cdn.example.com/{marker}/plain", $"http://cdn.example.com/{marker}/plain.png");
         fixture.Downloads.Redirect($"https://cdn.example.com/{marker}/loop", $"/{marker}/loop");
+        fixture.Downloads.Redirect($"https://cdn.example.com/{marker}/port", $"https://cdn.example.com:8080/{marker}/port.png");
 
         var inside = await CallAsync(client, McpMediaTools.Upload, new { url = $"https://cdn.example.com/{marker}/inside", fileName = "a.png" });
         var plain = await CallAsync(client, McpMediaTools.Upload, new { url = $"https://cdn.example.com/{marker}/plain", fileName = "a.png" });
         var loop = await CallAsync(client, McpMediaTools.Upload, new { url = $"https://cdn.example.com/{marker}/loop", fileName = "a.png" });
+        var port = await CallAsync(client, McpMediaTools.Upload, new { url = $"https://cdn.example.com/{marker}/port", fileName = "a.png" });
 
         Code(inside).ShouldBe("FCMS1614");
         Text(inside).ShouldContain("not a public address");
         Code(plain).ShouldBe("FCMS1614");
         Code(loop).ShouldBe("FCMS1614");
         Text(loop).ShouldContain("redirects more than");
-        fixture.Downloads.Requested.ShouldNotContain(requested => requested.Contains("192.168.1.10", StringComparison.Ordinal) || requested.StartsWith("http://", StringComparison.Ordinal));
+        Code(port).ShouldBe("FCMS1614");
+        Text(port).ShouldContain("port of https");
+        fixture.Downloads.Requested.ShouldNotContain(requested => requested.Contains("192.168.1.10", StringComparison.Ordinal) || requested.StartsWith("http://", StringComparison.Ordinal) || requested.Contains(":8080", StringComparison.Ordinal));
         fixture.Downloads.Requested.Count(requested => requested == $"https://cdn.example.com/{marker}/loop").ShouldBe(McpDownloads.MaxRedirects + 1);
     }
 
@@ -135,8 +142,10 @@ public sealed class McpMediaToolTests(McpToolsFixture fixture) : IClassFixture<M
         var both = await CallAsync(client, McpMediaTools.Upload, new { fileName = "a.png", url = "https://cdn.example.com/a.png", data = "AAAA" });
         var notBase64 = await CallAsync(client, McpMediaTools.Upload, new { fileName = "a.png", data = "not base64!" });
 
+        // What the host answered is not said, so that the server is no probe of what public hosts run.
         Code(missing).ShouldBe("FCMS1615");
-        Text(missing).ShouldContain("404");
+        Text(missing).ShouldContain("did not answer with a file");
+        Text(missing).ShouldNotContain("404");
         Code(neither).ShouldBe("FCMS2108");
         Code(both).ShouldBe("FCMS2108");
         Code(notBase64).ShouldBe("FCMS2108");

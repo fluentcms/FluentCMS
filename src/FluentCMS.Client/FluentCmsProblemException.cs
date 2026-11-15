@@ -21,7 +21,12 @@ public sealed class FluentCmsProblemException : Exception
     }
 
     public FluentCmsProblemException(HttpStatusCode status, string? code, string? title, string? detail, IReadOnlyList<ProblemError> errors, string? traceId)
-        : base($"{code ?? ((int)status).ToString(System.Globalization.CultureInfo.InvariantCulture)}: {detail ?? title ?? status.ToString()}")
+        : this(status, code, title, detail, errors, traceId, null)
+    {
+    }
+
+    private FluentCmsProblemException(HttpStatusCode status, string? code, string? title, string? detail, IReadOnlyList<ProblemError> errors, string? traceId, Exception? innerException)
+        : base($"{code ?? ((int)status).ToString(System.Globalization.CultureInfo.InvariantCulture)}: {detail ?? title ?? status.ToString()}", innerException)
     {
         Status = status;
         Code = code;
@@ -66,6 +71,10 @@ public sealed class FluentCmsProblemException : Exception
 
         return new FluentCmsProblemException(status, null, null, null, [], null);
     }
+
+    // A success whose body is not the JSON of the answer, which only the status describes.
+    internal static FluentCmsProblemException NotJson(HttpStatusCode status, JsonException exception) =>
+        new(status, null, null, "The answer is not JSON.", [], null, exception);
 
     private static string? Text(JsonElement element, string name) =>
         element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;

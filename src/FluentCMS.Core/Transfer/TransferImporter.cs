@@ -60,6 +60,9 @@ internal sealed class TransferImporter(
     // The validation errors of one item that its message names; a line can hold one per value it has.
     private const int ErrorsNamed = 20;
 
+    // The largest version number a line may give, far enough from int.MaxValue that the writes after an import never reach it.
+    internal const int MaxVersion = 1_000_000_000;
+
     public async Task<TransferImportRun> PrepareAsync(Stream body, long? declaredLength, TransferImportRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(body);
@@ -73,48 +76,60 @@ internal sealed class TransferImporter(
             throw TooLarge();
         }
 
-        // One import of a site at a time, so that two runs never write the same entries at once.
-        var held = await locks.TryAcquireAsync($"transfer.import.{operation.Site.Value:N}", TimeSpan.Zero, cancellationToken)
-            ?? throw new ValidationException([new ValidationError("", TransferErrorCodes.ImportRunning, "An import into this site is running; try again when it has finished.")]);
-        FileStream file;
-        try
-        {
-            file = new FileStream(
-            Path.Combine(Path.GetTempPath(), $"fluentcms-import-{Guid.NewGuid():N}.zip"),
-            FileMode.CreateNew,
-            FileAccess.ReadWrite,
-            FileShare.None,
-            81920,
-            FileOptions.DeleteOnClose | FileOptions.Asynchronous);
-        }
-        catch
-        {
-            await held.DisposeAsync();
-            throw;
-        }
-
+        var file = CreateBodyFile();
         try
         {
             await CopyAsync(body, file, cancellationToken);
-            file.Position = 0;
-            var archive = await OpenAsync(file, cancellationToken);
+
+            // One import of a site at a time, so that two runs never write the same entries at once. It is taken once the
+            // body is in, so that a slow upload holds no lock.
+            var held = await locks.TryAcquireAsync($"transfer.import.{operation.Site.Value:N}", TimeSpan.Zero, cancellationToken)
+                ?? throw new ValidationException([new ValidationError("", TransferErrorCodes.ImportRunning, "An import into this site is running; try again when it has finished.")]);
             try
             {
-                await CheckEntryCountAsync(file, cancellationToken);
-                return await PlanAsync(operation, request, archive, file, held, cancellationToken);
+                file.Position = 0;
+                var archive = await OpenAsync(file, cancellationToken);
+                try
+                {
+                    await CheckEntryCountAsync(file, cancellationToken);
+                    return await PlanAsync(operation, request, archive, file, held, cancellationToken);
+                }
+                catch
+                {
+                    await archive.DisposeAsync();
+                    throw;
+                }
             }
             catch
             {
-                await archive.DisposeAsync();
+                await held.DisposeAsync();
                 throw;
             }
         }
         catch
         {
             await file.DisposeAsync();
-            await held.DisposeAsync();
             throw;
         }
+    }
+
+    // In the temporary folder, readable by the owner only where the platform sets a mode, since the folder is shared on Unix.
+    internal static FileStream CreateBodyFile()
+    {
+        var file = new FileStreamOptions
+        {
+            Mode = FileMode.CreateNew,
+            Access = FileAccess.ReadWrite,
+            Share = FileShare.None,
+            BufferSize = 81920,
+            Options = FileOptions.DeleteOnClose | FileOptions.Asynchronous,
+        };
+        if (!OperatingSystem.IsWindows())
+        {
+            file.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        }
+
+        return new FileStream(Path.Combine(Path.GetTempPath(), $"fluentcms-import-{Guid.NewGuid():N}.zip"), file);
     }
 
     public async Task<TransferResult> RunAsync(TransferImportRun run, Func<object, CancellationToken, Task> progress, CancellationToken cancellationToken)
@@ -123,10 +138,15 @@ internal sealed class TransferImporter(
         ArgumentNullException.ThrowIfNull(progress);
 
         using var span = FluentCmsTelemetry.Start("transfer", "import", null, run.Operation);
+
+        // An import whose lock was lost stops as a cancelled one does, at its next step, rather than going on beside the next
+        // holder. A lease without fencing cannot rule out a moment of both: Lost fires only when a renewal fails.
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, run.Lost);
+        var token = stop.Token;
         var caller = run.Operation;
         var site = caller.Site;
         var correlation = (run.Request.Webhooks ? WebhooksCorrelationPrefix : CorrelationPrefix) + Guid.CreateVersion7().ToString("N");
-        var siteLocales = await locales.GetAsync(site, cancellationToken);
+        var siteLocales = await locales.GetAsync(site, token);
         var import = new OperationContext(Principal.System, Origin.Import, site, siteLocales.Default, caller.ClientId, correlation, time.GetUtcNow())
         {
             Actor = caller.AuditPrincipal.IsSystem ? null : caller.AuditPrincipal,
@@ -138,21 +158,21 @@ internal sealed class TransferImporter(
         accessor.Current = import;
         try
         {
-            await ImportSettingsAsync(run, report, cancellationToken);
-            await progress(new { section = SettingsSection, counts = report.Of(SettingsSection) }, cancellationToken);
+            await ImportSettingsAsync(run, report, token);
+            await progress(new { section = SettingsSection, counts = report.Of(SettingsSection) }, token);
 
             if (run.Request.Roles && run.Roles.Count > 0)
             {
-                await ImportRolesAsync(run, report, cancellationToken);
-                await progress(new { section = RolesSection, counts = report.Of(RolesSection) }, cancellationToken);
+                await ImportRolesAsync(run, report, token);
+                await progress(new { section = RolesSection, counts = report.Of(RolesSection) }, token);
             }
 
-            var provided = await ImportContributorsAsync(run, report, progress, cancellationToken);
+            var provided = await ImportContributorsAsync(run, report, progress, token);
 
             foreach (var type in run.Types)
             {
-                await ImportTypeAsync(run, type, siteLocales, provided, report, progress, cancellationToken);
-                await progress(new { section = type, counts = report.Of(type) }, cancellationToken);
+                await ImportTypeAsync(run, type, siteLocales, provided, report, progress, token);
+                await progress(new { section = type, counts = report.Of(type) }, token);
             }
         }
         catch (Exception exception) when (exception is not OperationCanceledException && run.Budget.Refusal is { } refusal)
@@ -194,6 +214,12 @@ internal sealed class TransferImporter(
             throw new ValidationException([new ValidationError("formatVersion", TransferErrorCodes.UnsupportedFormat, $"The package has the format {manifest.FormatVersion}; this instance reads the format {TransferPackage.FormatVersion}.")]);
         }
 
+        // The serializer does not hold a record to its nullable annotations, and the run reads both.
+        if (manifest.Site is null || manifest.Locales is null || manifest.Locales.Any(code => code is null))
+        {
+            throw Invalid($"{TransferPackage.Manifest} of the package has no site or no locales.");
+        }
+
         var schemaEntry = archive.GetEntry(TransferPackage.Schema) ?? throw Invalid($"The package has no {TransferPackage.Schema}.");
 
         var inPackage = archive.Entries
@@ -232,6 +258,12 @@ internal sealed class TransferImporter(
             throw Invalid($"{TransferPackage.Schema} of the package cannot be read: {exception.Message}");
         }
 
+        // Whatever the hashes say, since a file of the package is not held to its schema.
+        foreach (var type in types.Where(type => schema.FindContentType(type) is null && !errors.Exists(error => error.Path == $"types.{type}")))
+        {
+            errors.Add(new ValidationError($"types.{type}", TransferErrorCodes.SchemaIncompatible, $"The instance has no content type '{type}', which the package brings."));
+        }
+
         if (errors.Count > 0)
         {
             throw new ValidationException(errors);
@@ -240,9 +272,10 @@ internal sealed class TransferImporter(
         // Read whole before any write, so that a package that cannot be read is refused before it changes anything.
         var settingsFile = await ReadJsonAsync<List<TransferSetting>>(archive, TransferPackage.Settings, budget, cancellationToken) ?? [];
         var rolesFile = request.Roles ? await ReadJsonAsync<List<TransferRole>>(archive, TransferPackage.Roles, budget, cancellationToken) ?? [] : [];
-        if (settingsFile.Any(item => item is null || string.IsNullOrEmpty(item.Area)) || rolesFile.Any(item => item is null || item.Name is null || item.Grants is null || item.Grants.Any(grant => grant is null || grant.Permission is null)))
+        if (settingsFile.Any(item => item is null || string.IsNullOrEmpty(item.Area) || item.Value.ValueKind == JsonValueKind.Undefined)
+            || rolesFile.Any(item => item is null || item.Id == Guid.Empty || item.Name is null || item.Grants is null || item.Grants.Any(grant => grant is null || grant.Permission is null)))
         {
-            throw Invalid($"{TransferPackage.Settings} or {TransferPackage.Roles} of the package has an item without its name.");
+            throw Invalid($"{TransferPackage.Settings} or {TransferPackage.Roles} of the package has an item without its id, name or value.");
         }
 
         var siteLocales = await locales.GetAsync(operation.Site, cancellationToken);
@@ -348,6 +381,7 @@ internal sealed class TransferImporter(
                 continue;
             }
 
+            var at = number.ToString(CultureInfo.InvariantCulture);
             TransferEntry? read;
             try
             {
@@ -355,13 +389,35 @@ internal sealed class TransferImporter(
             }
             catch (JsonException exception)
             {
-                report.Add(type, $"line {number.ToString(CultureInfo.InvariantCulture)}", TransferOutcome.Error, TransferErrorCodes.InvalidItem, $"Line {number.ToString(CultureInfo.InvariantCulture)} is not an entry: {exception.Message}");
+                report.Add(type, $"line {at}", TransferOutcome.Error, TransferErrorCodes.InvalidItem, $"Line {at} is not an entry: {exception.Message}");
                 continue;
             }
 
-            if (read is null || read.Locales is null || read.Locales.Count == 0 || read.Locales.Any(locale => locale is null || (locale.Draft is null && locale.Published is null)))
+            // A missing id reads as the empty GUID, under which no entry is created.
+            if (read?.Id == Guid.Empty)
             {
-                report.Add(type, read?.Id.ToString("D") ?? $"line {number.ToString(CultureInfo.InvariantCulture)}", TransferOutcome.Error, TransferErrorCodes.InvalidItem, $"Line {number.ToString(CultureInfo.InvariantCulture)} has no locale with a draft or a published state.");
+                report.Add(type, $"line {at}", TransferOutcome.Error, TransferErrorCodes.InvalidItem, $"Line {at} has no id.");
+                continue;
+            }
+
+            if (read is null || read.Locales is null || read.Locales.Count == 0 || read.Locales.Any(locale => locale is null || locale.Locale is null || (locale.Draft is null && locale.Published is null)))
+            {
+                report.Add(type, read?.Id.ToString("D") ?? $"line {at}", TransferOutcome.Error, TransferErrorCodes.InvalidItem, $"Line {at} has no locale with its code and a draft or a published state.");
+                continue;
+            }
+
+            var id = read.Id.ToString("D");
+            if (read.Locales.Any(locale => locale.DraftVersion is < 1 or > MaxVersion || locale.PublishedVersion is < 1 or > MaxVersion))
+            {
+                report.Add(type, id, TransferOutcome.Error, TransferErrorCodes.InvalidItem, $"Line {at} has a version number outside 1 to {MaxVersion.ToString(CultureInfo.InvariantCulture)}.");
+                continue;
+            }
+
+            // The plan refused the locales of the manifest that the site does not allow, and a line may name others.
+            List<string> refused = localized ? [.. read.Locales.Where(locale => Locale(locale, siteLocales) is null).Select(locale => locale.Locale)] : [];
+            if (refused.Count > 0 && !run.Request.SkipMissingLocales)
+            {
+                report.Add(type, id, TransferOutcome.Error, TransferErrorCodes.LocaleNotInSite, $"The site does not allow the locales {string.Join(", ", refused)} of the entry; allow them, or import with missingLocales=skip.");
                 continue;
             }
 
@@ -369,7 +425,6 @@ internal sealed class TransferImporter(
                 .Select(locale => localized ? Locale(locale, siteLocales) : locale)
                 .OfType<TransferEntryLocale>()
                 .ToList();
-            var id = read.Id.ToString("D");
             if (kept.Count == 0)
             {
                 report.Add(type, id, TransferOutcome.Skipped, TransferErrorCodes.LocaleNotInSite, "The site allows none of the locales of the entry.");
@@ -386,7 +441,7 @@ internal sealed class TransferImporter(
         }
     }
 
-    // The code as the site lists it, or null for a locale the site does not allow, which the plan let through only to be skipped.
+    // The code as the site lists it, or null for a locale the site does not allow, which only missingLocales=skip leaves out.
     private static TransferEntryLocale? Locale(TransferEntryLocale locale, SiteLocales siteLocales) =>
         siteLocales.Codes.FirstOrDefault(code => string.Equals(code, locale.Locale, StringComparison.OrdinalIgnoreCase)) is { } code
             ? locale with { Locale = code }
@@ -503,10 +558,10 @@ internal sealed class TransferImporter(
         }
     }
 
-    // What the central directory shows, before any file is read: the number of files, the size of each and their sum
-    // unpacked, the four JSON files, and compressed sizes that fit in the package. The data of the files of a zip never
-    // overlap, so files whose compressed sizes add up to more than the package share their data, which would have an import
-    // read the same bytes once for each of them.
+    // What the central directory shows, before any file is read: the number of files, their names, the size of each and
+    // their sum unpacked, the four JSON files, and compressed sizes that fit in the package. The data of the files of a zip
+    // never overlap, so files whose compressed sizes add up to more than the package share their data, which would have an
+    // import read the same bytes once for each of them.
     private void CheckDirectory(ZipArchive archive, long packageLength)
     {
         ReadOnlyCollection<ZipArchiveEntry> entries;
@@ -526,8 +581,15 @@ internal sealed class TransferImporter(
 
         long unpacked = 0;
         long compressed = 0;
+        HashSet<string> names = new(StringComparer.Ordinal);
         foreach (var entry in entries)
         {
+            // ZipArchive.GetEntry reads one of two files of a name, and a list of the files both.
+            if (!names.Add(entry.FullName))
+            {
+                throw Invalid($"The package has two files named {entry.FullName}.");
+            }
+
             // A file of the package is never larger, unpacked, than the package may be.
             if (entry.Length > options.MaxPackageSize)
             {
@@ -700,6 +762,8 @@ internal sealed class TransferImportRun(
     public ZipArchive Archive => archive;
 
     public PackageBudget Budget => budget;
+
+    public CancellationToken Lost => held.Lost;
 
     public async ValueTask DisposeAsync()
     {

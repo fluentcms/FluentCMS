@@ -97,6 +97,15 @@ public sealed class ThingList : ContentItem
     public string? Name { get; set; }
 }
 
+// A sortable field whose name is a word no GraphQL enum value may be. The schema refuses two fields whose names differ in
+// case alone, so this is the name a sort cannot take.
+[Collection("unsortable")]
+public sealed class Unsortable : ContentItem
+{
+    [Text]
+    public string? Null { get; set; }
+}
+
 // A field that never answers, for the execution timeout.
 public sealed class SlowContributor : IGraphQLSchemaContributor
 {

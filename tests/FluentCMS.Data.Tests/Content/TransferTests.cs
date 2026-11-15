@@ -622,6 +622,231 @@ public sealed class TransferTests : IDisposable
         trashed.Code.ShouldBe(TransferErrorCodes.InTrash);
     }
 
+    // Another holder took the lock after the lease could not be renewed: the import stops as a cancelled one does.
+    [Fact]
+    public async Task AnImportWhoseLockIsLostStopsBeforeItWritesMore()
+    {
+        await SeedAsync();
+        var package = await ExportAsync(_source);
+        var target = Target(configure: cms => cms.Providers.Use<IDistributedLock, LosingLock>());
+        var locks = await target.AsAsync(Admin, services => Task.FromResult((LosingLock)services.GetRequiredService<IDistributedLock>()));
+
+        await Should.ThrowAsync<OperationCanceledException>(() => ImportAsync(target, package, progress: (_, _) =>
+        {
+            locks.Lose();
+            return Task.CompletedTask;
+        }));
+
+        target.Read(context => context.Documents.Count()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task TheLockOfTheSiteIsTakenOnceTheBodyIsIn()
+    {
+        await SeedAsync();
+        var package = await ExportAsync(_source);
+        var target = Target();
+        var name = $"transfer.import.{SiteA.Value:N}";
+
+        var (whileUploading, whileRunning) = await target.AsAsync(Admin, async services =>
+        {
+            var locks = services.GetRequiredService<IDistributedLock>();
+            var free = false;
+            var body = new ProbedStream(package, async () =>
+            {
+                await using var probe = await locks.TryAcquireAsync(name, TimeSpan.Zero, Token);
+                free = probe is not null;
+            });
+            await using var run = await services.GetRequiredService<TransferImporter>().PrepareAsync(body, null, new TransferImportRequest(), Token);
+            await using var held = await locks.TryAcquireAsync(name, TimeSpan.Zero, Token);
+            return (free, held is null);
+        });
+
+        whileUploading.ShouldBeTrue();
+        whileRunning.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("site")]
+    [InlineData("locales")]
+    public async Task AManifestWithoutItsSiteOrLocalesIsRefusedBeforeAnyWrite(string property)
+    {
+        var role = AddRole(_source, Guid.CreateVersion7(), SiteA.Value, "content.*.read");
+        await _source.AsAsync(Principal.System, async services =>
+        {
+            var settings = services.GetRequiredService<FluentCMS.Core.Settings.SettingsService>();
+            await settings.WriteAsync(settings.Require(MailSettings.Area), SiteA, """{"sender":"news@example.com"}""", null, Token);
+            return true;
+        }, origin: Origin.Seed);
+        await SeedAsync();
+        var exported = await ExportAsync(_source, new TransferExportRequest { Roles = true });
+        var manifest = JsonNode.Parse(Entries(exported)[TransferPackage.Manifest])!.AsObject();
+        manifest.Remove(property);
+        var target = Target();
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(target, Rewrite(exported, TransferPackage.Manifest, manifest.ToJsonString()), new TransferImportRequest { Roles = true }));
+
+        refused.Errors.Single().Code.ShouldBe(TransferErrorCodes.InvalidPackage);
+        refused.Errors.Single().Message.ShouldContain(TransferPackage.Manifest);
+        target.Read(context => context.Documents.Count() + context.Set<SettingRow>().Count() + context.Set<Role>().Count(item => item.Id == role)).ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData(TransferPackage.Settings, """[{"area":"transfer-mail"}]""")]
+    [InlineData(TransferPackage.Roles, """[{"name":"no-id","requireTwoFactor":false,"grants":[]}]""")]
+    public async Task ASettingWithoutItsValueOrARoleWithoutItsIdIsRefusedBeforeAnyWrite(string path, string content)
+    {
+        AddRole(_source, Guid.CreateVersion7(), SiteA.Value, "content.*.read");
+        await CreateAsSystemAsync(_source, "author", new ContentDocument { ["name"] = "Ada" });
+        var package = Rewrite(await ExportAsync(_source, new TransferExportRequest { Roles = true }), path, content);
+        var target = Target();
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(target, package, new TransferImportRequest { Roles = true }));
+
+        refused.Errors.Single().Code.ShouldBe(TransferErrorCodes.InvalidPackage);
+        target.Read(context => context.Documents.Count() + context.Set<SettingRow>().Count()).ShouldBe(0);
+    }
+
+    // ZipArchive.GetEntry reads one of two files of a name, while a list of the files has both.
+    [Fact]
+    public async Task APackageWithTwoFilesOfOneNameIsRefusedBeforeAnyWrite()
+    {
+        await SeedAsync();
+        var package = Add(await ExportAsync(_source), TransferPackage.ContentPath("article"), "");
+        var target = Target();
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(target, package));
+
+        refused.Errors.Single().Code.ShouldBe(TransferErrorCodes.InvalidPackage);
+        refused.Errors.Single().Message.ShouldContain($"two files named {TransferPackage.ContentPath("article")}");
+        target.Read(context => context.Documents.Count()).ShouldBe(0);
+    }
+
+    // The hash of the package is the instance's, so its schema is not read, and the file of a type the instance does not
+    // have is still refused for what it is rather than once a line.
+    [Fact]
+    public async Task AFileOfATypeTheInstanceDoesNotHaveIsRefusedWhenTheSchemaHashesAreEqual()
+    {
+        await SeedAsync();
+        var package = Add(await ExportAsync(_source), TransferPackage.ContentPath("unknown"), "{}\n{}\n");
+        var target = Target();
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(target, package));
+
+        refused.Errors.ShouldHaveSingleItem().ShouldBe(new ValidationError("types.unknown", TransferErrorCodes.SchemaIncompatible, refused.Errors[0].Message));
+        target.Read(context => context.Documents.Count()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ALineWithoutAnIdOrALocaleCodeOrWithAVersionNumberOutOfRangeIsAnItemError()
+    {
+        var ids = await SeedAsync();
+        var exported = await ExportAsync(_source);
+        var lines = Entries(exported)[TransferPackage.ContentPath("author")].Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => JsonNode.Parse(line)!.AsObject()).ToList();
+        var (ada, grace) = (ids.Single(id => id.Name == "Ada").Id, ids.Single(id => id.Name == "Grace").Id);
+        var withoutId = lines.Single(line => line["id"]!.GetValue<Guid>() == ada).DeepClone().AsObject();
+        withoutId.Remove("id");
+        var emptyId = lines.Single(line => line["id"]!.GetValue<Guid>() == ada).DeepClone().AsObject();
+        emptyId["id"] = Guid.Empty;
+        var withoutCode = lines.Single(line => line["id"]!.GetValue<Guid>() == ada).DeepClone().AsObject();
+        withoutCode["locales"]![0]!.AsObject().Remove("locale");
+        var overflowing = lines.Single(line => line["id"]!.GetValue<Guid>() == ada);
+        overflowing["locales"]![0]!["draftVersion"] = int.MaxValue;
+        var zero = lines.Single(line => line["id"]!.GetValue<Guid>() == grace);
+        zero["locales"]![0]!["publishedVersion"] = 0;
+        var target = Target();
+
+        var result = await ImportAsync(target, Rewrite(exported, TransferPackage.ContentPath("author"), string.Join('\n', new[] { withoutId, emptyId, withoutCode, overflowing, zero }.Select(line => line.ToJsonString()))));
+
+        result.Sections["author"].ShouldBe(TransferCounts.None with { Errors = 5 });
+        result.Items.Where(item => item.Section == "author").Select(item => (item.Id, item.Code)).ShouldBe(
+        [
+            ("line 1", TransferErrorCodes.InvalidItem),
+            ("line 2", TransferErrorCodes.InvalidItem),
+            (ada.ToString("D"), TransferErrorCodes.InvalidItem),
+            (ada.ToString("D"), TransferErrorCodes.InvalidItem),
+            (grace.ToString("D"), TransferErrorCodes.InvalidItem),
+        ]);
+        result.Items.Single(item => item.Message!.StartsWith("Line 3 ", StringComparison.Ordinal)).Message!.ShouldContain("its code");
+        target.Read(context => context.Documents.Count(document => document.Type == "author")).ShouldBe(0);
+    }
+
+    // The plan refuses the locales of the manifest that the site does not allow; a line can name others.
+    [Fact]
+    public async Task ALocaleThatTheManifestDoesNotListRefusesItsEntryUnlessSkipped()
+    {
+        var ids = await SeedAsync();
+        var first = ids.Single(id => id.Name == "First").Id;
+        var exported = await ExportAsync(_source);
+        var lines = Entries(exported)[TransferPackage.ContentPath("article")].Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => JsonNode.Parse(line)!.AsObject()).ToList();
+        var line = lines.Single(item => item["id"]!.GetValue<Guid>() == first);
+        var german = line["locales"]!.AsArray().Single(locale => locale!["locale"]!.GetValue<string>() == "en")!.DeepClone();
+        german["locale"] = "de";
+        line["locales"]!.AsArray().Add(german);
+        var package = Rewrite(exported, TransferPackage.ContentPath("article"), string.Join('\n', lines.Select(item => item.ToJsonString())));
+        JsonNode.Parse(Entries(package)[TransferPackage.Manifest])!["locales"]!.AsArray().Select(code => code!.GetValue<string>()).ShouldNotContain("de");
+        var (refusing, skipping) = (Target(), Target());
+
+        var refused = await ImportAsync(refusing, package);
+        var skipped = await ImportAsync(skipping, package, new TransferImportRequest { SkipMissingLocales = true });
+
+        var item = refused.Items.Single(item => item.Section == "article");
+        (item.Id, item.Code).ShouldBe((first.ToString("D"), TransferErrorCodes.LocaleNotInSite));
+        refused.Sections["article"].ShouldBe(TransferCounts.None with { Created = 1, Errors = 1 });
+        refusing.Read(context => context.Documents.Count(document => document.DocumentId == first)).ShouldBe(0);
+        skipped.Sections["article"].ShouldBe(TransferCounts.None with { Created = 2 });
+        skipping.Read(context => context.Documents.Where(document => document.DocumentId == first).Select(document => document.Locale).OrderBy(code => code).ToList()).ShouldBe(["en", "fr", "fr-CA"]);
+    }
+
+    // The entries of a global type are every site's, so exporting them needs the instance grant that importing them needs.
+    [Fact]
+    public async Task ASiteAdministratorExportsTheGlobalTypesOnlyWithTheInstanceGrant()
+    {
+        await SeedAsync();
+        var role = AddRole(_source, Guid.CreateVersion7(), SiteA.Value, CorePermissions.TransferManage);
+        var siteAdmin = WithRole(role);
+        var target = Target();
+        AddRole(target, role, SiteA.Value, CorePermissions.TransferManage);
+
+        var everything = await Should.ThrowAsync<ManagementAccessDeniedException>(() => ExportAsync(_source, principal: siteAdmin));
+        await Should.ThrowAsync<ManagementAccessDeniedException>(() => ExportAsync(_source, new TransferExportRequest { Types = ["article", "tag"] }, siteAdmin));
+        var own = await ExportAsync(_source, new TransferExportRequest { GlobalTypes = false }, siteAdmin);
+        var instance = await ExportAsync(_source, new TransferExportRequest { Types = ["tag"] });
+        var imported = await ImportAsync(target, own, principal: siteAdmin);
+
+        everything.Message.ShouldContain("\"globalTypes\": false");
+        Entries(own).Keys.ShouldNotContain(TransferPackage.ContentPath("tag"));
+        Entries(own).Keys.ShouldContain(TransferPackage.ContentPath("article"));
+        Entries(instance).Keys.ShouldContain(TransferPackage.ContentPath("tag"));
+        imported.Total.Errors.ShouldBe(0);
+        target.Read(context => context.Documents.Count(document => document.Type == "tag")).ShouldBe(0);
+    }
+
+    // A dry run runs every step of the import, its hooks too, so that its report is the import's: a hook refuses what it
+    // refuses in the import, and a hook that acts outside the database acts in a dry run too.
+    [Fact]
+    public async Task ADryRunRunsTheHooksOfItsEntries()
+    {
+        var source = Source(NoteSchema(maxLength: null));
+        await CreateAsSystemAsync(source, "note", new ContentDocument { ["title"] = "Fine" });
+        var refused = await CreateAsSystemAsync(source, "note", new ContentDocument { ["title"] = "Refuse" });
+        var package = await ExportAsync(source);
+        var calls = new HookCalls();
+        var target = Target(NoteSchema(maxLength: null), cms =>
+        {
+            cms.Services.AddSingleton(calls);
+            cms.Services.AddScoped<IBeforeCreateHook<ContentDocument>, RefusingHook>();
+            cms.Services.AddScoped<IAfterCreateHook<ContentDocument>, CountingHook>();
+        });
+
+        var dry = await ImportAsync(target, package, new TransferImportRequest { DryRun = true });
+
+        calls.Count.ShouldBe(1);
+        target.Read(context => context.Documents.Count()).ShouldBe(0);
+        dry.Items.ShouldHaveSingleItem().ShouldBe(new TransferItem("note", IdOf(refused).ToString("D"), TransferOutcome.Error, RefusingHook.Code, dry.Items[0].Message));
+        Report(dry).ShouldBe(Report(await ImportAsync(target, package)));
+    }
+
     // The source as the tests of the content service write it: authors, one in draft only, a global tag, the singleton,
     // and articles in three locales that are published, modified, unpublished or drafts.
     private async Task<List<(string Type, Guid Id, string Name)>> SeedAsync()
@@ -725,6 +950,20 @@ public sealed class TransferTests : IDisposable
         return stream.ToArray();
     }
 
+    // One more file at the path, beside any the package has there.
+    private static byte[] Add(byte[] package, string path, string content)
+    {
+        using var stream = new MemoryStream();
+        stream.Write(package);
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Update, leaveOpen: true))
+        {
+            using var writer = new StreamWriter(archive.CreateEntry(path).Open());
+            writer.Write(content);
+        }
+
+        return stream.ToArray();
+    }
+
     // The file at the path as a stored entry whose central directory declares the size given, which System.IO.Compression
     // does not hold a stored entry to: it yields the whole file whatever the size declared.
     private static byte[] Craft(byte[] package, string path, uint declared)
@@ -734,8 +973,8 @@ public sealed class TransferTests : IDisposable
         return ZipCentralDirectory.Declare(Rewrite(package, path, content, CompressionLevel.NoCompression), path, declared);
     }
 
-    private static Task<byte[]> ExportAsync(ServiceDatabase database, TransferExportRequest? request = null) =>
-        database.AsAsync(Admin, async services =>
+    private static Task<byte[]> ExportAsync(ServiceDatabase database, TransferExportRequest? request = null, Principal? principal = null) =>
+        database.AsAsync(principal ?? Admin, async services =>
         {
             var exporter = services.GetRequiredService<TransferExporter>();
             var run = await exporter.PrepareAsync(request ?? new TransferExportRequest(), Token);
@@ -830,6 +1069,64 @@ public sealed class TransferTests : IDisposable
             }
 
             return ValueTask.CompletedTask;
+        }
+    }
+
+    // What a hook with an effect outside the database saw.
+    public sealed class HookCalls
+    {
+        private int _count;
+
+        public int Count => _count;
+
+        public void Add() => Interlocked.Increment(ref _count);
+    }
+
+    public sealed class CountingHook(HookCalls calls) : IAfterCreateHook<ContentDocument>
+    {
+        public ValueTask AfterCreateAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
+        {
+            calls.Add();
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    // A lock that is always free and that the test loses, as when another holder took it after the lease ran out.
+    public sealed class LosingLock : IDistributedLock, IDisposable
+    {
+        private readonly CancellationTokenSource _lost = new();
+
+        public void Lose() => _lost.Cancel();
+
+        public Task<IDistributedLockHandle?> TryAcquireAsync(string name, TimeSpan timeout, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IDistributedLockHandle?>(new Handle(name, _lost.Token));
+
+        public void Dispose() => _lost.Dispose();
+
+        private sealed class Handle(string name, CancellationToken lost) : IDistributedLockHandle
+        {
+            public string Name => name;
+
+            public CancellationToken Lost => lost;
+
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        }
+    }
+
+    // A body that runs the probe before its first byte is read.
+    private sealed class ProbedStream(byte[] bytes, Func<Task> probe) : MemoryStream(bytes)
+    {
+        private bool _probed;
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (!_probed)
+            {
+                _probed = true;
+                await probe();
+            }
+
+            return await base.ReadAsync(buffer, cancellationToken);
         }
     }
 }

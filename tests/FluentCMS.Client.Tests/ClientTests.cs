@@ -18,11 +18,17 @@ public sealed class BlogFixture : IAsyncLifetime
     {
         Host = new FluentCmsTestHost()
             .WithContentTypes([.. FluentCMS.Samples.Blog.BlogSample.ContentTypes])
-            .WithServices(services => services.PostConfigure<MediaOptions>(options => options.Local.Root = _media.FullName))
+            .WithServices(services =>
+            {
+                services.PostConfigure<MediaOptions>(options => options.Local.Root = _media.FullName);
+                Queries.AddTo(services);
+            })
             .Configure(cms => FluentCMS.Samples.Blog.BlogSample.AddBlogSample(cms));
     }
 
     public FluentCmsTestHost Host { get; }
+
+    public ServerQueries Queries { get; } = new();
 
     public HttpClient DeliveryHttp { get; private set; } = null!;
 
@@ -96,36 +102,57 @@ public sealed class ClientTests(BlogFixture blog) : IClassFixture<BlogFixture>
         byId.Author.Id.ShouldBe(welcome.Author.Id);
     }
 
-    // The same list as @fluentcms/client's tests, and every case on a field of the Blog sample is a query the API answers.
+    // The same list as @fluentcms/client's tests, which hold that client to the same query strings: every case on a field of
+    // the Blog sample is sent to the Delivery API, and the query its content service is given is the one the case names.
     [Fact]
-    public async Task TheFiltersOfTheSharedListGiveItsQueryStringsAndTheDeliveryApiAnswersThem()
+    public async Task TheFiltersOfTheSharedListGiveItsQueryStringsAndTheDeliveryApiReadsThemAsBuilt()
     {
-        List<string> answered = [];
+        var answered = 0;
         foreach (var item in FilterCases.Filters)
         {
             var query = new ContentQuery { Filter = FilterCases.Filter(item) }.ToQueryString();
             query.ShouldBe(item.GetProperty("query").GetString(), item.ToString());
             if (FilterCases.ReachesTheApi(item))
             {
-                answered.Add(query);
+                var read = await ReadAsync(query);
+                read.Filter.ShouldBe(ServerQueries.Filter(item), query);
+                answered++;
             }
         }
 
         foreach (var item in FilterCases.Queries)
         {
+            var name = item.GetProperty("name").GetString();
             var query = FilterCases.Query(item).ToQueryString();
-            query.ShouldBe(item.GetProperty("expect").GetString(), item.GetProperty("name").GetString());
-            if (FilterCases.ReachesTheApi(item))
+            query.ShouldBe(item.GetProperty("expect").GetString(), name);
+            if (!FilterCases.ReachesTheApi(item))
             {
-                answered.Add(query);
+                continue;
             }
+
+            var read = await ReadAsync(query);
+            var built = item.GetProperty("query");
+            read.Filter.ShouldBe(built.TryGetProperty("filter", out var filter) ? ServerQueries.Filter(filter) : null, name);
+            read.Sort.ShouldBe(built.TryGetProperty("sort", out var sort) ? [.. sort.EnumerateArray().Select(ServerQueries.Sort)] : [], name);
+            (read.Page?.Number).ShouldBe(built.TryGetProperty("page", out var page) ? page.GetInt32() : null, name);
+            (read.Page?.Size).ShouldBe(built.TryGetProperty("pageSize", out var pageSize) ? pageSize.GetInt32() : null, name);
+            read.Select.ShouldBe(built.TryGetProperty("fields", out var fields) ? [.. fields.EnumerateArray().Select(value => value.GetString()!)] : [], name);
+            read.Populate.ShouldBe(built.TryGetProperty("populate", out var populate) ? [.. populate.EnumerateArray().Select(value => value.GetString()!)] : [], name);
+            read.PopulateDepth.ShouldBe(built.TryGetProperty("depth", out var depth) ? depth.GetInt32() : null, name);
+            read.Status.ShouldBe(built.TryGetProperty("status", out var status) ? Enum.Parse<FluentCMS.Content.QueryStatus>(status.GetString()!, ignoreCase: true) : null, name);
+            // A query that names no locale reads that of the request, the default locale of the Blog's site.
+            read.Locale.ShouldBe(built.TryGetProperty("locale", out var locale) ? locale.GetString() : "en", name);
+            answered++;
         }
 
-        answered.Count.ShouldBeGreaterThan(20);
-        foreach (var query in answered)
+        answered.ShouldBeGreaterThan(20);
+
+        async Task<FluentCMS.Content.ContentQuery> ReadAsync(string query)
         {
+            blog.Queries.Clear();
             using var response = await blog.DeliveryHttp.GetAsync(new Uri($"api/delivery/v1/article?{query}", UriKind.Relative), Token);
             response.StatusCode.ShouldBe(HttpStatusCode.OK, $"{query}: {await response.Content.ReadAsStringAsync(Token)}");
+            return blog.Queries.Of("article").ShouldHaveSingleItem(query);
         }
     }
 

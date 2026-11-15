@@ -15,12 +15,17 @@ internal static class McpArguments
     // An entry may nest as deep as core stores one, inside the object of a list or a publish result.
     private static readonly JsonSerializerOptions Json = new() { MaxDepth = 256, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
+    // As the protocol package writes a result, whose escapes may be longer than this plugin's.
+    private static readonly JsonSerializerOptions Wire = new() { MaxDepth = 256, Encoder = ModelContextProtocol.McpJsonUtilities.DefaultOptions.Encoder };
+
     public static McpToolResult Result(JsonNode node) => McpToolResult.FromJson(JsonSerializer.SerializeToElement(node, Json));
 
     public static JsonElement Element(JsonNode node) => JsonSerializer.SerializeToElement(node, Json);
 
-    // The bytes a result takes as it is sent.
-    public static int Size(JsonNode node) => JsonSerializer.SerializeToUtf8Bytes(node, Json).Length;
+    // The bytes a result takes as it is sent: a result of JSON goes as structured content and again as its text, a JSON
+    // string, so both copies count.
+    public static int Size(JsonNode node) =>
+        JsonSerializer.SerializeToUtf8Bytes(node, Wire).Length + JsonSerializer.SerializeToUtf8Bytes(node.ToJsonString(Json), Wire).Length;
 
     // A key the tool does not take is refused rather than ignored, as a body of the Management API is.
     public static void Only(JsonElement arguments, params ReadOnlySpan<string> names)

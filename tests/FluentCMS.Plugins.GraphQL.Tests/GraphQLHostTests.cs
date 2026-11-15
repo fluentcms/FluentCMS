@@ -50,6 +50,26 @@ public sealed class GraphQLHostTests : IDisposable
         body["data"]!["noteList"]!["items"].Strings("title").ShouldBe(["Seeded"]);
     }
 
+    // A persisted document is introspection as much as a query of the request's own, and is refused the same way.
+    [Fact]
+    public async Task APersistedIntrospectionIsRefusedToACallerThatMayNotIntrospect()
+    {
+        File.WriteAllText(Path.Combine(_folder.FullName, "schema.graphql"), "{ __schema { queryType { name } } }");
+        await using var host = Host(options =>
+        {
+            options.PersistedQueries = _folder.FullName;
+            options.OpenIntrospection = false;
+        });
+        using var anonymous = host.CreateClient();
+        using var admin = await AdminAsync(host);
+
+        using var refused = await anonymous.PostAsJsonAsync(new Uri(Endpoint, UriKind.Relative), new { id = "schema" }, Token);
+        using var answered = await admin.PostAsJsonAsync(new Uri(Endpoint, UriKind.Relative), new { id = "schema" }, Token);
+
+        JsonNode.Parse(await refused.Content.ReadAsStringAsync(Token))!["errors"]!.AsArray().Codes().ShouldBe(["FCMS1643"]);
+        JsonNode.Parse(await answered.Content.ReadAsStringAsync(Token))!["data"]!["__schema"]!["queryType"]!["name"]!.GetValue<string>().ShouldBe("Query");
+    }
+
     [Fact]
     public async Task APersistedQueryAndAnyOtherAreBothAnsweredWithoutOnlyPersisted()
     {
@@ -287,6 +307,32 @@ public sealed class GraphQLHostTests : IDisposable
         logs.Lines.Where(line => line.Id == 9321).Select(line => line.Message).ShouldBe(["The GraphQL field createNote failed and was answered as FCMS3199."]);
     }
 
+    // A field below the root that fails, as a stored value that does not read as its scalar does, is answered null with
+    // FCMS3199 at its path and is logged, and the fields beside it are answered.
+    [Fact]
+    public async Task AFailureBelowARootFieldIsAnUnexpectedFailureThatIsLogged()
+    {
+        var logs = new LogCapture();
+        await using var host = Host(configure: services =>
+        {
+            services.AddSingleton<ILoggerProvider>(logs);
+            services.AddScoped(provider => UnreadableDates.Wrap(provider.GetRequiredService<ContentService>()));
+        });
+        using var admin = await AdminAsync(host);
+        await admin.QueryAsync("mutation { createSiteSettings(input: { tagline: \"Content first\", founded: \"2026-11-10\" }) { id } }");
+
+        var (data, errors) = await admin.FailAsync("{ siteSettings(status: DRAFT) { tagline founded } }");
+
+        data!["siteSettings"]!["tagline"]!.GetValue<string>().ShouldBe("Content first");
+        data["siteSettings"]!["founded"].ShouldBeNull();
+        var error = errors.ShouldHaveSingleItem()!;
+        error.Code().ShouldBe("FCMS3199");
+        error["extensions"]!["status"]!.GetValue<int>().ShouldBe(500);
+        error["path"]!.AsArray().Select(part => part!.ToString()).ShouldBe(["siteSettings", "founded"]);
+        error.ToJsonString().ShouldNotContain(UnreadableDates.Value);
+        logs.Lines.Where(line => line.Id == 9321).Select(line => line.Message).ShouldBe(["The GraphQL field founded failed and was answered as FCMS3199."]);
+    }
+
     [Fact]
     public async Task AWriteWhoseReadFailsAfterItCommittedAnswersTheWrittenEntryWithTheErrorAtTheField()
     {
@@ -355,6 +401,18 @@ public sealed class GraphQLHostTests : IDisposable
 
         using var noDepth = Host(options => options.MaxDepth = 0);
         Should.Throw<Exception>(() => noDepth.Services).ToString().ShouldContain("FCMS1640");
+    }
+
+    [Fact]
+    public void ASortableFieldWhoseNameGivesNoSortValueStopsTheHostWithItsCode()
+    {
+        using var host = new FluentCmsTestHost().WithContentTypes<Unsortable>();
+
+        var exception = Should.Throw<Exception>(() => host.Services).ToString();
+
+        exception.ShouldContain("FCMS1641");
+        exception.ShouldContain("'unsortable.null'");
+        exception.ShouldNotContain(nameof(ArgumentNullException));
     }
 
     [Fact]

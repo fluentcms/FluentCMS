@@ -1,17 +1,23 @@
 using System.Globalization;
 using System.IO.Compression;
+using FluentCMS.Core.Diagnostics;
+using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
+using FluentCMS.Schema;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.Commands;
 
 // Puts a backup back into a host on SQLite (spec 4.15) with the host stopped: the database file, then the media files into
-// the local storage's root. Everything that refuses is asked before the first write: an archive that is no backup or is of a
-// newer FluentCMS, a database that exists unless --force is given, one that something has open, and media files with no
-// local storage to take them. Then it says which migrations the host has that the backup had not.
+// the local storage's root. Everything that refuses is asked before the database is touched: an archive that is no backup or
+// is of a newer FluentCMS, a backup of another schema or of migrations the host does not have unless
+// --allow-schema-mismatch is given, a database that exists unless --force is given, one that something has open, media
+// files with no local storage to take them, and a database in the archive that SQLite does not read whole. Then it says
+// which migrations the host has that the backup had not.
 internal sealed class RestoreCommand : HostCommand
 {
     public const string Force = "--force";
+    public const string AllowSchemaMismatch = "--allow-schema-mismatch";
 
     public override string Name => "restore";
 
@@ -22,6 +28,7 @@ internal sealed class RestoreCommand : HostCommand
     public override IReadOnlyList<CommandOption> Options { get; } =
     [
         new(Force, "Replaces the database and the media files the host has."),
+        new(AllowSchemaMismatch, "Restores a backup of another schema or with migrations the host does not have, which is refused otherwise."),
     ];
 
     public override async Task<int> RunAsync(CommandContext context, CancellationToken cancellationToken)
@@ -74,6 +81,8 @@ internal sealed class RestoreCommand : HostCommand
                             $"{path} is a backup of FluentCMS {manifest.FluentCmsVersion}, and this host runs {BackupArchive.HostVersion}; a backup is restored into the same or a newer version, so upgrade the host first.");
                 }
 
+                var mismatch = Mismatch(services, manifest, path, context.Arguments.Has(AllowSchemaMismatch));
+
                 var media = archive.Entries.Where(entry => entry.FullName.StartsWith(BackupArchive.MediaFolder, StringComparison.Ordinal) && entry.Name.Length > 0).ToList();
                 var root = BackupArchive.LocalMediaRoot(services);
                 if (media.Count > 0 && root is null)
@@ -88,7 +97,7 @@ internal sealed class RestoreCommand : HostCommand
                 {
                     throw new CommandException(
                         TransferCommandErrorCodes.DatabaseExists,
-                        $"{databasePath} exists; pass {Force} to replace it with the backup, which loses everything written to it since.");
+                        $"{databasePath} exists; pass {Force} to replace it with the backup, which loses everything written to it since. Stop every host that runs on it first: one that keeps the rollback journal holds no lock while it is idle, so it is not seen, and would go on writing to the database it has open.");
                 }
 
                 if (database.IsInUse())
@@ -106,6 +115,11 @@ internal sealed class RestoreCommand : HostCommand
                 }
 
                 await RestoreDatabaseAsync(database, databasePath, snapshot, path, cancellationToken);
+                if (mismatch is not null)
+                {
+                    await context.Error.WriteLineAsync($"{TransferCommandErrorCodes.BackupOfAnotherSchema}: warning: {mismatch}; restored because of {AllowSchemaMismatch}.");
+                }
+
                 var written = 0;
                 try
                 {
@@ -137,7 +151,53 @@ internal sealed class RestoreCommand : HostCommand
         return CommandExitCodes.Success;
     }
 
-    // Unpacked beside the database, so that it is moved into place on the same volume.
+    // The schema hash of the backup and the migrations of every stream against the host's: another schema or a migration
+    // the host does not have leaves tables that a start refuses (FCMS1301) or content that nothing reads. A migration the
+    // host has and the backup had not is pending, which is what restoring into a newer host is for. Null when they match;
+    // what differs when it is allowed, which is said once the database is restored.
+    private static string? Mismatch(IServiceProvider services, BackupManifest manifest, string path, bool allowed)
+    {
+        var differences = new List<string>();
+        var hash = SchemaSnapshot.Of(services.GetRequiredService<SchemaModel>()).Hash;
+        if (!string.Equals(manifest.SchemaHash, hash, StringComparison.Ordinal))
+        {
+            differences.Add($"the schema hash is {manifest.SchemaHash ?? "missing"} in the backup and {hash} in the host");
+        }
+
+        var runner = services.GetRequiredService<MigrationRunner>();
+        foreach (var stream in manifest.Migrations ?? [])
+        {
+            if (!runner.Streams.Contains(stream.Name, StringComparer.Ordinal))
+            {
+                differences.Add($"the backup has the stream {stream.Name}, which the host does not have");
+                continue;
+            }
+
+            var known = runner.MigrationsOf(stream.Name);
+            var unknown = (stream.Applied ?? []).Where(id => !known.Contains(id, StringComparer.Ordinal)).ToList();
+            if (unknown.Count > 0)
+            {
+                differences.Add($"stream {stream.Name} has applied {Listed(unknown)}, which the host does not have");
+            }
+        }
+
+        if (differences.Count == 0)
+        {
+            return null;
+        }
+
+        var mismatch = $"{path} is a backup of another schema or of migrations this host does not have: {PrintableText.Escape(string.Join("; ", differences))}";
+        return allowed
+            ? mismatch
+            : throw new CommandException(
+                TransferCommandErrorCodes.BackupOfAnotherSchema,
+                $"{mismatch}. Restore it into a host of the same schema, or pass {AllowSchemaMismatch} to restore it anyway; a start may then refuse a missing table or column with FCMS1301.");
+    }
+
+    private static string Listed(List<string> ids) => ids.Count <= 3 ? string.Join(", ", ids) : $"{string.Join(", ", ids.Take(3))} and {ids.Count - 3} more";
+
+    // Unpacked beside the database, so that it is moved into place on the same volume, and checked before the database is
+    // touched, so that an entry that is not a SQLite database, or one cut off, never replaces it.
     private static async Task RestoreDatabaseAsync(IDatabaseFile database, string databasePath, ZipArchiveEntry snapshot, string archive, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
@@ -153,7 +213,19 @@ internal sealed class RestoreCommand : HostCommand
                 throw NoBackup(archive, $"its database cannot be read: {exception.Message}");
             }
 
-            database.Restore(unpacked);
+            if (database.Check(unpacked) is { } problem)
+            {
+                throw NoBackup(archive, $"its database is not a whole SQLite database ({PrintableText.Escape(problem)}), so {databasePath} was left as it was");
+            }
+
+            try
+            {
+                database.Restore(unpacked);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                throw new CommandException(CommandErrorCodes.OutputNotWritten, $"{databasePath} could not be replaced: {exception.Message}");
+            }
         }
         finally
         {

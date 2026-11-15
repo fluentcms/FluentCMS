@@ -11,9 +11,9 @@ The options are in `FluentCms:GraphQL`:
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `MaxDepth` | `12` | The deepest a query may nest its fields. Introspection fields are not counted. |
-| `MaxFieldCost` | `1000` | The most a query may cost by HotChocolate's cost analysis. A root field costs 10 and a populated relation or media field 1 for each entry of the page above it. |
+| `MaxFieldCost` | `1000` | The most a query may cost by HotChocolate's cost analysis. A root field costs 10 and a populated relation or media field 1 for each entry of the page above it, by the `pageSize` sent, as a variable too. Every other field, `total` among them, costs nothing. |
 | `MaxTypeCost` | `1000` | The most objects a query may return, by the same analysis. |
-| `MaxRequestSize` | `262144` | The body of a request, in bytes. `FluentCms:Limits:MaxBodySize` still caps it. |
+| `MaxRequestSize` | `262144` | The body of a request, in bytes, refused with 413 and `FCMS3111`; a body sent in chunks is read up to it before the query is parsed. `FluentCms:Limits:MaxBodySize` still caps it. |
 | `ExecutionTimeout` | `00:00:30` | How long a request may run. |
 | `OpenIntrospection` | unset | Whether any caller may introspect the schema. Unset, it is open in Development, and elsewhere needs a signed-in caller with `schema.read`. |
 | `PersistedQueries` | unset | A folder of query files, each named `{id}.graphql`. A relative path is under the content root. |
@@ -107,15 +107,15 @@ A refusal of the content service is a GraphQL error at the path of its field, wi
 }
 ```
 
-`errors` holds the validation errors with the path of each field, and `current` the current entry of a version conflict. No response carries a stack trace; an unexpected failure is `FCMS3199` and is logged (event id 9321).
+`errors` holds the validation errors with the path of each field, and `current` the current entry of a version conflict. No response carries a stack trace; an unexpected failure is `FCMS3199` with status 500 and is logged (event id 9321), at a root field and below it alike, such as a stored value that does not read as the scalar of its field, which is then null at its own path while the fields beside it are answered.
 
 | Code | Meaning |
 | --- | --- |
 | `FCMS1640` | Options that are not valid, or a persisted queries folder that does not exist (stops the host) |
-| `FCMS1641` | Two names of the content schema give one GraphQL name (stops the host) |
+| `FCMS1641` | Two names of the content schema give one GraphQL name, or a sortable field's name gives no sort value, such as `null` (stops the host) |
 | `FCMS1642` | A single entry named by no argument, or by more than one |
 | `FCMS1643` | Introspection is not allowed to the caller |
-| `FCMS1644` | The query nests deeper than `MaxDepth` |
+| `FCMS1644` | The query nests deeper than `MaxDepth`, or an introspection goes deeper than HotChocolate's introspection depth rule allows |
 | `FCMS1645` | The query costs more than `MaxFieldCost` or `MaxTypeCost` |
 | `FCMS1646` | `OnlyPersisted` is on and the query is not in the folder |
 | `FCMS1647` | No persisted query has the id |
@@ -125,7 +125,9 @@ A query over the depth or the cost limit is refused before any field runs. Log e
 
 ## Introspection
 
-The schema is one per instance, so introspection names every type and field, whatever the caller may read of them. It is open in Development. Elsewhere it needs a signed-in caller that holds `schema.read` in the site of the request, and any other caller gets `FCMS1643`. The schema download of HotChocolate and its IDE are not mapped.
+The schema is one per instance, so introspection names every type and field, whatever the caller may read of them. It is open in Development. Elsewhere it needs a signed-in caller that holds `schema.read` in the site of the request, and any other caller gets `FCMS1643`, over `GET` and from a persisted query as over `POST`. The schema download of HotChocolate and its IDE are not mapped.
+
+`MaxDepth` does not count the fields of introspection, so a caller that may introspect is held by HotChocolate's introspection depth rule, which bounds how deep the recursive fields of `__Type`, such as `fields` and `ofType`, nest; a query over it is refused with `FCMS1644`.
 
 ## Persisted queries
 

@@ -332,6 +332,111 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
         await GenerateAsync(["generate", "csharp", "--schema", schema, "--namespace", "Cases", "--output", directory, "--check"]);
     }
 
+    // foo-bar and foobar would be FooBar.g.cs and Foobar.g.cs, one file where a file system ignores case, so the second
+    // gets no class, in C# and in TypeScript alike.
+    [Fact]
+    public void TwoTypesWhoseClassNamesDifferInCaseAloneGetOneClass()
+    {
+        var schema = BlogInstance.Schema("""{ "collections": [ { "name": "foo-bar", "fields": [ { "name": "title", "type": "text" } ] }, { "name": "foobar", "fields": [ { "name": "title", "type": "text" } ] } ] }""");
+
+        var csharp = CSharpEmitter.Emit(schema, "Cases");
+        var typeScript = TypeScriptEmitter.Emit(schema);
+
+        csharp.Files.Select(file => file.Name).ShouldContain("FooBar.g.cs");
+        csharp.Files.Select(file => file.Name).ShouldNotContain("Foobar.g.cs");
+        csharp.Diagnostics.ShouldContain(diagnostic => diagnostic.Code == "FCMS3376" && diagnostic.Message.Contains("'foobar'", StringComparison.Ordinal));
+        typeScript.Files.Single().Text.ShouldNotContain("export interface Foobar ", Case.Sensitive);
+        typeScript.Diagnostics.ShouldContain(diagnostic => diagnostic.Code == "FCMS3376" && diagnostic.Message.Contains("'foobar'", StringComparison.Ordinal));
+    }
+
+    // The second type gets no builder either, so the files of such a schema are written.
+    [Fact]
+    public async Task TwoTypesWhoseBuilderNamesDifferInCaseAloneGetOneBuilderAndAreWritten()
+    {
+        var directory = Out("builders");
+        var schema = WriteSnapshot("""{ "collections": [ { "name": "foo-bar", "fields": [ { "name": "title", "type": "text" } ] }, { "name": "foobar", "fields": [ { "name": "title", "type": "text" } ] } ] }""");
+
+        var result = await blog.RunAsync(["generate", "csharp", "--schema", schema, "--namespace", "Cases", "--output", directory]);
+
+        result.ExitCode.ShouldBe(0, result.Error);
+        Directory.EnumerateFiles(directory).Select(Path.GetFileName).Order(StringComparer.Ordinal).ShouldBe(["FooBar.g.cs", "FooBarFields.g.cs"]);
+        result.Error.ShouldContain("FCMS0100: The collection 'foobar' gets no field builder");
+    }
+
+    // The block type a-b has a class and, for its hyphen, no builder; it takes its name from ab in both, so ab gets neither
+    // its class nor its builder, in C# and in TypeScript alike.
+    [Fact]
+    public void ABlockTypeWithAHyphenTakesTheNameOfItsClassAndOfItsBuilder()
+    {
+        var schema = BlogInstance.Schema("""{ "blocks": [ { "name": "a-b", "fields": [ { "name": "label", "type": "text" } ] }, { "name": "ab", "fields": [ { "name": "label", "type": "text" } ] } ] }""");
+
+        var csharp = CSharpEmitter.Emit(schema, "Cases");
+        var typeScript = TypeScriptEmitter.Emit(schema).Files.Single().Text;
+
+        csharp.Files.Select(file => file.Name).Order(StringComparer.Ordinal).ShouldBe(["ABBlock.g.cs", "Block.g.cs"]);
+        csharp.Diagnostics.ShouldContain(diagnostic => diagnostic.Code == "FCMS0100" && diagnostic.Message.Contains("'ab'", StringComparison.Ordinal));
+        csharp.Diagnostics.ShouldContain(diagnostic => diagnostic.Code == "FCMS3376" && diagnostic.Message.Contains("'ab'", StringComparison.Ordinal));
+        typeScript.ShouldContain("export interface ABBlock ", Case.Sensitive);
+        typeScript.ShouldNotContain("AbBlock", Case.Sensitive);
+    }
+
+    // The identifiers TypeScript reserves, createClient and schemaHash, are no names of files, so they are taken as written
+    // and the types create-client and schema-hash keep their classes, in TypeScript as in C#.
+    [Fact]
+    public void AReservedIdentifierOfTheModuleTakesNoTypeWhoseNameDiffersFromItInCase()
+    {
+        var schema = BlogInstance.Schema("""{ "collections": [ { "name": "create-client", "fields": [ { "name": "title", "type": "text" } ] }, { "name": "schema-hash", "fields": [ { "name": "title", "type": "text" } ] } ] }""");
+
+        var csharp = CSharpEmitter.Emit(schema, "Cases");
+        var typeScript = TypeScriptEmitter.Emit(schema);
+
+        csharp.Files.Select(file => file.Name).ShouldContain("CreateClient.g.cs");
+        csharp.Files.Select(file => file.Name).ShouldContain("SchemaHash.g.cs");
+        typeScript.Files.Single().Text.ShouldContain("export interface CreateClient ", Case.Sensitive);
+        typeScript.Files.Single().Text.ShouldContain("export interface SchemaHash ", Case.Sensitive);
+        csharp.Diagnostics.Concat(typeScript.Diagnostics).ShouldNotContain(diagnostic => diagnostic.Code == "FCMS3376");
+    }
+
+    // Whatever gave them, two files whose names differ in case alone are not written, and --check says why.
+    [Fact]
+    public void FilesWhoseNamesDifferInCaseAloneAreRefusedAndNothingIsWritten()
+    {
+        var directory = Out("clash");
+        GeneratedFile[] files = [new("FooBar.g.cs", "namespace Cases;\n"), new("Foobar.g.cs", "namespace Cases;\n")];
+
+        var written = Should.Throw<CliException>(() => GeneratedFiles.Write(directory, files, [], TextWriter.Null));
+        var checkedOnly = Should.Throw<CliException>(() => GeneratedFiles.Differences(directory, files, []));
+
+        written.Code.ShouldBe("FCMS3380");
+        written.Message.ShouldContain("FooBar.g.cs and Foobar.g.cs");
+        checkedOnly.Code.ShouldBe("FCMS3380");
+        Directory.Exists(directory).ShouldBeFalse();
+    }
+
+    // Two namespaces generated into one folder keep each other's files, and one is not written over the other.
+    [Fact]
+    public async Task ARunOfAnotherNamespaceNeitherRemovesNorWritesOverTheFilesOfOne()
+    {
+        var directory = Out("namespaces");
+        var articles = WriteSnapshot("""{ "collections": [ { "name": "article", "fields": [ { "name": "title", "type": "text" } ] } ] }""");
+        var pages = WriteSnapshot("""{ "collections": [ { "name": "page", "fields": [ { "name": "title", "type": "text" } ] } ] }""");
+
+        await GenerateAsync(["generate", "csharp", "--schema", articles, "--namespace", "One", "--output", directory]);
+        await GenerateAsync(["generate", "csharp", "--schema", pages, "--namespace", "Two", "--output", directory]);
+        await GenerateAsync(["generate", "csharp", "--schema", articles, "--namespace", "One", "--output", directory, "--check"]);
+        await GenerateAsync(["generate", "csharp", "--schema", pages, "--namespace", "Two", "--output", directory, "--check"]);
+        var before = Read(directory);
+        var over = await blog.RunAsync(["generate", "csharp", "--schema", articles, "--namespace", "Two", "--output", directory]);
+
+        before.Keys.Order(StringComparer.Ordinal).ShouldBe(["Article.g.cs", "ArticleFields.g.cs", "Page.g.cs", "PageFields.g.cs"]);
+        before["Article.g.cs"].ShouldContain("namespace One");
+        before["Page.g.cs"].ShouldContain("namespace Two");
+        over.ExitCode.ShouldBe(1);
+        over.Error.ShouldContain("FCMS3381");
+        over.Error.ShouldContain("namespace One");
+        Read(directory).ShouldBe(before);
+    }
+
     // A field type that closes the TypeScript comment, one whose line break ends the C# comment before a module
     // initializer, and one that opens an XML element in it.
     private static readonly string[] InjectedFieldTypes =

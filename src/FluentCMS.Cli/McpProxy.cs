@@ -1,30 +1,42 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using FluentCMS.Core.Diagnostics;
 
 namespace FluentCMS.Cli;
 
 // `fluentcms mcp`: stdio to Streamable HTTP, for an MCP client that speaks stdio only (decision 51). Each line of standard
 // input is a JSON-RPC message, posted to /mcp with the key; what the instance answers, as JSON or as a stream of events, is
 // written to standard output one message per line. Standard output holds protocol messages only, and every diagnostic goes
-// to standard error. The proxy reads no content and adds no tool: it looks only at the session id the instance gives, and at
-// the protocol version of the answer to initialize, which later requests name.
-internal sealed class McpProxy(ManagementClient client, TextReader input, TextWriter output, TextWriter error) : IDisposable
+// to standard error. The proxy reads no content and adds no tool: it looks only at the ids of requests and answers, so that
+// each request gets an answer, at the session id the instance gives, and at the protocol version of the answer to
+// initialize, which later requests name.
+internal sealed class McpProxy(ManagementClient client, BoundedLineReader input, TextWriter output, TextWriter error, TimeSpan? drainTimeout = null) : IDisposable
 {
     public const string Endpoint = "mcp";
+
+    // A line of standard input, an answer and an event of a stream are each held whole, so each is bounded, in UTF-8 bytes;
+    // the MCP plugin takes 1 MiB in a request unless configured otherwise.
+    public const int MaxMessageBytes = 16 * 1024 * 1024;
+
+    // Standard input ends when the client stops the proxy; the calls in flight have this long to answer, then are cancelled.
+    public static readonly TimeSpan DrainTimeout = TimeSpan.FromSeconds(30);
 
     private const string SessionHeader = "Mcp-Session-Id";
     private const string ProtocolHeader = "MCP-Protocol-Version";
     private const int InternalError = -32603;
+    private const string Limit = "16 MiB";
 
     private readonly SemaphoreSlim _writing = new(1, 1);
+    private readonly TimeSpan _drainTimeout = drainTimeout ?? DrainTimeout;
     private string? _session;
     private string? _protocol;
     private CliException? _fatal;
 
     // 0 when standard input ends, and 1 when the instance refuses the key, which ends the proxy. Any other failure answers the
-    // one request it concerns with a JSON-RPC error and the proxy goes on.
+    // requests it concerns with a JSON-RPC error and the proxy goes on.
     public async Task<int> RunAsync(CancellationToken cancellationToken)
     {
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -32,19 +44,23 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
         List<Task> forwarding = [];
 
         // Messages are forwarded as they come, so that a cancellation reaches the instance while a call is running.
-        while (await ReadLineAsync(stopped, stop.Token) is { } line)
+        while (await ReadLineAsync(input, stopped, stop.Token) is { } line)
         {
-            if (line.Trim().Length > 0)
+            if (line.TooLong)
+            {
+                await WriteErrorAsync($"{CliErrorCodes.McpMessageTooLarge}: a line of standard input of more than {Limit} was dropped, so its requests get no answer.");
+            }
+            else if (line.Text.Trim().Length > 0)
             {
                 forwarding.RemoveAll(task => task.IsCompleted);
-                forwarding.Add(ForwardAsync(line, stop));
+                forwarding.Add(ForwardAsync(line.Text, stop));
             }
         }
 
-        await Task.WhenAll(forwarding);
+        await DrainAsync(forwarding, stop);
         if (_fatal is { } fatal)
         {
-            await error.WriteLineAsync(fatal.Message);
+            await WriteErrorAsync(fatal.Message);
             return fatal.ExitCode;
         }
 
@@ -52,10 +68,31 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
         return cancellationToken.IsCancellationRequested ? ExitCodes.Failure : ExitCodes.Success;
     }
 
-    // A read of a console does not always stop when it is cancelled, so the proxy stops waiting for it instead.
-    private async Task<string?> ReadLineAsync(Task stopped, CancellationToken cancellationToken)
+    private async Task DrainAsync(List<Task> forwarding, CancellationTokenSource stop)
     {
-        var read = input.ReadLineAsync(cancellationToken).AsTask();
+        var all = Task.WhenAll(forwarding);
+        if (!stop.IsCancellationRequested)
+        {
+            using var timer = CancellationTokenSource.CreateLinkedTokenSource(stop.Token);
+            var finished = await Task.WhenAny(all, Task.Delay(_drainTimeout, timer.Token)) == all;
+            await timer.CancelAsync();
+            if (!finished && !stop.IsCancellationRequested)
+            {
+                var running = forwarding.Count(task => !task.IsCompleted);
+                await WriteErrorAsync(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"note: standard input ended, and {(running == 1 ? "1 call" : $"{running} calls")} still running after {_drainTimeout.TotalSeconds:0.#} seconds {(running == 1 ? "was" : "were")} cancelled."));
+                await stop.CancelAsync();
+            }
+        }
+
+        await all;
+    }
+
+    // A read of a console does not always stop when it is cancelled, so the proxy stops waiting for it instead.
+    private static async Task<BoundedLine?> ReadLineAsync(BoundedLineReader lines, Task stopped, CancellationToken cancellationToken)
+    {
+        var read = lines.ReadLineAsync(cancellationToken).AsTask();
         try
         {
             return await Task.WhenAny(read, stopped) == read ? await read : null;
@@ -68,18 +105,26 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
 
     private async Task ForwardAsync(string line, CancellationTokenSource stop)
     {
+        var sent = Sent.Of(line);
+
+        // The requests answered so far, so that a failure after an answer was written errs only for the others.
+        var answered = new HashSet<string>(StringComparer.Ordinal);
         try
         {
             using var request = client.Request(HttpMethod.Post, Endpoint);
             request.Content = new StringContent(line, Encoding.UTF8, "application/json");
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
-            if (Volatile.Read(ref _session) is { } session)
+
+            // initialize starts a session, so it names none, and a client that initializes again is not held to the old one.
+            var session = sent.IsInitialize ? null : Volatile.Read(ref _session);
+            var protocol = sent.IsInitialize ? null : Volatile.Read(ref _protocol);
+            if (session is not null)
             {
                 request.Headers.TryAddWithoutValidation(SessionHeader, session);
             }
 
-            if (Volatile.Read(ref _protocol) is { } protocol)
+            if (protocol is not null)
             {
                 request.Headers.TryAddWithoutValidation(ProtocolHeader, protocol);
             }
@@ -92,35 +137,58 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
 
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
             {
-                var problem = ManagementClient.Problem(response, await response.Content.ReadAsStringAsync(stop.Token));
+                string body;
+                try
+                {
+                    body = await ReadAsync(response, stop.Token);
+                }
+                catch (CliException)
+                {
+                    body = "";
+                }
+
+                var problem = ManagementClient.Problem(response, body);
                 Stop(stop, new CliException(CliErrorCodes.McpKeyRefused, $"{client.Instance} refused the key at /{Endpoint} ({(int)response.StatusCode}): {problem.Message}"));
                 return;
             }
 
+            // A session the instance no longer knows is answered with 404, and so is every later request that names it, so
+            // the proxy forgets it; the client's next initialize starts a new one.
+            if (response.StatusCode == HttpStatusCode.NotFound && session is not null)
+            {
+                Interlocked.CompareExchange(ref _session, null, session);
+                Interlocked.CompareExchange(ref _protocol, null, protocol);
+            }
+
+            // The answer of a request accepted this way would come on a stream the proxy does not open.
             if (response.StatusCode is HttpStatusCode.Accepted or HttpStatusCode.NoContent)
             {
+                await AnswerWithErrorAsync(sent, $"{CliErrorCodes.UnexpectedAnswer}: /{Endpoint} accepted the request without answering it, and the proxy opens no stream for a later answer.");
                 return;
             }
 
             if (response.IsSuccessStatusCode && response.Content.Headers.ContentType?.MediaType == "text/event-stream")
             {
-                await RelayEventsAsync(response, stop.Token);
+                await RelayEventsAsync(response, sent, answered, stop.Token);
+                await AnswerWithErrorAsync(sent, $"{CliErrorCodes.UnexpectedAnswer}: the event stream of /{Endpoint} ended without the answer.", answered);
                 return;
             }
 
-            var body = await response.Content.ReadAsStringAsync(stop.Token);
-            if (Message(body) is { } message)
+            var text = await ReadAsync(response, stop.Token);
+            if (Message(text, sent) is { } message)
             {
-                await WriteAsync(message);
+                await WriteAsync(message.Text);
+                answered.UnionWith(message.Answered);
+                await AnswerWithErrorAsync(sent, $"{CliErrorCodes.UnexpectedAnswer}: /{Endpoint} answered without the answer to this request.", answered);
                 return;
             }
 
             // A problem of FluentCMS, such as a refused size or a rate limit, or an answer that is no message at all.
             var reason = response.IsSuccessStatusCode
                 ? new CliException(CliErrorCodes.UnexpectedAnswer, $"/{Endpoint} answered {(int)response.StatusCode} with no JSON-RPC message.")
-                : ManagementClient.Problem(response, body);
-            await error.WriteLineAsync(reason.Message);
-            await AnswerWithErrorAsync(line, reason.Message);
+                : ManagementClient.Problem(response, text);
+            await WriteErrorAsync(reason.Message);
+            await AnswerWithErrorAsync(sent, reason.Message);
         }
         // Once the proxy stops, an answer still being read is aborted, which some handlers report as a failed read and not
         // as a cancellation.
@@ -129,36 +197,46 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
         }
         catch (CliException exception)
         {
-            // The instance could not be reached for this request; the next one may reach it.
-            await error.WriteLineAsync(exception.Message);
-            await AnswerWithErrorAsync(line, exception.Message);
+            // The instance could not be reached for this request, or its answer was too large; the next one may do.
+            await WriteErrorAsync(exception.Message);
+            await AnswerWithErrorAsync(sent, exception.Message, answered);
         }
         catch (Exception exception) when (exception is HttpRequestException or IOException)
         {
             // The answer broke off while it was read.
             var reason = new CliException(CliErrorCodes.InstanceUnreachable, $"{client.Instance} could not be reached: {exception.Message}");
-            await error.WriteLineAsync(reason.Message);
-            await AnswerWithErrorAsync(line, reason.Message);
+            await WriteErrorAsync(reason.Message);
+            await AnswerWithErrorAsync(sent, reason.Message, answered);
         }
     }
 
-    // Server-sent events: the data lines of an event, joined, are one message.
-    private async Task RelayEventsAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    // Server-sent events: the data lines of an event, joined, are one message. The ids of the requests it answers are added
+    // as each is written.
+    private async Task RelayEventsAsync(HttpResponseMessage response, Sent sent, HashSet<string> answered, CancellationToken cancellationToken)
     {
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-        using var reader = new StreamReader(stream, Encoding.UTF8);
+        var lines = BoundedLineReader.Of(stream, MaxMessageBytes);
         var data = new StringBuilder();
+        long dataBytes = 0;
+        var tooLarge = false;
         while (true)
         {
-            var line = await reader.ReadLineAsync(cancellationToken);
-            if (line is null || line.Length == 0)
+            var line = await lines.ReadLineAsync(cancellationToken);
+            if (line is not { } read || (read.Text.Length == 0 && !read.TooLong))
             {
-                if (data.Length > 0 && Message(data.ToString()) is { } message)
+                if (tooLarge)
                 {
-                    await WriteAsync(message);
+                    await WriteErrorAsync($"{CliErrorCodes.McpMessageTooLarge}: /{Endpoint} sent an event of more than {Limit}, which was dropped.");
+                }
+                else if (data.Length > 0 && Message(data.ToString(), sent) is { } message)
+                {
+                    await WriteAsync(message.Text);
+                    answered.UnionWith(message.Answered);
                 }
 
                 data.Clear();
+                dataBytes = 0;
+                tooLarge = false;
                 if (line is null)
                 {
                     return;
@@ -167,37 +245,52 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
                 continue;
             }
 
-            if (line.StartsWith("data:", StringComparison.Ordinal))
+            if (read.TooLong)
             {
-                var value = line.AsSpan(5);
-                data.Append(value.StartsWith(" ") ? value[1..] : value).Append('\n');
+                tooLarge = true;
+                data.Clear();
+            }
+            else if (!tooLarge && read.Text.StartsWith("data:", StringComparison.Ordinal))
+            {
+                var value = read.Text.AsSpan(5);
+                value = value.StartsWith(" ") ? value[1..] : value;
+                dataBytes += Encoding.UTF8.GetByteCount(value) + 1;
+                if (dataBytes > MaxMessageBytes)
+                {
+                    tooLarge = true;
+                    data.Clear();
+                }
+                else
+                {
+                    data.Append(value).Append('\n');
+                }
             }
         }
     }
 
-    // The message on one line, or null when the text is not one: an object of JSON-RPC 2.0, or a batch of them. The answer to
-    // initialize names the protocol version.
-    private string? Message(string text)
+    // The message on one line and the ids of the requests it answers, or null when the text is not one: an object of
+    // JSON-RPC 2.0, or a batch of them. The answer to initialize names the protocol version.
+    private (string Text, IReadOnlyList<string> Answered)? Message(string text, Sent sent)
     {
         try
         {
             using var json = JsonDocument.Parse(text);
             var root = json.RootElement;
-            var isMessage = root.ValueKind == JsonValueKind.Array
-                ? root.GetArrayLength() > 0 && root.EnumerateArray().All(IsJsonRpc)
-                : IsJsonRpc(root);
-            if (!isMessage)
+            List<JsonElement> items = root.ValueKind == JsonValueKind.Array ? [.. root.EnumerateArray()] : [root];
+            if (items.Count == 0 || !items.All(IsJsonRpc))
             {
                 return null;
             }
 
-            if (Volatile.Read(ref _protocol) is null && root.ValueKind == JsonValueKind.Object && root.TryGetProperty("result", out var result)
+            if (sent.IsInitialize && root.ValueKind == JsonValueKind.Object && root.TryGetProperty("result", out var result)
                 && ManagementClient.Text(result, "protocolVersion") is { } version)
             {
                 Volatile.Write(ref _protocol, version);
             }
 
-            return JsonSerializer.Serialize(root);
+            // An answer has an id and no method; a request or a notification of the instance has a method.
+            var answered = items.Where(item => item.TryGetProperty("id", out _) && !item.TryGetProperty("method", out _)).Select(item => IdKey(item.GetProperty("id"))).ToList();
+            return (JsonSerializer.Serialize(root), answered);
         }
         catch (JsonException)
         {
@@ -207,21 +300,84 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
 
     private static bool IsJsonRpc(JsonElement element) => ManagementClient.Text(element, "jsonrpc") == "2.0";
 
-    // A request whose answer never came gets an error, so that the client does not wait for it.
-    private async Task AnswerWithErrorAsync(string line, string reason)
+    // An id is a string, a number or null, compared by value, so that a server that writes 1 for 1.0 still answers it.
+    internal static string IdKey(JsonElement id) => id.ValueKind switch
     {
-        try
+        JsonValueKind.String => "s" + id.GetString(),
+        JsonValueKind.Number => "n" + NumberKey(id.GetRawText()),
+        _ => "r" + id.GetRawText(),
+    };
+
+    // A JSON number as its significant digits and exponent, exact at any size: 1, 1.0 and 10e-1 are 1e0, and 1e-30 is not 0.
+    // An exponent too large to shift is compared as it is written.
+    private static string NumberKey(string number)
+    {
+        var negative = number.StartsWith('-');
+        var text = negative ? number[1..] : number;
+        var e = text.IndexOfAny(['e', 'E']);
+        var mantissa = e < 0 ? text : text[..e];
+        if (!long.TryParse(e < 0 ? "0" : text[(e + 1)..], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var exponent)
+            || exponent is > 1_000_000_000 or < -1_000_000_000)
         {
-            using var json = JsonDocument.Parse(line);
-            if (json.RootElement.ValueKind == JsonValueKind.Object && json.RootElement.TryGetProperty("id", out var id) && json.RootElement.TryGetProperty("method", out _))
-            {
-                await WriteAsync(JsonSerializer.Serialize(new { jsonrpc = "2.0", id, error = new { code = InternalError, message = reason } }));
-            }
+            return number;
         }
-        catch (JsonException)
+
+        var dot = mantissa.IndexOf('.', StringComparison.Ordinal);
+        var digits = (dot < 0 ? mantissa : mantissa.Remove(dot, 1)).TrimStart('0');
+        if (digits.Length == 0)
         {
+            return "0";
+        }
+
+        var significant = digits.TrimEnd('0');
+        exponent += digits.Length - significant.Length - (dot < 0 ? 0 : mantissa.Length - dot - 1);
+        return string.Create(CultureInfo.InvariantCulture, $"{(negative ? "-" : "")}{significant}e{exponent}");
+    }
+
+    // A request whose answer never came gets an error, so that the client does not wait for it; the requests of a batch get
+    // a batch of errors.
+    private async Task AnswerWithErrorAsync(Sent sent, string reason, HashSet<string>? answered = null)
+    {
+        var errors = sent.Ids
+            .Where(id => answered is null || !answered.Contains(IdKey(id)))
+            .Select(id => new { jsonrpc = "2.0", id, error = new { code = InternalError, message = reason } })
+            .ToList();
+        if (errors.Count > 0)
+        {
+            await WriteAsync(sent.IsBatch ? JsonSerializer.Serialize(errors) : JsonSerializer.Serialize(errors[0]));
         }
     }
+
+    // An answer longer than the bound is refused as it is read rather than held.
+    private static async Task<string> ReadAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        if (response.Content.Headers.ContentLength > MaxMessageBytes)
+        {
+            throw TooLarge();
+        }
+
+        // A content that buffers itself before it gives its stream may not watch the token, so the wait for it does.
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).WaitAsync(cancellationToken);
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int read;
+        while ((read = await stream.ReadAsync(chunk, cancellationToken)) > 0)
+        {
+            if (buffer.Length + read > MaxMessageBytes)
+            {
+                throw TooLarge();
+            }
+
+            buffer.Write(chunk, 0, read);
+        }
+
+        buffer.Position = 0;
+        using var reader = new StreamReader(buffer, Encoding.UTF8);
+        return await reader.ReadToEndAsync(cancellationToken);
+    }
+
+    private static CliException TooLarge() =>
+        new(CliErrorCodes.McpMessageTooLarge, $"/{Endpoint} answered more than {Limit}, which the proxy does not hold.");
 
     private async Task WriteAsync(string message)
     {
@@ -237,6 +393,9 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
             _writing.Release();
         }
     }
+
+    // A message may repeat what the instance answered.
+    private Task WriteErrorAsync(string message) => error.WriteLineAsync(PrintableText.Escape(message, keepLineBreaks: true));
 
     private void Stop(CancellationTokenSource stop, CliException reason)
     {
@@ -263,6 +422,30 @@ internal sealed class McpProxy(ManagementClient client, TextReader input, TextWr
         }
         catch (Exception exception) when (exception is CliException or OperationCanceledException)
         {
+        }
+    }
+
+    // What the proxy reads of a message it forwards: the ids of its requests, whose answers it waits for, whether it is a
+    // batch, and whether it is initialize.
+    private sealed record Sent(IReadOnlyList<JsonElement> Ids, bool IsBatch, bool IsInitialize)
+    {
+        public static Sent Of(string line)
+        {
+            try
+            {
+                using var json = JsonDocument.Parse(line);
+                var root = json.RootElement;
+                List<JsonElement> items = root.ValueKind == JsonValueKind.Array ? [.. root.EnumerateArray()] : [root];
+                var requests = items.Where(item => item.ValueKind == JsonValueKind.Object && item.TryGetProperty("id", out _) && item.TryGetProperty("method", out _)).ToList();
+                return new Sent(
+                    [.. requests.Select(item => item.GetProperty("id").Clone())],
+                    root.ValueKind == JsonValueKind.Array,
+                    requests.Any(item => ManagementClient.Text(item, "method") == "initialize"));
+            }
+            catch (JsonException)
+            {
+                return new Sent([], IsBatch: false, IsInitialize: false);
+            }
         }
     }
 }

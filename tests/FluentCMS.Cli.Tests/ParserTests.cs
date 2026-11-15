@@ -155,8 +155,8 @@ public sealed partial class ParserTests : IDisposable
         await RunAsync("backup", "--output", "backup.zip", "--assembly", ToolRun.HostAssembly);
         _launcher.Arguments.ShouldBe(["backup", "--output", Path.GetFullPath("backup.zip")]);
 
-        await RunAsync("restore", "backup.zip", "--force", "--assembly", ToolRun.HostAssembly);
-        _launcher.Arguments.ShouldBe(["restore", Path.GetFullPath("backup.zip"), "--force"]);
+        await RunAsync("restore", "backup.zip", "--allow-schema-mismatch", "--force", "--assembly", ToolRun.HostAssembly);
+        _launcher.Arguments.ShouldBe(["restore", Path.GetFullPath("backup.zip"), "--force", "--allow-schema-mismatch"]);
     }
 
     [Fact]
@@ -196,6 +196,79 @@ public sealed partial class ParserTests : IDisposable
         }
 
         CommandRegistry.Usage.ShouldNotContain("openapi document");
+    }
+
+    // The parser repeats a token it did not match, as `user create`, which runs in the host only, does not match --token.
+    [Theory]
+    [InlineData("--token", "fcms_mk_usage-secret")]
+    [InlineData("--token=fcms_mk_usage-secret")]
+    [InlineData("--token:fcms_mk_usage-secret")]
+    public async Task AUsageErrorDoesNotRepeatTheKey(params string[] token)
+    {
+        (await RunAsync(["user", "create", "--email", "a@example.com", "--role", "Admin", "--url", "https://cms.example.com", .. token])).ShouldBe(2);
+
+        _tool.Error.ToString().ShouldContain("Usage:");
+        _tool.Error.ToString().ShouldContain("***");
+        _tool.Error.ToString().ShouldNotContain("usage-secret");
+        _launcher.Arguments.ShouldBeNull();
+    }
+
+    [Fact]
+    public void TheKeyIsTheValueAfterTokenUnlessThatIsAnOption()
+    {
+        CommandLine.WithoutKey(["jobs", "list", "--token", "key", "--json"]).ShouldBe(["jobs", "list", "--token", "***", "--json"]);
+        CommandLine.WithoutKey(["--token=key", "--token:key", "--tokens=x"]).ShouldBe(["--token=***", "--token:***", "--tokens=x"]);
+        CommandLine.WithoutKey(["--token", "--url", "https://cms.example.com"]).ShouldBe(["--token", "--url", "https://cms.example.com"]);
+        CommandLine.WithoutKey(["--token"]).ShouldBe(["--token"]);
+    }
+
+    // A command with --url runs in the tool alone, so Ctrl+C cancels it and it cleans up; a project command waits for the
+    // host it started, which gets Ctrl+C itself.
+    [Theory]
+    [InlineData(true, "export", "--output", "out.zip", "--url", "https://cms.example.com")]
+    [InlineData(true, "mcp", "--url", "https://cms.example.com")]
+    [InlineData(true, "generate", "typescript", "--output", "out", "--url", "https://cms.example.com")]
+    [InlineData(true, "schema", "diff", "--schema", "deployed.json", "--url", "https://cms.example.com")]
+    [InlineData(false, "schema", "diff", "--url", "https://cms.example.com")]
+    [InlineData(false, "export", "--output", "out.zip")]
+    [InlineData(false, "migrate")]
+    [InlineData(false, "generate", "typescript", "--output", "out")]
+    public void OnlyACommandWithUrlThatRunsNoHostIsCancelledByCtrlC(bool cancelled, params string[] args)
+    {
+        CommandLine.TerminationTimeout(CommandLine.Tree().Parse(args)).ShouldBe(cancelled ? CommandLine.CleanUpTimeout : null);
+    }
+
+    // The tool reads no response file, so a key in one is never parsed and never repeated.
+    [Fact]
+    public async Task AResponseFileIsAnArgumentAndNotReadForItsKey()
+    {
+        var file = Path.Combine(_tool.Root, "arguments.rsp");
+        File.WriteAllText(file, "--token fcms_mk_response-secret");
+
+        (await RunAsync("user", "create", "--email", "a@example.com", "--role", "Admin", "@" + file)).ShouldBe(2);
+
+        _tool.Error.ToString().ShouldContain("@" + file);
+        _tool.Error.ToString().ShouldNotContain("response-secret");
+        _launcher.Arguments.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task AFieldTypeThatCoreDoesNotKnowIsNamedWithItsControlCharactersEscaped()
+    {
+        var schema = Path.Combine(_tool.Root, "schema.json");
+        File.WriteAllText(schema, new System.Text.Json.Nodes.JsonObject
+        {
+            ["collections"] = new System.Text.Json.Nodes.JsonArray(new System.Text.Json.Nodes.JsonObject
+            {
+                ["name"] = "post",
+                ["fields"] = new System.Text.Json.Nodes.JsonArray(new System.Text.Json.Nodes.JsonObject { ["name"] = "where", ["type"] = $"geo{(char)0x1B}[2J" }),
+            }),
+        }.ToJsonString());
+
+        await RunAsync("schema", "validate", "--schema", schema);
+
+        _tool.Error.ToString().ShouldContain("note: field type 'geo\\u001B[2J' is not one of core's");
+        _tool.Error.ToString().ShouldNotContain((char)0x1B);
     }
 
     [Theory]

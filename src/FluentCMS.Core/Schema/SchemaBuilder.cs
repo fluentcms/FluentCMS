@@ -1,4 +1,5 @@
 using System.Reflection;
+using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Schema;
 
@@ -114,7 +115,8 @@ public sealed class SchemaBuilder : ISchemaBuilder
 
     internal bool Track(Type type) => _classes.Add(type);
 
-    internal void Report(string code, string message) => _errors.Add(new SchemaError(code, message));
+    // A message of the schema readers names a property of the schema file, so it is made printable.
+    internal void Report(string code, string message) => _errors.Add(new SchemaError(code, PrintableText.Escape(message)));
 
     private static IEnumerable<Type> LoadTypes(Assembly assembly)
     {

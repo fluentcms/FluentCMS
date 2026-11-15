@@ -90,7 +90,26 @@ public sealed class WireTests
         problem.Message.ShouldStartWith("502: ");
     }
 
-    private sealed class Recording(HttpStatusCode status, string mediaType, string answer) : HttpMessageHandler
+    // A success the client cannot read is a problem with the status, no code and the reason, and not an exception of the
+    // JSON reader. An empty one answers nothing, also when it ends at once without saying its length.
+    [Fact]
+    public async Task ASuccessThatIsNotJsonIsAProblemAndAnEmptyOneAnswersNothing()
+    {
+        var proxy = new FluentCmsClient(new HttpClient(new Recording(HttpStatusCode.OK, "text/html", "<html>a proxy</html>")) { BaseAddress = new Uri("https://cms.example.com/") });
+        var chunked = new FluentCmsClient(new HttpClient(new Recording(HttpStatusCode.OK, "application/json", "", chunked: true)) { BaseAddress = new Uri("https://cms.example.com/") });
+
+        var problem = await Should.ThrowAsync<FluentCmsProblemException>(() => proxy.GetAsync<Article>(Guid.Empty, cancellationToken: Token));
+        await chunked.DeleteAsync<Article>(Guid.Empty, Token);
+        (await chunked.GetAsync<Article>(Guid.Empty, cancellationToken: Token)).ShouldBeNull();
+
+        problem.Status.ShouldBe(HttpStatusCode.OK);
+        problem.Code.ShouldBeNull();
+        problem.Detail.ShouldBe("The answer is not JSON.");
+        problem.Message.ShouldBe("200: The answer is not JSON.");
+        problem.InnerException.ShouldBeAssignableTo<System.Text.Json.JsonException>();
+    }
+
+    private sealed class Recording(HttpStatusCode status, string mediaType, string answer, bool chunked = false) : HttpMessageHandler
     {
         public HttpRequestMessage? Request { get; private set; }
 
@@ -100,7 +119,23 @@ public sealed class WireTests
         {
             Request = request;
             Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
-            return new HttpResponseMessage(status) { Content = new StringContent(answer, Encoding.UTF8, mediaType) };
+            HttpContent content = chunked ? new StreamContent(new Unseekable(Encoding.UTF8.GetBytes(answer))) : new StringContent(answer, Encoding.UTF8, mediaType);
+            content.Headers.ContentType ??= new System.Net.Http.Headers.MediaTypeHeaderValue(mediaType);
+            return new HttpResponseMessage(status) { Content = content };
+        }
+    }
+
+    // A body whose length is not known, as one sent in chunks.
+    private sealed class Unseekable(byte[] bytes) : MemoryStream(bytes)
+    {
+        public override bool CanSeek => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
         }
     }
 }

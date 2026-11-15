@@ -10,10 +10,14 @@ using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Plugins.Mcp;
 
-// What the content tools reach for the caller: what it may do, and the exposed types it may read.
-internal sealed record McpReach(ContentAccess Access, IReadOnlyList<SchemaType> Exposed)
+// What the content tools reach for the caller: what it may do, the exposed types it may read and those of them that have
+// tools of their own.
+internal sealed record McpReach(ContentAccess Access, IReadOnlyList<SchemaType> Exposed, IReadOnlySet<string> Own)
 {
     public bool Drafts(SchemaType type) => Access.Types[type.Name].Drafts;
+
+    // The tool that reads a text of the type whole: its own _get, or query for a type over the cap, which leaves texts whole.
+    public string Whole(string type) => Own.Contains(type) ? McpContentTools.Name(type, McpContentTools.Get) : McpContentTools.Query;
 }
 
 // The dry runs of spec 5.4, in front of {type}_delete and bulk. A call is a dry run unless it says dryRun false: it
@@ -32,6 +36,8 @@ internal sealed class McpDryRuns(
 
     // The most references a plan lists. A plan that may have more says so.
     public const int MaxReferences = 50;
+
+    public const string TitlesOmitted = "titlesOmitted";
 
     public static readonly string[] BulkArguments = ["type", "action", "ids", "filter", "limit", "locale", McpConfirmations.DryRun, McpConfirmations.Token];
 
@@ -215,15 +221,25 @@ internal sealed class McpDryRuns(
         return McpToolResult.Error(code, message);
     }
 
+    // A plan names every entry it would touch, since the token is of them all, so its titles are what holds it to
+    // MaxResultBytes: each is shortened as a list shortens a text, and where the plan is still over the limit they are left
+    // out. A plan over it even then, of more entries than the limit holds, is answered whole.
     private async Task<McpToolResult> DescribeAsync(McpPlan plan, SchemaType type, string action, List<PlannedEntry> entries, List<Guid> notFound, McpReach reach, CancellationToken cancellationToken)
     {
+        var limits = options.Value;
+        var planned = new JsonArray([.. entries.Select(entry => (JsonNode)entry.Json)]);
+        foreach (var entry in planned.OfType<JsonObject>())
+        {
+            ShortenTitle(entry, type.Name, reach, limits.MaxListTextLength);
+        }
+
         JsonObject described = new()
         {
             [McpConfirmations.DryRun] = true,
             ["type"] = type.Name,
             ["action"] = action,
             ["count"] = entries.Count,
-            ["entries"] = new JsonArray([.. entries.Select(entry => (JsonNode)entry.Json)]),
+            ["entries"] = planned,
         };
         AddNotFound(described, notFound);
 
@@ -232,6 +248,11 @@ internal sealed class McpDryRuns(
         var (references, more) = action == McpContentTools.Publish || entries.Count == 0
             ? ([], false)
             : await ReferencesAsync(type, entries, published: action == McpContentTools.Unpublish, reach, cancellationToken);
+        foreach (var reference in references.OfType<JsonObject>())
+        {
+            ShortenTitle(reference, reference["type"]!.GetValue<string>(), reach, limits.MaxListTextLength);
+        }
+
         described["references"] = references;
         if (more)
         {
@@ -246,7 +267,25 @@ internal sealed class McpDryRuns(
             described["expiresAt"] = expiresAt.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
         }
 
+        if (McpArguments.Size(described) > limits.MaxResultBytes)
+        {
+            foreach (var item in planned.Concat(references).OfType<JsonObject>())
+            {
+                item["title"] = null;
+            }
+
+            described[TitlesOmitted] = true;
+        }
+
         return McpArguments.Result(described);
+    }
+
+    private static void ShortenTitle(JsonObject item, string type, McpReach reach, int maxLength)
+    {
+        if (McpListResults.Shortened(item["title"], maxLength, reach.Whole(type)) is { } shortened)
+        {
+            item["title"] = shortened;
+        }
     }
 
     private static void AddNotFound(JsonObject answer, List<Guid> notFound)
