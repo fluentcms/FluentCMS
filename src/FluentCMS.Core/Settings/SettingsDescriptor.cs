@@ -23,6 +23,7 @@ internal sealed class SettingsDescriptor
         Area = area;
         Type = type;
         Permission = CorePermissions.Settings(area);
+        Listed = type.GetCustomAttribute<UnlistedSettingsAttribute>(inherit: false) is null;
 
         var properties = SettingsJson.Strict.GetTypeInfo(type).Properties.Where(property => property.Get is not null && property.Set is not null).ToList();
         KnownKeys = properties.Select(property => property.Name).ToFrozenSet(StringComparer.Ordinal);
@@ -44,6 +45,9 @@ internal sealed class SettingsDescriptor
     public Type Type { get; }
 
     public string Permission { get; }
+
+    // Whether the list of areas shows it.
+    public bool Listed { get; }
 
     // The names of the keys of the document, as they are in JSON.
     public IReadOnlySet<string> KnownKeys { get; }
