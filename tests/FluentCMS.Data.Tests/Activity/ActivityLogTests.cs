@@ -79,6 +79,7 @@ public sealed class ActivityLogTests
         new ApiKeyAddressRefusedEvent(Entry, "site key", "198.51.100.7"),
         new McpClientRegisteredEvent(Entry, "mcp-1", "Agent", "pending", null, "198.51.100.8"),
         new McpClientApprovedEvent(Entry, "mcp-1", "Agent", Job, "Editor"),
+        new McpClientRoleChangedEvent(Entry, "mcp-1", "Agent", Entry, "Author", Job),
         new McpClientRejectedEvent(Entry, "mcp-1", "Agent"),
         new McpClientRevokedEvent(Entry, "mcp-1", "Agent"),
         new CacheInvalidatedEvent(["article:1", "article:2"]),

@@ -83,13 +83,21 @@ The endpoints need `mcp.manage` for the instance, from a grant with no site limi
 | Endpoint | Does |
 | --- | --- |
 | `GET /api/management/v1/mcp/clients` | Lists the clients: `id`, `clientId`, `name`, `status` (`pending`, `approved` or `rejected`), `roleId`, `roleName`, `redirectUris`, `scopes`, `registeredAt`, `approvedBy`, `approvedAt` and `lastActivityAt`, the time of the newest token issued to the client. |
+| `POST /api/management/v1/mcp/clients` | Registers a client for an agent that does not register itself, with `{ "name", "redirectUris", "role" }`, and answers 201 with the client. |
 | `POST /api/management/v1/mcp/clients/{id}/approve` | Approves a pending client with `{ "role" }`: the id of a role, or the name of an instance-wide role. |
 | `POST /api/management/v1/mcp/clients/{id}/reject` | Rejects a pending client, which is then refused for good. |
+| `PUT /api/management/v1/mcp/clients/{id}/role` | Changes the role of an approved client with `{ "role" }`, and ends its tokens. |
 | `DELETE /api/management/v1/mcp/clients/{id}` | Removes a client with its sessions and tokens. Its access tokens are refused from the next request on. |
 
-`{id}` is the `id` of the list, not the OAuth client id. The codes are `FCMS1603` for an unknown client, `FCMS1604` for a client that is not pending, `FCMS1605` for an approval without a role and `FCMS1606` for an unknown role.
+`{id}` is the `id` of the list, not the OAuth client id. A role is named as for an approval wherever it is given, and need not be one the caller holds, since it only narrows what the user's roles allow.
 
-A client registered, approved, rejected and removed are the events `McpClientRegisteredEvent`, `McpClientApprovedEvent`, `McpClientRejectedEvent` and `McpClientRevokedEvent`, and the activity rows `mcp.client_registered`, `mcp.client_approved`, `mcp.client_rejected` and `mcp.client_revoked`. A client that is not approved within 7 days, a rejected one included, is removed by the daily job `mcp.client-cleanup`.
+A client an administrator registers is the client a registration of its own would make: public with no secret, the code flow with PKCE and refresh tokens, the user's consent, and the scopes `mcp`, `openid`, `profile`, `email` and `offline_access`. Its redirect URIs are held to the same rules, and `name` is `MCP client` when left out. It is approved at once with the role, whatever `clientRegistration` says, and neither `maxPendingClients` nor `registrationsPerHour` counts it.
+
+The tokens of a client carry its role, so changing the role revokes every token of the client: its access tokens are refused from the next request on, and its refresh tokens too. The user signs in through the client again, without being asked for consent again, and the new token carries the new role. A pending client is approved instead, and setting the role a client has changes nothing.
+
+The codes are `FCMS1603` for an unknown client, `FCMS1604` for a client that is not pending, `FCMS1605` for a request without a role, `FCMS1606` for an unknown role, `FCMS1607` for a role change of a client that is not approved, `FCMS1608` for a registration whose name or redirect URIs are refused and `FCMS1609` for a role change that crossed another change of the client.
+
+A client registered, approved, rejected, given another role and removed are the events `McpClientRegisteredEvent`, `McpClientApprovedEvent`, `McpClientRejectedEvent`, `McpClientRoleChangedEvent` and `McpClientRevokedEvent`, and the activity rows `mcp.client_registered`, `mcp.client_approved`, `mcp.client_rejected`, `mcp.client_role_changed` and `mcp.client_revoked`. The row of a client an administrator registered has the administrator as its actor and the status `approved`. A client that is not approved within 7 days, a rejected one included, is removed by the daily job `mcp.client-cleanup`.
 
 ## Content and media tools
 

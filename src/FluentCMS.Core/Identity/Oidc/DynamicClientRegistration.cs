@@ -30,6 +30,11 @@ internal static class DynamicClientRegistration
     private const string InvalidRedirectUri = "invalid_redirect_uri";
     private const string InvalidClientMetadata = "invalid_client_metadata";
 
+    private const string RedirectUriRule = "A redirect URI is an absolute https URI, or an http URI on localhost, 127.0.0.1 or [::1], with no wildcard, fragment or user information.";
+
+    private static readonly string RedirectUriCountRule = $"A client has 1 to {MaxRedirectUris} redirect URIs.";
+    private static readonly string NameRule = $"The name of a client is 1 to {MaxNameLength} characters with no control character.";
+
     private static readonly string[] AllowedGrantTypes = [GrantTypes.AuthorizationCode, GrantTypes.RefreshToken];
 
     public static async Task<IResult> RegisterAsync(HttpContext context)
@@ -106,23 +111,15 @@ internal static class DynamicClientRegistration
             return Invalid(InvalidClientMetadata, "The registration is not a JSON object.");
         }
 
-        if (!body.TryGetProperty("redirect_uris", out var uris) || uris.ValueKind != JsonValueKind.Array || uris.GetArrayLength() is 0 or > MaxRedirectUris)
+        if (!body.TryGetProperty("redirect_uris", out var uris) || uris.ValueKind != JsonValueKind.Array)
         {
-            return Invalid(InvalidRedirectUri, $"redirect_uris is a list of 1 to {MaxRedirectUris} URIs.");
+            return Invalid(InvalidRedirectUri, RedirectUriCountRule);
         }
 
-        List<Uri> redirectUris = [];
-        foreach (var item in uris.EnumerateArray())
+        var (redirectUris, broken) = RedirectUris([.. uris.EnumerateArray().Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() : null)]);
+        if (redirectUris is null)
         {
-            if (item.ValueKind != JsonValueKind.String || RedirectUri(item.GetString()!) is not { } uri)
-            {
-                return Invalid(InvalidRedirectUri, "A redirect URI is an absolute https URI, or an http URI on localhost, 127.0.0.1 or [::1], with no wildcard, fragment or user information.");
-            }
-
-            if (!redirectUris.Exists(known => known.OriginalString == uri.OriginalString))
-            {
-                redirectUris.Add(uri);
-            }
+            return Invalid(InvalidRedirectUri, broken!);
         }
 
         // RFC 7591 reads a missing method as client_secret_basic. This server gives no secret, so a missing method is
@@ -175,11 +172,9 @@ internal static class DynamicClientRegistration
         var name = DefaultName;
         if (body.TryGetProperty("client_name", out var named))
         {
-            if (named.ValueKind != JsonValueKind.String
-                || named.GetString()!.Trim() is not { Length: > 0 and <= MaxNameLength } given
-                || given.Any(char.IsControl))
+            if (named.ValueKind != JsonValueKind.String || ClientName(named.GetString()!) is not { } given)
             {
-                return Invalid(InvalidClientMetadata, $"client_name is 1 to {MaxNameLength} characters with no control character.");
+                return Invalid(InvalidClientMetadata, NameRule);
             }
 
             name = given;
@@ -187,6 +182,55 @@ internal static class DynamicClientRegistration
 
         return (new ClientMetadata(name, redirectUris, grantTypes, scopes), null, null);
     }
+
+    // The metadata of a client an administrator registers for an agent that does not register itself: the name and the
+    // redirect URIs are held to the rules of a registration here, and the rest is what a registration that asks for nothing
+    // else gets. The description says what was refused.
+    internal static (ClientMetadata? Metadata, string? Description) ForAdministrator(string? name, IReadOnlyList<string?> redirectUris)
+    {
+        ArgumentNullException.ThrowIfNull(redirectUris);
+
+        var (uris, refused) = RedirectUris(redirectUris);
+        if (uris is null)
+        {
+            return (null, refused);
+        }
+
+        var given = name is null ? DefaultName : ClientName(name);
+        return given is null
+            ? (null, NameRule)
+            : (new ClientMetadata(given, uris, [.. AllowedGrantTypes], [.. AuthorizationServer.RegisteredClientScopes]), null);
+    }
+
+    // The redirect URIs of a client in the order given, without duplicates, or the rule one of them breaks. A null is a
+    // value that was not a string.
+    internal static (List<Uri>? RedirectUris, string? Refused) RedirectUris(IReadOnlyList<string?> values)
+    {
+        if (values.Count is 0 or > MaxRedirectUris)
+        {
+            return (null, RedirectUriCountRule);
+        }
+
+        List<Uri> uris = [];
+        foreach (var value in values)
+        {
+            if (value is null || RedirectUri(value) is not { } uri)
+            {
+                return (null, RedirectUriRule);
+            }
+
+            if (!uris.Exists(known => known.OriginalString == uri.OriginalString))
+            {
+                uris.Add(uri);
+            }
+        }
+
+        return (uris, null);
+    }
+
+    // The name of a client, trimmed, or null when it is empty, too long or holds a control character.
+    internal static string? ClientName(string value) =>
+        value.Trim() is { Length: > 0 and <= MaxNameLength } given && !given.Any(char.IsControl) ? given : null;
 
     // https, or http on loopback, where a native client listens. A wildcard would match hosts or paths the client did not
     // name, a fragment is not sent to the server, and user information is a way to dress one host up as another.

@@ -1,5 +1,4 @@
 using System.Net;
-using FluentCMS.Activity;
 using FluentCMS.Agents;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
@@ -73,18 +72,21 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
     {
         var host = fixture.Host;
         using var admin = await KeyAsync(host);
-        var configured = await ApplicationIdAsync(FluentCmsTestHost.OAuthClientId);
+        var configured = await ApplicationIdAsync(host, FluentCmsTestHost.OAuthClientId);
 
         using var approved = await ApproveAsync(admin, configured, BuiltInRoles.EditorName);
         using var rejected = await RejectAsync(admin, configured);
+        using var roleChanged = await ChangeRoleAsync(admin, configured, BuiltInRoles.EditorName);
         using var revoked = await RevokeAsync(admin, configured);
 
         (await FindAsync(admin, FluentCmsTestHost.OAuthClientId)).ShouldBeNull();
         approved.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await CodeAsync(approved)).ShouldBe("FCMS1603");
         rejected.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        roleChanged.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await CodeAsync(roleChanged)).ShouldBe("FCMS1603");
         revoked.StatusCode.ShouldBe(HttpStatusCode.NotFound);
-        (await ApplicationIdAsync(FluentCmsTestHost.OAuthClientId)).ShouldBe(configured);
+        (await ApplicationIdAsync(host, FluentCmsTestHost.OAuthClientId)).ShouldBe(configured);
     }
 
     [Fact]
@@ -103,13 +105,15 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         using var anonymous = host.CreateClient();
 
         using var listed = await editor.GetAsync(new Uri(ClientsPath, UriKind.Relative), Token);
+        using var registered = await RegisterAsync(editor, Registration("Editor's agent", BuiltInRoles.EditorName, McpAgent.RedirectUri));
         using var approved = await ApproveAsync(editor, id, BuiltInRoles.EditorName);
         using var rejected = await RejectAsync(editor, id);
+        using var roleChanged = await ChangeRoleAsync(editor, id, BuiltInRoles.EditorName);
         using var revoked = await RevokeAsync(editor, id);
         using var unsigned = await anonymous.GetAsync(new Uri(ClientsPath, UriKind.Relative), Token);
         using var withoutScope = await deliveryKey.GetAsync(new Uri(ClientsPath, UriKind.Relative), Token);
 
-        foreach (var refused in new[] { listed, approved, rejected, revoked })
+        foreach (var refused in new[] { listed, registered, approved, rejected, roleChanged, revoked })
         {
             refused.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
             (await CodeAsync(refused)).ShouldBe("FCMS3103");
@@ -118,12 +122,18 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         unsigned.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         withoutScope.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         (await ListAsync(manager)).Single(item => item!["id"]!.GetValue<Guid>() == id)!["status"]!.GetValue<string>().ShouldBe("pending");
+        (await ListAsync(manager)).ShouldNotContain(item => item!["name"]!.GetValue<string>() == "Editor's agent");
 
         // The permission alone is enough, and the role given to a client need not be one the caller holds: it only limits.
         using var byManager = await ApproveAsync(manager, id, BuiltInRoles.EditorName);
+        using var widened = await ChangeRoleAsync(manager, id, BuiltInRoles.SuperAdminName);
+        var (_, registeredId) = await RegisteredByAdminAsync(manager, BuiltInRoles.SuperAdminName);
         using var removed = await RevokeAsync(manager, id);
+        using var removedRegistered = await RevokeAsync(manager, registeredId);
         byManager.StatusCode.ShouldBe(HttpStatusCode.OK);
+        widened.StatusCode.ShouldBe(HttpStatusCode.OK);
         removed.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        removedRegistered.StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
     [Fact]
@@ -140,17 +150,23 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         var refusedId = await IdOfAsync(admin, refused);
 
         using var approved = await ApproveAsync(admin, keptId, BuiltInRoles.AuthorName);
+        using var roleChanged = await ChangeRoleAsync(admin, keptId, BuiltInRoles.EditorName);
+        using var unchanged = await ChangeRoleAsync(admin, keptId, BuiltInRoles.Editor.ToString("D"));
         using var rejected = await RejectAsync(admin, refusedId);
         using var revoked = await RevokeAsync(admin, keptId);
+        var (desk, deskId) = await RegisteredByAdminAsync(admin, BuiltInRoles.EditorName, "Desk agent");
         approved.StatusCode.ShouldBe(HttpStatusCode.OK);
+        roleChanged.StatusCode.ShouldBe(HttpStatusCode.OK);
+        unchanged.StatusCode.ShouldBe(HttpStatusCode.OK);
         rejected.StatusCode.ShouldBe(HttpStatusCode.OK);
         revoked.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        await DrainOutboxAsync(host);
-        var ofKept = await RowsAsync(administrator, keptId);
-        var ofRefused = await RowsAsync(administrator, refusedId);
+        var ofKept = await RowsAsync(host, administrator, keptId);
+        var ofRefused = await RowsAsync(host, administrator, refusedId);
+        var ofDesk = await RowsAsync(host, administrator, deskId);
 
-        ofKept.Select(row => row.Action).ShouldBe(["mcp.client_registered", "mcp.client_approved", "mcp.client_revoked"], ignoreOrder: true);
+        // Setting the role a client has is no change, so it writes no row.
+        ofKept.Select(row => row.Action).ShouldBe(["mcp.client_registered", "mcp.client_approved", "mcp.client_role_changed", "mcp.client_revoked"], ignoreOrder: true);
         ofRefused.Select(row => row.Action).ShouldBe(["mcp.client_registered", "mcp.client_rejected"], ignoreOrder: true);
         ofKept.Concat(ofRefused).ShouldAllBe(row => row.SiteId == null && row.TargetType == "mcp_client");
         ofKept.ShouldAllBe(row => row.TargetLabel == "Kept agent" && row.Details["clientId"] == kept);
@@ -167,8 +183,30 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         approval.ActorKind.ShouldBe(PrincipalKind.AdminUser);
         approval.Details["role"].ShouldBe(BuiltInRoles.Author.ToString("D"));
         approval.Details["roleName"].ShouldBe(BuiltInRoles.AuthorName);
+
+        var change = ofKept.Single(row => row.Action == "mcp.client_role_changed");
+        change.ActorId.ShouldBe(administrator.Id);
+        change.ActorKind.ShouldBe(PrincipalKind.AdminUser);
+        change.Details["role"].ShouldBe(BuiltInRoles.Editor.ToString("D"));
+        change.Details["roleName"].ShouldBe(BuiltInRoles.EditorName);
+        change.Details["previousRole"].ShouldBe(BuiltInRoles.Author.ToString("D"));
         ofKept.Single(row => row.Action == "mcp.client_revoked").ActorId.ShouldBe(administrator.Id);
         ofRefused.Single(row => row.Action == "mcp.client_rejected").ActorId.ShouldBe(administrator.Id);
+
+        // A client the administrator registered is registered by the administrator, through the administrator's own client,
+        // and approved at once.
+        var byAdministrator = ofDesk.ShouldHaveSingleItem();
+        byAdministrator.Action.ShouldBe("mcp.client_registered");
+        byAdministrator.SiteId.ShouldBeNull();
+        byAdministrator.TargetLabel.ShouldBe("Desk agent");
+        byAdministrator.ActorId.ShouldBe(administrator.Id);
+        byAdministrator.ActorKind.ShouldBe(PrincipalKind.AdminUser);
+        byAdministrator.Origin.ShouldNotBe(Origin.Mcp);
+        byAdministrator.ClientId.ShouldNotBe(desk);
+        byAdministrator.Ip.ShouldBeNull();
+        byAdministrator.Details["clientId"].ShouldBe(desk);
+        byAdministrator.Details["status"].ShouldBe("approved");
+        byAdministrator.Details["role"].ShouldBe(BuiltInRoles.Editor.ToString("D"));
     }
 
     [Fact]
@@ -181,8 +219,7 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         using var admin = await host.AsUserAsync(administrator);
         var id = await IdOfAsync(admin, await agent.RegisteredAsync());
 
-        await DrainOutboxAsync(host);
-        var row = (await RowsAsync(administrator, id)).ShouldHaveSingleItem();
+        var row = (await RowsAsync(host, administrator, id)).ShouldHaveSingleItem();
 
         row.Action.ShouldBe("mcp.client_registered");
         row.Details["status"].ShouldBe("approved");
@@ -247,22 +284,10 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         open.StatusCode.ShouldBe(HttpStatusCode.Created);
     }
 
-    private async Task<IReadOnlyList<ActivityItem>> RowsAsync(TestUser administrator, Guid clientId) =>
-        (await fixture.Host.As(administrator).RunAsync<IActivityQuery, PagedResult<ActivityItem>>(query =>
-            query.QueryAsync(new ActivityFilter { TargetType = "mcp_client", TargetId = clientId.ToString("D"), IncludeInstance = true }, null, Token))).Items;
-
     private async Task<IReadOnlyList<UserSession>> SessionsAsync(Guid user)
     {
         await using var scope = fixture.Host.Services.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<UserSessions>().ListAsync(user, Token);
-    }
-
-    private async Task<Guid> ApplicationIdAsync(string clientId)
-    {
-        await using var scope = fixture.Host.Services.CreateAsyncScope();
-        var applications = scope.ServiceProvider.GetRequiredService<OpenIddict.Abstractions.IOpenIddictApplicationManager>();
-        var application = (await applications.FindByClientIdAsync(clientId, Token)).ShouldNotBeNull();
-        return Guid.Parse((await applications.GetIdAsync(application, Token))!);
     }
 
     // The job as the runner runs it: as the system, in a scope of its own.

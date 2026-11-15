@@ -171,6 +171,12 @@ internal static class ActivityEvents
             ["role"] = message.RoleId.ToString("D"),
             ["roleName"] = message.RoleName,
         }));
+        events.AddActivity<McpClientRoleChangedEvent>("mcp.client_role_changed", message => McpClient("mcp.client_role_changed", message.Id, message.ClientId, message.Name, new Dictionary<string, string?>
+        {
+            ["role"] = message.RoleId.ToString("D"),
+            ["roleName"] = message.RoleName,
+            ["previousRole"] = message.PreviousRoleId.ToString("D"),
+        }));
         events.AddActivity<McpClientRejectedEvent>("mcp.client_rejected", message => McpClient("mcp.client_rejected", message.Id, message.ClientId, message.Name, []));
         events.AddActivity<McpClientRevokedEvent>("mcp.client_revoked", message => McpClient("mcp.client_revoked", message.Id, message.ClientId, message.Name, []));
 

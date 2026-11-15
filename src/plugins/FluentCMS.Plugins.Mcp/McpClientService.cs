@@ -5,6 +5,10 @@ namespace FluentCMS.Plugins.Mcp;
 
 public sealed record McpClientApproval(string? Role);
 
+public sealed record McpClientRegistrationRequest(string? Name, IReadOnlyList<string>? RedirectUris, string? Role);
+
+public sealed record McpClientRoleChange(string? Role);
+
 public sealed record McpClientInfo(
     Guid Id,
     string ClientId,
@@ -19,9 +23,11 @@ public sealed record McpClientInfo(
     DateTimeOffset? ApprovedAt,
     DateTimeOffset? LastActivityAt);
 
-// The MCP clients that registered themselves, for the Management API. A client belongs to the instance, as the
-// authorization server does, so every call needs mcp.manage from a grant with no site limit. Core keeps the clients and
-// makes the changes behind IMcpClients, which checks nothing; this service decides who may ask.
+// The MCP clients that registered themselves, and those an administrator registers, for the Management API. A client
+// belongs to the instance, as the authorization server does, so every call needs mcp.manage from a grant with no site
+// limit. Core keeps the clients and makes the changes behind IMcpClients, which checks nothing; this service decides who
+// may ask. A role is checked the same way wherever it is given: it must exist, and the caller need not hold it, since a
+// client's role only narrows what its users' own roles allow.
 internal sealed class McpClientService(IMcpClients clients, IPermissionChecker permissions)
 {
     public async Task<IReadOnlyList<McpClientInfo>> ListAsync(CancellationToken cancellationToken)
@@ -30,15 +36,26 @@ internal sealed class McpClientService(IMcpClients clients, IPermissionChecker p
         return [.. (await clients.ListAsync(cancellationToken)).Select(Info)];
     }
 
+    public async Task<McpClientInfo> RegisterAsync(McpClientRegistrationRequest? request, CancellationToken cancellationToken)
+    {
+        await RequireAsync(cancellationToken);
+        var role = RoleOf(request?.Role, "Registering a client names its role");
+        var registration = new McpClientRegistration(request!.Name, request.RedirectUris ?? [], role);
+        return Changed(Guid.Empty, await clients.RegisterAsync(registration, cancellationToken), role);
+    }
+
     public async Task<McpClientInfo> ApproveAsync(Guid id, McpClientApproval? approval, CancellationToken cancellationToken)
     {
         await RequireAsync(cancellationToken);
-        if (approval?.Role is not { } role || string.IsNullOrWhiteSpace(role))
-        {
-            throw new PluginException(McpErrorCodes.ClientRoleRequired, "Approving a client names its role: the id of a role, or the name of an instance-wide role.");
-        }
-
+        var role = RoleOf(approval?.Role, "Approving a client names its role");
         return Changed(id, await clients.ApproveAsync(id, role, cancellationToken), role);
+    }
+
+    public async Task<McpClientInfo> ChangeRoleAsync(Guid id, McpClientRoleChange? change, CancellationToken cancellationToken)
+    {
+        await RequireAsync(cancellationToken);
+        var role = RoleOf(change?.Role, "Changing the role of a client names the role");
+        return Changed(id, await clients.ChangeRoleAsync(id, role, cancellationToken), role);
     }
 
     public async Task<McpClientInfo> RejectAsync(Guid id, CancellationToken cancellationToken)
@@ -55,11 +72,19 @@ internal sealed class McpClientService(IMcpClients clients, IPermissionChecker p
 
     private ValueTask RequireAsync(CancellationToken cancellationToken) => permissions.RequireAsync(McpPermissions.Manage, site: null, cancellationToken);
 
+    private static string RoleOf(string? role, string asking) =>
+        string.IsNullOrWhiteSpace(role)
+            ? throw new PluginException(McpErrorCodes.ClientRoleRequired, $"{asking}: the id of a role, or the name of an instance-wide role.")
+            : role;
+
     private static McpClientInfo Changed(Guid id, McpClientChange change, string? role) => change.Outcome switch
     {
         McpClientChangeOutcome.Done => Info(change.Client!),
         McpClientChangeOutcome.NotPending => throw new PluginException(McpErrorCodes.ClientNotPending, $"The MCP client {id:D} is {StatusOf(change.Client!.Status)}; only a client that waits for approval is approved or rejected."),
+        McpClientChangeOutcome.NotApproved => throw new PluginException(McpErrorCodes.ClientNotApproved, $"The MCP client {id:D} is {StatusOf(change.Client!.Status)}; only an approved client changes its role, and a pending one is approved with a role."),
         McpClientChangeOutcome.UnknownRole => throw new PluginException(McpErrorCodes.ClientRoleUnknown, $"There is no role '{role}'. A role is named by its id, or by its name when it is instance-wide."),
+        McpClientChangeOutcome.InvalidRegistration => throw new PluginException(McpErrorCodes.ClientRegistrationInvalid, change.Error ?? "The client cannot be registered."),
+        McpClientChangeOutcome.ChangedMeanwhile => throw new PluginException(McpErrorCodes.ClientChangedMeanwhile, $"The MCP client {id:D} was changed by another request at the same time; read it again before changing it."),
         _ => throw new PluginException(McpErrorCodes.ClientNotFound, $"There is no MCP client {id:D}."),
     };
 
