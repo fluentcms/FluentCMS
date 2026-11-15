@@ -182,7 +182,7 @@ internal sealed partial class ContentService(
                 var prepared = EntryJson.Fields(write.Type, working);
                 (working, var fields) = await RunBeforeHooksAsync(write, HookKind.BeforeCreate, working, new SaveContext(null, Client(sent), writable, document), cancellationToken, prepared);
 
-                await store.WriteDraftAsync(write.Type, document, isNewDocument: true, StoredRows.None, working, fields, write.Operation.Origin, write.Operation.ClientId, cancellationToken);
+                await store.WriteDraftAsync(write.Type, document, isNewDocument: true, StoredRows.None, working, fields, write.Operation, cancellationToken);
 
                 // A row rule on a create grant has no entry to read until now. Each grant then answers for its own
                 // fields (spec 4.8): what was written must be allowed by a grant whose rule holds for this entry.
@@ -782,7 +782,7 @@ internal sealed partial class ContentService(
 
                 // The write changes a row of its own type, which a row rule on a relation to that type may read.
                 known.Readable.Forget(type);
-                known.References = await store.WriteDraftAsync(type, document, isNewDocument: addsLocale, rows, working, fields, write.Operation.Origin, write.Operation.ClientId, cancellationToken);
+                known.References = await store.WriteDraftAsync(type, document, isNewDocument: addsLocale, rows, working, fields, write.Operation, cancellationToken);
                 if (sharedChanged)
                 {
                     await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken);

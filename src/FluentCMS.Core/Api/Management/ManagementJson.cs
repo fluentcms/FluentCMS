@@ -47,6 +47,8 @@ internal static class ManagementJson
             ["locale"] = version.Locale,
             ["status"] = Name(version.Status),
             ["authorId"] = version.AuthorId,
+            ["authorKind"] = Name(version.AuthorKind),
+            ["authorName"] = version.AuthorName,
             ["origin"] = Name(version.Origin),
             ["clientId"] = version.ClientId,
             ["message"] = version.Message,

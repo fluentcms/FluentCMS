@@ -74,7 +74,7 @@ public class SystemModelTests
 
         entity.GetTableName().ShouldBe("cms_version");
         entity.GetProperties().Select(property => property.GetColumnName()).Order(StringComparer.Ordinal).ShouldBe(
-            ["author_id", "client_id", "created_at", "document_id", "id", "locale", "message", "number", "origin", "snapshot", "status_after"]);
+            ["author_id", "author_kind", "author_name", "client_id", "created_at", "document_id", "id", "locale", "message", "number", "origin", "snapshot", "status_after"]);
         IndexColumns(entity, "uq_cms_version_document_locale_number").ShouldBe(["document_id", "locale", "number"]);
     }
 
@@ -249,6 +249,8 @@ public class SystemModelTests
                 Snapshot = """{"title":"Hello"}""",
                 StatusAfter = EntryStatus.Published,
                 AuthorId = author,
+                AuthorKind = PrincipalKind.ApiKey,
+                AuthorName = "Agent key",
                 Origin = Origin.Mcp,
                 ClientId = "agent",
                 Message = "Fix typo",
@@ -263,6 +265,8 @@ public class SystemModelTests
         stored.StatusAfter.ShouldBe(EntryStatus.Published);
         stored.Origin.ShouldBe(Origin.Mcp);
         stored.AuthorId.ShouldBe(author);
+        stored.AuthorKind.ShouldBe(PrincipalKind.ApiKey);
+        stored.AuthorName.ShouldBe("Agent key");
         stored.ClientId.ShouldBe("agent");
         stored.Message.ShouldBe("Fix typo");
         stored.CreatedAt.ShouldBe(Now);

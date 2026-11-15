@@ -414,6 +414,8 @@ namespace FluentCMS.Data.Sqlite.Migrations
                     snapshot = table.Column<string>(type: "TEXT", nullable: false),
                     status_after = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false),
                     author_id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    author_kind = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false),
+                    author_name = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
                     origin = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false),
                     client_id = table.Column<string>(type: "TEXT", nullable: true),
                     message = table.Column<string>(type: "TEXT", nullable: true),
