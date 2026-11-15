@@ -12,8 +12,17 @@ internal static class McpClientEndpoints
         group.MapGet("", async (McpClientService clients, CancellationToken cancellationToken) =>
             Results.Ok(new { items = await clients.ListAsync(cancellationToken) }));
 
+        group.MapPost("", async (McpClientRegistrationRequest? request, McpClientService clients, CancellationToken cancellationToken) =>
+        {
+            var client = await clients.RegisterAsync(request, cancellationToken);
+            return Results.Created($"mcp/clients/{client.Id:D}", client);
+        }).Produces<McpClientInfo>(StatusCodes.Status201Created);
+
         group.MapPost("/{id:guid}/approve", async (Guid id, McpClientApproval? approval, McpClientService clients, CancellationToken cancellationToken) =>
             Results.Ok(await clients.ApproveAsync(id, approval, cancellationToken)));
+
+        group.MapPut("/{id:guid}/role", async (Guid id, McpClientRoleChange? change, McpClientService clients, CancellationToken cancellationToken) =>
+            Results.Ok(await clients.ChangeRoleAsync(id, change, cancellationToken))).Produces<McpClientInfo>();
 
         group.MapPost("/{id:guid}/reject", async (Guid id, McpClientService clients, CancellationToken cancellationToken) =>
             Results.Ok(await clients.RejectAsync(id, cancellationToken)));

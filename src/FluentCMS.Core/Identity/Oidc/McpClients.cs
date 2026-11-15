@@ -20,10 +20,12 @@ internal sealed record RegisteredClient(string ClientId, DateTimeOffset IssuedAt
 // The MCP clients that registered themselves (RFC 7591), over OpenIddict's application manager: the SDK's IMcpClients for
 // the MCP plugin, and the registration itself for the endpoint. Such a client is public, uses the code flow with PKCE and
 // refresh tokens, asks the user's consent, and may ask for the scopes of AuthorizationServer.RegisteredClientScopes only.
-// Its state is one property of its application (McpClientState). A change and its event commit together, and nothing here
-// checks a permission: the plugin's service does.
+// A client an administrator registers is made the same way. Its state is one property of its application (McpClientState).
+// A change and its event commit together, and nothing here checks a permission: the plugin's service does.
 internal sealed class McpClients(
     IOpenIddictApplicationManager applications,
+    IOpenIddictAuthorizationManager authorizations,
+    IOpenIddictTokenManager tokens,
     SystemDbContext context,
     IdentityChanges changes,
     IEventBus events,
@@ -140,6 +142,96 @@ internal sealed class McpClients(
         }
     }
 
+    // A client for an agent that does not register itself, held to the name and redirect URIs of a registration and approved
+    // at once by the caller. No cap or limit of the registration endpoint applies: the caller is an administrator.
+    public async Task<McpClientChange> RegisterAsync(McpClientRegistration registration, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(registration);
+        ArgumentNullException.ThrowIfNull(registration.Role);
+
+        var (metadata, refused) = DynamicClientRegistration.ForAdministrator(registration.Name, registration.RedirectUris);
+        if (metadata is null)
+        {
+            return new McpClientChange(McpClientChangeOutcome.InvalidRegistration, null) { Error = refused };
+        }
+
+        if (await FindRoleAsync(registration.Role, cancellationToken) is not { } role)
+        {
+            return new McpClientChange(McpClientChangeOutcome.UnknownRole, null);
+        }
+
+        var now = time.GetUtcNow();
+        var state = new McpClientState(McpClientStatus.Approved, now)
+        {
+            RoleId = role.Id,
+            ApprovedBy = accessor.Current?.AuditPrincipal.Id,
+            ApprovedAt = now,
+        };
+        var clientId = NewClientId();
+        var descriptor = Describe(clientId, metadata);
+        descriptor.Properties[AuthorizationServer.McpClientProperty] = state.ToProperty();
+
+        return await changes.RunAsync(
+            async () =>
+            {
+                var application = await applications.CreateAsync(descriptor, cancellationToken);
+                var client = (await DescribeAsync(application, cancellationToken))! with { RoleName = role.Name };
+                await changes.RaiseAsync(new McpClientRegisteredEvent(client.Id, clientId, metadata.Name, StatusName(state.Status), role.Id, Ip: null), cancellationToken);
+                return new McpClientChange(McpClientChangeOutcome.Done, client);
+            },
+            cancellationToken);
+    }
+
+    // The tokens of a client carry the role they were issued with, so a new role ends them with the change, and ends the
+    // authorizations they were issued under, the users' consents among them. A refresh that read the old role just before
+    // the change still issues its tokens, under an authorization that is revoked, so they are refused at their first use.
+    // The client's next token comes from a new authorization request, which asks the user's consent again.
+    public async Task<McpClientChange> ChangeRoleAsync(Guid id, string role, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(role);
+
+        try
+        {
+            return await changes.RunAsync(
+                async () =>
+                {
+                    if (await FindAsync(id, cancellationToken) is not var (application, client, state))
+                    {
+                        return new McpClientChange(McpClientChangeOutcome.NotFound, null);
+                    }
+
+                    if (!state.IsApproved)
+                    {
+                        return new McpClientChange(McpClientChangeOutcome.NotApproved, client);
+                    }
+
+                    if (await FindRoleAsync(role, cancellationToken) is not { } found)
+                    {
+                        return new McpClientChange(McpClientChangeOutcome.UnknownRole, client);
+                    }
+
+                    if (found.Id == state.RoleId)
+                    {
+                        return new McpClientChange(McpClientChangeOutcome.Done, client with { RoleName = found.Name });
+                    }
+
+                    var changed = state with { RoleId = found.Id };
+                    await StoreAsync(application, changed, cancellationToken);
+                    await authorizations.RevokeByApplicationIdAsync(id.ToString("D"), cancellationToken);
+                    await tokens.RevokeByApplicationIdAsync(id.ToString("D"), cancellationToken);
+                    await changes.RaiseAsync(new McpClientRoleChangedEvent(client.Id, client.ClientId, client.Name, found.Id, found.Name, state.RoleId!.Value), cancellationToken);
+                    return new McpClientChange(McpClientChangeOutcome.Done, With(client, changed) with { RoleName = found.Name });
+                },
+                cancellationToken);
+        }
+        catch (OpenIddictExceptions.ConcurrencyException)
+        {
+            // The application this change read is not the one in the store any more, so it is not known what it would
+            // have changed; the caller reads the client again.
+            return new McpClientChange(McpClientChangeOutcome.ChangedMeanwhile, null);
+        }
+    }
+
     // The EF store deletes the client's authorizations and tokens with it, and a bearer request reads its token's row, so
     // an access token of the client is refused from the next request on.
     public Task<McpClientChange> RevokeAsync(Guid id, CancellationToken cancellationToken = default) =>
@@ -199,7 +291,7 @@ internal sealed class McpClients(
             ? new McpClientState(McpClientStatus.Pending, now)
             : new McpClientState(McpClientStatus.Approved, now) { RoleId = role.Id, ApprovedAt = now };
 
-        var clientId = "mcp-" + RandomNumberGenerator.GetHexString(32, lowercase: true);
+        var clientId = NewClientId();
         var descriptor = Describe(clientId, metadata);
         descriptor.Properties[AuthorizationServer.McpClientProperty] = state.ToProperty();
 
@@ -259,6 +351,8 @@ internal sealed class McpClients(
 
         return descriptor;
     }
+
+    private static string NewClientId() => "mcp-" + RandomNumberGenerator.GetHexString(32, lowercase: true);
 
     private async Task<int> CountPendingAsync(CancellationToken cancellationToken)
     {

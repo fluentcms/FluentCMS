@@ -6,7 +6,7 @@ namespace FluentCMS.Plugins.Mcp;
 
 // What the plugin adds for the MCP clients that register themselves (RFC 7591): the settings area with the registration
 // policy, which core's /connect/register asks, the service behind the Management endpoints, the cleanup of clients nobody
-// approved, and the codes FCMS1603 to FCMS1606.
+// approved, and the codes FCMS1603 to FCMS1609.
 internal static class McpClientSetup
 {
     public static void Add(IPluginServiceBuilder plugin)
@@ -22,6 +22,9 @@ internal static class McpClientSetup
             .AddErrorCode(McpErrorCodes.ClientNotFound, 404, "MCP client not found")
             .AddErrorCode(McpErrorCodes.ClientNotPending, 409, "MCP client is not pending")
             .AddErrorCode(McpErrorCodes.ClientRoleRequired, 422, "MCP client role missing")
-            .AddErrorCode(McpErrorCodes.ClientRoleUnknown, 422, "Unknown role for an MCP client");
+            .AddErrorCode(McpErrorCodes.ClientRoleUnknown, 422, "Unknown role for an MCP client")
+            .AddErrorCode(McpErrorCodes.ClientNotApproved, 409, "MCP client is not approved")
+            .AddErrorCode(McpErrorCodes.ClientRegistrationInvalid, 422, "MCP client registration refused")
+            .AddErrorCode(McpErrorCodes.ClientChangedMeanwhile, 409, "MCP client changed meanwhile");
     }
 }

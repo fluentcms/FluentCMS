@@ -1,9 +1,10 @@
 namespace FluentCMS.Agents;
 
 /// <summary>
-/// The MCP clients of the instance: the OAuth clients that registered themselves at the authorization server (RFC 7591).
-/// Core implements it over its client store, and the MCP plugin calls it from its Management endpoints and its jobs. It
-/// checks no permission, so <c>mcp.manage</c> is enforced by the caller. A client belongs to no site.
+/// The MCP clients of the instance: the OAuth clients that registered themselves at the authorization server (RFC 7591),
+/// and those an administrator registered under the same rules. Core implements it over its client store, and the MCP plugin
+/// calls it from its Management endpoints and its jobs. It checks no permission, so <c>mcp.manage</c> is enforced by the
+/// caller. A client belongs to no site.
 /// </summary>
 public interface IMcpClients
 {
@@ -21,6 +22,27 @@ public interface IMcpClients
     /// <param name="cancellationToken">Cancels the change.</param>
     /// <returns>The outcome, with the client as it is now.</returns>
     Task<McpClientChange> ApproveAsync(Guid id, string role, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Registers a client for an agent that does not register itself, under the rules of dynamic registration: public, with
+    /// no secret, the code flow with PKCE and refresh tokens, the user's consent and redirect URIs on https or on loopback.
+    /// It is approved at once with the role. Raises <see cref="Events.McpClientRegisteredEvent"/>.
+    /// </summary>
+    /// <param name="registration">The name, the redirect URIs and the role of the client.</param>
+    /// <param name="cancellationToken">Cancels the change.</param>
+    /// <returns>The outcome, with the client as it is now.</returns>
+    Task<McpClientChange> RegisterAsync(McpClientRegistration registration, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Changes the role of an approved client and ends its tokens, access and refresh tokens alike, and the users' consents
+    /// to it, so that its next token comes from a new sign-in, where the user consents again, and carries the new role.
+    /// Setting the role it has changes nothing. Raises <see cref="Events.McpClientRoleChangedEvent"/>.
+    /// </summary>
+    /// <param name="id">The id of the client.</param>
+    /// <param name="role">The id of a role, or the exact name of an instance-wide role.</param>
+    /// <param name="cancellationToken">Cancels the change.</param>
+    /// <returns>The outcome, with the client as it is now.</returns>
+    Task<McpClientChange> ChangeRoleAsync(Guid id, string role, CancellationToken cancellationToken = default);
 
     /// <summary>Rejects a pending client, which is then refused for good. Raises <see cref="Events.McpClientRejectedEvent"/>.</summary>
     /// <param name="id">The id of the client.</param>
@@ -44,7 +66,13 @@ public interface IMcpClients
     Task<int> RemoveUnapprovedAsync(DateTimeOffset registeredBefore, CancellationToken cancellationToken = default);
 }
 
-/// <summary>An MCP client that registered itself.</summary>
+/// <summary>A client an administrator registers.</summary>
+/// <param name="Name">The name the consent page shows; <c>MCP client</c> when it is <see langword="null"/>.</param>
+/// <param name="RedirectUris">The redirect URIs, as a client that registers itself gives them.</param>
+/// <param name="Role">The id of a role, or the exact name of an instance-wide role.</param>
+public sealed record McpClientRegistration(string? Name, IReadOnlyList<string> RedirectUris, string Role);
+
+/// <summary>An MCP client that registered itself, or that an administrator registered.</summary>
 /// <param name="Id">The id of the client in the store, which the Management API names it by.</param>
 /// <param name="ClientId">The OAuth client id it was given.</param>
 /// <param name="Name">The name it gave itself, which the consent page shows.</param>
@@ -88,7 +116,11 @@ public enum McpClientStatus
 /// <summary>What a change to an MCP client came to.</summary>
 /// <param name="Outcome">Whether the change was made, and why not otherwise.</param>
 /// <param name="Client">The client, or <see langword="null"/> when there is none of that id.</param>
-public sealed record McpClientChange(McpClientChangeOutcome Outcome, McpClient? Client);
+public sealed record McpClientChange(McpClientChangeOutcome Outcome, McpClient? Client)
+{
+    /// <summary>What is wrong with a registration that was refused; <see langword="null"/> for any other outcome.</summary>
+    public string? Error { get; init; }
+}
 
 /// <summary>The outcome of a change to an MCP client.</summary>
 public enum McpClientChangeOutcome
@@ -104,4 +136,13 @@ public enum McpClientChangeOutcome
 
     /// <summary>No role has the id or the name given.</summary>
     UnknownRole = 3,
+
+    /// <summary>The client is not approved, so its role is not changed: a pending client is approved with a role.</summary>
+    NotApproved = 4,
+
+    /// <summary>The name or the redirect URIs of a registration were refused, as <see cref="McpClientChange.Error"/> says.</summary>
+    InvalidRegistration = 5,
+
+    /// <summary>Another change of the client was made at the same time, so this one was not.</summary>
+    ChangedMeanwhile = 6,
 }

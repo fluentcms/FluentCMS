@@ -1,10 +1,13 @@
 using System.Buffers.Text;
+using System.Collections.Immutable;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using FluentCMS.Activity;
 using FluentCMS.Agents;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
@@ -17,6 +20,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using OpenIddict.Abstractions;
+using OpenIddict.Core;
+using OpenIddict.EntityFrameworkCore.Models;
 using Shouldly;
 using static FluentCMS.Plugins.Mcp.Tests.McpTesting;
 
@@ -30,6 +38,70 @@ public sealed class McpClientFixture : IAsyncDisposable
         .WithServices(services => services.PostConfigure<RateLimitOptions>(limits => limits.Auth.PermitLimit = 10_000));
 
     public ValueTask DisposeAsync() => Host.DisposeAsync();
+}
+
+// The host of the tests that cross two changes of a client: the same host, with the application manager of OpenIddict
+// behind hooks that a test arms for one call.
+public sealed class McpClientHookFixture : IAsyncDisposable
+{
+    public McpClientHookFixture()
+    {
+        Host = McpTesting.Host().WithServices(services =>
+        {
+            services.PostConfigure<RateLimitOptions>(limits => limits.Auth.PermitLimit = 10_000);
+            // The manager of the interface is resolved by its closed type, which comes before OpenIddict's open registration.
+            services.AddSingleton(Hooks);
+            services.AddScoped<OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>, HookedApplicationManager>();
+        });
+    }
+
+    public FluentCmsTestHost Host { get; }
+
+    public ApplicationManagerHooks Hooks { get; } = new();
+
+    public ValueTask DisposeAsync() => Host.DisposeAsync();
+}
+
+// What runs, once, in place of the next call of the application manager: work before the next read of a client's
+// properties, which then answers what it read before the work, as a request that read them just before a change does;
+// or a refusal of the next update, as when another change of the application got there first.
+public sealed class ApplicationManagerHooks
+{
+    private Func<Task>? _beforeRead;
+    private int _failUpdate;
+
+    public void BeforeNextPropertiesRead(Func<Task> work) => _beforeRead = work;
+
+    public void FailNextUpdate() => _failUpdate = 1;
+
+    internal Func<Task>? TakeBeforeRead() => Interlocked.Exchange(ref _beforeRead, null);
+
+    internal bool TakeFailUpdate() => Interlocked.Exchange(ref _failUpdate, 0) == 1;
+}
+
+public sealed class HookedApplicationManager(
+    IOpenIddictApplicationCache<OpenIddictEntityFrameworkCoreApplication<Guid>> cache,
+    ILogger<OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>> logger,
+    IOptionsMonitor<OpenIddictCoreOptions> options,
+    IOpenIddictApplicationStore<OpenIddictEntityFrameworkCoreApplication<Guid>> store,
+    ApplicationManagerHooks hooks) : OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>(cache, logger, options, store)
+{
+    public override async ValueTask<ImmutableDictionary<string, JsonElement>> GetPropertiesAsync(OpenIddictEntityFrameworkCoreApplication<Guid> application, CancellationToken cancellationToken = default)
+    {
+        var properties = await base.GetPropertiesAsync(application, cancellationToken);
+        if (hooks.TakeBeforeRead() is { } work)
+        {
+            await work();
+        }
+
+        return properties;
+    }
+
+    // Every update of an application ends here, the one with a descriptor included.
+    public override ValueTask UpdateAsync(OpenIddictEntityFrameworkCoreApplication<Guid> application, CancellationToken cancellationToken = default) =>
+        hooks.TakeFailUpdate()
+            ? ValueTask.FromException(new OpenIddictExceptions.ConcurrencyException("The application was changed by another request."))
+            : base.UpdateAsync(application, cancellationToken);
 }
 
 // What an authorization request came to: a code at the client's redirect URI, the error the client or the error page
@@ -265,6 +337,61 @@ internal static class McpClientTesting
 
     public static Task<HttpResponseMessage> RevokeAsync(HttpClient admin, Guid id) =>
         admin.DeleteAsync(new Uri($"{ClientsPath}/{id:D}", UriKind.Relative), Token);
+
+    // The body of an administrator's registration; a null leaves the member out.
+    public static string Registration(string? name, string? role, params string[] redirectUris)
+    {
+        var body = new JsonObject { ["redirectUris"] = new JsonArray([.. redirectUris.Select(uri => JsonValue.Create(uri))]) };
+        if (name is not null)
+        {
+            body["name"] = name;
+        }
+
+        if (role is not null)
+        {
+            body["role"] = role;
+        }
+
+        return body.ToJsonString();
+    }
+
+    public static async Task<HttpResponseMessage> RegisterAsync(HttpClient admin, string json)
+    {
+        using var content = new StringContent(json, Encoding.UTF8, "application/json");
+        return await admin.PostAsync(new Uri(ClientsPath, UriKind.Relative), content, Token);
+    }
+
+    // A client an administrator registered for the agent's redirect URI: its OAuth client id and its id in the store.
+    public static async Task<(string ClientId, Guid Id)> RegisteredByAdminAsync(HttpClient admin, string role, string name = "Registered agent")
+    {
+        using var response = await RegisterAsync(admin, Registration(name, role, McpAgent.RedirectUri));
+        response.StatusCode.ShouldBe(HttpStatusCode.Created, await response.Content.ReadAsStringAsync(Token));
+        var client = await JsonAsync(response);
+        return (client["clientId"]!.GetValue<string>(), client["id"]!.GetValue<Guid>());
+    }
+
+    public static async Task<HttpResponseMessage> ChangeRoleAsync(HttpClient admin, Guid id, string? role)
+    {
+        using var content = new StringContent(role is null ? "{}" : $$"""{ "role": "{{role}}" }""", Encoding.UTF8, "application/json");
+        return await admin.PutAsync(new Uri($"{ClientsPath}/{id:D}/role", UriKind.Relative), content, Token);
+    }
+
+    // The activity rows of a client, as a reader of the instance's activity sees them, once the outbox is drained.
+    public static async Task<IReadOnlyList<ActivityItem>> RowsAsync(FluentCmsTestHost host, TestUser reader, Guid clientId)
+    {
+        await DrainOutboxAsync(host);
+        return (await host.As(reader).RunAsync<IActivityQuery, PagedResult<ActivityItem>>(query =>
+            query.QueryAsync(new ActivityFilter { TargetType = "mcp_client", TargetId = clientId.ToString("D"), IncludeInstance = true }, null, Token))).Items;
+    }
+
+    // The id in the store of a client of the configuration, which the Management API does not list.
+    public static async Task<Guid> ApplicationIdAsync(FluentCmsTestHost host, string clientId)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        var applications = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        var application = (await applications.FindByClientIdAsync(clientId, Token)).ShouldNotBeNull();
+        return Guid.Parse((await applications.GetIdAsync(application, Token))!);
+    }
 
     // Registers a client and approves it with a role: its OAuth client id and its id in the store.
     public static async Task<(string ClientId, Guid Id)> ApprovedAsync(McpAgent agent, HttpClient admin, string role, string name = "Test agent")

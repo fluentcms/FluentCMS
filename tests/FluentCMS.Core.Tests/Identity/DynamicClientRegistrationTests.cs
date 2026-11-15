@@ -134,6 +134,40 @@ public sealed class DynamicClientRegistrationTests
         error.ShouldBe("invalid_client_metadata");
     }
 
+    // A client an administrator registers is held to the same redirect URIs and name, and gets what a registration that
+    // asks for nothing else gets.
+    [Fact]
+    public void AClientAnAdministratorRegistersGetsTheDefaultsOfARegistration()
+    {
+        var (metadata, refused) = DynamicClientRegistration.ForAdministrator(null, ["https://app.example.com/cb", "https://app.example.com/cb", "http://[::1]:7777/cb"]);
+
+        refused.ShouldBeNull();
+        metadata.ShouldNotBeNull();
+        metadata.Name.ShouldBe(DynamicClientRegistration.DefaultName);
+        metadata.RedirectUris.Select(uri => uri.OriginalString).ShouldBe(["https://app.example.com/cb", "http://[::1]:7777/cb"]);
+        metadata.GrantTypes.ShouldBe([GrantTypes.AuthorizationCode, GrantTypes.RefreshToken]);
+        metadata.Scopes.ShouldBe(["mcp", "openid", "profile", "email", "offline_access"]);
+        DynamicClientRegistration.ForAdministrator("  Desk  ", ["https://app.example.com/cb"]).Metadata.ShouldNotBeNull().Name.ShouldBe("Desk");
+    }
+
+    [Theory]
+    [InlineData("Agent", new string[0])]
+    [InlineData("Agent", new[] { "http://app.example.com/cb" })]
+    [InlineData("Agent", new[] { "https://app.example.com/*" })]
+    [InlineData("Agent", new[] { "https://app.example.com/cb#part" })]
+    [InlineData("Agent", new[] { "https://user@app.example.com/cb" })]
+    [InlineData("Agent", new[] { "https://a/1", "https://a/2", "https://a/3", "https://a/4", "https://a/5", "https://a/6", "https://a/7", "https://a/8", "https://a/9", "https://a/10", "https://a/11" })]
+    [InlineData("Agent", new[] { "https://app.example.com/cb", null })]
+    [InlineData("", new[] { "https://app.example.com/cb" })]
+    [InlineData("Line\nbreak", new[] { "https://app.example.com/cb" })]
+    public void AClientAnAdministratorRegistersIsRefusedWhatARegistrationIsRefused(string name, string?[] redirectUris)
+    {
+        var (metadata, refused) = DynamicClientRegistration.ForAdministrator(name, redirectUris);
+
+        metadata.ShouldBeNull();
+        refused.ShouldNotBeNullOrWhiteSpace();
+    }
+
     [Fact]
     public void TheClientIsPublicWithPkceConsentAndOnlyTheScopesOfARegisteredClient()
     {
