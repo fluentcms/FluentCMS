@@ -463,7 +463,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
     public void TheAccessLocalesAndPreferencesOfTheCallerHaveTheirSchemas()
     {
         var access = Response(Paths[$"{Management}/me/access"]!["get"]!, "200");
-        access["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["site", "locale", "permissions", "instancePermissions", "search", "types"]);
+        access["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["site", "locale", "permissions", "instancePermissions", "limitedPermissions", "search", "types"]);
         access["properties"]!["permissions"]!["items"]!["type"]!.GetValue<string>().ShouldBe("string");
         var type = Resolve(access["properties"]!["types"]!["additionalProperties"]!);
         type["properties"]!.AsObject().Select(item => item.Key)

@@ -56,6 +56,21 @@ public sealed class MePreferencesTests(AdminFixture fixture) : IClassFixture<Adm
         (await fixture.GetAsync("me/preferences", user)).Json.ToJsonString().ShouldBe(Nothing);
     }
 
+    // Once the platform has found a zone it finds it again in any case; the id kept is the platform's own.
+    [Fact]
+    public async Task ATimeZoneIsKeptByItsOwnId()
+    {
+        using var user = await fixture.ClientForAsync(BuiltInRoles.EditorName);
+        (await fixture.PutAsync("me/preferences", """{ "timeZone": "Europe/Berlin" }""", user)).Status.ShouldBe(HttpStatusCode.OK);
+
+        var cased = await fixture.PutAsync("me/preferences", """{ "timeZone": "europe/BERLIN" }""", user);
+
+        cased.Status.ShouldBe(HttpStatusCode.OK, cased.Body?.ToJsonString());
+        cased.Json["timeZone"]!.GetValue<string>().ShouldBe("Europe/Berlin");
+
+        (await fixture.GetAsync("me/preferences", user)).Json["timeZone"]!.GetValue<string>().ShouldBe("Europe/Berlin");
+    }
+
     [Fact]
     public async Task AKeyHasNoPreferences()
     {

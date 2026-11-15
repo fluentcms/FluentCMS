@@ -70,6 +70,63 @@ public sealed class MeAccessTests(AdminFixture fixture) : IClassFixture<AdminFix
         (await AdminFixture.SendAsync(editor, HttpMethod.Patch, $"content/person/{personId}", """{ "name": "Other" }""", "\"1\"")).Status.ShouldBe(HttpStatusCode.NotFound);
     }
 
+    // Every field of its own pages and the title of any page: the update is conditional, since the service lets the other
+    // fields through on the editor's own entries only.
+    [Fact]
+    public async Task AFieldThatOnlyARowRuleGivesMakesTheUpdateConditional()
+    {
+        var role = await fixture.CreateRoleAsync($$"""
+            { "name": "Pages {{Guid.NewGuid():N}}", "grants": [
+              { "permission": "content.page.read" },
+              { "permission": "content.page.create" },
+              { "permission": "content.page.update", "constraints": { "rowRule": "own-entries" } },
+              { "permission": "content.page.update", "constraints": { "fields": ["title"] } }
+            ] }
+            """);
+        using var editor = await fixture.Host.AsUserAsync(await fixture.Host.CreateUserAsync(await RoleNameAsync(role), cancellationToken: Token));
+
+        var page = (await fixture.GetAsync("me/access", editor)).Json["types"]!["page"]!;
+
+        page["update"]!.GetValue<bool>().ShouldBeTrue();
+        Strings(page["updatableFields"]).ShouldBe(["title", "section", "meta"]);
+        Strings(page["conditional"]).ShouldBe(["update"]);
+
+        var others = await fixture.PostAsync("content/page", """{ "title": "Theirs", "section": "news" }""");
+        others.Status.ShouldBe(HttpStatusCode.Created, others.Body?.ToJsonString());
+        var theirs = others.Json["id"]!.GetValue<string>();
+        (await AdminFixture.SendAsync(editor, HttpMethod.Patch, $"content/page/{theirs}", """{ "title": "Renamed" }""", "\"1\"")).Status.ShouldBe(HttpStatusCode.OK);
+        var refused = await AdminFixture.SendAsync(editor, HttpMethod.Patch, $"content/page/{theirs}", """{ "section": "sport" }""", "\"2\"");
+        refused.Status.ShouldBe(HttpStatusCode.UnprocessableEntity, refused.Body?.ToJsonString());
+        refused.Body!.ToJsonString().ShouldContain(AuthorizationErrorCodes.FieldNotWritable);
+
+        var created = await AdminFixture.SendAsync(editor, HttpMethod.Post, "content/page", """{ "title": "Mine", "section": "news" }""");
+        created.Status.ShouldBe(HttpStatusCode.Created, created.Body?.ToJsonString());
+        var mine = created.Json["id"]!.GetValue<string>();
+        (await AdminFixture.SendAsync(editor, HttpMethod.Patch, $"content/page/{mine}", """{ "section": "sport" }""", "\"1\"")).Status.ShouldBe(HttpStatusCode.OK);
+    }
+
+    // A core route asks for a grant with no resource limit, so one limited to resources is not listed as held, and the
+    // route refuses as the answer says.
+    [Fact]
+    public async Task APermissionLimitedToResourcesIsListedAsLimitedNotAsHeld()
+    {
+        var role = await fixture.CreateRoleAsync($$"""
+            { "name": "Limited {{Guid.NewGuid():N}}", "grants": [
+              { "permission": "schema.read" },
+              { "permission": "users.manage", "constraints": { "resources": ["someone"] } }
+            ] }
+            """);
+        using var limited = await fixture.Host.AsUserAsync(await fixture.Host.CreateUserAsync(await RoleNameAsync(role), cancellationToken: Token));
+
+        var access = await fixture.GetAsync("me/access", limited);
+
+        access.Status.ShouldBe(HttpStatusCode.OK, access.Body?.ToJsonString());
+        Strings(access.Json["permissions"]).ShouldBe(["schema.read"]);
+        Strings(access.Json["instancePermissions"]).ShouldBe(["schema.read"]);
+        Strings(access.Json["limitedPermissions"]).ShouldBe(["users.manage"]);
+        (await fixture.GetAsync("users", limited)).Status.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
     // A grant shows nothing of a type the caller may not read, not even a write it holds on it.
     [Fact]
     public async Task ATypeTheCallerMayNotReadIsLeftOut()

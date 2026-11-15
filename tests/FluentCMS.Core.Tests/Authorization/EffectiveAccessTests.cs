@@ -84,6 +84,27 @@ public class EffectiveAccessTests
         article.Conditional.ShouldBe(["update", "publish"], ignoreOrder: true);
     }
 
+    // A grant for every entry gives the title, one with a row rule or a locale limit every field: the fields it adds hold on
+    // some entries only, so the write is conditional although some grant holds for every entry.
+    [Fact]
+    public async Task AWriteIsConditionalWhenOnlyAGrantForSomeEntriesGivesSomeOfItsFields()
+    {
+        var access = Access(
+            Managing(),
+            new EffectiveGrant("content.article.read", PermissionConstraints.None, null),
+            new EffectiveGrant("content.article.update", new PermissionConstraints { RowRule = "own-entries" }, null),
+            new EffectiveGrant("content.article.update", new PermissionConstraints { Fields = ["title"] }, null),
+            new EffectiveGrant("content.article.create", new PermissionConstraints { Locales = ["en"] }, null),
+            new EffectiveGrant("content.article.create", new PermissionConstraints { Fields = ["title"] }, null),
+            new EffectiveGrant("content.article.publish", new PermissionConstraints { RowRule = "own-entries" }, null),
+            new EffectiveGrant("content.article.publish", PermissionConstraints.None, null));
+
+        var article = (await access.ContentAsync(Token)).Types["article"];
+
+        article.UpdatableFields.Count.ShouldBeGreaterThan(1);
+        article.Conditional.ShouldBe(["create", "update"], ignoreOrder: true);
+    }
+
     [Fact]
     public async Task ThroughAClientAnOperationIsConditionalWhenEitherSetLimitsIt()
     {

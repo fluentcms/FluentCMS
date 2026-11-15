@@ -71,7 +71,8 @@ internal sealed class UserPreferences(SystemDbContext context, TimeProvider cloc
         {
             try
             {
-                ScheduleTime.FindZone(timeZone, "timeZone");
+                // The platform keeps the zones it found and finds them again in any case, so its own id is the one kept.
+                timeZone = ScheduleTime.FindZone(timeZone, "timeZone").Id;
             }
             catch (ValidationException refused)
             {

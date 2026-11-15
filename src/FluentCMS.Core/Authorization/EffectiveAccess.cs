@@ -43,9 +43,9 @@ internal sealed class EffectiveAccess(
                 Delete = permissions.Allows(type, ContentOperation.Delete, target),
                 Publish = permissions.Allows(type, ContentOperation.Publish, target),
                 Unpublish = permissions.Allows(type, ContentOperation.Unpublish, target),
-                CreatableFields = Writable(permissions, type, shown, ContentOperation.Create, target),
-                UpdatableFields = Writable(permissions, type, shown, ContentOperation.Update, target),
-                Conditional = Conditional(permissions, type, target),
+                CreatableFields = Writable(permissions, type, shown, ContentOperation.Create, target, _ => true),
+                UpdatableFields = Writable(permissions, type, shown, ContentOperation.Update, target, _ => true),
+                Conditional = Conditional(permissions, type, shown, target),
             };
         }
 
@@ -68,7 +68,7 @@ internal sealed class EffectiveAccess(
     // principal that came through an MCP client that registered itself is held to the role of its client too (spec 4.8,
     // "Client roles as built"), so a field counts when the grants of the principal let it through and those of that role
     // do, as the evaluator decides a write.
-    private static HashSet<string> Writable(EffectivePermissions permissions, SchemaType type, SchemaType shown, ContentOperation operation, AccessTarget target)
+    private static HashSet<string> Writable(EffectivePermissions permissions, SchemaType type, SchemaType shown, ContentOperation operation, AccessTarget target, Func<EffectiveGrant, bool> counts)
     {
         var writable = shown.Fields.Select(field => field.Name).ToHashSet(StringComparer.Ordinal);
         if (permissions.IsSystem)
@@ -78,7 +78,7 @@ internal sealed class EffectiveAccess(
 
         for (var set = permissions; set is not null; set = set.Limit)
         {
-            var grants = set.GrantsOf(type, operation, target);
+            var grants = set.GrantsOf(type, operation, target).Where(counts).ToList();
             if (!grants.Any(grant => grant.Constraints.Fields is null))
             {
                 writable.IntersectWith(grants.SelectMany(grant => grant.Constraints.Fields!));
@@ -89,8 +89,10 @@ internal sealed class EffectiveAccess(
     }
 
     // The operations the principal may do that no grant gives for every entry: each grant behind them has a row rule or a
-    // locale limit, which the service asks of the entry. Through an MCP client, a limit of either set counts.
-    private static HashSet<string> Conditional(EffectivePermissions permissions, SchemaType type, AccessTarget target)
+    // locale limit, which the service asks of the entry. Through an MCP client, a limit of either set counts. A create or
+    // an update is conditional too when such a grant adds fields to those the others give, since the service then lets
+    // them through only on some entries.
+    private static HashSet<string> Conditional(EffectivePermissions permissions, SchemaType type, SchemaType shown, AccessTarget target)
     {
         HashSet<string> conditional = new(StringComparer.Ordinal);
         if (permissions.IsSystem)
@@ -105,18 +107,23 @@ internal sealed class EffectiveAccess(
                 continue;
             }
 
-            for (var set = permissions; set is not null; set = set.Limit)
+            var everyEntry = true;
+            for (var set = permissions; set is not null && everyEntry; set = set.Limit)
             {
-                if (!set.GrantsOf(type, operation, target).Any(grant => grant.Constraints.RowRule is null && grant.Constraints.Locales is null))
-                {
-                    conditional.Add(CorePermissions.OperationName(operation));
-                    break;
-                }
+                everyEntry = set.GrantsOf(type, operation, target).Any(ForEveryEntry);
+            }
+
+            if (!everyEntry || (operation is ContentOperation.Create or ContentOperation.Update
+                && Writable(permissions, type, shown, operation, target, ForEveryEntry).Count < Writable(permissions, type, shown, operation, target, _ => true).Count))
+            {
+                conditional.Add(CorePermissions.OperationName(operation));
             }
         }
 
         return conditional;
     }
+
+    private static bool ForEveryEntry(EffectiveGrant grant) => grant.Constraints.RowRule is null && grant.Constraints.Locales is null;
 
     // Thrown rather than answered empty, as ManagementAuthority does: code that forgot its operation fails where it runs.
     private OperationContext Operation() => accessor.Current ?? throw new InvalidOperationException(

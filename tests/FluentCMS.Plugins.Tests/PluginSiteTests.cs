@@ -52,6 +52,23 @@ public sealed class PluginSiteTests(PluginSiteFixture fixture) : IClassFixture<P
         (await host.Services.GetRequiredService<IPluginState>().IsEnabledAsync("sample", new SiteId(docs), Token)).ShouldBeTrue();
     }
 
+    // GET /me/access in a site lists no permission of a plugin whose routes answer 404 there.
+    [Fact]
+    public async Task TheAccessOfTheCallerLeavesOutThePermissionsOfAPluginDisabledInItsSite()
+    {
+        var host = fixture.Host;
+        var docs = await CreateSiteAsync(host);
+        using var admin = await AdminAsync(host);
+        await DisableAsync(host, docs);
+
+        using var off = await SendAsync(admin, HttpMethod.Get, "/api/management/v1/me/access", docs);
+        using var on = await SendAsync(admin, HttpMethod.Get, "/api/management/v1/me/access", DefaultSite.Id);
+
+        off.StatusCode.ShouldBe(HttpStatusCode.OK);
+        Strings(JsonNode.Parse(await off.Content.ReadAsStringAsync(Token))!["permissions"]!).ShouldNotContain(SamplePermissions.NotesManage);
+        Strings(JsonNode.Parse(await on.Content.ReadAsStringAsync(Token))!["permissions"]!).ShouldContain(SamplePermissions.NotesManage);
+    }
+
     // The caller is checked before the plugin's state, so an anonymous caller learns nothing of where the plugin is off.
     [Fact]
     public async Task AnAnonymousCallerIsRefusedBeforeTheDisabledPluginAnswers404()
