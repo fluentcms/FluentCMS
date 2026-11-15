@@ -47,6 +47,19 @@ public sealed class EmitterTests
         diagnostic.TypeName.ShouldBe("a1");
     }
 
+    // The generator's sources and the tool's files are named after the classes and compared ignoring case.
+    [Fact]
+    public void TwoBuilderNamesThatDifferInCaseAloneKeepTheFirst()
+    {
+        var result = FieldsEmitter.Emit(
+            [Type("xy", BuilderKind.Collection), Type("x-y", BuilderKind.Collection), Type("xy", BuilderKind.Component), Type("x-y", BuilderKind.Component)],
+            EmitOptions.Sdk);
+
+        result.Sources.Select(source => source.HintName).ShouldBe(["Client.XYFields.g.cs", "Client.XYComponentFields.g.cs"]);
+        result.Diagnostics.Select(diagnostic => (diagnostic.Code, diagnostic.Kind, diagnostic.TypeName))
+            .ShouldBe([("FCMS0100", BuilderKind.Collection, "xy"), ("FCMS0100", BuilderKind.Component, "xy")]);
+    }
+
     [Fact]
     public void ATypeWhoseNameGivesNoClassNameIsReported()
     {

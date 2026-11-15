@@ -112,8 +112,10 @@ internal static class FieldsEmitter
                 .ThenBy(type => type.Namespace, StringComparer.Ordinal)
                 .ToList();
 
+            // A source is named after its class, and Roslyn compares the names of sources ignoring case, as the tool compares
+            // its files, so XYFields and XyFields are one name.
             List<Builder> builders = [];
-            var classNames = new HashSet<string>(StringComparer.Ordinal);
+            var classNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var type in ordered)
             {
                 var group = GroupOf(type.Kind);
@@ -140,7 +142,7 @@ internal static class FieldsEmitter
                 var builder = new Builder(type, className);
                 if (_builders.ContainsKey((group, type.Name)) || !classNames.Add(builder.FullName))
                 {
-                    Report(EmitCodes.TypeSkipped, $"The {Label(type.Kind)} '{type.Name}' gets no field builder, because {className} is the builder of another type.", type, null);
+                    Report(EmitCodes.TypeSkipped, $"The {Label(type.Kind)} '{type.Name}' gets no field builder, because {className} is the builder of another type, in this case or another.", type, null);
                     continue;
                 }
 

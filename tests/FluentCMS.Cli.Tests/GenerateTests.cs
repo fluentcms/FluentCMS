@@ -349,6 +349,20 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
         typeScript.Diagnostics.ShouldContain(diagnostic => diagnostic.Code == "FCMS3376" && diagnostic.Message.Contains("'foobar'", StringComparison.Ordinal));
     }
 
+    // The second type gets no builder either, so the files of such a schema are written.
+    [Fact]
+    public async Task TwoTypesWhoseBuilderNamesDifferInCaseAloneGetOneBuilderAndAreWritten()
+    {
+        var directory = Out("builders");
+        var schema = WriteSnapshot("""{ "collections": [ { "name": "foo-bar", "fields": [ { "name": "title", "type": "text" } ] }, { "name": "foobar", "fields": [ { "name": "title", "type": "text" } ] } ] }""");
+
+        var result = await blog.RunAsync(["generate", "csharp", "--schema", schema, "--namespace", "Cases", "--output", directory]);
+
+        result.ExitCode.ShouldBe(0, result.Error);
+        Directory.EnumerateFiles(directory).Select(Path.GetFileName).Order(StringComparer.Ordinal).ShouldBe(["FooBar.g.cs", "FooBarFields.g.cs"]);
+        result.Error.ShouldContain("FCMS0100: The collection 'foobar' gets no field builder");
+    }
+
     // The identifiers TypeScript reserves, createClient and schemaHash, are no names of files, so they are taken as written
     // and the types create-client and schema-hash keep their classes, in TypeScript as in C#.
     [Fact]

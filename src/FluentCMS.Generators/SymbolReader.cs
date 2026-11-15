@@ -173,9 +173,10 @@ internal static class SymbolReader
                     ? new FieldDescription(name, fieldType, multiple, NameOf(component), EquatableArray<string>.Empty)
                     : null;
 
+            // [Blocks(null)] gives an array whose Values throw when enumerated; the attribute reader stops on it at start.
             case "blocks":
                 List<string> blocks = [];
-                foreach (var argument in attribute.ConstructorArguments.Where(argument => argument.Kind == TypedConstantKind.Array).SelectMany(argument => argument.Values))
+                foreach (var argument in attribute.ConstructorArguments.Where(argument => argument.Kind == TypedConstantKind.Array && !argument.IsNull).SelectMany(argument => argument.Values))
                 {
                     if (argument.Value is not INamedTypeSymbol block || KindOf(block)?.Kind != BuilderKind.Block)
                     {
