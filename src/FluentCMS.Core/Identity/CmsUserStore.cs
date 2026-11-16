@@ -1,3 +1,4 @@
+using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Events;
@@ -10,8 +11,9 @@ namespace FluentCMS.Core.Identity;
 // Identity's EF store over the cms_user* tables, with the roles of cms_role. A role is named by Identity only among the
 // instance-wide ones, because a name is unique only within its site; CmsUserManager reaches any role by id. A change is
 // described from what was stored before it and raised as the identity events of the catalogue. Users are deactivated,
-// never deleted: versions, schedules and the activity log name them.
-internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges changes, ILookupNormalizer normalizer, TimeProvider time, SsoOptions sso, IdentityErrorDescriber? describer = null)
+// never deleted: versions, schedules and the activity log name them. A save that gives the user a new security stamp also
+// revokes every session of the user, in the same transaction, so its access tokens stop with its cookie and refresh tokens.
+internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges changes, UserSessions sessions, ILookupNormalizer normalizer, TimeProvider time, SsoOptions sso, IdentityErrorDescriber? describer = null)
     : UserOnlyStore<CmsUser, SystemDbContext, Guid, IdentityUserClaim<Guid>, IdentityUserLogin<Guid>, IdentityUserToken<Guid>>(context, describer),
       IUserRoleStore<CmsUser>
 {
@@ -61,6 +63,11 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
                 if (!result.Succeeded || before is null)
                 {
                     return result;
+                }
+
+                if (!string.Equals(before.SecurityStamp, user.SecurityStamp, StringComparison.Ordinal))
+                {
+                    await sessions.RevokeAllAsync(user.Id, cancellationToken);
                 }
 
                 if (before.DeactivatedAt is null && user.DeactivatedAt is not null)
