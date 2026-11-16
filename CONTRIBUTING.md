@@ -129,8 +129,12 @@ dotnet build -c Release -warnaserror
 dotnet test -c Release --no-build
 dotnet pack -c Release --no-build -o artifacts/packages
 dotnet run eng/check-packages.cs -- artifacts/packages 1.0.0-dev
+dotnet publish admin/src/FluentCMS.Admin.App -c Release --no-build -o artifacts/admin
+dotnet run eng/check-admin-size.cs -- artifacts/admin 3500000
 npx --yes markdownlint-cli2 "**/*.md"
 ```
+
+Publish the admin into an empty folder: files left from an earlier publish count toward the size check. The budget is the one of the `Pack` job in `.github/workflows/ci.yml`.
 
 A test that hangs is named in the diagnostic log of its test app: xUnit.net reports each test that runs longer than two minutes (`tests/xunit.runner.json`), and `--timeout` fails the tests still running with the stack of the call they wait in, if they wait on the test's cancellation token. CI writes the log for every test project and prints these lines when a test job fails or is cancelled. A hang outside a test body, such as a class or collection fixture whose `InitializeAsync` never returns, is not named: it gets no long-running report, and `--timeout` ends the run without a name or a stack. To get the lines locally:
 

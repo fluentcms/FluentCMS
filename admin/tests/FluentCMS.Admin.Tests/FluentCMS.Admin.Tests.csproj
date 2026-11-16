@@ -6,6 +6,8 @@
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="bunit" />
+    <!-- The wrapped set keeps the library's compile assets to itself; the tests of the wrappers look at what they render. -->
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
   </ItemGroup>
 
   <ItemGroup>

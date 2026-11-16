@@ -15,8 +15,10 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
-    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />
+    <!-- The library's compile assets stay here, so the shell or a half that uses the library past the wrappers does not compile
+         (spec 2.3); its runtime assets and its static web assets still flow to the app. -->
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" PrivateAssets="compile;contentfiles;analyzers;build" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" PrivateAssets="compile;contentfiles;analyzers;build" />
   </ItemGroup>
 
   <ItemGroup>

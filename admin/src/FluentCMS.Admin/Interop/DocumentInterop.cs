@@ -24,14 +24,24 @@ internal sealed class DocumentInterop(IJSRuntime js) : IAsyncDisposable
         await document.InvokeVoidAsync("setProperty", name, value);
     }
 
-    // The handle is opaque to the caller, which gives it back to ReturnFocusAsync.
-    public async ValueTask<IJSObjectReference> RememberFocusAsync()
+    // Disposing the handle returns focus to the element that had it, once. The JavaScript reference stays inside this type.
+    public async ValueTask<IAsyncDisposable> RememberFocusAsync()
     {
         var document = await Module();
-        return await document.InvokeAsync<IJSObjectReference>("rememberFocus");
+        return new FocusOpener(this, await document.InvokeAsync<IJSObjectReference>("rememberFocus"));
     }
 
-    public async ValueTask ReturnFocusAsync(IJSObjectReference opener)
+    public async ValueTask DisposeAsync()
+    {
+        if (module is not null)
+        {
+            await (await module).DisposeAsync();
+        }
+    }
+
+    private Task<IJSObjectReference> Module() => module ??= js.InvokeAsync<IJSObjectReference>("import", ModulePath).AsTask();
+
+    private async ValueTask ReturnFocusAsync(IJSObjectReference opener)
     {
         try
         {
@@ -44,13 +54,19 @@ internal sealed class DocumentInterop(IJSRuntime js) : IAsyncDisposable
         }
     }
 
-    public async ValueTask DisposeAsync()
+    private sealed class FocusOpener(DocumentInterop document, IJSObjectReference opener) : IAsyncDisposable
     {
-        if (module is not null)
+        private bool returned;
+
+        public async ValueTask DisposeAsync()
         {
-            await (await module).DisposeAsync();
+            if (returned)
+            {
+                return;
+            }
+
+            returned = true;
+            await document.ReturnFocusAsync(opener);
         }
     }
-
-    private Task<IJSObjectReference> Module() => module ??= js.InvokeAsync<IJSObjectReference>("import", ModulePath).AsTask();
 }

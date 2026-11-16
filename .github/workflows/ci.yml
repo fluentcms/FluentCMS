@@ -326,6 +326,22 @@ jobs:
         shell: bash
         run: test -f artifacts/admin/wwwroot/_framework/blazor.webassembly.js
 
+      # Admin spec 7: the Brotli size of the first download, without lazy assemblies. The budget was set in #3144 from a
+      # measurement of 3,234,098 B; raise it on purpose, in the specification too, never to let a build through.
+      - name: Check the download size of the admin
+        run: dotnet run eng/check-admin-size.cs -- artifacts/admin 3500000
+
+      - name: Check that a download above the budget fails the check
+        shell: bash
+        run: |
+          if dotnet run eng/check-admin-size.cs -- artifacts/admin 1000000 > "$RUNNER_TEMP/admin-size.log"; then
+            cat "$RUNNER_TEMP/admin-size.log"
+            echo "::error::The size check passed the admin with a budget of 1,000,000 B."
+            exit 1
+          fi
+          grep -q "over the budget" "$RUNNER_TEMP/admin-size.log" || { cat "$RUNNER_TEMP/admin-size.log"; echo "::error::The size check did not say by how much the admin is over."; exit 1; }
+          echo "Above the budget, the admin fails the check, as expected."
+
       # Packed beside the NuGet packages at their version. CI publishes neither; the Publish workflow does, from a tag.
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0

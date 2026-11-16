@@ -31,4 +31,10 @@
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Webhooks/FluentCMS.Plugins.Webhooks.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Here for their assemblies, which the interop rule scans: every admin assembly that runs in the browser. -->
+    <ProjectReference Include="../../admin/src/FluentCMS.Admin.App/FluentCMS.Admin.App.csproj" />
+    <ProjectReference Include="../../admin/src/FluentCMS.Admin.RichText/FluentCMS.Admin.RichText.csproj" />
+  </ItemGroup>
+
 </Project>
