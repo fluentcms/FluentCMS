@@ -20,7 +20,7 @@ public sealed class EndToEndHost : IAsyncLifetime
 {
     public const string AdminPath = "/admin/";
 
-    public const string AccessTokenLifetime = "00:00:01";
+    public const string AccessTokenLifetime = "00:00:05";
 
     private static readonly TimeSpan PublishTimeout = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan CommandTimeout = TimeSpan.FromMinutes(3);
@@ -96,14 +96,17 @@ public sealed class EndToEndHost : IAsyncLifetime
         }
     }
 
-    // A browser context of its own for a test; the test is skipped, with the reason, when Chromium is not installed.
-    // Traced when FLUENTCMS_E2E_TRACES names a directory, or when a test asks for traces itself.
-    public Task<AdminBrowser> OpenBrowserAsync(string? traces = null)
+    // A browser context of its own for a test; the test is skipped, with the reason, when Chromium is not installed. It is
+    // traced when FLUENTCMS_E2E_TRACES names a directory, or when a test asks for traces itself.
+    internal Task<AdminBrowser> OpenBrowserAsync(string? traces = null)
     {
         Assert.SkipWhen(BrowserMissing is not null, BrowserMissing ?? "");
         traces ??= Environment.GetEnvironmentVariable(AdminBrowser.TracesVariable) is { Length: > 0 } directory ? directory : null;
         return AdminBrowser.OpenAsync(this, _browser!, traces);
     }
+
+    // A directory of a test's own, deleted with the host's.
+    public DirectoryInfo NewDirectory() => _root.CreateSubdirectory(Guid.NewGuid().ToString("N"));
 
     // An editor of its own for a test that changes its user, such as by ending its sessions.
     public async Task<Editor> CreateEditorAsync()
@@ -165,8 +168,8 @@ public sealed class EndToEndHost : IAsyncLifetime
 
     // The settings of a production deployment, as few as the image needs, with four that only a test host has: its address
     // is a port of the loopback address; its certificates are the run's own; every browser of the tests signs in from that one
-    // address, so the sign-in's limit per client address is raised from 20 a minute; and an access token lasts one second, so
-    // that the admin refreshes it on demand, half a second after it was issued, at the next call of a test's action.
+    // address, so the sign-in's limit per client address is raised from 20 a minute; and an access token lasts five seconds, so
+    // that the admin refreshes it on demand, two and a half seconds after it was issued, at the next call of a test's action.
     private void Configure()
     {
         var certificates = _certificates!;
@@ -266,13 +269,6 @@ public sealed class EndToEndHost : IAsyncLifetime
             }
         }
     }
-}
-
-// One host serves every test, and the browser tests change its users and sessions, so they run one after another.
-[CollectionDefinition(Name, DisableParallelization = true)]
-public sealed class BrowserTests
-{
-    public const string Name = "browser";
 }
 
 public sealed record Site(string Id, string Name, bool IsDefault);

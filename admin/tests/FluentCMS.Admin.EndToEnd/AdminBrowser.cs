@@ -9,7 +9,7 @@ namespace FluentCMS.Admin.EndToEnd;
 // One browser context of a test, which its tabs share as a user's browser does: cookies across tabs, sessionStorage per
 // tab. With FLUENTCMS_E2E_TRACES set to a directory, the context is traced and a failed test leaves its trace there,
 // masked by TraceScrubber; without it nothing is recorded.
-public sealed class AdminBrowser : IAsyncDisposable
+public sealed class AdminBrowser
 {
     public const string TracesVariable = "FLUENTCMS_E2E_TRACES";
 
@@ -29,8 +29,6 @@ public sealed class AdminBrowser : IAsyncDisposable
         _context = context;
         _traces = traces;
     }
-
-    public EndToEndHost Host => _host;
 
     // The console messages of a Content-Security-Policy violation, in any tab.
     public IReadOnlyCollection<string> PolicyViolations => _violations;
@@ -74,8 +72,6 @@ public sealed class AdminBrowser : IAsyncDisposable
         await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Sign in", Exact = true }).ClickAsync();
     }
 
-    public IReadOnlyCollection<string> Passwords => [.. _passwords];
-
     // The trace of this context, masked, at path; the same as a failed test leaves.
     public async Task SaveTraceAsync(string path)
     {
@@ -92,13 +88,13 @@ public sealed class AdminBrowser : IAsyncDisposable
         }
     }
 
-    public async ValueTask DisposeAsync()
+    internal async Task CloseAsync(bool failed)
     {
         try
         {
             if (_tracing)
             {
-                if (TestContext.Current.TestState?.Result == TestResult.Failed)
+                if (failed)
                 {
                     Directory.CreateDirectory(_traces!);
                     await SaveTraceAsync(Path.Combine(_traces!, TraceName() + ".zip"));
@@ -203,12 +199,13 @@ public sealed class AdminTab
 
     public Task<TokenRequest> ReloadAsync() => TokenRequestOfAsync(() => Page.ReloadAsync());
 
-    // Chooses the site and returns the answer of /me/access, the last read of a switch, once it has come.
+    // Chooses the site and returns the answer of /me/access, the last read of a switch, once it has come: a 401 is followed
+    // by one refresh and the call again, and that answer is the one returned.
     public async Task<IResponse> SwitchSiteAsync(Site site)
     {
         var access = await Page.RunAndWaitForResponseAsync(
             () => SiteSwitcher.SelectOptionAsync(new SelectOptionValue { Value = site.Id }),
-            response => response.Url == ManagementUrl("me/access"),
+            response => response.Url == ManagementUrl("me/access") && response.Status != 401,
             new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         await Expect(Announced(Repository.AdminText("Shell.SiteSwitcher.Switched").Replace("{0}", site.Name, StringComparison.Ordinal))).ToBeAttachedAsync();
         return access;

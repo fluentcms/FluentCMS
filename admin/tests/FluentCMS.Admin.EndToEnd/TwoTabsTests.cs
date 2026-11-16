@@ -5,22 +5,21 @@ using static Microsoft.Playwright.Assertions;
 namespace FluentCMS.Admin.EndToEnd;
 
 // Two tabs of one browser share the server's sign-in cookie but not sessionStorage, so each holds a session of its own
-// (spec 2.4, AQ3). The host's access tokens last a second, so each tab refreshes on demand at its next call.
-[Collection(BrowserTests.Name)]
-public sealed class TwoTabsTests(EndToEndHost host)
+// (spec 2.4, AQ3). The host's access tokens last five seconds, so each tab refreshes on demand at a call made after half of that.
+public sealed class TwoTabsTests(EndToEndHost host) : BrowserTest(host)
 {
     [Fact]
     public async Task TwoTabsEachRefreshTheirOwnTokenAtOnceAndBothStaySignedIn()
     {
-        await using var browser = await host.OpenBrowserAsync();
+        var browser = await OpenBrowserAsync();
         var first = await browser.NewTabAsync();
-        await first.Page.GotoAsync(host.Admin.AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(first, host.Editor);
+        await first.Page.GotoAsync(Host.Admin.AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(first, Host.Editor);
         await Expect(first.Sidebar).ToBeVisibleAsync();
 
         // The second tab signs in through the authorize redirect, which the server's session answers with no login page.
         var second = await browser.NewTabAsync();
-        await second.Page.GotoAsync(host.Admin.AbsoluteUri);
+        await second.Page.GotoAsync(Host.Admin.AbsoluteUri);
         await Expect(second.Sidebar).ToBeVisibleAsync();
         second.AuthorizeRequests.Count.ShouldBe(1);
         second.LoginPagesShown.ShouldBe(0);
@@ -46,10 +45,10 @@ public sealed class TwoTabsTests(EndToEndHost host)
     [Fact]
     public async Task ADuplicatedTabRestoresTheSessionAndBothTabsStaySignedIn()
     {
-        await using var browser = await host.OpenBrowserAsync();
+        var browser = await OpenBrowserAsync();
         var first = await browser.NewTabAsync();
-        await first.Page.GotoAsync(host.Admin.AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(first, host.Editor);
+        await first.Page.GotoAsync(Host.Admin.AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(first, Host.Editor);
         await Expect(first.Sidebar).ToBeVisibleAsync();
 
         var copy = await browser.OpenedByAsync(first);
@@ -67,7 +66,7 @@ public sealed class TwoTabsTests(EndToEndHost host)
     }
 
     // Each switch reads the schema, the plugins and the access with the tab's access token, which the tab refreshes first
-    // once it is half a second old; the loop ends at the first refresh, and the wait of each switch is bounded.
+    // once half its lifetime is over; the loop ends at the first refresh, and the wait of each switch is bounded.
     private async Task RefreshOnDemandAsync(AdminTab tab)
     {
         var before = tab.TokenRequests.Count;
@@ -75,7 +74,7 @@ public sealed class TwoTabsTests(EndToEndHost host)
         for (var index = 1; tab.TokenRequests.Skip(before).All(request => request.GrantType != "refresh_token"); index++)
         {
             DateTimeOffset.UtcNow.ShouldBeLessThan(deadline, "the tab did not refresh its token");
-            var access = await tab.SwitchSiteAsync(host.Sites[index % 2]);
+            var access = await tab.SwitchSiteAsync(Host.Sites[index % 2]);
             access.Status.ShouldBe(200);
         }
 

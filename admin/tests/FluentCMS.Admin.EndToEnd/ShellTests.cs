@@ -9,8 +9,7 @@ namespace FluentCMS.Admin.EndToEnd;
 // The shell of A1's exit criteria for the built-in Editor on the Blog sample: the sidebar of the types it may read, in each
 // of its sites, and the switch between them. The content links lead to the not-found page until A2's lists, so the links and
 // their names are checked, not a page behind them.
-[Collection(BrowserTests.Name)]
-public sealed class ShellTests(EndToEndHost host)
+public sealed class ShellTests(EndToEndHost host) : BrowserTest(host)
 {
     // The Blog sample's collections, which name no display name, so the shell shows the name with a capital first letter.
     private static readonly string[] BlogTypes = ["article", "author", "tag"];
@@ -18,10 +17,10 @@ public sealed class ShellTests(EndToEndHost host)
     [Fact]
     public async Task TheSidebarListsTheTypesTheEditorMayReadAndNoAdministration()
     {
-        await using var browser = await host.OpenBrowserAsync();
+        var browser = await OpenBrowserAsync();
         var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(host.Admin.AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, host.Editor);
+        await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
 
         await SidebarShouldListTheBlogTypesAsync(tab);
         await Expect(tab.Sidebar.GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = Repository.AdminText("Shell.Sidebar.Home"), Exact = true }))
@@ -34,14 +33,14 @@ public sealed class ShellTests(EndToEndHost host)
     [Fact]
     public async Task TheEditorSwitchesSiteAndTheTabKeepsTheChosenSite()
     {
-        await using var browser = await host.OpenBrowserAsync();
+        var browser = await OpenBrowserAsync();
         var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(host.Admin.AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, host.Editor);
-        await Expect(tab.SiteSwitcher).ToHaveValueAsync(host.Sites[0].Id);
+        await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        await Expect(tab.SiteSwitcher).ToHaveValueAsync(Host.Sites[0].Id);
 
         // The reads of the switch name the chosen site, and the switch is announced.
-        var second = host.Sites[1];
+        var second = Host.Sites[1];
         var access = await tab.SwitchSiteAsync(second);
         access.Status.ShouldBe(200);
         (await access.Request.HeaderValueAsync("x-cms-site")).ShouldBe(second.Id, StringCompareShould.IgnoreCase);

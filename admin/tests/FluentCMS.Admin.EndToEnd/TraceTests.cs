@@ -7,14 +7,11 @@ using static Microsoft.Playwright.Assertions;
 namespace FluentCMS.Admin.EndToEnd;
 
 // A trace is what a failed test leaves when traces are on, and CI uploads it; it must hold no password and no token.
-[Collection(BrowserTests.Name)]
-public sealed class TraceTests(EndToEndHost host) : IDisposable
+public sealed class TraceTests(EndToEndHost host) : BrowserTest(host)
 {
     private const string Password = "Aa1!0123456789ABCDEF";
 
-    private readonly DirectoryInfo _directory = Directory.CreateTempSubdirectory("fluentcms-e2e-traces-");
-
-    public void Dispose() => _directory.Delete(recursive: true);
+    private readonly DirectoryInfo _directory = host.NewDirectory();
 
     [Fact]
     public void TheMaskLeavesOutTheNetworkAndBodiesAndMasksPasswordsTokensAndCookies()
@@ -58,23 +55,21 @@ public sealed class TraceTests(EndToEndHost host) : IDisposable
     public async Task TheTraceOfASignInHoldsNoPasswordOrToken()
     {
         var trace = Path.Combine(_directory.FullName, "sign-in.zip");
-        await using (var browser = await host.OpenBrowserAsync(traces: _directory.FullName))
-        {
-            var tab = await browser.NewTabAsync();
-            await tab.Page.GotoAsync(host.Admin.AbsoluteUri);
-            await browser.SignInOnTheHostedPageAsync(tab, host.Editor);
-            await Expect(tab.Sidebar).ToBeVisibleAsync();
-            await tab.ReloadAsync();
-            await Expect(tab.Sidebar).ToBeVisibleAsync();
-            await browser.SaveTraceAsync(trace);
-        }
+        var browser = await OpenBrowserAsync(traces: _directory.FullName);
+        var tab = await browser.NewTabAsync();
+        await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        await Expect(tab.Sidebar).ToBeVisibleAsync();
+        await tab.ReloadAsync();
+        await Expect(tab.Sidebar).ToBeVisibleAsync();
+        await browser.SaveTraceAsync(trace);
 
         using var archive = ZipFile.OpenRead(trace);
         var names = archive.Entries.Select(entry => entry.FullName).ToList();
         names.ShouldContain(name => name.EndsWith(".trace", StringComparison.Ordinal));
         names.ShouldContain(name => name.EndsWith(".jpeg", StringComparison.Ordinal));
         names.ShouldNotContain(name => name.EndsWith(".network", StringComparison.Ordinal));
-        TraceScrubber.Leaks(trace, [host.Editor.Password]).ShouldBeNull();
+        TraceScrubber.Leaks(trace, [Host.Editor.Password]).ShouldBeNull();
     }
 
     private static void Write(ZipArchive archive, string name, string text)

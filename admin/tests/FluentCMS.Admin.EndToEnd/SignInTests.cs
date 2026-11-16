@@ -8,34 +8,33 @@ namespace FluentCMS.Admin.EndToEnd;
 
 // The sign-in of A1's exit criteria, in Chromium against the reference host: through the hosted login with PKCE, back
 // signed in, a reload that keeps the session, and sign-out through the hosted logout page.
-[Collection(BrowserTests.Name)]
-public sealed class SignInTests(EndToEndHost host)
+public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
 {
     [Fact]
     public async Task AnEditorSignsInThroughTheHostedLoginWithPkceAndAReloadKeepsTheSession()
     {
-        await using var browser = await host.OpenBrowserAsync();
+        var browser = await OpenBrowserAsync();
         var tab = await browser.NewTabAsync();
         var me = tab.Page.WaitForResponseAsync(response => response.Url == tab.ManagementUrl("me"), new PageWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
 
-        await tab.Page.GotoAsync(host.Admin.AbsoluteUri);
+        await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
         await tab.Page.WaitForURLAsync(url => new Uri(url).AbsolutePath == "/account/login");
 
         var authorize = HttpUtility.ParseQueryString(tab.AuthorizeRequests.ShouldHaveSingleItem().Query);
         authorize["response_type"].ShouldBe("code");
         authorize["client_id"].ShouldBe("fluentcms-admin");
-        authorize["redirect_uri"].ShouldBe(new Uri(host.Admin, "authentication/login-callback").AbsoluteUri);
+        authorize["redirect_uri"].ShouldBe(new Uri(Host.Admin, "authentication/login-callback").AbsoluteUri);
         authorize["code_challenge_method"].ShouldBe("S256");
         authorize["code_challenge"]!.Length.ShouldBe(43);
         authorize["scope"]!.Split(' ').ShouldBe(["openid", "profile", "email", "offline_access", "management"], ignoreOrder: true);
 
-        var exchange = await tab.TokenRequestOfAsync(() => browser.SignInOnTheHostedPageAsync(tab, host.Editor));
+        var exchange = await tab.TokenRequestOfAsync(() => browser.SignInOnTheHostedPageAsync(tab, Host.Editor));
         exchange.ShouldBeGranted("authorization_code");
         exchange.Fields.ShouldContain("code_verifier");
 
         // Back on the route it started from, with the code gone from the address and the history.
         await Expect(tab.Heading("Home.Page.Heading")).ToBeVisibleAsync();
-        tab.Page.Url.ShouldBe(host.Admin.AbsoluteUri);
+        tab.Page.Url.ShouldBe(Host.Admin.AbsoluteUri);
 
         // The shell's first call carries the access token as a bearer, and the Management API accepts it.
         var meAnswer = await me;
@@ -57,15 +56,15 @@ public sealed class SignInTests(EndToEndHost host)
     [Fact]
     public async Task SignOutRevokesTheSessionAndTheHostedLogoutPageAsksFirst()
     {
-        var editor = await host.CreateEditorAsync();
-        await using var browser = await host.OpenBrowserAsync();
+        var editor = await Host.CreateEditorAsync();
+        var browser = await OpenBrowserAsync();
         var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(host.Admin.AbsoluteUri);
+        await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
         await browser.SignInOnTheHostedPageAsync(tab, editor);
         await Expect(tab.Sidebar).ToBeVisibleAsync();
 
         await tab.Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = editor.Email }).ClickAsync();
-        var revoked = tab.Page.WaitForResponseAsync(response => response.Url == new Uri(host.Origin, "connect/revoke").AbsoluteUri, new PageWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        var revoked = tab.Page.WaitForResponseAsync(response => response.Url == new Uri(Host.Origin, "connect/revoke").AbsoluteUri, new PageWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         await tab.Page.GetByRole(AriaRole.Menuitem, new PageGetByRoleOptions { Name = Repository.AdminText("Shell.UserMenu.SignOut"), Exact = true }).ClickAsync();
         (await revoked).Status.ShouldBe(200);
 
@@ -84,15 +83,15 @@ public sealed class SignInTests(EndToEndHost host)
     [Fact]
     public async Task ASessionTheServerEndsSignsInAgainAndReturnsToTheRoute()
     {
-        var editor = await host.CreateEditorAsync();
-        await using var browser = await host.OpenBrowserAsync();
+        var editor = await Host.CreateEditorAsync();
+        var browser = await OpenBrowserAsync();
         var tab = await browser.NewTabAsync();
-        var gallery = new Uri(host.Admin, "system/components").AbsoluteUri;
+        var gallery = new Uri(Host.Admin, "system/components").AbsoluteUri;
         await tab.Page.GotoAsync(gallery);
         await browser.SignInOnTheHostedPageAsync(tab, editor);
         await Expect(tab.Heading("System.Components.Heading")).ToBeVisibleAsync();
 
-        editor = await host.ResetPasswordAsync(editor);
+        editor = await Host.ResetPasswordAsync(editor);
         var refused = await tab.ReloadAsync();
         refused.GrantType.ShouldBe("refresh_token");
         refused.Status.ShouldBe(400);
