@@ -45,7 +45,8 @@ public sealed class ChangePasswordModel : AccountPageModel
             return Page();
         }
 
-        // The change gave the user a new security stamp, which the cookie must carry to stay good.
+        // The change gave the user a new security stamp, which revoked its sessions; this browser's cookie carries the new
+        // stamp to stay good.
         await SignInManager.RefreshSignInAsync(user);
         return LocalRedirect(LocalUrl(ReturnUrl));
     }

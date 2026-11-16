@@ -10,9 +10,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using OpenIddict.Abstractions;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Data.Tests.Identity.IdentityFixture;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace FluentCMS.Data.Tests.Identity;
 
@@ -337,6 +339,40 @@ public sealed class UserStoreTests : IDisposable
         fixture.ActivityRows().Single(row => row.Action == "user.updated").Details.ShouldNotBeNull().ShouldContain(UserChanges.Password);
     }
 
+    // A save with a new security stamp revokes the user's sessions and their tokens in its transaction; a save without one,
+    // and another user's sessions, are left (#3202).
+    [Fact]
+    public async Task ANewSecurityStampRevokesTheUsersSessionsAndNothingElse()
+    {
+        var ann = await _fixture.CreateUserAsync("ann");
+        var bob = await _fixture.CreateUserAsync("bob");
+        var annSession = await SessionAsync(_fixture, ann);
+        var bobSession = await SessionAsync(_fixture, bob);
+
+        Succeeded(await _fixture.UsersAsync(async users => await users.RequirePasswordChangeAsync((await users.FindByIdAsync(ann.Id.ToString("D")))!)));
+        (await StatusesAsync(_fixture, annSession)).ShouldBe([Statuses.Valid, Statuses.Valid]);
+
+        Succeeded(await _fixture.UsersAsync(async users => await users.ChangePasswordAsync((await users.FindByIdAsync(ann.Id.ToString("D")))!, Password, "Another-horse-2")));
+
+        (await StatusesAsync(_fixture, annSession)).ShouldBe([Statuses.Revoked, Statuses.Revoked]);
+        (await StatusesAsync(_fixture, bobSession)).ShouldBe([Statuses.Valid, Statuses.Valid]);
+    }
+
+    // A sign-in that rehashes the password gives a new stamp too, so it ends the user's other sessions, as it ends their
+    // cookies and refresh tokens.
+    [Fact]
+    public async Task ARehashAtSignInRevokesTheUsersSessions()
+    {
+        var user = await _fixture.CreateUserAsync("ann");
+        var old = new PasswordHasher<CmsUser>(Options.Create(new PasswordHasherOptions { CompatibilityMode = PasswordHasherCompatibilityMode.IdentityV2 })).HashPassword(user, Password);
+        _fixture.Read(context => context.Set<CmsUser>().Where(row => row.Id == user.Id).ExecuteUpdate(setters => setters.SetProperty(row => row.PasswordHash, old)));
+        var session = await SessionAsync(_fixture, user);
+
+        (await _fixture.UsersAsync(async users => await users.CheckPasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, Password))).ShouldBeTrue();
+
+        (await StatusesAsync(_fixture, session)).ShouldBe([Statuses.Revoked, Statuses.Revoked]);
+    }
+
     [Fact]
     public async Task APasswordAnAdminSetsKeepsTheForcedChange()
     {
@@ -389,4 +425,35 @@ public sealed class UserStoreTests : IDisposable
         (await _fixture.RolesOfAsync(PrincipalOf(user))).ShouldBeEmpty();
         _fixture.Read(context => context.Set<CmsUserRole>().Count()).ShouldBe(0);
     }
+
+    // An authorization of the user with an access token under it, as a sign-in through a client makes.
+    private static Task<string> SessionAsync(IdentityFixture fixture, CmsUser user) =>
+        fixture.WithAsync(async services =>
+        {
+            var authorizations = services.GetRequiredService<IOpenIddictAuthorizationManager>();
+            var authorization = await authorizations.CreateAsync(
+                new OpenIddictAuthorizationDescriptor { Subject = user.Id.ToString("D"), Status = Statuses.Valid, Type = AuthorizationTypes.AdHoc, CreationDate = Start },
+                Token);
+            var id = (await authorizations.GetIdAsync(authorization, Token))!;
+            await services.GetRequiredService<IOpenIddictTokenManager>().CreateAsync(
+                new OpenIddictTokenDescriptor { AuthorizationId = id, Subject = user.Id.ToString("D"), Status = Statuses.Valid, Type = TokenTypeHints.AccessToken, CreationDate = Start, ExpirationDate = Start.AddHours(1) },
+                Token);
+            return id;
+        });
+
+    // The status of the authorization, then of its token.
+    private static Task<string?[]> StatusesAsync(IdentityFixture fixture, string authorizationId) =>
+        fixture.WithAsync(async services =>
+        {
+            var authorizations = services.GetRequiredService<IOpenIddictAuthorizationManager>();
+            var tokens = services.GetRequiredService<IOpenIddictTokenManager>();
+            var authorization = (await authorizations.FindByIdAsync(authorizationId, Token))!;
+            string? token = null;
+            await foreach (var found in tokens.FindByAuthorizationIdAsync(authorizationId, Token))
+            {
+                token = await tokens.GetStatusAsync(found, Token);
+            }
+
+            return new[] { await authorizations.GetStatusAsync(authorization, Token), token };
+        });
 }

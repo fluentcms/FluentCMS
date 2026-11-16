@@ -121,6 +121,9 @@ internal sealed class FakeAuthority : HttpMessageHandler
     // A refresh waits for it, so that a test can start several calls while one is in flight.
     public TaskCompletionSource? HoldRefresh { get; set; }
 
+    // Characters added after the number of each access token, so that comparing two of them takes a while.
+    public int AccessTokenPadding { get; set; }
+
     public int Refreshes => Requests.Count(request => request["grant_type"] == "refresh_token");
 
     public string? LastAccessToken { get; private set; }
@@ -236,7 +239,7 @@ internal sealed class FakeAuthority : HttpMessageHandler
         lock (_gate)
         {
             _issued++;
-            access = $"access-{_issued}";
+            access = $"access-{_issued}" + new string('.', AccessTokenPadding);
             refresh = $"refresh-{_issued}";
             _refreshTokens.Add(refresh);
             (LastAccessToken, LastRefreshToken) = (access, refresh);

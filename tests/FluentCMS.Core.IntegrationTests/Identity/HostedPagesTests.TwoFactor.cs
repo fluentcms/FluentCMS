@@ -47,13 +47,17 @@ public sealed partial class HostedPagesTests
         verified.Status.ShouldBe(HttpStatusCode.OK, verified.Body?.ToJsonString());
         verified.Json["recoveryCodes"]!.AsArray().Count.ShouldBe(TwoFactorService.RecoveryCodeCount);
 
-        status = await AdminFixture.SendAsync(client, HttpMethod.Get, "me/two-factor");
+        // The new security stamp revoked the user's sessions, the one that turned two-factor on among them.
+        (await AdminFixture.SendAsync(client, HttpMethod.Get, "me")).Status.ShouldBe(HttpStatusCode.Unauthorized);
+        using var signedInAgain = await host.AsUserAsync(editor);
+
+        status = await AdminFixture.SendAsync(signedInAgain, HttpMethod.Get, "me/two-factor");
         status.Json["enabled"]!.GetValue<bool>().ShouldBeTrue();
         status.Json["pending"]!.GetValue<bool>().ShouldBeFalse();
         status.Json["recoveryCodesLeft"]!.GetValue<int>().ShouldBe(TwoFactorService.RecoveryCodeCount);
-        (await AdminFixture.SendAsync(client, HttpMethod.Get, "me")).Json["twoFactorEnabled"]!.GetValue<bool>().ShouldBeTrue();
+        (await AdminFixture.SendAsync(signedInAgain, HttpMethod.Get, "me")).Json["twoFactorEnabled"]!.GetValue<bool>().ShouldBeTrue();
 
-        var again = await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/enrol");
+        var again = await AdminFixture.SendAsync(signedInAgain, HttpMethod.Post, "me/two-factor/enrol");
         again.Status.ShouldBe(HttpStatusCode.Conflict);
         again.Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.TwoFactorEnabled);
 
@@ -337,11 +341,15 @@ public sealed partial class HostedPagesTests
         (await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/disable", Code(codes[0]))).Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.InvalidTwoFactorCode);
         (await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/disable", Code(fresh[0].ToLowerInvariant()))).Status.ShouldBe(HttpStatusCode.NoContent);
 
-        var status = await AdminFixture.SendAsync(client, HttpMethod.Get, "me/two-factor");
+        // Turning it off gave a new stamp, which revoked the caller's own token with the user's other sessions.
+        (await AdminFixture.SendAsync(client, HttpMethod.Get, "me/two-factor")).Status.ShouldBe(HttpStatusCode.Unauthorized);
+        using var signedInAgain = await host.AsUserAsync(editor);
+
+        var status = await AdminFixture.SendAsync(signedInAgain, HttpMethod.Get, "me/two-factor");
         status.Json["enabled"]!.GetValue<bool>().ShouldBeFalse();
         status.Json["pending"]!.GetValue<bool>().ShouldBeFalse("the key goes with it");
-        (await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/disable", Code(Totp(key)))).Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.TwoFactorNotEnabled);
-        (await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/verify", Code(Totp(key)))).Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.NoAuthenticator);
+        (await AdminFixture.SendAsync(signedInAgain, HttpMethod.Post, "me/two-factor/disable", Code(Totp(key)))).Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.TwoFactorNotEnabled);
+        (await AdminFixture.SendAsync(signedInAgain, HttpMethod.Post, "me/two-factor/verify", Code(Totp(key)))).Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.NoAuthenticator);
 
         using var browser = new HostedPagesBrowser(host, "10.2.6.1");
         using var password = await browser.SubmitAsync("/account/login", Credentials(editor.Email, Password));

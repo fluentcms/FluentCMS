@@ -229,7 +229,6 @@ internal sealed class UserAdministration(
             },
             cancellationToken));
 
-        await sessions.RevokeAllAsync(user.Id, cancellationToken);
         return await InfoAsync(user, cancellationToken);
     }
 
