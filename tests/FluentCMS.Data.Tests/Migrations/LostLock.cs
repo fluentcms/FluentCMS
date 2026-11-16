@@ -11,13 +11,13 @@ namespace FluentCMS.Data.Tests.Migrations;
 // A lock that another holder takes from its holder during the work on the content tables: as soon as it is held, so before
 // the operations are planned; as the first command that adds a column runs; or once the transaction of the operations has
 // committed. Its handle's Lost is canceled then.
-public sealed class LostLock(LostLock.When when) : IDistributedLock, IDisposable
+public sealed class LostLock(LostLock.Moment when) : IDistributedLock, IDisposable
 {
     private readonly CancellationTokenSource _lost = new();
-    private readonly When _when = when;
+    private readonly Moment _when = when;
     private int _altered;
 
-    public enum When
+    public enum Moment
     {
         BeforeThePlan,
         WhileTheOperationsRun,
@@ -34,7 +34,7 @@ public sealed class LostLock(LostLock.When when) : IDistributedLock, IDisposable
 
     public async Task<IDistributedLockHandle?> TryAcquireAsync(string name, TimeSpan timeout, CancellationToken cancellationToken = default)
     {
-        if (_when == When.BeforeThePlan)
+        if (_when == Moment.BeforeThePlan)
         {
             await _lost.CancelAsync();
         }
@@ -57,7 +57,7 @@ public sealed class LostLock(LostLock.When when) : IDistributedLock, IDisposable
         {
             if (command.CommandText.TrimStart().StartsWith("ALTER TABLE", StringComparison.OrdinalIgnoreCase)
                 && Interlocked.Exchange(ref owner._altered, 1) == 0
-                && owner._when == When.WhileTheOperationsRun)
+                && owner._when == Moment.WhileTheOperationsRun)
             {
                 await owner._lost.CancelAsync();
             }
@@ -70,7 +70,7 @@ public sealed class LostLock(LostLock.When when) : IDistributedLock, IDisposable
     {
         public override async Task TransactionCommittedAsync(DbTransaction transaction, TransactionEndEventData eventData, CancellationToken cancellationToken = default)
         {
-            if (owner._when == When.AfterTheOperations && Volatile.Read(ref owner._altered) == 1)
+            if (owner._when == Moment.AfterTheOperations && Volatile.Read(ref owner._altered) == 1)
             {
                 await owner._lost.CancelAsync();
             }
