@@ -1,3 +1,6 @@
+using System.Collections;
+using System.Globalization;
+using System.Resources;
 using Bunit;
 using FluentCMS.Admin.Components;
 using Microsoft.AspNetCore.Components;
@@ -190,6 +193,46 @@ public sealed class CmsWiringTests : ComponentTestContext
 
         grid.WaitForAssertion(() => grid.Markup.ShouldContain("[DataGrid_SelectColumn_RowUnchecked]"));
         grid.Markup.ShouldContain("No rows are selected");
+    }
+
+    // The set's resources hold some of the library's texts under the library's keys (with an underscore, which the set's own
+    // names lack); each must be a key of the library and, in English, say what the library says.
+    [Fact]
+    public void TheLibraryTextsOfTheResourcesAreTheLibrarysEnglish()
+    {
+        Services.AddSingleton<ICmsTextSource>(new BracketedTexts("none"));
+        var library = Services.GetRequiredService<IFluentLocalizer>();
+        var resources = new ResourceManager("FluentCMS.Admin.Components.Resources.CmsStrings", typeof(ICmsTextSource).Assembly)
+            .GetResourceSet(CultureInfo.InvariantCulture, createIfNotExists: true, tryParents: false)!
+            .Cast<DictionaryEntry>()
+            .Where(entry => ((string)entry.Key).Contains('_', StringComparison.Ordinal))
+            .ToList();
+
+        resources.Count.ShouldBeGreaterThan(0);
+        resources.ShouldAllBe(entry => library[(string)entry.Key] == (string)entry.Value!);
+    }
+
+    [Fact]
+    public void ALibraryTextWithoutArgumentsIsNotFormatted()
+    {
+        Services.AddSingleton<ICmsTextSource>(new FixedText("Sorted {by} a brace"));
+        var library = Services.GetRequiredService<IFluentLocalizer>();
+
+        library["DataGrid_SortAscending"].ShouldBe("Sorted {by} a brace");
+    }
+
+    [Fact]
+    public void ALibraryTextWithArgumentsIsFormatted()
+    {
+        Services.AddSingleton<ICmsTextSource>(new FixedText("{0} ascending"));
+        var library = Services.GetRequiredService<IFluentLocalizer>();
+
+        library["DataGrid_SortColumnAscending", "Title"].ShouldBe("Title ascending");
+    }
+
+    private sealed class FixedText(string text) : ICmsTextSource
+    {
+        public string? GetText(string name) => text;
     }
 
     // Brackets the names it is given, and has no text for any other.

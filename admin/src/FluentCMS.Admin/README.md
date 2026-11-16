@@ -17,4 +17,11 @@ The app's project file must load all globalization data. The admin sets the inte
 </PropertyGroup>
 ```
 
+The app's `index.html` links the stylesheet of the wrapped set and the app's own bundle of scoped styles, which the framework writes and which brings in the styles of the component library:
+
+```html
+<link rel="stylesheet" href="_content/FluentCMS.Admin.Components/cms.css" />
+<link rel="stylesheet" href="MyApp.styles.css" />
+```
+
 This preview holds the entry points only; section 2 of the [admin technical specification](https://github.com/fluentcms/FluentCMS/blob/main/docs/planning/admin-technical-spec.md) has the design.

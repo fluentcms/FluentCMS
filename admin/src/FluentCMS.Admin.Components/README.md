@@ -11,6 +11,6 @@ An app registers the services with `builder.Services.AddCmsComponents()`, wraps 
 <link rel="stylesheet" href="MyApp.styles.css" />
 ```
 
-The texts the set shows itself, such as the announcement of a grid's sort, come from its resources in the current UI culture. A host that localizes through its own `IStringLocalizer` registers an `ICmsTextSource` in place of the default one.
+The texts the set shows itself, such as the announcement of a grid's sort, come from its resources in the current UI culture. A host that localizes through its own `IStringLocalizer` registers an `ICmsTextSource` in place of the default one. It is asked for the names of the set's resources and for every key of the library under the set; for a name the resources do not hold it must return `null`, not the name as `IStringLocalizer` does, so that the library's own text is shown.
 
 The theme tokens are CSS custom properties prefixed `--cms-` on `.cms-root`, with a light and a dark theme that follow `prefers-color-scheme` until `CmsThemeRoot.Mode` says otherwise. The accent is `--fluentcms-brand-accent` when the document sets it. The stylesheet uses logical properties only, so `dir="rtl"` on the document or a container mirrors the layout.

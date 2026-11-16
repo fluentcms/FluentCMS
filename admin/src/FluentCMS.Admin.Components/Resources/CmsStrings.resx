@@ -80,7 +80,7 @@
     <comment>A text of the library under the set, under the library's key.</comment>
   </data>
   <data name="DataGrid_SortAnnouncementSeparator" xml:space="preserve">
-    <value>, then by</value>
+    <value>, then by </value>
     <comment>A text of the library under the set, under the library's key.</comment>
   </data>
   <data name="DataGrid_SortAnnouncementCleared" xml:space="preserve">

@@ -284,10 +284,13 @@ Elsewhere: the admin's rules join `tests/FluentCMS.Architecture.Tests` (3.3); `t
 | --- | --- | --- |
 | Admin route of a content list and entry | `/content/{type}`, `/content/{type}/{id}`, `/content/{type}/new` under the app's base | `/admin/content/article/0193…` |
 | Admin route of a plugin page | `/{plugin}/...`, the server plugin's name first | `/admin/media`, `/admin/mcp/clients` |
+| Admin route of the component gallery | `/system/components`, every component of the wrapped set | `/admin/system/components` |
 | Reserved first segments | `content`, `settings`, `account`, `users`, `roles`, `api-keys`, `members`, `sites`, `plugins`, `jobs`, `system`, `authentication` | a plugin of such a name stops the app with an error page |
 | Component | `Cms` prefix in the wrapped set; area name in the core areas | `CmsDataGrid`, `ContentListPage` |
 | Resource key | `{Area}.{View}.{Text}` | `Content.List.Empty` |
 | Admin half package | `{server package}.Admin` | `FluentCMS.Plugins.Media.Admin` |
+
+The component gallery ships in the product, linked from the start page and from no menu, since it is the page the A0 exit criterion names (#3180).
 
 ### 3.3 Architecture tests
 

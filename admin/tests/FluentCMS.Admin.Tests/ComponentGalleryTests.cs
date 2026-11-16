@@ -66,7 +66,10 @@ public sealed class ComponentGalleryTests : AdminTestContext
 
         var hint = zone.Find(".cms-field-message").TextContent;
         hint.ShouldBe(PseudoCulture.Transform("Drop files here or press Enter to choose them", culture == PseudoCulture.RightToLeft));
-        Services.GetRequiredService<ICmsTextSource>().GetText("Close").ShouldBe(PseudoCulture.Transform("Close", culture == PseudoCulture.RightToLeft));
+        var texts = Services.GetRequiredService<ICmsTextSource>();
+        texts.GetText("Close").ShouldBe(PseudoCulture.Transform("Close", culture == PseudoCulture.RightToLeft));
+        // A library key the resources lack: null, so the library shows its own text rather than the key.
+        texts.GetText("DataGrid_OptionsMenu").ShouldBeNull();
     }
 
     [Fact]

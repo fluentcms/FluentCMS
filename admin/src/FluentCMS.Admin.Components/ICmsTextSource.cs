@@ -9,7 +9,13 @@ namespace FluentCMS.Admin.Components;
 public interface ICmsTextSource
 {
     /// <summary>Returns a text of the wrapped set in the interface culture.</summary>
-    /// <param name="name">The name of the text in the resources <c>FluentCMS.Admin.Components.Resources.CmsStrings</c>.</param>
-    /// <returns>The text, or <see langword="null"/> when the resources have none of that name.</returns>
+    /// <param name="name">
+    /// The name of the text: a name in the resources <c>FluentCMS.Admin.Components.Resources.CmsStrings</c>, or a key of the
+    /// library under the set, most of which the resources do not hold.
+    /// </param>
+    /// <returns>
+    /// The text, or <see langword="null"/> for a name the resources do not hold, never the name itself, so that the library's
+    /// own text is shown for its keys.
+    /// </returns>
     string? GetText(string name);
 }
