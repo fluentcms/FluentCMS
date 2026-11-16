@@ -103,7 +103,10 @@ public sealed class MemberAccountTests(MemberFixture fixture) : IClassFixture<Me
         // A registered address is told by mail and not in the answer, and its account is as it was.
         lock (fixture.Emails.Sent)
         {
-            fixture.Emails.Sent.Last(mail => mail.To == verified).Subject.ShouldBe("You already have an account");
+            var taken = fixture.Emails.Sent.Last(mail => mail.To == verified);
+            taken.Subject.ShouldBe("You already have an account");
+            taken.TextBody.ShouldContain("If the account has no password yet or you forgot it, choose one with the forgotten password page.");
+            taken.TextBody.ShouldNotContain("provider");
             fixture.Emails.Sent.Last(mail => mail.To == unknown).Subject.ShouldBe("Verify your email address");
         }
 

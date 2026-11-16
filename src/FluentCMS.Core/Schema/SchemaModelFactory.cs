@@ -24,6 +24,8 @@ internal static class SchemaModelFactory
             UnpublishedReferences = draft.UnpublishedReferences,
             MaxVersions = draft.MaxVersions,
             TrashRetentionDays = draft.TrashRetentionDays,
+            DisplayName = draft.DisplayName,
+            TitleField = draft.TitleField,
             ClrType = draft.ClrType,
             Fields = draft.Fields.Select(Create).ToList().AsReadOnly(),
             ReverseRelations = (draft.IsContentType ? reverseRelations[draft.Name] : []).OrderBy(relation => relation.Name, StringComparer.Ordinal).ToList().AsReadOnly(),

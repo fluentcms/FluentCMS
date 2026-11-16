@@ -32,6 +32,8 @@ internal static class SchemaDescriber
             UnpublishedReferences = isContentType ? type.UnpublishedReferences : null,
             MaxVersions = isContentType ? type.MaxVersions : null,
             TrashRetentionDays = isContentType ? type.TrashRetentionDays : null,
+            DisplayName = type.DisplayName,
+            TitleField = type.TitleField,
             Fields = [.. type.Fields.Select(Describe)],
             ReverseRelations = [.. type.ReverseRelations.Select(relation => new ReverseRelationDescription
             {

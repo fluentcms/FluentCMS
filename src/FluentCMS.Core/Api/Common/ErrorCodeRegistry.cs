@@ -62,6 +62,7 @@ public static class ErrorCodeRegistry
         Startup(SchemaErrorCodes.ReverseRelationOutsideContentType, "Reverse relation outside a content type"),
         Startup(SchemaErrorCodes.NameTooLong, "Name too long"),
         Startup(SchemaErrorCodes.FormerNameInUse, "Former name in use"),
+        Startup(SchemaErrorCodes.InvalidTitleField, "Invalid title field"),
 
         // 13xx storage
         Startup(StorageErrorCodes.MissingContentSchema, "Content tables out of date"),
@@ -267,6 +268,7 @@ public static class ErrorCodeRegistry
         new(ApiErrorCodes.VersionConflict, StatusCodes.Status412PreconditionFailed, "Version conflict"),
         new(ApiErrorCodes.Unavailable, StatusCodes.Status503ServiceUnavailable, "Service unavailable"),
         new(ApiErrorCodes.UnsupportedMediaType, StatusCodes.Status415UnsupportedMediaType, "Unsupported media type"),
+        new(ApiErrorCodes.HttpsRequired, StatusCodes.Status403Forbidden, "HTTPS required"),
         new(ApiErrorCodes.InternalError, StatusCodes.Status500InternalServerError, "Internal error"),
         new(LimitErrorCodes.RateLimited, StatusCodes.Status429TooManyRequests, "Too many requests"),
         new(LimitErrorCodes.RequestTooLarge, StatusCodes.Status413PayloadTooLarge, "Request too large"),

@@ -114,6 +114,18 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
     }
 
     [Fact]
+    public void ATypeOfTheSchemaRoutesDescribesItsDisplayNameAndTitleField()
+    {
+        var type = Response(Paths[$"{Management}/schema/types/{{type}}"]!["get"]!, "200");
+
+        foreach (var name in new[] { "displayName", "titleField" })
+        {
+            type["properties"]![name]!["type"]!.ToJsonString().ShouldBe("""["null","string"]""", name);
+            type["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldNotContain(name);
+        }
+    }
+
+    [Fact]
     public void TheTransferEndpointsAnswerAPackageAndLinesOfJson()
     {
         Paths[$"{Management}/transfer/export"]!["post"]!["responses"]!["200"]!["content"]!["application/zip"].ShouldNotBeNull();
@@ -173,6 +185,39 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         input.ContainsKey("scheduledPublishAt").ShouldBeFalse();
         input["author"]!.ToJsonString().ShouldBe("""{"type":["null","string"],"format":"uuid"}""");
         input["body"]!["anyOf"].ShouldBeNull();
+    }
+
+    // Every reserved name is a member a response can carry, so an entry describes each, and a new one fails here until it does.
+    [Fact]
+    public void AnEntryDescribesEveryReservedNameAsReadOnly()
+    {
+        var entry = Schemas["entry-article"]!["properties"]!.AsObject();
+        var input = Schemas["input-article"]!["properties"]!.AsObject();
+
+        foreach (var name in ContentItem.ReservedFieldNames)
+        {
+            entry[name].ShouldNotBeNull($"entry-article does not describe {name}");
+            entry[name]!["readOnly"]!.GetValue<bool>().ShouldBeTrue(name);
+            input.ContainsKey(name).ShouldBeFalse(name);
+        }
+    }
+
+    [Fact]
+    public void AnEntryDescribesTheTrashMarks()
+    {
+        var article = Schemas["entry-article"]!["properties"]!;
+
+        article["deletedAt"]!["type"]!.GetValue<string>().ShouldBe("string");
+        article["deletedAt"]!["format"]!.GetValue<string>().ShouldBe("date-time");
+        article["deletedBy"]!["type"]!.GetValue<string>().ShouldBe("string");
+        article["deletedBy"]!["format"]!.GetValue<string>().ShouldBe("uuid");
+        foreach (var name in new[] { "deletedAt", "deletedBy" })
+        {
+            article[name]!["description"]!.GetValue<string>().ShouldContain("Only on a read of the trash");
+        }
+
+        var items = Response(Paths[$"{Management}/content/article/trash"]!["get"]!, "200")["properties"]!["items"]!["items"]!;
+        items["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/entry-article");
     }
 
     [Fact]
