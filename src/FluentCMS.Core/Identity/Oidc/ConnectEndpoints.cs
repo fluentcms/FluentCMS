@@ -153,9 +153,10 @@ internal static class ConnectEndpoints
                 : Results.Redirect(context.Request.PathBase + HostedPagePaths.ChangePassword + QueryString.Create("ReturnUrl", returnUrl));
         }
 
+        // The session starts at the sign-in, not at this request, so that every authorization issued under it ends with it.
         var identity = TokenClaims.Identity()
             .SetClaim(Claims.AuthenticationTime, signedInAt.ToUnixTimeSeconds())
-            .SetClaim(TokenClaims.SessionStart, now.ToUnixTimeSeconds());
+            .SetClaim(TokenClaims.SessionStart, signedInAt.ToUnixTimeSeconds());
         TokenClaims.ForUser(identity, user, await signIn.UserManager.GetSecurityStampAsync(user), request.GetScopes(), registered?.RoleId, methods);
         if (await applications.HasConsentTypeAsync(application, ConsentTypes.Explicit, context.RequestAborted))
         {

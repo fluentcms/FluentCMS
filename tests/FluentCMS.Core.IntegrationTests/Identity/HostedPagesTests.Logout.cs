@@ -163,19 +163,27 @@ public sealed partial class HostedPagesTests
         using var browser = new HostedPagesBrowser(host);
 
         // A top-level GET from another site carries the cookie and nothing secret: prompt=login, max_age=0, and any
-        // authorize request past the absolute lifetime sign the cookie out and leave the session's tokens working.
+        // authorize request past the absolute lifetime sign the cookie out and revoke nothing. Past the lifetime the access
+        // token works until it expires, and the refresh token is refused because the sign-in is past it, not revoked.
         var authorize = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri).Url;
         var login = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri, prompt: "login").Url;
-        foreach (var (url, wait) in new[] { (login, TimeSpan.Zero), (authorize + "&max_age=0", TimeSpan.Zero), (authorize, TimeSpan.FromHours(2)) })
+        foreach (var (url, wait) in new[] { (login, TimeSpan.Zero), (authorize + "&max_age=0", TimeSpan.Zero), (authorize, TimeSpan.FromMinutes(45)) })
         {
             await SignInAsync(browser, editor.Email);
-            host.Time.Advance(TimeSpan.FromHours(7));
+            host.Time.Advance(TimeSpan.FromHours(7.5));
             var tokens = await CodeFlowAsync(host, browser);
             host.Time.Advance(wait);
 
             using var foreign = await browser.GetAsync(url);
             new Uri(OAuthBase, foreign.Headers.Location!).AbsolutePath.ShouldBe("/account/login", url);
             browser.HasCookie(SignInCookie).ShouldBeFalse();
+            (await MeAsync(host, Text(tokens, "access_token"))).ShouldBe(HttpStatusCode.OK, url);
+
+            if (wait > TimeSpan.Zero)
+            {
+                (await RefusedAsync(host, Text(tokens, "refresh_token"))).ShouldBe("invalid_grant");
+                continue;
+            }
 
             var renewed = await RenewedAsync(host, Text(tokens, "refresh_token"));
             (await MeAsync(host, Text(renewed, "access_token"))).ShouldBe(HttpStatusCode.OK, url);
