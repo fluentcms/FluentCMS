@@ -13,6 +13,8 @@ internal sealed class CommandSignals(Func<DbCommand, bool> picks) : DbCommandInt
 
     public Signals Writes { get; } = new();
 
+    public Signals Failures { get; } = new();
+
     // The commands on the row of one lock in cms_lock: a waiter reads it while another holds the lock, a holder writes it.
     public static CommandSignals OfLock(string name) => new(command =>
         command.CommandText.Contains("\"cms_lock\"", StringComparison.Ordinal)
@@ -42,6 +44,20 @@ internal sealed class CommandSignals(Func<DbCommand, bool> picks) : DbCommandInt
     {
         Seen(command);
         return ValueTask.FromResult(result);
+    }
+
+    public override void CommandFailed(DbCommand command, CommandErrorEventData eventData)
+    {
+        if (picks(command))
+        {
+            Failures.Add();
+        }
+    }
+
+    public override Task CommandFailedAsync(DbCommand command, CommandErrorEventData eventData, CancellationToken cancellationToken = default)
+    {
+        CommandFailed(command, eventData);
+        return Task.CompletedTask;
     }
 
     // SaveChanges writes through a reader too, so the text tells a read from a write.

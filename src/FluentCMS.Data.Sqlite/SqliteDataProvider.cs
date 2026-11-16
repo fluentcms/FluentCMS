@@ -42,6 +42,10 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
     // A writer takes the lock at BEGIN IMMEDIATE and holds it to the end, so writers queue and never deadlock.
     public bool IsDeadlock(Exception exception) => false;
 
+    // What Microsoft.Data.Sqlite throws once the busy timeout and its own retries are over.
+    public bool IsBusy(Exception exception) =>
+        (exception as SqliteException ?? exception.InnerException as SqliteException) is { SqliteErrorCode: raw.SQLITE_BUSY or raw.SQLITE_LOCKED };
+
     // SQLite's LIKE folds the case of ASCII letters only.
     public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment)
     {

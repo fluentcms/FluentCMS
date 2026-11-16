@@ -30,6 +30,10 @@ public interface IDataProvider
     // Whether the database ended the transaction as the victim of a deadlock, which it asks to be run again.
     bool IsDeadlock(Exception exception);
 
+    // Whether a write gave up waiting for the write lock of a database that has one writer at a time, which another
+    // connection's transaction held; the write changed nothing. False where writers do not wait for the whole database.
+    bool IsBusy(Exception exception);
+
     // A condition of a LINQ query: the text holds the fragment, as it is (LikePattern), without regard to case as the database
     // compares text. A match on a part of the text uses no index.
     Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment);

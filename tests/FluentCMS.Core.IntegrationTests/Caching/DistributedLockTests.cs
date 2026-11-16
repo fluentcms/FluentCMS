@@ -22,15 +22,16 @@ public sealed class DistributedLockTests : IAsyncDisposable
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
 
     private readonly DirectoryInfo _directory = Directory.CreateTempSubdirectory("fluentcms-lock-");
+    private readonly string _file;
     private readonly CommandSignals _commands = CommandSignals.OfLock(Name);
     private readonly FluentCmsTestHost _first;
     private readonly FluentCmsTestHost _second;
 
     public DistributedLockTests()
     {
-        var file = Path.Combine(_directory.FullName, "cms.db");
-        _first = Watched(new FluentCmsTestHost().UseSqlite(file), _commands);
-        _second = Watched(new FluentCmsTestHost().UseSqlite(file), _commands);
+        _file = Path.Combine(_directory.FullName, "cms.db");
+        _first = Watched(new FluentCmsTestHost().UseSqlite(_file), _commands);
+        _second = Watched(new FluentCmsTestHost().UseSqlite(_file), _commands);
     }
 
     public async ValueTask DisposeAsync()
@@ -199,6 +200,48 @@ public sealed class DistributedLockTests : IAsyncDisposable
         (await RowAsync(host)).Owner.ShouldBe(Crashed);
     }
 
+    // SQLite has one writer, so a renewal waits for another connection's write transaction, such as the holder's own work,
+    // and gives up before it ends: after about 5 seconds here, where a host waits about 35.
+    [Fact]
+    public async Task AHolderKeepsTheLockWhileAWriteTransactionOutlastsItsLease()
+    {
+        var commands = CommandSignals.OfLock(Name);
+        await using var host = Impatient(Watched(new FluentCmsTestHost().UseSqlite(_file), commands));
+        await using var held = await RealClockShortLease(host).TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        held.ShouldNotBeNull();
+
+        await using (var writer = await WriteTransactionAsync())
+        {
+            commands.Failures.Forget();
+            await commands.Failures.NextAsync(1, Patience);
+            held.Lost.IsCancellationRequested.ShouldBeFalse();
+        }
+
+        // The renewal after the transaction finds the lock still the holder's.
+        commands.Writes.Forget();
+        await commands.Writes.NextAsync(1, Patience);
+        held.Lost.IsCancellationRequested.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task AWaiterOnADatabaseThatAWriteTransactionHoldsEndsWithItsTimeout()
+    {
+        await using var host = Impatient(new FluentCmsTestHost().UseSqlite(_file));
+        var waiter = RealClockShortLease(host);
+        var held = await RealClockShortLease(_first).TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        held.ShouldNotBeNull();
+
+        // The holder cannot renew while the transaction lasts, so the waiter finds the lease over and tries to take it.
+        await using (var writer = await WriteTransactionAsync())
+        {
+            (await waiter.TryAcquireAsync(Name, TimeSpan.FromMilliseconds(500), Token)).ShouldBeNull();
+        }
+
+        await held.DisposeAsync();
+        await using var next = await waiter.TryAcquireAsync(Name, Patience, Token);
+        next.ShouldNotBeNull();
+    }
+
     [Fact]
     public async Task ABadNameOrTimeoutIsRefused()
     {
@@ -225,6 +268,31 @@ public sealed class DistributedLockTests : IAsyncDisposable
     {
         Lease = TimeSpan.FromMilliseconds(300),
     };
+
+    // A lease of 300 milliseconds on the real clock, renewed every 100, for a test whose time passes in SQLite's waits.
+    private static DatabaseDistributedLock RealClockShortLease(FluentCmsTestHost host) => new(
+        host.Services.GetRequiredService<IServiceScopeFactory>(),
+        TimeProvider.System,
+        NullLogger<DatabaseDistributedLock>.Instance)
+    {
+        Lease = TimeSpan.FromMilliseconds(300),
+    };
+
+    // A write transaction on a connection of its own, as the schema apply of another process holds one; disposing it ends it.
+    private async Task<SqliteConnection> WriteTransactionAsync()
+    {
+        var connection = new SqliteConnection($"Data Source={_file};Pooling=False");
+        await connection.OpenAsync(Token);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "BEGIN IMMEDIATE";
+        await command.ExecuteNonQueryAsync(Token);
+        return connection;
+    }
+
+    // Writes of the lock that give up waiting for SQLite's write lock at the first busy timeout, of 5 seconds, rather than
+    // retrying it until the command timeout of 30 seconds.
+    private static FluentCmsTestHost Impatient(FluentCmsTestHost host) =>
+        host.Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.UseSqlite(sqlite => sqlite.CommandTimeout(1))));
 
     private static async Task<LockRow> RowAsync(FluentCmsTestHost host)
     {
