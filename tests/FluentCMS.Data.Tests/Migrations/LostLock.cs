@@ -8,13 +8,21 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Data.Tests.Migrations;
 
-// A lock that another holder takes from its holder during the work on the content tables: as the first command that adds a
-// column runs, or once the transaction of the operations has committed. Its handle's Lost is canceled then.
-internal sealed class LostLock(bool afterTheOperations) : IDistributedLock, IDisposable
+// A lock that another holder takes from its holder during the work on the content tables: as soon as it is held, so before
+// the operations are planned; as the first command that adds a column runs; or once the transaction of the operations has
+// committed. Its handle's Lost is canceled then.
+public sealed class LostLock(LostLock.When when) : IDistributedLock, IDisposable
 {
     private readonly CancellationTokenSource _lost = new();
-    private readonly bool _afterTheOperations = afterTheOperations;
+    private readonly When _when = when;
     private int _altered;
+
+    public enum When
+    {
+        BeforeThePlan,
+        WhileTheOperationsRun,
+        AfterTheOperations,
+    }
 
     // Registered before AddFluentCms, so that core's default lock gives way to it.
     public void Lock(IServiceCollection services) => services.AddSingleton<IDistributedLock>(this);
@@ -24,8 +32,15 @@ internal sealed class LostLock(bool afterTheOperations) : IDistributedLock, IDis
 
     public void Dispose() => _lost.Dispose();
 
-    public Task<IDistributedLockHandle?> TryAcquireAsync(string name, TimeSpan timeout, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IDistributedLockHandle?>(new Handle(name, _lost.Token));
+    public async Task<IDistributedLockHandle?> TryAcquireAsync(string name, TimeSpan timeout, CancellationToken cancellationToken = default)
+    {
+        if (_when == When.BeforeThePlan)
+        {
+            await _lost.CancelAsync();
+        }
+
+        return new Handle(name, _lost.Token);
+    }
 
     private sealed class Handle(string name, CancellationToken lost) : IDistributedLockHandle
     {
@@ -42,7 +57,7 @@ internal sealed class LostLock(bool afterTheOperations) : IDistributedLock, IDis
         {
             if (command.CommandText.TrimStart().StartsWith("ALTER TABLE", StringComparison.OrdinalIgnoreCase)
                 && Interlocked.Exchange(ref owner._altered, 1) == 0
-                && !owner._afterTheOperations)
+                && owner._when == When.WhileTheOperationsRun)
             {
                 await owner._lost.CancelAsync();
             }
@@ -55,7 +70,7 @@ internal sealed class LostLock(bool afterTheOperations) : IDistributedLock, IDis
     {
         public override async Task TransactionCommittedAsync(DbTransaction transaction, TransactionEndEventData eventData, CancellationToken cancellationToken = default)
         {
-            if (owner._afterTheOperations && Volatile.Read(ref owner._altered) == 1)
+            if (owner._when == When.AfterTheOperations && Volatile.Read(ref owner._altered) == 1)
             {
                 await owner._lost.CancelAsync();
             }

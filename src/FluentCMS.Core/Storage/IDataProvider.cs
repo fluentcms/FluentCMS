@@ -37,7 +37,8 @@ public interface IDataProvider
     bool IsBusy(Exception exception);
 
     // Whether the database has one writer at a time, which a write transaction keeps from its beginning to its end, so that
-    // every write waits for every other connection's write transaction, whatever rows they touch. True on SQLite.
+    // every write waits for every other connection's write transaction, whatever rows they touch. True on SQLite, whose
+    // timings of that wait the default lock keeps in core (DatabaseDistributedLock).
     bool HasOneWriter { get; }
 
     // A condition of a LINQ query: the text holds the fragment, as it is (LikePattern), without regard to case as the database

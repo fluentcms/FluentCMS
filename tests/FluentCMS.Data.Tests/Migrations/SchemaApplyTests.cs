@@ -628,16 +628,18 @@ public sealed partial class SchemaApplyTests : IDisposable
         _database.Columns("cms_article").ShouldContain("summary");
     }
 
-    // Another holder takes the lock, as a waiter on SQLite could at the end of a long transaction, while the operations run or
-    // after they committed and before the history is written.
+    // Another holder takes the lock, as a waiter on SQLite could at the end of a long transaction: before the plan, while the
+    // operations run, or after they committed and before the history is written.
     [Theory]
-    [InlineData(false, "FCMS3339: another holder took the lock fluentcms:schema-sync while the operations were applied; their transaction was rolled back")]
-    [InlineData(true, "FCMS3340: the content tables match schema ")]
-    public async Task ARunThatLosesItsLockSaysToRunAgain(bool afterTheOperations, string message)
+    [InlineData(LostLock.When.BeforeThePlan, "FCMS3339: another holder took the lock fluentcms:schema-sync while the operations were planned, so nothing was applied")]
+    [InlineData(LostLock.When.WhileTheOperationsRun, "FCMS3339: another holder took the lock fluentcms:schema-sync while the operations were applied; their transaction was rolled back")]
+    [InlineData(LostLock.When.AfterTheOperations, "FCMS3340: the content tables match schema ")]
+    public async Task ARunThatLosesItsLockSaysToRunAgain(LostLock.When when, string message)
     {
         await MigrateAndApplyAsync(ArticleSchemas.Titled);
         var schema = ArticleSchemas.Article("title", "subtitle", "summary");
-        using var lost = new LostLock(afterTheOperations);
+        var afterTheOperations = when == LostLock.When.AfterTheOperations;
+        using var lost = new LostLock(when);
 
         using (var host = _database.CreateHost(schema, Production, settings: NoMigrationOnStartup, services: lost.Lock, configure: lost.Configure))
         {

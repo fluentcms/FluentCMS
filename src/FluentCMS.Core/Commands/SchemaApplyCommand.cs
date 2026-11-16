@@ -56,8 +56,20 @@ internal sealed class SchemaApplyCommand : HostCommand
         await using var held = applying ? await runner.LockContentSchemaAsync(cancellationToken) : null;
         using var guarded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, held?.Lost ?? CancellationToken.None);
 
-        var applied = await runner.GetAppliedSnapshotAsync(guarded.Token);
-        var plan = await runner.PlanContentSchemaAsync(applied, guarded.Token);
+        string? applied;
+        SchemaApplyPlan plan;
+        try
+        {
+            applied = await runner.GetAppliedSnapshotAsync(guarded.Token);
+            plan = await runner.PlanContentSchemaAsync(applied, guarded.Token);
+        }
+        catch (Exception) when (LockLost(held, cancellationToken))
+        {
+            throw new CommandException(
+                CommandErrorCodes.SchemaApplyFailed,
+                $"another holder took the lock {MigrationRunner.SchemaSyncLock} while the operations were planned, so nothing was applied; run 'fluentcms schema apply' again");
+        }
+
         var steps = plan.Steps;
         var (report, unreadable) = SchemaHistory.Compare(applied, schema);
         if (!script)
@@ -102,17 +114,18 @@ internal sealed class SchemaApplyCommand : HostCommand
             {
                 await runner.ApplyContentSchemaAsync(steps, guarded.Token);
             }
+            // First, since a provider can end a command that the lost lock canceled with an exception of its own.
+            catch (Exception) when (LockLost(held, cancellationToken))
+            {
+                throw new CommandException(
+                    CommandErrorCodes.SchemaApplyFailed,
+                    $"another holder took the lock {MigrationRunner.SchemaSyncLock} while the operations were applied; their transaction was rolled back, except what SQLite committed before a table rebuild, which the next run leaves out, and the schema history keeps its last row; run 'fluentcms schema apply' again");
+            }
             catch (DbException exception)
             {
                 throw new CommandException(
                     CommandErrorCodes.SchemaApplyFailed,
                     $"the database refused an operation ({exception.GetType().Name}: {SecretScrubber.Of(exception.Message)}); its transaction was rolled back, except what SQLite committed before a table rebuild, which the next run leaves out, and the schema history keeps its last row");
-            }
-            catch (OperationCanceledException) when (LockLost(held, cancellationToken))
-            {
-                throw new CommandException(
-                    CommandErrorCodes.SchemaApplyFailed,
-                    $"another holder took the lock {MigrationRunner.SchemaSyncLock} while the operations were applied; their transaction was rolled back, except what SQLite committed before a table rebuild, which the next run leaves out, and the schema history keeps its last row; run 'fluentcms schema apply' again");
             }
         }
 
@@ -121,17 +134,17 @@ internal sealed class SchemaApplyCommand : HostCommand
         {
             await runner.RecordSchemaAsync(guarded.Token);
         }
+        catch (Exception) when (LockLost(held, cancellationToken))
+        {
+            throw new CommandException(
+                CommandErrorCodes.SchemaNotRecorded,
+                $"the content tables match schema {hash}, but another holder took the lock {MigrationRunner.SchemaSyncLock} before the schema history was written; run 'fluentcms schema apply' again with the same options to record it");
+        }
         catch (Exception exception) when (exception is DbException or DbUpdateException or InvalidOperationException)
         {
             throw new CommandException(
                 CommandErrorCodes.SchemaNotRecorded,
                 $"the content tables match schema {hash}, but the schema history could not be written ({exception.GetType().Name}); run 'fluentcms schema apply' again with the same options to record it");
-        }
-        catch (OperationCanceledException) when (LockLost(held, cancellationToken))
-        {
-            throw new CommandException(
-                CommandErrorCodes.SchemaNotRecorded,
-                $"the content tables match schema {hash}, but another holder took the lock {MigrationRunner.SchemaSyncLock} before the schema history was written; run 'fluentcms schema apply' again with the same options to record it");
         }
 
         await context.Output.WriteLineAsync(steps.Count == 0

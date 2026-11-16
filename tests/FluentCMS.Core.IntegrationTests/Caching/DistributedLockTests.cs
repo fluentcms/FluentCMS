@@ -353,6 +353,11 @@ public sealed class DistributedLockTests : IAsyncDisposable
             }
 
             (await LiveRowAsync(holderHost)).Owner.ShouldBe(holder, $"the waiter took the lock in round {round}");
+
+            // The tries of the waiter's confirmation, which find the lease renewed.
+            takes.Reads.Forget();
+            await takes.Reads.NextAsync(3, Patience);
+            (await RowAsync(holderHost)).Owner.ShouldBe(holder, $"the waiter took the lock in round {round}");
             await stop.CancelAsync();
             (await CanceledAsync(waiting)).ShouldBeNull();
         }
@@ -361,26 +366,47 @@ public sealed class DistributedLockTests : IAsyncDisposable
         logs.Entries.ShouldNotContain(entry => entry.EventId.Id == LockLog.LeaseTakenOverId);
     }
 
-    // A holder that stopped leaves its lease over and as it was, so a waiter takes it over once it saw it so for the second
-    // of the confirmation: within 2 seconds of the lease running out, with 1 second of polling to see it.
+    // A holder that stopped leaves its lease over and as it was, so a waiter takes it over at the try a second after it saw
+    // it so: two tries that each began a write transaction.
     [Fact]
-    public async Task AWaiterTakesOverTheLeaseOfAHolderThatStoppedOnceItStayedOverForASecond()
+    public async Task AWaiterTakesOverTheLeaseOfAHolderThatStoppedOnceItsConfirmationFindsItAsItWas()
     {
+        var takes = new TakeSignals(Name);
         var logs = new LogCapture();
-        var locks = RealClockLease(_first, TimeSpan.FromSeconds(30), logs);
-        await InsertAsync(_first, Crashed, DateTimeOffset.UtcNow - TimeSpan.FromSeconds(1));
+        await using var host = Watched(new FluentCmsTestHost().UseSqlite(_file), takes);
+        var locks = RealClockLease(host, TimeSpan.FromSeconds(30), logs);
+        await InsertAsync(host, Crashed, DateTimeOffset.UtcNow - TimeSpan.FromSeconds(1));
 
         var watch = Stopwatch.StartNew();
         await using var taken = await locks.TryAcquireAsync(Name, Patience, Token);
 
         taken.ShouldNotBeNull();
-        watch.Elapsed.ShouldBeGreaterThanOrEqualTo(TimeSpan.FromSeconds(1));
-
-        // One confirmation, and room for one more on a loaded runner, where the transaction of a try can wait to begin.
-        watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(3));
+        takes.Count.ShouldBeGreaterThanOrEqualTo(2);
+        watch.Elapsed.ShouldBeGreaterThan(TimeSpan.FromMilliseconds(900));
         var takeOver = logs.Entries.ShouldHaveSingleItem();
         takeOver.EventId.Id.ShouldBe(LockLog.LeaseTakenOverId);
         takeOver.State["Holder"].ShouldBe(Crashed);
+    }
+
+    // The export and the import try once, and take over the lock of a predecessor that stopped, a confirmation late.
+    [Fact]
+    public async Task ATryOnceTakesOverTheLeaseOfAHolderThatStoppedEveryTime()
+    {
+        var locks = RealClockLease(_first, TimeSpan.FromSeconds(30));
+        await InsertAsync(_first, Crashed, DateTimeOffset.UtcNow - TimeSpan.FromSeconds(1));
+
+        for (var round = 0; round < 30; round++)
+        {
+            var watch = Stopwatch.StartNew();
+            var taken = await locks.TryAcquireAsync(Name, TimeSpan.Zero, Token);
+            taken.ShouldNotBeNull($"round {round}, after {watch.Elapsed}");
+            await taken.DisposeAsync();
+
+            await using var scope = _first.Services.CreateAsyncScope();
+            await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<LockRow>()
+                .Where(row => row.Name == Name)
+                .ExecuteUpdateAsync(row => row.SetProperty(column => column.Owner, Crashed).SetProperty(column => column.LeaseUntil, DateTimeOffset.UtcNow - TimeSpan.FromSeconds(1)), Token);
+        }
     }
 
     [Fact]
@@ -389,13 +415,22 @@ public sealed class DistributedLockTests : IAsyncDisposable
         await InsertAsync(_first, Crashed, DateTimeOffset.UtcNow - TimeSpan.FromSeconds(1));
         var first = RealClockLease(_first, TimeSpan.FromSeconds(30));
         var second = RealClockLease(_second, TimeSpan.FromSeconds(30));
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(Token);
 
-        var attempts = await Task.WhenAll(
-            Task.Run(() => first.TryAcquireAsync(Name, TimeSpan.FromSeconds(3), Token), Token),
-            Task.Run(() => second.TryAcquireAsync(Name, TimeSpan.FromSeconds(3), Token), Token));
+        var waits = new[]
+        {
+            Task.Run(() => first.TryAcquireAsync(Name, Patience, stop.Token), Token),
+            Task.Run(() => second.TryAcquireAsync(Name, Patience, stop.Token), Token),
+        };
 
+        // The loser waits for the winner, which keeps the lock, so it is canceled once one has it.
+        var winner = await (await Task.WhenAny(waits));
+        await stop.CancelAsync();
+        var attempts = new[] { await CanceledAsync(waits[0]), await CanceledAsync(waits[1]) };
+
+        winner.ShouldNotBeNull();
         attempts.Count(held => held is not null).ShouldBe(1);
-        await attempts.Single(held => held is not null)!.DisposeAsync();
+        await winner.DisposeAsync();
     }
 
     // The holder releases the lock while a waiter that found its lease over waits for the writer, so the waiter takes a free
@@ -568,13 +603,21 @@ public sealed class DistributedLockTests : IAsyncDisposable
     {
         private DbConnection? _read;
 
+        private int _count;
+
         public CommandSignals.Signals Begins { get; } = new();
+
+        // Every read of the lock's row, each try's first among them.
+        public CommandSignals.Signals Reads { get; } = new();
+
+        public int Count => Volatile.Read(ref _count);
 
         public ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command, CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = default)
         {
             if (command.CommandText.Contains("\"cms_lock\"", StringComparison.Ordinal) && command.Parameters.Cast<DbParameter>().Any(parameter => Equals(parameter.Value, name)))
             {
                 Volatile.Write(ref _read, command.Connection);
+                Reads.Add();
             }
 
             return ValueTask.FromResult(result);
@@ -584,6 +627,7 @@ public sealed class DistributedLockTests : IAsyncDisposable
         {
             if (Interlocked.CompareExchange(ref _read, null, connection) == connection)
             {
+                Interlocked.Increment(ref _count);
                 Begins.Add();
             }
 

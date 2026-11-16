@@ -217,8 +217,8 @@ public sealed class MigrationRunner(
         "'fluentcms schema apply' still holds it and is working, and one that stands still ahead of this instance's clock means its holder " +
         "stopped and the clocks of the instances are not in step; on SQLite one that stands still behind the clock can also mean that its " +
         "holder is working inside a long write transaction, which keeps it from renewing until the transaction ends; when the log has " +
-        $"event {LockLog.TimedOutBusyId} for the lock, the database was busy instead: another connection kept SQLite's one writer to " +
-        "the end of the wait, and the row may be free; once no instance is running, set the row's owner to null.");
+        $"event {LockLog.TimedOutBusyId} for the lock, it can also mean that the database was busy: another connection kept SQLite's one " +
+        "writer to the end of the wait, and the row may be free; once no instance is running, set the row's owner to null.");
 
     // The steps that bring the content tables up to the host's schema: schema sync's comparison, with renames and the
     // changes sync leaves undone. The applied snapshot tells which tables under a plugin's prefix are content tables.
