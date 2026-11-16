@@ -1,1 +1,29 @@
 @* The root component of the admin, which the shell fills. *@
+@using FluentCMS.Admin.Configuration
+@using Microsoft.Extensions.Logging
+@inject AdminStartup Startup
+@inject ILogger<AdminApp> Logger
+
+@if (Startup.Configuration is { } configuration)
+{
+    <BrandingHead Branding="configuration.Branding" />
+}
+else
+{
+    <ConfigurationErrorPage />
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        foreach (var member in Startup.UnknownMembers)
+        {
+            ConfigurationLog.UnknownMember(Logger, member);
+        }
+
+        foreach (var member in Startup.PlainHttpMembers)
+        {
+            ConfigurationLog.PlainHttp(Logger, member);
+        }
+    }
+}

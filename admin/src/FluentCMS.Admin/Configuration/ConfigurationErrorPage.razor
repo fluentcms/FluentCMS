@@ -1,0 +1,15 @@
+@* Static on purpose: it shows before anything else runs, so it uses no wrapped component and no API. *@
+@using Microsoft.AspNetCore.Components.Web
+@inject AdminStartup Startup
+
+<PageTitle>@ConfigurationTexts.Title</PageTitle>
+<main class="fluentcms-configuration-error">
+    <h1>@ConfigurationTexts.Title</h1>
+    <p>@ConfigurationTexts.Introduction</p>
+    <ul>
+        @foreach (var problem in Startup.Problems)
+        {
+            <li data-member="@problem.Member">@ConfigurationTexts.Describe(problem)</li>
+        }
+    </ul>
+</main>
