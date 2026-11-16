@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <Description>The FluentCMS admin: the shell, sign-in, the Management API client, the generated lists and forms, and the pages of core's groups, for a Blazor WebAssembly app.</Description>
+    <PackageTags>$(PackageTags) admin blazor webassembly</PackageTags>
+    <IsTrimmable>true</IsTrimmable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj" />
+    <ProjectReference Include="../FluentCMS.Admin.Components/FluentCMS.Admin.Components.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FluentCMS.Admin.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <PublishTrimmed>true</PublishTrimmed>
+    <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
+    <ILLinkTreatWarningsAsErrors>true</ILLinkTreatWarningsAsErrors>
+    <!-- The framework's Blazor assemblies are not free of trim warnings, which is why a Blazor app suppresses them all by
+         default. Each assembly that is not FluentCMS's reports one IL2104 at most, ignored here; a FluentCMS assembly reports
+         every warning, and fails the publish. -->
+    <NoWarn>$(NoWarn);IL2104</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../FluentCMS.Admin/FluentCMS.Admin.csproj" />
+  </ItemGroup>
+
+  <Target Name="ReportEveryTrimWarningOfFluentCms" AfterTargets="PrepareForILLink">
+    <ItemGroup>
+      <ManagedAssemblyToLink Condition="$([System.String]::Copy('%(Filename)').StartsWith('FluentCMS.'))">
+        <TrimmerSingleWarn>false</TrimmerSingleWarn>
+      </ManagedAssemblyToLink>
+    </ItemGroup>
+  </Target>
+
+</Project>

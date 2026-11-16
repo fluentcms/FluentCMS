@@ -78,6 +78,8 @@ jobs:
             projects: tests/FluentCMS.Core.IntegrationTests tests/FluentCMS.Cli.Tests tests/FluentCMS.Client.Tests
           - group: plugins
             projects: tests/FluentCMS.Plugins.Tests tests/FluentCMS.Plugins.Media.Tests tests/FluentCMS.Plugins.Webhooks.Tests tests/FluentCMS.Plugins.Mcp.Tests tests/FluentCMS.Plugins.GraphQL.Tests tests/FluentCMS.Plugins.MultiSite.Tests tests/FluentCMS.Plugins.AiAssist.Tests tests/FluentCMS.Plugins.Search.Tests tests/FluentCMS.Host.Tests
+          - group: admin
+            projects: admin/tests/FluentCMS.Admin.Tests admin/tests/FluentCMS.Admin.ApiTests
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -183,6 +185,10 @@ jobs:
         if: env.FULL_TESTS != 'true'
         run: dotnet test --project tests/FluentCMS.Architecture.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results
 
+      - name: Test admin components
+        if: env.FULL_TESTS != 'true'
+        run: dotnet test --project admin/tests/FluentCMS.Admin.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results
+
       # As in the fast checks of Feature CI: the tool, and the host's commands with export and import on SQLite.
       - name: Test the tool
         if: env.FULL_TESTS != 'true'
@@ -280,6 +286,10 @@ jobs:
 
       - name: Pack
         run: dotnet pack -c Release --no-build -o artifacts/packages
+
+      # The admin app is the prebuilt static build, not a package. A trim warning in a FluentCMS assembly fails the publish.
+      - name: Publish the admin trimmed
+        run: dotnet publish admin/src/FluentCMS.Admin.App -c Release --no-build -o artifacts/admin
 
       # Packed beside the NuGet packages at their version. CI publishes neither; the Publish workflow does, from a tag.
       - name: Set up Node

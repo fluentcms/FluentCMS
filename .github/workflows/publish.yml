@@ -25,6 +25,7 @@ on:
       - Directory.Build.props
       - eng/check-packages.cs
       - "src/**/*.csproj"
+      - "admin/src/**/*.csproj"
       - src/FluentCMS.Host/Dockerfile
       - .dockerignore
       - templates/FluentCMS.Templates.csproj
