@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: "0 7 * * *"
   workflow_dispatch:
+    inputs:
+      traces:
+        description: Keep a masked Playwright trace of each failed end-to-end test in the test results.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -126,6 +131,66 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: test-results-${{ matrix.group }}
+          path: artifacts/test-results
+          retention-days: 14
+
+  # The admin's browser tests (spec 7): the tests publish the reference host and run it, and drive it in Chromium. Chromium is
+  # kept in the NuGet folder that setup-dotnet caches, under a key of this job's own: the hash of Directory.Packages.props,
+  # which pins the Playwright version, and of the project. A run whose key is cached restores the browser and downloads none.
+  end-to-end:
+    name: End-to-end (admin)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            Directory.Packages.props
+            admin/tests/FluentCMS.Admin.EndToEnd/FluentCMS.Admin.EndToEnd.csproj
+
+      - name: Keep the browser in the cached NuGet folder
+        shell: bash
+        run: |
+          packages=$(dotnet nuget locals global-packages --list | sed 's/^global-packages: //')
+          echo "PLAYWRIGHT_BROWSERS_PATH=${packages%/}/.playwright-browsers" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: dotnet build admin/tests/FluentCMS.Admin.EndToEnd -c Release -warnaserror
+
+      # The headless shell is what headless Chromium runs; the system libraries it needs come from apt on every run.
+      - name: Install Chromium
+        shell: bash
+        run: |
+          if compgen -G "$PLAYWRIGHT_BROWSERS_PATH/chromium_headless_shell-*" > /dev/null; then
+            echo "Chromium restored from the cache: $(ls "$PLAYWRIGHT_BROWSERS_PATH" | tr '\n' ' ')"
+          else
+            echo "Chromium is not in the cache; it is downloaded."
+          fi
+          pwsh admin/tests/FluentCMS.Admin.EndToEnd/bin/Release/net10.0/playwright.ps1 install --with-deps --only-shell chromium
+
+      # A skipped test fails here, so that a browser that did not install cannot pass the job. A manual run with traces on
+      # keeps the masked trace of each failed test in the uploaded results.
+      - name: Test
+        env:
+          FLUENTCMS_E2E_TRACES: ${{ inputs.traces && format('{0}/artifacts/test-results/traces', github.workspace) || '' }}
+        run: dotnet test --project admin/tests/FluentCMS.Admin.EndToEnd -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --fail-skips on --timeout 15m
+
+      - name: Name the tests that were running
+        if: failure() || cancelled()
+        shell: bash
+        run: grep -h -A6 -e "\[Long Running Test\]" -e "\[FAIL\]" artifacts/test-results/*.diag 2>/dev/null || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: test-results-end-to-end
           path: artifacts/test-results
           retention-days: 14
 
@@ -470,7 +535,7 @@ jobs:
   # Nobody watches the nightly run, which is the only one that runs the full Windows suite, so a failure opens an issue.
   nightly-report:
     name: Report nightly failure
-    needs: [markdown, build, test, typescript, build-test-windows, data-tests, pack, templates]
+    needs: [markdown, build, test, end-to-end, typescript, build-test-windows, data-tests, pack, templates]
     if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 5

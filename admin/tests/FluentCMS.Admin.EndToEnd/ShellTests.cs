@@ -1,0 +1,71 @@
+using System.Text.RegularExpressions;
+using Microsoft.Playwright;
+using Shouldly;
+using Xunit;
+using static Microsoft.Playwright.Assertions;
+
+namespace FluentCMS.Admin.EndToEnd;
+
+// The shell of A1's exit criteria for the built-in Editor on the Blog sample: the sidebar of the types it may read, in each
+// of its sites, and the switch between them. The content links lead to the not-found page until A2's lists, so the links and
+// their names are checked, not a page behind them.
+[Collection(BrowserTests.Name)]
+public sealed class ShellTests(EndToEndHost host)
+{
+    // The Blog sample's collections, which name no display name, so the shell shows the name with a capital first letter.
+    private static readonly string[] BlogTypes = ["article", "author", "tag"];
+
+    [Fact]
+    public async Task TheSidebarListsTheTypesTheEditorMayReadAndNoAdministration()
+    {
+        await using var browser = await host.OpenBrowserAsync();
+        var tab = await browser.NewTabAsync();
+        await tab.Page.GotoAsync(host.Admin.AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(tab, host.Editor);
+
+        await SidebarShouldListTheBlogTypesAsync(tab);
+        await Expect(tab.Sidebar.GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = Repository.AdminText("Shell.Sidebar.Home"), Exact = true }))
+            .ToHaveAttributeAsync("aria-current", "page");
+        await Expect(tab.Sidebar.GetByText(Repository.AdminText("Shell.Sidebar.Administration"), new LocatorGetByTextOptions { Exact = true })).ToHaveCountAsync(0);
+        await Expect(tab.Sidebar.GetByText(Repository.AdminText("Shell.Sidebar.Settings"), new LocatorGetByTextOptions { Exact = true })).ToHaveCountAsync(0);
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task TheEditorSwitchesSiteAndTheTabKeepsTheChosenSite()
+    {
+        await using var browser = await host.OpenBrowserAsync();
+        var tab = await browser.NewTabAsync();
+        await tab.Page.GotoAsync(host.Admin.AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(tab, host.Editor);
+        await Expect(tab.SiteSwitcher).ToHaveValueAsync(host.Sites[0].Id);
+
+        // The reads of the switch name the chosen site, and the switch is announced.
+        var second = host.Sites[1];
+        var access = await tab.SwitchSiteAsync(second);
+        access.Status.ShouldBe(200);
+        (await access.Request.HeaderValueAsync("x-cms-site")).ShouldBe(second.Id, StringCompareShould.IgnoreCase);
+        await Expect(tab.SiteSwitcher).ToHaveValueAsync(second.Id);
+        await SidebarShouldListTheBlogTypesAsync(tab);
+
+        // The tab keeps the site across a reload.
+        var schema = tab.Page.WaitForResponseAsync(response => response.Url == tab.ManagementUrl("schema"), new PageWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        await tab.ReloadAsync();
+        (await (await schema).Request.HeaderValueAsync("x-cms-site")).ShouldBe(second.Id, StringCompareShould.IgnoreCase);
+        await Expect(tab.SiteSwitcher).ToHaveValueAsync(second.Id);
+        await SidebarShouldListTheBlogTypesAsync(tab);
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    private static async Task SidebarShouldListTheBlogTypesAsync(AdminTab tab)
+    {
+        await Expect(tab.Sidebar).ToBeVisibleAsync();
+        await Expect(tab.Sidebar.Locator("a[href*='content/']")).ToHaveCountAsync(BlogTypes.Length);
+        foreach (var type in BlogTypes)
+        {
+            var name = char.ToUpperInvariant(type[0]) + type[1..];
+            await Expect(tab.Sidebar.GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = name }))
+                .ToHaveAttributeAsync("href", new Regex($"(^|/)content/{type}$"));
+        }
+    }
+}

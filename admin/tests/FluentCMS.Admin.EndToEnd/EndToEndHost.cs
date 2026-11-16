@@ -1,13 +1,13 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Security.Cryptography;
+using System.Text.Json.Nodes;
 using FluentCMS.Admin.EndToEnd;
+using Microsoft.Playwright;
 using Xunit;
 
 [assembly: AssemblyFixture(typeof(EndToEndHost))]
-
-// One host serves every test, and the browser tests drive one tab or two at a time, so they run one after another.
-[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace FluentCMS.Admin.EndToEnd;
 
@@ -20,6 +20,8 @@ public sealed class EndToEndHost : IAsyncLifetime
 {
     public const string AdminPath = "/admin/";
 
+    public const string AccessTokenLifetime = "00:00:01";
+
     private static readonly TimeSpan PublishTimeout = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan CommandTimeout = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan StartTimeout = TimeSpan.FromMinutes(2);
@@ -28,6 +30,8 @@ public sealed class EndToEndHost : IAsyncLifetime
     private readonly Dictionary<string, string?> _environment = [];
     private ChildProcess? _host;
     private TestCertificates? _certificates;
+    private IPlaywright? _playwright;
+    private IBrowser? _browser;
 
     public Uri Origin { get; private set; } = null!;
 
@@ -40,6 +44,13 @@ public sealed class EndToEndHost : IAsyncLifetime
     public string EditorCreated { get; private set; } = "";
 
     public string MigrateOutput { get; private set; } = "";
+
+    // The default site of the Blog sample and a second one, made through the Management API of the multi-site plugin with a
+    // key from the host's own command, since no command makes a site. The instance-wide Editor role reaches both.
+    public IReadOnlyList<Site> Sites { get; private set; } = [];
+
+    // Why the browser tests are skipped: Chromium is not installed for this version of Playwright.
+    public string? BrowserMissing { get; private set; }
 
     private string PublishDirectory => Path.Combine(_root.FullName, "host");
 
@@ -61,10 +72,18 @@ public sealed class EndToEndHost : IAsyncLifetime
         Editor = NewEditor();
         EditorCreated = await CommandAsync(Editor.Password, "user", "create", "--email", Editor.Email, "--role", "Editor", "--password-stdin");
         await StartAsync();
+        Sites = await AddSecondSiteAsync();
+        (_playwright, _browser, BrowserMissing) = await Chromium.LaunchAsync(ServerCertificateHash);
     }
 
     public async ValueTask DisposeAsync()
     {
+        if (_browser is not null)
+        {
+            await _browser.CloseAsync();
+        }
+
+        _playwright?.Dispose();
         _host?.Dispose();
         _certificates?.Server.Dispose();
         await Task.Yield();
@@ -75,6 +94,15 @@ public sealed class EndToEndHost : IAsyncLifetime
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
         }
+    }
+
+    // A browser context of its own for a test; the test is skipped, with the reason, when Chromium is not installed.
+    // Traced when FLUENTCMS_E2E_TRACES names a directory, or when a test asks for traces itself.
+    public Task<AdminBrowser> OpenBrowserAsync(string? traces = null)
+    {
+        Assert.SkipWhen(BrowserMissing is not null, BrowserMissing ?? "");
+        traces ??= Environment.GetEnvironmentVariable(AdminBrowser.TracesVariable) is { Length: > 0 } directory ? directory : null;
+        return AdminBrowser.OpenAsync(this, _browser!, traces);
     }
 
     // An editor of its own for a test that changes its user, such as by ending its sessions.
@@ -135,9 +163,10 @@ public sealed class EndToEndHost : IAsyncLifetime
         }
     }
 
-    // The settings of a production deployment, as few as the image needs, with three that only a test host has: its address
-    // is a port of the loopback address; its certificates are the run's own; and every browser of the tests signs in from
-    // that one address, so the sign-in's limit per client address is raised from 20 a minute.
+    // The settings of a production deployment, as few as the image needs, with four that only a test host has: its address
+    // is a port of the loopback address; its certificates are the run's own; every browser of the tests signs in from that one
+    // address, so the sign-in's limit per client address is raised from 20 a minute; and an access token lasts one second, so
+    // that the admin refreshes it on demand, half a second after it was issued, at the next call of a test's action.
     private void Configure()
     {
         var certificates = _certificates!;
@@ -160,6 +189,7 @@ public sealed class EndToEndHost : IAsyncLifetime
             ["FluentCms__DataProtection__Certificate__Password"] = certificates.Password,
             ["FluentCms__Media__Local__Root"] = Path.Combine(DataDirectory, "media"),
             ["FluentCms__RateLimits__Auth__PermitLimit"] = "1000",
+            ["FluentCms__Clients__AccessTokenLifetime"] = AccessTokenLifetime,
             ["Kestrel__Endpoints__Https__Url"] = origin,
             ["Kestrel__Endpoints__Https__Certificate__Path"] = certificates.ServerPath,
             ["Kestrel__Endpoints__Https__Certificate__Password"] = certificates.Password,
@@ -177,6 +207,23 @@ public sealed class EndToEndHost : IAsyncLifetime
         return exitCode == 0
             ? output
             : throw new InvalidOperationException($"'fluentcms {string.Join(' ', command.TakeWhile(part => part != "--email"))}' exited with {exitCode}.{Environment.NewLine}{tail}");
+    }
+
+    // The key is kept in memory for these two requests only, and goes with the host's database at the end of the run.
+    private async Task<IReadOnlyList<Site>> AddSecondSiteAsync()
+    {
+        var key = (await CommandAsync(null, "apikey", "create", "--name", "end-to-end-setup", "--class", "management", "--role", "Super Admin")).Trim();
+        using var client = Client();
+        client.DefaultRequestHeaders.Add("X-Api-Key", key);
+
+        using var created = await client.PostAsJsonAsync(new Uri("api/management/v1/sites", UriKind.Relative), new { name = "Second blog", slug = "second", defaultLocale = "en" }, Token);
+        if (created.StatusCode != HttpStatusCode.Created)
+        {
+            throw new InvalidOperationException($"Creating the second site answered {(int)created.StatusCode}: {await created.Content.ReadAsStringAsync(Token)}");
+        }
+
+        var list = await client.GetFromJsonAsync<JsonObject>(new Uri("api/management/v1/sites", UriKind.Relative), Token);
+        return [.. list!["items"]!.AsArray().Select(site => new Site((string)site!["id"]!, (string)site["name"]!, (bool)site["isDefault"]!)).OrderByDescending(site => site.IsDefault)];
     }
 
     private async Task StartAsync()
@@ -220,6 +267,15 @@ public sealed class EndToEndHost : IAsyncLifetime
         }
     }
 }
+
+// One host serves every test, and the browser tests change its users and sessions, so they run one after another.
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class BrowserTests
+{
+    public const string Name = "browser";
+}
+
+public sealed record Site(string Id, string Name, bool IsDefault);
 
 // The password is made per run and never written out, so a test message that names the editor names its address only.
 public sealed record Editor(string Email, string Password)

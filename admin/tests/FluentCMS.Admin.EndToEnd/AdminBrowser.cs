@@ -21,6 +21,7 @@ public sealed class AdminBrowser : IAsyncDisposable
     private readonly string? _traces;
     private readonly ConcurrentQueue<string> _violations = new();
     private readonly ConcurrentBag<string> _passwords = [];
+    private bool _tracing;
 
     private AdminBrowser(EndToEndHost host, IBrowserContext context, string? traces)
     {
@@ -45,7 +46,7 @@ public sealed class AdminBrowser : IAsyncDisposable
             await context.Tracing.StartAsync(new TracingStartOptions { Screenshots = true, Snapshots = true, Sources = false, Title = TestContext.Current.Test?.TestDisplayName });
         }
 
-        return new AdminBrowser(host, context, traces);
+        return new AdminBrowser(host, context, traces) { _tracing = traces is not null };
     }
 
     public async Task<AdminTab> NewTabAsync()
@@ -73,10 +74,13 @@ public sealed class AdminBrowser : IAsyncDisposable
         await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Sign in", Exact = true }).ClickAsync();
     }
 
+    public IReadOnlyCollection<string> Passwords => [.. _passwords];
+
     // The trace of this context, masked, at path; the same as a failed test leaves.
     public async Task SaveTraceAsync(string path)
     {
         var raw = path + ".raw";
+        _tracing = false;
         await _context.Tracing.StopAsync(new TracingStopOptions { Path = raw });
         try
         {
@@ -88,21 +92,20 @@ public sealed class AdminBrowser : IAsyncDisposable
         }
     }
 
-    public IReadOnlyCollection<string> Passwords => [.. _passwords];
-
     public async ValueTask DisposeAsync()
     {
         try
         {
-            if (_traces is not null)
+            if (_tracing)
             {
                 if (TestContext.Current.TestState?.Result == TestResult.Failed)
                 {
-                    Directory.CreateDirectory(_traces);
-                    await SaveTraceAsync(Path.Combine(_traces, TraceName() + ".zip"));
+                    Directory.CreateDirectory(_traces!);
+                    await SaveTraceAsync(Path.Combine(_traces!, TraceName() + ".zip"));
                 }
                 else
                 {
+                    _tracing = false;
                     await _context.Tracing.StopAsync();
                 }
             }
@@ -133,13 +136,14 @@ public sealed class AdminBrowser : IAsyncDisposable
     }
 }
 
-// One tab, with what it asked of the authorization server: the address of each authorize request, and the grant of each
-// token request, never a token or a code.
+// One tab, with what it asked of the authorization server: the address of each authorize request, each login page shown, and
+// the grant and status of each token request, never a token or a code.
 public sealed class AdminTab
 {
     private readonly EndToEndHost _host;
     private readonly ConcurrentQueue<Uri> _authorizeRequests = new();
     private readonly ConcurrentQueue<string> _loginPages = new();
+    private readonly ConcurrentQueue<TokenRequest> _tokenRequests = new();
 
     internal AdminTab(EndToEndHost host, IPage page)
     {
@@ -157,6 +161,13 @@ public sealed class AdminTab
                 _loginPages.Enqueue(url.AbsolutePath);
             }
         };
+        page.Response += (_, response) =>
+        {
+            if (IsTokenRequest(response))
+            {
+                _tokenRequests.Enqueue(TokenRequest.Of(response));
+            }
+        };
     }
 
     public IPage Page { get; }
@@ -164,6 +175,8 @@ public sealed class AdminTab
     public IReadOnlyCollection<Uri> AuthorizeRequests => _authorizeRequests;
 
     public int LoginPagesShown => _loginPages.Count;
+
+    public IReadOnlyCollection<TokenRequest> TokenRequests => _tokenRequests;
 
     public ILocator Heading(string resourceKey) =>
         Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = Repository.AdminText(resourceKey), Exact = true });
@@ -173,6 +186,14 @@ public sealed class AdminTab
 
     public ILocator LoginField => Page.GetByLabel("User name or email");
 
+    // The sidebar, a navigation landmark named by the resources.
+    public ILocator Sidebar => Page.GetByRole(AriaRole.Navigation, new PageGetByRoleOptions { Name = Repository.AdminText("Shell.Sidebar.Label"), Exact = true });
+
+    public ILocator SiteSwitcher => Page.GetByLabel(Repository.AdminText("Shell.SiteSwitcher.Label"), new PageGetByLabelOptions { Exact = true });
+
+    // What the live region has announced, which a screen reader reads.
+    public ILocator Announced(string text) => Page.GetByRole(AriaRole.Status).GetByText(text, new LocatorGetByTextOptions { Exact = true });
+
     // Runs the action and returns the grant of the token request it caused, once the server has answered it.
     public async Task<TokenRequest> TokenRequestOfAsync(Func<Task> action)
     {
@@ -181,6 +202,19 @@ public sealed class AdminTab
     }
 
     public Task<TokenRequest> ReloadAsync() => TokenRequestOfAsync(() => Page.ReloadAsync());
+
+    // Chooses the site and returns the answer of /me/access, the last read of a switch, once it has come.
+    public async Task<IResponse> SwitchSiteAsync(Site site)
+    {
+        var access = await Page.RunAndWaitForResponseAsync(
+            () => SiteSwitcher.SelectOptionAsync(new SelectOptionValue { Value = site.Id }),
+            response => response.Url == ManagementUrl("me/access"),
+            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        await Expect(Announced(Repository.AdminText("Shell.SiteSwitcher.Switched").Replace("{0}", site.Name, StringComparison.Ordinal))).ToBeAttachedAsync();
+        return access;
+    }
+
+    public string ManagementUrl(string path) => new Uri(_host.Origin, "api/management/v1/" + path).AbsoluteUri;
 
     private bool IsTokenRequest(IResponse response) =>
         response.Request.Method == "POST" && response.Url == new Uri(_host.Origin, "connect/token").AbsoluteUri;
