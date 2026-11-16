@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Diagnostics;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using FluentCMS.Data.Tests.Providers;
@@ -248,6 +249,27 @@ public sealed class JobFailureTests : IDisposable
         _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.LeaseExpired), (2, JobAttemptOutcome.Succeeded));
     }
 
+    // A test host's wall clock stands still while its timers run, so the give-up is measured on the monotonic clock. The
+    // lease is longer than the longest retry delay, which a give-up on the wall clock would never get past.
+    [Fact]
+    public async Task AnOutageGivesUpAfterTheLeaseEvenWhenTheWallClockStandsStill()
+    {
+        _fixture.Probe.Behavior = (_, _) =>
+        {
+            _faults.FailEverything();
+            return Task.CompletedTask;
+        };
+        await _fixture.EnqueueAsync();
+        var worker = _fixture.NewInstance(new FrozenWallClock(JobFixture.Start), options =>
+        {
+            options.LeaseDuration = TimeSpan.FromMinutes(1);
+            options.HeartbeatInterval = TimeSpan.FromSeconds(20);
+        }, _faults).GetRequiredService<JobExecutor>();
+
+        await Should.ThrowAsync<InvalidOperationException>(worker.RunNextAsync(Queue, "A", Token).WaitAsync(TimeSpan.FromMinutes(1), Token));
+        _fixture.Logs.Count(nameof(JobLog.SettleFailed)).ShouldBeGreaterThanOrEqualTo(1);
+    }
+
     // The insert of the attempt, and on SQLite the select that its claim begins with.
     public static TheoryData<string> ClaimCommands => TestProvider.IsSqlite
         ? new() { "INSERT INTO \"cms_job_attempt\"", "SELECT \"c\".\"id\"" }
@@ -494,5 +516,13 @@ public sealed class JobFailureTests : IDisposable
         while (value > (seen = Volatile.Read(ref target)) && Interlocked.CompareExchange(ref target, value, seen) != seen)
         {
         }
+    }
+
+    // The monotonic clock runs twenty times as fast as real time, so that a lease of a minute runs out in seconds.
+    private sealed class FrozenWallClock(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+
+        public override long GetTimestamp() => Stopwatch.GetTimestamp() * 20;
     }
 }
