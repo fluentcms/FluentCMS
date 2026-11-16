@@ -28,20 +28,22 @@ internal static class ManagementApiServiceCollectionExtensions
         return services;
     }
 
-    // Outermost first: the wait on a 429 resends through the headers, so a retry carries a fresh token.
+    // Outermost first: the wait on a 429 and the resend after a 401 go through the headers, so a retry carries a fresh token.
     private static HttpClient CreateClient(IServiceProvider provider)
     {
         var options = provider.GetRequiredService<IOptions<ManagementApiOptions>>().Value;
+        var tokens = provider.GetRequiredService<IAccessTokenSource>();
         var headers = new SessionHeadersHandler(
-            provider.GetRequiredService<IAccessTokenSource>(),
+            tokens,
             provider.GetRequiredService<ICurrentSite>(),
             provider.GetRequiredService<IContentLocale>())
         {
             InnerHandler = options.PrimaryHandler?.Invoke() ?? new HttpClientHandler(),
         };
+        var refresh = new TokenRefreshHandler(tokens) { InnerHandler = headers };
         var limits = new RateLimitHandler(provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<IRateLimitNotice>())
         {
-            InnerHandler = headers,
+            InnerHandler = refresh,
         };
 
         // The timeout covers a whole call: a request, the longest wait on a 429 and the retry.

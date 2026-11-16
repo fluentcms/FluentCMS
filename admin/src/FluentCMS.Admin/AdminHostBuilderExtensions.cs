@@ -1,5 +1,6 @@
 using System.Globalization;
 using FluentCMS.Admin.Api;
+using FluentCMS.Admin.Authentication;
 using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Configuration;
 using FluentCMS.Admin.Localization;
@@ -64,8 +65,9 @@ public static class AdminHostBuilderExtensions
         services.AddSingleton(configuration);
         services.AddCmsComponents();
         services.Replace(ServiceDescriptor.Singleton<ICmsTextSource, CmsTextLocalizer>());
-        // Before AddManagementApi, whose signed-out default it replaces.
+        // Before AddManagementApi, whose signed-out defaults they replace.
         services.AddScoped<IRateLimitNotice, RateLimitNotice>();
+        services.AddAdminAuthentication();
         services.AddManagementApi();
         services.AddOptions<ManagementApiOptions>().Configure(options => options.ApiBaseUrl = configuration.ApiBaseUrl);
         return services;

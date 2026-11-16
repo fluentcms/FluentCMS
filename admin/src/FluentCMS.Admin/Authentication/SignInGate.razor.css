@@ -1,0 +1,9 @@
+.sign-in-gate {
+    padding-block: var(--cms-space-xl);
+    padding-inline: var(--cms-space-xl);
+}
+
+.sign-in-gate h1 {
+    margin-block-start: 0;
+    font-size: var(--cms-font-size-xl);
+}

@@ -402,4 +402,52 @@
   <data name="System.Components.FilesChosen" xml:space="preserve">
     <value>Files chosen: {0}</value>
   </data>
+  <data name="Authentication.Gate.SigningIn" xml:space="preserve">
+    <value>Signing in…</value>
+  </data>
+  <data name="Authentication.Gate.UnavailableHeading" xml:space="preserve">
+    <value>The sign-in server cannot be reached</value>
+  </data>
+  <data name="Authentication.Gate.UnavailableText" xml:space="preserve">
+    <value>The admin could not reach the server that signs you in. Check the connection and try again.</value>
+  </data>
+  <data name="Authentication.Gate.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Authentication.Callback.Completing" xml:space="preserve">
+    <value>Signing in</value>
+  </data>
+  <data name="Authentication.Callback.FailedHeading" xml:space="preserve">
+    <value>The sign-in did not complete</value>
+  </data>
+  <data name="Authentication.Callback.UnknownState" xml:space="preserve">
+    <value>This sign-in was not started in this tab, or it has been completed already.</value>
+  </data>
+  <data name="Authentication.Callback.Expired" xml:space="preserve">
+    <value>The sign-in was started too long ago.</value>
+  </data>
+  <data name="Authentication.Callback.Refused" xml:space="preserve">
+    <value>The server did not sign you in.</value>
+  </data>
+  <data name="Authentication.Callback.Rejected" xml:space="preserve">
+    <value>The answer of the server could not be accepted.</value>
+  </data>
+  <data name="Authentication.Callback.Unreachable" xml:space="preserve">
+    <value>The server that signs you in could not be reached.</value>
+  </data>
+  <data name="Authentication.Callback.SignInAgain" xml:space="preserve">
+    <value>Sign in again</value>
+  </data>
+  <data name="Authentication.Gate.EndedAfterSignInHeading" xml:space="preserve">
+    <value>The session ended right after sign-in</value>
+  </data>
+  <data name="Authentication.Gate.EndedAfterSignInText" xml:space="preserve">
+    <value>The server ended the session as soon as you signed in. Try again, or ask an administrator to check the configuration of the admin.</value>
+  </data>
+  <data name="Authentication.Gate.MisconfiguredHeading" xml:space="preserve">
+    <value>The sign-in is not set up correctly</value>
+  </data>
+  <data name="Authentication.Gate.MisconfiguredText" xml:space="preserve">
+    <value>The server that answered is not the one the admin is configured to sign in with, or it does not offer what the admin needs. An administrator can check the authority in the configuration of the admin.</value>
+  </data>
 </root>
