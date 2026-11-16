@@ -5,7 +5,7 @@ using static Microsoft.Playwright.Assertions;
 namespace FluentCMS.Admin.EndToEnd;
 
 // Two tabs of one browser share the server's sign-in cookie but not sessionStorage, so each holds a session of its own
-// (spec 2.4, AQ3). The host's access tokens last five seconds, so each tab refreshes on demand at a call made after half of that.
+// (spec 2.4, AQ3). The host's access tokens last five seconds, so a tab refreshes on demand at a call after half of that.
 public sealed class TwoTabsTests(EndToEndHost host) : BrowserTest(host)
 {
     [Fact]
