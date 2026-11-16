@@ -148,7 +148,7 @@ public sealed class MemberLogoutModel : MemberPageModel
         var cookie = await HttpContext.AuthenticateAsync(MemberAuthentication.CookieScheme);
         if (cookie.Succeeded)
         {
-            await Service<UserSessions>().EndAsync(signIn.UserManager.GetUserId(cookie.Principal), cookie.Properties, CancellationToken.None);
+            await Service<UserSessions>().EndAsync(signIn.UserManager.GetUserId(cookie.Principal), CmsSignInManager.ServerSession(cookie.Properties), CancellationToken.None);
         }
 
         await signIn.SignOutAsync();

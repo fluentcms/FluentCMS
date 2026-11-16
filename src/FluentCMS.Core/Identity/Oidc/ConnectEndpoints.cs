@@ -115,7 +115,7 @@ internal static class ConnectEndpoints
                 return Refuse(Errors.LoginRequired, "The sign-in is older than the client or the server accepts.");
             }
 
-            await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+            await EndSignInAsync(context, cookie, members: false);
             return Results.Challenge(new AuthenticationProperties { RedirectUri = afterSignIn }, [IdentityConstants.ApplicationScheme]);
         }
 
@@ -133,7 +133,7 @@ internal static class ConnectEndpoints
                     return Refuse(Errors.LoginRequired, "The user's role requires a sign-in with a second factor.");
                 }
 
-                await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+                await EndSignInAsync(context, cookie, members: false);
                 return Results.Challenge(new AuthenticationProperties { RedirectUri = afterSignIn }, [IdentityConstants.ApplicationScheme]);
             }
 
@@ -178,6 +178,7 @@ internal static class ConnectEndpoints
         }
         else if (CmsSignInManager.ServerSession(cookie.Properties!) is { } serverSession)
         {
+            TokenClaims.ForServerSession(identity, serverSession);
             identity.SetAuthorizationId(await context.RequestServices.GetRequiredService<UserSessions>()
                 .BeginAsync(new ClaimsPrincipal(identity), application, serverSession, context.RequestAborted));
         }
@@ -328,8 +329,9 @@ internal static class ConnectEndpoints
 
     // Ends the user's sign-in on the hosted pages; the server then returns to the client's post-logout URI when it gave one,
     // or to the logout page. The user confirms on the logout page, whose form posts back with an antiforgery token, or the
-    // client sends a valid id_token_hint of the signed-in user. Anything else, a cross-site POST included, goes to the logout
-    // page, which asks. A request without the sign-in cookie has no sign-in to end, so it sends no expiring cookie either.
+    // client sends a valid id_token_hint issued in the signed-in user's server session. Anything else, a cross-site POST
+    // included, goes to the logout page, which asks. A request without the sign-in cookie has no sign-in to end, so it
+    // sends no expiring cookie either.
     // Ending a sign-in revokes the authorizations issued in its server session, with their tokens, and no others.
     // The client the request names, by its client_id or by the audience of its hint, says whose sign-in ends: a client of
     // the member pool ends the member's on the member pages, and any other request the admin user's, so that neither
@@ -355,9 +357,7 @@ internal static class ConnectEndpoints
 
         if (cookie.Succeeded)
         {
-            // A logout the browser stops waiting for still ends the authorizations of the session.
-            await context.RequestServices.GetRequiredService<UserSessions>().EndAsync(SignedInUserId(context, cookie, members), cookie.Properties!, CancellationToken.None);
-            await context.SignOutAsync(scheme);
+            await EndSignInAsync(context, cookie, members);
         }
 
         return Results.SignOut(
@@ -405,21 +405,31 @@ internal static class ConnectEndpoints
         }));
 
     // OpenIddict passes a hint it cannot read through without a principal, so the hint is checked here. Without the cookie
-    // a GET, which a browser sends with it, has no one signed in; a POST may be a cross-site one, which never carries it.
-    // The cookie is the one of the pool the request is for, read by that pool's manager.
+    // a GET, which a browser sends with it, has no one signed in, so a hint of any kind returns to the client: a repeated
+    // logout's hint, whose token the first one revoked, included. A POST may be a cross-site one, which never carries it.
+    // With the cookie, the hint must be of the cookie's server session (its sid), not only of its user: an id token from
+    // another session or device, or from an earlier sign-in, goes to the logout page. The cookie is the one of the pool the
+    // request is for, read by that pool's manager.
     private static bool HintsSignedInUser(HttpContext context, AuthenticateResult hint, AuthenticateResult cookie, bool members)
     {
-        if (hint.Principal?.GetClaim(Claims.Subject) is not { } subject)
-        {
-            return false;
-        }
-
         if (!cookie.Succeeded)
         {
-            return HttpMethods.IsGet(context.Request.Method);
+            return HttpMethods.IsGet(context.Request.Method) && !string.IsNullOrEmpty(context.GetOpenIddictServerRequest()?.IdTokenHint);
         }
 
-        return SignedInUserId(context, cookie, members) == subject;
+        return hint.Principal?.GetClaim(Claims.Subject) is { } subject
+            && SignedInUserId(context, cookie, members) == subject
+            && CmsSignInManager.ServerSession(cookie.Properties!) is { } serverSession
+            && hint.Principal.GetClaim(TokenClaims.ServerSession) == serverSession;
+    }
+
+    // Ends the cookie's sign-in and, with it, the authorizations of its server session, so that nothing issued in a
+    // session outlives its cookie; an end the browser stops waiting for still ends them.
+    private static async Task EndSignInAsync(HttpContext context, AuthenticateResult cookie, bool members)
+    {
+        await context.RequestServices.GetRequiredService<UserSessions>()
+            .EndAsync(SignedInUserId(context, cookie, members), CmsSignInManager.ServerSession(cookie.Properties!), CancellationToken.None);
+        await context.SignOutAsync(members ? MemberAuthentication.CookieScheme : IdentityConstants.ApplicationScheme);
     }
 
     private static string? SignedInUserId(HttpContext context, AuthenticateResult cookie, bool members) => members

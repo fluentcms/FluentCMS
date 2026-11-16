@@ -5,6 +5,7 @@ using FluentCMS.Events;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -55,8 +56,37 @@ internal sealed class CmsSignInManager(
     // Marks a new sign-in with its time and the id of its server session, unless the properties are a renewal's.
     internal static void MarkSignIn(AuthenticationProperties properties, TimeProvider time)
     {
+        ArgumentNullException.ThrowIfNull(properties);
+        ArgumentNullException.ThrowIfNull(time);
+
         properties.Items.TryAdd(SignedInAtItem, time.GetUtcNow().ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture));
         properties.Items.TryAdd(ServerSessionItem, Guid.NewGuid().ToString("N"));
+    }
+
+    // A new sign-in over a live cookie of the pool: the same user's keeps the browser's server session, so that its logout
+    // still finds what was issued before; another user's ends that session, as a logout would.
+    internal static async Task TakeOverAsync(HttpContext context, string scheme, string userId, AuthenticationProperties properties, Func<ClaimsPrincipal, string?> userIdOf)
+    {
+        if (properties.Items.ContainsKey(ServerSessionItem))
+        {
+            return;
+        }
+
+        var live = await context.AuthenticateAsync(scheme);
+        if (!live.Succeeded || ServerSession(live.Properties!) is not { } serverSession)
+        {
+            return;
+        }
+
+        var previous = userIdOf(live.Principal!);
+        if (previous == userId)
+        {
+            properties.Items[ServerSessionItem] = serverSession;
+        }
+        else
+        {
+            await context.RequestServices.GetRequiredService<UserSessions>().EndAsync(previous, serverSession, CancellationToken.None);
+        }
     }
 
     public override async Task<bool> CanSignInAsync(CmsUser user)
@@ -129,11 +159,14 @@ internal sealed class CmsSignInManager(
     }
 
     // Every sign-in that makes a new cookie comes here; a renewal passes the cookie's properties, which keep the time.
-    public override Task SignInWithClaimsAsync(CmsUser user, AuthenticationProperties? authenticationProperties, IEnumerable<Claim> additionalClaims)
+    public override async Task SignInWithClaimsAsync(CmsUser user, AuthenticationProperties? authenticationProperties, IEnumerable<Claim> additionalClaims)
     {
+        ArgumentNullException.ThrowIfNull(user);
+
         var properties = authenticationProperties ?? new AuthenticationProperties();
+        await TakeOverAsync(Context, IdentityConstants.ApplicationScheme, user.Id.ToString("D"), properties, UserManager.GetUserId);
         MarkSignIn(properties, time);
-        return base.SignInWithClaimsAsync(user, properties, additionalClaims);
+        await base.SignInWithClaimsAsync(user, properties, additionalClaims);
     }
 
     public override async Task<SignInResult> TwoFactorAuthenticatorSignInAsync(string code, bool isPersistent, bool rememberClient)

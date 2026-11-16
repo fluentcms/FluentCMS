@@ -1,5 +1,4 @@
 using System.Buffers.Text;
-using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -55,10 +54,10 @@ internal static class OAuthFlows
         var principal = await signIn.CreateUserPrincipalAsync(member);
 
         var options = provider.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>().Get(MemberAuthentication.CookieScheme);
-        var now = provider.GetRequiredService<TimeProvider>().GetUtcNow();
+        var time = provider.GetRequiredService<TimeProvider>();
+        var now = time.GetUtcNow();
         var properties = new AuthenticationProperties { IssuedUtc = now, ExpiresUtc = now + options.ExpireTimeSpan };
-        properties.Items[CmsSignInManager.SignedInAtItem] = now.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
-        properties.Items[CmsSignInManager.ServerSessionItem] = Guid.NewGuid().ToString("N");
+        CmsSignInManager.MarkSignIn(properties, time);
         var ticket = new AuthenticationTicket(principal, properties, MemberAuthentication.CookieScheme);
         return $"{options.Cookie.Name}={options.TicketDataFormat.Protect(ticket)}";
     }
@@ -72,10 +71,10 @@ internal static class OAuthFlows
         var principal = await provider.GetRequiredService<SignInManager<CmsUser>>().CreateUserPrincipalAsync(user);
 
         var options = provider.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>().Get(IdentityConstants.ApplicationScheme);
-        var now = provider.GetRequiredService<TimeProvider>().GetUtcNow();
+        var time = provider.GetRequiredService<TimeProvider>();
+        var now = time.GetUtcNow();
         var properties = new AuthenticationProperties { IssuedUtc = now, ExpiresUtc = now + options.ExpireTimeSpan };
-        properties.Items[CmsSignInManager.SignedInAtItem] = now.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
-        properties.Items[CmsSignInManager.ServerSessionItem] = Guid.NewGuid().ToString("N");
+        CmsSignInManager.MarkSignIn(properties, time);
         var ticket = new AuthenticationTicket(principal, properties, IdentityConstants.ApplicationScheme);
         return $"{options.Cookie.Name}={options.TicketDataFormat.Protect(ticket)}";
     }

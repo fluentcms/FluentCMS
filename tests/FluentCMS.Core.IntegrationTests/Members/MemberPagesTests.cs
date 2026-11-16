@@ -258,15 +258,50 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
             signedOut.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         }
 
+        (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, refreshToken)).ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task TheMemberClientsLogoutRevokesTheMembersSessionAndLeavesTheAdminsTokens()
+    {
+        var admin = await CreateAdminAsync();
+        var address = await fixture.RegisterVerifiedAsync();
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.7");
+        await SignInAdminAsync(browser, admin.Email);
+        await SignInMemberAsync(browser, address);
+        var adminRequest = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, "openid offline_access management");
+        using var adminCode = await browser.GetAsync(adminRequest.Url);
+        var adminRefresh = (await adminRequest.ExchangeAsync(fixture.Host, adminCode)).GetProperty("refresh_token").GetString()!;
+        var memberRequest = AuthorizeRequest.For(FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+        using var memberCode = await browser.GetAsync(memberRequest.Url);
+        var memberRefresh = (await memberRequest.ExchangeAsync(fixture.Host, memberCode)).GetProperty("refresh_token").GetString()!;
+
+        using (var asked = await browser.GetAsync($"/connect/logout?client_id={FluentCmsTestHost.OAuthMemberClientId}"))
+        {
+            var page = await browser.PageAsync(asked.Headers.Location!.OriginalString);
+            using var confirmed = await browser.PostAsync("/connect/logout", page, new Dictionary<string, string>
+            {
+                ["client_id"] = FluentCmsTestHost.OAuthMemberClientId,
+                [MemberAuthentication.LogoutPageField] = MemberAuthentication.LogoutPageMark,
+            });
+            confirmed.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        }
+
+        (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, memberRefresh)).ShouldBe(HttpStatusCode.BadRequest);
+        (await RefreshAsync(FluentCmsTestHost.OAuthClientId, adminRefresh)).ShouldBe(HttpStatusCode.OK);
+    }
+
+    private async Task<HttpStatusCode> RefreshAsync(string clientId, string refreshToken)
+    {
         using var client = fixture.Host.CreateSecureClient();
         using var content = new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["grant_type"] = "refresh_token",
             ["refresh_token"] = refreshToken,
-            ["client_id"] = FluentCmsTestHost.OAuthMemberClientId,
+            ["client_id"] = clientId,
         });
         using var refreshed = await client.PostAsync("/connect/token", content, Token);
-        refreshed.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        return refreshed.StatusCode;
     }
 
     [Theory]

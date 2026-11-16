@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Events;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -104,14 +105,22 @@ internal static class SsoRegistration
 
         // The provider's front-channel logout ends the sign-in on the hosted pages, the admin session. The cookie holds no
         // session id of the provider for the handler to match, so a sign-in made another way, with a password or another
-        // provider, is left as it is.
+        // provider, is left as it is. The sign-in it ends takes the authorizations of its server session with it, as a
+        // logout does.
         private static async Task OwnSignInOnlyAsync(RemoteSignOutContext context)
         {
             var cookie = await context.HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
             if (!string.Equals(cookie.Principal?.FindFirstValue(ClaimTypes.AuthenticationMethod), context.Scheme.Name, StringComparison.OrdinalIgnoreCase))
             {
                 context.HandleResponse();
+                return;
             }
+
+            var services = context.HttpContext.RequestServices;
+            await services.GetRequiredService<UserSessions>().EndAsync(
+                services.GetRequiredService<UserManager<CmsUser>>().GetUserId(cookie.Principal!),
+                CmsSignInManager.ServerSession(cookie.Properties!),
+                CancellationToken.None);
         }
 
         // Identity takes the external login's key from the name identifier, which the token calls sub.

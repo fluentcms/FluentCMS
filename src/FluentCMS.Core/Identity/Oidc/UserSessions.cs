@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using System.Text.Json;
-using Microsoft.AspNetCore.Authentication;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -38,14 +37,12 @@ internal sealed class UserSessions(IOpenIddictAuthorizationManager authorization
             ?? throw new InvalidOperationException("The authorization was stored without an id.");
     }
 
-    // The logout of a server session, the cookie of the signed-in user whose id is given: every valid authorization of
-    // the user issued in it, with its tokens. The user's other sessions, and a consent, which is no session's, stay. A
-    // cookie from before sessions were marked ends nothing here.
-    public async Task EndAsync(string? userId, AuthenticationProperties cookie, CancellationToken cancellationToken = default)
+    // The end of a server session of the user: every valid authorization of the user issued in it, with its tokens. The
+    // user's other sessions, and a consent, which is no session's, stay. Without a session id, as for a sign-in from
+    // before sessions were marked, nothing ends here.
+    public async Task EndAsync(string? userId, string? serverSession, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(cookie);
-
-        if (CmsSignInManager.ServerSession(cookie) is not { } serverSession || !Guid.TryParse(userId, out var user))
+        if (string.IsNullOrEmpty(serverSession) || !Guid.TryParse(userId, out var user))
         {
             return;
         }
