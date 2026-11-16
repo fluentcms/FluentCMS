@@ -324,6 +324,30 @@ public sealed partial class MemberProviderTests(MemberProviderFixture fixture) :
         }
 
         (await MemberAsync(fixture.Host, silentAddress))!.EmailConfirmed.ShouldBeFalse();
+
+        // A token with no email at all, as Entra ID issues for a user of the tenant without a mail attribute even with
+        // the optional claim on (verified 15 Nov 2026): no member is made, and the sign-in is refused as one without an
+        // address.
+        var noEmail = FakeAccount.Of(null) with { EmailVerified = null };
+        using (var browser = new HostedPagesBrowser(fixture.Host, "10.7.4.5"))
+        {
+            using var back = await SignInWithAsync(browser, Corp, noEmail);
+            using var page = await browser.FollowAsync(back);
+            page.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await page.Content.ReadAsStringAsync(Token)).ShouldContain(Refused);
+            browser.HasCookie(MemberCookie).ShouldBeFalse();
+        }
+
+        var noAddress = (await MemberFixture.ActivityAsync(fixture.Host, "member.login_failed")).Single(row => row.Ip == "10.7.4.5");
+        noAddress.TargetId.ShouldBeNull();
+        Details(noAddress)["method"].ShouldBe(Corp);
+        Details(noAddress)["reason"].ShouldBe(LoginFailureReasons.NotAllowed);
+        await using (var scope = fixture.Host.Services.CreateAsyncScope())
+        {
+            (await scope.ServiceProvider.GetRequiredService<MemberManager>().FindByLoginAsync(Corp, noEmail.Subject)).ShouldBeNull();
+        }
+
+        fixture.Logs.Entries.ShouldContain(entry => entry.EventId.Id == MemberLog.ProviderSignInRefusedId && entry.Message.StartsWith(MemberErrorCodes.ProviderNoEmail, StringComparison.Ordinal) && entry.Message.Contains(Corp, StringComparison.Ordinal));
     }
 
     [Fact]

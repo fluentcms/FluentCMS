@@ -415,6 +415,8 @@ Google and Microsoft run on the ASP.NET Core handlers, GitHub and Apple on the `
 
 **Failures.** An error at the provider, or a callback that belongs to no sign-in started in that browser, goes back to the member login page as a failed sign-in, with a `member.login_failed` activity row whose method is the provider's name. The reason of a refusal is in the log with its code: `FCMS3181` no usable address, `FCMS3182` the address of a member that is not linked, `FCMS3183` the member could not be made, `FCMS3187` registration is off (event ids 9090 to 9094). A provider's callback counts towards the `auth` [rate limit](#rate-limits) of its client address.
 
+CI tests the providers against stand-ins and calls no provider. [Verifying member sign-in against the real providers](member-sign-in-verification.md) records what the handlers have been run against and holds the walk-through for a run against Google, Entra ID and GitHub.
+
 ## Email
 
 Invitations, password resets and the mail of [members](#members) go through `IEmailSender`. In Development the default writes each message, link included, to the log and the startup report lists `development-email-sender`; anywhere else it refuses to send (`FCMS3008`) until a sender is set up. Setting `FluentCms:Email:Smtp:Host` sends through that SMTP server in every environment, Development included:
