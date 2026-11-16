@@ -21,11 +21,12 @@ public abstract class AccountPageModel : PageModel
     private protected string LocalUrl(string? returnUrl) =>
         !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) ? returnUrl : Url.Content("~/");
 
-    // The user of the sign-in cookie, if it is still good: the security stamp holds and the user may sign in.
+    // The user of the sign-in cookie, if it is still good: the security stamp holds, the user may sign in, and the cookie is a
+    // live sign-in (CmsSignInManager.LiveSignIn). Otherwise the page sends the user to the login page, with the cookie left.
     private protected async Task<CmsUser?> SignedInUserAsync()
     {
         var cookie = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
-        var user = cookie.Succeeded ? await SignInManager.ValidateSecurityStampAsync(cookie.Principal) : null;
+        var user = cookie.Succeeded && CmsSignInManager.LiveSignIn(HttpContext, cookie.Properties!) is not null ? await SignInManager.ValidateSecurityStampAsync(cookie.Principal) : null;
         return user is not null && await SignInManager.CanSignInAsync(user) ? user : null;
     }
 

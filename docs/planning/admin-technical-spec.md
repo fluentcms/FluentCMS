@@ -963,16 +963,18 @@ Tracking issue: [#3152]. Created on 15 Nov 2026, with A0. The issues run on `fea
 
 ### 10.3 A2 Lists and forms
 
+Tracking issue: [#3239]. Created on 16 Nov 2026, after `feature/a1` was merged. The issues run on `feature/a2`, cut from `main`, in three waves: A-12 and A-13, then A-48, A-49, A-14 and A-16, then A-15 and A-17.
+
 | Id | Issue | Section | Rows | Size | Needs |
 | --- | --- | --- | --- | --- | --- |
-| A-12 | Generated list views: columns, multi-sort, paging, selection, row actions | 4.4 | 3.4 | M | |
-| A-48 | List filters by field type, search, status and locale badges | 4.4 | 3.4, 2.23, 7.7 | M | #3094 (badge only) |
-| A-13 | Generated edit forms: layout from metadata, defaults, save with `If-Match`, error mapping by path | 4.5 | 3.5, 1.10 | M | |
-| A-49 | Form behaviours: conditions, inline validation, changeable fields, dirty guard, shortcuts, conflict dialog | 4.5 | 1.8, 4.5, 6.8 | M | #3096 |
-| A-14 | Field editors and list cells for the core field types | 4.6 | 3.6, 1.3 | M | |
-| A-15 | Relation picker with inline create and side panel | 4.9 | 3.9, 1.4 | M | |
-| A-16 | Draft, publish, unpublish, discard and status per locale, with publish warnings | 4.10 | 3.11, 6.1, 6.2, 6.7 | M | #3096 |
-| A-17 | Locale-aware editing: switcher, status per locale, copy from locale, side by side, field direction and formats | 4.17 | 7.7, 7.9 | M | #3096 |
+| A-12 [#3231] | Generated list views: columns, multi-sort, paging, selection, row actions | 4.4 | 3.4 | M | |
+| A-48 [#3232] | List filters by field type, search, status and locale badges | 4.4 | 3.4, 2.23, 7.7 | M | #3094 (badge only) |
+| A-13 [#3233] | Generated edit forms: layout from metadata, defaults, save with `If-Match`, error mapping by path | 4.5 | 3.5, 1.10 | M | |
+| A-49 [#3234] | Form behaviours: conditions, inline validation, changeable fields, dirty guard, shortcuts, conflict dialog | 4.5 | 1.8, 4.5, 6.8 | M | #3096 |
+| A-14 [#3235] | Field editors and list cells for the core field types | 4.6 | 3.6, 1.3 | M | |
+| A-15 [#3236] | Relation picker with inline create and side panel | 4.9 | 3.9, 1.4 | M | |
+| A-16 [#3237] | Draft, publish, unpublish, discard and status per locale, with publish warnings | 4.10 | 3.11, 6.1, 6.2, 6.7 | M | #3096 |
+| A-17 [#3238] | Locale-aware editing: switcher, status per locale, copy from locale, side by side, field direction and formats | 4.17 | 7.7, 7.9 | M | #3096 |
 
 ### 10.4 A3 Plugin contract and media
 
@@ -1083,3 +1085,12 @@ The draft asked sixteen questions, each with a recommendation. All were decided 
 [#3152]: https://github.com/fluentcms/FluentCMS/issues/3152
 [#3202]: https://github.com/fluentcms/FluentCMS/issues/3202
 [#3214]: https://github.com/fluentcms/FluentCMS/issues/3214
+[#3231]: https://github.com/fluentcms/FluentCMS/issues/3231
+[#3232]: https://github.com/fluentcms/FluentCMS/issues/3232
+[#3233]: https://github.com/fluentcms/FluentCMS/issues/3233
+[#3234]: https://github.com/fluentcms/FluentCMS/issues/3234
+[#3235]: https://github.com/fluentcms/FluentCMS/issues/3235
+[#3236]: https://github.com/fluentcms/FluentCMS/issues/3236
+[#3237]: https://github.com/fluentcms/FluentCMS/issues/3237
+[#3238]: https://github.com/fluentcms/FluentCMS/issues/3238
+[#3239]: https://github.com/fluentcms/FluentCMS/issues/3239

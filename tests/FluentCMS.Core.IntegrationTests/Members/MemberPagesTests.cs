@@ -13,9 +13,12 @@ using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.IntegrationTests.Identity;
 using FluentCMS.Events;
 using FluentCMS.Testing;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Shouldly;
 using Xunit;
 
@@ -338,20 +341,120 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
     }
 
     [Fact]
-    public async Task AMemberReauthenticationAnotherSiteCanAskForEndsTheCookieAndRevokesNothing()
+    public async Task AMemberReauthenticationAnotherSiteCanAskForKeepsTheCookieAndTheSessionUntilTheMemberSignsInAgain()
     {
+        const string Client = FluentCmsTestHost.OAuthMemberClientId;
         var address = await fixture.RegisterVerifiedAsync();
+        var other = await fixture.RegisterVerifiedAsync();
         using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.25");
+        await SignInMemberAsync(browser, address);
         foreach (var prompt in new[] { "&prompt=login", "&max_age=0" })
         {
-            await SignInMemberAsync(browser, address);
-            var tokens = await CodeFlowAsync(browser, FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+            fixture.Host.Time.Advance(TimeSpan.FromMinutes(1));
+            var tokens = await CodeFlowAsync(browser, Client, "openid offline_access");
 
-            using var foreign = await browser.GetAsync("/connect/authorize" + AuthorizeRequest.Query(FluentCmsTestHost.OAuthMemberClientId, "openid") + prompt);
-            foreign.Headers.Location!.OriginalString.ShouldContain("/account/members/login", Case.Sensitive, prompt);
-            browser.HasCookie(MemberCookie).ShouldBeFalse();
-            (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, tokens.GetProperty("refresh_token").GetString()!)).ShouldBe(HttpStatusCode.OK, prompt);
+            // A top-level GET from another site: the cookie and the session's tokens stay.
+            var request = AuthorizeRequest.For(Client, "openid offline_access");
+            var login = await AskedToSignInAsync(browser, request.Url + prompt);
+            var refreshToken = (await MemberFixture.TokenAsync(fixture.Host, Refresh(Client, tokens.GetProperty("refresh_token").GetString()!))).Json["refresh_token"]!.GetValue<string>();
+
+            // Without a new sign-in the request asks again; the same member's new sign-in gets the code, in the same session.
+            await AskedToSignInAsync(browser, QueryHelpers.ParseQuery(login.Query)["ReturnUrl"].ToString());
+            using var signedIn = await browser.SubmitAsync(login.PathAndQuery, MemberTokenTests.Credentials(address, Password));
+            Sid(await request.ExchangeAsync(fixture.Host, await browser.FollowAsync(signedIn))).ShouldBe(Sid(tokens), prompt);
+            (await RefreshAsync(Client, refreshToken)).ShouldBe(HttpStatusCode.OK, prompt);
         }
+
+        // Another member signs in where the request asked: the first member's session in this browser ends.
+        fixture.Host.Time.Advance(TimeSpan.FromMinutes(1));
+        var before = await CodeFlowAsync(browser, Client, "openid offline_access");
+        var asked = AuthorizeRequest.For(Client, "openid offline_access");
+        var page = await AskedToSignInAsync(browser, asked.Url + "&prompt=login");
+        fixture.Host.Time.Advance(TimeSpan.FromMinutes(1));
+        using (var replaced = await browser.SubmitAsync(page.PathAndQuery, MemberTokenTests.Credentials(other, Password)))
+        {
+            Sid(await asked.ExchangeAsync(fixture.Host, await browser.FollowAsync(replaced))).ShouldNotBe(Sid(before));
+        }
+
+        (await ErrorAsync(fixture.Host, Client, before.GetProperty("refresh_token").GetString()!)).ShouldBe("invalid_grant");
+    }
+
+    [Fact]
+    public async Task AMembersSignInPastTheAbsoluteLifetimeKeepsTheCookieAtAuthorizeUntilTheMemberSignsInAgain()
+    {
+        const string Client = FluentCmsTestHost.OAuthMemberClientId;
+        await using var host = MemberFixture.NewHost(new HostedPagesTests.CapturedEmails(), configure: cms => cms.Clients.AbsoluteSessionLifetime = TimeSpan.FromHours(8));
+        var member = await host.CreateMemberAsync(password: Password, cancellationToken: Token);
+        using var browser = new HostedPagesBrowser(host, "10.8.0.27");
+        await SignInMemberAsync(browser, member.Email);
+        host.Time.Advance(TimeSpan.FromHours(7.5));
+        var request = AuthorizeRequest.For(Client, "openid offline_access");
+        using var code = await browser.GetAsync(request.Url);
+        var tokens = await request.ExchangeAsync(host, code);
+
+        // Another site sends the browser to a plain authorize request once the sign-in is past the lifetime: the cookie
+        // stays, the access token works until it expires, and the refresh token is refused since the sign-in is as old.
+        host.Time.Advance(TimeSpan.FromMinutes(45));
+        var again = AuthorizeRequest.For(Client, "openid offline_access");
+        var login = await AskedToSignInAsync(browser, again.Url);
+        using (var bearer = host.CreateSecureClient())
+        {
+            bearer.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tokens.GetProperty("access_token").GetString());
+            (await MemberFixture.SendAsync(bearer, HttpMethod.Get, MemberFixture.Api + "me")).Status.ShouldBe(HttpStatusCode.OK);
+        }
+
+        (await ErrorAsync(host, Client, tokens.GetProperty("refresh_token").GetString()!)).ShouldBe("invalid_grant");
+
+        // The member signs in again where the request asked, and the session goes on.
+        using var signedIn = await browser.SubmitAsync(login.PathAndQuery, MemberTokenTests.Credentials(member.Email, Password));
+        Sid(await again.ExchangeAsync(host, await browser.FollowAsync(signedIn))).ShouldBe(Sid(tokens));
+    }
+
+    [Fact]
+    public async Task AMemberCookieWithoutTheTimeOfItsSignInIsNoSignInUntilTheMemberSignsInAgain()
+    {
+        var address = await fixture.RegisterVerifiedAsync();
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.29");
+        browser.SetCookie(await UntimedMemberCookieAsync(fixture.Host, await fixture.MemberIdAsync(address)));
+
+        // Neither a plain request, a positive max_age nor the logins page takes it; the logout page still answers.
+        var request = AuthorizeRequest.For(FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+        var login = await AskedToSignInAsync(browser, request.Url);
+        await AskedToSignInAsync(browser, request.Url + "&max_age=600");
+        (await LocationAsync(browser, HostedPagePaths.MemberLogins)).ShouldStartWith(HostedPagePaths.MemberLogin + "?");
+        using (var logout = await browser.GetAsync(HostedPagePaths.MemberLogout))
+        {
+            logout.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        // A sign-in over it writes the time, and the request gets its code.
+        using var signedIn = await browser.SubmitAsync(login.PathAndQuery, MemberTokenTests.Credentials(address, Password));
+        (await request.ExchangeAsync(fixture.Host, await browser.FollowAsync(signedIn))).GetProperty("access_token").GetString().ShouldNotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task TheMemberPagesSendASignInPastTheAbsoluteLifetimeToTheLoginPageAndKeepTheCookie()
+    {
+        await using var host = MemberFixture.NewHost(new HostedPagesTests.CapturedEmails(), configure: cms => cms.Clients.AbsoluteSessionLifetime = TimeSpan.FromHours(8));
+        var member = await host.CreateMemberAsync(password: Password, cancellationToken: Token);
+        using var browser = new HostedPagesBrowser(host, "10.8.0.28");
+        await SignInMemberAsync(browser, member.Email);
+        using (var logins = await browser.GetAsync(HostedPagePaths.MemberLogins))
+        {
+            logins.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        host.Time.Advance(TimeSpan.FromHours(8) + TimeSpan.FromMinutes(1));
+        (await LocationAsync(browser, HostedPagePaths.MemberLogins)).ShouldStartWith(HostedPagePaths.MemberLogin + "?");
+        browser.HasCookie(MemberCookie).ShouldBeTrue();
+        using (var logout = await browser.GetAsync(HostedPagePaths.MemberLogout))
+        {
+            logout.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        await SignInMemberAsync(browser, member.Email);
+        using var again = await browser.GetAsync(HostedPagePaths.MemberLogins);
+        again.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -370,12 +473,43 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
 
         // An hour past the sign-in's lifetime: the code flow's session ends with it, the direct login's started at 7 h.
         host.Time.Advance(TimeSpan.FromHours(2));
-        (await MemberFixture.TokenAsync(host, Refresh(FluentCmsTestHost.OAuthMemberClientId, codeFlow))).Status.ShouldBe(HttpStatusCode.BadRequest);
+        (await ErrorAsync(host, FluentCmsTestHost.OAuthMemberClientId, codeFlow)).ShouldBe("invalid_grant");
         var refreshed = await MemberFixture.TokenAsync(host, Refresh(MemberFixture.DirectClientId, direct));
         refreshed.Status.ShouldBe(HttpStatusCode.OK);
 
         host.Time.Advance(TimeSpan.FromHours(6) + TimeSpan.FromMinutes(1));
-        (await MemberFixture.TokenAsync(host, Refresh(MemberFixture.DirectClientId, refreshed.Json["refresh_token"]!.GetValue<string>()))).Status.ShouldBe(HttpStatusCode.BadRequest);
+        (await ErrorAsync(host, MemberFixture.DirectClientId, refreshed.Json["refresh_token"]!.GetValue<string>())).ShouldBe("invalid_grant");
+    }
+
+    // A member cookie that does not say when its sign-in was, as one from before the time was kept.
+    private static async Task<string> UntimedMemberCookieAsync(FluentCmsTestHost host, Guid memberId)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        var signIn = scope.ServiceProvider.GetRequiredService<MemberSignInManager>();
+        var principal = await signIn.CreateUserPrincipalAsync((await signIn.UserManager.FindByIdAsync(memberId.ToString()))!);
+        var options = scope.ServiceProvider.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>().Get(MemberAuthentication.CookieScheme);
+        var now = host.Time.GetUtcNow();
+        var ticket = new AuthenticationTicket(principal, new AuthenticationProperties { IssuedUtc = now, ExpiresUtc = now + options.ExpireTimeSpan }, MemberAuthentication.CookieScheme);
+        return $"{options.Cookie.Name}={options.TicketDataFormat.Protect(ticket)}";
+    }
+
+    // The error of a refresh the token endpoint refuses.
+    private static async Task<string?> ErrorAsync(FluentCmsTestHost host, string clientId, string refreshToken)
+    {
+        var refused = await MemberFixture.TokenAsync(host, Refresh(clientId, refreshToken));
+        refused.Status.ShouldBe(HttpStatusCode.BadRequest);
+        return refused.Json["error"]?.GetValue<string>();
+    }
+
+    // The member login page an authorize request sends the browser to, with the member cookie left as it was.
+    private static async Task<Uri> AskedToSignInAsync(HostedPagesBrowser browser, string url)
+    {
+        using var response = await browser.GetAsync(url);
+        response.StatusCode.ShouldBe(HttpStatusCode.Redirect, url);
+        var login = new Uri(HostedPagesBrowser.OAuthBase, response.Headers.Location!);
+        login.AbsolutePath.ShouldBe("/account/members/login", url);
+        browser.HasCookie(MemberCookie).ShouldBeTrue(url);
+        return login;
     }
 
     private static Dictionary<string, string> Refresh(string clientId, string refreshToken) => new()

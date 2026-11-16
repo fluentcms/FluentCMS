@@ -344,13 +344,55 @@ public sealed partial class HostedPagesTests
         asked.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         var login = new Uri(OAuthBase, asked.Headers.Location!);
         login.AbsolutePath.ShouldBe("/account/login");
-        browser.HasCookie(SignInCookie).ShouldBeFalse();
+        browser.HasCookie(SignInCookie).ShouldBeTrue();
 
-        // Signing in again answers max_age, and the request comes back without it.
+        // Signing in again over the cookie answers max_age.
         using var signedIn = await browser.SubmitAsync(login.PathAndQuery, Credentials(editor.Email, Password));
-        signedIn.Headers.Location!.OriginalString.ShouldNotContain("max_age");
+        signedIn.Headers.Location!.OriginalString.ShouldContain("max_age");
         using var done = await browser.FollowAsync(signedIn);
         (await request.ExchangeAsync(host, done)).GetProperty("access_token").GetString().ShouldNotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task TheHostedPagesSendASignInPastTheAbsoluteLifetimeToTheLoginPageAndKeepTheCookie()
+    {
+        await using var host = NewHost(_emails).Configure(cms => cms.Clients.AbsoluteSessionLifetime = TimeSpan.FromHours(8));
+        var editor = await CreateUserAsync(host);
+        using var browser = new HostedPagesBrowser(host);
+        await SignInAsync(browser, editor.Email);
+        var consent = HostedPagePaths.Consent + new Uri(OAuthBase, AuthorizeRequest.For(ThirdPartyClientId, ThirdPartyRedirectUri, "openid profile management").Url).Query;
+        string[] pages = [HostedPagePaths.ChangePassword, HostedPagePaths.EnableTwoFactor, consent];
+        foreach (var path in pages)
+        {
+            (await PathAsync(browser, path)).ShouldBe(new Uri(OAuthBase, path).AbsolutePath, path);
+        }
+
+        // Past the lifetime the pages ask for a new sign-in, however often the sliding cookie was renewed; the logout page
+        // still answers.
+        host.Time.Advance(TimeSpan.FromHours(8) + TimeSpan.FromMinutes(1));
+        foreach (var path in pages)
+        {
+            (await PathAsync(browser, path)).ShouldBe(HostedPagePaths.Login, path);
+            browser.HasCookie(SignInCookie).ShouldBeTrue(path);
+        }
+
+        (await PathAsync(browser, HostedPagePaths.Logout)).ShouldBe(HostedPagePaths.Logout);
+
+        await SignInAsync(browser, editor.Email);
+        (await PathAsync(browser, HostedPagePaths.ChangePassword)).ShouldBe(HostedPagePaths.ChangePassword);
+    }
+
+    // The path a GET of a hosted page ends on: its own when it answers, the login page's when it sends the user there.
+    private static async Task<string> PathAsync(HostedPagesBrowser browser, string path)
+    {
+        using var response = await browser.GetAsync(path);
+        if (response.StatusCode == HttpStatusCode.Redirect)
+        {
+            return new Uri(OAuthBase, response.Headers.Location!).AbsolutePath;
+        }
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK, path);
+        return new Uri(OAuthBase, path).AbsolutePath;
     }
 
     private sealed class CountingHasher : IPasswordHasher<CmsUser>

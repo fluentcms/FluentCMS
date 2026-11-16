@@ -47,20 +47,11 @@ internal static class MemberConnect
         }
 
         var now = context.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow();
-        var signedInAt = CmsSignInManager.SignedInAt(cookie.Properties!) ?? now;
-        var sessionCap = context.RequestServices.GetRequiredService<ClientOptions>().AbsoluteSessionLifetime;
-        if (request.HasPromptValue(PromptValues.Login)
-            || (request.MaxAge is { } maxAge && now - signedInAt > TimeSpan.FromSeconds(maxAge))
-            || (sessionCap is { } cap && now - signedInAt > cap))
+        if (CmsSignInManager.LiveSignIn(context, cookie.Properties!) is not { } signedInAt || ConnectEndpoints.MustSignInAgain(context, request, signedInAt, now))
         {
-            if (request.HasPromptValue(PromptValues.None))
-            {
-                return ConnectEndpoints.Refuse(Errors.LoginRequired, "The sign-in is older than the client or the server accepts.");
-            }
-
-            // The cookie alone ends: another site can send this request, so it revokes nothing (#3203).
-            await signIn.SignOutAsync();
-            return Results.Challenge(new AuthenticationProperties { RedirectUri = afterSignIn }, [MemberAuthentication.CookieScheme]);
+            return request.HasPromptValue(PromptValues.None)
+                ? ConnectEndpoints.Refuse(Errors.LoginRequired, "The sign-in is older than the client or the server accepts.")
+                : Reauthentication.Challenge(context, request, parameters, CmsSignInManager.SignedInAt(cookie.Properties!), now, MemberAuthentication.CookieScheme);
         }
 
         var methods = cookie.Principal!.FindAll(Claims.AuthenticationMethodReference).Select(claim => claim.Value);

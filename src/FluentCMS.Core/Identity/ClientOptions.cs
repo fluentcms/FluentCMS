@@ -29,10 +29,13 @@ public sealed class ClientOptions
     public TimeSpan SignInCookieLifetime { get; set; } = TimeSpan.FromDays(14);
 
     // How long a session lasts after the user signed in, however often its refresh token or the cookie is used; past it the
-    // token endpoint refuses the refresh and the authorize endpoint asks the user to sign in again. Null sets no limit.
+    // token endpoint refuses the refresh, and the authorize endpoint and the hosted pages ask the user to sign in again over
+    // the cookie. Null sets no limit.
     public TimeSpan? AbsoluteSessionLifetime { get; set; }
 
     public IDictionary<string, ClientRegistration> Applications { get; } = new Dictionary<string, ClientRegistration>(StringComparer.Ordinal);
+
+    internal bool HasOutlived(DateTimeOffset signedInAt, DateTimeOffset now) => AbsoluteSessionLifetime is { } cap && now - signedInAt > cap;
 
     internal void Validate()
     {
