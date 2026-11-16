@@ -1,0 +1,37 @@
+@* The account page of the signed-in user (spec 4.3, A-09): its sessions, two-factor sign-in, external logins, the hosted page
+   that changes the password, and the interface language and theme. *@
+@page "/account"
+@using FluentCMS.Admin.Configuration
+@inject AdminConfiguration Configuration
+@inject NavigationManager Navigation
+@inject IStringLocalizer<AdminResources> L
+
+<div class="account">
+    <h1 tabindex="-1">@L["Account.Page.Heading"]</h1>
+    <div class="account-cards">
+        <AccountSessions />
+        <AccountTwoFactor />
+        <AccountLogins />
+        <CmsCard Title="@L["Account.Password.Heading"]">
+            <p>@L["Account.Password.Text"]</p>
+            <p><a href="@ChangePasswordUrl()">@L["Account.Password.Change"]</a></p>
+        </CmsCard>
+        <AccountPreferences />
+    </div>
+</div>
+
+@code {
+    public const string Route = "account";
+
+    // The hosted page is under the authority's path base. It returns only to a local URL, so the admin asks to come back here
+    // when it is on the authority's origin, as in the reference host; on another origin the page returns to its host.
+    private string ChangePasswordUrl()
+    {
+        var authority = Configuration.Authority.AbsoluteUri.TrimEnd('/');
+        var page = new Uri(authority + "/account/change-password");
+        var here = new Uri(Navigation.BaseUri + Route);
+        return string.Equals(page.GetLeftPart(UriPartial.Authority), here.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase)
+            ? $"{page.AbsoluteUri}?ReturnUrl={Uri.EscapeDataString(here.AbsolutePath)}"
+            : page.AbsoluteUri;
+    }
+}

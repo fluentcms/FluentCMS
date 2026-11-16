@@ -1,0 +1,108 @@
+@* The user's external logins from GET /me/logins (spec 4.3), each removable unless it is the last way to sign in. Removing one
+   gives the user a new security stamp on the server, which ends its sessions. *@
+@using FluentCMS.Admin.Api
+@inject ManagementClient Client
+@inject IStringLocalizer<AdminResources> L
+
+<CmsCard Title="@L["Account.Logins.Heading"]">
+    @if (state == AccountSectionState.Loading)
+    {
+        <p role="status">@L["Account.Page.Loading"]</p>
+    }
+    else if (state == AccountSectionState.Refused)
+    {
+        <p>@L["Account.Page.NotAUser"]</p>
+    }
+    else if (state == AccountSectionState.Failed)
+    {
+        <p>@L["Account.Page.Failed"]</p>
+        <CmsButton OnClick="LoadAsync">@L["Account.Page.TryAgain"]</CmsButton>
+    }
+    else if (logins.Count == 0)
+    {
+        <p>@L["Account.Logins.None"]</p>
+    }
+    else
+    {
+        <p>@L["Account.Logins.Explained"]</p>
+        <ul class="account-list">
+            @foreach (var login in logins)
+            {
+                <li @key="login.Provider" class="account-item">
+                    <span class="account-item-name">@Name(login)</span>
+                    <CmsButton Disabled="@busy" OnClick="@(() => RemoveAsync(login))">
+                        @L["Account.Logins.Remove"]<span class="cms-visually-hidden">@L["Account.Logins.RemoveWhich", Name(login)]</span>
+                    </CmsButton>
+                </li>
+            }
+        </ul>
+    }
+    <p class="account-message" tabindex="-1" @ref="messageElement">@message</p>
+</CmsCard>
+
+@code {
+    private IReadOnlyList<MyLogin> logins = [];
+    private AccountSectionState state = AccountSectionState.Loading;
+    private string? message;
+    private bool busy;
+    private bool focusMessage;
+    private ElementReference messageElement;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusMessage)
+        {
+            focusMessage = false;
+            await messageElement.FocusAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        state = AccountSectionState.Loading;
+        try
+        {
+            logins = await Client.GetMyLoginsAsync(CancellationToken.None);
+            state = AccountSectionState.Ready;
+        }
+        catch (Exception exception) when (AccountProblems.IsRefused(exception))
+        {
+            state = AccountSectionState.Refused;
+        }
+        catch (Exception exception) when (AccountProblems.IsFailure(exception))
+        {
+            state = AccountSectionState.Failed;
+        }
+    }
+
+    private async Task RemoveAsync(MyLogin login)
+    {
+        busy = true;
+        try
+        {
+            await Client.RemoveMyLoginAsync(login.Provider, CancellationToken.None);
+            message = L["Account.Logins.Removed", Name(login)];
+            await LoadAsync();
+        }
+        catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.LastWayIn))
+        {
+            message = L["Account.Logins.LastWayIn"];
+        }
+        catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.LoginNotFound))
+        {
+            message = L["Account.Logins.AlreadyRemoved"];
+            await LoadAsync();
+        }
+        catch (Exception exception) when (AccountProblems.IsFailure(exception))
+        {
+            message = L["Account.Logins.RemoveFailed"];
+        }
+
+        busy = false;
+        focusMessage = true;
+    }
+
+    private static string Name(MyLogin login) => string.IsNullOrWhiteSpace(login.DisplayName) ? login.Provider : login.DisplayName;
+}

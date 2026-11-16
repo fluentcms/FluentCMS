@@ -362,6 +362,13 @@ Sign-in, refresh, sign-out and expiry with the draft kept are as in 2.4. The acc
 
 A key or a service account cannot sign in to the admin, which is a code-flow client. Called with one, `GET /me` answers 200 with `{ id, kind, name }` and `GET /me/sessions` an empty list; only the two-factor and logins routes answer 403.
 
+*As built (A-09, [#3147]).* `AccountPage` at `/account`, in `Account/` of `FluentCMS.Admin`, reads each section on its own, so a 403 (shown as "only a user has this") or a failure with "Try again" stays in its section.
+
+- **Sessions.** A row is one authorization. The API does not mark this tab's, so none is marked; the page says that ending one stops that sign-in at its next request and does not sign the browser out of the authorization server. Ending this tab's makes the next read a 401, which the session's own path of 2.4 answers by signing in again.
+- **Two-factor.** The QR code is an SVG drawn by `QrCode`, the admin's own encoder (byte mode, level M, versions 1 to 15, up to 412 bytes), with the key beside it in groups of four. QRCoder 1.8.1, the package the issue named, brings `System.Drawing.Common` on `net6.0` and up. The key and the recovery codes live in the component while their step is open, and are dropped when the user leaves the step or the page; they are never logged, put in the URL or stored in the browser.
+- **Password.** A link to `{authority}/account/change-password` in the same tab, with `ReturnUrl` set to the account page when the admin is on the authority's origin, since the hosted page returns only to a local URL.
+- **Language and theme.** The theme is the shell's, kept in the browser (4.1). The language is the `culture` of `PUT /me/preferences`, sent with the other preferences as read. The start does not read it yet: that needs a browser copy readable before the host starts, which waits for a second shipped culture (AQ14).
+
 ### 4.4 Generated list views
 
 Rows 3.4, 7.7 (locale switcher and translation status in lists), 6.5 (schedules visible in list views), 2.23 (`q=` through the search plugin).

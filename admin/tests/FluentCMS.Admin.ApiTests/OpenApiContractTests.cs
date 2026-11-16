@@ -29,6 +29,14 @@ public sealed class OpenApiContractTests
         Check(ManagementJsonContext.Default.ContentPage, Answer(paths, "/api/management/v1/content/article", "get"), "content/article", document, gaps);
         Check(ManagementJsonContext.Default.ContentEntry, Answer(paths, "/api/management/v1/content/article/{id}", "get"), "content/article/{id}", document, gaps);
         Check(ManagementJsonContext.Default.ContentEntry, Answer(paths, "/api/management/v1/content/article", "post", "201"), "content/article post", document, gaps);
+        Check(ManagementJsonContext.Default.ItemListMySession, Answer(paths, "/api/management/v1/me/sessions", "get"), "me/sessions", document, gaps);
+        Check(ManagementJsonContext.Default.MyTwoFactor, Answer(paths, "/api/management/v1/me/two-factor", "get"), "me/two-factor", document, gaps);
+        Check(ManagementJsonContext.Default.AuthenticatorSetup, Answer(paths, "/api/management/v1/me/two-factor/enrol", "post"), "me/two-factor/enrol", document, gaps);
+        Check(ManagementJsonContext.Default.RecoveryCodeList, Answer(paths, "/api/management/v1/me/two-factor/verify", "post"), "me/two-factor/verify", document, gaps);
+        Check(ManagementJsonContext.Default.RecoveryCodeList, Answer(paths, "/api/management/v1/me/two-factor/recovery-codes", "post"), "me/two-factor/recovery-codes", document, gaps);
+        Check(ManagementJsonContext.Default.ItemListMyLogin, Answer(paths, "/api/management/v1/me/logins", "get"), "me/logins", document, gaps);
+        Check(ManagementJsonContext.Default.MyPreferences, Answer(paths, "/api/management/v1/me/preferences", "get"), "me/preferences", document, gaps);
+        Check(ManagementJsonContext.Default.MyPreferences, Answer(paths, "/api/management/v1/me/preferences", "put"), "me/preferences put", document, gaps);
         Check(ManagementJsonContext.Default.ApiProblem, document["components"]!["schemas"]!["problem"]!, "problem", document, gaps);
 
         gaps.ShouldBeEmpty();
