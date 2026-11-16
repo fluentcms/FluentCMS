@@ -71,7 +71,7 @@
   </PropertyGroup>
 
   <!-- The test project stubs have no tests yet; exit code 8 means "zero tests ran". Remove this once each project has tests. -->
-  <PropertyGroup Condition="$(RepoRelativeProjectDir.StartsWith('tests/')) Or $(RepoRelativeProjectDir.StartsWith('admin/tests/'))">
+  <PropertyGroup Condition="$(RepoRelativeProjectDir.StartsWith('tests/'))">
     <TestingPlatformCommandLineArguments>--ignore-exit-code 8</TestingPlatformCommandLineArguments>
   </PropertyGroup>
 

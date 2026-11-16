@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Empty until the browser tests of A-11. -->
+  <!-- Empty until the browser tests of A-11; exit code 8 means "zero tests ran". Remove this with the first test. -->
+  <PropertyGroup>
+    <TestingPlatformCommandLineArguments>--ignore-exit-code 8</TestingPlatformCommandLineArguments>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit.v3" />

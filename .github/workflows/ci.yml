@@ -291,6 +291,10 @@ jobs:
       - name: Publish the admin trimmed
         run: dotnet publish admin/src/FluentCMS.Admin.App -c Release --no-build -o artifacts/admin
 
+      - name: Check that the admin app holds the Blazor script
+        shell: bash
+        run: test -f artifacts/admin/wwwroot/_framework/blazor.webassembly.js
+
       # Packed beside the NuGet packages at their version. CI publishes neither; the Publish workflow does, from a tag.
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
