@@ -3,8 +3,10 @@
    their step is open and nowhere else, never logged, never in the URL, never in the browser's storage.
    Turning it on or off gives the user a new security stamp, and the token endpoint then refuses this tab's refresh token,
    so the tab signs in again at once, through the session, rather than at its next refresh: after the recovery codes are
-   saved, and after turning it off. No call is made while the codes are shown, so that nothing can take the page away. *@
-@implements IDisposable
+   saved, and after turning it off. While the codes are shown this card makes no call, they are in a modal dialog, which the
+   browser keeps the rest of the page and the shell from, and the page's other cards are held inert. The shell makes no
+   call of its own, so what can still take the codes away is the browser itself: a reload, or going back. *@
+@inherits AccountCard
 @using FluentCMS.Admin.Api
 @using FluentCMS.Admin.Authentication
 @inject ManagementClient Client
@@ -46,6 +48,7 @@
             <p>@L["Account.TwoFactor.KeyOnlyText"]</p>
             <p><code class="account-key">@GroupedKey(setup.SharedKey)</code></p>
         }
+        <p>@L["Account.TwoFactor.EnrolSignInAgain"]</p>
         <CmsStack>
             <CmsTextInput Label="@L["Account.TwoFactor.Code"]" Required="true" Error="@codeError" Autocomplete="one-time-code" Numeric="true" @bind-Value="code" />
             <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
@@ -56,14 +59,20 @@
     }
     else if (step == Step.Codes && recoveryCodes is not null)
     {
-        <h3 class="account-step" tabindex="-1" @ref="stepHeading">@L["Account.TwoFactor.CodesHeading"]</h3>
-        <p>@L["Account.TwoFactor.CodesText"]</p>
-        <pre class="account-codes" aria-label="@L["Account.TwoFactor.CodesLabel"]">@string.Join('\n', recoveryCodes)</pre>
-        @if (signInAfterCodes)
-        {
-            <p>@L["Account.TwoFactor.CodesSignInAgain"]</p>
-        }
-        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="CodesSavedAsync">@L["Account.TwoFactor.CodesSaved"]</CmsButton>
+        @* Modal, so that nothing else of the page or the shell can be used while the codes are shown; Escape opens it again. *@
+        <CmsDialog @key="codesDialog" Title="@L["Account.TwoFactor.CodesHeading"]" Open="true" OpenChanged="@(_ => codesDialog++)">
+            <ChildContent>
+                <p>@L["Account.TwoFactor.CodesText"]</p>
+                <pre class="account-codes" aria-label="@L["Account.TwoFactor.CodesLabel"]">@string.Join('\n', recoveryCodes)</pre>
+                @if (signInAfterCodes)
+                {
+                    <p>@L["Account.TwoFactor.CodesSignInAgain"]</p>
+                }
+            </ChildContent>
+            <Actions>
+                <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="CodesSavedAsync">@L["Account.TwoFactor.CodesSaved"]</CmsButton>
+            </Actions>
+        </CmsDialog>
     }
     else if (step is Step.Disable or Step.NewCodes)
     {
@@ -139,22 +148,33 @@
     private string? codeError;
     private string? message;
     private bool busy;
+    private int codesDialog;
     private ElementReference stepHeading;
     private ElementReference messageElement;
     private bool focusNext;
 
     protected override Task OnInitializedAsync() => LoadAsync();
 
+    // The dialog of the codes takes focus itself.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (focusNext)
+        if (focusNext && step != Step.Codes)
         {
             focusNext = false;
             await (step == Step.None ? messageElement : stepHeading).FocusAsync();
         }
     }
 
-    public void Dispose() => Forget();
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            Forget();
+            Hold?.Set(false);
+        }
+
+        base.Dispose(disposing);
+    }
 
     private async Task LoadAsync()
     {
@@ -227,17 +247,27 @@
         {
             status = status with { Enabled = false, Pending = false, RecoveryCodesLeft = 0 };
             CloseStep(L["Account.TwoFactor.TurnedOff"]);
-            await Session.SignInAsync(AccountPage.Route, CancellationToken.None);
+            if (!await AccountSignIn.AgainAsync(Session))
+            {
+                message = L["Account.Page.SignInFailed"];
+            }
         }
     }
 
+    // After turning it on, the page stays held until it has left for the sign-in; if it cannot leave, the page is let go and
+    // says so, since the next call of the tab will send it to sign in anyway.
     private async Task CodesSavedAsync()
     {
         var signInAgain = signInAfterCodes;
         CloseStep(L["Account.TwoFactor.CodesClosed"]);
-        if (signInAgain)
+        if (!signInAgain)
         {
-            await Session.SignInAsync(AccountPage.Route, CancellationToken.None);
+            Hold?.Set(false);
+        }
+        else if (!await AccountSignIn.AgainAsync(Session))
+        {
+            Hold?.Set(false);
+            message = L["Account.Page.SignInFailed"];
         }
     }
 
@@ -305,6 +335,7 @@
         Forget();
         recoveryCodes = codes;
         signInAfterCodes = signInAgain;
+        Hold?.Set(true);
         OpenStep(Step.Codes);
     }
 

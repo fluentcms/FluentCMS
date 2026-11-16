@@ -4,8 +4,8 @@ FluentCMS includes code derived from the work below, under its licence.
 
 ## QR Code generator library
 
-- Source: <https://www.nayuki.io/page/qr-code-generator-library>, repository <https://github.com/nayuki/QR-Code-generator> (the Java version, `QrCode.java`, at commit `bcfe1b018cec5f1f91b5705eca5bb4cdd34e9f8d`).
-- Used in: `admin/src/FluentCMS.Admin/Account/QrCode.cs`, the QR code of the two-factor enrolment on the admin's account page.
+- Source: <https://www.nayuki.io/page/qr-code-generator-library>, repository <https://github.com/nayuki/QR-Code-generator> (the Java version, `QrCode.java` and `QrCodeGeneratorDemo.java`, at commit `bcfe1b018cec5f1f91b5705eca5bb4cdd34e9f8d`).
+- Used in: `admin/src/FluentCMS.Admin/Account/QrCode.cs`, the encoder, and `admin/src/FluentCMS.Admin/Account/QrCodeImage.razor`, its drawing as an SVG: the QR code of the two-factor enrolment on the admin's account page.
 
 The licence, as the work's `Readme.markdown` gives it, kept verbatim:
 

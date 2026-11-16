@@ -1,6 +1,7 @@
 @* The account page of the signed-in user (spec 4.3, A-09): its sessions, two-factor sign-in, external logins, the hosted page
    that changes the password, and the theme and interface language. *@
 @page "/account"
+@implements IDisposable
 @using FluentCMS.Admin.Configuration
 @inject AdminConfiguration Configuration
 @inject NavigationManager Navigation
@@ -8,20 +9,31 @@
 
 <div class="account">
     <h1 tabindex="-1">@L["Account.Page.Heading"]</h1>
-    <div class="account-cards">
-        <AccountSessions />
-        <AccountTwoFactor />
-        <AccountLogins />
-        <CmsCard Title="@L["Account.Password.Heading"]">
-            <p>@(ReturnsHere ? L["Account.Password.Text"] : L["Account.Password.TextElsewhere"])</p>
-            <p><a href="@ChangePasswordUrl">@L["Account.Password.Change"]</a></p>
-        </CmsCard>
-        <AccountPreferences />
-    </div>
+    <CascadingValue Value="hold" IsFixed="true">
+        <div class="account-cards">
+            <AccountSessions />
+            <AccountTwoFactor />
+            <AccountLogins />
+            <CmsCard Title="@L["Account.Password.Heading"]">
+                <p>@(ReturnsHere ? L["Account.Password.Text"] : L["Account.Password.TextElsewhere"])</p>
+                @if (hold.Held)
+                {
+                    <p><a aria-disabled="true">@L["Account.Password.Change"]</a></p>
+                }
+                else
+                {
+                    <p><a href="@ChangePasswordUrl">@L["Account.Password.Change"]</a></p>
+                }
+            </CmsCard>
+            <AccountPreferences />
+        </div>
+    </CascadingValue>
 </div>
 
 @code {
     public const string Route = "account";
+
+    private readonly AccountHold hold = new();
 
     private Uri ChangePasswordPage => new(Configuration.Authority.AbsoluteUri.TrimEnd('/') + "/account/change-password");
 
@@ -36,4 +48,10 @@
     private string ChangePasswordUrl => ReturnsHere
         ? $"{ChangePasswordPage.AbsoluteUri}?ReturnUrl={Uri.EscapeDataString(Here.AbsolutePath)}"
         : ChangePasswordPage.AbsoluteUri;
+
+    protected override void OnInitialized() => hold.Changed += OnHoldChanged;
+
+    public void Dispose() => hold.Changed -= OnHoldChanged;
+
+    private void OnHoldChanged() => _ = InvokeAsync(StateHasChanged);
 }

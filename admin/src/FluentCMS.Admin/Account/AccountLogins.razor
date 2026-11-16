@@ -1,5 +1,6 @@
 @* The user's external logins from GET /me/logins (spec 4.3), each removable unless it is the last way to sign in. Removing one
    gives the user a new security stamp on the server, which ends its sessions, this tab's among them. *@
+@inherits AccountCard
 @using FluentCMS.Admin.Api
 @using FluentCMS.Admin.Authentication
 @inject ManagementClient Client
@@ -18,7 +19,7 @@
     else if (state == AccountSectionState.Failed)
     {
         <p>@L["Account.Page.Failed"]</p>
-        <CmsButton OnClick="LoadAsync">@L["Account.Page.TryAgain"]</CmsButton>
+        <CmsButton Disabled="@Held" OnClick="TryAgainAsync">@L["Account.Page.TryAgain"]</CmsButton>
     }
     else if (logins.Count == 0)
     {
@@ -32,7 +33,7 @@
             {
                 <li @key="login.Provider" class="account-item">
                     <span class="account-item-name">@Name(login)</span>
-                    <CmsButton Disabled="@busy" OnClick="@(() => RemoveAsync(login))">
+                    <CmsButton Disabled="@(busy || Held)" OnClick="@(() => RemoveAsync(login))">
                         @L["Account.Logins.Remove"]<span class="cms-visually-hidden">@L["Account.Logins.RemoveWhich", Name(login)]</span>
                     </CmsButton>
                 </li>
@@ -79,8 +80,15 @@
         }
     }
 
+    private Task TryAgainAsync() => Held ? Task.CompletedTask : LoadAsync();
+
     private async Task RemoveAsync(MyLogin login)
     {
+        if (Held)
+        {
+            return;
+        }
+
         busy = true;
         var removed = false;
         try
@@ -109,9 +117,10 @@
         }
 
         // The new security stamp ends this tab's refresh token too, so it signs in again now rather than at its next refresh.
-        if (removed)
+        if (removed && !await AccountSignIn.AgainAsync(Session))
         {
-            await Session.SignInAsync(AccountPage.Route, CancellationToken.None);
+            message = L["Account.Page.SignInFailed"];
+            focusMessage = true;
         }
     }
 

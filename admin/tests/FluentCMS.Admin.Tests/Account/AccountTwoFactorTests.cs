@@ -39,6 +39,7 @@ public sealed class AccountTwoFactorTests : AccountTestContext
         input.GetAttribute("autocomplete").ShouldBe("one-time-code");
         input.GetAttribute("inputmode").ShouldBe("numeric");
         app.WaitForAssertion(() => ShouldBeFocused<AccountTwoFactor>(app, "stepHeading"));
+        twoFactor.TextContent.ShouldContain("Turning it on ends your sessions: after you have saved the recovery codes, you sign in again.");
         input.Input("123456");
         var reads = Management.Count("me/two-factor");
         Button(twoFactor, "Turn on").Click();
@@ -46,11 +47,11 @@ public sealed class AccountTwoFactorTests : AccountTestContext
         app.WaitForAssertion(() => Section(app, Heading).QuerySelector("pre.account-codes").ShouldNotBeNull());
         twoFactor = Section(app, Heading);
         twoFactor.QuerySelector("pre.account-codes")!.TextContent.ShouldBe(string.Join('\n', Codes));
-        twoFactor.TextContent.ShouldContain("once you have saved the codes the admin signs in again");
+        twoFactor.TextContent.ShouldContain("once you have saved the codes, you sign in again, with a code from the app");
+        twoFactor.QuerySelector("fluent-dialog")!.GetAttribute("aria-label").ShouldBe("Save your recovery codes");
         twoFactor.QuerySelector("svg.qr-code").ShouldBeNull();
         app.Markup.ShouldNotContain(SharedKey, Case.Insensitive);
         Management.Calls.ShouldContain(call => call.Method == HttpMethod.Post && call.Path == "me/two-factor/verify" && call.Body == """{"code":"123456"}""");
-        app.WaitForAssertion(() => ShouldBeFocused<AccountTwoFactor>(app, "stepHeading"));
         SignIns.ShouldBeEmpty();
 
         Button(twoFactor, "I have saved them").Click();
@@ -138,7 +139,7 @@ public sealed class AccountTwoFactorTests : AccountTestContext
         app.WaitForAssertion(() => Section(app, Heading).QuerySelector(".account-key").ShouldNotBeNull());
         var twoFactor = Section(app, Heading);
         twoFactor.QuerySelector("svg").ShouldBeNull();
-        twoFactor.TextContent.ShouldContain("This key is too long for a QR code. Enter it in the app by hand");
+        twoFactor.TextContent.ShouldContain("The address for the app, with the site's name in it, is too long for a QR code. Enter this key in the app by hand");
         twoFactor.QuerySelector(".account-key")!.TextContent.ShouldBe("jbsw y3dp ehpk 3pxp");
         twoFactor.QuerySelector("input").ShouldNotBeNull();
     }
@@ -208,7 +209,7 @@ public sealed class AccountTwoFactorTests : AccountTestContext
         Button(Section(app, Heading), "Turn off").Click();
         app.WaitForAssertion(() => Section(app, Heading).QuerySelector("input").ShouldNotBeNull());
         var twoFactor = Section(app, Heading);
-        twoFactor.TextContent.ShouldContain("Turning it off ends your sessions, so the admin signs in again afterwards.");
+        twoFactor.TextContent.ShouldContain("Turning it off ends your sessions, so you sign in again afterwards.");
         twoFactor.TextContent.ShouldContain("A role of yours requires two-factor sign-in");
         twoFactor.QuerySelector("label")!.TextContent.ShouldContain("Code from the app, or a recovery code");
         var input = twoFactor.QuerySelector("input")!;
@@ -269,7 +270,7 @@ public sealed class AccountTwoFactorTests : AccountTestContext
         Button(Section(app, Heading), "New recovery codes").Click();
 
         app.WaitForAssertion(() => Section(app, Heading).QuerySelector("pre.account-codes")!.TextContent.ShouldBe(string.Join('\n', Codes)));
-        Section(app, Heading).TextContent.ShouldNotContain("the admin signs in again");
+        Section(app, Heading).TextContent.ShouldNotContain("you sign in again");
         Button(Section(app, Heading), "I have saved them").Click();
 
         app.WaitForAssertion(() => AssertNoSecretShown(app));
@@ -289,6 +290,97 @@ public sealed class AccountTwoFactorTests : AccountTestContext
         twoFactor.ShouldContain("A setup was started and not finished.");
     }
 
+    [Fact]
+    public void WhileTheCodesAreShownAndTheSignInIsOnItsWayTheRestOfThePageIsInert()
+    {
+        EnrolAnswers();
+        Management.Sessions.Add(new JsonObject { ["id"] = Guid.NewGuid(), ["clientName"] = "Phone app" });
+        Management.Logins.Add(new JsonObject { ["provider"] = "corp", ["providerKey"] = "1", ["displayName"] = "Corporate sign-in" });
+        var app = Load();
+        TurnOn(app);
+        var calls = Management.Calls.Count;
+
+        AssertInert(app);
+        Button(Section(app, "Sessions"), "End, the sign-in of Phone app").Click();
+        Button(Section(app, "External logins"), "Remove, the login of Corporate sign-in").Click();
+        Section(app, "Theme").QuerySelector("select")!.Change("Dark");
+
+        Management.Calls.Count.ShouldBe(calls);
+        SignIns.ShouldBeEmpty();
+        JSInterop.Invocations.ShouldNotContain(call => call.Identifier == "localStorage.setItem");
+
+        // Until the page has left for the sign-in.
+        Button(Section(app, Heading), "I have saved them").Click();
+        app.WaitForAssertion(() => SignIns.ShouldBe([AccountPage.Route]));
+        AssertInert(app);
+    }
+
+    [Fact]
+    public void NewCodesLetThePageGoOnceSaved()
+    {
+        Management.TwoFactor = Status(enabled: true, left: 1);
+        Management.Logins.Add(new JsonObject { ["provider"] = "corp", ["providerKey"] = "1", ["displayName"] = "Corporate sign-in" });
+        Management.Answer = (method, path) => path == "me/two-factor/recovery-codes"
+            ? Json(new JsonObject { ["recoveryCodes"] = new JsonArray([.. Codes.Select(code => (JsonNode)code)]) })
+            : null;
+        var app = Load();
+        Button(Section(app, Heading), "New recovery codes").Click();
+        app.WaitForAssertion(() => Section(app, Heading).QuerySelector("input").ShouldNotBeNull());
+        Section(app, Heading).QuerySelector("input")!.Input("123456");
+        Button(Section(app, Heading), "New recovery codes").Click();
+        app.WaitForAssertion(() => Section(app, Heading).QuerySelector("pre.account-codes").ShouldNotBeNull());
+        AssertInert(app);
+
+        Button(Section(app, Heading), "I have saved them").Click();
+
+        app.WaitForAssertion(() => Button(Section(app, "External logins"), "Remove, the login of Corporate sign-in").HasAttribute("disabled").ShouldBeFalse());
+        Section(app, "Password").QuerySelector("a")!.HasAttribute("href").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ASignInThatCannotStartAfterTheCodesLetsThePageGoAndSaysSo()
+    {
+        EnrolAnswers();
+        Management.Logins.Add(new JsonObject { ["provider"] = "corp", ["providerKey"] = "1", ["displayName"] = "Corporate sign-in" });
+        var app = Load();
+        FailSignIn();
+        TurnOn(app);
+
+        Button(Section(app, Heading), "I have saved them").Click();
+
+        app.WaitForAssertion(() => Message(app, Heading).ShouldBe("The sign-in server could not be reached to sign you in again. Reload the page to sign in."));
+        Button(Section(app, "External logins"), "Remove, the login of Corporate sign-in").HasAttribute("disabled").ShouldBeFalse();
+        AssertNoSecretShown(app);
+    }
+
+    [Fact]
+    public void ASignInThatCannotStartAfterTurningOffIsSaid()
+    {
+        Management.TwoFactor = Status(enabled: true, left: 3);
+        Management.Answer = (method, path) => path == "me/two-factor/disable" ? NoContent() : null;
+        var app = Load();
+        FailSignIn();
+        Button(Section(app, Heading), "Turn off").Click();
+        app.WaitForAssertion(() => Section(app, Heading).QuerySelector("input").ShouldNotBeNull());
+        Section(app, Heading).QuerySelector("input")!.Input(Codes[0]);
+
+        Button(Section(app, Heading), "Turn off").Click();
+
+        app.WaitForAssertion(() => Message(app, Heading).ShouldBe("The sign-in server could not be reached to sign you in again. Reload the page to sign in."));
+        Section(app, Heading).TextContent.ShouldContain("Two-factor sign-in is off. With it on");
+    }
+
+    private static void AssertInert(IRenderedComponent<AdminApp> app)
+    {
+        foreach (var heading in new[] { "Sessions", "External logins" })
+        {
+            Section(app, heading).QuerySelectorAll("fluent-button").ShouldAllBe(button => button.HasAttribute("disabled"));
+        }
+
+        Section(app, "Theme").QuerySelector("select")!.HasAttribute("disabled").ShouldBeTrue();
+        Section(app, "Password").QuerySelector("a")!.HasAttribute("href").ShouldBeFalse();
+    }
+
     private static void AssertNoSecretShown(IRenderedComponent<AdminApp> app)
     {
         app.Markup.ShouldNotContain(SharedKey, Case.Insensitive);
@@ -300,16 +392,48 @@ public sealed class AccountTwoFactorTests : AccountTestContext
         }
     }
 
-    // Nothing of the enrolment reached the URL, the tab's storage or a call to the browser, whole or within a larger value.
+    // Every text an argument holds, inside arrays and objects too.
+    private static IEnumerable<string> Texts(object? argument) => argument switch
+    {
+        null => [],
+        string text => [text],
+        System.Collections.IEnumerable items => items.Cast<object?>().SelectMany(Texts),
+        _ => [argument.ToString() ?? "", Serialized(argument)],
+    };
+
+    private static string Serialized(object argument)
+    {
+        try
+        {
+            return System.Text.Json.JsonSerializer.Serialize(argument, argument.GetType());
+        }
+        catch (Exception exception) when (exception is NotSupportedException or InvalidOperationException or ArgumentException)
+        {
+            return "";
+        }
+    }
+
+    private static bool HoldsASecret(string value) =>
+        value.Contains(SharedKey, StringComparison.OrdinalIgnoreCase)
+        || value.Contains("jbsw y3dp ehpk 3pxp", StringComparison.OrdinalIgnoreCase)
+        || Codes.Any(code => value.Contains(code, StringComparison.OrdinalIgnoreCase));
+
+    // Nothing of the enrolment reached the URL, the tab's storage or a call to the browser, in either form of the key, whole
+    // or within a larger value.
     private void AssertNoSecretKept()
     {
-        static bool HoldsASecret(string value) =>
-            value.Contains(SharedKey, StringComparison.OrdinalIgnoreCase) || Codes.Any(code => value.Contains(code, StringComparison.OrdinalIgnoreCase));
-
         HoldsASecret(Navigation.Uri).ShouldBeFalse();
         Storage.Items.Values.Where(HoldsASecret).ShouldBeEmpty();
-        JSInterop.Invocations.SelectMany(invocation => invocation.Arguments).Select(argument => argument?.ToString() ?? "")
-            .Where(HoldsASecret).ShouldBeEmpty();
+        JSInterop.Invocations.SelectMany(invocation => invocation.Arguments).SelectMany(Texts).Where(HoldsASecret).ShouldBeEmpty();
+    }
+
+    private static void TurnOn(IRenderedComponent<AdminApp> app)
+    {
+        Button(Section(app, Heading), "Set up two-factor sign-in").Click();
+        app.WaitForAssertion(() => Section(app, Heading).QuerySelector("input").ShouldNotBeNull());
+        Section(app, Heading).QuerySelector("input")!.Input("123456");
+        Button(Section(app, Heading), "Turn on").Click();
+        app.WaitForAssertion(() => Section(app, Heading).QuerySelector("pre.account-codes").ShouldNotBeNull());
     }
 
     private void EnrolAnswers(bool wrongCode = false, string uri = AuthenticatorUri) => Management.Answer = (method, path) =>

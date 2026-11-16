@@ -1,8 +1,27 @@
 using System.Net;
 using System.Text.Json;
 using FluentCMS.Admin.Api;
+using FluentCMS.Admin.Authentication;
 
 namespace FluentCMS.Admin.Account;
+
+// After a change that gives the user a new security stamp, the tab signs in again through the session to come back here. False
+// when the authorization server could not be reached, which the page then says, as for a failed action.
+internal static class AccountSignIn
+{
+    public static async Task<bool> AgainAsync(IAdminSession session)
+    {
+        try
+        {
+            await session.SignInAsync(AccountPage.Route, CancellationToken.None);
+            return true;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidOperationException or TaskCanceledException)
+        {
+            return false;
+        }
+    }
+}
 
 internal enum AccountSectionState
 {

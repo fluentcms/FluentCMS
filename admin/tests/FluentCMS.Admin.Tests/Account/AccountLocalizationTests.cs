@@ -19,7 +19,7 @@ public sealed class AccountLocalizationTests : AdminTestContext
     [
         "Lists", "Empty", "Enrol", "KeyOnly", "WrongCode", "EmptyCode", "Codes", "Cancelled", "On", "NewCodes", "NewCodesShown",
         "Disable", "DisableRequired", "RequiredAndPending", "Refused", "Failed", "ThisTabEnded", "Ended", "AlreadyEnded",
-        "EndFailed", "Removed", "LastWayIn", "AlreadyRemoved", "RemoveFailed", "AlreadyOn", "Changed",
+        "EndFailed", "Removed", "LastWayIn", "AlreadyRemoved", "RemoveFailed", "AlreadyOn", "Changed", "SignInFailed",
     ];
 
     public static TheoryData<string, string> States()
@@ -82,6 +82,11 @@ public sealed class AccountLocalizationTests : AdminTestContext
         }
 
         Start();
+        if (state == "SignInFailed")
+        {
+            ((Authentication.SignedInTestSession)Services.GetRequiredService<FluentCMS.Admin.Authentication.IAdminSession>()).SignInError = new HttpRequestException("No answer.");
+        }
+
         Services.GetRequiredService<NavigationManager>().NavigateTo(AccountPage.Route);
         var app = Render<AdminApp>();
         app.WaitForAssertion(() => app.FindAll("section.cms-card").Count.ShouldBe(5));
@@ -137,7 +142,7 @@ public sealed class AccountLocalizationTests : AdminTestContext
                 Click(app, 0, 0);
                 app.WaitForAssertion(() => app.FindAll("section.cms-card")[0].QuerySelector(".account-message:not(:empty)").ShouldNotBeNull());
                 break;
-            case "Removed" or "LastWayIn" or "AlreadyRemoved" or "RemoveFailed":
+            case "Removed" or "SignInFailed" or "LastWayIn" or "AlreadyRemoved" or "RemoveFailed":
                 Click(app, 2, 0);
                 app.WaitForAssertion(() => app.FindAll("section.cms-card")[2].QuerySelector(".account-message:not(:empty)").ShouldNotBeNull());
                 break;

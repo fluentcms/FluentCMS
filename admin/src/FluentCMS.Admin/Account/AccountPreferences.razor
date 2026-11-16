@@ -1,7 +1,7 @@
 @* The theme and, once more than one culture ships, the interface language (spec 4.1, 4.3, 4.17). The theme is the shell's,
    kept in the browser, since the preferences hold none. The language is the culture of PUT /me/preferences, which follows
    the user to every browser; the start of the app does not apply it yet (#3214), so until then the browser's culture decides. *@
-@implements IDisposable
+@inherits AccountCard
 @using FluentCMS.Admin.Api
 @inject ManagementClient Client
 @inject ShellTheme Theme
@@ -12,7 +12,7 @@
 
 <CmsCard Title="@(ChoosesLanguage ? L["Account.Preferences.Heading"] : L["Account.Preferences.ThemeHeading"])">
     <CmsStack>
-        <CmsSelect Label="@L["Account.Preferences.Theme"]" Options="@themes" Value="@Theme.Mode.ToString()" ValueChanged="@OnThemeChanged" />
+        <CmsSelect Label="@L["Account.Preferences.Theme"]" Options="@themes" Value="@Theme.Mode.ToString()" ValueChanged="@OnThemeChanged" Disabled="@Held" />
         @if (ChoosesLanguage)
         {
             if (state == AccountSectionState.Loading)
@@ -26,13 +26,13 @@
             else if (state == AccountSectionState.Failed)
             {
                 <p>@L["Account.Preferences.LanguageFailed"]</p>
-                <CmsButton OnClick="LoadAsync">@L["Account.Page.TryAgain"]</CmsButton>
+                <CmsButton Disabled="@Held" OnClick="TryAgainAsync">@L["Account.Page.TryAgain"]</CmsButton>
             }
             else
             {
-                @* Drawn anew after a failed save, so that the select shows the saved language again rather than the one picked. *@
-                <CmsSelect @key="drawn" Label="@L["Account.Preferences.Language"]" Options="@languages" Value="@language" ValueChanged="@OnLanguageChangedAsync"
-                           Disabled="@busy" Error="@languageError" />
+                @* Not disabled while it saves, which would take focus from it; a second change waits for the first. *@
+                <CmsSelect Label="@L["Account.Preferences.Language"]" Options="@languages" Value="@language" ValueChanged="@OnLanguageChangedAsync"
+                           Disabled="@Held" Error="@languageError" />
             }
         }
     </CmsStack>
@@ -45,7 +45,6 @@
     private string? language;
     private string? languageError;
     private bool busy;
-    private int drawn;
 
     // A choice of one culture is none.
     private bool ChoosesLanguage => Cultures.Offered.Count > 1;
@@ -66,7 +65,17 @@
         }
     }
 
-    public void Dispose() => Theme.Changed -= OnChanged;
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            Theme.Changed -= OnChanged;
+        }
+
+        base.Dispose(disposing);
+    }
+
+    private Task TryAgainAsync() => Held ? Task.CompletedTask : LoadAsync();
 
     private async Task LoadAsync()
     {
@@ -89,7 +98,7 @@
 
     private async Task OnThemeChanged(string? value)
     {
-        if (Enum.TryParse<CmsThemeMode>(value, out var mode))
+        if (!Held && Enum.TryParse<CmsThemeMode>(value, out var mode))
         {
             await Theme.ChooseAsync(mode);
         }
@@ -98,7 +107,7 @@
     // A write replaces every preference, so the others are read again just before it, in case another tab changed them.
     private async Task OnLanguageChangedAsync(string? value)
     {
-        if (Offered(value) is not { } chosen || chosen == language)
+        if (Held || busy || Offered(value) is not { } chosen || chosen == language)
         {
             return;
         }
@@ -115,12 +124,23 @@
         catch (Exception exception) when (AccountProblems.IsFailure(exception))
         {
             languageError = L["Account.Preferences.LanguageNotSaved"];
-            drawn++;
+            Announcer.Announce(languageError, AnnouncementPoliteness.Assertive);
+            await ShowAgainAsync(language);
         }
         finally
         {
             busy = false;
         }
+    }
+
+    // The select still shows the language picked, and the same value again would not change it: it is set to none for one
+    // render, then back, so that the same element, which keeps the focus, shows the saved language.
+    private async Task ShowAgainAsync(string? saved)
+    {
+        language = null;
+        StateHasChanged();
+        await Task.Yield();
+        language = saved;
     }
 
     // An offered culture that is the name or one of its parents, as the start chooses.

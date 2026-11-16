@@ -750,7 +750,7 @@
     <value>External logins</value>
   </data>
   <data name="Account.Logins.Explained" xml:space="preserve">
-    <value>You can sign in with these providers. Removing one ends your sessions, and the admin signs in again at once.</value>
+    <value>You can sign in with these providers. Removing one ends your sessions, so you sign in again at once.</value>
   </data>
   <data name="Account.Logins.None" xml:space="preserve">
     <value>No external login is linked to your account.</value>
@@ -779,13 +779,19 @@
     <comment>Read after End by assistive technology only; {0} is the app, {1} the date and time of the sign-in.</comment>
   </data>
   <data name="Account.TwoFactor.KeyOnlyText" xml:space="preserve">
-    <value>This key is too long for a QR code. Enter it in the app by hand, then enter the code the app shows.</value>
+    <value>The address for the app, with the site's name in it, is too long for a QR code. Enter this key in the app by hand, then enter the code the app shows.</value>
   </data>
   <data name="Account.TwoFactor.CodesSignInAgain" xml:space="preserve">
-    <value>Turning two-factor sign-in on ends your sessions, so once you have saved the codes the admin signs in again.</value>
+    <value>Turning two-factor sign-in on ended your sessions: once you have saved the codes, you sign in again, with a code from the app.</value>
   </data>
   <data name="Account.TwoFactor.DisableSignInAgain" xml:space="preserve">
-    <value>Turning it off ends your sessions, so the admin signs in again afterwards.</value>
+    <value>Turning it off ends your sessions, so you sign in again afterwards.</value>
+  </data>
+  <data name="Account.TwoFactor.EnrolSignInAgain" xml:space="preserve">
+    <value>Turning it on ends your sessions: after you have saved the recovery codes, you sign in again.</value>
+  </data>
+  <data name="Account.Page.SignInFailed" xml:space="preserve">
+    <value>The sign-in server could not be reached to sign you in again. Reload the page to sign in.</value>
   </data>
   <data name="Account.Password.TextElsewhere" xml:space="preserve">
     <value>The password is changed on the sign-in server's page, which opens in this tab. It does not bring you back here: open the admin again afterwards.</value>

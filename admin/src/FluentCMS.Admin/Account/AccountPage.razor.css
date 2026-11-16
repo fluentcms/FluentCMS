@@ -48,8 +48,11 @@
     margin-block: var(--cms-space-m);
 }
 
+/* Whole pixels a module at its own size; smaller on a narrow screen rather than past it. */
 ::deep .qr-code {
     flex: none;
+    max-inline-size: 100%;
+    block-size: auto;
 }
 
 ::deep .account-key,

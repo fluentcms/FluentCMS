@@ -2,11 +2,11 @@ using System.Text;
 
 namespace FluentCMS.Admin.Account;
 
-// Derived in part from the QR Code generator library of Project Nayuki (Java), MIT License,
+// Derived from the QR Code generator library of Project Nayuki (Java, QrCode.java at bcfe1b01), MIT License,
 // https://www.nayuki.io/page/qr-code-generator-library; its notice is in THIRD-PARTY-NOTICES.md at the repository root.
-// Ported from it: the drawing of the function patterns, format and version information, the placement of the codewords,
-// the Reed-Solomon divisor, remainder and multiplication, the masks and the penalty rules. The tables, the byte-mode
-// segment, the interleaving and the version range are written here.
+// The encoding follows that library throughout, restricted here to byte mode, level M and versions 1 to 15: the segment's
+// bits, terminator, padding and packing, the error correction and its interleaving, the function patterns, the format and
+// version information, the placement of the codewords, the masks and the penalty rules.
 //
 // A QR code (ISO/IEC 18004) of bytes in byte mode at error correction level M, versions 1 to 15: up to 412 bytes, enough for
 // the otpauth URI of an authenticator, so that the page needs no package and no JavaScript; the page draws it as an SVG.

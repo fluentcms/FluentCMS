@@ -1,6 +1,7 @@
 @* The user's sessions from GET /me/sessions (spec 4.3). A row is one authorization, a sign-in through a client: ending it
    stops that sign-in at its next request and leaves the browser's own sign-in alive. The API does not say which row is this
    tab's; ending that one makes the next read a 401, and the session's own path signs the tab in again. *@
+@inherits AccountCard
 @using FluentCMS.Admin.Api
 @inject ManagementClient Client
 @inject FormatService Formats
@@ -19,7 +20,7 @@
     else if (state == AccountSectionState.Failed)
     {
         <p>@L["Account.Page.Failed"]</p>
-        <CmsButton OnClick="LoadAsync">@L["Account.Page.TryAgain"]</CmsButton>
+        <CmsButton Disabled="@Held" OnClick="TryAgainAsync">@L["Account.Page.TryAgain"]</CmsButton>
     }
     else if (sessions.Count == 0)
     {
@@ -38,7 +39,7 @@
                             <span>@L["Account.Sessions.Started", Formats.DateTime(created)]</span>
                         }
                     </span>
-                    <CmsButton Disabled="@busy" OnClick="@(() => EndAsync(session))">
+                    <CmsButton Disabled="@(busy || Held)" OnClick="@(() => EndAsync(session))">
                         @L["Account.Sessions.End"]<span class="cms-visually-hidden">@Which(session)</span>
                     </CmsButton>
                 </li>
@@ -85,8 +86,15 @@
         }
     }
 
+    private Task TryAgainAsync() => Held ? Task.CompletedTask : LoadAsync();
+
     private async Task EndAsync(MySession session)
     {
+        if (Held)
+        {
+            return;
+        }
+
         busy = true;
         try
         {

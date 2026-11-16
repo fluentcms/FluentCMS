@@ -151,12 +151,26 @@ public sealed class AccountPageTests : AccountTestContext
         Management.Answer = (method, path) => method == HttpMethod.Delete && path == "me/logins/github" ? NoContent() : null;
         var app = Load();
         Names(Section(app, "External logins")).ShouldBe(["Corporate sign-in", "github"]);
-        Section(app, "External logins").TextContent.ShouldContain("Removing one ends your sessions, and the admin signs in again at once.");
+        Section(app, "External logins").TextContent.ShouldContain("Removing one ends your sessions, so you sign in again at once.");
 
         Button(Section(app, "External logins"), "Remove, the login of github").Click();
 
         app.WaitForAssertion(() => SignIns.ShouldBe([AccountPage.Route]));
         Message(app, "External logins").ShouldBe("The login of github is removed.");
+    }
+
+    [Fact]
+    public void ASignInThatCannotStartAfterARemovalIsSaid()
+    {
+        Management.Logins.Add(Login("github", null));
+        Management.Answer = (method, path) => method == HttpMethod.Delete ? NoContent() : null;
+        var app = Load();
+        FailSignIn();
+
+        Button(Section(app, "External logins"), "Remove, the login of github").Click();
+
+        app.WaitForAssertion(() => Message(app, "External logins").ShouldBe("The sign-in server could not be reached to sign you in again. Reload the page to sign in."));
+        Section(app, "External logins").QuerySelector("fluent-button")!.HasAttribute("disabled").ShouldBeFalse();
     }
 
     [Fact]
@@ -282,9 +296,15 @@ public sealed class AccountPageTests : AccountTestContext
         Section(app, "Language and theme").QuerySelectorAll("select")[1].Change("fr");
 
         app.WaitForAssertion(() => Section(app, "Language and theme").TextContent.ShouldContain("The language could not be saved. Try again."));
-        var select = Section(app, "Language and theme").QuerySelectorAll("select")[1];
-        select.GetAttribute("value").ShouldBe("en");
-        select.QuerySelector("option[selected]")!.GetAttribute("value").ShouldBe("en");
+        app.Find("[role=alert]").TextContent.ShouldContain("The language could not be saved. Try again.");
+        app.WaitForAssertion(() =>
+        {
+            var select = Section(app, "Language and theme").QuerySelectorAll("select")[1];
+            select.HasAttribute("disabled").ShouldBeFalse();
+            select.GetAttribute("value").ShouldBe("en");
+            select.QuerySelector("option[selected]")!.GetAttribute("value").ShouldBe("en");
+            select.QuerySelectorAll("option").Length.ShouldBe(2);
+        });
     }
 
     [Fact]

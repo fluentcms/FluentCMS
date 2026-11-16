@@ -3,12 +3,14 @@ using System.Text.Json;
 using System.Web;
 using Bunit;
 using Bunit.TestDoubles;
+using FluentCMS.Admin.Account;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Authentication;
 using FluentCMS.Admin.Forms;
 using FluentCMS.Admin.Interop;
 using FluentCMS.Admin.Shell;
 using FluentCMS.Admin.Tests.Api;
+using FluentCMS.Admin.Tests.Shell;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -293,6 +295,30 @@ public sealed class SignInTests : IAsyncDisposable
 
         _authority.Refreshes.ShouldBe(1);
         server.Tokens.Where(token => token != "Bearer access-1").ShouldBe(["Bearer access-2", "Bearer access-2", "Bearer access-2"]);
+    }
+
+    // What the account page asks after a change that gives the user a new security stamp.
+    [Fact]
+    public async Task SigningInAgainFromTheAccountPageReplacesTheSessionAndComesBackToIt()
+    {
+        var tab = SignIn();
+        var before = _storage[AdminSession.SessionKey].ShouldNotBeNull();
+
+        await tab.Session.SignInAsync(AccountPage.Route, Token);
+
+        var redirect = tab.Navigation.History.First();
+        redirect.Uri.ShouldStartWith("https://cms.example.com/connect/authorize?");
+        redirect.Options.ForceLoad.ShouldBeTrue();
+        Pending().ReturnRoute.ShouldBe(AccountPage.Route);
+
+        var again = SignInAgain(new FakeManagementServer());
+
+        again.Navigation.Uri.ShouldBe("http://localhost/account");
+        again.Session.User.ShouldNotBeNull();
+        _storage[AdminSession.SessionKey].ShouldNotBeNull().ShouldNotBe(before);
+        _storage[AdminSession.SignInKey].ShouldBeNull();
+        var page = again.App.ShouldNotBeNull();
+        page.WaitForAssertion(() => page.Find("main h1").TextContent.ShouldBe("Your account"));
     }
 
     [Fact]
