@@ -203,7 +203,9 @@ public sealed class MigrationRunner(
         $"The lock {SchemaSyncLock} was not free within {SchemaSyncWait.TotalMinutes:0} minutes, so the content tables were not changed; " +
         $"check the owner and lease_until of its row in {StorageNames.Lock}: a lease_until that keeps moving means another instance or a " +
         "'fluentcms schema apply' still holds it and is working, and one that stands still ahead of this instance's clock means its holder " +
-        "stopped and the clocks of the instances are not in step; once no instance is running, set the row's owner to null.");
+        "stopped and the clocks of the instances are not in step; on SQLite one that stands still behind the clock can also mean that its " +
+        "holder is working inside a long write transaction, which keeps it from renewing until the transaction ends; once no instance " +
+        "is running, set the row's owner to null.");
 
     // The steps that bring the content tables up to the host's schema: schema sync's comparison, with renames and the
     // changes sync leaves undone. The applied snapshot tells which tables under a plugin's prefix are content tables.

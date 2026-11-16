@@ -12,9 +12,9 @@ using Xunit;
 namespace FluentCMS.Data.Tests.Migrations;
 
 // Work on the content tables that keeps SQLite's write transaction for longer than the lease of the lock it holds: the
-// first command that adds a column waits, inside the transaction, until a renewal of the lock gave up waiting for it, and the
-// commands after it run as they would. The lock has a lease of 300 milliseconds on the real clock, and its writes give up
-// after the first busy timeout, about 5 seconds, where a host's wait about 35.
+// first command that adds a column waits, inside the transaction, until a renewal of the lock gave up waiting for it and
+// read the row, and the commands after it run as they would. The lock has a lease of 300 milliseconds on the real clock,
+// and its writes give up after the first busy timeout, about 5 seconds, where a host's wait about 35.
 internal sealed class LongTransaction : DbCommandInterceptor
 {
     private readonly TaskCompletionSource _renewalGaveUp = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -34,7 +34,7 @@ internal sealed class LongTransaction : DbCommandInterceptor
     {
         cms.Services.ConfigureDbContext<SystemDbContext>(options => options
             .UseSqlite(sqlite => sqlite.CommandTimeout(1))
-            .AddInterceptors(new Renewals(_renewalGaveUp)));
+            .AddInterceptors(new Renewals(this)));
         cms.Services.ConfigureDbContext<CmsDbContext>(options => options.AddInterceptors(this));
     }
 
@@ -48,16 +48,17 @@ internal sealed class LongTransaction : DbCommandInterceptor
         return result;
     }
 
-    private sealed class Renewals(TaskCompletionSource gaveUp) : DbCommandInterceptor
+    // A renewal that gave up reads the row; nothing else reads it while the command waits.
+    private sealed class Renewals(LongTransaction work) : DbCommandInterceptor
     {
-        public override Task CommandFailedAsync(DbCommand command, CommandErrorEventData eventData, CancellationToken cancellationToken = default)
+        public override ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command, CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = default)
         {
-            if (command.CommandText.TrimStart().StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase) && command.CommandText.Contains("\"cms_lock\"", StringComparison.Ordinal))
+            if (Volatile.Read(ref work._held) == 1 && command.CommandText.Contains("\"cms_lock\"", StringComparison.Ordinal))
             {
-                gaveUp.TrySetResult();
+                work._renewalGaveUp.TrySetResult();
             }
 
-            return Task.CompletedTask;
+            return ValueTask.FromResult(result);
         }
     }
 }

@@ -201,7 +201,7 @@ public sealed class DistributedLockTests : IAsyncDisposable
     }
 
     // SQLite has one writer, so a renewal waits for another connection's write transaction, such as the holder's own work,
-    // and gives up before it ends: after about 5 seconds here, where a host waits about 35.
+    // and gives up before it ends: after about 5 seconds here, where a host waits about 35. It then reads the row.
     [Fact]
     public async Task AHolderKeepsTheLockWhileAWriteTransactionOutlastsItsLease()
     {
@@ -212,8 +212,8 @@ public sealed class DistributedLockTests : IAsyncDisposable
 
         await using (var writer = await WriteTransactionAsync())
         {
-            commands.Failures.Forget();
-            await commands.Failures.NextAsync(1, Patience);
+            commands.Reads.Forget();
+            await commands.Reads.NextAsync(1, Patience);
             held.Lost.IsCancellationRequested.ShouldBeFalse();
         }
 
@@ -240,6 +240,83 @@ public sealed class DistributedLockTests : IAsyncDisposable
         await held.DisposeAsync();
         await using var next = await waiter.TryAcquireAsync(Name, Patience, Token);
         next.ShouldNotBeNull();
+    }
+
+    // A renewal that waited for the writer longer than the lease of 3 seconds would have written one that was already over.
+    [Fact]
+    public async Task ARenewalThatWaitedForTheWriterStartsItsLeaseWhenItIsWritten()
+    {
+        var commands = CommandSignals.OfLock(Name);
+        await using var host = Watched(new FluentCmsTestHost().UseSqlite(_file), commands);
+        await using var held = await RealClockLease(host, TimeSpan.FromSeconds(3)).TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        held.ShouldNotBeNull();
+
+        await using (var writer = await WriteTransactionAsync())
+        {
+            await Task.Delay(TimeSpan.FromSeconds(5), Token);
+            commands.Writes.Forget();
+        }
+
+        await commands.Writes.NextAsync(1, Patience);
+        (await RowAsync(host)).LeaseUntil.ShouldNotBeNull().ShouldBeGreaterThan(DateTimeOffset.UtcNow);
+        held.Lost.IsCancellationRequested.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ATakeThatWaitedForTheWriterStartsItsLeaseWhenItIsWritten()
+    {
+        var locks = RealClockLease(_first, TimeSpan.FromSeconds(3));
+        await (await locks.TryAcquireAsync(Name, TimeSpan.Zero, Token)).ShouldNotBeNull().DisposeAsync();
+
+        Task<IDistributedLockHandle?> waiting;
+        await using (var writer = await WriteTransactionAsync())
+        {
+            // Microsoft.Data.Sqlite runs its asynchronous calls synchronously, so the take that waits needs a thread.
+            waiting = Task.Run(() => locks.TryAcquireAsync(Name, Patience, Token), Token);
+            await Task.Delay(TimeSpan.FromSeconds(4), Token);
+        }
+
+        await using var held = await waiting;
+        held.ShouldNotBeNull();
+        (await RowAsync(_first)).LeaseUntil.ShouldNotBeNull().ShouldBeGreaterThan(DateTimeOffset.UtcNow);
+    }
+
+    [Fact]
+    public async Task AFirstUseOnADatabaseThatAWriteTransactionHoldsEndsWithItsTimeout()
+    {
+        await using var host = Impatient(new FluentCmsTestHost().UseSqlite(_file));
+        var locks = RealClockShortLease(host);
+
+        await using (var writer = await WriteTransactionAsync())
+        {
+            (await locks.TryAcquireAsync(Name, TimeSpan.FromMilliseconds(500), Token)).ShouldBeNull();
+        }
+
+        await using var held = await locks.TryAcquireAsync(Name, Patience, Token);
+        held.ShouldNotBeNull();
+    }
+
+    // What another instance does in the moment between two write transactions that keep the holder's renewals waiting.
+    [Fact]
+    public async Task AHolderIsToldWhenAnotherTookTheLockWhileAWriteTransactionKeepsItsRenewalsWaiting()
+    {
+        await using var host = Impatient(new FluentCmsTestHost().UseSqlite(_file));
+        await using var held = await RealClockShortLease(host).TryAcquireAsync(Name, TimeSpan.Zero, Token);
+        held.ShouldNotBeNull();
+
+        await using var writer = new SqliteConnection($"Data Source={_file};Pooling=False");
+        await writer.OpenAsync(Token);
+        await using (var command = writer.CreateCommand())
+        {
+            command.CommandText = $"UPDATE cms_lock SET owner = '{Crashed}' WHERE name = '{Name}'; BEGIN IMMEDIATE";
+            await command.ExecuteNonQueryAsync(Token);
+        }
+
+        var lost = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using (held.Lost.Register(() => lost.TrySetResult()))
+        {
+            await lost.Task.WaitAsync(Patience, Token);
+        }
     }
 
     [Fact]
@@ -270,12 +347,14 @@ public sealed class DistributedLockTests : IAsyncDisposable
     };
 
     // A lease of 300 milliseconds on the real clock, renewed every 100, for a test whose time passes in SQLite's waits.
-    private static DatabaseDistributedLock RealClockShortLease(FluentCmsTestHost host) => new(
+    private static DatabaseDistributedLock RealClockShortLease(FluentCmsTestHost host) => RealClockLease(host, TimeSpan.FromMilliseconds(300));
+
+    private static DatabaseDistributedLock RealClockLease(FluentCmsTestHost host, TimeSpan lease) => new(
         host.Services.GetRequiredService<IServiceScopeFactory>(),
         TimeProvider.System,
         NullLogger<DatabaseDistributedLock>.Instance)
     {
-        Lease = TimeSpan.FromMilliseconds(300),
+        Lease = lease,
     };
 
     // A write transaction on a connection of its own, as the schema apply of another process holds one; disposing it ends it.
