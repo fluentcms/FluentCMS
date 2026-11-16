@@ -40,6 +40,9 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
         return false;
     }
 
+    // Writers wait for the rows they write, not for the whole database.
+    public bool IsBusy(Exception exception) => false;
+
     public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment)
     {
         var pattern = LikePattern.Containing(fragment);
