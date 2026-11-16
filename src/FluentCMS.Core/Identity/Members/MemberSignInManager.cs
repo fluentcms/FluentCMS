@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Security.Claims;
 using FluentCMS.Content;
 using FluentCMS.Events;
@@ -122,17 +121,17 @@ internal sealed class MemberSignInManager : SignInManager<CmsMember>
         return await base.CheckPasswordSignInAsync(user, password, lockoutOnFailure);
     }
 
-    // Every sign-in that makes a new cookie comes here. The time of the sign-in is kept in the cookie's properties, as
-    // for an admin user: prompt=login, max_age and the absolute session lifetime read it.
-    public override Task SignInWithClaimsAsync(CmsMember user, AuthenticationProperties? authenticationProperties, IEnumerable<Claim> additionalClaims)
+    // Every sign-in that makes a new cookie comes here. The time of the sign-in and the id of its server session are kept
+    // in the cookie's properties, as for an admin user: prompt=login, max_age and the absolute session lifetime read the
+    // time, and the logout ends the authorizations of the session.
+    public override async Task SignInWithClaimsAsync(CmsMember user, AuthenticationProperties? authenticationProperties, IEnumerable<Claim> additionalClaims)
     {
-        var properties = authenticationProperties ?? new AuthenticationProperties();
-        if (!properties.Items.ContainsKey(CmsSignInManager.SignedInAtItem))
-        {
-            properties.Items[CmsSignInManager.SignedInAtItem] = _time.GetUtcNow().ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
-        }
+        ArgumentNullException.ThrowIfNull(user);
 
-        return base.SignInWithClaimsAsync(user, properties, additionalClaims);
+        var properties = authenticationProperties ?? new AuthenticationProperties();
+        await CmsSignInManager.TakeOverAsync(Context, MemberAuthentication.CookieScheme, user.Id.ToString("D"), properties, _members.GetUserId);
+        CmsSignInManager.MarkSignIn(properties, _time);
+        await base.SignInWithClaimsAsync(user, properties, additionalClaims);
     }
 
     // The member cookie alone. Identity's sign-out also ends its external and two-factor cookies, which are the admin's.

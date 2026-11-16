@@ -242,6 +242,142 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
         browser.HasCookie(AdminCookie).ShouldBeTrue();
     }
 
+    [Fact]
+    public async Task TheMemberLogoutPageRevokesTheRefreshTokenOfItsSession()
+    {
+        var address = await fixture.RegisterVerifiedAsync();
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.20");
+        await SignInMemberAsync(browser, address);
+        var request = AuthorizeRequest.For(FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+        using var code = await browser.GetAsync(request.Url);
+        var refreshToken = (await request.ExchangeAsync(fixture.Host, code)).GetProperty("refresh_token").GetString()!;
+
+        var page = await browser.PageAsync("/account/members/logout");
+        using (var signedOut = await browser.PostAsync("/account/members/logout", page, new Dictionary<string, string>()))
+        {
+            signedOut.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        }
+
+        (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, refreshToken)).ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task TheMemberClientsLogoutRevokesTheMembersSessionAndLeavesTheAdminsTokens()
+    {
+        var admin = await CreateAdminAsync();
+        var address = await fixture.RegisterVerifiedAsync();
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.21");
+        await SignInAdminAsync(browser, admin.Email);
+        await SignInMemberAsync(browser, address);
+        var adminRequest = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, "openid offline_access management");
+        using var adminCode = await browser.GetAsync(adminRequest.Url);
+        var adminRefresh = (await adminRequest.ExchangeAsync(fixture.Host, adminCode)).GetProperty("refresh_token").GetString()!;
+        var memberRequest = AuthorizeRequest.For(FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+        using var memberCode = await browser.GetAsync(memberRequest.Url);
+        var memberRefresh = (await memberRequest.ExchangeAsync(fixture.Host, memberCode)).GetProperty("refresh_token").GetString()!;
+
+        using (var asked = await browser.GetAsync($"/connect/logout?client_id={FluentCmsTestHost.OAuthMemberClientId}"))
+        {
+            var page = await browser.PageAsync(asked.Headers.Location!.OriginalString);
+            using var confirmed = await browser.PostAsync("/connect/logout", page, new Dictionary<string, string>
+            {
+                ["client_id"] = FluentCmsTestHost.OAuthMemberClientId,
+                [MemberAuthentication.LogoutPageField] = MemberAuthentication.LogoutPageMark,
+            });
+            confirmed.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        }
+
+        (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, memberRefresh)).ShouldBe(HttpStatusCode.BadRequest);
+        (await RefreshAsync(FluentCmsTestHost.OAuthClientId, adminRefresh)).ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AnAdminLogoutLeavesTheMembersTokens()
+    {
+        var admin = await CreateAdminAsync();
+        var address = await fixture.RegisterVerifiedAsync();
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.22");
+        await SignInAdminAsync(browser, admin.Email);
+        await SignInMemberAsync(browser, address);
+        var adminTokens = await CodeFlowAsync(browser, FluentCmsTestHost.OAuthClientId, "openid offline_access management");
+        var memberTokens = await CodeFlowAsync(browser, FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+
+        var page = await browser.PageAsync("/account/logout");
+        using (var signedOut = await browser.PostAsync("/connect/logout", page, new Dictionary<string, string>()))
+        {
+            signedOut.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        }
+
+        (await RefreshAsync(FluentCmsTestHost.OAuthClientId, adminTokens.GetProperty("refresh_token").GetString()!)).ShouldBe(HttpStatusCode.BadRequest);
+        (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, memberTokens.GetProperty("refresh_token").GetString()!)).ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AMemberSignInOverALiveOneKeepsTheSameMembersSessionAndEndsOnlyAnothers()
+    {
+        var first = await fixture.RegisterVerifiedAsync();
+        var second = await fixture.RegisterVerifiedAsync();
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.23");
+        using var otherDevice = new HostedPagesBrowser(fixture.Host, "10.8.0.24");
+        await SignInMemberAsync(browser, first);
+        await SignInMemberAsync(otherDevice, first);
+        var before = await CodeFlowAsync(browser, FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+        var elsewhere = await CodeFlowAsync(otherDevice, FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+
+        // The same member signs in again: the browser's session goes on.
+        await SignInMemberAsync(browser, first);
+        var after = await CodeFlowAsync(browser, FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+        Sid(after).ShouldBe(Sid(before));
+        (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, before.GetProperty("refresh_token").GetString()!)).ShouldBe(HttpStatusCode.OK);
+
+        // Another member signs in over it: the first member's session in this browser ends, and its other device's stays.
+        await SignInMemberAsync(browser, second);
+        (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, after.GetProperty("refresh_token").GetString()!)).ShouldBe(HttpStatusCode.BadRequest);
+        (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, elsewhere.GetProperty("refresh_token").GetString()!)).ShouldBe(HttpStatusCode.OK);
+        Sid(await CodeFlowAsync(browser, FluentCmsTestHost.OAuthMemberClientId, "openid offline_access")).ShouldNotBe(Sid(after));
+    }
+
+    [Fact]
+    public async Task AMemberReauthenticationAnotherSiteCanAskForEndsTheCookieAndRevokesNothing()
+    {
+        var address = await fixture.RegisterVerifiedAsync();
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.25");
+        foreach (var prompt in new[] { "&prompt=login", "&max_age=0" })
+        {
+            await SignInMemberAsync(browser, address);
+            var tokens = await CodeFlowAsync(browser, FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+
+            using var foreign = await browser.GetAsync("/connect/authorize" + AuthorizeRequest.Query(FluentCmsTestHost.OAuthMemberClientId, "openid") + prompt);
+            foreign.Headers.Location!.OriginalString.ShouldContain("/account/members/login", Case.Sensitive, prompt);
+            browser.HasCookie(MemberCookie).ShouldBeFalse();
+            (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, tokens.GetProperty("refresh_token").GetString()!)).ShouldBe(HttpStatusCode.OK, prompt);
+        }
+    }
+    private async Task<JsonElement> CodeFlowAsync(HostedPagesBrowser browser, string clientId, string scope)
+    {
+        var request = AuthorizeRequest.For(clientId, scope);
+        using var code = await browser.GetAsync(request.Url);
+        return await request.ExchangeAsync(fixture.Host, code);
+    }
+
+    private static string? Sid(JsonElement tokens)
+    {
+        using var payload = JsonDocument.Parse(Base64Url.DecodeFromChars(tokens.GetProperty("id_token").GetString()!.Split('.')[1]));
+        return payload.RootElement.GetProperty("sid").GetString();
+    }
+    private async Task<HttpStatusCode> RefreshAsync(string clientId, string refreshToken)
+    {
+        using var client = fixture.Host.CreateSecureClient();
+        using var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = refreshToken,
+            ["client_id"] = clientId,
+        });
+        using var refreshed = await client.PostAsync("/connect/token", content, Token);
+        return refreshed.StatusCode;
+    }
+
     [Theory]
     [InlineData("https://evil.example/")]
     [InlineData("//evil.example/")]

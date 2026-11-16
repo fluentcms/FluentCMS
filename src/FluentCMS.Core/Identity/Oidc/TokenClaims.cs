@@ -21,6 +21,10 @@ internal static class TokenClaims
     // When the session began, in Unix seconds, for its absolute lifetime; in codes and refresh tokens only, too.
     public const string SessionStart = "fcms_session_start";
 
+    // The server session, RP-Initiated Logout's sid, in the identity token of a code issued under it: a logout whose hint
+    // carries the sid of the cookie's session needs no confirmation.
+    public const string ServerSession = "sid";
+
     // The authentication method reference Identity gives a sign-in with a second factor.
     public const string MultiFactor = "mfa";
 
@@ -74,6 +78,9 @@ internal static class TokenClaims
         return identity;
     }
 
+    public static ClaimsIdentity ForServerSession(ClaimsIdentity identity, string serverSession) =>
+        identity.SetClaim(ServerSession, serverSession).SetDestinations(Destinations);
+
     public static ClaimsIdentity ForServiceAccount(ClaimsIdentity identity, Guid applicationId, string name, IEnumerable<Guid> roles, IEnumerable<string> scopes)
     {
         identity.SetClaim(Claims.Subject, applicationId.ToString("D"))
@@ -125,7 +132,7 @@ internal static class TokenClaims
         Claims.Name when claim.Subject?.HasScope(Scopes.Profile) == true => [OpenIddictConstants.Destinations.AccessToken, OpenIddictConstants.Destinations.IdentityToken],
         Claims.Email when claim.Subject?.HasScope(Scopes.Email) == true => [OpenIddictConstants.Destinations.IdentityToken],
         Claims.AuthenticationMethodReference => [OpenIddictConstants.Destinations.AccessToken, OpenIddictConstants.Destinations.IdentityToken],
-        Claims.AuthenticationTime => [OpenIddictConstants.Destinations.IdentityToken],
+        Claims.AuthenticationTime or ServerSession => [OpenIddictConstants.Destinations.IdentityToken],
         Claims.Name or CmsClaimTypes.Kind or CmsClaimTypes.Roles or CmsClaimTypes.ClientRole => [OpenIddictConstants.Destinations.AccessToken],
         _ => [],
     };
