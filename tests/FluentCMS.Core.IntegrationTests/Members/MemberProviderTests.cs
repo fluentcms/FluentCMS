@@ -169,7 +169,7 @@ public sealed partial class MemberProviderTests(MemberProviderFixture fixture) :
             using var page = await browser.FollowAsync(back);
             page.StatusCode.ShouldBe(HttpStatusCode.OK);
             var pending = await page.Content.ReadAsStringAsync(Token);
-            pending.ShouldContain($"{CheckYourMail} to it that says what to do next.");
+            pending.ShouldContain($"{CheckYourMail} to it with the next step.");
             pending.ShouldNotContain("Follow that email");
         }
 
@@ -199,8 +199,8 @@ public sealed partial class MemberProviderTests(MemberProviderFixture fixture) :
             verified.StatusCode.ShouldBe(HttpStatusCode.Redirect);
 
             // The member has no password, so the notice names the providers as well, without saying which applies.
-            (await browser.PageAsync(verified.Headers.Location!.OriginalString))
-                .ShouldContain("Your email address is verified. Sign in with your password, or continue with a provider your account is linked to.");
+            WebUtility.HtmlDecode(await browser.PageAsync(verified.Headers.Location!.OriginalString))
+                .ShouldContain("Your email address is verified. Sign in with your password, or continue with a provider your account is linked to. If your account has no password yet, choose one with \"Forgot your password?\".");
         }
 
         using var signedIn = await SignInWithAsync(browser, MicrosoftAccount, account, request.Url);

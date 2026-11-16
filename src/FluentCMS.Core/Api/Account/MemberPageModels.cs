@@ -77,8 +77,8 @@ public sealed class MemberLoginModel : MemberPageModel
     {
         // A member a provider made has no password, and the page never says which members have one.
         "email-verified" => ExternalProviders.Count > 0
-            ? "Your email address is verified. Sign in with your password, or continue with a provider your account is linked to."
-            : "Your email address is verified. Sign in with your password.",
+            ? "Your email address is verified. Sign in with your password, or continue with a provider your account is linked to. If your account has no password yet, choose one with \"Forgot your password?\"."
+            : "Your email address is verified. Sign in with your password. If your account has no password yet, choose one with \"Forgot your password?\".",
         "password-reset" => "Your password was changed. Sign in with the new one.",
         _ => null,
     };
