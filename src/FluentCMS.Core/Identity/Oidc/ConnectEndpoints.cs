@@ -137,7 +137,7 @@ internal static class ConnectEndpoints
                     return Refuse(Errors.LoginRequired, "The user's role requires a sign-in with a second factor.");
                 }
 
-                await EndSignInAsync(context, cookie, members: false);
+                await context.SignOutAsync(IdentityConstants.ApplicationScheme);
                 return Results.Challenge(new AuthenticationProperties { RedirectUri = afterSignIn }, [IdentityConstants.ApplicationScheme]);
             }
 
@@ -409,9 +409,9 @@ internal static class ConnectEndpoints
         }));
 
     // OpenIddict passes a hint it cannot read through without a principal, so the hint is checked here. Without the cookie
-    // a GET, which a browser sends with it, has no one signed in, so an identity token of this server returns to the
-    // client, an expired one or a repeated logout's, whose token the first one revoked, included; a hint that is not one
-    // goes to the logout page. A POST may be a cross-site one, which never carries it.
+    // a GET, which a browser sends with it, has no one signed in, so an identity token of this server for the client the
+    // request names returns to it, an expired one or a repeated logout's, whose token the first one revoked, included; any
+    // other hint goes to the logout page. A POST may be a cross-site one, which never carries it.
     // With the cookie, the hint must be of the cookie's server session (its sid), not only of its user: an id token from
     // another session or device, or from an earlier sign-in, goes to the logout page. The cookie is the one of the pool the
     // request is for, read by that pool's manager.
@@ -419,7 +419,7 @@ internal static class ConnectEndpoints
     {
         if (!cookie.Succeeded)
         {
-            return HttpMethods.IsGet(context.Request.Method) && await IsOwnIdentityTokenAsync(context, context.GetOpenIddictServerRequest()?.IdTokenHint);
+            return HttpMethods.IsGet(context.Request.Method) && await IsOwnIdentityTokenAsync(context, ServerRequest(context).IdTokenHint);
         }
 
         return hint.Principal?.GetClaim(Claims.Subject) is { } subject
@@ -428,7 +428,8 @@ internal static class ConnectEndpoints
             && hint.Principal.GetClaim(TokenClaims.ServerSession) == serverSession;
     }
 
-    // Signed with a key of this server as an identity token, whatever its lifetime or its entry's status.
+    // An identity token signed with a key of this server, whatever its lifetime or its entry's status, of the client the
+    // request names and whose post-logout URI it asks for. OpenIddict checks those only on a hint it can read.
     private static async Task<bool> IsOwnIdentityTokenAsync(HttpContext context, string? token)
     {
         if (string.IsNullOrEmpty(token))
@@ -440,12 +441,33 @@ internal static class ConnectEndpoints
         var result = await new JsonWebTokenHandler().ValidateTokenAsync(token, new TokenValidationParameters
         {
             IssuerSigningKeys = [.. options.SigningCredentials.Select(credentials => credentials.Key)],
+            ValidAlgorithms = [.. options.SigningCredentials.Select(credentials => credentials.Algorithm).Distinct(StringComparer.Ordinal)],
             ValidTypes = [JwtConstants.HeaderType],
             ValidateAudience = false,
             ValidateIssuer = false,
             ValidateLifetime = false,
         });
-        return result.IsValid;
+        if (!result.IsValid || result.SecurityToken is not JsonWebToken identity)
+        {
+            return false;
+        }
+
+        var audiences = identity.Audiences.ToList();
+        var clientId = identity.TryGetPayloadValue<string>(Claims.AuthorizedParty, out var party) ? party : audiences.Count == 1 ? audiences[0] : null;
+        var request = ServerRequest(context);
+        if (clientId is null || (request.ClientId is { } named && named != clientId))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrEmpty(request.PostLogoutRedirectUri))
+        {
+            return true;
+        }
+
+        var applications = context.RequestServices.GetRequiredService<IOpenIddictApplicationManager>();
+        return await applications.FindByClientIdAsync(clientId, context.RequestAborted) is { } application
+            && await applications.ValidatePostLogoutRedirectUriAsync(application, request.PostLogoutRedirectUri, context.RequestAborted);
     }
     // Ends the cookie's sign-in and, with it, the authorizations of its server session, so that nothing issued in a
     // session outlives its cookie; an end the browser stops waiting for still ends them.

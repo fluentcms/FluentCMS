@@ -337,6 +337,22 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
         Sid(await CodeFlowAsync(browser, FluentCmsTestHost.OAuthMemberClientId, "openid offline_access")).ShouldNotBe(Sid(after));
     }
 
+    [Fact]
+    public async Task AMemberReauthenticationAnotherSiteCanAskForEndsTheCookieAndRevokesNothing()
+    {
+        var address = await fixture.RegisterVerifiedAsync();
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.11");
+        foreach (var prompt in new[] { "&prompt=login", "&max_age=0" })
+        {
+            await SignInMemberAsync(browser, address);
+            var tokens = await CodeFlowAsync(browser, FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+
+            using var foreign = await browser.GetAsync("/connect/authorize" + AuthorizeRequest.Query(FluentCmsTestHost.OAuthMemberClientId, "openid") + prompt);
+            foreign.Headers.Location!.OriginalString.ShouldContain("/account/members/login", Case.Sensitive, prompt);
+            browser.HasCookie(MemberCookie).ShouldBeFalse();
+            (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, tokens.GetProperty("refresh_token").GetString()!)).ShouldBe(HttpStatusCode.OK, prompt);
+        }
+    }
     private async Task<JsonElement> CodeFlowAsync(HostedPagesBrowser browser, string clientId, string scope)
     {
         var request = AuthorizeRequest.For(clientId, scope);
