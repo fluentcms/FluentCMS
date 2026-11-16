@@ -1,0 +1,17 @@
+{
+  "apiBaseUrl": "http://localhost:8080",
+  "authority": "http://localhost:8080",
+  "clientId": "fluentcms-admin",
+  "scopes": ["openid", "profile", "email", "offline_access", "management"],
+  "branding": {
+    "name": "FluentCMS",
+    "logoUrl": null,
+    "faviconUrl": null,
+    "accentColor": null
+  },
+  "cultures": {
+    "offered": null,
+    "default": "en"
+  },
+  "previewOrigins": []
+}

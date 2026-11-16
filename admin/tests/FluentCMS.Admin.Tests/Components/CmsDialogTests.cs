@@ -1,0 +1,129 @@
+using Bunit;
+using FluentCMS.Admin.Components;
+using Microsoft.FluentUI.AspNetCore.Components;
+using Shouldly;
+using Xunit;
+
+namespace FluentCMS.Admin.Tests.Components;
+
+// Focus moving in, staying in and returning is the browser's modal <dialog> with the library's script; it was checked in a
+// browser (#3140). These tests hold what the wrappers add: the name, the modal type and the open state.
+public sealed class CmsDialogTests : ComponentTestContext
+{
+    private const string Show = "Microsoft.FluentUI.Blazor.Components.Dialog.Show";
+    private const string Hide = "Microsoft.FluentUI.Blazor.Components.Dialog.Hide";
+
+    [Fact]
+    public void TheDialogIsNamedByItsTitleAndIsModal()
+    {
+        var dialog = Render<CmsDialog>(p => p.Add(x => x.Title, "Discard changes?"));
+
+        var host = dialog.Find("fluent-dialog");
+        host.GetAttribute("aria-label").ShouldBe("Discard changes?");
+        // The library's "modal" type: a modal <dialog> with role dialog, closed by Escape. "alert" would be an alertdialog.
+        host.GetAttribute("type").ShouldBe("modal");
+        dialog.Find(".cms-dialog-title").TextContent.ShouldBe("Discard changes?");
+    }
+
+    [Fact]
+    public void OpeningShowsTheDialogAndClosingHidesIt()
+    {
+        var dialog = Render<CmsDialog>(p => p.Add(x => x.Title, "Discard changes?"));
+        var id = dialog.Find("fluent-dialog").Id;
+        JSInterop.Invocations.ShouldNotContain(i => i.Identifier == Show);
+
+        dialog.Render(p => p.Add(x => x.Open, true));
+        JSInterop.Invocations.ShouldContain(i => i.Identifier == Show && Equals(i.Arguments[0], id));
+
+        dialog.Render(p => p.Add(x => x.Open, false));
+        JSInterop.Invocations.ShouldContain(i => i.Identifier == Hide && Equals(i.Arguments[0], id));
+    }
+
+    [Fact]
+    public async Task ClosingByEscapeOrOutsideClickReportsOpenFalse()
+    {
+        bool? open = null;
+        var dialog = Render<CmsDialog>(p => p
+            .Add(x => x.Title, "Discard changes?")
+            .Add(x => x.Open, true)
+            .Add(x => x.OpenChanged, v => open = v));
+        var host = dialog.Find("fluent-dialog");
+
+        await host.TriggerEventAsync("ondialogtoggle", new DialogToggleEventArgs { Id = host.Id, OldState = "open", NewState = "closed" });
+
+        open.ShouldBe(false);
+    }
+
+    [Fact]
+    public async Task APopoverClosingInsideTheDialogLeavesItOpen()
+    {
+        bool? open = null;
+        var dialog = Render<CmsDialog>(p => p
+            .Add(x => x.Title, "Discard changes?")
+            .Add(x => x.Open, true)
+            .Add(x => x.OpenChanged, v => open = v));
+
+        await dialog.Find("fluent-dialog").TriggerEventAsync("ondialogtoggle", new DialogToggleEventArgs { Id = "menu", NewState = "closed" });
+
+        open.ShouldBeNull();
+    }
+
+    [Fact]
+    public void TheDialogCanBeOpenedAgainAfterItWasClosed()
+    {
+        var dialog = Render<CmsDialog>(p => p.Add(x => x.Title, "Discard changes?").Add(x => x.Open, true));
+        var host = dialog.Find("fluent-dialog");
+        host.TriggerEvent("ondialogtoggle", new DialogToggleEventArgs { Id = host.Id, NewState = "closed" });
+
+        dialog.Render(p => p.Add(x => x.Open, false));
+        dialog.Render(p => p.Add(x => x.Open, true));
+
+        JSInterop.Invocations.Count(i => i.Identifier == Show).ShouldBe(2);
+    }
+
+    [Fact]
+    public void ADismissedDialogStaysClosedWhenTheParentPassesOpenOneWay()
+    {
+        var dialog = Render<CmsDialog>(p => p.Add(x => x.Title, "Discard changes?").Add(x => x.Open, true));
+        var host = dialog.Find("fluent-dialog");
+        host.TriggerEvent("ondialogtoggle", new DialogToggleEventArgs { Id = host.Id, NewState = "closed" });
+
+        dialog.Render(p => p.Add(x => x.Open, true));
+
+        JSInterop.Invocations.Count(i => i.Identifier == Show).ShouldBe(1);
+    }
+
+    [Fact]
+    public void TheDialogKeepsTheLibrarysFocusReturn()
+    {
+        var dialog = Render<CmsDialog>(p => p.Add(x => x.Title, "Discard changes?"));
+
+        // The library's beforetoggle handler records the element that had focus, so that closing gives it back.
+        dialog.Find("fluent-dialog").HasAttribute("blazor:ondialogbeforetoggle").ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(CmsDrawerSide.End, "end")]
+    [InlineData(CmsDrawerSide.Start, "start")]
+    public void TheDrawerIsANamedModalDialogAtTheChosenEdge(CmsDrawerSide side, string position)
+    {
+        var drawer = Render<CmsDrawer>(p => p.Add(x => x.Title, "Filters").Add(x => x.Side, side));
+
+        var host = drawer.Find("fluent-drawer");
+        host.GetAttribute("aria-label").ShouldBe("Filters");
+        host.GetAttribute("type").ShouldBe("modal");
+        host.GetAttribute("position").ShouldBe(position);
+    }
+
+    [Fact]
+    public void ClosingTheDrawerReportsOpenFalse()
+    {
+        bool? open = null;
+        var drawer = Render<CmsDrawer>(p => p.Add(x => x.Title, "Filters").Add(x => x.Open, true).Add(x => x.OpenChanged, v => open = v));
+        var host = drawer.Find("fluent-drawer");
+
+        host.TriggerEvent("ondialogtoggle", new DialogToggleEventArgs { Id = host.Id, NewState = "closed" });
+
+        open.ShouldBe(false);
+    }
+}

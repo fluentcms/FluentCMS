@@ -1,0 +1,38 @@
+@namespace FluentCMS.Admin.Components
+@typeparam TItem
+@implements IDisposable
+
+@code {
+    [CascadingParameter]
+    private CmsDataGrid<TItem>? Grid { get; set; }
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    // The text of a cell; ChildContent takes precedence when both are set.
+    [Parameter]
+    public Func<TItem, string?>? Value { get; set; }
+
+    [Parameter]
+    public RenderFragment<TItem>? ChildContent { get; set; }
+
+    // Makes the column sortable by the key it returns.
+    [Parameter]
+    public Func<TItem, IComparable?>? SortKey { get; set; }
+
+    internal string ColumnId { get; } = CmsIds.Next();
+
+    internal RenderFragment RenderCell(TItem item) => ChildContent?.Invoke(item) ?? (builder => builder.AddContent(0, Value?.Invoke(item)));
+
+    protected override void OnInitialized()
+    {
+        if (Grid is null)
+        {
+            throw new InvalidOperationException($"A {nameof(CmsDataGridColumn<TItem>)} must be inside a {nameof(CmsDataGrid<TItem>)}.");
+        }
+
+        Grid.AddColumn(this);
+    }
+
+    public void Dispose() => Grid?.RemoveColumn(this);
+}

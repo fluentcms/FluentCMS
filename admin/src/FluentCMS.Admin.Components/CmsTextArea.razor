@@ -1,0 +1,24 @@
+@namespace FluentCMS.Admin.Components
+@inherits CmsInputBase<string>
+
+@* Native, for the reason given in CmsTextInput. *@
+<div class="cms-field">
+    @LabelTemplate
+    <textarea id="@InputId"
+              class="cms-input cms-textarea"
+              rows="@Rows"
+              placeholder="@Placeholder"
+              disabled="@Disabled"
+              value="@Value"
+              @oninput="@(args => SetValueAsync(args.Value as string))"
+              @attributes="@AriaAttributes"></textarea>
+    @MessageTemplate
+</div>
+
+@code {
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    [Parameter]
+    public int Rows { get; set; } = 3;
+}

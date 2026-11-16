@@ -1,0 +1,20 @@
+@namespace FluentCMS.Admin.Components
+@inherits CmsInputBase<TimeOnly?>
+
+@* Native, for the reason given in CmsDatePicker. *@
+<div class="cms-field">
+    @LabelTemplate
+    <input id="@InputId"
+           class="cms-input"
+           type="time"
+           value="@Value?.ToString("HH:mm", CultureInfo.InvariantCulture)"
+           disabled="@Disabled"
+           @onchange="@(args => SetValueAsync(Parse(args.Value as string)))"
+           @attributes="@AriaAttributes" />
+    @MessageTemplate
+</div>
+
+@code {
+    private static TimeOnly? Parse(string? value) =>
+        TimeOnly.TryParseExact(value, ["HH:mm", "HH:mm:ss"], CultureInfo.InvariantCulture, DateTimeStyles.None, out var time) ? time : null;
+}

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <Description>The wrapped component set of the FluentCMS admin: inputs, dialogs, drawers, menus, a data grid, a tree, layout primitives, icons and the theme tokens.</Description>
+    <PackageTags>$(PackageTags) admin blazor components</PackageTags>
+    <IsTrimmable>true</IsTrimmable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Add PackageValidationBaselineVersion here once 1.0.0 ships. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+    <!-- The library's compile assets stay here, so the shell or a half that uses the library past the wrappers does not compile
+         (spec 2.3); its runtime assets and its static web assets still flow to the app. -->
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" PrivateAssets="compile;contentfiles;analyzers;build" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" PrivateAssets="compile;contentfiles;analyzers;build" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+  </ItemGroup>
+
+</Project>

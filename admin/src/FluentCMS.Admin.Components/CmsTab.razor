@@ -1,0 +1,19 @@
+@namespace FluentCMS.Admin.Components
+
+<FluentTab Id="@Id" Header="@Title" Disabled="@Disabled">
+    @ChildContent
+</FluentTab>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Id { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

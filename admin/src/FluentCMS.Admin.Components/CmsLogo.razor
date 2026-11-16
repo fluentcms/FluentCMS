@@ -1,0 +1,22 @@
+@namespace FluentCMS.Admin.Components
+
+@if (string.IsNullOrEmpty(Source))
+{
+    <span class="cms-logo" role="img" aria-label="@AlternativeText">
+        <img class="cms-logo-light" src="_content/FluentCMS.Admin.Components/logo.svg" alt="" />
+        <img class="cms-logo-dark" src="_content/FluentCMS.Admin.Components/logo-dark.svg" alt="" />
+    </span>
+}
+else
+{
+    <img class="cms-logo" src="@Source" alt="@AlternativeText" />
+}
+
+@code {
+    // The URL of a logo to show instead of the FluentCMS one, such as the branding of config.json.
+    [Parameter]
+    public string? Source { get; set; }
+
+    [Parameter]
+    public string AlternativeText { get; set; } = "FluentCMS";
+}

@@ -1,0 +1,13 @@
+@namespace FluentCMS.Admin.Components
+@inherits CmsDialogBase
+
+@* Modal="false" is the library's type="modal" (role dialog, dismissed by Escape); Modal="true" would make it an alertdialog. *@
+<FluentDialog @ref="Dialog"
+              Id="@DialogId"
+              Modal="false"
+              Class="cms-dialog"
+              @attributes="@DialogAttributes">
+    <FluentDialogBody TitleTemplate="@TitleTemplate" ActionTemplate="@Actions">
+        @ChildContent
+    </FluentDialogBody>
+</FluentDialog>

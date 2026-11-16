@@ -171,19 +171,23 @@ The admin is the public OAuth client `fluentcms-admin`, the default of `cms.Clie
 
 ### 2.5 Runtime configuration (`config.json`)
 
-At start the app reads `config.json` from its own base URL with `cache: no-store` (row 3.2), so one prebuilt build works against any API host. *Proposed* members:
+At start the app reads `config.json` from its own base URL with `cache: no-store` (row 3.2), so one prebuilt build works against any API host. Members, as `FluentCMS.Admin.Abstractions` exposes them in the record `AdminConfiguration`, which the app registers as a singleton only when the file is valid:
 
 | Member | Meaning | Default |
 | --- | --- | --- |
-| `apiBaseUrl` | Origin and path base of the API host, such as `https://cms.example.com` or `https://example.com/cms` | required |
-| `authority` | Issuer of the authorization server | `apiBaseUrl` |
-| `clientId` | OAuth client id | `fluentcms-admin` |
-| `scopes` | Scopes asked at sign-in | `openid profile email offline_access management` |
-| `branding` | `name`, `logoUrl`, `faviconUrl`, `accentColor` | FluentCMS |
-| `cultures` | Interface cultures offered, and the default | the shipped ones, `en` |
-| `previewOrigins` | Origins the preview frame may load; the admin refuses a preview URL of another origin, and the reference host puts them in the page's `frame-src` (4.12, 6.1) | none, which turns preview off |
+| `apiBaseUrl` | Origin and path base of the API host, such as `https://cms.example.com` or `https://example.com/cms`: an absolute `http` or `https` URL without user info, query or fragment. A trailing slash is optional; the admin always adds one, so that a relative address resolves under the path base | required |
+| `authority` | Issuer of the authorization server, a URL as `apiBaseUrl`, kept as written without a slash added, since the issuer of the discovery document is compared as an exact string | `apiBaseUrl` as written |
+| `clientId` | OAuth client id, visible ASCII without spaces | `fluentcms-admin` |
+| `scopes` | Scopes asked at sign-in, an array of distinct scope tokens | `["openid", "profile", "email", "offline_access", "management"]` |
+| `branding` | An object of `name` (text), `logoUrl` and `faviconUrl` (an absolute `http` or `https` URL, or a path relative to the admin's base) and `accentColor` (a hex color: `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`) | `FluentCMS`, the built-in logo and favicon, the theme's accent |
+| `cultures` | An object of `offered`, an array of distinct culture names, and `default`, which must be one of them | every shipped culture, `en` |
+| `previewOrigins` | Origins the preview frame may load, each an `http` or `https` URL without a path; the admin refuses a preview URL of another origin, and the reference host puts them in the page's `frame-src` (4.12, 6.1) | none, which turns preview off |
 
-A missing or invalid member shows a static error page that names it, before anything else runs; the app makes no request to the API until its configuration is valid. A member the app does not know is ignored with a console warning, so a newer `config.json` works with an older build. In the reference host, `config.json` is an endpoint built from the host's configuration, so the image needs no file (6.1).
+Every URL is ASCII only; an internationalized host name is written in its `xn--` form. A plain `http` URL of `apiBaseUrl` or `authority` on a host that is not loopback is accepted with a console warning.
+
+A missing or invalid member shows a static error page that names it, before anything else runs; the app makes no request to the API until its configuration is valid. A member set to `null` counts as not set, and a member that appears twice in one object is refused. A file that cannot be read within 15 seconds is a problem of the file. A member the app does not know, also inside `branding` and `cultures`, is ignored with a console warning, so a newer `config.json` works with an older build. In the reference host, `config.json` is an endpoint built from the host's configuration, so the image needs no file (6.1). `config.json` is as trusted as `index.html`: whoever can write it can already point `authority` anywhere, so the validation guards against mistakes, not against an attacker.
+
+The branding is applied without a `<style>` element, which a strict `Content-Security-Policy` blocks: `name` is the page title and the name of the shell's logo, `faviconUrl` a `<link rel="icon">`, `logoUrl` the image of the shell's logo (`CmsLogo`), and `accentColor` the custom property `--fluentcms-brand-accent` on the document element, which the wrapped set reads (2.3).
 
 ### 2.6 Lazy loading by plugin assembly
 
@@ -272,7 +276,7 @@ Elsewhere: the admin's rules join `tests/FluentCMS.Architecture.Tests` (3.3); `t
 - The app publishes trimmed. Records are serialized through source-generated contexts, and trim warnings are errors.
 - Static web assets are fingerprinted and compressed at publish, so the host can cache them for a year and `index.html` and `config.json` not at all.
 - Strings shown to a user come from resources (4.17); a test with a pseudo-culture fails on a hard-coded one (7).
-- No JavaScript outside an allow-list: the script of the component library, loaded by `FluentCMS.Admin.Components` (2.3); the rich text bundle; and small interop modules for focus, clipboard, file drop and `BroadcastChannel`, each in `FluentCMS.Admin` or `FluentCMS.Admin.RichText`.
+- No JavaScript outside an allow-list: the script of the component library, loaded by `FluentCMS.Admin.Components` (2.3); the rich text bundle; the document module of `FluentCMS.Admin`, whose one type `DocumentInterop` sets the document's `lang` and `dir` (4.17), the accent color of the branding as a custom property on the document element through `style.setProperty` (2.5), and returns focus to the opener of a dialog of the admin's own (4.18); and small interop modules for clipboard, file drop and `BroadcastChannel`, each in `FluentCMS.Admin` or `FluentCMS.Admin.RichText`.
 
 ### 3.2 Naming conventions
 
@@ -280,10 +284,13 @@ Elsewhere: the admin's rules join `tests/FluentCMS.Architecture.Tests` (3.3); `t
 | --- | --- | --- |
 | Admin route of a content list and entry | `/content/{type}`, `/content/{type}/{id}`, `/content/{type}/new` under the app's base | `/admin/content/article/0193…` |
 | Admin route of a plugin page | `/{plugin}/...`, the server plugin's name first | `/admin/media`, `/admin/mcp/clients` |
+| Admin route of the component gallery | `/system/components`, every component of the wrapped set | `/admin/system/components` |
 | Reserved first segments | `content`, `settings`, `account`, `users`, `roles`, `api-keys`, `members`, `sites`, `plugins`, `jobs`, `system`, `authentication` | a plugin of such a name stops the app with an error page |
 | Component | `Cms` prefix in the wrapped set; area name in the core areas | `CmsDataGrid`, `ContentListPage` |
 | Resource key | `{Area}.{View}.{Text}` | `Content.List.Empty` |
 | Admin half package | `{server package}.Admin` | `FluentCMS.Plugins.Media.Admin` |
+
+The component gallery ships in the product, linked from the start page and from no menu, since it is the page the A0 exit criterion names (#3180).
 
 ### 3.3 Architecture tests
 
@@ -294,6 +301,8 @@ Elsewhere: the admin's rules join `tests/FluentCMS.Architecture.Tests` (3.3); `t
 - `FluentCMS.Admin.Abstractions` references no implementation package.
 - `FluentCMS.Admin.Hosting` is the only admin package that references `FluentCMS.Core`, and no admin assembly that runs in the browser references it.
 - Only the allow-listed types use `IJSRuntime` (3.1).
+
+As built (A-06, #3144): the project rules read the project files and follow project references through the repository; a development-only FluentCMS package counts unless it is `FluentCMS.Analyzers` or `FluentCMS.Generators`. An admin assembly that runs in the browser is every project under `admin/src/` but `FluentCMS.Admin.Hosting`, and every admin half; among FluentCMS packages it may reach only those and `FluentCMS.Client`, which is also checked on the references of each compiled assembly of `admin/src/`, so a `<Reference>` or a reference added by a `Directory.Build.props` is seen. An admin half is any project but the six packages of `admin/src/` that is under `admin/src/plugins/`, is named `*.Admin`, or references `FluentCMS.Admin.Abstractions` or `FluentCMS.Admin.Components`, wherever it is, so a half in a sample or a template, or one placed directly under `admin/src/`, is found too; it may reach no other FluentCMS package except through those two. The component library is what `FluentCMS.Admin.Components` references, matched by package id and the ids below it: no browser project reaches it except through the wrapped set, and no type outside the wrapped set's assembly depends on the `Microsoft.FluentUI` namespace. The interop rule scans the compiled browser assemblies of `admin/src/`, which a test requires the architecture tests to reference, so a `.razor` file's `@inject` counts: a type outside the list may not depend on `Microsoft.JSInterop` or `System.Runtime.InteropServices.JavaScript`. The list holds `DocumentInterop` and its nested type `FocusOpener`; the library's script is loaded by the library's own types, and the rich text and clipboard, file drop and `BroadcastChannel` types join it by name with their issues. `FluentCMS.Admin.Components` keeps the library's compile assets private (`PrivateAssets="compile;contentfiles;analyzers;build"`), so code past the wrappers in the shell or a half does not compile either.
 
 ## 4. Areas
 
@@ -594,8 +603,8 @@ Rows 3.17, 8.7 (settings pages), 7.1, 7.10, 7.13 (settings per site with instanc
 Rows 3.18, 7.7, 7.9.
 
 - **Interface culture.** Resource files (`.resx`) per assembly through `IStringLocalizer`; plugin halves bring their own. The culture is the user's preference (#3096), else the browser's when shipped, else the default of `config.json`. Changing it reloads the app, since Blazor WebAssembly sets the culture at start.
-- **Two directions.** The interface's direction follows the interface culture; a field's direction follows the content locale (`CultureInfo.TextInfo.IsRightToLeft` of the locale's code). An Arabic editor of an English entry gets a right-to-left interface with left-to-right fields, and the reverse (row 7.9).
-- **Formats.** Dates, times and numbers in the user's culture and time zone, from its preferences (#3096) or, until then, the browser's, kept in the browser. The app loads the culture data of every culture it offers, so a format does not depend on the browser; A-05 measures the cost in download size.
+- **Two directions.** The interface's direction follows the interface culture; a field's direction follows the content locale, from its language tag: an explicit script decides (`Arab`, `Hebr`, `Thaa`, `Syrc`, `Nkoo`, `Adlm` and `Rohg` are right to left, any other script left to right), otherwise a table of right-to-left languages. `CultureInfo.TextInfo.IsRightToLeft` is not used, since the culture data of WebAssembly lacks most right-to-left locales and answers left to right for them, such as `ur`, `ps` and `yi`. An Arabic editor of an English entry gets a right-to-left interface with left-to-right fields, and the reverse (row 7.9).
+- **Formats.** Dates, times and numbers in the user's culture and time zone, from its preferences (#3096) or, until then, the browser's, kept in the browser. The app loads all globalization data (`BlazorWebAssemblyLoadAllGlobalizationData`), so a format does not depend on the browser. The app needs it: with the culture data of the browser's language only, choosing the interface culture at start (`en` for a browser in `en-US`) stops the app with a blank page. It costs 186 KB in Brotli (#3143).
 - **Content locales.** A locale switcher on lists and forms with the status of each locale (row 7.7), copy from another locale into a new one (a read in the source locale, then `PUT` with `If-Match: "0"`), and a side-by-side view of two locales for translators (two reads). An editor without `sites.manage` learns the site's locales from #3096; A-17 waits for it.
 - **Shipped cultures.** English at the first release, with the resources ready for contributed translations, and pseudo-cultures (left-to-right and right-to-left) in tests (AQ14).
 
@@ -781,8 +790,10 @@ For the local loop (row 11.4, A-10): `dotnet watch` on the app project, with `co
 | Accessibility | in the end-to-end tests | axe-core checks of each core page in both themes and in a right-to-left pseudo-culture, and keyboard-only runs of the daily loop (AQ9); a manual screen reader pass (NVDA with Firefox, VoiceOver with Safari) before A7 ends | full CI; manual in A-42 |
 | Localization | in the component tests | every key of the neutral resources is in each shipped culture; rendered under a pseudo-culture, no visible text of a core page is left untranslated, data aside | Feature CI |
 | Architecture | `tests/FluentCMS.Architecture.Tests` | the rules of 3.3 | Feature CI and full CI |
-| Size budget | the `Pack` job | the compressed size of the first download, without lazy assemblies, stays within a budget set in A-06 | full CI |
+| Size budget | the `Pack` job | the compressed size of the first download, without lazy assemblies, stays within a budget set in A-06: 3,500,000 B | full CI |
 | Templates and image | the `Templates` and `Compose` jobs | 6.1 and 6.2 | full CI |
+
+**Size budget as set (A-06, #3144).** The first download is the Brotli size of every file of the published `wwwroot` (`_framework`, `_content` and the app's own files), less the lazy assemblies and the satellite resources that the boot configuration in `_framework/dotnet.js` names; the `.br` the publish writes is used, and a file without one is compressed. `eng/check-admin-size.cs` measures it from the trimmed publish of the `Pack` job, prints the files it left out and the largest files and fails above the budget, and the job checks that a budget below the measurement fails it. The total is an upper bound: every other published file counts, about 21 KB of which the start page fetches later or not at all (the library's lazy modules, `reboot.css`, the second logo), which is the gap to a network measurement of a first visit. The `_content` files of a lazily loaded package, such as the rich text editor's bundle, count too, since nothing the script can read tells them apart; only their assemblies are left out. Measured from a clean publish of `62b2966f`, which is `feature/a0` at `2df6fa65` (after #3183) merged with the changes of #3144, with all globalization data (`icudt.dat`, 330 KB, which the admin needs, 4.17) and Fluent UI Blazor (its own assemblies and `_content`, about 318 KB, and 692 KB with the framework assemblies it roots, the growth of #3172): 3,226,834 B. The budget is 3,500,000 B, 273,166 B (7.8 %) of headroom: room for the areas of a milestone, whose assemblies add tens of KB each, and not for a second component library or a framework reference by mistake, either of which adds several hundred KB. A milestone that needs more raises the budget here and in `ci.yml` in its pull request, with the new measurement.
 
 Tests use xUnit v3 and Shouldly, as the backend's do. The API tests need no browser and no Docker. The end-to-end tests install their browsers in CI; locally they are skipped with a message when the browsers are missing, as the media storage tests are without Docker.
 

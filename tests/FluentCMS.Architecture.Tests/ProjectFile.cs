@@ -13,31 +13,43 @@ internal sealed record ProjectFile(
     string Name,
     IReadOnlyList<string> ProjectReferences,
     IReadOnlyList<PackageDependency> PackageReferences,
-    IReadOnlyList<AnalyzerReference> AnalyzerReferences)
+    IReadOnlyList<AnalyzerReference> AnalyzerReferences,
+    string Location)
 {
-    private static readonly Lazy<IReadOnlyList<ProjectFile>> sourceProjects = new(LoadSourceProjects);
+    private static readonly char[] Separators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
+
+    private static readonly Lazy<IReadOnlyList<ProjectFile>> sourceProjects = new(() => LoadProjects("src", ["bin", "obj"]));
+
+    private static readonly Lazy<IReadOnlyList<ProjectFile>> repositoryProjects = new(() => LoadProjects(".", ["bin", "obj", "node_modules", "tests"]));
 
     public static IReadOnlyList<ProjectFile> SourceProjects => sourceProjects.Value;
 
-    private static List<ProjectFile> LoadSourceProjects()
-    {
-        var srcDirectory = Path.Combine(FindRepositoryRoot(), "src");
-        var separators = new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar };
+    // Every project of the repository but the tests, wherever it is, so that a rule can find a project by what it references.
+    public static IReadOnlyList<ProjectFile> RepositoryProjects => repositoryProjects.Value;
 
-        return Directory.EnumerateFiles(srcDirectory, "*.csproj", SearchOption.AllDirectories)
-            .Where(path => !Path.GetRelativePath(srcDirectory, path)
-                .Split(separators)
-                .Any(part => part is "bin" or "obj"))
-            .Select(Parse)
+    private static List<ProjectFile> LoadProjects(string folder, string[] skipped)
+    {
+        var root = FindRepositoryRoot();
+        var directory = Path.Combine(root, folder);
+
+        return Directory.EnumerateFiles(directory, "*.csproj", SearchOption.AllDirectories)
+            .Where(path => !Path.GetRelativePath(directory, path)
+                .Split(Separators)
+                .Any(part => skipped.Contains(part) || part.StartsWith('.')))
+            .Select(path => Parse(XDocument.Load(path), Path.GetRelativePath(root, path).Replace('\\', '/')))
             .OrderBy(project => project.Name, StringComparer.Ordinal)
             .ToList();
     }
 
-    public static ProjectFile Load(string relativePath) => Parse(Path.Combine(FindRepositoryRoot(), relativePath));
+    public static ProjectFile Load(string relativePath) =>
+        Parse(XDocument.Load(Path.Combine(FindRepositoryRoot(), relativePath)), relativePath);
 
-    private static ProjectFile Parse(string path)
+    // A project that is not on disk, for the case that breaks a rule.
+    public static ProjectFile FromXml(string location, string xml) => Parse(XDocument.Parse(xml), location);
+
+    private static ProjectFile Parse(XDocument project, string location)
     {
-        var items = XDocument.Load(path).Descendants().ToList();
+        var items = project.Descendants().ToList();
 
         var references = items
             .Where(e => e.Name.LocalName == "ProjectReference")
@@ -50,10 +62,11 @@ internal sealed record ProjectFile(
             .ToList();
 
         return new ProjectFile(
-            Path.GetFileNameWithoutExtension(path),
+            Path.GetFileNameWithoutExtension(location),
             [.. references.Where(reference => !reference.AnalyzerOnly).Select(reference => reference.Name)],
             packageReferences,
-            [.. references.Where(reference => reference.AnalyzerOnly).Select(reference => new AnalyzerReference(reference.Name, reference.Private))]);
+            [.. references.Where(reference => reference.AnalyzerOnly).Select(reference => new AnalyzerReference(reference.Name, reference.Private))],
+            location);
     }
 
     private static bool IsAnalyzerOnly(XElement projectReference) =>

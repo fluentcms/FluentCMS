@@ -1,0 +1,19 @@
+@* Static on purpose: it shows before anything else runs, so it uses no wrapped component and no API. The cms-root class gives
+   it the theme tokens of the stylesheet without CmsThemeRoot, whose services register only from a valid configuration. *@
+@using Microsoft.AspNetCore.Components.Web
+@inject AdminStartup Startup
+@inject IStringLocalizer<AdminResources> L
+
+<PageTitle>@L["Configuration.Error.Title"]</PageTitle>
+<div class="cms-root">
+    <main class="fluentcms-configuration-error">
+        <h1>@L["Configuration.Error.Title"]</h1>
+        <p>@L["Configuration.Error.Introduction"]</p>
+        <ul>
+            @foreach (var problem in Startup.Problems)
+            {
+                <li data-member="@problem.Member">@ConfigurationTexts.Describe(L, problem)</li>
+            }
+        </ul>
+    </main>
+</div>

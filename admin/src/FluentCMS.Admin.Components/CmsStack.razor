@@ -1,0 +1,33 @@
+@namespace FluentCMS.Admin.Components
+
+<div class="@CssClass">@ChildContent</div>
+
+@code {
+    [Parameter]
+    public CmsStackOrientation Orientation { get; set; }
+
+    [Parameter]
+    public CmsSpace Gap { get; set; } = CmsSpace.Medium;
+
+    [Parameter]
+    public bool Wrap { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string CssClass
+    {
+        get
+        {
+            var orientation = Orientation == CmsStackOrientation.Horizontal ? "cms-stack-horizontal" : "cms-stack-vertical";
+            var gap = Gap switch
+            {
+                CmsSpace.None => "cms-gap-none",
+                CmsSpace.Small => "cms-gap-s",
+                CmsSpace.Large => "cms-gap-l",
+                _ => "cms-gap-m",
+            };
+            return Wrap ? $"cms-stack {orientation} {gap} cms-stack-wrap" : $"cms-stack {orientation} {gap}";
+        }
+    }
+}
