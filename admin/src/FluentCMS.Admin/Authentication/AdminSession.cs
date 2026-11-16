@@ -174,14 +174,14 @@ internal sealed class AdminSession(
 
     public async ValueTask<string?> GetAccessTokenAsync(CancellationToken cancellationToken)
     {
-        if (_accessToken is null)
+        if (_accessToken is not { } token)
         {
             return null;
         }
 
         if (time.GetUtcNow() >= _refreshAt)
         {
-            await RefreshOnceAsync();
+            await RefreshOnceAsync(token);
         }
 
         return _accessToken;
@@ -196,13 +196,7 @@ internal sealed class AdminSession(
             return false;
         }
 
-        // Another call refreshed since this one was sent.
-        if (_accessToken != rejectedToken && time.GetUtcNow() < _refreshAt)
-        {
-            return true;
-        }
-
-        return await RefreshOnceAsync() == RefreshOutcome.Refreshed;
+        return await RefreshOnceAsync(rejectedToken) == RefreshOutcome.Refreshed;
     }
 
     // A route of this app, relative to its base, or its start page: never an absolute URL, a path from the origin's root, a
@@ -323,11 +317,27 @@ internal sealed class AdminSession(
         return SignInCompletion.Succeeded(AppRoute(pending.ReturnRoute));
     }
 
-    private Task<RefreshOutcome> RefreshOnceAsync()
+    // The token of the caller, refused or due, is looked at in the same step as the flight: a flight accepts its token, or
+    // forgets the session, before it takes the gate to end, so a call that finds no flight finds what the last one left.
+    private Task<RefreshOutcome> RefreshOnceAsync(string? staleToken = null)
     {
         TaskCompletionSource<RefreshOutcome> flight;
         lock (_gate)
         {
+            // Another call refreshed, or ended the session, since this one had its token.
+            if (staleToken is not null && _accessToken != staleToken)
+            {
+                if (_accessToken is null)
+                {
+                    return Task.FromResult(RefreshOutcome.Ended);
+                }
+
+                if (time.GetUtcNow() < _refreshAt)
+                {
+                    return Task.FromResult(RefreshOutcome.Refreshed);
+                }
+            }
+
             if (_refreshing is { } running)
             {
                 return running;

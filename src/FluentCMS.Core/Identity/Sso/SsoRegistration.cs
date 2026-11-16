@@ -123,6 +123,12 @@ internal static class SsoRegistration
                 return;
             }
 
+            if (await RepeatsAsync(context.Request, OpenIdConnectParameterNames.Sid) || await RepeatsAsync(context.Request, OpenIdConnectParameterNames.Iss))
+            {
+                SsoLog.RemoteSignOutIgnored(logger, context.Scheme.Name, "the sid or iss is sent more than once.");
+                return;
+            }
+
             if (!session.IsNamedBy(context.Scheme.Name, context.ProtocolMessage?.Sid, context.ProtocolMessage?.Iss))
             {
                 SsoLog.RemoteSignOutIgnored(logger, context.Scheme.Name, "the sign-in is another provider's, or the sid and iss are missing or are not those of the sign-in.");
@@ -134,6 +140,10 @@ internal static class SsoRegistration
             await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
             SsoLog.RemoteSignOut(logger, context.Scheme.Name, userId);
         }
+
+        // The handler's message keeps the first of several values of a parameter, so a repeated one could hide another.
+        private static async Task<bool> RepeatsAsync(HttpRequest request, string name) =>
+            request.Query[name].Count > 1 || (request.HasFormContentType && (await request.ReadFormAsync()).TryGetValue(name, out var values) && values.Count > 1);
 
         // Identity takes the external login's key from the name identifier, which the token calls sub. The token's sid and
         // iss go with the external cookie, for the sign-in to keep.

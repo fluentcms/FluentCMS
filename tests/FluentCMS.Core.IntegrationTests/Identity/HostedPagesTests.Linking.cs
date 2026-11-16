@@ -282,13 +282,17 @@ public sealed partial class HostedPagesTests
         last.Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.LastWayIn);
         (await AdminFixture.SendAsync(client, HttpMethod.Delete, "me/logins/gone")).Status.ShouldBe(HttpStatusCode.NoContent);
 
+        // The removal gave a new stamp, which revoked the caller's own token with the user's other sessions.
+        (await AdminFixture.SendAsync(client, HttpMethod.Get, "me/logins")).Status.ShouldBe(HttpStatusCode.Unauthorized);
+
         await using (var scope = host.Services.CreateAsyncScope())
         {
             var users = scope.ServiceProvider.GetRequiredService<CmsUserManager>();
             (await users.AddPasswordAsync((await users.FindByIdAsync(me.Id.ToString()))!, Password)).Succeeded.ShouldBeTrue();
         }
 
-        (await AdminFixture.SendAsync(client, HttpMethod.Delete, $"me/logins/{Corp}")).Status.ShouldBe(HttpStatusCode.NoContent);
+        using var again = await host.AsUserAsync(me);
+        (await AdminFixture.SendAsync(again, HttpMethod.Delete, $"me/logins/{Corp}")).Status.ShouldBe(HttpStatusCode.NoContent);
         (await LoginsAsync(host, me.Id)).ShouldBeEmpty();
         (await ActivityAsync(host, "user.login_unlinked", count: 2, of: row => row.TargetId == me.Id.ToString("D"))).Count.ShouldBe(2);
 

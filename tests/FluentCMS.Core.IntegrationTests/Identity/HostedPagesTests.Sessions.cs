@@ -60,6 +60,10 @@ public sealed partial class HostedPagesTests
             $"/account/sso/{Corp}/signout?sid={rae.Sid!.ToUpperInvariant()}&iss={iss}",
             $"/account/sso/{Corp}/signout?sid={rae.Sid}&iss={Uri.EscapeDataString(idp.Issuer + "/")}",
             $"/account/sso/{Trusted}/signout?sid={rae.Sid}&iss={iss}",
+            $"/account/sso/{Corp}/signout?sid={rae.Sid}&sid=made-up&iss={iss}",
+            $"/account/sso/{Corp}/signout?sid=made-up&sid={rae.Sid}&iss={iss}",
+            $"/account/sso/{Corp}/signout?sid={rae.Sid}&iss={iss}&iss=https%3A%2F%2Fevil.example",
+            $"/account/sso/{Corp}/signout?sid={rae.Sid}&iss=https%3A%2F%2Fevil.example&iss={iss}",
         })
         {
             using var response = await sso.GetAsync(forged);
@@ -72,6 +76,21 @@ public sealed partial class HostedPagesTests
         {
             posted.StatusCode.ShouldBe(HttpStatusCode.OK);
             sso.HasCookie(SignInCookie).ShouldBeTrue();
+        }
+
+        // A form with a parameter twice, in either order.
+        foreach (var body in new[]
+        {
+            $"sid={rae.Sid}&sid=made-up&iss={iss}",
+            $"sid=made-up&sid={rae.Sid}&iss={iss}",
+            $"sid={rae.Sid}&iss={iss}&iss=https%3A%2F%2Fevil.example",
+            $"sid={rae.Sid}&iss=https%3A%2F%2Fevil.example&iss={iss}",
+        })
+        {
+            using var form = new StringContent(body, System.Text.Encoding.ASCII, "application/x-www-form-urlencoded");
+            using var posted = await sso.SendAsync(HttpMethod.Post, $"/account/sso/{Corp}/signout", form);
+            posted.StatusCode.ShouldBe(HttpStatusCode.OK, body);
+            sso.HasCookie(SignInCookie).ShouldBeTrue(body);
         }
 
         var refreshToken = await RotatedAsync(host, Text(ssoTokens, "refresh_token"));

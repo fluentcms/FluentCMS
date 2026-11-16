@@ -297,6 +297,58 @@ public sealed class SignInTests : IAsyncDisposable
         server.Tokens.Where(token => token != "Bearer access-1").ShouldBe(["Bearer access-2", "Bearer access-2", "Bearer access-2"]);
     }
 
+    [Fact]
+    public async Task ACallRefusedBeforeAFlightThatArrivesAfterItDoesNotRefreshAgain()
+    {
+        var tab = SignIn();
+        (await tab.Session.RefreshAsync("access-1", Token)).ShouldBeTrue();
+
+        (await tab.Session.RefreshAsync("access-1", Token)).ShouldBeTrue();
+
+        _authority.Refreshes.ShouldBe(1);
+        (await tab.Session.GetAccessTokenAsync(Token)).ShouldBe("access-2");
+    }
+
+    // The test above on threads, as the thread pool runs calls and the browser does not: a refused call can look at its token
+    // while the flight runs and reach the gate after it ended. Each round sends calls refused at once, their arrivals spread
+    // over the flight by a spacing that changes from round to round, and wants one refresh. Long tokens, compared as copies,
+    // make the look at the token last long enough for a flight to end during it.
+    [Fact]
+    public async Task CallsRefusedAtOnceRefreshOnceHoweverTheirThreadsInterleave()
+    {
+        const int Rounds = 300;
+        const int Calls = 4;
+        var tab = SignIn();
+        _authority.AccessTokenPadding = 100_000;
+        var refreshedTwice = new List<int>();
+
+        for (var round = 0; round < Rounds; round++)
+        {
+            var refused = new string((await tab.Session.GetAccessTokenAsync(Token)).ShouldNotBeNull());
+            var before = _authority.Refreshes;
+            using var start = new Barrier(Calls);
+            var spacing = round % 64 * 100;
+            var calls = Enumerable.Range(0, Calls).Select(call => Task.Factory.StartNew(
+                () =>
+                {
+                    start.SignalAndWait(Token);
+                    Thread.SpinWait(call * spacing);
+                    return tab.Session.RefreshAsync(refused, Token).AsTask();
+                },
+                Token,
+                TaskCreationOptions.LongRunning,
+                TaskScheduler.Default).Unwrap());
+
+            (await Task.WhenAll(calls).WaitAsync(TimeSpan.FromSeconds(30), Token)).ShouldAllBe(refreshed => refreshed);
+            if (_authority.Refreshes - before != 1)
+            {
+                refreshedTwice.Add(round);
+            }
+        }
+
+        refreshedTwice.ShouldBeEmpty();
+    }
+
     // What the account page asks after a change that gives the user a new security stamp.
     [Fact]
     public async Task SigningInAgainFromTheAccountPageReplacesTheSessionAndComesBackToIt()

@@ -1,8 +1,8 @@
 @* Two-factor sign-in by choice (spec 4.3): its status, enrolment with the authenticator URI as a QR code and the key beside it,
    the recovery codes, and turning it off. The key and the recovery codes are shown once: they live in this component while
    their step is open and nowhere else, never logged, never in the URL, never in the browser's storage.
-   Turning it on or off gives the user a new security stamp, and the token endpoint then refuses this tab's refresh token,
-   so the tab signs in again at once, through the session, rather than at its next refresh: after the recovery codes are
+   Turning it on or off gives the user a new security stamp, which revokes this tab's access and refresh tokens with the
+   user's other sessions, so the tab signs in again at once, through the session, rather than at its next refresh: after the recovery codes are
    saved, and after turning it off. While the codes are shown this card makes no call, they are in a modal dialog, which the
    browser keeps the rest of the page and the shell from, and the page's other cards are held inert. The shell makes no
    call of its own, so what can still take the codes away is the browser itself: a reload, or going back. *@
