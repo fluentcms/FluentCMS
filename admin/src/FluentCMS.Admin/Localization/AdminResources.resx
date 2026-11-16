@@ -438,4 +438,10 @@
   <data name="Authentication.Callback.SignInAgain" xml:space="preserve">
     <value>Sign in again</value>
   </data>
+  <data name="Authentication.Gate.EndedAfterSignInHeading" xml:space="preserve">
+    <value>The session ended right after sign-in</value>
+  </data>
+  <data name="Authentication.Gate.EndedAfterSignInText" xml:space="preserve">
+    <value>The server ended the session as soon as you signed in. Try again, or ask an administrator to check the configuration of the admin.</value>
+  </data>
 </root>

@@ -20,6 +20,9 @@ internal static partial class SessionLog
     [LoggerMessage(EventId = 14, EventName = "DraftsNotKept", Level = LogLevel.Error, Message = "The unsaved forms could not be kept when the session ended.")]
     public static partial void DraftsNotKept(ILogger logger, Exception exception);
 
+    [LoggerMessage(EventId = 16, EventName = "SessionEndedAfterSignIn", Level = LogLevel.Warning, Message = "The server ended the session right after the sign-in; the admin does not sign in again on its own.")]
+    public static partial void SessionEndedAfterSignIn(ILogger logger);
+
     [LoggerMessage(EventId = 15, EventName = "SignInUnavailable", Level = LogLevel.Error, Message = "The sign-in could not start.")]
     public static partial void SignInUnavailable(ILogger logger, Exception exception);
 }

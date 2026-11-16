@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Configuration;
@@ -25,12 +26,17 @@ internal sealed class AdminSession(
 
     internal const string SessionKey = "fluentcms-admin/session";
     internal const string SignInKey = "fluentcms-admin/sign-in";
+    internal const string SignedInAtKey = "fluentcms-admin/signed-in-at";
 
     // How long the user may take on the hosted pages, a password change and a two-factor enrolment included.
     public static readonly TimeSpan SignInLifetime = TimeSpan.FromMinutes(30);
 
     // An access token is refreshed this long before it expires, or at half its lifetime when that is shorter.
     public static readonly TimeSpan RefreshMargin = TimeSpan.FromMinutes(1);
+
+    // A session the server ends this soon after its sign-in completed is not signed in again on its own: a loop of silent
+    // sign-ins would follow. The gate asks the user instead.
+    public static readonly TimeSpan RepeatWindow = TimeSpan.FromMinutes(1);
 
     private static AuthenticationJsonContext Json => AuthenticationJsonContext.Default;
 
@@ -41,6 +47,7 @@ internal sealed class AdminSession(
     private DateTimeOffset _refreshAt;
     private Task<RefreshOutcome>? _refreshing;
     private bool _redirecting;
+    private bool _endedAfterSignIn;
 
     public event Action? Changed;
 
@@ -62,12 +69,18 @@ internal sealed class AdminSession(
             return true;
         }
 
+        if (_endedAfterSignIn)
+        {
+            throw new SessionEndedAfterSignInException();
+        }
+
         if (_redirecting)
         {
             return false;
         }
 
-        if (await ReadAsync(SessionKey, Json.StoredSession) is { } stored)
+        // A value another build or page wrote, without a token or a user, is no session.
+        if (await ReadAsync(SessionKey, Json.StoredSession) is { RefreshToken: { Length: > 0 }, User.Subject: { Length: > 0 } } stored)
         {
             _user = stored.User;
             _refreshToken = stored.RefreshToken;
@@ -77,7 +90,7 @@ internal sealed class AdminSession(
                     Changed?.Invoke();
                     return true;
                 case RefreshOutcome.Ended:
-                    return false;
+                    return _endedAfterSignIn ? throw new SessionEndedAfterSignInException() : false;
                 default:
                     (_user, _refreshToken) = (null, null);
                     throw new HttpRequestException("The authorization server could not be reached to restore the session.");
@@ -88,7 +101,12 @@ internal sealed class AdminSession(
         return false;
     }
 
-    public Task SignInAsync(string? returnRoute, CancellationToken cancellationToken) => RedirectToSignInAsync(AppRoute(returnRoute));
+    // Asked for by the user, so it goes even right after a session the server ended.
+    public Task SignInAsync(string? returnRoute, CancellationToken cancellationToken)
+    {
+        _endedAfterSignIn = false;
+        return RedirectToSignInAsync(AppRoute(returnRoute));
+    }
 
     public async Task<SignInCompletion> CompleteSignInAsync(string? code, string? state, string? error, CancellationToken cancellationToken)
     {
@@ -127,6 +145,7 @@ internal sealed class AdminSession(
             Forget();
             await storage.RemoveAsync(SessionKey);
             await storage.RemoveAsync(SignInKey);
+            await storage.RemoveAsync(SignedInAtKey);
             await drafts.ClearAsync();
             Changed?.Invoke();
         }
@@ -160,7 +179,9 @@ internal sealed class AdminSession(
 
     public async ValueTask<bool> RefreshAsync(string rejectedToken, CancellationToken cancellationToken)
     {
-        if (_accessToken is null)
+        // Without a refresh token (config.json without offline_access) the 401 is the answer: ending the session would send the
+        // page to a sign-in that the server's session answers at once, and the next call would be refused again.
+        if (_accessToken is null || _refreshToken is null)
         {
             return false;
         }
@@ -186,10 +207,14 @@ internal sealed class AdminSession(
             return "";
         }
 
-        var path = navigation.ToBaseRelativePath(target.AbsoluteUri).Split('?', '#')[0];
-        return path.Equals("authentication", StringComparison.OrdinalIgnoreCase) || path.StartsWith("authentication/", StringComparison.OrdinalIgnoreCase)
+        // Under a base with a path, ".///evil.example/x" resolves inside the base and leaves "//evil.example/x", which would
+        // leave the origin when navigated to.
+        var relative = navigation.ToBaseRelativePath(target.AbsoluteUri);
+        var path = relative.Split('?', '#')[0];
+        return relative.StartsWith('/') || relative.StartsWith('\\')
+            || path.Equals("authentication", StringComparison.OrdinalIgnoreCase) || path.StartsWith("authentication/", StringComparison.OrdinalIgnoreCase)
             ? ""
-            : navigation.ToBaseRelativePath(target.AbsoluteUri);
+            : relative;
     }
 
     private static bool IsUnavailable(Exception exception) =>
@@ -238,7 +263,7 @@ internal sealed class AdminSession(
 
     private async Task<SignInCompletion> RedeemAsync(PendingSignIn? pending, string? code, string? state, string? error, CancellationToken cancellationToken)
     {
-        if (pending is null || !ProofKey.SameSecret(state, pending.State))
+        if (pending is not { State: not null, Nonce: not null, Verifier: not null } || !ProofKey.SameSecret(state, pending.State))
         {
             return SignInCompletion.Failed(SignInFailure.UnknownState);
         }
@@ -279,8 +304,9 @@ internal sealed class AdminSession(
         _user = user;
         _refreshToken = answer.RefreshToken;
         await KeepSessionAsync();
+        await storage.SetAsync(SignedInAtKey, now.ToString("O", CultureInfo.InvariantCulture));
         Accept(answer);
-        _redirecting = false;
+        (_redirecting, _endedAfterSignIn) = (false, false);
         Changed?.Invoke();
         return SignInCompletion.Succeeded(AppRoute(pending.ReturnRoute));
     }
@@ -382,6 +408,14 @@ internal sealed class AdminSession(
         }
 
         await storage.RemoveAsync(SessionKey);
+        if (await SignedInRecentlyAsync())
+        {
+            SessionLog.SessionEndedAfterSignIn(logger);
+            (_redirecting, _endedAfterSignIn) = (false, true);
+            Changed?.Invoke();
+            return;
+        }
+
         Changed?.Invoke();
         try
         {
@@ -394,6 +428,11 @@ internal sealed class AdminSession(
             Changed?.Invoke();
         }
     }
+
+    private async Task<bool> SignedInRecentlyAsync() =>
+        await storage.GetAsync(SignedInAtKey) is { } written
+        && DateTimeOffset.TryParseExact(written, "O", CultureInfo.InvariantCulture, DateTimeStyles.None, out var signedInAt)
+        && time.GetUtcNow() - signedInAt < RepeatWindow;
 
     private async Task KeepSessionAsync()
     {

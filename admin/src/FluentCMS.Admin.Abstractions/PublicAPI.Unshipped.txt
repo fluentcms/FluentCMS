@@ -405,13 +405,13 @@ FluentCMS.Admin.Configuration.AdminCultures.Offered.get -> System.Collections.Ge
 FluentCMS.Admin.Configuration.AdminCultures.Offered.init -> void
 FluentCMS.Admin.Forms.FormDraft
 FluentCMS.Admin.Forms.FormDraft.<Clone>$() -> FluentCMS.Admin.Forms.FormDraft!
-FluentCMS.Admin.Forms.FormDraft.BaseVersion.get -> string!
+FluentCMS.Admin.Forms.FormDraft.BaseVersion.get -> string?
 FluentCMS.Admin.Forms.FormDraft.BaseVersion.init -> void
-FluentCMS.Admin.Forms.FormDraft.Deconstruct(out FluentCMS.Admin.Forms.FormDraftKey! Key, out string! BaseVersion, out System.Text.Json.Nodes.JsonObject! Fields) -> void
+FluentCMS.Admin.Forms.FormDraft.Deconstruct(out FluentCMS.Admin.Forms.FormDraftKey! Key, out string? BaseVersion, out System.Text.Json.Nodes.JsonObject! Fields) -> void
 FluentCMS.Admin.Forms.FormDraft.Equals(FluentCMS.Admin.Forms.FormDraft? other) -> bool
 FluentCMS.Admin.Forms.FormDraft.Fields.get -> System.Text.Json.Nodes.JsonObject!
 FluentCMS.Admin.Forms.FormDraft.Fields.init -> void
-FluentCMS.Admin.Forms.FormDraft.FormDraft(FluentCMS.Admin.Forms.FormDraftKey! Key, string! BaseVersion, System.Text.Json.Nodes.JsonObject! Fields) -> void
+FluentCMS.Admin.Forms.FormDraft.FormDraft(FluentCMS.Admin.Forms.FormDraftKey! Key, string? BaseVersion, System.Text.Json.Nodes.JsonObject! Fields) -> void
 FluentCMS.Admin.Forms.FormDraft.Key.get -> FluentCMS.Admin.Forms.FormDraftKey!
 FluentCMS.Admin.Forms.FormDraft.Key.init -> void
 FluentCMS.Admin.Forms.FormDraftKey

@@ -8,8 +8,14 @@ namespace FluentCMS.Admin.Authentication;
 
 internal sealed class AuthorityOptions
 {
+    // Each request to the authorization server: well under HttpClient's 100 seconds, so a server that does not answer shows
+    // the gate's failure with "Try again" soon.
+    public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(20);
+
     // The handler under the client: the browser's fetch when null, a fake or the test server's in the tests.
     internal Func<HttpMessageHandler>? PrimaryHandler { get; set; }
+
+    internal TimeSpan Timeout { get; set; } = DefaultTimeout;
 }
 
 // The token endpoint refused a grant with an OAuth error, such as invalid_grant for a used or revoked refresh token. The

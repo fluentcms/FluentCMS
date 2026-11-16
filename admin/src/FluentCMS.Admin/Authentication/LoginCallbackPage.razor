@@ -48,7 +48,8 @@ else
         {
             await Session.SignInAsync(returnRoute: null, CancellationToken.None);
         }
-        catch (Exception exception) when (exception is HttpRequestException or InvalidOperationException or System.Text.Json.JsonException)
+        // No cancellation is asked for, so a TaskCanceledException is the client's timeout.
+        catch (Exception exception) when (exception is HttpRequestException or InvalidOperationException or System.Text.Json.JsonException or TaskCanceledException)
         {
             failure = SignInFailure.Unreachable;
         }

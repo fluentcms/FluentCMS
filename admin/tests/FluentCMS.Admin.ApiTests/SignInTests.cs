@@ -116,7 +116,7 @@ public sealed class SignInTests : IAsyncLifetime
             used.StatusCode.ShouldBe(HttpStatusCode.OK);
         }
 
-        Host.Time.Advance(TimeSpan.FromMinutes(1));
+        Host.Time.Advance(AdminSession.RepeatWindow + TimeSpan.FromMinutes(1));
         (await tab.Session.RefreshAsync(access, AdminHost.Token)).ShouldBeFalse();
 
         tab.Session.User.ShouldBeNull();

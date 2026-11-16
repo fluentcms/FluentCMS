@@ -16,9 +16,13 @@ internal static class AuthenticationServiceCollectionExtensions
         services.AddOptions<AuthorityOptions>();
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddScoped<ISessionStorage, SessionStorageInterop>();
-        services.TryAddScoped(provider => new AuthorityClient(
-            provider.GetRequiredService<AdminConfiguration>(),
-            new HttpClient(provider.GetRequiredService<IOptions<AuthorityOptions>>().Value.PrimaryHandler?.Invoke() ?? new HttpClientHandler())));
+        services.TryAddScoped(provider =>
+        {
+            var options = provider.GetRequiredService<IOptions<AuthorityOptions>>().Value;
+            return new AuthorityClient(
+                provider.GetRequiredService<AdminConfiguration>(),
+                new HttpClient(options.PrimaryHandler?.Invoke() ?? new HttpClientHandler()) { Timeout = options.Timeout });
+        });
         services.TryAddScoped<FormDrafts>();
         services.TryAddScoped<IFormDraftStore, FormDraftStore>();
         services.TryAddScoped<AdminSession>();

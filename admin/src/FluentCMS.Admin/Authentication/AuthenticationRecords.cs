@@ -49,4 +49,4 @@ internal sealed record StoredSession(string RefreshToken, SignedInUser User);
 internal sealed record PendingSignIn(string State, string Nonce, string Verifier, string ReturnRoute, DateTimeOffset StartedAt);
 
 // A draft as the tab keeps it, under the user it belongs to.
-internal sealed record StoredDraft(string User, string? Site, string Type, Guid? Entry, string? Locale, string BaseVersion, JsonObject Fields);
+internal sealed record StoredDraft(string User, string? Site, string Type, Guid? Entry, string? Locale, string? BaseVersion, JsonObject Fields);

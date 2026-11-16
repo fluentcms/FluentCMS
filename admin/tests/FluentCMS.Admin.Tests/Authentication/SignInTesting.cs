@@ -100,6 +100,21 @@ internal sealed class FakeAuthority : HttpMessageHandler
 
     public HttpStatusCode RevokeStatus { get; set; } = HttpStatusCode.OK;
 
+    // A status the token endpoint answers a refresh with instead of tokens, such as a 503.
+    public HttpStatusCode? RefreshStatus { get; set; }
+
+    // The refresh fails as a network failure does.
+    public bool RefreshFailsOnTheNetwork { get; set; }
+
+    // As for a client whose scopes lack offline_access.
+    public bool IssuesRefreshTokens { get; set; } = true;
+
+    // The discovery document never comes, until the client gives up.
+    public bool DiscoveryHangs { get; set; }
+
+    // Replaces the discovery document.
+    public JsonObject? Discovery { get; set; }
+
     // A refresh waits for it, so that a test can start several calls while one is in flight.
     public TaskCompletionSource? HoldRefresh { get; set; }
 
@@ -147,6 +162,11 @@ internal sealed class FakeAuthority : HttpMessageHandler
 
         switch (path)
         {
+            case "/.well-known/openid-configuration" when DiscoveryHangs:
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            case "/.well-known/openid-configuration" when Discovery is { } discovery:
+                return Json(HttpStatusCode.OK, discovery);
             case "/.well-known/openid-configuration":
                 return Json(HttpStatusCode.OK, new JsonObject
                 {
@@ -175,6 +195,16 @@ internal sealed class FakeAuthority : HttpMessageHandler
                 if (HoldRefresh is { } hold)
                 {
                     await hold.Task.WaitAsync(cancellationToken);
+                }
+
+                if (RefreshFailsOnTheNetwork)
+                {
+                    throw new HttpRequestException("The connection was reset.");
+                }
+
+                if (RefreshStatus is { } status)
+                {
+                    return new HttpResponseMessage(status);
                 }
 
                 lock (_gate)
@@ -209,8 +239,12 @@ internal sealed class FakeAuthority : HttpMessageHandler
             ["access_token"] = access,
             ["token_type"] = "Bearer",
             ["expires_in"] = ExpiresIn,
-            ["refresh_token"] = refresh,
         };
+        if (IssuesRefreshTokens)
+        {
+            answer["refresh_token"] = refresh;
+        }
+
         if (withIdentity)
         {
             answer["id_token"] = IdToken(new Dictionary<string, object?>

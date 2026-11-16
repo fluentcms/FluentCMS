@@ -41,7 +41,7 @@ internal sealed class DraftForm : ComponentBase, IUnsavedForm, IDisposable
         if (await Drafts.FindAsync(Key, CancellationToken.None) is { } draft)
         {
             fields = draft.Fields.DeepClone().AsObject();
-            read = read with { EntityTag = draft.BaseVersion };
+            read = read with { EntityTag = draft.BaseVersion! };
             tracking = Drafts.Track(this);
             Restored = true;
         }

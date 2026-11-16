@@ -19,6 +19,7 @@ public sealed class SignInTests : IAsyncDisposable
 {
     private const string Route = "content/article?locale=fr";
     private const string Callback = "http://localhost/authentication/login-callback";
+    private const string Unauthorized = """{"status":401,"code":"FCMS3102","title":"Unauthorized"}""";
     private const string MeJson = """{"id":"01a1e1f8-ff43-7810-88a0-6e0124e0827a","kind":"adminUser","name":"ada"}""";
 
     private static readonly Guid EntryId = Guid.Parse("01a1e1fa-4db2-7614-9c93-b8a7f6254fa5");
@@ -301,6 +302,7 @@ public sealed class SignInTests : IAsyncDisposable
         form.WaitForAssertion(() => form.Find("input.title").GetAttribute("value").ShouldBe("Hello"));
         form.Find("input.title").Change("Hello, world");
         _authority.RefreshError = "invalid_grant";
+        _time.Now += AdminSession.RepeatWindow;
 
         await Should.ThrowAsync<ApiProblemException>(() => tab.Services.GetRequiredService<ManagementClient>().GetMeAsync(Token));
 
@@ -404,6 +406,7 @@ public sealed class SignInTests : IAsyncDisposable
     {
         SignIn();
         _authority.Expire("refresh-1");
+        _time.Now += AdminSession.RepeatWindow;
         var tab = NewTab();
 
         var app = tab.Load(Route);
@@ -439,6 +442,140 @@ public sealed class SignInTests : IAsyncDisposable
 
         tab.WaitForRedirect(app).GetLeftPart(UriPartial.Path).ShouldBe("https://cms.example.com/connect/authorize");
         Pending().ReturnRoute.ShouldBe(Route);
+    }
+
+    [Fact]
+    public void ADiscoveryThatTimesOutShowsTryAgain()
+    {
+        _authority.DiscoveryHangs = true;
+        var tab = NewTab(authorityTimeout: TimeSpan.FromMilliseconds(300));
+
+        var app = tab.Load(Route);
+
+        app.WaitForAssertion(() => app.Find("main#main h1").TextContent.ShouldBe("The sign-in server cannot be reached"), TimeSpan.FromSeconds(10));
+        app.Find("main#main fluent-button").TextContent.Trim().ShouldBe("Try again");
+        tab.Navigation.History.ShouldAllBe(entry => !entry.Options.ForceLoad);
+    }
+
+    [Fact]
+    public void SignInAgainFromAFailedCallbackTellsATimeout()
+    {
+        var tab = NewTab(authorityTimeout: TimeSpan.FromMilliseconds(300));
+        var app = tab.Load(CallbackFor("forged"));
+        app.WaitForAssertion(() => app.Find("main#main h1").TextContent.ShouldBe("The sign-in did not complete"));
+        _authority.DiscoveryHangs = true;
+
+        app.Find("main#main fluent-button").Click();
+
+        app.WaitForAssertion(() => app.Find("main#main p").TextContent.ShouldBe("The server that signs you in could not be reached."), TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
+    public async Task WithoutARefreshTokenA401IsTheAnswerAndNothingRedirects()
+    {
+        _authority.IssuesRefreshTokens = false;
+        var server = new ScriptedServer().Problem(HttpStatusCode.Unauthorized, Unauthorized);
+        var tab = SignIn(server);
+
+        var thrown = await Should.ThrowAsync<ApiProblemException>(() => tab.Services.GetRequiredService<ManagementClient>().GetMeAsync(Token));
+
+        thrown.Problem.Status.ShouldBe(401);
+        _authority.Refreshes.ShouldBe(0);
+        tab.Session.User.ShouldNotBeNull();
+        tab.Navigation.History.First().Options.ForceLoad.ShouldBeFalse();
+        _storage[AdminSession.SessionKey].ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ASessionTheServerEndsRightAfterSignInIsNotSignedInAgainOnItsOwn()
+    {
+        var server = new ScriptedServer().Problem(HttpStatusCode.Unauthorized, Unauthorized);
+        var tab = SignIn(server, Route);
+        _authority.RefreshError = "invalid_grant";
+
+        await Should.ThrowAsync<ApiProblemException>(() => tab.Services.GetRequiredService<ManagementClient>().GetMeAsync(Token));
+
+        var app = tab.App!;
+        app.WaitForAssertion(() => app.Find("main#main h1").TextContent.ShouldBe("The session ended right after sign-in"));
+        tab.Navigation.History.First().Options.ForceLoad.ShouldBeFalse();
+        _storage[AdminSession.SessionKey].ShouldBeNull();
+
+        app.Find("main#main fluent-button").Click();
+
+        tab.WaitForRedirect(app).GetLeftPart(UriPartial.Path).ShouldBe("https://cms.example.com/connect/authorize");
+        Pending().ReturnRoute.ShouldBe(Route);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AServerErrorOrANetworkFailureOnRefreshKeepsTheSession(bool network)
+    {
+        var server = new ScriptedServer().Problem(HttpStatusCode.Unauthorized, Unauthorized);
+        var tab = SignIn(server);
+        _authority.RefreshStatus = network ? null : HttpStatusCode.ServiceUnavailable;
+        _authority.RefreshFailsOnTheNetwork = network;
+
+        var thrown = await Should.ThrowAsync<ApiProblemException>(() => tab.Services.GetRequiredService<ManagementClient>().GetMeAsync(Token));
+
+        thrown.Problem.Status.ShouldBe(401);
+        _authority.Refreshes.ShouldBe(1);
+        tab.Session.User.ShouldNotBeNull();
+        (await tab.Session.GetAccessTokenAsync(Token)).ShouldBe("access-1");
+        _storage[AdminSession.SessionKey].ShouldNotBeNull().ShouldContain("refresh-1");
+        tab.Navigation.History.ShouldAllBe(entry => !entry.Options.ForceLoad);
+    }
+
+    [Fact]
+    public void AReloadRightAfterSignInWhoseRefreshIsRefusedWaitsForTheUser()
+    {
+        SignIn();
+        _authority.Expire("refresh-1");
+        var tab = NewTab();
+
+        var app = tab.Load(Route);
+
+        app.WaitForAssertion(() => app.Find("main#main h1").TextContent.ShouldBe("The session ended right after sign-in"));
+        tab.Navigation.History.ShouldAllBe(entry => !entry.Options.ForceLoad);
+        _storage[AdminSession.SessionKey].ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task A403DoesNotRefresh()
+    {
+        var server = new ScriptedServer().Problem(HttpStatusCode.Forbidden, """{"status":403,"code":"FCMS3103","title":"Forbidden"}""");
+        var tab = SignIn(server);
+
+        var thrown = await Should.ThrowAsync<ApiProblemException>(() => tab.Services.GetRequiredService<ManagementClient>().GetMeAsync(Token));
+
+        thrown.Problem.Status.ShouldBe(403);
+        server.Requests.ShouldHaveSingleItem();
+        _authority.Refreshes.ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("""{"state":null,"nonce":null,"verifier":null}""")]
+    [InlineData("not json")]
+    public async Task AStoredSignInWithoutItsSecretsIsRefused(string stored)
+    {
+        await _storage.SetAsync(AdminSession.SignInKey, stored);
+        var tab = NewTab();
+
+        var app = tab.Load(CallbackFor("anything"));
+
+        app.WaitForAssertion(() => app.Find("main#main p").TextContent.ShouldBe("This sign-in was not started in this tab, or it has been completed already."));
+        _authority.Requests.ShouldNotContain(request => request.Path == "/connect/token");
+    }
+
+    [Fact]
+    public async Task AStoredSessionWithoutItsTokenIsNoSession()
+    {
+        await _storage.SetAsync(AdminSession.SessionKey, "{}");
+        var tab = NewTab();
+
+        tab.WaitForRedirect(tab.Load(Route)).GetLeftPart(UriPartial.Path).ShouldBe("https://cms.example.com/connect/authorize");
+        _authority.Refreshes.ShouldBe(0);
     }
 
     [Fact]
@@ -494,6 +631,7 @@ public sealed class SignInTests : IAsyncDisposable
         form.WaitForAssertion(() => form.Find("input.title").GetAttribute("value").ShouldBe("Hello"));
         form.Find("input.title").Change("Hello, world");
         _authority.RefreshError = "invalid_grant";
+        _time.Now += AdminSession.RepeatWindow;
         await Should.ThrowAsync<ApiProblemException>(() => tab.Services.GetRequiredService<ManagementClient>().GetMeAsync(Token));
         _storage[FormDrafts.StorageKey].ShouldNotBeNull();
         _authority.RefreshError = null;
@@ -520,9 +658,9 @@ public sealed class SignInTests : IAsyncDisposable
         return tab;
     }
 
-    private Tab NewTab(bool browserStorage = false, string? pendingSignIn = null, HttpMessageHandler? api = null)
+    private Tab NewTab(bool browserStorage = false, string? pendingSignIn = null, HttpMessageHandler? api = null, TimeSpan? authorityTimeout = null)
     {
-        var tab = new Tab(_storage, _authority, _time, api, browserStorage, pendingSignIn);
+        var tab = new Tab(_storage, _authority, _time, api, browserStorage, pendingSignIn, authorityTimeout);
         _tabs.Add(tab);
         return tab;
     }
@@ -530,7 +668,7 @@ public sealed class SignInTests : IAsyncDisposable
     // One page load of the tab.
     private sealed class Tab : AdminTestContext
     {
-        public Tab(MemorySessionStorage storage, FakeAuthority authority, TimeProvider time, HttpMessageHandler? api, bool browserStorage, string? pendingSignIn)
+        public Tab(MemorySessionStorage storage, FakeAuthority authority, TimeProvider time, HttpMessageHandler? api, bool browserStorage, string? pendingSignIn, TimeSpan? authorityTimeout)
         {
             UseNeutralResources();
             UseSignInFlow();
@@ -538,6 +676,10 @@ public sealed class SignInTests : IAsyncDisposable
             Authority = authority;
             Start();
             Services.AddSingleton(time);
+            if (authorityTimeout is { } timeout)
+            {
+                Services.Configure<AuthorityOptions>(options => options.Timeout = timeout);
+            }
             if (browserStorage)
             {
                 Services.AddScoped<FluentCMS.Admin.Interop.ISessionStorage, FluentCMS.Admin.Interop.SessionStorageInterop>();
@@ -547,6 +689,8 @@ public sealed class SignInTests : IAsyncDisposable
             Services.Configure<ManagementApiOptions>(options => options.PrimaryHandler = () => api ?? new ScriptedServer());
         }
 
+        public IRenderedComponent<AdminApp>? App { get; private set; }
+
         public BunitNavigationManager Navigation => Services.GetRequiredService<BunitNavigationManager>();
 
         public AdminSession Session => Services.GetRequiredService<AdminSession>();
@@ -554,7 +698,7 @@ public sealed class SignInTests : IAsyncDisposable
         public IRenderedComponent<AdminApp> Load(string route)
         {
             Navigation.NavigateTo("http://localhost/" + route);
-            return Render<AdminApp>();
+            return App = Render<AdminApp>();
         }
 
         // Starts a sign-in from the route and waits until the page has left for the authorize endpoint.

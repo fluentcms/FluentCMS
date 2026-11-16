@@ -42,6 +42,11 @@ internal enum SignInFailure
     Unreachable,
 }
 
+// The server ended the session within AdminSession.RepeatWindow of its sign-in, so the tab does not sign in again on its own;
+// SignInAsync, which the user asks for, does.
+internal sealed class SessionEndedAfterSignInException()
+    : Exception("The server ended the session right after the sign-in; the tab waits for the user before it signs in again.");
+
 // Succeeded with the admin route to return to, or failed with the reason.
 internal sealed record SignInCompletion(string? ReturnRoute, SignInFailure? Failure)
 {
