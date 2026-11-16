@@ -471,13 +471,12 @@ public sealed class MemberLoginsModel : MemberPageModel
         return RedirectToPage(new { Status = "removed" });
     }
 
-    // The member of the cookie, unless the sign-in is past the absolute session lifetime: the page then sends the member to
+    // The member of the cookie, if it is a live sign-in (CmsSignInManager.LiveSignIn); otherwise the page sends the member to
     // the login page, with the cookie left.
     private async Task<CmsMember?> MemberAsync()
     {
         var (member, cookie) = await Service<MemberSignInManager>().SignedInAsync();
-        var now = Service<TimeProvider>().GetUtcNow();
-        return member is not null && !Service<ClientOptions>().HasOutlived(CmsSignInManager.SignedInAt(cookie.Properties!) ?? now, now) ? member : null;
+        return member is not null && CmsSignInManager.LiveSignIn(HttpContext, cookie.Properties!) is not null ? member : null;
     }
 
     private RedirectResult RedirectToLogin() =>

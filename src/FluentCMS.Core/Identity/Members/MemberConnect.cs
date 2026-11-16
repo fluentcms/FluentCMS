@@ -47,12 +47,11 @@ internal static class MemberConnect
         }
 
         var now = context.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow();
-        var signedInAt = CmsSignInManager.SignedInAt(cookie.Properties!) ?? now;
-        if (ConnectEndpoints.MustSignInAgain(context, request, cookie.Properties!, signedInAt, now))
+        if (CmsSignInManager.LiveSignIn(context, cookie.Properties!) is not { } signedInAt || ConnectEndpoints.MustSignInAgain(context, request, signedInAt, now))
         {
             return request.HasPromptValue(PromptValues.None)
                 ? ConnectEndpoints.Refuse(Errors.LoginRequired, "The sign-in is older than the client or the server accepts.")
-                : Reauthentication.Challenge(context, request, parameters, signedInAt, now, MemberAuthentication.CookieScheme);
+                : Reauthentication.Challenge(context, request, parameters, CmsSignInManager.SignedInAt(cookie.Properties!), now, MemberAuthentication.CookieScheme);
         }
 
         var methods = cookie.Principal!.FindAll(Claims.AuthenticationMethodReference).Select(claim => claim.Value);

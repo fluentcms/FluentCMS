@@ -217,7 +217,7 @@ public sealed partial class HostedPagesTests
     }
 
     [Fact]
-    public async Task ACookieWithoutTheTimeOfItsSignInAnswersNoReauthentication()
+    public async Task ACookieWithoutTheTimeOfItsSignInIsNoSignInUntilTheUserSignsInAgain()
     {
         var editor = await CreateUserAsync(_host);
         using var browser = new HostedPagesBrowser(_host, "10.1.0.21");
@@ -234,6 +234,23 @@ public sealed partial class HostedPagesTests
         }
 
         await AskedToSignInAsync(browser, QueryHelpers.ParseQuery(login.Query)["ReturnUrl"].ToString());
+
+        // Nor is it a sign-in for a plain request, a positive max_age or the pages that need a signed-in user; the logout
+        // page still answers.
+        var plain = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri);
+        await AskedToSignInAsync(browser, plain.Url);
+        await AskedToSignInAsync(browser, plain.Url + "&max_age=600");
+        using (var page = await browser.GetAsync(HostedPagePaths.ChangePassword))
+        {
+            new Uri(OAuthBase, page.Headers.Location!).AbsolutePath.ShouldBe(HostedPagePaths.Login);
+        }
+
+        (await browser.PageAsync(HostedPagePaths.Logout)).ShouldNotBeNullOrEmpty();
+
+        // A sign-in over it writes the time, and the request gets its code.
+        var asked = await AskedToSignInAsync(browser, plain.Url);
+        using var signedIn = await browser.SubmitAsync(asked.PathAndQuery, Credentials(editor.Email, Password));
+        (await plain.ExchangeAsync(_host, await browser.FollowAsync(signedIn))).GetProperty("access_token").GetString().ShouldNotBeNullOrEmpty();
     }
 
     // The login page an authorize request sends the browser to, with the cookie left as it was.

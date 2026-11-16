@@ -360,10 +360,11 @@ public sealed partial class HostedPagesTests
         var editor = await CreateUserAsync(host);
         using var browser = new HostedPagesBrowser(host);
         await SignInAsync(browser, editor.Email);
-        string[] pages = [HostedPagePaths.ChangePassword, HostedPagePaths.EnableTwoFactor, HostedPagePaths.Consent];
+        var consent = HostedPagePaths.Consent + new Uri(OAuthBase, AuthorizeRequest.For(ThirdPartyClientId, ThirdPartyRedirectUri, "openid profile management").Url).Query;
+        string[] pages = [HostedPagePaths.ChangePassword, HostedPagePaths.EnableTwoFactor, consent];
         foreach (var path in pages)
         {
-            (await PathAsync(browser, path)).ShouldNotBe(HostedPagePaths.Login, path);
+            (await PathAsync(browser, path)).ShouldBe(new Uri(OAuthBase, path).AbsolutePath, path);
         }
 
         // Past the lifetime the pages ask for a new sign-in, however often the sliding cookie was renewed; the logout page
@@ -385,7 +386,13 @@ public sealed partial class HostedPagesTests
     private static async Task<string> PathAsync(HostedPagesBrowser browser, string path)
     {
         using var response = await browser.GetAsync(path);
-        return response.StatusCode == HttpStatusCode.Redirect ? new Uri(OAuthBase, response.Headers.Location!).AbsolutePath : path;
+        if (response.StatusCode == HttpStatusCode.Redirect)
+        {
+            return new Uri(OAuthBase, response.Headers.Location!).AbsolutePath;
+        }
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK, path);
+        return new Uri(OAuthBase, path).AbsolutePath;
     }
 
     private sealed class CountingHasher : IPasswordHasher<CmsUser>

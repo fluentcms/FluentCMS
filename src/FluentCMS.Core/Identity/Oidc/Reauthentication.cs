@@ -22,22 +22,25 @@ internal static class Reauthentication
 
     private const string Purpose = "FluentCMS.Connect.Reauthentication.v1";
 
+    private const char Separator = '|';
+
     private static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(15);
 
-    public static IResult Challenge(HttpContext context, OpenIddictRequest request, List<KeyValuePair<string, StringValues>> parameters, DateTimeOffset signedInAt, DateTimeOffset now, string scheme)
+    // The sign-in found is the cookie's, or none for a cookie that does not say when it signed in. Each field is escaped, so
+    // that a client id with the separator in it keeps its place.
+    public static IResult Challenge(HttpContext context, OpenIddictRequest request, List<KeyValuePair<string, StringValues>> parameters, DateTimeOffset? found, DateTimeOffset now, string scheme)
     {
-        var mark = Protector(context).Protect(string.Join('|', request.ClientId, request.CodeChallenge, Text(now), Text(signedInAt)));
+        string[] fields = [request.ClientId ?? "", request.CodeChallenge ?? "", Text(now), Text(found ?? DateTimeOffset.UnixEpoch)];
+        var mark = Protector(context).Protect(string.Join(Separator, fields.Select(Uri.EscapeDataString)));
         var marked = parameters.Where(parameter => parameter.Key != Parameter).Append(KeyValuePair.Create(Parameter, new StringValues(mark)));
         return Results.Challenge(new AuthenticationProperties { RedirectUri = context.Request.PathBase + context.Request.Path + QueryString.Create(marked) }, [scheme]);
     }
 
-    // The sign-in is newer than the one the request found and not older than the request that asked. Only the time the
-    // sign-in wrote answers: a cookie without it falls back to its issue time, which the stamp check's renewal moves.
-    public static bool IsAnswered(HttpContext context, OpenIddictRequest request, AuthenticationProperties cookie, DateTimeOffset now)
+    // The sign-in, whose time the cookie wrote, is newer than the one the request found and not older than the request that
+    // asked.
+    public static bool IsAnswered(HttpContext context, OpenIddictRequest request, DateTimeOffset signedInAt, DateTimeOffset now)
     {
-        if ((string?)request.GetParameter(Parameter) is not { Length: > 0 } mark
-            || !cookie.Items.TryGetValue(CmsSignInManager.SignedInAtItem, out var written)
-            || !long.TryParse(written, NumberStyles.None, CultureInfo.InvariantCulture, out var signedIn))
+        if ((string?)request.GetParameter(Parameter) is not { Length: > 0 } mark)
         {
             return false;
         }
@@ -45,7 +48,7 @@ internal static class Reauthentication
         string[] fields;
         try
         {
-            fields = Protector(context).Unprotect(mark).Split('|');
+            fields = [.. Protector(context).Unprotect(mark).Split(Separator).Select(Uri.UnescapeDataString)];
         }
         catch (CryptographicException)
         {
@@ -58,8 +61,8 @@ internal static class Reauthentication
             && long.TryParse(fields[2], NumberStyles.None, CultureInfo.InvariantCulture, out var asked)
             && long.TryParse(fields[3], NumberStyles.None, CultureInfo.InvariantCulture, out var found)
             && now - DateTimeOffset.FromUnixTimeSeconds(asked) <= Lifetime
-            && signedIn >= asked
-            && signedIn > found;
+            && signedInAt.ToUnixTimeSeconds() >= asked
+            && signedInAt.ToUnixTimeSeconds() > found;
     }
 
     private static IDataProtector Protector(HttpContext context) =>

@@ -63,7 +63,8 @@ public sealed partial class AuthorizationServerTests
     [Fact]
     public async Task PromptLoginAndAnExpiredMaxAgeAskForANewSignInAndKeepTheCookie()
     {
-        const string OtherClientId = "another-first-party-client";
+        // The separator of the mark's fields in a client id keeps nothing from working.
+        const string OtherClientId = "another|first-party-client";
         await using var host = NewHost().Configure(cms => cms.Clients.Applications[OtherClientId] = new ClientRegistration
         {
             RedirectUris = { FluentCmsTestHost.OAuthRedirectUri },
@@ -71,10 +72,29 @@ public sealed partial class AuthorizationServerTests
         });
         var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
         var cookie = await host.SignInCookieAsync(editor);
+        using var client = host.CreateSecureClient();
+        var otherPath = AuthorizePath().Replace("client_id=" + FluentCmsTestHost.OAuthClientId, "client_id=" + Uri.EscapeDataString(OtherClientId), StringComparison.Ordinal);
+
+        // Without a cookie, the sign-in the user makes answers prompt=login and max_age, so the request comes back without
+        // them.
+        using (var signedOut = await SendAsync(client, HttpMethod.Get, AuthorizePath() + "&prompt=login%20consent&max_age=60", ""))
+        {
+            var back = SignInAgain(client, signedOut);
+            back.ShouldContain("prompt=consent");
+            back.ShouldNotContain("login");
+            back.ShouldNotContain("max_age");
+        }
+
+        // The cookie's own sign-in answers no mark, even in the second it was made.
+        using (var now = await SendAsync(client, HttpMethod.Get, AuthorizePath() + "&prompt=login", cookie))
+        using (var again = await SendAsync(client, HttpMethod.Get, SignInAgain(client, now), cookie))
+        {
+            SignInAgain(client, again);
+        }
+
         host.Time.Advance(TimeSpan.FromMinutes(5));
         var between = await host.SignInCookieAsync(editor);
         host.Time.Advance(TimeSpan.FromMinutes(5));
-        using var client = host.CreateSecureClient();
 
         // prompt=login: the request comes back as it was, with the mark of when it asked, and without a sign-in since the
         // request it asks again: neither the cookie it found nor a newer one from before the request answers it.
@@ -92,6 +112,12 @@ public sealed partial class AuthorizationServerTests
             SignInAgain(client, back);
         }
 
+        string otherReturnUrl;
+        using (var asked = await SendAsync(client, HttpMethod.Get, otherPath + "&prompt=login", cookie))
+        {
+            otherReturnUrl = SignInAgain(client, asked);
+        }
+
         // A sign-in since answers the mark of that request, and neither a changed mark nor the mark on a request of another
         // client or with another PKCE challenge, which are all the mark is bound to.
         host.Time.Advance(TimeSpan.FromMinutes(1));
@@ -102,16 +128,17 @@ public sealed partial class AuthorizationServerTests
         {
             AuthorizePath() + mark + Uri.EscapeDataString(value[..^4] + "AAAA"),
             AuthorizePath().Replace("abcdefghij", "jihgfedcba", StringComparison.Ordinal) + mark + Uri.EscapeDataString(value),
-            AuthorizePath().Replace("client_id=" + FluentCmsTestHost.OAuthClientId, "client_id=" + OtherClientId, StringComparison.Ordinal) + mark + Uri.EscapeDataString(value),
+            otherPath + mark + Uri.EscapeDataString(value),
         })
         {
             using var refused = await SendAsync(client, HttpMethod.Get, path, newer);
             SignInAgain(client, refused);
         }
 
-        using (var answered = await SendAsync(client, HttpMethod.Get, returnUrl, newer))
+        foreach (var own in new[] { returnUrl, otherReturnUrl })
         {
-            answered.Headers.Location!.AbsoluteUri.ShouldStartWith(FluentCmsTestHost.OAuthRedirectUri + "?code=");
+            using var answered = await SendAsync(client, HttpMethod.Get, own, newer);
+            answered.Headers.Location!.AbsoluteUri.ShouldStartWith(FluentCmsTestHost.OAuthRedirectUri + "?code=", Case.Sensitive, own);
         }
 
         // The mark lasts 15 minutes from the request.
