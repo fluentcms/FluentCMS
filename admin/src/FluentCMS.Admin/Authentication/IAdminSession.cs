@@ -7,6 +7,9 @@ internal interface IAdminSession
     // Null while nobody is signed in.
     SignedInUser? User { get; }
 
+    // True from the moment a sign-out has cleared the tab until the page leaves for the logout page.
+    bool SigningOut { get; }
+
     // Raised when a user signs in or the session ends.
     event Action? Changed;
 
@@ -20,7 +23,7 @@ internal interface IAdminSession
     // The callback's parameters, as the authorize endpoint sent them.
     Task<SignInCompletion> CompleteSignInAsync(string? code, string? state, string? error, CancellationToken cancellationToken);
 
-    // Revokes the refresh token, clears what the tab keeps and redirects the whole page to end the server's session.
+    // Clears what the tab keeps, then revokes the refresh token and redirects the whole page to end the server's session.
     Task SignOutAsync(CancellationToken cancellationToken);
 }
 

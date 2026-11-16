@@ -178,4 +178,17 @@ public enum CmsIconName
 
     /// <summary>Dark theme.</summary>
     Moon,
+
+    /// <summary>Opens the navigation.</summary>
+    Navigation,
+}
+
+/// <summary>When a <see cref="CmsNavigationLink"/> is the current page.</summary>
+public enum CmsNavigationMatch
+{
+    /// <summary>On its own address and every address below it, so that a list stays current on its entries.</summary>
+    Prefix,
+
+    /// <summary>On its own address only.</summary>
+    All,
 }

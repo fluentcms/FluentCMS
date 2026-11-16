@@ -1,10 +1,12 @@
 using System.Globalization;
 using Bunit;
+using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Authentication;
 using FluentCMS.Admin.Configuration;
 using FluentCMS.Admin.Interop;
 using FluentCMS.Admin.Localization;
 using FluentCMS.Admin.Tests.Authentication;
+using FluentCMS.Admin.Tests.Shell;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Localization;
@@ -15,7 +17,8 @@ namespace FluentCMS.Admin.Tests;
 
 // The admin's services as AddFluentCmsAdmin registers them, from a valid config.json unless a test starts with another, and
 // under the left-to-right pseudo-culture unless a test chooses another or the neutral resources. The tab is signed in unless
-// a test runs the sign-in itself, against a fake authorization server and an in-memory sessionStorage.
+// a test runs the sign-in itself, against a fake authorization server and an in-memory sessionStorage, and the shell reads
+// a fake Management API.
 public abstract class AdminTestContext : BunitContext
 {
     public const string ValidConfiguration = """{ "apiBaseUrl": "https://cms.example.com" }""";
@@ -44,6 +47,8 @@ public abstract class AdminTestContext : BunitContext
 
     internal FakeAuthority Authority { get; set; } = new();
 
+    internal FakeManagementServer Management { get; set; } = new();
+
     protected string Text(string key, params object[] arguments) =>
         Services.GetRequiredService<IStringLocalizer<AdminResources>>()[key, arguments];
 
@@ -71,6 +76,7 @@ public abstract class AdminTestContext : BunitContext
         {
             Services.Replace(ServiceDescriptor.Scoped<ISessionStorage>(_ => Storage));
             Services.Configure<AuthorityOptions>(options => options.PrimaryHandler = () => Authority);
+            Services.Configure<ManagementApiOptions>(options => options.PrimaryHandler = () => Management);
             if (!signInFlow)
             {
                 Services.Replace(ServiceDescriptor.Scoped<IAdminSession, SignedInTestSession>());

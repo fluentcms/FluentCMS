@@ -3,6 +3,7 @@ using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Authentication;
 using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Configuration;
+using FluentCMS.Admin.Interop;
 using FluentCMS.Admin.Localization;
 using FluentCMS.Admin.Shell;
 using Microsoft.AspNetCore.Components.Web;
@@ -47,6 +48,7 @@ public static class AdminHostBuilderExtensions
     {
         services.AddSingleton(startup);
         services.AddAdminLocalization(culture, formats).AddAdminAccessibility();
+        services.AddSingleton<IThemeStorage, ThemeStorageInterop>();
         services.AddSingleton<ShellTheme>();
         if (startup.Configuration is { } configuration)
         {
@@ -68,6 +70,7 @@ public static class AdminHostBuilderExtensions
         // Before AddManagementApi, whose signed-out defaults they replace.
         services.AddScoped<IRateLimitNotice, RateLimitNotice>();
         services.AddAdminAuthentication();
+        services.AddAdminShell();
         services.AddManagementApi();
         services.AddOptions<ManagementApiOptions>().Configure(options => options.ApiBaseUrl = configuration.ApiBaseUrl);
         return services;

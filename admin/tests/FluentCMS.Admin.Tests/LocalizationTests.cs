@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using Bunit;
 using FluentCMS.Admin.Localization;
+using FluentCMS.Admin.Tests.Shell;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,6 +43,68 @@ public sealed class LocalizationTests : AdminTestContext
         // FocusOnNavigate does nothing on a page without a heading.
         app.FindAll("h1").ShouldHaveSingleItem();
         PseudoCulture.TextCount(app.Nodes).ShouldBeGreaterThan(1);
+        PseudoCulture.Unlocalized(app.Nodes).ShouldBeEmpty();
+    }
+
+    // The shell in each state that shows texts of its own. The data the fake serves, site and type names, is marked as a
+    // resource is, so that only the shell's own texts are checked.
+    public static TheoryData<string, string> ShellStates()
+    {
+        var data = new TheoryData<string, string>();
+        foreach (var culture in new[] { PseudoCulture.LeftToRight, PseudoCulture.RightToLeft })
+        {
+            foreach (var state in new[] { "Sites", "NoSite", "NoSchema", "Failed", "Loading" })
+            {
+                data.Add(culture, state);
+            }
+        }
+
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(ShellStates))]
+    public void EveryTextOfTheShellComesFromTheResources(string culture, string state)
+    {
+        UseInterfaceCulture(culture);
+        var rightToLeft = culture == PseudoCulture.RightToLeft;
+        var shop = new Guid("0193a1b2-0000-7000-8000-00000000a002");
+        Management.Sites[0]!["name"] = PseudoCulture.Transform("Main", rightToLeft);
+        Management.AddSite(shop, PseudoCulture.Transform("Shop", rightToLeft), "shop");
+        Management.SetTypes(
+            FakeManagementServer.MainSite,
+            FakeManagementServer.Type("article", displayName: PseudoCulture.Transform("Articles", rightToLeft)),
+            FakeManagementServer.Type("tag", scope: "global", displayName: PseudoCulture.Transform("Tags", rightToLeft)),
+            FakeManagementServer.Type("settings", "singleton", displayName: PseudoCulture.Transform("Settings", rightToLeft)));
+        switch (state)
+        {
+            case "NoSite":
+                Management.Sites.Clear();
+                break;
+            case "NoSchema":
+                Management.Grant(FakeManagementServer.MainSite, []);
+                break;
+            case "Failed":
+                Management.Unavailable = true;
+                break;
+            case "Loading":
+                Management.Hold = new TaskCompletionSource();
+                break;
+        }
+
+        Start();
+
+        var app = Render<AdminApp>();
+
+        var shown = state switch
+        {
+            "Sites" => ".site-switcher select, .cms-nav-section-title, .cms-badge",
+            "NoSite" => "main h1",
+            "NoSchema" => "main .shell-notice",
+            "Failed" => "main h1, main fluent-button",
+            _ => "main [role=status]",
+        };
+        app.WaitForAssertion(() => shown.Split(", ").ShouldAllBe(selector => app.FindAll(selector).Count > 0));
         PseudoCulture.Unlocalized(app.Nodes).ShouldBeEmpty();
     }
 

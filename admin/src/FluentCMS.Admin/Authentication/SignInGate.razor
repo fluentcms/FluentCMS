@@ -20,6 +20,10 @@ else if (failure is { } reason)
         <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="TryAgainAsync">@L["Authentication.Gate.TryAgain"]</CmsButton>
     </main>
 }
+else if (Session.SigningOut)
+{
+    <p class="sign-in-gate" role="status">@L["Authentication.Gate.SigningOut"]</p>
+}
 else
 {
     <p class="sign-in-gate" role="status">@L["Authentication.Gate.SigningIn"]</p>
@@ -69,7 +73,7 @@ else
 
     private async Task StartAsync()
     {
-        if (starting || failure is not null || Session.User is not null || OnSignInPage)
+        if (starting || failure is not null || Session.User is not null || Session.SigningOut || OnSignInPage)
         {
             return;
         }

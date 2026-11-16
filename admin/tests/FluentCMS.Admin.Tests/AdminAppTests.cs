@@ -141,7 +141,7 @@ public sealed class AdminAppTests : AdminTestContext
         var app = Render<AdminApp>();
         app.Find(".cms-root").HasAttribute("data-cms-theme").ShouldBeFalse();
 
-        await app.InvokeAsync(() => Services.GetRequiredService<ShellTheme>().Choose(CmsThemeMode.Dark));
+        await app.InvokeAsync(() => Services.GetRequiredService<ShellTheme>().ChooseAsync(CmsThemeMode.Dark));
 
         app.WaitForAssertion(() => app.Find(".cms-root").GetAttribute("data-cms-theme").ShouldBe("dark"));
     }
@@ -159,15 +159,14 @@ public sealed class AdminAppTests : AdminTestContext
     }
 
     // Composes the services as AddFluentCmsAdmin does. The client stays open and is registered for every service that takes an
-    // HttpClient, and the fake is the primary handler of the Management API's pipeline, so that a request to the API after
-    // start goes through the fake handler and shows in its requests.
+    // HttpClient, so that a request after start other than the shell's, which the fake Management API answers, goes through
+    // the fake handler and shows in its requests.
     private async Task Start(FakeHandler handler)
     {
         var http = handler.CreateClient();
         var startup = await AdminConfigurationLoader.LoadAsync(http, Xunit.TestContext.Current.CancellationToken);
         Services.AddSingleton(http);
         Start(startup);
-        Services.Configure<ManagementApiOptions>(options => options.PrimaryHandler = () => handler);
     }
 
     private sealed class FakeLogger<T> : ILogger<T>

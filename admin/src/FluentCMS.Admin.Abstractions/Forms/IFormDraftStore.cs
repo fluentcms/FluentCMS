@@ -7,6 +7,9 @@ namespace FluentCMS.Admin.Forms;
 /// </summary>
 public interface IFormDraftStore
 {
+    /// <summary>Gets whether a form of the tab is tracked, so has changes that are not saved, such as before a sign-out.</summary>
+    bool HasUnsavedForms { get; }
+
     /// <summary>Tracks a form while it has unsaved changes.</summary>
     /// <param name="form">The form, asked for its draft when the session ends.</param>
     /// <returns>A handle that stops the tracking when disposed: once the form is saved, discarded or closed.</returns>
