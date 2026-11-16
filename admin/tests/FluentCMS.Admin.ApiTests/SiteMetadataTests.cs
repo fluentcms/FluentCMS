@@ -33,6 +33,31 @@ public sealed class SiteMetadataTests
         other.Plugins.Select(plugin => plugin.Name).ShouldContain("media");
     }
 
+    // The second site has only en. The site switches while the view's locale is still fr, as the shell switches site first.
+    [Fact]
+    public async Task AStaleLocaleFailsNoneOfTheReadsThatFollowASiteSwitch()
+    {
+        await using var admin = new AdminHost();
+        using var client = await admin.SignInAsync(BuiltInRoles.SuperAdminName);
+        var second = new JsonObject { ["name"] = "Second", ["slug"] = "second", ["defaultLocale"] = "en" };
+        await client.Api.SendAsync(new ApiRequest(HttpMethod.Post, "sites") { Body = second }, Token);
+        client.Locale = "fr";
+        await client.Metadata.GetSchemaAsync(Token);
+
+        client.Site = "second";
+        var schema = await client.Metadata.GetSchemaAsync(Token);
+        var plugins = await client.Metadata.GetPluginsAsync(Token);
+        var me = await client.Client.GetMeAsync(Token);
+        var sites = await client.Client.GetMySitesAsync(Token);
+        var refused = await Should.ThrowAsync<ApiProblemException>(() => client.Client.ListEntriesAsync("article", null, Token));
+
+        schema.Types.ShouldNotBeEmpty();
+        plugins.ShouldNotBeEmpty();
+        me.Kind.ShouldBe("adminUser");
+        sites.Single(site => site.Slug == "second").Locales.Select(locale => locale.Code).ShouldBe(["en"]);
+        (refused.Problem.Status, refused.Problem.Code).ShouldBe((422, "FCMS2312"));
+    }
+
     private static async Task<(SchemaDescription Schema, IReadOnlyList<PluginInfo> Plugins)> ReadTwiceAsync(AdminClient client)
     {
         var schema = await client.Metadata.GetSchemaAsync(Token);

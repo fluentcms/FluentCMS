@@ -42,6 +42,47 @@ public sealed class RateLimitTests
         harness.Session.Notices.ShouldBe([TimeSpan.FromSeconds(3)]);
     }
 
+    [Theory]
+    [InlineData(31)]
+    [InlineData(3600)]
+    [InlineData(5_000_000)]
+    public async Task A429ThatAsksForMoreThanThirtySecondsIsShownAtOnce(int seconds)
+    {
+        using var harness = new ApiHarness();
+        harness.Server.Problem(HttpStatusCode.TooManyRequests, TooMany, RetryAfter(seconds));
+
+        var thrown = await Should.ThrowAsync<ApiProblemException>(() => harness.Client.GetMeAsync(Token));
+
+        thrown.Problem.Status.ShouldBe(429);
+        harness.Server.Requests.Count.ShouldBe(1);
+        harness.Time.Waits.ShouldBeEmpty();
+        harness.Session.Notices.ShouldBe([TimeSpan.FromSeconds(seconds)]);
+    }
+
+    [Fact]
+    public async Task A429WaitsAThirtySecondRetryAfter()
+    {
+        using var harness = new ApiHarness();
+        harness.Server.Problem(HttpStatusCode.TooManyRequests, TooMany, RetryAfter(30)).Answer(HttpStatusCode.OK, Me);
+
+        await harness.Client.GetMeAsync(Token);
+
+        harness.Time.Waits.ShouldBe([RateLimitHandler.MaxWait]);
+    }
+
+    [Fact]
+    public async Task ARetryAfterDateIsWaitedUntil()
+    {
+        using var harness = new ApiHarness();
+        harness.Server.Problem(HttpStatusCode.TooManyRequests, TooMany, response => response.Headers.RetryAfter = new RetryConditionHeaderValue(RecordingTime.Now.AddSeconds(5)))
+            .Answer(HttpStatusCode.OK, Me);
+
+        await harness.Client.GetMeAsync(Token);
+
+        harness.Time.Waits.ShouldBe([TimeSpan.FromSeconds(5)]);
+        harness.Session.Notices.ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task A429WithoutRetryAfterIsShownWithoutAWait()
     {

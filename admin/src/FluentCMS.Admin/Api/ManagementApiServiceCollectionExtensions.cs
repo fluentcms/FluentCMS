@@ -6,16 +6,22 @@ namespace FluentCMS.Admin.Api;
 
 internal static class ManagementApiServiceCollectionExtensions
 {
-    // The sign-in, the shell and the notifications replace the defaults of SignedOutSession by registering their own.
+    // One request, as HttpClient's own default allows it.
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(100);
+
     public static IServiceCollection AddManagementApi(this IServiceCollection services)
     {
         services.AddOptions<ManagementApiOptions>();
         services.TryAddSingleton(TimeProvider.System);
+
+        // Signed-out defaults: no token, the default site and locale, no notice. A later lane registers its own before this
+        // call or replaces them with Replace; a TryAdd after it is ignored.
         services.TryAddScoped<SignedOutSession>();
         services.TryAddScoped<IAccessTokenSource>(provider => provider.GetRequiredService<SignedOutSession>());
         services.TryAddScoped<ICurrentSite>(provider => provider.GetRequiredService<SignedOutSession>());
         services.TryAddScoped<IContentLocale>(provider => provider.GetRequiredService<SignedOutSession>());
         services.TryAddScoped<IRateLimitNotice>(provider => provider.GetRequiredService<SignedOutSession>());
+
         services.TryAddScoped<IManagementApi>(provider => new ManagementApi(CreateClient(provider)));
         services.TryAddScoped<ManagementClient>();
         services.TryAddScoped<SiteMetadata>();
@@ -38,6 +44,11 @@ internal static class ManagementApiServiceCollectionExtensions
             InnerHandler = headers,
         };
 
-        return new HttpClient(limits) { BaseAddress = options.ManagementAddress() };
+        // The timeout covers a whole call: a request, the longest wait on a 429 and the retry.
+        return new HttpClient(limits)
+        {
+            BaseAddress = options.ManagementAddress(),
+            Timeout = RequestTimeout + RateLimitHandler.MaxWait + RequestTimeout,
+        };
     }
 }

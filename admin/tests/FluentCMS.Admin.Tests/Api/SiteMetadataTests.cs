@@ -40,6 +40,21 @@ public sealed class SiteMetadataTests
     }
 
     [Fact]
+    public async Task AReadOfASiteSendsNoLocaleSoAStaleLocaleCannotFailItAfterASwitch()
+    {
+        using var harness = new ApiHarness();
+        harness.Session.Locale = "fr";
+        harness.Server.Answer(HttpStatusCode.OK, Schema).Answer(HttpStatusCode.OK, Plugins).Answer(HttpStatusCode.OK, Schema);
+
+        await harness.Metadata.GetSchemaAsync(Token);
+        await harness.Metadata.GetPluginsAsync(Token);
+        harness.Session.Site = "second";
+        await harness.Metadata.GetSchemaAsync(Token);
+
+        harness.Server.Requests.Select(request => (request.Header("X-Cms-Site"), request.Header("X-Cms-Locale"))).ShouldBe([(null, null), (null, null), ("second", null)]);
+    }
+
+    [Fact]
     public async Task AReadThatFailedIsNotKept()
     {
         using var harness = new ApiHarness();

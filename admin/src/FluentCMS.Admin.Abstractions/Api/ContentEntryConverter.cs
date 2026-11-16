@@ -8,16 +8,6 @@ namespace FluentCMS.Admin.Api;
 /// <remarks>The members are split by name, since source-generated extension data cannot be a <see cref="JsonObject"/>.</remarks>
 public sealed class ContentEntryConverter : JsonConverter<ContentEntry>
 {
-    private const string Id = "id";
-    private const string Status = "status";
-    private const string Locale = "locale";
-    private const string Version = "version";
-    private const string CreatedAt = "createdAt";
-    private const string UpdatedAt = "updatedAt";
-    private const string PublishedAt = "publishedAt";
-    private const string ScheduledPublishAt = "scheduledPublishAt";
-    private const string ScheduledUnpublishAt = "scheduledUnpublishAt";
-
     /// <inheritdoc/>
     public override ContentEntry? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
@@ -26,17 +16,29 @@ public sealed class ContentEntryConverter : JsonConverter<ContentEntry>
             throw new JsonException("An entry is a JSON object.");
         }
 
+        var system = new JsonObject();
+        foreach (var name in document.Select(member => member.Key).Where(ContentEntry.SystemMembers.Contains).ToList())
+        {
+            document.Remove(name, out var value);
+            system[name] = value;
+        }
+
         return new ContentEntry
         {
-            Id = Take(document, Id)?.GetValue<Guid>() ?? Guid.Empty,
-            Status = Take(document, Status)?.GetValue<string>(),
-            Locale = Take(document, Locale)?.GetValue<string>(),
-            Version = Take(document, Version)?.GetValue<int>() ?? 0,
-            CreatedAt = Take(document, CreatedAt)?.GetValue<DateTimeOffset>(),
-            UpdatedAt = Take(document, UpdatedAt)?.GetValue<DateTimeOffset>(),
-            PublishedAt = Take(document, PublishedAt)?.GetValue<DateTimeOffset>(),
-            ScheduledPublishAt = Take(document, ScheduledPublishAt)?.GetValue<DateTimeOffset>(),
-            ScheduledUnpublishAt = Take(document, ScheduledUnpublishAt)?.GetValue<DateTimeOffset>(),
+            Id = Value<Guid>(system, "id") ?? Guid.Empty,
+            Status = Text(system, "status"),
+            Locale = Text(system, "locale"),
+            Version = Value<int>(system, "version") ?? 0,
+            CreatedAt = Value<DateTimeOffset>(system, "createdAt"),
+            CreatedBy = Value<Guid>(system, "createdBy"),
+            UpdatedAt = Value<DateTimeOffset>(system, "updatedAt"),
+            UpdatedBy = Value<Guid>(system, "updatedBy"),
+            PublishedAt = Value<DateTimeOffset>(system, "publishedAt"),
+            ScheduledPublishAt = Value<DateTimeOffset>(system, "scheduledPublishAt"),
+            ScheduledUnpublishAt = Value<DateTimeOffset>(system, "scheduledUnpublishAt"),
+            DeletedAt = Value<DateTimeOffset>(system, "deletedAt"),
+            DeletedBy = Value<Guid>(system, "deletedBy"),
+            Fallbacks = Fallbacks(system),
             Fields = document,
         };
     }
@@ -44,17 +46,39 @@ public sealed class ContentEntryConverter : JsonConverter<ContentEntry>
     /// <inheritdoc/>
     public override void Write(Utf8JsonWriter writer, ContentEntry value, JsonSerializerOptions options)
     {
+        ArgumentNullException.ThrowIfNull(writer);
+        ArgumentNullException.ThrowIfNull(value);
         writer.WriteStartObject();
-        writer.WriteString(Id, value.Id);
-        Write(writer, Status, value.Status);
-        Write(writer, Locale, value.Locale);
-        writer.WriteNumber(Version, value.Version);
-        Write(writer, CreatedAt, value.CreatedAt);
-        Write(writer, UpdatedAt, value.UpdatedAt);
-        Write(writer, PublishedAt, value.PublishedAt);
-        Write(writer, ScheduledPublishAt, value.ScheduledPublishAt);
-        Write(writer, ScheduledUnpublishAt, value.ScheduledUnpublishAt);
-        foreach (var (name, field) in value.Fields)
+        writer.WriteString("id", value.Id);
+        Write(writer, "status", value.Status);
+        Write(writer, "locale", value.Locale);
+        writer.WriteNumber("version", value.Version);
+        Write(writer, "createdAt", value.CreatedAt);
+        WriteIfSet(writer, "createdBy", value.CreatedBy);
+        Write(writer, "updatedAt", value.UpdatedAt);
+        WriteIfSet(writer, "updatedBy", value.UpdatedBy);
+        Write(writer, "publishedAt", value.PublishedAt);
+        Write(writer, "scheduledPublishAt", value.ScheduledPublishAt);
+        Write(writer, "scheduledUnpublishAt", value.ScheduledUnpublishAt);
+        if (value.DeletedAt is { } deletedAt)
+        {
+            writer.WriteString("deletedAt", deletedAt);
+        }
+
+        WriteIfSet(writer, "deletedBy", value.DeletedBy);
+        if (value.Fallbacks is { } fallbacks)
+        {
+            writer.WriteStartObject("fallbacks");
+            foreach (var (field, locale) in fallbacks)
+            {
+                writer.WriteString(field, locale);
+            }
+
+            writer.WriteEndObject();
+        }
+
+        // A field under a system member's name would write that member twice, so it is left out.
+        foreach (var (name, field) in value.Fields.Where(member => !ContentEntry.SystemMembers.Contains(member.Key)))
         {
             writer.WritePropertyName(name);
             if (field is null)
@@ -70,8 +94,37 @@ public sealed class ContentEntryConverter : JsonConverter<ContentEntry>
         writer.WriteEndObject();
     }
 
-    private static JsonNode? Take(JsonObject document, string name) =>
-        document.Remove(name, out var value) ? value : null;
+    private static T? Value<T>(JsonObject system, string name)
+        where T : struct
+    {
+        try
+        {
+            return system[name] is { } node ? node.GetValue<T>() : null;
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or FormatException)
+        {
+            throw new JsonException($"The entry member '{name}' is not a {typeof(T).Name}.", exception);
+        }
+    }
+
+    private static string? Text(JsonObject system, string name)
+    {
+        try
+        {
+            return system[name]?.GetValue<string>();
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new JsonException($"The entry member '{name}' is not a string.", exception);
+        }
+    }
+
+    private static Dictionary<string, string>? Fallbacks(JsonObject system) => system["fallbacks"] switch
+    {
+        null => null,
+        JsonObject fallbacks => fallbacks.ToDictionary(member => member.Key, member => Text(fallbacks, member.Key) ?? "", StringComparer.Ordinal),
+        _ => throw new JsonException("The entry member 'fallbacks' is not an object."),
+    };
 
     private static void Write(Utf8JsonWriter writer, string name, string? value)
     {
@@ -94,6 +147,14 @@ public sealed class ContentEntryConverter : JsonConverter<ContentEntry>
         else
         {
             writer.WriteNull(name);
+        }
+    }
+
+    private static void WriteIfSet(Utf8JsonWriter writer, string name, Guid? value)
+    {
+        if (value is { } id)
+        {
+            writer.WriteString(name, id);
         }
     }
 }

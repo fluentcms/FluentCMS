@@ -13,14 +13,18 @@ public sealed class ApiRequest
 
     /// <summary>Creates a request.</summary>
     /// <param name="method">The HTTP method.</param>
-    /// <param name="path">The path under <c>/api/management/v1/</c>, with its query string, such as <c>content/article?page=2</c>.</param>
+    /// <param name="path">
+    /// The path under <c>/api/management/v1/</c>, with its query string, such as <c>content/article?page=2</c>. It may not
+    /// start with a slash, whitespace or a control character, hold a backslash, or lead out of the Management API.
+    /// </param>
     public ApiRequest(HttpMethod method, string path)
     {
         ArgumentNullException.ThrowIfNull(method);
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        if (path.StartsWith('/') || Uri.IsWellFormedUriString(path, UriKind.Absolute))
+        ArgumentException.ThrowIfNullOrEmpty(path);
+        if (path[0] == '/' || char.IsWhiteSpace(path[0]) || path.Any(char.IsControl) || path.Contains('\\', StringComparison.Ordinal)
+            || Uri.TryCreate(path, UriKind.Absolute, out _))
         {
-            throw new ArgumentException("The path is relative to /api/management/v1/, such as 'content/article'.", nameof(path));
+            throw new ArgumentException($"'{path}' is not a path relative to /api/management/v1/, such as 'content/article'.", nameof(path));
         }
 
         Method = method;
@@ -42,14 +46,27 @@ public sealed class ApiRequest
     /// </summary>
     public string? IfMatch { get; init; }
 
-    /// <summary>The <c>Idempotency-Key</c> of the user action a create or bulk call belongs to, from <see cref="NewIdempotencyKey"/>.</summary>
+    /// <summary>
+    /// The <c>Idempotency-Key</c> of the user action a create belongs to, from <see cref="NewIdempotencyKey"/>. The server
+    /// keys it with the site and the locale, so a keyed request names both, or <see cref="NoSite"/> and <see cref="NoLocale"/>,
+    /// as they were when the action started.
+    /// </summary>
     public string? IdempotencyKey { get; init; }
 
-    /// <summary>The site of this request, instead of the shell's.</summary>
+    /// <summary>The site of this request, instead of the shell's. A request that names its site sends only the locale it names.</summary>
     public string? Site { get; init; }
+
+    /// <summary>Whether the request sends no <c>X-Cms-Site</c>, for the instance's default site whatever the shell shows.</summary>
+    public bool NoSite { get; init; }
 
     /// <summary>The content locale of this request, instead of the view's.</summary>
     public string? Locale { get; init; }
+
+    /// <summary>
+    /// Whether the request sends no <c>X-Cms-Locale</c>, for a call that is not about content, such as <c>me</c> or
+    /// <c>schema</c>: the server refuses a locale its site does not allow, so the view's locale could fail it after a site switch.
+    /// </summary>
+    public bool NoLocale { get; init; }
 
     /// <summary>A new key for one user action, to keep until the action has an answer.</summary>
     /// <returns>A key the server accepts.</returns>

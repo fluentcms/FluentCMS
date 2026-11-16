@@ -27,7 +27,20 @@ internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposab
     private async Task<HttpResponseMessage> SendCoreAsync(ApiRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        using var message = new HttpRequestMessage(request.Method, new Uri(request.Path, UriKind.Relative));
+        if ((request.NoSite && request.Site is not null) || (request.NoLocale && request.Locale is not null))
+        {
+            throw new ArgumentException("A request that names its site or locale cannot also send none.", nameof(request));
+        }
+
+        // The bearer token goes only to the Management API: a path that resolves anywhere else is refused.
+        var baseAddress = http.BaseAddress!;
+        var target = new Uri(baseAddress, request.Path);
+        if (!baseAddress.IsBaseOf(target) || !string.Equals(target.GetLeftPart(UriPartial.Authority), baseAddress.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException($"'{request.Path}' leads out of the Management API.", nameof(request));
+        }
+
+        using var message = new HttpRequestMessage(request.Method, target);
         if (request.Body is { } body)
         {
             message.Content = JsonContent.Create<JsonNode>(body, ManagementJsonContext.Default.JsonNode);
@@ -37,6 +50,11 @@ internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposab
         Add(message, ManagementHeaders.IdempotencyKey, request.IdempotencyKey);
         Add(message, ManagementHeaders.Site, request.Site);
         Add(message, ManagementHeaders.Locale, request.Locale);
+
+        // A request that names its site carries only the locale it names, since the server refuses a locale the site lacks.
+        var namesItsSite = request.NoSite || request.Site is not null;
+        message.Options.Set(ManagementHeaders.AddSessionSite, !namesItsSite);
+        message.Options.Set(ManagementHeaders.AddSessionLocale, !namesItsSite && !request.NoLocale && request.Locale is null);
 
         var response = await http.SendAsync(message, cancellationToken);
         if (response.IsSuccessStatusCode)
@@ -58,17 +76,43 @@ internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposab
         }
     }
 
-    // The status of the answer is the problem's, whatever its body says; a body that is not a problem leaves only the status.
+    // The status of the answer is the problem's, whatever its body says. A member of the wrong type loses only itself where
+    // it can: a current that is not an object is dropped, and a body that still does not read keeps its text members.
     private static async Task<ApiProblem> ProblemAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var status = (int)response.StatusCode;
-        if (response.Content.Headers.ContentType?.MediaType is "application/problem+json" or "application/json")
+        var mediaType = response.Content.Headers.ContentType?.MediaType;
+        if (string.Equals(mediaType, "application/problem+json", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(mediaType, "application/json", StringComparison.OrdinalIgnoreCase))
         {
             try
             {
-                if (await response.Content.ReadFromJsonAsync(ManagementJsonContext.Default.ApiProblem, cancellationToken) is { } problem)
+                if (JsonNode.Parse(await response.Content.ReadAsStringAsync(cancellationToken)) is JsonObject body)
                 {
-                    return problem with { Status = status };
+                    if (body["current"] is not (null or JsonObject))
+                    {
+                        body.Remove("current");
+                    }
+
+                    try
+                    {
+                        if (body.Deserialize(ManagementJsonContext.Default.ApiProblem) is { } problem)
+                        {
+                            return problem with { Status = status };
+                        }
+                    }
+                    catch (JsonException)
+                    {
+                        return new ApiProblem
+                        {
+                            Status = status,
+                            Code = Text(body, "code"),
+                            Type = Text(body, "type"),
+                            Title = Text(body, "title") ?? response.ReasonPhrase,
+                            Detail = Text(body, "detail"),
+                            TraceId = Text(body, "traceId"),
+                        };
+                    }
                 }
             }
             catch (JsonException)
@@ -78,6 +122,9 @@ internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposab
 
         return new ApiProblem { Status = status, Title = response.ReasonPhrase };
     }
+
+    private static string? Text(JsonObject body, string name) =>
+        body[name] is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
 
     // Tag is the opaque value with its quotes, without the W/ of a weak tag.
     private static string? EntityTag(HttpResponseMessage response) => response.Headers.ETag?.Tag;

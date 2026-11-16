@@ -46,6 +46,10 @@ FluentCMS.Admin.Api.ApiRequest.IfMatch.init -> void
 FluentCMS.Admin.Api.ApiRequest.Locale.get -> string?
 FluentCMS.Admin.Api.ApiRequest.Locale.init -> void
 FluentCMS.Admin.Api.ApiRequest.Method.get -> System.Net.Http.HttpMethod!
+FluentCMS.Admin.Api.ApiRequest.NoLocale.get -> bool
+FluentCMS.Admin.Api.ApiRequest.NoLocale.init -> void
+FluentCMS.Admin.Api.ApiRequest.NoSite.get -> bool
+FluentCMS.Admin.Api.ApiRequest.NoSite.init -> void
 FluentCMS.Admin.Api.ApiRequest.Path.get -> string!
 FluentCMS.Admin.Api.ApiRequest.Site.get -> string?
 FluentCMS.Admin.Api.ApiRequest.Site.init -> void
@@ -73,7 +77,15 @@ FluentCMS.Admin.Api.ContentEntry.<Clone>$() -> FluentCMS.Admin.Api.ContentEntry!
 FluentCMS.Admin.Api.ContentEntry.ContentEntry() -> void
 FluentCMS.Admin.Api.ContentEntry.CreatedAt.get -> System.DateTimeOffset?
 FluentCMS.Admin.Api.ContentEntry.CreatedAt.init -> void
+FluentCMS.Admin.Api.ContentEntry.CreatedBy.get -> System.Guid?
+FluentCMS.Admin.Api.ContentEntry.CreatedBy.init -> void
+FluentCMS.Admin.Api.ContentEntry.DeletedAt.get -> System.DateTimeOffset?
+FluentCMS.Admin.Api.ContentEntry.DeletedAt.init -> void
+FluentCMS.Admin.Api.ContentEntry.DeletedBy.get -> System.Guid?
+FluentCMS.Admin.Api.ContentEntry.DeletedBy.init -> void
 FluentCMS.Admin.Api.ContentEntry.Equals(FluentCMS.Admin.Api.ContentEntry? other) -> bool
+FluentCMS.Admin.Api.ContentEntry.Fallbacks.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+FluentCMS.Admin.Api.ContentEntry.Fallbacks.init -> void
 FluentCMS.Admin.Api.ContentEntry.Fields.get -> System.Text.Json.Nodes.JsonObject!
 FluentCMS.Admin.Api.ContentEntry.Fields.init -> void
 FluentCMS.Admin.Api.ContentEntry.Id.get -> System.Guid
@@ -90,6 +102,8 @@ FluentCMS.Admin.Api.ContentEntry.Status.get -> string?
 FluentCMS.Admin.Api.ContentEntry.Status.init -> void
 FluentCMS.Admin.Api.ContentEntry.UpdatedAt.get -> System.DateTimeOffset?
 FluentCMS.Admin.Api.ContentEntry.UpdatedAt.init -> void
+FluentCMS.Admin.Api.ContentEntry.UpdatedBy.get -> System.Guid?
+FluentCMS.Admin.Api.ContentEntry.UpdatedBy.init -> void
 FluentCMS.Admin.Api.ContentEntry.Version.get -> int
 FluentCMS.Admin.Api.ContentEntry.Version.init -> void
 FluentCMS.Admin.Api.ContentEntryConverter
@@ -152,17 +166,9 @@ FluentCMS.Admin.Api.FieldValidationDescription.Required.get -> bool
 FluentCMS.Admin.Api.FieldValidationDescription.Required.init -> void
 FluentCMS.Admin.Api.FieldValidationDescription.Unique.get -> bool
 FluentCMS.Admin.Api.FieldValidationDescription.Unique.init -> void
-FluentCMS.Admin.Api.IAccessTokenSource
-FluentCMS.Admin.Api.IAccessTokenSource.GetAccessTokenAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<string?>
-FluentCMS.Admin.Api.IContentLocale
-FluentCMS.Admin.Api.IContentLocale.Locale.get -> string?
-FluentCMS.Admin.Api.ICurrentSite
-FluentCMS.Admin.Api.ICurrentSite.Site.get -> string?
 FluentCMS.Admin.Api.IManagementApi
 FluentCMS.Admin.Api.IManagementApi.SendAsync(FluentCMS.Admin.Api.ApiRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<FluentCMS.Admin.Api.ApiResponse!>!
 FluentCMS.Admin.Api.IManagementApi.SendAsync<T>(FluentCMS.Admin.Api.ApiRequest! request, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>! answer, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<FluentCMS.Admin.Api.ApiResponse<T>!>!
-FluentCMS.Admin.Api.IRateLimitNotice
-FluentCMS.Admin.Api.IRateLimitNotice.TooManyRequests(System.TimeSpan? retryAfter) -> void
 FluentCMS.Admin.Api.ItemList<T>
 FluentCMS.Admin.Api.ItemList<T>.<Clone>$() -> FluentCMS.Admin.Api.ItemList<T>!
 FluentCMS.Admin.Api.ItemList<T>.Equals(FluentCMS.Admin.Api.ItemList<T>? other) -> bool
@@ -428,6 +434,7 @@ static FluentCMS.Admin.Api.ApiProblemError.operator ==(FluentCMS.Admin.Api.ApiPr
 static FluentCMS.Admin.Api.ApiRequest.NewIdempotencyKey() -> string!
 static FluentCMS.Admin.Api.ConditionDescription.operator !=(FluentCMS.Admin.Api.ConditionDescription? left, FluentCMS.Admin.Api.ConditionDescription? right) -> bool
 static FluentCMS.Admin.Api.ConditionDescription.operator ==(FluentCMS.Admin.Api.ConditionDescription? left, FluentCMS.Admin.Api.ConditionDescription? right) -> bool
+static FluentCMS.Admin.Api.ContentEntry.SystemMembers.get -> System.Collections.Generic.IReadOnlySet<string!>!
 static FluentCMS.Admin.Api.ContentEntry.operator !=(FluentCMS.Admin.Api.ContentEntry? left, FluentCMS.Admin.Api.ContentEntry? right) -> bool
 static FluentCMS.Admin.Api.ContentEntry.operator ==(FluentCMS.Admin.Api.ContentEntry? left, FluentCMS.Admin.Api.ContentEntry? right) -> bool
 static FluentCMS.Admin.Api.ContentPage.operator !=(FluentCMS.Admin.Api.ContentPage? left, FluentCMS.Admin.Api.ContentPage? right) -> bool

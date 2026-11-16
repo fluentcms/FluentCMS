@@ -112,7 +112,11 @@ internal sealed class ScriptedServer : HttpMessageHandler
 // Records each wait and lets it pass at once, so that a test of a 429 does not sleep.
 internal sealed class RecordingTime : TimeProvider
 {
+    public static readonly DateTimeOffset Now = new(2026, 11, 16, 9, 0, 0, TimeSpan.Zero);
+
     public List<TimeSpan> Waits { get; } = [];
+
+    public override DateTimeOffset GetUtcNow() => Now;
 
     public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
     {
