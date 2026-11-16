@@ -38,6 +38,8 @@
                 }
 
                 return items;
+            case ["account"]:
+                return [new(L["Shell.Breadcrumbs.Account"])];
             case ["system", "components"]:
                 return [new(L["Shell.Breadcrumbs.System"]), new(L["Shell.Breadcrumbs.Components"])];
             default:

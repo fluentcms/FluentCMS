@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Admin.Content;
 
@@ -31,6 +32,45 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
 
     public async Task<IReadOnlyList<MySiteInfo>> GetMySitesAsync(CancellationToken cancellationToken) =>
         (await api.SendAsync(new ApiRequest(HttpMethod.Get, "me/sites") { NoSite = true, NoLocale = true }, Json.ItemListMySiteInfo, cancellationToken)).Value.Items;
+
+    // The account page's calls (spec 4.3), the caller's own like GetMeAsync. The two-factor and logins routes answer 403 to a
+    // key or a service account.
+    public async Task<IReadOnlyList<MySession>> GetMySessionsAsync(CancellationToken cancellationToken) =>
+        (await api.SendAsync(Me(HttpMethod.Get, "me/sessions"), Json.ItemListMySession, cancellationToken)).Value.Items;
+
+    public async Task EndMySessionAsync(Guid id, CancellationToken cancellationToken) =>
+        await api.SendAsync(Me(HttpMethod.Delete, $"me/sessions/{id:D}"), cancellationToken);
+
+    public async Task<MyTwoFactor> GetTwoFactorAsync(CancellationToken cancellationToken) =>
+        (await api.SendAsync(Me(HttpMethod.Get, "me/two-factor"), Json.MyTwoFactor, cancellationToken)).Value;
+
+    public async Task<AuthenticatorSetup> EnrolAuthenticatorAsync(CancellationToken cancellationToken) =>
+        (await api.SendAsync(Me(HttpMethod.Post, "me/two-factor/enrol"), Json.AuthenticatorSetup, cancellationToken)).Value;
+
+    public async Task<IReadOnlyList<string>> VerifyAuthenticatorAsync(string code, CancellationToken cancellationToken) =>
+        (await api.SendAsync(Me(HttpMethod.Post, "me/two-factor/verify", Code(code)), Json.RecoveryCodeList, cancellationToken)).Value.RecoveryCodes;
+
+    public async Task<IReadOnlyList<string>> NewRecoveryCodesAsync(string code, CancellationToken cancellationToken) =>
+        (await api.SendAsync(Me(HttpMethod.Post, "me/two-factor/recovery-codes", Code(code)), Json.RecoveryCodeList, cancellationToken)).Value.RecoveryCodes;
+
+    // An authenticator code or a recovery code.
+    public async Task DisableTwoFactorAsync(string code, CancellationToken cancellationToken) =>
+        await api.SendAsync(Me(HttpMethod.Post, "me/two-factor/disable", Code(code)), cancellationToken);
+
+    public async Task<IReadOnlyList<MyLogin>> GetMyLoginsAsync(CancellationToken cancellationToken) =>
+        (await api.SendAsync(Me(HttpMethod.Get, "me/logins"), Json.ItemListMyLogin, cancellationToken)).Value.Items;
+
+    public async Task RemoveMyLoginAsync(string provider, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(provider);
+        await api.SendAsync(Me(HttpMethod.Delete, $"me/logins/{Uri.EscapeDataString(provider)}"), cancellationToken);
+    }
+
+    public async Task<MyPreferences> GetMyPreferencesAsync(CancellationToken cancellationToken) =>
+        (await api.SendAsync(Me(HttpMethod.Get, "me/preferences"), Json.MyPreferences, cancellationToken)).Value;
+
+    public async Task<MyPreferences> SetMyPreferencesAsync(MyPreferences preferences, CancellationToken cancellationToken) =>
+        (await api.SendAsync(Me(HttpMethod.Put, "me/preferences", JsonSerializer.SerializeToNode(preferences, Json.MyPreferences)), Json.MyPreferences, cancellationToken)).Value;
 
     // What the caller may do in the site, in the site's default locale.
     public async Task<MyAccessInfo> GetMyAccessAsync(string? site, CancellationToken cancellationToken) =>
@@ -107,6 +147,15 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
         };
 
     private static ApiRequest SiteRead(string path, string? site) => Pinned(HttpMethod.Get, path, site, locale: null);
+
+    private static ApiRequest Me(HttpMethod method, string path, JsonNode? body = null) =>
+        new(method, path) { Body = body, NoSite = true, NoLocale = true };
+
+    private static JsonObject Code(string code)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+        return new JsonObject { ["code"] = code };
+    }
 
     // The server refuses a system member in a write (deletedAt is FCMS1406), so a form's document is sent without them.
     private static JsonObject WithoutSystemMembers(JsonObject fields)

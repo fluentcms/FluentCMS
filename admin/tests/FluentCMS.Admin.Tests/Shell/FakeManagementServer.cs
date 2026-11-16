@@ -5,7 +5,8 @@ using System.Text.Json.Nodes;
 namespace FluentCMS.Admin.Tests.Shell;
 
 // The Management API of https://cms.example.com as the shell reads it: /me, /me/sites, and per site /me/access, /schema and
-// /plugins. By default the user has one site, every permission there and no content type. A test changes what it answers.
+// /plugins; and the caller's own routes of the account page. By default the user has one site, every permission there and no
+// content type, no session, no login, two-factor off and no preference. A test changes what it answers.
 internal sealed class FakeManagementServer : HttpMessageHandler
 {
     public static readonly Guid MainSite = new("0193a1b2-0000-7000-8000-00000000a001");
@@ -26,6 +27,20 @@ internal sealed class FakeManagementServer : HttpMessageHandler
     public Dictionary<Guid, JsonArray> Plugins { get; } = [];
 
     public string UserName { get; set; } = "ada";
+
+    // Every request with its method and body, for the routes a test writes to.
+    public List<(HttpMethod Method, string Path, string? Body)> Calls { get; } = [];
+
+    public JsonArray Sessions { get; } = [];
+
+    public JsonArray Logins { get; } = [];
+
+    public JsonObject TwoFactor { get; set; } = new() { ["enabled"] = false, ["required"] = false, ["pending"] = false, ["recoveryCodesLeft"] = 0 };
+
+    public JsonObject Preferences { get; set; } = new() { ["culture"] = null, ["timeZone"] = null, ["dateFormat"] = null, ["numberFormat"] = null };
+
+    // Answers a request before the routes above do, when it returns one.
+    public Func<HttpMethod, string, HttpResponseMessage?>? Answer { get; set; }
 
     // /schema answers 403 even to a holder of schema.read.
     public bool RefusesSchema { get; set; }
@@ -130,9 +145,11 @@ internal sealed class FakeManagementServer : HttpMessageHandler
     {
         var path = request.RequestUri!.AbsolutePath["/api/management/v1/".Length..];
         var siteHeader = request.Headers.TryGetValues("X-Cms-Site", out var values) ? values.Single() : null;
+        var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
         lock (_gate)
         {
             Requests.Add((path, siteHeader));
+            Calls.Add((request.Method, path, body));
         }
 
         if (Hold is { } hold)
@@ -150,6 +167,17 @@ internal sealed class FakeManagementServer : HttpMessageHandler
             return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
         }
 
+        if (Answer?.Invoke(request.Method, path) is { } answer)
+        {
+            return answer;
+        }
+
+        if (request.Method == HttpMethod.Put && path == "me/preferences")
+        {
+            Preferences = JsonNode.Parse(body!)!.AsObject();
+            return Json(Preferences);
+        }
+
         var site = Guid.TryParse(siteHeader, out var id) ? id : MainSite;
         return path switch
         {
@@ -159,11 +187,33 @@ internal sealed class FakeManagementServer : HttpMessageHandler
             "schema" when RefusesSchema || !Access[site]["permissions"]!.AsArray().Any(name => name!.GetValue<string>() == "schema.read") => Forbidden(),
             "schema" => Json(Schemas[site]),
             "plugins" => Json(new JsonObject { ["items"] = Plugins[site].DeepClone() }),
+            "me/sessions" => Json(new JsonObject { ["items"] = Sessions.DeepClone() }),
+            "me/logins" => Json(new JsonObject { ["items"] = Logins.DeepClone() }),
+            "me/two-factor" => Json(TwoFactor),
+            "me/preferences" => Json(Preferences),
             _ => new HttpResponseMessage(HttpStatusCode.NotFound),
         };
     }
 
-    private static HttpResponseMessage Json(JsonNode body) =>
+    // A FluentCMS problem; with a path, the code is also that of its one validation error, as the server writes them.
+    public static HttpResponseMessage Problem(HttpStatusCode status, string code, string? path = null) =>
+        new(status)
+        {
+            Content = new StringContent(
+                new JsonObject
+                {
+                    ["status"] = (int)status,
+                    ["code"] = code,
+                    ["title"] = "Problem",
+                    ["errors"] = path is null ? new JsonArray() : new JsonArray(new JsonObject { ["path"] = path, ["code"] = code, ["message"] = "Problem" }),
+                }.ToJsonString(),
+                Encoding.UTF8,
+                "application/problem+json"),
+        };
+
+    public static HttpResponseMessage NoContent() => new(HttpStatusCode.NoContent);
+
+    public static HttpResponseMessage Json(JsonNode body) =>
         new(HttpStatusCode.OK) { Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json") };
 
     private static HttpResponseMessage Forbidden() =>

@@ -362,6 +362,14 @@ Sign-in, refresh, sign-out and expiry with the draft kept are as in 2.4. The acc
 
 A key or a service account cannot sign in to the admin, which is a code-flow client. Called with one, `GET /me` answers 200 with `{ id, kind, name }` and `GET /me/sessions` an empty list; only the two-factor and logins routes answer 403.
 
+*As built (A-09, [#3147]).* `AccountPage` at `/account`, in `Account/` of `FluentCMS.Admin`, reads each section on its own, so a 403 (shown as "only a user has this") or a failure with "Try again" stays in its section.
+
+- **Sessions.** A row is one authorization. The API does not mark this tab's, so none is marked; the page says that ending one stops that sign-in at its next request and does not sign the browser out of the authorization server. Ending this tab's makes the next read a 401, which the session's own path of 2.4 answers by signing in again.
+- **Two-factor.** The QR code is drawn as an SVG by `QrCode` (byte mode, level M, versions 1 to 15, up to 412 bytes) and `QrCodeImage`, both derived from Project Nayuki's QR Code generator, its `QrCode.java` and the `toSvgString` of its demo (MIT; the notice is in `THIRD-PARTY-NOTICES.md`, which the `FluentCMS.Admin` package carries). QRCoder 1.8.1, the package the issue named, brings `System.Drawing.Common` on `net6.0` and up. A module is 4 CSS pixels, scaled down only on a screen narrower than the code. When the address for the app, with the site's name, does not fit, the page shows the key alone to enter by hand. The key and the recovery codes live in the component while their step is open, and are dropped when the user leaves the step or the page; they are never logged, put in the URL or stored in the browser.
+- **Signing in again.** Turning two-factor on or off, and removing an external login, give the user a new security stamp. The token endpoint then refuses the tab's refresh token, and the hosted pages' cookie no longer holds, so the user signs in again, with the password (and a code, once two-factor is on). The page says so before each change, and signs in again through the session (2.4) once the recovery codes are saved, after turning two-factor off and after removing a login. If the authorization server cannot be reached for it, the page says so. The recovery codes are shown in a modal dialog, which the browser keeps the rest of the page and the shell from, and the page's other cards are inert until the tab has left to sign in, so that no call can take the codes away; a reload or going back still can. New recovery codes keep the session.
+- **Password.** A link to `{authority}/account/change-password` in the same tab, with `ReturnUrl` set to the account page when the admin is on the authority's origin, since the hosted page returns only to a local URL; on another origin the page says it does not come back.
+- **Language and theme.** The theme is the shell's, kept in the browser (4.1). The language select shows only when more than one culture is offered; it saves the `culture` of `PUT /me/preferences`, with the other preferences read again just before. The start does not apply it yet ([#3214]).
+
 ### 4.4 Generated list views
 
 Rows 3.4, 7.7 (locale switcher and translation status in lists), 6.5 (schedules visible in list views), 2.23 (`q=` through the search plugin).
@@ -1073,3 +1081,4 @@ The draft asked sixteen questions, each with a recommendation. All were decided 
 [#3150]: https://github.com/fluentcms/FluentCMS/issues/3150
 [#3151]: https://github.com/fluentcms/FluentCMS/issues/3151
 [#3152]: https://github.com/fluentcms/FluentCMS/issues/3152
+[#3214]: https://github.com/fluentcms/FluentCMS/issues/3214

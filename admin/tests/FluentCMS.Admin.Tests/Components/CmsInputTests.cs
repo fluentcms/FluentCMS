@@ -84,6 +84,25 @@ public sealed class CmsInputTests : ComponentTestContext
     }
 
     [Fact]
+    public void AOneTimeCodeAsksForTheNumericKeyboardAndTheBrowsersCode()
+    {
+        var input = Render<CmsTextInput>(p => p.Add(x => x.Label, "Code").Add(x => x.Autocomplete, "one-time-code").Add(x => x.Numeric, true));
+
+        input.Find("input").GetAttribute("autocomplete").ShouldBe("one-time-code");
+        input.Find("input").GetAttribute("inputmode").ShouldBe("numeric");
+        input.Find("input").GetAttribute("type").ShouldBe("text");
+    }
+
+    [Fact]
+    public void WithoutThemTheInputHasNeitherAttribute()
+    {
+        var input = Render<CmsTextInput>(p => p.Add(x => x.Label, "Title"));
+
+        input.Find("input").HasAttribute("autocomplete").ShouldBeFalse();
+        input.Find("input").HasAttribute("inputmode").ShouldBeFalse();
+    }
+
+    [Fact]
     public void AGivenIdIsUsed()
     {
         var input = Render<CmsTextInput>(p => p.Add(x => x.Label, "Title").Add(x => x.Id, "title").Add(x => x.Help, "Help."));
