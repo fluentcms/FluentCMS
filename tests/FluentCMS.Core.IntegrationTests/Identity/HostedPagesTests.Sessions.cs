@@ -177,6 +177,41 @@ public sealed partial class HostedPagesTests
         (await request.ExchangeAsync(host, done)).GetProperty("access_token").GetString().ShouldNotBeNullOrEmpty();
     }
 
+    [Fact]
+    public async Task TheHostedPagesSendASignInPastTheAbsoluteLifetimeToTheLoginPageAndKeepTheCookie()
+    {
+        await using var host = NewHost(_emails).Configure(cms => cms.Clients.AbsoluteSessionLifetime = TimeSpan.FromHours(8));
+        var editor = await CreateUserAsync(host);
+        using var browser = new HostedPagesBrowser(host);
+        await SignInAsync(browser, editor.Email);
+        string[] pages = [HostedPagePaths.ChangePassword, HostedPagePaths.EnableTwoFactor, HostedPagePaths.Consent];
+        foreach (var path in pages)
+        {
+            (await PathAsync(browser, path)).ShouldNotBe(HostedPagePaths.Login, path);
+        }
+
+        // Past the lifetime the pages ask for a new sign-in, however often the sliding cookie was renewed; the logout page
+        // still answers.
+        host.Time.Advance(TimeSpan.FromHours(8) + TimeSpan.FromMinutes(1));
+        foreach (var path in pages)
+        {
+            (await PathAsync(browser, path)).ShouldBe(HostedPagePaths.Login, path);
+            browser.HasCookie(SignInCookie).ShouldBeTrue(path);
+        }
+
+        (await PathAsync(browser, HostedPagePaths.Logout)).ShouldBe(HostedPagePaths.Logout);
+
+        await SignInAsync(browser, editor.Email);
+        (await PathAsync(browser, HostedPagePaths.ChangePassword)).ShouldBe(HostedPagePaths.ChangePassword);
+    }
+
+    // The path a GET of a hosted page ends on: its own when it answers, the login page's when it sends the user there.
+    private static async Task<string> PathAsync(HostedPagesBrowser browser, string path)
+    {
+        using var response = await browser.GetAsync(path);
+        return response.StatusCode == HttpStatusCode.Redirect ? new Uri(OAuthBase, response.Headers.Location!).AbsolutePath : path;
+    }
+
     private sealed class CountingHasher : IPasswordHasher<CmsUser>
     {
         private readonly PasswordHasher<CmsUser> _inner = new();

@@ -13,8 +13,9 @@ namespace FluentCMS.Core.Identity.Oidc;
 // lifetime, a second factor the role now requires) keeps the cookie: another site can send that request, so it must not
 // end anything (#3203). The user goes to the login page, and the request comes back with a mark of when it asked and which
 // sign-in it found. Only a newer sign-in answers prompt=login and max_age, so the request without one asks again. The mark
-// is protected and bound to the client and the PKCE challenge of the request, so another site can neither make one nor
-// move it to another request, and it lasts as long as a sign-in may take.
+// is protected, so another site can make or change none, and it is bound to the request's client_id and code_challenge
+// alone, so it answers nothing on a request of another client or with another challenge; it lasts as long as a sign-in may
+// take.
 internal static class Reauthentication
 {
     public const string Parameter = "fcms_reauth";
@@ -30,10 +31,13 @@ internal static class Reauthentication
         return Results.Challenge(new AuthenticationProperties { RedirectUri = context.Request.PathBase + context.Request.Path + QueryString.Create(marked) }, [scheme]);
     }
 
-    // The sign-in is newer than the one the request found and not older than the request that asked.
-    public static bool IsAnswered(HttpContext context, OpenIddictRequest request, DateTimeOffset signedInAt, DateTimeOffset now)
+    // The sign-in is newer than the one the request found and not older than the request that asked. Only the time the
+    // sign-in wrote answers: a cookie without it falls back to its issue time, which the stamp check's renewal moves.
+    public static bool IsAnswered(HttpContext context, OpenIddictRequest request, AuthenticationProperties cookie, DateTimeOffset now)
     {
-        if ((string?)request.GetParameter(Parameter) is not { Length: > 0 } mark)
+        if ((string?)request.GetParameter(Parameter) is not { Length: > 0 } mark
+            || !cookie.Items.TryGetValue(CmsSignInManager.SignedInAtItem, out var written)
+            || !long.TryParse(written, NumberStyles.None, CultureInfo.InvariantCulture, out var signedIn))
         {
             return false;
         }
@@ -54,14 +58,12 @@ internal static class Reauthentication
             && long.TryParse(fields[2], NumberStyles.None, CultureInfo.InvariantCulture, out var asked)
             && long.TryParse(fields[3], NumberStyles.None, CultureInfo.InvariantCulture, out var found)
             && now - DateTimeOffset.FromUnixTimeSeconds(asked) <= Lifetime
-            && Seconds(signedInAt) >= asked
-            && Seconds(signedInAt) > found;
+            && signedIn >= asked
+            && signedIn > found;
     }
 
     private static IDataProtector Protector(HttpContext context) =>
         context.RequestServices.GetRequiredService<IDataProtectionProvider>().CreateProtector(Purpose);
 
-    private static long Seconds(DateTimeOffset time) => time.ToUnixTimeSeconds();
-
-    private static string Text(DateTimeOffset time) => Seconds(time).ToString(CultureInfo.InvariantCulture);
+    private static string Text(DateTimeOffset time) => time.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
 }

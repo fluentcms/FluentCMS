@@ -178,10 +178,16 @@ public sealed partial class HostedPagesTests
             var request = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri, prompt: prompt);
             var login = await AskedToSignInAsync(browser, request.Url + asks);
             (await MeAsync(host, Text(tokens, "access_token"))).ShouldBe(HttpStatusCode.OK, request.Url + asks);
-            var refreshToken = wait > TimeSpan.Zero ? null : await RotatedAsync(host, Text(tokens, "refresh_token"));
-            if (refreshToken is null)
+            string? refreshToken = null;
+            if (wait > TimeSpan.Zero)
             {
                 (await RefusedAsync(host, Text(tokens, "refresh_token"))).ShouldBe("invalid_grant");
+            }
+            else
+            {
+                var renewed = await RenewedAsync(host, Text(tokens, "refresh_token"));
+                (await MeAsync(host, Text(renewed, "access_token"))).ShouldBe(HttpStatusCode.OK, request.Url + asks);
+                refreshToken = Text(renewed, "refresh_token");
             }
 
             // The request the login page returns to issues no code without a new sign-in; it asks again.
@@ -208,6 +214,26 @@ public sealed partial class HostedPagesTests
         }
 
         (await RefusedAsync(host, Text(before, "refresh_token"))).ShouldBe("invalid_grant");
+    }
+
+    [Fact]
+    public async Task ACookieWithoutTheTimeOfItsSignInAnswersNoReauthentication()
+    {
+        var editor = await CreateUserAsync(_host);
+        using var browser = new HostedPagesBrowser(_host, "10.1.0.21");
+        browser.SetCookie(await UnmarkedCookieAsync(editor, withSignInTime: false));
+        _host.Time.Advance(TimeSpan.FromMinutes(20));
+        var login = await AskedToSignInAsync(browser, AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri, prompt: "login").Url);
+
+        // Past the stamp check the cookie is renewed with a new issue time, which such a cookie falls back to; it is no
+        // sign-in, so the request still asks.
+        _host.Time.Advance(TimeSpan.FromMinutes(11));
+        using (var renewed = await browser.GetAsync("/account/logout"))
+        {
+            renewed.Headers.GetValues("Set-Cookie").ShouldContain(value => value.StartsWith(SignInCookie + "=", StringComparison.Ordinal) && !value.StartsWith(SignInCookie + "=;", StringComparison.Ordinal));
+        }
+
+        await AskedToSignInAsync(browser, QueryHelpers.ParseQuery(login.Query)["ReturnUrl"].ToString());
     }
 
     // The login page an authorize request sends the browser to, with the cookie left as it was.
@@ -397,7 +423,7 @@ public sealed partial class HostedPagesTests
     }
 
     // A sign-in cookie as one made before sessions were marked: the time of the sign-in and no server session.
-    private async Task<string> UnmarkedCookieAsync(TestUser user)
+    private async Task<string> UnmarkedCookieAsync(TestUser user, bool withSignInTime = true)
     {
         await using var scope = _host.Services.CreateAsyncScope();
         var provider = scope.ServiceProvider;
@@ -406,7 +432,11 @@ public sealed partial class HostedPagesTests
         var options = provider.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>().Get(IdentityConstants.ApplicationScheme);
         var now = _host.Time.GetUtcNow();
         var properties = new AuthenticationProperties { IssuedUtc = now, ExpiresUtc = now + options.ExpireTimeSpan };
-        properties.Items[CmsSignInManager.SignedInAtItem] = now.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (withSignInTime)
+        {
+            properties.Items[CmsSignInManager.SignedInAtItem] = now.ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
         var ticket = new AuthenticationTicket(principal, properties, IdentityConstants.ApplicationScheme);
         return $"{options.Cookie.Name}={options.TicketDataFormat.Protect(ticket)}";
     }

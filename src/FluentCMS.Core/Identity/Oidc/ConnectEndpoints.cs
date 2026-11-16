@@ -108,7 +108,7 @@ internal static class ConnectEndpoints
         // signs in again over the cookie, as for the second factor below.
         var now = context.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow();
         var signedInAt = CmsSignInManager.SignedInAt(cookie.Properties!) ?? now;
-        if (MustSignInAgain(context, request, signedInAt, now))
+        if (MustSignInAgain(context, request, cookie.Properties!, signedInAt, now))
         {
             return request.HasPromptValue(PromptValues.None)
                 ? Refuse(Errors.LoginRequired, "The sign-in is older than the client or the server accepts.")
@@ -474,11 +474,11 @@ internal static class ConnectEndpoints
 
     // prompt=login or a max_age the sign-in is older than, unless a sign-in since the request that asked answered it, or a
     // sign-in older than the absolute session lifetime.
-    internal static bool MustSignInAgain(HttpContext context, OpenIddictRequest request, DateTimeOffset signedInAt, DateTimeOffset now)
+    internal static bool MustSignInAgain(HttpContext context, OpenIddictRequest request, AuthenticationProperties cookie, DateTimeOffset signedInAt, DateTimeOffset now)
     {
         var asked = request.HasPromptValue(PromptValues.Login) || (request.MaxAge is { } maxAge && now - signedInAt > TimeSpan.FromSeconds(maxAge));
-        return (asked && !Reauthentication.IsAnswered(context, request, signedInAt, now))
-            || (context.RequestServices.GetRequiredService<ClientOptions>().AbsoluteSessionLifetime is { } cap && now - signedInAt > cap);
+        return (asked && !Reauthentication.IsAnswered(context, request, cookie, now))
+            || context.RequestServices.GetRequiredService<ClientOptions>().HasOutlived(signedInAt, now);
     }
 
     // Without a sign-in, the one the user makes answers prompt=login and max_age, so the request it comes back with no

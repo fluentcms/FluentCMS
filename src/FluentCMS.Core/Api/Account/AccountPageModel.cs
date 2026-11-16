@@ -21,12 +21,19 @@ public abstract class AccountPageModel : PageModel
     private protected string LocalUrl(string? returnUrl) =>
         !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) ? returnUrl : Url.Content("~/");
 
-    // The user of the sign-in cookie, if it is still good: the security stamp holds and the user may sign in.
+    // The user of the sign-in cookie, if it is still good: the security stamp holds, the user may sign in, and the sign-in is
+    // not past the absolute session lifetime. Otherwise the page sends the user to the login page, with the cookie left.
     private protected async Task<CmsUser?> SignedInUserAsync()
     {
         var cookie = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
-        var user = cookie.Succeeded ? await SignInManager.ValidateSecurityStampAsync(cookie.Principal) : null;
+        var user = cookie.Succeeded && !HasOutlived(cookie.Properties!) ? await SignInManager.ValidateSecurityStampAsync(cookie.Principal) : null;
         return user is not null && await SignInManager.CanSignInAsync(user) ? user : null;
+    }
+
+    private protected bool HasOutlived(AuthenticationProperties cookie)
+    {
+        var now = Service<TimeProvider>().GetUtcNow();
+        return Service<ClientOptions>().HasOutlived(CmsSignInManager.SignedInAt(cookie) ?? now, now);
     }
 
     private protected IActionResult RedirectToLogin(string? returnUrl) =>

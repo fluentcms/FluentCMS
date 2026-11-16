@@ -408,6 +408,31 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
     }
 
     [Fact]
+    public async Task TheMemberPagesSendASignInPastTheAbsoluteLifetimeToTheLoginPageAndKeepTheCookie()
+    {
+        await using var host = MemberFixture.NewHost(new HostedPagesTests.CapturedEmails(), configure: cms => cms.Clients.AbsoluteSessionLifetime = TimeSpan.FromHours(8));
+        var member = await host.CreateMemberAsync(password: Password, cancellationToken: Token);
+        using var browser = new HostedPagesBrowser(host, "10.8.0.28");
+        await SignInMemberAsync(browser, member.Email);
+        using (var logins = await browser.GetAsync(HostedPagePaths.MemberLogins))
+        {
+            logins.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        host.Time.Advance(TimeSpan.FromHours(8) + TimeSpan.FromMinutes(1));
+        (await LocationAsync(browser, HostedPagePaths.MemberLogins)).ShouldStartWith(HostedPagePaths.MemberLogin + "?");
+        browser.HasCookie(MemberCookie).ShouldBeTrue();
+        using (var logout = await browser.GetAsync(HostedPagePaths.MemberLogout))
+        {
+            logout.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        await SignInMemberAsync(browser, member.Email);
+        using var again = await browser.GetAsync(HostedPagePaths.MemberLogins);
+        again.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task AMembersCodeFlowLateInASignInEndsWithTheSignInAndTheDirectLoginKeepsItsOwnStart()
     {
         await using var host = MemberFixture.NewHost(new HostedPagesTests.CapturedEmails(), configure: cms => cms.Clients.AbsoluteSessionLifetime = TimeSpan.FromHours(8));

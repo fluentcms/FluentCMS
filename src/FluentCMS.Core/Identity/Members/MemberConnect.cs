@@ -48,7 +48,7 @@ internal static class MemberConnect
 
         var now = context.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow();
         var signedInAt = CmsSignInManager.SignedInAt(cookie.Properties!) ?? now;
-        if (ConnectEndpoints.MustSignInAgain(context, request, signedInAt, now))
+        if (ConnectEndpoints.MustSignInAgain(context, request, cookie.Properties!, signedInAt, now))
         {
             return request.HasPromptValue(PromptValues.None)
                 ? ConnectEndpoints.Refuse(Errors.LoginRequired, "The sign-in is older than the client or the server accepts.")

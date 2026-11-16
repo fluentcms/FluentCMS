@@ -63,12 +63,21 @@ public sealed partial class AuthorizationServerTests
     [Fact]
     public async Task PromptLoginAndAnExpiredMaxAgeAskForANewSignInAndKeepTheCookie()
     {
-        var editor = await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
-        var cookie = await _host.SignInCookieAsync(editor);
-        using var client = _host.CreateSecureClient();
+        const string OtherClientId = "another-first-party-client";
+        await using var host = NewHost().Configure(cms => cms.Clients.Applications[OtherClientId] = new ClientRegistration
+        {
+            RedirectUris = { FluentCmsTestHost.OAuthRedirectUri },
+            Scopes = { "openid" },
+        });
+        var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var cookie = await host.SignInCookieAsync(editor);
+        host.Time.Advance(TimeSpan.FromMinutes(5));
+        var between = await host.SignInCookieAsync(editor);
+        host.Time.Advance(TimeSpan.FromMinutes(5));
+        using var client = host.CreateSecureClient();
 
-        // prompt=login: the request comes back as it was, with the mark of when it asked, and without a newer sign-in it
-        // asks again.
+        // prompt=login: the request comes back as it was, with the mark of when it asked, and without a sign-in since the
+        // request it asks again: neither the cookie it found nor a newer one from before the request answers it.
         string returnUrl;
         using (var asked = await SendAsync(client, HttpMethod.Get, AuthorizePath() + "&prompt=login%20consent", cookie))
         {
@@ -77,23 +86,27 @@ public sealed partial class AuthorizationServerTests
 
         returnUrl.ShouldContain("prompt=login%20consent");
         returnUrl.ShouldContain(Reauthentication.Parameter + "=");
-        using (var back = await SendAsync(client, HttpMethod.Get, returnUrl, cookie))
+        foreach (var older in new[] { cookie, between })
         {
+            using var back = await SendAsync(client, HttpMethod.Get, returnUrl, older);
             SignInAgain(client, back);
         }
 
-        // A newer sign-in answers the mark of that request, and neither a changed mark nor the mark on another request.
-        _host.Time.Advance(TimeSpan.FromMinutes(1));
-        var newer = await _host.SignInCookieAsync(editor);
-        var mark = QueryHelpers.ParseQuery(new Uri(client.BaseAddress!, returnUrl).Query)[Reauthentication.Parameter].ToString();
-        using (var forged = await SendAsync(client, HttpMethod.Get, AuthorizePath() + "&prompt=login&" + Reauthentication.Parameter + "=" + Uri.EscapeDataString(mark[..^4] + "AAAA"), newer))
+        // A sign-in since answers the mark of that request, and neither a changed mark nor the mark on a request of another
+        // client or with another PKCE challenge, which are all the mark is bound to.
+        host.Time.Advance(TimeSpan.FromMinutes(1));
+        var newer = await host.SignInCookieAsync(editor);
+        var mark = "&prompt=login&" + Reauthentication.Parameter + "=";
+        var value = QueryHelpers.ParseQuery(new Uri(client.BaseAddress!, returnUrl).Query)[Reauthentication.Parameter].ToString();
+        foreach (var path in new[]
         {
-            SignInAgain(client, forged);
-        }
-
-        using (var moved = await SendAsync(client, HttpMethod.Get, AuthorizePath().Replace("abcdefghij", "jihgfedcba", StringComparison.Ordinal) + "&prompt=login&" + Reauthentication.Parameter + "=" + Uri.EscapeDataString(mark), newer))
+            AuthorizePath() + mark + Uri.EscapeDataString(value[..^4] + "AAAA"),
+            AuthorizePath().Replace("abcdefghij", "jihgfedcba", StringComparison.Ordinal) + mark + Uri.EscapeDataString(value),
+            AuthorizePath().Replace("client_id=" + FluentCmsTestHost.OAuthClientId, "client_id=" + OtherClientId, StringComparison.Ordinal) + mark + Uri.EscapeDataString(value),
+        })
         {
-            SignInAgain(client, moved);
+            using var refused = await SendAsync(client, HttpMethod.Get, path, newer);
+            SignInAgain(client, refused);
         }
 
         using (var answered = await SendAsync(client, HttpMethod.Get, returnUrl, newer))
@@ -101,8 +114,14 @@ public sealed partial class AuthorizationServerTests
             answered.Headers.Location!.AbsoluteUri.ShouldStartWith(FluentCmsTestHost.OAuthRedirectUri + "?code=");
         }
 
+        // The mark lasts 15 minutes from the request.
+        host.Time.Advance(TimeSpan.FromMinutes(15));
+        using (var expired = await SendAsync(client, HttpMethod.Get, returnUrl, newer))
+        {
+            SignInAgain(client, expired);
+        }
+
         // A max_age the sign-in is older than, in the same way.
-        _host.Time.Advance(TimeSpan.FromMinutes(10));
         using (var old = await SendAsync(client, HttpMethod.Get, AuthorizePath() + "&max_age=60", newer))
         {
             returnUrl = SignInAgain(client, old);
