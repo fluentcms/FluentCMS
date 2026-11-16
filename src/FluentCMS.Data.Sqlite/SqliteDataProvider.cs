@@ -48,6 +48,8 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
     public bool IsBusy(Exception exception) =>
         (exception as SqliteException ?? exception.InnerException as SqliteException) is { SqliteErrorCode: raw.SQLITE_BUSY or raw.SQLITE_LOCKED };
 
+    public bool HasOneWriter => true;
+
     // SQLite's LIKE folds the case of ASCII letters only.
     public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment)
     {

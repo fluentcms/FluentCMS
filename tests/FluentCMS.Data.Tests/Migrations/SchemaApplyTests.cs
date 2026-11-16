@@ -628,6 +628,39 @@ public sealed partial class SchemaApplyTests : IDisposable
         _database.Columns("cms_article").ShouldContain("summary");
     }
 
+    // The lock is lost, as when a waiter on SQLite took it at the end of a long transaction: before the plan, while the
+    // operations run once the first of them ran, or after they committed and before the history is written.
+    [Theory]
+    [InlineData(LostLock.Moment.BeforeThePlan, "FCMS3339: the lock fluentcms:schema-sync was lost", "while the operations were planned, so nothing was applied")]
+    [InlineData(LostLock.Moment.WhileTheOperationsRun, "FCMS3339: the lock fluentcms:schema-sync was lost", "while the operations were applied; their transaction was rolled back")]
+    [InlineData(LostLock.Moment.AfterTheOperations, "FCMS3340: the content tables match schema ", "the lock fluentcms:schema-sync was lost")]
+    public async Task ARunThatLosesItsLockSaysToRunAgain(LostLock.Moment when, string start, string middle)
+    {
+        await MigrateAndApplyAsync(ArticleSchemas.Titled);
+        var schema = ArticleSchemas.Article("title", "subtitle", "summary");
+        var afterTheOperations = when == LostLock.Moment.AfterTheOperations;
+        using var lost = new LostLock(when);
+
+        using (var host = _database.CreateHost(schema, Production, settings: NoMigrationOnStartup, services: lost.Lock, configure: lost.Configure))
+        {
+            var (exitCode, _, error) = await RunAsync(host, "schema", "apply");
+
+            exitCode.ShouldBe(1);
+            error.ShouldStartWith(start);
+            error.ShouldContain(middle);
+            error.ShouldContain("run 'fluentcms schema apply' again");
+        }
+
+        History().ShouldHaveSingleItem();
+        _database.Columns("cms_article").Contains("subtitle").ShouldBe(afterTheOperations);
+
+        var (again, _, againError) = await RunAsync(schema, "schema", "apply");
+
+        again.ShouldBe(0, againError);
+        _database.Columns("cms_article").ShouldContain("summary");
+        History().Count.ShouldBe(2);
+    }
+
     [Theory]
     [InlineData(new[] { "--output", "schema.sql" }, "FCMS3300: --output names the file of --script, so it needs --script")]
     [InlineData(new[] { "--script", "--dry-run" }, "FCMS3300: --script and --dry-run both apply nothing; give one")]

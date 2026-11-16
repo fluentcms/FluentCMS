@@ -11,8 +11,9 @@ internal static partial class LockLog
     public const int ReleaseFailedId = 9163;
     public const int WentOnWithoutLockId = 9164;
     public const int RenewWaitingId = 9165;
+    public const int TimedOutBusyId = 9166;
 
-    [LoggerMessage(EventId = LeaseTakenOverId, EventName = "LockLeaseTakenOver", Level = LogLevel.Warning, Message = "Took the lock {Name} after the lease of {Holder} ran out; that holder stopped without releasing it.")]
+    [LoggerMessage(EventId = LeaseTakenOverId, EventName = "LockLeaseTakenOver", Level = LogLevel.Warning, Message = "Took the lock {Name} after the lease of {Holder} ran out; that holder stopped without releasing it or, on a database with one writer, could not renew it behind other writes.")]
     public static partial void LeaseTakenOver(ILogger logger, string name, string holder);
 
     [LoggerMessage(EventId = LostId, EventName = "LockLost", Level = LogLevel.Warning, Message = "Lost the lock {Name} while holding it, because {Reason}.")]
@@ -29,4 +30,7 @@ internal static partial class LockLog
 
     [LoggerMessage(EventId = RenewWaitingId, EventName = "LockRenewWaiting", Level = LogLevel.Information, Message = "The lease of the lock {Name} is renewed once another connection's write transaction ends; the database has one writer, so no other holder can take the lock meanwhile.")]
     public static partial void RenewWaiting(ILogger logger, string name);
+
+    [LoggerMessage(EventId = TimedOutBusyId, EventName = "LockTimedOutBusy", Level = LogLevel.Warning, Message = "The lock {Name} was not taken within {Timeout}, and the last try gave up waiting for another connection's write transaction; the database has one writer, so the lock may be free while that transaction lasts.")]
+    public static partial void TimedOutBusy(ILogger logger, string name, TimeSpan timeout);
 }

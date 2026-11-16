@@ -44,6 +44,8 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
     // Writers wait for the rows they write, not for the whole database.
     public bool IsBusy(Exception exception) => false;
 
+    public bool HasOneWriter => false;
+
     // EF's migrations lock is an application lock of the session, which ends with it.
     public Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
 

@@ -3,6 +3,7 @@ using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
+using FluentCMS.Providers;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,8 +56,20 @@ internal sealed class SchemaApplyCommand : HostCommand
         await using var held = applying ? await runner.LockContentSchemaAsync(cancellationToken) : null;
         using var guarded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, held?.Lost ?? CancellationToken.None);
 
-        var applied = await runner.GetAppliedSnapshotAsync(guarded.Token);
-        var plan = await runner.PlanContentSchemaAsync(applied, guarded.Token);
+        string? applied;
+        SchemaApplyPlan plan;
+        try
+        {
+            applied = await runner.GetAppliedSnapshotAsync(guarded.Token);
+            plan = await runner.PlanContentSchemaAsync(applied, guarded.Token);
+        }
+        catch (Exception exception) when (LockLost(held, cancellationToken))
+        {
+            throw new CommandException(
+                CommandErrorCodes.SchemaApplyFailed,
+                $"{Lost(exception)} while the operations were planned, so nothing was applied; run 'fluentcms schema apply' again");
+        }
+
         var steps = plan.Steps;
         var (report, unreadable) = SchemaHistory.Compare(applied, schema);
         if (!script)
@@ -101,6 +114,13 @@ internal sealed class SchemaApplyCommand : HostCommand
             {
                 await runner.ApplyContentSchemaAsync(steps, guarded.Token);
             }
+            // First, since a provider can end a command that the lost lock canceled with an exception of its own.
+            catch (Exception exception) when (LockLost(held, cancellationToken))
+            {
+                throw new CommandException(
+                    CommandErrorCodes.SchemaApplyFailed,
+                    $"{Lost(exception)} while the operations were applied; their transaction was rolled back, except what SQLite committed before a table rebuild, which the next run leaves out, and the schema history keeps its last row; run 'fluentcms schema apply' again");
+            }
             catch (DbException exception)
             {
                 throw new CommandException(
@@ -114,6 +134,12 @@ internal sealed class SchemaApplyCommand : HostCommand
         {
             await runner.RecordSchemaAsync(guarded.Token);
         }
+        catch (Exception exception) when (LockLost(held, cancellationToken))
+        {
+            throw new CommandException(
+                CommandErrorCodes.SchemaNotRecorded,
+                $"the content tables match schema {hash}, but {Lost(exception)} before the schema history was written; run 'fluentcms schema apply' again with the same options to record it");
+        }
         catch (Exception exception) when (exception is DbException or DbUpdateException or InvalidOperationException)
         {
             throw new CommandException(
@@ -126,6 +152,15 @@ internal sealed class SchemaApplyCommand : HostCommand
             : $"Applied {Count(steps.Count)}; the schema history records schema {hash}.");
         return CommandExitCodes.Success;
     }
+
+    // The lock's Lost canceled the work, and not the caller.
+    private static bool LockLost(IDistributedLockHandle? held, CancellationToken cancellationToken) =>
+        held is { Lost.IsCancellationRequested: true } && !cancellationToken.IsCancellationRequested;
+
+    // Lost is canceled for every reason the lock goes: another holder took it, its lease ran out, or the host stopped. A
+    // provider's own exception after it is named.
+    private static string Lost(Exception exception) =>
+        $"the lock {MigrationRunner.SchemaSyncLock} was lost{(exception is OperationCanceledException ? "" : $" ({exception.GetType().Name})")}";
 
     private static async Task RefuseAsync(MigrationRunner runner, CancellationToken cancellationToken)
     {
