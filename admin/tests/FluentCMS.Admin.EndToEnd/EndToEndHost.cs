@@ -149,11 +149,13 @@ public sealed class EndToEndHost : IAsyncLifetime
         return ((IPEndPoint)listener.LocalEndpoint).Port;
     }
 
+    // As the Dockerfile publishes it, with the SDK alone: where the wasm-tools workload is installed, as on the Windows
+    // runners, the publish would otherwise relink the WebAssembly runtime, which takes minutes and no image does.
     private async Task PublishAsync()
     {
         var (exitCode, _, tail) = await ChildProcess.RunAsync(
             "dotnet",
-            ["publish", Repository.HostProject, "-c", Repository.Configuration, "--no-build", "-o", PublishDirectory, "-p:UseAppHost=false", "-nologo", "-nodeReuse:false"],
+            ["publish", Repository.HostProject, "-c", Repository.Configuration, "--no-build", "-o", PublishDirectory, "-p:UseAppHost=false", "-p:WasmBuildNative=false", "-nologo", "-nodeReuse:false"],
             Repository.Root,
             new Dictionary<string, string?> { ["MSBUILDDISABLENODEREUSE"] = "1" },
             PublishTimeout,
