@@ -123,17 +123,22 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
         }
     }
 
-    // The value of the title field labels an entry, so it is one plain text value of the type itself.
+    // The value of the title field labels an entry, so it is one plain text value of the type itself that a read shows.
     private void ValidateTitleField(TypeDraft type, string name)
     {
         var field = type.Fields.FirstOrDefault(candidate => string.Equals(candidate.Name, name, StringComparison.Ordinal));
-        if (field is null)
+        var problem = field switch
         {
-            Report(SchemaErrorCodes.InvalidTitleField, $"title field '{name}' of {Describe(type)} is not a field of it; a title field must be a single text field of the type");
-        }
-        else if (field.FieldType != FieldTypeNames.Text || field.Multiple)
+            null => "is not a field of it",
+            { FieldType: not FieldTypeNames.Text } => $"has the field type {field.FieldType}",
+            { Multiple: true } => "holds several values",
+            { Hidden: true } => "is hidden",
+            _ => null,
+        };
+
+        if (problem is not null)
         {
-            Report(SchemaErrorCodes.InvalidTitleField, $"title field '{name}' of {Describe(type)} is a{(field.Multiple ? " multiple" : "")} {field.FieldType} field; a title field must be a single text field of the type");
+            Report(SchemaErrorCodes.InvalidTitleField, $"title field '{name}' of {Describe(type)} {problem}; a title field must be a single visible text field of the type");
         }
     }
 

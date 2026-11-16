@@ -6,7 +6,7 @@ using Xunit;
 namespace FluentCMS.Core.Tests.Schema;
 
 // The display name and the title field of a content type (#3150): set by the builder, the attributes and schema.json,
-// carried by the snapshot and its diff, and refused at build when the title field is not a single text field.
+// carried by the snapshot and its diff, and refused at build when the title field is not a single visible text field.
 public sealed class TypeLabelTests
 {
     private static readonly string[] Options = ["a", "b"];
@@ -134,26 +134,58 @@ public sealed class TypeLabelTests
         var builder = new SchemaBuilder().AddCollection("article", type => type.TitleField("title").Field("name", "text"));
 
         Fails(builder).Errors.ShouldHaveSingleItem().ToString().ShouldBe(
-            "FCMS1220: title field 'title' of collection 'article' is not a field of it; a title field must be a single text field of the type");
+            "FCMS1220: title field 'title' of collection 'article' is not a field of it; a title field must be a single visible text field of the type");
     }
 
     [Theory]
-    [InlineData("summary", "a longText field")]
-    [InlineData("slug", "a slug field")]
-    [InlineData("tags", "a multiple select field")]
-    [InlineData("Name", "not a field of it")]
-    public void ATitleFieldThatIsNotASingleTextFieldIsFCMS1220(string titleField, string message)
+    [InlineData("summary", "has the field type longText")]
+    [InlineData("slug", "has the field type slug")]
+    [InlineData("contact", "has the field type email")]
+    [InlineData("body", "has the field type richText")]
+    [InlineData("seo", "has the field type component")]
+    [InlineData("tags", "has the field type select")]
+    [InlineData("code", "is hidden")]
+    [InlineData("Name", "is not a field of it")]
+    [InlineData("seo.title", "is not a field of it")]
+    public void ATitleFieldThatIsNotASingleVisibleTextFieldIsFCMS1220(string titleField, string message)
     {
-        var builder = new SchemaBuilder().AddCollection("article", type => type
-            .TitleField(titleField)
-            .Field("name", "text")
-            .Field("summary", "longText")
-            .Field("slug", "slug", field => field.Setting(FieldSettings.Source, "name"))
-            .Field("tags", "select", field => field.Multiple().Setting(FieldSettings.Options, Options)));
+        var builder = new SchemaBuilder()
+            .AddComponent("seo", type => type.Field("title", "text"))
+            .AddCollection("article", type => type
+                .TitleField(titleField)
+                .Field("name", "text")
+                .Field("summary", "longText")
+                .Field("slug", "slug", field => field.Setting(FieldSettings.Source, "name"))
+                .Field("contact", "email")
+                .Field("body", "richText")
+                .Field("seo", "component", field => field.Setting(FieldSettings.Component, "seo"))
+                .Field("tags", "select", field => field.Multiple().Setting(FieldSettings.Options, Options))
+                .Field("code", "text", field => field.Hidden()));
 
         var error = Fails(builder).Errors.ShouldHaveSingleItem();
         error.Code.ShouldBe("FCMS1220");
-        error.Message.ShouldContain(message);
+        error.Message.ShouldContain($"title field '{titleField}' of collection 'article' {message}; a title field must be a single visible text field of the type");
+    }
+
+    [Fact]
+    public void AMultipleTextFieldIsRefusedAsATitleFieldBesideItsOwnError()
+    {
+        var builder = new SchemaBuilder().AddCollection("article", type => type.TitleField("names").Field("names", "text", field => field.Multiple()));
+
+        var errors = Fails(builder).Errors;
+        errors.Select(error => error.Code).ShouldBe(["FCMS1211", "FCMS1220"], ignoreOrder: true);
+        errors.Single(error => error.Code == "FCMS1220").Message.ShouldContain("holds several values");
+    }
+
+    [Fact]
+    public void ALocalizableTextFieldIsATitleField()
+    {
+        var type = new SchemaBuilder()
+            .AddCollection("article", type => type.Localized().TitleField("title").Field("title", "text", field => field.Localizable().Required()))
+            .Build()
+            .FindContentType("article")!;
+
+        type.TitleField.ShouldBe("title");
     }
 
     [Theory]

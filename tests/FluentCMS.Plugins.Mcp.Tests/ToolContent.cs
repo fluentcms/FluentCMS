@@ -69,6 +69,9 @@ public sealed class Story : ContentItem
 {
     [Text]
     public string? Headline { get; set; }
+
+    [Text]
+    public string? Summary { get; set; }
 }
 
 [Singleton("edition", DisplayName = "Today's edition")]

@@ -33,7 +33,7 @@ public interface ITypeBuilder
     /// <exception cref="ArgumentException">The type is a component or a block.</exception>
     ITypeBuilder DisplayName(string displayName);
 
-    /// <summary>Names the field whose value labels an entry, which must be a single text field of the type. Only collections and singletons have one.</summary>
+    /// <summary>Names the field whose value labels an entry, which must be a single text field of the type that is not hidden. Only collections and singletons have one.</summary>
     /// <param name="fieldName">The field name, in camelCase.</param>
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentException">The type is a component or a block.</exception>

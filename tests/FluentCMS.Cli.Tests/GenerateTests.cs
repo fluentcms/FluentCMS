@@ -380,8 +380,6 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
         typeScript.ShouldNotContain("AbBlock", Case.Sensitive);
     }
 
-    // The identifiers TypeScript reserves, createClient and schemaHash, are no names of files, so they are taken as written
-    // and the types create-client and schema-hash keep their classes, in TypeScript as in C#.
     [Fact]
     public void TheDisplayNameAndTheTitleFieldAreMetadataAndNotFields()
     {
@@ -389,6 +387,7 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
             {
               "collections": [
                 { "name": "blog-post", "displayName": "Blog \"post\"{{(char)0x202E}}", "titleField": "headline", "fields": [ { "name": "headline", "type": "text" } ] },
+                { "name": "menu", "displayName": "Café \\ carte\nà emporter", "fields": [ { "name": "title", "type": "text" } ] },
                 { "name": "plain", "fields": [ { "name": "title", "type": "text" } ] }
               ],
               "singletons": [ { "name": "site-settings", "displayName": "Settings", "fields": [ { "name": "siteName", "type": "text" } ] } ]
@@ -397,6 +396,7 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
 
         var csharp = CSharpEmitter.Emit(schema, ClientNamespace).Files.ToDictionary(file => file.Name, file => file.Text);
         csharp["BlogPost.g.cs"].ShouldContain("[global::FluentCMS.Client.ContentType(\"blog-post\", DisplayName = \"Blog \\\"post\\\"\\u202e\", TitleField = \"headline\")]");
+        csharp["Menu.g.cs"].ShouldContain("[global::FluentCMS.Client.ContentType(\"menu\", DisplayName = \"Café \\\\ carte\\nà emporter\")]");
         csharp["SiteSettings.g.cs"].ShouldContain("[global::FluentCMS.Client.ContentType(\"site-settings\", DisplayName = \"Settings\")]");
         csharp["Plain.g.cs"].ShouldContain("[global::FluentCMS.Client.ContentType(\"plain\")]");
         csharp["BlogPost.g.cs"].ShouldNotContain("DisplayName {");
@@ -405,17 +405,21 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
         typeScript.ShouldContain("""
             export const contentTypeLabels = {
                 "blog-post": { displayName: "Blog \"post\"\u202e", titleField: "headline" },
+                "menu": { displayName: "Café \\ carte\nà emporter", titleField: null },
+                "plain": { displayName: null, titleField: null },
                 "site-settings": { displayName: "Settings", titleField: null },
             } as const;
             """.ReplaceLineEndings("\n"));
-        typeScript.ShouldNotContain("\"plain\": {");
         typeScript.ShouldNotContain("displayName?:");
         typeScript.ShouldNotContain((char)0x202E);
+        csharp.Values.Concat([typeScript]).ShouldAllBe(text => !text.Contains("carte\nà", StringComparison.Ordinal));
 
         var unlabelled = BlogInstance.Schema("""{ "collections": [ { "name": "plain", "fields": [ { "name": "title", "type": "text" } ] } ] }""");
         TypeScriptEmitter.Emit(unlabelled).Files.Single().Text.ShouldNotContain("contentTypeLabels");
     }
 
+    // The identifiers TypeScript reserves, createClient and schemaHash, are no names of files, so they are taken as written
+    // and the types create-client and schema-hash keep their classes, in TypeScript as in C#.
     [Fact]
     public void AReservedIdentifierOfTheModuleTakesNoTypeWhoseNameDiffersFromItInCase()
     {

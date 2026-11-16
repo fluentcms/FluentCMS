@@ -69,6 +69,20 @@ public sealed class McpContentToolListTests(McpToolsFixture fixture) : IClassFix
         tools["post_get"].Description.ShouldBe("Reads one post entry by its id.");
     }
 
+    [Fact]
+    public async Task ACallerWhoMayNotReadTheTitleFieldIsNotToldOfIt()
+    {
+        await using var host = Host(Path.GetTempPath(), new FakeDownloads()).WithContentTypes(typeof(Story), typeof(Edition));
+        using var http = await RoleAsync(host, Grant("content.story.read", "summary"));
+        await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+
+        var list = (await ToolsAsync(client))["story_list"].Description!;
+
+        list.ShouldStartWith("Lists the entries of the content type story (\"News story\")");
+        list.ShouldEndWith("Fields: summary (text).");
+        list.ShouldNotContain("headline");
+    }
+
     // Core refuses q= without a search index, so no tool offers it.
     [Fact]
     public async Task WithoutASearchIndexNoSearchToolIsListed()

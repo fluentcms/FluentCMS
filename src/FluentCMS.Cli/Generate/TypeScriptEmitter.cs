@@ -10,7 +10,8 @@ namespace FluentCMS.Cli.Generate;
 // `generate typescript`: one ES module over @fluentcms/client with an interface per content type, component and block
 // type, the filter and sort builders of each type with the members and operators of the C# builders, and createClient,
 // which binds the content types to the client. A blocks field is the union of its block types on "type". The display
-// names and title fields of the content types are metadata, in contentTypeLabels, which only a schema that has one gets.
+// names and title fields of the content types are metadata, in contentTypeLabels, which only a schema with one of them
+// gets, so the module of any other schema stays as it was.
 internal static class TypeScriptEmitter
 {
     public const string FileName = "fluentcms.ts";
@@ -366,16 +367,15 @@ internal static class TypeScriptEmitter
 
         private void ContentTypeLabels()
         {
-            var labelled = _model.ContentTypes.Where(type => type.DisplayName is not null || type.TitleField is not null).ToList();
-            if (labelled.Count == 0)
+            if (!_model.ContentTypes.Any(type => type.DisplayName is not null || type.TitleField is not null))
             {
                 return;
             }
 
             _body.Line();
-            _body.Line("/** The display name and the title field of each content type that has one, by type name; null where it has none. */");
+            _body.Line("/** The display name and the title field of each content type, by type name; null where the type has none. */");
             _body.Open($"export const {Labels} = {{");
-            foreach (var type in labelled)
+            foreach (var type in _model.ContentTypes)
             {
                 _body.Line($"{Literal(type.Name)}: {{ displayName: {Text(type.DisplayName)}, titleField: {Text(type.TitleField)} }},");
             }
