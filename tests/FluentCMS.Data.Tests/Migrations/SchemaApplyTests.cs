@@ -6,6 +6,7 @@ using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.Tests.Providers;
+using FluentCMS.Providers;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -592,8 +593,27 @@ public sealed partial class SchemaApplyTests : IDisposable
         _database.Tables().ShouldNotContain("cms_article");
     }
 
+    // A lock that is never released, as when its release failed and a wall clock that stands still never ends its lease. The
+    // lock's monotonic clock runs a thousand times fast, so the wait reaches its timeout within a second or two.
     [Theory]
-    [InlineData(new[] { "--output", "schema.sql" }, "FCMS3300: --output names the file of --script, so it needs --script")]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ARunGivesUpOnALockThatIsNeverReleased(bool frozenWallClock)
+    {
+        await MigrateAsync(ArticleSchemas.Titled);
+        var clock = new FastMonotonicClock(frozenWallClock ? DateTimeOffset.UtcNow : null);
+        using var host = _database.CreateHost(ArticleSchemas.Titled, Production, settings: NoMigrationOnStartup, services: services => FastMonotonicClock.Lock(services, clock));
+
+        await using var other = await host.Services.GetRequiredService<IDistributedLock>().TryAcquireAsync(MigrationRunner.SchemaSyncLock, TimeSpan.Zero, Token);
+        other.ShouldNotBeNull();
+
+        var exception = await Should.ThrowAsync<TimeoutException>(host.Services.GetRequiredService<MigrationRunner>().LockContentSchemaAsync(Token).WaitAsync(TimeSpan.FromSeconds(30), Token));
+
+        exception.Message.ShouldStartWith($"The lock {MigrationRunner.SchemaSyncLock} was not free within 15 minutes, so the content tables were not changed; check the owner and lease_until of its row in cms_lock");
+    }
+
+    [Theory]
+    [InlineData(new[] { "--output", "schema.sql" },"FCMS3300: --output names the file of --script, so it needs --script")]
     [InlineData(new[] { "--script", "--dry-run" }, "FCMS3300: --script and --dry-run both apply nothing; give one")]
     public async Task BadUsageExitsWithTwo(string[] options, string message)
     {
