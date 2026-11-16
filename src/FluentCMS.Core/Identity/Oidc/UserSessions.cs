@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using System.Text.Json;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -11,6 +13,59 @@ internal sealed record UserSession(Guid Id, string? ClientId, string? ClientName
 // every token issued under it, so its refresh token is refused at once, and so is an access token on the next request.
 internal sealed class UserSessions(IOpenIddictAuthorizationManager authorizations, IOpenIddictApplicationManager applications, IOpenIddictTokenManager tokens, TimeProvider time)
 {
+    // The property of an authorization that names the server session, the sign-in cookie, it was issued in.
+    public const string ServerSessionProperty = "fcms_server_session";
+
+    // The ad-hoc authorization that OpenIddict would make for a code of the client, marked with the server session the
+    // user signed in with, so that the logout of that session finds it. Returns its id.
+    public async Task<string> BeginAsync(ClaimsPrincipal principal, object application, string serverSession, CancellationToken cancellationToken = default)
+    {
+        var descriptor = new OpenIddictAuthorizationDescriptor
+        {
+            ApplicationId = await applications.GetIdAsync(application, cancellationToken),
+            CreationDate = time.GetUtcNow(),
+            Principal = principal,
+            Status = Statuses.Valid,
+            Subject = principal.GetClaim(Claims.Subject),
+            Type = AuthorizationTypes.AdHoc,
+        };
+        descriptor.Scopes.UnionWith(principal.GetScopes());
+        descriptor.Properties[ServerSessionProperty] = JsonSerializer.SerializeToElement(serverSession);
+
+        var authorization = await authorizations.CreateAsync(descriptor, cancellationToken);
+        return await authorizations.GetIdAsync(authorization, cancellationToken)
+            ?? throw new InvalidOperationException("The authorization was stored without an id.");
+    }
+
+    // The end of a server session of the user: every valid authorization of the user issued in it, with its tokens. The
+    // user's other sessions, and a consent, which is no session's, stay. Without a session id, as for a sign-in from
+    // before sessions were marked, nothing ends here.
+    public async Task EndAsync(string? userId, string? serverSession, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(serverSession) || !Guid.TryParse(userId, out var user))
+        {
+            return;
+        }
+
+        List<string> ids = [];
+        await foreach (var authorization in authorizations.FindBySubjectAsync(user.ToString("D"), cancellationToken))
+        {
+            if (await authorizations.HasStatusAsync(authorization, Statuses.Valid, cancellationToken)
+                && (await authorizations.GetPropertiesAsync(authorization, cancellationToken)).TryGetValue(ServerSessionProperty, out var value)
+                && value.ValueKind == JsonValueKind.String
+                && value.GetString() == serverSession
+                && await authorizations.GetIdAsync(authorization, cancellationToken) is { } id)
+            {
+                ids.Add(id);
+            }
+        }
+
+        foreach (var id in ids)
+        {
+            await RevokeAsync(user, Guid.Parse(id), cancellationToken);
+        }
+    }
+
     public async Task<IReadOnlyList<UserSession>> ListAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         List<UserSession> sessions = [];

@@ -58,6 +58,7 @@ internal static class MemberConnect
                 return ConnectEndpoints.Refuse(Errors.LoginRequired, "The sign-in is older than the client or the server accepts.");
             }
 
+            // The cookie alone ends: another site can send this request, so it revokes nothing (#3203).
             await signIn.SignOutAsync();
             return Results.Challenge(new AuthenticationProperties { RedirectUri = afterSignIn }, [MemberAuthentication.CookieScheme]);
         }
@@ -67,6 +68,14 @@ internal static class MemberConnect
             .SetClaim(Claims.AuthenticationTime, signedInAt.ToUnixTimeSeconds())
             .SetClaim(TokenClaims.SessionStart, now.ToUnixTimeSeconds());
         TokenClaims.ForMember(identity, member, await signIn.UserManager.GetSecurityStampAsync(member), request.GetScopes(), methods);
+        if (CmsSignInManager.ServerSession(cookie.Properties!) is { } serverSession
+            && await context.RequestServices.GetRequiredService<IOpenIddictApplicationManager>().FindByClientIdAsync(request.ClientId!, context.RequestAborted) is { } application)
+        {
+            TokenClaims.ForServerSession(identity, serverSession);
+            identity.SetAuthorizationId(await context.RequestServices.GetRequiredService<UserSessions>()
+                .BeginAsync(new ClaimsPrincipal(identity), application, serverSession, context.RequestAborted));
+        }
+
         return Results.SignIn(new ClaimsPrincipal(identity), properties: null, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 

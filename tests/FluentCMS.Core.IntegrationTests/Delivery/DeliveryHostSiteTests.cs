@@ -1,4 +1,5 @@
 using System.Net;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -24,6 +25,8 @@ public sealed class DeliveryHostSiteTests : IAsyncDisposable
         _host = new FluentCmsTestHost()
             .WithContentTypes<Note, Topic>()
             .WithServices(services => services.AddSingleton<ISiteHostResolver>(_hosts))
+            // The seeded grant evicts the site once its outbox row is delivered, which a worker could do between the two reads.
+            .Configure(cms => cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0)
             .Seed(async services =>
             {
                 var context = services.GetRequiredService<CmsDbContext>();

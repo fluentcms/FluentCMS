@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Members;
+using FluentCMS.Core.Identity.Oidc;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -121,7 +122,8 @@ public sealed class MemberLoginInput
 
 // Asks before signing out. With the request of a client, which /connect/logout sent here, the form posts it back there
 // with an antiforgery token and the mark of this page, so that the endpoint ends the member's sign-in and never the admin
-// user's. Without one, the page ends the member's sign-in itself. There is no sign-out by GET.
+// user's. Without one, the page ends the member's sign-in itself, with the authorizations of its server session, as the
+// endpoint does. There is no sign-out by GET.
 public sealed class MemberLogoutModel : MemberPageModel
 {
     public string? Email { get; private set; }
@@ -142,7 +144,14 @@ public sealed class MemberLogoutModel : MemberPageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        await Service<MemberSignInManager>().SignOutAsync();
+        var signIn = Service<MemberSignInManager>();
+        var cookie = await HttpContext.AuthenticateAsync(MemberAuthentication.CookieScheme);
+        if (cookie.Succeeded)
+        {
+            await Service<UserSessions>().EndAsync(signIn.UserManager.GetUserId(cookie.Principal), CmsSignInManager.ServerSession(cookie.Properties), CancellationToken.None);
+        }
+
+        await signIn.SignOutAsync();
         return RedirectToPage();
     }
 }
