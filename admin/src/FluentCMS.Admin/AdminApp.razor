@@ -1,1 +1,30 @@
 @* The root component of the admin, which the shell fills. *@
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "NotFoundPage is kept by the DynamicDependency of the constructor.")]
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Router finds the pages of this assembly, each kept by a DynamicDependency of the constructor.")]
+@inject InterfaceCulture Culture
+@inject DocumentInterop Document
+
+<Router AppAssembly="typeof(AdminApp).Assembly" NotFoundPage="typeof(NotFoundPage)">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>
+<LiveRegions />
+
+@code {
+    // This assembly is trimmed and nothing references its pages, so each page is kept here or Router does not find it.
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HomePage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NotFoundPage))]
+    public AdminApp()
+    {
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Document.SetLanguageAsync(Culture.Culture.Name, Culture.Direction);
+        }
+    }
+}

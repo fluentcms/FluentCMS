@@ -1,0 +1,31 @@
+@implements IDisposable
+@inject Announcer Announcer
+
+<div class="live-region" role="status" aria-live="polite" aria-atomic="true">@polite</div>
+<div class="live-region" role="alert" aria-live="assertive" aria-atomic="true">@assertive</div>
+
+@code {
+    private string? polite;
+    private string? assertive;
+
+    protected override void OnInitialized() => Announcer.Announced += OnAnnounced;
+
+    public void Dispose() => Announcer.Announced -= OnAnnounced;
+
+    private void OnAnnounced(string message, AnnouncementPoliteness politeness) => _ = InvokeAsync(() =>
+    {
+        if (politeness == AnnouncementPoliteness.Assertive)
+        {
+            assertive = Next(assertive, message);
+        }
+        else
+        {
+            polite = Next(polite, message);
+        }
+
+        StateHasChanged();
+    });
+
+    // A screen reader reads a region when its text changes, so the same message twice differs by a trailing no-break space.
+    private static string Next(string? current, string message) => current == message ? message + " " : message;
+}

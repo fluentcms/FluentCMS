@@ -1,0 +1,12 @@
+@* The layout of the admin's pages, which the shell fills (A-08). *@
+@inherits LayoutComponentBase
+@inject IStringLocalizer<AdminResources> L
+
+<a class="skip-link" href="#main" @onclick="SkipToMainAsync" @onclick:preventDefault>@L["Shell.Layout.SkipToContent"]</a>
+<main id="main" tabindex="-1" @ref="main">@Body</main>
+
+@code {
+    private ElementReference main;
+
+    private async Task SkipToMainAsync() => await main.FocusAsync();
+}
