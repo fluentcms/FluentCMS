@@ -21,6 +21,10 @@ internal sealed class TypeDraft(string name, SchemaTypeKind kind, Type? clrType)
 
     public int TrashRetentionDays { get; set; } = PublishPolicyAttribute.DefaultTrashRetentionDays;
 
+    public string? DisplayName { get; set; }
+
+    public string? TitleField { get; set; }
+
     public List<FieldDraft> Fields { get; } = [];
 
     public bool IsContentType => Kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton;

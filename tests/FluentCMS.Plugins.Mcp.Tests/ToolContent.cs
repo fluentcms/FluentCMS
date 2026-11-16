@@ -62,3 +62,21 @@ public sealed class QuoteBlock
     [Text]
     public string? Text { get; set; }
 }
+
+// Types with a display name and a title field, which a host adds to those above when a test needs them.
+[Collection("story", DisplayName = "News story", TitleField = nameof(Headline))]
+public sealed class Story : ContentItem
+{
+    [Text]
+    public string? Headline { get; set; }
+
+    [Text]
+    public string? Summary { get; set; }
+}
+
+[Singleton("edition", DisplayName = "Today's edition")]
+public sealed class Edition : ContentItem
+{
+    [Text]
+    public string? Motto { get; set; }
+}

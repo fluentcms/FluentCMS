@@ -98,6 +98,23 @@ public sealed partial class HostedPagesTests
         }
     }
 
+    // Their antiforgery cookie is Secure, so over plain http every page is refused with one that says why, not a 500.
+    [Fact]
+    public async Task EveryHostedPageAskedForOverHttpIsRefusedWithAPageThatNamesTheCause()
+    {
+        using var browser = new HostedPagesBrowser(_host, baseAddress: new Uri("http://localhost/"));
+
+        foreach (var route in Routes)
+        {
+            using var response = await browser.GetAsync("/" + route);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Forbidden, route);
+            var html = await response.Content.ReadAsStringAsync(Token);
+            html.ShouldContain(ApiErrorCodes.HttpsRequired, customMessage: route);
+            html.ShouldContain("served over https only", customMessage: route);
+        }
+    }
+
     [Fact]
     public async Task TheHostedPagesAreRateLimitedByClientAddress()
     {

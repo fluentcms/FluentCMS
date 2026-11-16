@@ -45,7 +45,7 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
             return;
         }
 
-        var (kind, declaredName, localized, scope) = kinds[0];
+        var (kind, declaredName, localized, scope, displayName, titleField) = kinds[0];
         var isContentType = kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton;
         if (isContentType != typeof(ContentItem).IsAssignableFrom(type))
         {
@@ -61,6 +61,16 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
             {
                 t.Localized(localized);
                 t.Scope(scope);
+                if (displayName is not null)
+                {
+                    t.DisplayName(displayName);
+                }
+
+                if (titleField is not null)
+                {
+                    t.TitleField(SchemaNaming.ToCamelCase(titleField));
+                }
+
                 if (type.GetCustomAttribute<PublishPolicyAttribute>(inherit: false) is { } policy)
                 {
                     if (policy.MaxVersions < 1)
@@ -89,28 +99,28 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
         });
     }
 
-    private static List<(SchemaTypeKind Kind, string? Name, bool Localized, ContentScope Scope)> KindsOf(Type type)
+    private static List<(SchemaTypeKind Kind, string? Name, bool Localized, ContentScope Scope, string? DisplayName, string? TitleField)> KindsOf(Type type)
     {
-        List<(SchemaTypeKind, string?, bool, ContentScope)> kinds = [];
+        List<(SchemaTypeKind, string?, bool, ContentScope, string?, string?)> kinds = [];
 
         if (type.GetCustomAttribute<CollectionAttribute>(inherit: false) is { } collection)
         {
-            kinds.Add((SchemaTypeKind.Collection, collection.Name, collection.Localized, collection.Scope));
+            kinds.Add((SchemaTypeKind.Collection, collection.Name, collection.Localized, collection.Scope, collection.DisplayName, collection.TitleField));
         }
 
         if (type.GetCustomAttribute<SingletonAttribute>(inherit: false) is { } singleton)
         {
-            kinds.Add((SchemaTypeKind.Singleton, singleton.Name, singleton.Localized, singleton.Scope));
+            kinds.Add((SchemaTypeKind.Singleton, singleton.Name, singleton.Localized, singleton.Scope, singleton.DisplayName, singleton.TitleField));
         }
 
         if (type.GetCustomAttribute<ComponentAttribute>(inherit: false) is { } component)
         {
-            kinds.Add((SchemaTypeKind.Component, component.Name, false, ContentScope.Site));
+            kinds.Add((SchemaTypeKind.Component, component.Name, false, ContentScope.Site, null, null));
         }
 
         if (type.GetCustomAttribute<BlockAttribute>(inherit: false) is { } block)
         {
-            kinds.Add((SchemaTypeKind.Block, block.Name, false, ContentScope.Site));
+            kinds.Add((SchemaTypeKind.Block, block.Name, false, ContentScope.Site, null, null));
         }
 
         return kinds;

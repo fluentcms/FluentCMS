@@ -95,7 +95,7 @@ internal static class CSharpEmitter
             {
                 case SchemaTypeKind.Collection or SchemaTypeKind.Singleton:
                     code.Line($"/// <summary>An entry of the {TypeNames.Label(type.Kind)} <c>{type.Name}</c>.</summary>");
-                    code.Line($"[{Client}ContentType({Literal(type.Name)})]");
+                    code.Line($"[{Client}ContentType({Literal(type.Name)}{Labels(type)})]");
                     code.Line($"public sealed class {name} : {Client}Entry");
                     break;
                 case SchemaTypeKind.Component:
@@ -246,6 +246,12 @@ internal static class CSharpEmitter
             return code.ToString();
         }
     }
+
+    // A display name is text of the schema, so it is written as TypeScript writes it, with control characters and bidi
+    // controls escaped, which is also a C# string literal.
+    private static string Labels(SchemaType type) =>
+        (type.DisplayName is { } displayName ? $", DisplayName = {TypeScriptEmitter.Literal(displayName)}" : "")
+        + (type.TitleField is { } titleField ? $", TitleField = {Literal(titleField)}" : "");
 
     internal static string Literal(string text) => "\"" + text.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";
 }

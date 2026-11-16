@@ -44,6 +44,10 @@ public sealed class MigrationRunner(
 
     internal const string SchemaSyncLock = "fluentcms:schema-sync";
 
+    // Far above a healthy wait: a schema apply that rebuilds large tables can hold the lock for minutes. It still ends a wait
+    // on a lease that never runs out by this instance's clock.
+    internal static readonly TimeSpan SchemaSyncWait = TimeSpan.FromMinutes(15);
+
     private static readonly Stream System = new(SystemStream, services => services.GetRequiredService<SystemDbContext>());
     private static readonly Stream Content = new(ContentStream, services => services.GetRequiredService<CmsDbContext>());
 
@@ -193,8 +197,13 @@ public sealed class MigrationRunner(
 
     // Held by schema apply and schema sync, which change the same tables, so that two runs apply each operation once.
     internal async Task<IDistributedLockHandle> LockContentSchemaAsync(CancellationToken cancellationToken = default) =>
-        await locks.TryAcquireAsync(SchemaSyncLock, Timeout.InfiniteTimeSpan, cancellationToken)
-        ?? throw new InvalidOperationException($"The lock {SchemaSyncLock} was not taken.");
+        await locks.TryAcquireAsync(SchemaSyncLock, SchemaSyncWait, cancellationToken) ?? throw SchemaSyncBusy();
+
+    private static TimeoutException SchemaSyncBusy() => new(
+        $"The lock {SchemaSyncLock} was not free within {SchemaSyncWait.TotalMinutes:0} minutes, so the content tables were not changed; " +
+        $"check the owner and lease_until of its row in {StorageNames.Lock}: a lease_until that keeps moving means another instance or a " +
+        "'fluentcms schema apply' still holds it and is working, and one that stands still ahead of this instance's clock means its holder " +
+        "stopped and the clocks of the instances are not in step; once no instance is running, set the row's owner to null.");
 
     // The steps that bring the content tables up to the host's schema: schema sync's comparison, with renames and the
     // changes sync leaves undone. The applied snapshot tells which tables under a plugin's prefix are content tables.
@@ -536,8 +545,7 @@ public sealed class MigrationRunner(
         {
             // Nodes that start together diff the same database, and the second to create a table would fail on it. The
             // lock waits for the first, and the diff taken under it leaves out what the first applied.
-            await using var held = await locks.TryAcquireAsync(SchemaSyncLock, Timeout.InfiniteTimeSpan, cancellationToken)
-                ?? throw new InvalidOperationException($"The lock {SchemaSyncLock} was not taken.");
+            await using var held = await locks.TryAcquireAsync(SchemaSyncLock, SchemaSyncWait, cancellationToken) ?? throw SchemaSyncBusy();
             using var guarded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, held.Lost);
 
             diff = await ContentSchemaDiff.CompareAsync(context, provider.SchemaReader, prefixes, guarded.Token);

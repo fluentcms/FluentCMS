@@ -149,10 +149,11 @@ internal sealed class JobExecutor(
 
     // A result not written means the job runs again, or is dead-lettered as if it never finished, so a brief outage is
     // waited out. Retrying past the real end of the lease is safe, because a write matches nothing once another worker
-    // has the job. It gives up after one lease, in case the failure is not an outage.
+    // has the job. It gives up after one lease, in case the failure is not an outage, measured on the monotonic clock so
+    // that a wall clock that stands still, as a test host's does, cannot keep it retrying.
     private async Task SettleWithRetriesAsync(ClaimedJob job, Func<Task<bool>> settle, CancellationToken abandon)
     {
-        var giveUpAt = time.GetUtcNow() + options.LeaseDuration;
+        var started = time.GetTimestamp();
         var delay = FirstSettleRetry;
 
         while (true)
@@ -166,7 +167,7 @@ internal sealed class JobExecutor(
 
                 return;
             }
-            catch (Exception exception) when (time.GetUtcNow() + delay < giveUpAt)
+            catch (Exception exception) when (time.GetElapsedTime(started) + delay < options.LeaseDuration)
             {
                 JobLog.SettleFailed(logger, exception, job.Id);
             }
