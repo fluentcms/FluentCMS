@@ -117,6 +117,22 @@ A command runs before any hosted service starts, so nothing migrates on start, l
 
 The tool sends the host's console logs to standard error, so that standard output holds only what the command writes. Neither `migrate` nor the other commands need `MigrateOnStartup`.
 
+### The migrations lock on SQLite
+
+EF Core holds a lock while it applies migrations, and on SQLite that lock is a row in the table `__EFMigrationsLock`, which EF deletes when it is done. A process killed while it applies migrations leaves the row behind ([#3177](https://github.com/fluentcms/FluentCMS/issues/3177)). A start with `MigrateOnStartup` and `fluentcms migrate` take the lock only for a stream that has a pending migration, so a start with nothing pending is not held up by the row. One that has something to apply waits for the row to go. After 30 seconds it logs a warning once (event id 9305) that names the stream and the time the row was written. After 15 minutes it fails with a `TimeoutException` that says the same, and nothing of that stream is applied. A start stops there, and `fluentcms migrate` exits with 1 and `FCMS3302`:
+
+```text
+FCMS3302: 'fluentcms migrate' failed: TimeoutException: EF Core's migrations lock, the row of __EFMigrationsLock written at 2026-11-15 10:00:00+00:00, was not released within 15 minutes, so the system stream was not migrated; ...
+```
+
+A healthy holder is another process applying migrations to the same database, such as a `fluentcms migrate` beside a host that starts, and the row goes when it is done. The row is never cleared on its own, because a migration that rebuilds large tables can take long. Once no other process is migrating the database, delete the row and start again:
+
+```sql
+DELETE FROM "__EFMigrationsLock";
+```
+
+PostgreSQL and SQL Server hold their lock with the session or transaction that took it, so a process that stops releases it. On SQL Server a process that waits for another's migrations longer than the command timeout (30 seconds by default) fails with `Execution Timeout Expired` and succeeds when run again once the other is done.
+
 ## Startup validation
 
 With `MigrateOnStartup` set to `false`, startup first stops with `FCMS1305` if the system or a plugin stream has a pending migration, which is what an upgrade to a new FluentCMS version can bring:

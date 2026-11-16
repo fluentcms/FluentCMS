@@ -72,6 +72,21 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
             .MigrationsHistoryTable(SystemDbContext.HistoryTable))
             .AddInterceptors(_interceptors);
 
+    // EF inserts the row with id 1 to take its lock and deletes it to release it.
+    public async Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken)
+    {
+        var tables = await context.Database
+            .SqlQueryRaw<long>("SELECT count(*) AS \"Value\" FROM sqlite_master WHERE type = 'table' AND name = '__EFMigrationsLock'")
+            .ToListAsync(cancellationToken);
+        if (tables[0] == 0)
+        {
+            return null;
+        }
+
+        var rows = await context.Database.SqlQueryRaw<string>("SELECT \"Timestamp\" AS \"Value\" FROM \"__EFMigrationsLock\"").ToListAsync(cancellationToken);
+        return rows.FirstOrDefault();
+    }
+
     void IDatabaseFile.Snapshot(string destination) => _file.Snapshot(destination);
 
     bool IDatabaseFile.IsInUse() => _file.IsInUse();
