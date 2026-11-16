@@ -14,7 +14,9 @@ The Blazor WebAssembly admin of FluentCMS, a pure client of the Management API. 
 | `tests/FluentCMS.Admin.ApiTests` | The admin's client against `FluentCmsTestHost`, in full CI |
 | `tests/FluentCMS.Admin.EndToEnd` | Browser tests against the reference host, in full CI |
 
-A lane registers its services in `AddAdminServices` of `AdminHostBuilderExtensions`, which runs only with a valid `config.json` and hands it the `AdminConfiguration`. Localization and accessibility register before it, in `AddAdminStartup`, since the configuration error page needs them too.
+A lane registers its services in `AddAdminServices` of `AdminHostBuilderExtensions`, which runs only with a valid `config.json` and hands it the `AdminConfiguration`. The wrapped set registers there too, with the admin's localizer as its `ICmsTextSource`. Localization and accessibility register before it, in `AddAdminStartup`, since the configuration error page needs them too; that page uses no wrapped component, only the theme tokens of the `cms-root` class.
+
+`AdminApp` renders one `CmsThemeRoot` around the router and the live regions. Every component of the wrapped set is shown at `/system/components`, a page of the shell that ships with the admin and is linked from the start page.
 
 The browser libraries are trimmable and the app publishes trimmed, so a trim warning in a FluentCMS assembly fails `dotnet build -warnaserror` (the trim analyzer) and the publish. In a FluentCMS component, the framework's `Router` (IL2111, and IL2110 with `NotFoundPage`), `LayoutView` (IL2110, IL2111) and `DynamicComponent` (IL2111) raise such warnings; `RouteView`, `CascadingValue`, `ErrorBoundary`, `NavLink`, `PageTitle` and `HeadOutlet` do not. The component that hosts one of the three carries `@attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = ...)]` and the same for `IL2111`, with the reason, and then both pass. The trimmer also drops a page of a trimmable library that nothing references, so `Router` does not find it at run time although the build passes: `AdminApp` keeps each page with a `DynamicDependency` on its constructor.
 

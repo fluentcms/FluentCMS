@@ -1,15 +1,44 @@
+/* Out of view until focused; the ring is the wrapped set's :focus-visible ring of .cms-root. */
 .skip-link {
     position: absolute;
-    inset-inline-start: 0;
-    inset-block-start: 0;
-    padding: 0.5rem 1rem;
-    transform: translateY(-100%);
+    inset-inline-start: var(--cms-space-s);
+    inset-block-start: var(--cms-space-s);
+    z-index: 1;
+    padding-block: var(--cms-space-s);
+    padding-inline: var(--cms-space-m);
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-s);
+    background-color: var(--cms-color-bg);
+    color: var(--cms-color-accent-text);
+    font-weight: 600;
+    transform: translateY(-200%);
 }
 
 .skip-link:focus {
     transform: none;
 }
 
-main:focus {
+.shell-header {
+    display: flex;
+    align-items: center;
+    gap: var(--cms-space-m);
+    padding-block: var(--cms-space-s);
+    padding-inline: var(--cms-space-xl);
+    border-block-end: 1px solid var(--cms-color-border);
+    background-color: var(--cms-color-surface);
+}
+
+.shell-home {
+    display: inline-flex;
+    min-block-size: var(--cms-target-size);
+}
+
+/* The skip link moves focus here by script; a ring shows only when the browser deems that focus visible. */
+main:focus:not(:focus-visible) {
     outline: none;
+}
+
+main:focus-visible {
+    outline: var(--cms-focus-ring-width) solid var(--cms-focus-ring-color);
+    outline-offset: calc(-1 * var(--cms-focus-ring-width));
 }

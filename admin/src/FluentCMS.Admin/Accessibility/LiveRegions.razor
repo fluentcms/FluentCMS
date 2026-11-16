@@ -2,13 +2,13 @@
 @inject Announcer Announcer
 
 @* Each announcement is a new node, read as an addition, so that two in one turn and the same message twice are each read. *@
-<div class="live-region" role="status" aria-live="polite" aria-relevant="additions" aria-atomic="false">
+<div class="cms-visually-hidden" role="status" aria-live="polite" aria-relevant="additions" aria-atomic="false">
     @foreach (var announcement in polite)
     {
         <div @key="announcement.Id">@announcement.Message</div>
     }
 </div>
-<div class="live-region" role="alert" aria-live="assertive" aria-relevant="additions" aria-atomic="false">
+<div class="cms-visually-hidden" role="alert" aria-live="assertive" aria-relevant="additions" aria-atomic="false">
     @foreach (var announcement in assertive)
     {
         <div @key="announcement.Id">@announcement.Message</div>

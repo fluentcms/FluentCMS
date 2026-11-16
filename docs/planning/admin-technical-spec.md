@@ -187,7 +187,7 @@ Every URL is ASCII only; an internationalized host name is written in its `xn--`
 
 A missing or invalid member shows a static error page that names it, before anything else runs; the app makes no request to the API until its configuration is valid. A member set to `null` counts as not set, and a member that appears twice in one object is refused. A file that cannot be read within 15 seconds is a problem of the file. A member the app does not know, also inside `branding` and `cultures`, is ignored with a console warning, so a newer `config.json` works with an older build. In the reference host, `config.json` is an endpoint built from the host's configuration, so the image needs no file (6.1). `config.json` is as trusted as `index.html`: whoever can write it can already point `authority` anywhere, so the validation guards against mistakes, not against an attacker.
 
-The branding is applied without a `<style>` element, which a strict `Content-Security-Policy` blocks: `name` is the page title, `faviconUrl` a `<link rel="icon">`, and `accentColor` and `logoUrl` the custom properties `--fluentcms-brand-accent` and `--fluentcms-brand-logo` (a `url()` resolved against the admin's base) on the document element, which the wrapped set reads (2.3).
+The branding is applied without a `<style>` element, which a strict `Content-Security-Policy` blocks: `name` is the page title and the name of the shell's logo, `faviconUrl` a `<link rel="icon">`, `logoUrl` the image of the shell's logo (`CmsLogo`), and `accentColor` the custom property `--fluentcms-brand-accent` on the document element, which the wrapped set reads (2.3).
 
 ### 2.6 Lazy loading by plugin assembly
 
@@ -276,7 +276,7 @@ Elsewhere: the admin's rules join `tests/FluentCMS.Architecture.Tests` (3.3); `t
 - The app publishes trimmed. Records are serialized through source-generated contexts, and trim warnings are errors.
 - Static web assets are fingerprinted and compressed at publish, so the host can cache them for a year and `index.html` and `config.json` not at all.
 - Strings shown to a user come from resources (4.17); a test with a pseudo-culture fails on a hard-coded one (7).
-- No JavaScript outside an allow-list: the script of the component library, loaded by `FluentCMS.Admin.Components` (2.3); the rich text bundle; the document module of `FluentCMS.Admin`, whose one type `DocumentInterop` sets the document's `lang` and `dir` (4.17), the branding custom properties on the document element through `style.setProperty` (2.5), and returns focus to the opener of a dialog of the admin's own (4.18); and small interop modules for clipboard, file drop and `BroadcastChannel`, each in `FluentCMS.Admin` or `FluentCMS.Admin.RichText`.
+- No JavaScript outside an allow-list: the script of the component library, loaded by `FluentCMS.Admin.Components` (2.3); the rich text bundle; the document module of `FluentCMS.Admin`, whose one type `DocumentInterop` sets the document's `lang` and `dir` (4.17), the accent color of the branding as a custom property on the document element through `style.setProperty` (2.5), and returns focus to the opener of a dialog of the admin's own (4.18); and small interop modules for clipboard, file drop and `BroadcastChannel`, each in `FluentCMS.Admin` or `FluentCMS.Admin.RichText`.
 
 ### 3.2 Naming conventions
 

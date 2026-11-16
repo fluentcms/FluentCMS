@@ -1,6 +1,8 @@
 using Bunit;
 using FluentCMS.Admin.Api;
+using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Configuration;
+using FluentCMS.Admin.Shell;
 using FluentCMS.Admin.Tests.Configuration;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
@@ -92,29 +94,68 @@ public sealed class AdminAppTests : AdminTestContext
             """));
         var head = Render<HeadOutlet>();
 
-        Render<AdminApp>();
+        var app = Render<AdminApp>();
 
         head.Find("title").TextContent.ShouldBe("Acme");
         head.Find("link[rel='icon']").GetAttribute("href").ShouldBe("favicon.png");
-        var calls = Document.Invocations["setProperty"];
-        calls.Select(call => call.Arguments.ToArray()).ShouldBe(
-        [
-            [BrandingHead.AccentProperty, "#0f6cbd"],
-            [BrandingHead.LogoProperty, "url(\"http://localhost/img/logo.svg\")"],
-        ]);
+        Document.Invocations["setProperty"].Select(call => call.Arguments.ToArray()).ShouldBe([[BrandingHead.AccentProperty, "#0f6cbd"]]);
+        var logo = app.Find(".cms-root header a.shell-home img.cms-logo");
+        logo.GetAttribute("src").ShouldBe("img/logo.svg");
+        logo.GetAttribute("alt").ShouldBe("Acme, home");
     }
 
     [Fact]
-    public async Task WithoutBrandingNoCustomPropertyIsSet()
+    public async Task WithoutBrandingNoCustomPropertyIsSetAndTheShellShowsTheFluentCmsLogo()
     {
         await Start(new FakeHandler("""{ "apiBaseUrl": "https://cms.example.com" }"""));
         var head = Render<HeadOutlet>();
 
-        Render<AdminApp>();
+        var app = Render<AdminApp>();
 
         head.Find("title").TextContent.ShouldBe("FluentCMS");
         head.FindAll("link").ShouldBeEmpty();
         Document.Invocations["setProperty"].ShouldBeEmpty();
+        app.Find("header a.shell-home .cms-logo").GetAttribute("aria-label").ShouldBe("FluentCMS, home");
+    }
+
+    [Fact]
+    public async Task OneThemeRootHoldsTheLayoutAndTheLiveRegions()
+    {
+        await Start(new FakeHandler("""{ "apiBaseUrl": "https://cms.example.com" }"""));
+
+        var app = Render<AdminApp>();
+
+        app.FindComponents<CmsThemeRoot>().ShouldHaveSingleItem();
+        var root = app.Find(".cms-root");
+        app.FindAll(".cms-root").ShouldHaveSingleItem();
+        root.QuerySelector("main#main").ShouldNotBeNull();
+        root.QuerySelector("a.skip-link").ShouldNotBeNull();
+        root.QuerySelectorAll("[aria-live]").Select(region => region.ClassName).ShouldBe(["cms-visually-hidden", "cms-visually-hidden"]);
+        app.Nodes.OfType<AngleSharp.Dom.IElement>().ShouldHaveSingleItem().ClassName.ShouldBe("cms-root");
+    }
+
+    [Fact]
+    public async Task TheThemeChosenInTheShellAppliesToTheThemeRoot()
+    {
+        await Start(new FakeHandler("""{ "apiBaseUrl": "https://cms.example.com" }"""));
+        var app = Render<AdminApp>();
+        app.Find(".cms-root").HasAttribute("data-cms-theme").ShouldBeFalse();
+
+        await app.InvokeAsync(() => Services.GetRequiredService<ShellTheme>().Choose(CmsThemeMode.Dark));
+
+        app.WaitForAssertion(() => app.Find(".cms-root").GetAttribute("data-cms-theme").ShouldBe("dark"));
+    }
+
+    [Fact]
+    public async Task TheErrorPageHasTheTokensButNoThemeRootOrWrappedServices()
+    {
+        await Start(new FakeHandler("{}"));
+
+        var app = Render<AdminApp>();
+
+        app.FindComponents<CmsThemeRoot>().ShouldBeEmpty();
+        app.Find(".cms-root main.fluentcms-configuration-error").ShouldNotBeNull();
+        Services.GetService<ICmsToastService>().ShouldBeNull();
     }
 
     // Composes the services as AddFluentCmsAdmin does. The client stays open and is registered for every service that takes an

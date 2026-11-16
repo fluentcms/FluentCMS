@@ -157,6 +157,47 @@ public sealed class CmsWiringTests : ComponentTestContext
         root.WaitForAssertion(() => root.Find("fluent-toast-b [slot=action]").TextContent.Trim().ShouldBe("Close"));
     }
 
+    [Fact]
+    public void ARegisteredTextSourceSuppliesTheSetsOwnTexts()
+    {
+        Services.AddSingleton<ICmsTextSource>(new BracketedTexts());
+        var root = Render<CmsThemeRoot>();
+        var zone = Render<CmsFileDropZone>(p => p.Add(x => x.Label, "Upload"));
+        var toasts = Services.GetRequiredService<ICmsToastService>();
+
+        _ = root.InvokeAsync(() => toasts.ShowAsync("Saved."));
+
+        zone.Find(".cms-field-message").TextContent.ShouldBe("[DropZoneChoose]");
+        root.WaitForAssertion(() => root.Find("fluent-toast-b [slot=action]").TextContent.Trim().ShouldBe("[Close]"));
+    }
+
+    [Fact]
+    public void TheLibrarysTextsComeThroughTheTextSourceOrStayTheLibrarysOwn()
+    {
+        Services.AddSingleton<ICmsTextSource>(new BracketedTexts("DataGrid_SelectColumn_RowUnchecked"));
+
+        var grid = Render<CmsDataGrid<string>>(p => p
+            .Add(x => x.Label, "Articles")
+            .Add(x => x.Items, ["a"])
+            .Add(x => x.SelectionMode, CmsSelectionMode.Many)
+            .Add(x => x.ChildContent, (RenderFragment)(b =>
+            {
+                b.OpenComponent<CmsDataGridColumn<string>>(0);
+                b.AddAttribute(1, nameof(CmsDataGridColumn<string>.Title), "Title");
+                b.AddAttribute(2, nameof(CmsDataGridColumn<string>.Value), (Func<string, string>)(a => a));
+                b.CloseComponent();
+            })));
+
+        grid.WaitForAssertion(() => grid.Markup.ShouldContain("[DataGrid_SelectColumn_RowUnchecked]"));
+        grid.Markup.ShouldContain("No rows are selected");
+    }
+
+    // Brackets the names it is given, and has no text for any other.
+    private sealed class BracketedTexts(params string[] names) : ICmsTextSource
+    {
+        public string? GetText(string name) => names.Length == 0 || names.Contains(name) ? $"[{name}]" : null;
+    }
+
     private sealed class FakeFile(string name) : IBrowserFile
     {
         public string Name { get; } = name;
