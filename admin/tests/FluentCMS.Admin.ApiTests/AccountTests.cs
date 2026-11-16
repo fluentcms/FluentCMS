@@ -17,7 +17,8 @@ public sealed class AccountTests
     public async Task TheEditorEnrolsTwoFactorAndTurnsItOffAgain()
     {
         await using var admin = new AdminHost();
-        using var client = await admin.SignInAsync(BuiltInRoles.EditorName);
+        var editor = await admin.Host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        using var client = await admin.SignInAsync(editor);
         var account = client.Client;
 
         (await account.GetTwoFactorAsync(Token)).Enabled.ShouldBeFalse();
@@ -32,6 +33,11 @@ public sealed class AccountTests
 
         var codes = await account.VerifyAuthenticatorAsync(Totp(setup.SharedKey, DateTimeOffset.UtcNow), Token);
         codes.Count.ShouldBe(10);
+
+        // The new security stamp revoked the user's sessions, this one among them (#3202).
+        AccountProblems.IsSignedOut(await Should.ThrowAsync<ApiProblemException>(() => account.GetTwoFactorAsync(Token))).ShouldBeTrue();
+        using var signedInAgain = await admin.SignInAsync(editor);
+        account = signedInAgain.Client;
         var on = await account.GetTwoFactorAsync(Token);
         on.Enabled.ShouldBeTrue();
         on.RecoveryCodesLeft.ShouldBe(10);
@@ -49,7 +55,9 @@ public sealed class AccountTests
         var old = await Should.ThrowAsync<ApiProblemException>(() => account.DisableTwoFactorAsync(codes[0], Token));
         AccountProblems.Has(old, AccountProblems.InvalidTwoFactorCode).ShouldBeTrue();
         await account.DisableTwoFactorAsync(fresh[0], Token);
-        (await account.GetTwoFactorAsync(Token)).Enabled.ShouldBeFalse();
+        AccountProblems.IsSignedOut(await Should.ThrowAsync<ApiProblemException>(() => account.GetTwoFactorAsync(Token))).ShouldBeTrue();
+        using var signedInOnceMore = await admin.SignInAsync(editor);
+        (await signedInOnceMore.Client.GetTwoFactorAsync(Token)).Enabled.ShouldBeFalse();
     }
 
     [Fact]

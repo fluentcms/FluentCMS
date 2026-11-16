@@ -220,6 +220,19 @@ public sealed class AdminCommandTests(AdminCommandFixture fixture) : IClassFixtu
     }
 
     [Fact]
+    public async Task SettingThePasswordRevokesTheUsersAccessTokens()
+    {
+        var user = await Host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var tokens = await Host.SignInAsync(user);
+        (await MeAsync(tokens.AccessToken)).ShouldBe(HttpStatusCode.OK);
+
+        var reset = await RunAsync(new TextCommandInput(new StringReader("A-New-Longer-Passphrase-7\n"), terminal: false), "user", "reset-password", "--email", user.Email, "--password-stdin");
+
+        reset.ExitCode.ShouldBe(0, reset.Error);
+        (await MeAsync(tokens.AccessToken)).ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task JobsRunQueuesARunThatAWorkerPicksUpAndInlineRunsItHere()
     {
         await AddRecurringAsync("test.probe", new ProbePayload("queued"));
@@ -301,6 +314,14 @@ public sealed class AdminCommandTests(AdminCommandFixture fixture) : IClassFixtu
         var client = Host.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("ApiKey", key);
         return client;
+    }
+
+    private async Task<HttpStatusCode> MeAsync(string accessToken)
+    {
+        using var client = Host.CreateSecureClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        using var response = await client.GetAsync("/api/management/v1/me", Token);
+        return response.StatusCode;
     }
 
     private async Task AddRecurringAsync(string name, ProbePayload payload) =>
