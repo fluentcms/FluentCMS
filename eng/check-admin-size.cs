@@ -1,7 +1,9 @@
 // The size budget of the Pack job (admin spec 7): the compressed first download of the published admin app, which is the Brotli
 // size of every file of its wwwroot folder but the lazy assemblies and the satellite resources, which the boot configuration in
 // _framework/dotnet.js names and a first visit in the default culture does not fetch. A file without its .br is compressed here.
-// It prints the total and the largest files, and exits with 1 above the budget.
+// The total is an upper bound: every other file counts, those of _content that a page fetches only when it needs them too (the
+// library's lazy modules, reboot.css, the dark logo, and the _content of a lazy package such as the rich text editor's bundle).
+// It prints the total, the files left out and the largest files, and exits with 1 above the budget.
 //
 //   dotnet run eng/check-admin-size.cs -- <publish folder of FluentCMS.Admin.App> <budget in bytes>
 
@@ -33,16 +35,29 @@ if (notFetched is null)
     return 1;
 }
 
-var files = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+var published = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
     .Where(file => !file.EndsWith(".br", StringComparison.OrdinalIgnoreCase) && !file.EndsWith(".gz", StringComparison.OrdinalIgnoreCase))
-    .Where(file => !notFetched.Contains(Path.GetFullPath(file)))
+    .ToLookup(file => notFetched.Contains(Path.GetFullPath(file)));
+var skipped = published[true].Select(file => Path.GetRelativePath(root, file).Replace('\\', '/')).Order(StringComparer.Ordinal).ToList();
+var files = published[false]
     .Select(file => (Name: Path.GetRelativePath(root, file).Replace('\\', '/'), Size: Compressed(file)))
     .OrderByDescending(file => file.Size)
     .ToList();
 
 var total = files.Sum(file => file.Size);
-Console.WriteLine($"The first download of the admin is {total:N0} B in Brotli, {files.Count} files; the budget is {budget:N0} B.");
-Console.WriteLine($"Left out, as a first visit does not fetch them: {notFetched.Count} lazy assemblies and satellite resources.");
+Console.WriteLine($"The first download of the admin is at most {total:N0} B in Brotli, {files.Count} files; the budget is {budget:N0} B.");
+Console.WriteLine($"Left out, as lazy assemblies or satellite resources of the boot configuration: {skipped.Count} files.");
+foreach (var name in skipped)
+{
+    Console.WriteLine($"  {name}");
+}
+
+// A name the boot configuration gives whose file is not where it is looked for is counted, so the total errs on the high side.
+if (notFetched.Count > skipped.Count)
+{
+    Console.WriteLine($"Counted although the boot configuration names them as lazy or satellite: {notFetched.Count - skipped.Count} files not found where expected.");
+}
+
 Console.WriteLine("The largest files:");
 foreach (var (name, size) in files.Take(15))
 {

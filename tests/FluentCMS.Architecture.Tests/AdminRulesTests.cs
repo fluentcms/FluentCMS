@@ -1,5 +1,6 @@
 using System.Reflection;
 using ArchUnitNET.Fluent;
+using ArchUnitNET.Fluent.Syntax.Elements.Types;
 using ArchUnitNET.Loader;
 using ArchUnitNET.xUnitV3;
 using Shouldly;
@@ -22,6 +23,14 @@ public class AdminRulesTests
     private const string AdminHosting = "FluentCMS.Admin.Hosting";
     private const string Core = "FluentCMS.Core";
     private const string Client = "FluentCMS.Client";
+    private const string Library = "Microsoft.FluentUI.AspNetCore.Components";
+    private const string LibraryNamespace = "Microsoft.FluentUI";
+
+    // The packages of admin/src/ itself; any other project there, or elsewhere, may be a half.
+    private static readonly string[] AdminPackages = [Admin, AdminAbstractions, AdminComponents, AdminRichText, AdminApp, AdminHosting];
+
+    // A development-only FluentCMS package is left out of the rules only when it is one of these, which run in the compiler.
+    private static readonly string[] CompilerPackages = ["FluentCMS.Analyzers", "FluentCMS.Generators"];
 
     // Spec 3.1: the types that may use JavaScript interop. The component library's script is loaded by the library's own types,
     // so no type of FluentCMS.Admin.Components is listed. The rich text bundle and the clipboard, file drop and BroadcastChannel
@@ -30,14 +39,16 @@ public class AdminRulesTests
 
     private static readonly string[] InteropNamespaces = ["Microsoft.JSInterop", "System.Runtime.InteropServices.JavaScript"];
 
+    private static readonly Lazy<Assembly[]> browserAssemblies = new(() => [.. BrowserAssemblies().Select(Assembly.LoadFrom)]);
+
     private static readonly Lazy<ArchUnitNET.Domain.Architecture> browser = new(
-        () => new ArchLoader().LoadAssemblies([.. BrowserAssemblies().Select(Assembly.LoadFrom)]).Build());
+        () => new ArchLoader().LoadAssemblies(browserAssemblies.Value).Build());
 
     private static readonly Lazy<ArchUnitNET.Domain.Architecture> careless = new(
         () => new ArchLoader().LoadAssemblies(typeof(CarelessInterop).Assembly).Build());
 
     // Decision 4: what runs in the browser references no server package, through another project either. FluentCMS.Client,
-    // which references nothing, may be reused (AQ6).
+    // which references nothing, may be reused (AQ5).
     [Fact]
     public void NoAdminAssemblyThatRunsInTheBrowserReferencesAServerPackage()
     {
@@ -48,7 +59,7 @@ public class AdminRulesTests
               <ItemGroup>
                 <ProjectReference Include="../../../src/FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
                 <ProjectReference Include="../FluentCMS.Admin.Hosting/FluentCMS.Admin.Hosting.csproj" />
-                <PackageReference Include="FluentCMS.Data.Sqlite" />
+                <PackageReference Include="FluentCMS.Data.Sqlite" PrivateAssets="all" />
               </ItemGroup>
             </Project>
             """);
@@ -62,10 +73,39 @@ public class AdminRulesTests
                 "FluentCMS.Admin.Careless references FluentCMS.Data.Sqlite",
             ],
             ignoreOrder: true);
+
+        // A half outside admin/src/ that builds on its server half.
+        var half = ProjectFile.FromXml("samples/Reviews.Admin/Reviews.Admin.csproj", """
+            <Project Sdk="Microsoft.NET.Sdk.Razor">
+              <ItemGroup>
+                <ProjectReference Include="../Reviews/Reviews.csproj" />
+              </ItemGroup>
+            </Project>
+            """);
+        var server = ProjectFile.FromXml("samples/Reviews/Reviews.csproj", """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <ItemGroup>
+                <ProjectReference Include="../../src/FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
+              </ItemGroup>
+            </Project>
+            """);
+
+        BrowserReferencesToServerPackages(With(half, server)).ShouldBe(["Reviews.Admin references FluentCMS.Sdk"]);
+    }
+
+    // The same rule on the compiled assemblies, which also hold what a project file does not show: a <Reference> with a HintPath,
+    // or a reference added by a Directory.Build.props or .targets file.
+    [Fact]
+    public void NoAdminAssemblyThatRunsInTheBrowserIsCompiledAgainstAServerPackage()
+    {
+        browserAssemblies.Value.Select(assembly => assembly.GetName().Name).ShouldContain(Admin);
+        browserAssemblies.Value.SelectMany(ServerReferences).ShouldBeEmpty();
+
+        ServerReferences(typeof(AdminRulesTests).Assembly).ShouldContain($"FluentCMS.Architecture.Tests references {Core}");
     }
 
     // Spec 2.3: a half builds on the contract and the wrapped set alone, so swapping the component library touches
-    // FluentCMS.Admin.Components only. The library is what that project references.
+    // FluentCMS.Admin.Components only.
     [Fact]
     public void AnAdminHalfReferencesTheAdminAbstractionsAndTheWrappedComponentsOnly()
     {
@@ -77,26 +117,107 @@ public class AdminRulesTests
                 <ProjectReference Include="../../FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj" />
                 <ProjectReference Include="../../FluentCMS.Admin.Components/FluentCMS.Admin.Components.csproj" />
                 <ProjectReference Include="../../FluentCMS.Admin/FluentCMS.Admin.csproj" />
-                <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
               </ItemGroup>
             </Project>
             """);
 
-        HalfViolations(With(careless)).ShouldBe(
+        // The shell reached through a project of another name.
+        var indirect = ProjectFile.FromXml("samples/Ratings.Admin/Ratings.Admin.csproj", """
+            <Project Sdk="Microsoft.NET.Sdk.Razor">
+              <ItemGroup>
+                <ProjectReference Include="../Ratings.Shared/Ratings.Shared.csproj" />
+              </ItemGroup>
+            </Project>
+            """);
+        var shared = ProjectFile.FromXml("samples/Ratings.Shared/Ratings.Shared.csproj", """
+            <Project Sdk="Microsoft.NET.Sdk.Razor">
+              <ItemGroup>
+                <ProjectReference Include="../../admin/src/FluentCMS.Admin/FluentCMS.Admin.csproj" />
+              </ItemGroup>
+            </Project>
+            """);
+
+        HalfViolations(With(careless, indirect, shared)).ShouldBe(
+            ["FluentCMS.Plugins.Reviews.Admin references FluentCMS.Admin", "Ratings.Admin references FluentCMS.Admin"],
+            ignoreOrder: true);
+    }
+
+    // Spec 2.3: only the wrapped set compiles against the component library, which is what FluentCMS.Admin.Components
+    // references. A package of the library is matched by its id and the ids below it, and through any project but the wrapped set.
+    [Fact]
+    public void OnlyTheWrappedSetReferencesTheComponentLibrary()
+    {
+        LibraryReferences(ProjectFile.RepositoryProjects).ShouldBeEmpty();
+
+        var half = ProjectFile.FromXml(HalvesFolder + "FluentCMS.Plugins.Reviews.Admin/FluentCMS.Plugins.Reviews.Admin.csproj", """
+            <Project Sdk="Microsoft.NET.Sdk.Razor">
+              <ItemGroup>
+                <ProjectReference Include="../../FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj" />
+                <ProjectReference Include="../../FluentCMS.Admin.Components/FluentCMS.Admin.Components.csproj" />
+                <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Emoji" />
+              </ItemGroup>
+            </Project>
+            """);
+        var indirect = ProjectFile.FromXml("samples/Ratings.Admin/Ratings.Admin.csproj", """
+            <Project Sdk="Microsoft.NET.Sdk.Razor">
+              <ItemGroup>
+                <ProjectReference Include="../../admin/src/FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj" />
+                <ProjectReference Include="../Ratings.Shared/Ratings.Shared.csproj" />
+              </ItemGroup>
+            </Project>
+            """);
+        var shared = ProjectFile.FromXml("samples/Ratings.Shared/Ratings.Shared.csproj", """
+            <Project Sdk="Microsoft.NET.Sdk.Razor">
+              <ItemGroup>
+                <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
+              </ItemGroup>
+            </Project>
+            """);
+        var shell = ProjectFile.FromXml(AdminFolder + "FluentCMS.Admin/FluentCMS.Admin.csproj", """
+            <Project Sdk="Microsoft.NET.Sdk.Razor">
+              <ItemGroup>
+                <ProjectReference Include="../FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj" />
+                <ProjectReference Include="../FluentCMS.Admin.Components/FluentCMS.Admin.Components.csproj" />
+                <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />
+              </ItemGroup>
+            </Project>
+            """);
+
+        LibraryReferences(With(half, indirect, shared, shell)).ShouldBe(
             [
-                "FluentCMS.Plugins.Reviews.Admin references FluentCMS.Admin",
-                "FluentCMS.Plugins.Reviews.Admin references the component library's Microsoft.FluentUI.AspNetCore.Components",
+                "FluentCMS.Plugins.Reviews.Admin references Microsoft.FluentUI.AspNetCore.Components.Emoji",
+                "Ratings.Admin references Microsoft.FluentUI.AspNetCore.Components",
+                "FluentCMS.Admin references Microsoft.FluentUI.AspNetCore.Components.Icons",
+                "FluentCMS.Admin.App references Microsoft.FluentUI.AspNetCore.Components.Icons",
             ],
             ignoreOrder: true);
     }
 
+    // The same on the compiled assemblies: no type outside the wrapped set uses a type of the library.
+    [Fact]
+    public void OnlyTheWrappedSetUsesTheTypesOfTheComponentLibrary()
+    {
+        LibraryRule().Check(browser.Value);
+
+        // Without the exemption the rule finds the wrapped set, and only it.
+        var inWrappedSet = browser.Value.Types.Where(type => type.Assembly.Name.Split(',')[0] == AdminComponents)
+            .Select(type => type.FullName)
+            .ToHashSet(StringComparer.Ordinal);
+        var wrapped = Violators(LibraryRule(exempt: null), browser.Value);
+        wrapped.ShouldNotBeEmpty();
+        wrapped.ShouldAllBe(type => inWrappedSet.Contains(type));
+
+        Violators(LibraryRule(), careless.Value).ShouldBe([typeof(CarelessLibraryUser).FullName!]);
+    }
+
     // A half is found by its folder, by its name and by what it references, so that one outside admin/src/plugins/, in a sample
-    // or a template, is held to the rules too.
+    // or a template, or one placed directly under admin/src/, is held to the rules too.
     [Fact]
     public void AnAdminHalfIsFoundByItsFolderItsNameOrItsReferences()
     {
         var byFolder = ProjectFile.FromXml(HalvesFolder + "Reviews/Reviews.csproj", "<Project />");
         var byName = ProjectFile.FromXml("samples/Reviews.Admin/Reviews.Admin.csproj", "<Project />");
+        var byNameInAdmin = ProjectFile.FromXml(AdminFolder + "FluentCMS.Plugins.Media.Admin/FluentCMS.Plugins.Media.Admin.csproj", "<Project />");
         var byReference = ProjectFile.FromXml("samples/Reviews.Pages/Reviews.Pages.csproj", """
             <Project Sdk="Microsoft.NET.Sdk.Razor">
               <ItemGroup>
@@ -104,10 +225,31 @@ public class AdminRulesTests
               </ItemGroup>
             </Project>
             """);
+        var byReferenceInAdmin = ProjectFile.FromXml(AdminFolder + "Reviews.Pages/Reviews.Pages.csproj", """
+            <Project Sdk="Microsoft.NET.Sdk.Razor">
+              <ItemGroup>
+                <ProjectReference Include="../FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj" />
+              </ItemGroup>
+            </Project>
+            """);
         var server = ProjectFile.FromXml("samples/Reviews/Reviews.csproj", "<Project />");
 
-        Halves([.. ProjectFile.RepositoryProjects, byFolder, byName, byReference, server]).Select(half => half.Name)
-            .ShouldBe(["Reviews", "Reviews.Admin", "Reviews.Pages"], ignoreOrder: true);
+        Halves([.. ProjectFile.RepositoryProjects, byFolder, byName, byNameInAdmin, byReference, byReferenceInAdmin, server])
+            .Select(half => half.Location)
+            .ShouldBe([byFolder.Location, byName.Location, byNameInAdmin.Location, byReference.Location, byReferenceInAdmin.Location], ignoreOrder: true);
+
+        // Placed directly under admin/src/, a half that uses the shell and the library still breaks the rules.
+        var careless = ProjectFile.FromXml(byNameInAdmin.Location, """
+            <Project Sdk="Microsoft.NET.Sdk.Razor">
+              <ItemGroup>
+                <ProjectReference Include="../FluentCMS.Admin/FluentCMS.Admin.csproj" />
+                <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
+              </ItemGroup>
+            </Project>
+            """);
+
+        HalfViolations(With(careless)).ShouldBe(["FluentCMS.Plugins.Media.Admin references FluentCMS.Admin"]);
+        LibraryReferences(With(careless)).ShouldBe(["FluentCMS.Plugins.Media.Admin references Microsoft.FluentUI.AspNetCore.Components"]);
     }
 
     // Spec 2.8: the contract depends on Microsoft.AspNetCore.Components.Web and the Microsoft.Extensions.* abstractions only.
@@ -156,20 +298,20 @@ public class AdminRulesTests
         BrowserProjects(ProjectFile.RepositoryProjects).Select(project => project.Name).ShouldNotContain(AdminHosting);
     }
 
-    // Spec 3.1: a type injects or takes IJSRuntime, an IJSObjectReference or the in-process runtime only if it is on the list. A
-    // component's @inject compiles to an [Inject] property, which the scan of the assembly sees.
+    // Spec 3.1: a type injects or takes IJSRuntime, an IJSObjectReference, the in-process runtime or the [JSImport] host only if
+    // it is on the list. A component's @inject compiles to an [Inject] property, which the scan of the assembly sees.
     [Fact]
     public void OnlyTheAllowListedTypesUseJavaScriptInterop()
     {
         InteropRule(InteropTypes).Check(browser.Value);
 
-        // Without the list the rule finds the listed type, and only it: its nested types, such as its async methods, are its own.
+        // Without the list the rule finds the listed type, and only it with its nested types, such as DocumentInterop+FocusOpener.
         var listed = Violators(InteropRule([]), browser.Value);
         listed.ShouldContain(InteropTypes[0]);
         listed.ShouldAllBe(type => InteropTypes.Any(name => type == name || type.StartsWith(name + "+", StringComparison.Ordinal)));
 
         Violators(InteropRule(InteropTypes), careless.Value).ShouldBe(
-            [typeof(CarelessInterop).FullName!, typeof(CarelessComponent).FullName!, typeof(CarelessModule).FullName!],
+            [typeof(CarelessInterop).FullName!, typeof(CarelessComponent).FullName!, typeof(CarelessModule).FullName!, typeof(CarelessHost).FullName!],
             ignoreOrder: true);
     }
 
@@ -184,8 +326,8 @@ public class AdminRulesTests
         }
     }
 
-    // An admin project or half under admin/src/ that the test project does not reference would escape the interop rule. A half
-    // of a template or a sample, built from packages, is held to the project rules only.
+    // An admin project or half under admin/src/ that the test project does not reference would escape the scans of the
+    // assemblies. A half of a template or a sample, built from packages, is held to the project rules only.
     [Fact]
     public void EveryAdminAssemblyThatRunsInTheBrowserIsScanned()
     {
@@ -199,7 +341,17 @@ public class AdminRulesTests
     private static IEnumerable<string> BrowserAssemblies() =>
         BrowserProjects(ProjectFile.RepositoryProjects).Select(project => Path.Combine(AppContext.BaseDirectory, project.Name + ".dll")).Where(File.Exists);
 
-    private static ArchUnitNET.Fluent.Syntax.Elements.Types.TypesShouldConjunction InteropRule(string[] allowed)
+    private static IEnumerable<string> ServerReferences(Assembly assembly)
+    {
+        var allowed = BrowserProjects(ProjectFile.RepositoryProjects).Select(project => project.Name).Append(Client).ToHashSet(StringComparer.Ordinal);
+
+        return assembly.GetReferencedAssemblies()
+            .Select(reference => reference.Name!)
+            .Where(name => name.StartsWith("FluentCMS.", StringComparison.Ordinal) && !allowed.Contains(name))
+            .Select(name => $"{assembly.GetName().Name} references {name}");
+    }
+
+    private static TypesShouldConjunction InteropRule(string[] allowed)
     {
         var rule = Types().That().FollowCustomPredicate(
                 type => !allowed.Any(name => type.FullName == name || type.FullName.StartsWith(name + "+", StringComparison.Ordinal)),
@@ -214,7 +366,13 @@ public class AdminRulesTests
         return rule;
     }
 
-    private static List<string> Violators(ArchUnitNET.Fluent.Syntax.Elements.Types.TypesShouldConjunction rule, ArchUnitNET.Domain.Architecture architecture) =>
+    private static TypesShouldConjunction LibraryRule(string? exempt = AdminComponents) =>
+        Types().That().FollowCustomPredicate(
+                type => exempt is null || type.Assembly.Name.Split(',')[0] != exempt,
+                "are not in the wrapped set")
+            .Should().NotDependOnAnyTypesThat().ResideInNamespaceOrBelow(LibraryNamespace);
+
+    private static List<string> Violators(TypesShouldConjunction rule, ArchUnitNET.Domain.Architecture architecture) =>
         [.. rule.Evaluate(architecture).Where(result => !result.Passed).Select(result => result.EvaluatedObjectIdentifier.Identifier).Distinct()];
 
     // Every project under admin/src/ but the hosting package, which runs in the ASP.NET Core host, and every half found elsewhere.
@@ -227,10 +385,7 @@ public class AdminRulesTests
             || (!IsAdminPackage(project) && (project.Name.EndsWith(".Admin", StringComparison.Ordinal)
                 || DirectReferences(project).Any(reference => reference is AdminAbstractions or AdminComponents))))];
 
-    // The projects of admin/src/ itself, which are not halves.
-    private static bool IsAdminPackage(ProjectFile project) =>
-        project.Location.StartsWith(AdminFolder, StringComparison.Ordinal)
-        && !project.Location.StartsWith(HalvesFolder, StringComparison.Ordinal);
+    private static bool IsAdminPackage(ProjectFile project) => AdminPackages.Contains(project.Name, StringComparer.Ordinal);
 
     private static List<string> BrowserReferencesToServerPackages(IReadOnlyList<ProjectFile> projects)
     {
@@ -242,19 +397,26 @@ public class AdminRulesTests
             .Select(reference => $"{project.Name} references {reference}"))];
     }
 
-    private static List<string> HalfViolations(IReadOnlyList<ProjectFile> projects)
+    // What a half reaches other than through the contract and the wrapped set.
+    private static List<string> HalfViolations(IReadOnlyList<ProjectFile> projects) =>
+        [.. Halves(projects).SelectMany(half => Reachable(half, projects, [AdminAbstractions, AdminComponents])
+            .Where(reference => reference.StartsWith("FluentCMS.", StringComparison.Ordinal))
+            .Select(reference => $"{half.Name} references {reference}"))];
+
+    // A package of the library that a browser project reaches other than through the wrapped set.
+    private static List<string> LibraryReferences(IReadOnlyList<ProjectFile> projects)
     {
         var library = projects.Single(project => project.Name == AdminComponents).PackageReferences
             .Where(package => !package.DevelopmentOnly && !package.Name.StartsWith("FluentCMS.", StringComparison.Ordinal))
             .Select(package => package.Name)
             .ToList();
 
-        library.ShouldNotBeEmpty();
+        library.ShouldContain(Library);
 
-        return [.. Halves(projects).SelectMany(half => DirectReferences(half)
-            .Where(reference => reference.StartsWith("FluentCMS.", StringComparison.Ordinal) && reference is not (AdminAbstractions or AdminComponents))
-            .Select(reference => $"{half.Name} references {reference}")
-            .Concat(DirectReferences(half).Intersect(library).Select(reference => $"{half.Name} references the component library's {reference}")))];
+        return [.. BrowserProjects(projects).Where(project => project.Name != AdminComponents)
+            .SelectMany(project => Reachable(project, projects, [AdminComponents])
+                .Where(reference => library.Any(id => reference == id || reference.StartsWith(id + ".", StringComparison.Ordinal)))
+                .Select(reference => $"{project.Name} references {reference}"))];
     }
 
     private static List<string> AbstractionsViolations(IReadOnlyList<ProjectFile> projects)
@@ -272,17 +434,22 @@ public class AdminRulesTests
     {
         var halves = Halves(projects);
 
-        return [.. projects.Where(project => IsAdminPackage(project) || halves.Contains(project))
+        return [.. projects.Where(project => project.Location.StartsWith(AdminFolder, StringComparison.Ordinal) || halves.Contains(project))
             .Where(project => Reachable(project, projects).Contains(Core))
             .Select(project => project.Name)];
     }
 
+    // A development-only package is left out, but a FluentCMS one only when it runs in the compiler: with PrivateAssets="all",
+    // FluentCMS.Core is still compiled against.
     private static IEnumerable<string> DirectReferences(ProjectFile project) =>
-        project.ProjectReferences.Concat(project.PackageReferences.Where(package => !package.DevelopmentOnly).Select(package => package.Name));
+        project.ProjectReferences.Concat(project.PackageReferences
+            .Where(package => !package.DevelopmentOnly
+                || (package.Name.StartsWith("FluentCMS.", StringComparison.Ordinal) && !CompilerPackages.Contains(package.Name, StringComparer.Ordinal)))
+            .Select(package => package.Name));
 
     // What a project references, and what the projects of the repository it references do in turn; a package of the repository
-    // is its project.
-    private static HashSet<string> Reachable(ProjectFile project, IReadOnlyList<ProjectFile> projects)
+    // is its project. A name in `through` is neither counted nor followed.
+    private static HashSet<string> Reachable(ProjectFile project, IReadOnlyList<ProjectFile> projects, string[]? through = null)
     {
         var byName = projects.ToDictionary(other => other.Name, StringComparer.Ordinal);
         var reached = new HashSet<string>(StringComparer.Ordinal);
@@ -290,7 +457,7 @@ public class AdminRulesTests
 
         while (pending.TryPop(out var name))
         {
-            if (reached.Add(name) && byName.TryGetValue(name, out var referenced))
+            if (through?.Contains(name, StringComparer.Ordinal) != true && reached.Add(name) && byName.TryGetValue(name, out var referenced))
             {
                 foreach (var next in DirectReferences(referenced))
                 {
@@ -302,8 +469,8 @@ public class AdminRulesTests
         return reached;
     }
 
-    private static List<ProjectFile> With(ProjectFile replacement) =>
-        [.. ProjectFile.RepositoryProjects.Where(project => project.Name != replacement.Name), replacement];
+    private static List<ProjectFile> With(params ProjectFile[] replacements) =>
+        [.. ProjectFile.RepositoryProjects.Where(project => !replacements.Any(replacement => replacement.Name == project.Name)), .. replacements];
 
     private static bool IsExtensionsAbstractions(string packageName) =>
         packageName.StartsWith("Microsoft.Extensions.", StringComparison.Ordinal)
