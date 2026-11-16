@@ -1,0 +1,57 @@
+@* The redirect URI of the admin's client: {admin base}/authentication/login-callback (spec 2.4). It redeems the code of the
+   sign-in this tab started and returns to the route the user was on, replacing itself in the history, so that the code is
+   neither kept nor sent again. Only the code, the state and the error are read from the query, never a place to go. *@
+@page "/authentication/login-callback"
+@using FluentCMS.Admin.Authentication
+@inject IAdminSession Session
+@inject NavigationManager Navigation
+@inject IStringLocalizer<AdminResources> L
+
+@if (failure is { } reason)
+{
+    <h1 tabindex="-1">@L["Authentication.Callback.FailedHeading"]</h1>
+    <p>@L[$"Authentication.Callback.{reason}"]</p>
+    <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="SignInAgainAsync">@L["Authentication.Callback.SignInAgain"]</CmsButton>
+}
+else
+{
+    <h1 tabindex="-1">@L["Authentication.Callback.Completing"]</h1>
+}
+
+@code {
+    private SignInFailure? failure;
+
+    [SupplyParameterFromQuery(Name = "code")]
+    public string? Code { get; set; }
+
+    [SupplyParameterFromQuery(Name = "state")]
+    public string? State { get; set; }
+
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var completion = await Session.CompleteSignInAsync(Code, State, Error, CancellationToken.None);
+        if (completion.ReturnRoute is { } route)
+        {
+            Navigation.NavigateTo(route, replace: true);
+            return;
+        }
+
+        failure = completion.Failure;
+    }
+
+    private async Task SignInAgainAsync()
+    {
+        try
+        {
+            await Session.SignInAsync(returnRoute: null, CancellationToken.None);
+        }
+        // No cancellation is asked for, so a TaskCanceledException is the client's timeout.
+        catch (Exception exception) when (exception is HttpRequestException or InvalidOperationException or System.Text.Json.JsonException or TaskCanceledException)
+        {
+            failure = SignInFailure.Unreachable;
+        }
+    }
+}

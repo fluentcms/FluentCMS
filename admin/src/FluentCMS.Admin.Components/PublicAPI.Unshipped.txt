@@ -1,4 +1,19 @@
 #nullable enable
+FluentCMS.Admin.Components.CmsBreadcrumb
+FluentCMS.Admin.Components.CmsBreadcrumb.CmsBreadcrumb() -> void
+FluentCMS.Admin.Components.CmsBreadcrumb.Items.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Components.CmsBreadcrumbItem!>!
+FluentCMS.Admin.Components.CmsBreadcrumb.Items.set -> void
+FluentCMS.Admin.Components.CmsBreadcrumb.Label.get -> string!
+FluentCMS.Admin.Components.CmsBreadcrumb.Label.set -> void
+FluentCMS.Admin.Components.CmsBreadcrumbItem
+FluentCMS.Admin.Components.CmsBreadcrumbItem.<Clone>$() -> FluentCMS.Admin.Components.CmsBreadcrumbItem!
+FluentCMS.Admin.Components.CmsBreadcrumbItem.CmsBreadcrumbItem(string! Text, string? Href = null) -> void
+FluentCMS.Admin.Components.CmsBreadcrumbItem.Deconstruct(out string! Text, out string? Href) -> void
+FluentCMS.Admin.Components.CmsBreadcrumbItem.Equals(FluentCMS.Admin.Components.CmsBreadcrumbItem? other) -> bool
+FluentCMS.Admin.Components.CmsBreadcrumbItem.Href.get -> string?
+FluentCMS.Admin.Components.CmsBreadcrumbItem.Href.init -> void
+FluentCMS.Admin.Components.CmsBreadcrumbItem.Text.get -> string!
+FluentCMS.Admin.Components.CmsBreadcrumbItem.Text.init -> void
 FluentCMS.Admin.Components.CmsButton
 FluentCMS.Admin.Components.CmsButton.Appearance.get -> FluentCMS.Admin.Components.CmsButtonAppearance
 FluentCMS.Admin.Components.CmsButton.Appearance.set -> void
@@ -113,6 +128,7 @@ FluentCMS.Admin.Components.CmsIconName.Image = 11 -> FluentCMS.Admin.Components.
 FluentCMS.Admin.Components.CmsIconName.Info = 14 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Moon = 19 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.More = 7 -> FluentCMS.Admin.Components.CmsIconName
+FluentCMS.Admin.Components.CmsIconName.Navigation = 20 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Open = 17 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Person = 12 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Save = 3 -> FluentCMS.Admin.Components.CmsIconName
@@ -171,6 +187,32 @@ FluentCMS.Admin.Components.CmsMenuItem.Icon.get -> FluentCMS.Admin.Components.Cm
 FluentCMS.Admin.Components.CmsMenuItem.Icon.set -> void
 FluentCMS.Admin.Components.CmsMenuItem.OnClick.get -> Microsoft.AspNetCore.Components.EventCallback
 FluentCMS.Admin.Components.CmsMenuItem.OnClick.set -> void
+FluentCMS.Admin.Components.CmsNavigation
+FluentCMS.Admin.Components.CmsNavigation.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
+FluentCMS.Admin.Components.CmsNavigation.ChildContent.set -> void
+FluentCMS.Admin.Components.CmsNavigation.CmsNavigation() -> void
+FluentCMS.Admin.Components.CmsNavigation.Label.get -> string!
+FluentCMS.Admin.Components.CmsNavigation.Label.set -> void
+FluentCMS.Admin.Components.CmsNavigationLink
+FluentCMS.Admin.Components.CmsNavigationLink.Badge.get -> string?
+FluentCMS.Admin.Components.CmsNavigationLink.Badge.set -> void
+FluentCMS.Admin.Components.CmsNavigationLink.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
+FluentCMS.Admin.Components.CmsNavigationLink.ChildContent.set -> void
+FluentCMS.Admin.Components.CmsNavigationLink.CmsNavigationLink() -> void
+FluentCMS.Admin.Components.CmsNavigationLink.Dispose() -> void
+FluentCMS.Admin.Components.CmsNavigationLink.Href.get -> string!
+FluentCMS.Admin.Components.CmsNavigationLink.Href.set -> void
+FluentCMS.Admin.Components.CmsNavigationLink.Match.get -> FluentCMS.Admin.Components.CmsNavigationMatch
+FluentCMS.Admin.Components.CmsNavigationLink.Match.set -> void
+FluentCMS.Admin.Components.CmsNavigationMatch
+FluentCMS.Admin.Components.CmsNavigationMatch.All = 1 -> FluentCMS.Admin.Components.CmsNavigationMatch
+FluentCMS.Admin.Components.CmsNavigationMatch.Prefix = 0 -> FluentCMS.Admin.Components.CmsNavigationMatch
+FluentCMS.Admin.Components.CmsNavigationSection
+FluentCMS.Admin.Components.CmsNavigationSection.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
+FluentCMS.Admin.Components.CmsNavigationSection.ChildContent.set -> void
+FluentCMS.Admin.Components.CmsNavigationSection.CmsNavigationSection() -> void
+FluentCMS.Admin.Components.CmsNavigationSection.Title.get -> string?
+FluentCMS.Admin.Components.CmsNavigationSection.Title.set -> void
 FluentCMS.Admin.Components.CmsOption
 FluentCMS.Admin.Components.CmsOption.<Clone>$() -> FluentCMS.Admin.Components.CmsOption!
 FluentCMS.Admin.Components.CmsOption.CmsOption(string! Value, string! Text) -> void
@@ -235,7 +277,11 @@ FluentCMS.Admin.Components.CmsTextArea.Placeholder.set -> void
 FluentCMS.Admin.Components.CmsTextArea.Rows.get -> int
 FluentCMS.Admin.Components.CmsTextArea.Rows.set -> void
 FluentCMS.Admin.Components.CmsTextInput
+FluentCMS.Admin.Components.CmsTextInput.Autocomplete.get -> string?
+FluentCMS.Admin.Components.CmsTextInput.Autocomplete.set -> void
 FluentCMS.Admin.Components.CmsTextInput.CmsTextInput() -> void
+FluentCMS.Admin.Components.CmsTextInput.Numeric.get -> bool
+FluentCMS.Admin.Components.CmsTextInput.Numeric.set -> void
 FluentCMS.Admin.Components.CmsTextInput.Placeholder.get -> string?
 FluentCMS.Admin.Components.CmsTextInput.Placeholder.set -> void
 FluentCMS.Admin.Components.CmsTextInput.Type.get -> FluentCMS.Admin.Components.CmsTextInputType
@@ -293,6 +339,10 @@ FluentCMS.Admin.Components._Imports
 FluentCMS.Admin.Components._Imports.Execute() -> void
 FluentCMS.Admin.Components._Imports._Imports() -> void
 Microsoft.Extensions.DependencyInjection.CmsComponentsServiceCollectionExtensions
+override FluentCMS.Admin.Components.CmsBreadcrumb.OnParametersSet() -> void
+override FluentCMS.Admin.Components.CmsBreadcrumbItem.Equals(object? obj) -> bool
+override FluentCMS.Admin.Components.CmsBreadcrumbItem.GetHashCode() -> int
+override FluentCMS.Admin.Components.CmsBreadcrumbItem.ToString() -> string!
 override FluentCMS.Admin.Components.CmsButton.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsDataGrid<TItem>.OnParametersSetAsync() -> System.Threading.Tasks.Task!
 override FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.OnInitialized() -> void
@@ -301,6 +351,8 @@ override FluentCMS.Admin.Components.CmsDialogBase.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsFileDropZone.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsInputBase<TValue>.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsMenu.OnParametersSet() -> void
+override FluentCMS.Admin.Components.CmsNavigation.OnParametersSet() -> void
+override FluentCMS.Admin.Components.CmsNavigationLink.OnInitialized() -> void
 override FluentCMS.Admin.Components.CmsOption.Equals(object? obj) -> bool
 override FluentCMS.Admin.Components.CmsOption.GetHashCode() -> int
 override FluentCMS.Admin.Components.CmsOption.ToString() -> string!
@@ -309,11 +361,14 @@ override FluentCMS.Admin.Components.CmsTree.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsTreeNode.Equals(object? obj) -> bool
 override FluentCMS.Admin.Components.CmsTreeNode.GetHashCode() -> int
 override FluentCMS.Admin.Components.CmsTreeNode.ToString() -> string!
+static FluentCMS.Admin.Components.CmsBreadcrumbItem.operator !=(FluentCMS.Admin.Components.CmsBreadcrumbItem? left, FluentCMS.Admin.Components.CmsBreadcrumbItem? right) -> bool
+static FluentCMS.Admin.Components.CmsBreadcrumbItem.operator ==(FluentCMS.Admin.Components.CmsBreadcrumbItem? left, FluentCMS.Admin.Components.CmsBreadcrumbItem? right) -> bool
 static FluentCMS.Admin.Components.CmsOption.operator !=(FluentCMS.Admin.Components.CmsOption? left, FluentCMS.Admin.Components.CmsOption? right) -> bool
 static FluentCMS.Admin.Components.CmsOption.operator ==(FluentCMS.Admin.Components.CmsOption? left, FluentCMS.Admin.Components.CmsOption? right) -> bool
 static FluentCMS.Admin.Components.CmsTreeNode.operator !=(FluentCMS.Admin.Components.CmsTreeNode? left, FluentCMS.Admin.Components.CmsTreeNode? right) -> bool
 static FluentCMS.Admin.Components.CmsTreeNode.operator ==(FluentCMS.Admin.Components.CmsTreeNode? left, FluentCMS.Admin.Components.CmsTreeNode? right) -> bool
 static Microsoft.Extensions.DependencyInjection.CmsComponentsServiceCollectionExtensions.AddCmsComponents(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+~override FluentCMS.Admin.Components.CmsBreadcrumb.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsButton.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsCard.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsCheckbox.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
@@ -327,6 +382,9 @@ static Microsoft.Extensions.DependencyInjection.CmsComponentsServiceCollectionEx
 ~override FluentCMS.Admin.Components.CmsLogo.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsMenu.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsMenuItem.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+~override FluentCMS.Admin.Components.CmsNavigation.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+~override FluentCMS.Admin.Components.CmsNavigationLink.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+~override FluentCMS.Admin.Components.CmsNavigationSection.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsSelect.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsStack.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsSwitch.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void

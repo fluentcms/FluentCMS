@@ -24,6 +24,12 @@ public sealed record SchemaTypeDescription
     /// <summary>How many days an entry stays in the trash; <see langword="null"/> for components and blocks.</summary>
     public int? TrashRetentionDays { get; init; }
 
+    /// <summary>The name of the type for people, or <see langword="null"/> if it has none; always <see langword="null"/> for components and blocks.</summary>
+    public string? DisplayName { get; init; }
+
+    /// <summary>The name of the text field whose value labels an entry, or <see langword="null"/> if the type names none.</summary>
+    public string? TitleField { get; init; }
+
     /// <summary>The fields, in the order they were declared.</summary>
     public required IReadOnlyList<SchemaFieldDescription> Fields { get; init; }
 

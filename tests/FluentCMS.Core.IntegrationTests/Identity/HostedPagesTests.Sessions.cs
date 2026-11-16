@@ -25,13 +25,13 @@ public sealed partial class HostedPagesTests
         var (idp, host) = (_idp, _sso);
         host.Services.GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>().Get(Corp).SignOutScheme.ShouldBe(IdentityConstants.ApplicationScheme);
 
-        var rae = FakeIdentity.Of("rae@corp.example") with { Sid = "idp-session-" + Guid.NewGuid().ToString("N") };
+        var rae = FakeIdentity.Of(UniqueAddress("rae")) with { Sid = "idp-session-" + Guid.NewGuid().ToString("N") };
         using var sso = await ProviderSignInAsync(host, idp, rae, Corp);
 
         // The same provider session through the other provider, which is trusted for its mfa, and a token without sid.
-        var tess = FakeIdentity.Of("tess@corp.example") with { Sid = rae.Sid, Amr = ["pwd", "mfa"] };
+        var tess = FakeIdentity.Of(UniqueAddress("tess")) with { Sid = rae.Sid, Amr = ["pwd", "mfa"] };
         using var other = await ProviderSignInAsync(host, idp, tess, Trusted);
-        using var bare = await ProviderSignInAsync(host, idp, FakeIdentity.Of("nils@corp.example"), Corp);
+        using var bare = await ProviderSignInAsync(host, idp, FakeIdentity.Of(UniqueAddress("nils")), Corp);
 
         var editor = await CreateUserAsync(host);
         using var password = new HostedPagesBrowser(host);
@@ -113,19 +113,8 @@ public sealed partial class HostedPagesTests
     public async Task TheRemoteSignOutEndsAProviderSignInThatGaveTheLocalSecondFactorAfterIt()
     {
         var (idp, host) = (_idp, _sso);
-        var kim = FakeIdentity.Of("kim@corp.example") with { Sid = "idp-session-" + Guid.NewGuid().ToString("N") };
-        using (await ProviderSignInAsync(host, idp, kim, Corp))
-        {
-        }
-
-        string key;
-        await using (var scope = host.Services.CreateAsyncScope())
-        {
-            var stored = (await scope.ServiceProvider.GetRequiredService<CmsUserManager>().FindByLoginAsync(Corp, kim.Subject)).ShouldNotBeNull();
-            var twoFactor = scope.ServiceProvider.GetRequiredService<TwoFactorService>();
-            key = (await twoFactor.EnrolAsync(stored, "FluentCMS")).SharedKey;
-            await twoFactor.VerifyAsync(stored, Totp(key));
-        }
+        var kim = FakeIdentity.Of(UniqueAddress("kim")) with { Sid = "idp-session-" + Guid.NewGuid().ToString("N") };
+        var key = await ProviderUserWithTwoFactorAsync(host, idp, kim);
 
         using var browser = new HostedPagesBrowser(host);
         using var back = await SignInWithProviderAsync(browser, idp, kim);
@@ -136,14 +125,81 @@ public sealed partial class HostedPagesTests
             passed.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         }
 
+        var tokens = await CodeFlowAsync(host, browser);
+        var iss = Uri.EscapeDataString(idp.Issuer);
+        using (var forged = await browser.GetAsync($"/account/sso/{Corp}/signout?sid=made-up&iss={iss}"))
+        {
+            forged.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
         browser.HasCookie(SignInCookie).ShouldBeTrue();
-        using (var signedOut = await browser.GetAsync($"/account/sso/{Corp}/signout?sid={kim.Sid}&iss={Uri.EscapeDataString(idp.Issuer)}"))
+        var refreshToken = await RotatedAsync(host, Text(tokens, "refresh_token"));
+
+        using (var signedOut = await browser.GetAsync($"/account/sso/{Corp}/signout?sid={kim.Sid}&iss={iss}"))
         {
             signedOut.StatusCode.ShouldBe(HttpStatusCode.OK);
         }
 
         browser.HasCookie(SignInCookie).ShouldBeFalse();
+        (await RefusedAsync(host, refreshToken)).ShouldBe("invalid_grant");
     }
+
+    [Fact]
+    public async Task ASecondFactorKeepsNoProviderSessionFromAnotherSignInStartedInTheSameBrowser()
+    {
+        var (idp, host) = (_idp, _sso);
+        var kim = FakeIdentity.Of(UniqueAddress("kim")) with { Sid = "idp-session-" + Guid.NewGuid().ToString("N") };
+        var key = await ProviderUserWithTwoFactorAsync(host, idp, kim);
+
+        using var browser = new HostedPagesBrowser(host);
+        using var back = await SignInWithProviderAsync(browser, idp, kim);
+        var challenge = await ExternalLoginAsync(browser, back);
+        challenge.ShouldStartWith("/account/two-factor");
+
+        // Another sign-in at the provider reaches the callback in the same browser before kim gives the code.
+        var zed = FakeIdentity.Of(UniqueAddress("zed")) with { Sid = "idp-session-" + Guid.NewGuid().ToString("N") };
+        using (await SignInWithProviderAsync(browser, idp, zed))
+        {
+        }
+
+        using (var passed = await browser.SubmitAsync(challenge, new Dictionary<string, string> { ["Input.Code"] = Totp(key) }))
+        {
+            passed.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        }
+
+        browser.HasCookie(SignInCookie).ShouldBeTrue();
+        var tokens = await CodeFlowAsync(host, browser);
+        (await MeAsync(host, Text(tokens, "access_token"))).ShouldBe(HttpStatusCode.OK);
+
+        // The sign-in keeps no session of the provider, so neither zed's nor kim's sign-out names it.
+        var iss = Uri.EscapeDataString(idp.Issuer);
+        foreach (var sid in new[] { zed.Sid, kim.Sid })
+        {
+            using var response = await browser.GetAsync($"/account/sso/{Corp}/signout?sid={sid}&iss={iss}");
+            response.StatusCode.ShouldBe(HttpStatusCode.OK);
+            browser.HasCookie(SignInCookie).ShouldBeTrue();
+        }
+
+        (await RotatedAsync(host, Text(tokens, "refresh_token"))).ShouldNotBeNullOrEmpty();
+    }
+
+    // A user made by a first sign-in through the provider, with the local authenticator turned on. Returns its key.
+    private static async Task<string> ProviderUserWithTwoFactorAsync(FluentCmsTestHost host, FakeOidcProvider idp, FakeIdentity user)
+    {
+        using (await ProviderSignInAsync(host, idp, user, Corp))
+        {
+        }
+
+        await using var scope = host.Services.CreateAsyncScope();
+        var stored = (await scope.ServiceProvider.GetRequiredService<CmsUserManager>().FindByLoginAsync(Corp, user.Subject)).ShouldNotBeNull();
+        var twoFactor = scope.ServiceProvider.GetRequiredService<TwoFactorService>();
+        var key = (await twoFactor.EnrolAsync(stored, "FluentCMS")).SharedKey;
+        await twoFactor.VerifyAsync(stored, Totp(key));
+        return key;
+    }
+
+    // An address no other test of the shared hosts uses.
+    private static string UniqueAddress(string name) => $"{name}-{Guid.NewGuid():N}@corp.example";
 
     // A browser signed in on the hosted pages through the provider.
     private static async Task<HostedPagesBrowser> ProviderSignInAsync(FluentCmsTestHost host, FakeOidcProvider idp, FakeIdentity user, string provider)

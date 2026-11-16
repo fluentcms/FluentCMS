@@ -330,3 +330,97 @@ fluent-field .cms-field-message {
 .cms-root[data-cms-theme="dark"] .cms-logo-dark {
     display: inline;
 }
+
+.cms-nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-m);
+}
+
+.cms-nav-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-xs);
+}
+
+.cms-nav-section-title {
+    padding-inline: var(--cms-space-s);
+    color: var(--cms-color-text-muted);
+    font-size: var(--cms-font-size-s);
+    font-weight: 600;
+}
+
+.cms-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cms-nav-link {
+    display: flex;
+    align-items: center;
+    gap: var(--cms-space-s);
+    min-block-size: 2rem;
+    padding-inline: var(--cms-space-s);
+    border-inline-start: 3px solid transparent;
+    border-radius: var(--cms-radius-s);
+    color: var(--cms-color-text);
+    text-decoration: none;
+}
+
+.cms-nav-link:hover {
+    background-color: var(--cms-color-surface);
+    text-decoration: underline;
+}
+
+/* The current page is marked by more than its color: a bar on the start edge and bold text. */
+.cms-nav-link[aria-current="page"] {
+    border-inline-start-color: var(--cms-color-accent);
+    background-color: var(--cms-color-surface);
+    font-weight: 600;
+}
+
+.cms-nav-link-text {
+    flex: 1;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+}
+
+.cms-badge {
+    padding-inline: var(--cms-space-xs);
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-s);
+    color: var(--cms-color-text-muted);
+    font-size: var(--cms-font-size-s);
+    font-weight: 400;
+}
+
+.cms-breadcrumb-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cms-space-xs);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--cms-font-size-s);
+}
+
+.cms-breadcrumb-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cms-space-xs);
+    min-block-size: var(--cms-target-size);
+}
+
+/* The separator has an empty alternative text, so that a screen reader does not read it. */
+.cms-breadcrumb-item + .cms-breadcrumb-item::before {
+    content: "/" / "";
+    color: var(--cms-color-text-muted);
+}
+
+.cms-breadcrumb a {
+    color: var(--cms-color-accent-text);
+}

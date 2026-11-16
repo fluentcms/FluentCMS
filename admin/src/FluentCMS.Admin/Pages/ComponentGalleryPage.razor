@@ -41,6 +41,7 @@
                 <CmsTextInput Label="@L["System.Components.Title"]" Required="true" Help="@L["System.Components.TitleHelp"]" @bind-Value="title" />
                 <CmsTextInput Label="@L["System.Components.Slug"]" Required="true" Error="@(string.IsNullOrEmpty(slug) ? L["System.Components.SlugRequired"].Value : null)" @bind-Value="slug" />
                 <CmsTextInput Label="@L["System.Components.Email"]" Type="CmsTextInputType.Email" @bind-Value="email" />
+                <CmsTextInput Label="@L["System.Components.OneTimeCode"]" Autocomplete="one-time-code" Numeric="true" @bind-Value="oneTimeCode" />
                 <CmsTextArea Label="@L["System.Components.Summary"]" Help="@L["System.Components.SummaryHelp"]" @bind-Value="summary" />
                 <CmsSelect Label="@L["System.Components.Status"]" Options="@statusOptions" @bind-Value="status" />
             </CmsStack>
@@ -101,6 +102,19 @@
             </CmsStack>
         </CmsCard>
 
+        <CmsCard Title="@L["System.Components.Navigation"]">
+            <CmsStack>
+                <CmsBreadcrumb Label="@L["System.Components.Trail"]"
+                               Items="@([new(L["System.Components.Start"], ""), new(L["System.Components.Articles"]), new(L["System.Components.ThisPage"])])" />
+                <CmsNavigation Label="@L["System.Components.SampleNavigation"]">
+                    <CmsNavigationSection Title="@L["System.Components.Pages"]">
+                        <CmsNavigationLink Href="" Match="CmsNavigationMatch.All">@L["System.Components.Start"]</CmsNavigationLink>
+                        <CmsNavigationLink Href="system/components" Badge="@L["System.Components.Shared"]">@L["System.Components.ThisPage"]</CmsNavigationLink>
+                    </CmsNavigationSection>
+                </CmsNavigation>
+            </CmsStack>
+        </CmsCard>
+
         <CmsCard Title="@L["System.Components.DataGrid"]">
             <CmsDataGrid Label="@L["System.Components.Articles"]" Items="@articles" SelectionMode="CmsSelectionMode.Many" @bind-SelectedItems="selected">
                 <CmsDataGridColumn Title="@L["System.Components.Title"]" Value="@(a => a.Title)" SortKey="@(a => a.Title)" />
@@ -133,6 +147,7 @@
     private string? title;
     private string? slug;
     private string? email;
+    private string? oneTimeCode;
     private string? summary;
     private string? status = "draft";
     private DateOnly? date;
@@ -180,7 +195,7 @@
         ];
     }
 
-    private void OnThemeChanged(string? value) => Theme.Choose(Enum.TryParse<CmsThemeMode>(value, out var mode) ? mode : CmsThemeMode.System);
+    private Task OnThemeChanged(string? value) => Theme.ChooseAsync(Enum.TryParse<CmsThemeMode>(value, out var mode) ? mode : CmsThemeMode.System);
 
     private string? FolderName(string? id) => id is null ? null : Find(folders, id)?.Text;
 

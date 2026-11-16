@@ -1,0 +1,165 @@
+@* The theme and, once more than one culture ships, the interface language (spec 4.1, 4.3, 4.17). The theme is the shell's,
+   kept in the browser, since the preferences hold none. The language is the culture of PUT /me/preferences, which follows
+   the user to every browser; the start of the app does not apply it yet (#3214), so until then the browser's culture decides. *@
+@inherits AccountCard
+@using FluentCMS.Admin.Api
+@inject ManagementClient Client
+@inject ShellTheme Theme
+@inject InterfaceCulture Culture
+@inject InterfaceCultureOptions Cultures
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<AdminResources> L
+
+<CmsCard Title="@(ChoosesLanguage ? L["Account.Preferences.Heading"] : L["Account.Preferences.ThemeHeading"])">
+    <CmsStack>
+        <CmsSelect Label="@L["Account.Preferences.Theme"]" Options="@themes" Value="@Theme.Mode.ToString()" ValueChanged="@OnThemeChanged" Disabled="@Held" />
+        @if (ChoosesLanguage)
+        {
+            if (state == AccountSectionState.Loading)
+            {
+                <p role="status">@L["Account.Page.Loading"]</p>
+            }
+            else if (state == AccountSectionState.Refused)
+            {
+                <p>@L["Account.Page.NotAUser"]</p>
+            }
+            else if (state == AccountSectionState.Failed)
+            {
+                <p>@L["Account.Preferences.LanguageFailed"]</p>
+                <CmsButton Disabled="@Held" OnClick="TryAgainAsync">@L["Account.Page.TryAgain"]</CmsButton>
+            }
+            else
+            {
+                @* Not disabled while it saves, which would take focus from it; a second change waits for the first. *@
+                <CmsSelect Label="@L["Account.Preferences.Language"]" Options="@languages" Value="@language" ValueChanged="@OnLanguageChangedAsync"
+                           Disabled="@Held" Error="@languageError" />
+            }
+        }
+    </CmsStack>
+</CmsCard>
+
+@code {
+    private IReadOnlyList<CmsOption> themes = [];
+    private IReadOnlyList<CmsOption> languages = [];
+    private AccountSectionState state = AccountSectionState.Loading;
+    private string? language;
+    private string? languageError;
+    private bool busy;
+
+    // A choice of one culture is none.
+    private bool ChoosesLanguage => Cultures.Offered.Count > 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Theme.Changed += OnChanged;
+        themes =
+        [
+            new(nameof(CmsThemeMode.System), L["Shell.UserMenu.ThemeSystem"]),
+            new(nameof(CmsThemeMode.Light), L["Shell.UserMenu.ThemeLight"]),
+            new(nameof(CmsThemeMode.Dark), L["Shell.UserMenu.ThemeDark"]),
+        ];
+        languages = [.. Cultures.Offered.Select(name => new CmsOption(name, LanguageName(name)))];
+        if (ChoosesLanguage)
+        {
+            await LoadAsync();
+        }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            Theme.Changed -= OnChanged;
+        }
+
+        base.Dispose(disposing);
+    }
+
+    private Task TryAgainAsync() => Held ? Task.CompletedTask : LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        state = AccountSectionState.Loading;
+        try
+        {
+            var preferences = await Client.GetMyPreferencesAsync(CancellationToken.None);
+            language = Offered(preferences.Culture) ?? Offered(Culture.Culture.Name);
+            state = AccountSectionState.Ready;
+        }
+        catch (Exception exception) when (AccountProblems.IsRefused(exception))
+        {
+            state = AccountSectionState.Refused;
+        }
+        catch (Exception exception) when (AccountProblems.IsFailure(exception))
+        {
+            state = AccountSectionState.Failed;
+        }
+    }
+
+    private async Task OnThemeChanged(string? value)
+    {
+        if (!Held && Enum.TryParse<CmsThemeMode>(value, out var mode))
+        {
+            await Theme.ChooseAsync(mode);
+        }
+    }
+
+    // A write replaces every preference, so the others are read again just before it, in case another tab changed them.
+    private async Task OnLanguageChangedAsync(string? value)
+    {
+        if (Held || busy || Offered(value) is not { } chosen || chosen == language)
+        {
+            return;
+        }
+
+        busy = true;
+        languageError = null;
+        try
+        {
+            var current = await Client.GetMyPreferencesAsync(CancellationToken.None);
+            var saved = await Client.SetMyPreferencesAsync(current with { Culture = chosen }, CancellationToken.None);
+            language = Offered(saved.Culture) ?? chosen;
+            Announcer.Announce(L["Account.Preferences.LanguageSaved"]);
+        }
+        catch (Exception exception) when (AccountProblems.IsFailure(exception))
+        {
+            languageError = L["Account.Preferences.LanguageNotSaved"];
+            Announcer.Announce(languageError, AnnouncementPoliteness.Assertive);
+            await ShowAgainAsync(language);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    // The select still shows the language picked, and the same value again would not change it: it is set to none for one
+    // render, then back, so that the same element, which keeps the focus, shows the saved language.
+    private async Task ShowAgainAsync(string? saved)
+    {
+        language = null;
+        StateHasChanged();
+        await Task.Yield();
+        language = saved;
+    }
+
+    // An offered culture that is the name or one of its parents, as the start chooses.
+    private string? Offered(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        return Cultures.Offered.FirstOrDefault(offered => string.Equals(offered, name, StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith(offered + "-", StringComparison.OrdinalIgnoreCase));
+    }
+
+    // The culture's name in its own language, from the resources when they have it.
+    private string LanguageName(string name) =>
+        L[$"Account.Preferences.Language.{name}"] is { ResourceNotFound: false } named
+            ? named.Value
+            : System.Globalization.CultureInfo.GetCultureInfo(name).NativeName;
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+}

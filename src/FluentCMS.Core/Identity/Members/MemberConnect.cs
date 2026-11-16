@@ -64,9 +64,10 @@ internal static class MemberConnect
         }
 
         var methods = cookie.Principal!.FindAll(Claims.AuthenticationMethodReference).Select(claim => claim.Value);
+        // The session starts at the sign-in, not at this request, so that every authorization issued under it ends with it.
         var identity = TokenClaims.Identity()
             .SetClaim(Claims.AuthenticationTime, signedInAt.ToUnixTimeSeconds())
-            .SetClaim(TokenClaims.SessionStart, now.ToUnixTimeSeconds());
+            .SetClaim(TokenClaims.SessionStart, signedInAt.ToUnixTimeSeconds());
         TokenClaims.ForMember(identity, member, await signIn.UserManager.GetSecurityStampAsync(member), request.GetScopes(), methods);
         if (CmsSignInManager.ServerSession(cookie.Properties!) is { } serverSession
             && await context.RequestServices.GetRequiredService<IOpenIddictApplicationManager>().FindByClientIdAsync(request.ClientId!, context.RequestAborted) is { } application)

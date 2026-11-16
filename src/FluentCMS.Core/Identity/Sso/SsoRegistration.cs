@@ -117,15 +117,15 @@ internal static class SsoRegistration
             var services = context.HttpContext.RequestServices;
             var logger = services.GetRequiredService<ILogger<SsoSignIn>>();
             var cookie = await context.HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
-            if (!cookie.Succeeded || SsoSession.Of(cookie.Properties!) is not { } session || !string.Equals(session.Provider, context.Scheme.Name, StringComparison.OrdinalIgnoreCase))
+            if (!cookie.Succeeded || SsoSession.Of(cookie.Properties!) is not { } session)
             {
-                SsoLog.RemoteSignOutIgnored(logger, context.Scheme.Name, "the request carries no sign-in made through this provider with a session id.");
+                SsoLog.RemoteSignOutIgnored(logger, context.Scheme.Name, "the request carries no sign-in made through a provider with a session id.");
                 return;
             }
 
             if (!session.IsNamedBy(context.Scheme.Name, context.ProtocolMessage?.Sid, context.ProtocolMessage?.Iss))
             {
-                SsoLog.RemoteSignOutIgnored(logger, context.Scheme.Name, "its sid and iss are missing or are not those of the sign-in.");
+                SsoLog.RemoteSignOutIgnored(logger, context.Scheme.Name, "the sign-in is another provider's, or the sid and iss are missing or are not those of the sign-in.");
                 return;
             }
 
