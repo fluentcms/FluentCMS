@@ -2,8 +2,8 @@ using Microsoft.JSInterop;
 
 namespace FluentCMS.Admin.Interop;
 
-// The allow-listed user of IJSRuntime for the document (spec 3.1): its lang and dir, the branding's custom properties, and
-// the return of focus to an opener.
+// The allow-listed user of IJSRuntime for the document (spec 3.1): its lang and dir, the branding's accent as a custom
+// property, and the return of focus to an opener.
 internal sealed class DocumentInterop(IJSRuntime js) : IAsyncDisposable
 {
     public const string ModulePath = "./_content/FluentCMS.Admin/document.js";

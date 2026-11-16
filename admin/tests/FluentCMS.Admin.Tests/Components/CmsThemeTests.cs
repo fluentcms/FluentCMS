@@ -99,7 +99,9 @@ public sealed partial class CmsThemeTests : ComponentTestContext
 
     [Theory]
     [InlineData("admin/src/FluentCMS.Admin.Components/wwwroot/cms.css")]
-    [InlineData("admin/src/FluentCMS.Admin.App/wwwroot/gallery.css")]
+    [InlineData("admin/src/FluentCMS.Admin/Pages/ComponentGalleryPage.razor.css")]
+    [InlineData("admin/src/FluentCMS.Admin/Shell/AdminLayout.razor.css")]
+    [InlineData("admin/src/FluentCMS.Admin/Configuration/ConfigurationErrorPage.razor.css")]
     public void TheStylesheetsUseLogicalPropertiesOnly(string path)
     {
         // Physical sides and axes have logical forms; symmetric shorthands (margin: 0, inset: 0, overflow: auto) are exempt.
@@ -189,7 +191,50 @@ public sealed partial class CmsThemeTests : ComponentTestContext
         Rule(Css(StylesheetPath), @"\.cms-root").ShouldContain("position: relative");
     }
 
+    // The app's bundle of scoped styles imports the library's styles; a second import here would load them twice.
+    [Fact]
+    public void TheStylesheetImportsNothing()
+    {
+        Css(StylesheetPath).ShouldNotContain("@import");
+    }
+
+    [Fact]
+    public void TheHostPageHasOneRootAndNamesOnlyTheWrappedSet()
+    {
+        var page = Css(HostPagePath);
+
+        Regex.Matches(page, @"<link rel=""stylesheet"" href=""([^""]+)""").Select(m => m.Groups[1].Value)
+            .ShouldBe(["_content/FluentCMS.Admin.Components/cms.css", "FluentCMS.Admin.App.styles.css"]);
+        Regex.Matches(page, @"<div id=""[^""]+""").Select(m => m.Value).ShouldBe(["<div id=\"app\""]);
+        page.ShouldNotContain("FluentUI", Case.Insensitive);
+        Regex.Count(Css("admin/src/FluentCMS.Admin.App/Program.cs"), @"RootComponents\.Add<").ShouldBe(1);
+    }
+
+    [Fact]
+    public void TheSkipLinkUsesTheTokensAndTheSharedFocusRing()
+    {
+        var css = Css(LayoutStylesheetPath);
+
+        var link = Rule(css, @"\.skip-link");
+        link.ShouldContain("background-color: var(--cms-color-bg)");
+        link.ShouldContain("color: var(--cms-color-accent-text)");
+        link.ShouldNotContain("outline");
+        Rule(css, @"\.skip-link:focus").ShouldNotContain("outline");
+    }
+
+    [Fact]
+    public void TheMainContentDropsTheRingOnlyWhenFocusIsNotVisible()
+    {
+        var css = Css(LayoutStylesheetPath);
+
+        Rule(css, @"main:focus:not\(:focus-visible\)").ShouldContain("outline: none");
+        Rule(css, @"main:focus-visible").ShouldContain("outline: var(--cms-focus-ring-width) solid var(--cms-focus-ring-color)");
+        Regex.IsMatch(css, @"(?:^|\})\s*main:focus\s*\{").ShouldBeFalse();
+    }
+
     private const string StylesheetPath = "admin/src/FluentCMS.Admin.Components/wwwroot/cms.css";
+    private const string LayoutStylesheetPath = "admin/src/FluentCMS.Admin/Shell/AdminLayout.razor.css";
+    private const string HostPagePath = "admin/src/FluentCMS.Admin.App/wwwroot/index.html";
 
     private static string Css(string path) => File.ReadAllText(Path.Combine(RepositoryRoot(), path));
 

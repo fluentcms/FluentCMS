@@ -1,0 +1,5 @@
+.fluentcms-configuration-error {
+    max-inline-size: 48rem;
+    padding-block: var(--cms-space-l);
+    padding-inline: var(--cms-space-xl);
+}

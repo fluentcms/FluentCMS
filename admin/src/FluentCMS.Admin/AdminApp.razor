@@ -1,9 +1,11 @@
 @* The root component of the admin, which the shell fills. *@
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "NotFoundPage is kept by the DynamicDependency of the constructor.")]
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Router finds the pages of this assembly, each kept by a DynamicDependency of the constructor.")]
+@implements IDisposable
 @using FluentCMS.Admin.Configuration
 @using Microsoft.Extensions.Logging
 @inject AdminStartup Startup
+@inject ShellTheme Theme
 @inject ILogger<AdminApp> Logger
 @inject InterfaceCulture Culture
 @inject DocumentInterop Document
@@ -11,13 +13,17 @@
 @if (Startup.Configuration is { } configuration)
 {
     <BrandingHead Branding="configuration.Branding" />
-    <Router AppAssembly="typeof(AdminApp).Assembly" NotFoundPage="typeof(NotFoundPage)">
-        <Found Context="routeData">
-            <RouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)" />
-            <FocusOnNavigate RouteData="routeData" Selector="h1" />
-        </Found>
-    </Router>
-    <LiveRegions />
+    @* The one theme root: one set of the library's providers, one scrolling container, and the positioned ancestor of the
+       live regions. *@
+    <CmsThemeRoot Mode="@Theme.Mode">
+        <Router AppAssembly="typeof(AdminApp).Assembly" NotFoundPage="typeof(NotFoundPage)">
+            <Found Context="routeData">
+                <RouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)" />
+                <FocusOnNavigate RouteData="routeData" Selector="h1" />
+            </Found>
+        </Router>
+        <LiveRegions />
+    </CmsThemeRoot>
 }
 else
 {
@@ -29,6 +35,7 @@ else
     // checks that every routable page of the assembly is listed.
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HomePage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NotFoundPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComponentGalleryPage))]
     public AdminApp()
     {
     }
@@ -44,6 +51,8 @@ else
         {
             ConfigurationLog.PlainHttp(Logger, member);
         }
+
+        Theme.Changed += OnThemeChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -53,4 +62,8 @@ else
             await Document.SetLanguageAsync(Culture.Culture.Name, Culture.Direction);
         }
     }
+
+    public void Dispose() => Theme.Changed -= OnThemeChanged;
+
+    private void OnThemeChanged() => _ = InvokeAsync(StateHasChanged);
 }

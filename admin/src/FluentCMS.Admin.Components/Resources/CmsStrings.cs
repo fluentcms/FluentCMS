@@ -3,22 +3,24 @@ using System.Resources;
 
 namespace FluentCMS.Admin.Components.Resources;
 
-// Read in the current UI culture, so the culture choice of the admin (spec 4.17) applies to the wrapped set too.
-internal static class CmsStrings
+// The wrapped set's own reading of its resources, in the current UI culture, so the culture choice of the admin (spec 4.17)
+// applies to it too. A host that reads them through its own localizer registers another ICmsTextSource.
+internal sealed class CmsStrings : ICmsTextSource
 {
+    public const string GridSortedAscending = nameof(GridSortedAscending);
+    public const string GridSortedDescending = nameof(GridSortedDescending);
+    public const string GridRowsSelected = nameof(GridRowsSelected);
+    public const string DropZoneChoose = nameof(DropZoneChoose);
+    public const string Close = nameof(Close);
+
     private static readonly ResourceManager Manager = new("FluentCMS.Admin.Components.Resources.CmsStrings", typeof(CmsStrings).Assembly);
 
-    public static string GridSortedAscending => Get(nameof(GridSortedAscending));
+    public string? GetText(string name) => Manager.GetString(name, CultureInfo.CurrentUICulture);
 
-    public static string GridSortedDescending => Get(nameof(GridSortedDescending));
+    public static string Format(string format, params object?[] arguments) => string.Format(CultureInfo.CurrentCulture, format, arguments);
+}
 
-    public static string GridRowsSelected => Get(nameof(GridRowsSelected));
-
-    public static string DropZoneChoose => Get(nameof(DropZoneChoose));
-
-    public static string Close => Get(nameof(Close));
-
-    public static string Format(string format, object? argument) => string.Format(CultureInfo.CurrentCulture, format, argument);
-
-    private static string Get(string name) => Manager.GetString(name, CultureInfo.CurrentUICulture) ?? name;
+internal static class CmsTextSourceExtensions
+{
+    public static string Text(this ICmsTextSource source, string name) => source.GetText(name) ?? name;
 }

@@ -1,0 +1,206 @@
+@* Every component of the wrapped set, in the theme chosen here and the direction of the interface (the A0 exit criterion). It
+   ships with the admin; the shell's menu does not list it. *@
+@page "/system/components"
+@using System.Globalization
+@inject IStringLocalizer<AdminResources> L
+@inject ICmsToastService Toasts
+@inject ShellTheme Theme
+@inject InterfaceCulture Culture
+
+@* The document carries the interface's direction; the gallery sets its own only when the switch says otherwise. *@
+<div class="gallery" dir="@(rightToLeft == interfaceRightToLeft ? null : rightToLeft ? "rtl" : "ltr")">
+    <div class="gallery-header">
+        <h1 tabindex="-1">@L["System.Components.Heading"]</h1>
+        <CmsStack Orientation="CmsStackOrientation.Horizontal" Gap="CmsSpace.Large" Wrap="true">
+            <CmsSelect Label="@L["System.Components.Theme"]" Options="@themeOptions" Value="@Theme.Mode.ToString()" ValueChanged="@OnThemeChanged" />
+            <CmsSwitch Label="@L["System.Components.RightToLeft"]" @bind-Value="rightToLeft" />
+        </CmsStack>
+    </div>
+
+    <div class="gallery-cards">
+        <CmsCard Title="@L["System.Components.Buttons"]">
+            <CmsStack>
+                <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                    <CmsButton Appearance="CmsButtonAppearance.Primary" Icon="CmsIconName.Save">@L["System.Components.Save"]</CmsButton>
+                    <CmsButton>@L["System.Components.Cancel"]</CmsButton>
+                    <CmsButton Appearance="CmsButtonAppearance.Outline" Icon="CmsIconName.Add">@L["System.Components.Add"]</CmsButton>
+                    <CmsButton Appearance="CmsButtonAppearance.Subtle" Icon="CmsIconName.Delete" Label="@L["System.Components.Delete"]" />
+                    <CmsButton Disabled="true">@L["System.Components.Disabled"]</CmsButton>
+                </CmsStack>
+                <CmsStack Orientation="CmsStackOrientation.Horizontal" Gap="CmsSpace.Small" Wrap="true">
+                    @foreach (var icon in Enum.GetValues<CmsIconName>())
+                    {
+                        <CmsIcon Name="@icon" Label="@L[$"System.Components.Icon{icon}"]" />
+                    }
+                </CmsStack>
+            </CmsStack>
+        </CmsCard>
+
+        <CmsCard Title="@L["System.Components.Inputs"]">
+            <CmsStack>
+                <CmsTextInput Label="@L["System.Components.Title"]" Required="true" Help="@L["System.Components.TitleHelp"]" @bind-Value="title" />
+                <CmsTextInput Label="@L["System.Components.Slug"]" Required="true" Error="@(string.IsNullOrEmpty(slug) ? L["System.Components.SlugRequired"].Value : null)" @bind-Value="slug" />
+                <CmsTextInput Label="@L["System.Components.Email"]" Type="CmsTextInputType.Email" @bind-Value="email" />
+                <CmsTextArea Label="@L["System.Components.Summary"]" Help="@L["System.Components.SummaryHelp"]" @bind-Value="summary" />
+                <CmsSelect Label="@L["System.Components.Status"]" Options="@statusOptions" @bind-Value="status" />
+            </CmsStack>
+        </CmsCard>
+
+        <CmsCard Title="@L["System.Components.DateAndTime"]">
+            <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                <CmsDatePicker Label="@L["System.Components.PublishDate"]" Help="@L["System.Components.PublishDateHelp"]" @bind-Value="date" />
+                <CmsTimePicker Label="@L["System.Components.PublishTime"]" @bind-Value="time" />
+            </CmsStack>
+        </CmsCard>
+
+        <CmsCard Title="@L["System.Components.Choices"]">
+            <CmsStack>
+                <CmsCheckbox Label="@L["System.Components.ShowInNavigation"]" @bind-Value="inNavigation" />
+                <CmsSwitch Label="@L["System.Components.AllowComments"]" @bind-Value="comments" />
+            </CmsStack>
+        </CmsCard>
+
+        <CmsCard Title="@L["System.Components.Overlays"]">
+            <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                <CmsButton OnClick="@(() => dialogOpen = true)">@L["System.Components.OpenDialog"]</CmsButton>
+                <CmsButton OnClick="@(() => drawerOpen = true)">@L["System.Components.OpenDrawer"]</CmsButton>
+                <CmsButton OnClick="@(() => Toasts.ShowAsync(L["System.Components.Saved"], CmsToastIntent.Success))">@L["System.Components.ShowToast"]</CmsButton>
+            </CmsStack>
+            <CmsDialog Title="@L["System.Components.DialogTitle"]" @bind-Open="dialogOpen">
+                <ChildContent>
+                    <p>@L["System.Components.DialogText"]</p>
+                </ChildContent>
+                <Actions>
+                    <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => dialogOpen = false)">@L["System.Components.Discard"]</CmsButton>
+                    <CmsButton OnClick="@(() => dialogOpen = false)">@L["System.Components.KeepEditing"]</CmsButton>
+                </Actions>
+            </CmsDialog>
+            <CmsDrawer Title="@L["System.Components.Filters"]" @bind-Open="drawerOpen">
+                <ChildContent>
+                    <CmsTextInput Label="@L["System.Components.Search"]" Type="CmsTextInputType.Search" @bind-Value="search" />
+                </ChildContent>
+                <Actions>
+                    <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => drawerOpen = false)">@L["System.Components.Apply"]</CmsButton>
+                </Actions>
+            </CmsDrawer>
+        </CmsCard>
+
+        <CmsCard Title="@L["System.Components.MenusAndTabs"]">
+            <CmsStack>
+                <CmsMenu Label="@L["System.Components.Actions"]" Icon="CmsIconName.More">
+                    <CmsMenuItem Icon="CmsIconName.Edit" OnClick="@(() => lastAction = L["System.Components.Edit"])">@L["System.Components.Edit"]</CmsMenuItem>
+                    <CmsMenuItem Icon="CmsIconName.Open" OnClick="@(() => lastAction = L["System.Components.Preview"])">@L["System.Components.Preview"]</CmsMenuItem>
+                    <CmsMenuItem Icon="CmsIconName.Delete" OnClick="@(() => lastAction = L["System.Components.Delete"])">@L["System.Components.Delete"]</CmsMenuItem>
+                </CmsMenu>
+                <p>@L["System.Components.LastAction", lastAction ?? L["System.Components.None"]]</p>
+                <CmsTabs @bind-ActiveTabId="tab">
+                    <CmsTab Id="content" Title="@L["System.Components.ContentTab"]"><p>@L["System.Components.ContentTabText"]</p></CmsTab>
+                    <CmsTab Id="seo" Title="@L["System.Components.SeoTab"]"><p>@L["System.Components.SeoTabText"]</p></CmsTab>
+                    <CmsTab Id="history" Title="@L["System.Components.HistoryTab"]"><p>@L["System.Components.HistoryTabText"]</p></CmsTab>
+                </CmsTabs>
+            </CmsStack>
+        </CmsCard>
+
+        <CmsCard Title="@L["System.Components.DataGrid"]">
+            <CmsDataGrid Label="@L["System.Components.Articles"]" Items="@articles" SelectionMode="CmsSelectionMode.Many" @bind-SelectedItems="selected">
+                <CmsDataGridColumn Title="@L["System.Components.Title"]" Value="@(a => a.Title)" SortKey="@(a => a.Title)" />
+                <CmsDataGridColumn Title="@L["System.Components.Author"]" Value="@(a => a.Author)" SortKey="@(a => a.Author)" />
+                <CmsDataGridColumn Title="@L["System.Components.Updated"]" Value="@(a => a.Updated.ToString("d", CultureInfo.CurrentCulture))" SortKey="@(a => a.Updated)" />
+            </CmsDataGrid>
+            <p>@L["System.Components.SelectedRows", selected.Count]</p>
+        </CmsCard>
+
+        <CmsCard Title="@L["System.Components.Tree"]">
+            <CmsTree Label="@L["System.Components.Folders"]" Nodes="@folders" @bind-SelectedId="folder" />
+            <p>@L["System.Components.SelectedFolder", FolderName(folder) ?? L["System.Components.None"]]</p>
+        </CmsCard>
+
+        <CmsCard Title="@L["System.Components.FileDropZone"]">
+            <CmsFileDropZone Label="@L["System.Components.UploadImages"]" Accept="image/*" Multiple="true" OnFilesSelected="@(files => fileCount = files.Count)" />
+            <p>@L["System.Components.FilesChosen", fileCount]</p>
+        </CmsCard>
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<CmsOption> themeOptions = [];
+    private IReadOnlyList<CmsOption> statusOptions = [];
+    private IReadOnlyList<Article> articles = [];
+    private IReadOnlyList<CmsTreeNode> folders = [];
+
+    private bool interfaceRightToLeft;
+    private bool rightToLeft;
+    private string? title;
+    private string? slug;
+    private string? email;
+    private string? summary;
+    private string? status = "draft";
+    private DateOnly? date;
+    private TimeOnly? time;
+    private bool inNavigation = true;
+    private bool comments;
+    private bool dialogOpen;
+    private bool drawerOpen;
+    private string? search;
+    private string? lastAction;
+    private string? tab = "content";
+    private IReadOnlyList<Article> selected = [];
+    private string? folder;
+    private int fileCount;
+
+    protected override void OnInitialized()
+    {
+        interfaceRightToLeft = Culture.Direction == "rtl";
+        rightToLeft = interfaceRightToLeft;
+        title = L["System.Components.SampleTitle"];
+        themeOptions =
+        [
+            new(nameof(CmsThemeMode.System), L["System.Components.ThemeSystem"]),
+            new(nameof(CmsThemeMode.Light), L["System.Components.ThemeLight"]),
+            new(nameof(CmsThemeMode.Dark), L["System.Components.ThemeDark"]),
+        ];
+        statusOptions =
+        [
+            new("draft", L["System.Components.StatusDraft"]),
+            new("published", L["System.Components.StatusPublished"]),
+            new("archived", L["System.Components.StatusArchived"]),
+        ];
+        articles =
+        [
+            new(L["System.Components.Article1"], L["System.Components.Author1"], new DateOnly(2026, 11, 2)),
+            new(L["System.Components.Article2"], L["System.Components.Author2"], new DateOnly(2026, 10, 18)),
+            new(L["System.Components.Article3"], L["System.Components.Author3"], new DateOnly(2026, 11, 12)),
+            new(L["System.Components.Article4"], L["System.Components.Author4"], new DateOnly(2026, 9, 30)),
+        ];
+        folders =
+        [
+            new("images", L["System.Components.FolderImages"], [new("images/2026", "2026"), new("images/archive", L["System.Components.FolderArchive"])]),
+            new("documents", L["System.Components.FolderDocuments"], [new("documents/legal", L["System.Components.FolderLegal"])]),
+            new("video", L["System.Components.FolderVideo"]),
+        ];
+    }
+
+    private void OnThemeChanged(string? value) => Theme.Choose(Enum.TryParse<CmsThemeMode>(value, out var mode) ? mode : CmsThemeMode.System);
+
+    private string? FolderName(string? id) => id is null ? null : Find(folders, id)?.Text;
+
+    private static CmsTreeNode? Find(IReadOnlyList<CmsTreeNode>? nodes, string id)
+    {
+        foreach (var node in nodes ?? [])
+        {
+            if (node.Id == id)
+            {
+                return node;
+            }
+
+            if (Find(node.Children, id) is { } child)
+            {
+                return child;
+            }
+        }
+
+        return null;
+    }
+
+    private sealed record Article(string Title, string Author, DateOnly Updated);
+}

@@ -1,10 +1,13 @@
 using System.Globalization;
 using FluentCMS.Admin.Api;
+using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Configuration;
 using FluentCMS.Admin.Localization;
+using FluentCMS.Admin.Shell;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace FluentCMS.Admin;
 
@@ -14,9 +17,6 @@ public static class AdminHostBuilderExtensions
     public static async Task AddFluentCmsAdmin(this WebAssemblyHostBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
-
-        // The wrapped set calls no API, and the component gallery is a root of its own, so it does not wait for config.json.
-        builder.Services.AddCmsComponents();
 
         // A team's app made from the standard template adds its own.
         if (!builder.RootComponents.Any(mapping => mapping.ComponentType == typeof(HeadOutlet)))
@@ -46,6 +46,7 @@ public static class AdminHostBuilderExtensions
     {
         services.AddSingleton(startup);
         services.AddAdminLocalization(culture, formats).AddAdminAccessibility();
+        services.AddSingleton<ShellTheme>();
         if (startup.Configuration is { } configuration)
         {
             services.AddAdminServices(configuration);
@@ -55,12 +56,14 @@ public static class AdminHostBuilderExtensions
     }
 
     // Every service that can call the API registers here, and only from a valid configuration, so that none can run without
-    // one.
+    // one. The wrapped set registers here too: the configuration error page uses none of it.
     internal static IServiceCollection AddAdminServices(this IServiceCollection services, AdminConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddSingleton(configuration);
+        services.AddCmsComponents();
+        services.Replace(ServiceDescriptor.Singleton<ICmsTextSource, CmsTextLocalizer>());
         // Before AddManagementApi, whose signed-out default it replaces.
         services.AddScoped<IRateLimitNotice, RateLimitNotice>();
         services.AddManagementApi();

@@ -285,6 +285,8 @@ FluentCMS.Admin.Components.CmsTreeNode.Id.get -> string!
 FluentCMS.Admin.Components.CmsTreeNode.Id.init -> void
 FluentCMS.Admin.Components.CmsTreeNode.Text.get -> string!
 FluentCMS.Admin.Components.CmsTreeNode.Text.init -> void
+FluentCMS.Admin.Components.ICmsTextSource
+FluentCMS.Admin.Components.ICmsTextSource.GetText(string! name) -> string?
 FluentCMS.Admin.Components.ICmsToastService
 FluentCMS.Admin.Components.ICmsToastService.ShowAsync(string! message, FluentCMS.Admin.Components.CmsToastIntent intent = FluentCMS.Admin.Components.CmsToastIntent.Info) -> System.Threading.Tasks.Task!
 FluentCMS.Admin.Components._Imports
