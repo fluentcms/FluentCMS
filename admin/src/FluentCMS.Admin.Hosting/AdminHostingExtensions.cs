@@ -3,6 +3,7 @@ using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.StaticAssets;
@@ -66,6 +67,17 @@ public static class AdminHostingExtensions
             return new Conventions();
         }
 
+        // At start, so that a host without the app, or an app whose index.html the host cannot set the base of, does not start.
+        var manifest = Path.Combine(AppContext.BaseDirectory, staticAssetsManifestPath ?? $"{services.GetRequiredService<IWebHostEnvironment>().ApplicationName}.staticwebassets.endpoints.json");
+        if (!File.Exists(manifest))
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.NotRegistered,
+                $"MapFluentCmsAdmin found no manifest of static web assets at {manifest}. The host references the admin app's project, such as FluentCMS.Admin.App, whose files become its static web assets.");
+        }
+
+        site.LoadIndex();
+
         var admin = endpoints.MapGroup(AdminSite.Path);
         admin.WithMetadata(FluentCmsEndpointMetadata.Instance, Surface);
 
@@ -73,7 +85,7 @@ public static class AdminHostingExtensions
         // content negotiation of MapStaticAssets picks a compressed copy; their fingerprinted and compressed paths are not.
         var policy = new ContentSecurityPolicyMetadata(site.ContentSecurityPolicy);
         string[] methods = [HttpMethods.Get, HttpMethods.Head];
-        var assets = admin.MapStaticAssets(staticAssetsManifestPath);
+        var assets = admin.MapStaticAssets(manifest);
         assets.Add(endpoint =>
         {
             if (!endpoint.Metadata.OfType<StaticAssetDescriptor>().Any(asset => IsDocument(asset.AssetPath)))
@@ -88,7 +100,7 @@ public static class AdminHostingExtensions
             }
             else if (route.EndsWith("/" + AdminSite.IndexFile, StringComparison.Ordinal) || route == AdminSite.IndexFile)
             {
-                endpoint.RequestDelegate = context => PageAsync(context, site, redirect: false);
+                endpoint.RequestDelegate = context => PageAsync(context, site);
                 endpoint.Metadata.Add(policy);
             }
             else
@@ -97,13 +109,13 @@ public static class AdminHostingExtensions
             }
         });
 
-        var root = admin.MapMethods("/", methods, (HttpContext context) => PageAsync(context, site, redirect: true));
-        var index = admin.MapMethods("/" + AdminSite.IndexFile, methods, (HttpContext context) => PageAsync(context, site, redirect: false));
+        var root = admin.MapMethods("/", methods, (HttpContext context) => PageAsync(context, site));
+        var index = admin.MapMethods("/" + AdminSite.IndexFile, methods, (HttpContext context) => PageAsync(context, site));
         var configuration = admin.MapMethods("/" + AdminSite.ConfigurationFile, methods, (HttpContext context) => ConfigurationAsync(context, site));
         var routes = admin.MapFallback("{**path:nonfile}", (HttpContext context, string path) =>
             path.StartsWith("_framework/", StringComparison.OrdinalIgnoreCase) || path.StartsWith("_content/", StringComparison.OrdinalIgnoreCase)
                 ? NotFound(context)
-                : PageAsync(context, site, redirect: false))
+                : PageAsync(context, site))
             .WithMetadata(new HttpMethodMetadata(methods));
 
         // Before the app's own copies of the same paths, whose endpoints MapStaticAssets gives the order -100.
@@ -134,21 +146,25 @@ public static class AdminHostingExtensions
         return Task.CompletedTask;
     }
 
-    private static async Task PageAsync(HttpContext context, AdminSite site, bool redirect)
+    private static async Task PageAsync(HttpContext context, AdminSite site)
     {
-        // At /admin the app's base, /admin/, would not contain the page's address.
-        if (redirect && !context.Request.Path.Value!.EndsWith('/'))
+        // The app's router takes only addresses under its base, which is written as configured: /admin, and /ADMIN/ or a path
+        // base in another case, go to the address the base names.
+        var request = context.Request;
+        var path = request.PathBase.Add(request.Path).ToUriComponent();
+        if (!path.StartsWith(site.BaseHref, StringComparison.Ordinal))
         {
-            context.Response.Redirect(context.Request.PathBase.Add(AdminSite.Path + "/").ToUriComponent() + context.Request.QueryString.ToUriComponent());
+            var rest = path.StartsWith(site.BaseHref, StringComparison.OrdinalIgnoreCase) ? path[site.BaseHref.Length..] : "";
+            context.Response.Redirect(site.BaseHref + rest + request.QueryString.ToUriComponent());
             return;
         }
 
         var html = await site.IndexAsync(context.RequestAborted);
         context.Response.ContentType = "text/html; charset=utf-8";
         context.Response.Headers.CacheControl = "no-store";
+        context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
         await context.Response.WriteAsync(html, Encoding.UTF8, context.RequestAborted);
     }
-
     private static async Task ConfigurationAsync(HttpContext context, AdminSite site)
     {
         var json = site.Configuration(context.Request);

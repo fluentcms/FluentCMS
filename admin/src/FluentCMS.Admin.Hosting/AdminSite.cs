@@ -116,16 +116,20 @@ internal sealed partial class AdminSite(AdminOptions options, PublicOrigin origi
         return policy.Append("base-uri 'self'; form-action 'self'; frame-ancestors 'none'").ToString();
     }
 
+    // Reads index.html when the admin is mapped, so that an app without the file or without a single <base href> stops the
+    // host at start rather than on the first request.
+    public void LoadIndex()
+    {
+        var file = IndexFileInfo();
+        using var reader = new StreamReader(file.CreateReadStream(), Encoding.UTF8);
+        _index = new Page(file.LastModified, file.Length, Rewrite(reader.ReadToEnd()));
+    }
+
     // index.html as the app was built, with only the href of its <base> changed. It is read again when the file changes, as
     // under dotnet watch.
     public async Task<string> IndexAsync(CancellationToken cancellationToken)
     {
-        var file = environment.WebRootFileProvider.GetFileInfo(IndexFile);
-        if (!file.Exists)
-        {
-            throw new FileNotFoundException($"The admin's {IndexFile} is not among the host's static web assets. The host references the admin app project, such as FluentCMS.Admin.App, and maps it with MapFluentCmsAdmin.");
-        }
-
+        var file = IndexFileInfo();
         if (_index is { } cached && cached.LastModified == file.LastModified && cached.Length == file.Length)
         {
             return cached.Content;
@@ -138,18 +142,34 @@ internal sealed partial class AdminSite(AdminOptions options, PublicOrigin origi
             html = await reader.ReadToEndAsync(cancellationToken);
         }
 
-        var bases = BaseElement().Matches(html);
-        if (bases.Count != 1)
-        {
-            throw new InvalidOperationException($"The admin's {IndexFile} has {bases.Count} <base href> elements; it has one, which the host sets to {BaseHref}.");
-        }
-
-        var href = bases[0].Groups["href"];
-        var content = string.Concat(html.AsSpan(0, href.Index), HtmlEncoder.Default.Encode(BaseHref), html.AsSpan(href.Index + href.Length));
+        var content = Rewrite(html);
         _index = new Page(file.LastModified, file.Length, content);
         return content;
     }
 
+    private IFileInfo IndexFileInfo()
+    {
+        var file = environment.WebRootFileProvider.GetFileInfo(IndexFile);
+        return file.Exists
+            ? file
+            : throw new FluentCmsConfigurationException(
+                HostErrorCodes.NotRegistered,
+                $"MapFluentCmsAdmin found no {IndexFile} among the host's static web assets. The host references the admin app's project, such as FluentCMS.Admin.App.");
+    }
+
+    private string Rewrite(string html)
+    {
+        var bases = BaseElement().Matches(html);
+        if (bases.Count != 1)
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.NotRegistered,
+                $"The admin's {IndexFile} has {bases.Count} <base href> elements; MapFluentCmsAdmin needs exactly one, whose href it sets to {BaseHref}.");
+        }
+
+        var href = bases[0].Groups["href"];
+        return string.Concat(html.AsSpan(0, href.Index), HtmlEncoder.Default.Encode(BaseHref), html.AsSpan(href.Index + href.Length));
+    }
     private string HostBase(HttpRequest request) =>
         origin.Base
         ?? (environment.IsDevelopment()
@@ -159,8 +179,9 @@ internal sealed partial class AdminSite(AdminOptions options, PublicOrigin origi
     private string ApiBaseUrl(HttpRequest request) =>
         string.IsNullOrEmpty(options.ApiBaseUrl) ? HostBase(request) : options.ApiBaseUrl;
 
-    // The issuer of the discovery document, which the admin compares as an exact string.
-    private string Authority(HttpRequest request) => origin.Issuer?.AbsoluteUri ?? HostBase(request) + "/";
+    // The issuer as the discovery document writes it, which the admin compares as a string: the public origin's, or the
+    // request's base in Development, written as a URI, as OpenIddict writes the issuer it builds from either.
+    private string Authority(HttpRequest request) => (origin.Issuer ?? new Uri(HostBase(request), UriKind.Absolute)).AbsoluteUri;
 
     private IEnumerable<string> PreviewOrigins() =>
         options.PreviewOrigins.Select(AdminOptions.Origin).OfType<string>().Distinct(StringComparer.Ordinal);

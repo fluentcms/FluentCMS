@@ -4,9 +4,14 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using FluentCMS.Admin.Hosting;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Data.Sqlite;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -45,7 +50,7 @@ public sealed class AdminHostingTests : IAsyncDisposable
         }
 
         using var authorize = await client.GetAsync(Authorize(Callback, pkce: true), Token);
-        ShouldBeRefused(authorize);
+        ShouldBeRefused(authorize, "client_id");
     }
 
     [Fact]
@@ -60,7 +65,8 @@ public sealed class AdminHostingTests : IAsyncDisposable
         page.Headers.CacheControl!.NoStore.ShouldBeTrue();
         page.Headers.GetValues("Content-Security-Policy").ShouldHaveSingleItem().ShouldBe(Policy);
         page.Headers.GetValues("X-Content-Type-Options").ShouldHaveSingleItem().ShouldBe("nosniff");
-        page.Headers.Contains("Referrer-Policy").ShouldBeTrue();
+        page.Headers.GetValues("Referrer-Policy").ShouldHaveSingleItem().ShouldBe("no-referrer");
+        page.Headers.GetValues("Cross-Origin-Opener-Policy").ShouldHaveSingleItem().ShouldBe("same-origin");
         var html = await page.Content.ReadAsStringAsync(Token);
 
         // Only the href of <base> differs from the file the app was built with.
@@ -79,10 +85,27 @@ public sealed class AdminHostingTests : IAsyncDisposable
             (await route.Content.ReadAsStringAsync(Token)).ShouldBe(html, path);
         }
 
-        // At /admin the app's base would not contain the page.
-        using var bare = await client.GetAsync(new Uri("/admin?x=1", UriKind.Relative), Token);
-        bare.StatusCode.ShouldBe(HttpStatusCode.Redirect);
-        bare.Headers.Location!.OriginalString.ShouldBe("/admin/?x=1");
+        // At /admin, or in another case, the app's base would not contain the page.
+        foreach (var (path, canonical) in new[] { ("/admin?x=1", "/admin/?x=1"), ("/ADMIN/system/components?x=1", "/admin/system/components?x=1"), ("/Admin/index.html", "/admin/index.html") })
+        {
+            using var other = await client.GetAsync(new Uri(path, UriKind.Relative), Token);
+            other.StatusCode.ShouldBe(HttpStatusCode.Redirect, path);
+            other.Headers.Location!.OriginalString.ShouldBe(canonical, path);
+        }
+
+        // HEAD answers the page's headers without its body, and the page takes no other method.
+        using (var head = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, "/admin/system/components"), Token))
+        {
+            head.StatusCode.ShouldBe(HttpStatusCode.OK);
+            head.Content.Headers.ContentType!.MediaType.ShouldBe("text/html");
+            (await head.Content.ReadAsByteArrayAsync(Token)).ShouldBeEmpty();
+        }
+
+        foreach (var path in new[] { "/admin/", "/admin/system/components", "/admin/config.json" })
+        {
+            using var posted = await client.PostAsync(new Uri(path, UriKind.Relative), new StringContent(""), Token);
+            posted.StatusCode.ShouldBe(HttpStatusCode.MethodNotAllowed, path);
+        }
     }
 
     // Served from the build's manifest, the files are not cached for good, so that a rebuild is seen; the published ones
@@ -105,6 +128,10 @@ public sealed class AdminHostingTests : IAsyncDisposable
         using var script = await client.GetAsync(new Uri("/admin/_framework/blazor.webassembly.js", UriKind.Relative), Token);
         script.StatusCode.ShouldBe(HttpStatusCode.OK);
         script.Content.Headers.ContentType!.MediaType.ShouldBe("text/javascript");
+
+        using var icu = await client.GetAsync(new Uri("/admin/_framework/icudt.dat", UriKind.Relative), Token);
+        icu.StatusCode.ShouldBe(HttpStatusCode.OK);
+        icu.Content.Headers.ContentType!.MediaType.ShouldBe("application/octet-stream");
 
         using var styles = await client.GetAsync(new Uri("/admin/_content/FluentCMS.Admin.Components/cms.css", UriKind.Relative), Token);
         styles.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -206,11 +233,10 @@ public sealed class AdminHostingTests : IAsyncDisposable
         accepted.Headers.Location!.AbsolutePath.ShouldBe("/account/login");
 
         using var elsewhere = await client.GetAsync(Authorize("https://evil.example/admin/authentication/login-callback", pkce: true), Token);
-        ShouldBeRefused(elsewhere);
+        ShouldBeRefused(elsewhere, "redirect_uri");
 
         using var withoutPkce = await client.GetAsync(Authorize(Callback, pkce: false), Token);
-        ShouldBeRefused(withoutPkce);
-        Uri.UnescapeDataString(withoutPkce.Headers.Location!.OriginalString).ShouldContain("code_challenge");
+        ShouldBeRefused(withoutPkce, "code_challenge");
 
         // A public client: no secret, so no client credentials either.
         using var token = new FormUrlEncodedContent(new Dictionary<string, string> { ["grant_type"] = "client_credentials", ["client_id"] = "fluentcms-admin" });
@@ -234,7 +260,7 @@ public sealed class AdminHostingTests : IAsyncDisposable
 
         // Not merged: the built-in callback is not registered beside the configured one.
         using var builtIn = await client.GetAsync(Authorize(Callback, pkce: true, scope: "openid management"), Token);
-        ShouldBeRefused(builtIn);
+        ShouldBeRefused(builtIn, "redirect_uri");
     }
 
     [Fact]
@@ -297,8 +323,96 @@ public sealed class AdminHostingTests : IAsyncDisposable
         refusal.Message.ShouldContain($"FluentCms:Admin:{key.Split(':')[0]}");
     }
 
-    private static Dictionary<string, string?> AdminSettings()
+    // A logo whose URL carries a query is allowed by img-src, as config.json carries it.
+    [Fact]
+    public async Task TheOriginsOfTheLogoAndTheFaviconAreAllowedWhateverTheirQuery()
     {
+        var settings = AdminSettings();
+        settings["FluentCms:Admin:Branding:LogoUrl"] = "https://cdn.example.com/logo.svg?v=2";
+        settings["FluentCms:Admin:Branding:FaviconUrl"] = "https://icons.example.net/f.ico";
+        await _host.StartAsync(settings);
+        using var client = _host.Client();
+
+        using var page = await client.GetAsync(new Uri("/admin/", UriKind.Relative), Token);
+        page.Headers.GetValues("Content-Security-Policy").ShouldHaveSingleItem()
+            .ShouldContain("img-src 'self' data: blob: https://localhost https://cdn.example.com https://icons.example.net;");
+    }
+
+    // The issuer of a request in Development under a path base has no trailing slash, as discovery writes it.
+    [Fact]
+    public async Task InDevelopmentUnderAPathBaseTheAuthorityIsTheIssuerOfDiscovery()
+    {
+        var settings = Operator.Settings();
+        settings["FluentCms:Admin:Enabled"] = "true";
+        settings["FluentCms:ReverseProxy:PathBase"] = "/cms";
+        await _host.StartAsync(settings, environment: "Development");
+        using var client = _host.Client(new Uri("https://localhost:5001/"));
+
+        using var config = await client.GetAsync(new Uri("/cms/admin/config.json", UriKind.Relative), Token);
+        var (_, configuration) = await HostUnderTest.ReadAsync(config);
+        using var discovery = await client.GetAsync(new Uri("/cms/.well-known/openid-configuration", UriKind.Relative), Token);
+        var (_, metadata) = await HostUnderTest.ReadAsync(discovery);
+
+        configuration!["authority"]!.GetValue<string>().ShouldBe("https://localhost:5001/cms");
+        metadata!["issuer"]!.GetValue<string>().ShouldBe(configuration["authority"]!.GetValue<string>());
+        configuration["apiBaseUrl"]!.GetValue<string>().ShouldBe("https://localhost:5001/cms");
+    }
+
+    // An address the admin's reader would refuse stops the host, rather than the page failing or the admin showing its error.
+    [Theory]
+    [InlineData("FluentCms:PublicOrigin", "https://münchen.example", "xn--")]
+    [InlineData("FluentCms:ReverseProxy:PathBase", "/c(m)s", "FluentCms:ReverseProxy:PathBase")]
+    public async Task AnAddressTheAdminCannotTakeStopsTheHost(string key, string value, string named)
+    {
+        var settings = AdminSettings();
+        settings[key] = value;
+
+        var exception = await Should.ThrowAsync<Exception>(() => _host.StartAsync(settings));
+
+        var refusal = Refusals(exception).ShouldHaveSingleItem();
+        refusal.Code.ShouldBe("FCMS1101");
+        refusal.Message.ShouldContain(key);
+        refusal.Message.ShouldContain(named);
+    }
+
+    // The app's index.html is checked when the admin is mapped, and so is the manifest of its files.
+    [Theory]
+    [InlineData("<html><head><title>No base</title></head></html>", true, "0 <base href> elements")]
+    [InlineData("<html><head><base href=\"/\" /><base href=\"/x/\" /></head></html>", true, "2 <base href> elements")]
+    [InlineData("<html><head><base href=\"/\" /></head></html>", false, "no manifest of static web assets")]
+    public async Task AnAppTheHostCannotServeStopsItWhenTheAdminIsMapped(string index, bool manifest, string message)
+    {
+        var root = Directory.CreateTempSubdirectory("fluentcms-admin-bare-");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root.FullName, "wwwroot"));
+            await File.WriteAllTextAsync(Path.Combine(root.FullName, "wwwroot", "index.html"), index, Token);
+            var path = Path.Combine(root.FullName, "app.staticwebassets.endpoints.json");
+            if (manifest)
+            {
+                await File.WriteAllTextAsync(path, """{ "Version": 1, "ManifestType": "Build", "Endpoints": [] }""", Token);
+            }
+
+            var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development", ContentRootPath = root.FullName });
+            builder.WebHost.UseTestServer();
+            builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["FluentCms:Admin:Enabled"] = "true" });
+            builder.Services.AddFluentCms(cms => cms.UseSqlite($"Data Source={Path.Combine(root.FullName, "cms.db")}").AddAdmin());
+            await using var app = builder.Build();
+            app.UseFluentCms();
+
+            var refusal = Should.Throw<FluentCmsConfigurationException>(() => app.MapFluentCmsAdmin(path));
+
+            refusal.Code.ShouldBe("FCMS1103");
+            refusal.Message.ShouldContain(message);
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            root.Delete(recursive: true);
+        }
+    }
+
+    private static Dictionary<string, string?> AdminSettings()    {
         var settings = Operator.Settings();
         settings["FluentCms:PublicOrigin"] = "https://localhost";
         settings["FluentCms:Admin:Enabled"] = "true";
@@ -306,10 +420,12 @@ public sealed class AdminHostingTests : IAsyncDisposable
     }
 
     // The authorization server refuses a request it cannot send back to the client on its error page, never the login.
-    private static void ShouldBeRefused(HttpResponseMessage response)
+    private static void ShouldBeRefused(HttpResponseMessage response, string parameter)
     {
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
-        response.Headers.Location!.OriginalString.ShouldStartWith("/account/error?error=invalid_request");
+        var location = response.Headers.Location!.OriginalString;
+        location.ShouldStartWith("/account/error?error=invalid_request");
+        Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri("https://localhost" + location).Query)["error_description"].ToString().ShouldContain($"'{parameter}'");
     }
 
     private static List<FluentCmsConfigurationException> Refusals(Exception exception) => exception switch

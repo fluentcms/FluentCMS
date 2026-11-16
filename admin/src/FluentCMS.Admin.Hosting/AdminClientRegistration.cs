@@ -60,8 +60,25 @@ internal sealed partial class AdminClientRegistration(
     // The scheme, host, port and path base of each address the admin is reached at, without a trailing slash.
     private List<string> Origins()
     {
+        // The admin reads its addresses in config.json with the rules of admin spec 2.5, which refuse what the path base and
+        // the public origin may hold otherwise: characters such as parentheses, and a host that is not ASCII.
+        var pathBase = proxy.PathBase ?? "";
+        if (AdminOptions.HttpUrl("http://localhost" + pathBase) is null)
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.InvalidOption,
+                $"{FluentCmsOptions.Section}:{ReverseProxyOptions.Section}:{nameof(ReverseProxyOptions.PathBase)} is '{pathBase}', which the admin cannot take in its addresses; use letters, digits and - . _ ~ / only, or turn the admin off.");
+        }
+
         if (origin.Base is { } publicBase)
         {
+            if (AdminOptions.HttpUrl(publicBase) is null)
+            {
+                throw new FluentCmsConfigurationException(
+                    HostErrorCodes.InvalidOption,
+                    $"{FluentCmsOptions.Section}:{PublicOrigin.Key} is '{publicBase}', which the admin cannot take in its addresses; write an internationalized host name in its xn-- form, such as https://xn--mnchen-3ya.example, or turn the admin off.");
+            }
+
             return [publicBase];
         }
 
@@ -72,7 +89,6 @@ internal sealed partial class AdminClientRegistration(
                 $"{FluentCmsOptions.Section}:{AdminOptions.Section}:{nameof(AdminOptions.Enabled)} is true and {FluentCmsOptions.Section}:{PublicOrigin.Key} is not set. Outside Development the admin's sign-in addresses and its config.json are built from the public origin, never from a request's host; set it, or turn the admin off.");
         }
 
-        var pathBase = proxy.PathBase ?? "";
         return [.. ListeningAddresses().Select(address => address + pathBase).Distinct(StringComparer.OrdinalIgnoreCase)];
     }
 

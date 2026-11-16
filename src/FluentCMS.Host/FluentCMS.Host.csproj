@@ -21,6 +21,9 @@
        assets, which MapFluentCmsAdmin serves at /admin. The host answers config.json itself, so the sample is not compressed. -->
   <PropertyGroup>
     <CompressionExcludePatterns>$(CompressionExcludePatterns);**/config.json</CompressionExcludePatterns>
+    <!-- The host has no styles or script modules of its own, which would otherwise be empty bundles served under /admin. -->
+    <DisableScopedCssBundling>true</DisableScopedCssBundling>
+    <GenerateJSModuleManifest>false</GenerateJSModuleManifest>
   </PropertyGroup>
 
   <!-- For the local loop of dotnet run and dotnet watch (docs/host-configuration.md#admin); the image runs in Production. -->

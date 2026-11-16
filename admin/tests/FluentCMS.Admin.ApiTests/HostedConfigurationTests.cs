@@ -100,6 +100,12 @@ public sealed class HostedConfigurationTests : IAsyncDisposable
 
     private async Task<HttpClient> StartAsync(string environment, Dictionary<string, string?> settings)
     {
+        // The app's files play no part in config.json, so the host maps none but the index.html it checks at start.
+        var manifest = Path.Combine(_directory.FullName, "empty.staticwebassets.endpoints.json");
+        await File.WriteAllTextAsync(manifest, """{ "Version": 1, "ManifestType": "Build", "Endpoints": [] }""", AdminHost.Token);
+        Directory.CreateDirectory(Path.Combine(_directory.FullName, "wwwroot"));
+        await File.WriteAllTextAsync(Path.Combine(_directory.FullName, "wwwroot", "index.html"), """<html><head><base href="/" /></head></html>""", AdminHost.Token);
+
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment, ContentRootPath = _directory.FullName });
         builder.WebHost.UseTestServer();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
@@ -111,10 +117,6 @@ public sealed class HostedConfigurationTests : IAsyncDisposable
         });
         builder.Configuration.AddInMemoryCollection(settings);
         builder.Services.AddFluentCms(cms => cms.UseSqlite($"Data Source={Path.Combine(_directory.FullName, "cms.db")}").AddAdmin());
-
-        // The app's files play no part in config.json, so the host maps none.
-        var manifest = Path.Combine(_directory.FullName, "empty.staticwebassets.endpoints.json");
-        await File.WriteAllTextAsync(manifest, """{ "Version": 1, "ManifestType": "Build", "Endpoints": [] }""", AdminHost.Token);
 
         _app = builder.Build();
         _app.UseFluentCms();

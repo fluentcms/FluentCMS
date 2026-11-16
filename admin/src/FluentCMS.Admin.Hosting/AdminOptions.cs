@@ -113,28 +113,45 @@ public sealed class AdminBrandingOptions
         }
     }
 
-    // The absolute URLs among the logo and the favicon, whose origins the page's img-src allows.
+    // The absolute URLs among the logo and the favicon, whose origins the page's img-src allows, by the test that admits them.
     internal IEnumerable<Uri> AbsoluteUrls() =>
-        new[] { LogoUrl, FaviconUrl }.Select(AdminOptions.HttpUrl).OfType<Uri>();
+        new[] { LogoUrl, FaviconUrl }.Select(value => IsUrlOrPath(value, out var absolute) ? absolute : null).OfType<Uri>();
 
     private static void ValidateUrlOrPath(string? value, string key)
     {
-        if (string.IsNullOrEmpty(value))
+        if (!string.IsNullOrEmpty(value))
         {
-            return;
+            AdminOptions.Require(IsUrlOrPath(value, out _), $"{key} is '{value}'; it must be an absolute http or https URL, or a path relative to the admin such as images/logo.svg.");
+        }
+    }
+
+    // The admin's rule for a logo or favicon: an absolute http or https URL without user info, which may carry a query, or a
+    // relative path; absolute is the URL when it is one.
+    private static bool IsUrlOrPath(string? value, out Uri? absolute)
+    {
+        absolute = null;
+        if (string.IsNullOrEmpty(value) || AdminOptions.HasUnsafeCharacter(value) || value.Contains('#', StringComparison.Ordinal))
+        {
+            return false;
         }
 
-        var valid = !AdminOptions.HasUnsafeCharacter(value) && !value.Contains('#', StringComparison.Ordinal)
-            && (AdminOptions.SchemePattern().IsMatch(value)
-                ? Uri.TryCreate(value, UriKind.Absolute, out var absolute)
-                    && (absolute.Scheme == Uri.UriSchemeHttp || absolute.Scheme == Uri.UriSchemeHttps)
-                    && absolute.Host.Length > 0
-                    && absolute.UserInfo.Length == 0
-                : !value.StartsWith("//", StringComparison.Ordinal) && Uri.TryCreate(value, UriKind.Relative, out _));
-        AdminOptions.Require(valid, $"{key} is '{value}'; it must be an absolute http or https URL, or a path relative to the admin such as images/logo.svg.");
+        if (!AdminOptions.SchemePattern().IsMatch(value))
+        {
+            return !value.StartsWith("//", StringComparison.Ordinal) && Uri.TryCreate(value, UriKind.Relative, out _);
+        }
+
+        if (Uri.TryCreate(value, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+            && uri.Host.Length > 0
+            && uri.UserInfo.Length == 0)
+        {
+            absolute = uri;
+            return true;
+        }
+
+        return false;
     }
 }
-
 // The cultures the admin offers its users, and the one it starts in. Empty, it offers every culture it ships, and starts
 // in en.
 public sealed class AdminCultureOptions

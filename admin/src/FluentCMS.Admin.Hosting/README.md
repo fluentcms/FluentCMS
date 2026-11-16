@@ -16,3 +16,5 @@ app.MapFluentCmsAdmin();
 ```
 
 The host references the admin app's project, whose files become its static web assets, and turns the admin on with `FluentCms:Admin:Enabled`. [Host configuration](https://github.com/fluentcms/FluentCMS/blob/main/docs/host-configuration.md#admin) lists every key; section 6.1 of the [admin technical specification](https://github.com/fluentcms/FluentCMS/blob/main/docs/planning/admin-technical-spec.md) has the design. The prebuilt first-party app inside this package comes later (AQ8).
+
+Serve nothing of other parties on the admin's origin: the admin keeps the refresh token and unsaved drafts in `sessionStorage`, which every page of the same origin in the same tab can read. A host's own pages, or files users upload, belong on another origin, or the admin on one of its own.
