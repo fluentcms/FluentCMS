@@ -469,6 +469,7 @@ internal static class ConnectEndpoints
         return await applications.FindByClientIdAsync(clientId, context.RequestAborted) is { } application
             && await applications.ValidatePostLogoutRedirectUriAsync(application, request.PostLogoutRedirectUri, context.RequestAborted);
     }
+
     // Ends the cookie's sign-in and, with it, the authorizations of its server session, so that nothing issued in a
     // session outlives its cookie; an end the browser stops waiting for still ends them.
     private static async Task EndSignInAsync(HttpContext context, AuthenticateResult cookie, bool members)
