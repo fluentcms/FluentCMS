@@ -11,7 +11,8 @@ public interface IDistributedLock
     /// <param name="name">The name of the lock, at most 128 characters. Names are a fixed set, such as one per task, not one per item.</param>
     /// <param name="timeout">
     /// How long to wait while another holder has the lock: <see cref="TimeSpan.Zero"/> to try once, or
-    /// <see cref="Timeout.InfiniteTimeSpan"/> to wait until it is free.
+    /// <see cref="Timeout.InfiniteTimeSpan"/> to wait until it is free. An implementation may answer shortly after the
+    /// timeout while it confirms that a holder whose lease ran out has stopped; core's default does so for up to 5 seconds.
     /// </param>
     /// <param name="cancellationToken">Cancels the wait.</param>
     /// <returns>The held lock, which disposing releases, or <see langword="null"/> when the timeout passed first.</returns>
