@@ -1,4 +1,7 @@
+using System.Buffers.Text;
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
@@ -12,6 +15,7 @@ using FluentCMS.Testing;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.DataProtection.XmlEncryption;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -281,10 +285,11 @@ public sealed partial class AuthorizationServerTests
     {
         var editor = await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
         var other = await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
-        var tokens = await _host.SignInAsync(editor, "openid", "management");
         var othersTokens = await _host.SignInAsync(other, "openid", "management");
+        var anotherSession = await _host.SignInAsync(editor, "openid", "offline_access", "management");
         var cookie = await _host.SignInCookieAsync(editor);
         using var client = _host.CreateSecureClient();
+        var tokens = await SignInAsync(client, cookie);
 
         // Without the hint the logout page asks the user, and posts the request back.
         using (var bare = await SendAsync(client, HttpMethod.Get, "/connect/logout?state=abc", cookie))
@@ -308,6 +313,16 @@ public sealed partial class AuthorizationServerTests
             someoneElse.Headers.Contains("Set-Cookie").ShouldBeFalse();
         }
 
+        // The user's own hint from another session, another browser or an earlier sign-in, is not this session's: the page
+        // asks, and nothing ends.
+        using (var otherSession = await SendAsync(client, HttpMethod.Get, $"/connect/logout?id_token_hint={anotherSession.IdentityToken}", cookie))
+        {
+            otherSession.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+            new Uri(client.BaseAddress!, otherSession.Headers.Location!).AbsolutePath.ShouldBe("/account/logout");
+            otherSession.Headers.Contains("Set-Cookie").ShouldBeFalse();
+        }
+
+        tokens = await TokenAsync(client, Refresh(tokens.RefreshToken!), Token);
         using (var hinted = await SendAsync(client, HttpMethod.Get, $"/connect/logout?id_token_hint={tokens.IdentityToken}", cookie))
         {
             hinted.StatusCode.ShouldBe(HttpStatusCode.Redirect);
@@ -315,6 +330,19 @@ public sealed partial class AuthorizationServerTests
             hinted.Headers.GetValues("Set-Cookie").ShouldContain(value => value.StartsWith(".AspNetCore.Identity.Application=;", StringComparison.Ordinal));
         }
 
+        // The session's tokens end with it, and the other session's stay.
+        using (var refused = await PostTokenAsync(client, Refresh(tokens.RefreshToken!)))
+        {
+            (await ErrorAsync(refused)).ShouldBe("invalid_grant");
+        }
+
+        (await TokenAsync(client, Refresh(anotherSession.RefreshToken!), Token)).RefreshToken.ShouldNotBeNull();
+
+        // A repeated logout with the hint, whose token the first one revoked, finds no cookie and returns without asking.
+        using var again = await SendAsync(client, HttpMethod.Get, $"/connect/logout?id_token_hint={tokens.IdentityToken}", "");
+        again.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        again.Headers.Location!.OriginalString.ShouldBe("/account/logout");
+        again.Headers.Contains("Set-Cookie").ShouldBeFalse();
     }
 
     [Fact]
@@ -381,6 +409,28 @@ public sealed partial class AuthorizationServerTests
 
     private static string AuthorizePath() =>
         $"/connect/authorize?client_id={FluentCmsTestHost.OAuthClientId}&response_type=code&scope=openid&redirect_uri={Uri.EscapeDataString(FluentCmsTestHost.OAuthRedirectUri)}&code_challenge=abcdefghijabcdefghijabcdefghijabcdefghijabc&code_challenge_method=S256";
+
+    // The tokens of the test client from a code flow in the session of the cookie, so that its identity token is of it.
+    private static async Task<TestTokens> SignInAsync(HttpClient client, string cookie, string scope = "openid offline_access management")
+    {
+        var verifier = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));
+        var challenge = Base64Url.EncodeToString(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
+        var path = $"/connect/authorize?client_id={TestClientId}&response_type=code&scope={Uri.EscapeDataString(scope)}&redirect_uri={Uri.EscapeDataString(FluentCmsTestHost.OAuthRedirectUri)}&code_challenge={challenge}&code_challenge_method=S256";
+        using var authorize = await SendAsync(client, HttpMethod.Get, path, cookie);
+        var code = QueryHelpers.ParseQuery(authorize.Headers.Location!.Query)["code"].ToString();
+        code.ShouldNotBeNullOrEmpty();
+        return await TokenAsync(
+            client,
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "authorization_code",
+                ["code"] = code,
+                ["redirect_uri"] = FluentCmsTestHost.OAuthRedirectUri,
+                ["client_id"] = TestClientId,
+                ["code_verifier"] = verifier,
+            },
+            Token);
+    }
 
     private static async Task<HttpResponseMessage> SendAsync(HttpClient client, HttpMethod method, string path, string cookie, HttpContent? content = null)
     {

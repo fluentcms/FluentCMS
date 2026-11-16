@@ -33,6 +33,8 @@ public sealed partial class HostedPagesTests
         var editor = await CreateUserAsync(host);
         using var password = new HostedPagesBrowser(host);
         await SignInAsync(password, editor.Email);
+        var ssoTokens = await CodeFlowAsync(host, sso);
+        var passwordTokens = await CodeFlowAsync(host, password);
 
         // What the provider's front-channel logout loads in the browser.
         foreach (var (browser, provider) in new[] { (sso, Trusted), (password, Corp) })
@@ -42,9 +44,13 @@ public sealed partial class HostedPagesTests
             browser.HasCookie(SignInCookie).ShouldBeTrue();
         }
 
+        // Nothing authenticates the provider's request, so it ends the cookie alone and the session's tokens work on (#3204).
         using var signedOut = await sso.GetAsync($"/account/sso/{Corp}/signout");
         signedOut.StatusCode.ShouldBe(HttpStatusCode.OK);
         sso.HasCookie(SignInCookie).ShouldBeFalse();
+        var renewed = await RenewedAsync(host, Text(ssoTokens, "refresh_token"));
+        (await MeAsync(host, Text(renewed, "access_token"))).ShouldBe(HttpStatusCode.OK);
+        (await RotatedAsync(host, Text(passwordTokens, "refresh_token"))).ShouldNotBeNullOrEmpty();
     }
 
     [Fact]

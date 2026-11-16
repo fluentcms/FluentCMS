@@ -434,14 +434,24 @@ public sealed class DeliveryCacheTests(DeliveryCacheFixture fixture) : IClassFix
 
     private static async Task<FluentCmsTestHost> SharingAsync(IOutputCacheStore store, bool other, bool grant)
     {
-        var host = new FluentCmsTestHost().WithServices(services => services.AddSingleton(store));
+        // No worker drains the outbox: the grant evicts the default site, whose tag every host of the store shares, so it is
+        // delivered here rather than between the reads, where it would evict the first host's copy before the second reads it.
+        var host = new FluentCmsTestHost()
+            .WithServices(services => services.AddSingleton(store))
+            .Configure(cms => cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0);
         host = other ? host.WithContentTypes<Note, Topic>() : host.WithContentTypes<Note, Memo, Topic>();
         if (grant)
         {
-            await using var scope = host.Services.CreateAsyncScope();
-            var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
-            context.Set<RoleGrant>().Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.note.read" });
-            await context.SaveChangesAsync(Token);
+            await using (var scope = host.Services.CreateAsyncScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+                context.Set<RoleGrant>().Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.note.read" });
+                await context.SaveChangesAsync(Token);
+            }
+
+            while (await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token) > 0)
+            {
+            }
         }
 
         return host;
