@@ -61,7 +61,7 @@ What the stand-ins now do as the providers did: `FakeMemberProviders` answers Go
 Not fixed, for issues of their own:
 
 - The login page after the verification link says "Sign in with your password", and the mail "You already have an account" says to sign in with a password or reset it, to a member that a provider made and that has no password; the page that sent that mail said to follow it, and it holds no link. The answer is the same whether or not the address is a member's by design (spec 10.4), so the words, not the paths, are what to change ([#3158](https://github.com/fluentcms/FluentCMS/issues/3158)).
-- A hosted page with a form asked for over plain http, such as `http://localhost:5080`, is answered 500 (`FCMS3199`): the antiforgery cookie's `SecurePolicy` is `Always`, with or without a public origin, where a refusal that names the cause would serve better ([#3159](https://github.com/fluentcms/FluentCMS/issues/3159)).
+- A hosted page with a form asked for over plain http, such as `http://localhost:5080`, is answered 500 (`FCMS3199`): the antiforgery cookie's `SecurePolicy` is `Always`, with or without a public origin, where a refusal that names the cause would serve better. Fixed since by [#3159](https://github.com/fluentcms/FluentCMS/issues/3159): every hosted page over plain http now answers 403 with a page that says it needs https (`FCMS3108`).
 - The deny on Microsoft's consent, a user of the tenant with a mail attribute, and the `redirect_uri` edited on a provider's page were not run ([#3160](https://github.com/fluentcms/FluentCMS/issues/3160)).
 - Apple is not verified ([#3165](https://github.com/fluentcms/FluentCMS/issues/3165)).
 
@@ -111,7 +111,7 @@ dotnet <repo>/src/FluentCMS.Host/bin/Release/net10.0/FluentCMS.Host.dll fluentcm
 dotnet <repo>/src/FluentCMS.Host/bin/Release/net10.0/FluentCMS.Host.dll > host.log 2>&1 &
 ```
 
-`https://<origin>/account/members/login` then shows one "Continue with ..." button per provider. The startup report in `host.log` (event 9130) checks the public origin only in Production, where it lists `public-origin-unset` when none is set, so in Development check the origin on the provider's page instead (step 9). Open the pages through the tunnel only: the antiforgery cookie is always `Secure`, so a page with a form asked for over plain http, such as `http://localhost:5080`, is answered 500 (`FCMS3199`, [#3159](https://github.com/fluentcms/FluentCMS/issues/3159)).
+`https://<origin>/account/members/login` then shows one "Continue with ..." button per provider. The startup report in `host.log` (event 9130) checks the public origin only in Production, where it lists `public-origin-unset` when none is set, so in Development check the origin on the provider's page instead (step 9). Open the pages through the tunnel only: the antiforgery cookie is always `Secure`, so a page with a form asked for over plain http, such as `http://localhost:5080`, is answered 403 with a page that says it needs https (`FCMS3108`, [#3159](https://github.com/fluentcms/FluentCMS/issues/3159)).
 
 ### The steps
 

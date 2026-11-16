@@ -15,12 +15,12 @@ public static class FluentCmsApplicationBuilderExtensions
     // the scheme and client address the proxy forwarded, the refusal over http included. The coarse limit and the body cap
     // come before authentication so that a flood or an oversized body is turned away before it reaches a key lookup or the
     // token endpoint, which reads its body there, and the rate limiter after it because a key or principal is what it
-    // partitions by. Authorization comes before the output cache, so that a
-    // policy the host puts on MapFluentCms holds for a cached answer too. The output cache comes last so that a cached
-    // answer is still limited, and so that it knows who is asking. The counter sits right after routing so that it counts
-    // what the layers after it turn away, the gate's 404 included. A host adds this once, before MapFluentCms; it does not
-    // call UsePathBase, UseForwardedHeaders, UseAuthorization or UseOutputCache itself, and one that still calls
-    // UseAuthorization after it runs the host's policies twice, which changes nothing but the cost.
+    // partitions by. Authorization comes before the output cache, so that a policy the host puts on MapFluentCms holds for
+    // a cached answer too. The output cache comes last so that a cached answer is still limited, and so that it knows who
+    // is asking. The counter sits right after routing so that it counts what the layers after it turn away, the gate's 404
+    // included. A host adds this once, before MapFluentCms; it does not call UsePathBase, UseForwardedHeaders,
+    // UseAuthorization or UseOutputCache itself, and one that still calls UseAuthorization after it runs the host's
+    // policies twice, which changes nothing but the cost.
     public static IApplicationBuilder UseFluentCms(this IApplicationBuilder app)
     {
         ArgumentNullException.ThrowIfNull(app);

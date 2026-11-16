@@ -22,7 +22,7 @@ internal sealed class HostedPageHttpsMiddleware(RequestDelegate next, IOptions<A
             && context.GetEndpoint()?.Metadata.GetMetadata<PageActionDescriptor>()?.AreaName == HostedPages.Area)
         {
             var problem = ProblemMapper.Known(ApiErrorCodes.HttpsRequired, "The hosted pages are served over https only.");
-            return ProblemDetailsExceptionHandler.WritePageAsync(context, problem, context.RequestAborted, Message);
+            return ProblemDetailsExceptionHandler.WritePageAsync(context, problem, Message, context.RequestAborted);
         }
 
         return next(context);

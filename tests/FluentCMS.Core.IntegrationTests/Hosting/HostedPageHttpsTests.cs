@@ -1,4 +1,5 @@
 using System.Net;
+using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.DependencyInjection;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Builder;
@@ -45,7 +46,7 @@ public sealed class HostedPageHttpsTests(CmsWebHosts hosts) : IClassFixture<CmsW
         string.Join(", ", response.Headers.GetValues("Content-Security-Policy")).ShouldContain("frame-ancestors 'none'");
         var html = await response.Content.ReadAsStringAsync(Token);
         html.ShouldContain("FCMS3108");
-        html.ShouldContain("https");
+        html.ShouldContain("This page is served over https only. Open it at the https address of the site.");
         html.ShouldNotContain("FCMS3199");
     }
 
@@ -97,6 +98,43 @@ public sealed class HostedPageHttpsTests(CmsWebHosts hosts) : IClassFixture<CmsW
         (await response.Content.ReadAsStringAsync(Token)).ShouldContain("FCMS3108");
     }
 
+    // Only the pages of the area are refused: a host's own endpoint under /account, the authorization server, which has
+    // its own answer to http, and the health checks are left as they were.
+    [Fact]
+    public async Task OtherEndpointsOverHttpAreNotAnsweredByTheRefusal()
+    {
+        var client = await Start(Environments.Production);
+
+        using (var own = await Get(client, "http://localhost/account/probe"))
+        {
+            own.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await own.Content.ReadAsStringAsync(Token)).ShouldBe("ok");
+        }
+
+        using (var content = new FormUrlEncodedContent(new Dictionary<string, string> { ["grant_type"] = "client_credentials" }))
+        using (var token = await client.PostAsync(new Uri("http://localhost/connect/token"), content, Token))
+        {
+            token.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+            (await token.Content.ReadAsStringAsync(Token)).ShouldNotContain(ApiErrorCodes.HttpsRequired);
+        }
+
+        using var health = await Get(client, "http://localhost/health/live");
+        health.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task TheHttpsRedirectComesBeforeTheRefusal()
+    {
+        var client = await Start(
+            Environments.Production,
+            new() { ["FluentCms:ReverseProxy:HttpsRedirection:Enabled"] = "true", ["FluentCms:ReverseProxy:HttpsRedirection:Port"] = "8443" });
+
+        using var response = await Get(client, "http://localhost/account/login");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.TemporaryRedirect);
+        response.Headers.Location!.ToString().ShouldBe("https://localhost:8443/account/login");
+    }
+
     [Fact]
     public async Task AHostThatRelaxesTheCookieGetsThePagesOverHttp()
     {
@@ -123,6 +161,7 @@ public sealed class HostedPageHttpsTests(CmsWebHosts hosts) : IClassFixture<CmsW
             var app = host.Build(
                 environment,
                 settings,
+                configure: builder => builder.Services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.Account, routes => routes.MapGet("/probe", () => "ok")),
                 pipeline: app =>
                 {
                     app.Use((context, next) =>
