@@ -27,6 +27,7 @@ internal static class CmsIcons
         CmsIconName.Open => new Size20.Open(),
         CmsIconName.Sun => new Size20.WeatherSunny(),
         CmsIconName.Moon => new Size20.WeatherMoon(),
+        CmsIconName.Navigation => new Size20.Navigation(),
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, null),
     };
 }

@@ -283,6 +283,57 @@ A user who lost the authenticator app and every recovery code is reset by an adm
 
 The instance keeps at least one active user with every permission, such as a Super Admin: deactivating that user, taking the role from it, or editing its role so that it grants less is refused with `FCMS3052`, also for an API key, and the attempt is a `user.change_refused` or `role.change_refused` activity row. Give the role to another user first.
 
+## Admin
+
+`FluentCMS.Admin.Hosting` serves the admin, a Blazor WebAssembly app, from the host at `/admin`, under `FluentCms:ReverseProxy:PathBase` when it is set. The host references the app's project, such as `FluentCMS.Admin.App`, so that its build and its publish compile the app and carry its files as the host's static web assets, and adds two calls:
+
+```csharp
+builder.Services.AddFluentCms(cms =>
+{
+    cms.UseSqlite(builder.Configuration.GetConnectionString("cms"));
+    cms.AddAdmin();
+});
+
+var app = builder.Build();
+app.UseFluentCms();
+app.MapFluentCms();
+app.MapFluentCmsAdmin();
+```
+
+`MapFluentCmsAdmin()` maps the host's static web assets under `/admin` with `MapStaticAssets()`, which serves each with its content type, a compressed copy by `Accept-Encoding`, and fingerprinted files cached for good; they are published at the root of the host's `wwwroot` and mapped under `/admin`, so a host with static web assets of its own finds them under `/admin` too (the reference host emits none). `/admin/` and every client route without a file extension, such as `/admin/system/components` or `/admin/authentication/login-callback`, answer the app's `index.html` with only the `href` of its `<base>` changed to the path base and `/admin/`; `/admin`, and an address in another case such as `/ADMIN/`, redirect to the address that base names, since the app's router takes no other. The page answers `GET` and `HEAD`, and any other method is a 405. A missing file, any path under `_framework/` or `_content/` among them, is a 404. `/admin/config.json` is built from the configuration below, and it and `index.html` are sent with `Cache-Control: no-store`; the app's sample `config.json` and its copies are never served. `MapFluentCmsAdmin()` throws `FCMS1104` before `UseFluentCms()`, and `FCMS1103` without `AddAdmin()`, without the manifest of static web assets, or when the app's `index.html` is missing or has no single `<base href>`, so such a host does not start.
+
+| Key under `FluentCms:Admin` | Default | Meaning |
+| --- | --- | --- |
+| `Enabled` | `false` | Serves the admin and registers its client. Off, nothing is mapped: `/admin` is a 404 like any unknown path, and no client is registered. It stays off until the admin is released (A-47). |
+| `ApiBaseUrl` | the public origin | The `apiBaseUrl` of `config.json`, the origin and path base of the API, such as `https://cms.example.com`. Unset, it is `FluentCms:PublicOrigin` with the path base, or the request's scheme, host and path base in Development. |
+| `Branding:Name` | `FluentCMS` | The page title and the name of the shell's logo. |
+| `Branding:LogoUrl`, `Branding:FaviconUrl` | the built-in ones | An absolute `http` or `https` URL, whose origin the page's `img-src` then allows, or a path relative to the admin, such as `images/logo.svg`. |
+| `Branding:AccentColor` | the theme's | A hex color: `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`. |
+| `Cultures:Offered` | every shipped culture | The interface cultures the admin offers, each a culture name such as `fr-CA`, each once. |
+| `Cultures:Default` | `en` | The culture the admin starts in, one of `Offered` when that is set. |
+| `PreviewOrigins` | none | The origins the preview frame may load, such as `https://www.example.com`, without a path; none turns preview off. They are the page's `frame-src`. |
+
+`config.json` also carries `authority`, the issuer of the instance's authorization server exactly as its discovery document writes it (`https://cms.example.com/`, or `https://example.com/cms` under a path base), `clientId`, which is `cms.Clients.AdminClientId` (`FluentCms:Clients:AdminClientId`, `fluentcms-admin` by default), and the scopes `openid profile email offline_access management`. Each value is checked at start with the rules the admin reads `config.json` with, so a value it would refuse stops the host with `FCMS1101` and the key. That holds for the addresses built from `FluentCms:PublicOrigin` and `FluentCms:ReverseProxy:PathBase` too: the admin takes ASCII only, so write an internationalized host name in its `xn--` form, such as `https://xn--mnchen-3ya.example`, and keep the path base to letters, digits and `- . _ ~ /`. Outside Development the addresses come from `FluentCms:PublicOrigin` only, never from a request's `Host`, so the admin needs it there: `Enabled` without it stops the host with `FCMS1101`, also with [`AllowRequestOrigin`](#public-origin).
+
+While `Enabled` is true, `AddAdmin()` registers the admin as a public client of the admin pool under `cms.Clients.AdminClientId`, which signs in with the code flow and PKCE: the redirect URI `{public origin}/admin/authentication/login-callback`, the post-logout URI `{public origin}/admin/`, and the scopes above. In Development without a public origin it registers those of each address the host listens on, from `urls` (`ASPNETCORE_URLS`) or `http_ports` and `https_ports`, with a wildcard host as `localhost`, and `http://localhost:5000` when none is set. A client that `FluentCms:Clients:Applications` or `cms.Clients.Applications` lists under that id wins whole, as for an admin served from another origin (`RedirectUris`, `PostLogoutRedirectUris` and `Scopes` of its own, with that origin in `FluentCms:Security:Cors:Management:AllowedOrigins`).
+
+The page sends the [security headers](#security-headers-and-request-limits), `Cross-Origin-Opener-Policy: same-origin`, and this `Content-Security-Policy`, with the origins of the API, the authority, an absolute logo or favicon and the preview origins filled in:
+
+```text
+default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: {api} {logo};
+font-src 'self'; connect-src 'self' {api} {authority}; frame-src {preview origins}; base-uri 'self'; form-action 'self';
+frame-ancestors 'none'
+```
+
+`'wasm-unsafe-eval'` runs the .NET runtime, and no other eval is allowed. `style-src` needs `'unsafe-inline'` because the component library writes a `<style>` element for the drawer and `style` attributes on the cells of the data grid and on its icons, which `'self'` blocks (#3148). `connect-src` allows `config.json` on the admin's own origin and the API and the authority on theirs; `img-src` allows the API's origin, where signed asset URLs point. `frame-src` is left out without preview origins, so no frame loads. In Development `connect-src` also allows `ws://localhost:*` and `wss://localhost:*`, the WebSocket of the script that `dotnet watch` adds to the page.
+
+Serve nothing of other parties on the admin's origin. The admin keeps the refresh token and the unsaved drafts in `sessionStorage`, which every page of the same origin in the same tab can read, so a script on another page of that origin could take them; the hosted pages run no script, and the Scalar UI only the scripts it serves itself, each under its own policy. A host that serves its own pages, or files that users upload, on the API's origin serves them on the admin's too; put those on another origin, or serve the admin from one of its own ([an admin on another origin](planning/admin-technical-spec.md#64-an-admin-on-another-origin)).
+
+Two loops run the admin locally, both against the reference host in Development, whose `src/FluentCMS.Host/appsettings.Development.json` turns the admin on, registers `fluentcms-admin` with the redirect URIs of both, and lists the app's origin in `FluentCms:Security:Cors:Management:AllowedOrigins`. The hosted pages need https, so both use the https addresses of the launch profiles, with the ASP.NET Core development certificate (`dotnet dev-certs https --trust`).
+
+- `dotnet watch --project src/FluentCMS.Host` serves the referenced app at `https://localhost:5001/admin/`, rebuilding the host and the app as their files change.
+- `dotnet watch --project admin/src/FluentCMS.Admin.App` serves the app alone at `https://localhost:5201/`, with hot reload, and its sample `wwwroot/config.json` points at `https://localhost:5001`, where `dotnet run --project src/FluentCMS.Host` runs the host.
+
 ## Single sign-on
 
 Admin users can sign in with an external OpenID Connect provider on the hosted login page, which shows a button for each provider of `FluentCms:Sso:Providers`. A provider's name is 1 to 64 letters, digits, `-` or `_`; register `https://{host}{path base}/account/sso/{name}` as its redirect URI at the provider. With a [public origin](#public-origin), that URI is built from it, such as `https://cms.example.com/account/sso/corp`; without one, from the request. A name is found whatever its case: `Corp` and `corp` in configuration are one provider, and a login kept under one finds its user under the other, so changing only the case of a name keeps its users linked, with the redirect URI registered again in the new case. A name is not that of another authentication scheme in any case, such as `ApiKey`, `Preview`, `FluentCms`, the `member-{name}` of a [member provider](#members) or a scheme the host adds; such a name stops the host with `FCMS3070`, or `FCMS3180` when the member provider's scheme is the one refused. The name is the login provider of its users in `cms_user_login`, so do not rename a provider that has users: their logins would no longer be found. Microsoft Entra ID, Okta, Keycloak and any other OpenID Connect provider use the same handler, and `Preset` only builds the authority:

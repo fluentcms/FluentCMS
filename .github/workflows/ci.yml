@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: "0 7 * * *"
   workflow_dispatch:
+    inputs:
+      traces:
+        description: Keep a masked Playwright trace of each failed end-to-end test in the test results.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -129,6 +134,49 @@ jobs:
           path: artifacts/test-results
           retention-days: 14
 
+  # The admin's browser tests (spec 7): the tests publish the reference host and run it, and drive it in Chromium. Chromium is
+  # downloaded on every run: it takes seconds, while a cache of it under the NuGet folder cost over 1 GB of the repository's
+  # cache quota and made the job no faster.
+  end-to-end:
+    name: End-to-end (admin)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build admin/tests/FluentCMS.Admin.EndToEnd -c Release -warnaserror
+
+      # The headless shell is what headless Chromium runs; the system libraries it needs come from apt on every run.
+      - name: Install Chromium
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/bin/Release/net10.0/playwright.ps1 install --with-deps --only-shell chromium
+
+      # A skipped test fails here, so that a browser that did not install cannot pass the job. A manual run with traces on
+      # keeps the masked trace of each failed test in the uploaded results.
+      - name: Test
+        env:
+          FLUENTCMS_E2E_TRACES: ${{ inputs.traces && format('{0}/artifacts/test-results/traces', github.workspace) || '' }}
+        run: dotnet test --project admin/tests/FluentCMS.Admin.EndToEnd -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --fail-skips on --timeout 15m
+
+      - name: Name the tests that were running
+        if: failure() || cancelled()
+        shell: bash
+        run: grep -h -A6 -e "\[Long Running Test\]" -e "\[FAIL\]" artifacts/test-results/*.diag 2>/dev/null || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: test-results-end-to-end
+          path: artifacts/test-results
+          retention-days: 14
+
   # @fluentcms/client: its build, and its tests, which compile the module `fluentcms generate typescript` writes for the
   # Blog sample in strict mode. Node is the version the markdown lint action runs on.
   typescript:
@@ -158,11 +206,12 @@ jobs:
       - name: Test
         run: npm test
 
-  # The full suite of the nightly and manual runs takes more than 20 minutes with the client and generate tests.
+  # The full suite of the nightly and manual runs takes more than 20 minutes with the client and generate tests, and 26 to 28
+  # minutes with the admin's end-to-end tests.
   build-test-windows:
     name: Build and test (windows-latest)
     runs-on: windows-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
     env:
       # Pull requests and pushes to main run only the fast tests on Windows, because the Linux shards
       # already run the full suite. Only the nightly and manual runs run the full suite on Windows.
@@ -188,7 +237,8 @@ jobs:
 
       # xunit.v3 ships its own TRX reporter; --report-trx needs an extra package. Each --timeout is well past the slowest
       # healthy run of its tests, so a hang ends with time left to name its tests. It counts from the start of each test app,
-      # and in the full run the apps start up to 12 minutes into the job, which the job's 40 minutes allow for.
+      # and in the full run the last app has started up to 21 minutes into the job (17m57s and 21m15s with the admin's end-to-end
+      # tests, whose host publish waits behind the others), so the job's 50 minutes leave room for that app's 25.
       - name: Test
         if: env.FULL_TESTS == 'true'
         run: dotnet test -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 25m
@@ -470,7 +520,7 @@ jobs:
   # Nobody watches the nightly run, which is the only one that runs the full Windows suite, so a failure opens an issue.
   nightly-report:
     name: Report nightly failure
-    needs: [markdown, build, test, typescript, build-test-windows, data-tests, pack, templates]
+    needs: [markdown, build, test, end-to-end, typescript, build-test-windows, data-tests, pack, templates]
     if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 5

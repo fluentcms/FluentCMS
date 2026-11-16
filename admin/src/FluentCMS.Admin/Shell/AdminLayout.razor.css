@@ -18,8 +18,16 @@
     transform: none;
 }
 
+/* .cms-root is the one scrolling container; nothing of the shell is sticky, so no focused control is hidden under it. */
+.shell {
+    display: flex;
+    flex-direction: column;
+    min-block-size: 100%;
+}
+
 .shell-header {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--cms-space-m);
     padding-block: var(--cms-space-s);
@@ -33,6 +41,70 @@
     min-block-size: var(--cms-target-size);
 }
 
+.shell-header-end {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cms-space-m);
+    margin-inline-start: auto;
+}
+
+.shell-open-navigation {
+    display: none;
+}
+
+.shell-body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.shell-body-navigation {
+    grid-template-columns: 16rem minmax(0, 1fr);
+}
+
+.shell-sidebar {
+    padding-block: var(--cms-space-l);
+    padding-inline: var(--cms-space-m);
+    border-inline-end: 1px solid var(--cms-color-border);
+}
+
+.shell-main {
+    padding-block: var(--cms-space-l);
+    padding-inline: var(--cms-space-xl);
+}
+
+.shell-notice {
+    display: flex;
+    align-items: center;
+    gap: var(--cms-space-s);
+    margin-block: 0 var(--cms-space-m);
+    padding-block: var(--cms-space-s);
+    padding-inline: var(--cms-space-m);
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-s);
+    background-color: var(--cms-color-surface);
+}
+
+@media (width < 1024px) {
+    .shell-header,
+    .shell-main {
+        padding-inline: var(--cms-space-m);
+    }
+
+    .shell-open-navigation {
+        display: inline-flex;
+    }
+
+    .shell-body-navigation {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .shell-sidebar {
+        display: none;
+    }
+}
+
 /* The skip link moves focus here by script; a ring shows only when the browser deems that focus visible. */
 main:focus:not(:focus-visible) {
     outline: none;
@@ -41,4 +113,19 @@ main:focus:not(:focus-visible) {
 main:focus-visible {
     outline: var(--cms-focus-ring-width) solid var(--cms-focus-ring-color);
     outline-offset: calc(-1 * var(--cms-focus-ring-width));
+}
+
+/* A route change moves focus to the page's heading (spec 4.18), with the ring of the tokens. */
+main ::deep h1:focus:not(:focus-visible) {
+    outline: none;
+}
+
+main ::deep h1:focus-visible {
+    outline: var(--cms-focus-ring-width) solid var(--cms-focus-ring-color);
+    outline-offset: var(--cms-focus-ring-offset);
+}
+
+main ::deep h1 {
+    margin-block-start: 0;
+    font-size: var(--cms-font-size-xl);
 }

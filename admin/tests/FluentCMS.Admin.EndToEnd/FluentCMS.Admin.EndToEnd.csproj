@@ -1,15 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Empty until the browser tests of A-11; exit code 8 means "zero tests ran". Remove this with the first test. -->
+  <!-- The generated interop of KillOnClose, the Windows job object that kills the host with the test process. -->
   <PropertyGroup>
-    <TestingPlatformCommandLineArguments>--ignore-exit-code 8</TestingPlatformCommandLineArguments>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.Playwright" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+  <!-- The tests publish the reference host with no build and run it in a process of its own, as the image does, so the host is
+       built first in the same configuration; nothing of it is copied or compiled against. -->
+  <ItemGroup>
+    <ProjectReference Include="../../../src/FluentCMS.Host/FluentCMS.Host.csproj" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using FluentCMS.Admin.Hosting;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Schema;
 using FluentCMS.Data.PostgreSql;
@@ -63,6 +64,9 @@ public static class ReferenceHost
             cms.AddPlugin<AiAssistPlugin>();
             cms.AddPlugin<SearchPlugin>();
 
+            // Off until FluentCms:Admin:Enabled is true; on, the admin client is registered and the app served at /admin.
+            cms.AddAdmin();
+
             // Types that are data have no compiled migrations, so on SQLite their tables follow the schema at start (Q2).
             // A server database changes only when an operator runs `fluentcms schema apply` (decision 55).
             if (sqlite && (blog || !string.IsNullOrWhiteSpace(file)))
@@ -82,6 +86,7 @@ public static class ReferenceHost
         app.Services.GetRequiredService<SchemaModel>();
         app.UseFluentCms();
         app.MapFluentCms();
+        app.MapFluentCmsAdmin();
 
         // Off outside Development unless FluentCms:OpenApi:Enabled is true, since the document names every type and field.
         app.MapFluentCmsOpenApi();
