@@ -86,7 +86,6 @@ public sealed class EndToEndHost : IAsyncLifetime
         _playwright?.Dispose();
         _host?.Dispose();
         _certificates?.Server.Dispose();
-        await Task.Yield();
         try
         {
             _root.Delete(recursive: true);

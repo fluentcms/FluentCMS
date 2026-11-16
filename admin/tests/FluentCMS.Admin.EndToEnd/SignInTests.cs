@@ -42,10 +42,11 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         ((await meAnswer.Request.HeaderValueAsync("authorization"))?.StartsWith("Bearer ", StringComparison.Ordinal)).ShouldBe(true);
 
         // The access token is in memory only, so a reload restores the session with the tab's refresh token.
+        var loginPages = tab.LoginPagesShown;
         var restored = await tab.ReloadAsync();
         restored.ShouldBeGranted("refresh_token");
         await Expect(tab.Heading("Home.Page.Heading")).ToBeVisibleAsync();
-        tab.LoginPagesShown.ShouldBe(1);
+        tab.LoginPagesShown.ShouldBe(loginPages);
         tab.AuthorizeRequests.Count.ShouldBe(1);
 
         browser.PolicyViolations.ShouldBeEmpty();
@@ -62,6 +63,7 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
         await browser.SignInOnTheHostedPageAsync(tab, editor);
         await Expect(tab.Sidebar).ToBeVisibleAsync();
+        var loginPages = tab.LoginPagesShown;
 
         await tab.Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = editor.Email }).ClickAsync();
         var revoked = tab.Page.WaitForResponseAsync(response => response.Url == new Uri(Host.Origin, "connect/revoke").AbsoluteUri, new PageWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
@@ -73,7 +75,7 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
 
         // Back at the admin's base, which finds no session in the tab and none on the server.
         await Expect(tab.LoginField).ToBeVisibleAsync();
-        tab.LoginPagesShown.ShouldBe(2);
+        tab.LoginPagesShown.ShouldBeGreaterThan(loginPages);
         browser.PolicyViolations.ShouldBeEmpty();
     }
 

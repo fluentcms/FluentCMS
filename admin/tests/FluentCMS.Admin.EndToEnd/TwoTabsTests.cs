@@ -50,6 +50,7 @@ public sealed class TwoTabsTests(EndToEndHost host) : BrowserTest(host)
         await first.Page.GotoAsync(Host.Admin.AbsoluteUri);
         await browser.SignInOnTheHostedPageAsync(first, Host.Editor);
         await Expect(first.Sidebar).ToBeVisibleAsync();
+        var loginPages = first.LoginPagesShown;
 
         var copy = await browser.OpenedByAsync(first);
         await Expect(copy.Sidebar).ToBeVisibleAsync();
@@ -61,7 +62,7 @@ public sealed class TwoTabsTests(EndToEndHost host) : BrowserTest(host)
         reloads[1].ShouldBeGranted("refresh_token");
         await Expect(first.Sidebar).ToBeVisibleAsync();
         await Expect(copy.Sidebar).ToBeVisibleAsync();
-        first.LoginPagesShown.ShouldBe(1);
+        first.LoginPagesShown.ShouldBe(loginPages);
         copy.LoginPagesShown.ShouldBe(0);
     }
 

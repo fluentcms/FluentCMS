@@ -29,7 +29,7 @@ public sealed class TraceTests(EndToEndHost host) : BrowserTest(host)
             Write(archive, "trace.stacks", "{}");
             Write(archive, "resources/0a1b.json", """{"access_token":"eyJhbGciOiJSUzI1NiJ9.e30.sig"}""");
             Write(archive, "resources/2c3d.html", "<input value=\"x\">");
-            Write(archive, "resources/page@1.jpeg", "jpeg");
+            Write(archive, "screencast/page@1.jpeg", "ÿØ jpeg");
             Write(archive, "resources/4e5f.css", "body { color: red }");
         }
 
@@ -37,7 +37,7 @@ public sealed class TraceTests(EndToEndHost host) : BrowserTest(host)
         TraceScrubber.Scrub(source, masked, [Password]);
 
         using var result = ZipFile.OpenRead(masked);
-        result.Entries.Select(entry => entry.FullName).ShouldBe(["trace.trace", "trace.stacks", "resources/page@1.jpeg", "resources/4e5f.css"], ignoreOrder: true);
+        result.Entries.Select(entry => entry.FullName).ShouldBe(["trace.trace", "trace.stacks", "screencast/page@1.jpeg", "resources/4e5f.css"], ignoreOrder: true);
         var trace = Read(result.GetEntry("trace.trace")!);
         trace.ShouldNotContain(Password);
         trace.ShouldNotContain("eyJ");
@@ -69,6 +69,15 @@ public sealed class TraceTests(EndToEndHost host) : BrowserTest(host)
         names.ShouldContain(name => name.EndsWith(".trace", StringComparison.Ordinal));
         names.ShouldContain(name => name.EndsWith(".jpeg", StringComparison.Ordinal));
         names.ShouldNotContain(name => name.EndsWith(".network", StringComparison.Ordinal));
+
+        // The screenshots are kept as they were taken, which a JPEG's first bytes show.
+        using (var screenshot = archive.Entries.First(entry => entry.FullName.EndsWith(".jpeg", StringComparison.Ordinal)).Open())
+        {
+            var start = new byte[2];
+            screenshot.ReadExactly(start);
+            start.ShouldBe(new byte[] { 0xFF, 0xD8 });
+        }
+
         TraceScrubber.Leaks(trace, [Host.Editor.Password]).ShouldBeNull();
     }
 

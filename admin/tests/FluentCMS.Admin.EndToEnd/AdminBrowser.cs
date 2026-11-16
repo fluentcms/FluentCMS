@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using Shouldly;
 using Xunit;
@@ -177,8 +178,11 @@ public sealed class AdminTab
     public ILocator Heading(string resourceKey) =>
         Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = Repository.AdminText(resourceKey), Exact = true });
 
+    // A button of the wrapped set. Fluent UI's fluent-button takes its role from ElementInternals, which Chromium's
+    // accessibility tree has but Playwright's role selector does not read (it reads the role attribute and the tag), so it is
+    // found by its element and its whole text, from the resources.
     public ILocator Button(string resourceKey) =>
-        Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = Repository.AdminText(resourceKey), Exact = true });
+        Page.Locator("fluent-button").Filter(new LocatorFilterOptions { HasTextRegex = new Regex($@"^\s*{Regex.Escape(Repository.AdminText(resourceKey))}\s*$") });
 
     public ILocator LoginField => Page.GetByLabel("User name or email");
 
@@ -188,7 +192,8 @@ public sealed class AdminTab
     public ILocator SiteSwitcher => Page.GetByLabel(Repository.AdminText("Shell.SiteSwitcher.Label"), new PageGetByLabelOptions { Exact = true });
 
     // What the live region has announced, which a screen reader reads.
-    public ILocator Announced(string text) => Page.GetByRole(AriaRole.Status).GetByText(text, new LocatorGetByTextOptions { Exact = true });
+    // The live region keeps its last few messages, so the same text can be there more than once.
+    public ILocator Announced(string text) => Page.GetByRole(AriaRole.Status).GetByText(text, new LocatorGetByTextOptions { Exact = true }).Last;
 
     // Runs the action and returns the grant of the token request it caused, once the server has answered it.
     public async Task<TokenRequest> TokenRequestOfAsync(Func<Task> action)

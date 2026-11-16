@@ -20,6 +20,11 @@ internal static partial class TraceScrubber
         ".css", ".png", ".jpeg", ".jpg", ".webp", ".gif", ".svg", ".ico", ".woff", ".woff2", ".ttf",
     };
 
+    private static readonly HashSet<string> BinaryExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".png", ".jpeg", ".jpg", ".webp", ".gif", ".ico", ".woff", ".woff2", ".ttf",
+    };
+
     public static void Scrub(string source, string destination, IReadOnlyCollection<string> passwords)
     {
         var secrets = passwords
@@ -93,7 +98,8 @@ internal static partial class TraceScrubber
         !name.EndsWith(".network", StringComparison.Ordinal)
         && (!name.StartsWith("resources/", StringComparison.Ordinal) || KeptResources.Contains(Path.GetExtension(name)));
 
-    private static bool IsText(string name) => !name.StartsWith("resources/", StringComparison.Ordinal) || name.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".css", StringComparison.OrdinalIgnoreCase);
+    // The event logs and the styles; screenshots, under screencast/ and resources/, are images.
+    private static bool IsText(string name) => !BinaryExtensions.Contains(Path.GetExtension(name));
 
     private static string MaskText(string text, IReadOnlyList<string> secrets)
     {
