@@ -77,6 +77,11 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
             verified.Headers.Location!.OriginalString.ShouldBe("/account/members/login?Status=email-verified");
         }
 
+        // Without a provider to offer, the password is the one way in the notice names.
+        var notice = WebUtility.HtmlDecode(await browser.PageAsync("/account/members/login?Status=email-verified"));
+        notice.ShouldContain("Your email address is verified. Sign in with your password. If your account has no password yet, choose one with \"Forgot your password?\".");
+        notice.ShouldNotContain("continue with a provider");
+
         using var signedIn = await browser.SubmitAsync(login.PathAndQuery, MemberTokenTests.Credentials(address, Password));
         signedIn.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         signedIn.Headers.Location!.OriginalString.ShouldStartWith("/connect/authorize?");
