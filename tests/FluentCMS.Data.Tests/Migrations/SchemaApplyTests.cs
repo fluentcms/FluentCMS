@@ -613,7 +613,7 @@ public sealed partial class SchemaApplyTests : IDisposable
     }
 
     [Theory]
-    [InlineData(new[] { "--output", "schema.sql" },"FCMS3300: --output names the file of --script, so it needs --script")]
+    [InlineData(new[] { "--output", "schema.sql" }, "FCMS3300: --output names the file of --script, so it needs --script")]
     [InlineData(new[] { "--script", "--dry-run" }, "FCMS3300: --script and --dry-run both apply nothing; give one")]
     public async Task BadUsageExitsWithTwo(string[] options, string message)
     {

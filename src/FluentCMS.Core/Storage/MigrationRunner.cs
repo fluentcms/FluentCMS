@@ -44,8 +44,8 @@ public sealed class MigrationRunner(
 
     internal const string SchemaSyncLock = "fluentcms:schema-sync";
 
-    // Far above a healthy wait, since a holder renews its lease while it works and a schema apply that rebuilds large tables
-    // can take minutes. It still ends a wait on a lease that never runs out by this instance's clock.
+    // Far above a healthy wait: a schema apply that rebuilds large tables can hold the lock for minutes. It still ends a wait
+    // on a lease that never runs out by this instance's clock.
     internal static readonly TimeSpan SchemaSyncWait = TimeSpan.FromMinutes(15);
 
     private static readonly Stream System = new(SystemStream, services => services.GetRequiredService<SystemDbContext>());
@@ -201,8 +201,9 @@ public sealed class MigrationRunner(
 
     private static TimeoutException SchemaSyncBusy() => new(
         $"The lock {SchemaSyncLock} was not free within {SchemaSyncWait.TotalMinutes:0} minutes, so the content tables were not changed; " +
-        $"check the owner and lease_until of its row in {StorageNames.Lock}: another instance or a 'fluentcms schema apply' may still hold it, " +
-        "or a lease_until that stays ahead of this instance's clock means the clocks of the instances are not in step.");
+        $"check the owner and lease_until of its row in {StorageNames.Lock}: a lease_until that keeps moving means another instance or a " +
+        "'fluentcms schema apply' still holds it and is working, and one that stands still ahead of this instance's clock means its holder " +
+        "stopped and the clocks of the instances are not in step; once no instance is running, set the row's owner to null.");
 
     // The steps that bring the content tables up to the host's schema: schema sync's comparison, with renames and the
     // changes sync leaves undone. The applied snapshot tells which tables under a plugin's prefix are content tables.
