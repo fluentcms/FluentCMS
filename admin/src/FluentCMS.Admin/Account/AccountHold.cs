@@ -1,7 +1,7 @@
 namespace FluentCMS.Admin.Account;
 
 // Set while the once-shown recovery codes are open and while the sign-in that follows them is on its way. The verify has
-// ended the tab's refresh token by then, so any call of the page could find it refused and take the page, and the codes, away:
+// revoked the tab's access and refresh tokens by then, so any call of the page could find it refused and take the page, and the codes, away:
 // the other cards of the account page are inert meanwhile.
 internal sealed class AccountHold
 {

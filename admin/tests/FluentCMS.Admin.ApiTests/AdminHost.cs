@@ -50,9 +50,12 @@ internal sealed class AdminHost : IAsyncDisposable
     public FluentCmsTestHost Host { get; }
 
     // The admin's client for a user of the role, signed in through the real authorize and token endpoints.
-    public async Task<AdminClient> SignInAsync(string role, TimeProvider? time = null, Func<HttpMessageHandler, HttpMessageHandler>? wrap = null)
+    public async Task<AdminClient> SignInAsync(string role, TimeProvider? time = null, Func<HttpMessageHandler, HttpMessageHandler>? wrap = null) =>
+        await SignInAsync(await Host.CreateUserAsync(role, cancellationToken: Token), time, wrap);
+
+    // A new sign-in of a user, as after a change that revoked its sessions.
+    public async Task<AdminClient> SignInAsync(TestUser user, TimeProvider? time = null, Func<HttpMessageHandler, HttpMessageHandler>? wrap = null)
     {
-        var user = await Host.CreateUserAsync(role, cancellationToken: Token);
         var tokens = await Host.SignInAsync(user);
         return new AdminClient(tokens.AccessToken, ServerHandler, time, wrap);
     }
