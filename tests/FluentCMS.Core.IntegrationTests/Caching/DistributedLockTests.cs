@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using FluentCMS.Core.Caching;
 using FluentCMS.Core.IntegrationTests.Testing;
 using FluentCMS.Core.Storage;
@@ -246,19 +247,21 @@ public sealed class DistributedLockTests : IAsyncDisposable
     [Fact]
     public async Task ARenewalThatWaitedForTheWriterStartsItsLeaseWhenItIsWritten()
     {
-        var commands = CommandSignals.OfLock(Name);
-        await using var host = Watched(new FluentCmsTestHost().UseSqlite(_file), commands);
+        await using var host = new FluentCmsTestHost().UseSqlite(_file);
         await using var held = await RealClockLease(host, TimeSpan.FromSeconds(3)).TryAcquireAsync(Name, TimeSpan.Zero, Token);
         held.ShouldNotBeNull();
+        var taken = (await RowAsync(host)).LeaseUntil;
 
+        DateTimeOffset released;
         await using (var writer = await WriteTransactionAsync())
         {
             await Task.Delay(TimeSpan.FromSeconds(5), Token);
-            commands.Writes.Forget();
+            released = DateTimeOffset.UtcNow;
         }
 
-        await commands.Writes.NextAsync(1, Patience);
-        (await RowAsync(host)).LeaseUntil.ShouldNotBeNull().ShouldBeGreaterThan(DateTimeOffset.UtcNow);
+        // The lease the waited renewal committed, which the next renewal a second later would replace.
+        var renewed = await NextLeaseAsync(host, taken);
+        renewed.ShouldBeGreaterThan(released);
         held.Lost.IsCancellationRequested.ShouldBeFalse();
     }
 
@@ -372,6 +375,23 @@ public sealed class DistributedLockTests : IAsyncDisposable
     // retrying it until the command timeout of 30 seconds.
     private static FluentCmsTestHost Impatient(FluentCmsTestHost host) =>
         host.Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.UseSqlite(sqlite => sqlite.CommandTimeout(1))));
+
+    // The first lease_until other than the one given, read every 10 milliseconds, since a renewal signals its UPDATE before it
+    // commits.
+    private static async Task<DateTimeOffset> NextLeaseAsync(FluentCmsTestHost host, DateTimeOffset? before)
+    {
+        var watch = Stopwatch.StartNew();
+        while (true)
+        {
+            if ((await RowAsync(host)).LeaseUntil is { } lease && lease != before)
+            {
+                return lease;
+            }
+
+            watch.Elapsed.ShouldBeLessThan(Patience);
+            await Task.Delay(TimeSpan.FromMilliseconds(10), Token);
+        }
+    }
 
     private static async Task<LockRow> RowAsync(FluentCmsTestHost host)
     {
