@@ -444,4 +444,10 @@
   <data name="Authentication.Gate.EndedAfterSignInText" xml:space="preserve">
     <value>The server ended the session as soon as you signed in. Try again, or ask an administrator to check the configuration of the admin.</value>
   </data>
+  <data name="Authentication.Gate.MisconfiguredHeading" xml:space="preserve">
+    <value>The sign-in is not set up correctly</value>
+  </data>
+  <data name="Authentication.Gate.MisconfiguredText" xml:space="preserve">
+    <value>The server that answered is not the one the admin is configured to sign in with, or it does not offer what the admin needs. An administrator can check the authority in the configuration of the admin.</value>
+  </data>
 </root>

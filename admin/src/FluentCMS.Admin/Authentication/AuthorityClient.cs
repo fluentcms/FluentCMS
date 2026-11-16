@@ -18,6 +18,10 @@ internal sealed class AuthorityOptions
     internal TimeSpan Timeout { get; set; } = DefaultTimeout;
 }
 
+// The discovery document is not the configured authority's, or asks for what the admin does not do: a mistake of config.json
+// or of the host, which the gate tells apart from a server that does not answer.
+internal sealed class AuthorityConfigurationException(string message) : InvalidOperationException(message);
+
 // The token endpoint refused a grant with an OAuth error, such as invalid_grant for a used or revoked refresh token. The
 // message names the error only, never a token.
 internal sealed class TokenRefusedException(string error) : Exception($"The token endpoint refused the grant: {error}.")
@@ -99,7 +103,7 @@ internal sealed class AuthorityClient(AdminConfiguration configuration, HttpClie
             || !string.Equals(TrimOneSlash(issuer), TrimOneSlash(authority), StringComparison.Ordinal)
             || !Uri.TryCreate(issuer, UriKind.Absolute, out var issuerUri))
         {
-            throw new InvalidOperationException($"The discovery document of {authority} names the issuer '{document.Issuer}', which is not the configured authority.");
+            throw new AuthorityConfigurationException($"The discovery document of {authority} names the issuer '{document.Issuer}', which is not the configured authority.");
         }
 
         var origin = issuerUri.GetLeftPart(UriPartial.Authority);
@@ -109,7 +113,7 @@ internal sealed class AuthorityClient(AdminConfiguration configuration, HttpClie
         Require(document.EndSessionEndpoint, "end_session_endpoint", origin, required: false);
         if (document.CodeChallengeMethodsSupported is { } methods && !methods.Contains("S256", StringComparer.Ordinal))
         {
-            throw new InvalidOperationException($"The authorization server of {authority} does not support PKCE with S256.");
+            throw new AuthorityConfigurationException($"The authorization server of {authority} does not support PKCE with S256.");
         }
 
         return document;
@@ -123,7 +127,7 @@ internal sealed class AuthorityClient(AdminConfiguration configuration, HttpClie
         {
             if (required)
             {
-                throw new InvalidOperationException($"The discovery document has no {member}.");
+                throw new AuthorityConfigurationException($"The discovery document has no {member}.");
             }
 
             return;
@@ -131,7 +135,7 @@ internal sealed class AuthorityClient(AdminConfiguration configuration, HttpClie
 
         if (!endpoint.IsAbsoluteUri || !string.Equals(endpoint.GetLeftPart(UriPartial.Authority), origin, StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException($"The {member} of the discovery document is not on the issuer's origin {origin}.");
+            throw new AuthorityConfigurationException($"The {member} of the discovery document is not on the issuer's origin {origin}.");
         }
     }
 
@@ -158,8 +162,13 @@ internal sealed class AuthorityClient(AdminConfiguration configuration, HttpClie
         using var response = await http.SendAsync(request, cancellationToken);
         if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized)
         {
-            var error = await ReadErrorAsync(response, cancellationToken);
-            throw new TokenRefusedException(error ?? "invalid_request");
+            // Only an OAuth error ends a session: a 400 or 401 without one, such as a proxy's, is a failure to reach it.
+            if (await ReadErrorAsync(response, cancellationToken) is not { Length: > 0 } error)
+            {
+                throw new HttpRequestException($"The token endpoint answered {(int)response.StatusCode} without an OAuth error.", null, response.StatusCode);
+            }
+
+            throw new TokenRefusedException(error);
         }
 
         if (!response.IsSuccessStatusCode)

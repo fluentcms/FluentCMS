@@ -31,8 +31,11 @@ else
 
     private enum GateFailure
     {
-        // The server did not answer, answered with an error, or its discovery document is not the authority's.
+        // The server did not answer, or answered with an error.
         Unavailable,
+
+        // The discovery document is not the configured authority's, or the server does not offer what the admin needs.
+        Misconfigured,
 
         // The server ended the session right after the sign-in; signing in again on its own would loop.
         EndedAfterSignIn,
@@ -79,6 +82,11 @@ else
         catch (SessionEndedAfterSignInException)
         {
             failure = GateFailure.EndedAfterSignIn;
+        }
+        catch (AuthorityConfigurationException exception)
+        {
+            SessionLog.SignInUnavailable(Logger, exception);
+            failure = GateFailure.Misconfigured;
         }
         catch (Exception exception)
         {

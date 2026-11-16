@@ -28,6 +28,7 @@ public sealed class SignInTests : IAsyncDisposable
     private readonly FakeAuthority _authority = new();
     private readonly MovableTime _time = new();
     private readonly List<Tab> _tabs = [];
+    private DateTimeOffset _signedInAt;
 
     public async ValueTask DisposeAsync()
     {
@@ -424,7 +425,7 @@ public sealed class SignInTests : IAsyncDisposable
 
         var app = tab.Load(Route);
 
-        app.WaitForAssertion(() => app.Find("main#main h1").TextContent.ShouldBe("The sign-in server cannot be reached"));
+        app.WaitForAssertion(() => app.Find("main#main h1").TextContent.ShouldBe("The sign-in is not set up correctly"));
         tab.Navigation.History.ShouldAllBe(entry => !entry.Options.ForceLoad);
         _storage[AdminSession.SignInKey].ShouldBeNull();
     }
@@ -435,7 +436,7 @@ public sealed class SignInTests : IAsyncDisposable
         _authority.DiscoveredIssuer = "https://evil.example/";
         var tab = NewTab();
         var app = tab.Load(Route);
-        app.WaitForAssertion(() => app.Find("main#main h1").TextContent.ShouldBe("The sign-in server cannot be reached"));
+        app.WaitForAssertion(() => app.Find("main#main h1").TextContent.ShouldBe("The sign-in is not set up correctly"));
         _authority.DiscoveredIssuer = FakeAuthority.Issuer;
 
         app.Find("main#main fluent-button").Click();
@@ -507,13 +508,15 @@ public sealed class SignInTests : IAsyncDisposable
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task AServerErrorOrANetworkFailureOnRefreshKeepsTheSession(bool network)
+    [InlineData(HttpStatusCode.ServiceUnavailable, false)]
+    [InlineData(HttpStatusCode.Unauthorized, false)]
+    [InlineData(HttpStatusCode.BadRequest, false)]
+    [InlineData(null, true)]
+    public async Task AServerErrorANetworkFailureOrARefusalWithoutAnOAuthErrorKeepsTheSession(HttpStatusCode? status, bool network)
     {
         var server = new ScriptedServer().Problem(HttpStatusCode.Unauthorized, Unauthorized);
         var tab = SignIn(server);
-        _authority.RefreshStatus = network ? null : HttpStatusCode.ServiceUnavailable;
+        _authority.RefreshStatus = status;
         _authority.RefreshFailsOnTheNetwork = network;
 
         var thrown = await Should.ThrowAsync<ApiProblemException>(() => tab.Services.GetRequiredService<ManagementClient>().GetMeAsync(Token));
@@ -538,6 +541,34 @@ public sealed class SignInTests : IAsyncDisposable
         app.WaitForAssertion(() => app.Find("main#main h1").TextContent.ShouldBe("The session ended right after sign-in"));
         tab.Navigation.History.ShouldAllBe(entry => !entry.Options.ForceLoad);
         _storage[AdminSession.SessionKey].ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task WithoutARefreshTokenAShortSessionEndsAndSignsInAgainAtItsExpiry()
+    {
+        _authority.IssuesRefreshTokens = false;
+        _authority.ExpiresIn = 60;
+        var tab = SignIn(route: Route);
+
+        _time.Now += TimeSpan.FromSeconds(40);
+        (await tab.Session.GetAccessTokenAsync(Token)).ShouldBeNull();
+
+        var redirect = tab.Navigation.History.First();
+        redirect.Options.ForceLoad.ShouldBeTrue();
+        redirect.Uri.ShouldStartWith("https://cms.example.com/connect/authorize?");
+        _time.Now.ShouldBeLessThan(_signedInAt + AdminSession.RepeatWindow);
+    }
+
+    [Fact]
+    public async Task AStoredSignInWithEmptySecretsIsRefused()
+    {
+        await _storage.SetAsync(AdminSession.SignInKey, $$"""{"state":"","nonce":"","verifier":"","return_route":"","started_at":"{{_time.Now:O}}"}""");
+        var tab = NewTab();
+
+        var app = tab.Load("authentication/login-callback?code=" + FakeAuthority.Code + "&state=");
+
+        app.WaitForAssertion(() => app.Find("main#main p").TextContent.ShouldBe("This sign-in was not started in this tab, or it has been completed already."));
+        _authority.Requests.ShouldNotContain(request => request.Path == "/connect/token");
     }
 
     [Fact]
@@ -655,6 +686,7 @@ public sealed class SignInTests : IAsyncDisposable
         _authority.IssueCode();
         var tab = NewTab(api: api);
         tab.WaitForSignIn(tab.Load(CallbackFor(pending.State)));
+        _signedInAt = _time.Now;
         return tab;
     }
 

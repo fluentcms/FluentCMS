@@ -25,7 +25,8 @@ public sealed class SignInRulesTests
     private static readonly DateTimeOffset Now = new(2026, 11, 16, 9, 0, 0, TimeSpan.Zero);
     private static readonly long Expires = Now.AddHours(1).ToUnixTimeSeconds();
 
-    // Under a base with a path, https://admin.example.com/admin/, where a route can resolve to "//host" inside the base.
+    // Under a base with a path, https://admin.example.com/admin/, where a route can resolve to "//host" or "scheme:" inside the
+    // base. One pass is enough: the result is what the callback navigates to.
     [Theory]
     [InlineData("content/article/1?locale=fr", "content/article/1?locale=fr")]
     [InlineData(".///evil.example/x", "")]
@@ -35,6 +36,14 @@ public sealed class SignInRulesTests
     [InlineData("./\\evil.example/x", "")]
     [InlineData("../outside", "")]
     [InlineData("../admin-other/x", "")]
+    [InlineData("./javascript:alert(1)", "")]
+    [InlineData("x/../javascript:alert(1)", "")]
+    [InlineData("./https://evil.example/x", "")]
+    [InlineData("%2e/data:x", "")]
+    [InlineData("./data:text/html,x", "")]
+    [InlineData("./%6aavascript:alert(1)", "")]
+    [InlineData("a:", "")]
+    [InlineData("content/a:b", "content/a:b")]
     [InlineData("./authentication/login-callback", "")]
     public void TheReturnRouteNeverLeavesTheBaseOfTheApp(string route, string expected)
     {
@@ -135,7 +144,7 @@ public sealed class SignInRulesTests
     [InlineData("https://cms.example.com/cms", "https://cms.example.com")]
     public void AnotherIssuerIsRefused(string issuer, string authority)
     {
-        Should.Throw<InvalidOperationException>(() => AuthorityClient.Validate(Discovery(issuer), authority));
+        Should.Throw<AuthorityConfigurationException>(() => AuthorityClient.Validate(Discovery(issuer), authority));
     }
 
     [Fact]
@@ -150,14 +159,14 @@ public sealed class SignInRulesTests
             Discovery(Issuer) with { TokenEndpoint = null },
         })
         {
-            Should.Throw<InvalidOperationException>(() => AuthorityClient.Validate(document, Issuer));
+            Should.Throw<AuthorityConfigurationException>(() => AuthorityClient.Validate(document, Issuer));
         }
     }
 
     [Fact]
     public void AServerThatListsMethodsWithoutS256IsRefusedAndOneThatListsNoneIsAccepted()
     {
-        Should.Throw<InvalidOperationException>(() => AuthorityClient.Validate(Discovery(Issuer) with { CodeChallengeMethodsSupported = ["plain"] }, Issuer));
+        Should.Throw<AuthorityConfigurationException>(() => AuthorityClient.Validate(Discovery(Issuer) with { CodeChallengeMethodsSupported = ["plain"] }, Issuer));
         Should.NotThrow(() => AuthorityClient.Validate(Discovery(Issuer) with { CodeChallengeMethodsSupported = null }, Issuer));
     }
 

@@ -207,11 +207,13 @@ internal sealed class AdminSession(
             return "";
         }
 
-        // Under a base with a path, ".///evil.example/x" resolves inside the base and leaves "//evil.example/x", which would
-        // leave the origin when navigated to.
+        // Under a base with a path, ".///evil.example/x" resolves inside the base and leaves "//evil.example/x", and
+        // "./javascript:alert(1)" leaves "javascript:alert(1)": a browser reads either as a URL of its own. So the result may
+        // not start with a slash, and its first segment may hold no colon, whatever .NET's parsing made of it.
         var relative = navigation.ToBaseRelativePath(target.AbsoluteUri);
         var path = relative.Split('?', '#')[0];
-        return relative.StartsWith('/') || relative.StartsWith('\\')
+        var first = relative.Split('/', '?', '#')[0];
+        return relative.StartsWith('/') || relative.StartsWith('\\') || first.Contains(':', StringComparison.Ordinal)
             || path.Equals("authentication", StringComparison.OrdinalIgnoreCase) || path.StartsWith("authentication/", StringComparison.OrdinalIgnoreCase)
             ? ""
             : relative;
@@ -263,7 +265,7 @@ internal sealed class AdminSession(
 
     private async Task<SignInCompletion> RedeemAsync(PendingSignIn? pending, string? code, string? state, string? error, CancellationToken cancellationToken)
     {
-        if (pending is not { State: not null, Nonce: not null, Verifier: not null } || !ProofKey.SameSecret(state, pending.State))
+        if (pending is not { State.Length: > 0, Nonce.Length: > 0, Verifier.Length: > 0 } || !ProofKey.SameSecret(state, pending.State))
         {
             return SignInCompletion.Failed(SignInFailure.UnknownState);
         }
@@ -358,9 +360,10 @@ internal sealed class AdminSession(
     // Shared by every caller of the flight, so no caller's cancellation stops it; the client's timeout bounds it.
     private async Task<RefreshOutcome> RefreshCoreAsync()
     {
+        // The admin ends this session itself, at the expiry of an access token it cannot refresh, so it signs in again.
         if (_refreshToken is not { } refreshToken)
         {
-            await EndAsync();
+            await EndAsync(serverEnded: false);
             return RefreshOutcome.Ended;
         }
 
@@ -372,7 +375,7 @@ internal sealed class AdminSession(
         catch (TokenRefusedException refused)
         {
             SessionLog.SessionEnded(logger, refused.Error);
-            await EndAsync();
+            await EndAsync(serverEnded: true);
             return RefreshOutcome.Ended;
         }
         catch (Exception exception) when (IsUnavailable(exception))
@@ -389,8 +392,8 @@ internal sealed class AdminSession(
     }
 
     // The session is over: the unsaved forms are written under the user, the tab forgets the session, then the page goes to
-    // sign in and comes back to the route.
-    private async Task EndAsync()
+    // sign in and comes back to the route, unless the server ended it right after the sign-in.
+    private async Task EndAsync(bool serverEnded)
     {
         var user = _user;
         _redirecting = true;
@@ -408,7 +411,7 @@ internal sealed class AdminSession(
         }
 
         await storage.RemoveAsync(SessionKey);
-        if (await SignedInRecentlyAsync())
+        if (serverEnded && await SignedInRecentlyAsync())
         {
             SessionLog.SessionEndedAfterSignIn(logger);
             (_redirecting, _endedAfterSignIn) = (false, true);
