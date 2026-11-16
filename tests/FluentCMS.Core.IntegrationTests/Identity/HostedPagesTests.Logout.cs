@@ -11,6 +11,7 @@ using FluentCMS.Testing;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -156,42 +157,73 @@ public sealed partial class HostedPagesTests
     }
 
     [Fact]
-    public async Task AReauthenticationAnotherSiteCanAskForEndsTheCookieAndRevokesNothing()
+    public async Task AReauthenticationAnotherSiteCanAskForKeepsTheCookieAndTheSessionUntilTheUserSignsInAgain()
     {
         await using var host = NewHost(_emails).Configure(cms => cms.Clients.AbsoluteSessionLifetime = TimeSpan.FromHours(8));
         var editor = await CreateUserAsync(host);
+        var other = await CreateUserAsync(host);
         using var browser = new HostedPagesBrowser(host);
+        await SignInAsync(browser, editor.Email);
 
         // A top-level GET from another site carries the cookie and nothing secret: prompt=login, max_age=0, and any
-        // authorize request past the absolute lifetime sign the cookie out and revoke nothing. Past the lifetime the access
-        // token works until it expires, and the refresh token is refused because the sign-in is past it, not revoked.
-        var authorize = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri).Url;
-        var login = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri, prompt: "login").Url;
-        foreach (var (url, wait) in new[] { (login, TimeSpan.Zero), (authorize + "&max_age=0", TimeSpan.Zero), (authorize, TimeSpan.FromMinutes(45)) })
+        // authorize request past the absolute lifetime send the user to the login page and leave the cookie and the
+        // session's tokens. Past the lifetime the refresh token is refused all the same, since its session counts from the
+        // sign-in, and the access token works until it expires.
+        foreach (var (prompt, asks, wait) in new[] { ("login", "", TimeSpan.Zero), (null, "&max_age=0", TimeSpan.Zero), (null, "", TimeSpan.FromMinutes(45)) })
         {
-            await SignInAsync(browser, editor.Email);
             host.Time.Advance(TimeSpan.FromHours(7.5));
             var tokens = await CodeFlowAsync(host, browser);
             host.Time.Advance(wait);
 
-            using var foreign = await browser.GetAsync(url);
-            new Uri(OAuthBase, foreign.Headers.Location!).AbsolutePath.ShouldBe("/account/login", url);
-            browser.HasCookie(SignInCookie).ShouldBeFalse();
-            (await MeAsync(host, Text(tokens, "access_token"))).ShouldBe(HttpStatusCode.OK, url);
-
-            if (wait > TimeSpan.Zero)
+            var request = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri, prompt: prompt);
+            var login = await AskedToSignInAsync(browser, request.Url + asks);
+            (await MeAsync(host, Text(tokens, "access_token"))).ShouldBe(HttpStatusCode.OK, request.Url + asks);
+            var refreshToken = wait > TimeSpan.Zero ? null : await RotatedAsync(host, Text(tokens, "refresh_token"));
+            if (refreshToken is null)
             {
                 (await RefusedAsync(host, Text(tokens, "refresh_token"))).ShouldBe("invalid_grant");
-                continue;
             }
 
-            var renewed = await RenewedAsync(host, Text(tokens, "refresh_token"));
-            (await MeAsync(host, Text(renewed, "access_token"))).ShouldBe(HttpStatusCode.OK, url);
+            // The request the login page returns to issues no code without a new sign-in; it asks again.
+            await AskedToSignInAsync(browser, QueryHelpers.ParseQuery(login.Query)["ReturnUrl"].ToString());
+
+            // The same user signs in again: the code is issued, and the session goes on with what it issued before.
+            using var signedIn = await browser.SubmitAsync(login.PathAndQuery, Credentials(editor.Email, Password));
+            var again = await request.ExchangeAsync(host, await browser.FollowAsync(signedIn));
+            Sid(again).ShouldBe(Sid(tokens), request.Url + asks);
+            if (refreshToken is not null)
+            {
+                (await RotatedAsync(host, refreshToken)).ShouldNotBeNullOrEmpty();
+            }
         }
+
+        // Another user signs in where the request asked: the first user's session in this browser ends.
+        var before = await CodeFlowAsync(host, browser);
+        var asked = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri, prompt: "login");
+        var page = await AskedToSignInAsync(browser, asked.Url);
+        host.Time.Advance(TimeSpan.FromMinutes(1));
+        using (var replaced = await browser.SubmitAsync(page.PathAndQuery, Credentials(other.Email, Password)))
+        {
+            Sid(await asked.ExchangeAsync(host, await browser.FollowAsync(replaced))).ShouldNotBe(Sid(before));
+        }
+
+        (await RefusedAsync(host, Text(before, "refresh_token"))).ShouldBe("invalid_grant");
+    }
+
+    // The login page an authorize request sends the browser to, with the cookie left as it was.
+    private static async Task<Uri> AskedToSignInAsync(HostedPagesBrowser browser, string url)
+    {
+        using var response = await browser.GetAsync(url);
+        response.StatusCode.ShouldBe(HttpStatusCode.Redirect, url);
+        var login = new Uri(OAuthBase, response.Headers.Location!);
+        login.AbsolutePath.ShouldBe("/account/login", url);
+        (response.Headers.TryGetValues("Set-Cookie", out var set) ? set : []).ShouldNotContain(value => value.StartsWith(SignInCookie + "=;", StringComparison.Ordinal), url);
+        browser.HasCookie(SignInCookie).ShouldBeTrue(url);
+        return login;
     }
 
     [Fact]
-    public async Task ASecondFactorTheRoleNowRequiresEndsTheCookieAtAuthorizeAndRevokesNothing()
+    public async Task ASecondFactorTheRoleNowRequiresKeepsTheCookieAtAuthorizeUntilTheUserGivesIt()
     {
         using var admin = await _host.AsUserAsync(await _host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token));
         var editor = await CreateUserAsync(_host);
@@ -211,15 +243,23 @@ public sealed partial class HostedPagesTests
         Sid(withPassword).ShouldBe(Sid(withSecondFactor));
 
         // Another site sends the browser to a plain authorize request once the role requires the second factor: the cookie
-        // ends, and the tokens are left to the token endpoint, which refuses only those without it.
+        // stays, and the tokens are left to the token endpoint, which refuses only those without it.
         (await AdminFixture.SendAsync(admin, HttpMethod.Put, $"users/{editor.Id:D}/roles/{await GuardedRoleAsync(admin)}")).Status.ShouldBe(HttpStatusCode.OK);
-        using var challenged = await browser.GetAsync(AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri).Url);
-        challenged.Headers.Location!.AbsolutePath.ShouldBe("/account/login");
-        browser.HasCookie(SignInCookie).ShouldBeFalse();
+        var request = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri);
+        var login = await AskedToSignInAsync(browser, request.Url);
 
         (await MeAsync(_host, Text(withSecondFactor, "access_token"))).ShouldBe(HttpStatusCode.OK);
         (await RotatedAsync(_host, Text(withSecondFactor, "refresh_token"))).ShouldNotBeNullOrEmpty();
         (await RefusedAsync(_host, Text(withPassword, "refresh_token"))).ShouldBe("invalid_grant");
+
+        // The user signs in with the second factor where the request asked, and the session goes on. The access token of
+        // the sign-in without it lives until it expires.
+        _host.Time.Advance(TimeSpan.FromMinutes(1));
+        using var passwordStep = await browser.SubmitAsync(login.PathAndQuery, Credentials(editor.Email, Password));
+        using var codeStep = await browser.SubmitAsync(passwordStep.Headers.Location!.OriginalString, new Dictionary<string, string> { ["Input.Code"] = Totp(key) });
+        var again = await request.ExchangeAsync(_host, await browser.FollowAsync(codeStep));
+        Sid(again).ShouldBe(Sid(withSecondFactor));
+        (await MeAsync(_host, Text(withPassword, "access_token"))).ShouldBe(HttpStatusCode.OK);
     }
 
     [Fact]

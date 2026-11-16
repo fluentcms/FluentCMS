@@ -219,11 +219,12 @@ public sealed partial class HostedPagesTests
             QueryHelpers.ParseQuery(none.Headers.Location!.Query)["error"].ToString().ShouldBe("login_required");
         }
 
-        // The sign-in from the remembered device is not taken; the user signs in again and gives the second factor.
+        // The sign-in from the remembered device is not taken; the user signs in again over the cookie and gives the second
+        // factor.
         var second = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri);
         using var challenged = await browser.GetAsync(second.Url);
         challenged.Headers.Location!.AbsolutePath.ShouldBe("/account/login");
-        browser.HasCookie(".AspNetCore.Identity.Application").ShouldBeFalse();
+        browser.HasCookie(".AspNetCore.Identity.Application").ShouldBeTrue();
 
         using var again = await browser.SubmitAsync(challenged.Headers.Location.PathAndQuery, Credentials(editor.Email, Password));
         var page = again.Headers.Location!.OriginalString;

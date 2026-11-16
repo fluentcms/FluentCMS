@@ -168,11 +168,11 @@ public sealed partial class HostedPagesTests
         asked.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         var login = new Uri(OAuthBase, asked.Headers.Location!);
         login.AbsolutePath.ShouldBe("/account/login");
-        browser.HasCookie(SignInCookie).ShouldBeFalse();
+        browser.HasCookie(SignInCookie).ShouldBeTrue();
 
-        // Signing in again answers max_age, and the request comes back without it.
+        // Signing in again over the cookie answers max_age.
         using var signedIn = await browser.SubmitAsync(login.PathAndQuery, Credentials(editor.Email, Password));
-        signedIn.Headers.Location!.OriginalString.ShouldNotContain("max_age");
+        signedIn.Headers.Location!.OriginalString.ShouldContain("max_age");
         using var done = await browser.FollowAsync(signedIn);
         (await request.ExchangeAsync(host, done)).GetProperty("access_token").GetString().ShouldNotBeNullOrEmpty();
     }

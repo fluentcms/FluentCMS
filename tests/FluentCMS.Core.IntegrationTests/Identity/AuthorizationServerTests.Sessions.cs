@@ -61,23 +61,57 @@ public sealed partial class AuthorizationServerTests
     }
 
     [Fact]
-    public async Task PromptLoginAndAnExpiredMaxAgeSignTheUserOutAndAskForANewSignIn()
+    public async Task PromptLoginAndAnExpiredMaxAgeAskForANewSignInAndKeepTheCookie()
     {
         var editor = await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
         var cookie = await _host.SignInCookieAsync(editor);
         using var client = _host.CreateSecureClient();
 
-        using (var login = await SendAsync(client, HttpMethod.Get, AuthorizePath() + "&prompt=login%20consent", cookie))
+        // prompt=login: the request comes back as it was, with the mark of when it asked, and without a newer sign-in it
+        // asks again.
+        string returnUrl;
+        using (var asked = await SendAsync(client, HttpMethod.Get, AuthorizePath() + "&prompt=login%20consent", cookie))
         {
-            var returnUrl = SignInAgain(client, login);
-            returnUrl.ShouldContain("prompt=consent");
-            returnUrl.ShouldNotContain("login");
+            returnUrl = SignInAgain(client, asked);
         }
 
-        _host.Time.Advance(TimeSpan.FromMinutes(10));
-        using (var old = await SendAsync(client, HttpMethod.Get, AuthorizePath() + "&max_age=60", cookie))
+        returnUrl.ShouldContain("prompt=login%20consent");
+        returnUrl.ShouldContain(Reauthentication.Parameter + "=");
+        using (var back = await SendAsync(client, HttpMethod.Get, returnUrl, cookie))
         {
-            SignInAgain(client, old).ShouldNotContain("max_age");
+            SignInAgain(client, back);
+        }
+
+        // A newer sign-in answers the mark of that request, and neither a changed mark nor the mark on another request.
+        _host.Time.Advance(TimeSpan.FromMinutes(1));
+        var newer = await _host.SignInCookieAsync(editor);
+        var mark = QueryHelpers.ParseQuery(new Uri(client.BaseAddress!, returnUrl).Query)[Reauthentication.Parameter].ToString();
+        using (var forged = await SendAsync(client, HttpMethod.Get, AuthorizePath() + "&prompt=login&" + Reauthentication.Parameter + "=" + Uri.EscapeDataString(mark[..^4] + "AAAA"), newer))
+        {
+            SignInAgain(client, forged);
+        }
+
+        using (var moved = await SendAsync(client, HttpMethod.Get, AuthorizePath().Replace("abcdefghij", "jihgfedcba", StringComparison.Ordinal) + "&prompt=login&" + Reauthentication.Parameter + "=" + Uri.EscapeDataString(mark), newer))
+        {
+            SignInAgain(client, moved);
+        }
+
+        using (var answered = await SendAsync(client, HttpMethod.Get, returnUrl, newer))
+        {
+            answered.Headers.Location!.AbsoluteUri.ShouldStartWith(FluentCmsTestHost.OAuthRedirectUri + "?code=");
+        }
+
+        // A max_age the sign-in is older than, in the same way.
+        _host.Time.Advance(TimeSpan.FromMinutes(10));
+        using (var old = await SendAsync(client, HttpMethod.Get, AuthorizePath() + "&max_age=60", newer))
+        {
+            returnUrl = SignInAgain(client, old);
+        }
+
+        returnUrl.ShouldContain("max_age=60");
+        using (var back = await SendAsync(client, HttpMethod.Get, returnUrl, newer))
+        {
+            SignInAgain(client, back);
         }
 
         using (var silent = await SendAsync(client, HttpMethod.Get, AuthorizePath() + "&max_age=60&prompt=none", cookie))
@@ -144,7 +178,7 @@ public sealed partial class AuthorizationServerTests
             (await ErrorAsync(ended)).ShouldBe("invalid_grant");
         }
 
-        // The cookie of that sign-in, which slides while it is used, is as old: the user signs in again.
+        // The cookie of that sign-in, which slides while it is used, is as old: the user signs in again over it.
         using var authorize = await SendAsync(client, HttpMethod.Get, AuthorizePath(), cookie);
         SignInAgain(client, authorize);
     }
@@ -228,13 +262,13 @@ public sealed partial class AuthorizationServerTests
         refusals.ShouldContain(ApiKeyErrorCodes.InvalidKey);
     }
 
-    // The login page the authorize endpoint sends the user to after ending the sign-in, and the request to come back with.
+    // The login page the authorize endpoint sends the user to, with the cookie left, and the request to come back with.
     private static string SignInAgain(HttpClient client, HttpResponseMessage response)
     {
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         var location = new Uri(client.BaseAddress!, response.Headers.Location!);
         location.AbsolutePath.ShouldBe("/account/login");
-        response.Headers.GetValues("Set-Cookie").ShouldContain(value => value.StartsWith(".AspNetCore.Identity.Application=;", StringComparison.Ordinal));
+        (response.Headers.TryGetValues("Set-Cookie", out var set) ? set : []).ShouldNotContain(value => value.StartsWith(".AspNetCore.Identity.Application=;", StringComparison.Ordinal));
         return QueryHelpers.ParseQuery(location.Query)["ReturnUrl"].ToString();
     }
 
