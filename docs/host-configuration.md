@@ -234,7 +234,7 @@ Lifetimes are `TimeSpan` values under `FluentCms:Clients`:
 | `AccessTokenLifetime` | `01:00:00` | How long an access token is valid. |
 | `RefreshTokenLifetime` | `14.00:00:00` | How long a refresh token lasts unused; using one gives a new one for as long. |
 | `SignInCookieLifetime` | `14.00:00:00` | How long the sign-in on the hosted pages lasts unused; each use slides it on. |
-| `AbsoluteSessionLifetime` | unset, no limit | How long a session lasts after the user signed in, however often it is refreshed. Past it the token endpoint refuses the refresh (`invalid_grant`) and the authorize endpoint asks the user to sign in again. |
+| `AbsoluteSessionLifetime` | unset, no limit | How long a session lasts after the user signed in, however often it is refreshed. Past it the token endpoint refuses the code or the refresh (`invalid_grant`), and the authorize endpoint and the hosted pages that need a signed-in user ask the user to sign in again over the cookie; the logout pages still answer. |
 
 Each is more than zero and at most 365 days, and `AccessTokenLifetime` is no longer than `RefreshTokenLifetime`; the host stops with `FCMS3021` otherwise. Without `AbsoluteSessionLifetime`, a client that keeps refreshing keeps its session for as long as the user can sign in, so set it where sessions must end, such as `12:00:00` for a working day.
 

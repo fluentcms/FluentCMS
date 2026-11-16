@@ -471,7 +471,13 @@ public sealed class MemberLoginsModel : MemberPageModel
         return RedirectToPage(new { Status = "removed" });
     }
 
-    private async Task<CmsMember?> MemberAsync() => (await Service<MemberSignInManager>().SignedInAsync()).Member;
+    // The member of the cookie, if it is a live sign-in (CmsSignInManager.LiveSignIn); otherwise the page sends the member to
+    // the login page, with the cookie left.
+    private async Task<CmsMember?> MemberAsync()
+    {
+        var (member, cookie) = await Service<MemberSignInManager>().SignedInAsync();
+        return member is not null && CmsSignInManager.LiveSignIn(HttpContext, cookie.Properties!) is not null ? member : null;
+    }
 
     private RedirectResult RedirectToLogin() =>
         Redirect(Request.PathBase + HostedPagePaths.MemberLogin + QueryString.Create("ReturnUrl", Url.Page("./Logins")!));

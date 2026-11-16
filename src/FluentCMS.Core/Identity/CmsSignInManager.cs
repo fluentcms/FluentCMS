@@ -31,7 +31,8 @@ internal sealed class CmsSignInManager(
     : SignInManager<CmsUser>(userManager, contextAccessor, claimsFactory, optionsAccessor, logger, schemes, confirmation)
 {
     // When the user signed in, in the cookie's properties, which its renewals and the stamp check keep while they move its
-    // issue time: prompt=login, max_age and the absolute session lifetime read it.
+    // issue time: prompt=login, max_age and the absolute session lifetime read it. A cookie without it is no sign-in for
+    // them, since its issue time is all it has and every renewal moves that.
     internal const string SignedInAtItem = ".fcms.signed_in_at";
 
     // The id of the server session, kept in the cookie's properties in the same way: the authorizations issued in it carry
@@ -44,7 +45,20 @@ internal sealed class CmsSignInManager(
 
         return properties.Items.TryGetValue(SignedInAtItem, out var value) && long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var seconds)
             ? DateTimeOffset.FromUnixTimeSeconds(seconds)
-            : properties.IssuedUtc;
+            : null;
+    }
+
+    // The time of a cookie's sign-in while the authorize endpoints and the hosted pages that need a signed-in user take it,
+    // in both pools: the cookie says when its sign-in was, and that is within AbsoluteSessionLifetime. Otherwise the user
+    // signs in again over the cookie, which writes a new time; the logout pages take any cookie.
+    internal static DateTimeOffset? LiveSignIn(HttpContext context, AuthenticationProperties properties)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        var now = context.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow();
+        return SignedInAt(properties) is { } signedInAt && !context.RequestServices.GetRequiredService<ClientOptions>().HasOutlived(signedInAt, now)
+            ? signedInAt
+            : null;
     }
 
     public static string? ServerSession(AuthenticationProperties properties)

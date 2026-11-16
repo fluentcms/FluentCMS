@@ -104,23 +104,14 @@ internal static class ConnectEndpoints
             return Results.Challenge(new AuthenticationProperties { RedirectUri = afterSignIn }, [IdentityConstants.ApplicationScheme]);
         }
 
-        // prompt=login, a max_age the sign-in is older than, or a sign-in older than the absolute session lifetime: the user
-        // signs in again, as for the second factor below.
+        // A cookie that is no live sign-in, prompt=login or a max_age the sign-in is older than: the user signs in again over
+        // the cookie, as for the second factor below.
         var now = context.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow();
-        var signedInAt = CmsSignInManager.SignedInAt(cookie.Properties!) ?? now;
-        var sessionCap = context.RequestServices.GetRequiredService<ClientOptions>().AbsoluteSessionLifetime;
-        if (request.HasPromptValue(PromptValues.Login)
-            || (request.MaxAge is { } maxAge && now - signedInAt > TimeSpan.FromSeconds(maxAge))
-            || (sessionCap is { } cap && now - signedInAt > cap))
+        if (CmsSignInManager.LiveSignIn(context, cookie.Properties!) is not { } signedInAt || MustSignInAgain(context, request, signedInAt, now))
         {
-            if (request.HasPromptValue(PromptValues.None))
-            {
-                return Refuse(Errors.LoginRequired, "The sign-in is older than the client or the server accepts.");
-            }
-
-            // The cookie alone ends: another site can send this request, so it revokes nothing (#3203).
-            await context.SignOutAsync(IdentityConstants.ApplicationScheme);
-            return Results.Challenge(new AuthenticationProperties { RedirectUri = afterSignIn }, [IdentityConstants.ApplicationScheme]);
+            return request.HasPromptValue(PromptValues.None)
+                ? Refuse(Errors.LoginRequired, "The sign-in is older than the client or the server accepts.")
+                : Reauthentication.Challenge(context, request, parameters, CmsSignInManager.SignedInAt(cookie.Properties!), now, IdentityConstants.ApplicationScheme);
         }
 
         // The cookie says how the user signed in: amr=mfa after the second factor, pwd after a password alone, which is also
@@ -132,13 +123,9 @@ internal static class ConnectEndpoints
         {
             if (await twoFactor.IsOnAsync(user))
             {
-                if (request.HasPromptValue(PromptValues.None))
-                {
-                    return Refuse(Errors.LoginRequired, "The user's role requires a sign-in with a second factor.");
-                }
-
-                await context.SignOutAsync(IdentityConstants.ApplicationScheme);
-                return Results.Challenge(new AuthenticationProperties { RedirectUri = afterSignIn }, [IdentityConstants.ApplicationScheme]);
+                return request.HasPromptValue(PromptValues.None)
+                    ? Refuse(Errors.LoginRequired, "The user's role requires a sign-in with a second factor.")
+                    : Reauthentication.Challenge(context, request, parameters, signedInAt, now, IdentityConstants.ApplicationScheme);
             }
 
             return request.HasPromptValue(PromptValues.None)
@@ -484,7 +471,13 @@ internal static class ConnectEndpoints
         ? context.RequestServices.GetRequiredService<MemberManager>().GetUserId(cookie.Principal!)
         : context.RequestServices.GetRequiredService<UserManager<CmsUser>>().GetUserId(cookie.Principal!);
 
-    // A new sign-in answers prompt=login and max_age, so the request it comes back with no longer asks for one.
+    // prompt=login or a max_age the sign-in is older than, unless a sign-in since the request that asked answered it.
+    internal static bool MustSignInAgain(HttpContext context, OpenIddictRequest request, DateTimeOffset signedInAt, DateTimeOffset now) =>
+        (request.HasPromptValue(PromptValues.Login) || (request.MaxAge is { } maxAge && now - signedInAt > TimeSpan.FromSeconds(maxAge)))
+        && !Reauthentication.IsAnswered(context, request, signedInAt, now);
+
+    // Without a sign-in, the one the user makes answers prompt=login and max_age, so the request it comes back with no
+    // longer asks for one.
     internal static IEnumerable<KeyValuePair<string, StringValues>> WithoutReauthentication(List<KeyValuePair<string, StringValues>> parameters)
     {
         foreach (var (name, value) in parameters)
