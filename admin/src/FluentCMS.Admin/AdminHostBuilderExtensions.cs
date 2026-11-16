@@ -14,6 +14,9 @@ public static class AdminHostBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
+        // The wrapped set calls no API, and the component gallery is a root of its own, so it does not wait for config.json.
+        builder.Services.AddCmsComponents();
+
         // A team's app made from the standard template adds its own.
         if (!builder.RootComponents.Any(mapping => mapping.ComponentType == typeof(HeadOutlet)))
         {

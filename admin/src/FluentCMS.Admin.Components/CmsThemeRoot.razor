@@ -1,0 +1,42 @@
+@namespace FluentCMS.Admin.Components
+@inject IThemeService ThemeService
+
+@* The root of the admin's markup: it carries the theme tokens and the providers that dialogs, menus and toasts render into. *@
+<div class="cms-root" data-cms-theme="@ThemeAttribute">
+    @ChildContent
+    <FluentProviders />
+</div>
+
+@code {
+    private CmsThemeMode? _appliedMode;
+
+    // System follows prefers-color-scheme; Light or Dark is the user's choice, which the caller keeps.
+    [Parameter]
+    public CmsThemeMode Mode { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string? ThemeAttribute => Mode switch
+    {
+        CmsThemeMode.Light => "light",
+        CmsThemeMode.Dark => "dark",
+        _ => null,
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_appliedMode == Mode)
+        {
+            return;
+        }
+
+        _appliedMode = Mode;
+        await ThemeService.SetThemeAsync(Mode switch
+        {
+            CmsThemeMode.Light => ThemeMode.Light,
+            CmsThemeMode.Dark => ThemeMode.Dark,
+            _ => ThemeMode.System,
+        });
+    }
+}

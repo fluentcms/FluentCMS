@@ -1,0 +1,14 @@
+@namespace FluentCMS.Admin.Components
+@inherits CmsInputBase<bool>
+
+<FluentSwitch Id="@InputId"
+              Label="@Label"
+              Required="@Required"
+              Disabled="@Disabled"
+              Value="@Value"
+              ValueChanged="@SetValueAsync"
+              Message="@Message"
+              MessageState="@(Invalid ? MessageState.Error : null)"
+              MessageTemplate="@MessageTemplate"
+              Class="cms-target"
+              @attributes="@AriaAttributes" />

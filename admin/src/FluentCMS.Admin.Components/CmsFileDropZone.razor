@@ -1,0 +1,49 @@
+@namespace FluentCMS.Admin.Components
+
+@* The native file input covers the zone, so files can be dropped on it or chosen by keyboard (WCAG 2.5.7). *@
+<div class="@(Disabled ? "cms-drop-zone cms-drop-zone-disabled" : "cms-drop-zone")">
+    <CmsIcon Name="CmsIconName.Upload" />
+    <label class="cms-drop-zone-label" for="@_id">@Label</label>
+    <span id="@HintId" class="cms-field-message">@(Help ?? CmsStrings.DropZoneChoose)</span>
+    <InputFile id="@_id"
+               class="cms-drop-zone-input"
+               accept="@Accept"
+               multiple="@Multiple"
+               disabled="@Disabled"
+               aria-describedby="@HintId"
+               OnChange="@OnChangeAsync" />
+</div>
+
+@code {
+    private readonly string _id = CmsIds.Next();
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Help { get; set; }
+
+    // The accept attribute of the file input, such as "image/*,.pdf".
+    [Parameter]
+    public string? Accept { get; set; }
+
+    [Parameter]
+    public bool Multiple { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback<IReadOnlyList<IBrowserFile>> OnFilesSelected { get; set; }
+
+    private string HintId => _id + "-hint";
+
+    private Task OnChangeAsync(InputFileChangeEventArgs args)
+    {
+        // A cancelled file chooser raises a change with no file, which args.File refuses.
+        IReadOnlyList<IBrowserFile> files = args.FileCount == 0 ? [] : Multiple ? args.GetMultipleFiles(int.MaxValue) : [args.File];
+        return OnFilesSelected.InvokeAsync(files);
+    }
+
+    protected override void OnParametersSet() => CmsGuard.Named(Label, nameof(CmsFileDropZone), nameof(Label));
+}

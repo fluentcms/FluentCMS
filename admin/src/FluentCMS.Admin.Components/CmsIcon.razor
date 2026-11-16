@@ -1,0 +1,22 @@
+@namespace FluentCMS.Admin.Components
+
+@* The library hides every icon's svg from assistive technology, so a labelled icon is named by a wrapping image role. *@
+@if (string.IsNullOrEmpty(Label))
+{
+    <FluentIcon Value="@CmsIcons.Get(Name)" Class="cms-icon" />
+}
+else
+{
+    <span class="cms-icon" role="img" aria-label="@Label" title="@Label">
+        <FluentIcon Value="@CmsIcons.Get(Name)" />
+    </span>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public CmsIconName Name { get; set; }
+
+    // An icon without a label is decorative and hidden from assistive technology.
+    [Parameter]
+    public string? Label { get; set; }
+}

@@ -1,0 +1,25 @@
+@namespace FluentCMS.Admin.Components
+
+<FluentTabs ActiveTabId="@ActiveTabId"
+            ActiveTabIdChanged="@OnActiveTabIdChangedAsync"
+            Class="cms-tabs">
+    @ChildContent
+</FluentTabs>
+
+@code {
+    [Parameter]
+    public string? ActiveTabId { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> ActiveTabIdChanged { get; set; }
+
+    // The CmsTab children.
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private Task OnActiveTabIdChangedAsync(string? id)
+    {
+        ActiveTabId = id;
+        return ActiveTabIdChanged.InvokeAsync(id);
+    }
+}
