@@ -100,6 +100,9 @@ internal sealed class FakeAuthority : HttpMessageHandler
 
     public HttpStatusCode RevokeStatus { get; set; } = HttpStatusCode.OK;
 
+    // The revocation waits for it, or until the client gives up.
+    public TaskCompletionSource? HoldRevoke { get; set; }
+
     // A status the token endpoint answers a refresh with instead of tokens, such as a 503.
     public HttpStatusCode? RefreshStatus { get; set; }
 
@@ -178,6 +181,11 @@ internal sealed class FakeAuthority : HttpMessageHandler
                     ["code_challenge_methods_supported"] = new JsonArray("S256"),
                 });
             case "/connect/revoke":
+                if (HoldRevoke is { } revoke)
+                {
+                    await revoke.Task.WaitAsync(cancellationToken);
+                }
+
                 return new HttpResponseMessage(RevokeStatus);
             case "/connect/token" when form.GetValueOrDefault("grant_type") == "authorization_code":
                 lock (_gate)
@@ -268,6 +276,21 @@ internal sealed class FakeAuthority : HttpMessageHandler
         new(status) { Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json") };
 }
 
+// The reads of the shell's start go to its own fake while the shell is loading, so that a test of the sign-in scripts only
+// the requests it makes itself.
+internal sealed class ShellReadsAside(HttpMessageHandler shell, HttpMessageHandler api, Func<bool> shellLoading) : HttpMessageHandler
+{
+    private static readonly string[] ShellReads = ["me", "me/sites", "me/access", "schema", "plugins"];
+
+    private readonly HttpMessageInvoker _shell = new(shell, disposeHandler: false);
+    private readonly HttpMessageInvoker _api = new(api, disposeHandler: false);
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+        shellLoading() && ShellReads.Contains(request.RequestUri!.AbsolutePath["/api/management/v1/".Length..])
+            ? _shell.SendAsync(request, cancellationToken)
+            : _api.SendAsync(request, cancellationToken);
+}
+
 // A tab that is signed in, for the tests of pages, which are not about the sign-in.
 internal sealed class SignedInTestSession : IAdminSession
 {
@@ -286,7 +309,13 @@ internal sealed class SignedInTestSession : IAdminSession
     public Task<SignInCompletion> CompleteSignInAsync(string? code, string? state, string? error, CancellationToken cancellationToken) =>
         Task.FromResult(SignInCompletion.Failed(SignInFailure.UnknownState));
 
-    public Task SignOutAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public int SignOuts { get; private set; }
+
+    public Task SignOutAsync(CancellationToken cancellationToken)
+    {
+        SignOuts++;
+        return Task.CompletedTask;
+    }
 }
 
 // A clock a test moves.

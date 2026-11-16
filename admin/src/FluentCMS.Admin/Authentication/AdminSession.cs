@@ -4,6 +4,7 @@ using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Configuration;
 using FluentCMS.Admin.Forms;
 using FluentCMS.Admin.Interop;
+using FluentCMS.Admin.Shell;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 
@@ -37,6 +38,9 @@ internal sealed class AdminSession(
     // A session the server ends this soon after its sign-in completed is not signed in again on its own: a loop of silent
     // sign-ins would follow. The gate asks the user instead.
     public static readonly TimeSpan RepeatWindow = TimeSpan.FromMinutes(1);
+
+    // How long a sign-out waits on the server, once the tab is cleared.
+    public static readonly TimeSpan SignOutWait = TimeSpan.FromSeconds(3);
 
     private static AuthenticationJsonContext Json => AuthenticationJsonContext.Default;
 
@@ -123,31 +127,35 @@ internal sealed class AdminSession(
         return outcome;
     }
 
+    // The tab forgets the session before anything is asked of the server, so the sign-out holds whatever the server does.
+    // The revocation and the discovery of the logout page then get SignOutWait at most; without them the page goes to the
+    // admin's base.
     public async Task SignOutAsync(CancellationToken cancellationToken)
     {
         var refreshToken = _refreshToken ?? (await ReadAsync(SessionKey, Json.StoredSession))?.RefreshToken;
+        _redirecting = true;
+        Forget();
+        await storage.RemoveAsync(SessionKey);
+        await storage.RemoveAsync(SignInKey);
+        await storage.RemoveAsync(SignedInAtKey);
+        await storage.RemoveAsync(AdminContext.SiteKey);
+        await drafts.ClearAsync();
+        Changed?.Invoke();
+
         OpenIdConfiguration? discovery = null;
+        using var wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        wait.CancelAfter(SignOutWait);
         try
         {
-            discovery = await authority.DiscoverAsync();
+            discovery = await authority.DiscoverAsync().WaitAsync(wait.Token);
             if (refreshToken is not null && discovery.RevocationEndpoint is { } revocation)
             {
-                await authority.RevokeAsync(revocation, refreshToken, cancellationToken);
+                await authority.RevokeAsync(revocation, refreshToken, wait.Token);
             }
         }
-        catch (Exception exception) when (IsUnavailable(exception))
+        catch (Exception exception) when (IsUnavailable(exception) || exception is OperationCanceledException)
         {
             SessionLog.RevokeFailed(logger, exception);
-        }
-        finally
-        {
-            _redirecting = true;
-            Forget();
-            await storage.RemoveAsync(SessionKey);
-            await storage.RemoveAsync(SignInKey);
-            await storage.RemoveAsync(SignedInAtKey);
-            await drafts.ClearAsync();
-            Changed?.Invoke();
         }
 
         // No id_token_hint: it would put the id token in the URL. The hosted logout page asks the user to confirm instead,

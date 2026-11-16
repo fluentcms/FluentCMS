@@ -9,6 +9,7 @@ namespace FluentCMS.Admin.Api;
 [JsonSerializable(typeof(ApiProblem))]
 [JsonSerializable(typeof(MeResponse))]
 [JsonSerializable(typeof(ItemList<MySiteInfo>))]
+[JsonSerializable(typeof(MyAccessInfo))]
 [JsonSerializable(typeof(SchemaDescription))]
 [JsonSerializable(typeof(ItemList<PluginInfo>))]
 [JsonSerializable(typeof(ContentEntry))]

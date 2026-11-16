@@ -20,7 +20,7 @@ internal interface IAdminSession
     // The callback's parameters, as the authorize endpoint sent them.
     Task<SignInCompletion> CompleteSignInAsync(string? code, string? state, string? error, CancellationToken cancellationToken);
 
-    // Revokes the refresh token, clears what the tab keeps and redirects the whole page to end the server's session.
+    // Clears what the tab keeps, then revokes the refresh token and redirects the whole page to end the server's session.
     Task SignOutAsync(CancellationToken cancellationToken);
 }
 

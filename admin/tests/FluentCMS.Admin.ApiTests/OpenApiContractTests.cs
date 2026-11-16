@@ -23,6 +23,7 @@ public sealed class OpenApiContractTests
 
         Check(ManagementJsonContext.Default.MeResponse, Answer(paths, "/api/management/v1/me", "get"), "me", document, gaps);
         Check(ManagementJsonContext.Default.ItemListMySiteInfo, Answer(paths, "/api/management/v1/me/sites", "get"), "me/sites", document, gaps);
+        Check(ManagementJsonContext.Default.MyAccessInfo, Answer(paths, "/api/management/v1/me/access", "get"), "me/access", document, gaps);
         Check(ManagementJsonContext.Default.SchemaDescription, Answer(paths, "/api/management/v1/schema", "get"), "schema", document, gaps);
         Check(ManagementJsonContext.Default.ItemListPluginInfo, Answer(paths, "/api/management/v1/plugins", "get"), "plugins", document, gaps);
         Check(ManagementJsonContext.Default.ContentPage, Answer(paths, "/api/management/v1/content/article", "get"), "content/article", document, gaps);

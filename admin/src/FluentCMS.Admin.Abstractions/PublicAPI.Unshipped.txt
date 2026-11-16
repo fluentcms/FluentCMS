@@ -200,6 +200,24 @@ FluentCMS.Admin.Api.MeResponse.TwoFactorEnabled.get -> bool
 FluentCMS.Admin.Api.MeResponse.TwoFactorEnabled.init -> void
 FluentCMS.Admin.Api.MeResponse.UserName.get -> string?
 FluentCMS.Admin.Api.MeResponse.UserName.init -> void
+FluentCMS.Admin.Api.MyAccessInfo
+FluentCMS.Admin.Api.MyAccessInfo.<Clone>$() -> FluentCMS.Admin.Api.MyAccessInfo!
+FluentCMS.Admin.Api.MyAccessInfo.Equals(FluentCMS.Admin.Api.MyAccessInfo? other) -> bool
+FluentCMS.Admin.Api.MyAccessInfo.InstancePermissions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Api.MyAccessInfo.InstancePermissions.init -> void
+FluentCMS.Admin.Api.MyAccessInfo.LimitedPermissions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Api.MyAccessInfo.LimitedPermissions.init -> void
+FluentCMS.Admin.Api.MyAccessInfo.Locale.get -> string!
+FluentCMS.Admin.Api.MyAccessInfo.Locale.init -> void
+FluentCMS.Admin.Api.MyAccessInfo.MyAccessInfo() -> void
+FluentCMS.Admin.Api.MyAccessInfo.Permissions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Api.MyAccessInfo.Permissions.init -> void
+FluentCMS.Admin.Api.MyAccessInfo.Search.get -> bool
+FluentCMS.Admin.Api.MyAccessInfo.Search.init -> void
+FluentCMS.Admin.Api.MyAccessInfo.Site.get -> System.Guid
+FluentCMS.Admin.Api.MyAccessInfo.Site.init -> void
+FluentCMS.Admin.Api.MyAccessInfo.Types.get -> System.Collections.Generic.IReadOnlyDictionary<string!, FluentCMS.Admin.Api.TypeAccessInfo!>!
+FluentCMS.Admin.Api.MyAccessInfo.Types.init -> void
 FluentCMS.Admin.Api.MySiteInfo
 FluentCMS.Admin.Api.MySiteInfo.<Clone>$() -> FluentCMS.Admin.Api.MySiteInfo!
 FluentCMS.Admin.Api.MySiteInfo.DefaultLocale.get -> string!
@@ -334,6 +352,8 @@ FluentCMS.Admin.Api.SchemaFieldDescription.VisibleWhen.get -> FluentCMS.Admin.Ap
 FluentCMS.Admin.Api.SchemaFieldDescription.VisibleWhen.init -> void
 FluentCMS.Admin.Api.SchemaTypeDescription
 FluentCMS.Admin.Api.SchemaTypeDescription.<Clone>$() -> FluentCMS.Admin.Api.SchemaTypeDescription!
+FluentCMS.Admin.Api.SchemaTypeDescription.DisplayName.get -> string?
+FluentCMS.Admin.Api.SchemaTypeDescription.DisplayName.init -> void
 FluentCMS.Admin.Api.SchemaTypeDescription.Equals(FluentCMS.Admin.Api.SchemaTypeDescription? other) -> bool
 FluentCMS.Admin.Api.SchemaTypeDescription.Fields.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.SchemaFieldDescription!>!
 FluentCMS.Admin.Api.SchemaTypeDescription.Fields.init -> void
@@ -350,10 +370,34 @@ FluentCMS.Admin.Api.SchemaTypeDescription.ReverseRelations.init -> void
 FluentCMS.Admin.Api.SchemaTypeDescription.SchemaTypeDescription() -> void
 FluentCMS.Admin.Api.SchemaTypeDescription.Scope.get -> string?
 FluentCMS.Admin.Api.SchemaTypeDescription.Scope.init -> void
+FluentCMS.Admin.Api.SchemaTypeDescription.TitleField.get -> string?
+FluentCMS.Admin.Api.SchemaTypeDescription.TitleField.init -> void
 FluentCMS.Admin.Api.SchemaTypeDescription.TrashRetentionDays.get -> int?
 FluentCMS.Admin.Api.SchemaTypeDescription.TrashRetentionDays.init -> void
 FluentCMS.Admin.Api.SchemaTypeDescription.UnpublishedReferences.get -> string?
 FluentCMS.Admin.Api.SchemaTypeDescription.UnpublishedReferences.init -> void
+FluentCMS.Admin.Api.TypeAccessInfo
+FluentCMS.Admin.Api.TypeAccessInfo.<Clone>$() -> FluentCMS.Admin.Api.TypeAccessInfo!
+FluentCMS.Admin.Api.TypeAccessInfo.Conditional.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Api.TypeAccessInfo.Conditional.init -> void
+FluentCMS.Admin.Api.TypeAccessInfo.CreatableFields.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Api.TypeAccessInfo.CreatableFields.init -> void
+FluentCMS.Admin.Api.TypeAccessInfo.Create.get -> bool
+FluentCMS.Admin.Api.TypeAccessInfo.Create.init -> void
+FluentCMS.Admin.Api.TypeAccessInfo.Delete.get -> bool
+FluentCMS.Admin.Api.TypeAccessInfo.Delete.init -> void
+FluentCMS.Admin.Api.TypeAccessInfo.Drafts.get -> bool
+FluentCMS.Admin.Api.TypeAccessInfo.Drafts.init -> void
+FluentCMS.Admin.Api.TypeAccessInfo.Equals(FluentCMS.Admin.Api.TypeAccessInfo? other) -> bool
+FluentCMS.Admin.Api.TypeAccessInfo.Publish.get -> bool
+FluentCMS.Admin.Api.TypeAccessInfo.Publish.init -> void
+FluentCMS.Admin.Api.TypeAccessInfo.TypeAccessInfo() -> void
+FluentCMS.Admin.Api.TypeAccessInfo.Unpublish.get -> bool
+FluentCMS.Admin.Api.TypeAccessInfo.Unpublish.init -> void
+FluentCMS.Admin.Api.TypeAccessInfo.UpdatableFields.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Api.TypeAccessInfo.UpdatableFields.init -> void
+FluentCMS.Admin.Api.TypeAccessInfo.Update.get -> bool
+FluentCMS.Admin.Api.TypeAccessInfo.Update.init -> void
 FluentCMS.Admin.Api.UserRoleInfo
 FluentCMS.Admin.Api.UserRoleInfo.<Clone>$() -> FluentCMS.Admin.Api.UserRoleInfo!
 FluentCMS.Admin.Api.UserRoleInfo.Equals(FluentCMS.Admin.Api.UserRoleInfo? other) -> bool
@@ -429,10 +473,19 @@ FluentCMS.Admin.Forms.FormDraftKey.Type.get -> string!
 FluentCMS.Admin.Forms.FormDraftKey.Type.init -> void
 FluentCMS.Admin.Forms.IFormDraftStore
 FluentCMS.Admin.Forms.IFormDraftStore.FindAsync(FluentCMS.Admin.Forms.FormDraftKey! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<FluentCMS.Admin.Forms.FormDraft?>!
+FluentCMS.Admin.Forms.IFormDraftStore.HasUnsavedForms.get -> bool
 FluentCMS.Admin.Forms.IFormDraftStore.RemoveAsync(FluentCMS.Admin.Forms.FormDraftKey! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 FluentCMS.Admin.Forms.IFormDraftStore.Track(FluentCMS.Admin.Forms.IUnsavedForm! form) -> System.IDisposable!
 FluentCMS.Admin.Forms.IUnsavedForm
 FluentCMS.Admin.Forms.IUnsavedForm.CaptureDraft() -> FluentCMS.Admin.Forms.FormDraft!
+FluentCMS.Admin.IAdminAccess
+FluentCMS.Admin.IAdminAccess.Allows(string! permission) -> bool
+FluentCMS.Admin.IAdminContext
+FluentCMS.Admin.IAdminContext.Access.get -> FluentCMS.Admin.IAdminAccess!
+FluentCMS.Admin.IAdminContext.Changed -> System.Action?
+FluentCMS.Admin.IAdminContext.ContentLocale.get -> string?
+FluentCMS.Admin.IAdminContext.Site.get -> FluentCMS.Admin.Api.MySiteInfo?
+FluentCMS.Admin.IAdminContext.User.get -> FluentCMS.Admin.Api.MeResponse?
 FluentCMS.Admin.IAnnouncer
 FluentCMS.Admin.IAnnouncer.Announce(string! message, FluentCMS.Admin.AnnouncementPoliteness politeness = FluentCMS.Admin.AnnouncementPoliteness.Polite) -> void
 const FluentCMS.Admin.Api.ApiRequest.NewLocale = "\"0\"" -> string!
@@ -468,6 +521,9 @@ override FluentCMS.Admin.Api.ItemList<T>.ToString() -> string!
 override FluentCMS.Admin.Api.MeResponse.Equals(object? obj) -> bool
 override FluentCMS.Admin.Api.MeResponse.GetHashCode() -> int
 override FluentCMS.Admin.Api.MeResponse.ToString() -> string!
+override FluentCMS.Admin.Api.MyAccessInfo.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.MyAccessInfo.GetHashCode() -> int
+override FluentCMS.Admin.Api.MyAccessInfo.ToString() -> string!
 override FluentCMS.Admin.Api.MySiteInfo.Equals(object? obj) -> bool
 override FluentCMS.Admin.Api.MySiteInfo.GetHashCode() -> int
 override FluentCMS.Admin.Api.MySiteInfo.ToString() -> string!
@@ -498,6 +554,9 @@ override FluentCMS.Admin.Api.SchemaFieldDescription.ToString() -> string!
 override FluentCMS.Admin.Api.SchemaTypeDescription.Equals(object? obj) -> bool
 override FluentCMS.Admin.Api.SchemaTypeDescription.GetHashCode() -> int
 override FluentCMS.Admin.Api.SchemaTypeDescription.ToString() -> string!
+override FluentCMS.Admin.Api.TypeAccessInfo.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.TypeAccessInfo.GetHashCode() -> int
+override FluentCMS.Admin.Api.TypeAccessInfo.ToString() -> string!
 override FluentCMS.Admin.Api.UserRoleInfo.Equals(object? obj) -> bool
 override FluentCMS.Admin.Api.UserRoleInfo.GetHashCode() -> int
 override FluentCMS.Admin.Api.UserRoleInfo.ToString() -> string!
@@ -538,6 +597,8 @@ static FluentCMS.Admin.Api.ItemList<T>.operator !=(FluentCMS.Admin.Api.ItemList<
 static FluentCMS.Admin.Api.ItemList<T>.operator ==(FluentCMS.Admin.Api.ItemList<T>? left, FluentCMS.Admin.Api.ItemList<T>? right) -> bool
 static FluentCMS.Admin.Api.MeResponse.operator !=(FluentCMS.Admin.Api.MeResponse? left, FluentCMS.Admin.Api.MeResponse? right) -> bool
 static FluentCMS.Admin.Api.MeResponse.operator ==(FluentCMS.Admin.Api.MeResponse? left, FluentCMS.Admin.Api.MeResponse? right) -> bool
+static FluentCMS.Admin.Api.MyAccessInfo.operator !=(FluentCMS.Admin.Api.MyAccessInfo? left, FluentCMS.Admin.Api.MyAccessInfo? right) -> bool
+static FluentCMS.Admin.Api.MyAccessInfo.operator ==(FluentCMS.Admin.Api.MyAccessInfo? left, FluentCMS.Admin.Api.MyAccessInfo? right) -> bool
 static FluentCMS.Admin.Api.MySiteInfo.operator !=(FluentCMS.Admin.Api.MySiteInfo? left, FluentCMS.Admin.Api.MySiteInfo? right) -> bool
 static FluentCMS.Admin.Api.MySiteInfo.operator ==(FluentCMS.Admin.Api.MySiteInfo? left, FluentCMS.Admin.Api.MySiteInfo? right) -> bool
 static FluentCMS.Admin.Api.MySiteLocale.operator !=(FluentCMS.Admin.Api.MySiteLocale? left, FluentCMS.Admin.Api.MySiteLocale? right) -> bool
@@ -558,6 +619,8 @@ static FluentCMS.Admin.Api.SchemaFieldDescription.operator !=(FluentCMS.Admin.Ap
 static FluentCMS.Admin.Api.SchemaFieldDescription.operator ==(FluentCMS.Admin.Api.SchemaFieldDescription? left, FluentCMS.Admin.Api.SchemaFieldDescription? right) -> bool
 static FluentCMS.Admin.Api.SchemaTypeDescription.operator !=(FluentCMS.Admin.Api.SchemaTypeDescription? left, FluentCMS.Admin.Api.SchemaTypeDescription? right) -> bool
 static FluentCMS.Admin.Api.SchemaTypeDescription.operator ==(FluentCMS.Admin.Api.SchemaTypeDescription? left, FluentCMS.Admin.Api.SchemaTypeDescription? right) -> bool
+static FluentCMS.Admin.Api.TypeAccessInfo.operator !=(FluentCMS.Admin.Api.TypeAccessInfo? left, FluentCMS.Admin.Api.TypeAccessInfo? right) -> bool
+static FluentCMS.Admin.Api.TypeAccessInfo.operator ==(FluentCMS.Admin.Api.TypeAccessInfo? left, FluentCMS.Admin.Api.TypeAccessInfo? right) -> bool
 static FluentCMS.Admin.Api.UserRoleInfo.operator !=(FluentCMS.Admin.Api.UserRoleInfo? left, FluentCMS.Admin.Api.UserRoleInfo? right) -> bool
 static FluentCMS.Admin.Api.UserRoleInfo.operator ==(FluentCMS.Admin.Api.UserRoleInfo? left, FluentCMS.Admin.Api.UserRoleInfo? right) -> bool
 static FluentCMS.Admin.Configuration.AdminBranding.operator !=(FluentCMS.Admin.Configuration.AdminBranding? left, FluentCMS.Admin.Configuration.AdminBranding? right) -> bool

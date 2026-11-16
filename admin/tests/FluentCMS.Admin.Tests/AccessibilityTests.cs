@@ -14,19 +14,33 @@ public sealed class AccessibilityTests : AdminTestContext
     public AccessibilityTests() => Start();
 
     [Fact]
-    public void ARouteChangeMovesFocusToThePageHeading()
+    public void TheFirstPageKeepsFocusAtTheStartAndARouteChangeMovesItToThePageHeading()
     {
         var app = Render<AdminApp>();
-        JSInterop.VerifyFocusOnNavigateInvoke(calledTimes: 1);
+        app.Find("main h1");
+        HeadingFocuses().ShouldBe(0);
 
         Services.GetRequiredService<NavigationManager>().NavigateTo("/not-found");
 
-        app.WaitForAssertion(() =>
-        {
-            var invocations = JSInterop.VerifyFocusOnNavigateInvoke(calledTimes: 2);
-            invocations[^1].Arguments.ShouldBe(["h1"]);
-        });
+        app.WaitForAssertion(() => HeadingFocuses().ShouldBe(1));
         app.Find("h1").GetAttribute("tabindex").ShouldBe("-1");
+    }
+
+    // The page the callback of the sign-in returns to is the first the user sees of this load.
+    [Fact]
+    public void ThePageTheSignInReturnsToKeepsFocusAtTheStart()
+    {
+        var navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/authentication/login-callback?code=x&state=y");
+        var app = Render<AdminApp>();
+
+        navigation.NavigateTo("/", replace: true);
+        app.WaitForAssertion(() => app.Find("main h1"));
+        HeadingFocuses().ShouldBe(0);
+
+        navigation.NavigateTo("/not-found");
+
+        app.WaitForAssertion(() => HeadingFocuses().ShouldBe(1));
     }
 
     [Fact]
@@ -151,6 +165,10 @@ public sealed class AccessibilityTests : AdminTestContext
 
     private static string[] Messages(IRenderedComponent<AdminApp> app, string politeness) =>
         app.FindAll($"[aria-live={politeness}] > div").Select(message => message.TextContent).ToArray();
+
+    // FocusOnNavigate's calls that move focus to the heading.
+    private int HeadingFocuses() =>
+        JSInterop.Invocations.Count(call => call.Identifier == "Blazor._internal.domWrapper.focusBySelector" && (string?)call.Arguments[0] == "h1");
 
     // A dialog of the admin's own applying the rule: remember the opener when it opens, return focus when it closes.
     private sealed class DialogWithOpener : ComponentBase

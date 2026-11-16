@@ -198,6 +198,9 @@
   <data name="System.Components.IconMoon" xml:space="preserve">
     <value>Moon</value>
   </data>
+  <data name="System.Components.IconNavigation" xml:space="preserve">
+    <value>Navigation</value>
+  </data>
   <data name="System.Components.Inputs" xml:space="preserve">
     <value>Inputs and selects</value>
   </data>
@@ -449,5 +452,140 @@
   </data>
   <data name="Authentication.Gate.MisconfiguredText" xml:space="preserve">
     <value>The server that answered is not the one the admin is configured to sign in with, or it does not offer what the admin needs. An administrator can check the authority in the configuration of the admin.</value>
+  </data>
+  <data name="System.Components.Navigation" xml:space="preserve">
+    <value>Navigation and breadcrumb</value>
+  </data>
+  <data name="System.Components.Trail" xml:space="preserve">
+    <value>Sample trail</value>
+  </data>
+  <data name="System.Components.SampleNavigation" xml:space="preserve">
+    <value>Sample</value>
+  </data>
+  <data name="System.Components.Pages" xml:space="preserve">
+    <value>Pages</value>
+  </data>
+  <data name="System.Components.Start" xml:space="preserve">
+    <value>Start page</value>
+  </data>
+  <data name="System.Components.ThisPage" xml:space="preserve">
+    <value>This page</value>
+  </data>
+  <data name="System.Components.Shared" xml:space="preserve">
+    <value>Shared</value>
+  </data>
+  <data name="Shell.Layout.OpenNavigation" xml:space="preserve">
+    <value>Open the navigation</value>
+  </data>
+  <data name="Shell.Layout.Navigation" xml:space="preserve">
+    <value>Navigation</value>
+  </data>
+  <data name="Shell.Layout.Loading" xml:space="preserve">
+    <value>Loading the admin…</value>
+  </data>
+  <data name="Shell.Layout.NoSchema" xml:space="preserve">
+    <value>Your roles in this site do not let you read its content types, so none are listed.</value>
+  </data>
+  <data name="Shell.Start.FailedHeading" xml:space="preserve">
+    <value>The admin could not load</value>
+  </data>
+  <data name="Shell.Start.FailedText" xml:space="preserve">
+    <value>The server did not answer, or answered with an error, when the admin asked for your sites and what you may do in them.</value>
+  </data>
+  <data name="Shell.Start.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Shell.NoSite.Heading" xml:space="preserve">
+    <value>You have no site</value>
+  </data>
+  <data name="Shell.NoSite.Text" xml:space="preserve">
+    <value>Your account holds no role in any site, so there is nothing for you to work on. Ask an administrator for a role in a site.</value>
+  </data>
+  <data name="Shell.Sidebar.Label" xml:space="preserve">
+    <value>Main</value>
+  </data>
+  <data name="Shell.Sidebar.Home" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="Shell.Sidebar.Collections" xml:space="preserve">
+    <value>Collections</value>
+  </data>
+  <data name="Shell.Sidebar.Singletons" xml:space="preserve">
+    <value>Singletons</value>
+  </data>
+  <data name="Shell.Sidebar.Content" xml:space="preserve">
+    <value>Content</value>
+  </data>
+  <data name="Shell.Sidebar.Media" xml:space="preserve">
+    <value>Media</value>
+  </data>
+  <data name="Shell.Sidebar.Administration" xml:space="preserve">
+    <value>Administration</value>
+  </data>
+  <data name="Shell.Sidebar.Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Shell.Sidebar.Global" xml:space="preserve">
+    <value>Global</value>
+    <comment>Marks a content type shared by every site.</comment>
+  </data>
+  <data name="Shell.Breadcrumbs.Label" xml:space="preserve">
+    <value>Breadcrumb</value>
+  </data>
+  <data name="Shell.Breadcrumbs.Content" xml:space="preserve">
+    <value>Content</value>
+  </data>
+  <data name="Shell.Breadcrumbs.New" xml:space="preserve">
+    <value>New entry</value>
+  </data>
+  <data name="Shell.Breadcrumbs.System" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Shell.Breadcrumbs.Components" xml:space="preserve">
+    <value>Components</value>
+  </data>
+  <data name="Shell.SiteSwitcher.Label" xml:space="preserve">
+    <value>Site</value>
+  </data>
+  <data name="Shell.SiteSwitcher.Switched" xml:space="preserve">
+    <value>Showing the site {0}</value>
+  </data>
+  <data name="Shell.UserMenu.Label" xml:space="preserve">
+    <value>{0}</value>
+    <comment>The button of the user menu: {0} is the signed-in user's name. A culture may add words around it.</comment>
+  </data>
+  <data name="Shell.UserMenu.Unnamed" xml:space="preserve">
+    <value>Your account</value>
+  </data>
+  <data name="Shell.UserMenu.Account" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="Shell.UserMenu.ThemeSystem" xml:space="preserve">
+    <value>System theme</value>
+  </data>
+  <data name="Shell.UserMenu.ThemeLight" xml:space="preserve">
+    <value>Light theme</value>
+  </data>
+  <data name="Shell.UserMenu.ThemeDark" xml:space="preserve">
+    <value>Dark theme</value>
+  </data>
+  <data name="Shell.UserMenu.CurrentTheme" xml:space="preserve">
+    <value>, chosen</value>
+    <comment>Read after the name of the theme in use; not shown.</comment>
+  </data>
+  <data name="Shell.UserMenu.SignOut" xml:space="preserve">
+    <value>Sign out</value>
+  </data>
+  <data name="Shell.SignOut.Title" xml:space="preserve">
+    <value>Sign out with unsaved changes?</value>
+  </data>
+  <data name="Shell.SignOut.Text" xml:space="preserve">
+    <value>A form has changes that are not saved. They are lost when you sign out.</value>
+  </data>
+  <data name="Shell.SignOut.Confirm" xml:space="preserve">
+    <value>Sign out</value>
+  </data>
+  <data name="Shell.SignOut.Cancel" xml:space="preserve">
+    <value>Keep working</value>
   </data>
 </root>
