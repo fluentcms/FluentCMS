@@ -1,0 +1,59 @@
+@namespace FluentCMS.Admin.Components
+@implements IDisposable
+@using Microsoft.AspNetCore.Components.Routing
+@inject NavigationManager Navigation
+
+@* A link of a CmsNavigationSection, marked as the current page for assistive technology as well as by its look. *@
+<li>
+    <a class="cms-nav-link" href="@Href" aria-current="@(IsCurrent ? "page" : null)">
+        <span class="cms-nav-link-text">@ChildContent</span>
+        @if (!string.IsNullOrEmpty(Badge))
+        {
+            @* The space keeps the two words apart in the link's accessible name. *@
+            @(" ")<span class="cms-badge">@Badge</span>
+        }
+    </a>
+</li>
+
+@code {
+    // Relative to the app's base, such as "content/article"; "" is the start page.
+    [Parameter, EditorRequired]
+    public string Href { get; set; } = string.Empty;
+
+    [Parameter]
+    public CmsNavigationMatch Match { get; set; }
+
+    // A short text after the link's own, such as "Global", which is part of the link's name.
+    [Parameter]
+    public string? Badge { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private bool IsCurrent
+    {
+        get
+        {
+            var uri = Navigation.Uri;
+            if (!uri.StartsWith(Navigation.BaseUri, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            var path = Navigation.ToBaseRelativePath(uri);
+            var end = path.IndexOfAny(['?', '#']);
+            path = (end < 0 ? path : path[..end]).TrimEnd('/');
+            var href = Href.TrimEnd('/');
+            return Match == CmsNavigationMatch.All || href.Length == 0
+                ? string.Equals(path, href, StringComparison.OrdinalIgnoreCase)
+                : string.Equals(path, href, StringComparison.OrdinalIgnoreCase)
+                    || path.StartsWith(href + "/", StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+}

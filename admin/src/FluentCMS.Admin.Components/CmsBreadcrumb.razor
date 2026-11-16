@@ -1,0 +1,41 @@
+@namespace FluentCMS.Admin.Components
+
+@* The trail to the current page; its last item is the page itself. The separators are drawn by the stylesheet and are not
+   read out. *@
+@if (Items.Count > 0)
+{
+    <nav class="cms-breadcrumb" aria-label="@Label">
+        <ol class="cms-breadcrumb-list">
+            @for (var index = 0; index < Items.Count; index++)
+            {
+                var item = Items[index];
+                <li class="cms-breadcrumb-item">
+                    @if (index == Items.Count - 1)
+                    {
+                        <span aria-current="page">@item.Text</span>
+                    }
+                    else if (item.Href is { } href)
+                    {
+                        <a href="@href">@item.Text</a>
+                    }
+                    else
+                    {
+                        <span>@item.Text</span>
+                    }
+                </li>
+            }
+        </ol>
+    </nav>
+}
+
+@code {
+    // Names the landmark for assistive technology.
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    // From the first to the current page; nothing is rendered without items.
+    [Parameter, EditorRequired]
+    public IReadOnlyList<CmsBreadcrumbItem> Items { get; set; } = [];
+
+    protected override void OnParametersSet() => CmsGuard.Named(Label, nameof(CmsBreadcrumb), nameof(Label));
+}

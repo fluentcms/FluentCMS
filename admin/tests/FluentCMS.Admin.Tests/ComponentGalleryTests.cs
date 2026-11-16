@@ -41,6 +41,16 @@ public sealed class ComponentGalleryTests : AdminTestContext
         app.FindAll(".cms-root").ShouldHaveSingleItem();
     }
 
+    [Fact]
+    public void TheGalleryShowsAOneTimeCodeInput()
+    {
+        Start();
+
+        var app = RenderGallery();
+
+        app.Find(".gallery input[autocomplete='one-time-code']").GetAttribute("inputmode").ShouldBe("numeric");
+    }
+
     [Theory]
     [InlineData("Dark", "dark")]
     [InlineData("Light", "light")]

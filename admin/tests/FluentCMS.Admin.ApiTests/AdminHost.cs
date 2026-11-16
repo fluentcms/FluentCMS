@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using FluentCMS.Admin.Api;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Identity;
 using FluentCMS.Plugins.Media;
 using FluentCMS.Samples.Blog;
 using FluentCMS.Testing;
@@ -30,7 +31,18 @@ internal sealed class AdminHost : IAsyncDisposable
                     limits.Management.PermitLimit = managementLimit;
                 });
             })
-            .Configure(cms => cms.AddBlogSample());
+            .Configure(cms =>
+            {
+                cms.AddBlogSample();
+                // The admin's client as a distribution registers it (spec 6.1), for the admin at https://localhost/admin/.
+                cms.Clients.Applications[AdminTab.AdminClientId] = new ClientRegistration
+                {
+                    DisplayName = "FluentCMS admin",
+                    RedirectUris = { AdminTab.AdminBase + "authentication/login-callback" },
+                    PostLogoutRedirectUris = { AdminTab.AdminBase },
+                    Scopes = { "openid", "profile", "email", "offline_access", "management" },
+                };
+            });
     }
 
     public static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -57,7 +69,7 @@ internal sealed class AdminHost : IAsyncDisposable
         }
     }
 
-    private HttpMessageHandler ServerHandler() => ((TestServer)Host.Services.GetRequiredService<IServer>()).CreateHandler();
+    public HttpMessageHandler ServerHandler() => ((TestServer)Host.Services.GetRequiredService<IServer>()).CreateHandler();
 }
 
 // The services of AddManagementApi with a session that holds the user's token and the shell's site, over the test server.
@@ -109,6 +121,8 @@ internal sealed class AdminClient : IAccessTokenSource, ICurrentSite, IContentLo
     public SiteMetadata Metadata => _scope.ServiceProvider.GetRequiredService<SiteMetadata>();
 
     public ValueTask<string?> GetAccessTokenAsync(CancellationToken cancellationToken) => ValueTask.FromResult<string?>(_accessToken);
+
+    public ValueTask<bool> RefreshAsync(string rejectedToken, CancellationToken cancellationToken) => ValueTask.FromResult(false);
 
     public void TooManyRequests(TimeSpan? retryAfter) => Notices.Add(retryAfter);
 

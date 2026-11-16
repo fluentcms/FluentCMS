@@ -17,6 +17,25 @@
     <ProjectReference Include="../../samples/Blog/Blog.csproj" />
   </ItemGroup>
 
+  <!-- The admin of the image (admin spec 6.1): the publish compiles the WebAssembly app, whose files become the host's static web
+       assets, which MapFluentCmsAdmin serves at /admin. The host answers config.json itself, so the sample is not compressed. -->
+  <PropertyGroup>
+    <CompressionExcludePatterns>$(CompressionExcludePatterns);**/config.json</CompressionExcludePatterns>
+    <!-- The host has no styles or script modules of its own, which would otherwise be empty bundles served under /admin. -->
+    <DisableScopedCssBundling>true</DisableScopedCssBundling>
+    <GenerateJSModuleManifest>false</GenerateJSModuleManifest>
+  </PropertyGroup>
+
+  <!-- For the local loop of dotnet run and dotnet watch (docs/host-configuration.md#admin); the image runs in Production. -->
+  <ItemGroup>
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../admin/src/FluentCMS.Admin.App/FluentCMS.Admin.App.csproj" />
+    <ProjectReference Include="../../admin/src/FluentCMS.Admin.Hosting/FluentCMS.Admin.Hosting.csproj" />
+  </ItemGroup>
+
   <!-- The source generator emits the typed filter and sort builders of the types a host declares, and the analyzers check the schema attributes in the build. -->
   <ItemGroup>
     <ProjectReference Include="../FluentCMS.Generators/FluentCMS.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

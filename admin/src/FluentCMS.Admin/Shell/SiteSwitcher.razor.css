@@ -1,0 +1,6 @@
+/* The label beside the select, so that the header stays one line on a tablet. */
+.site-switcher ::deep .cms-field {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--cms-space-s);
+}

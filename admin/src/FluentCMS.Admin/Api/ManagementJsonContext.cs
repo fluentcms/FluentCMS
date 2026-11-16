@@ -9,10 +9,17 @@ namespace FluentCMS.Admin.Api;
 [JsonSerializable(typeof(ApiProblem))]
 [JsonSerializable(typeof(MeResponse))]
 [JsonSerializable(typeof(ItemList<MySiteInfo>))]
+[JsonSerializable(typeof(MyAccessInfo))]
 [JsonSerializable(typeof(SchemaDescription))]
 [JsonSerializable(typeof(ItemList<PluginInfo>))]
 [JsonSerializable(typeof(ContentEntry))]
 [JsonSerializable(typeof(ContentPage))]
+[JsonSerializable(typeof(ItemList<MySession>))]
+[JsonSerializable(typeof(MyTwoFactor))]
+[JsonSerializable(typeof(AuthenticatorSetup))]
+[JsonSerializable(typeof(RecoveryCodeList))]
+[JsonSerializable(typeof(ItemList<MyLogin>))]
+[JsonSerializable(typeof(MyPreferences))]
 [JsonSerializable(typeof(JsonNode))]
 internal sealed partial class ManagementJsonContext : JsonSerializerContext
 {

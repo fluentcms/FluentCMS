@@ -1,6 +1,6 @@
 # Run with Docker
 
-The reference host, `src/FluentCMS.Host`, is FluentCMS as one container: the Delivery and Management APIs, the authorization server and its hosted pages, and health probes. It is configured entirely by environment variables, so nothing has to be compiled to run it.
+The reference host, `src/FluentCMS.Host`, is FluentCMS as one container: the Delivery and Management APIs, the authorization server and its hosted pages, health probes, and the files of the admin, which it serves at `/admin` once [turned on](#the-admin). It is configured entirely by environment variables, so nothing has to be compiled to run it.
 
 ## The published image
 
@@ -94,10 +94,15 @@ A schema file has no compiled migrations. On SQLite the host creates and extends
 | `FluentCms__Email__Smtp__Host` and the rest of `FluentCms__Email__Smtp__*` | none | The SMTP server that invitations and password resets go through; see [email](host-configuration.md#email). |
 | `FluentCms__Sso__Providers__{name}__*` | none | An OpenID Connect provider that admin users sign in with; see [single sign-on](#single-sign-on). |
 | `FluentCms__Media__S3__*` | none | Any key of the section stores new uploads in an S3 bucket, or one of an S3-compatible service such as MinIO, instead of the local disk: `Bucket`, `Endpoint`, `Region`, `KeyPrefix`, `ForcePathStyle`, `AccessKeyId` and `SecretAccessKey`, as the [media plugin](../src/plugins/FluentCMS.Plugins.Media/README.md#storage-on-s3-or-azure-blob) lists them. A section without a valid bucket stops the host at start. |
+| `FluentCms__Admin__Enabled` | `false` | `true` serves the admin at `/admin` and registers its client; it needs `FluentCms__PublicOrigin`. See [the admin](#the-admin). |
 | `FluentCms__OpenApi__Enabled` | off | `true` serves the OpenAPI document at `/openapi/v1.json` and the Scalar UI at `/scalar`. See [the API description](#the-api-description). |
 | `ASPNETCORE_HTTP_PORTS` | `8080` | The port the host listens on, from the base image. |
 
 Every other option is a key of the `FluentCms` section, written with `__` for `:`, as [host configuration](host-configuration.md) lists them.
+
+## The admin
+
+The image holds the admin, the Blazor WebAssembly app that `dotnet publish` of the host compiles with the .NET SDK alone, with no Node and no workload. It is off until the admin is released: `FluentCms__Admin__Enabled=true` serves it at `/admin/` (under `FluentCms__ReverseProxy__PathBase` when set) with its `config.json` at `/admin/config.json`, and registers the public client `fluentcms-admin` with the redirect URI `{public origin}/admin/authentication/login-callback`. It needs `FluentCms__PublicOrigin`, since its addresses are never built from a request's `Host`; without it the host stops with `FCMS1101`. Sign-in goes through the hosted pages, so it needs https, as below. `FluentCms__Admin__Branding__*`, `__Cultures__*` and `__PreviewOrigins__*` set what `config.json` carries, as the [admin](host-configuration.md#admin) section lists them. Off, `/admin` is a 404 like any unknown path, and the files add about 60 MB to the image (471 MB against 410 MB), and the build about half a minute.
 
 ## The first administrator
 
@@ -190,7 +195,7 @@ docker run --rm \
   fluentcms fluentcms migrate
 ```
 
-`fluentcms migrate --check` lists what is pending and exits with 1 when anything is, which suits a readiness gate. `fluentcms migrations list` shows the applied and pending migrations of each stream, and `fluentcms migrations script --idempotent --output /out/migrate.sql` writes the SQL for a database that only an administrator may change (PostgreSQL and SQL Server; mount `/out`). The host's logs go to standard output with the command's output, so set `Logging__Console__LogToStandardErrorThreshold=Trace` to keep them apart. A command needs none of the Production settings of the host above, since it serves nothing. Instances that migrate one database at once apply each migration once, but on SQL Server the first migration of a new database turns `READ_COMMITTED_SNAPSHOT` on, which disconnects the database's other sessions, so a second run that waits meanwhile fails and succeeds when it runs again: run one migrate step per deploy, or let it restart. In Kubernetes:
+`fluentcms migrate --check` lists what is pending and exits with 1 when anything is, which suits a readiness gate. `fluentcms migrations list` shows the applied and pending migrations of each stream, and `fluentcms migrations script --idempotent --output /out/migrate.sql` writes the SQL for a database that only an administrator may change (PostgreSQL and SQL Server; mount `/out`). The host's logs go to standard output with the command's output, so set `Logging__Console__LogToStandardErrorThreshold=Trace` to keep them apart. A command needs none of the Production settings of the host above, since it serves nothing. With `FluentCms:Admin:Enabled` true, a command also runs the admin's checks, since it is built with the host's settings: a wrong admin setting or address stops it with `FCMS1101`, and a missing app, manifest or `index.html` with `FCMS1103`. Instances that migrate one database at once apply each migration once, but on SQL Server the first migration of a new database turns `READ_COMMITTED_SNAPSHOT` on, which disconnects the database's other sessions, so a second run that waits meanwhile fails and succeeds when it runs again: run one migrate step per deploy, or let it restart. In Kubernetes:
 
 ```yaml
 initContainers:
@@ -317,7 +322,7 @@ docker compose run --rm -T --no-deps cms fluentcms user create --email ada@examp
 docker compose run --rm -T --no-deps cms fluentcms apikey create --name deploy --class management --role "Super Admin"
 ```
 
-The key works over plain http at once. Signing in on the hosted pages needs https, so it waits for the proxy below. The `Compose` workflow in CI starts this file with throwaway values on every push to `main` and to a `feature/*` branch, signs an administrator in through the hosted pages with a proxy's forwarded headers, publishes an article through the Management API, reads it through the Delivery API, and uploads an image that it reads back from MinIO. **Actions → Compose → Run workflow** with an image, such as `ghcr.io/fluentcms/fluentcms:1.0.0-preview.1`, runs the same test on the published image instead of a build.
+The key works over plain http at once. Signing in on the hosted pages needs https, so it waits for the proxy below. The `Compose` workflow in CI starts this file with throwaway values on every push to `main` and to a `feature/*` branch, signs an administrator in through the hosted pages with a proxy's forwarded headers, publishes an article through the Management API, reads it through the Delivery API, uploads an image that it reads back from MinIO, and with the admin turned on reads `/admin/` and `/admin/config.json` and signs the administrator in with the admin's client and PKCE. **Actions → Compose → Run workflow** with an image, such as `ghcr.io/fluentcms/fluentcms:1.0.0-preview.1`, runs the same test on the published image instead of a build.
 
 What to change for production:
 
