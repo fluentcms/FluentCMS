@@ -82,12 +82,50 @@ internal sealed class FakeMemberProviders : IDisposable
 
         if (error is not null)
         {
+            // Google sends the state back with a cancelled consent (verified 15 Nov 2026).
             return new() { ["error"] = error, ["state"] = query["state"] };
         }
 
         var code = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
-        _codes[code] = new Grant(provider.Kind, account, query["redirect_uri"], query.GetValueOrDefault("code_challenge"), query.GetValueOrDefault("scope") ?? "");
-        return new() { ["code"] = code, ["state"] = query["state"] };
+        var scope = query.GetValueOrDefault("scope") ?? "";
+        _codes[code] = new Grant(provider.Kind, account, query["redirect_uri"], query.GetValueOrDefault("code_challenge"), scope);
+        Dictionary<string, string> answer = new() { ["code"] = code, ["state"] = query["state"] };
+
+        // What the real callbacks carry besides the code and the state (verified 15 Nov 2026): Google names its issuer,
+        // the scopes it granted in their long form, the account and the prompt; GitHub names its issuer.
+        switch (provider.Kind)
+        {
+            case "google":
+                answer["iss"] = "https://accounts.google.com";
+                answer["scope"] = GoogleGrantedScope(scope);
+                answer["authuser"] = "0";
+                answer["prompt"] = "consent";
+                break;
+            case "github":
+                answer["iss"] = "https://github.com/login/oauth";
+                break;
+        }
+
+        return answer;
+    }
+
+    // Google answers the short scopes it was asked for with their long names, in its own order.
+    private static string GoogleGrantedScope(string asked)
+    {
+        var names = asked.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.Ordinal);
+        List<string> granted = [];
+        if (names.Remove("email"))
+        {
+            granted.Add("https://www.googleapis.com/auth/userinfo.email");
+        }
+
+        if (names.Remove("profile"))
+        {
+            granted.Add("https://www.googleapis.com/auth/userinfo.profile");
+        }
+
+        granted.AddRange(names);
+        return string.Join(' ', granted);
     }
 
     public void Dispose()
@@ -116,7 +154,7 @@ internal sealed class FakeMemberProviders : IDisposable
         _accessTokens[accessToken] = grant;
         return kind == "apple"
             ? Json(new { access_token = accessToken, token_type = "Bearer", expires_in = 300, id_token = AppleIdToken(grant.Account) })
-            : Json(new { access_token = accessToken, token_type = "Bearer", expires_in = 300, scope = grant.Scope });
+            : Json(new { access_token = accessToken, token_type = "Bearer", expires_in = 300, scope = kind == "google" ? GoogleGrantedScope(grant.Scope) : grant.Scope });
     }
 
     // The client secret the Apple handler makes: a token signed with the key of the run, in the name of the team.

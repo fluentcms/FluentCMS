@@ -246,6 +246,24 @@ public class SchemaIntrospectionTests
         JsonSerializer.Serialize(Field(described, "slug")).ShouldBe(JsonSerializer.Serialize(Field(full, "slug") with { Settings = new Dictionary<string, object>() }));
     }
 
+    [Fact]
+    public async Task ATitleFieldOutsideTheAllowListIsLeftOutAndTheDisplayNameStays()
+    {
+        var model = new SchemaBuilder().AddCollection("page", type => type
+            .DisplayName("Web page")
+            .TitleField("title")
+            .Field("title", "text")
+            .Field("summary", "text")).Build();
+
+        var full = Type(await DescribeAsync(model, Everything), "page");
+        var withTitle = Type(await DescribeAsync(model, new EffectiveGrant("content.page.read", new PermissionConstraints { Fields = ["title"] }, null)), "page");
+        var withoutTitle = Type(await DescribeAsync(model, new EffectiveGrant("content.page.read", new PermissionConstraints { Fields = ["summary"] }, null)), "page");
+
+        (full.DisplayName, full.TitleField).ShouldBe(("Web page", "title"));
+        (withTitle.DisplayName, withTitle.TitleField).ShouldBe(("Web page", "title"));
+        (withoutTitle.DisplayName, withoutTitle.TitleField).ShouldBe(("Web page", (string?)null));
+    }
+
     private static SchemaTypeDescription Type(SchemaDescription described, string name) => Part(described.Types, name);
 
     private static SchemaTypeDescription Part(IReadOnlyList<SchemaTypeDescription> types, string name) => types.Single(type => type.Name == name);

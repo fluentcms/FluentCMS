@@ -132,6 +132,12 @@ dotnet run eng/check-packages.cs -- artifacts/packages 1.0.0-dev
 npx --yes markdownlint-cli2 "**/*.md"
 ```
 
+A test that hangs is named in the diagnostic log of its test app: xUnit.net reports each test that runs longer than two minutes (`tests/xunit.runner.json`), and `--timeout` fails the tests still running with the stack of the call they wait in, if they wait on the test's cancellation token. CI writes the log for every test project and prints these lines when a test job fails or is cancelled. A hang outside a test body, such as a class or collection fixture whose `InitializeAsync` never returns, is not named: it gets no long-running report, and `--timeout` ends the run without a name or a stack. To get the lines locally:
+
+```bash
+dotnet test --project tests/FluentCMS.Plugins.Search.Tests -c Release --timeout 10m --diagnostic --diagnostic-verbosity Information --diagnostic-output-directory artifacts/test-results
+```
+
 ## Decisions
 
 The plan lives in `docs/planning/`. When implementation needs a choice that the [decisions log](docs/planning/specification/12-decisions-log.md) and the backend specification do not already settle, record it in `docs/decisions/` as a short decision record. Open an issue labelled `type:adr` to propose it. The [README](docs/decisions/README.md) there has the details and the [template](docs/decisions/0000-template.md).

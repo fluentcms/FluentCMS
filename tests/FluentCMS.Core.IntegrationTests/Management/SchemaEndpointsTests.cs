@@ -242,6 +242,40 @@ public sealed class SchemaEndpointsTests(SchemaFixture fixture) : IClassFixture<
         (await SchemaFixture.GetAsync("schema/snapshot?format=yaml", fixture.Admin)).Status.ShouldBe(HttpStatusCode.BadRequest);
     }
 
+    [FluentCMS.Schema.Collection("story", DisplayName = "News story", TitleField = nameof(Headline))]
+    private sealed class Story : ContentItem
+    {
+        [Text]
+        public string? Headline { get; set; }
+    }
+
+    [FluentCMS.Schema.Collection("note")]
+    private sealed class Note : ContentItem
+    {
+        [Text]
+        public string? Body { get; set; }
+    }
+
+    [Fact]
+    public async Task ATypeShowsItsDisplayNameAndTitleFieldAndOneWithoutShowsNeither()
+    {
+        await using var host = new FluentCmsTestHost().WithContentTypes(typeof(Story), typeof(Note));
+        using var admin = await host.AsUserAsync(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: TestContext.Current.CancellationToken));
+
+        var schema = (await SchemaFixture.GetAsync("schema", admin)).Json;
+        var story = (await SchemaFixture.GetAsync("schema/types/story", admin)).Json;
+        var note = (await SchemaFixture.GetAsync("schema/types/note", admin)).Json;
+        var described = schema.Deserialize<SchemaDescription>(SdkJson)!;
+
+        story["displayName"]!.GetValue<string>().ShouldBe("News story");
+        story["titleField"]!.GetValue<string>().ShouldBe("headline");
+        note.AsObject().ContainsKey("displayName").ShouldBeFalse();
+        note.AsObject().ContainsKey("titleField").ShouldBeFalse();
+        described.Types.Single(type => type.Name == "story").TitleField.ShouldBe("headline");
+        described.Types.Single(type => type.Name == "note").DisplayName.ShouldBeNull();
+        (await SnapshotAsync(admin)).Text.ShouldContain("\"displayName\": \"News story\",\n      \"titleField\": \"headline\"");
+    }
+
     private static readonly JsonSerializerOptions SdkJson = new(JsonSerializerDefaults.Web)
     {
         Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },

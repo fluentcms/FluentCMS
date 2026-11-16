@@ -168,7 +168,9 @@ public sealed partial class MemberProviderTests(MemberProviderFixture fixture) :
         {
             using var page = await browser.FollowAsync(back);
             page.StatusCode.ShouldBe(HttpStatusCode.OK);
-            (await page.Content.ReadAsStringAsync(Token)).ShouldContain(CheckYourMail);
+            var pending = await page.Content.ReadAsStringAsync(Token);
+            pending.ShouldContain($"{CheckYourMail} to it with the next step.");
+            pending.ShouldNotContain("Follow that email");
         }
 
         browser.HasCookie(MemberCookie).ShouldBeFalse();
@@ -195,6 +197,10 @@ public sealed partial class MemberProviderTests(MemberProviderFixture fixture) :
         using (var verified = await browser.SubmitAsync(link.PathAndQuery, new Dictionary<string, string>()))
         {
             verified.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+
+            // The member has no password, so the notice names the providers as well, without saying which applies.
+            WebUtility.HtmlDecode(await browser.PageAsync(verified.Headers.Location!.OriginalString))
+                .ShouldContain("Your email address is verified. Sign in with your password, or continue with a provider your account is linked to. If your account has no password yet, choose one with \"Forgot your password?\".");
         }
 
         using var signedIn = await SignInWithAsync(browser, MicrosoftAccount, account, request.Url);
@@ -324,6 +330,30 @@ public sealed partial class MemberProviderTests(MemberProviderFixture fixture) :
         }
 
         (await MemberAsync(fixture.Host, silentAddress))!.EmailConfirmed.ShouldBeFalse();
+
+        // A token with no email at all, as Entra ID issues for a user of the tenant without a mail attribute even with
+        // the optional claim on (verified 15 Nov 2026): no member is made, and the sign-in is refused as one without an
+        // address.
+        var noEmail = FakeAccount.Of(null) with { EmailVerified = null };
+        using (var browser = new HostedPagesBrowser(fixture.Host, "10.7.4.5"))
+        {
+            using var back = await SignInWithAsync(browser, Corp, noEmail);
+            using var page = await browser.FollowAsync(back);
+            page.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await page.Content.ReadAsStringAsync(Token)).ShouldContain(Refused);
+            browser.HasCookie(MemberCookie).ShouldBeFalse();
+        }
+
+        var noAddress = (await MemberFixture.ActivityAsync(fixture.Host, "member.login_failed")).Single(row => row.Ip == "10.7.4.5");
+        noAddress.TargetId.ShouldBeNull();
+        Details(noAddress)["method"].ShouldBe(Corp);
+        Details(noAddress)["reason"].ShouldBe(LoginFailureReasons.NotAllowed);
+        await using (var scope = fixture.Host.Services.CreateAsyncScope())
+        {
+            (await scope.ServiceProvider.GetRequiredService<MemberManager>().FindByLoginAsync(Corp, noEmail.Subject)).ShouldBeNull();
+        }
+
+        fixture.Logs.Entries.ShouldContain(entry => entry.EventId.Id == MemberLog.ProviderSignInRefusedId && entry.Message.StartsWith(MemberErrorCodes.ProviderNoEmail, StringComparison.Ordinal) && entry.Message.Contains(Corp, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -337,7 +367,9 @@ public sealed partial class MemberProviderTests(MemberProviderFixture fixture) :
             using var back = await SignInWithAsync(browser, Google, FakeAccount.Of(existing.Email));
             using var page = await browser.FollowAsync(back);
             page.StatusCode.ShouldBe(HttpStatusCode.OK);
-            (await page.Content.ReadAsStringAsync(Token)).ShouldContain(Refused);
+            var answer = await page.Content.ReadAsStringAsync(Token);
+            answer.ShouldContain(Refused);
+            answer.ShouldContain("sign in the way you usually do and link Google under");
             browser.HasCookie(MemberCookie).ShouldBeFalse();
         }
 
@@ -358,7 +390,13 @@ public sealed partial class MemberProviderTests(MemberProviderFixture fixture) :
         }
 
         (await LoginsAsync(fixture.Host, existing.Id)).ShouldBeEmpty();
-        fixture.Emails.Sent.Last(mail => mail.To == existing.Email).Subject.ShouldBe("You already have an account");
+        var taken = fixture.Emails.Sent.Last(mail => mail.To == existing.Email);
+        taken.Subject.ShouldBe("You already have an account");
+        taken.TextBody.ShouldContain("Someone used this email address to register, or to sign in with an external provider");
+        taken.TextBody.ShouldContain("with your password, or with a provider your account is linked to");
+        taken.TextBody.ShouldContain("If the account has no password or you forgot it, choose one with the forgotten password page.");
+        taken.TextBody.ShouldContain("link it on the sign-in methods page");
+        taken.TextBody.ShouldNotContain("tried to register");
 
         // The provider that links: not while it says the address is not verified, or says nothing of it.
         foreach (var (verified, address) in new (bool?, string)[] { (false, "10.7.5.3"), (null, "10.7.5.4") })

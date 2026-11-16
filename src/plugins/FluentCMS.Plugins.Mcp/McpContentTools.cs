@@ -146,10 +146,11 @@ internal sealed class McpContentTools(
     private static void AddTypeTools(List<McpToolDescriptor> tools, McpToolSchemas schemas, SchemaType type, ContentTypeAccess may, bool search)
     {
         var name = type.Name;
+        var named = Named(type);
         var fields = McpToolSchemas.FieldList(type);
         if (type.Kind == SchemaTypeKind.Singleton)
         {
-            tools.Add(Tool(name, Get, $"Reads the {name} singleton, which has one entry. Fields: {fields}.", McpToolSchemas.Get(type, may.Drafts), Reads, $"Get {name}"));
+            tools.Add(Tool(name, Get, $"Reads the {named} singleton, which has one entry. Fields: {fields}.", McpToolSchemas.Get(type, may.Drafts), Reads, $"Get {name}"));
             if (may.Update)
             {
                 tools.Add(Tool(
@@ -168,11 +169,11 @@ internal sealed class McpContentTools(
         tools.Add(Tool(
             name,
             List,
-            $"Lists the entries of the content type {name}{(may.Drafts ? " as drafts, or as published" : " that are published")}, with filters, sorting and paging. {LongAnswers(name)} Fields: {fields}.",
+            $"Lists the entries of the content type {named}{(may.Drafts ? " as drafts, or as published" : " that are published")}, with filters, sorting and paging. {LongAnswers(name)} Fields: {fields}.{TitleOf(type)}",
             schemas.List(type, may.Drafts, search: false),
             Reads,
             $"List {name}"));
-        tools.Add(Tool(name, Get, $"Reads one {name} entry by its id.", McpToolSchemas.Get(type, may.Drafts), Reads, $"Get {name}"));
+        tools.Add(Tool(name, Get, $"Reads one {named} entry by its id.", McpToolSchemas.Get(type, may.Drafts), Reads, $"Get {name}"));
         if (search)
         {
             tools.Add(Tool(name, Search, $"Searches the {name} entries by text, with the filters, sorting and paging of {Name(name, List)}.", schemas.List(type, may.Drafts, search: true), Reads, $"Search {name}"));
@@ -287,6 +288,11 @@ internal sealed class McpContentTools(
             });
         }
     }
+
+    // The type by its name, and by its display name when the schema gives one: article ("Blog post").
+    private static string Named(SchemaType type) => type.DisplayName is { } displayName ? $"{type.Name} (\"{displayName}\")" : type.Name;
+
+    private static string TitleOf(SchemaType type) => type.TitleField is { } field ? $" An entry is named by its {field} field." : "";
 
     private static string LongAnswers(string type) =>
         $"An answer that would be too long ends early with truncated true and the nextCursor to go on from, and a long text is shortened, which {Name(type, Get)} reads whole.";

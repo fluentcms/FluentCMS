@@ -2130,11 +2130,15 @@ FluentCMS.Schema.BooleanAttribute
 FluentCMS.Schema.BooleanAttribute.BooleanAttribute() -> void
 FluentCMS.Schema.CollectionAttribute
 FluentCMS.Schema.CollectionAttribute.CollectionAttribute(string? name = null) -> void
+FluentCMS.Schema.CollectionAttribute.DisplayName.get -> string?
+FluentCMS.Schema.CollectionAttribute.DisplayName.set -> void
 FluentCMS.Schema.CollectionAttribute.Localized.get -> bool
 FluentCMS.Schema.CollectionAttribute.Localized.set -> void
 FluentCMS.Schema.CollectionAttribute.Name.get -> string?
 FluentCMS.Schema.CollectionAttribute.Scope.get -> FluentCMS.Schema.ContentScope
 FluentCMS.Schema.CollectionAttribute.Scope.set -> void
+FluentCMS.Schema.CollectionAttribute.TitleField.get -> string?
+FluentCMS.Schema.CollectionAttribute.TitleField.set -> void
 FluentCMS.Schema.ComponentAttribute
 FluentCMS.Schema.ComponentAttribute.ComponentAttribute(string? name = null) -> void
 FluentCMS.Schema.ComponentAttribute.Name.get -> string?
@@ -2376,12 +2380,14 @@ FluentCMS.Schema.ISchemaIntrospection
 FluentCMS.Schema.ISchemaIntrospection.DescribeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Schema.SchemaDescription!>!
 FluentCMS.Schema.ISchemaIntrospection.DescribeTypeAsync(string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Schema.SchemaTypeDescription?>!
 FluentCMS.Schema.ITypeBuilder
+FluentCMS.Schema.ITypeBuilder.DisplayName(string! displayName) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.Field(string! name, string! fieldType) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.Field(string! name, string! fieldType, System.Action<FluentCMS.Schema.IFieldBuilder!>! configure) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.Localized() -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.Localized(bool localized) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.PublishPolicy(FluentCMS.Publishing.PublishPolicyOptions! options) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.Scope(FluentCMS.Schema.ContentScope scope) -> FluentCMS.Schema.ITypeBuilder!
+FluentCMS.Schema.ITypeBuilder.TitleField(string! fieldName) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.IndexedAttribute
 FluentCMS.Schema.IndexedAttribute.IndexedAttribute() -> void
 FluentCMS.Schema.IntegerAttribute
@@ -2544,6 +2550,7 @@ FluentCMS.Schema.SchemaModel.FindContentType(System.Type! clrType) -> FluentCMS.
 FluentCMS.Schema.SchemaModel.FindContentType(string! name) -> FluentCMS.Schema.SchemaType?
 FluentCMS.Schema.SchemaType
 FluentCMS.Schema.SchemaType.ClrType.get -> System.Type?
+FluentCMS.Schema.SchemaType.DisplayName.get -> string?
 FluentCMS.Schema.SchemaType.Fields.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.SchemaField!>!
 FluentCMS.Schema.SchemaType.FindField(string! name) -> FluentCMS.Schema.SchemaField?
 FluentCMS.Schema.SchemaType.Kind.get -> FluentCMS.Schema.SchemaTypeKind
@@ -2552,10 +2559,13 @@ FluentCMS.Schema.SchemaType.MaxVersions.get -> int
 FluentCMS.Schema.SchemaType.Name.get -> string!
 FluentCMS.Schema.SchemaType.ReverseRelations.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.ReverseRelation!>!
 FluentCMS.Schema.SchemaType.Scope.get -> FluentCMS.Schema.ContentScope
+FluentCMS.Schema.SchemaType.TitleField.get -> string?
 FluentCMS.Schema.SchemaType.TrashRetentionDays.get -> int
 FluentCMS.Schema.SchemaType.UnpublishedReferences.get -> FluentCMS.Publishing.UnpublishedReferencePolicy
 FluentCMS.Schema.SchemaTypeDescription
 FluentCMS.Schema.SchemaTypeDescription.<Clone>$() -> FluentCMS.Schema.SchemaTypeDescription!
+FluentCMS.Schema.SchemaTypeDescription.DisplayName.get -> string?
+FluentCMS.Schema.SchemaTypeDescription.DisplayName.init -> void
 FluentCMS.Schema.SchemaTypeDescription.Equals(FluentCMS.Schema.SchemaTypeDescription? other) -> bool
 FluentCMS.Schema.SchemaTypeDescription.Fields.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.SchemaFieldDescription!>!
 FluentCMS.Schema.SchemaTypeDescription.Fields.init -> void
@@ -2572,6 +2582,8 @@ FluentCMS.Schema.SchemaTypeDescription.ReverseRelations.init -> void
 FluentCMS.Schema.SchemaTypeDescription.SchemaTypeDescription() -> void
 FluentCMS.Schema.SchemaTypeDescription.Scope.get -> FluentCMS.Schema.ContentScope?
 FluentCMS.Schema.SchemaTypeDescription.Scope.init -> void
+FluentCMS.Schema.SchemaTypeDescription.TitleField.get -> string?
+FluentCMS.Schema.SchemaTypeDescription.TitleField.init -> void
 FluentCMS.Schema.SchemaTypeDescription.TrashRetentionDays.get -> int?
 FluentCMS.Schema.SchemaTypeDescription.TrashRetentionDays.init -> void
 FluentCMS.Schema.SchemaTypeDescription.UnpublishedReferences.get -> FluentCMS.Publishing.UnpublishedReferencePolicy?
@@ -2587,12 +2599,16 @@ FluentCMS.Schema.SelectAttribute
 FluentCMS.Schema.SelectAttribute.Options.get -> System.Collections.Generic.IReadOnlyList<string!>!
 FluentCMS.Schema.SelectAttribute.SelectAttribute(params string![]! options) -> void
 FluentCMS.Schema.SingletonAttribute
+FluentCMS.Schema.SingletonAttribute.DisplayName.get -> string?
+FluentCMS.Schema.SingletonAttribute.DisplayName.set -> void
 FluentCMS.Schema.SingletonAttribute.Localized.get -> bool
 FluentCMS.Schema.SingletonAttribute.Localized.set -> void
 FluentCMS.Schema.SingletonAttribute.Name.get -> string?
 FluentCMS.Schema.SingletonAttribute.Scope.get -> FluentCMS.Schema.ContentScope
 FluentCMS.Schema.SingletonAttribute.Scope.set -> void
 FluentCMS.Schema.SingletonAttribute.SingletonAttribute(string? name = null) -> void
+FluentCMS.Schema.SingletonAttribute.TitleField.get -> string?
+FluentCMS.Schema.SingletonAttribute.TitleField.set -> void
 FluentCMS.Schema.SlugAttribute
 FluentCMS.Schema.SlugAttribute.SlugAttribute() -> void
 FluentCMS.Schema.SlugAttribute.Source.get -> string?
