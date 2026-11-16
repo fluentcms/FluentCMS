@@ -489,6 +489,25 @@ public sealed class DistributedLockTests : IAsyncDisposable
         await Should.ThrowAsync<ArgumentOutOfRangeException>(() => locks.TryAcquireAsync(Name, TimeSpan.FromSeconds(-2), Token));
     }
 
+    // The first use of a name inserts its row, so takes that start together race on the insert, and a loser reads the row
+    // on another connection. On the in-memory database that read waited for the loser's own transaction, for 30 seconds.
+    [Fact]
+    public async Task TakesThatRaceOnTheFirstUseOfANameEndWithinTheirTimeout()
+    {
+        await using var host = new FluentCmsTestHost();
+        var locks = host.Services.GetRequiredService<IDistributedLock>();
+        var watch = Stopwatch.StartNew();
+
+        var attempts = await Task.WhenAll(Enumerable.Range(0, 10).Select(_ => Task.Run(() => locks.TryAcquireAsync(Name, TimeSpan.FromMilliseconds(500), Token), Token)));
+
+        watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(10));
+        attempts.Count(held => held is not null).ShouldBe(1);
+        foreach (var held in attempts.OfType<IDistributedLockHandle>())
+        {
+            await held.DisposeAsync();
+        }
+    }
+
     // The second instance starts after the first has migrated the database, as the instances of a deployment do.
     private (IDistributedLock First, IDistributedLock Second) BothInstances()
     {

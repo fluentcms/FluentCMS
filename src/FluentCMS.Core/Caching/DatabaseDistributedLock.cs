@@ -150,7 +150,9 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
             }
             catch (DbUpdateException)
             {
-                // Another holder made the row first. Only the first use of a name inserts, so this is rare.
+                // Another holder made the row first. Only the first use of a name inserts, so this is rare. The open
+                // transaction holds the write lock, which a read on another connection of the in-memory database waits for.
+                await transaction.RollbackAsync(CancellationToken.None);
                 if (await ExistsAsync(name))
                 {
                     return default;
