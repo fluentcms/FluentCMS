@@ -134,12 +134,17 @@
         _status = CmsStrings.Format(CmsStrings.GridRowsSelected, SelectedItems.Count);
         var parametersSet = _parametersSet;
         await SelectedItemsChanged.InvokeAsync(SelectedItems);
+        _ = RenderUnlessPassedBackAsync(parametersSet);
+    }
 
-        // Lets the renderer finish the event's batch, in which a bound parent passes the new selection back.
+    // Runs after the event, since the library selects while it walks its columns and a render inside that walk throws. By then
+    // a bound parent has passed the selection back; without one, the grid renders its status itself.
+    private async Task RenderUnlessPassedBackAsync(int parametersSet)
+    {
         await Task.Yield();
         if (_parametersSet == parametersSet)
         {
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
         }
     }
 }

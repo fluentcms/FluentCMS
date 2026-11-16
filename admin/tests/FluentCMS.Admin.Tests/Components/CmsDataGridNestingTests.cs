@@ -2,6 +2,7 @@ using Bunit;
 using FluentCMS.Admin.Components;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Shouldly;
 using Xunit;
@@ -25,6 +26,21 @@ public sealed class CmsDataGridNestingTests : ComponentTestContext
         host.Instance.Selected.Count.ShouldBe(1);
         var after = host.FindComponents<FluentDataGridCell<Item>>().Select(c => c.Instance).ToList();
         after.Count(before.Contains).ShouldBe(before.Count);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SelectingARowByKeyboardKeepsEveryCell(bool nested)
+    {
+        var host = Render<GridHost>(p => p.Add(x => x.Nested, nested));
+        var before = host.FindComponents<FluentDataGridCell<Item>>().Select(c => c.Instance).ToList();
+
+        // The library selects from the row's keydown while it walks its columns; a render inside that walk throws.
+        host.FindAll("tbody tr")[0].KeyDown(new KeyboardEventArgs { Code = "Enter", Key = "Enter" });
+
+        host.Instance.Selected.Count.ShouldBe(1);
+        host.FindComponents<FluentDataGridCell<Item>>().Select(c => c.Instance).Count(before.Contains).ShouldBe(before.Count);
     }
 
     public sealed record Item(string Name);
