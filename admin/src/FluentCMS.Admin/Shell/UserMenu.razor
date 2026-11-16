@@ -15,9 +15,14 @@
     @foreach (var (mode, key) in Themes)
     {
         <CmsMenuItem @key="mode" Icon="@(Theme.Mode == mode ? CmsIconName.Checkmark : null)" OnClick="@(() => Theme.ChooseAsync(mode))">
-            @L[key]@if (Theme.Mode == mode)
+            @if (Theme.Mode == mode)
             {
-                <span class="cms-visually-hidden">@L["Shell.UserMenu.CurrentTheme"]</span>
+                <span aria-hidden="true">@L[key]</span>
+                <span class="cms-visually-hidden">@L["Shell.UserMenu.CurrentTheme", L[key]]</span>
+            }
+            else
+            {
+                @L[key]
             }
         </CmsMenuItem>
     }

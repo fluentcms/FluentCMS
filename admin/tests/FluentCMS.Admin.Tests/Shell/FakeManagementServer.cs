@@ -36,6 +36,9 @@ internal sealed class FakeManagementServer : HttpMessageHandler
     // Every read waits for it while set.
     public TaskCompletionSource? Hold { get; set; }
 
+    // The reads of a site wait for its entry.
+    public Dictionary<Guid, TaskCompletionSource> HoldSite { get; } = [];
+
     public int Count(string path) => Requests.Count(request => request.Path == path);
 
     public static JsonObject Type(string name, string kind = "collection", string? scope = "site", string? displayName = null, params JsonObject[] fields) => new()
@@ -135,6 +138,11 @@ internal sealed class FakeManagementServer : HttpMessageHandler
         if (Hold is { } hold)
         {
             await hold.Task.WaitAsync(cancellationToken);
+        }
+
+        if (Guid.TryParse(siteHeader, out var held) && HoldSite.TryGetValue(held, out var holdSite))
+        {
+            await holdSite.Task.WaitAsync(cancellationToken);
         }
 
         if (Unavailable)

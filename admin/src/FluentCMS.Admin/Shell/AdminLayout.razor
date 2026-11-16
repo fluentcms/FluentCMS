@@ -123,8 +123,9 @@
 
     private void OnContextChanged() => _ = InvokeAsync(StateHasChanged);
 
-    // Before the new page renders: the closing drawer gives focus back to the button that opened it, and the page then moves it
-    // to its heading.
+    // Closed before the new page renders. The library gives focus back to the button that opened the drawer when it closes,
+    // after the page has moved focus to its heading, so focus ends on that button: the wrapped set offers no hook after a
+    // closing it was asked for, which a follow-up adds.
     private ValueTask CloseDrawer(LocationChangingContext context)
     {
         if (drawerOpen)

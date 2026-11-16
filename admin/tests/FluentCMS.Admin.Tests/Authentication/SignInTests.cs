@@ -411,10 +411,31 @@ public sealed class SignInTests : IAsyncDisposable
     {
         var tab = SignIn();
         _authority.HoldRevoke = new TaskCompletionSource();
+        var signingOut = tab.Session.SignOutAsync(Token);
+        _time.Advance(AdminSession.SignOutWait - TimeSpan.FromMilliseconds(1));
+        signingOut.IsCompleted.ShouldBeFalse();
 
-        await tab.Session.SignOutAsync(Token).WaitAsync(AdminSession.SignOutWait * 3, Token);
+        _time.Advance(TimeSpan.FromMilliseconds(1));
 
+        await signingOut.WaitAsync(TimeSpan.FromSeconds(10), Token);
         AssertSignedOut(tab);
+    }
+
+    // The tab is cleared at once, so the gate takes its place until the page leaves; it says so, and not that it signs in.
+    [Fact]
+    public async Task WhileTheServerIsAskedTheGateSaysThatTheTabSignsOut()
+    {
+        var tab = SignIn();
+        _authority.HoldRevoke = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var signingOut = tab.Session.SignOutAsync(Token);
+
+        var app = tab.App!;
+        app.WaitForAssertion(() => app.Find("p.sign-in-gate[role=status]").TextContent.ShouldBe("Signing out…"));
+        app.FindAll("[role=status]").Where(status => status.TextContent.Contains("Signing", StringComparison.Ordinal)).ShouldHaveSingleItem();
+        tab.Navigation.History.ShouldNotContain(entry => entry.Uri.Contains("/connect/authorize", StringComparison.Ordinal));
+        _authority.HoldRevoke.SetResult();
+        await signingOut;
     }
 
     [Fact]

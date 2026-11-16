@@ -309,6 +309,8 @@ internal sealed class SignedInTestSession : IAdminSession
     public Task<SignInCompletion> CompleteSignInAsync(string? code, string? state, string? error, CancellationToken cancellationToken) =>
         Task.FromResult(SignInCompletion.Failed(SignInFailure.UnknownState));
 
+    public bool SigningOut => false;
+
     public int SignOuts { get; private set; }
 
     public Task SignOutAsync(CancellationToken cancellationToken)
@@ -318,12 +320,67 @@ internal sealed class SignedInTestSession : IAdminSession
     }
 }
 
-// A clock a test moves.
+// A clock a test moves. Its timers fire only when Advance passes their time.
 internal sealed class MovableTime : TimeProvider
 {
+    private readonly Lock _gate = new();
+    private readonly List<ManualTimer> _timers = [];
+
     public DateTimeOffset Now { get; set; } = DateTimeOffset.UtcNow;
 
     public override DateTimeOffset GetUtcNow() => Now;
+
+    public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+    {
+        var timer = new ManualTimer(this, callback, state);
+        timer.Change(dueTime, period);
+        lock (_gate)
+        {
+            _timers.Add(timer);
+        }
+
+        return timer;
+    }
+
+    public void Advance(TimeSpan by)
+    {
+        Now += by;
+        List<ManualTimer> due;
+        lock (_gate)
+        {
+            due = [.. _timers.Where(timer => timer.DueAt is { } at && at <= Now)];
+        }
+
+        foreach (var timer in due)
+        {
+            timer.Fire();
+        }
+    }
+
+    private sealed class ManualTimer(MovableTime time, TimerCallback callback, object? state) : ITimer
+    {
+        public DateTimeOffset? DueAt { get; private set; }
+
+        public bool Change(TimeSpan dueTime, TimeSpan period)
+        {
+            DueAt = dueTime == Timeout.InfiniteTimeSpan ? null : time.Now + dueTime;
+            return true;
+        }
+
+        public void Fire()
+        {
+            DueAt = null;
+            callback(state);
+        }
+
+        public void Dispose() => DueAt = null;
+
+        public ValueTask DisposeAsync()
+        {
+            Dispose();
+            return ValueTask.CompletedTask;
+        }
+    }
 }
 
 // The host's navigation, for a test that builds the services without a renderer.

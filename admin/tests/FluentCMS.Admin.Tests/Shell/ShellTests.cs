@@ -6,9 +6,10 @@ using FluentCMS.Admin.Forms;
 using FluentCMS.Admin.Interop;
 using FluentCMS.Admin.Shell;
 using FluentCMS.Admin.Tests.Authentication;
-using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Admin.Tests.Shell.FakeManagementServer;
@@ -138,7 +139,7 @@ public sealed class ShellTests : AdminTestContext
         app.WaitForAssertion(() => Links(app.Find(".shell-sidebar")).ShouldBe(["", "content/article", "content/product"]));
         Management.Requests.ShouldBe([("me/access", Shop.ToString("D")), ("schema", Shop.ToString("D")), ("plugins", Shop.ToString("D"))], ignoreOrder: true);
         Navigation.Uri.ShouldEndWith("/content/article");
-        Storage[AdminContext.SiteKey].ShouldBe(Shop.ToString("D"));
+        Storage[TabStorageKeys.Site].ShouldBe(Shop.ToString("D"));
         app.FindAll("[role=status] > div").Select(message => message.TextContent).ShouldContain("Showing the site Shop");
     }
 
@@ -159,12 +160,60 @@ public sealed class ShellTests : AdminTestContext
     public async Task AReloadStaysInTheSiteChosenLast()
     {
         Management.AddSite(Shop, "Shop", "shop");
-        await Storage.SetAsync(AdminContext.SiteKey, Shop.ToString("D"));
+        await Storage.SetAsync(TabStorageKeys.Site, Shop.ToString("D"));
 
         Load();
 
         Context.Site!.Id.ShouldBe(Shop);
         Management.Requests.ShouldContain(("me/access", Shop.ToString("D")));
+    }
+
+    [Fact]
+    public async Task TheLastSwitchWinsWhenTheReadsOfAnEarlierOneAnswerLater()
+    {
+        var third = new Guid("0193a1b2-0000-7000-8000-00000000a003");
+        Management.AddSite(Shop, "Shop", "shop");
+        Management.AddSite(third, "Third", "third");
+        Management.SetTypes(Shop, Type("product"));
+        Management.SetTypes(third, Type("event"));
+        Management.Grant(Shop, ["schema.read", "shop.manage"]);
+        var app = Load();
+        Management.HoldSite[Shop] = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var first = app.InvokeAsync(() => Context.SwitchSiteAsync(Shop));
+        await app.InvokeAsync(() => Context.SwitchSiteAsync(third));
+        Management.HoldSite[Shop].SetResult();
+        await first;
+
+        Context.Site!.Id.ShouldBe(third);
+        Context.Status.ShouldBe(ShellStatus.Ready);
+        Context.Allows("shop.manage").ShouldBeFalse();
+        app.WaitForAssertion(() => Links(app.Find(".shell-sidebar")).ShouldBe(["", "content/event"]));
+    }
+
+    [Fact]
+    public async Task ASwitchForgetsTheAccessOfTheSiteBeforeAndSaysSoOnceTheNewSiteIsSet()
+    {
+        Management.AddSite(Shop, "Shop", "shop");
+        var app = Load();
+        Context.Allows("users.manage").ShouldBeTrue();
+        List<(ShellStatus Status, Guid? Site, bool Allows)> seen = [];
+        Context.Changed += () => seen.Add((Context.Status, Context.Site?.Id, Context.Allows("users.manage")));
+        Management.Unavailable = true;
+
+        await app.InvokeAsync(() => Context.SwitchSiteAsync(Shop));
+
+        seen.ShouldBe([(ShellStatus.Loading, Shop, false), (ShellStatus.Failed, Shop, false)]);
+        Context.Access.Allows("users.manage").ShouldBeFalse();
+        app.WaitForAssertion(() => app.Find("main h1").TextContent.ShouldBe("The admin could not load"));
+        app.FindAll(".shell-sidebar").ShouldBeEmpty();
+
+        Management.Unavailable = false;
+        app.Find("main fluent-button").Click();
+
+        app.WaitForAssertion(() => Context.Status.ShouldBe(ShellStatus.Ready));
+        Context.Site!.Id.ShouldBe(Shop);
+        Context.Allows("users.manage").ShouldBeTrue();
     }
 
     [Fact]
@@ -255,14 +304,14 @@ public sealed class ShellTests : AdminTestContext
     {
         var app = Load();
         app.Find(".cms-root").HasAttribute("data-cms-theme").ShouldBeFalse();
-        MenuItem(app, "System theme").TextContent.Trim().ShouldBe("System theme, chosen");
+        Spoken(MenuItem(app, "System theme")).ShouldBe("System theme, chosen");
 
         Choose(app, "Dark theme");
 
         app.WaitForAssertion(() => app.Find(".cms-root").GetAttribute("data-cms-theme").ShouldBe("dark"));
         JSInterop.VerifyInvoke("localStorage.setItem").Arguments.ShouldBe([ThemeStorageInterop.Key, "dark"]);
-        MenuItem(app, "Dark theme").TextContent.Trim().ShouldBe("Dark theme, chosen");
-        MenuItem(app, "System theme").TextContent.Trim().ShouldBe("System theme");
+        Spoken(MenuItem(app, "Dark theme")).ShouldBe("Dark theme, chosen");
+        Spoken(MenuItem(app, "System theme")).ShouldBe("System theme");
 
         Choose(app, "System theme");
 
@@ -278,6 +327,34 @@ public sealed class ShellTests : AdminTestContext
         var app = Load();
 
         app.WaitForAssertion(() => app.Find(".cms-root").GetAttribute("data-cms-theme").ShouldBe("light"));
+    }
+
+    [Theory]
+    [InlineData("purple")]
+    [InlineData("")]
+    [InlineData("Dark")]
+    public void AStoredValueOtherThanLightOrDarkFollowsTheSystem(string stored)
+    {
+        JSInterop.Setup<string?>("localStorage.getItem", ThemeStorageInterop.Key).SetResult(stored);
+
+        var app = Load();
+
+        app.Find(".cms-root").HasAttribute("data-cms-theme").ShouldBeFalse();
+        Spoken(MenuItem(app, "System theme")).ShouldBe("System theme, chosen");
+    }
+
+    // As in a private window that refuses storage: the choice applies to the page and is not kept.
+    [Fact]
+    public void AStorageThatThrowsLeavesTheThemeToThePage()
+    {
+        JSInterop.Setup<string?>("localStorage.getItem", ThemeStorageInterop.Key).SetException(new JSException("The storage is blocked."));
+        JSInterop.SetupVoid("localStorage.setItem", _ => true).SetException(new JSException("The storage is blocked."));
+        var app = Load();
+        app.Find(".cms-root").HasAttribute("data-cms-theme").ShouldBeFalse();
+
+        Choose(app, "Dark theme");
+
+        app.WaitForAssertion(() => app.Find(".cms-root").GetAttribute("data-cms-theme").ShouldBe("dark"));
     }
 
     [Fact]
@@ -323,6 +400,12 @@ public sealed class ShellTests : AdminTestContext
 
     private static IElement MenuItem(IRenderedComponent<AdminApp> app, string text) =>
         app.FindAll("fluent-menu-item").Single(item => item.TextContent.Trim().StartsWith(text, StringComparison.Ordinal));
+
+    // What assistive technology reads of an item: its text without what is hidden from it.
+    private static string Spoken(IElement item) =>
+        string.Concat(item.GetDescendantsAndSelf().OfType<IText>()
+            .Where(text => text.ParentElement?.Closest("[aria-hidden=true]") is null)
+            .Select(text => text.Data)).Trim();
 
     // The library raises the item's click from its menu's change event.
     private static void Choose(IRenderedComponent<AdminApp> app, string text)

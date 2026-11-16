@@ -16,18 +16,22 @@
 {
     <BrandingHead Branding="configuration.Branding" />
     @* The one theme root: one set of the library's providers, one scrolling container, and the positioned ancestor of the
-       live regions. *@
-    <CmsThemeRoot Mode="@Theme.Mode">
-        <SignInGate>
-            <Router AppAssembly="typeof(AdminApp).Assembly" NotFoundPage="typeof(NotFoundPage)">
-                <Found Context="routeData">
-                    <RouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)" />
-                    <FocusOnNavigate RouteData="routeData" Selector="@(focusHeading ? "h1" : NoFocus)" />
-                </Found>
-            </Router>
-        </SignInGate>
-        <LiveRegions />
-    </CmsThemeRoot>
+       live regions. It waits for the theme the user chose, one read of localStorage, so that the app is never drawn in
+       another theme first. *@
+    @if (themeRestored)
+    {
+        <CmsThemeRoot Mode="@Theme.Mode">
+            <SignInGate>
+                <Router AppAssembly="typeof(AdminApp).Assembly" NotFoundPage="typeof(NotFoundPage)">
+                    <Found Context="routeData">
+                        <RouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)" />
+                        <FocusOnNavigate RouteData="routeData" Selector="@(focusHeading ? "h1" : NoFocus)" />
+                    </Found>
+                </Router>
+            </SignInGate>
+            <LiveRegions />
+        </CmsThemeRoot>
+    }
 }
 else
 {
@@ -38,6 +42,7 @@ else
     // A selector that matches no element, so that FocusOnNavigate leaves focus where it is.
     private const string NoFocus = ":not(*)";
 
+    private bool themeRestored;
     private bool focusHeading;
     private string previousRoute = string.Empty;
 
@@ -51,7 +56,7 @@ else
     {
     }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         foreach (var member in Startup.UnknownMembers)
         {
@@ -66,6 +71,12 @@ else
         Theme.Changed += OnThemeChanged;
         previousRoute = Route(Navigation.Uri);
         Navigation.LocationChanged += OnLocationChanged;
+        if (Startup.Configuration is not null)
+        {
+            await Theme.RestoreAsync();
+        }
+
+        themeRestored = true;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -73,10 +84,6 @@ else
         if (firstRender)
         {
             await Document.SetLanguageAsync(Culture.Culture.Name, Culture.Direction);
-            if (Startup.Configuration is not null)
-            {
-                await Theme.RestoreAsync();
-            }
         }
     }
 

@@ -7,6 +7,9 @@ internal interface IAdminSession
     // Null while nobody is signed in.
     SignedInUser? User { get; }
 
+    // True from the moment a sign-out has cleared the tab until the page leaves for the logout page.
+    bool SigningOut { get; }
+
     // Raised when a user signs in or the session ends.
     event Action? Changed;
 

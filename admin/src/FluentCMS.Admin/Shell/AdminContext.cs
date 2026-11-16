@@ -28,7 +28,6 @@ internal sealed class AdminContext(
     ISessionStorage storage,
     ILogger<AdminContext> logger) : IAdminContext, IAdminAccess
 {
-    internal const string SiteKey = "fluentcms-admin/site";
     internal const string SchemaRead = "schema.read";
 
     private Task? _starting;
@@ -62,12 +61,16 @@ internal sealed class AdminContext(
     {
         if (_starting is null || (_starting.IsCompleted && Status == ShellStatus.Failed))
         {
-            _starting = RunAsync(StartReadsAsync);
+            var generation = ++_generation;
+            Status = ShellStatus.Loading;
+            Changed?.Invoke();
+            _starting = RunAsync(generation, () => StartReadsAsync(generation));
         }
 
         return _starting;
     }
 
+    // The generation is taken first, so that a later switch, even one back to the site before, overtakes this one.
     public async Task SwitchSiteAsync(Guid id)
     {
         if (Sites.FirstOrDefault(item => item.Id == id) is not { } chosen || chosen.Id == Site?.Id)
@@ -75,8 +78,13 @@ internal sealed class AdminContext(
             return;
         }
 
-        await storage.SetAsync(SiteKey, chosen.Id.ToString("D"));
-        await RunAsync(generation => SiteReadsAsync(chosen, generation));
+        var generation = ++_generation;
+        Enter(chosen);
+        await RunAsync(generation, async () =>
+        {
+            await storage.SetAsync(TabStorageKeys.Site, chosen.Id.ToString("D"));
+            await SiteReadsAsync(generation);
+        });
     }
 
     public bool Allows(string permission) => AccessInfo is { } access && Holds(access, permission);
@@ -107,17 +115,30 @@ internal sealed class AdminContext(
             return;
         }
 
-        var remembered = await storage.GetAsync(SiteKey);
-        var chosen = mine.FirstOrDefault(item => string.Equals(item.Id.ToString("D"), remembered, StringComparison.OrdinalIgnoreCase))
+        var remembered = await storage.GetAsync(TabStorageKeys.Site);
+        if (generation != _generation)
+        {
+            return;
+        }
+
+        Enter(mine.FirstOrDefault(item => string.Equals(item.Id.ToString("D"), remembered, StringComparison.OrdinalIgnoreCase))
             ?? mine.FirstOrDefault(item => item.IsDefault)
-            ?? mine[0];
-        await SiteReadsAsync(chosen, generation);
+            ?? mine[0]);
+        await SiteReadsAsync(generation);
     }
 
-    private async Task SiteReadsAsync(MySiteInfo chosen, int generation)
+    // From here the client sends the new site, and SiteMetadata drops what it read for the one before. Nothing read for the
+    // site before is kept, so that Allows answers false until the new site's access is read.
+    private void Enter(MySiteInfo chosen)
     {
-        // From here the client sends the new site, and SiteMetadata drops what it read for the one before.
         site.Current = chosen;
+        (AccessInfo, Schema, SchemaRefused, Plugins) = (null, null, false, []);
+        Status = ShellStatus.Loading;
+        Changed?.Invoke();
+    }
+
+    private async Task SiteReadsAsync(int generation)
+    {
         var access = await client.GetMyAccessAsync(site.Site, CancellationToken.None);
         var plugins = metadata.GetPluginsAsync(CancellationToken.None);
         SchemaDescription? schema = null;
@@ -144,14 +165,11 @@ internal sealed class AdminContext(
         Status = ShellStatus.Ready;
     }
 
-    private async Task RunAsync(Func<int, Task> reads)
+    private async Task RunAsync(int generation, Func<Task> reads)
     {
-        var generation = ++_generation;
-        Status = ShellStatus.Loading;
-        Changed?.Invoke();
         try
         {
-            await reads(generation);
+            await reads();
         }
         // No cancellation is asked for, so a TaskCanceledException is the client's timeout.
         catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or TaskCanceledException)

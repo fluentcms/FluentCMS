@@ -4,7 +4,6 @@ using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Configuration;
 using FluentCMS.Admin.Forms;
 using FluentCMS.Admin.Interop;
-using FluentCMS.Admin.Shell;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 
@@ -63,6 +62,8 @@ internal sealed class AdminSession(
     }
 
     public SignedInUser? User => _accessToken is null ? null : _user;
+
+    public bool SigningOut { get; private set; }
 
     private string RedirectUri => navigation.BaseUri + CallbackRoute;
 
@@ -134,17 +135,18 @@ internal sealed class AdminSession(
     {
         var refreshToken = _refreshToken ?? (await ReadAsync(SessionKey, Json.StoredSession))?.RefreshToken;
         _redirecting = true;
+        SigningOut = true;
         Forget();
         await storage.RemoveAsync(SessionKey);
         await storage.RemoveAsync(SignInKey);
         await storage.RemoveAsync(SignedInAtKey);
-        await storage.RemoveAsync(AdminContext.SiteKey);
+        await storage.RemoveAsync(TabStorageKeys.Site);
         await drafts.ClearAsync();
         Changed?.Invoke();
 
         OpenIdConfiguration? discovery = null;
-        using var wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        wait.CancelAfter(SignOutWait);
+        using var timeout = new CancellationTokenSource(SignOutWait, time);
+        using var wait = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
         try
         {
             discovery = await authority.DiscoverAsync().WaitAsync(wait.Token);

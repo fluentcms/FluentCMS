@@ -103,6 +103,15 @@ public sealed class OpenApiContractTests
 
                 Check(Records.GetTypeInfo(element), items, $"{where}[]", document, gaps, checkedRecords);
                 break;
+            case JsonTypeInfoKind.Dictionary when record.ElementType is { } value:
+                if (resolved?["additionalProperties"] is not JsonObject values)
+                {
+                    gaps.Add($"{where} is not a map in the document");
+                    return;
+                }
+
+                Check(Records.GetTypeInfo(value), values, $"{where}{{}}", document, gaps, checkedRecords);
+                break;
         }
     }
 

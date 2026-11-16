@@ -408,6 +408,9 @@
   <data name="Authentication.Gate.SigningIn" xml:space="preserve">
     <value>Signing in…</value>
   </data>
+  <data name="Authentication.Gate.SigningOut" xml:space="preserve">
+    <value>Signing out…</value>
+  </data>
   <data name="Authentication.Gate.UnavailableHeading" xml:space="preserve">
     <value>The sign-in server cannot be reached</value>
   </data>
@@ -570,8 +573,8 @@
     <value>Dark theme</value>
   </data>
   <data name="Shell.UserMenu.CurrentTheme" xml:space="preserve">
-    <value>, chosen</value>
-    <comment>Read after the name of the theme in use; not shown.</comment>
+    <value>{0}, chosen</value>
+    <comment>What assistive technology reads for the theme in use, {0} being its name; the name alone is shown.</comment>
   </data>
   <data name="Shell.UserMenu.SignOut" xml:space="preserve">
     <value>Sign out</value>
