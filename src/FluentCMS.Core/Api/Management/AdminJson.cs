@@ -13,6 +13,10 @@ internal static class AdminJson
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
+    // Results.Json sets the resolver of options that are not read-only yet, which throws if another request locks them
+    // in between, so they are locked before any request has them.
+    static AdminJson() => Options.MakeReadOnly(populateMissingResolver: true);
+
     public static IResult Ok(object value, int statusCode = StatusCodes.Status200OK) => Results.Json(value, Options, statusCode: statusCode);
 
     public static IResult Items<T>(IEnumerable<T> items) => Results.Json(new ItemList<T>(items), Options);
