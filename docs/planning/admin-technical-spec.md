@@ -171,19 +171,21 @@ The admin is the public OAuth client `fluentcms-admin`, the default of `cms.Clie
 
 ### 2.5 Runtime configuration (`config.json`)
 
-At start the app reads `config.json` from its own base URL with `cache: no-store` (row 3.2), so one prebuilt build works against any API host. *Proposed* members:
+At start the app reads `config.json` from its own base URL with `cache: no-store` (row 3.2), so one prebuilt build works against any API host. Members, as `FluentCMS.Admin.Abstractions` exposes them in the record `AdminConfiguration`, which the app registers as a singleton only when the file is valid:
 
 | Member | Meaning | Default |
 | --- | --- | --- |
-| `apiBaseUrl` | Origin and path base of the API host, such as `https://cms.example.com` or `https://example.com/cms` | required |
-| `authority` | Issuer of the authorization server | `apiBaseUrl` |
-| `clientId` | OAuth client id | `fluentcms-admin` |
-| `scopes` | Scopes asked at sign-in | `openid profile email offline_access management` |
-| `branding` | `name`, `logoUrl`, `faviconUrl`, `accentColor` | FluentCMS |
-| `cultures` | Interface cultures offered, and the default | the shipped ones, `en` |
-| `previewOrigins` | Origins the preview frame may load; the admin refuses a preview URL of another origin, and the reference host puts them in the page's `frame-src` (4.12, 6.1) | none, which turns preview off |
+| `apiBaseUrl` | Origin and path base of the API host, such as `https://cms.example.com` or `https://example.com/cms`: an absolute `http` or `https` URL without user info, query or fragment. A trailing slash is optional; the admin always adds one, so that a relative address resolves under the path base | required |
+| `authority` | Issuer of the authorization server, a URL as `apiBaseUrl` | `apiBaseUrl` |
+| `clientId` | OAuth client id, visible ASCII without spaces | `fluentcms-admin` |
+| `scopes` | Scopes asked at sign-in, an array of distinct scope tokens | `["openid", "profile", "email", "offline_access", "management"]` |
+| `branding` | An object of `name` (text), `logoUrl` and `faviconUrl` (an absolute `http` or `https` URL, or a path relative to the admin's base) and `accentColor` (a hex color: `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`) | `FluentCMS`, the built-in logo and favicon, the theme's accent |
+| `cultures` | An object of `offered`, an array of distinct culture names, and `default`, which must be one of them | every shipped culture, `en` |
+| `previewOrigins` | Origins the preview frame may load, each an `http` or `https` URL without a path; the admin refuses a preview URL of another origin, and the reference host puts them in the page's `frame-src` (4.12, 6.1) | none, which turns preview off |
 
-A missing or invalid member shows a static error page that names it, before anything else runs; the app makes no request to the API until its configuration is valid. A member the app does not know is ignored with a console warning, so a newer `config.json` works with an older build. In the reference host, `config.json` is an endpoint built from the host's configuration, so the image needs no file (6.1).
+A missing or invalid member shows a static error page that names it, before anything else runs; the app makes no request to the API until its configuration is valid. A member set to `null` counts as not set. A member the app does not know, also inside `branding` and `cultures`, is ignored with a console warning, so a newer `config.json` works with an older build. In the reference host, `config.json` is an endpoint built from the host's configuration, so the image needs no file (6.1).
+
+The branding is applied without a `<style>` element, which a strict `Content-Security-Policy` blocks: `name` is the page title, `faviconUrl` a `<link rel="icon">`, and `accentColor` and `logoUrl` the custom properties `--fluentcms-brand-accent` and `--fluentcms-brand-logo` (a `url()` resolved against the admin's base) on the document element, which the wrapped set reads (2.3).
 
 ### 2.6 Lazy loading by plugin assembly
 
