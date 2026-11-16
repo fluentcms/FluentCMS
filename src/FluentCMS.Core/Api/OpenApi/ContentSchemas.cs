@@ -67,6 +67,18 @@ internal sealed class ContentSchemas(SchemaModel schema, OpenApiDocumentOptions 
                 ["additionalProperties"] = new JsonObject { ["type"] = "string" },
                 ["description"] = "The locale each field was read from when the fallback chain filled it.",
             }),
+            ["deletedAt"] = System(new JsonObject
+            {
+                ["type"] = "string",
+                ["format"] = "date-time",
+                ["description"] = "When the entry was put in the trash. Only on a read of the trash.",
+            }),
+            ["deletedBy"] = System(new JsonObject
+            {
+                ["type"] = "string",
+                ["format"] = "uuid",
+                ["description"] = "The id of the principal that put the entry in the trash. Only on a read of the trash, to a caller that may read who changed an entry.",
+            }),
         };
 
         foreach (var field in type.Fields.Where(field => !field.Hidden))
