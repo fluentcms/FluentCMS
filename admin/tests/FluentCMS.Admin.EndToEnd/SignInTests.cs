@@ -42,12 +42,13 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         ((await meAnswer.Request.HeaderValueAsync("authorization"))?.StartsWith("Bearer ", StringComparison.Ordinal)).ShouldBe(true);
 
         // The access token is in memory only, so a reload restores the session with the tab's refresh token.
-        var loginPages = tab.LoginPagesShown;
+        // The hosted login sends the browser back to authorize after the password, so the requests are counted from here.
+        var (loginPages, authorizations) = (tab.LoginPagesShown, tab.AuthorizeRequests.Count);
         var restored = await tab.ReloadAsync();
         restored.ShouldBeGranted("refresh_token");
         await Expect(tab.Heading("Home.Page.Heading")).ToBeVisibleAsync();
         tab.LoginPagesShown.ShouldBe(loginPages);
-        tab.AuthorizeRequests.Count.ShouldBe(1);
+        tab.AuthorizeRequests.Count.ShouldBe(authorizations);
 
         browser.PolicyViolations.ShouldBeEmpty();
     }
