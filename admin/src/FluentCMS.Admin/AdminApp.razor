@@ -20,5 +20,10 @@ else
         {
             ConfigurationLog.UnknownMember(Logger, member);
         }
+
+        foreach (var member in Startup.PlainHttpMembers)
+        {
+            ConfigurationLog.PlainHttp(Logger, member);
+        }
     }
 }

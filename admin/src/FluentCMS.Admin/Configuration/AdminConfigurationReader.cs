@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -9,18 +10,9 @@ internal static partial class AdminConfigurationReader
 {
     public static AdminStartup Read(string json)
     {
-        JsonDocument document;
         try
         {
-            document = JsonDocument.Parse(json);
-        }
-        catch (JsonException)
-        {
-            return new AdminStartup([new ConfigurationProblem(ConfigurationProblemKind.NotJson)], []);
-        }
-
-        using (document)
-        {
+            using var document = JsonDocument.Parse(json);
             if (document.RootElement.ValueKind != JsonValueKind.Object)
             {
                 return new AdminStartup([new ConfigurationProblem(ConfigurationProblemKind.NotAnObject)], []);
@@ -29,14 +21,26 @@ internal static partial class AdminConfigurationReader
             var context = new Context();
             var configuration = ReadRoot(document.RootElement, context);
             return configuration is not null && context.Problems.Count == 0
-                ? new AdminStartup(configuration, context.Unknown)
+                ? new AdminStartup(configuration, context.Unknown, context.Insecure)
                 : new AdminStartup(context.Problems, context.Unknown);
         }
+        catch (JsonException)
+        {
+            return NotJson();
+        }
+        catch (InvalidOperationException)
+        {
+            // JsonDocument accepts an unpaired surrogate escape such as "\ud800", which a name or string cannot be read from.
+            return NotJson();
+        }
     }
+
+    private static AdminStartup NotJson() => new([new ConfigurationProblem(ConfigurationProblemKind.NotJson)], []);
 
     private static AdminConfiguration? ReadRoot(JsonElement root, Context context)
     {
         Uri? apiBaseUrl = null;
+        string? apiBaseUrlAsWritten = null;
         Uri? authority = null;
         string? clientId = null;
         IReadOnlyList<string>? scopes = null;
@@ -44,16 +48,26 @@ internal static partial class AdminConfigurationReader
         AdminCultures? cultures = null;
         IReadOnlyList<string>? previewOrigins = null;
 
-        foreach (var property in root.EnumerateObject())
+        foreach (var property in context.Members(root, prefix: ""))
         {
             var value = property.Value;
             switch (property.Name)
             {
                 case "apiBaseUrl":
-                    apiBaseUrl = ReadBaseUrl(value, "apiBaseUrl", context);
+                    apiBaseUrl = ReadHttpUrl(value, "apiBaseUrl", context);
+                    if (apiBaseUrl is not null)
+                    {
+                        apiBaseUrlAsWritten = apiBaseUrl.OriginalString;
+
+                        // With a trailing slash: without it, a relative address such as api/management/v1/ would replace the
+                        // last segment of a path base like https://example.com/cms instead of resolving under it.
+                        apiBaseUrl = new Uri(apiBaseUrl.GetLeftPart(UriPartial.Path).TrimEnd('/') + "/", UriKind.Absolute);
+                    }
+
                     break;
                 case "authority":
-                    authority = ReadBaseUrl(value, "authority", context);
+                    // As written: the issuer of the discovery document is compared as an exact string.
+                    authority = ReadHttpUrl(value, "authority", context);
                     break;
                 case "clientId":
                     clientId = ReadString(value, "clientId", ConfigurationRule.ClientId, ClientIdPattern(), context);
@@ -81,17 +95,23 @@ internal static partial class AdminConfigurationReader
             context.Missing("apiBaseUrl");
         }
 
-        if (apiBaseUrl is null || context.Problems.Count > 0)
+        if (apiBaseUrl is null || apiBaseUrlAsWritten is null || context.Problems.Count > 0)
         {
             return null;
         }
 
-        var configuration = new AdminConfiguration { ApiBaseUrl = apiBaseUrl };
-        if (authority is not null)
+        authority ??= new Uri(apiBaseUrlAsWritten, UriKind.Absolute);
+        if (IsPlainHttpOnARemoteHost(apiBaseUrl))
         {
-            configuration = configuration with { Authority = authority };
+            context.Insecure.Add("apiBaseUrl");
         }
 
+        if (IsPlainHttpOnARemoteHost(authority))
+        {
+            context.Insecure.Add("authority");
+        }
+
+        var configuration = new AdminConfiguration { ApiBaseUrl = apiBaseUrl, Authority = authority };
         if (clientId is not null)
         {
             configuration = configuration with { ClientId = clientId };
@@ -120,6 +140,8 @@ internal static partial class AdminConfigurationReader
         return configuration;
     }
 
+    private static bool IsPlainHttpOnARemoteHost(Uri uri) => uri.Scheme == Uri.UriSchemeHttp && !uri.IsLoopback;
+
     private static AdminBranding? ReadBranding(JsonElement value, Context context)
     {
         if (value.ValueKind == JsonValueKind.Null)
@@ -134,7 +156,7 @@ internal static partial class AdminConfigurationReader
         }
 
         var branding = new AdminBranding();
-        foreach (var property in value.EnumerateObject())
+        foreach (var property in context.Members(value, prefix: "branding."))
         {
             var member = "branding." + property.Name;
             switch (property.Name)
@@ -178,7 +200,7 @@ internal static partial class AdminConfigurationReader
         }
 
         var cultures = new AdminCultures();
-        foreach (var property in value.EnumerateObject())
+        foreach (var property in context.Members(value, prefix: "cultures."))
         {
             switch (property.Name)
             {
@@ -195,17 +217,24 @@ internal static partial class AdminConfigurationReader
             }
         }
 
-        if (cultures.Offered is { } offered
-            && !context.HasProblem("cultures.default")
-            && !offered.Contains(cultures.Default, StringComparer.OrdinalIgnoreCase))
+        if (cultures.Offered is { } offered && !context.HasProblem("cultures.default"))
         {
-            context.Invalid("cultures.default", ConfigurationRule.DefaultCultureOffered);
+            // The default takes the spelling of the offered culture it names, so that Offered.Contains(Default) holds.
+            var match = offered.FirstOrDefault(culture => string.Equals(culture, cultures.Default, StringComparison.OrdinalIgnoreCase));
+            if (match is null)
+            {
+                context.Invalid("cultures.default", ConfigurationRule.DefaultCultureOffered);
+            }
+            else
+            {
+                cultures = cultures with { Default = match };
+            }
         }
 
         return cultures;
     }
 
-    private static List<string>? ReadOfferedCultures(JsonElement value, Context context)
+    private static ReadOnlyCollection<string>? ReadOfferedCultures(JsonElement value, Context context)
     {
         if (value.ValueKind == JsonValueKind.Null)
         {
@@ -234,10 +263,10 @@ internal static partial class AdminConfigurationReader
             context.Invalid("cultures.offered", ConfigurationRule.CultureList);
         }
 
-        return offered;
+        return offered.AsReadOnly();
     }
 
-    private static List<string>? ReadScopes(JsonElement value, Context context)
+    private static ReadOnlyCollection<string>? ReadScopes(JsonElement value, Context context)
     {
         if (value.ValueKind == JsonValueKind.Null)
         {
@@ -267,10 +296,10 @@ internal static partial class AdminConfigurationReader
             return null;
         }
 
-        return scopes;
+        return scopes.AsReadOnly();
     }
 
-    private static List<string>? ReadPreviewOrigins(JsonElement value, Context context)
+    private static ReadOnlyCollection<string>? ReadPreviewOrigins(JsonElement value, Context context)
     {
         if (value.ValueKind == JsonValueKind.Null)
         {
@@ -302,10 +331,10 @@ internal static partial class AdminConfigurationReader
             }
         }
 
-        return origins;
+        return origins.AsReadOnly();
     }
 
-    private static Uri? ReadBaseUrl(JsonElement value, string member, Context context)
+    private static Uri? ReadHttpUrl(JsonElement value, string member, Context context)
     {
         if (value.ValueKind == JsonValueKind.Null)
         {
@@ -316,12 +345,9 @@ internal static partial class AdminConfigurationReader
         if (uri is null)
         {
             context.Invalid(member, ConfigurationRule.HttpUrl);
-            return null;
         }
 
-        // Always with a trailing slash: without it, a relative address such as api/management/v1/ would replace the last
-        // segment of a path base like https://example.com/cms instead of resolving under it.
-        return new Uri(uri.GetLeftPart(UriPartial.Path).TrimEnd('/') + "/", UriKind.Absolute);
+        return uri;
     }
 
     private static Uri? ReadUrlOrPath(JsonElement value, string member, Context context)
@@ -431,11 +457,36 @@ internal static partial class AdminConfigurationReader
 
         public List<string> Unknown { get; } = [];
 
+        public List<string> Insecure { get; } = [];
+
         public bool HasProblem(string member) => Problems.Exists(problem => problem.Member == member);
 
         public void Missing(string member) => Problems.Add(new ConfigurationProblem(ConfigurationProblemKind.Missing, member));
 
         public void Invalid(string member, ConfigurationRule rule) =>
             Problems.Add(new ConfigurationProblem(ConfigurationProblemKind.Invalid, member, rule));
+
+        // The members of an object, each once: a name that appears again is a problem, since the last one would otherwise
+        // win without a word.
+        public IEnumerable<JsonProperty> Members(JsonElement element, string prefix)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var duplicates = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var property in element.EnumerateObject())
+            {
+                if (!seen.Add(property.Name) && duplicates.Add(property.Name))
+                {
+                    Problems.Add(new ConfigurationProblem(ConfigurationProblemKind.Duplicate, prefix + property.Name));
+                }
+            }
+
+            foreach (var property in element.EnumerateObject())
+            {
+                if (!duplicates.Contains(property.Name))
+                {
+                    yield return property;
+                }
+            }
+        }
     }
 }

@@ -10,6 +10,8 @@ internal sealed class FakeHandler(string? configJson, HttpStatusCode status = Ht
 
     public List<HttpRequestMessage> Requests { get; } = [];
 
+    public string ContentType { get; init; } = "application/json; charset=utf-8";
+
     public HttpClient CreateClient() => new(this) { BaseAddress = AppBase };
 
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -17,10 +19,9 @@ internal sealed class FakeHandler(string? configJson, HttpStatusCode status = Ht
         Requests.Add(request);
         if (request.RequestUri == new Uri(AppBase, "config.json") && configJson is not null)
         {
-            return Task.FromResult(new HttpResponseMessage(status)
-            {
-                Content = new StringContent(configJson, Encoding.UTF8, "application/json"),
-            });
+            var content = new ByteArrayContent(Encoding.UTF8.GetBytes(configJson));
+            content.Headers.TryAddWithoutValidation("Content-Type", ContentType);
+            return Task.FromResult(new HttpResponseMessage(status) { Content = content });
         }
 
         return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));

@@ -12,7 +12,7 @@ public sealed class AdminConfigurationReaderTests
         var configuration = Valid("""{ "apiBaseUrl": "https://cms.example.com" }""");
 
         configuration.ApiBaseUrl.ShouldBe(new Uri("https://cms.example.com/"));
-        configuration.Authority.ShouldBe(configuration.ApiBaseUrl);
+        configuration.Authority.OriginalString.ShouldBe("https://cms.example.com");
         configuration.ClientId.ShouldBe("fluentcms-admin");
         configuration.Scopes.ShouldBe(["openid", "profile", "email", "offline_access", "management"]);
         configuration.Branding.Name.ShouldBe("FluentCMS");
@@ -33,7 +33,7 @@ public sealed class AdminConfigurationReaderTests
               "branding": { "name": null, "accentColor": null }, "cultures": null, "previewOrigins": null }
             """);
 
-        configuration.Authority.ShouldBe(configuration.ApiBaseUrl);
+        configuration.Authority.OriginalString.ShouldBe("https://cms.example.com");
         configuration.ClientId.ShouldBe("fluentcms-admin");
         configuration.Branding.Name.ShouldBe("FluentCMS");
         configuration.PreviewEnabled.ShouldBeFalse();
@@ -55,7 +55,7 @@ public sealed class AdminConfigurationReaderTests
             """);
 
         configuration.ApiBaseUrl.ShouldBe(new Uri("https://example.com/cms/"));
-        configuration.Authority.ShouldBe(new Uri("https://login.example.com/"));
+        configuration.Authority.OriginalString.ShouldBe("https://login.example.com/");
         configuration.ClientId.ShouldBe("team-admin");
         configuration.Scopes.ShouldBe(["openid", "management"]);
         configuration.Branding.Name.ShouldBe("Acme");
@@ -321,6 +321,94 @@ public sealed class AdminConfigurationReaderTests
 
         problem.Kind.ToString().ShouldBe(kind);
         problem.Member.ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("""{ "apiBaseUrl": "https://cms.example.com", "clientId": "\ud800" }""")]
+    [InlineData("""{ "apiBaseUrl": "https://a.example", "x\ud800": 1 }""")]
+    [InlineData("""{ "apiBaseUrl": "https://a.example/\udc00" }""")]
+    [InlineData("""{ "apiBaseUrl": "https://a.example", "branding": { "name": "\ud800" } }""")]
+    public void AnUnpairedSurrogateIsNotJson(string json)
+    {
+        var problem = Problems(json).ShouldHaveSingleItem();
+
+        problem.Kind.ToString().ShouldBe(nameof(ConfigurationProblemKind.NotJson));
+    }
+
+    [Theory]
+    [InlineData("https://login.example.com/realms/acme")]
+    [InlineData("https://login.example.com/realms/acme/")]
+    [InlineData("https://login.example.com")]
+    public void TheAuthorityIsKeptAsWritten(string authority)
+    {
+        var configuration = Valid($$"""{ "apiBaseUrl": "https://cms.example.com", "authority": "{{authority}}" }""");
+
+        configuration.Authority.OriginalString.ShouldBe(authority);
+    }
+
+    [Fact]
+    public void TheDefaultAuthorityIsTheApiBaseUrlAsWritten()
+    {
+        var configuration = Valid("""{ "apiBaseUrl": "https://example.com/cms" }""");
+
+        configuration.ApiBaseUrl.AbsoluteUri.ShouldBe("https://example.com/cms/");
+        configuration.Authority.OriginalString.ShouldBe("https://example.com/cms");
+    }
+
+    [Fact]
+    public void TheListsCannotBeChangedThroughACast()
+    {
+        var configuration = Valid("""
+            { "apiBaseUrl": "https://cms.example.com", "scopes": ["openid"], "cultures": { "offered": ["en"] }, "previewOrigins": ["https://www.example.com"] }
+            """);
+
+        foreach (var list in new[] { configuration.Scopes, configuration.Cultures.Offered!, configuration.PreviewOrigins })
+        {
+            list.ShouldNotBeAssignableTo<List<string>>();
+            ((ICollection<string>)list).IsReadOnly.ShouldBeTrue();
+            Should.Throw<NotSupportedException>(() => ((ICollection<string>)list).Add("x"));
+        }
+    }
+
+    [Theory]
+    [InlineData("""{ "apiBaseUrl": "https://good.example", "authority": "https://good.example", "authority": "https://evil.example" }""", "authority")]
+    [InlineData("""{ "apiBaseUrl": "https://a.example", "apiBaseUrl": "https://b.example" }""", "apiBaseUrl")]
+    [InlineData("""{ "apiBaseUrl": "https://a.example", "branding": { "name": "A", "name": "B" } }""", "branding.name")]
+    [InlineData("""{ "apiBaseUrl": "https://a.example", "cultures": { "default": "en", "default": "de" } }""", "cultures.default")]
+    public void ADuplicateMemberIsRefused(string json, string member)
+    {
+        var problem = Problems(json).ShouldHaveSingleItem();
+
+        problem.Kind.ToString().ShouldBe(nameof(ConfigurationProblemKind.Duplicate));
+        problem.Member.ShouldBe(member);
+    }
+
+    [Fact]
+    public void TheDefaultCultureTakesTheSpellingOfTheOfferedOne()
+    {
+        var configuration = Valid("""{ "apiBaseUrl": "https://cms.example.com", "cultures": { "offered": ["EN", "de-ch"], "default": "en" } }""");
+
+        configuration.Cultures.Default.ShouldBe("EN");
+        configuration.Cultures.Offered!.ShouldContain(configuration.Cultures.Default);
+    }
+
+    [Theory]
+    [InlineData("""{ "apiBaseUrl": "http://cms.example.com" }""", new[] { "apiBaseUrl", "authority" })]
+    [InlineData("""{ "apiBaseUrl": "http://cms.example.com", "authority": "https://login.example.com" }""", new[] { "apiBaseUrl" })]
+    [InlineData("""{ "apiBaseUrl": "http://localhost:8080", "authority": "http://127.0.0.1:8080" }""", new string[0])]
+    [InlineData("""{ "apiBaseUrl": "https://cms.example.com" }""", new string[0])]
+    public void PlainHttpOnARemoteHostIsNoted(string json, string[] members)
+    {
+        AdminConfigurationReader.Read(json).PlainHttpMembers.ShouldBe(members);
+    }
+
+    [Fact]
+    public void ANonAsciiHostIsRefusedWithAHintAtItsPunycodeForm()
+    {
+        var problem = Problems("""{ "apiBaseUrl": "https://bücher.example" }""").ShouldHaveSingleItem();
+
+        ConfigurationTexts.Describe(problem).ShouldContain("ASCII only; write an internationalized host name in its xn-- form");
+        Valid("""{ "apiBaseUrl": "https://xn--bcher-kva.example" }""").ApiBaseUrl.Host.ShouldBe("xn--bcher-kva.example");
     }
 
     private static AdminConfiguration Valid(string json)

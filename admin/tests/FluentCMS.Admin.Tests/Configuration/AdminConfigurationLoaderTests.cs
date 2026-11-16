@@ -40,6 +40,25 @@ public sealed class AdminConfigurationLoaderTests
         problem.StatusCode.ShouldBe(expected);
     }
 
+    [Fact]
+    public async Task ACharsetThatCannotBeDecodedIsAProblemOfTheFile()
+    {
+        var handler = new FakeHandler("""{ "apiBaseUrl": "https://cms.example.com" }""") { ContentType = "application/json; charset=bogus" };
+
+        var startup = await AdminConfigurationLoader.LoadAsync(handler.CreateClient(), TestContext.Current.CancellationToken);
+
+        startup.Configuration.ShouldBeNull();
+        var problem = startup.Problems.ShouldHaveSingleItem();
+        problem.Kind.ShouldBe(ConfigurationProblemKind.Unreadable);
+        problem.StatusCode.ShouldBeNull();
+    }
+
+    [Fact]
+    public void TheFetchGivesUpAfterFifteenSeconds()
+    {
+        AdminConfigurationLoader.Timeout.ShouldBe(TimeSpan.FromSeconds(15));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

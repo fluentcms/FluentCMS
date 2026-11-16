@@ -9,6 +9,6 @@ public sealed record AdminCultures
     /// </summary>
     public IReadOnlyList<string>? Offered { get; init; }
 
-    /// <summary>The culture used when the user has not chosen one; <c>en</c> when not set. It is one of <see cref="Offered"/> when that is set.</summary>
+    /// <summary>The culture used when the user has not chosen one; <c>en</c> when not set. Read from <c>config.json</c>, it is one of <see cref="Offered"/>, with its spelling, when that is set.</summary>
     public string Default { get; init; } = "en";
 }

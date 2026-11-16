@@ -12,26 +12,40 @@ public static class AdminHostBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.RootComponents.Add<HeadOutlet>("head::after");
-
-        using var http = new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
-        var startup = await AdminConfigurationLoader.LoadAsync(http);
-        if (!builder.Services.AddAdminStartup(startup))
+        // A team's app made from the standard template adds its own.
+        if (!builder.RootComponents.Any(mapping => mapping.ComponentType == typeof(HeadOutlet)))
         {
-            return;
+            builder.RootComponents.Add<HeadOutlet>("head::after");
         }
+
+        using var http = new HttpClient
+        {
+            BaseAddress = new Uri(builder.HostEnvironment.BaseAddress),
+            Timeout = AdminConfigurationLoader.Timeout,
+        };
+        var startup = await AdminConfigurationLoader.LoadAsync(http);
+        builder.Services.AddAdminStartup(startup);
     }
 
-    // With an invalid configuration only the error page's state is registered, so nothing that calls the API can run.
-    internal static bool AddAdminStartup(this IServiceCollection services, AdminStartup startup)
+    // With an invalid configuration only the error page's state is registered.
+    internal static IServiceCollection AddAdminStartup(this IServiceCollection services, AdminStartup startup)
     {
         services.AddSingleton(startup);
-        if (startup.Configuration is null)
+        if (startup.Configuration is { } configuration)
         {
-            return false;
+            services.AddAdminServices(configuration);
         }
 
-        services.AddSingleton(startup.Configuration);
-        return true;
+        return services;
+    }
+
+    // Every service of the admin registers here, and only from a valid configuration, so that nothing that calls the API can
+    // run without one.
+    internal static IServiceCollection AddAdminServices(this IServiceCollection services, AdminConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        services.AddSingleton(configuration);
+        return services;
     }
 }

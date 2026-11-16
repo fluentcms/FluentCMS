@@ -29,7 +29,7 @@ public sealed class AdminAppTests : BunitContext
 
         app.Markup.ShouldBeEmpty();
         Services.GetRequiredService<AdminConfiguration>().ApiBaseUrl.ShouldBe(new Uri("https://cms.example.com/"));
-        handler.Requests.ShouldHaveSingleItem();
+        handler.Requests.ShouldHaveSingleItem().RequestUri.ShouldBe(new Uri(FakeHandler.AppBase, "config.json"));
     }
 
     [Theory]
@@ -39,10 +39,12 @@ public sealed class AdminAppTests : BunitContext
     {
         var handler = new FakeHandler(json);
         await Start(handler);
+        var head = Render<HeadOutlet>();
 
         var app = Render<AdminApp>();
 
         app.Find("h1").TextContent.ShouldBe(ConfigurationTexts.Title);
+        head.Find("title").TextContent.ShouldBe(ConfigurationTexts.Title);
         app.Find("li[data-member='apiBaseUrl']").TextContent.ShouldStartWith(text);
         Services.GetService<AdminConfiguration>().ShouldBeNull();
         handler.Requests.ShouldHaveSingleItem().RequestUri.ShouldBe(new Uri(FakeHandler.AppBase, "config.json"));
@@ -65,7 +67,17 @@ public sealed class AdminAppTests : BunitContext
 
         Render<AdminApp>();
 
-        _logger.Entries.ShouldBe([(LogLevel.Warning, "theme"), (LogLevel.Warning, "branding.slogan")]);
+        _logger.Entries.ShouldBe([(LogLevel.Warning, "UnknownConfigurationMember", "theme"), (LogLevel.Warning, "UnknownConfigurationMember", "branding.slogan")]);
+    }
+
+    [Fact]
+    public async Task PlainHttpOnARemoteHostLogsAWarning()
+    {
+        await Start(new FakeHandler("""{ "apiBaseUrl": "http://cms.example.com", "authority": "http://localhost:5000" }"""));
+
+        Render<AdminApp>();
+
+        _logger.Entries.ShouldBe([(LogLevel.Warning, "PlainHttpConfigurationMember", "apiBaseUrl")]);
     }
 
     [Fact]
@@ -102,16 +114,19 @@ public sealed class AdminAppTests : BunitContext
         JSInterop.Invocations[BrandingHead.SetPropertyFunction].ShouldBeEmpty();
     }
 
+    // Composes the services as AddFluentCmsAdmin does. The client stays open and is registered for every service that takes an
+    // HttpClient, so that a request to the API after start goes through the fake handler and shows in its requests.
     private async Task Start(FakeHandler handler)
     {
-        using var http = handler.CreateClient();
+        var http = handler.CreateClient();
         var startup = await AdminConfigurationLoader.LoadAsync(http, Xunit.TestContext.Current.CancellationToken);
+        Services.AddSingleton(http);
         Services.AddAdminStartup(startup);
     }
 
     private sealed class FakeLogger<T> : ILogger<T>
     {
-        public List<(LogLevel Level, string Member)> Entries { get; } = [];
+        public List<(LogLevel Level, string? Event, string Member)> Entries { get; } = [];
 
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -120,7 +135,7 @@ public sealed class AdminAppTests : BunitContext
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
             var values = (IReadOnlyList<KeyValuePair<string, object?>>)state!;
-            Entries.Add((logLevel, (string)values.Single(value => value.Key == "Member").Value!));
+            Entries.Add((logLevel, eventId.Name, (string)values.Single(value => value.Key == "Member").Value!));
         }
     }
 }

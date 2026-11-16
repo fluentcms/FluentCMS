@@ -7,6 +7,7 @@ internal enum ConfigurationProblemKind
     NotAnObject,
     Missing,
     Invalid,
+    Duplicate,
 }
 
 // What a member must be; ConfigurationTexts turns it into the sentence of the error page.

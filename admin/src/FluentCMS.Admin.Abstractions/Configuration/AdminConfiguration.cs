@@ -14,7 +14,11 @@ public sealed record AdminConfiguration
     /// </summary>
     public required Uri ApiBaseUrl { get; init; }
 
-    /// <summary>The issuer of the authorization server; <see cref="ApiBaseUrl"/> when not set.</summary>
+    /// <summary>
+    /// The issuer of the authorization server, as <c>config.json</c> wrote it, without a slash added, since the issuer of the
+    /// discovery document is compared as an exact string with <see cref="Uri.OriginalString"/>. When not set, it is
+    /// <c>apiBaseUrl</c> as the file wrote it; a record built in code without it falls back to <see cref="ApiBaseUrl"/>.
+    /// </summary>
     public Uri Authority
     {
         get => _authority ?? ApiBaseUrl;
