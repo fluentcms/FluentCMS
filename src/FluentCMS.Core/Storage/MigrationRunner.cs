@@ -48,8 +48,19 @@ public sealed class MigrationRunner(
     // on a lease that never runs out by this instance's clock.
     internal static readonly TimeSpan SchemaSyncWait = TimeSpan.FromMinutes(15);
 
+    // As far above a healthy wait: another process may be applying a migration that rebuilds large tables.
+    private static readonly TimeSpan MigrationsLockWait = TimeSpan.FromMinutes(15);
+
+    private static readonly TimeSpan MigrationsLockWaitLogged = TimeSpan.FromSeconds(30);
+
+    private static readonly TimeSpan FirstMigrationsLockPoll = TimeSpan.FromMilliseconds(50);
+    private static readonly TimeSpan LongestMigrationsLockPoll = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan ReportedMigrationsLockPoll = TimeSpan.FromSeconds(5);
+
     private static readonly Stream System = new(SystemStream, services => services.GetRequiredService<SystemDbContext>());
     private static readonly Stream Content = new(ContentStream, services => services.GetRequiredService<CmsDbContext>());
+
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
 
     private readonly SchemaHistory _history = new(scopes, time ?? TimeProvider.System, logger);
 
@@ -524,6 +535,7 @@ public sealed class MigrationRunner(
                 continue;
             }
 
+            await WaitForMigrationsLockAsync(context, stream.Name, cancellationToken);
             MigrationLog.ApplyingStream(logger, pending.Count, stream.Name);
             using var recorder = AppliedMigrations.Record(context.GetService<IMigrator>());
             await context.Database.MigrateAsync(cancellationToken);
@@ -532,6 +544,45 @@ public sealed class MigrationRunner(
 
         return applied;
     }
+
+    // EF waits for its migrations lock without end, and on SQLite the lock is a row that a process stopped while it migrated
+    // leaves behind, so the runner waits for the row to go first, with a bound. It does not clear the row: a `migrate` beside
+    // the host may still be applying a long migration. A process that takes the lock after the last read is working, and EF
+    // waits for it as before.
+    private async Task WaitForMigrationsLockAsync(DbContext context, string stream, CancellationToken cancellationToken)
+    {
+        var started = _time.GetTimestamp();
+        var poll = FirstMigrationsLockPoll;
+        var logged = false;
+        while (await provider.ReadMigrationsLockAsync(context, cancellationToken) is { } written)
+        {
+            // Before the bound, so that a wait that ends in the timeout has always logged it.
+            var waited = _time.GetElapsedTime(started);
+            if (!logged && waited >= MigrationsLockWaitLogged)
+            {
+                MigrationLog.WaitingForMigrationsLock(logger, stream, written, MigrationsLockWait.TotalMinutes, MigrationsLockFix);
+                logged = true;
+            }
+
+            if (waited >= MigrationsLockWait)
+            {
+                throw new TimeoutException(
+                    $"EF Core's migrations lock, the row of __EFMigrationsLock written at {written}, was not released within " +
+                    $"{MigrationsLockWait.TotalMinutes:0} minutes, so the {stream} stream was not migrated; {MigrationsLockFix}.");
+            }
+
+            // Each read is logged by EF, so a wait that has been reported looks less often.
+            await Task.Delay(poll, _time, cancellationToken);
+            poll = logged ? ReportedMigrationsLockPoll : poll * 2 < LongestMigrationsLockPoll ? poll * 2 : LongestMigrationsLockPoll;
+        }
+    }
+
+    private const string MigrationsLockFix =
+        "the time is when the lock was taken, and it is never renewed; a host that starts or a 'fluentcms migrate' holds the " +
+        "lock while it applies migrations, and one that stopped while it migrated left the row behind; check that no other host " +
+        "and no 'fluentcms migrate' runs on the database, then delete the row with DELETE FROM \"__EFMigrationsLock\" and run " +
+        "again; a migration that rebuilds a table may have been partly applied, so if the next run fails on a table or column " +
+        "that already exists, restore the backup taken before the upgrade; a migration without a rebuild rolls back whole";
 
     // With whether it recorded the schema history, which it does when it applied every change and, for a host that schema
     // apply serves, the history says none is lost.

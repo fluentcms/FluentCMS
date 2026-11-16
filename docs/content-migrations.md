@@ -117,6 +117,26 @@ A command runs before any hosted service starts, so nothing migrates on start, l
 
 The tool sends the host's console logs to standard error, so that standard output holds only what the command writes. Neither `migrate` nor the other commands need `MigrateOnStartup`.
 
+### The migrations lock on SQLite
+
+EF Core holds a lock while it applies migrations, and on SQLite that lock is a row in the table `__EFMigrationsLock`, which EF deletes when it is done. A process killed while it applies migrations leaves the row behind ([#3177](https://github.com/fluentcms/FluentCMS/issues/3177)). A start with `MigrateOnStartup` and `fluentcms migrate` take the lock only for a stream that has a pending migration, so a start with nothing pending is not held up by the row. One that has something to apply waits for the row to go. After 30 seconds it logs a warning once (event id 9305) that names the stream and the time the row was written, and then looks every 5 seconds. After 15 minutes it fails with a `TimeoutException` that says the same, and nothing of that stream is applied. A start stops there, and `fluentcms migrate` exits with 1 and `FCMS3302`:
+
+```text
+FCMS3302: 'fluentcms migrate' failed: TimeoutException: EF Core's migrations lock, the row of __EFMigrationsLock written at 2026-11-15 10:00:00+00:00, was not released within 15 minutes, so the system stream was not migrated; ...
+```
+
+A healthy holder is another host's start or a `fluentcms migrate` applying migrations to the same database, and the row goes when it is done. The time in the row is when the lock was taken, and nothing renews it, so an old time does not show that the holder stopped. The row is never cleared on its own, because a migration that rebuilds large tables can take long. Check that no other host and no `fluentcms migrate` runs on the database file, then delete the row and start again ([in a container](docker.md#a-migrations-lock-left-behind)):
+
+```sql
+DELETE FROM "__EFMigrationsLock";
+```
+
+A migration that only adds tables, columns or indexes runs in one transaction, so a process killed inside it left nothing of it behind. A migration that rebuilds a table on SQLite, such as one that drops or changes a column, commits around the rebuild, and EF writes the migration's history row last. A process killed inside such a migration can leave it partly applied. Then the next run fails on a table or column that already exists, such as `duplicate column name`, or leaves a table named `ef_temp_...`. Restore the backup taken before the upgrade ([backups](backups.md)) and run again.
+
+One gap remains. Two processes that both read that no row is there before either takes the lock leave the second one waiting inside EF. That wait logs no warning and has no bound, and if the first is killed, the second waits as it did before this check.
+
+PostgreSQL and SQL Server hold their lock with the session or transaction that took it, so a process that stops releases it. On SQL Server, a process that waits for another's migrations longer than the command timeout (30 seconds by default) fails with `Execution Timeout Expired`, which does not name the lock. It succeeds when run again once the other is done ([#3192](https://github.com/fluentcms/FluentCMS/issues/3192)).
+
 ## Startup validation
 
 With `MigrateOnStartup` set to `false`, startup first stops with `FCMS1305` if the system or a plugin stream has a pending migration, which is what an upgrade to a new FluentCMS version can bring:

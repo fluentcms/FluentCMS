@@ -43,6 +43,9 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
     // Writers wait for the rows they write, not for the whole database.
     public bool IsBusy(Exception exception) => false;
 
+    // Npgsql's migrations lock is a lock of the history table, which ends with the transaction that took it.
+    public Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
+
     public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment)
     {
         var pattern = LikePattern.Containing(fragment);

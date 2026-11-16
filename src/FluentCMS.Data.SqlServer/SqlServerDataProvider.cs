@@ -44,6 +44,9 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
     // Writers wait for the rows they write, not for the whole database.
     public bool IsBusy(Exception exception) => false;
 
+    // EF's migrations lock is an application lock of the session, which ends with it.
+    public Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
+
     // Under a case-insensitive collation of its own, so that a database whose default compares case does not change it.
     public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment)
     {
