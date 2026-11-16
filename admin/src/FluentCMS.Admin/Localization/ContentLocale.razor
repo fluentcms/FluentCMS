@@ -1,0 +1,10 @@
+@* Wraps a field of an entry in the language and direction of the content locale, which may differ from the interface's. *@
+<div lang="@Locale" dir="@TextDirection.Of(Locale)">@ChildContent</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Locale { get; set; } = "";
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

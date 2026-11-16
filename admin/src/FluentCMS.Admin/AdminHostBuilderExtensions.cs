@@ -1,5 +1,7 @@
+using System.Globalization;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Configuration;
+using FluentCMS.Admin.Localization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,13 +27,22 @@ public static class AdminHostBuilderExtensions
             Timeout = AdminConfigurationLoader.Timeout,
         };
         var startup = await AdminConfigurationLoader.LoadAsync(http);
-        builder.Services.AddAdminStartup(startup);
+
+        // At start the runtime has set the current culture to the browser's. The culture must be set before the host runs,
+        // which loads its resources.
+        var browser = CultureInfo.CurrentCulture;
+        var culture = new InterfaceCulture(InterfaceCulture.Choose(
+            new NoInterfaceCulturePreference().Culture, browser, InterfaceCultureOptions.From(startup.Configuration?.Cultures)));
+        culture.Apply(browser);
+
+        builder.Services.AddAdminStartup(startup, culture, new FormatService(browser, TimeZoneInfo.Local));
     }
 
-    // With an invalid configuration only the error page's state is registered.
-    internal static IServiceCollection AddAdminStartup(this IServiceCollection services, AdminStartup startup)
+    // The error page of an invalid configuration needs the culture and the document as well, so these register either way.
+    internal static IServiceCollection AddAdminStartup(this IServiceCollection services, AdminStartup startup, InterfaceCulture culture, FormatService formats)
     {
         services.AddSingleton(startup);
+        services.AddAdminLocalization(culture, formats).AddAdminAccessibility();
         if (startup.Configuration is { } configuration)
         {
             services.AddAdminServices(configuration);
@@ -40,13 +51,15 @@ public static class AdminHostBuilderExtensions
         return services;
     }
 
-    // Every service of the admin registers here, and only from a valid configuration, so that nothing that calls the API can
-    // run without one.
+    // Every service that can call the API registers here, and only from a valid configuration, so that none can run without
+    // one.
     internal static IServiceCollection AddAdminServices(this IServiceCollection services, AdminConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddSingleton(configuration);
+        // Before AddManagementApi, whose signed-out default it replaces.
+        services.AddScoped<IRateLimitNotice, RateLimitNotice>();
         services.AddManagementApi();
         services.AddOptions<ManagementApiOptions>().Configure(options => options.ApiBaseUrl = configuration.ApiBaseUrl);
         return services;

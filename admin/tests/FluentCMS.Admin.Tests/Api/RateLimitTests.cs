@@ -112,6 +112,52 @@ public sealed class RateLimitTests
         harness.Server.Requests.Select(sent => sent.Header("Authorization")).ShouldBe(["Bearer token-1", "Bearer token-1"]);
     }
 
+    [Fact]
+    public async Task AHungAttemptEndsAsATimeoutAfterItsOwnTime()
+    {
+        var session = new FakeSession();
+        using var handler = new RateLimitHandler(TimeProvider.System, session, TimeSpan.FromMilliseconds(50)) { InnerHandler = new HungServer() };
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://cms.example.com/api/management/v1/me");
+
+        // Awaited directly: Shouldly reports a canceled task with an exception of its own, which drops the inner one.
+        TaskCanceledException? thrown = null;
+        try
+        {
+            await invoker.SendAsync(request, Token);
+        }
+        catch (TaskCanceledException canceled)
+        {
+            thrown = canceled;
+        }
+
+        thrown.ShouldNotBeNull().InnerException.ShouldBeOfType<TimeoutException>();
+        session.Notices.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task TheCallersCancellationIsNotATimeout()
+    {
+        using var handler = new RateLimitHandler(TimeProvider.System, new FakeSession()) { InnerHandler = new HungServer() };
+        using var invoker = new HttpMessageInvoker(handler);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://cms.example.com/api/management/v1/me");
+        using var canceled = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        canceled.CancelAfter(TimeSpan.FromMilliseconds(50));
+
+        var thrown = await Should.ThrowAsync<OperationCanceledException>(() => invoker.SendAsync(request, canceled.Token));
+
+        thrown.InnerException.ShouldNotBeOfType<TimeoutException>();
+    }
+
+    private sealed class HungServer : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            throw new InvalidOperationException("The delay never ends.");
+        }
+    }
+
     private static Action<HttpResponseMessage> RetryAfter(int seconds) =>
         response => response.Headers.RetryAfter = new RetryConditionHeaderValue(TimeSpan.FromSeconds(seconds));
 }

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Shell.Layout.SkipToContent" xml:space="preserve">
+    <value>Skip to main content</value>
+  </data>
+  <data name="Home.Page.Heading" xml:space="preserve">
+    <value>FluentCMS admin</value>
+  </data>
+  <data name="Home.Page.Intro" xml:space="preserve">
+    <value>The admin is being built. Its pages appear here as they are added.</value>
+  </data>
+  <data name="Shell.NotFound.Heading" xml:space="preserve">
+    <value>Page not found</value>
+  </data>
+  <data name="Shell.NotFound.Text" xml:space="preserve">
+    <value>There is no page at this address.</value>
+  </data>
+  <data name="Configuration.Error.Title" xml:space="preserve">
+    <value>The admin cannot start</value>
+  </data>
+  <data name="Configuration.Error.Introduction" xml:space="preserve">
+    <value>The configuration file config.json of this admin has a problem. Correct the file and reload the page.</value>
+  </data>
+  <data name="Configuration.Error.UnreadableStatus" xml:space="preserve">
+    <value>config.json could not be read: the server answered with status {0}.</value>
+  </data>
+  <data name="Configuration.Error.UnreadableTimeout" xml:space="preserve">
+    <value>config.json could not be read: the server did not answer in time, or its answer could not be decoded.</value>
+  </data>
+  <data name="Configuration.Error.NotJson" xml:space="preserve">
+    <value>config.json is not valid JSON.</value>
+  </data>
+  <data name="Configuration.Error.NotAnObject" xml:space="preserve">
+    <value>config.json must hold a JSON object.</value>
+  </data>
+  <data name="Configuration.Error.Missing" xml:space="preserve">
+    <value>{0} is required.</value>
+  </data>
+  <data name="Configuration.Error.Duplicate" xml:space="preserve">
+    <value>{0} appears more than once; keep one.</value>
+  </data>
+  <data name="Configuration.Error.RuleHttpUrl" xml:space="preserve">
+    <value>{0} must be an absolute http or https URL without user info, query or fragment, in ASCII only; write an internationalized host name in its xn-- form.</value>
+  </data>
+  <data name="Configuration.Error.RuleUrlOrPath" xml:space="preserve">
+    <value>{0} must be an absolute http or https URL or a relative path, without a fragment, spaces, quotes, parentheses or backslashes, in ASCII only; write an internationalized host name in its xn-- form.</value>
+  </data>
+  <data name="Configuration.Error.RuleOrigin" xml:space="preserve">
+    <value>{0} must be an origin, an http or https URL with no path such as https://www.example.com, in ASCII only; write an internationalized host name in its xn-- form.</value>
+  </data>
+  <data name="Configuration.Error.RuleHexColor" xml:space="preserve">
+    <value>{0} must be a hex color such as #0f6cbd.</value>
+  </data>
+  <data name="Configuration.Error.RuleText" xml:space="preserve">
+    <value>{0} must be a text that is not empty, without spaces at its start or end and without control characters.</value>
+  </data>
+  <data name="Configuration.Error.RuleClientId" xml:space="preserve">
+    <value>{0} must be a client id of visible ASCII characters without spaces.</value>
+  </data>
+  <data name="Configuration.Error.RuleScopeList" xml:space="preserve">
+    <value>{0} must be a list of distinct scopes, such as ["openid", "management"].</value>
+  </data>
+  <data name="Configuration.Error.RuleCultureName" xml:space="preserve">
+    <value>{0} must be a culture name such as en or de-CH.</value>
+  </data>
+  <data name="Configuration.Error.RuleCultureList" xml:space="preserve">
+    <value>{0} must be a list of distinct culture names that is not empty.</value>
+  </data>
+  <data name="Configuration.Error.RuleDefaultCultureOffered" xml:space="preserve">
+    <value>{0} must be one of cultures.offered (it is en when not set).</value>
+  </data>
+  <data name="Configuration.Error.RuleOriginList" xml:space="preserve">
+    <value>{0} must be a list of origins.</value>
+  </data>
+  <data name="Configuration.Error.RuleObject" xml:space="preserve">
+    <value>{0} must be an object.</value>
+  </data>
+  <data name="Configuration.Error.RuleInvalid" xml:space="preserve">
+    <value>{0} is not valid.</value>
+  </data>
+  <data name="Api.RateLimit.WaitSeconds" xml:space="preserve">
+    <value>Too many requests. Wait {0} seconds and try again.</value>
+  </data>
+  <data name="Api.RateLimit.WaitShort" xml:space="preserve">
+    <value>Too many requests. Wait a moment and try again.</value>
+  </data>
+</root>

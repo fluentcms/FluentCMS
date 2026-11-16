@@ -34,8 +34,8 @@ internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposab
 
         // The bearer token goes only to the Management API: a path that resolves anywhere else is refused.
         var baseAddress = http.BaseAddress!;
-        var target = new Uri(baseAddress, request.Path);
-        if (!baseAddress.IsBaseOf(target) || !string.Equals(target.GetLeftPart(UriPartial.Authority), baseAddress.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase))
+        if (!Uri.TryCreate(baseAddress, request.Path, out var target)
+            || !baseAddress.IsBaseOf(target) || !string.Equals(target.GetLeftPart(UriPartial.Authority), baseAddress.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase))
         {
             throw new ArgumentException($"'{request.Path}' leads out of the Management API.", nameof(request));
         }

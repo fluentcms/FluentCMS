@@ -41,16 +41,16 @@ public sealed class WriteTests
         var read = await editor.Client.GetEntryAsync("article", id, "en", Token);
         var fields = read.Entry!.Fields.DeepClone().AsObject();
         fields["title"] = "Saved by the admin";
-        var saved = await editor.Client.SaveEntryAsync("article", id, fields, read.EntityTag, "en", Token);
-        var stale = await Should.ThrowAsync<ApiProblemException>(() => editor.Client.SaveEntryAsync("article", id, fields, read.EntityTag, "en", Token));
+        var saved = await editor.Client.SaveEntryAsync("article", id, fields, read, Token);
+        var stale = await Should.ThrowAsync<ApiProblemException>(() => editor.Client.SaveEntryAsync("article", id, fields, read, Token));
 
         read.EntityTag.ShouldBe($"\"{read.Entry.Version}\"");
-        saved.Value.Version.ShouldBe(read.Entry.Version + 1);
-        saved.EntityTag.ShouldBe($"\"{saved.Value.Version}\"");
-        saved.Value.Fields["title"]!.GetValue<string>().ShouldBe("Saved by the admin");
+        saved.Entry!.Version.ShouldBe(read.Entry.Version + 1);
+        saved.EntityTag.ShouldBe($"\"{saved.Entry!.Version}\"");
+        saved.Entry!.Fields["title"]!.GetValue<string>().ShouldBe("Saved by the admin");
         stale.Problem.Status.ShouldBe(412);
         stale.Problem.Code.ShouldBe("FCMS3105");
-        stale.Problem.Current!["version"]!.GetValue<int>().ShouldBe(saved.Value.Version);
+        stale.Problem.Current!["version"]!.GetValue<int>().ShouldBe(saved.Entry!.Version);
         stale.Problem.Current["title"]!.GetValue<string>().ShouldBe("Saved by the admin");
     }
 
@@ -61,21 +61,41 @@ public sealed class WriteTests
         using var client = await admin.SignInAsync(BuiltInRoles.SuperAdminName);
         var created = await client.Client.CreateEntryAsync("article", new JsonObject { ["title"] = "English only" }, client.Client.StartAction("en"), Token);
 
-        var missing = await client.Client.GetEntryAsync("article", created.Value.Id, "fr", Token);
-        var added = await client.Client.SaveEntryAsync("article", created.Value.Id, new JsonObject { ["title"] = "En français" }, missing.EntityTag, "fr", Token);
-        var french = await client.Client.GetEntryAsync("article", created.Value.Id, "fr", Token);
+        var missing = await client.Client.GetEntryAsync("article", created.Entry!.Id, "fr", Token);
+        var added = await client.Client.SaveEntryAsync("article", created.Entry!.Id, new JsonObject { ["title"] = "En français" }, missing, Token);
+        var french = await client.Client.GetEntryAsync("article", created.Entry!.Id, "fr", Token);
         var again = await Should.ThrowAsync<ApiProblemException>(() =>
-            client.Client.SaveEntryAsync("article", created.Value.Id, new JsonObject { ["title"] = "Encore" }, ApiRequest.NewLocale, "fr", Token));
+            client.Client.SaveEntryAsync("article", created.Entry!.Id, new JsonObject { ["title"] = "Encore" }, new EntryRead(null, ApiRequest.NewLocale, null, "fr"), Token));
         var gone = await Should.ThrowAsync<ApiProblemException>(() => client.Client.GetEntryAsync("article", Guid.NewGuid(), "fr", Token));
 
         missing.IsNewLocale.ShouldBeTrue();
         missing.EntityTag.ShouldBe(ApiRequest.NewLocale);
-        added.Value.Locale.ShouldBe("fr");
-        added.Value.Version.ShouldBe(1);
+        added.Entry!.Locale.ShouldBe("fr");
+        added.Entry!.Version.ShouldBe(1);
         french.Entry!.Fields["title"]!.GetValue<string>().ShouldBe("En français");
         french.EntityTag.ShouldBe("\"1\"");
         again.Problem.Status.ShouldBe(412);
         (gone.Problem.Status, gone.Problem.Code).ShouldBe((404, "FCMS3104"));
+    }
+
+    // en is the site's default and has no chain, so neither read of en finds a locale of the entry; the read of every locale does.
+    [Theory]
+    [InlineData("en")]
+    [InlineData(null)]
+    public async Task TheDefaultLocaleOfAnEntryCreatedInAnotherIsReadAsNewAndAdded(string? locale)
+    {
+        await using var admin = new AdminHost();
+        using var client = await admin.SignInAsync(BuiltInRoles.SuperAdminName);
+        var created = await client.Client.CreateEntryAsync("article", new JsonObject { ["title"] = "Seulement en français" }, client.Client.StartAction("fr"), Token);
+
+        var english = await client.Client.GetEntryAsync("article", created.Entry!.Id, locale, Token);
+        var added = await client.Client.SaveEntryAsync("article", created.Entry.Id, new JsonObject { ["title"] = "English too" }, english, Token);
+
+        english.IsNewLocale.ShouldBeTrue();
+        english.EntityTag.ShouldBe(ApiRequest.NewLocale);
+        added.Entry!.Locale.ShouldBe("en");
+        added.EntityTag.ShouldBe("\"1\"");
+        (await client.Client.GetEntryAsync("article", created.Entry.Id, "fr", Token)).Entry!.Fields["title"]!.GetValue<string>().ShouldBe("Seulement en français");
     }
 
     // Through the fallback chain the field would come from en and the read would have no tag; the form reads what fr holds.
@@ -86,17 +106,17 @@ public sealed class WriteTests
         using var client = await admin.SignInAsync(BuiltInRoles.SuperAdminName);
         var body = JsonNode.Parse("""{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Only in English."}]}]}""");
         var created = await client.Client.CreateEntryAsync("article", new JsonObject { ["title"] = "Both", ["body"] = body }, client.Client.StartAction("en"), Token);
-        await client.Client.SaveEntryAsync("article", created.Value.Id, new JsonObject { ["title"] = "Les deux", ["body"] = null }, ApiRequest.NewLocale, "fr", Token);
+        await client.Client.SaveEntryAsync("article", created.Entry!.Id, new JsonObject { ["title"] = "Les deux", ["body"] = null }, new EntryRead(null, ApiRequest.NewLocale, null, "fr"), Token);
 
         var chain = await client.Client.ListEntriesAsync("article", new ContentQuery { Filter = new FieldFilter("title", FilterOperator.Equal, "Les deux"), Locale = "fr" }, Token);
-        var read = await client.Client.GetEntryAsync("article", created.Value.Id, "fr", Token);
-        var saved = await client.Client.SaveEntryAsync("article", created.Value.Id, read.Entry!.Fields, read.EntityTag, "fr", Token);
+        var read = await client.Client.GetEntryAsync("article", created.Entry!.Id, "fr", Token);
+        var saved = await client.Client.SaveEntryAsync("article", created.Entry!.Id, read.Entry!.Fields, read, Token);
 
         chain.Items.ShouldHaveSingleItem().Fallbacks.ShouldNotBeNull().ShouldContainKey("body");
         read.Entry.Fallbacks.ShouldBeNull();
         read.EntityTag.ShouldBe("\"1\"");
         read.Entry.Fields["body"]!.ToJsonString().ShouldNotContain("Only in English.");
-        saved.Value.Version.ShouldBe(2);
+        saved.Entry!.Version.ShouldBe(2);
     }
 
     [Fact]
@@ -120,8 +140,8 @@ public sealed class WriteTests
 
         client.Counts["POST /api/management/v1/content/tag"].ShouldBe(2);
         found.Total.ShouldBe(1);
-        found.Items.ShouldHaveSingleItem().Id.ShouldBe(created.Value.Id);
-        created.Value.Fields["name"]!.GetValue<string>().ShouldBe("Replayed");
+        found.Items.ShouldHaveSingleItem().Id.ShouldBe(created.Entry!.Id);
+        created.Entry!.Fields["name"]!.GetValue<string>().ShouldBe("Replayed");
     }
 
     // Every name the server reserves is a system member of the admin's entry, so none of them stays in Fields.

@@ -15,13 +15,18 @@ public sealed class ApiRequest
     /// <param name="method">The HTTP method.</param>
     /// <param name="path">
     /// The path under <c>/api/management/v1/</c>, with its query string, such as <c>content/article?page=2</c>. It may not
-    /// start with a slash, whitespace or a control character, hold a backslash, or lead out of the Management API.
+    /// start with a slash, whitespace or a control character, hold a backslash or an encoded slash or backslash before its
+    /// query, or lead out of the Management API.
     /// </param>
     public ApiRequest(HttpMethod method, string path)
     {
         ArgumentNullException.ThrowIfNull(method);
         ArgumentException.ThrowIfNullOrEmpty(path);
+        // An encoded slash or backslash before the query is refused too: a front end that decodes it before routing would
+        // resolve it out of the Management API.
+        var beforeQuery = path.Split('?', 2)[0];
         if (path[0] == '/' || char.IsWhiteSpace(path[0]) || path.Any(char.IsControl) || path.Contains('\\', StringComparison.Ordinal)
+            || beforeQuery.Contains("%2f", StringComparison.OrdinalIgnoreCase) || beforeQuery.Contains("%5c", StringComparison.OrdinalIgnoreCase)
             || Uri.TryCreate(path, UriKind.Absolute, out _))
         {
             throw new ArgumentException($"'{path}' is not a path relative to /api/management/v1/, such as 'content/article'.", nameof(path));

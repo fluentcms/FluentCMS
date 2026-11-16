@@ -1,4 +1,8 @@
 using FluentCMS.Admin.Configuration;
+using FluentCMS.Admin.Localization;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Shouldly;
 using Xunit;
 
@@ -407,9 +411,13 @@ public sealed class AdminConfigurationReaderTests
     {
         var problem = Problems("""{ "apiBaseUrl": "https://bücher.example" }""").ShouldHaveSingleItem();
 
-        ConfigurationTexts.Describe(problem).ShouldContain("ASCII only; write an internationalized host name in its xn-- form");
+        ConfigurationTexts.Describe(NeutralTexts(), problem).ShouldContain("ASCII only; write an internationalized host name in its xn-- form");
         Valid("""{ "apiBaseUrl": "https://xn--bcher-kva.example" }""").ApiBaseUrl.Host.ShouldBe("xn--bcher-kva.example");
     }
+
+    private static StringLocalizer<AdminResources> NeutralTexts() =>
+        new StringLocalizer<AdminResources>(
+            new ResourceManagerStringLocalizerFactory(Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
 
     private static AdminConfiguration Valid(string json)
     {

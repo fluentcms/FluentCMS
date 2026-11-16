@@ -13,6 +13,7 @@
   <ItemGroup>
     <!-- Build assets flow, so that an app that references only this package gets blazor.webassembly.js (spec 2.2). -->
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" PrivateAssets="contentfiles;analyzers" />
+    <PackageReference Include="Microsoft.Extensions.Localization" />
   </ItemGroup>
 
   <ItemGroup>

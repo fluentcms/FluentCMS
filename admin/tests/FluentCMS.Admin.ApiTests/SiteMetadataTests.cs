@@ -58,6 +58,25 @@ public sealed class SiteMetadataTests
         (refused.Problem.Status, refused.Problem.Code).ShouldBe((422, "FCMS2312"));
     }
 
+    // A site that was deleted or renamed fails every call that names it, but not the caller's own reads, which the shell
+    // needs to recover.
+    [Fact]
+    public async Task TheCallersOwnReadsDoNotSendASiteThatIsGone()
+    {
+        await using var admin = new AdminHost();
+        using var client = await admin.SignInAsync(BuiltInRoles.SuperAdminName);
+        client.Site = "gone";
+        client.Locale = "de";
+
+        var me = await client.Client.GetMeAsync(Token);
+        var sites = await client.Client.GetMySitesAsync(Token);
+        var refused = await Should.ThrowAsync<ApiProblemException>(() => client.Metadata.GetSchemaAsync(Token));
+
+        me.Kind.ShouldBe("adminUser");
+        sites.ShouldHaveSingleItem().Slug.ShouldBe("default");
+        (refused.Problem.Status, refused.Problem.Code).ShouldBe((404, "FCMS2301"));
+    }
+
     private static async Task<(SchemaDescription Schema, IReadOnlyList<PluginInfo> Plugins)> ReadTwiceAsync(AdminClient client)
     {
         var schema = await client.Metadata.GetSchemaAsync(Token);

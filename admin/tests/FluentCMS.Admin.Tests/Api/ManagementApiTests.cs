@@ -33,7 +33,7 @@ public sealed class ManagementApiTests
     }
 
     [Fact]
-    public async Task TheCallsThatAreNotAboutContentSendNoLocale()
+    public async Task TheCallersOwnReadsSendNeitherASiteNorALocale()
     {
         using var harness = new ApiHarness();
         harness.Session.Site = "blog";
@@ -44,7 +44,39 @@ public sealed class ManagementApiTests
         await harness.Client.GetMySitesAsync(Token);
 
         me.Roles.Single().Name.ShouldBe("Super Admin");
-        harness.Server.Requests.ShouldAllBe(sent => sent.Header("X-Cms-Locale") == null && sent.Header("X-Cms-Site") == "blog");
+        harness.Server.Requests.ShouldAllBe(sent => sent.Header("X-Cms-Locale") == null && sent.Header("X-Cms-Site") == null);
+    }
+
+    [Fact]
+    public async Task AReadOfTheSchemaForTheDefaultSiteSendsNeitherTheSessionsSiteNorItsLocale()
+    {
+        using var harness = new ApiHarness();
+        harness.Session.Site = "blog";
+        harness.Session.Locale = "fr";
+        harness.Server.Answer(HttpStatusCode.OK, """{"types":[],"components":[],"blocks":[]}""");
+
+        await harness.Client.GetSchemaAsync(null, Token);
+
+        var sent = harness.Server.Requests.Single();
+        (sent.Header("X-Cms-Site"), sent.Header("X-Cms-Locale")).ShouldBe((null, null));
+    }
+
+    [Fact]
+    public async Task ASaveIsSentInTheSiteAndLocaleOfItsReadAfterTheViewSwitched()
+    {
+        using var harness = new ApiHarness();
+        harness.Session.Site = "blog";
+        harness.Session.Locale = "en";
+        harness.Server.Answer(HttpStatusCode.OK, Entry, configure: response => response.Headers.TryAddWithoutValidation("ETag", "\"3\""))
+            .Answer(HttpStatusCode.OK, Entry, configure: response => response.Headers.TryAddWithoutValidation("ETag", "\"4\""));
+
+        var read = await harness.Client.GetEntryAsync("article", Guid.NewGuid(), null, Token);
+        harness.Session.Site = "shop";
+        harness.Session.Locale = "fr";
+        var saved = await harness.Client.SaveEntryAsync("article", read.Entry!.Id, read.Entry.Fields, read, Token);
+
+        harness.Server.Requests.ShouldAllBe(sent => sent.Header("X-Cms-Site") == "blog" && sent.Header("X-Cms-Locale") == "en");
+        (saved.Site, saved.Locale, saved.EntityTag).ShouldBe(("blog", "en", "\"4\""));
     }
 
     [Fact]
@@ -85,14 +117,25 @@ public sealed class ManagementApiTests
     [InlineData("\t//evil.example/x")]
     [InlineData("content\\..\\..\\x")]
     [InlineData("me\r\nX-Injected: 1")]
+    [InlineData("..%2f..%2f..%2fconnect/token")]
+    [InlineData("..%2F..%2F..%2Fconnect/token")]
+    [InlineData("..%5c..%5c..%5cconnect/token")]
+    [InlineData("..%5C..%5C..%5Cconnect/token")]
+    [InlineData("content/%2e%2e%2f%2e%2e/x")]
     public void APathIsRelativeToTheManagementApi(string path) =>
         Should.Throw<ArgumentException>(() => new ApiRequest(HttpMethod.Get, path));
+
+    [Fact]
+    public void AnEncodedSlashInTheQueryIsAValue() =>
+        new ApiRequest(HttpMethod.Get, "content/article?filter[slug][eq]=a%2Fb").Path.ShouldEndWith("a%2Fb");
 
     [Theory]
     [InlineData("../../../other/x")]
     [InlineData("content/../../../../connect/token")]
     [InlineData("content/%2e%2e/%2e%2e/%2e%2e/%2e%2e/connect/token")]
     [InlineData("//evil.example/x")]
+    [InlineData("x:y")]
+    [InlineData("http:evil")]
     public async Task APathThatLeadsOutOfTheManagementApiIsNotSent(string path)
     {
         using var harness = new ApiHarness("https://example.com/cms");
@@ -126,7 +169,7 @@ public sealed class ManagementApiTests
         using var harness = new ApiHarness();
         harness.Server.Problem(HttpStatusCode.PreconditionFailed, $$"""{"status":412,"code":"FCMS3105","title":"Version conflict","current":{{Entry}}}""");
 
-        var thrown = await Should.ThrowAsync<ApiProblemException>(() => harness.Client.SaveEntryAsync("article", Guid.NewGuid(), [], "\"2\"", "fr", Token));
+        var thrown = await Should.ThrowAsync<ApiProblemException>(() => harness.Client.SaveEntryAsync("article", Guid.NewGuid(), [], Based("\"2\""), Token));
 
         thrown.Problem.Status.ShouldBe(412);
         thrown.Problem.Current!["version"]!.GetValue<int>().ShouldBe(3);
@@ -188,7 +231,7 @@ public sealed class ManagementApiTests
         harness.Server.Answer(HttpStatusCode.OK, Entry);
 
         var read = await harness.Client.GetEntryAsync("article", Guid.NewGuid(), "fr", Token);
-        await harness.Client.SaveEntryAsync("article", read.Entry!.Id, read.Entry.Fields, read.EntityTag, "fr", Token);
+        await harness.Client.SaveEntryAsync("article", read.Entry!.Id, read.Entry.Fields, read, Token);
 
         read.IsNewLocale.ShouldBeFalse();
         read.EntityTag.ShouldBe("\"3\"");
@@ -213,8 +256,14 @@ public sealed class ManagementApiTests
 
         added.IsNewLocale.ShouldBeTrue();
         added.EntityTag.ShouldBe(ApiRequest.NewLocale);
+        added.Locale.ShouldBe("fr");
         missing.Problem.Status.ShouldBe(404);
+        var check = harness.Server.Requests[1];
+        (check.Uri.Query, check.Header("X-Cms-Locale")).ShouldBe(("?fields=id", "all"));
     }
+
+    // A read made by a test, in site blog and locale fr, with the tag it gives.
+    private static EntryRead Based(string entityTag) => new(null, entityTag, "blog", "fr");
 
     [Theory]
     [InlineData(ApiRequest.NewLocale, "\"0\"")]
@@ -225,7 +274,7 @@ public sealed class ManagementApiTests
         using var harness = new ApiHarness();
         harness.Server.Answer(HttpStatusCode.OK, Entry);
 
-        await harness.Client.SaveEntryAsync("article", Guid.NewGuid(), [], given, "fr", Token);
+        await harness.Client.SaveEntryAsync("article", Guid.NewGuid(), [], Based(given), Token);
 
         harness.Server.Requests.Single().Header("If-Match").ShouldBe(sent);
     }
@@ -271,7 +320,7 @@ public sealed class ManagementApiTests
         using var harness = new ApiHarness();
         harness.Server.Answer(HttpStatusCode.OK, Entry);
 
-        await harness.Client.SaveEntryAsync("article", Guid.NewGuid(), new JsonObject { ["id"] = "x", ["deletedAt"] = "2026-01-01T00:00:00Z", ["title"] = "Bonjour" }, "\"3\"", "fr", Token);
+        await harness.Client.SaveEntryAsync("article", Guid.NewGuid(), new JsonObject { ["id"] = "x", ["deletedAt"] = "2026-01-01T00:00:00Z", ["title"] = "Bonjour" }, Based("\"3\""), Token);
 
         harness.Server.Requests.Single().Body.ShouldBe("""{"title":"Bonjour"}""");
     }

@@ -1,0 +1,144 @@
+using System.Globalization;
+using System.Text;
+using AngleSharp.Dom;
+using Microsoft.Extensions.Localization;
+
+namespace FluentCMS.Admin.Tests;
+
+// The pseudo-cultures of the tests (AQ14): every value read from a resource comes out marked, so a visible text that is
+// not marked did not come from a resource.
+public static class PseudoCulture
+{
+    public const string LeftToRight = "en-XA";
+    public const string RightToLeft = "ar-XB";
+
+    // Brackets a developer does not type by accident, so that a hard-coded "[Draft]" is not taken for a resource.
+    private const char Open = '⟦';
+    private const char Close = '⟧';
+    private const char RightToLeftOverride = '‮';
+    private const char PopDirectionalFormatting = '‬';
+
+    private static readonly string[] TextAttributes =
+    [
+        "aria-label", "aria-description", "aria-valuetext", "aria-roledescription", "title", "placeholder", "alt", "label",
+    ];
+
+    private static readonly string[] ButtonInputTypes = ["button", "submit", "reset"];
+
+    public static string Transform(string value, bool rightToLeft) =>
+        rightToLeft
+            ? $"{Open}{RightToLeftOverride}{value}{PopDirectionalFormatting}{Close}"
+            : $"{Open}{Accent(value)}{Close}";
+
+    // A text is localized when no letter is left once its marked segments are taken out, so that a hard-coded word between
+    // two resources fails, and numbers and punctuation pass.
+    public static bool IsLocalized(string text)
+    {
+        var depth = 0;
+        foreach (var c in text)
+        {
+            if (c == Open)
+            {
+                depth++;
+            }
+            else if (c == Close && depth > 0)
+            {
+                depth--;
+            }
+            else if (depth == 0 && char.IsLetter(c))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // The visible texts and the text attributes of the markup that are not localized, data aside.
+    public static IReadOnlyList<string> Unlocalized(INodeList nodes)
+    {
+        var found = new List<string>();
+        foreach (var node in nodes)
+        {
+            Collect(node, found);
+        }
+
+        return found;
+    }
+
+    public static int TextCount(INodeList nodes) =>
+        nodes.Sum(node => node.GetDescendantsAndSelf().OfType<IText>().Count(text => text.Data.Trim().Length > 0));
+
+    private static void Collect(INode node, List<string> found)
+    {
+        if (node is IText text)
+        {
+            var value = text.Data.Trim();
+            if (!IsLocalized(value))
+            {
+                found.Add(value);
+            }
+        }
+
+        if (node is IElement element)
+        {
+            var attributes = element.LocalName == "input" && ButtonInputTypes.Contains(element.GetAttribute("type"))
+                ? TextAttributes.Append("value")
+                : TextAttributes;
+            foreach (var name in attributes)
+            {
+                var value = element.GetAttribute(name)?.Trim();
+                if (value is not null && !IsLocalized(value))
+                {
+                    found.Add($"{name}=\"{value}\"");
+                }
+            }
+        }
+
+        foreach (var child in node.ChildNodes)
+        {
+            Collect(child, found);
+        }
+    }
+
+    // Accents the letters, leaving format items such as {0} as they are.
+    private static string Accent(string value)
+    {
+        var builder = new StringBuilder(value.Length);
+        var depth = 0;
+        foreach (var c in value)
+        {
+            depth += c switch { '{' => 1, '}' => -1, _ => 0 };
+            builder.Append(depth > 0 ? c : c switch
+            {
+                'a' => 'à', 'e' => 'é', 'i' => 'î', 'o' => 'ö', 'u' => 'ü', 'c' => 'ç', 'n' => 'ñ', 's' => 'š', 'y' => 'ý',
+                'A' => 'À', 'E' => 'É', 'I' => 'Î', 'O' => 'Ö', 'U' => 'Ü', 'C' => 'Ç', 'N' => 'Ñ', 'S' => 'Š', 'Y' => 'Ý',
+                _ => c,
+            });
+        }
+
+        return builder.ToString();
+    }
+}
+
+internal sealed class PseudoStringLocalizerFactory(IStringLocalizerFactory inner, CultureInfo culture) : IStringLocalizerFactory
+{
+    public IStringLocalizer Create(Type resourceSource) => new PseudoStringLocalizer(inner.Create(resourceSource), culture);
+
+    public IStringLocalizer Create(string baseName, string location) => new PseudoStringLocalizer(inner.Create(baseName, location), culture);
+}
+
+// A key missing from the resources comes out unmarked, so the check also fails on it.
+internal sealed class PseudoStringLocalizer(IStringLocalizer inner, CultureInfo culture) : IStringLocalizer
+{
+    public LocalizedString this[string name] => Mark(inner[name]);
+
+    public LocalizedString this[string name, params object[] arguments] => Mark(inner[name, arguments]);
+
+    public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures) => inner.GetAllStrings(includeParentCultures).Select(Mark);
+
+    private LocalizedString Mark(LocalizedString value) =>
+        value.ResourceNotFound
+            ? value
+            : new LocalizedString(value.Name, PseudoCulture.Transform(value.Value, culture.TextInfo.IsRightToLeft), false, value.SearchedLocation);
+}

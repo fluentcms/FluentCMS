@@ -1,7 +1,7 @@
 namespace FluentCMS.Admin.Api;
 
-// Where the Management API is. The runtime configuration sets ApiBaseUrl from config.json's apiBaseUrl (spec 2.5).
-public sealed class ManagementApiOptions
+// Where the Management API is. AddAdminServices sets ApiBaseUrl from config.json's apiBaseUrl (spec 2.5), its only source.
+internal sealed class ManagementApiOptions
 {
     internal const string ManagementPath = "api/management/v1/";
 

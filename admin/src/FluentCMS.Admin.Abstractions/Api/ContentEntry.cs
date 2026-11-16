@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
@@ -11,11 +12,11 @@ namespace FluentCMS.Admin.Api;
 public sealed record ContentEntry
 {
     /// <summary>The names of the system members, which no field may have; they are never part of <see cref="Fields"/> and a save leaves them out.</summary>
-    public static IReadOnlySet<string> SystemMembers { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    public static IReadOnlySet<string> SystemMembers { get; } = new[]
     {
         "id", "status", "locale", "version", "createdAt", "createdBy", "updatedAt", "updatedBy", "publishedAt", "fallbacks",
         "scheduledPublishAt", "scheduledUnpublishAt", "deletedAt", "deletedBy",
-    };
+    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The id of the entry.</summary>
     public Guid Id { get; init; }
