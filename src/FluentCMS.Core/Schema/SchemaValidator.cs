@@ -111,6 +111,30 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
         }
 
         ValidateFormerNames(type);
+
+        if (type.DisplayName is { } displayName && string.IsNullOrWhiteSpace(displayName))
+        {
+            Report(SchemaErrorCodes.InvalidType, $"{Describe(type)} has a blank display name; give it text or leave it out");
+        }
+
+        if (type.TitleField is { } titleField)
+        {
+            ValidateTitleField(type, titleField);
+        }
+    }
+
+    // The value of the title field labels an entry, so it is one plain text value of the type itself.
+    private void ValidateTitleField(TypeDraft type, string name)
+    {
+        var field = type.Fields.FirstOrDefault(candidate => string.Equals(candidate.Name, name, StringComparison.Ordinal));
+        if (field is null)
+        {
+            Report(SchemaErrorCodes.InvalidTitleField, $"title field '{name}' of {Describe(type)} is not a field of it; a title field must be a single text field of the type");
+        }
+        else if (field.FieldType != FieldTypeNames.Text || field.Multiple)
+        {
+            Report(SchemaErrorCodes.InvalidTitleField, $"title field '{name}' of {Describe(type)} is a{(field.Multiple ? " multiple" : "")} {field.FieldType} field; a title field must be a single text field of the type");
+        }
     }
 
     // A migration and a version read the values stored under a former name as one field's, so the name must be free and

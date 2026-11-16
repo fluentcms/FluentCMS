@@ -43,11 +43,16 @@ public class Entry
     public DateTimeOffset? ScheduledUnpublishAt { get; set; }
 }
 
-// The content type a generated class is an entry of, so that the client's calls need no type name.
+// The content type a generated class is an entry of, so that the client's calls need no type name, with the display name
+// and the title field of the schema, which are null when the type has none.
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class ContentTypeAttribute(string name) : Attribute
 {
     public string Name { get; } = name;
+
+    public string? DisplayName { get; set; }
+
+    public string? TitleField { get; set; }
 }
 
 // A relation as a read gives it: a reference { "id", "type" }, or the populated entry. A write sends the id.

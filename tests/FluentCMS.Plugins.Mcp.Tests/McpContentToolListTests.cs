@@ -51,6 +51,24 @@ public sealed class McpContentToolListTests(McpToolsFixture fixture) : IClassFix
         tools.Keys.Where(name => !name.StartsWith("post_", StringComparison.Ordinal) && !name.StartsWith("sample_", StringComparison.Ordinal)).ShouldBe([McpContentTools.Query]);
     }
 
+    [Fact]
+    public async Task TheToolsOfATypeNameItsDisplayNameAndItsTitleFieldWhenTheSchemaGivesThem()
+    {
+        await using var host = Host(Path.GetTempPath(), new FakeDownloads()).WithContentTypes(typeof(Story), typeof(Edition));
+        using var http = await KeyAsync(host);
+        await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+
+        var tools = await ToolsAsync(client);
+
+        tools["story_list"].Description!.ShouldStartWith("Lists the entries of the content type story (\"News story\")");
+        tools["story_list"].Description!.ShouldEndWith("An entry is named by its headline field.");
+        tools["story_get"].Description.ShouldBe("Reads one story (\"News story\") entry by its id.");
+        tools["edition_get"].Description!.ShouldStartWith("Reads the edition (\"Today's edition\") singleton, which has one entry.");
+        tools["post_list"].Description!.ShouldStartWith("Lists the entries of the content type post as drafts");
+        tools["post_list"].Description!.ShouldNotContain("is named by");
+        tools["post_get"].Description.ShouldBe("Reads one post entry by its id.");
+    }
+
     // Core refuses q= without a search index, so no tool offers it.
     [Fact]
     public async Task WithoutASearchIndexNoSearchToolIsListed()

@@ -9,7 +9,8 @@ namespace FluentCMS.Cli.Generate;
 
 // `generate typescript`: one ES module over @fluentcms/client with an interface per content type, component and block
 // type, the filter and sort builders of each type with the members and operators of the C# builders, and createClient,
-// which binds the content types to the client. A blocks field is the union of its block types on "type".
+// which binds the content types to the client. A blocks field is the union of its block types on "type". The display
+// names and title fields of the content types are metadata, in contentTypeLabels, which only a schema that has one gets.
 internal static class TypeScriptEmitter
 {
     public const string FileName = "fluentcms.ts";
@@ -17,6 +18,8 @@ internal static class TypeScriptEmitter
 
     // The package is imported as a namespace, so no name of the schema can clash with one of its exports.
     private const string Client = "fluentcms.";
+
+    private const string Labels = "contentTypeLabels";
 
     // What a BlocksField has, which a block type's member may not shadow.
     private static readonly string[] BlocksFieldMembers = ["path", "hasBlock", "isNull", "isNotNull", "toString", "constructor"];
@@ -32,7 +35,7 @@ internal static class TypeScriptEmitter
             .ToHashSet(StringComparer.Ordinal);
 
         List<GenerateDiagnostic> diagnostics = [];
-        var names = new TypeNames(schema.Model, ["schemaHash", "createClient", .. builders], diagnostics);
+        var names = new TypeNames(schema.Model, ["schemaHash", "createClient", Labels, .. builders], diagnostics);
         return new GeneratedCode([new GeneratedFile(FileName, new Writer(schema, names, builders, diagnostics).Module())], diagnostics);
     }
 
@@ -43,7 +46,7 @@ internal static class TypeScriptEmitter
     private sealed class Writer(ClientSchema schema, TypeNames names, HashSet<string> builders, List<GenerateDiagnostic> diagnostics)
     {
         private readonly SchemaModel _model = schema.Model;
-        private readonly HashSet<string> _taken = new(["schemaHash", "createClient", .. builders, .. names.All], StringComparer.Ordinal);
+        private readonly HashSet<string> _taken = new(["schemaHash", "createClient", Labels, .. builders, .. names.All], StringComparer.Ordinal);
         private readonly Code _body = new();
         private readonly Dictionary<SchemaType, string> _builders = [];
 
@@ -60,6 +63,7 @@ internal static class TypeScriptEmitter
             }
 
             _body.Line($"export const schemaHash = {Literal(schema.Hash)};");
+            ContentTypeLabels();
 
             foreach (var type in _model.ContentTypes.Concat(_model.Components).Concat(_model.Blocks))
             {
@@ -359,6 +363,27 @@ internal static class TypeScriptEmitter
             _body.Line("this.#path = path;");
             _body.Close();
         }
+
+        private void ContentTypeLabels()
+        {
+            var labelled = _model.ContentTypes.Where(type => type.DisplayName is not null || type.TitleField is not null).ToList();
+            if (labelled.Count == 0)
+            {
+                return;
+            }
+
+            _body.Line();
+            _body.Line("/** The display name and the title field of each content type that has one, by type name; null where it has none. */");
+            _body.Open($"export const {Labels} = {{");
+            foreach (var type in labelled)
+            {
+                _body.Line($"{Literal(type.Name)}: {{ displayName: {Text(type.DisplayName)}, titleField: {Text(type.TitleField)} }},");
+            }
+
+            _body.Close("} as const;");
+        }
+
+        private static string Text(string? text) => text is null ? "null" : Literal(text);
 
         private void CreateClient()
         {

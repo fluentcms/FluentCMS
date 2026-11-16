@@ -40,6 +40,22 @@ internal sealed class TypeBuilder(TypeDraft draft) : ITypeBuilder
         return this;
     }
 
+    public ITypeBuilder DisplayName(string displayName)
+    {
+        ArgumentNullException.ThrowIfNull(displayName);
+        RequireContentType("a display name", nameof(displayName));
+        draft.DisplayName = displayName;
+        return this;
+    }
+
+    public ITypeBuilder TitleField(string fieldName)
+    {
+        ArgumentNullException.ThrowIfNull(fieldName);
+        RequireContentType("a title field", nameof(fieldName));
+        draft.TitleField = fieldName;
+        return this;
+    }
+
     public ITypeBuilder Field(string name, string fieldType, Action<IFieldBuilder> configure)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
@@ -50,5 +66,13 @@ internal sealed class TypeBuilder(TypeDraft draft) : ITypeBuilder
         draft.Fields.Add(field);
         configure(new FieldBuilder(field));
         return this;
+    }
+
+    private void RequireContentType(string what, string parameter)
+    {
+        if (!draft.IsContentType)
+        {
+            throw new ArgumentException($"{draft.Kind.ToString().ToLowerInvariant()} '{draft.Name}' cannot have {what}; only collections and singletons do.", parameter);
+        }
     }
 }

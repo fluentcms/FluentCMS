@@ -114,6 +114,18 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
     }
 
     [Fact]
+    public void ATypeOfTheSchemaRoutesDescribesItsDisplayNameAndTitleField()
+    {
+        var type = Response(Paths[$"{Management}/schema/types/{{type}}"]!["get"]!, "200");
+
+        foreach (var name in new[] { "displayName", "titleField" })
+        {
+            type["properties"]![name]!["type"]!.ToJsonString().ShouldBe("""["null","string"]""", name);
+            type["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldNotContain(name);
+        }
+    }
+
+    [Fact]
     public void TheTransferEndpointsAnswerAPackageAndLinesOfJson()
     {
         Paths[$"{Management}/transfer/export"]!["post"]!["responses"]!["200"]!["content"]!["application/zip"].ShouldNotBeNull();

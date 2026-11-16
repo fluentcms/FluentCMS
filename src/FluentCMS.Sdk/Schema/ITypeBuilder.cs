@@ -27,6 +27,18 @@ public interface ITypeBuilder
     /// <exception cref="ArgumentOutOfRangeException"><see cref="PublishPolicyOptions.MaxVersions"/> is less than 1, or <see cref="PublishPolicyOptions.TrashRetentionDays"/> is outside 1 to <see cref="PublishPolicyAttribute.MaxTrashRetentionDays"/>.</exception>
     ITypeBuilder PublishPolicy(PublishPolicyOptions options);
 
+    /// <summary>Sets the name of the type for people, such as <c>Blog post</c>. Only collections and singletons have one.</summary>
+    /// <param name="displayName">The display name, which must not be blank.</param>
+    /// <returns>This builder.</returns>
+    /// <exception cref="ArgumentException">The type is a component or a block.</exception>
+    ITypeBuilder DisplayName(string displayName);
+
+    /// <summary>Names the field whose value labels an entry, which must be a single text field of the type. Only collections and singletons have one.</summary>
+    /// <param name="fieldName">The field name, in camelCase.</param>
+    /// <returns>This builder.</returns>
+    /// <exception cref="ArgumentException">The type is a component or a block.</exception>
+    ITypeBuilder TitleField(string fieldName);
+
     /// <summary>Declares a field with the defaults of its type.</summary>
     /// <param name="name">The field name, in camelCase.</param>
     /// <param name="fieldType">The name of the field type, such as <c>text</c> or <c>richText</c>.</param>

@@ -10,8 +10,8 @@ namespace FluentCMS.Core.Schema;
 // The schema as the principal of the operation may see it (spec 4.2, 4.8): schema.read in the site of the operation, then
 // what the evaluator lets it read there in the operation's locale, which is what TypeAccess asks of a content route. A
 // field outside the allow-lists is left out, and so is a relation to a type it may not read, with the reverse sides of
-// what went, so that no name of such a type shows, and a condition, a slug source or a field reference that reads a field
-// that went. A component or block that only what went used goes too; one that nothing uses stays. Outside an operation
+// what went, so that no name of such a type shows, and a condition, a slug source, a field reference or a title field that
+// reads a field that went. A component or block that only what went used goes too; one that nothing uses stays. Outside an operation
 // the caller is the host's own code, which sees the whole schema.
 internal sealed class SchemaIntrospection(
     SchemaModel schema,
@@ -138,6 +138,8 @@ internal sealed class SchemaIntrospection(
             UnpublishedReferences = type.UnpublishedReferences,
             MaxVersions = type.MaxVersions,
             TrashRetentionDays = type.TrashRetentionDays,
+            DisplayName = type.DisplayName,
+            TitleField = type.TitleField is { } title && kept.Contains(title) ? title : null,
             ClrType = type.ClrType,
             Fields = keptFields.AsReadOnly(),
             ReverseRelations = keptReverse.AsReadOnly(),
