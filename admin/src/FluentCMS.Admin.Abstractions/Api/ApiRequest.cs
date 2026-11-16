@@ -1,0 +1,57 @@
+using System.Text.Json.Nodes;
+
+namespace FluentCMS.Admin.Api;
+
+/// <summary>
+/// A request to the Management API. Sending the same instance again, as a retry after a network error does, sends the
+/// same <see cref="IdempotencyKey"/>, so that the server answers what it answered the first time.
+/// </summary>
+public sealed class ApiRequest
+{
+    /// <summary>The <c>If-Match</c> of a save that adds a locale the entry does not have yet.</summary>
+    public const string NewLocale = "\"0\"";
+
+    /// <summary>Creates a request.</summary>
+    /// <param name="method">The HTTP method.</param>
+    /// <param name="path">The path under <c>/api/management/v1/</c>, with its query string, such as <c>content/article?page=2</c>.</param>
+    public ApiRequest(HttpMethod method, string path)
+    {
+        ArgumentNullException.ThrowIfNull(method);
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if (path.StartsWith('/') || Uri.IsWellFormedUriString(path, UriKind.Absolute))
+        {
+            throw new ArgumentException("The path is relative to /api/management/v1/, such as 'content/article'.", nameof(path));
+        }
+
+        Method = method;
+        Path = path;
+    }
+
+    /// <summary>The HTTP method.</summary>
+    public HttpMethod Method { get; }
+
+    /// <summary>The path under <c>/api/management/v1/</c>, with its query string.</summary>
+    public string Path { get; }
+
+    /// <summary>The JSON body, if any.</summary>
+    public JsonNode? Body { get; init; }
+
+    /// <summary>
+    /// The entity tag of the read a save is based on, sent as <c>If-Match</c>; <see cref="NewLocale"/> adds a locale. A weak
+    /// tag is sent by its value.
+    /// </summary>
+    public string? IfMatch { get; init; }
+
+    /// <summary>The <c>Idempotency-Key</c> of the user action a create or bulk call belongs to, from <see cref="NewIdempotencyKey"/>.</summary>
+    public string? IdempotencyKey { get; init; }
+
+    /// <summary>The site of this request, instead of the shell's.</summary>
+    public string? Site { get; init; }
+
+    /// <summary>The content locale of this request, instead of the view's.</summary>
+    public string? Locale { get; init; }
+
+    /// <summary>A new key for one user action, to keep until the action has an answer.</summary>
+    /// <returns>A key the server accepts.</returns>
+    public static string NewIdempotencyKey() => Guid.NewGuid().ToString("N");
+}

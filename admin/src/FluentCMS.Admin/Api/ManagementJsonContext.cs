@@ -1,0 +1,19 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
+
+namespace FluentCMS.Admin.Api;
+
+// Every record the admin reads or writes, so that the app trims (spec 2.7). Entries stay JsonObject.
+[JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
+[JsonSerializable(typeof(ApiProblem))]
+[JsonSerializable(typeof(MeResponse))]
+[JsonSerializable(typeof(ItemList<MySiteInfo>))]
+[JsonSerializable(typeof(SchemaDescription))]
+[JsonSerializable(typeof(ItemList<PluginInfo>))]
+[JsonSerializable(typeof(ContentEntry))]
+[JsonSerializable(typeof(ContentPage))]
+[JsonSerializable(typeof(JsonNode))]
+internal sealed partial class ManagementJsonContext : JsonSerializerContext
+{
+}

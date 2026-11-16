@@ -10,6 +10,15 @@
   <ItemGroup>
     <ProjectReference Include="../../src/FluentCMS.Admin/FluentCMS.Admin.csproj" />
     <ProjectReference Include="../../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
+    <!-- The Blog sample and every first-party plugin, which the test host discovers, as the reference host runs them (spec 7). -->
+    <ProjectReference Include="../../../samples/Blog/Blog.csproj" />
+    <ProjectReference Include="../../../src/plugins/FluentCMS.Plugins.AiAssist/FluentCMS.Plugins.AiAssist.csproj" />
+    <ProjectReference Include="../../../src/plugins/FluentCMS.Plugins.GraphQL/FluentCMS.Plugins.GraphQL.csproj" />
+    <ProjectReference Include="../../../src/plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj" />
+    <ProjectReference Include="../../../src/plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
+    <ProjectReference Include="../../../src/plugins/FluentCMS.Plugins.MultiSite/FluentCMS.Plugins.MultiSite.csproj" />
+    <ProjectReference Include="../../../src/plugins/FluentCMS.Plugins.Search/FluentCMS.Plugins.Search.csproj" />
+    <ProjectReference Include="../../../src/plugins/FluentCMS.Plugins.Webhooks/FluentCMS.Plugins.Webhooks.csproj" />
   </ItemGroup>
 
 </Project>
