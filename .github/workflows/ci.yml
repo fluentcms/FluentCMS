@@ -87,13 +87,23 @@ jobs:
         include:
           - group: units
             timeout: 5m
-            projects: tests/FluentCMS.Sdk.Tests tests/FluentCMS.Core.Tests tests/FluentCMS.Architecture.Tests tests/FluentCMS.Generators.Tests
-          - group: integration
-            timeout: 12m
-            projects: tests/FluentCMS.Core.IntegrationTests tests/FluentCMS.Cli.Tests tests/FluentCMS.Client.Tests
-          - group: plugins
+            projects: tests/FluentCMS.Sdk.Tests tests/FluentCMS.Core.Tests tests/FluentCMS.Architecture.Tests tests/FluentCMS.Generators.Tests tests/FluentCMS.Cli.Tests tests/FluentCMS.Client.Tests
+          # The two integration shards carry the same namespaces: the first runs them and the second every other, so a new
+          # namespace runs without a change here. A minimum keeps a filter that matches nothing from passing.
+          - group: integration-1
+            timeout: 8m
+            projects: tests/FluentCMS.Core.IntegrationTests
+            args: --filter-namespace "FluentCMS.Core.IntegrationTests.Identity*" "FluentCMS.Core.IntegrationTests.Api*" "FluentCMS.Core.IntegrationTests.Caching*" "FluentCMS.Core.IntegrationTests.Blog*" --minimum-expected-tests 250
+          - group: integration-2
+            timeout: 8m
+            projects: tests/FluentCMS.Core.IntegrationTests
+            args: --filter-not-namespace "FluentCMS.Core.IntegrationTests.Identity*" "FluentCMS.Core.IntegrationTests.Api*" "FluentCMS.Core.IntegrationTests.Caching*" "FluentCMS.Core.IntegrationTests.Blog*" --minimum-expected-tests 550
+          - group: plugins-1
             timeout: 5m
-            projects: tests/FluentCMS.Plugins.Tests tests/FluentCMS.Plugins.Media.Tests tests/FluentCMS.Plugins.Webhooks.Tests tests/FluentCMS.Plugins.Mcp.Tests tests/FluentCMS.Plugins.GraphQL.Tests tests/FluentCMS.Plugins.MultiSite.Tests tests/FluentCMS.Plugins.AiAssist.Tests tests/FluentCMS.Plugins.Search.Tests tests/FluentCMS.Host.Tests
+            projects: tests/FluentCMS.Plugins.Tests tests/FluentCMS.Plugins.Media.Tests tests/FluentCMS.Plugins.Webhooks.Tests tests/FluentCMS.Host.Tests
+          - group: plugins-2
+            timeout: 5m
+            projects: tests/FluentCMS.Plugins.Mcp.Tests tests/FluentCMS.Plugins.GraphQL.Tests tests/FluentCMS.Plugins.MultiSite.Tests tests/FluentCMS.Plugins.AiAssist.Tests tests/FluentCMS.Plugins.Search.Tests
           - group: admin
             timeout: 5m
             projects: admin/tests/FluentCMS.Admin.Tests admin/tests/FluentCMS.Admin.ApiTests
@@ -117,7 +127,7 @@ jobs:
         run: |
           status=0
           for project in ${{ matrix.projects }}; do
-            dotnet test --project "$project" -c Release --report-xunit-trx --results-directory artifacts/test-results --timeout ${{ matrix.timeout }} || status=1
+            dotnet test --project "$project" -c Release --report-xunit-trx --results-directory artifacts/test-results ${{ matrix.args }} --timeout ${{ matrix.timeout }} || status=1
           done
           exit $status
 
@@ -282,21 +292,57 @@ jobs:
           path: artifacts/test-results
           retention-days: 14
 
+  # The shards of the data tests. SQLite and PostgreSQL run in every run. SQL Server 2025 runs on pushes to main, on pull
+  # requests from feature/* branches, on pull requests that change a data provider, a migration or the data tests, and on
+  # the nightly and manual runs; SQL Server 2019 runs only on the nightly and manual runs. The servers run in two shards.
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      data-tests: ${{ steps.data-tests.outputs.matrix }}
+    steps:
+      - name: Choose the shards of the data tests
+        id: data-tests
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          PULL_REQUEST: ${{ github.event.pull_request.number }}
+        run: |
+          servers="postgresql"
+          case "$EVENT" in
+            schedule | workflow_dispatch)
+              servers+=" sqlserver-2019 sqlserver-2025" ;;
+            push)
+              servers+=" sqlserver-2025" ;;
+            pull_request)
+              files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PULL_REQUEST/files" --paginate --jq '.[].filename')
+              if [[ "$HEAD_REF" == feature/* ]] || grep -qE '^src/FluentCMS\.Data\.|/Migrations/|^tests/FluentCMS\.Data\.Tests/' <<< "$files"; then
+                servers+=" sqlserver-2025"
+              fi ;;
+          esac
+          shards='{"shard":"sqlite","provider":"sqlite"}'
+          for server in $servers; do
+            for part in 1 2; do
+              shards+=",{\"shard\":\"$server-$part\",\"provider\":\"$server\",\"part\":$part}"
+            done
+          done
+          echo "matrix=[$shards]" | tee -a "$GITHUB_OUTPUT"
+
   data-tests:
-    name: Data tests (${{ matrix.provider }})
+    name: Data tests (${{ matrix.shard }})
+    needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
       fail-fast: false
-      # The tests start each server in a container through Testcontainers. SQLite and PostgreSQL run in every run. SQL Server
-      # 2025 runs on pushes to main, on pull requests from feature/* branches and where FULL_TESTS holds (the nightly and
-      # manual runs); SQL Server 2019 runs only where FULL_TESTS holds.
+      # The tests start each server in a container through Testcontainers.
       matrix:
-        provider: >-
-          ${{ fromJSON(
-          (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '["sqlite", "postgresql", "sqlserver-2019", "sqlserver-2025"]'
-          || (github.event_name == 'push' || startsWith(github.head_ref, 'feature/')) && '["sqlite", "postgresql", "sqlserver-2025"]'
-          || '["sqlite", "postgresql"]') }}
+        include: ${{ fromJSON(needs.plan.outputs.data-tests) }}
     env:
       FLUENTCMS_TEST_PROVIDER: ${{ matrix.provider }}
     steps:
@@ -312,9 +358,19 @@ jobs:
             Directory.Packages.props
             **/*.csproj
 
-      # Well past the slowest healthy run, on SQL Server, so that a hang ends with time left to name its tests.
+      # The first shard of a server runs these namespaces and the second every other, so a new namespace runs without a
+      # change here. A minimum keeps a filter that matches nothing from passing. The timeout is well past the slowest
+      # healthy run, on SQL Server, so that a hang ends with time left to name its tests.
       - name: Test
-        run: dotnet test --project tests/FluentCMS.Data.Tests -c Release --report-xunit-trx --results-directory artifacts/test-results --timeout 20m
+        shell: bash
+        run: |
+          namespaces=("FluentCMS.Data.Tests.Content*" "FluentCMS.Data.Tests.Jobs*" "FluentCMS.Data.Tests.Events*")
+          case "${{ matrix.part }}" in
+            1) filter=(--filter-namespace "${namespaces[@]}" --minimum-expected-tests 700) ;;
+            2) filter=(--filter-not-namespace "${namespaces[@]}" --minimum-expected-tests 1000) ;;
+            *) filter=() ;;
+          esac
+          dotnet test --project tests/FluentCMS.Data.Tests -c Release --report-xunit-trx --results-directory artifacts/test-results "${filter[@]}" --timeout 20m
 
       - name: Name the tests that were running
         if: failure() || cancelled()
@@ -325,9 +381,25 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: test-results-data-${{ matrix.provider }}
+          name: test-results-data-${{ matrix.shard }}
           path: artifacts/test-results
           retention-days: 14
+
+  # Branch protection on main requires these names, which were jobs before they were split into shards. Each passes only
+  # when every shard of the tests and of the data tests passed, SQL Server among them where it ran.
+  required:
+    name: ${{ matrix.check }}
+    needs: [test, data-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        check: ["Tests (integration)", "Tests (plugins)", "Data tests (postgresql)"]
+    steps:
+      - name: Check the shards
+        shell: bash
+        run: test "${{ needs.test.result }}" = success && test "${{ needs.data-tests.result }}" = success
 
   pack:
     name: Pack
@@ -520,7 +592,7 @@ jobs:
   # Nobody watches the nightly run, which is the only one that runs the full Windows suite, so a failure opens an issue.
   nightly-report:
     name: Report nightly failure
-    needs: [markdown, build, test, end-to-end, typescript, build-test-windows, data-tests, pack, templates]
+    needs: [markdown, build, test, end-to-end, typescript, build-test-windows, plan, data-tests, pack, templates]
     if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 5
