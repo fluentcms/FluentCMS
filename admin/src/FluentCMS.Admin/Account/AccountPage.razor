@@ -1,5 +1,5 @@
 @* The account page of the signed-in user (spec 4.3, A-09): its sessions, two-factor sign-in, external logins, the hosted page
-   that changes the password, and the interface language and theme. *@
+   that changes the password, and the theme and interface language. *@
 @page "/account"
 @using FluentCMS.Admin.Configuration
 @inject AdminConfiguration Configuration
@@ -13,8 +13,8 @@
         <AccountTwoFactor />
         <AccountLogins />
         <CmsCard Title="@L["Account.Password.Heading"]">
-            <p>@L["Account.Password.Text"]</p>
-            <p><a href="@ChangePasswordUrl()">@L["Account.Password.Change"]</a></p>
+            <p>@(ReturnsHere ? L["Account.Password.Text"] : L["Account.Password.TextElsewhere"])</p>
+            <p><a href="@ChangePasswordUrl">@L["Account.Password.Change"]</a></p>
         </CmsCard>
         <AccountPreferences />
     </div>
@@ -23,15 +23,17 @@
 @code {
     public const string Route = "account";
 
-    // The hosted page is under the authority's path base. It returns only to a local URL, so the admin asks to come back here
-    // when it is on the authority's origin, as in the reference host; on another origin the page returns to its host.
-    private string ChangePasswordUrl()
-    {
-        var authority = Configuration.Authority.AbsoluteUri.TrimEnd('/');
-        var page = new Uri(authority + "/account/change-password");
-        var here = new Uri(Navigation.BaseUri + Route);
-        return string.Equals(page.GetLeftPart(UriPartial.Authority), here.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase)
-            ? $"{page.AbsoluteUri}?ReturnUrl={Uri.EscapeDataString(here.AbsolutePath)}"
-            : page.AbsoluteUri;
-    }
+    private Uri ChangePasswordPage => new(Configuration.Authority.AbsoluteUri.TrimEnd('/') + "/account/change-password");
+
+    private Uri Here => new(Navigation.BaseUri + Route);
+
+    // The hosted page returns only to a local URL, so it comes back here only when the admin is on the authority's origin, as
+    // in the reference host; on another origin it returns to its own host.
+    private bool ReturnsHere =>
+        string.Equals(ChangePasswordPage.GetLeftPart(UriPartial.Authority), Here.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase);
+
+    // Under the authority's path base, where the hosted pages are.
+    private string ChangePasswordUrl => ReturnsHere
+        ? $"{ChangePasswordPage.AbsoluteUri}?ReturnUrl={Uri.EscapeDataString(Here.AbsolutePath)}"
+        : ChangePasswordPage.AbsoluteUri;
 }

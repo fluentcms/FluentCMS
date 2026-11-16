@@ -1,9 +1,14 @@
 @* Two-factor sign-in by choice (spec 4.3): its status, enrolment with the authenticator URI as a QR code and the key beside it,
    the recovery codes, and turning it off. The key and the recovery codes are shown once: they live in this component while
-   their step is open and nowhere else, never logged, never in the URL, never in the browser's storage. *@
+   their step is open and nowhere else, never logged, never in the URL, never in the browser's storage.
+   Turning it on or off gives the user a new security stamp, and the token endpoint then refuses this tab's refresh token,
+   so the tab signs in again at once, through the session, rather than at its next refresh: after the recovery codes are
+   saved, and after turning it off. No call is made while the codes are shown, so that nothing can take the page away. *@
 @implements IDisposable
 @using FluentCMS.Admin.Api
+@using FluentCMS.Admin.Authentication
 @inject ManagementClient Client
+@inject IAdminSession Session
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<AdminResources> L
 
@@ -24,16 +29,25 @@
     else if (step == Step.Enrol && setup is not null)
     {
         <h3 class="account-step" tabindex="-1" @ref="stepHeading">@L["Account.TwoFactor.ScanHeading"]</h3>
-        <p>@L["Account.TwoFactor.ScanText"]</p>
-        <div class="account-enrol">
-            <QrCodeImage Text="@setup.AuthenticatorUri" Label="@L["Account.TwoFactor.QrLabel"]" />
-            <div>
-                <p>@L["Account.TwoFactor.KeyText"]</p>
-                <p><code class="account-key">@GroupedKey(setup.SharedKey)</code></p>
+        @if (QrCode.Fits(setup.AuthenticatorUri))
+        {
+            <p>@L["Account.TwoFactor.ScanText"]</p>
+            <div class="account-enrol">
+                <QrCodeImage Text="@setup.AuthenticatorUri" Label="@L["Account.TwoFactor.QrLabel"]" />
+                <div>
+                    <p>@L["Account.TwoFactor.KeyText"]</p>
+                    <p><code class="account-key">@GroupedKey(setup.SharedKey)</code></p>
+                </div>
             </div>
-        </div>
+        }
+        else
+        {
+            @* A URI longer than the largest code, as a long brand name in a non-Latin script gives, is entered by hand. *@
+            <p>@L["Account.TwoFactor.KeyOnlyText"]</p>
+            <p><code class="account-key">@GroupedKey(setup.SharedKey)</code></p>
+        }
         <CmsStack>
-            <CmsTextInput Label="@L["Account.TwoFactor.Code"]" Required="true" Error="@codeError" @bind-Value="code" />
+            <CmsTextInput Label="@L["Account.TwoFactor.Code"]" Required="true" Error="@codeError" Autocomplete="one-time-code" Numeric="true" @bind-Value="code" />
             <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
                 <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="VerifyAsync">@L["Account.TwoFactor.Verify"]</CmsButton>
                 <CmsButton Disabled="@busy" OnClick="@(() => CloseStep(L["Account.TwoFactor.NothingChanged"]))">@L["Account.TwoFactor.Cancel"]</CmsButton>
@@ -45,20 +59,34 @@
         <h3 class="account-step" tabindex="-1" @ref="stepHeading">@L["Account.TwoFactor.CodesHeading"]</h3>
         <p>@L["Account.TwoFactor.CodesText"]</p>
         <pre class="account-codes" aria-label="@L["Account.TwoFactor.CodesLabel"]">@string.Join('\n', recoveryCodes)</pre>
-        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => CloseStep(L["Account.TwoFactor.CodesClosed"]))">@L["Account.TwoFactor.CodesSaved"]</CmsButton>
+        @if (signInAfterCodes)
+        {
+            <p>@L["Account.TwoFactor.CodesSignInAgain"]</p>
+        }
+        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="CodesSavedAsync">@L["Account.TwoFactor.CodesSaved"]</CmsButton>
     }
     else if (step is Step.Disable or Step.NewCodes)
     {
         <h3 class="account-step" tabindex="-1" @ref="stepHeading">
             @(step == Step.Disable ? L["Account.TwoFactor.DisableHeading"] : L["Account.TwoFactor.NewCodesHeading"])
         </h3>
-        @if (step == Step.Disable && status.Required)
+        @if (step == Step.Disable)
         {
-            <p>@L["Account.TwoFactor.DisableRequired"]</p>
+            <p>@L["Account.TwoFactor.DisableSignInAgain"]</p>
+            @if (status.Required)
+            {
+                <p>@L["Account.TwoFactor.DisableRequired"]</p>
+            }
         }
         <CmsStack>
-            <CmsTextInput Label="@(step == Step.Disable ? L["Account.TwoFactor.CodeOrRecovery"] : L["Account.TwoFactor.Code"])"
-                          Required="true" Error="@codeError" @bind-Value="code" />
+            @if (step == Step.Disable)
+            {
+                <CmsTextInput Label="@L["Account.TwoFactor.CodeOrRecovery"]" Required="true" Error="@codeError" Autocomplete="off" @bind-Value="code" />
+            }
+            else
+            {
+                <CmsTextInput Label="@L["Account.TwoFactor.Code"]" Required="true" Error="@codeError" Autocomplete="one-time-code" Numeric="true" @bind-Value="code" />
+            }
             <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
                 <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="@(() => step == Step.Disable ? DisableAsync() : NewCodesAsync())">
                     @(step == Step.Disable ? L["Account.TwoFactor.Disable"] : L["Account.TwoFactor.NewCodes"])
@@ -106,6 +134,7 @@
     private Step step;
     private AuthenticatorSetup? setup;
     private IReadOnlyList<string>? recoveryCodes;
+    private bool signInAfterCodes;
     private string? code;
     private string? codeError;
     private string? message;
@@ -152,6 +181,7 @@
         try
         {
             setup = await Client.EnrolAuthenticatorAsync(CancellationToken.None);
+            status = status with { Pending = true };
             OpenStep(Step.Enrol);
         }
         catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.TwoFactorEnabled))
@@ -172,11 +202,9 @@
     {
         if (await RunWithCodeAsync(Client.VerifyAuthenticatorAsync) is { } codes)
         {
-            Forget();
-            recoveryCodes = codes;
-            OpenStep(Step.Codes);
+            ShowCodes(codes, signInAgain: true);
+            status = status with { Enabled = true, Pending = false, RecoveryCodesLeft = codes.Count };
             Announcer.Announce(L["Account.TwoFactor.TurnedOn"]);
-            status = await ReadStatusAsync() ?? status with { Enabled = true, Pending = false };
         }
     }
 
@@ -184,10 +212,8 @@
     {
         if (await RunWithCodeAsync(Client.NewRecoveryCodesAsync) is { } codes)
         {
-            Forget();
-            recoveryCodes = codes;
-            OpenStep(Step.Codes);
-            status = await ReadStatusAsync() ?? status;
+            ShowCodes(codes, signInAgain: false);
+            status = status with { RecoveryCodesLeft = codes.Count };
         }
     }
 
@@ -199,17 +225,29 @@
             return (IReadOnlyList<string>)[];
         }) is not null)
         {
+            status = status with { Enabled = false, Pending = false, RecoveryCodesLeft = 0 };
             CloseStep(L["Account.TwoFactor.TurnedOff"]);
-            status = await ReadStatusAsync() ?? status with { Enabled = false, RecoveryCodesLeft = 0 };
+            await Session.SignInAsync(AccountPage.Route, CancellationToken.None);
         }
     }
 
-    // The answer, or null with the reason shown: a wrong code stays on the step, any other refusal reads the status again.
+    private async Task CodesSavedAsync()
+    {
+        var signInAgain = signInAfterCodes;
+        CloseStep(L["Account.TwoFactor.CodesClosed"]);
+        if (signInAgain)
+        {
+            await Session.SignInAsync(AccountPage.Route, CancellationToken.None);
+        }
+    }
+
+    // The answer, or null with the reason shown and announced: a wrong code stays on the step, any other refusal reads the
+    // status again.
     private async Task<IReadOnlyList<string>?> RunWithCodeAsync(Func<string, CancellationToken, Task<IReadOnlyList<string>>> call)
     {
         if (string.IsNullOrWhiteSpace(code))
         {
-            codeError = L["Account.TwoFactor.CodeRequired"];
+            CodeError(L["Account.TwoFactor.CodeRequired"]);
             return null;
         }
 
@@ -221,7 +259,7 @@
         }
         catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.InvalidTwoFactorCode))
         {
-            codeError = L["Account.TwoFactor.WrongCode"];
+            CodeError(L["Account.TwoFactor.WrongCode"]);
             return null;
         }
         catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.NoAuthenticator)
@@ -234,13 +272,20 @@
         }
         catch (Exception exception) when (AccountProblems.IsFailure(exception))
         {
-            codeError = L["Account.TwoFactor.ActionFailed"];
+            CodeError(L["Account.TwoFactor.ActionFailed"]);
             return null;
         }
         finally
         {
             busy = false;
         }
+    }
+
+    // On the input, and through the shell's assertive region, since focus stays on the button (spec 4.18).
+    private void CodeError(string text)
+    {
+        codeError = text;
+        Announcer.Announce(text, AnnouncementPoliteness.Assertive);
     }
 
     private async Task<MyTwoFactor?> ReadStatusAsync()
@@ -253,6 +298,14 @@
         {
             return null;
         }
+    }
+
+    private void ShowCodes(IReadOnlyList<string> codes, bool signInAgain)
+    {
+        Forget();
+        recoveryCodes = codes;
+        signInAfterCodes = signInAgain;
+        OpenStep(Step.Codes);
     }
 
     private void OpenStep(Step next)
@@ -271,7 +324,7 @@
         focusNext = true;
     }
 
-    private void Forget() => (setup, recoveryCodes, code, codeError) = (null, null, null, null);
+    private void Forget() => (setup, recoveryCodes, signInAfterCodes, code, codeError) = (null, null, false, null, null);
 
     private async Task ShowAsync(string text)
     {

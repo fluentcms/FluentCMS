@@ -39,7 +39,7 @@
                         }
                     </span>
                     <CmsButton Disabled="@busy" OnClick="@(() => EndAsync(session))">
-                        @L["Account.Sessions.End"]<span class="cms-visually-hidden">@L["Account.Sessions.EndWhich", Name(session)]</span>
+                        @L["Account.Sessions.End"]<span class="cms-visually-hidden">@Which(session)</span>
                     </CmsButton>
                 </li>
             }
@@ -90,32 +90,42 @@
         busy = true;
         try
         {
-            await Client.EndMySessionAsync(session.Id, CancellationToken.None);
-            message = L["Account.Sessions.Ended", Name(session)];
-        }
-        catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.SessionNotFound))
-        {
-            message = L["Account.Sessions.AlreadyEnded"];
-        }
-        catch (Exception exception) when (AccountProblems.IsSignedOut(exception))
-        {
-            message = null;
-            state = AccountSectionState.SignedOut;
-        }
-        catch (Exception exception) when (AccountProblems.IsFailure(exception))
-        {
-            message = L["Account.Sessions.EndFailed"];
-        }
+            try
+            {
+                await Client.EndMySessionAsync(session.Id, CancellationToken.None);
+                message = L["Account.Sessions.Ended", Name(session)];
+            }
+            catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.SessionNotFound))
+            {
+                message = L["Account.Sessions.AlreadyEnded"];
+            }
+            catch (Exception exception) when (AccountProblems.IsSignedOut(exception))
+            {
+                message = null;
+                state = AccountSectionState.SignedOut;
+            }
+            catch (Exception exception) when (AccountProblems.IsFailure(exception))
+            {
+                message = L["Account.Sessions.EndFailed"];
+            }
 
-        // The row ended is gone, and the button with it, so focus goes to the result.
-        if (state != AccountSectionState.SignedOut)
-        {
-            await LoadAsync();
+            // The row ended is gone, and the button with it, so focus goes to the result.
+            if (state != AccountSectionState.SignedOut)
+            {
+                await LoadAsync();
+            }
         }
-
-        busy = false;
-        focusMessage = true;
+        finally
+        {
+            busy = false;
+            focusMessage = true;
+        }
     }
 
     private string Name(MySession session) => session.ClientName ?? session.ClientId ?? L["Account.Sessions.UnknownApp"];
+
+    // Two sign-ins of one app are told apart by their time.
+    private string Which(MySession session) => session.CreatedAt is { } created
+        ? L["Account.Sessions.EndWhichStarted", Name(session), Formats.DateTime(created)]
+        : L["Account.Sessions.EndWhich", Name(session)];
 }

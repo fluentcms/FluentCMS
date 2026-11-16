@@ -277,7 +277,11 @@ FluentCMS.Admin.Components.CmsTextArea.Placeholder.set -> void
 FluentCMS.Admin.Components.CmsTextArea.Rows.get -> int
 FluentCMS.Admin.Components.CmsTextArea.Rows.set -> void
 FluentCMS.Admin.Components.CmsTextInput
+FluentCMS.Admin.Components.CmsTextInput.Autocomplete.get -> string?
+FluentCMS.Admin.Components.CmsTextInput.Autocomplete.set -> void
 FluentCMS.Admin.Components.CmsTextInput.CmsTextInput() -> void
+FluentCMS.Admin.Components.CmsTextInput.Numeric.get -> bool
+FluentCMS.Admin.Components.CmsTextInput.Numeric.set -> void
 FluentCMS.Admin.Components.CmsTextInput.Placeholder.get -> string?
 FluentCMS.Admin.Components.CmsTextInput.Placeholder.set -> void
 FluentCMS.Admin.Components.CmsTextInput.Type.get -> FluentCMS.Admin.Components.CmsTextInputType

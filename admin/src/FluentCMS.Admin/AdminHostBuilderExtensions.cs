@@ -65,6 +65,7 @@ public static class AdminHostBuilderExtensions
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddSingleton(configuration);
+        services.TryAddSingleton(InterfaceCultureOptions.From(configuration.Cultures));
         services.AddCmsComponents();
         services.Replace(ServiceDescriptor.Singleton<ICmsTextSource, CmsTextLocalizer>());
         // Before AddManagementApi, whose signed-out defaults they replace.

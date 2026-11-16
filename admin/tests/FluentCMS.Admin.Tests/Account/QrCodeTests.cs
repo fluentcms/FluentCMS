@@ -105,6 +105,111 @@ public sealed class QrCodeTests
     }
 
     [Fact]
+    public void FourHundredTwelveBytesFitAndOneMoreDoesNot()
+    {
+        QrCode.Fits(new string('a', QrCode.MaxBytes)).ShouldBeTrue();
+        QrCode.TryEncode(new string('a', QrCode.MaxBytes))!.Version.ShouldBe(15);
+        QrCode.Fits(new string('a', QrCode.MaxBytes + 1)).ShouldBeFalse();
+        QrCode.TryEncode(new string('a', QrCode.MaxBytes + 1)).ShouldBeNull();
+
+        // A letter of two bytes in UTF-8 counts twice.
+        QrCode.Fits(new string('پ', (QrCode.MaxBytes / 2) + 1)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void TheDataCodewordsAreTheSegmentTheTerminatorAndThePadBytes()
+    {
+        Reader.Read(QrCode.Encode("a")).ShouldBe("a");
+
+        // 0100 (byte mode), 00000001 (one byte), 01100001 ('a'), 0000 (terminator), then 0xEC and 0x11 in turn.
+        Reader.Data.ShouldBe([0x40, 0x16, 0x10, 0xEC, 0x11, 0xEC, 0x11, 0xEC, 0x11, 0xEC, 0x11, 0xEC, 0x11, 0xEC, 0x11, 0xEC]);
+    }
+
+    [Theory]
+    [InlineData(1, 0)]
+    [InlineData(2, 7)]
+    [InlineData(6, 7)]
+    [InlineData(7, 0)]
+    [InlineData(13, 0)]
+    [InlineData(14, 3)]
+    [InlineData(15, 3)]
+    public void TheRemainderBitsAreTheStandardsAndLight(int version, int remainder)
+    {
+        var code = QrCode.Encode(new byte[ByteCapacity[version - 1]]);
+
+        Reader.Read(code);
+
+        Reader.Remainder.Length.ShouldBe(remainder);
+        Reader.Remainder.ShouldAllBe(bit => !bit);
+    }
+
+    [Theory]
+    [MemberData(nameof(Versions))]
+    public void BothCopiesOfTheFormatInformationAreTheStandardsForTheMaskChosen(int version)
+    {
+        string[] table =
+        [
+            "101010000010010", "101000100100101", "101111001111100", "101101101001011",
+            "100010111111001", "100000011001110", "100111110010111", "100101010100000",
+        ];
+        var code = QrCode.Encode(new byte[ByteCapacity[version - 1] / 2]);
+
+        var expected = Convert.ToInt32(table[code.Mask], 2);
+        Reader.FirstFormatCopy(code).ShouldBe(expected);
+        Reader.SecondFormatCopy(code).ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData(7, 0x07C94)]
+    [InlineData(10, 0x0A4D3)]
+    [InlineData(15, 0x0F928)]
+    public void BothVersionBlocksHoldTheStandardsVersionInformation(int version, int bits)
+    {
+        var code = QrCode.Encode(new byte[ByteCapacity[version - 1]]);
+
+        Reader.VersionBlocks(code).ShouldBe((bits, bits));
+    }
+
+    [Fact]
+    public void ALightSymbolScoresEveryRuleButTheFinderLikeOne()
+    {
+        // 42 lines with a run of 21 (3 + 16 each), 400 blocks of 2 by 2 (3 each), no dark module (9 steps of 10).
+        QrCode.Penalty(new bool[21, 21]).ShouldBe((42 * 19) + (400 * 3) + 90);
+    }
+
+    [Fact]
+    public void ACheckerboardScoresNothing()
+    {
+        var modules = new bool[21, 21];
+        for (var y = 0; y < 21; y++)
+        {
+            for (var x = 0; x < 21; x++)
+            {
+                modules[y, x] = (x + y) % 2 == 0;
+            }
+        }
+
+        QrCode.Penalty(modules).ShouldBe(0);
+    }
+
+    [Fact]
+    public void AFinderLikePatternWithLightOnBothSidesCountsTwice()
+    {
+        // One dark 1:1:3:1:1 run in the middle row of a light symbol, the border counting as light: 40 for each side.
+        var modules = new bool[21, 21];
+        foreach (var x in new[] { 7, 9, 10, 11, 13 })
+        {
+            modules[10, x] = true;
+        }
+
+        // Rows: 20 light (19 each) and the middle one, whose light runs of 7 score 5 each. Columns: 16 light (19 each) and
+        // 5 split into runs of 10 (8 each). Blocks: 400 less the 16 a dark module touches. Dark share: 9 steps.
+        var expected = (20 * 19) + 10 + 80 + (16 * 19) + (5 * 16) + ((400 - 16) * 3) + 90;
+
+        QrCode.Penalty(modules).ShouldBe(expected);
+    }
+
+    [Fact]
     public void TheMaskIsTheOneTheFormatInformationNames()
     {
         var code = QrCode.Encode("otpauth://totp/x");
@@ -128,6 +233,66 @@ public sealed class QrCodeTests
             [], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34], [6, 22, 38], [6, 24, 42], [6, 26, 46], [6, 28, 50], [6, 30, 54],
             [6, 32, 58], [6, 34, 62], [6, 26, 46, 66], [6, 26, 48, 70],
         ];
+
+        // The data codewords and the remainder bits, unmasked, of the last symbol read.
+        public static byte[] Data { get; private set; } = [];
+
+        public static bool[] Remainder { get; private set; } = [];
+
+        // The second copy, below the upper right finder and beside the lower left one, bit 14 first.
+        public static int SecondFormatCopy(QrCode code)
+        {
+            var size = code.Size;
+            List<(int X, int Y)> positions = [.. Enumerable.Range(0, 7).Select(i => (8, size - 1 - i)), .. Enumerable.Range(0, 8).Select(i => (size - 8 + i, 8))];
+            return positions.Aggregate(0, (value, position) => (value << 1) | (code[position.X, position.Y] ? 1 : 0));
+        }
+
+        public static int FirstFormatCopy(QrCode code)
+        {
+            List<(int X, int Y)> positions = [(0, 8), (1, 8), (2, 8), (3, 8), (4, 8), (5, 8), (7, 8), (8, 8), (8, 7), (8, 5), (8, 4), (8, 3), (8, 2), (8, 1), (8, 0)];
+            return positions.Aggregate(0, (value, position) => (value << 1) | (code[position.X, position.Y] ? 1 : 0));
+        }
+
+        // The version block above the lower left finder, as annex D lays it out: bit i at column i / 3, row size - 11 + i % 3.
+        // The other block is its transpose.
+        public static (int Below, int Beside) VersionBlocks(QrCode code)
+        {
+            var size = code.Size;
+            int below = 0, beside = 0;
+            for (var i = 17; i >= 0; i--)
+            {
+                below = (below << 1) | (code[i / 3, size - 11 + (i % 3)] ? 1 : 0);
+                beside = (beside << 1) | (code[size - 11 + (i % 3), i / 3] ? 1 : 0);
+            }
+
+            return (below, beside);
+        }
+
+        // The syndromes of a codeword of a Reed-Solomon code with the roots 2^0 to 2^(n-1) over GF(256) mod 0x11D: all zero
+        // for a codeword without error, whatever the encoder.
+        private static int[] Syndromes(byte[] codeword, int count)
+        {
+            var exp = new int[512];
+            var x = 1;
+            for (var i = 0; i < 255; i++)
+            {
+                exp[i] = exp[i + 255] = x;
+                x <<= 1;
+                if (x >= 256)
+                {
+                    x ^= 0x11D;
+                }
+            }
+
+            var log = new int[256];
+            for (var i = 0; i < 255; i++)
+            {
+                log[exp[i]] = i;
+            }
+
+            return [.. Enumerable.Range(0, count).Select(root => codeword.Aggregate(0, (sum, value) =>
+                (sum == 0 ? 0 : exp[log[sum] + root]) ^ value))];
+        }
 
         public static int Mask(QrCode code)
         {
@@ -169,7 +334,7 @@ public sealed class QrCodeTests
             }
 
             (bits.Count / 8).ShouldBe(TotalCodewords[version - 1]);
-            var codewords = Enumerable.Range(0, bits.Count / 8)
+            var codewords = Enumerable.Range(0, TotalCodewords[version - 1])
                 .Select(i => (byte)Enumerable.Range(0, 8).Aggregate(0, (value, bit) => (value << 1) | (bits[(i * 8) + bit] ? 1 : 0)))
                 .ToArray();
 
@@ -200,10 +365,12 @@ public sealed class QrCodeTests
             next.ShouldBe(codewords.Length);
             for (var b = 0; b < blocks.Count; b++)
             {
-                QrCode.ErrorCorrection([.. blocks[b]], ecc).ShouldBe([.. corrections[b]]);
+                Syndromes([.. blocks[b], .. corrections[b]], ecc).ShouldAllBe(syndrome => syndrome == 0, $"block {b}");
             }
 
-            var data = blocks.SelectMany(block => block).ToArray();
+            Remainder = [.. bits.Skip(codewords.Length * 8)];
+            Data = blocks.SelectMany(block => block).ToArray();
+            var data = Data;
             var reader = new BitReader(data);
             reader.Take(4).ShouldBe(0b0100, "byte mode");
             var count = reader.Take(version < 10 ? 8 : 16);

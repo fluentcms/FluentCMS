@@ -1,7 +1,9 @@
 @* The user's external logins from GET /me/logins (spec 4.3), each removable unless it is the last way to sign in. Removing one
-   gives the user a new security stamp on the server, which ends its sessions. *@
+   gives the user a new security stamp on the server, which ends its sessions, this tab's among them. *@
 @using FluentCMS.Admin.Api
+@using FluentCMS.Admin.Authentication
 @inject ManagementClient Client
+@inject IAdminSession Session
 @inject IStringLocalizer<AdminResources> L
 
 <CmsCard Title="@L["Account.Logins.Heading"]">
@@ -80,11 +82,12 @@
     private async Task RemoveAsync(MyLogin login)
     {
         busy = true;
+        var removed = false;
         try
         {
             await Client.RemoveMyLoginAsync(login.Provider, CancellationToken.None);
             message = L["Account.Logins.Removed", Name(login)];
-            await LoadAsync();
+            removed = true;
         }
         catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.LastWayIn))
         {
@@ -99,9 +102,17 @@
         {
             message = L["Account.Logins.RemoveFailed"];
         }
+        finally
+        {
+            busy = false;
+            focusMessage = true;
+        }
 
-        busy = false;
-        focusMessage = true;
+        // The new security stamp ends this tab's refresh token too, so it signs in again now rather than at its next refresh.
+        if (removed)
+        {
+            await Session.SignInAsync(AccountPage.Route, CancellationToken.None);
+        }
     }
 
     private static string Name(MyLogin login) => string.IsNullOrWhiteSpace(login.DisplayName) ? login.Provider : login.DisplayName;

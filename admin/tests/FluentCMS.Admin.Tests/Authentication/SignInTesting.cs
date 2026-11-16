@@ -304,7 +304,14 @@ internal sealed class SignedInTestSession : IAdminSession
 
     public Task<bool> EnsureSignedInAsync(CancellationToken cancellationToken) => Task.FromResult(true);
 
-    public Task SignInAsync(string? returnRoute, CancellationToken cancellationToken) => Task.CompletedTask;
+    // The routes the tab was asked to sign in again to come back to.
+    public List<string?> SignIns { get; } = [];
+
+    public Task SignInAsync(string? returnRoute, CancellationToken cancellationToken)
+    {
+        SignIns.Add(returnRoute);
+        return Task.CompletedTask;
+    }
 
     public Task<SignInCompletion> CompleteSignInAsync(string? code, string? state, string? error, CancellationToken cancellationToken) =>
         Task.FromResult(SignInCompletion.Failed(SignInFailure.UnknownState));

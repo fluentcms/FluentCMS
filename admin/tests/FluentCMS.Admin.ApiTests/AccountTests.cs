@@ -39,7 +39,16 @@ public sealed class AccountTests
         var again = await Should.ThrowAsync<ApiProblemException>(() => account.EnrolAuthenticatorAsync(Token));
         AccountProblems.Has(again, AccountProblems.TwoFactorEnabled).ShouldBeTrue();
 
-        await account.DisableTwoFactorAsync(codes[0], Token);
+        var wrongForNewCodes = await Should.ThrowAsync<ApiProblemException>(() => account.NewRecoveryCodesAsync(WrongCode(setup.SharedKey), Token));
+        AccountProblems.Has(wrongForNewCodes, AccountProblems.InvalidTwoFactorCode).ShouldBeTrue();
+        var fresh = await account.NewRecoveryCodesAsync(Totp(setup.SharedKey, DateTimeOffset.UtcNow), Token);
+        fresh.Count.ShouldBe(10);
+        fresh.ShouldNotContain(codes[0]);
+
+        // An old recovery code no longer turns it off; a new one does.
+        var old = await Should.ThrowAsync<ApiProblemException>(() => account.DisableTwoFactorAsync(codes[0], Token));
+        AccountProblems.Has(old, AccountProblems.InvalidTwoFactorCode).ShouldBeTrue();
+        await account.DisableTwoFactorAsync(fresh[0], Token);
         (await account.GetTwoFactorAsync(Token)).Enabled.ShouldBeFalse();
     }
 

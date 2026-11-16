@@ -49,8 +49,7 @@
 }
 
 ::deep .qr-code {
-    inline-size: 12rem;
-    block-size: 12rem;
+    flex: none;
 }
 
 ::deep .account-key,

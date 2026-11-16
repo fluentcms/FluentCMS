@@ -1,20 +1,23 @@
 @* A QR code drawn as an SVG, with no script: dark modules on a light ground in either theme, so that a camera reads it, and
-   the quiet zone of four modules around it. *@
+   the quiet zone of four modules around it. A module is a whole number of CSS pixels, so that none is blurred or uneven. *@
 @using System.Globalization
 @using System.Text
 
-<svg class="qr-code" viewBox="@($"0 0 {extent} {extent}")" role="img" aria-label="@Label" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+<svg class="qr-code" width="@(extent * ModulePixels)" height="@(extent * ModulePixels)" viewBox="@($"0 0 {extent} {extent}")"
+     role="img" aria-label="@Label" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
     <rect width="@extent" height="@extent" fill="#ffffff" />
     <path d="@path" fill="#000000" />
 </svg>
 
 @code {
+    internal const int ModulePixels = 4;
     private const int QuietZone = 4;
 
-    private string? encoded;
+    private string? drawn;
     private int extent;
     private string path = string.Empty;
 
+    // At most QrCode.MaxBytes in UTF-8; the caller shows a longer text otherwise, and this draws an empty code.
     [Parameter, EditorRequired]
     public string Text { get; set; } = string.Empty;
 
@@ -23,15 +26,15 @@
 
     protected override void OnParametersSet()
     {
-        if (Text == encoded)
+        if (Text == drawn)
         {
             return;
         }
 
-        var code = QrCode.Encode(Text);
-        extent = code.Size + (2 * QuietZone);
-        path = Path(code);
-        encoded = Text;
+        var code = QrCode.TryEncode(Text);
+        extent = (code?.Size ?? 0) + (2 * QuietZone);
+        path = code is null ? string.Empty : Path(code);
+        drawn = Text;
     }
 
     // One rectangle per run of dark modules in a row.

@@ -222,6 +222,9 @@
   <data name="System.Components.Email" xml:space="preserve">
     <value>Email</value>
   </data>
+  <data name="System.Components.OneTimeCode" xml:space="preserve">
+    <value>Code from an authenticator app</value>
+  </data>
   <data name="System.Components.Summary" xml:space="preserve">
     <value>Summary</value>
   </data>
@@ -747,7 +750,7 @@
     <value>External logins</value>
   </data>
   <data name="Account.Logins.Explained" xml:space="preserve">
-    <value>You can sign in with these providers. Removing one ends your sessions, so you sign in again.</value>
+    <value>You can sign in with these providers. Removing one ends your sessions, and the admin signs in again at once.</value>
   </data>
   <data name="Account.Logins.None" xml:space="preserve">
     <value>No external login is linked to your account.</value>
@@ -770,6 +773,25 @@
   </data>
   <data name="Account.Logins.RemoveFailed" xml:space="preserve">
     <value>The login could not be removed. Try again.</value>
+  </data>
+  <data name="Account.Sessions.EndWhichStarted" xml:space="preserve">
+    <value>, the sign-in of {0} at {1}</value>
+    <comment>Read after End by assistive technology only; {0} is the app, {1} the date and time of the sign-in.</comment>
+  </data>
+  <data name="Account.TwoFactor.KeyOnlyText" xml:space="preserve">
+    <value>This key is too long for a QR code. Enter it in the app by hand, then enter the code the app shows.</value>
+  </data>
+  <data name="Account.TwoFactor.CodesSignInAgain" xml:space="preserve">
+    <value>Turning two-factor sign-in on ends your sessions, so once you have saved the codes the admin signs in again.</value>
+  </data>
+  <data name="Account.TwoFactor.DisableSignInAgain" xml:space="preserve">
+    <value>Turning it off ends your sessions, so the admin signs in again afterwards.</value>
+  </data>
+  <data name="Account.Password.TextElsewhere" xml:space="preserve">
+    <value>The password is changed on the sign-in server's page, which opens in this tab. It does not bring you back here: open the admin again afterwards.</value>
+  </data>
+  <data name="Account.Preferences.ThemeHeading" xml:space="preserve">
+    <value>Theme</value>
   </data>
   <data name="Account.Password.Heading" xml:space="preserve">
     <value>Password</value>

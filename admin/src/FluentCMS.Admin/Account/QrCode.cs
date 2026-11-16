@@ -2,12 +2,18 @@ using System.Text;
 
 namespace FluentCMS.Admin.Account;
 
+// Derived in part from the QR Code generator library of Project Nayuki (Java), MIT License,
+// https://www.nayuki.io/page/qr-code-generator-library; its notice is in THIRD-PARTY-NOTICES.md at the repository root.
+// Ported from it: the drawing of the function patterns, format and version information, the placement of the codewords,
+// the Reed-Solomon divisor, remainder and multiplication, the masks and the penalty rules. The tables, the byte-mode
+// segment, the interleaving and the version range are written here.
+//
 // A QR code (ISO/IEC 18004) of bytes in byte mode at error correction level M, versions 1 to 15: up to 412 bytes, enough for
-// the otpauth URI of an authenticator. It is the admin's own so that the page needs no package and no JavaScript; the page
-// draws it as an SVG.
+// the otpauth URI of an authenticator, so that the page needs no package and no JavaScript; the page draws it as an SVG.
 internal sealed class QrCode
 {
     public const int MaxVersion = 15;
+    public const int MaxBytes = 412;
 
     // Level M, per version: the error correction codewords of each block, and the blocks of the two groups with the data
     // codewords of each of their blocks (the standard's table 9).
@@ -47,6 +53,16 @@ internal sealed class QrCode
     public bool this[int x, int y] => _dark[y, x];
 
     public static QrCode Encode(string text) => Encode(Encoding.UTF8.GetBytes(text));
+
+    public static bool Fits(string text) => Encoding.UTF8.GetByteCount(text) <= MaxBytes;
+
+    // Null for a text longer than MaxBytes in UTF-8.
+    public static QrCode? TryEncode(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        var data = Encoding.UTF8.GetBytes(text);
+        return data.Length <= MaxBytes ? Encode(data) : null;
+    }
 
     public static QrCode Encode(byte[] data)
     {
@@ -396,20 +412,26 @@ internal sealed class QrCode
         }
     }
 
-    private int Penalty()
+    private int Penalty() => Penalty(_dark);
+
+    // The four rules of 7.8.3 as the library above scores them: runs of five or more of a colour (N1 3, then 1 a module),
+    // 2 by 2 blocks of a colour (N2 3), finder-like 1:1:3:1:1 runs with four light modules on a side, the border counting as
+    // light (N3 40), and 10 for each 5 % step of the dark share away from 45 to 55 % (N4).
+    internal static int Penalty(bool[,] modules)
     {
+        var size = modules.GetLength(0);
         var penalty = 0;
-        for (var line = 0; line < Size; line++)
+        for (var line = 0; line < size; line++)
         {
-            penalty += LinePenalty(i => _dark[line, i]) + LinePenalty(i => _dark[i, line]);
+            penalty += LinePenalty(size, i => modules[line, i]) + LinePenalty(size, i => modules[i, line]);
         }
 
-        for (var y = 0; y < Size - 1; y++)
+        for (var y = 0; y < size - 1; y++)
         {
-            for (var x = 0; x < Size - 1; x++)
+            for (var x = 0; x < size - 1; x++)
             {
-                var colour = _dark[y, x];
-                if (colour == _dark[y, x + 1] && colour == _dark[y + 1, x] && colour == _dark[y + 1, x + 1])
+                var colour = modules[y, x];
+                if (colour == modules[y, x + 1] && colour == modules[y + 1, x] && colour == modules[y + 1, x + 1])
                 {
                     penalty += 3;
                 }
@@ -417,66 +439,70 @@ internal sealed class QrCode
         }
 
         var dark = 0;
-        foreach (var module in _dark)
+        foreach (var module in modules)
         {
             dark += module ? 1 : 0;
         }
 
-        var total = Size * Size;
-        return penalty + (Math.Abs((dark * 100 / total) - 50) / 5 * 10);
+        var total = size * size;
+        var k = ((Math.Abs((dark * 20) - (total * 10)) + total - 1) / total) - 1;
+        return penalty + (k * 10);
     }
 
-    // Runs of five or more of a colour, and the 1:1:3:1:1 pattern of a finder with four light modules on a side.
-    private int LinePenalty(Func<int, bool> module)
+    // N1 and N3 along one row or column, from the lengths of its last seven runs, newest first, light first.
+    private static int LinePenalty(int size, Func<int, bool> module)
     {
         var penalty = 0;
-        var run = 1;
-        for (var i = 1; i <= Size; i++)
+        var colour = false;
+        var run = 0;
+        var history = new int[7];
+        for (var i = 0; i < size; i++)
         {
-            if (i < Size && module(i) == module(i - 1))
+            if (module(i) == colour)
             {
                 run++;
-                continue;
+                penalty += run == 5 ? 3 : run > 5 ? 1 : 0;
             }
-
-            if (run >= 5)
+            else
             {
-                penalty += run - 2;
-            }
+                AddRun(size, run, history);
+                if (!colour)
+                {
+                    penalty += FinderLike(history) * 40;
+                }
 
-            run = 1;
+                colour = module(i);
+                run = 1;
+            }
         }
 
-        bool[] finder = [true, false, true, true, true, false, true];
-        for (var i = 0; i + 7 <= Size; i++)
+        if (colour)
         {
-            var matches = true;
-            for (var k = 0; k < 7 && matches; k++)
-            {
-                matches = module(i + k) == finder[k];
-            }
-
-            if (matches && (LightRun(module, i - 4, i) || LightRun(module, i + 7, i + 11)))
-            {
-                penalty += 40;
-            }
+            AddRun(size, run, history);
+            run = 0;
         }
 
-        return penalty;
+        AddRun(size, run + size, history);
+        return penalty + (FinderLike(history) * 40);
     }
 
-    // The light margin around the symbol counts as light.
-    private bool LightRun(Func<int, bool> module, int from, int to)
+    // The first run of a line also holds the light border before it.
+    private static void AddRun(int size, int run, int[] history)
     {
-        for (var i = from; i < to; i++)
+        if (history[0] == 0)
         {
-            if (i >= 0 && i < Size && module(i))
-            {
-                return false;
-            }
+            run += size;
         }
 
-        return true;
+        Array.Copy(history, 0, history, 1, history.Length - 1);
+        history[0] = run;
+    }
+
+    private static int FinderLike(int[] history)
+    {
+        var n = history[1];
+        var core = n > 0 && history[2] == n && history[3] == n * 3 && history[4] == n && history[5] == n;
+        return (core && history[0] >= n * 4 && history[6] >= n ? 1 : 0) + (core && history[6] >= n * 4 && history[0] >= n ? 1 : 0);
     }
 
     private void SetFunction(int x, int y, bool dark)
