@@ -85,7 +85,7 @@ jobs:
 
       # The admin's component tests need no browser; its API tests run in the admin shard of full CI.
       - name: Test admin components
-        run: dotnet test --project admin/tests/FluentCMS.Admin.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results
+        run: dotnet test --project admin/tests/FluentCMS.Admin.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 5m
 
       # The tool, and the host's commands with export and import on SQLite, so that a crash of either shows before full CI.
       - name: Test the tool
