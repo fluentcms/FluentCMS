@@ -382,6 +382,26 @@ public sealed class SchemaSyncTests : IDisposable
         _database.Columns("cms_article").ShouldContain("subtitle");
     }
 
+    // A lock that is never released, as when its release failed and a wall clock that stands still never ends its lease. The
+    // lock's monotonic clock runs a thousand times fast, so the wait reaches its timeout within a second or two.
+    [SqliteTheory("schema sync, which only SQLite supports")]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ASyncGivesUpOnALockThatIsNeverReleased(bool frozenWallClock)
+    {
+        var clock = new FastMonotonicClock(frozenWallClock ? DateTimeOffset.UtcNow : null);
+        using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development, services: services => FastMonotonicClock.Lock(services, clock));
+        await host.StartAsync(Token);
+
+        await using var other = await host.Services.GetRequiredService<IDistributedLock>().TryAcquireAsync(MigrationRunner.SchemaSyncLock, TimeSpan.Zero, Token);
+        other.ShouldNotBeNull();
+
+        var exception = await Should.ThrowAsync<TimeoutException>(Runner(host).SyncContentSchemaAsync(ArticleSchemas.WithSubtitle, Token).WaitAsync(TimeSpan.FromSeconds(30), Token));
+
+        exception.Message.ShouldStartWith($"The lock {MigrationRunner.SchemaSyncLock} was not free within 15 minutes, so the content tables were not changed; check the owner and lease_until of its row in cms_lock");
+        _database.Columns("cms_article").ShouldNotContain("subtitle");
+    }
+
     [SqliteFact("schema sync, which only SQLite supports")]
     public async Task SchemaSyncOffInDevelopmentUsesTheContentStream()
     {
