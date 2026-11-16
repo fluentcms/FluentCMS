@@ -1,12 +1,16 @@
+/* The library's styles come in through this file, so that a host page names only the wrapped set. */
+@import url("../Microsoft.FluentUI.AspNetCore.Components/Microsoft.FluentUI.AspNetCore.Components.bundle.scp.css");
+
 /*
  * Theme tokens and layout of the FluentCMS admin's wrapped component set.
  * Logical properties only, so that a right-to-left culture mirrors the layout without a second stylesheet.
  * The light theme is the default; the dark theme applies under prefers-color-scheme: dark until the user chooses,
- * and data-cms-theme on .cms-root holds that choice.
+ * and data-cms-theme on .cms-root holds that choice. The accent comes from --fluentcms-brand-accent, which the branding
+ * of config.json sets on the document element.
  */
 
 .cms-root {
-    --cms-color-accent: #154ef2;
+    --cms-color-accent: var(--fluentcms-brand-accent, #154ef2);
     --cms-color-on-accent: #ffffff;
     --cms-color-accent-text: var(--cms-color-accent);
     --cms-color-bg: #ffffff;
@@ -89,8 +93,9 @@
     --colorStrokeFocus2: var(--cms-focus-ring-color);
     --fontFamilyBase: var(--cms-font-family);
 
+    position: relative;
     block-size: 100dvh;
-    overflow-y: auto;
+    overflow: auto;
     background-color: var(--cms-color-bg);
     color: var(--cms-color-text);
     font-family: var(--cms-font-family);

@@ -1,3 +1,5 @@
+using System.Net;
+using FluentCMS.Admin.Components.Resources;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace FluentCMS.Admin.Components;
@@ -10,7 +12,10 @@ internal sealed class CmsToastService(INotificationService notifications) : ICms
 
         await notifications.ShowToastAsync(options =>
         {
-            options.Title = message;
+            // The library renders the title as sanitized HTML, which throws on a stray '<'; the message is text.
+            options.Title = WebUtility.HtmlEncode(message);
+            options.AllowDismiss = true;
+            options.DismissAction.Label = CmsStrings.Close;
             options.Intent = intent switch
             {
                 CmsToastIntent.Success => ToastIntent.Success,

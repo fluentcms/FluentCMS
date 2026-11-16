@@ -40,7 +40,10 @@
 
     private Task OnChangeAsync(InputFileChangeEventArgs args)
     {
-        IReadOnlyList<IBrowserFile> files = Multiple ? args.GetMultipleFiles(int.MaxValue) : [args.File];
+        // A cancelled file chooser raises a change with no file, which args.File refuses.
+        IReadOnlyList<IBrowserFile> files = args.FileCount == 0 ? [] : Multiple ? args.GetMultipleFiles(int.MaxValue) : [args.File];
         return OnFilesSelected.InvokeAsync(files);
     }
+
+    protected override void OnParametersSet() => CmsGuard.Named(Label, nameof(CmsFileDropZone), nameof(Label));
 }

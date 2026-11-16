@@ -2,7 +2,7 @@
 @inject IThemeService ThemeService
 
 @* The root of the admin's markup: it carries the theme tokens and the providers that dialogs, menus and toasts render into. *@
-<div class="cms-root" data-cms-theme="@ThemeAttribute" style="@AccentStyle">
+<div class="cms-root" data-cms-theme="@ThemeAttribute">
     @ChildContent
     <FluentProviders />
 </div>
@@ -14,10 +14,6 @@
     [Parameter]
     public CmsThemeMode Mode { get; set; }
 
-    // The accent color as #rgb or #rrggbb, such as the branding of config.json; anything else keeps the default.
-    [Parameter]
-    public string? AccentColor { get; set; }
-
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
@@ -27,8 +23,6 @@
         CmsThemeMode.Dark => "dark",
         _ => null,
     };
-
-    private string? AccentStyle => IsHexColor(AccentColor) ? $"--cms-color-accent: {AccentColor};" : null;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -45,7 +39,4 @@
             _ => ThemeMode.System,
         });
     }
-
-    private static bool IsHexColor(string? value) =>
-        value is { Length: 4 or 7 } && value[0] == '#' && value.AsSpan(1).ContainsAnyExcept("0123456789abcdefABCDEF") == false;
 }

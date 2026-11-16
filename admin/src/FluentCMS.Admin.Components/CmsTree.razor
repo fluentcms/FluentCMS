@@ -40,4 +40,6 @@
         SelectedId = id;
         return SelectedIdChanged.InvokeAsync(id);
     }
+
+    protected override void OnParametersSet() => CmsGuard.Named(Label, nameof(CmsTree), nameof(Label));
 }

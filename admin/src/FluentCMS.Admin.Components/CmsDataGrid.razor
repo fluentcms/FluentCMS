@@ -1,6 +1,7 @@
 @namespace FluentCMS.Admin.Components
 @typeparam TItem
 @attribute [CascadingTypeParameter(nameof(TItem))]
+@implements IHandleEvent
 
 <div class="cms-data-grid">
     @* The columns register here and render nothing; the grid renders them itself, since the library collects only direct columns. *@
@@ -40,6 +41,7 @@
     private string? _status;
     private string? _sortedBy;
     private bool _sortedAscending;
+    private int _parametersSet;
 
     // Names the grid for assistive technology.
     [Parameter, EditorRequired]
@@ -77,6 +79,9 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        _parametersSet++;
+        CmsGuard.Named(Label, nameof(CmsDataGrid<TItem>), nameof(Label));
+
         if (_grid is not null && !ReferenceEquals(_renderedItems, Items))
         {
             await _grid.RefreshDataAsync();
@@ -119,10 +124,22 @@
         _ = InvokeAsync(StateHasChanged);
     }
 
+    // Events re-render this grid only when asked to: a bound parent re-renders it anyway, and a second render in the same
+    // event re-creates the library's cells, which drops keyboard focus to the document.
+    Task IHandleEvent.HandleEventAsync(EventCallbackWorkItem callback, object? arg) => callback.InvokeAsync(arg);
+
     private async Task OnSelectedItemsChangedAsync(IEnumerable<TItem> items)
     {
         SelectedItems = items.ToList();
         _status = CmsStrings.Format(CmsStrings.GridRowsSelected, SelectedItems.Count);
+        var parametersSet = _parametersSet;
         await SelectedItemsChanged.InvokeAsync(SelectedItems);
+
+        // Lets the renderer finish the event's batch, in which a bound parent passes the new selection back.
+        await Task.Yield();
+        if (_parametersSet == parametersSet)
+        {
+            StateHasChanged();
+        }
     }
 }

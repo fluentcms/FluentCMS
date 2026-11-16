@@ -4,11 +4,10 @@ The wrapped component set of the [FluentCMS](https://github.com/fluentcms/Fluent
 
 Its component parameters follow semantic versioning from 1.0.0 on. Section 2.3 of the [admin technical specification](https://github.com/fluentcms/FluentCMS/blob/main/docs/planning/admin-technical-spec.md) has the design.
 
-An app registers the services with `builder.Services.AddCmsComponents()`, wraps its markup in `CmsThemeRoot`, and links two stylesheets in `index.html`:
+An app registers the services with `builder.Services.AddCmsComponents()`, wraps its markup in `CmsThemeRoot`, and links one stylesheet in `index.html`, which brings in the styles of the library under the set:
 
 ```html
-<link rel="stylesheet" href="_content/Microsoft.FluentUI.AspNetCore.Components/Microsoft.FluentUI.AspNetCore.Components.bundle.scp.css" />
 <link rel="stylesheet" href="_content/FluentCMS.Admin.Components/cms.css" />
 ```
 
-The theme tokens are CSS custom properties prefixed `--cms-` on `.cms-root`, with a light and a dark theme that follow `prefers-color-scheme` until `CmsThemeRoot.Mode` says otherwise. The stylesheet uses logical properties only, so `dir="rtl"` on the document or a container mirrors the layout.
+The theme tokens are CSS custom properties prefixed `--cms-` on `.cms-root`, with a light and a dark theme that follow `prefers-color-scheme` until `CmsThemeRoot.Mode` says otherwise. The accent is `--fluentcms-brand-accent` when the document sets it. The stylesheet uses logical properties only, so `dir="rtl"` on the document or a container mirrors the layout.

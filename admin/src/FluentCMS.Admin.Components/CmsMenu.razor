@@ -18,4 +18,6 @@
     // The CmsMenuItem children.
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnParametersSet() => CmsGuard.Named(Label, nameof(CmsMenu), nameof(Label));
 }

@@ -60,31 +60,23 @@ FluentCMS.Admin.Components.CmsDatePicker.Max.set -> void
 FluentCMS.Admin.Components.CmsDatePicker.Min.get -> System.DateOnly?
 FluentCMS.Admin.Components.CmsDatePicker.Min.set -> void
 FluentCMS.Admin.Components.CmsDialog
-FluentCMS.Admin.Components.CmsDialog.Actions.get -> Microsoft.AspNetCore.Components.RenderFragment?
-FluentCMS.Admin.Components.CmsDialog.Actions.set -> void
-FluentCMS.Admin.Components.CmsDialog.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
-FluentCMS.Admin.Components.CmsDialog.ChildContent.set -> void
 FluentCMS.Admin.Components.CmsDialog.CmsDialog() -> void
-FluentCMS.Admin.Components.CmsDialog.Open.get -> bool
-FluentCMS.Admin.Components.CmsDialog.Open.set -> void
-FluentCMS.Admin.Components.CmsDialog.OpenChanged.get -> Microsoft.AspNetCore.Components.EventCallback<bool>
-FluentCMS.Admin.Components.CmsDialog.OpenChanged.set -> void
-FluentCMS.Admin.Components.CmsDialog.Title.get -> string!
-FluentCMS.Admin.Components.CmsDialog.Title.set -> void
+FluentCMS.Admin.Components.CmsDialogBase
+FluentCMS.Admin.Components.CmsDialogBase.Actions.get -> Microsoft.AspNetCore.Components.RenderFragment?
+FluentCMS.Admin.Components.CmsDialogBase.Actions.set -> void
+FluentCMS.Admin.Components.CmsDialogBase.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
+FluentCMS.Admin.Components.CmsDialogBase.ChildContent.set -> void
+FluentCMS.Admin.Components.CmsDialogBase.CmsDialogBase() -> void
+FluentCMS.Admin.Components.CmsDialogBase.Open.get -> bool
+FluentCMS.Admin.Components.CmsDialogBase.Open.set -> void
+FluentCMS.Admin.Components.CmsDialogBase.OpenChanged.get -> Microsoft.AspNetCore.Components.EventCallback<bool>
+FluentCMS.Admin.Components.CmsDialogBase.OpenChanged.set -> void
+FluentCMS.Admin.Components.CmsDialogBase.Title.get -> string!
+FluentCMS.Admin.Components.CmsDialogBase.Title.set -> void
 FluentCMS.Admin.Components.CmsDrawer
-FluentCMS.Admin.Components.CmsDrawer.Actions.get -> Microsoft.AspNetCore.Components.RenderFragment?
-FluentCMS.Admin.Components.CmsDrawer.Actions.set -> void
-FluentCMS.Admin.Components.CmsDrawer.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
-FluentCMS.Admin.Components.CmsDrawer.ChildContent.set -> void
 FluentCMS.Admin.Components.CmsDrawer.CmsDrawer() -> void
-FluentCMS.Admin.Components.CmsDrawer.Open.get -> bool
-FluentCMS.Admin.Components.CmsDrawer.Open.set -> void
-FluentCMS.Admin.Components.CmsDrawer.OpenChanged.get -> Microsoft.AspNetCore.Components.EventCallback<bool>
-FluentCMS.Admin.Components.CmsDrawer.OpenChanged.set -> void
 FluentCMS.Admin.Components.CmsDrawer.Side.get -> FluentCMS.Admin.Components.CmsDrawerSide
 FluentCMS.Admin.Components.CmsDrawer.Side.set -> void
-FluentCMS.Admin.Components.CmsDrawer.Title.get -> string!
-FluentCMS.Admin.Components.CmsDrawer.Title.set -> void
 FluentCMS.Admin.Components.CmsDrawerSide
 FluentCMS.Admin.Components.CmsDrawerSide.End = 0 -> FluentCMS.Admin.Components.CmsDrawerSide
 FluentCMS.Admin.Components.CmsDrawerSide.Start = 1 -> FluentCMS.Admin.Components.CmsDrawerSide
@@ -260,8 +252,6 @@ FluentCMS.Admin.Components.CmsThemeMode.Dark = 2 -> FluentCMS.Admin.Components.C
 FluentCMS.Admin.Components.CmsThemeMode.Light = 1 -> FluentCMS.Admin.Components.CmsThemeMode
 FluentCMS.Admin.Components.CmsThemeMode.System = 0 -> FluentCMS.Admin.Components.CmsThemeMode
 FluentCMS.Admin.Components.CmsThemeRoot
-FluentCMS.Admin.Components.CmsThemeRoot.AccentColor.get -> string?
-FluentCMS.Admin.Components.CmsThemeRoot.AccentColor.set -> void
 FluentCMS.Admin.Components.CmsThemeRoot.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
 FluentCMS.Admin.Components.CmsThemeRoot.ChildContent.set -> void
 FluentCMS.Admin.Components.CmsThemeRoot.CmsThemeRoot() -> void
@@ -304,12 +294,16 @@ Microsoft.Extensions.DependencyInjection.CmsComponentsServiceCollectionExtension
 override FluentCMS.Admin.Components.CmsButton.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsDataGrid<TItem>.OnParametersSetAsync() -> System.Threading.Tasks.Task!
 override FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.OnInitialized() -> void
-override FluentCMS.Admin.Components.CmsDialog.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
-override FluentCMS.Admin.Components.CmsDrawer.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
+override FluentCMS.Admin.Components.CmsDialogBase.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
+override FluentCMS.Admin.Components.CmsDialogBase.OnParametersSet() -> void
+override FluentCMS.Admin.Components.CmsFileDropZone.OnParametersSet() -> void
+override FluentCMS.Admin.Components.CmsInputBase<TValue>.OnParametersSet() -> void
+override FluentCMS.Admin.Components.CmsMenu.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsOption.Equals(object? obj) -> bool
 override FluentCMS.Admin.Components.CmsOption.GetHashCode() -> int
 override FluentCMS.Admin.Components.CmsOption.ToString() -> string!
 override FluentCMS.Admin.Components.CmsThemeRoot.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
+override FluentCMS.Admin.Components.CmsTree.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsTreeNode.Equals(object? obj) -> bool
 override FluentCMS.Admin.Components.CmsTreeNode.GetHashCode() -> int
 override FluentCMS.Admin.Components.CmsTreeNode.ToString() -> string!

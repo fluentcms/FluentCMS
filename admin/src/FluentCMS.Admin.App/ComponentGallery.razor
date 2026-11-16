@@ -1,7 +1,7 @@
 @* Every component of the wrapped set, in the theme and the direction chosen at the top (the A0 exit criterion). *@
 @inject ICmsToastService Toasts
 
-<CmsThemeRoot Mode="@_mode" AccentColor="@AccentColor">
+<CmsThemeRoot Mode="@_mode">
     <div class="gallery" dir="@(_rightToLeft ? "rtl" : "ltr")">
         <header class="gallery-header">
             <CmsLogo Source="@LogoUrl" />
@@ -160,10 +160,7 @@
     private string? _folder;
     private int _fileCount;
 
-    // The branding seam: whoever wires config.json (A-04) passes its accent color and logo here.
-    [Parameter]
-    public string? AccentColor { get; set; }
-
+    // The branding seam: the shell passes the logo of config.json here; the accent comes through --fluentcms-brand-accent.
     [Parameter]
     public string? LogoUrl { get; set; }
 

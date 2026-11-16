@@ -40,28 +40,6 @@ public sealed partial class CmsThemeTests : ComponentTestContext
         ThemeCalls().ShouldBe(2);
     }
 
-    [Theory]
-    [InlineData("#c50f1f")]
-    [InlineData("#C5F")]
-    public void AHexAccentColorSetsTheAccentToken(string color)
-    {
-        var root = Render<CmsThemeRoot>(p => p.Add(x => x.AccentColor, color));
-
-        root.Find(".cms-root").GetAttribute("style").ShouldBe($"--cms-color-accent: {color};");
-    }
-
-    [Theory]
-    [InlineData("red")]
-    [InlineData("#12345")]
-    [InlineData("#123456; background: url(x)")]
-    [InlineData("#gggggg")]
-    public void AnythingElseKeepsTheDefaultAccent(string color)
-    {
-        var root = Render<CmsThemeRoot>(p => p.Add(x => x.AccentColor, color));
-
-        root.Find(".cms-root").HasAttribute("style").ShouldBeFalse();
-    }
-
     [Fact]
     public void TheRootLeavesTheDirectionToTheDocumentOrAContainer()
     {
@@ -119,25 +97,108 @@ public sealed partial class CmsThemeTests : ComponentTestContext
         await Should.ThrowAsync<ArgumentException>(() => toasts.ShowAsync(" "));
     }
 
-    [Fact]
-    public void TheStylesheetUsesLogicalPropertiesOnly()
+    [Theory]
+    [InlineData("admin/src/FluentCMS.Admin.Components/wwwroot/cms.css")]
+    [InlineData("admin/src/FluentCMS.Admin.App/wwwroot/gallery.css")]
+    public void TheStylesheetsUseLogicalPropertiesOnly(string path)
     {
-        var css = File.ReadAllText(Path.Combine(RepositoryRoot(), "admin", "src", "FluentCMS.Admin.Components", "wwwroot", "cms.css"));
+        // Physical sides and axes have logical forms; symmetric shorthands (margin: 0, inset: 0, overflow: auto) are exempt.
+        PhysicalProperty().Matches(Css(path)).Select(m => m.Value).ShouldBeEmpty();
+    }
 
-        PhysicalProperty().Matches(css).Select(m => m.Value).ShouldBeEmpty();
+    [Theory]
+    [InlineData("margin-left: 0")]
+    [InlineData("padding-right: 1rem")]
+    [InlineData("border-left-color: red")]
+    [InlineData("left: 0")]
+    [InlineData("bottom: 0")]
+    [InlineData("width: 1px")]
+    [InlineData("min-width: 1px")]
+    [InlineData("max-height: 1px")]
+    [InlineData("overflow-y: auto")]
+    [InlineData("text-align: left")]
+    [InlineData("float: right")]
+    public void ThePhysicalPropertyCheckCatches(string declaration)
+    {
+        PhysicalProperty().IsMatch($".x {{ {declaration}; }}").ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("margin-inline-start: 0")]
+    [InlineData("inset-inline-end: 0")]
+    [InlineData("min-block-size: 1px")]
+    [InlineData("--cms-target-size: 24px")]
+    [InlineData("text-align: start")]
+    public void ThePhysicalPropertyCheckLetsLogicalPropertiesPass(string declaration)
+    {
+        PhysicalProperty().IsMatch($".x {{ {declaration}; }}").ShouldBeFalse();
     }
 
     [Fact]
-    public void TheStylesheetHasALightAndADarkThemeAndAFocusRing()
+    public void TheDarkThemeFollowsPrefersColorSchemeUntilTheUserChooses()
     {
-        var css = File.ReadAllText(Path.Combine(RepositoryRoot(), "admin", "src", "FluentCMS.Admin.Components", "wwwroot", "cms.css"));
+        var css = Css(StylesheetPath);
 
-        css.ShouldContain("@media (prefers-color-scheme: dark)");
-        css.ShouldContain(".cms-root:not([data-cms-theme=\"light\"])");
-        css.ShouldContain(".cms-root[data-cms-theme=\"dark\"]");
-        css.ShouldContain("@media (prefers-reduced-motion: reduce)");
-        css.ShouldContain("--cms-focus-ring-color");
-        css.ShouldContain("--cms-target-size: 24px");
+        Rule(css, @"@media \(prefers-color-scheme: dark\)\s*\{\s*\.cms-root:not\(\[data-cms-theme=""light""\]\)").ShouldContain("--cms-color-bg: #12161f");
+        Rule(css, @"\.cms-root\[data-cms-theme=""dark""\]").ShouldContain("--cms-color-bg: #12161f");
+    }
+
+    [Fact]
+    public void TheAccentComesFromTheBrandingOfTheDocument()
+    {
+        Rule(Css(StylesheetPath), @"\.cms-root").ShouldContain("--cms-color-accent: var(--fluentcms-brand-accent, #154ef2)");
+    }
+
+    [Fact]
+    public void NativeControlsDrawTheFocusRing()
+    {
+        var rule = Rule(Css(StylesheetPath), @"\.cms-root :where\([^)]*input[^)]*\):focus-visible");
+
+        rule.ShouldContain("outline: var(--cms-focus-ring-width) solid var(--cms-focus-ring-color)");
+    }
+
+    [Fact]
+    public void TheLibrarysFocusRingUsesTheFocusToken()
+    {
+        Rule(Css(StylesheetPath), @"\.cms-root").ShouldContain("--colorStrokeFocus2: var(--cms-focus-ring-color)");
+    }
+
+    [Fact]
+    public void TargetsAreAtLeast24Pixels()
+    {
+        var css = Css(StylesheetPath);
+
+        Rule(css, @"\.cms-root").ShouldContain("--cms-target-size: 24px");
+        Rule(css, @"\.cms-target").ShouldContain("min-block-size: var(--cms-target-size)");
+    }
+
+    [Fact]
+    public void ReducedMotionStopsAnimations()
+    {
+        var css = Css(StylesheetPath);
+        var media = Regex.Match(css, @"@media \(prefers-reduced-motion: reduce\)\s*\{(?<body>(?:[^{}]|\{[^{}]*\})*)\}");
+
+        media.Success.ShouldBeTrue();
+        media.Groups["body"].Value.ShouldContain("--durationNormal: 0ms");
+        media.Groups["body"].Value.ShouldContain("transition-duration: 0.01ms !important");
+    }
+
+    [Fact]
+    public void TheVisuallyHiddenStatusIsPositionedAgainstTheRoot()
+    {
+        Rule(Css(StylesheetPath), @"\.cms-root").ShouldContain("position: relative");
+    }
+
+    private const string StylesheetPath = "admin/src/FluentCMS.Admin.Components/wwwroot/cms.css";
+
+    private static string Css(string path) => File.ReadAllText(Path.Combine(RepositoryRoot(), path));
+
+    // The declarations of every rule whose selector matches, joined.
+    private static string Rule(string css, string selector)
+    {
+        var rules = Regex.Matches(css, $@"(?:^|[}};]\s*){selector}\s*\{{(?<body>[^{{}}]*)\}}", RegexOptions.Multiline);
+        rules.Count.ShouldBeGreaterThan(0, $"no rule for {selector}");
+        return string.Join('\n', rules.Select(r => r.Groups["body"].Value));
     }
 
     private int ThemeCalls() => JSInterop.Invocations.Count(i => i.Identifier.Contains("Theme", StringComparison.OrdinalIgnoreCase));
@@ -153,7 +214,8 @@ public sealed partial class CmsThemeTests : ComponentTestContext
         return directory?.FullName ?? throw new InvalidOperationException("The repository root was not found.");
     }
 
-    // margin-left, padding-right, border-left, left:, right:, float: left, text-align: right and the like.
-    [GeneratedRegex(@"(?<![\w-])((margin|padding|border)-(left|right)|(left|right)\s*:|float\s*:\s*(left|right)|text-align\s*:\s*(left|right)|(width|height)\s*:)", RegexOptions.IgnoreCase)]
+    // Physical sides (margin-left, border-right-color, top, bottom), sizes (width, min-height), overflow-x and -y, and left or
+    // right as a value of float, clear or text-align.
+    [GeneratedRegex(@"(?<![\w-])(((margin|padding|border|scroll-margin|scroll-padding)-(left|right|top|bottom)[\w-]*|left|right|top|bottom|(min-|max-)?(width|height)|overflow-[xy])\s*:|(float|clear|text-align)\s*:\s*(left|right))", RegexOptions.IgnoreCase)]
     private static partial Regex PhysicalProperty();
 }

@@ -110,6 +110,9 @@ public abstract class CmsInputBase<TValue> : ComponentBase
         }
     }
 
+    /// <inheritdoc />
+    protected override void OnParametersSet() => CmsGuard.Named(Label, GetType().Name, nameof(Label));
+
     /// <summary>Sets <see cref="Value"/> and raises <see cref="ValueChanged"/>.</summary>
     /// <param name="value">The new value.</param>
     /// <returns>A task that completes when the callback has run.</returns>
