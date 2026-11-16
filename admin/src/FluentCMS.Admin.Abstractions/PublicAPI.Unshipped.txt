@@ -1,4 +1,7 @@
 #nullable enable
+FluentCMS.Admin.AnnouncementPoliteness
+FluentCMS.Admin.AnnouncementPoliteness.Assertive = 1 -> FluentCMS.Admin.AnnouncementPoliteness
+FluentCMS.Admin.AnnouncementPoliteness.Polite = 0 -> FluentCMS.Admin.AnnouncementPoliteness
 FluentCMS.Admin.Configuration.AdminBranding
 FluentCMS.Admin.Configuration.AdminBranding.<Clone>$() -> FluentCMS.Admin.Configuration.AdminBranding!
 FluentCMS.Admin.Configuration.AdminBranding.AccentColor.get -> string?
@@ -38,6 +41,8 @@ FluentCMS.Admin.Configuration.AdminCultures.Default.init -> void
 FluentCMS.Admin.Configuration.AdminCultures.Equals(FluentCMS.Admin.Configuration.AdminCultures? other) -> bool
 FluentCMS.Admin.Configuration.AdminCultures.Offered.get -> System.Collections.Generic.IReadOnlyList<string!>?
 FluentCMS.Admin.Configuration.AdminCultures.Offered.init -> void
+FluentCMS.Admin.IAnnouncer
+FluentCMS.Admin.IAnnouncer.Announce(string! message, FluentCMS.Admin.AnnouncementPoliteness politeness = FluentCMS.Admin.AnnouncementPoliteness.Polite) -> void
 override FluentCMS.Admin.Configuration.AdminBranding.Equals(object? obj) -> bool
 override FluentCMS.Admin.Configuration.AdminBranding.GetHashCode() -> int
 override FluentCMS.Admin.Configuration.AdminBranding.ToString() -> string!

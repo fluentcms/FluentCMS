@@ -9,13 +9,13 @@ using Xunit;
 
 namespace FluentCMS.Admin.Tests;
 
-public sealed class AdminAppTests : BunitContext
+public sealed class AdminAppTests : AdminTestContext
 {
     private readonly FakeLogger<AdminApp> _logger = new();
 
     public AdminAppTests()
     {
-        JSInterop.Mode = JSRuntimeMode.Loose;
+        UseNeutralResources();
         Services.AddSingleton<ILogger<AdminApp>>(_logger);
     }
 
@@ -27,7 +27,8 @@ public sealed class AdminAppTests : BunitContext
 
         var app = Render<AdminApp>();
 
-        app.Markup.ShouldBeEmpty();
+        app.Find("main#main h1").TextContent.ShouldBe("FluentCMS admin");
+        app.FindAll("main.fluentcms-configuration-error").ShouldBeEmpty();
         Services.GetRequiredService<AdminConfiguration>().ApiBaseUrl.ShouldBe(new Uri("https://cms.example.com/"));
         handler.Requests.ShouldHaveSingleItem().RequestUri.ShouldBe(new Uri(FakeHandler.AppBase, "config.json"));
     }
@@ -43,9 +44,10 @@ public sealed class AdminAppTests : BunitContext
 
         var app = Render<AdminApp>();
 
-        app.Find("h1").TextContent.ShouldBe(ConfigurationTexts.Title);
-        head.Find("title").TextContent.ShouldBe(ConfigurationTexts.Title);
+        app.Find("h1").TextContent.ShouldBe("The admin cannot start");
+        head.Find("title").TextContent.ShouldBe("The admin cannot start");
         app.Find("li[data-member='apiBaseUrl']").TextContent.ShouldStartWith(text);
+        app.FindAll("main#main").ShouldBeEmpty();
         Services.GetService<AdminConfiguration>().ShouldBeNull();
         handler.Requests.ShouldHaveSingleItem().RequestUri.ShouldBe(new Uri(FakeHandler.AppBase, "config.json"));
     }
@@ -93,7 +95,7 @@ public sealed class AdminAppTests : BunitContext
 
         head.Find("title").TextContent.ShouldBe("Acme");
         head.Find("link[rel='icon']").GetAttribute("href").ShouldBe("favicon.png");
-        var calls = JSInterop.Invocations[BrandingHead.SetPropertyFunction];
+        var calls = Document.Invocations["setProperty"];
         calls.Select(call => call.Arguments.ToArray()).ShouldBe(
         [
             [BrandingHead.AccentProperty, "#0f6cbd"],
@@ -111,7 +113,7 @@ public sealed class AdminAppTests : BunitContext
 
         head.Find("title").TextContent.ShouldBe("FluentCMS");
         head.FindAll("link").ShouldBeEmpty();
-        JSInterop.Invocations[BrandingHead.SetPropertyFunction].ShouldBeEmpty();
+        Document.Invocations["setProperty"].ShouldBeEmpty();
     }
 
     // Composes the services as AddFluentCmsAdmin does. The client stays open and is registered for every service that takes an
@@ -121,7 +123,7 @@ public sealed class AdminAppTests : BunitContext
         var http = handler.CreateClient();
         var startup = await AdminConfigurationLoader.LoadAsync(http, Xunit.TestContext.Current.CancellationToken);
         Services.AddSingleton(http);
-        Services.AddAdminStartup(startup);
+        Start(startup);
     }
 
     private sealed class FakeLogger<T> : ILogger<T>
