@@ -36,6 +36,10 @@ internal static class MediaEndpoints
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
+    // Results.Json sets the resolver of options that are not read-only yet, which throws if another request locks them
+    // in between, so they are locked before any request has them.
+    static MediaEndpoints() => PresetJson.MakeReadOnly(populateMissingResolver: true);
+
     public static RouteGroupBuilder MapMediaEndpoints(this RouteGroupBuilder group)
     {
         group.MapGet("", async (string? folder, bool? subfolders, string? type, string? tag, string? search, int? page, int? pageSize, MediaService media, CancellationToken cancellationToken) =>

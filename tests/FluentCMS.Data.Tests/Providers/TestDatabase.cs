@@ -54,6 +54,9 @@ internal abstract class TestDatabase : IDisposable
             UseProvider(cms);
             cms.Activity.Enabled = false;
             cms.DeliveryCache.OutputCache = false;
+            // A write waits for its in-process handlers only this long, then returns while they go on. These tests read what
+            // the handlers saw once the write returns, so a loaded machine must never reach the bound; the tests of the bound set their own.
+            cms.Events.Handlers.Timeout = TimeSpan.FromMinutes(1);
             configure?.Invoke(cms);
         });
         return services.BuildServiceProvider();

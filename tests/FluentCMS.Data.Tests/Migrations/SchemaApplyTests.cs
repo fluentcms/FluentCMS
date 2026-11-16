@@ -612,6 +612,22 @@ public sealed partial class SchemaApplyTests : IDisposable
         exception.Message.ShouldStartWith($"The lock {MigrationRunner.SchemaSyncLock} was not free within 15 minutes, so the content tables were not changed; check the owner and lease_until of its row in cms_lock");
     }
 
+    // SQLite has one writer, so the lock cannot renew its lease while the transaction of the run lasts.
+    [SqliteFact("SQLite's one writer")]
+    public async Task ARunWhoseTransactionOutlastsTheLeaseOfItsLockFinishes()
+    {
+        await MigrateAndApplyAsync(ArticleSchemas.Titled);
+        var work = new LongTransaction();
+        using var host = _database.CreateHost(ArticleSchemas.Article("title", "subtitle", "summary"), Production, settings: NoMigrationOnStartup, services: LongTransaction.Lock, configure: work.Configure);
+
+        var (exitCode, output, error) = await RunAsync(host, "schema", "apply");
+
+        exitCode.ShouldBe(0, error);
+        output.ShouldContain("Applied 2 changes; the schema history records schema ");
+        _database.Columns("cms_article").ShouldContain("subtitle");
+        _database.Columns("cms_article").ShouldContain("summary");
+    }
+
     [Theory]
     [InlineData(new[] { "--output", "schema.sql" }, "FCMS3300: --output names the file of --script, so it needs --script")]
     [InlineData(new[] { "--script", "--dry-run" }, "FCMS3300: --script and --dry-run both apply nothing; give one")]

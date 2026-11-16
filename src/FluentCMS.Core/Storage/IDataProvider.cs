@@ -30,6 +30,12 @@ public interface IDataProvider
     // Whether the database ended the transaction as the victim of a deadlock, which it asks to be run again.
     bool IsDeadlock(Exception exception);
 
+    // Whether a command gave up waiting for a database that has one writer at a time, while another connection's transaction
+    // held it: a write, or a read in a journal mode where a commit keeps readers out. The command changed nothing. On SQLite
+    // that is every error whose primary code is SQLITE_BUSY or SQLITE_LOCKED, extended codes such as BUSY_SNAPSHOT and
+    // LOCKED_SHAREDCACHE included. False where writers do not wait for the whole database.
+    bool IsBusy(Exception exception);
+
     // A condition of a LINQ query: the text holds the fragment, as it is (LikePattern), without regard to case as the database
     // compares text. A match on a part of the text uses no index.
     Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment);
@@ -47,4 +53,9 @@ public interface IDataProvider
     // Holds the database while one process applies its streams, for a provider whose own migrations lock lets two processes
     // apply the same migration; disposing it lets the next go. Null where EF's lock is enough.
     Task<IAsyncDisposable?> LockMigrationsAsync(CancellationToken cancellationToken) => Task.FromResult<IAsyncDisposable?>(null);
+
+    // The time written in the row of __EFMigrationsLock while one holds EF's migrations lock, as the database keeps it, for a
+    // provider whose lock is that row, which a process that stops while it migrates leaves behind. Null when no row holds
+    // it, and always where the lock ends with the session or transaction that took it.
+    Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken);
 }
