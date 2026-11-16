@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="FluentCMS.Admin.Tests" />
+    <InternalsVisibleTo Include="FluentCMS.Admin.ApiTests" />
   </ItemGroup>
 
 </Project>

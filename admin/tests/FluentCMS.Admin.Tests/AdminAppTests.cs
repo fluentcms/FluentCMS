@@ -1,4 +1,5 @@
 using Bunit;
+using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Configuration;
 using FluentCMS.Admin.Tests.Configuration;
 using Microsoft.AspNetCore.Components.Web;
@@ -117,13 +118,15 @@ public sealed class AdminAppTests : AdminTestContext
     }
 
     // Composes the services as AddFluentCmsAdmin does. The client stays open and is registered for every service that takes an
-    // HttpClient, so that a request to the API after start goes through the fake handler and shows in its requests.
+    // HttpClient, and the fake is the primary handler of the Management API's pipeline, so that a request to the API after
+    // start goes through the fake handler and shows in its requests.
     private async Task Start(FakeHandler handler)
     {
         var http = handler.CreateClient();
         var startup = await AdminConfigurationLoader.LoadAsync(http, Xunit.TestContext.Current.CancellationToken);
         Services.AddSingleton(http);
         Start(startup);
+        Services.Configure<ManagementApiOptions>(options => options.PrimaryHandler = () => handler);
     }
 
     private sealed class FakeLogger<T> : ILogger<T>

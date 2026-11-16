@@ -90,4 +90,10 @@
   <data name="Configuration.Error.RuleInvalid" xml:space="preserve">
     <value>{0} is not valid.</value>
   </data>
+  <data name="Api.RateLimit.WaitSeconds" xml:space="preserve">
+    <value>Too many requests. Wait {0} seconds and try again.</value>
+  </data>
+  <data name="Api.RateLimit.WaitShort" xml:space="preserve">
+    <value>Too many requests. Wait a moment and try again.</value>
+  </data>
 </root>

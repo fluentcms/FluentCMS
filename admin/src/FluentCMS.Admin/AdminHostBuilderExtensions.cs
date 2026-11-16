@@ -1,4 +1,5 @@
 using System.Globalization;
+using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Configuration;
 using FluentCMS.Admin.Localization;
 using Microsoft.AspNetCore.Components.Web;
@@ -60,6 +61,10 @@ public static class AdminHostBuilderExtensions
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddSingleton(configuration);
+        // Before AddManagementApi, whose signed-out default it replaces.
+        services.AddScoped<IRateLimitNotice, RateLimitNotice>();
+        services.AddManagementApi();
+        services.AddOptions<ManagementApiOptions>().Configure(options => options.ApiBaseUrl = configuration.ApiBaseUrl);
         return services;
     }
 }
