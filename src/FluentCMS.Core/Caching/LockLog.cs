@@ -13,7 +13,7 @@ internal static partial class LockLog
     public const int RenewWaitingId = 9165;
     public const int TimedOutBusyId = 9166;
 
-    [LoggerMessage(EventId = LeaseTakenOverId, EventName = "LockLeaseTakenOver", Level = LogLevel.Warning, Message = "Took the lock {Name} after the lease of {Holder} ran out; that holder stopped without releasing it.")]
+    [LoggerMessage(EventId = LeaseTakenOverId, EventName = "LockLeaseTakenOver", Level = LogLevel.Warning, Message = "Took the lock {Name} after the lease of {Holder} ran out; that holder stopped without releasing it or, on a database with one writer, could not renew it behind other writes.")]
     public static partial void LeaseTakenOver(ILogger logger, string name, string holder);
 
     [LoggerMessage(EventId = LostId, EventName = "LockLost", Level = LogLevel.Warning, Message = "Lost the lock {Name} while holding it, because {Reason}.")]

@@ -63,11 +63,11 @@ internal sealed class SchemaApplyCommand : HostCommand
             applied = await runner.GetAppliedSnapshotAsync(guarded.Token);
             plan = await runner.PlanContentSchemaAsync(applied, guarded.Token);
         }
-        catch (Exception) when (LockLost(held, cancellationToken))
+        catch (Exception exception) when (LockLost(held, cancellationToken))
         {
             throw new CommandException(
                 CommandErrorCodes.SchemaApplyFailed,
-                $"another holder took the lock {MigrationRunner.SchemaSyncLock} while the operations were planned, so nothing was applied; run 'fluentcms schema apply' again");
+                $"{Lost(exception)} while the operations were planned, so nothing was applied; run 'fluentcms schema apply' again");
         }
 
         var steps = plan.Steps;
@@ -115,11 +115,11 @@ internal sealed class SchemaApplyCommand : HostCommand
                 await runner.ApplyContentSchemaAsync(steps, guarded.Token);
             }
             // First, since a provider can end a command that the lost lock canceled with an exception of its own.
-            catch (Exception) when (LockLost(held, cancellationToken))
+            catch (Exception exception) when (LockLost(held, cancellationToken))
             {
                 throw new CommandException(
                     CommandErrorCodes.SchemaApplyFailed,
-                    $"another holder took the lock {MigrationRunner.SchemaSyncLock} while the operations were applied; their transaction was rolled back, except what SQLite committed before a table rebuild, which the next run leaves out, and the schema history keeps its last row; run 'fluentcms schema apply' again");
+                    $"{Lost(exception)} while the operations were applied; their transaction was rolled back, except what SQLite committed before a table rebuild, which the next run leaves out, and the schema history keeps its last row; run 'fluentcms schema apply' again");
             }
             catch (DbException exception)
             {
@@ -134,11 +134,11 @@ internal sealed class SchemaApplyCommand : HostCommand
         {
             await runner.RecordSchemaAsync(guarded.Token);
         }
-        catch (Exception) when (LockLost(held, cancellationToken))
+        catch (Exception exception) when (LockLost(held, cancellationToken))
         {
             throw new CommandException(
                 CommandErrorCodes.SchemaNotRecorded,
-                $"the content tables match schema {hash}, but another holder took the lock {MigrationRunner.SchemaSyncLock} before the schema history was written; run 'fluentcms schema apply' again with the same options to record it");
+                $"the content tables match schema {hash}, but {Lost(exception)} before the schema history was written; run 'fluentcms schema apply' again with the same options to record it");
         }
         catch (Exception exception) when (exception is DbException or DbUpdateException or InvalidOperationException)
         {
@@ -156,6 +156,11 @@ internal sealed class SchemaApplyCommand : HostCommand
     // The lock's Lost canceled the work, and not the caller.
     private static bool LockLost(IDistributedLockHandle? held, CancellationToken cancellationToken) =>
         held is { Lost.IsCancellationRequested: true } && !cancellationToken.IsCancellationRequested;
+
+    // Lost is canceled for every reason the lock goes: another holder took it, its lease ran out, or the host stopped. A
+    // provider's own exception after it is named.
+    private static string Lost(Exception exception) =>
+        $"the lock {MigrationRunner.SchemaSyncLock} was lost{(exception is OperationCanceledException ? "" : $" ({exception.GetType().Name})")}";
 
     private static async Task RefuseAsync(MigrationRunner runner, CancellationToken cancellationToken)
     {

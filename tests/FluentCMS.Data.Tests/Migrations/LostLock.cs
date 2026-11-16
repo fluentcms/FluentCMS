@@ -9,8 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FluentCMS.Data.Tests.Migrations;
 
 // A lock that another holder takes from its holder during the work on the content tables: as soon as it is held, so before
-// the operations are planned; as the first command that adds a column runs; or once the transaction of the operations has
-// committed. Its handle's Lost is canceled then.
+// the operations are planned; as the second command that adds a column runs, after the first ran; or once the transaction
+// of the operations has committed. Its handle's Lost is canceled then.
 public sealed class LostLock(LostLock.Moment when) : IDistributedLock, IDisposable
 {
     private readonly CancellationTokenSource _lost = new();
@@ -56,7 +56,7 @@ public sealed class LostLock(LostLock.Moment when) : IDistributedLock, IDisposab
         public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
         {
             if (command.CommandText.TrimStart().StartsWith("ALTER TABLE", StringComparison.OrdinalIgnoreCase)
-                && Interlocked.Exchange(ref owner._altered, 1) == 0
+                && Interlocked.Increment(ref owner._altered) == 2
                 && owner._when == Moment.WhileTheOperationsRun)
             {
                 await owner._lost.CancelAsync();
@@ -70,7 +70,7 @@ public sealed class LostLock(LostLock.Moment when) : IDistributedLock, IDisposab
     {
         public override async Task TransactionCommittedAsync(DbTransaction transaction, TransactionEndEventData eventData, CancellationToken cancellationToken = default)
         {
-            if (owner._when == Moment.AfterTheOperations && Volatile.Read(ref owner._altered) == 1)
+            if (owner._when == Moment.AfterTheOperations && Volatile.Read(ref owner._altered) > 0)
             {
                 await owner._lost.CancelAsync();
             }

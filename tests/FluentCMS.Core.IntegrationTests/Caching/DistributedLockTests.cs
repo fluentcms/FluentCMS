@@ -328,7 +328,9 @@ public sealed class DistributedLockTests : IAsyncDisposable
 
     // A waiter that found the lease over while a write transaction kept the holder's renewal waiting gets the writer first
     // when the transaction ends more often than not, since it began to wait last and SQLite sleeps less between its first
-    // tries. It takes nothing over then, and the renewal, which has been trying all along, renews the lease.
+    // tries. It takes nothing over then, and the renewal, which has been trying all along, renews the lease before the
+    // waiter's confirming try a second later: in a median of 80 milliseconds after the transaction in a review's 50 rounds,
+    // and at most 660.
     [Fact]
     public async Task AHolderKeepsTheLockWhenAWaiterFindsItsLeaseOverAtTheEndOfAWriteTransaction()
     {

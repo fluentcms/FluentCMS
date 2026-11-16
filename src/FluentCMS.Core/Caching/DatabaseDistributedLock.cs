@@ -16,9 +16,10 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
     private static readonly TimeSpan LongestPoll = TimeSpan.FromSeconds(1);
 
     // On a database with one writer: how long after a take saw a lease over its next try comes, which gives the holder's
-    // renewal, trying for the writer at least every 150 milliseconds while it waits, several tries; and how long the
-    // beginning of a write transaction takes at most when it did not wait for another connection's. These are SQLite's and
-    // its driver's timings, kept here beside the lock that relies on them.
+    // renewal, trying for the writer at least every 150 milliseconds while it waits, the time to get it when no other
+    // connection writes (a median of 80 milliseconds after the transaction, at most 660 in 50 measured rounds); and how long
+    // the beginning of a write transaction takes at most when it did not wait for another connection's. These are SQLite's
+    // and its driver's timings, kept here beside the lock that relies on them.
     private static readonly TimeSpan Confirmation = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan LongBegin = TimeSpan.FromMilliseconds(50);
 
@@ -55,19 +56,14 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
             sighting = attempt.Sighting;
             var next = sighting is null ? poll : Confirmation;
             var remaining = timeout == Timeout.InfiniteTimeSpan ? TimeSpan.MaxValue : timeout - time.GetElapsedTime(started);
-            if (remaining <= TimeSpan.Zero)
+            if (remaining <= TimeSpan.Zero && (sighting is null || -remaining >= LateConfirmation))
             {
-                if (sighting is null || -remaining >= LateConfirmation)
+                if (attempt.Busy)
                 {
-                    if (attempt.Busy)
-                    {
-                        LockLog.TimedOutBusy(logger, name, timeout);
-                    }
-
-                    return null;
+                    LockLog.TimedOutBusy(logger, name, timeout);
                 }
 
-                remaining = next;
+                return null;
             }
 
             // A confirmation keeps its length when the timeout comes first.

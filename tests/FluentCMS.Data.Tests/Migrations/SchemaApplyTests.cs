@@ -628,13 +628,13 @@ public sealed partial class SchemaApplyTests : IDisposable
         _database.Columns("cms_article").ShouldContain("summary");
     }
 
-    // Another holder takes the lock, as a waiter on SQLite could at the end of a long transaction: before the plan, while the
-    // operations run, or after they committed and before the history is written.
+    // The lock is lost, as when a waiter on SQLite took it at the end of a long transaction: before the plan, while the
+    // operations run once the first of them ran, or after they committed and before the history is written.
     [Theory]
-    [InlineData(LostLock.Moment.BeforeThePlan, "FCMS3339: another holder took the lock fluentcms:schema-sync while the operations were planned, so nothing was applied")]
-    [InlineData(LostLock.Moment.WhileTheOperationsRun, "FCMS3339: another holder took the lock fluentcms:schema-sync while the operations were applied; their transaction was rolled back")]
-    [InlineData(LostLock.Moment.AfterTheOperations, "FCMS3340: the content tables match schema ")]
-    public async Task ARunThatLosesItsLockSaysToRunAgain(LostLock.Moment when, string message)
+    [InlineData(LostLock.Moment.BeforeThePlan, "FCMS3339: the lock fluentcms:schema-sync was lost", "while the operations were planned, so nothing was applied")]
+    [InlineData(LostLock.Moment.WhileTheOperationsRun, "FCMS3339: the lock fluentcms:schema-sync was lost", "while the operations were applied; their transaction was rolled back")]
+    [InlineData(LostLock.Moment.AfterTheOperations, "FCMS3340: the content tables match schema ", "the lock fluentcms:schema-sync was lost")]
+    public async Task ARunThatLosesItsLockSaysToRunAgain(LostLock.Moment when, string start, string middle)
     {
         await MigrateAndApplyAsync(ArticleSchemas.Titled);
         var schema = ArticleSchemas.Article("title", "subtitle", "summary");
@@ -646,7 +646,8 @@ public sealed partial class SchemaApplyTests : IDisposable
             var (exitCode, _, error) = await RunAsync(host, "schema", "apply");
 
             exitCode.ShouldBe(1);
-            error.ShouldStartWith(message);
+            error.ShouldStartWith(start);
+            error.ShouldContain(middle);
             error.ShouldContain("run 'fluentcms schema apply' again");
         }
 
