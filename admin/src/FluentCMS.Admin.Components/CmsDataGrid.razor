@@ -1,0 +1,128 @@
+@namespace FluentCMS.Admin.Components
+@typeparam TItem
+@attribute [CascadingTypeParameter(nameof(TItem))]
+
+<div class="cms-data-grid">
+    @* The columns register here and render nothing; the grid renders them itself, since the library collects only direct columns. *@
+    <CascadingValue Value="this" IsFixed="true">
+        @ChildContent
+    </CascadingValue>
+    <FluentDataGrid TGridItem="TItem"
+                    @ref="_grid"
+                    ItemsProvider="@ProvideItemsAsync"
+                    aria-label="@Label">
+        @if (SelectionMode != CmsSelectionMode.None)
+        {
+            <SelectColumn TGridItem="TItem"
+                          SelectMode="@(SelectionMode == CmsSelectionMode.One ? DataGridSelectMode.Single : DataGridSelectMode.Multiple)"
+                          SelectedItems="@SelectedItems"
+                          SelectedItemsChanged="@OnSelectedItemsChangedAsync" />
+        }
+        @foreach (var column in _columns)
+        {
+            <TemplateColumn TGridItem="TItem"
+                            @key="@column.ColumnId"
+                            Title="@column.Title"
+                            ColumnId="@column.ColumnId"
+                            Sortable="@(column.SortKey is not null)">
+                @column.RenderCell(context)
+            </TemplateColumn>
+        }
+    </FluentDataGrid>
+    @* Sorting and selection are announced here, since the grid itself announces neither (spec 4.18). *@
+    <div role="status" class="cms-visually-hidden">@_status</div>
+</div>
+
+@code {
+    private readonly List<CmsDataGridColumn<TItem>> _columns = [];
+    private FluentDataGrid<TItem>? _grid;
+    private IReadOnlyList<TItem>? _renderedItems;
+    private string? _status;
+    private string? _sortedBy;
+    private bool _sortedAscending;
+
+    // Names the grid for assistive technology.
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<TItem> Items { get; set; } = [];
+
+    [Parameter]
+    public CmsSelectionMode SelectionMode { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<TItem> SelectedItems { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<IReadOnlyList<TItem>> SelectedItemsChanged { get; set; }
+
+    // The CmsDataGridColumn children.
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    internal void AddColumn(CmsDataGridColumn<TItem> column)
+    {
+        _columns.Add(column);
+        StateHasChanged();
+    }
+
+    internal void RemoveColumn(CmsDataGridColumn<TItem> column)
+    {
+        if (_columns.Remove(column))
+        {
+            StateHasChanged();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_grid is not null && !ReferenceEquals(_renderedItems, Items))
+        {
+            await _grid.RefreshDataAsync();
+        }
+    }
+
+    // In-memory sorting through Enumerable, so that no FluentCMS assembly needs IQueryable (spec 3.1, trimming).
+    private ValueTask<GridItemsProviderResult<TItem>> ProvideItemsAsync(GridItemsProviderRequest<TItem> request)
+    {
+        _renderedItems = Items;
+        IEnumerable<TItem> items = Items;
+        var sort = request.SortColumns.Count > 0 ? request.SortColumns[0] : null;
+
+        var column = _columns.Find(c => c.ColumnId == sort?.Column.ColumnId);
+        if (sort is not null && column?.SortKey is { } key)
+        {
+            items = sort.Ascending ? items.OrderBy(key) : items.OrderByDescending(key);
+            AnnounceSort(column.Title, sort.Ascending);
+        }
+
+        var page = items.Skip(request.StartIndex);
+        if (request.Count is { } count)
+        {
+            page = page.Take(count);
+        }
+
+        return ValueTask.FromResult(GridItemsProviderResult.From(page.ToList(), Items.Count));
+    }
+
+    private void AnnounceSort(string title, bool ascending)
+    {
+        if (_sortedBy == title && _sortedAscending == ascending)
+        {
+            return;
+        }
+
+        _sortedBy = title;
+        _sortedAscending = ascending;
+        _status = CmsStrings.Format(ascending ? CmsStrings.GridSortedAscending : CmsStrings.GridSortedDescending, title);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnSelectedItemsChangedAsync(IEnumerable<TItem> items)
+    {
+        SelectedItems = items.ToList();
+        _status = CmsStrings.Format(CmsStrings.GridRowsSelected, SelectedItems.Count);
+        await SelectedItemsChanged.InvokeAsync(SelectedItems);
+    }
+}

@@ -1,0 +1,51 @@
+@namespace FluentCMS.Admin.Components
+@inject IThemeService ThemeService
+
+@* The root of the admin's markup: it carries the theme tokens and the providers that dialogs, menus and toasts render into. *@
+<div class="cms-root" data-cms-theme="@ThemeAttribute" style="@AccentStyle">
+    @ChildContent
+    <FluentProviders />
+</div>
+
+@code {
+    private CmsThemeMode? _appliedMode;
+
+    // System follows prefers-color-scheme; Light or Dark is the user's choice, which the caller keeps.
+    [Parameter]
+    public CmsThemeMode Mode { get; set; }
+
+    // The accent color as #rgb or #rrggbb, such as the branding of config.json; anything else keeps the default.
+    [Parameter]
+    public string? AccentColor { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string? ThemeAttribute => Mode switch
+    {
+        CmsThemeMode.Light => "light",
+        CmsThemeMode.Dark => "dark",
+        _ => null,
+    };
+
+    private string? AccentStyle => IsHexColor(AccentColor) ? $"--cms-color-accent: {AccentColor};" : null;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_appliedMode == Mode)
+        {
+            return;
+        }
+
+        _appliedMode = Mode;
+        await ThemeService.SetThemeAsync(Mode switch
+        {
+            CmsThemeMode.Light => ThemeMode.Light,
+            CmsThemeMode.Dark => ThemeMode.Dark,
+            _ => ThemeMode.System,
+        });
+    }
+
+    private static bool IsHexColor(string? value) =>
+        value is { Length: 4 or 7 } && value[0] == '#' && value.AsSpan(1).ContainsAnyExcept("0123456789abcdefABCDEF") == false;
+}

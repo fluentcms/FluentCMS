@@ -1,0 +1,19 @@
+@namespace FluentCMS.Admin.Components
+
+<section class="cms-card" aria-labelledby="@(Title is null ? null : _headingId)">
+    @if (Title is not null)
+    {
+        <h2 id="@_headingId" class="cms-card-title">@Title</h2>
+    }
+    @ChildContent
+</section>
+
+@code {
+    private readonly string _headingId = CmsIds.Next();
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

@@ -1,0 +1,21 @@
+@namespace FluentCMS.Admin.Components
+
+<FluentMenu Class="cms-menu">
+    <FluentMenuButton IconStart="@(Icon is { } icon ? CmsIcons.Get(icon) : null)">@Label</FluentMenuButton>
+    <FluentMenuList>
+        @ChildContent
+    </FluentMenuList>
+</FluentMenu>
+
+@code {
+    // The text of the button that opens the menu.
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public CmsIconName? Icon { get; set; }
+
+    // The CmsMenuItem children.
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

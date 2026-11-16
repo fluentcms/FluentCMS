@@ -1,0 +1,34 @@
+@namespace FluentCMS.Admin.Components
+@inherits CmsInputBase<string>
+
+@* A native input: the library's keeps its control in a shadow root, where help, errors and aria-invalid cannot reach it. *@
+<div class="cms-field">
+    @LabelTemplate
+    <input id="@InputId"
+           class="cms-input"
+           type="@ToHtml(Type)"
+           value="@Value"
+           placeholder="@Placeholder"
+           disabled="@Disabled"
+           @oninput="@(args => SetValueAsync(args.Value as string))"
+           @attributes="@AriaAttributes" />
+    @MessageTemplate
+</div>
+
+@code {
+    [Parameter]
+    public CmsTextInputType Type { get; set; }
+
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    private static string ToHtml(CmsTextInputType type) => type switch
+    {
+        CmsTextInputType.Email => "email",
+        CmsTextInputType.Password => "password",
+        CmsTextInputType.Url => "url",
+        CmsTextInputType.Search => "search",
+        CmsTextInputType.Telephone => "tel",
+        _ => "text",
+    };
+}

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="GridSortedAscending" xml:space="preserve">
+    <value>Sorted by {0}, ascending</value>
+  </data>
+  <data name="GridSortedDescending" xml:space="preserve">
+    <value>Sorted by {0}, descending</value>
+  </data>
+  <data name="GridRowsSelected" xml:space="preserve">
+    <value>Rows selected: {0}</value>
+  </data>
+  <data name="DropZoneChoose" xml:space="preserve">
+    <value>Drop files here or press Enter to choose them</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+</root>

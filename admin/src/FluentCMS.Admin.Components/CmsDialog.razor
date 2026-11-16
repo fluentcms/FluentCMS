@@ -1,0 +1,71 @@
+@namespace FluentCMS.Admin.Components
+
+@* A modal dialog: the page behind it is inert, it takes focus when it opens and gives it back to the control that opened it.
+   Modal="false" is the library's type="modal" (role dialog, dismissed by Escape); Modal="true" would make it an alertdialog. *@
+<FluentDialog @ref="_dialog"
+              Id="@_id"
+              Modal="false"
+              Class="cms-dialog"
+              @attributes="@DialogAttributes">
+    <FluentDialogBody TitleTemplate="@TitleTemplate" ActionTemplate="@Actions">
+        @ChildContent
+    </FluentDialogBody>
+</FluentDialog>
+
+@code {
+    private readonly string _id = CmsIds.Next();
+    private FluentDialog? _dialog;
+    private bool _shown;
+    private bool _appliedOpen;
+    private EventCallback<DialogToggleEventArgs>? _onToggle;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool Open { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OpenChanged { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    private RenderFragment TitleTemplate => @<span class="cms-dialog-title">@Title</span>;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Acts on a change of the parameter only, so that a parent passing Open one-way does not reopen a dismissed dialog.
+        if (_dialog is null || Open == _appliedOpen)
+        {
+            return;
+        }
+
+        _appliedOpen = Open;
+        if (Open != _shown)
+        {
+            _shown = Open;
+            await (Open ? _dialog.ShowAsync() : _dialog.HideAsync());
+        }
+    }
+
+    // The library raises OnStateChange only for dialogs opened through its service, so the toggle event is handled here.
+    private Dictionary<string, object> DialogAttributes => new(StringComparer.Ordinal)
+    {
+        ["aria-label"] = Title,
+        ["ondialogtoggle"] = _onToggle ??= EventCallback.Factory.Create<DialogToggleEventArgs>(this, OnToggleAsync),
+    };
+
+    private async Task OnToggleAsync(DialogToggleEventArgs args)
+    {
+        // Popovers inside the dialog, such as a menu, raise the same event.
+        if (args.Id == _id && args.NewState == "closed" && _shown)
+        {
+            _shown = false;
+            await OpenChanged.InvokeAsync(false);
+        }
+    }
+}

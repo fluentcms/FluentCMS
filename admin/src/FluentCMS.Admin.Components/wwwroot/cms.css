@@ -1,0 +1,328 @@
+/*
+ * Theme tokens and layout of the FluentCMS admin's wrapped component set.
+ * Logical properties only, so that a right-to-left culture mirrors the layout without a second stylesheet.
+ * The light theme is the default; the dark theme applies under prefers-color-scheme: dark until the user chooses,
+ * and data-cms-theme on .cms-root holds that choice.
+ */
+
+.cms-root {
+    --cms-color-accent: #154ef2;
+    --cms-color-on-accent: #ffffff;
+    --cms-color-accent-text: var(--cms-color-accent);
+    --cms-color-bg: #ffffff;
+    --cms-color-surface: #f5f6f8;
+    --cms-color-text: #0e131e;
+    --cms-color-text-muted: #4a5160;
+    --cms-color-border: #c8ccd4;
+    --cms-color-error: #b10e1c;
+
+    --cms-space-xs: 0.25rem;
+    --cms-space-s: 0.5rem;
+    --cms-space-m: 1rem;
+    --cms-space-l: 1.5rem;
+    --cms-space-xl: 2rem;
+
+    --cms-font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --cms-font-size-s: 0.875rem;
+    --cms-font-size-m: 1rem;
+    --cms-font-size-l: 1.25rem;
+    --cms-font-size-xl: 1.5rem;
+    --cms-line-height: 1.5;
+
+    --cms-radius-s: 0.25rem;
+    --cms-radius-m: 0.5rem;
+
+    --cms-focus-ring-color: #0e131e;
+    --cms-focus-ring-width: 2px;
+    --cms-focus-ring-offset: 2px;
+
+    --cms-target-size: 24px;
+
+    color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+    .cms-root:not([data-cms-theme="light"]) {
+        --cms-color-accent-text: color-mix(in srgb, var(--cms-color-accent) 55%, #ffffff);
+        --cms-color-bg: #12161f;
+        --cms-color-surface: #1b212c;
+        --cms-color-text: #f2f4f8;
+        --cms-color-text-muted: #b4bac6;
+        --cms-color-border: #4a5363;
+        --cms-color-error: #ff9b9b;
+        --cms-focus-ring-color: #ffffff;
+
+        color-scheme: dark;
+    }
+}
+
+.cms-root[data-cms-theme="dark"] {
+    --cms-color-accent-text: color-mix(in srgb, var(--cms-color-accent) 55%, #ffffff);
+    --cms-color-bg: #12161f;
+    --cms-color-surface: #1b212c;
+    --cms-color-text: #f2f4f8;
+    --cms-color-text-muted: #b4bac6;
+    --cms-color-border: #4a5363;
+    --cms-color-error: #ff9b9b;
+    --cms-focus-ring-color: #ffffff;
+
+    color-scheme: dark;
+}
+
+/* The library's own tokens, driven by the FluentCMS ones so that the accent and the focus ring are the same everywhere. */
+.cms-root {
+    --colorBrandBackground: var(--cms-color-accent);
+    --colorBrandBackgroundHover: color-mix(in srgb, var(--cms-color-accent) 85%, #000000);
+    --colorBrandBackgroundPressed: color-mix(in srgb, var(--cms-color-accent) 70%, #000000);
+    --colorBrandBackgroundSelected: color-mix(in srgb, var(--cms-color-accent) 80%, #000000);
+    --colorCompoundBrandBackground: var(--cms-color-accent);
+    --colorCompoundBrandBackgroundHover: color-mix(in srgb, var(--cms-color-accent) 85%, #000000);
+    --colorCompoundBrandBackgroundPressed: color-mix(in srgb, var(--cms-color-accent) 70%, #000000);
+    --colorCompoundBrandStroke: var(--cms-color-accent);
+    --colorCompoundBrandStrokeHover: color-mix(in srgb, var(--cms-color-accent) 85%, #000000);
+    --colorBrandStroke1: var(--cms-color-accent);
+    --colorBrandForeground1: var(--cms-color-accent-text);
+    --colorBrandForegroundLink: var(--cms-color-accent-text);
+    --colorNeutralForegroundOnBrand: var(--cms-color-on-accent);
+    --colorNeutralBackground1: var(--cms-color-bg);
+    --colorNeutralForeground1: var(--cms-color-text);
+    --colorStrokeFocus2: var(--cms-focus-ring-color);
+    --fontFamilyBase: var(--cms-font-family);
+
+    block-size: 100dvh;
+    overflow-y: auto;
+    background-color: var(--cms-color-bg);
+    color: var(--cms-color-text);
+    font-family: var(--cms-font-family);
+    font-size: var(--cms-font-size-m);
+    line-height: var(--cms-line-height);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cms-root {
+        --durationUltraFast: 0ms;
+        --durationFaster: 0ms;
+        --durationFast: 0ms;
+        --durationNormal: 0ms;
+        --durationGentle: 0ms;
+        --durationSlow: 0ms;
+        --durationSlower: 0ms;
+        --durationUltraSlow: 0ms;
+    }
+
+    .cms-root *,
+    .cms-root *::before,
+    .cms-root *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* Native elements of the wrapped set; the library's components draw their own ring from --colorStrokeFocus2. */
+.cms-root :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: var(--cms-focus-ring-width) solid var(--cms-focus-ring-color);
+    outline-offset: var(--cms-focus-ring-offset);
+}
+
+.cms-visually-hidden {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+.cms-target {
+    min-block-size: var(--cms-target-size);
+}
+
+.cms-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-xs);
+}
+
+.cms-field-label {
+    font-weight: 600;
+}
+
+.cms-field-required {
+    color: var(--cms-color-error);
+}
+
+.cms-input {
+    box-sizing: border-box;
+    inline-size: 100%;
+    min-block-size: 2rem;
+    padding-block: var(--cms-space-xs);
+    padding-inline: 0.625rem;
+    border: 1px solid var(--cms-color-border);
+    border-block-end-color: var(--cms-color-text-muted);
+    border-radius: var(--cms-radius-s);
+    background-color: var(--cms-color-bg);
+    color: var(--cms-color-text);
+    font: inherit;
+}
+
+.cms-input:hover:not(:disabled) {
+    border-color: var(--cms-color-text-muted);
+}
+
+.cms-input[aria-invalid="true"] {
+    border-color: var(--cms-color-error);
+}
+
+.cms-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.cms-textarea {
+    resize: vertical;
+}
+
+.cms-field-message {
+    display: block;
+    color: var(--cms-color-text-muted);
+    font-size: var(--cms-font-size-s);
+}
+
+fluent-field .cms-field-message {
+    display: inline;
+}
+
+.cms-field-message-error {
+    color: var(--cms-color-error);
+}
+
+.cms-stack {
+    display: flex;
+}
+
+.cms-stack-vertical {
+    flex-direction: column;
+}
+
+.cms-stack-horizontal {
+    flex-direction: row;
+    align-items: center;
+}
+
+.cms-stack-wrap {
+    flex-wrap: wrap;
+}
+
+.cms-gap-none {
+    gap: 0;
+}
+
+.cms-gap-s {
+    gap: var(--cms-space-s);
+}
+
+.cms-gap-m {
+    gap: var(--cms-space-m);
+}
+
+.cms-gap-l {
+    gap: var(--cms-space-l);
+}
+
+.cms-card {
+    padding-block: var(--cms-space-m);
+    padding-inline: var(--cms-space-l);
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-m);
+    background-color: var(--cms-color-surface);
+}
+
+.cms-card-title {
+    margin-block: 0 var(--cms-space-m);
+    font-size: var(--cms-font-size-l);
+}
+
+.cms-dialog-title {
+    font-size: var(--cms-font-size-l);
+    font-weight: 600;
+}
+
+.cms-drop-zone {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--cms-space-s);
+    min-block-size: 8rem;
+    padding-block: var(--cms-space-l);
+    padding-inline: var(--cms-space-l);
+    border: 2px dashed var(--cms-color-border);
+    border-radius: var(--cms-radius-m);
+    text-align: center;
+}
+
+.cms-drop-zone:hover {
+    border-color: var(--cms-color-accent);
+}
+
+.cms-drop-zone:focus-within {
+    outline: var(--cms-focus-ring-width) solid var(--cms-focus-ring-color);
+    outline-offset: var(--cms-focus-ring-offset);
+}
+
+.cms-drop-zone-label {
+    font-weight: 600;
+}
+
+.cms-drop-zone-input {
+    position: absolute;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.cms-drop-zone-disabled {
+    opacity: 0.6;
+}
+
+.cms-drop-zone-disabled .cms-drop-zone-input {
+    cursor: not-allowed;
+}
+
+.cms-logo {
+    display: inline-flex;
+    block-size: 2rem;
+}
+
+.cms-logo img {
+    block-size: 100%;
+}
+
+.cms-logo-dark {
+    display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+    .cms-root:not([data-cms-theme="light"]) .cms-logo-light {
+        display: none;
+    }
+
+    .cms-root:not([data-cms-theme="light"]) .cms-logo-dark {
+        display: inline;
+    }
+}
+
+.cms-root[data-cms-theme="dark"] .cms-logo-light {
+    display: none;
+}
+
+.cms-root[data-cms-theme="dark"] .cms-logo-dark {
+    display: inline;
+}
