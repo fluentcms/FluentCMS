@@ -1,10 +1,11 @@
 @namespace FluentCMS.Admin.Components
+@inject ICmsTextSource Texts
 
 @* The native file input covers the zone, so files can be dropped on it or chosen by keyboard (WCAG 2.5.7). *@
 <div class="@(Disabled ? "cms-drop-zone cms-drop-zone-disabled" : "cms-drop-zone")">
     <CmsIcon Name="CmsIconName.Upload" />
     <label class="cms-drop-zone-label" for="@_id">@Label</label>
-    <span id="@HintId" class="cms-field-message">@(Help ?? CmsStrings.DropZoneChoose)</span>
+    <span id="@HintId" class="cms-field-message">@(Help ?? Texts.Text(CmsStrings.DropZoneChoose))</span>
     <InputFile id="@_id"
                class="cms-drop-zone-input"
                accept="@Accept"

@@ -1,5 +1,5 @@
-// The admin's interop with the document: its language and direction, the branding's custom properties, and the return of
-// focus to a dialog's opener.
+// The admin's interop with the document: its language and direction, the branding's accent as a custom property, and the
+// return of focus to a dialog's opener.
 
 export function setLanguage(lang, dir) {
     document.documentElement.lang = lang;

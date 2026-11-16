@@ -1,3 +1,6 @@
+using System.Collections;
+using System.Globalization;
+using System.Resources;
 using Bunit;
 using FluentCMS.Admin.Components;
 using Microsoft.AspNetCore.Components;
@@ -155,6 +158,87 @@ public sealed class CmsWiringTests : ComponentTestContext
         _ = root.InvokeAsync(() => toasts.ShowAsync("Saved."));
 
         root.WaitForAssertion(() => root.Find("fluent-toast-b [slot=action]").TextContent.Trim().ShouldBe("Close"));
+    }
+
+    [Fact]
+    public void ARegisteredTextSourceSuppliesTheSetsOwnTexts()
+    {
+        Services.AddSingleton<ICmsTextSource>(new BracketedTexts());
+        var root = Render<CmsThemeRoot>();
+        var zone = Render<CmsFileDropZone>(p => p.Add(x => x.Label, "Upload"));
+        var toasts = Services.GetRequiredService<ICmsToastService>();
+
+        _ = root.InvokeAsync(() => toasts.ShowAsync("Saved."));
+
+        zone.Find(".cms-field-message").TextContent.ShouldBe("[DropZoneChoose]");
+        root.WaitForAssertion(() => root.Find("fluent-toast-b [slot=action]").TextContent.Trim().ShouldBe("[Close]"));
+    }
+
+    [Fact]
+    public void TheLibrarysTextsComeThroughTheTextSourceOrStayTheLibrarysOwn()
+    {
+        Services.AddSingleton<ICmsTextSource>(new BracketedTexts("DataGrid_SelectColumn_RowUnchecked"));
+
+        var grid = Render<CmsDataGrid<string>>(p => p
+            .Add(x => x.Label, "Articles")
+            .Add(x => x.Items, ["a"])
+            .Add(x => x.SelectionMode, CmsSelectionMode.Many)
+            .Add(x => x.ChildContent, (RenderFragment)(b =>
+            {
+                b.OpenComponent<CmsDataGridColumn<string>>(0);
+                b.AddAttribute(1, nameof(CmsDataGridColumn<string>.Title), "Title");
+                b.AddAttribute(2, nameof(CmsDataGridColumn<string>.Value), (Func<string, string>)(a => a));
+                b.CloseComponent();
+            })));
+
+        grid.WaitForAssertion(() => grid.Markup.ShouldContain("[DataGrid_SelectColumn_RowUnchecked]"));
+        grid.Markup.ShouldContain("No rows are selected");
+    }
+
+    // The set's resources hold some of the library's texts under the library's keys (with an underscore, which the set's own
+    // names lack); each must be a key of the library and, in English, say what the library says.
+    [Fact]
+    public void TheLibraryTextsOfTheResourcesAreTheLibrarysEnglish()
+    {
+        Services.AddSingleton<ICmsTextSource>(new BracketedTexts("none"));
+        var library = Services.GetRequiredService<IFluentLocalizer>();
+        var resources = new ResourceManager("FluentCMS.Admin.Components.Resources.CmsStrings", typeof(ICmsTextSource).Assembly)
+            .GetResourceSet(CultureInfo.InvariantCulture, createIfNotExists: true, tryParents: false)!
+            .Cast<DictionaryEntry>()
+            .Where(entry => ((string)entry.Key).Contains('_', StringComparison.Ordinal))
+            .ToList();
+
+        resources.Count.ShouldBeGreaterThan(0);
+        resources.ShouldAllBe(entry => library[(string)entry.Key] == (string)entry.Value!);
+    }
+
+    [Fact]
+    public void ALibraryTextWithoutArgumentsIsNotFormatted()
+    {
+        Services.AddSingleton<ICmsTextSource>(new FixedText("Sorted {by} a brace"));
+        var library = Services.GetRequiredService<IFluentLocalizer>();
+
+        library["DataGrid_SortAscending"].ShouldBe("Sorted {by} a brace");
+    }
+
+    [Fact]
+    public void ALibraryTextWithArgumentsIsFormatted()
+    {
+        Services.AddSingleton<ICmsTextSource>(new FixedText("{0} ascending"));
+        var library = Services.GetRequiredService<IFluentLocalizer>();
+
+        library["DataGrid_SortColumnAscending", "Title"].ShouldBe("Title ascending");
+    }
+
+    private sealed class FixedText(string text) : ICmsTextSource
+    {
+        public string? GetText(string name) => text;
+    }
+
+    // Brackets the names it is given, and has no text for any other.
+    private sealed class BracketedTexts(params string[] names) : ICmsTextSource
+    {
+        public string? GetText(string name) => names.Length == 0 || names.Contains(name) ? $"[{name}]" : null;
     }
 
     private sealed class FakeFile(string name) : IBrowserFile

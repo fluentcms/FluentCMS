@@ -94,6 +94,14 @@ public sealed class LocalizationTests : AdminTestContext
     }
 
     [Fact]
+    public void TheCheckSkipsTheCodeOfStyleAndScriptElements()
+    {
+        var page = Render(builder => builder.AddMarkupContent(0, """<style>#a::part(dialog) { width: 100%; }</style><script>let a;</script><p>Saved</p>"""));
+
+        PseudoCulture.Unlocalized(page.Nodes).ShouldBe(["Saved"]);
+    }
+
+    [Fact]
     public void TheCheckPassesNumbersAndPunctuationBetweenResources()
     {
         var page = Render(builder => builder.AddMarkupContent(0, """<p>⟦Showing⟧ 1–10 / 50</p><input type="text" value="data" />"""));

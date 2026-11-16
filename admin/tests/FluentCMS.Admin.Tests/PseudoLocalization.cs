@@ -71,6 +71,12 @@ public static class PseudoCulture
 
     private static void Collect(INode node, List<string> found)
     {
+        // A style or script element holds code, not text; the library's drawer renders a style element.
+        if (node is IElement { LocalName: "style" or "script" })
+        {
+            return;
+        }
+
         if (node is IText text)
         {
             var value = text.Data.Trim();

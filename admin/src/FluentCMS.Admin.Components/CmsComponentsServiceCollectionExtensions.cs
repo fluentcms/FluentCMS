@@ -1,4 +1,6 @@
 using FluentCMS.Admin.Components;
+using FluentCMS.Admin.Components.Resources;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -15,6 +17,9 @@ public static class CmsComponentsServiceCollectionExtensions
 
         services.AddFluentUIComponents();
         services.AddScoped<ICmsToastService, CmsToastService>();
+        services.TryAddSingleton<ICmsTextSource, CmsStrings>();
+        // The library's texts, such as a row's selection state, then follow the culture and the ICmsTextSource of the host.
+        services.Replace(ServiceDescriptor.Scoped<IFluentLocalizer, CmsLibraryTexts>());
         return services;
     }
 }

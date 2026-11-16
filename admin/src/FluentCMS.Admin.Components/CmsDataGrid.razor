@@ -2,6 +2,7 @@
 @typeparam TItem
 @attribute [CascadingTypeParameter(nameof(TItem))]
 @implements IHandleEvent
+@inject ICmsTextSource Texts
 
 <div class="cms-data-grid">
     @* The columns register here and render nothing; the grid renders them itself, since the library collects only direct columns. *@
@@ -120,7 +121,7 @@
 
         _sortedBy = title;
         _sortedAscending = ascending;
-        _status = CmsStrings.Format(ascending ? CmsStrings.GridSortedAscending : CmsStrings.GridSortedDescending, title);
+        _status = CmsStrings.Format(Texts.Text(ascending ? CmsStrings.GridSortedAscending : CmsStrings.GridSortedDescending), title);
         _ = InvokeAsync(StateHasChanged);
     }
 
@@ -131,7 +132,7 @@
     private async Task OnSelectedItemsChangedAsync(IEnumerable<TItem> items)
     {
         SelectedItems = items.ToList();
-        _status = CmsStrings.Format(CmsStrings.GridRowsSelected, SelectedItems.Count);
+        _status = CmsStrings.Format(Texts.Text(CmsStrings.GridRowsSelected), SelectedItems.Count);
         var parametersSet = _parametersSet;
         await SelectedItemsChanged.InvokeAsync(SelectedItems);
         _ = RenderUnlessPassedBackAsync(parametersSet);

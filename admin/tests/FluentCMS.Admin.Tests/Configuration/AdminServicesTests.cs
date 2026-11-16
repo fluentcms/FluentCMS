@@ -1,7 +1,9 @@
 using System.Globalization;
 using FluentCMS.Admin.Api;
+using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Configuration;
 using FluentCMS.Admin.Localization;
+using FluentCMS.Admin.Shell;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -13,7 +15,8 @@ public sealed class AdminServicesTests
     private static readonly InterfaceCulture Culture = new(CultureInfo.GetCultureInfo("en"));
     private static readonly FormatService Formats = new(CultureInfo.GetCultureInfo("en"), TimeZoneInfo.Utc);
 
-    // With an invalid file, the error page's state, the resources and the document, and nothing that can call the API.
+    // With an invalid file, the error page's state, the resources and the document, the theme AdminApp holds, and nothing that
+    // can call the API and nothing of the wrapped set.
     [Fact]
     public void AnInvalidFileRegistersNothingButWhatTheErrorPageNeeds()
     {
@@ -23,11 +26,26 @@ public sealed class AdminServicesTests
 
         var errorPage = new ServiceCollection().AddAdminLocalization(Culture, Formats).AddAdminAccessibility()
             .Select(descriptor => descriptor.ServiceType)
-            .Append(typeof(AdminStartup));
+            .Append(typeof(AdminStartup))
+            .Append(typeof(ShellTheme));
         services.Select(descriptor => descriptor.ServiceType).ShouldBe(errorPage, ignoreOrder: true);
         services.ShouldNotContain(descriptor => descriptor.ServiceType == typeof(AdminConfiguration));
         services.ShouldNotContain(descriptor => descriptor.ServiceType == typeof(HttpClient));
         services.ShouldNotContain(descriptor => descriptor.ServiceType == typeof(IManagementApi));
+        services.ShouldNotContain(descriptor => descriptor.ServiceType == typeof(ICmsTextSource));
+    }
+
+    [Fact]
+    public void AValidFileRegistersTheWrappedSetWithTheAdminsLocalizer()
+    {
+        var services = new ServiceCollection();
+
+        services.AddAdminStartup(AdminConfigurationReader.Read("""{ "apiBaseUrl": "https://cms.example.com" }"""), Culture, Formats);
+        services.AddLogging();
+
+        using var provider = services.BuildServiceProvider();
+        provider.GetRequiredService<ICmsTextSource>().ShouldBeOfType<CmsTextLocalizer>();
+        services.Count(descriptor => descriptor.ServiceType == typeof(ICmsTextSource)).ShouldBe(1);
     }
 
     [Fact]

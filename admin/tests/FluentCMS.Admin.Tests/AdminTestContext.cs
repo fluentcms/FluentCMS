@@ -22,6 +22,8 @@ public abstract class AdminTestContext : BunitContext
 
     protected AdminTestContext()
     {
+        // The library under the wrapped set calls its scripts, which do not run under bUnit; the admin's own calls are set up.
+        JSInterop.Mode = JSRuntimeMode.Loose;
         Document = JSInterop.SetupModule(DocumentInterop.ModulePath);
         Document.SetupVoid("setLanguage", _ => true).SetVoidResult();
         Document.SetupVoid("setProperty", _ => true).SetVoidResult();
