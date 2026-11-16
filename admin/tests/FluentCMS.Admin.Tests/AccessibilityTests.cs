@@ -1,4 +1,5 @@
 using Bunit;
+using FluentCMS.Admin.Accessibility;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Web;
@@ -10,6 +11,8 @@ namespace FluentCMS.Admin.Tests;
 
 public sealed class AccessibilityTests : AdminTestContext
 {
+    public AccessibilityTests() => Start();
+
     [Fact]
     public void ARouteChangeMovesFocusToThePageHeading()
     {
@@ -55,29 +58,59 @@ public sealed class AccessibilityTests : AdminTestContext
         var app = Render<AdminApp>();
         var announcer = Services.GetRequiredService<IAnnouncer>();
 
-        announcer.Announce("[Saved]");
-        announcer.Announce("[Not saved]", AnnouncementPoliteness.Assertive);
+        announcer.Announce("Saved");
+        announcer.Announce("Not saved", AnnouncementPoliteness.Assertive);
 
         app.WaitForAssertion(() =>
         {
-            app.Find("[aria-live=polite]").TextContent.ShouldBe("[Saved]");
-            app.Find("[aria-live=assertive]").TextContent.ShouldBe("[Not saved]");
+            Messages(app, "polite").ShouldBe(["Saved"]);
+            Messages(app, "assertive").ShouldBe(["Not saved"]);
         });
         app.Find("[aria-live=polite]").GetAttribute("role").ShouldBe("status");
         app.Find("[aria-live=assertive]").GetAttribute("role").ShouldBe("alert");
+        app.Find("[aria-live=polite]").GetAttribute("aria-relevant").ShouldBe("additions");
     }
 
     [Fact]
-    public void TheSameAnnouncementTwiceChangesTheRegionSoItIsReadAgain()
+    public void TwoAnnouncementsInOneTurnAreBothWritten()
     {
         var app = Render<AdminApp>();
         var announcer = Services.GetRequiredService<IAnnouncer>();
 
-        announcer.Announce("[Saved]");
-        app.WaitForAssertion(() => app.Find("[aria-live=polite]").TextContent.ShouldBe("[Saved]"));
-        announcer.Announce("[Saved]");
+        app.InvokeAsync(() =>
+        {
+            announcer.Announce("Saved");
+            announcer.Announce("Published");
+        });
 
-        app.WaitForAssertion(() => app.Find("[aria-live=polite]").TextContent.ShouldBe("[Saved] "));
+        app.WaitForAssertion(() => Messages(app, "polite").ShouldBe(["Saved", "Published"]));
+    }
+
+    [Fact]
+    public void TheSameAnnouncementTwiceIsANewNodeSoItIsReadAgain()
+    {
+        var app = Render<AdminApp>();
+        var announcer = Services.GetRequiredService<IAnnouncer>();
+
+        announcer.Announce("Saved");
+        app.WaitForAssertion(() => Messages(app, "polite").ShouldBe(["Saved"]));
+        announcer.Announce("Saved");
+
+        app.WaitForAssertion(() => Messages(app, "polite").ShouldBe(["Saved", "Saved"]));
+    }
+
+    [Fact]
+    public void OnlyTheLastAnnouncementsAreKept()
+    {
+        var app = Render<AdminApp>();
+        var announcer = Services.GetRequiredService<IAnnouncer>();
+
+        for (var i = 1; i <= 7; i++)
+        {
+            announcer.Announce($"Saved {i}");
+        }
+
+        app.WaitForAssertion(() => Messages(app, "polite").ShouldBe(["Saved 3", "Saved 4", "Saved 5", "Saved 6", "Saved 7"]));
     }
 
     [Fact]
@@ -89,34 +122,37 @@ public sealed class AccessibilityTests : AdminTestContext
     [Fact]
     public void AClosedDialogReturnsFocusToItsOpener()
     {
-        var opener = Document.SetupModule(invocation => invocation.Identifier == "rememberFocus");
-        opener.SetupVoid("restore").SetVoidResult();
+        Document.SetupModule(invocation => invocation.Identifier == "rememberFocus");
+        Document.SetupVoid("returnFocus", _ => true).SetVoidResult();
         var dialog = Render<DialogWithOpener>();
 
         dialog.Find("#open").Click();
         dialog.Find("[role=dialog]").ShouldNotBeNull();
-        opener.Invocations.ShouldBeEmpty();
+        Document.VerifyNotInvoke("returnFocus");
         dialog.Find("#close").Click();
 
         dialog.FindAll("[role=dialog]").ShouldBeEmpty();
-        opener.VerifyInvoke("restore");
+        Document.VerifyInvoke("returnFocus").Arguments.ShouldHaveSingleItem().ShouldBeAssignableTo<Microsoft.JSInterop.IJSObjectReference>();
     }
 
     [Fact]
     public async Task FocusReturnsOnceWhenTheOpenerIsDisposedTwice()
     {
-        var opener = Document.SetupModule(invocation => invocation.Identifier == "rememberFocus");
-        opener.SetupVoid("restore").SetVoidResult();
+        Document.SetupModule(invocation => invocation.Identifier == "rememberFocus");
+        Document.SetupVoid("returnFocus", _ => true).SetVoidResult();
         var focus = Services.GetRequiredService<IFocusService>();
 
         var handle = await focus.RememberOpenerAsync();
         await handle.DisposeAsync();
         await handle.DisposeAsync();
 
-        opener.VerifyInvoke("restore", calledTimes: 1);
+        Document.VerifyInvoke("returnFocus", calledTimes: 1);
     }
 
-    // A dialog as the wrapped set applies the rule: remember the opener when it opens, return focus when it closes.
+    private static string[] Messages(IRenderedComponent<AdminApp> app, string politeness) =>
+        app.FindAll($"[aria-live={politeness}] > div").Select(message => message.TextContent).ToArray();
+
+    // A dialog of the admin's own applying the rule: remember the opener when it opens, return focus when it closes.
     private sealed class DialogWithOpener : ComponentBase
     {
         private IAsyncDisposable? opener;

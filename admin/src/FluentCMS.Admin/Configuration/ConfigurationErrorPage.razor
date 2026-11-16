@@ -1,0 +1,16 @@
+@* Static on purpose: it shows before anything else runs, so it uses no wrapped component and no API. *@
+@using Microsoft.AspNetCore.Components.Web
+@inject AdminStartup Startup
+@inject IStringLocalizer<AdminResources> L
+
+<PageTitle>@L["Configuration.Error.Title"]</PageTitle>
+<main class="fluentcms-configuration-error">
+    <h1>@L["Configuration.Error.Title"]</h1>
+    <p>@L["Configuration.Error.Introduction"]</p>
+    <ul>
+        @foreach (var problem in Startup.Problems)
+        {
+            <li data-member="@problem.Member">@ConfigurationTexts.Describe(L, problem)</li>
+        }
+    </ul>
+</main>

@@ -1,23 +1,49 @@
 @* The root component of the admin, which the shell fills. *@
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "NotFoundPage is kept by the DynamicDependency of the constructor.")]
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Router finds the pages of this assembly, each kept by a DynamicDependency of the constructor.")]
+@using FluentCMS.Admin.Configuration
+@using Microsoft.Extensions.Logging
+@inject AdminStartup Startup
+@inject ILogger<AdminApp> Logger
 @inject InterfaceCulture Culture
 @inject DocumentInterop Document
 
-<Router AppAssembly="typeof(AdminApp).Assembly" NotFoundPage="typeof(NotFoundPage)">
-    <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)" />
-        <FocusOnNavigate RouteData="routeData" Selector="h1" />
-    </Found>
-</Router>
-<LiveRegions />
+@if (Startup.Configuration is { } configuration)
+{
+    <BrandingHead Branding="configuration.Branding" />
+    <Router AppAssembly="typeof(AdminApp).Assembly" NotFoundPage="typeof(NotFoundPage)">
+        <Found Context="routeData">
+            <RouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)" />
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+    </Router>
+    <LiveRegions />
+}
+else
+{
+    <ConfigurationErrorPage />
+}
 
 @code {
-    // This assembly is trimmed and nothing references its pages, so each page is kept here or Router does not find it.
+    // This assembly is trimmed and nothing references its pages, so each page is kept here or Router does not find it. A test
+    // checks that every routable page of the assembly is listed.
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HomePage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NotFoundPage))]
     public AdminApp()
     {
+    }
+
+    protected override void OnInitialized()
+    {
+        foreach (var member in Startup.UnknownMembers)
+        {
+            ConfigurationLog.UnknownMember(Logger, member);
+        }
+
+        foreach (var member in Startup.PlainHttpMembers)
+        {
+            ConfigurationLog.PlainHttp(Logger, member);
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

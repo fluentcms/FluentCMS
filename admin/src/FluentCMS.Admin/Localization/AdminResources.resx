@@ -27,4 +27,67 @@
   <data name="Shell.NotFound.Text" xml:space="preserve">
     <value>There is no page at this address.</value>
   </data>
+  <data name="Configuration.Error.Title" xml:space="preserve">
+    <value>The admin cannot start</value>
+  </data>
+  <data name="Configuration.Error.Introduction" xml:space="preserve">
+    <value>The configuration file config.json of this admin has a problem. Correct the file and reload the page.</value>
+  </data>
+  <data name="Configuration.Error.UnreadableStatus" xml:space="preserve">
+    <value>config.json could not be read: the server answered with status {0}.</value>
+  </data>
+  <data name="Configuration.Error.UnreadableTimeout" xml:space="preserve">
+    <value>config.json could not be read: the server did not answer in time, or its answer could not be decoded.</value>
+  </data>
+  <data name="Configuration.Error.NotJson" xml:space="preserve">
+    <value>config.json is not valid JSON.</value>
+  </data>
+  <data name="Configuration.Error.NotAnObject" xml:space="preserve">
+    <value>config.json must hold a JSON object.</value>
+  </data>
+  <data name="Configuration.Error.Missing" xml:space="preserve">
+    <value>{0} is required.</value>
+  </data>
+  <data name="Configuration.Error.Duplicate" xml:space="preserve">
+    <value>{0} appears more than once; keep one.</value>
+  </data>
+  <data name="Configuration.Error.RuleHttpUrl" xml:space="preserve">
+    <value>{0} must be an absolute http or https URL without user info, query or fragment, in ASCII only; write an internationalized host name in its xn-- form.</value>
+  </data>
+  <data name="Configuration.Error.RuleUrlOrPath" xml:space="preserve">
+    <value>{0} must be an absolute http or https URL or a relative path, without a fragment, spaces, quotes, parentheses or backslashes, in ASCII only; write an internationalized host name in its xn-- form.</value>
+  </data>
+  <data name="Configuration.Error.RuleOrigin" xml:space="preserve">
+    <value>{0} must be an origin, an http or https URL with no path such as https://www.example.com, in ASCII only; write an internationalized host name in its xn-- form.</value>
+  </data>
+  <data name="Configuration.Error.RuleHexColor" xml:space="preserve">
+    <value>{0} must be a hex color such as #0f6cbd.</value>
+  </data>
+  <data name="Configuration.Error.RuleText" xml:space="preserve">
+    <value>{0} must be a text that is not empty, without spaces at its start or end and without control characters.</value>
+  </data>
+  <data name="Configuration.Error.RuleClientId" xml:space="preserve">
+    <value>{0} must be a client id of visible ASCII characters without spaces.</value>
+  </data>
+  <data name="Configuration.Error.RuleScopeList" xml:space="preserve">
+    <value>{0} must be a list of distinct scopes, such as ["openid", "management"].</value>
+  </data>
+  <data name="Configuration.Error.RuleCultureName" xml:space="preserve">
+    <value>{0} must be a culture name such as en or de-CH.</value>
+  </data>
+  <data name="Configuration.Error.RuleCultureList" xml:space="preserve">
+    <value>{0} must be a list of distinct culture names that is not empty.</value>
+  </data>
+  <data name="Configuration.Error.RuleDefaultCultureOffered" xml:space="preserve">
+    <value>{0} must be one of cultures.offered (it is en when not set).</value>
+  </data>
+  <data name="Configuration.Error.RuleOriginList" xml:space="preserve">
+    <value>{0} must be a list of origins.</value>
+  </data>
+  <data name="Configuration.Error.RuleObject" xml:space="preserve">
+    <value>{0} must be an object.</value>
+  </data>
+  <data name="Configuration.Error.RuleInvalid" xml:space="preserve">
+    <value>{0} is not valid.</value>
+  </data>
 </root>

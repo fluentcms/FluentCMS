@@ -1,4 +1,5 @@
 using System.Globalization;
+using FluentCMS.Admin.Configuration;
 using FluentCMS.Admin.Localization;
 using Shouldly;
 using Xunit;
@@ -28,12 +29,49 @@ public sealed class CultureChoiceTests
     [Fact]
     public void WithoutConfigurationEnglishIsTheOnlyCulture()
     {
-        var options = new InterfaceCultureOptions();
+        var options = InterfaceCultureOptions.From(null);
 
         InterfaceCulture.Choose(null, CultureInfo.GetCultureInfo("fr-FR"), options).Name.ShouldBe("en");
         options.Offered.ShouldBe(["en"]);
+        options.Default.ShouldBe("en");
     }
 
+    [Fact]
+    public void OfferedNotSetOffersEveryShippedCulture()
+    {
+        var options = InterfaceCultureOptions.From(new AdminCultures { Offered = null, Default = "en" });
+
+        options.Offered.ShouldBe(InterfaceCultureOptions.Shipped);
+        options.Default.ShouldBe("en");
+    }
+
+    [Fact]
+    public void ACultureTheAdminDoesNotShipIsNotOffered()
+    {
+        var options = InterfaceCultureOptions.From(new AdminCultures { Offered = ["de", "EN"], Default = "de" });
+
+        options.Offered.ShouldBe(["en"]);
+        options.Default.ShouldBe("en");
+        InterfaceCulture.Choose("de", CultureInfo.GetCultureInfo("de-DE"), options).Name.ShouldBe("en");
+    }
+
+    [Fact]
+    public void OnlyCulturesTheAdminDoesNotShipFallBackToTheShippedOnes()
+    {
+        var options = InterfaceCultureOptions.From(new AdminCultures { Offered = ["de", "fr"], Default = "fr" });
+
+        options.Offered.ShouldBe(InterfaceCultureOptions.Shipped);
+        options.Default.ShouldBe("en");
+    }
+}
+
+// Sets the process-wide default cultures, so it runs alone.
+[CollectionDefinition(nameof(ProcessCulture), DisableParallelization = true)]
+public sealed class ProcessCulture;
+
+[Collection(nameof(ProcessCulture))]
+public sealed class CultureApplyTests
+{
     [Fact]
     public void ApplyingSetsTheInterfaceAndFormatCultures()
     {

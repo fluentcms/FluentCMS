@@ -8,8 +8,9 @@
          project reference, such as the framework's Blazor assemblies, which are not free of trim warnings, reports one IL2104
          that names it, and that one is left a warning. -->
     <WarningsNotAsErrors>$(WarningsNotAsErrors);IL2104</WarningsNotAsErrors>
-    <!-- All culture data rather than the shard of the browser's culture, so that the direction of a content locale and the
-         formats of the user's culture do not depend on the browser's language; measured in #3143. -->
+    <!-- Required by FluentCMS.Admin: it sets the culture at start (en for a browser in en-US), and with the culture data of the
+         browser's language only, the runtime then stops the app with a blank page. Formats then do not depend on the browser
+         either. It costs 186 KB in Brotli (#3143). -->
     <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
   </PropertyGroup>
 

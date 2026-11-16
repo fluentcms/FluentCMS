@@ -2,7 +2,8 @@ using Microsoft.JSInterop;
 
 namespace FluentCMS.Admin.Interop;
 
-// The allow-listed user of IJSRuntime for the document (spec 3.1): its lang and dir, and the return of focus to an opener.
+// The allow-listed user of IJSRuntime for the document (spec 3.1): its lang and dir, the branding's custom properties, and
+// the return of focus to an opener.
 internal sealed class DocumentInterop(IJSRuntime js) : IAsyncDisposable
 {
     public const string ModulePath = "./_content/FluentCMS.Admin/document.js";
@@ -13,6 +14,14 @@ internal sealed class DocumentInterop(IJSRuntime js) : IAsyncDisposable
     {
         var document = await Module();
         await document.InvokeVoidAsync("setLanguage", lang, dir);
+    }
+
+    // A custom property on the document element, set through the CSS object model rather than a <style> element, which a
+    // strict Content-Security-Policy would block.
+    public async ValueTask SetPropertyAsync(string name, string value)
+    {
+        var document = await Module();
+        await document.InvokeVoidAsync("setProperty", name, value);
     }
 
     // The handle is opaque to the caller, which gives it back to ReturnFocusAsync.
