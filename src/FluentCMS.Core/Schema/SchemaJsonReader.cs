@@ -100,6 +100,8 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
         var unpublishedReferences = UnpublishedReferencePolicy.Warn;
         var maxVersions = PublishPolicyAttribute.DefaultMaxVersions;
         var trashRetentionDays = PublishPolicyAttribute.DefaultTrashRetentionDays;
+        string? displayName = null;
+        string? titleField = null;
         JsonElement? fields = null;
         var failed = false;
 
@@ -138,6 +140,17 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
                     Fail(propertyPath, "is not a valid publishing setting for this type");
                     failed = true;
                     break;
+                case "displayName" when kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton:
+                    failed |= !TryString(property.Value, propertyPath, out displayName);
+                    break;
+                case "titleField" when kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton:
+                    failed |= !TryString(property.Value, propertyPath, out titleField);
+                    break;
+                case "displayName":
+                case "titleField":
+                    Fail(propertyPath, "is only allowed on collections and singletons");
+                    failed = true;
+                    break;
                 case "fields":
                     fields = property.Value;
                     break;
@@ -165,6 +178,15 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
             if (kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton)
             {
                 type.PublishPolicy(new PublishPolicyOptions { UnpublishedReferences = unpublishedReferences, MaxVersions = maxVersions, TrashRetentionDays = trashRetentionDays });
+                if (displayName is not null)
+                {
+                    type.DisplayName(displayName);
+                }
+
+                if (titleField is not null)
+                {
+                    type.TitleField(titleField);
+                }
             }
 
             if (fields is { } list)

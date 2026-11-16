@@ -71,6 +71,9 @@ internal static class SchemaJsonWriter
                 writer.WriteNumber("trashRetentionDays", type.TrashRetentionDays);
             }
 
+            WriteText(writer, "displayName", type.DisplayName);
+            WriteText(writer, "titleField", type.TitleField);
+
             writer.WriteStartArray("fields");
             foreach (var field in type.Fields)
             {

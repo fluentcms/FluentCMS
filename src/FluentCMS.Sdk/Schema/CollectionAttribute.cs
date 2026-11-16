@@ -13,4 +13,10 @@ public sealed class CollectionAttribute(string? name = null) : Attribute
 
     /// <summary>Whether entries belong to one site or are shared by all sites.</summary>
     public ContentScope Scope { get; set; }
+
+    /// <summary>The name of the type for people, such as <c>Blog post</c>, or <see langword="null"/> for none.</summary>
+    public string? DisplayName { get; set; }
+
+    /// <summary>The name of the text property whose value labels an entry, for example <c>nameof(Title)</c>, or <see langword="null"/> for none.</summary>
+    public string? TitleField { get; set; }
 }

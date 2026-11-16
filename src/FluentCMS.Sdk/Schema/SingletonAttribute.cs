@@ -13,4 +13,10 @@ public sealed class SingletonAttribute(string? name = null) : Attribute
 
     /// <summary>Whether the entry belongs to one site or is shared by all sites.</summary>
     public ContentScope Scope { get; set; }
+
+    /// <summary>The name of the type for people, such as <c>Blog post</c>, or <see langword="null"/> for none.</summary>
+    public string? DisplayName { get; set; }
+
+    /// <summary>The name of the text property whose value labels the entry, for example <c>nameof(Title)</c>, or <see langword="null"/> for none.</summary>
+    public string? TitleField { get; set; }
 }

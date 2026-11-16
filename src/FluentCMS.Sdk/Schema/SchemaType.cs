@@ -33,6 +33,12 @@ public sealed class SchemaType
     /// <summary>How many days an entry stays in the trash before the purge job deletes it for good.</summary>
     public int TrashRetentionDays { get; internal init; } = PublishPolicyAttribute.DefaultTrashRetentionDays;
 
+    /// <summary>The name of the type for people, such as <c>Blog post</c>, or <see langword="null"/> if it has none. Only collections and singletons have one.</summary>
+    public string? DisplayName { get; internal init; }
+
+    /// <summary>The name of the text field whose value labels an entry, or <see langword="null"/> if the type names none. Only collections and singletons have one.</summary>
+    public string? TitleField { get; internal init; }
+
     /// <summary>The class the type was read from, or <see langword="null"/> if it was defined without one. It does not take part in comparing models.</summary>
     public Type? ClrType { get; internal init; }
 
