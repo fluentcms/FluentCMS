@@ -16,6 +16,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# The diagnostic log of each test app, written as it goes so that it survives a cancelled job, holds xUnit.net's report
+# of a test that runs too long and the stack of a test that --timeout cancelled.
+env:
+  TESTINGPLATFORM_DIAGNOSTIC: 1
+  TESTINGPLATFORM_DIAGNOSTIC_VERBOSITY: Information
+  TESTINGPLATFORM_DIAGNOSTIC_OUTPUT_DIRECTORY: ${{ github.workspace }}/artifacts/test-results
+  TESTINGPLATFORM_DIAGNOSTIC_FILELOGGER_SYNCHRONOUSWRITE: 1
+
 jobs:
   markdown:
     name: Markdown lint
@@ -91,15 +99,21 @@ jobs:
             Directory.Packages.props
             **/*.csproj
 
-      # Run every project of the shard even after one fails, so one run reports all failures.
+      # Run every project of the shard even after one fails, so one run reports all failures. A project still running after
+      # 12 minutes, well past the slowest healthy one, has hung, and ends with time left to name its tests.
       - name: Test
         shell: bash
         run: |
           status=0
           for project in ${{ matrix.projects }}; do
-            dotnet test --project "$project" -c Release --report-xunit-trx --results-directory artifacts/test-results || status=1
+            dotnet test --project "$project" -c Release --report-xunit-trx --results-directory artifacts/test-results --timeout 12m || status=1
           done
           exit $status
+
+      - name: Name the tests that were running
+        if: failure() || cancelled()
+        shell: bash
+        run: grep -h -e "xUnit.net" -e "\[Long Running Test\]" artifacts/test-results/*.diag || true
 
       - name: Upload test results
         if: always()
@@ -166,32 +180,38 @@ jobs:
       - name: Build
         run: dotnet build -c Release --no-restore -warnaserror
 
-      # xunit.v3 ships its own TRX reporter; --report-trx needs an extra package.
+      # xunit.v3 ships its own TRX reporter; --report-trx needs an extra package. Each --timeout is well past the slowest
+      # healthy run of its tests, so a hang ends with time left to name its tests.
       - name: Test
         if: env.FULL_TESTS == 'true'
-        run: dotnet test -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results
+        run: dotnet test -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 25m
 
       - name: Test SDK
         if: env.FULL_TESTS != 'true'
-        run: dotnet test --project tests/FluentCMS.Sdk.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results
+        run: dotnet test --project tests/FluentCMS.Sdk.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 10m
 
       - name: Test core units
         if: env.FULL_TESTS != 'true'
-        run: dotnet test --project tests/FluentCMS.Core.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results
+        run: dotnet test --project tests/FluentCMS.Core.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 10m
 
       - name: Test architecture
         if: env.FULL_TESTS != 'true'
-        run: dotnet test --project tests/FluentCMS.Architecture.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results
+        run: dotnet test --project tests/FluentCMS.Architecture.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 10m
 
       # As in the fast checks of Feature CI: the tool, and the host's commands with export and import on SQLite.
       - name: Test the tool
         if: env.FULL_TESTS != 'true'
-        run: dotnet test --project tests/FluentCMS.Cli.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results
+        run: dotnet test --project tests/FluentCMS.Cli.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 10m
 
       # The test projects ignore exit code 8, zero tests, so a filter that matched nothing would pass without a minimum.
       - name: Test the commands
         if: env.FULL_TESTS != 'true'
-        run: dotnet test --project tests/FluentCMS.Core.IntegrationTests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --filter-namespace "FluentCMS.Core.IntegrationTests.Commands*" --minimum-expected-tests 40
+        run: dotnet test --project tests/FluentCMS.Core.IntegrationTests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --filter-namespace "FluentCMS.Core.IntegrationTests.Commands*" --minimum-expected-tests 40 --timeout 10m
+
+      - name: Name the tests that were running
+        if: failure() || cancelled()
+        shell: bash
+        run: grep -h -e "xUnit.net" -e "\[Long Running Test\]" artifacts/test-results/*.diag || true
 
       - name: Upload test results
         if: always()
@@ -231,8 +251,14 @@ jobs:
             Directory.Packages.props
             **/*.csproj
 
+      # Well past the slowest healthy run, on SQL Server, so that a hang ends with time left to name its tests.
       - name: Test
-        run: dotnet test --project tests/FluentCMS.Data.Tests -c Release --report-xunit-trx --results-directory artifacts/test-results
+        run: dotnet test --project tests/FluentCMS.Data.Tests -c Release --report-xunit-trx --results-directory artifacts/test-results --timeout 17m
+
+      - name: Name the tests that were running
+        if: failure() || cancelled()
+        shell: bash
+        run: grep -h -e "xUnit.net" -e "\[Long Running Test\]" artifacts/test-results/*.diag || true
 
       - name: Upload test results
         if: always()

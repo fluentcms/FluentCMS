@@ -75,4 +75,10 @@
     <TestingPlatformCommandLineArguments>--ignore-exit-code 8</TestingPlatformCommandLineArguments>
   </PropertyGroup>
 
+  <!-- xUnit.net reports a test that runs longer than two minutes, every two minutes, in the platform's diagnostic log, so a
+       hung test is named in a run with diagnostics on, as CI's are. -->
+  <ItemGroup Condition="'$(IsTestProject)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)tests/xunit.runner.json" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
 </Project>
