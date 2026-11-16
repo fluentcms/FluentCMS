@@ -75,7 +75,10 @@ public sealed class MemberLoginModel : MemberPageModel
 
     public string? Notice => Status switch
     {
-        "email-verified" => "Your email address is verified. Sign in with your password.",
+        // A member a provider made has no password, and the page never says which members have one.
+        "email-verified" => ExternalProviders.Count > 0
+            ? "Your email address is verified. Sign in with your password, or continue with a provider your account is linked to."
+            : "Your email address is verified. Sign in with your password.",
         "password-reset" => "Your password was changed. Sign in with the new one.",
         _ => null,
     };

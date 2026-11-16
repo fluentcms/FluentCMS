@@ -59,12 +59,13 @@ internal sealed class MemberMail(
             "Choose a password to finish registering",
             $"This email address was registered more than once before it was verified, so no password was kept for it. If it was you, choose your password here, which also verifies the address:\n\n{link}\n\nThe link can be used once and expires at {expiry} UTC. After that, ask for a new link with the forgotten password page. If you did not register, ignore this email; the account is removed if the address is not verified."), cancellationToken);
 
-    // No link: the address has an account already, and the mail says how to get back in.
+    // No link: the address has an account already, and the mail says how to get back in. It goes after a registration
+    // and after a sign-in through a provider, to a member with or without a password, so it names every way in.
     public Task<bool> SendAlreadyRegisteredAsync(CmsMember member, CancellationToken cancellationToken) =>
         DeliverAsync(member, MemberMailSlot.Notice, new EmailMessage(
             member.Email!,
             "You already have an account",
-            "Someone tried to register an account with this email address, which has an account already. If it was you, sign in with your password, or choose a new one with the forgotten password page. If it was not you, ignore this email; nothing has changed."), cancellationToken);
+            "Someone used this email address to register, or to sign in with an external provider, and it has an account here already. No new account was made and nothing was linked to it. If it was you, sign in on the login page the way you usually do: with your password, or with a provider your account is linked to. If the account has no password or you forgot it, choose one with the forgotten password page. To sign in with another provider too, sign in first and link it on the sign-in methods page. If it was not you, ignore this email; nothing has changed."), cancellationToken);
 
     private async Task<bool> SendAsync(CmsMember member, MemberMailSlot slot, string? template, string hostedPage, string token, TimeSpan lifetime, Func<string, string, EmailMessage> message, CancellationToken cancellationToken)
     {
