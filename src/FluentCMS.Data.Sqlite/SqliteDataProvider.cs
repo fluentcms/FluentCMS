@@ -5,6 +5,8 @@ using FluentCMS.Core.Storage;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using SQLitePCL;
 
 namespace FluentCMS.Data.Sqlite;
@@ -42,6 +44,10 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
     // A writer takes the lock at BEGIN IMMEDIATE and holds it to the end, so writers queue and never deadlock.
     public bool IsDeadlock(Exception exception) => false;
 
+    // What Microsoft.Data.Sqlite throws once the busy timeout and its own retries are over, matched by the primary code.
+    public bool IsBusy(Exception exception) =>
+        (exception as SqliteException ?? exception.InnerException as SqliteException) is { SqliteErrorCode: raw.SQLITE_BUSY or raw.SQLITE_LOCKED };
+
     // SQLite's LIKE folds the case of ASCII letters only.
     public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment)
     {
@@ -67,6 +73,27 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
             .MigrationsAssembly(typeof(SqliteDataProvider).Assembly)
             .MigrationsHistoryTable(SystemDbContext.HistoryTable))
             .AddInterceptors(_interceptors);
+
+    // EF inserts the row with id 1 to take its lock and deletes it to release it. A database that does not exist yet is left
+    // for EF to create, since opening it here would make an empty file that EF then takes for an existing database.
+    public async Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken)
+    {
+        if (!await context.GetService<IRelationalDatabaseCreator>().ExistsAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        var tables = await context.Database
+            .SqlQueryRaw<long>("SELECT count(*) AS \"Value\" FROM sqlite_master WHERE type = 'table' AND name = '__EFMigrationsLock'")
+            .ToListAsync(cancellationToken);
+        if (tables[0] == 0)
+        {
+            return null;
+        }
+
+        var rows = await context.Database.SqlQueryRaw<string>("SELECT \"Timestamp\" AS \"Value\" FROM \"__EFMigrationsLock\"").ToListAsync(cancellationToken);
+        return rows.FirstOrDefault();
+    }
 
     void IDatabaseFile.Snapshot(string destination) => _file.Snapshot(destination);
 

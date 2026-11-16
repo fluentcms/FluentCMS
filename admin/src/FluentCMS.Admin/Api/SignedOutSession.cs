@@ -10,6 +10,8 @@ internal sealed class SignedOutSession : IAccessTokenSource, ICurrentSite, ICont
 
     public ValueTask<string?> GetAccessTokenAsync(CancellationToken cancellationToken) => ValueTask.FromResult<string?>(null);
 
+    public ValueTask<bool> RefreshAsync(string rejectedToken, CancellationToken cancellationToken) => ValueTask.FromResult(false);
+
     public void TooManyRequests(TimeSpan? retryAfter)
     {
     }

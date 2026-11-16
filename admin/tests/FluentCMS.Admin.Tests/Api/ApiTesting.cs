@@ -60,6 +60,8 @@ internal sealed class FakeSession : IAccessTokenSource, ICurrentSite, IContentLo
 
     public ValueTask<string?> GetAccessTokenAsync(CancellationToken cancellationToken) => ValueTask.FromResult(Token);
 
+    public ValueTask<bool> RefreshAsync(string rejectedToken, CancellationToken cancellationToken) => ValueTask.FromResult(false);
+
     public void TooManyRequests(TimeSpan? retryAfter) => Notices.Add(retryAfter);
 }
 

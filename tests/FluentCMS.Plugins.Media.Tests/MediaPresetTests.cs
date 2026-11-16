@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Reflection;
+using System.Text.Json;
 using FluentCMS.Media;
 using Shouldly;
 using Xunit;
@@ -11,6 +13,16 @@ namespace FluentCMS.Plugins.Media.Tests;
 public sealed class MediaPresetTests(MediaHost media) : IClassFixture<MediaHost>
 {
     private const string Presets = $"{Root}/presets";
+
+    // Results.Json would set the resolver of options that are not read-only, racing a request that locks them (#3193).
+    [Fact]
+    public void TheJsonOfPresetsIsCompleteAndReadOnlyBeforeAnyRequest()
+    {
+        var options = (JsonSerializerOptions)typeof(MediaEndpoints).GetField("PresetJson", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
+
+        options.IsReadOnly.ShouldBeTrue();
+        options.TypeInfoResolver.ShouldNotBeNull();
+    }
 
     [Fact]
     public async Task APresetIsStoredListedAppliedByAUrlAndDeleted()

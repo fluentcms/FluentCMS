@@ -50,24 +50,44 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
         }
     }
 
-    // The end of the new lease, or null while another holder has the lock.
+    // The end of the new lease, or null while another holder has the lock. On a database with one writer, reading the row or
+    // beginning the write can give up waiting for another connection's transaction: nothing was taken, and the lock counts
+    // as held, since that transaction may be the holder's own work, which keeps it from renewing.
     private async Task<DateTimeOffset?> TryTakeAsync(string name, string holder, CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        try
+        {
+            return await TakeAsync(context, name, holder, cancellationToken);
+        }
+        catch (Exception exception) when (scope.ServiceProvider.GetRequiredService<IDataProvider>().IsBusy(exception))
+        {
+            return null;
+        }
+    }
 
+    private async Task<DateTimeOffset?> TakeAsync(SystemDbContext context, string name, string holder, CancellationToken cancellationToken)
+    {
+        var current = await context.Set<LockRow>().AsNoTracking().SingleOrDefaultAsync(row => row.Name == name, cancellationToken);
+        if (current is { Owner: not null } && current.LeaseUntil > time.GetUtcNow())
+        {
+            return null;
+        }
+
+        // The writes are not canceled, so a take that commits always comes back as a handle that renews and releases it. On
+        // SQLite the transaction begins once the database's one writer is free, so the lease starts from the clock then.
+        await using var transaction = await context.Database.BeginTransactionAsync(CancellationToken.None);
         var now = time.GetUtcNow();
         var until = StorageConventions.ToMicroseconds(now + Lease);
 
-        var current = await context.Set<LockRow>().AsNoTracking().SingleOrDefaultAsync(row => row.Name == name, cancellationToken);
-
-        // The writes are not canceled, so a take that commits always comes back as a handle that renews and releases it.
         if (current is null)
         {
             context.Add(new LockRow { Name = name, Owner = holder, AcquiredAt = now, LeaseUntil = until });
             try
             {
                 await context.SaveChangesAsync(CancellationToken.None);
+                await transaction.CommitAsync(CancellationToken.None);
                 return until;
             }
             catch (DbUpdateException)
@@ -82,11 +102,6 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
             }
         }
 
-        if (current.Owner is not null && current.LeaseUntil > now)
-        {
-            return null;
-        }
-
         var taken = await context.Set<LockRow>()
             .Where(row => row.Name == name && (row.Owner == null || row.LeaseUntil == null || row.LeaseUntil <= now))
             .ExecuteUpdateAsync(
@@ -95,6 +110,7 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
                     .SetProperty(column => column.AcquiredAt, now)
                     .SetProperty(column => column.LeaseUntil, until),
                 CancellationToken.None);
+        await transaction.CommitAsync(CancellationToken.None);
 
         if (taken == 0)
         {
@@ -115,18 +131,40 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
         return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<LockRow>().AnyAsync(row => row.Name == name);
     }
 
-    // The end of the renewed lease, or null when the holder no longer has the lock.
-    private async Task<DateTimeOffset?> RenewAsync(string name, string holder, CancellationToken cancellationToken)
+    // The end of the renewed lease, or null when the holder no longer has the lock; Busy when the database has one writer,
+    // the renewal gave up waiting for another connection's transaction, and the row may still name the holder.
+    private async Task<(DateTimeOffset? Until, bool Busy)> RenewAsync(string name, string holder, CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        var provider = scope.ServiceProvider.GetRequiredService<IDataProvider>();
+        try
+        {
+            // As for a take, the lease starts from the clock once the transaction has begun.
+            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+            var until = StorageConventions.ToMicroseconds(time.GetUtcNow() + Lease);
+            var renewed = await context.Set<LockRow>()
+                .Where(row => row.Name == name && row.Owner == holder)
+                .ExecuteUpdateAsync(row => row.SetProperty(column => column.LeaseUntil, until), cancellationToken);
+            await transaction.CommitAsync(CancellationToken.None);
 
-        var until = StorageConventions.ToMicroseconds(time.GetUtcNow() + Lease);
-        var renewed = await context.Set<LockRow>()
-            .Where(row => row.Name == name && row.Owner == holder)
-            .ExecuteUpdateAsync(row => row.SetProperty(column => column.LeaseUntil, until), cancellationToken);
+            return (renewed == 1 ? until : null, false);
+        }
+        catch (Exception exception) when (provider.IsBusy(exception))
+        {
+        }
 
-        return renewed == 1 ? until : null;
+        // A take-over can commit between two transactions that keep the renewal waiting. Reads do not wait for the writer
+        // in WAL mode, so the row tells whether the lock is still the holder's; a read that waits as well tells nothing.
+        try
+        {
+            var owner = await context.Set<LockRow>().AsNoTracking().Where(row => row.Name == name).Select(row => row.Owner).SingleOrDefaultAsync(cancellationToken);
+            return (null, owner == holder);
+        }
+        catch (Exception exception) when (provider.IsBusy(exception))
+        {
+            return (null, true);
+        }
     }
 
     private async Task ReleaseAsync(string name, string holder)
@@ -203,18 +241,39 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
         private async Task RenewAsync()
         {
             var interval = _owner.Lease / 3;
+            var delay = interval;
+            var waiting = false;
             while (true)
             {
                 try
                 {
-                    await _owner.DelayAsync(interval, _stopping.Token);
-                    if (await _owner.RenewAsync(Name, _holder, _stopping.Token) is not { } until)
+                    await _owner.DelayAsync(delay, _stopping.Token);
+                    var (until, busy) = await _owner.RenewAsync(Name, _holder, _stopping.Token);
+
+                    // While another connection holds the one writer of the database, such as the holder's own work in a
+                    // long transaction, no other holder can take the lock either, since taking it is a write. So the lease
+                    // does not count as run out, and the renewal waits again at once, to be waiting when that write ends.
+                    if (busy)
+                    {
+                        if (!waiting)
+                        {
+                            LockLog.RenewWaiting(_owner.Logger, Name);
+                            waiting = true;
+                        }
+
+                        delay = TimeSpan.Zero;
+                        continue;
+                    }
+
+                    waiting = false;
+                    delay = interval;
+                    if (until is null)
                     {
                         await LoseAsync("another holder took it");
                         return;
                     }
 
-                    _leaseUntil = until;
+                    _leaseUntil = until.Value;
                 }
                 catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
                 {

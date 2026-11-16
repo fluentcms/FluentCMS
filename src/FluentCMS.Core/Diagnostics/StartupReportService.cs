@@ -21,6 +21,9 @@ internal sealed class StartupReportHolder
 internal static class StartupReportJson
 {
     public static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
+
+    // Locked before the diagnostics endpoint hands them to Results.Json, as AdminJson's are.
+    static StartupReportJson() => Options.MakeReadOnly(populateMissingResolver: true);
 }
 
 // Runs after every StartingAsync, which is where the migrations are, so the report sees the database as the host will use it.

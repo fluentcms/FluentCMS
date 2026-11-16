@@ -1,0 +1,135 @@
+@* Shows the admin only to a signed-in tab, and the pages of the sign-in to anyone. Otherwise the session is restored from the
+   tab's refresh token, or the whole page goes to the authorize endpoint and comes back to the route. *@
+@implements IDisposable
+@using FluentCMS.Admin.Authentication
+@using Microsoft.Extensions.Logging
+@inject IAdminSession Session
+@inject NavigationManager Navigation
+@inject IStringLocalizer<AdminResources> L
+@inject ILogger<SignInGate> Logger
+
+@if (Session.User is not null || OnSignInPage)
+{
+    @ChildContent
+}
+else if (failure is { } reason)
+{
+    <main id="main" class="sign-in-gate" tabindex="-1">
+        <h1 tabindex="-1">@L[$"Authentication.Gate.{reason}Heading"]</h1>
+        <p>@L[$"Authentication.Gate.{reason}Text"]</p>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="TryAgainAsync">@L["Authentication.Gate.TryAgain"]</CmsButton>
+    </main>
+}
+else
+{
+    <p class="sign-in-gate" role="status">@L["Authentication.Gate.SigningIn"]</p>
+}
+
+@code {
+    private GateFailure? failure;
+    private bool starting;
+
+    private enum GateFailure
+    {
+        // The server did not answer, or answered with an error.
+        Unavailable,
+
+        // The discovery document is not the configured authority's, or the server does not offer what the admin needs.
+        Misconfigured,
+
+        // The server ended the session right after the sign-in; signing in again on its own would loop.
+        EndedAfterSignIn,
+    }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private bool OnSignInPage
+    {
+        get
+        {
+            var uri = Navigation.Uri;
+            return uri.StartsWith(Navigation.BaseUri, StringComparison.Ordinal)
+                && Navigation.ToBaseRelativePath(uri).StartsWith("authentication/", StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Session.Changed += OnChanged;
+        Navigation.LocationChanged += OnLocationChanged;
+        await StartAsync();
+    }
+
+    public void Dispose()
+    {
+        Session.Changed -= OnChanged;
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+
+    private async Task StartAsync()
+    {
+        if (starting || failure is not null || Session.User is not null || OnSignInPage)
+        {
+            return;
+        }
+
+        starting = true;
+        try
+        {
+            await Session.EnsureSignedInAsync(CancellationToken.None);
+        }
+        catch (SessionEndedAfterSignInException)
+        {
+            failure = GateFailure.EndedAfterSignIn;
+        }
+        catch (AuthorityConfigurationException exception)
+        {
+            SessionLog.SignInUnavailable(Logger, exception);
+            failure = GateFailure.Misconfigured;
+        }
+        catch (Exception exception)
+        {
+            // The gate asks for no cancellation, so a TaskCanceledException is the client's timeout. Whatever stops the start,
+            // the user gets the page with "Try again" rather than the unhandled-error bar.
+            SessionLog.SignInUnavailable(Logger, exception);
+            failure = GateFailure.Unavailable;
+        }
+        finally
+        {
+            starting = false;
+        }
+    }
+
+    // After a session that ended right after its sign-in, the user's own sign-in goes even within the window.
+    private async Task TryAgainAsync()
+    {
+        var ended = failure == GateFailure.EndedAfterSignIn;
+        failure = null;
+        if (!ended)
+        {
+            await StartAsync();
+            return;
+        }
+
+        try
+        {
+            var uri = Navigation.Uri;
+            var route = uri.StartsWith(Navigation.BaseUri, StringComparison.Ordinal) ? Navigation.ToBaseRelativePath(uri) : null;
+            await Session.SignInAsync(route, CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            SessionLog.SignInUnavailable(Logger, exception);
+            failure = GateFailure.Unavailable;
+        }
+    }
+
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        await StartAsync();
+        StateHasChanged();
+    });
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => OnChanged();
+}

@@ -2,6 +2,7 @@
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "NotFoundPage is kept by the DynamicDependency of the constructor.")]
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Router finds the pages of this assembly, each kept by a DynamicDependency of the constructor.")]
 @implements IDisposable
+@using FluentCMS.Admin.Authentication
 @using FluentCMS.Admin.Configuration
 @using Microsoft.Extensions.Logging
 @inject AdminStartup Startup
@@ -16,12 +17,14 @@
     @* The one theme root: one set of the library's providers, one scrolling container, and the positioned ancestor of the
        live regions. *@
     <CmsThemeRoot Mode="@Theme.Mode">
-        <Router AppAssembly="typeof(AdminApp).Assembly" NotFoundPage="typeof(NotFoundPage)">
-            <Found Context="routeData">
-                <RouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)" />
-                <FocusOnNavigate RouteData="routeData" Selector="h1" />
-            </Found>
-        </Router>
+        <SignInGate>
+            <Router AppAssembly="typeof(AdminApp).Assembly" NotFoundPage="typeof(NotFoundPage)">
+                <Found Context="routeData">
+                    <RouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)" />
+                    <FocusOnNavigate RouteData="routeData" Selector="h1" />
+                </Found>
+            </Router>
+        </SignInGate>
         <LiveRegions />
     </CmsThemeRoot>
 }
@@ -36,6 +39,7 @@ else
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HomePage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NotFoundPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComponentGalleryPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(LoginCallbackPage))]
     public AdminApp()
     {
     }

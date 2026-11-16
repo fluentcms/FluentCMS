@@ -403,6 +403,36 @@ FluentCMS.Admin.Configuration.AdminCultures.Default.init -> void
 FluentCMS.Admin.Configuration.AdminCultures.Equals(FluentCMS.Admin.Configuration.AdminCultures? other) -> bool
 FluentCMS.Admin.Configuration.AdminCultures.Offered.get -> System.Collections.Generic.IReadOnlyList<string!>?
 FluentCMS.Admin.Configuration.AdminCultures.Offered.init -> void
+FluentCMS.Admin.Forms.FormDraft
+FluentCMS.Admin.Forms.FormDraft.<Clone>$() -> FluentCMS.Admin.Forms.FormDraft!
+FluentCMS.Admin.Forms.FormDraft.BaseVersion.get -> string?
+FluentCMS.Admin.Forms.FormDraft.BaseVersion.init -> void
+FluentCMS.Admin.Forms.FormDraft.Deconstruct(out FluentCMS.Admin.Forms.FormDraftKey! Key, out string? BaseVersion, out System.Text.Json.Nodes.JsonObject! Fields) -> void
+FluentCMS.Admin.Forms.FormDraft.Equals(FluentCMS.Admin.Forms.FormDraft? other) -> bool
+FluentCMS.Admin.Forms.FormDraft.Fields.get -> System.Text.Json.Nodes.JsonObject!
+FluentCMS.Admin.Forms.FormDraft.Fields.init -> void
+FluentCMS.Admin.Forms.FormDraft.FormDraft(FluentCMS.Admin.Forms.FormDraftKey! Key, string? BaseVersion, System.Text.Json.Nodes.JsonObject! Fields) -> void
+FluentCMS.Admin.Forms.FormDraft.Key.get -> FluentCMS.Admin.Forms.FormDraftKey!
+FluentCMS.Admin.Forms.FormDraft.Key.init -> void
+FluentCMS.Admin.Forms.FormDraftKey
+FluentCMS.Admin.Forms.FormDraftKey.<Clone>$() -> FluentCMS.Admin.Forms.FormDraftKey!
+FluentCMS.Admin.Forms.FormDraftKey.Deconstruct(out string? Site, out string! Type, out System.Guid? Entry, out string? Locale) -> void
+FluentCMS.Admin.Forms.FormDraftKey.Entry.get -> System.Guid?
+FluentCMS.Admin.Forms.FormDraftKey.Entry.init -> void
+FluentCMS.Admin.Forms.FormDraftKey.Equals(FluentCMS.Admin.Forms.FormDraftKey? other) -> bool
+FluentCMS.Admin.Forms.FormDraftKey.FormDraftKey(string? Site, string! Type, System.Guid? Entry, string? Locale) -> void
+FluentCMS.Admin.Forms.FormDraftKey.Locale.get -> string?
+FluentCMS.Admin.Forms.FormDraftKey.Locale.init -> void
+FluentCMS.Admin.Forms.FormDraftKey.Site.get -> string?
+FluentCMS.Admin.Forms.FormDraftKey.Site.init -> void
+FluentCMS.Admin.Forms.FormDraftKey.Type.get -> string!
+FluentCMS.Admin.Forms.FormDraftKey.Type.init -> void
+FluentCMS.Admin.Forms.IFormDraftStore
+FluentCMS.Admin.Forms.IFormDraftStore.FindAsync(FluentCMS.Admin.Forms.FormDraftKey! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<FluentCMS.Admin.Forms.FormDraft?>!
+FluentCMS.Admin.Forms.IFormDraftStore.RemoveAsync(FluentCMS.Admin.Forms.FormDraftKey! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+FluentCMS.Admin.Forms.IFormDraftStore.Track(FluentCMS.Admin.Forms.IUnsavedForm! form) -> System.IDisposable!
+FluentCMS.Admin.Forms.IUnsavedForm
+FluentCMS.Admin.Forms.IUnsavedForm.CaptureDraft() -> FluentCMS.Admin.Forms.FormDraft!
 FluentCMS.Admin.IAnnouncer
 FluentCMS.Admin.IAnnouncer.Announce(string! message, FluentCMS.Admin.AnnouncementPoliteness politeness = FluentCMS.Admin.AnnouncementPoliteness.Polite) -> void
 const FluentCMS.Admin.Api.ApiRequest.NewLocale = "\"0\"" -> string!
@@ -480,6 +510,12 @@ override FluentCMS.Admin.Configuration.AdminConfiguration.ToString() -> string!
 override FluentCMS.Admin.Configuration.AdminCultures.Equals(object? obj) -> bool
 override FluentCMS.Admin.Configuration.AdminCultures.GetHashCode() -> int
 override FluentCMS.Admin.Configuration.AdminCultures.ToString() -> string!
+override FluentCMS.Admin.Forms.FormDraft.Equals(object? obj) -> bool
+override FluentCMS.Admin.Forms.FormDraft.GetHashCode() -> int
+override FluentCMS.Admin.Forms.FormDraft.ToString() -> string!
+override FluentCMS.Admin.Forms.FormDraftKey.Equals(object? obj) -> bool
+override FluentCMS.Admin.Forms.FormDraftKey.GetHashCode() -> int
+override FluentCMS.Admin.Forms.FormDraftKey.ToString() -> string!
 static FluentCMS.Admin.Api.ApiProblem.operator !=(FluentCMS.Admin.Api.ApiProblem? left, FluentCMS.Admin.Api.ApiProblem? right) -> bool
 static FluentCMS.Admin.Api.ApiProblem.operator ==(FluentCMS.Admin.Api.ApiProblem? left, FluentCMS.Admin.Api.ApiProblem? right) -> bool
 static FluentCMS.Admin.Api.ApiProblemError.operator !=(FluentCMS.Admin.Api.ApiProblemError? left, FluentCMS.Admin.Api.ApiProblemError? right) -> bool
@@ -530,3 +566,7 @@ static FluentCMS.Admin.Configuration.AdminConfiguration.operator !=(FluentCMS.Ad
 static FluentCMS.Admin.Configuration.AdminConfiguration.operator ==(FluentCMS.Admin.Configuration.AdminConfiguration? left, FluentCMS.Admin.Configuration.AdminConfiguration? right) -> bool
 static FluentCMS.Admin.Configuration.AdminCultures.operator !=(FluentCMS.Admin.Configuration.AdminCultures? left, FluentCMS.Admin.Configuration.AdminCultures? right) -> bool
 static FluentCMS.Admin.Configuration.AdminCultures.operator ==(FluentCMS.Admin.Configuration.AdminCultures? left, FluentCMS.Admin.Configuration.AdminCultures? right) -> bool
+static FluentCMS.Admin.Forms.FormDraft.operator !=(FluentCMS.Admin.Forms.FormDraft? left, FluentCMS.Admin.Forms.FormDraft? right) -> bool
+static FluentCMS.Admin.Forms.FormDraft.operator ==(FluentCMS.Admin.Forms.FormDraft? left, FluentCMS.Admin.Forms.FormDraft? right) -> bool
+static FluentCMS.Admin.Forms.FormDraftKey.operator !=(FluentCMS.Admin.Forms.FormDraftKey? left, FluentCMS.Admin.Forms.FormDraftKey? right) -> bool
+static FluentCMS.Admin.Forms.FormDraftKey.operator ==(FluentCMS.Admin.Forms.FormDraftKey? left, FluentCMS.Admin.Forms.FormDraftKey? right) -> bool

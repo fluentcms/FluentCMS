@@ -402,6 +402,22 @@ public sealed class SchemaSyncTests : IDisposable
         _database.Columns("cms_article").ShouldNotContain("subtitle");
     }
 
+    // SQLite has one writer, so the lock cannot renew its lease while the transaction of the sync lasts.
+    [SqliteFact("schema sync, which only SQLite supports")]
+    public async Task ASyncWhoseTransactionOutlastsTheLeaseOfItsLockFinishes()
+    {
+        var work = new LongTransaction();
+        using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development, services: LongTransaction.Lock, configure: work.Configure);
+        await host.StartAsync(Token);
+
+        var report = await Runner(host).SyncContentSchemaAsync(ArticleSchemas.Article("title", "subtitle", "summary"), Token);
+
+        report.Applied.Count.ShouldBe(2);
+        _database.Columns("cms_article").ShouldContain("subtitle");
+        _database.Columns("cms_article").ShouldContain("summary");
+        await host.StopAsync(Token);
+    }
+
     [SqliteFact("schema sync, which only SQLite supports")]
     public async Task SchemaSyncOffInDevelopmentUsesTheContentStream()
     {
