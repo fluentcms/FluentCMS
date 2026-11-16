@@ -27,6 +27,9 @@ internal sealed partial class AdminSite(AdminOptions options, PublicOrigin origi
 
     private Page? _index;
 
+    // FluentCms:ReverseProxy:PathBase as configured, empty when none.
+    public string PathBase { get; } = proxy.PathBase ?? "";
+
     // The path base and /admin/, which the page's <base href> and so every address of the app resolve under.
     public string BaseHref { get; } = new PathString(proxy.PathBase).Add(Path).ToUriComponent() + "/";
 
@@ -170,6 +173,7 @@ internal sealed partial class AdminSite(AdminOptions options, PublicOrigin origi
         var href = bases[0].Groups["href"];
         return string.Concat(html.AsSpan(0, href.Index), HtmlEncoder.Default.Encode(BaseHref), html.AsSpan(href.Index + href.Length));
     }
+
     private string HostBase(HttpRequest request) =>
         origin.Base
         ?? (environment.IsDevelopment()

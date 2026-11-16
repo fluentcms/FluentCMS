@@ -63,7 +63,7 @@ internal sealed partial class AdminClientRegistration(
         // The admin reads its addresses in config.json with the rules of admin spec 2.5, which refuse what the path base and
         // the public origin may hold otherwise: characters such as parentheses, and a host that is not ASCII.
         var pathBase = proxy.PathBase ?? "";
-        if (AdminOptions.HttpUrl("http://localhost" + pathBase) is null)
+        if (pathBase.Length > 0 && !PathBasePattern().IsMatch(pathBase))
         {
             throw new FluentCmsConfigurationException(
                 HostErrorCodes.InvalidOption,
@@ -122,6 +122,10 @@ internal sealed partial class AdminClientRegistration(
             .Select(port => port.Trim())
             .Where(port => int.TryParse(port, out var number) && number is > 0 and <= 65535)
             .Select(port => $"{scheme}://localhost:{port}");
+
+    // Unreserved characters only, which every address of the admin writes alike, escaped or not.
+    [GeneratedRegex(@"^(/[A-Za-z0-9._~-]+)+\z")]
+    private static partial Regex PathBasePattern();
 
     [GeneratedRegex(@"^(?<scheme>https?)://(?:\*|\+|0\.0\.0\.0|\[::\])(?=:|/|$)", RegexOptions.IgnoreCase)]
     private static partial Regex AnyHost();

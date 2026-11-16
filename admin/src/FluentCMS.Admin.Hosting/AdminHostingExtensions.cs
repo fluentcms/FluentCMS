@@ -149,22 +149,30 @@ public static class AdminHostingExtensions
     private static async Task PageAsync(HttpContext context, AdminSite site)
     {
         // The app's router takes only addresses under its base, which is written as configured: /admin, and /ADMIN/ or a path
-        // base in another case, go to the address the base names.
+        // base in another case, go to the address the base names. The rest is built from the decoded path with each segment
+        // escaped again, so that no %2e%2e or // a request carries escaped can lead the browser out of the base, and a dot
+        // segment is refused.
         var request = context.Request;
-        var path = request.PathBase.Add(request.Path).ToUriComponent();
-        if (!path.StartsWith(site.BaseHref, StringComparison.Ordinal))
+        var path = request.Path.Value ?? "";
+        if (!string.Equals(request.PathBase.Value ?? "", site.PathBase, StringComparison.Ordinal) || !path.StartsWith(AdminSite.Path + "/", StringComparison.Ordinal))
         {
-            var rest = path.StartsWith(site.BaseHref, StringComparison.OrdinalIgnoreCase) ? path[site.BaseHref.Length..] : "";
-            context.Response.Redirect(site.BaseHref + rest + request.QueryString.ToUriComponent());
+            var segments = path.Length > AdminSite.Path.Length ? path[(AdminSite.Path.Length + 1)..].Split('/') : [];
+            if (segments.Any(segment => segment is "." or ".."))
+            {
+                await NotFound(context);
+                return;
+            }
+
+            context.Response.Redirect(site.BaseHref + string.Join('/', segments.Select(Uri.EscapeDataString)) + request.QueryString.ToUriComponent());
             return;
         }
-
         var html = await site.IndexAsync(context.RequestAborted);
         context.Response.ContentType = "text/html; charset=utf-8";
         context.Response.Headers.CacheControl = "no-store";
         context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
         await context.Response.WriteAsync(html, Encoding.UTF8, context.RequestAborted);
     }
+
     private static async Task ConfigurationAsync(HttpContext context, AdminSite site)
     {
         var json = site.Configuration(context.Request);

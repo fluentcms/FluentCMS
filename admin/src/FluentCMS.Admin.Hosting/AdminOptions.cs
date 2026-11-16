@@ -152,6 +152,7 @@ public sealed class AdminBrandingOptions
         return false;
     }
 }
+
 // The cultures the admin offers its users, and the one it starts in. Empty, it offers every culture it ships, and starts
 // in en.
 public sealed class AdminCultureOptions

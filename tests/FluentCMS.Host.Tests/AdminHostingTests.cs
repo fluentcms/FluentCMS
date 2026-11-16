@@ -93,6 +93,15 @@ public sealed class AdminHostingTests : IAsyncDisposable
             other.Headers.Location!.OriginalString.ShouldBe(canonical, path);
         }
 
+        // A segment escaped twice stays escaped in the address the redirect names, so the browser stays under the base.
+        foreach (var (path, canonical) in new[] { ("/ADMIN/%252e%252e/health/live", "/admin/%252e%252e/health/live"), ("/ADMIN/%252e%252e//example.com/x", "/admin/%252e%252e//example.com/x") })
+        {
+            using var escaped = await client.GetAsync(new Uri(path, UriKind.Relative), Token);
+            escaped.StatusCode.ShouldBe(HttpStatusCode.Redirect, path);
+            escaped.Headers.Location!.OriginalString.ShouldBe(canonical, path);
+            new Uri(new Uri("https://localhost" + path), escaped.Headers.Location).AbsolutePath.ShouldStartWith("/admin/", Case.Sensitive, path);
+        }
+
         // HEAD answers the page's headers without its body, and the page takes no other method.
         using (var head = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, "/admin/system/components"), Token))
         {
@@ -217,6 +226,9 @@ public sealed class AdminHostingTests : IAsyncDisposable
 
         using var bare = await client.GetAsync(new Uri("/cms/admin", UriKind.Relative), Token);
         bare.Headers.Location!.OriginalString.ShouldBe("/cms/admin/");
+        using var cased = await client.GetAsync(new Uri("/CMS/admin/system/components", UriKind.Relative), Token);
+        cased.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        cased.Headers.Location!.OriginalString.ShouldBe("/cms/admin/system/components");
 
         using var outside = await client.GetAsync(new Uri("/admin/", UriKind.Relative), Token);
         outside.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -360,8 +372,10 @@ public sealed class AdminHostingTests : IAsyncDisposable
 
     // An address the admin's reader would refuse stops the host, rather than the page failing or the admin showing its error.
     [Theory]
-    [InlineData("FluentCms:PublicOrigin", "https://münchen.example", "xn--")]
+    [InlineData("FluentCms:PublicOrigin", "https://mÃ¼nchen.example", "xn--")]
     [InlineData("FluentCms:ReverseProxy:PathBase", "/c(m)s", "FluentCms:ReverseProxy:PathBase")]
+    [InlineData("FluentCms:ReverseProxy:PathBase", "/a|b", "FluentCms:ReverseProxy:PathBase")]
+    [InlineData("FluentCms:ReverseProxy:PathBase", "/a%20b", "FluentCms:ReverseProxy:PathBase")]
     public async Task AnAddressTheAdminCannotTakeStopsTheHost(string key, string value, string named)
     {
         var settings = AdminSettings();
@@ -380,13 +394,17 @@ public sealed class AdminHostingTests : IAsyncDisposable
     [InlineData("<html><head><title>No base</title></head></html>", true, "0 <base href> elements")]
     [InlineData("<html><head><base href=\"/\" /><base href=\"/x/\" /></head></html>", true, "2 <base href> elements")]
     [InlineData("<html><head><base href=\"/\" /></head></html>", false, "no manifest of static web assets")]
-    public async Task AnAppTheHostCannotServeStopsItWhenTheAdminIsMapped(string index, bool manifest, string message)
+    [InlineData(null, true, "found no index.html")]
+    public async Task AnAppTheHostCannotServeStopsItWhenTheAdminIsMapped(string? index, bool manifest, string message)
     {
         var root = Directory.CreateTempSubdirectory("fluentcms-admin-bare-");
         try
         {
             Directory.CreateDirectory(Path.Combine(root.FullName, "wwwroot"));
-            await File.WriteAllTextAsync(Path.Combine(root.FullName, "wwwroot", "index.html"), index, Token);
+            if (index is not null)
+            {
+                await File.WriteAllTextAsync(Path.Combine(root.FullName, "wwwroot", "index.html"), index, Token);
+            }
             var path = Path.Combine(root.FullName, "app.staticwebassets.endpoints.json");
             if (manifest)
             {
@@ -412,7 +430,8 @@ public sealed class AdminHostingTests : IAsyncDisposable
         }
     }
 
-    private static Dictionary<string, string?> AdminSettings()    {
+    private static Dictionary<string, string?> AdminSettings()
+    {
         var settings = Operator.Settings();
         settings["FluentCms:PublicOrigin"] = "https://localhost";
         settings["FluentCms:Admin:Enabled"] = "true";
