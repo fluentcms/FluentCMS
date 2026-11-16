@@ -11,10 +11,13 @@ public sealed class TraceTests(EndToEndHost host) : BrowserTest(host)
 {
     private const string Password = "Aa1!0123456789ABCDEF";
 
+    // A cookie's value the context saw, which no pattern finds.
+    private const string Cookie = "opaque-session-1234567890";
+
     private readonly DirectoryInfo _directory = host.NewDirectory();
 
     [Fact]
-    public void TheMaskLeavesOutTheNetworkAndBodiesAndMasksPasswordsTokensAndCookies()
+    public void TheMaskKeepsOnlyItsAllowlistAndMasksPasswordsTokensAndCookies()
     {
         var source = Path.Combine(_directory.FullName, "source.zip");
         using (var archive = ZipFile.Open(source, ZipArchiveMode.Create))
@@ -26,15 +29,19 @@ public sealed class TraceTests(EndToEndHost host) : BrowserTest(host)
                 {"type":"log","message":"code_verifier=verifier1&grant_type=authorization_code&Input.Password=Aa1%210123456789ABCDEF"}
                 """);
             Write(archive, "trace.network", """{"request":{"postData":{"text":"password=x"}}}""");
-            Write(archive, "trace.stacks", "{}");
+            Write(archive, "trace.stacks", "{\"cookie\":\"" + Cookie + "\"}");
+            Write(archive, "other.json", "{}");
+            Write(archive, "screencast/nested/page@2.jpeg", "jpeg");
             Write(archive, "resources/0a1b.json", """{"access_token":"eyJhbGciOiJSUzI1NiJ9.e30.sig"}""");
             Write(archive, "resources/2c3d.html", "<input value=\"x\">");
             Write(archive, "screencast/page@1.jpeg", "ÿØ jpeg");
             Write(archive, "resources/4e5f.css", "body { color: red }");
         }
 
+        // A trace left at the same path, as by a test that failed twice, is replaced.
         var masked = Path.Combine(_directory.FullName, "masked.zip");
-        TraceScrubber.Scrub(source, masked, [Password]);
+        TraceScrubber.Scrub(source, masked, [Password, Cookie]);
+        TraceScrubber.Scrub(source, masked, [Password, Cookie]);
 
         using var result = ZipFile.OpenRead(masked);
         result.Entries.Select(entry => entry.FullName).ShouldBe(["trace.trace", "trace.stacks", "screencast/page@1.jpeg", "resources/4e5f.css"], ignoreOrder: true);
@@ -46,8 +53,25 @@ public sealed class TraceTests(EndToEndHost host) : BrowserTest(host)
         trace.ShouldNotContain("Aa1%21");
         trace.ShouldContain("state=s1");
         trace.ShouldContain("grant_type=authorization_code");
-        TraceScrubber.Leaks(masked, [Password]).ShouldBeNull();
-        TraceScrubber.Leaks(source, [Password]).ShouldNotBeNull();
+        Read(result.GetEntry("trace.stacks")!).ShouldNotContain(Cookie);
+        TraceScrubber.Leaks(masked, [Password, Cookie]).ShouldBeNull();
+        TraceScrubber.Leaks(source, [Password, Cookie]).ShouldNotBeNull();
+    }
+
+    // A secret the mask cannot find by pattern, in an entry it does not rewrite, keeps the trace from being kept at all.
+    [Fact]
+    public void ATraceThatStillHoldsASecretIsNotKept()
+    {
+        var source = Path.Combine(_directory.FullName, "source.zip");
+        using (var archive = ZipFile.Open(source, ZipArchiveMode.Create))
+        {
+            Write(archive, "trace.trace", "{}");
+            Write(archive, "screencast/page@1.jpeg", "jpeg " + Cookie);
+        }
+
+        var masked = Path.Combine(_directory.FullName, "masked.zip");
+        Should.Throw<InvalidOperationException>(() => TraceScrubber.Scrub(source, masked, [Cookie]));
+        File.Exists(masked).ShouldBeFalse();
     }
 
     // The trace of a real sign-in, saved as a failed test saves it: screenshots and snapshots, and nothing of the network.
@@ -78,7 +102,11 @@ public sealed class TraceTests(EndToEndHost host) : BrowserTest(host)
             start.ShouldBe(new byte[] { 0xFF, 0xD8 });
         }
 
-        TraceScrubber.Leaks(trace, [Host.Editor.Password]).ShouldBeNull();
+        var secrets = await browser.SecretsAsync();
+        secrets.ShouldContain(Host.Editor.Password);
+        secrets.Count.ShouldBeGreaterThan(3);
+        TraceScrubber.Leaks(trace, secrets).ShouldBeNull();
+        browser.PolicyViolations.ShouldBeEmpty();
     }
 
     private static void Write(ZipArchive archive, string name, string text)

@@ -3,8 +3,8 @@ using Microsoft.Playwright;
 namespace FluentCMS.Admin.EndToEnd;
 
 // Chromium, headless, launched once for the run. It accepts the certificate of the run's host by the hash of its public key
-// and nothing more: every other certificate is checked as a browser checks it, no store of the machine is touched, and the
-// host's own https and Secure cookies are what the tests see. Where the browser is not installed, as on a developer's
+// and nothing more: every other certificate is checked as a browser checks it, no trust store or machine setting is
+// changed, and the host's own https and Secure cookies are what the tests see. Where the browser is not installed, as on a developer's
 // machine that has not run the install, the browser tests are skipped with the reason; full CI installs it.
 internal static class Chromium
 {

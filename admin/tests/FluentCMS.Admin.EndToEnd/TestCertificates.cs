@@ -4,9 +4,11 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace FluentCMS.Admin.EndToEnd;
 
-// The certificates of one run's throwaway host, made by the run and deleted with it, so that nothing on the machine is
-// trusted or changed: one for Kestrel's https listener on the loopback address, and one that signs the tokens and protects
-// the key ring, so that the host starts in Production without the evaluation opt-ins. Their password is made per run.
+// The certificates of one run's throwaway host, made by the run as files and deleted with it: nothing is added to a trust
+// store, no certificate store is used and no machine setting changes. One is for Kestrel's https listener on the loopback
+// address, and one signs the tokens and protects the key ring, so that the host starts in Production without the
+// evaluation opt-ins. Their password is made per run. On Windows the host imports the files with default flags, so their
+// private keys stay in the user's key folder (%APPDATA%\Microsoft\Crypto\Keys) after the run, until #3212.
 internal sealed class TestCertificates
 {
     private TestCertificates(X509Certificate2 server, string serverPath, string signingPath, string password)

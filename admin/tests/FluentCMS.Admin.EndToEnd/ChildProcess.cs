@@ -5,7 +5,10 @@ using System.Text;
 namespace FluentCMS.Admin.EndToEnd;
 
 // A process the tests start, which never outlives its bound or the test run: its whole tree is killed on timeout, on
-// cancellation, on dispose and when the test process exits. Its output is kept in memory for the failure message only.
+// cancellation, on dispose and when the test process exits. On Windows it is also in a job object that the system closes
+// with the test process, however that ends, which kills it; on Linux and macOS a test process that is killed outright
+// (SIGKILL) leaves it running, as CI's runner then ends it with the job. Its output is kept in memory for the failure
+// message only, and the standard output of a command that prints a secret is kept out of that message.
 internal sealed class ChildProcess : IDisposable
 {
     private const int KeptLines = 400;
@@ -16,15 +19,15 @@ internal sealed class ChildProcess : IDisposable
     private readonly TaskCompletionSource _outputClosed = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TaskCompletionSource _errorClosed = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    private ChildProcess(ProcessStartInfo start)
+    private ChildProcess(ProcessStartInfo start, bool secretOutput)
     {
         start.RedirectStandardOutput = true;
         start.RedirectStandardError = true;
         start.RedirectStandardInput = true;
         start.UseShellExecute = false;
         _process = new Process { StartInfo = start };
-        _process.OutputDataReceived += (_, line) => Receive(line.Data, _outputClosed, keep: true);
-        _process.ErrorDataReceived += (_, line) => Receive(line.Data, _errorClosed, keep: false);
+        _process.OutputDataReceived += (_, line) => Receive(line.Data, _outputClosed, keep: true, tail: !secretOutput);
+        _process.ErrorDataReceived += (_, line) => Receive(line.Data, _errorClosed, keep: false, tail: true);
     }
 
     public bool HasExited => _process.HasExited;
@@ -45,7 +48,7 @@ internal sealed class ChildProcess : IDisposable
 
     public string Tail => string.Join(Environment.NewLine, _lines);
 
-    public static ChildProcess Start(string fileName, IEnumerable<string> arguments, string workingDirectory, IReadOnlyDictionary<string, string?> environment)
+    public static ChildProcess Start(string fileName, IEnumerable<string> arguments, string workingDirectory, IReadOnlyDictionary<string, string?> environment, bool secretOutput = false)
     {
         var start = new ProcessStartInfo(fileName) { WorkingDirectory = workingDirectory };
         foreach (var argument in arguments)
@@ -71,8 +74,9 @@ internal sealed class ChildProcess : IDisposable
             }
         }
 
-        var child = new ChildProcess(start);
+        var child = new ChildProcess(start, secretOutput);
         child._process.Start();
+        KillOnClose.Add(child._process);
         child._process.BeginOutputReadLine();
         child._process.BeginErrorReadLine();
         AppDomain.CurrentDomain.ProcessExit += child.OnTestProcessExit;
@@ -87,9 +91,10 @@ internal sealed class ChildProcess : IDisposable
         IReadOnlyDictionary<string, string?> environment,
         TimeSpan timeout,
         string? input,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool secretOutput = false)
     {
-        using var child = Start(fileName, arguments, workingDirectory, environment);
+        using var child = Start(fileName, arguments, workingDirectory, environment, secretOutput);
         if (input is not null)
         {
             await child._process.StandardInput.WriteLineAsync(input.AsMemory(), cancellationToken);
@@ -148,7 +153,7 @@ internal sealed class ChildProcess : IDisposable
 
     private void OnTestProcessExit(object? sender, EventArgs e) => Kill();
 
-    private void Receive(string? line, TaskCompletionSource closed, bool keep)
+    private void Receive(string? line, TaskCompletionSource closed, bool keep, bool tail)
     {
         if (line is null)
         {
@@ -162,6 +167,11 @@ internal sealed class ChildProcess : IDisposable
             {
                 _output.AppendLine(line);
             }
+        }
+
+        if (!tail)
+        {
+            return;
         }
 
         _lines.Enqueue(line);

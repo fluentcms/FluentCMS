@@ -46,7 +46,7 @@ public sealed class TwoTabsTests(EndToEndHost host) : BrowserTest(host)
     // opens with window.open does. Both use that token: the server takes the second use within its reuse leeway (30 seconds by
     // OpenIddict's default), so both tabs stay signed in, each on the token it was given back.
     [Fact]
-    public async Task ADuplicatedTabRestoresTheSessionAndBothTabsStaySignedIn()
+    public async Task ADuplicatedTabAndItsOpenerBothStaySignedInWithinTheReuseLeeway()
     {
         var browser = await OpenBrowserAsync();
         var first = await browser.NewTabAsync();
@@ -67,6 +67,7 @@ public sealed class TwoTabsTests(EndToEndHost host) : BrowserTest(host)
         await Expect(copy.Sidebar).ToBeVisibleAsync();
         first.LoginPagesShown.ShouldBe(loginPages);
         copy.LoginPagesShown.ShouldBe(0);
+        browser.PolicyViolations.ShouldBeEmpty();
     }
 
     // Each switch reads the schema, the plugins and the access with the tab's access token, which the tab refreshes first

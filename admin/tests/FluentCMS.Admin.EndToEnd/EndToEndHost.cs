@@ -22,11 +22,20 @@ public sealed class EndToEndHost : IAsyncLifetime
 
     public const string AccessTokenLifetime = "00:00:05";
 
-    private static readonly TimeSpan PublishTimeout = TimeSpan.FromMinutes(10);
+    // Under the load of the Windows full run, beside every other test app, the publish has taken from 6 to more than 10
+    // minutes. It is bounded below the job's --timeout of 25 minutes, which counts from the start of this test app, with the
+    // few minutes the host's start and the tests take on Windows, where the browser tests are skipped.
+    private static readonly TimeSpan PublishTimeout = TimeSpan.FromMinutes(20);
+
+    // A run left by a test process that was killed outright is swept by a later one once it has been idle this long, which no
+    // run in progress is, since its host writes to its database and every run is bounded far below it.
+    private static readonly TimeSpan StaleAfter = TimeSpan.FromDays(1);
+
+    private const string RootPrefix = "fluentcms-e2e-";
     private static readonly TimeSpan CommandTimeout = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan StartTimeout = TimeSpan.FromMinutes(2);
 
-    private readonly DirectoryInfo _root = Directory.CreateTempSubdirectory("fluentcms-e2e-");
+    private readonly DirectoryInfo _root = Directory.CreateTempSubdirectory(RootPrefix);
     private readonly Dictionary<string, string?> _environment = [];
     private ChildProcess? _host;
     private TestCertificates? _certificates;
@@ -62,6 +71,7 @@ public sealed class EndToEndHost : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
+        SweepStaleRuns();
         Directory.CreateDirectory(DataDirectory);
         await PublishAsync();
         _certificates = TestCertificates.Create(DataDirectory);
@@ -78,20 +88,60 @@ public sealed class EndToEndHost : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
-        if (_browser is not null)
-        {
-            await _browser.CloseAsync();
-        }
-
-        _playwright?.Dispose();
-        _host?.Dispose();
-        _certificates?.Server.Dispose();
         try
         {
-            _root.Delete(recursive: true);
+            if (_browser is not null)
+            {
+                await _browser.CloseAsync();
+            }
+        }
+        finally
+        {
+            _playwright?.Dispose();
+            _host?.Dispose();
+            _certificates?.Server.Dispose();
+            TryDelete(_root);
+        }
+    }
+
+    private static void TryDelete(DirectoryInfo directory)
+    {
+        try
+        {
+            directory.Delete(recursive: true);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
+            // A file a process still holds, such as an orphaned host's, is left for a later sweep.
+        }
+    }
+
+    private void SweepStaleRuns()
+    {
+        foreach (var run in _root.Parent!.EnumerateDirectories(RootPrefix + "*"))
+        {
+            if (run.FullName != _root.FullName && DateTime.UtcNow - LastWrite(run) > StaleAfter)
+            {
+                TryDelete(run);
+            }
+        }
+    }
+
+    // The latest write in the run's own folders and in its database's, which its host writes while it runs.
+    private static DateTime LastWrite(DirectoryInfo run)
+    {
+        try
+        {
+            var data = new DirectoryInfo(Path.Combine(run.FullName, "data"));
+            return run.EnumerateFileSystemInfos()
+                .Concat(data.Exists ? data.EnumerateFileSystemInfos() : [])
+                .Select(item => item.LastWriteTimeUtc)
+                .Append(run.LastWriteTimeUtc)
+                .Max();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return DateTime.UtcNow;
         }
     }
 
@@ -150,7 +200,7 @@ public sealed class EndToEndHost : IAsyncLifetime
     }
 
     // As the Dockerfile publishes it, with the SDK alone: where the wasm-tools workload is installed, as on the Windows
-    // runners, the publish would otherwise relink the WebAssembly runtime, which takes minutes and no image does.
+    // runners, the publish would otherwise relink the WebAssembly runtime, which no image does.
     private async Task PublishAsync()
     {
         var (exitCode, _, tail) = await ChildProcess.RunAsync(
@@ -205,9 +255,12 @@ public sealed class EndToEndHost : IAsyncLifetime
         }
     }
 
-    private async Task<string> CommandAsync(string? input, params string[] command)
+    // secretOutput keeps what the command prints, such as a key, out of the failure message.
+    private async Task<string> CommandAsync(string? input, params string[] command) => await CommandAsync(input, secretOutput: false, command);
+
+    private async Task<string> CommandAsync(string? input, bool secretOutput, params string[] command)
     {
-        var (exitCode, output, tail) = await ChildProcess.RunAsync("dotnet", ["exec", HostAssembly, "fluentcms", .. command], PublishDirectory, _environment, CommandTimeout, input, Token);
+        var (exitCode, output, tail) = await ChildProcess.RunAsync("dotnet", ["exec", HostAssembly, "fluentcms", .. command], PublishDirectory, _environment, CommandTimeout, input, Token, secretOutput);
         return exitCode == 0
             ? output
             : throw new InvalidOperationException($"'fluentcms {string.Join(' ', command.TakeWhile(part => part != "--email"))}' exited with {exitCode}.{Environment.NewLine}{tail}");
@@ -216,7 +269,7 @@ public sealed class EndToEndHost : IAsyncLifetime
     // The key is kept in memory for these two requests only, and goes with the host's database at the end of the run.
     private async Task<IReadOnlyList<Site>> AddSecondSiteAsync()
     {
-        var key = (await CommandAsync(null, "apikey", "create", "--name", "end-to-end-setup", "--class", "management", "--role", "Super Admin")).Trim();
+        var key = (await CommandAsync(null, secretOutput: true, "apikey", "create", "--name", "end-to-end-setup", "--class", "management", "--role", "Super Admin")).Trim();
         using var client = Client();
         client.DefaultRequestHeaders.Add("X-Api-Key", key);
 
