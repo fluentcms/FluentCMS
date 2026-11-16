@@ -5,9 +5,9 @@ namespace FluentCMS.Admin.Accessibility;
 
 internal sealed class FocusService(DocumentInterop document) : IFocusService
 {
-    public async ValueTask<IAsyncDisposable> RememberOpenerAsync() => new Opener(await document.RememberFocusAsync());
+    public async ValueTask<IAsyncDisposable> RememberOpenerAsync() => new Opener(document, await document.RememberFocusAsync());
 
-    private sealed class Opener(IJSObjectReference opener) : IAsyncDisposable
+    private sealed class Opener(DocumentInterop document, IJSObjectReference opener) : IAsyncDisposable
     {
         private bool returned;
 
@@ -19,14 +19,7 @@ internal sealed class FocusService(DocumentInterop document) : IFocusService
             }
 
             returned = true;
-            try
-            {
-                await opener.InvokeVoidAsync("restore");
-            }
-            finally
-            {
-                await opener.DisposeAsync();
-            }
+            await document.ReturnFocusAsync(opener);
         }
     }
 }

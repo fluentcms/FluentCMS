@@ -12,21 +12,49 @@ public static class PseudoCulture
     public const string LeftToRight = "en-XA";
     public const string RightToLeft = "ar-XB";
 
-    private const char Open = '[';
-    private const char Close = ']';
+    // Brackets a developer does not type by accident, so that a hard-coded "[Draft]" is not taken for a resource.
+    private const char Open = '⟦';
+    private const char Close = '⟧';
     private const char RightToLeftOverride = '‮';
     private const char PopDirectionalFormatting = '‬';
 
-    private static readonly string[] TextAttributes = ["aria-label", "aria-description", "title", "placeholder", "alt"];
+    private static readonly string[] TextAttributes =
+    [
+        "aria-label", "aria-description", "aria-valuetext", "aria-roledescription", "title", "placeholder", "alt", "label",
+    ];
+
+    private static readonly string[] ButtonInputTypes = ["button", "submit", "reset"];
 
     public static string Transform(string value, bool rightToLeft) =>
         rightToLeft
             ? $"{Open}{RightToLeftOverride}{value}{PopDirectionalFormatting}{Close}"
             : $"{Open}{Accent(value)}{Close}";
 
-    public static bool IsMarked(string text) => text.Length >= 2 && text[0] == Open && text[^1] == Close;
+    // A text is localized when no letter is left once its marked segments are taken out, so that a hard-coded word between
+    // two resources fails, and numbers and punctuation pass.
+    public static bool IsLocalized(string text)
+    {
+        var depth = 0;
+        foreach (var c in text)
+        {
+            if (c == Open)
+            {
+                depth++;
+            }
+            else if (c == Close && depth > 0)
+            {
+                depth--;
+            }
+            else if (depth == 0 && char.IsLetter(c))
+            {
+                return false;
+            }
+        }
 
-    // The visible texts and the text attributes of the markup that are not marked, data aside.
+        return true;
+    }
+
+    // The visible texts and the text attributes of the markup that are not localized, data aside.
     public static IReadOnlyList<string> Unlocalized(INodeList nodes)
     {
         var found = new List<string>();
@@ -46,7 +74,7 @@ public static class PseudoCulture
         if (node is IText text)
         {
             var value = text.Data.Trim();
-            if (value.Length > 0 && !IsMarked(value))
+            if (!IsLocalized(value))
             {
                 found.Add(value);
             }
@@ -54,10 +82,13 @@ public static class PseudoCulture
 
         if (node is IElement element)
         {
-            foreach (var name in TextAttributes)
+            var attributes = element.LocalName == "input" && ButtonInputTypes.Contains(element.GetAttribute("type"))
+                ? TextAttributes.Append("value")
+                : TextAttributes;
+            foreach (var name in attributes)
             {
                 var value = element.GetAttribute(name)?.Trim();
-                if (!string.IsNullOrEmpty(value) && !IsMarked(value))
+                if (value is not null && !IsLocalized(value))
                 {
                     found.Add($"{name}=\"{value}\"");
                 }

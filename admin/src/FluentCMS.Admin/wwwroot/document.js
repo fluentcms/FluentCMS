@@ -5,13 +5,14 @@ export function setLanguage(lang, dir) {
     document.documentElement.dir = dir;
 }
 
+// Wrapped, since no element may have focus.
 export function rememberFocus() {
-    const opener = document.activeElement;
-    return {
-        restore() {
-            if (opener instanceof HTMLElement && opener.isConnected) {
-                opener.focus();
-            }
-        }
-    };
+    return { element: document.activeElement };
+}
+
+export function returnFocus(opener) {
+    const element = opener.element;
+    if (element instanceof HTMLElement && element.isConnected) {
+        element.focus();
+    }
 }

@@ -4,5 +4,3 @@ FluentCMS.Admin.AnnouncementPoliteness.Assertive = 1 -> FluentCMS.Admin.Announce
 FluentCMS.Admin.AnnouncementPoliteness.Polite = 0 -> FluentCMS.Admin.AnnouncementPoliteness
 FluentCMS.Admin.IAnnouncer
 FluentCMS.Admin.IAnnouncer.Announce(string! message, FluentCMS.Admin.AnnouncementPoliteness politeness = FluentCMS.Admin.AnnouncementPoliteness.Polite) -> void
-FluentCMS.Admin.IFocusService
-FluentCMS.Admin.IFocusService.RememberOpenerAsync() -> System.Threading.Tasks.ValueTask<System.IAsyncDisposable!>
