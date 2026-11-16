@@ -2,6 +2,7 @@
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "NotFoundPage is kept by the DynamicDependency of the constructor.")]
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "Router finds the pages of this assembly, each kept by a DynamicDependency of the constructor.")]
 @implements IDisposable
+@using FluentCMS.Admin.Authentication
 @using FluentCMS.Admin.Configuration
 @using Microsoft.Extensions.Logging
 @inject AdminStartup Startup
@@ -9,21 +10,28 @@
 @inject ILogger<AdminApp> Logger
 @inject InterfaceCulture Culture
 @inject DocumentInterop Document
+@inject NavigationManager Navigation
 
 @if (Startup.Configuration is { } configuration)
 {
     <BrandingHead Branding="configuration.Branding" />
     @* The one theme root: one set of the library's providers, one scrolling container, and the positioned ancestor of the
-       live regions. *@
-    <CmsThemeRoot Mode="@Theme.Mode">
-        <Router AppAssembly="typeof(AdminApp).Assembly" NotFoundPage="typeof(NotFoundPage)">
-            <Found Context="routeData">
-                <RouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)" />
-                <FocusOnNavigate RouteData="routeData" Selector="h1" />
-            </Found>
-        </Router>
-        <LiveRegions />
-    </CmsThemeRoot>
+       live regions. It waits for the theme the user chose, one read of localStorage, so that the app is never drawn in
+       another theme first. *@
+    @if (themeRestored)
+    {
+        <CmsThemeRoot Mode="@Theme.Mode">
+            <SignInGate>
+                <Router AppAssembly="typeof(AdminApp).Assembly" NotFoundPage="typeof(NotFoundPage)">
+                    <Found Context="routeData">
+                        <RouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)" />
+                        <FocusOnNavigate RouteData="routeData" Selector="@(focusHeading ? "h1" : NoFocus)" />
+                    </Found>
+                </Router>
+            </SignInGate>
+            <LiveRegions />
+        </CmsThemeRoot>
+    }
 }
 else
 {
@@ -31,16 +39,25 @@ else
 }
 
 @code {
+    // A selector that matches no element, so that FocusOnNavigate leaves focus where it is.
+    private const string NoFocus = ":not(*)";
+
+    private bool themeRestored;
+    private bool focusHeading;
+    private string previousRoute = string.Empty;
+
     // This assembly is trimmed and nothing references its pages, so each page is kept here or Router does not find it. A test
     // checks that every routable page of the assembly is listed.
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HomePage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NotFoundPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComponentGalleryPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AccountPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(LoginCallbackPage))]
     public AdminApp()
     {
     }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         foreach (var member in Startup.UnknownMembers)
         {
@@ -53,6 +70,14 @@ else
         }
 
         Theme.Changed += OnThemeChanged;
+        previousRoute = Route(Navigation.Uri);
+        Navigation.LocationChanged += OnLocationChanged;
+        if (Startup.Configuration is not null)
+        {
+            await Theme.RestoreAsync();
+        }
+
+        themeRestored = true;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -63,7 +88,24 @@ else
         }
     }
 
-    public void Dispose() => Theme.Changed -= OnThemeChanged;
+    public void Dispose()
+    {
+        Theme.Changed -= OnThemeChanged;
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
 
     private void OnThemeChanged() => _ = InvokeAsync(StateHasChanged);
+
+    // The first page of a load keeps focus at the start of the document, so the first Tab reaches the skip link; so does the
+    // page the callback of the sign-in returns to, which is the first the user sees. A route change after that moves focus to
+    // the page's heading (spec 4.18). FocusOnNavigate focuses when the page changes; this handler runs before any render of
+    // the navigation, since it subscribed before the gate and the Router existed, so the new page gets the selector chosen here.
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        var from = previousRoute;
+        previousRoute = Route(e.Location);
+        focusHeading = !from.StartsWith("authentication/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string Route(string uri) => uri.StartsWith(Navigation.BaseUri, StringComparison.Ordinal) ? Navigation.ToBaseRelativePath(uri) : uri;
 }

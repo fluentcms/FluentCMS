@@ -24,6 +24,9 @@ public sealed class SettingsTests
 {
     private const string Secret = "hunter2-secret-value";
 
+    // The reference host brings the namespace FluentCMS.Admin, which the static import of SettingsDatabase.Admin loses to.
+    private static readonly Principal Admin = SettingsDatabase.Admin;
+
     [Fact]
     public async Task ASettingsClassIsReadableAndWritablePerSite()
     {

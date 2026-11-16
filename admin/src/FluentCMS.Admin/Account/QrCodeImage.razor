@@ -1,0 +1,68 @@
+@* Derived from toSvgString of Project Nayuki's QR Code generator demo (QrCodeGeneratorDemo.java, MIT License, see
+   THIRD-PARTY-NOTICES.md).
+   A QR code drawn as an SVG, with no script: dark modules on a light ground in either theme, so that a camera reads it, and
+   the quiet zone of four modules around it. A module is a whole number of CSS pixels, so that none is blurred or uneven. *@
+@using System.Globalization
+@using System.Text
+
+<svg class="qr-code" width="@(extent * ModulePixels)" height="@(extent * ModulePixels)" viewBox="@($"0 0 {extent} {extent}")"
+     role="img" aria-label="@Label" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+    <rect width="@extent" height="@extent" fill="#ffffff" />
+    <path d="@path" fill="#000000" />
+</svg>
+
+@code {
+    internal const int ModulePixels = 4;
+    private const int QuietZone = 4;
+
+    private string? drawn;
+    private int extent;
+    private string path = string.Empty;
+
+    // At most QrCode.MaxBytes in UTF-8; the caller shows a longer text otherwise, and this draws an empty code.
+    [Parameter, EditorRequired]
+    public string Text { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        if (Text == drawn)
+        {
+            return;
+        }
+
+        var code = QrCode.TryEncode(Text);
+        extent = (code?.Size ?? 0) + (2 * QuietZone);
+        path = code is null ? string.Empty : Path(code);
+        drawn = Text;
+    }
+
+    // One rectangle per run of dark modules in a row.
+    private static string Path(QrCode code)
+    {
+        var builder = new StringBuilder();
+        for (var y = 0; y < code.Size; y++)
+        {
+            for (var x = 0; x < code.Size; x++)
+            {
+                if (!code[x, y])
+                {
+                    continue;
+                }
+
+                var start = x;
+                while (x + 1 < code.Size && code[x + 1, y])
+                {
+                    x++;
+                }
+
+                var length = x - start + 1;
+                builder.Append(CultureInfo.InvariantCulture, $"M{start + QuietZone},{y + QuietZone}h{length}v1h-{length}z");
+            }
+        }
+
+        return builder.ToString();
+    }
+}

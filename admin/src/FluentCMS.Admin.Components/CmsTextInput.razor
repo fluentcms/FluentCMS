@@ -9,6 +9,8 @@
            type="@ToHtml(Type)"
            value="@Value"
            placeholder="@Placeholder"
+           autocomplete="@Autocomplete"
+           inputmode="@(Numeric ? "numeric" : null)"
            disabled="@Disabled"
            @oninput="@(args => SetValueAsync(args.Value as string))"
            @attributes="@AriaAttributes" />
@@ -21,6 +23,14 @@
 
     [Parameter]
     public string? Placeholder { get; set; }
+
+    // The autocomplete token of the input, such as one-time-code or off; the browser's default when null.
+    [Parameter]
+    public string? Autocomplete { get; set; }
+
+    // Asks a touch device for its numeric keyboard; the value is still text, so leading zeros stay.
+    [Parameter]
+    public bool Numeric { get; set; }
 
     private static string ToHtml(CmsTextInputType type) => type switch
     {

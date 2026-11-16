@@ -1,0 +1,18 @@
+@namespace FluentCMS.Admin.Components
+
+@* A navigation landmark of links, grouped by CmsNavigationSection. *@
+<nav class="cms-nav" aria-label="@Label">
+    @ChildContent
+</nav>
+
+@code {
+    // Names the landmark for assistive technology, which tells it from the page's other navigation.
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    // The CmsNavigationSection children.
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnParametersSet() => CmsGuard.Named(Label, nameof(CmsNavigation), nameof(Label));
+}

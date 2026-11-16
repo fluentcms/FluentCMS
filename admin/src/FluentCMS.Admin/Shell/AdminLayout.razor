@@ -1,19 +1,139 @@
-@* The layout of the admin's pages, which the shell fills (A-08). *@
+@* The layout of the admin's pages (spec 4.1): a header, the sidebar, and the content, which shows the page once the shell
+   has read what the user may do. Without a signed-in user, as on the callback of the sign-in, it shows the header and the
+   page only, and nothing of it calls the API. *@
 @inherits LayoutComponentBase
+@implements IDisposable
+@using FluentCMS.Admin.Authentication
 @using FluentCMS.Admin.Configuration
 @inject IStringLocalizer<AdminResources> L
 @inject AdminConfiguration Configuration
+@inject IAdminSession Session
+@inject AdminContext Context
+@inject NavigationManager Navigation
 
 <a class="skip-link" href="#main" @onclick="SkipToMainAsync" @onclick:preventDefault>@L["Shell.Layout.SkipToContent"]</a>
-<header class="shell-header">
-    <a class="shell-home" href="">
-        <CmsLogo Source="@Configuration.Branding.LogoUrl?.OriginalString" AlternativeText="@L["Shell.Layout.Home", Configuration.Branding.Name]" />
-    </a>
-</header>
-<main id="main" tabindex="-1" @ref="main">@Body</main>
+<div class="shell">
+    <header class="shell-header">
+        @if (ShowsNavigation)
+        {
+            <span class="shell-open-navigation">
+                <CmsButton Icon="CmsIconName.Navigation" Appearance="CmsButtonAppearance.Subtle" Label="@L["Shell.Layout.OpenNavigation"]" OnClick="OpenNavigation" />
+            </span>
+        }
+        <a class="shell-home" href="">
+            <CmsLogo Source="@Configuration.Branding.LogoUrl?.OriginalString" AlternativeText="@L["Shell.Layout.Home", Configuration.Branding.Name]" />
+        </a>
+        @if (SignedIn)
+        {
+            <div class="shell-header-end">
+                <SiteSwitcher />
+                <UserMenu />
+            </div>
+        }
+    </header>
+    <div class="@(ShowsNavigation ? "shell-body shell-body-navigation" : "shell-body")">
+        @if (ShowsNavigation)
+        {
+            <div class="shell-sidebar">
+                <ShellSidebar />
+            </div>
+        }
+        <main id="main" class="shell-main" tabindex="-1" @ref="main">
+            @if (!SignedIn)
+            {
+                @Body
+            }
+            else if (Context.Status == ShellStatus.Ready)
+            {
+                @if (Context.SchemaRefused)
+                {
+                    <p class="shell-notice"><CmsIcon Name="CmsIconName.Info" />@L["Shell.Layout.NoSchema"]</p>
+                }
+                <ShellBreadcrumbs />
+                @Body
+            }
+            else if (Context.Status == ShellStatus.NoSite)
+            {
+                <h1 tabindex="-1">@L["Shell.NoSite.Heading"]</h1>
+                <p>@L["Shell.NoSite.Text"]</p>
+            }
+            else if (Context.Status == ShellStatus.Failed)
+            {
+                <h1 tabindex="-1">@L["Shell.Start.FailedHeading"]</h1>
+                <p>@L["Shell.Start.FailedText"]</p>
+                <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="TryAgainAsync">@L["Shell.Start.TryAgain"]</CmsButton>
+            }
+            else
+            {
+                <p role="status">@L["Shell.Layout.Loading"]</p>
+            }
+        </main>
+    </div>
+</div>
+@if (ShowsNavigation)
+{
+    @* Under 1024 CSS pixels the sidebar is hidden and this drawer holds it. *@
+    <CmsDrawer Side="CmsDrawerSide.Start" Title="@L["Shell.Layout.Navigation"]" Open="@drawerOpen" OpenChanged="@(open => drawerOpen = open)">
+        <ShellSidebar />
+    </CmsDrawer>
+}
 
 @code {
     private ElementReference main;
+    private bool drawerOpen;
+    private IDisposable? closesDrawer;
+
+    private bool SignedIn => Session.User is not null;
+
+    private bool ShowsNavigation => SignedIn && Context.Status == ShellStatus.Ready;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Session.Changed += OnSessionChanged;
+        Context.Changed += OnContextChanged;
+        closesDrawer = Navigation.RegisterLocationChangingHandler(CloseDrawer);
+        if (SignedIn)
+        {
+            await Context.StartAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        Session.Changed -= OnSessionChanged;
+        Context.Changed -= OnContextChanged;
+        closesDrawer?.Dispose();
+    }
 
     private async Task SkipToMainAsync() => await main.FocusAsync();
+
+    private void OpenNavigation() => drawerOpen = true;
+
+    private Task TryAgainAsync() => Context.StartAsync();
+
+    // A user who signs in on this page load, as the callback does, starts the shell.
+    private void OnSessionChanged() => _ = InvokeAsync(async () =>
+    {
+        StateHasChanged();
+        if (SignedIn)
+        {
+            await Context.StartAsync();
+        }
+    });
+
+    private void OnContextChanged() => _ = InvokeAsync(StateHasChanged);
+
+    // Closed before the new page renders. The library gives focus back to the button that opened the drawer when it closes,
+    // after the page has moved focus to its heading, so focus ends on that button: the wrapped set offers no hook after a
+    // closing it was asked for, which a follow-up adds.
+    private ValueTask CloseDrawer(LocationChangingContext context)
+    {
+        if (drawerOpen)
+        {
+            drawerOpen = false;
+            StateHasChanged();
+        }
+
+        return ValueTask.CompletedTask;
+    }
 }

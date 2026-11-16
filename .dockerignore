@@ -6,6 +6,7 @@
 !docs/resources/icon.png
 !src/
 !samples/Blog/
+!admin/src/
 
 **/bin/
 **/obj/

@@ -1,0 +1,23 @@
+@namespace FluentCMS.Admin.Components
+
+@* A list of CmsNavigationLink, named by its visible title when it has one. *@
+<div class="cms-nav-section">
+    @if (Title is not null)
+    {
+        <span id="@_titleId" class="cms-nav-section-title">@Title</span>
+    }
+    <ul class="cms-nav-list" aria-labelledby="@(Title is null ? null : _titleId)">
+        @ChildContent
+    </ul>
+</div>
+
+@code {
+    private readonly string _titleId = CmsIds.Next();
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    // The CmsNavigationLink children.
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

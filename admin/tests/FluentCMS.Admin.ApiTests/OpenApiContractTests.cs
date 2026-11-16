@@ -23,11 +23,20 @@ public sealed class OpenApiContractTests
 
         Check(ManagementJsonContext.Default.MeResponse, Answer(paths, "/api/management/v1/me", "get"), "me", document, gaps);
         Check(ManagementJsonContext.Default.ItemListMySiteInfo, Answer(paths, "/api/management/v1/me/sites", "get"), "me/sites", document, gaps);
+        Check(ManagementJsonContext.Default.MyAccessInfo, Answer(paths, "/api/management/v1/me/access", "get"), "me/access", document, gaps);
         Check(ManagementJsonContext.Default.SchemaDescription, Answer(paths, "/api/management/v1/schema", "get"), "schema", document, gaps);
         Check(ManagementJsonContext.Default.ItemListPluginInfo, Answer(paths, "/api/management/v1/plugins", "get"), "plugins", document, gaps);
         Check(ManagementJsonContext.Default.ContentPage, Answer(paths, "/api/management/v1/content/article", "get"), "content/article", document, gaps);
         Check(ManagementJsonContext.Default.ContentEntry, Answer(paths, "/api/management/v1/content/article/{id}", "get"), "content/article/{id}", document, gaps);
         Check(ManagementJsonContext.Default.ContentEntry, Answer(paths, "/api/management/v1/content/article", "post", "201"), "content/article post", document, gaps);
+        Check(ManagementJsonContext.Default.ItemListMySession, Answer(paths, "/api/management/v1/me/sessions", "get"), "me/sessions", document, gaps);
+        Check(ManagementJsonContext.Default.MyTwoFactor, Answer(paths, "/api/management/v1/me/two-factor", "get"), "me/two-factor", document, gaps);
+        Check(ManagementJsonContext.Default.AuthenticatorSetup, Answer(paths, "/api/management/v1/me/two-factor/enrol", "post"), "me/two-factor/enrol", document, gaps);
+        Check(ManagementJsonContext.Default.RecoveryCodeList, Answer(paths, "/api/management/v1/me/two-factor/verify", "post"), "me/two-factor/verify", document, gaps);
+        Check(ManagementJsonContext.Default.RecoveryCodeList, Answer(paths, "/api/management/v1/me/two-factor/recovery-codes", "post"), "me/two-factor/recovery-codes", document, gaps);
+        Check(ManagementJsonContext.Default.ItemListMyLogin, Answer(paths, "/api/management/v1/me/logins", "get"), "me/logins", document, gaps);
+        Check(ManagementJsonContext.Default.MyPreferences, Answer(paths, "/api/management/v1/me/preferences", "get"), "me/preferences", document, gaps);
+        Check(ManagementJsonContext.Default.MyPreferences, Answer(paths, "/api/management/v1/me/preferences", "put"), "me/preferences put", document, gaps);
         Check(ManagementJsonContext.Default.ApiProblem, document["components"]!["schemas"]!["problem"]!, "problem", document, gaps);
 
         gaps.ShouldBeEmpty();
@@ -101,6 +110,15 @@ public sealed class OpenApiContractTests
                 }
 
                 Check(Records.GetTypeInfo(element), items, $"{where}[]", document, gaps, checkedRecords);
+                break;
+            case JsonTypeInfoKind.Dictionary when record.ElementType is { } value:
+                if (resolved?["additionalProperties"] is not JsonObject values)
+                {
+                    gaps.Add($"{where} is not a map in the document");
+                    return;
+                }
+
+                Check(Records.GetTypeInfo(value), values, $"{where}{{}}", document, gaps, checkedRecords);
                 break;
         }
     }
