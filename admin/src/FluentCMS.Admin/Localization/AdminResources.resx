@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Shell.Layout.SkipToContent" xml:space="preserve">
+    <value>Skip to main content</value>
+  </data>
+  <data name="Home.Page.Heading" xml:space="preserve">
+    <value>FluentCMS admin</value>
+  </data>
+  <data name="Home.Page.Intro" xml:space="preserve">
+    <value>The admin is being built. Its pages appear here as they are added.</value>
+  </data>
+  <data name="Shell.NotFound.Heading" xml:space="preserve">
+    <value>Page not found</value>
+  </data>
+  <data name="Shell.NotFound.Text" xml:space="preserve">
+    <value>There is no page at this address.</value>
+  </data>
+  <data name="Configuration.Error.Title" xml:space="preserve">
+    <value>The admin cannot start</value>
+  </data>
+  <data name="Configuration.Error.Introduction" xml:space="preserve">
+    <value>The configuration file config.json of this admin has a problem. Correct the file and reload the page.</value>
+  </data>
+  <data name="Configuration.Error.UnreadableStatus" xml:space="preserve">
+    <value>config.json could not be read: the server answered with status {0}.</value>
+  </data>
+  <data name="Configuration.Error.UnreadableTimeout" xml:space="preserve">
+    <value>config.json could not be read: the server did not answer in time, or its answer could not be decoded.</value>
+  </data>
+  <data name="Configuration.Error.NotJson" xml:space="preserve">
+    <value>config.json is not valid JSON.</value>
+  </data>
+  <data name="Configuration.Error.NotAnObject" xml:space="preserve">
+    <value>config.json must hold a JSON object.</value>
+  </data>
+  <data name="Configuration.Error.Missing" xml:space="preserve">
+    <value>{0} is required.</value>
+  </data>
+  <data name="Configuration.Error.Duplicate" xml:space="preserve">
+    <value>{0} appears more than once; keep one.</value>
+  </data>
+  <data name="Configuration.Error.RuleHttpUrl" xml:space="preserve">
+    <value>{0} must be an absolute http or https URL without user info, query or fragment, in ASCII only; write an internationalized host name in its xn-- form.</value>
+  </data>
+  <data name="Configuration.Error.RuleUrlOrPath" xml:space="preserve">
+    <value>{0} must be an absolute http or https URL or a relative path, without a fragment, spaces, quotes, parentheses or backslashes, in ASCII only; write an internationalized host name in its xn-- form.</value>
+  </data>
+  <data name="Configuration.Error.RuleOrigin" xml:space="preserve">
+    <value>{0} must be an origin, an http or https URL with no path such as https://www.example.com, in ASCII only; write an internationalized host name in its xn-- form.</value>
+  </data>
+  <data name="Configuration.Error.RuleHexColor" xml:space="preserve">
+    <value>{0} must be a hex color such as #0f6cbd.</value>
+  </data>
+  <data name="Configuration.Error.RuleText" xml:space="preserve">
+    <value>{0} must be a text that is not empty, without spaces at its start or end and without control characters.</value>
+  </data>
+  <data name="Configuration.Error.RuleClientId" xml:space="preserve">
+    <value>{0} must be a client id of visible ASCII characters without spaces.</value>
+  </data>
+  <data name="Configuration.Error.RuleScopeList" xml:space="preserve">
+    <value>{0} must be a list of distinct scopes, such as ["openid", "management"].</value>
+  </data>
+  <data name="Configuration.Error.RuleCultureName" xml:space="preserve">
+    <value>{0} must be a culture name such as en or de-CH.</value>
+  </data>
+  <data name="Configuration.Error.RuleCultureList" xml:space="preserve">
+    <value>{0} must be a list of distinct culture names that is not empty.</value>
+  </data>
+  <data name="Configuration.Error.RuleDefaultCultureOffered" xml:space="preserve">
+    <value>{0} must be one of cultures.offered (it is en when not set).</value>
+  </data>
+  <data name="Configuration.Error.RuleOriginList" xml:space="preserve">
+    <value>{0} must be a list of origins.</value>
+  </data>
+  <data name="Configuration.Error.RuleObject" xml:space="preserve">
+    <value>{0} must be an object.</value>
+  </data>
+  <data name="Configuration.Error.RuleInvalid" xml:space="preserve">
+    <value>{0} is not valid.</value>
+  </data>
+  <data name="Api.RateLimit.WaitSeconds" xml:space="preserve">
+    <value>Too many requests. Wait {0} seconds and try again.</value>
+  </data>
+  <data name="Api.RateLimit.WaitShort" xml:space="preserve">
+    <value>Too many requests. Wait a moment and try again.</value>
+  </data>
+  <data name="Shell.Layout.Home" xml:space="preserve">
+    <value>{0}, home</value>
+  </data>
+  <data name="Home.Page.ComponentGallery" xml:space="preserve">
+    <value>Component gallery</value>
+  </data>
+  <data name="System.Components.Heading" xml:space="preserve">
+    <value>Component gallery</value>
+  </data>
+  <data name="System.Components.Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="System.Components.ThemeSystem" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="System.Components.ThemeLight" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="System.Components.ThemeDark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="System.Components.RightToLeft" xml:space="preserve">
+    <value>Right to left</value>
+  </data>
+  <data name="System.Components.Buttons" xml:space="preserve">
+    <value>Buttons and icons</value>
+  </data>
+  <data name="System.Components.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="System.Components.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="System.Components.Add" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="System.Components.Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="System.Components.Disabled" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="System.Components.IconAdd" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="System.Components.IconDelete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="System.Components.IconEdit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="System.Components.IconSave" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="System.Components.IconSearch" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="System.Components.IconSettings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="System.Components.IconDismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="System.Components.IconMore" xml:space="preserve">
+    <value>More</value>
+  </data>
+  <data name="System.Components.IconUpload" xml:space="preserve">
+    <value>Upload</value>
+  </data>
+  <data name="System.Components.IconFolder" xml:space="preserve">
+    <value>Folder</value>
+  </data>
+  <data name="System.Components.IconDocument" xml:space="preserve">
+    <value>Document</value>
+  </data>
+  <data name="System.Components.IconImage" xml:space="preserve">
+    <value>Image</value>
+  </data>
+  <data name="System.Components.IconPerson" xml:space="preserve">
+    <value>Person</value>
+  </data>
+  <data name="System.Components.IconGlobe" xml:space="preserve">
+    <value>Globe</value>
+  </data>
+  <data name="System.Components.IconInfo" xml:space="preserve">
+    <value>Information</value>
+  </data>
+  <data name="System.Components.IconWarning" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="System.Components.IconCheckmark" xml:space="preserve">
+    <value>Checkmark</value>
+  </data>
+  <data name="System.Components.IconOpen" xml:space="preserve">
+    <value>Open</value>
+  </data>
+  <data name="System.Components.IconSun" xml:space="preserve">
+    <value>Sun</value>
+  </data>
+  <data name="System.Components.IconMoon" xml:space="preserve">
+    <value>Moon</value>
+  </data>
+  <data name="System.Components.Inputs" xml:space="preserve">
+    <value>Inputs and selects</value>
+  </data>
+  <data name="System.Components.Title" xml:space="preserve">
+    <value>Title</value>
+  </data>
+  <data name="System.Components.TitleHelp" xml:space="preserve">
+    <value>Shown in lists and in the browser tab.</value>
+  </data>
+  <data name="System.Components.SampleTitle" xml:space="preserve">
+    <value>Hello</value>
+  </data>
+  <data name="System.Components.Slug" xml:space="preserve">
+    <value>Slug</value>
+  </data>
+  <data name="System.Components.SlugRequired" xml:space="preserve">
+    <value>A slug is required.</value>
+  </data>
+  <data name="System.Components.Email" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="System.Components.Summary" xml:space="preserve">
+    <value>Summary</value>
+  </data>
+  <data name="System.Components.SummaryHelp" xml:space="preserve">
+    <value>Up to two sentences.</value>
+  </data>
+  <data name="System.Components.Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="System.Components.StatusDraft" xml:space="preserve">
+    <value>Draft</value>
+  </data>
+  <data name="System.Components.StatusPublished" xml:space="preserve">
+    <value>Published</value>
+  </data>
+  <data name="System.Components.StatusArchived" xml:space="preserve">
+    <value>Archived</value>
+  </data>
+  <data name="System.Components.DateAndTime" xml:space="preserve">
+    <value>Date and time</value>
+  </data>
+  <data name="System.Components.PublishDate" xml:space="preserve">
+    <value>Publish date</value>
+  </data>
+  <data name="System.Components.PublishDateHelp" xml:space="preserve">
+    <value>Type the date or open the calendar.</value>
+  </data>
+  <data name="System.Components.PublishTime" xml:space="preserve">
+    <value>Publish time</value>
+  </data>
+  <data name="System.Components.Choices" xml:space="preserve">
+    <value>Checkboxes and switches</value>
+  </data>
+  <data name="System.Components.ShowInNavigation" xml:space="preserve">
+    <value>Show in navigation</value>
+  </data>
+  <data name="System.Components.AllowComments" xml:space="preserve">
+    <value>Allow comments</value>
+  </data>
+  <data name="System.Components.Overlays" xml:space="preserve">
+    <value>Dialogs, drawers and toasts</value>
+  </data>
+  <data name="System.Components.OpenDialog" xml:space="preserve">
+    <value>Open dialog</value>
+  </data>
+  <data name="System.Components.OpenDrawer" xml:space="preserve">
+    <value>Open drawer</value>
+  </data>
+  <data name="System.Components.ShowToast" xml:space="preserve">
+    <value>Show toast</value>
+  </data>
+  <data name="System.Components.Saved" xml:space="preserve">
+    <value>Saved.</value>
+  </data>
+  <data name="System.Components.DialogTitle" xml:space="preserve">
+    <value>Discard changes?</value>
+  </data>
+  <data name="System.Components.DialogText" xml:space="preserve">
+    <value>The entry has changes that are not saved.</value>
+  </data>
+  <data name="System.Components.Discard" xml:space="preserve">
+    <value>Discard</value>
+  </data>
+  <data name="System.Components.KeepEditing" xml:space="preserve">
+    <value>Keep editing</value>
+  </data>
+  <data name="System.Components.Filters" xml:space="preserve">
+    <value>Filters</value>
+  </data>
+  <data name="System.Components.Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="System.Components.Apply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="System.Components.MenusAndTabs" xml:space="preserve">
+    <value>Menus and tabs</value>
+  </data>
+  <data name="System.Components.Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="System.Components.Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="System.Components.Preview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="System.Components.LastAction" xml:space="preserve">
+    <value>Last action: {0}</value>
+  </data>
+  <data name="System.Components.None" xml:space="preserve">
+    <value>none</value>
+  </data>
+  <data name="System.Components.ContentTab" xml:space="preserve">
+    <value>Content</value>
+  </data>
+  <data name="System.Components.ContentTabText" xml:space="preserve">
+    <value>The fields of the entry.</value>
+  </data>
+  <data name="System.Components.SeoTab" xml:space="preserve">
+    <value>SEO</value>
+  </data>
+  <data name="System.Components.SeoTabText" xml:space="preserve">
+    <value>Title and description for search engines.</value>
+  </data>
+  <data name="System.Components.HistoryTab" xml:space="preserve">
+    <value>History</value>
+  </data>
+  <data name="System.Components.HistoryTabText" xml:space="preserve">
+    <value>Earlier versions.</value>
+  </data>
+  <data name="System.Components.DataGrid" xml:space="preserve">
+    <value>Data grid</value>
+  </data>
+  <data name="System.Components.Articles" xml:space="preserve">
+    <value>Articles</value>
+  </data>
+  <data name="System.Components.Author" xml:space="preserve">
+    <value>Author</value>
+  </data>
+  <data name="System.Components.Updated" xml:space="preserve">
+    <value>Updated</value>
+  </data>
+  <data name="System.Components.SelectedRows" xml:space="preserve">
+    <value>Selected: {0}</value>
+  </data>
+  <data name="System.Components.Article1" xml:space="preserve">
+    <value>Getting started</value>
+  </data>
+  <data name="System.Components.Article2" xml:space="preserve">
+    <value>Content modelling</value>
+  </data>
+  <data name="System.Components.Article3" xml:space="preserve">
+    <value>Publishing workflow</value>
+  </data>
+  <data name="System.Components.Article4" xml:space="preserve">
+    <value>Media library</value>
+  </data>
+  <data name="System.Components.Author1" xml:space="preserve">
+    <value>Ana</value>
+  </data>
+  <data name="System.Components.Author2" xml:space="preserve">
+    <value>Bo</value>
+  </data>
+  <data name="System.Components.Author3" xml:space="preserve">
+    <value>Cy</value>
+  </data>
+  <data name="System.Components.Author4" xml:space="preserve">
+    <value>Dee</value>
+  </data>
+  <data name="System.Components.Tree" xml:space="preserve">
+    <value>Tree</value>
+  </data>
+  <data name="System.Components.Folders" xml:space="preserve">
+    <value>Folders</value>
+  </data>
+  <data name="System.Components.SelectedFolder" xml:space="preserve">
+    <value>Selected folder: {0}</value>
+  </data>
+  <data name="System.Components.FolderImages" xml:space="preserve">
+    <value>Images</value>
+  </data>
+  <data name="System.Components.FolderArchive" xml:space="preserve">
+    <value>Archive</value>
+  </data>
+  <data name="System.Components.FolderDocuments" xml:space="preserve">
+    <value>Documents</value>
+  </data>
+  <data name="System.Components.FolderLegal" xml:space="preserve">
+    <value>Legal</value>
+  </data>
+  <data name="System.Components.FolderVideo" xml:space="preserve">
+    <value>Video</value>
+  </data>
+  <data name="System.Components.FileDropZone" xml:space="preserve">
+    <value>File drop zone</value>
+  </data>
+  <data name="System.Components.UploadImages" xml:space="preserve">
+    <value>Upload images</value>
+  </data>
+  <data name="System.Components.FilesChosen" xml:space="preserve">
+    <value>Files chosen: {0}</value>
+  </data>
+</root>

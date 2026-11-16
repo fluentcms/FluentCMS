@@ -1,0 +1,256 @@
+using System.Collections;
+using System.Globalization;
+using System.Resources;
+using Bunit;
+using FluentCMS.Admin.Components;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.FluentUI.AspNetCore.Components;
+using Shouldly;
+using Xunit;
+
+namespace FluentCMS.Admin.Tests.Components;
+
+// The events the library's scripts raise in a browser, raised here by hand, reach the wrappers' callbacks.
+public sealed class CmsWiringTests : ComponentTestContext
+{
+    [Fact]
+    public void CheckingTheCheckboxRaisesValueChanged()
+    {
+        bool? value = null;
+        var checkbox = Render<CmsCheckbox>(p => p.Add(x => x.Label, "Show in navigation").Add(x => x.ValueChanged, v => value = v));
+
+        checkbox.Find("fluent-checkbox").Change(true);
+
+        value.ShouldBe(true);
+    }
+
+    [Fact]
+    public void TurningTheSwitchOnRaisesValueChanged()
+    {
+        bool? value = null;
+        var toggle = Render<CmsSwitch>(p => p.Add(x => x.Label, "Allow comments").Add(x => x.ValueChanged, v => value = v));
+
+        toggle.Find("fluent-switch").Change(true);
+
+        value.ShouldBe(true);
+    }
+
+    [Fact]
+    public void ChoosingATabRaisesActiveTabIdChanged()
+    {
+        string? active = null;
+        var tabs = Render<CmsTabs>(p => p
+            .Add(x => x.ActiveTabIdChanged, id => active = id)
+            .Add(x => x.ChildContent, (RenderFragment)(b =>
+            {
+                b.OpenComponent<CmsTab>(0);
+                b.AddAttribute(1, nameof(CmsTab.Id), "content");
+                b.AddAttribute(2, nameof(CmsTab.Title), "Content");
+                b.CloseComponent();
+                b.OpenComponent<CmsTab>(3);
+                b.AddAttribute(4, nameof(CmsTab.Id), "seo");
+                b.AddAttribute(5, nameof(CmsTab.Title), "SEO");
+                b.CloseComponent();
+            })));
+        var list = tabs.Find("fluent-tablist");
+
+        list.TriggerEvent("ontabchange", new TabChangeEventArgs { Id = list.Id, ActiveId = "seo" });
+
+        active.ShouldBe("seo");
+    }
+
+    [Fact]
+    public void SelectingATreeNodeRaisesSelectedIdChanged()
+    {
+        string? selected = null;
+        var tree = Render<CmsTree>(p => p
+            .Add(x => x.Label, "Folders")
+            .Add(x => x.Nodes, [new CmsTreeNode("images", "Images"), new CmsTreeNode("video", "Video")])
+            .Add(x => x.SelectedIdChanged, id => selected = id));
+
+        tree.Find("fluent-tree-item#video").TriggerEvent("ontreechanged", new TreeItemChangedEventArgs { Id = "video", Selected = true });
+
+        selected.ShouldBe("video");
+    }
+
+    [Fact]
+    public void ChoosingAMenuItemRaisesOnClick()
+    {
+        var clicks = 0;
+        var item = Render<CmsMenuItem>(p => p.AddChildContent("Delete").Add(x => x.OnClick, EventCallback.Factory.Create(this, () => clicks++)));
+        var element = item.Find("fluent-menu-item");
+
+        element.TriggerEvent("onmenuitemchange", new MenuItemEventArgs { Id = element.Id });
+
+        clicks.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 2)]
+    public async Task ChoosingFilesRaisesOnFilesSelected(bool multiple, int expected)
+    {
+        IReadOnlyList<IBrowserFile>? files = null;
+        var zone = Render<CmsFileDropZone>(p => p
+            .Add(x => x.Label, "Upload")
+            .Add(x => x.Multiple, multiple)
+            .Add(x => x.OnFilesSelected, f => files = f));
+
+        await zone.InvokeAsync(() => zone.FindComponent<InputFile>().Instance.OnChange.InvokeAsync(
+            new InputFileChangeEventArgs(multiple ? [new FakeFile("a.png"), new FakeFile("b.png")] : [new FakeFile("a.png")])));
+
+        files.ShouldNotBeNull().Count.ShouldBe(expected);
+        files[0].Name.ShouldBe("a.png");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ACancelledChooserRaisesNoFiles(bool multiple)
+    {
+        IReadOnlyList<IBrowserFile>? files = null;
+        var zone = Render<CmsFileDropZone>(p => p.Add(x => x.Label, "Upload").Add(x => x.Multiple, multiple).Add(x => x.OnFilesSelected, f => files = f));
+
+        await zone.InvokeAsync(() => zone.FindComponent<InputFile>().Instance.OnChange.InvokeAsync(new InputFileChangeEventArgs([])));
+
+        files.ShouldNotBeNull().ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("Saved \"a < b\"")]
+    [InlineData("Published <b>x</b>")]
+    [InlineData("R&D &copy; 2026")]
+    public void AToastShowsItsMessageAsText(string message)
+    {
+        var root = Render<CmsThemeRoot>();
+        var toasts = Services.GetRequiredService<ICmsToastService>();
+
+        _ = root.InvokeAsync(() => toasts.ShowAsync(message));
+
+        root.WaitForAssertion(() => root.Find("fluent-toast-b [slot=title]").TextContent.Trim().ShouldBe(message));
+        root.FindAll("fluent-toast-b b").ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(CmsToastIntent.Info, "info", "polite")]
+    [InlineData(CmsToastIntent.Success, "success", "polite")]
+    [InlineData(CmsToastIntent.Warning, "warning", "polite")]
+    [InlineData(CmsToastIntent.Error, "error", "assertive")]
+    public void AToastHasTheIntentAndPolitenessOfItsKind(CmsToastIntent intent, string attribute, string politeness)
+    {
+        var root = Render<CmsThemeRoot>();
+        var toasts = Services.GetRequiredService<ICmsToastService>();
+
+        _ = root.InvokeAsync(() => toasts.ShowAsync("Saved.", intent));
+
+        root.WaitForAssertion(() => root.Find("fluent-toast-b").GetAttribute("intent").ShouldBe(attribute));
+        root.Find("fluent-toast-b").GetAttribute("politeness").ShouldBe(politeness);
+    }
+
+    [Fact]
+    public void AToastCanBeDismissedByANamedControl()
+    {
+        var root = Render<CmsThemeRoot>();
+        var toasts = Services.GetRequiredService<ICmsToastService>();
+
+        _ = root.InvokeAsync(() => toasts.ShowAsync("Saved."));
+
+        root.WaitForAssertion(() => root.Find("fluent-toast-b [slot=action]").TextContent.Trim().ShouldBe("Close"));
+    }
+
+    [Fact]
+    public void ARegisteredTextSourceSuppliesTheSetsOwnTexts()
+    {
+        Services.AddSingleton<ICmsTextSource>(new BracketedTexts());
+        var root = Render<CmsThemeRoot>();
+        var zone = Render<CmsFileDropZone>(p => p.Add(x => x.Label, "Upload"));
+        var toasts = Services.GetRequiredService<ICmsToastService>();
+
+        _ = root.InvokeAsync(() => toasts.ShowAsync("Saved."));
+
+        zone.Find(".cms-field-message").TextContent.ShouldBe("[DropZoneChoose]");
+        root.WaitForAssertion(() => root.Find("fluent-toast-b [slot=action]").TextContent.Trim().ShouldBe("[Close]"));
+    }
+
+    [Fact]
+    public void TheLibrarysTextsComeThroughTheTextSourceOrStayTheLibrarysOwn()
+    {
+        Services.AddSingleton<ICmsTextSource>(new BracketedTexts("DataGrid_SelectColumn_RowUnchecked"));
+
+        var grid = Render<CmsDataGrid<string>>(p => p
+            .Add(x => x.Label, "Articles")
+            .Add(x => x.Items, ["a"])
+            .Add(x => x.SelectionMode, CmsSelectionMode.Many)
+            .Add(x => x.ChildContent, (RenderFragment)(b =>
+            {
+                b.OpenComponent<CmsDataGridColumn<string>>(0);
+                b.AddAttribute(1, nameof(CmsDataGridColumn<string>.Title), "Title");
+                b.AddAttribute(2, nameof(CmsDataGridColumn<string>.Value), (Func<string, string>)(a => a));
+                b.CloseComponent();
+            })));
+
+        grid.WaitForAssertion(() => grid.Markup.ShouldContain("[DataGrid_SelectColumn_RowUnchecked]"));
+        grid.Markup.ShouldContain("No rows are selected");
+    }
+
+    // The set's resources hold some of the library's texts under the library's keys (with an underscore, which the set's own
+    // names lack); each must be a key of the library and, in English, say what the library says.
+    [Fact]
+    public void TheLibraryTextsOfTheResourcesAreTheLibrarysEnglish()
+    {
+        Services.AddSingleton<ICmsTextSource>(new BracketedTexts("none"));
+        var library = Services.GetRequiredService<IFluentLocalizer>();
+        var resources = new ResourceManager("FluentCMS.Admin.Components.Resources.CmsStrings", typeof(ICmsTextSource).Assembly)
+            .GetResourceSet(CultureInfo.InvariantCulture, createIfNotExists: true, tryParents: false)!
+            .Cast<DictionaryEntry>()
+            .Where(entry => ((string)entry.Key).Contains('_', StringComparison.Ordinal))
+            .ToList();
+
+        resources.Count.ShouldBeGreaterThan(0);
+        resources.ShouldAllBe(entry => library[(string)entry.Key] == (string)entry.Value!);
+    }
+
+    [Fact]
+    public void ALibraryTextWithoutArgumentsIsNotFormatted()
+    {
+        Services.AddSingleton<ICmsTextSource>(new FixedText("Sorted {by} a brace"));
+        var library = Services.GetRequiredService<IFluentLocalizer>();
+
+        library["DataGrid_SortAscending"].ShouldBe("Sorted {by} a brace");
+    }
+
+    [Fact]
+    public void ALibraryTextWithArgumentsIsFormatted()
+    {
+        Services.AddSingleton<ICmsTextSource>(new FixedText("{0} ascending"));
+        var library = Services.GetRequiredService<IFluentLocalizer>();
+
+        library["DataGrid_SortColumnAscending", "Title"].ShouldBe("Title ascending");
+    }
+
+    private sealed class FixedText(string text) : ICmsTextSource
+    {
+        public string? GetText(string name) => text;
+    }
+
+    // Brackets the names it is given, and has no text for any other.
+    private sealed class BracketedTexts(params string[] names) : ICmsTextSource
+    {
+        public string? GetText(string name) => names.Length == 0 || names.Contains(name) ? $"[{name}]" : null;
+    }
+
+    private sealed class FakeFile(string name) : IBrowserFile
+    {
+        public string Name { get; } = name;
+
+        public DateTimeOffset LastModified => DateTimeOffset.UnixEpoch;
+
+        public long Size => 0;
+
+        public string ContentType => "image/png";
+
+        public Stream OpenReadStream(long maxAllowedSize = 512000, CancellationToken cancellationToken = default) => Stream.Null;
+    }
+}

@@ -1,0 +1,26 @@
+@using Microsoft.AspNetCore.Components.Web
+@inject DocumentInterop Document
+
+<PageTitle>@Branding.Name</PageTitle>
+@if (Branding.FaviconUrl is { } favicon)
+{
+    <HeadContent>
+        <link rel="icon" href="@favicon.OriginalString" />
+    </HeadContent>
+}
+
+@code {
+    public const string AccentProperty = "--fluentcms-brand-accent";
+
+    [Parameter, EditorRequired]
+    public AdminBranding Branding { get; set; } = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // The logo is not a custom property: the shell passes it to CmsLogo.
+        if (firstRender && Branding.AccentColor is { } accent)
+        {
+            await Document.SetPropertyAsync(AccentProperty, accent);
+        }
+    }
+}

@@ -1,0 +1,43 @@
+@implements IDisposable
+@inject Announcer Announcer
+
+@* Each announcement is a new node, read as an addition, so that two in one turn and the same message twice are each read. *@
+<div class="cms-visually-hidden" role="status" aria-live="polite" aria-relevant="additions" aria-atomic="false">
+    @foreach (var announcement in polite)
+    {
+        <div @key="announcement.Id">@announcement.Message</div>
+    }
+</div>
+<div class="cms-visually-hidden" role="alert" aria-live="assertive" aria-relevant="additions" aria-atomic="false">
+    @foreach (var announcement in assertive)
+    {
+        <div @key="announcement.Id">@announcement.Message</div>
+    }
+</div>
+
+@code {
+    // The last few are kept; the ones before are removed, which a screen reader does not read.
+    internal const int Kept = 5;
+
+    private readonly Queue<Announcement> polite = new();
+    private readonly Queue<Announcement> assertive = new();
+    private long next;
+
+    protected override void OnInitialized() => Announcer.Announced += OnAnnounced;
+
+    public void Dispose() => Announcer.Announced -= OnAnnounced;
+
+    private void OnAnnounced(string message, AnnouncementPoliteness politeness) => _ = InvokeAsync(() =>
+    {
+        var region = politeness == AnnouncementPoliteness.Assertive ? assertive : polite;
+        region.Enqueue(new Announcement(next++, message));
+        while (region.Count > Kept)
+        {
+            region.Dequeue();
+        }
+
+        StateHasChanged();
+    });
+
+    private sealed record Announcement(long Id, string Message);
+}

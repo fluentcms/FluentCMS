@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <PublishTrimmed>true</PublishTrimmed>
+    <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
+    <ILLinkTreatWarningsAsErrors>true</ILLinkTreatWarningsAsErrors>
+    <!-- The app and its project references report every trim warning, and each fails the publish. An assembly that is not a
+         project reference, such as the framework's Blazor assemblies, which are not free of trim warnings, reports one IL2104
+         that names it, and that one is left a warning. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);IL2104</WarningsNotAsErrors>
+    <!-- Required by FluentCMS.Admin: it sets the culture at start (en for a browser in en-US), and with the culture data of the
+         browser's language only, the runtime then stops the app with a blank page. Formats then do not depend on the browser
+         either. It costs 186 KB in Brotli (#3143). -->
+    <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../FluentCMS.Admin/FluentCMS.Admin.csproj" />
+  </ItemGroup>
+
+</Project>

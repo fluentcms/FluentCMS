@@ -1,0 +1,28 @@
+@namespace FluentCMS.Admin.Components
+@inherits CmsInputBase<DateOnly?>
+
+@* Native, for the reason given in CmsTextInput; the browser's own picker is keyboard operable and follows the culture. *@
+<div class="cms-field">
+    @LabelTemplate
+    <input id="@InputId"
+           class="cms-input"
+           type="date"
+           value="@Value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+           min="@Min?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+           max="@Max?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+           disabled="@Disabled"
+           @onchange="@(args => SetValueAsync(Parse(args.Value as string)))"
+           @attributes="@AriaAttributes" />
+    @MessageTemplate
+</div>
+
+@code {
+    [Parameter]
+    public DateOnly? Min { get; set; }
+
+    [Parameter]
+    public DateOnly? Max { get; set; }
+
+    private static DateOnly? Parse(string? value) =>
+        DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ? date : null;
+}

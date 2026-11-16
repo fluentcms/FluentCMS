@@ -1,0 +1,45 @@
+@namespace FluentCMS.Admin.Components
+
+<FluentTreeView SelectedId="@SelectedId"
+                SelectedIdChanged="@OnSelectedIdChangedAsync"
+                Class="cms-tree"
+                aria-label="@Label">
+    @foreach (var node in Nodes)
+    {
+        @RenderNode(node)
+    }
+</FluentTreeView>
+
+@code {
+    // Names the tree for assistive technology.
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<CmsTreeNode> Nodes { get; set; } = [];
+
+    [Parameter]
+    public string? SelectedId { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> SelectedIdChanged { get; set; }
+
+    private RenderFragment RenderNode(CmsTreeNode node) =>
+        @<FluentTreeItem @key="@node.Id" Id="@node.Id" Text="@node.Text">
+            @if (node.Children is { Count: > 0 } children)
+            {
+                @foreach (var child in children)
+                {
+                    @RenderNode(child)
+                }
+            }
+        </FluentTreeItem>;
+
+    private Task OnSelectedIdChangedAsync(string? id)
+    {
+        SelectedId = id;
+        return SelectedIdChanged.InvokeAsync(id);
+    }
+
+    protected override void OnParametersSet() => CmsGuard.Named(Label, nameof(CmsTree), nameof(Label));
+}

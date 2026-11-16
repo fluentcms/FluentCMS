@@ -1,0 +1,532 @@
+#nullable enable
+FluentCMS.Admin.AnnouncementPoliteness
+FluentCMS.Admin.AnnouncementPoliteness.Assertive = 1 -> FluentCMS.Admin.AnnouncementPoliteness
+FluentCMS.Admin.AnnouncementPoliteness.Polite = 0 -> FluentCMS.Admin.AnnouncementPoliteness
+FluentCMS.Admin.Api.ApiProblem
+FluentCMS.Admin.Api.ApiProblem.<Clone>$() -> FluentCMS.Admin.Api.ApiProblem!
+FluentCMS.Admin.Api.ApiProblem.ApiProblem() -> void
+FluentCMS.Admin.Api.ApiProblem.Code.get -> string?
+FluentCMS.Admin.Api.ApiProblem.Code.init -> void
+FluentCMS.Admin.Api.ApiProblem.Current.get -> System.Text.Json.Nodes.JsonObject?
+FluentCMS.Admin.Api.ApiProblem.Current.init -> void
+FluentCMS.Admin.Api.ApiProblem.Detail.get -> string?
+FluentCMS.Admin.Api.ApiProblem.Detail.init -> void
+FluentCMS.Admin.Api.ApiProblem.Equals(FluentCMS.Admin.Api.ApiProblem? other) -> bool
+FluentCMS.Admin.Api.ApiProblem.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.ApiProblemError!>!
+FluentCMS.Admin.Api.ApiProblem.Errors.init -> void
+FluentCMS.Admin.Api.ApiProblem.Status.get -> int
+FluentCMS.Admin.Api.ApiProblem.Status.init -> void
+FluentCMS.Admin.Api.ApiProblem.Title.get -> string?
+FluentCMS.Admin.Api.ApiProblem.Title.init -> void
+FluentCMS.Admin.Api.ApiProblem.TraceId.get -> string?
+FluentCMS.Admin.Api.ApiProblem.TraceId.init -> void
+FluentCMS.Admin.Api.ApiProblem.Type.get -> string?
+FluentCMS.Admin.Api.ApiProblem.Type.init -> void
+FluentCMS.Admin.Api.ApiProblemError
+FluentCMS.Admin.Api.ApiProblemError.<Clone>$() -> FluentCMS.Admin.Api.ApiProblemError!
+FluentCMS.Admin.Api.ApiProblemError.ApiProblemError() -> void
+FluentCMS.Admin.Api.ApiProblemError.Code.get -> string?
+FluentCMS.Admin.Api.ApiProblemError.Code.init -> void
+FluentCMS.Admin.Api.ApiProblemError.Equals(FluentCMS.Admin.Api.ApiProblemError? other) -> bool
+FluentCMS.Admin.Api.ApiProblemError.Message.get -> string?
+FluentCMS.Admin.Api.ApiProblemError.Message.init -> void
+FluentCMS.Admin.Api.ApiProblemError.Path.get -> string?
+FluentCMS.Admin.Api.ApiProblemError.Path.init -> void
+FluentCMS.Admin.Api.ApiProblemException
+FluentCMS.Admin.Api.ApiProblemException.ApiProblemException() -> void
+FluentCMS.Admin.Api.ApiProblemException.ApiProblemException(FluentCMS.Admin.Api.ApiProblem! problem) -> void
+FluentCMS.Admin.Api.ApiProblemException.ApiProblemException(string! message) -> void
+FluentCMS.Admin.Api.ApiProblemException.ApiProblemException(string! message, System.Exception! innerException) -> void
+FluentCMS.Admin.Api.ApiProblemException.Problem.get -> FluentCMS.Admin.Api.ApiProblem!
+FluentCMS.Admin.Api.ApiRequest
+FluentCMS.Admin.Api.ApiRequest.ApiRequest(System.Net.Http.HttpMethod! method, string! path) -> void
+FluentCMS.Admin.Api.ApiRequest.Body.get -> System.Text.Json.Nodes.JsonNode?
+FluentCMS.Admin.Api.ApiRequest.Body.init -> void
+FluentCMS.Admin.Api.ApiRequest.IdempotencyKey.get -> string?
+FluentCMS.Admin.Api.ApiRequest.IdempotencyKey.init -> void
+FluentCMS.Admin.Api.ApiRequest.IfMatch.get -> string?
+FluentCMS.Admin.Api.ApiRequest.IfMatch.init -> void
+FluentCMS.Admin.Api.ApiRequest.Locale.get -> string?
+FluentCMS.Admin.Api.ApiRequest.Locale.init -> void
+FluentCMS.Admin.Api.ApiRequest.Method.get -> System.Net.Http.HttpMethod!
+FluentCMS.Admin.Api.ApiRequest.NoLocale.get -> bool
+FluentCMS.Admin.Api.ApiRequest.NoLocale.init -> void
+FluentCMS.Admin.Api.ApiRequest.NoSite.get -> bool
+FluentCMS.Admin.Api.ApiRequest.NoSite.init -> void
+FluentCMS.Admin.Api.ApiRequest.Path.get -> string!
+FluentCMS.Admin.Api.ApiRequest.Site.get -> string?
+FluentCMS.Admin.Api.ApiRequest.Site.init -> void
+FluentCMS.Admin.Api.ApiResponse
+FluentCMS.Admin.Api.ApiResponse.ApiResponse(System.Net.HttpStatusCode status, string? entityTag) -> void
+FluentCMS.Admin.Api.ApiResponse.EntityTag.get -> string?
+FluentCMS.Admin.Api.ApiResponse.Status.get -> System.Net.HttpStatusCode
+FluentCMS.Admin.Api.ApiResponse<T>
+FluentCMS.Admin.Api.ApiResponse<T>.ApiResponse(System.Net.HttpStatusCode status, string? entityTag, T value) -> void
+FluentCMS.Admin.Api.ApiResponse<T>.Value.get -> T
+FluentCMS.Admin.Api.ConditionDescription
+FluentCMS.Admin.Api.ConditionDescription.<Clone>$() -> FluentCMS.Admin.Api.ConditionDescription!
+FluentCMS.Admin.Api.ConditionDescription.ConditionDescription() -> void
+FluentCMS.Admin.Api.ConditionDescription.Equals(FluentCMS.Admin.Api.ConditionDescription? other) -> bool
+FluentCMS.Admin.Api.ConditionDescription.Field.get -> string?
+FluentCMS.Admin.Api.ConditionDescription.Field.init -> void
+FluentCMS.Admin.Api.ConditionDescription.Operands.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.ConditionDescription!>?
+FluentCMS.Admin.Api.ConditionDescription.Operands.init -> void
+FluentCMS.Admin.Api.ConditionDescription.Operator.get -> string!
+FluentCMS.Admin.Api.ConditionDescription.Operator.init -> void
+FluentCMS.Admin.Api.ConditionDescription.Values.get -> System.Text.Json.Nodes.JsonArray?
+FluentCMS.Admin.Api.ConditionDescription.Values.init -> void
+FluentCMS.Admin.Api.ContentEntry
+FluentCMS.Admin.Api.ContentEntry.<Clone>$() -> FluentCMS.Admin.Api.ContentEntry!
+FluentCMS.Admin.Api.ContentEntry.ContentEntry() -> void
+FluentCMS.Admin.Api.ContentEntry.CreatedAt.get -> System.DateTimeOffset?
+FluentCMS.Admin.Api.ContentEntry.CreatedAt.init -> void
+FluentCMS.Admin.Api.ContentEntry.CreatedBy.get -> System.Guid?
+FluentCMS.Admin.Api.ContentEntry.CreatedBy.init -> void
+FluentCMS.Admin.Api.ContentEntry.DeletedAt.get -> System.DateTimeOffset?
+FluentCMS.Admin.Api.ContentEntry.DeletedAt.init -> void
+FluentCMS.Admin.Api.ContentEntry.DeletedBy.get -> System.Guid?
+FluentCMS.Admin.Api.ContentEntry.DeletedBy.init -> void
+FluentCMS.Admin.Api.ContentEntry.Equals(FluentCMS.Admin.Api.ContentEntry? other) -> bool
+FluentCMS.Admin.Api.ContentEntry.Fallbacks.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+FluentCMS.Admin.Api.ContentEntry.Fallbacks.init -> void
+FluentCMS.Admin.Api.ContentEntry.Fields.get -> System.Text.Json.Nodes.JsonObject!
+FluentCMS.Admin.Api.ContentEntry.Fields.init -> void
+FluentCMS.Admin.Api.ContentEntry.Id.get -> System.Guid
+FluentCMS.Admin.Api.ContentEntry.Id.init -> void
+FluentCMS.Admin.Api.ContentEntry.Locale.get -> string?
+FluentCMS.Admin.Api.ContentEntry.Locale.init -> void
+FluentCMS.Admin.Api.ContentEntry.PublishedAt.get -> System.DateTimeOffset?
+FluentCMS.Admin.Api.ContentEntry.PublishedAt.init -> void
+FluentCMS.Admin.Api.ContentEntry.ScheduledPublishAt.get -> System.DateTimeOffset?
+FluentCMS.Admin.Api.ContentEntry.ScheduledPublishAt.init -> void
+FluentCMS.Admin.Api.ContentEntry.ScheduledUnpublishAt.get -> System.DateTimeOffset?
+FluentCMS.Admin.Api.ContentEntry.ScheduledUnpublishAt.init -> void
+FluentCMS.Admin.Api.ContentEntry.Status.get -> string?
+FluentCMS.Admin.Api.ContentEntry.Status.init -> void
+FluentCMS.Admin.Api.ContentEntry.UpdatedAt.get -> System.DateTimeOffset?
+FluentCMS.Admin.Api.ContentEntry.UpdatedAt.init -> void
+FluentCMS.Admin.Api.ContentEntry.UpdatedBy.get -> System.Guid?
+FluentCMS.Admin.Api.ContentEntry.UpdatedBy.init -> void
+FluentCMS.Admin.Api.ContentEntry.Version.get -> int
+FluentCMS.Admin.Api.ContentEntry.Version.init -> void
+FluentCMS.Admin.Api.ContentEntryConverter
+FluentCMS.Admin.Api.ContentEntryConverter.ContentEntryConverter() -> void
+FluentCMS.Admin.Api.ContentPage
+FluentCMS.Admin.Api.ContentPage.<Clone>$() -> FluentCMS.Admin.Api.ContentPage!
+FluentCMS.Admin.Api.ContentPage.ContentPage() -> void
+FluentCMS.Admin.Api.ContentPage.Equals(FluentCMS.Admin.Api.ContentPage? other) -> bool
+FluentCMS.Admin.Api.ContentPage.Items.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.ContentEntry!>!
+FluentCMS.Admin.Api.ContentPage.Items.init -> void
+FluentCMS.Admin.Api.ContentPage.NextCursor.get -> string?
+FluentCMS.Admin.Api.ContentPage.NextCursor.init -> void
+FluentCMS.Admin.Api.ContentPage.Page.get -> int?
+FluentCMS.Admin.Api.ContentPage.Page.init -> void
+FluentCMS.Admin.Api.ContentPage.PageSize.get -> int
+FluentCMS.Admin.Api.ContentPage.PageSize.init -> void
+FluentCMS.Admin.Api.ContentPage.Total.get -> long?
+FluentCMS.Admin.Api.ContentPage.Total.init -> void
+FluentCMS.Admin.Api.FieldDisplayDescription
+FluentCMS.Admin.Api.FieldDisplayDescription.<Clone>$() -> FluentCMS.Admin.Api.FieldDisplayDescription!
+FluentCMS.Admin.Api.FieldDisplayDescription.Equals(FluentCMS.Admin.Api.FieldDisplayDescription? other) -> bool
+FluentCMS.Admin.Api.FieldDisplayDescription.FieldDisplayDescription() -> void
+FluentCMS.Admin.Api.FieldDisplayDescription.Group.get -> string?
+FluentCMS.Admin.Api.FieldDisplayDescription.Group.init -> void
+FluentCMS.Admin.Api.FieldDisplayDescription.Help.get -> string?
+FluentCMS.Admin.Api.FieldDisplayDescription.Help.init -> void
+FluentCMS.Admin.Api.FieldDisplayDescription.Label.get -> string?
+FluentCMS.Admin.Api.FieldDisplayDescription.Label.init -> void
+FluentCMS.Admin.Api.FieldDisplayDescription.Placeholder.get -> string?
+FluentCMS.Admin.Api.FieldDisplayDescription.Placeholder.init -> void
+FluentCMS.Admin.Api.FieldDisplayDescription.Tab.get -> string?
+FluentCMS.Admin.Api.FieldDisplayDescription.Tab.init -> void
+FluentCMS.Admin.Api.FieldDisplayDescription.Width.get -> int
+FluentCMS.Admin.Api.FieldDisplayDescription.Width.init -> void
+FluentCMS.Admin.Api.FieldRelationDescription
+FluentCMS.Admin.Api.FieldRelationDescription.<Clone>$() -> FluentCMS.Admin.Api.FieldRelationDescription!
+FluentCMS.Admin.Api.FieldRelationDescription.Equals(FluentCMS.Admin.Api.FieldRelationDescription? other) -> bool
+FluentCMS.Admin.Api.FieldRelationDescription.FieldRelationDescription() -> void
+FluentCMS.Admin.Api.FieldRelationDescription.Ordered.get -> bool
+FluentCMS.Admin.Api.FieldRelationDescription.Ordered.init -> void
+FluentCMS.Admin.Api.FieldRelationDescription.Reverse.get -> string?
+FluentCMS.Admin.Api.FieldRelationDescription.Reverse.init -> void
+FluentCMS.Admin.Api.FieldRelationDescription.Target.get -> string!
+FluentCMS.Admin.Api.FieldRelationDescription.Target.init -> void
+FluentCMS.Admin.Api.FieldValidationDescription
+FluentCMS.Admin.Api.FieldValidationDescription.<Clone>$() -> FluentCMS.Admin.Api.FieldValidationDescription!
+FluentCMS.Admin.Api.FieldValidationDescription.Equals(FluentCMS.Admin.Api.FieldValidationDescription? other) -> bool
+FluentCMS.Admin.Api.FieldValidationDescription.FieldValidationDescription() -> void
+FluentCMS.Admin.Api.FieldValidationDescription.MaxLength.get -> int?
+FluentCMS.Admin.Api.FieldValidationDescription.MaxLength.init -> void
+FluentCMS.Admin.Api.FieldValidationDescription.Maximum.get -> decimal?
+FluentCMS.Admin.Api.FieldValidationDescription.Maximum.init -> void
+FluentCMS.Admin.Api.FieldValidationDescription.MinLength.get -> int?
+FluentCMS.Admin.Api.FieldValidationDescription.MinLength.init -> void
+FluentCMS.Admin.Api.FieldValidationDescription.Minimum.get -> decimal?
+FluentCMS.Admin.Api.FieldValidationDescription.Minimum.init -> void
+FluentCMS.Admin.Api.FieldValidationDescription.Pattern.get -> string?
+FluentCMS.Admin.Api.FieldValidationDescription.Pattern.init -> void
+FluentCMS.Admin.Api.FieldValidationDescription.Required.get -> bool
+FluentCMS.Admin.Api.FieldValidationDescription.Required.init -> void
+FluentCMS.Admin.Api.FieldValidationDescription.Unique.get -> bool
+FluentCMS.Admin.Api.FieldValidationDescription.Unique.init -> void
+FluentCMS.Admin.Api.IManagementApi
+FluentCMS.Admin.Api.IManagementApi.SendAsync(FluentCMS.Admin.Api.ApiRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<FluentCMS.Admin.Api.ApiResponse!>!
+FluentCMS.Admin.Api.IManagementApi.SendAsync<T>(FluentCMS.Admin.Api.ApiRequest! request, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T>! answer, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<FluentCMS.Admin.Api.ApiResponse<T>!>!
+FluentCMS.Admin.Api.ItemList<T>
+FluentCMS.Admin.Api.ItemList<T>.<Clone>$() -> FluentCMS.Admin.Api.ItemList<T>!
+FluentCMS.Admin.Api.ItemList<T>.Equals(FluentCMS.Admin.Api.ItemList<T>? other) -> bool
+FluentCMS.Admin.Api.ItemList<T>.ItemList() -> void
+FluentCMS.Admin.Api.ItemList<T>.Items.get -> System.Collections.Generic.IReadOnlyList<T>!
+FluentCMS.Admin.Api.ItemList<T>.Items.init -> void
+FluentCMS.Admin.Api.MeResponse
+FluentCMS.Admin.Api.MeResponse.<Clone>$() -> FluentCMS.Admin.Api.MeResponse!
+FluentCMS.Admin.Api.MeResponse.Email.get -> string?
+FluentCMS.Admin.Api.MeResponse.Email.init -> void
+FluentCMS.Admin.Api.MeResponse.EmailConfirmed.get -> bool
+FluentCMS.Admin.Api.MeResponse.EmailConfirmed.init -> void
+FluentCMS.Admin.Api.MeResponse.Equals(FluentCMS.Admin.Api.MeResponse? other) -> bool
+FluentCMS.Admin.Api.MeResponse.Id.get -> System.Guid
+FluentCMS.Admin.Api.MeResponse.Id.init -> void
+FluentCMS.Admin.Api.MeResponse.Kind.get -> string!
+FluentCMS.Admin.Api.MeResponse.Kind.init -> void
+FluentCMS.Admin.Api.MeResponse.MeResponse() -> void
+FluentCMS.Admin.Api.MeResponse.MustChangePassword.get -> bool
+FluentCMS.Admin.Api.MeResponse.MustChangePassword.init -> void
+FluentCMS.Admin.Api.MeResponse.Name.get -> string!
+FluentCMS.Admin.Api.MeResponse.Name.init -> void
+FluentCMS.Admin.Api.MeResponse.Roles.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.UserRoleInfo!>!
+FluentCMS.Admin.Api.MeResponse.Roles.init -> void
+FluentCMS.Admin.Api.MeResponse.TwoFactorEnabled.get -> bool
+FluentCMS.Admin.Api.MeResponse.TwoFactorEnabled.init -> void
+FluentCMS.Admin.Api.MeResponse.UserName.get -> string?
+FluentCMS.Admin.Api.MeResponse.UserName.init -> void
+FluentCMS.Admin.Api.MySiteInfo
+FluentCMS.Admin.Api.MySiteInfo.<Clone>$() -> FluentCMS.Admin.Api.MySiteInfo!
+FluentCMS.Admin.Api.MySiteInfo.DefaultLocale.get -> string!
+FluentCMS.Admin.Api.MySiteInfo.DefaultLocale.init -> void
+FluentCMS.Admin.Api.MySiteInfo.Equals(FluentCMS.Admin.Api.MySiteInfo? other) -> bool
+FluentCMS.Admin.Api.MySiteInfo.Id.get -> System.Guid
+FluentCMS.Admin.Api.MySiteInfo.Id.init -> void
+FluentCMS.Admin.Api.MySiteInfo.IsDefault.get -> bool
+FluentCMS.Admin.Api.MySiteInfo.IsDefault.init -> void
+FluentCMS.Admin.Api.MySiteInfo.Locales.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.MySiteLocale!>!
+FluentCMS.Admin.Api.MySiteInfo.Locales.init -> void
+FluentCMS.Admin.Api.MySiteInfo.MySiteInfo() -> void
+FluentCMS.Admin.Api.MySiteInfo.Name.get -> string!
+FluentCMS.Admin.Api.MySiteInfo.Name.init -> void
+FluentCMS.Admin.Api.MySiteInfo.Slug.get -> string!
+FluentCMS.Admin.Api.MySiteInfo.Slug.init -> void
+FluentCMS.Admin.Api.MySiteLocale
+FluentCMS.Admin.Api.MySiteLocale.<Clone>$() -> FluentCMS.Admin.Api.MySiteLocale!
+FluentCMS.Admin.Api.MySiteLocale.Code.get -> string!
+FluentCMS.Admin.Api.MySiteLocale.Code.init -> void
+FluentCMS.Admin.Api.MySiteLocale.Enabled.get -> bool
+FluentCMS.Admin.Api.MySiteLocale.Enabled.init -> void
+FluentCMS.Admin.Api.MySiteLocale.Equals(FluentCMS.Admin.Api.MySiteLocale? other) -> bool
+FluentCMS.Admin.Api.MySiteLocale.MySiteLocale() -> void
+FluentCMS.Admin.Api.MySiteLocale.Position.get -> int
+FluentCMS.Admin.Api.MySiteLocale.Position.init -> void
+FluentCMS.Admin.Api.PluginContributionsInfo
+FluentCMS.Admin.Api.PluginContributionsInfo.<Clone>$() -> FluentCMS.Admin.Api.PluginContributionsInfo!
+FluentCMS.Admin.Api.PluginContributionsInfo.Endpoints.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.PluginEndpointInfo!>!
+FluentCMS.Admin.Api.PluginContributionsInfo.Endpoints.init -> void
+FluentCMS.Admin.Api.PluginContributionsInfo.Equals(FluentCMS.Admin.Api.PluginContributionsInfo? other) -> bool
+FluentCMS.Admin.Api.PluginContributionsInfo.FieldTypes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Api.PluginContributionsInfo.FieldTypes.init -> void
+FluentCMS.Admin.Api.PluginContributionsInfo.Jobs.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Api.PluginContributionsInfo.Jobs.init -> void
+FluentCMS.Admin.Api.PluginContributionsInfo.Permissions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Api.PluginContributionsInfo.Permissions.init -> void
+FluentCMS.Admin.Api.PluginContributionsInfo.PluginContributionsInfo() -> void
+FluentCMS.Admin.Api.PluginContributionsInfo.Tools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Api.PluginContributionsInfo.Tools.init -> void
+FluentCMS.Admin.Api.PluginEndpointInfo
+FluentCMS.Admin.Api.PluginEndpointInfo.<Clone>$() -> FluentCMS.Admin.Api.PluginEndpointInfo!
+FluentCMS.Admin.Api.PluginEndpointInfo.Equals(FluentCMS.Admin.Api.PluginEndpointInfo? other) -> bool
+FluentCMS.Admin.Api.PluginEndpointInfo.Method.get -> string!
+FluentCMS.Admin.Api.PluginEndpointInfo.Method.init -> void
+FluentCMS.Admin.Api.PluginEndpointInfo.PluginEndpointInfo() -> void
+FluentCMS.Admin.Api.PluginEndpointInfo.Route.get -> string!
+FluentCMS.Admin.Api.PluginEndpointInfo.Route.init -> void
+FluentCMS.Admin.Api.PluginInfo
+FluentCMS.Admin.Api.PluginInfo.<Clone>$() -> FluentCMS.Admin.Api.PluginInfo!
+FluentCMS.Admin.Api.PluginInfo.Contributions.get -> FluentCMS.Admin.Api.PluginContributionsInfo!
+FluentCMS.Admin.Api.PluginInfo.Contributions.init -> void
+FluentCMS.Admin.Api.PluginInfo.DependsOn.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Api.PluginInfo.DependsOn.init -> void
+FluentCMS.Admin.Api.PluginInfo.Enabled.get -> bool
+FluentCMS.Admin.Api.PluginInfo.Enabled.init -> void
+FluentCMS.Admin.Api.PluginInfo.Equals(FluentCMS.Admin.Api.PluginInfo? other) -> bool
+FluentCMS.Admin.Api.PluginInfo.Name.get -> string!
+FluentCMS.Admin.Api.PluginInfo.Name.init -> void
+FluentCMS.Admin.Api.PluginInfo.PluginInfo() -> void
+FluentCMS.Admin.Api.PluginInfo.SdkRange.get -> string!
+FluentCMS.Admin.Api.PluginInfo.SdkRange.init -> void
+FluentCMS.Admin.Api.PluginInfo.Sites.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.PluginSiteInfo!>!
+FluentCMS.Admin.Api.PluginInfo.Sites.init -> void
+FluentCMS.Admin.Api.PluginInfo.Version.get -> string!
+FluentCMS.Admin.Api.PluginInfo.Version.init -> void
+FluentCMS.Admin.Api.PluginSiteInfo
+FluentCMS.Admin.Api.PluginSiteInfo.<Clone>$() -> FluentCMS.Admin.Api.PluginSiteInfo!
+FluentCMS.Admin.Api.PluginSiteInfo.Enabled.get -> bool
+FluentCMS.Admin.Api.PluginSiteInfo.Enabled.init -> void
+FluentCMS.Admin.Api.PluginSiteInfo.Equals(FluentCMS.Admin.Api.PluginSiteInfo? other) -> bool
+FluentCMS.Admin.Api.PluginSiteInfo.PluginSiteInfo() -> void
+FluentCMS.Admin.Api.PluginSiteInfo.SiteId.get -> System.Guid
+FluentCMS.Admin.Api.PluginSiteInfo.SiteId.init -> void
+FluentCMS.Admin.Api.PluginSiteInfo.Slug.get -> string!
+FluentCMS.Admin.Api.PluginSiteInfo.Slug.init -> void
+FluentCMS.Admin.Api.ReverseRelationDescription
+FluentCMS.Admin.Api.ReverseRelationDescription.<Clone>$() -> FluentCMS.Admin.Api.ReverseRelationDescription!
+FluentCMS.Admin.Api.ReverseRelationDescription.Equals(FluentCMS.Admin.Api.ReverseRelationDescription? other) -> bool
+FluentCMS.Admin.Api.ReverseRelationDescription.Name.get -> string!
+FluentCMS.Admin.Api.ReverseRelationDescription.Name.init -> void
+FluentCMS.Admin.Api.ReverseRelationDescription.ReverseRelationDescription() -> void
+FluentCMS.Admin.Api.ReverseRelationDescription.SourceField.get -> string!
+FluentCMS.Admin.Api.ReverseRelationDescription.SourceField.init -> void
+FluentCMS.Admin.Api.ReverseRelationDescription.SourceType.get -> string!
+FluentCMS.Admin.Api.ReverseRelationDescription.SourceType.init -> void
+FluentCMS.Admin.Api.SchemaDescription
+FluentCMS.Admin.Api.SchemaDescription.<Clone>$() -> FluentCMS.Admin.Api.SchemaDescription!
+FluentCMS.Admin.Api.SchemaDescription.Blocks.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.SchemaTypeDescription!>!
+FluentCMS.Admin.Api.SchemaDescription.Blocks.init -> void
+FluentCMS.Admin.Api.SchemaDescription.Components.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.SchemaTypeDescription!>!
+FluentCMS.Admin.Api.SchemaDescription.Components.init -> void
+FluentCMS.Admin.Api.SchemaDescription.Equals(FluentCMS.Admin.Api.SchemaDescription? other) -> bool
+FluentCMS.Admin.Api.SchemaDescription.SchemaDescription() -> void
+FluentCMS.Admin.Api.SchemaDescription.Types.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.SchemaTypeDescription!>!
+FluentCMS.Admin.Api.SchemaDescription.Types.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription
+FluentCMS.Admin.Api.SchemaFieldDescription.<Clone>$() -> FluentCMS.Admin.Api.SchemaFieldDescription!
+FluentCMS.Admin.Api.SchemaFieldDescription.DefaultValue.get -> System.Text.Json.Nodes.JsonNode?
+FluentCMS.Admin.Api.SchemaFieldDescription.DefaultValue.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.Display.get -> FluentCMS.Admin.Api.FieldDisplayDescription?
+FluentCMS.Admin.Api.SchemaFieldDescription.Display.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.Equals(FluentCMS.Admin.Api.SchemaFieldDescription? other) -> bool
+FluentCMS.Admin.Api.SchemaFieldDescription.FormerNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Api.SchemaFieldDescription.FormerNames.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.Hidden.get -> bool
+FluentCMS.Admin.Api.SchemaFieldDescription.Hidden.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.Indexed.get -> bool
+FluentCMS.Admin.Api.SchemaFieldDescription.Indexed.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.Localizable.get -> bool
+FluentCMS.Admin.Api.SchemaFieldDescription.Localizable.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.Multiple.get -> bool
+FluentCMS.Admin.Api.SchemaFieldDescription.Multiple.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.Name.get -> string!
+FluentCMS.Admin.Api.SchemaFieldDescription.Name.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.ReadOnly.get -> bool
+FluentCMS.Admin.Api.SchemaFieldDescription.ReadOnly.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.Relation.get -> FluentCMS.Admin.Api.FieldRelationDescription?
+FluentCMS.Admin.Api.SchemaFieldDescription.Relation.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.RequiredWhen.get -> FluentCMS.Admin.Api.ConditionDescription?
+FluentCMS.Admin.Api.SchemaFieldDescription.RequiredWhen.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.SchemaFieldDescription() -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.Searchable.get -> bool
+FluentCMS.Admin.Api.SchemaFieldDescription.Searchable.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.Settings.get -> System.Text.Json.Nodes.JsonObject!
+FluentCMS.Admin.Api.SchemaFieldDescription.Settings.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.Type.get -> string!
+FluentCMS.Admin.Api.SchemaFieldDescription.Type.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.Validation.get -> FluentCMS.Admin.Api.FieldValidationDescription!
+FluentCMS.Admin.Api.SchemaFieldDescription.Validation.init -> void
+FluentCMS.Admin.Api.SchemaFieldDescription.VisibleWhen.get -> FluentCMS.Admin.Api.ConditionDescription?
+FluentCMS.Admin.Api.SchemaFieldDescription.VisibleWhen.init -> void
+FluentCMS.Admin.Api.SchemaTypeDescription
+FluentCMS.Admin.Api.SchemaTypeDescription.<Clone>$() -> FluentCMS.Admin.Api.SchemaTypeDescription!
+FluentCMS.Admin.Api.SchemaTypeDescription.Equals(FluentCMS.Admin.Api.SchemaTypeDescription? other) -> bool
+FluentCMS.Admin.Api.SchemaTypeDescription.Fields.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.SchemaFieldDescription!>!
+FluentCMS.Admin.Api.SchemaTypeDescription.Fields.init -> void
+FluentCMS.Admin.Api.SchemaTypeDescription.Kind.get -> string!
+FluentCMS.Admin.Api.SchemaTypeDescription.Kind.init -> void
+FluentCMS.Admin.Api.SchemaTypeDescription.Localized.get -> bool
+FluentCMS.Admin.Api.SchemaTypeDescription.Localized.init -> void
+FluentCMS.Admin.Api.SchemaTypeDescription.MaxVersions.get -> int?
+FluentCMS.Admin.Api.SchemaTypeDescription.MaxVersions.init -> void
+FluentCMS.Admin.Api.SchemaTypeDescription.Name.get -> string!
+FluentCMS.Admin.Api.SchemaTypeDescription.Name.init -> void
+FluentCMS.Admin.Api.SchemaTypeDescription.ReverseRelations.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.ReverseRelationDescription!>!
+FluentCMS.Admin.Api.SchemaTypeDescription.ReverseRelations.init -> void
+FluentCMS.Admin.Api.SchemaTypeDescription.SchemaTypeDescription() -> void
+FluentCMS.Admin.Api.SchemaTypeDescription.Scope.get -> string?
+FluentCMS.Admin.Api.SchemaTypeDescription.Scope.init -> void
+FluentCMS.Admin.Api.SchemaTypeDescription.TrashRetentionDays.get -> int?
+FluentCMS.Admin.Api.SchemaTypeDescription.TrashRetentionDays.init -> void
+FluentCMS.Admin.Api.SchemaTypeDescription.UnpublishedReferences.get -> string?
+FluentCMS.Admin.Api.SchemaTypeDescription.UnpublishedReferences.init -> void
+FluentCMS.Admin.Api.UserRoleInfo
+FluentCMS.Admin.Api.UserRoleInfo.<Clone>$() -> FluentCMS.Admin.Api.UserRoleInfo!
+FluentCMS.Admin.Api.UserRoleInfo.Equals(FluentCMS.Admin.Api.UserRoleInfo? other) -> bool
+FluentCMS.Admin.Api.UserRoleInfo.Id.get -> System.Guid
+FluentCMS.Admin.Api.UserRoleInfo.Id.init -> void
+FluentCMS.Admin.Api.UserRoleInfo.Name.get -> string!
+FluentCMS.Admin.Api.UserRoleInfo.Name.init -> void
+FluentCMS.Admin.Api.UserRoleInfo.SiteId.get -> System.Guid?
+FluentCMS.Admin.Api.UserRoleInfo.SiteId.init -> void
+FluentCMS.Admin.Api.UserRoleInfo.UserRoleInfo() -> void
+FluentCMS.Admin.Configuration.AdminBranding
+FluentCMS.Admin.Configuration.AdminBranding.<Clone>$() -> FluentCMS.Admin.Configuration.AdminBranding!
+FluentCMS.Admin.Configuration.AdminBranding.AccentColor.get -> string?
+FluentCMS.Admin.Configuration.AdminBranding.AccentColor.init -> void
+FluentCMS.Admin.Configuration.AdminBranding.AdminBranding() -> void
+FluentCMS.Admin.Configuration.AdminBranding.Equals(FluentCMS.Admin.Configuration.AdminBranding? other) -> bool
+FluentCMS.Admin.Configuration.AdminBranding.FaviconUrl.get -> System.Uri?
+FluentCMS.Admin.Configuration.AdminBranding.FaviconUrl.init -> void
+FluentCMS.Admin.Configuration.AdminBranding.LogoUrl.get -> System.Uri?
+FluentCMS.Admin.Configuration.AdminBranding.LogoUrl.init -> void
+FluentCMS.Admin.Configuration.AdminBranding.Name.get -> string!
+FluentCMS.Admin.Configuration.AdminBranding.Name.init -> void
+FluentCMS.Admin.Configuration.AdminConfiguration
+FluentCMS.Admin.Configuration.AdminConfiguration.<Clone>$() -> FluentCMS.Admin.Configuration.AdminConfiguration!
+FluentCMS.Admin.Configuration.AdminConfiguration.AdminConfiguration() -> void
+FluentCMS.Admin.Configuration.AdminConfiguration.ApiBaseUrl.get -> System.Uri!
+FluentCMS.Admin.Configuration.AdminConfiguration.ApiBaseUrl.init -> void
+FluentCMS.Admin.Configuration.AdminConfiguration.Authority.get -> System.Uri!
+FluentCMS.Admin.Configuration.AdminConfiguration.Authority.init -> void
+FluentCMS.Admin.Configuration.AdminConfiguration.Branding.get -> FluentCMS.Admin.Configuration.AdminBranding!
+FluentCMS.Admin.Configuration.AdminConfiguration.Branding.init -> void
+FluentCMS.Admin.Configuration.AdminConfiguration.ClientId.get -> string!
+FluentCMS.Admin.Configuration.AdminConfiguration.ClientId.init -> void
+FluentCMS.Admin.Configuration.AdminConfiguration.Cultures.get -> FluentCMS.Admin.Configuration.AdminCultures!
+FluentCMS.Admin.Configuration.AdminConfiguration.Cultures.init -> void
+FluentCMS.Admin.Configuration.AdminConfiguration.Equals(FluentCMS.Admin.Configuration.AdminConfiguration? other) -> bool
+FluentCMS.Admin.Configuration.AdminConfiguration.PreviewEnabled.get -> bool
+FluentCMS.Admin.Configuration.AdminConfiguration.PreviewOrigins.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Configuration.AdminConfiguration.PreviewOrigins.init -> void
+FluentCMS.Admin.Configuration.AdminConfiguration.Scopes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Configuration.AdminConfiguration.Scopes.init -> void
+FluentCMS.Admin.Configuration.AdminCultures
+FluentCMS.Admin.Configuration.AdminCultures.<Clone>$() -> FluentCMS.Admin.Configuration.AdminCultures!
+FluentCMS.Admin.Configuration.AdminCultures.AdminCultures() -> void
+FluentCMS.Admin.Configuration.AdminCultures.Default.get -> string!
+FluentCMS.Admin.Configuration.AdminCultures.Default.init -> void
+FluentCMS.Admin.Configuration.AdminCultures.Equals(FluentCMS.Admin.Configuration.AdminCultures? other) -> bool
+FluentCMS.Admin.Configuration.AdminCultures.Offered.get -> System.Collections.Generic.IReadOnlyList<string!>?
+FluentCMS.Admin.Configuration.AdminCultures.Offered.init -> void
+FluentCMS.Admin.IAnnouncer
+FluentCMS.Admin.IAnnouncer.Announce(string! message, FluentCMS.Admin.AnnouncementPoliteness politeness = FluentCMS.Admin.AnnouncementPoliteness.Polite) -> void
+const FluentCMS.Admin.Api.ApiRequest.NewLocale = "\"0\"" -> string!
+override FluentCMS.Admin.Api.ApiProblem.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.ApiProblem.GetHashCode() -> int
+override FluentCMS.Admin.Api.ApiProblem.ToString() -> string!
+override FluentCMS.Admin.Api.ApiProblemError.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.ApiProblemError.GetHashCode() -> int
+override FluentCMS.Admin.Api.ApiProblemError.ToString() -> string!
+override FluentCMS.Admin.Api.ConditionDescription.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.ConditionDescription.GetHashCode() -> int
+override FluentCMS.Admin.Api.ConditionDescription.ToString() -> string!
+override FluentCMS.Admin.Api.ContentEntry.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.ContentEntry.GetHashCode() -> int
+override FluentCMS.Admin.Api.ContentEntry.ToString() -> string!
+override FluentCMS.Admin.Api.ContentEntryConverter.Read(ref System.Text.Json.Utf8JsonReader reader, System.Type! typeToConvert, System.Text.Json.JsonSerializerOptions! options) -> FluentCMS.Admin.Api.ContentEntry?
+override FluentCMS.Admin.Api.ContentEntryConverter.Write(System.Text.Json.Utf8JsonWriter! writer, FluentCMS.Admin.Api.ContentEntry! value, System.Text.Json.JsonSerializerOptions! options) -> void
+override FluentCMS.Admin.Api.ContentPage.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.ContentPage.GetHashCode() -> int
+override FluentCMS.Admin.Api.ContentPage.ToString() -> string!
+override FluentCMS.Admin.Api.FieldDisplayDescription.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.FieldDisplayDescription.GetHashCode() -> int
+override FluentCMS.Admin.Api.FieldDisplayDescription.ToString() -> string!
+override FluentCMS.Admin.Api.FieldRelationDescription.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.FieldRelationDescription.GetHashCode() -> int
+override FluentCMS.Admin.Api.FieldRelationDescription.ToString() -> string!
+override FluentCMS.Admin.Api.FieldValidationDescription.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.FieldValidationDescription.GetHashCode() -> int
+override FluentCMS.Admin.Api.FieldValidationDescription.ToString() -> string!
+override FluentCMS.Admin.Api.ItemList<T>.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.ItemList<T>.GetHashCode() -> int
+override FluentCMS.Admin.Api.ItemList<T>.ToString() -> string!
+override FluentCMS.Admin.Api.MeResponse.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.MeResponse.GetHashCode() -> int
+override FluentCMS.Admin.Api.MeResponse.ToString() -> string!
+override FluentCMS.Admin.Api.MySiteInfo.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.MySiteInfo.GetHashCode() -> int
+override FluentCMS.Admin.Api.MySiteInfo.ToString() -> string!
+override FluentCMS.Admin.Api.MySiteLocale.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.MySiteLocale.GetHashCode() -> int
+override FluentCMS.Admin.Api.MySiteLocale.ToString() -> string!
+override FluentCMS.Admin.Api.PluginContributionsInfo.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.PluginContributionsInfo.GetHashCode() -> int
+override FluentCMS.Admin.Api.PluginContributionsInfo.ToString() -> string!
+override FluentCMS.Admin.Api.PluginEndpointInfo.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.PluginEndpointInfo.GetHashCode() -> int
+override FluentCMS.Admin.Api.PluginEndpointInfo.ToString() -> string!
+override FluentCMS.Admin.Api.PluginInfo.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.PluginInfo.GetHashCode() -> int
+override FluentCMS.Admin.Api.PluginInfo.ToString() -> string!
+override FluentCMS.Admin.Api.PluginSiteInfo.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.PluginSiteInfo.GetHashCode() -> int
+override FluentCMS.Admin.Api.PluginSiteInfo.ToString() -> string!
+override FluentCMS.Admin.Api.ReverseRelationDescription.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.ReverseRelationDescription.GetHashCode() -> int
+override FluentCMS.Admin.Api.ReverseRelationDescription.ToString() -> string!
+override FluentCMS.Admin.Api.SchemaDescription.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.SchemaDescription.GetHashCode() -> int
+override FluentCMS.Admin.Api.SchemaDescription.ToString() -> string!
+override FluentCMS.Admin.Api.SchemaFieldDescription.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.SchemaFieldDescription.GetHashCode() -> int
+override FluentCMS.Admin.Api.SchemaFieldDescription.ToString() -> string!
+override FluentCMS.Admin.Api.SchemaTypeDescription.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.SchemaTypeDescription.GetHashCode() -> int
+override FluentCMS.Admin.Api.SchemaTypeDescription.ToString() -> string!
+override FluentCMS.Admin.Api.UserRoleInfo.Equals(object? obj) -> bool
+override FluentCMS.Admin.Api.UserRoleInfo.GetHashCode() -> int
+override FluentCMS.Admin.Api.UserRoleInfo.ToString() -> string!
+override FluentCMS.Admin.Configuration.AdminBranding.Equals(object? obj) -> bool
+override FluentCMS.Admin.Configuration.AdminBranding.GetHashCode() -> int
+override FluentCMS.Admin.Configuration.AdminBranding.ToString() -> string!
+override FluentCMS.Admin.Configuration.AdminConfiguration.Equals(object? obj) -> bool
+override FluentCMS.Admin.Configuration.AdminConfiguration.GetHashCode() -> int
+override FluentCMS.Admin.Configuration.AdminConfiguration.ToString() -> string!
+override FluentCMS.Admin.Configuration.AdminCultures.Equals(object? obj) -> bool
+override FluentCMS.Admin.Configuration.AdminCultures.GetHashCode() -> int
+override FluentCMS.Admin.Configuration.AdminCultures.ToString() -> string!
+static FluentCMS.Admin.Api.ApiProblem.operator !=(FluentCMS.Admin.Api.ApiProblem? left, FluentCMS.Admin.Api.ApiProblem? right) -> bool
+static FluentCMS.Admin.Api.ApiProblem.operator ==(FluentCMS.Admin.Api.ApiProblem? left, FluentCMS.Admin.Api.ApiProblem? right) -> bool
+static FluentCMS.Admin.Api.ApiProblemError.operator !=(FluentCMS.Admin.Api.ApiProblemError? left, FluentCMS.Admin.Api.ApiProblemError? right) -> bool
+static FluentCMS.Admin.Api.ApiProblemError.operator ==(FluentCMS.Admin.Api.ApiProblemError? left, FluentCMS.Admin.Api.ApiProblemError? right) -> bool
+static FluentCMS.Admin.Api.ApiRequest.NewIdempotencyKey() -> string!
+static FluentCMS.Admin.Api.ConditionDescription.operator !=(FluentCMS.Admin.Api.ConditionDescription? left, FluentCMS.Admin.Api.ConditionDescription? right) -> bool
+static FluentCMS.Admin.Api.ConditionDescription.operator ==(FluentCMS.Admin.Api.ConditionDescription? left, FluentCMS.Admin.Api.ConditionDescription? right) -> bool
+static FluentCMS.Admin.Api.ContentEntry.SystemMembers.get -> System.Collections.Generic.IReadOnlySet<string!>!
+static FluentCMS.Admin.Api.ContentEntry.operator !=(FluentCMS.Admin.Api.ContentEntry? left, FluentCMS.Admin.Api.ContentEntry? right) -> bool
+static FluentCMS.Admin.Api.ContentEntry.operator ==(FluentCMS.Admin.Api.ContentEntry? left, FluentCMS.Admin.Api.ContentEntry? right) -> bool
+static FluentCMS.Admin.Api.ContentPage.operator !=(FluentCMS.Admin.Api.ContentPage? left, FluentCMS.Admin.Api.ContentPage? right) -> bool
+static FluentCMS.Admin.Api.ContentPage.operator ==(FluentCMS.Admin.Api.ContentPage? left, FluentCMS.Admin.Api.ContentPage? right) -> bool
+static FluentCMS.Admin.Api.FieldDisplayDescription.operator !=(FluentCMS.Admin.Api.FieldDisplayDescription? left, FluentCMS.Admin.Api.FieldDisplayDescription? right) -> bool
+static FluentCMS.Admin.Api.FieldDisplayDescription.operator ==(FluentCMS.Admin.Api.FieldDisplayDescription? left, FluentCMS.Admin.Api.FieldDisplayDescription? right) -> bool
+static FluentCMS.Admin.Api.FieldRelationDescription.operator !=(FluentCMS.Admin.Api.FieldRelationDescription? left, FluentCMS.Admin.Api.FieldRelationDescription? right) -> bool
+static FluentCMS.Admin.Api.FieldRelationDescription.operator ==(FluentCMS.Admin.Api.FieldRelationDescription? left, FluentCMS.Admin.Api.FieldRelationDescription? right) -> bool
+static FluentCMS.Admin.Api.FieldValidationDescription.operator !=(FluentCMS.Admin.Api.FieldValidationDescription? left, FluentCMS.Admin.Api.FieldValidationDescription? right) -> bool
+static FluentCMS.Admin.Api.FieldValidationDescription.operator ==(FluentCMS.Admin.Api.FieldValidationDescription? left, FluentCMS.Admin.Api.FieldValidationDescription? right) -> bool
+static FluentCMS.Admin.Api.ItemList<T>.operator !=(FluentCMS.Admin.Api.ItemList<T>? left, FluentCMS.Admin.Api.ItemList<T>? right) -> bool
+static FluentCMS.Admin.Api.ItemList<T>.operator ==(FluentCMS.Admin.Api.ItemList<T>? left, FluentCMS.Admin.Api.ItemList<T>? right) -> bool
+static FluentCMS.Admin.Api.MeResponse.operator !=(FluentCMS.Admin.Api.MeResponse? left, FluentCMS.Admin.Api.MeResponse? right) -> bool
+static FluentCMS.Admin.Api.MeResponse.operator ==(FluentCMS.Admin.Api.MeResponse? left, FluentCMS.Admin.Api.MeResponse? right) -> bool
+static FluentCMS.Admin.Api.MySiteInfo.operator !=(FluentCMS.Admin.Api.MySiteInfo? left, FluentCMS.Admin.Api.MySiteInfo? right) -> bool
+static FluentCMS.Admin.Api.MySiteInfo.operator ==(FluentCMS.Admin.Api.MySiteInfo? left, FluentCMS.Admin.Api.MySiteInfo? right) -> bool
+static FluentCMS.Admin.Api.MySiteLocale.operator !=(FluentCMS.Admin.Api.MySiteLocale? left, FluentCMS.Admin.Api.MySiteLocale? right) -> bool
+static FluentCMS.Admin.Api.MySiteLocale.operator ==(FluentCMS.Admin.Api.MySiteLocale? left, FluentCMS.Admin.Api.MySiteLocale? right) -> bool
+static FluentCMS.Admin.Api.PluginContributionsInfo.operator !=(FluentCMS.Admin.Api.PluginContributionsInfo? left, FluentCMS.Admin.Api.PluginContributionsInfo? right) -> bool
+static FluentCMS.Admin.Api.PluginContributionsInfo.operator ==(FluentCMS.Admin.Api.PluginContributionsInfo? left, FluentCMS.Admin.Api.PluginContributionsInfo? right) -> bool
+static FluentCMS.Admin.Api.PluginEndpointInfo.operator !=(FluentCMS.Admin.Api.PluginEndpointInfo? left, FluentCMS.Admin.Api.PluginEndpointInfo? right) -> bool
+static FluentCMS.Admin.Api.PluginEndpointInfo.operator ==(FluentCMS.Admin.Api.PluginEndpointInfo? left, FluentCMS.Admin.Api.PluginEndpointInfo? right) -> bool
+static FluentCMS.Admin.Api.PluginInfo.operator !=(FluentCMS.Admin.Api.PluginInfo? left, FluentCMS.Admin.Api.PluginInfo? right) -> bool
+static FluentCMS.Admin.Api.PluginInfo.operator ==(FluentCMS.Admin.Api.PluginInfo? left, FluentCMS.Admin.Api.PluginInfo? right) -> bool
+static FluentCMS.Admin.Api.PluginSiteInfo.operator !=(FluentCMS.Admin.Api.PluginSiteInfo? left, FluentCMS.Admin.Api.PluginSiteInfo? right) -> bool
+static FluentCMS.Admin.Api.PluginSiteInfo.operator ==(FluentCMS.Admin.Api.PluginSiteInfo? left, FluentCMS.Admin.Api.PluginSiteInfo? right) -> bool
+static FluentCMS.Admin.Api.ReverseRelationDescription.operator !=(FluentCMS.Admin.Api.ReverseRelationDescription? left, FluentCMS.Admin.Api.ReverseRelationDescription? right) -> bool
+static FluentCMS.Admin.Api.ReverseRelationDescription.operator ==(FluentCMS.Admin.Api.ReverseRelationDescription? left, FluentCMS.Admin.Api.ReverseRelationDescription? right) -> bool
+static FluentCMS.Admin.Api.SchemaDescription.operator !=(FluentCMS.Admin.Api.SchemaDescription? left, FluentCMS.Admin.Api.SchemaDescription? right) -> bool
+static FluentCMS.Admin.Api.SchemaDescription.operator ==(FluentCMS.Admin.Api.SchemaDescription? left, FluentCMS.Admin.Api.SchemaDescription? right) -> bool
+static FluentCMS.Admin.Api.SchemaFieldDescription.operator !=(FluentCMS.Admin.Api.SchemaFieldDescription? left, FluentCMS.Admin.Api.SchemaFieldDescription? right) -> bool
+static FluentCMS.Admin.Api.SchemaFieldDescription.operator ==(FluentCMS.Admin.Api.SchemaFieldDescription? left, FluentCMS.Admin.Api.SchemaFieldDescription? right) -> bool
+static FluentCMS.Admin.Api.SchemaTypeDescription.operator !=(FluentCMS.Admin.Api.SchemaTypeDescription? left, FluentCMS.Admin.Api.SchemaTypeDescription? right) -> bool
+static FluentCMS.Admin.Api.SchemaTypeDescription.operator ==(FluentCMS.Admin.Api.SchemaTypeDescription? left, FluentCMS.Admin.Api.SchemaTypeDescription? right) -> bool
+static FluentCMS.Admin.Api.UserRoleInfo.operator !=(FluentCMS.Admin.Api.UserRoleInfo? left, FluentCMS.Admin.Api.UserRoleInfo? right) -> bool
+static FluentCMS.Admin.Api.UserRoleInfo.operator ==(FluentCMS.Admin.Api.UserRoleInfo? left, FluentCMS.Admin.Api.UserRoleInfo? right) -> bool
+static FluentCMS.Admin.Configuration.AdminBranding.operator !=(FluentCMS.Admin.Configuration.AdminBranding? left, FluentCMS.Admin.Configuration.AdminBranding? right) -> bool
+static FluentCMS.Admin.Configuration.AdminBranding.operator ==(FluentCMS.Admin.Configuration.AdminBranding? left, FluentCMS.Admin.Configuration.AdminBranding? right) -> bool
+static FluentCMS.Admin.Configuration.AdminConfiguration.operator !=(FluentCMS.Admin.Configuration.AdminConfiguration? left, FluentCMS.Admin.Configuration.AdminConfiguration? right) -> bool
+static FluentCMS.Admin.Configuration.AdminConfiguration.operator ==(FluentCMS.Admin.Configuration.AdminConfiguration? left, FluentCMS.Admin.Configuration.AdminConfiguration? right) -> bool
+static FluentCMS.Admin.Configuration.AdminCultures.operator !=(FluentCMS.Admin.Configuration.AdminCultures? left, FluentCMS.Admin.Configuration.AdminCultures? right) -> bool
+static FluentCMS.Admin.Configuration.AdminCultures.operator ==(FluentCMS.Admin.Configuration.AdminCultures? left, FluentCMS.Admin.Configuration.AdminCultures? right) -> bool

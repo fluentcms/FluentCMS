@@ -25,6 +25,7 @@ on:
       - Directory.Build.props
       - eng/check-packages.cs
       - "src/**/*.csproj"
+      - "admin/src/**/*.csproj"
       - src/FluentCMS.Host/Dockerfile
       - .dockerignore
       - templates/FluentCMS.Templates.csproj
@@ -197,6 +198,11 @@ jobs:
 
       - name: Pack
         run: dotnet pack FluentCMS.slnx -c Release -o artifacts/packages -p:Version="$VERSION"
+
+      # The admin is not part of a release yet, so its stub packages are packed but never pushed. A-47 removes this step.
+      - name: Leave out the admin packages
+        shell: bash
+        run: rm -f artifacts/packages/FluentCMS.Admin*.nupkg artifacts/packages/FluentCMS.Admin*.snupkg
 
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0

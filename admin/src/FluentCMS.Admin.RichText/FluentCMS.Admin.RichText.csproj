@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <Description>The rich text editor of the FluentCMS admin, loaded the first time a form has a rich text field.</Description>
+    <PackageTags>$(PackageTags) admin blazor richtext</PackageTags>
+    <IsTrimmable>true</IsTrimmable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj" />
+    <ProjectReference Include="../FluentCMS.Admin.Components/FluentCMS.Admin.Components.csproj" />
+  </ItemGroup>
+
+</Project>

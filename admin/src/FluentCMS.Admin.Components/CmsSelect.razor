@@ -1,0 +1,32 @@
+@namespace FluentCMS.Admin.Components
+@inherits CmsInputBase<string>
+
+@* Native, for the reason given in CmsTextInput. *@
+<div class="cms-field">
+    @LabelTemplate
+    <select id="@InputId"
+            class="cms-input cms-select"
+            disabled="@Disabled"
+            value="@(Value ?? string.Empty)"
+            @onchange="@(args => SetValueAsync(string.IsNullOrEmpty(args.Value as string) ? null : (string)args.Value!))"
+            @attributes="@AriaAttributes">
+        @if (Placeholder is not null || !Options.Any(option => option.Value == Value))
+        {
+            <option value="">@Placeholder</option>
+        }
+        @foreach (var option in Options)
+        {
+            <option @key="@option.Value" value="@option.Value" selected="@(option.Value == Value)">@option.Text</option>
+        }
+    </select>
+    @MessageTemplate
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<CmsOption> Options { get; set; } = [];
+
+    // The text of the empty option, shown while no value is chosen.
+    [Parameter]
+    public string? Placeholder { get; set; }
+}

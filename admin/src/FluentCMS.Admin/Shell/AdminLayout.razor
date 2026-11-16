@@ -1,0 +1,19 @@
+@* The layout of the admin's pages, which the shell fills (A-08). *@
+@inherits LayoutComponentBase
+@using FluentCMS.Admin.Configuration
+@inject IStringLocalizer<AdminResources> L
+@inject AdminConfiguration Configuration
+
+<a class="skip-link" href="#main" @onclick="SkipToMainAsync" @onclick:preventDefault>@L["Shell.Layout.SkipToContent"]</a>
+<header class="shell-header">
+    <a class="shell-home" href="">
+        <CmsLogo Source="@Configuration.Branding.LogoUrl?.OriginalString" AlternativeText="@L["Shell.Layout.Home", Configuration.Branding.Name]" />
+    </a>
+</header>
+<main id="main" tabindex="-1" @ref="main">@Body</main>
+
+@code {
+    private ElementReference main;
+
+    private async Task SkipToMainAsync() => await main.FocusAsync();
+}

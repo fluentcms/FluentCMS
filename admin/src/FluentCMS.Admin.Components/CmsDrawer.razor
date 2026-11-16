@@ -1,0 +1,19 @@
+@namespace FluentCMS.Admin.Components
+@inherits CmsDialogBase
+
+@* A modal dialog docked to an edge of the viewport, in the reading direction. *@
+<FluentDialog @ref="Dialog"
+              Id="@DialogId"
+              Modal="true"
+              Alignment="@(Side == CmsDrawerSide.Start ? DialogAlignment.Start : DialogAlignment.End)"
+              Class="cms-drawer"
+              @attributes="@DialogAttributes">
+    <FluentDialogBody TitleTemplate="@TitleTemplate" ActionTemplate="@Actions">
+        @ChildContent
+    </FluentDialogBody>
+</FluentDialog>
+
+@code {
+    [Parameter]
+    public CmsDrawerSide Side { get; set; }
+}

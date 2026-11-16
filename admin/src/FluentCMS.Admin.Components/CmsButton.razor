@@ -1,0 +1,62 @@
+@namespace FluentCMS.Admin.Components
+
+<FluentButton Type="@(Submit ? ButtonType.Submit : ButtonType.Button)"
+              Appearance="@ToLibrary(Appearance)"
+              Disabled="@Disabled"
+              IconStart="@(IconOnly || Icon is not { } icon ? null : CmsIcons.Get(icon))"
+              IconOnly="@IconOnly"
+              Title="@(IconOnly ? Label : null)"
+              aria-label="@(IconOnly ? Label : null)"
+              Class="cms-button"
+              OnClick="@OnClick">
+    @if (IconOnly)
+    {
+        <CmsIcon Name="@Icon!.Value" />
+    }
+    else
+    {
+        @ChildContent
+    }
+</FluentButton>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public CmsButtonAppearance Appearance { get; set; }
+
+    [Parameter]
+    public CmsIconName? Icon { get; set; }
+
+    // Names a button that shows only its icon; required then, since the icon carries no text.
+    [Parameter]
+    public string? Label { get; set; }
+
+    [Parameter]
+    public bool Submit { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    private bool IconOnly => ChildContent is null && Icon is not null;
+
+    protected override void OnParametersSet()
+    {
+        if (IconOnly && string.IsNullOrWhiteSpace(Label))
+        {
+            throw new InvalidOperationException($"A {nameof(CmsButton)} with an icon and no content needs a {nameof(Label)}.");
+        }
+    }
+
+    private static ButtonAppearance ToLibrary(CmsButtonAppearance appearance) => appearance switch
+    {
+        CmsButtonAppearance.Primary => ButtonAppearance.Primary,
+        CmsButtonAppearance.Outline => ButtonAppearance.Outline,
+        CmsButtonAppearance.Subtle => ButtonAppearance.Subtle,
+        _ => ButtonAppearance.Default,
+    };
+}
