@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Identity;
 using FluentCMS.Events;
@@ -19,38 +20,138 @@ public sealed partial class HostedPagesTests
     private const string SignInCookie = ".AspNetCore.Identity.Application";
 
     [Fact]
-    public async Task TheRemoteSignOutOfAProviderEndsTheAdminSessionItMadeAndNoOther()
+    public async Task TheRemoteSignOutOfAProviderEndsOnlyTheSignInWhoseSidAndIssItCarries()
     {
         var (idp, host) = (_idp, _sso);
         host.Services.GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>().Get(Corp).SignOutScheme.ShouldBe(IdentityConstants.ApplicationScheme);
 
-        using var sso = new HostedPagesBrowser(host);
-        using (var back = await SignInWithProviderAsync(sso, idp, FakeIdentity.Of("rae@corp.example")))
-        {
-            (await ExternalLoginAsync(sso, back)).ShouldBe("/");
-        }
+        var rae = FakeIdentity.Of("rae@corp.example") with { Sid = "idp-session-" + Guid.NewGuid().ToString("N") };
+        using var sso = await ProviderSignInAsync(host, idp, rae, Corp);
+
+        // The same provider session through the other provider, which is trusted for its mfa, and a token without sid.
+        var tess = FakeIdentity.Of("tess@corp.example") with { Sid = rae.Sid, Amr = ["pwd", "mfa"] };
+        using var other = await ProviderSignInAsync(host, idp, tess, Trusted);
+        using var bare = await ProviderSignInAsync(host, idp, FakeIdentity.Of("nils@corp.example"), Corp);
 
         var editor = await CreateUserAsync(host);
         using var password = new HostedPagesBrowser(host);
         await SignInAsync(password, editor.Email);
-        var ssoTokens = await CodeFlowAsync(host, sso);
-        var passwordTokens = await CodeFlowAsync(host, password);
 
-        // What the provider's front-channel logout loads in the browser.
-        foreach (var (browser, provider) in new[] { (sso, Trusted), (password, Corp) })
+        var ssoTokens = await CodeFlowAsync(host, sso);
+        var others = new[] { other, bare, password };
+        List<JsonElement> otherTokens = [];
+        foreach (var browser in others)
         {
-            using var response = await browser.GetAsync($"/account/sso/{provider}/signout");
+            otherTokens.Add(await CodeFlowAsync(host, browser));
+        }
+
+        var iss = Uri.EscapeDataString(idp.Issuer);
+        var genuine = $"/account/sso/{Corp}/signout?sid={rae.Sid}&iss={iss}";
+
+        // What any site can send: the path without the provider's session, or with values other than the sign-in's.
+        foreach (var forged in new[]
+        {
+            $"/account/sso/{Corp}/signout",
+            $"/account/sso/{Corp}/signout?sid={rae.Sid}",
+            $"/account/sso/{Corp}/signout?iss={iss}",
+            $"/account/sso/{Corp}/signout?sid=&iss={iss}",
+            $"/account/sso/{Corp}/signout?sid=made-up&iss={iss}",
+            $"/account/sso/{Corp}/signout?sid={rae.Sid}&iss=https%3A%2F%2Fevil.example",
+            $"/account/sso/{Corp}/signout?sid={rae.Sid!.ToUpperInvariant()}&iss={iss}",
+            $"/account/sso/{Corp}/signout?sid={rae.Sid}&iss={Uri.EscapeDataString(idp.Issuer + "/")}",
+            $"/account/sso/{Trusted}/signout?sid={rae.Sid}&iss={iss}",
+        })
+        {
+            using var response = await sso.GetAsync(forged);
+            response.StatusCode.ShouldBe(HttpStatusCode.OK, forged);
+            response.Headers.CacheControl!.NoStore.ShouldBeTrue(forged);
+            sso.HasCookie(SignInCookie).ShouldBeTrue(forged);
+        }
+
+        using (var posted = await sso.PostAsync($"/account/sso/{Corp}/signout", new Dictionary<string, string> { ["sid"] = "made-up", ["iss"] = idp.Issuer }))
+        {
+            posted.StatusCode.ShouldBe(HttpStatusCode.OK);
+            sso.HasCookie(SignInCookie).ShouldBeTrue();
+        }
+
+        var refreshToken = await RotatedAsync(host, Text(ssoTokens, "refresh_token"));
+        (await MeAsync(host, Text(ssoTokens, "access_token"))).ShouldBe(HttpStatusCode.OK);
+
+        // The genuine request leaves a sign-in made another way as it is: a password, the other provider, a token without sid.
+        foreach (var browser in others)
+        {
+            using var response = await browser.GetAsync(genuine);
             response.StatusCode.ShouldBe(HttpStatusCode.OK);
             browser.HasCookie(SignInCookie).ShouldBeTrue();
         }
 
-        // Nothing authenticates the provider's request, so it ends the cookie alone and the session's tokens work on (#3204).
-        using var signedOut = await sso.GetAsync($"/account/sso/{Corp}/signout");
-        signedOut.StatusCode.ShouldBe(HttpStatusCode.OK);
+        // It ends the sign-in it names with its server session, whose tokens are refused, as after a confirmed logout.
+        using (var signedOut = await sso.GetAsync(genuine))
+        {
+            signedOut.StatusCode.ShouldBe(HttpStatusCode.OK);
+            signedOut.Headers.CacheControl!.NoStore.ShouldBeTrue();
+        }
+
         sso.HasCookie(SignInCookie).ShouldBeFalse();
-        var renewed = await RenewedAsync(host, Text(ssoTokens, "refresh_token"));
-        (await MeAsync(host, Text(renewed, "access_token"))).ShouldBe(HttpStatusCode.OK);
-        (await RotatedAsync(host, Text(passwordTokens, "refresh_token"))).ShouldNotBeNullOrEmpty();
+        (await RefusedAsync(host, refreshToken)).ShouldBe("invalid_grant");
+        (await MeAsync(host, Text(ssoTokens, "access_token"))).ShouldBe(HttpStatusCode.Unauthorized);
+        foreach (var tokens in otherTokens)
+        {
+            (await RotatedAsync(host, Text(tokens, "refresh_token"))).ShouldNotBeNullOrEmpty();
+        }
+
+        // The other provider's own request ends its own sign-in, which the trusted sign-in made with amr=mfa.
+        using (var signedOut = await other.GetAsync($"/account/sso/{Trusted}/signout?sid={tess.Sid}&iss={iss}"))
+        {
+            signedOut.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        other.HasCookie(SignInCookie).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task TheRemoteSignOutEndsAProviderSignInThatGaveTheLocalSecondFactorAfterIt()
+    {
+        var (idp, host) = (_idp, _sso);
+        var kim = FakeIdentity.Of("kim@corp.example") with { Sid = "idp-session-" + Guid.NewGuid().ToString("N") };
+        using (await ProviderSignInAsync(host, idp, kim, Corp))
+        {
+        }
+
+        string key;
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var stored = (await scope.ServiceProvider.GetRequiredService<CmsUserManager>().FindByLoginAsync(Corp, kim.Subject)).ShouldNotBeNull();
+            var twoFactor = scope.ServiceProvider.GetRequiredService<TwoFactorService>();
+            key = (await twoFactor.EnrolAsync(stored, "FluentCMS")).SharedKey;
+            await twoFactor.VerifyAsync(stored, Totp(key));
+        }
+
+        using var browser = new HostedPagesBrowser(host);
+        using var back = await SignInWithProviderAsync(browser, idp, kim);
+        var challenge = await ExternalLoginAsync(browser, back);
+        challenge.ShouldStartWith("/account/two-factor");
+        using (var passed = await browser.SubmitAsync(challenge, new Dictionary<string, string> { ["Input.Code"] = Totp(key) }))
+        {
+            passed.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        }
+
+        browser.HasCookie(SignInCookie).ShouldBeTrue();
+        using (var signedOut = await browser.GetAsync($"/account/sso/{Corp}/signout?sid={kim.Sid}&iss={Uri.EscapeDataString(idp.Issuer)}"))
+        {
+            signedOut.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        browser.HasCookie(SignInCookie).ShouldBeFalse();
+    }
+
+    // A browser signed in on the hosted pages through the provider.
+    private static async Task<HostedPagesBrowser> ProviderSignInAsync(FluentCmsTestHost host, FakeOidcProvider idp, FakeIdentity user, string provider)
+    {
+        var browser = new HostedPagesBrowser(host);
+        using var back = await SignInWithProviderAsync(browser, idp, user, provider: provider);
+        (await ExternalLoginAsync(browser, back)).ShouldBe("/");
+        return browser;
     }
 
     [Fact]

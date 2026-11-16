@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Claims;
 using FluentCMS.Core.Identity.Oidc;
+using FluentCMS.Core.Identity.Sso;
 using FluentCMS.Events;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -165,6 +166,11 @@ internal sealed class CmsSignInManager(
 
         var properties = authenticationProperties ?? new AuthenticationProperties();
         await TakeOverAsync(Context, IdentityConstants.ApplicationScheme, user.Id.ToString("D"), properties, UserManager.GetUserId);
+        if (properties.IssuedUtc is null && !properties.Items.ContainsKey(SignedInAtItem))
+        {
+            await KeepSsoSessionAsync(properties, additionalClaims);
+        }
+
         MarkSignIn(properties, time);
         await base.SignInWithClaimsAsync(user, properties, additionalClaims);
     }
@@ -251,6 +257,23 @@ internal sealed class CmsSignInManager(
 
         await RecordAsync(user, LoginMethods.External, result);
         return result;
+    }
+
+    // A new sign-in through a provider of cms.Sso keeps the provider's session from the external cookie it was made with,
+    // read as the request brought it, since Identity has already ended that cookie in the response by now.
+    private async Task KeepSsoSessionAsync(AuthenticationProperties properties, IEnumerable<Claim> additionalClaims)
+    {
+        var provider = additionalClaims.FirstOrDefault(claim => claim.Type == ClaimTypes.AuthenticationMethod)?.Value;
+        if (provider is null || !sso.Providers.ContainsKey(provider))
+        {
+            return;
+        }
+
+        var external = await Context.AuthenticateAsync(IdentityConstants.ExternalScheme);
+        if (external.Succeeded && SsoSession.Of(external.Properties!) is { } session && string.Equals(session.Provider, provider, StringComparison.OrdinalIgnoreCase))
+        {
+            session.WriteTo(properties);
+        }
     }
 
     // A second factor asked for without a first one belongs to no sign-in, so it raises nothing.

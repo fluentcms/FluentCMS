@@ -146,7 +146,7 @@ public sealed class MemberProviderStartupTests : IAsyncDisposable
         corp.RemoteSignOutPath.Value.ShouldBe("/account/members/sso/corp/signout");
         corp.SignedOutCallbackPath.Value.ShouldBe("/account/members/sso/corp/signed-out");
         using var client = app.GetTestClient();
-        foreach (var path in new[] { "/account/members/sso/corp/signout", "/account/members/sso/corp/signed-out", "/account/members/sso/corp/signout?iss=https%3A%2F%2Fid.example.com%2F" })
+        foreach (var path in new[] { "/account/members/sso/corp/signout", "/account/members/sso/corp/signed-out", "/account/members/sso/corp/signout?iss=https%3A%2F%2Fid.example.com%2F", "/account/members/sso/corp/signout?sid=s1&iss=https%3A%2F%2Fid.example.com%2F" })
         {
             using var answer = await client.GetAsync(new Uri(path, UriKind.Relative), Token);
             answer.StatusCode.ShouldBe(System.Net.HttpStatusCode.NotFound, path);
