@@ -6,6 +6,8 @@ using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Data.Tests.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -22,19 +24,20 @@ public sealed class MigrationLockTests : IDisposable
 
     private const string Because = "EF's migrations lock, a row on SQLite only";
 
-    private const string Written = "2026-11-15 10:00:00+00:00";
-
     private readonly SqliteFileDatabase _database = new();
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     public void Dispose() => _database.Dispose();
 
-    // As EF takes the lock, with a process that never deletes the row.
-    private void LeaveLockRow() => _database.Execute($"""
-        CREATE TABLE IF NOT EXISTS "__EFMigrationsLock" ("Id" INTEGER NOT NULL CONSTRAINT "PK___EFMigrationsLock" PRIMARY KEY, "Timestamp" TEXT NOT NULL);
-        INSERT OR IGNORE INTO "__EFMigrationsLock"("Id", "Timestamp") VALUES(1, '{Written}');
-        """);
+    // Through EF itself and never released, as by a process killed while it migrates; the time EF wrote in the row.
+    private async Task<string> LeaveLockAsync(IHost host)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        _ = await context.GetService<IHistoryRepository>().AcquireDatabaseLockAsync(Token);
+        return _database.ReadStrings("select \"Timestamp\" from \"__EFMigrationsLock\"").ShouldHaveSingleItem();
+    }
 
     // A bound of its own, so that a wait without end fails the test as a cancellation rather than hanging it.
     private static CancellationTokenSource Bound()
@@ -58,24 +61,25 @@ public sealed class MigrationLockTests : IDisposable
     [SqliteFact(Because)]
     public async Task AStartGivesUpOnALockRowLeftBehindAndNamesIt()
     {
-        LeaveLockRow();
         var logs = new Logs();
         using var host = FastHost(null, logs);
+        var written = await LeaveLockAsync(host);
         using var bound = Bound();
 
         var exception = await Should.ThrowAsync<TimeoutException>(host.StartAsync(bound.Token));
 
-        exception.Message.ShouldStartWith($"EF Core's migrations lock, the row of __EFMigrationsLock written at {Written}, was not released within 15 minutes, so the system stream was not migrated;");
-        exception.Message.ShouldContain("once no other process is migrating the database, delete the row with DELETE FROM \"__EFMigrationsLock\"");
-        logs.Messages(9305).ShouldHaveSingleItem().ShouldStartWith($"The system stream waits for EF Core's migrations lock, the row of __EFMigrationsLock written at {Written};");
+        exception.Message.ShouldStartWith($"EF Core's migrations lock, the row of __EFMigrationsLock written at {written}, was not released within 15 minutes, so the system stream was not migrated;");
+        exception.Message.ShouldContain("the time is when the lock was taken, and it is never renewed;");
+        exception.Message.ShouldContain("check that no other host and no 'fluentcms migrate' runs on the database, then delete the row with DELETE FROM \"__EFMigrationsLock\"");
+        logs.Messages(9305).ShouldHaveSingleItem().ShouldStartWith($"The system stream waits for EF Core's migrations lock, the row of __EFMigrationsLock written at {written};");
         _database.Tables().ShouldNotContain("cms_role");
     }
 
     [SqliteFact(Because)]
     public async Task MigrateGivesUpOnALockRowLeftBehindAndNamesIt()
     {
-        LeaveLockRow();
         using var host = FastHost(new() { ["FluentCms:Database:MigrateOnStartup"] = "false" }, new Logs());
+        var written = await LeaveLockAsync(host);
         using var bound = Bound();
         using var output = new StringWriter();
         using var error = new StringWriter();
@@ -84,20 +88,20 @@ public sealed class MigrationLockTests : IDisposable
 
         exitCode.ShouldBe(1);
         error.ToString().ShouldStartWith("FCMS3302: 'fluentcms migrate' failed: TimeoutException: ");
-        error.ToString().ShouldContain($"the row of __EFMigrationsLock written at {Written}, was not released within 15 minutes");
+        error.ToString().ShouldContain($"the row of __EFMigrationsLock written at {written}, was not released within 15 minutes");
         _database.Tables().ShouldNotContain("cms_role");
     }
 
     [SqliteFact(Because)]
     public async Task AStartWaitsForTheRowToGoAndThenMigrates()
     {
-        LeaveLockRow();
         var reads = new LockReads();
         using var host = _database.CreateHost(
             ArticleSchemas.Titled,
             Production,
             GeneratedMigrations.CompileFirst(ArticleSchemas.Titled),
             configure: cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(reads)));
+        await LeaveLockAsync(host);
         using var bound = Bound();
 
         var start = host.StartAsync(bound.Token);
@@ -125,13 +129,27 @@ public sealed class MigrationLockTests : IDisposable
             await first.StopAsync(Token);
         }
 
-        LeaveLockRow();
         using var host = _database.CreateHost(ArticleSchemas.Titled, Production, migrations);
+        var written = await LeaveLockAsync(host);
         using var bound = Bound();
 
         await host.StartAsync(bound.Token);
 
-        _database.ReadStrings("select \"Timestamp\" from \"__EFMigrationsLock\"").ShouldBe([Written]);
+        _database.ReadStrings("select \"Timestamp\" from \"__EFMigrationsLock\"").ShouldBe([written]);
+        await host.StopAsync(Token);
+    }
+
+    // The read of the lock leaves a database that does not exist yet to EF, which creates it in WAL mode, also for a host
+    // that keeps the rollback journal and so sets no journal mode itself.
+    [SqliteFact(Because)]
+    public async Task AFirstStartCreatesTheDatabaseInWalModeAsEfDoes()
+    {
+        using var database = new SqliteFileDatabase(writeAheadLog: false);
+        using var host = database.CreateHost(ArticleSchemas.Titled, Production, GeneratedMigrations.CompileFirst(ArticleSchemas.Titled));
+
+        await host.StartAsync(Token);
+
+        database.ReadStrings("PRAGMA journal_mode").ShouldBe(["wal"]);
         await host.StopAsync(Token);
     }
 

@@ -55,6 +55,7 @@ public sealed class MigrationRunner(
 
     private static readonly TimeSpan FirstMigrationsLockPoll = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan LongestMigrationsLockPoll = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan ReportedMigrationsLockPoll = TimeSpan.FromSeconds(5);
 
     private static readonly Stream System = new(SystemStream, services => services.GetRequiredService<SystemDbContext>());
     private static readonly Stream Content = new(ContentStream, services => services.GetRequiredService<CmsDbContext>());
@@ -534,8 +535,8 @@ public sealed class MigrationRunner(
                 continue;
             }
 
-            MigrationLog.ApplyingStream(logger, pending.Count, stream.Name);
             await WaitForMigrationsLockAsync(context, stream.Name, cancellationToken);
+            MigrationLog.ApplyingStream(logger, pending.Count, stream.Name);
             using var recorder = AppliedMigrations.Record(context.GetService<IMigrator>());
             await context.Database.MigrateAsync(cancellationToken);
             applied.AddRange(recorder.Ids.Select(id => new StreamMigration(stream.Name, id)));
@@ -555,7 +556,14 @@ public sealed class MigrationRunner(
         var logged = false;
         while (await provider.ReadMigrationsLockAsync(context, cancellationToken) is { } written)
         {
+            // Before the bound, so that a wait that ends in the timeout has always logged it.
             var waited = _time.GetElapsedTime(started);
+            if (!logged && waited >= MigrationsLockWaitLogged)
+            {
+                MigrationLog.WaitingForMigrationsLock(logger, stream, written, MigrationsLockWait.TotalMinutes, MigrationsLockFix);
+                logged = true;
+            }
+
             if (waited >= MigrationsLockWait)
             {
                 throw new TimeoutException(
@@ -563,21 +571,18 @@ public sealed class MigrationRunner(
                     $"{MigrationsLockWait.TotalMinutes:0} minutes, so the {stream} stream was not migrated; {MigrationsLockFix}.");
             }
 
-            if (!logged && waited >= MigrationsLockWaitLogged)
-            {
-                MigrationLog.WaitingForMigrationsLock(logger, stream, written, MigrationsLockFix);
-                logged = true;
-            }
-
+            // Each read is logged by EF, so a wait that has been reported looks less often.
             await Task.Delay(poll, _time, cancellationToken);
-            poll = poll * 2 < LongestMigrationsLockPoll ? poll * 2 : LongestMigrationsLockPoll;
+            poll = logged ? ReportedMigrationsLockPoll : poll * 2 < LongestMigrationsLockPoll ? poll * 2 : LongestMigrationsLockPoll;
         }
     }
 
     private const string MigrationsLockFix =
-        "a host that starts or a 'fluentcms migrate' holds it while it applies migrations, and one that stopped while it " +
-        "migrated left it behind; once no other process is migrating the database, delete the row with " +
-        "DELETE FROM \"__EFMigrationsLock\" and run again";
+        "the time is when the lock was taken, and it is never renewed; a host that starts or a 'fluentcms migrate' holds the " +
+        "lock while it applies migrations, and one that stopped while it migrated left the row behind; check that no other host " +
+        "and no 'fluentcms migrate' runs on the database, then delete the row with DELETE FROM \"__EFMigrationsLock\" and run " +
+        "again; a migration that rebuilds a table may have been partly applied, so if the next run fails on a table or column " +
+        "that already exists, restore the backup taken before the upgrade; a migration without a rebuild rolls back whole";
 
     // With whether it recorded the schema history, which it does when it applied every change and, for a host that schema
     // apply serves, the history says none is lost.

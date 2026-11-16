@@ -16,6 +16,6 @@ internal static partial class MigrationLog
     [LoggerMessage(EventId = 9304, Level = LogLevel.Warning, Message = "{Key} is Auto, but schema sync runs only in Development on SQLite, or where the host allows it with AllowSchemaSyncOutsideDevelopment; the content stream applies instead.")]
     public static partial void SchemaSyncRefused(ILogger logger, string key);
 
-    [LoggerMessage(EventId = 9305, Level = LogLevel.Warning, Message = "The {Stream} stream waits for EF Core's migrations lock, the row of __EFMigrationsLock written at {Written}; {Fix}.")]
-    public static partial void WaitingForMigrationsLock(ILogger logger, string stream, string written, string fix);
+    [LoggerMessage(EventId = 9305, Level = LogLevel.Warning, Message = "The {Stream} stream waits for EF Core's migrations lock, the row of __EFMigrationsLock written at {Written}; this is logged once, and the wait fails after {Minutes} minutes; {Fix}.")]
+    public static partial void WaitingForMigrationsLock(ILogger logger, string stream, string written, double minutes, string fix);
 }
