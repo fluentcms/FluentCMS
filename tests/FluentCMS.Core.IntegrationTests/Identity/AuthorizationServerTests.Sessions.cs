@@ -150,6 +150,25 @@ public sealed partial class AuthorizationServerTests
     }
 
     [Fact]
+    public async Task ACodeFlowLateInASignInEndsWithTheSignInsAbsoluteLifetime()
+    {
+        await using var host = NewHost().Configure(cms => cms.Clients.AbsoluteSessionLifetime = TimeSpan.FromHours(8));
+        var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var cookie = await host.SignInCookieAsync(editor);
+        using var client = host.CreateSecureClient();
+
+        host.Time.Advance(TimeSpan.FromHours(7));
+        var tokens = await SignInAsync(client, cookie);
+        tokens = await TokenAsync(client, Refresh(tokens.RefreshToken!), Token);
+
+        // An hour past the sign-in's lifetime, not the code flow's.
+        host.Time.Advance(TimeSpan.FromHours(2));
+        using var ended = await PostTokenAsync(client, Refresh(tokens.RefreshToken!));
+        ended.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        (await ErrorAsync(ended)).ShouldBe("invalid_grant");
+    }
+
+    [Fact]
     public async Task AWrongExpiredOrRevokedKeyGetsOneCodeAndTheServerLogsAndCountsWhy()
     {
         var logs = new LogCapture();

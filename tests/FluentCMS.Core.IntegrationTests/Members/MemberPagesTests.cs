@@ -353,6 +353,38 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
             (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, tokens.GetProperty("refresh_token").GetString()!)).ShouldBe(HttpStatusCode.OK, prompt);
         }
     }
+
+    [Fact]
+    public async Task AMembersCodeFlowLateInASignInEndsWithTheSignInAndTheDirectLoginKeepsItsOwnStart()
+    {
+        await using var host = MemberFixture.NewHost(new HostedPagesTests.CapturedEmails(), configure: cms => cms.Clients.AbsoluteSessionLifetime = TimeSpan.FromHours(8));
+        var member = await host.CreateMemberAsync(password: Password, cancellationToken: Token);
+        using var browser = new HostedPagesBrowser(host, "10.8.0.26");
+        await SignInMemberAsync(browser, member.Email);
+
+        host.Time.Advance(TimeSpan.FromHours(7));
+        var request = AuthorizeRequest.For(FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+        using var code = await browser.GetAsync(request.Url);
+        var codeFlow = (await request.ExchangeAsync(host, code)).GetProperty("refresh_token").GetString()!;
+        var direct = (await MemberFixture.DirectLoginAsync(host, member.Email, Password)).Json["refresh_token"]!.GetValue<string>();
+
+        // An hour past the sign-in's lifetime: the code flow's session ends with it, the direct login's started at 7 h.
+        host.Time.Advance(TimeSpan.FromHours(2));
+        (await MemberFixture.TokenAsync(host, Refresh(FluentCmsTestHost.OAuthMemberClientId, codeFlow))).Status.ShouldBe(HttpStatusCode.BadRequest);
+        var refreshed = await MemberFixture.TokenAsync(host, Refresh(MemberFixture.DirectClientId, direct));
+        refreshed.Status.ShouldBe(HttpStatusCode.OK);
+
+        host.Time.Advance(TimeSpan.FromHours(6) + TimeSpan.FromMinutes(1));
+        (await MemberFixture.TokenAsync(host, Refresh(MemberFixture.DirectClientId, refreshed.Json["refresh_token"]!.GetValue<string>()))).Status.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    private static Dictionary<string, string> Refresh(string clientId, string refreshToken) => new()
+    {
+        ["grant_type"] = "refresh_token",
+        ["refresh_token"] = refreshToken,
+        ["client_id"] = clientId,
+    };
+
     private async Task<JsonElement> CodeFlowAsync(HostedPagesBrowser browser, string clientId, string scope)
     {
         var request = AuthorizeRequest.For(clientId, scope);
