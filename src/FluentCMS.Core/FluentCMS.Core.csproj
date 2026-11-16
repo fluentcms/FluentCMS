@@ -33,6 +33,8 @@
     <InternalsVisibleTo Include="FluentCMS.Generators.Tests" />
     <!-- For the database file slot of backup and restore, IDatabaseFile, which only the SQLite provider fills. -->
     <InternalsVisibleTo Include="FluentCMS.Data.Sqlite" />
+    <!-- The admin's pages are FluentCMS endpoints with their own policy, and its options bind and validate as core's do. -->
+    <InternalsVisibleTo Include="FluentCMS.Admin.Hosting" />
   </ItemGroup>
 
   <ItemGroup>

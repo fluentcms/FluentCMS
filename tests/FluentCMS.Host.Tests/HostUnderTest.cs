@@ -38,8 +38,11 @@ internal sealed class HostUnderTest : IAsyncDisposable
 
     public WebApplication Build(Dictionary<string, string?>? settings = null, Action<IServiceCollection>? services = null, string environment = "Production", bool optIns = true)
     {
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment, ContentRootPath = Root });
+        // Named as the image's application, whose static web assets, the admin's, are read from the build's manifests in any
+        // environment, as the publish would serve them.
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { ApplicationName = typeof(ReferenceHost).Assembly.GetName().Name, EnvironmentName = environment, ContentRootPath = Root });
         builder.WebHost.UseTestServer();
+        builder.WebHost.UseStaticWebAssets();
         if (optIns)
         {
             builder.Configuration.AddInMemoryCollection(EvaluationOptIns);

@@ -12,6 +12,8 @@
          browser's language only, the runtime then stops the app with a blank page. Formats then do not depend on the browser
          either. It costs 186 KB in Brotli (#3143). -->
     <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
+    <!-- An operator edits config.json in the static build, and a server that prefers a precompressed copy would serve the stale sample. -->
+    <CompressionExcludePatterns>$(CompressionExcludePatterns);**/config.json</CompressionExcludePatterns>
   </PropertyGroup>
 
   <ItemGroup>

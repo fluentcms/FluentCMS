@@ -1,6 +1,6 @@
 {
-  "apiBaseUrl": "http://localhost:8080",
-  "authority": "http://localhost:8080",
+  "apiBaseUrl": "https://localhost:5001",
+  "authority": "https://localhost:5001/",
   "clientId": "fluentcms-admin",
   "scopes": ["openid", "profile", "email", "offline_access", "management"],
   "branding": {
