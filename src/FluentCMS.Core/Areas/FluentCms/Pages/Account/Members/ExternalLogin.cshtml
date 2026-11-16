@@ -5,11 +5,11 @@
 }
 @if (Model.Pending)
 {
-    <p class="notice">One more step. If the email address of your @Model.ProviderName account can be used here, an email is on its way to it. Follow that email, then sign in with @Model.ProviderName again.</p>
+    <p class="notice">One more step. If the email address of your @Model.ProviderName account can be used here, an email is on its way to it with the next step.</p>
 }
 else
 {
     <p class="error">Your @Model.ProviderName account did not sign you in. It is not linked to an account here that can sign in now, and no new account was made for it.</p>
-    <p class="muted">If you have an account already, sign in with your password and link @Model.ProviderName under <a asp-page="./Logins">your sign-in methods</a>.</p>
+    <p class="muted">If you have an account already, sign in the way you usually do and link @Model.ProviderName under <a asp-page="./Logins">your sign-in methods</a>.</p>
 }
 <p><a asp-page="./Login" asp-route-ReturnUrl="@Model.ReturnUrl">Back to sign in</a></p>
