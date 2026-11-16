@@ -60,7 +60,7 @@ jobs:
 
       # Throwaway values in place of the example's empty ones. The override stands in for the proxy that ends TLS, which
       # sign-in needs: the runner reaches the host through the network's gateway and forwards the scheme. It also registers
-      # a public client to sign the administrator in with.
+      # a public client to sign the administrator in with, and turns the admin on.
       - name: Write .env with throwaway values
         run: |
           : > .env
@@ -84,6 +84,7 @@ jobs:
                 FluentCms__Clients__Applications__smoke__RedirectUris__0: https://localhost/signed-in
                 FluentCms__Clients__Applications__smoke__Scopes__0: openid
                 FluentCms__Clients__Applications__smoke__Scopes__1: management
+                FluentCms__Admin__Enabled: "true"
           YAML
           echo "COMPOSE_FILE=compose.yaml:$RUNNER_TEMP/compose.ci.yaml" >> "$GITHUB_ENV"
 
@@ -222,6 +223,35 @@ jobs:
           url=$(jq -r '.url' "$body" | sed -E 's#^https?://[^/]+##')
           call "$BASE$url"; expect 200 "Reading the image back"
           [ "$(sha256sum < "$body")" = "$(sha256sum < "$RUNNER_TEMP/smoke.png")" ]
+          # The admin at /admin: the page with its base set and its policy, config.json from the host, a fingerprinted file of
+          # the framework cached for good and in Brotli, and the admin client signing the administrator in with PKCE.
+          call "$BASE/admin/"; expect 200 "The admin page"
+          grep -q '<base href="/admin/" />' "$body"
+          tr -d '\r' < "$hdr" | grep -qi "^cache-control: no-store$"
+          tr -d '\r' < "$hdr" | grep -qi "^content-security-policy: default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; .*frame-ancestors 'none'$"
+          call "$BASE/admin/system/components"; expect 200 "A client route of the admin"
+          call "$BASE/admin/config.json"; expect 200 "The admin's config.json"
+          [ "$(jq -r '.apiBaseUrl' "$body")" = https://localhost ]
+          [ "$(jq -r '.authority' "$body")" = https://localhost/ ]
+          [ "$(jq -r '.clientId' "$body")" = fluentcms-admin ]
+          call "$BASE/admin/_framework/dotnet.js"; expect 200 "The admin's dotnet.js"
+          wasm=$(grep -o 'dotnet\.native\.[a-z0-9]*\.wasm' "$body" | head -n 1)
+          call -H "Accept-Encoding: br" "$BASE/admin/_framework/$wasm"; expect 200 "The admin's $wasm"
+          tr -d '\r' < "$hdr" | grep -qi "^content-type: application/wasm$"
+          tr -d '\r' < "$hdr" | grep -qi "^content-encoding: br$"
+          tr -d '\r' < "$hdr" | grep -qi "^cache-control: .*immutable"
+          callback=https://localhost/admin/authentication/login-callback
+          call -G "$BASE/connect/authorize" --data-urlencode client_id=fluentcms-admin --data-urlencode response_type=code \
+            --data-urlencode redirect_uri=$callback --data-urlencode "scope=openid profile email offline_access management" \
+            --data-urlencode "code_challenge=$challenge" --data-urlencode code_challenge_method=S256 --data-urlencode state=admin
+          expect 302 "The admin's authorization request"
+          next=$(tr -d '\r' < "$hdr" | sed -n 's/^[Ll]ocation: *//p')
+          [[ "$next" == "$callback?"* ]] || { echo "::error::The signed-in administrator was not sent back to the admin: $next"; exit 1; }
+          code=$(sed -n 's/.*[?&]code=\([^&]*\).*/\1/p' <<< "$next")
+          code=$(printf '%b' "${code//%/\\x}")
+          call "$BASE/connect/token" --data-urlencode grant_type=authorization_code --data-urlencode "code=$code" \
+            --data-urlencode redirect_uri=$callback --data-urlencode client_id=fluentcms-admin --data-urlencode "code_verifier=$verifier"
+          expect 200 "The admin's token request"
           echo "The smoke test passed."
 
       # The same bounded wait as above, which fails the job when the host never becomes ready: with MinIO stopped, it must time out.

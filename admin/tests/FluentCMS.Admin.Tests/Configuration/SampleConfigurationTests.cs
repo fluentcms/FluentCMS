@@ -28,8 +28,9 @@ public sealed partial class SampleConfigurationTests
         var sample = AdminConfigurationReader.Read(Sample).Configuration.ShouldNotBeNull();
         var defaults = new AdminConfiguration { ApiBaseUrl = sample.ApiBaseUrl };
 
-        sample.ApiBaseUrl.ShouldBe(new Uri("http://localhost:8080/"));
-        sample.Authority.OriginalString.ShouldBe("http://localhost:8080");
+        // The reference host run in Development (docs/host-configuration.md#admin), whose issuer ends with a slash.
+        sample.ApiBaseUrl.ShouldBe(new Uri("https://localhost:5001/"));
+        sample.Authority.OriginalString.ShouldBe("https://localhost:5001/");
         sample.ClientId.ShouldBe(defaults.ClientId);
         sample.Scopes.ShouldBe(defaults.Scopes);
         sample.Branding.ShouldBe(defaults.Branding);

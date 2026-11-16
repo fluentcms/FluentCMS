@@ -28,11 +28,18 @@ COPY src/plugins/FluentCMS.Plugins.MultiSite/FluentCMS.Plugins.MultiSite.csproj 
 COPY src/plugins/FluentCMS.Plugins.Search/FluentCMS.Plugins.Search.csproj src/plugins/FluentCMS.Plugins.Search/
 COPY src/plugins/FluentCMS.Plugins.Webhooks/FluentCMS.Plugins.Webhooks.csproj src/plugins/FluentCMS.Plugins.Webhooks/
 COPY samples/Blog/Blog.csproj samples/Blog/
+# The admin of /admin (admin spec 6.1). The publish compiles the WebAssembly app with the SDK alone: no Node, no workload.
+COPY admin/src/FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj admin/src/FluentCMS.Admin.Abstractions/
+COPY admin/src/FluentCMS.Admin.Components/FluentCMS.Admin.Components.csproj admin/src/FluentCMS.Admin.Components/
+COPY admin/src/FluentCMS.Admin/FluentCMS.Admin.csproj admin/src/FluentCMS.Admin/
+COPY admin/src/FluentCMS.Admin.App/FluentCMS.Admin.App.csproj admin/src/FluentCMS.Admin.App/
+COPY admin/src/FluentCMS.Admin.Hosting/FluentCMS.Admin.Hosting.csproj admin/src/FluentCMS.Admin.Hosting/
 COPY src/FluentCMS.Host/FluentCMS.Host.csproj src/FluentCMS.Host/
 RUN dotnet restore src/FluentCMS.Host/FluentCMS.Host.csproj -a $TARGETARCH
 
 COPY src/ src/
 COPY samples/Blog/ samples/Blog/
+COPY admin/src/ admin/src/
 # The Publish workflow passes the version of the release; without it the host is the 1.0.0-dev of a local build.
 ARG VERSION
 RUN dotnet publish src/FluentCMS.Host/FluentCMS.Host.csproj -c Release -a $TARGETARCH --no-restore -o /app -p:UseAppHost=false \
