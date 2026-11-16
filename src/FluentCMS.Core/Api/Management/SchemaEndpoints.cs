@@ -23,6 +23,9 @@ internal static class SchemaEndpoints
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
+    // Locked before any request has them, as AdminJson's are.
+    static SchemaEndpoints() => Options.MakeReadOnly(populateMissingResolver: true);
+
     public static IServiceCollection AddManagementSchemaApi(this IServiceCollection services) =>
         services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.Management, Map);
 

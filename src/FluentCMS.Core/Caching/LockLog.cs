@@ -10,6 +10,7 @@ internal static partial class LockLog
     public const int RenewFailedId = 9162;
     public const int ReleaseFailedId = 9163;
     public const int WentOnWithoutLockId = 9164;
+    public const int RenewWaitingId = 9165;
 
     [LoggerMessage(EventId = LeaseTakenOverId, EventName = "LockLeaseTakenOver", Level = LogLevel.Warning, Message = "Took the lock {Name} after the lease of {Holder} ran out; that holder stopped without releasing it.")]
     public static partial void LeaseTakenOver(ILogger logger, string name, string holder);
@@ -25,4 +26,7 @@ internal static partial class LockLog
 
     [LoggerMessage(EventId = WentOnWithoutLockId, EventName = "LockWentOnWithout", Level = LogLevel.Warning, Message = "The lock {Name} was not free within {Timeout}, so {Work} went on without it.")]
     public static partial void WentOnWithoutLock(ILogger logger, string name, TimeSpan timeout, string work);
+
+    [LoggerMessage(EventId = RenewWaitingId, EventName = "LockRenewWaiting", Level = LogLevel.Information, Message = "The lease of the lock {Name} is renewed once another connection's write transaction ends; the database has one writer, so no other holder can take the lock meanwhile.")]
+    public static partial void RenewWaiting(ILogger logger, string name);
 }
