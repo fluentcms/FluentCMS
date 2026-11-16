@@ -38,12 +38,12 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
-  <!-- Only the library, tool and plugin projects ship as packages. -->
+  <!-- Only the library, tool and plugin projects ship as packages; the admin app is the prebuilt static build, not a package. -->
   <PropertyGroup>
     <RepoRelativeProjectDir>$([MSBuild]::MakeRelative('$(MSBuildThisFileDirectory)', '$(MSBuildProjectDirectory)').Replace('\', '/'))</RepoRelativeProjectDir>
   </PropertyGroup>
 
-  <PropertyGroup Condition="$(RepoRelativeProjectDir.StartsWith('tests/')) Or $(RepoRelativeProjectDir.StartsWith('samples/')) Or $(RepoRelativeProjectDir.StartsWith('templates/')) Or '$(RepoRelativeProjectDir)' == 'src/FluentCMS.Host'">
+  <PropertyGroup Condition="$(RepoRelativeProjectDir.StartsWith('tests/')) Or $(RepoRelativeProjectDir.StartsWith('samples/')) Or $(RepoRelativeProjectDir.StartsWith('templates/')) Or $(RepoRelativeProjectDir.StartsWith('admin/tests/')) Or '$(RepoRelativeProjectDir)' == 'src/FluentCMS.Host' Or '$(RepoRelativeProjectDir)' == 'admin/src/FluentCMS.Admin.App'">
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The server side of the admin: it runs in the ASP.NET Core host, never in the browser. -->
+  <PropertyGroup>
+    <Description>Serves the FluentCMS admin from an ASP.NET Core host: its config.json from configuration, the admin client's registration and the admin page's headers.</Description>
+    <PackageTags>$(PackageTags) admin aspnetcore</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../src/FluentCMS.Core/FluentCMS.Core.csproj" />
+  </ItemGroup>
+
+</Project>
