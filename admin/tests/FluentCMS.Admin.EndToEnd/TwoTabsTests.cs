@@ -31,7 +31,8 @@ public sealed class TwoTabsTests(EndToEndHost host) : BrowserTest(host)
         // Both switch site at once until each has refreshed on demand, each with its own refresh token.
         await Task.WhenAll(RefreshOnDemandAsync(first), RefreshOnDemandAsync(second));
 
-        // And a reload of both at once restores each session from its own rotated refresh token.
+        // And a reload of both at once restores each session from its own rotated refresh token; one rotated just as a reload
+        // starts is taken within the server's 30-second reuse leeway.
         var reloads = await Task.WhenAll(first.ReloadAsync(), second.ReloadAsync());
         reloads[0].ShouldBeGranted("refresh_token");
         reloads[1].ShouldBeGranted("refresh_token");
@@ -60,6 +61,7 @@ public sealed class TwoTabsTests(EndToEndHost host) : BrowserTest(host)
         copy.AuthorizeRequests.ShouldBeEmpty();
         copy.TokenRequests.First().ShouldBeGranted("refresh_token");
 
+        // Both use the same refresh token here, which the server takes twice only within its 30-second reuse leeway.
         var reloads = await Task.WhenAll(first.ReloadAsync(), copy.ReloadAsync());
         reloads[0].ShouldBeGranted("refresh_token");
         reloads[1].ShouldBeGranted("refresh_token");

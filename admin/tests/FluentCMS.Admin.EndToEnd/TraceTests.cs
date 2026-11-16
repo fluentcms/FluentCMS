@@ -58,20 +58,49 @@ public sealed class TraceTests(EndToEndHost host) : BrowserTest(host)
         TraceScrubber.Leaks(source, [Password, Cookie]).ShouldNotBeNull();
     }
 
-    // A secret the mask cannot find by pattern, in an entry it does not rewrite, keeps the trace from being kept at all.
-    [Fact]
-    public void ATraceThatStillHoldsASecretIsNotKept()
+    // Each kind of secret the context collects, in an entry the mask does not rewrite, keeps the trace from being kept at all,
+    // and a trace already at the path stays as it was.
+    [Theory]
+    [InlineData(Password)]
+    [InlineData(Cookie)]
+    [InlineData("eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl")]
+    [InlineData("eyJhbGciOiJSU0EtT0FFUCIsImVuYyI6IkEyNTZDQkMtSFM1MTIifQ.a.b.c.d")]
+    [InlineData("verifier-0123456789abcdefghij")]
+    [InlineData("CfDJ8AbCdEfGhIjKlMnOpQrStUvWxYz0123456789")]
+    public void ATraceThatStillHoldsASecretIsNotKept(string secret)
     {
         var source = Path.Combine(_directory.FullName, "source.zip");
         using (var archive = ZipFile.Open(source, ZipArchiveMode.Create))
         {
             Write(archive, "trace.trace", "{}");
-            Write(archive, "screencast/page@1.jpeg", "jpeg " + Cookie);
+            Write(archive, "screencast/page@1.jpeg", "jpeg " + secret);
         }
 
         var masked = Path.Combine(_directory.FullName, "masked.zip");
-        Should.Throw<InvalidOperationException>(() => TraceScrubber.Scrub(source, masked, [Cookie]));
-        File.Exists(masked).ShouldBeFalse();
+        File.WriteAllText(masked, "earlier");
+        Should.Throw<InvalidOperationException>(() => TraceScrubber.Scrub(source, masked, [secret]));
+        File.ReadAllText(masked).ShouldBe("earlier");
+        File.Exists(source + ".masked").ShouldBeFalse();
+    }
+
+    // A secret holding a space, a quote and an exclamation mark, as JavaScript, JSON and a browser's form write it.
+    [Fact]
+    public void TheMaskFindsASecretAsJavaScriptJsonAndAFormWriteIt()
+    {
+        const string secret = "Aa1! with \"quote\"";
+        var source = Path.Combine(_directory.FullName, "source.zip");
+        using (var archive = ZipFile.Open(source, ZipArchiveMode.Create))
+        {
+            Write(archive, "trace.trace", "fill(\"Aa1! with \\\"quote\\\"\")\n{\"value\":\"Aa1! with \\u0022quote\\u0022\"}\nInput.Secret=Aa1%21+with+%22quote%22");
+        }
+
+        var masked = Path.Combine(_directory.FullName, "masked.zip");
+        TraceScrubber.Scrub(source, masked, [secret]);
+
+        using var result = ZipFile.OpenRead(masked);
+        var trace = Read(result.GetEntry("trace.trace")!);
+        trace.ShouldNotContain("quote");
+        trace.ShouldContain("[masked]");
     }
 
     // The trace of a real sign-in, saved as a failed test saves it: screenshots and snapshots, and nothing of the network.
@@ -102,9 +131,10 @@ public sealed class TraceTests(EndToEndHost host) : BrowserTest(host)
             start.ShouldBe(new byte[] { 0xFF, 0xD8 });
         }
 
+        // The context saw the tokens of the sign-in and of the reload in the token endpoint's answers, not only the password.
         var secrets = await browser.SecretsAsync();
-        secrets.ShouldContain(Host.Editor.Password);
-        secrets.Count.ShouldBeGreaterThan(3);
+        secrets.Any(secret => secret.StartsWith("eyJ", StringComparison.Ordinal)).ShouldBeTrue();
+        secrets.Count(secret => secret != Host.Editor.Password).ShouldBeGreaterThan(3);
         TraceScrubber.Leaks(trace, secrets).ShouldBeNull();
         browser.PolicyViolations.ShouldBeEmpty();
     }

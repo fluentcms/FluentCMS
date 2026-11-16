@@ -47,7 +47,8 @@ public sealed class ShellTests(EndToEndHost host) : BrowserTest(host)
         await Expect(tab.SiteSwitcher).ToHaveValueAsync(second.Id);
         await SidebarShouldListTheBlogTypesAsync(tab);
 
-        // The tab keeps the site across a reload.
+        // The tab keeps the site across a reload, whose refresh token, if rotated just before, is taken within the server's
+        // 30-second reuse leeway.
         var schema = tab.Page.WaitForResponseAsync(response => response.Url == tab.ManagementUrl("schema"), new PageWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         await tab.ReloadAsync();
         (await (await schema).Request.HeaderValueAsync("x-cms-site")).ShouldBe(second.Id, StringCompareShould.IgnoreCase);

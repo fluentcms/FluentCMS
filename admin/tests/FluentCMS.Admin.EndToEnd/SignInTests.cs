@@ -27,7 +27,7 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         authorize["code_challenge"]!.Length.ShouldBe(43);
         authorize["scope"]!.Split(' ').ShouldBe(["openid", "profile", "email", "offline_access", "management"], ignoreOrder: true);
 
-        var me = tab.Page.WaitForResponseAsync(response => response.Url == tab.ManagementUrl("me"), new PageWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        var me = tab.Page.WaitForResponseAsync(response => response.Url == tab.ManagementUrl("me") && response.Status != 401, new PageWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         var exchange = await tab.TokenRequestOfAsync(() => browser.SignInOnTheHostedPageAsync(tab, Host.Editor));
         exchange.ShouldBeGranted("authorization_code");
         exchange.Fields.ShouldContain("code_verifier");
@@ -53,9 +53,9 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
-    // The admin revokes its refresh token, which the token endpoint then refuses, and sends no id_token_hint, so the hosted
-    // logout page asks first; once the user confirms, the server's session is over and the admin, opened again, asks for the
-    // password.
+    // The admin revokes its refresh token, which the token endpoint refuses from then on, before the logout page is confirmed;
+    // it sends no id_token_hint, so the hosted logout page asks first, and once the user confirms, the server's session is
+    // over and the admin, opened again, asks for the password.
     [Fact]
     public async Task SignOutRevokesTheRefreshTokenAndTheHostedLogoutPageAsksFirst()
     {
@@ -66,13 +66,25 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         await browser.SignInOnTheHostedPageAsync(tab, editor);
         await Expect(tab.Sidebar).ToBeVisibleAsync();
         var loginPages = tab.LoginPagesShown;
-        var refreshToken = await browser.LastRefreshTokenAsync(tab);
-        refreshToken.ShouldNotBeNull();
 
+        // The admin gives the revocation 3 seconds at most before it goes to the logout page.
         await tab.Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = editor.Email }).ClickAsync();
         var revoked = tab.Page.WaitForResponseAsync(response => response.Url == new Uri(Host.Origin, "connect/revoke").AbsoluteUri, new PageWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         await tab.Page.GetByRole(AriaRole.Menuitem, new PageGetByRoleOptions { Name = Repository.AdminText("Shell.UserMenu.SignOut"), Exact = true }).ClickAsync();
-        (await revoked).Status.ShouldBe(200);
+        var revocation = await revoked;
+        revocation.Status.ShouldBe(200);
+
+        // The token it revoked, compared without ever being printed.
+        var refreshToken = HttpUtility.ParseQueryString(revocation.Request.PostData ?? "")["token"];
+        string.IsNullOrEmpty(refreshToken).ShouldBeFalse();
+        using (var client = Host.Client())
+        using (var refused = await client.PostAsync(
+            new Uri("connect/token", UriKind.Relative),
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["grant_type"] = "refresh_token", ["refresh_token"] = refreshToken!, ["client_id"] = "fluentcms-admin" }),
+            TestContext.Current.CancellationToken))
+        {
+            (refused.StatusCode == System.Net.HttpStatusCode.BadRequest).ShouldBeTrue("the token endpoint took the revoked refresh token");
+        }
 
         await tab.Page.WaitForURLAsync(url => new Uri(url).AbsolutePath == "/account/logout");
         await tab.Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Sign out", Exact = true }).ClickAsync();
@@ -80,13 +92,6 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         // Back at the admin's base, which finds no session in the tab and none on the server.
         await Expect(tab.LoginField).ToBeVisibleAsync();
         tab.LoginPagesShown.ShouldBeGreaterThan(loginPages);
-
-        using var client = Host.Client();
-        using var refused = await client.PostAsync(
-            new Uri("connect/token", UriKind.Relative),
-            new FormUrlEncodedContent(new Dictionary<string, string> { ["grant_type"] = "refresh_token", ["refresh_token"] = refreshToken, ["client_id"] = "fluentcms-admin" }),
-            TestContext.Current.CancellationToken);
-        ((int)refused.StatusCode).ShouldBe(400);
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
@@ -104,6 +109,7 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         await browser.SignInOnTheHostedPageAsync(tab, editor);
         await Expect(tab.Heading("System.Components.Heading")).ToBeVisibleAsync();
 
+        // The reload comes seconds after the sign-in, well within the admin's 60-second window for "ended right after sign-in".
         editor = await Host.ResetPasswordAsync(editor);
         var refused = await tab.ReloadAsync();
         refused.GrantType.ShouldBe("refresh_token");

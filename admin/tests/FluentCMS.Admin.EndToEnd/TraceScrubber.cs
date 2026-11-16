@@ -9,9 +9,13 @@ namespace FluentCMS.Admin.EndToEnd;
 // A Playwright trace records the network with its bodies and headers, and each action with its arguments: the sign-in
 // posts a password, the token endpoint answers tokens, and the hosted pages set the sign-in cookie. A kept trace holds only
 // the entries of an allowlist: the event logs, the screenshots, and the recorded images, styles and fonts; the network log
-// and every other body are left out. In what is kept, the secrets the context saw (passwords, tokens, codes, cookies) are
-// masked as they are, and anything that looks like one (a JWS or JWE, a Data Protection payload, a field of the code flow)
-// by its pattern. A trace in which any of them is still found, or whose masking fails, is not kept.
+// and every other body are left out. In the text entries, each secret the context saw (passwords, tokens, codes, the
+// antiforgery field, cookies; values of 8 characters or more) is masked in these forms: as it is, percent-encoded
+// (Uri.EscapeDataString and WebUtility.UrlEncode), form-encoded as a browser posts it (a space as +, ! as %21), escaped
+// for JSON, and with its quotes and backslashes escaped as JavaScript writes them. Anything with the pattern of a JWS or
+// JWE, a Data Protection payload or a field of the code flow is masked too. Base64, UTF-16 and a secret split across
+// events are not checked. The masked trace is built beside the raw one, outside the folder CI uploads, and moved there only
+// once no secret in those forms, and no pattern, is found in any entry; otherwise it is deleted and not kept.
 internal static partial class TraceScrubber
 {
     private const string Mask = "[masked]";
@@ -29,11 +33,12 @@ internal static partial class TraceScrubber
     public static void Scrub(string source, string destination, IReadOnlyCollection<string> secrets)
     {
         var forms = Forms(secrets);
-        File.Delete(destination);
+        var masked = source + ".masked";
+        File.Delete(masked);
         try
         {
             using (var input = ZipFile.OpenRead(source))
-            using (var output = ZipFile.Open(destination, ZipArchiveMode.Create))
+            using (var output = ZipFile.Open(masked, ZipArchiveMode.Create))
             {
                 foreach (var entry in input.Entries)
                 {
@@ -53,19 +58,20 @@ internal static partial class TraceScrubber
                 }
             }
 
-            if (Leaks(destination, secrets) is { } leak)
+            if (Leaks(masked, secrets) is { } leak)
             {
                 throw new InvalidOperationException($"The trace still held {leak} after it was masked, so it was not kept.");
             }
+
+            File.Move(masked, destination, overwrite: true);
         }
-        catch
+        finally
         {
-            File.Delete(destination);
-            throw;
+            File.Delete(masked);
         }
     }
 
-    // What a kept trace may not hold: an entry off the allowlist, a secret in any entry, or the pattern of one in a text entry.
+    // What a kept trace may not hold: an entry off the allowlist, or a secret or the pattern of one in any entry.
     public static string? Leaks(string trace, IReadOnlyCollection<string> secrets)
     {
         var forms = Forms(secrets);
@@ -84,7 +90,7 @@ internal static partial class TraceScrubber
                 return $"a secret in {entry.FullName}";
             }
 
-            if (IsText(entry.FullName) && (Token().IsMatch(text) || Protected().IsMatch(text) || SignInParameter().IsMatch(text)))
+            if (new[] { text, latin }.Any(content => Token().IsMatch(content) || Protected().IsMatch(content) || SignInParameter().IsMatch(content)))
             {
                 return $"the pattern of a token in {entry.FullName}";
             }
@@ -109,10 +115,17 @@ internal static partial class TraceScrubber
         return buffer.ToArray();
     }
 
-    // Each secret as it is, and as a URL, a form and JSON write it.
     private static List<string> Forms(IReadOnlyCollection<string> secrets) =>
         [.. secrets
-            .SelectMany(secret => new[] { secret, WebUtility.UrlEncode(secret), Uri.EscapeDataString(secret), JsonSerializer.Serialize(secret)[1..^1] })
+            .SelectMany(secret => new[]
+            {
+                secret,
+                WebUtility.UrlEncode(secret),
+                Uri.EscapeDataString(secret),
+                Uri.EscapeDataString(secret).Replace("%20", "+", StringComparison.Ordinal),
+                JsonSerializer.Serialize(secret)[1..^1],
+                secret.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal),
+            })
             .Where(secret => secret.Length > 0)
             .Distinct(StringComparer.Ordinal)
             .OrderByDescending(secret => secret.Length)];

@@ -81,15 +81,17 @@ public sealed class AdminBrowser
         var page = tab.Page;
         await page.WaitForURLAsync(url => new Uri(url).AbsolutePath == "/account/login");
         await page.GetByLabel("User name or email").FillAsync(editor.Email);
-        await page.GetByLabel("Password", new PageGetByLabelOptions { Exact = true }).FillAsync(editor.Password);
-        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Sign in", Exact = true }).ClickAsync();
-    }
+        try
+        {
+            await page.GetByLabel("Password", new PageGetByLabelOptions { Exact = true }).FillAsync(editor.Password);
+        }
+        catch (PlaywrightException exception)
+        {
+            // Playwright's call log quotes the value it was filling in.
+            throw new PlaywrightException(exception.Message.Replace(editor.Password, "[masked]", StringComparison.Ordinal));
+        }
 
-    // The refresh token the server last gave the tab, read from its answer, for a test that shows it is refused afterwards.
-    public async Task<string?> LastRefreshTokenAsync(AdminTab tab)
-    {
-        await ReadsAsync();
-        return tab.LastRefreshToken;
+        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Sign in", Exact = true }).ClickAsync();
     }
 
     // The trace of this context, masked, at path; the same as a failed test leaves. The unmasked trace is written outside the
@@ -220,7 +222,6 @@ public sealed class AdminBrowser
                     }
                 }
 
-                tab.LastRefreshToken = (string?)answer["refresh_token"] ?? tab.LastRefreshToken;
             }
         }
         catch (Exception exception) when (exception is PlaywrightException or System.Text.Json.JsonException)
@@ -247,7 +248,7 @@ public sealed class AdminBrowser
         }
     }
 
-    // Values too short to be a secret would mask ordinary text.
+    // A value under 8 characters is not kept: it would mask ordinary text, and no secret of the sign-in is that short.
     private void Keep(string value)
     {
         if (value.Length >= 8)
@@ -258,7 +259,7 @@ public sealed class AdminBrowser
 }
 
 // One tab, with what it asked of the authorization server: the address of each authorize request, each login page shown, and
-// the grant and status of each token request. The last refresh token it was given is kept for one test, and never printed.
+// the grant and status of each token request, never a token or a code.
 public sealed class AdminTab
 {
     private readonly EndToEndHost _host;
@@ -279,8 +280,6 @@ public sealed class AdminTab
     public int LoginPagesShown => _loginPages.Count;
 
     public IReadOnlyCollection<TokenRequest> TokenRequests => _tokenRequests;
-
-    internal string? LastRefreshToken { get; set; }
 
     public ILocator Heading(string resourceKey) =>
         Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = Repository.AdminText(resourceKey), Exact = true });
@@ -311,7 +310,7 @@ public sealed class AdminTab
 
     public Task<TokenRequest> ReloadAsync() => TokenRequestOfAsync(() => Page.ReloadAsync());
 
-    // Chooses the site and returns the answer of /me/access, the last read of a switch, once it has come: a 401 is followed
+    // Chooses the site and returns the answer of /me/access, the first read of a switch, once it has come: a 401 is followed
     // by one refresh and the call again, and that answer is the one returned.
     public async Task<IResponse> SwitchSiteAsync(Site site)
     {

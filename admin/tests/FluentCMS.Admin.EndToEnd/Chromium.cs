@@ -12,6 +12,7 @@ internal static class Chromium
 
     public static async Task<(IPlaywright? Playwright, IBrowser? Browser, string? Missing)> LaunchAsync(string serverKeyHash)
     {
+        var started = DateTime.UtcNow;
         var playwright = await Playwright.CreateAsync();
         try
         {
@@ -26,9 +27,28 @@ internal static class Chromium
         catch (PlaywrightException exception) when (exception.Message.Contains("Executable doesn't exist", StringComparison.Ordinal))
         {
             playwright.Dispose();
+            DeleteEmptyFolders(started);
             return (null, null,
                 "Chromium for Playwright is not installed, so the browser tests are skipped; they run in full CI. To run them here, "
                 + $"run: pwsh {Path.Combine(AppContext.BaseDirectory, "playwright.ps1")} install chromium (CONTRIBUTING.md).");
+        }
+    }
+
+    // The folders a launch makes in the temporary directory, which stay empty when there was no browser to launch.
+    private static void DeleteEmptyFolders(DateTime since)
+    {
+        foreach (var folder in new DirectoryInfo(Path.GetTempPath()).EnumerateDirectories("playwright*"))
+        {
+            try
+            {
+                if (folder.CreationTimeUtc >= since.AddSeconds(-1) && !folder.EnumerateFileSystemInfos().Any())
+                {
+                    folder.Delete();
+                }
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+            }
         }
     }
 }
