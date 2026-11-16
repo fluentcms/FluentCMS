@@ -64,6 +64,8 @@ internal sealed class SqliteFileDatabase(bool writeAheadLog = true) : TestDataba
 
         public bool IsBusy(Exception exception) => inner.IsBusy(exception);
 
+        public bool HasOneWriter => inner.HasOneWriter;
+
         public Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken) => inner.ReadMigrationsLockAsync(context, cancellationToken);
 
         public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment) => inner.ContainsIgnoringCase(fragment);

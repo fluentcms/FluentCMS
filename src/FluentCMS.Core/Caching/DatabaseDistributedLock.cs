@@ -15,6 +15,18 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
     private static readonly TimeSpan FirstPoll = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan LongestPoll = TimeSpan.FromSeconds(1);
 
+    // On a database with one writer: how long after a take saw a lease over its next try comes, which gives the holder's
+    // renewal, trying for the writer at least every 150 milliseconds while it waits, the time to get it when no other
+    // connection writes (a median of 80 milliseconds after the transaction, at most 660 in 50 measured rounds); and how long
+    // the beginning of a write transaction takes at most when it did not wait for another connection's. These are SQLite's
+    // and its driver's timings, kept here beside the lock that relies on them.
+    private static readonly TimeSpan Confirmation = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan LongBegin = TimeSpan.FromMilliseconds(50);
+
+    // How long past its timeout a wait goes on confirming a take-over, so that a caller that tries once still takes the lock
+    // of a holder that stopped, even when a try of the confirmation waited and started it again.
+    private static readonly TimeSpan LateConfirmation = 5 * Confirmation;
+
     // Who holds a lock, for whoever reads cms_lock; with a GUID per acquisition it stays within the owner column.
     private readonly string _instance = $"{Environment.MachineName[..Math.Min(Environment.MachineName.Length, 64)]}/{Environment.ProcessId}";
 
@@ -32,54 +44,96 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
         var holder = $"{_instance}/{Guid.NewGuid():N}";
         var started = time.GetTimestamp();
         var poll = FirstPoll;
+        Sighting? sighting = null;
         while (true)
         {
-            if (await TryTakeAsync(name, holder, cancellationToken) is { } leaseUntil)
+            var attempt = await TryTakeAsync(name, holder, sighting, cancellationToken);
+            if (attempt.Until is { } leaseUntil)
             {
                 return new Handle(this, name, holder, leaseUntil);
             }
 
-            var remaining = timeout == Timeout.InfiniteTimeSpan ? poll : timeout - time.GetElapsedTime(started);
-            if (remaining <= TimeSpan.Zero)
+            sighting = attempt.Sighting;
+            var next = sighting is null ? poll : Confirmation;
+            var remaining = timeout == Timeout.InfiniteTimeSpan ? TimeSpan.MaxValue : timeout - time.GetElapsedTime(started);
+            if (remaining <= TimeSpan.Zero && (sighting is null || -remaining >= LateConfirmation))
             {
+                if (attempt.Busy)
+                {
+                    LockLog.TimedOutBusy(logger, name, timeout);
+                }
+
                 return null;
             }
 
-            await Task.Delay(remaining < poll ? remaining : poll, time, cancellationToken);
-            poll = poll * 2 < LongestPoll ? poll * 2 : LongestPoll;
+            // A confirmation keeps its length when the timeout comes first.
+            await Task.Delay(sighting is null && remaining < next ? remaining : next, time, cancellationToken);
+            if (sighting is null)
+            {
+                poll = poll * 2 < LongestPoll ? poll * 2 : LongestPoll;
+            }
         }
     }
 
-    // The end of the new lease, or null while another holder has the lock. On a database with one writer, reading the row or
-    // beginning the write can give up waiting for another connection's transaction: nothing was taken, and the lock counts
-    // as held, since that transaction may be the holder's own work, which keeps it from renewing.
-    private async Task<DateTimeOffset?> TryTakeAsync(string name, string holder, CancellationToken cancellationToken)
+    // On a database with one writer, reading the row or beginning the write can give up waiting for another connection's
+    // transaction: nothing was taken, and the lock counts as held, since that transaction may be the holder's own work, which
+    // keeps it from renewing.
+    private async Task<Attempt> TryTakeAsync(string name, string holder, Sighting? sighting, CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        var provider = scope.ServiceProvider.GetRequiredService<IDataProvider>();
         try
         {
-            return await TakeAsync(context, name, holder, cancellationToken);
+            return await TakeAsync(context, provider, name, holder, sighting, cancellationToken);
         }
-        catch (Exception exception) when (scope.ServiceProvider.GetRequiredService<IDataProvider>().IsBusy(exception))
+        catch (Exception exception) when (provider.IsBusy(exception))
         {
-            return null;
+            return new(null, null, Busy: true);
         }
     }
 
-    private async Task<DateTimeOffset?> TakeAsync(SystemDbContext context, string name, string holder, CancellationToken cancellationToken)
+    private async Task<Attempt> TakeAsync(SystemDbContext context, IDataProvider provider, string name, string holder, Sighting? sighting, CancellationToken cancellationToken)
     {
         var current = await context.Set<LockRow>().AsNoTracking().SingleOrDefaultAsync(row => row.Name == name, cancellationToken);
         if (current is { Owner: not null } && current.LeaseUntil > time.GetUtcNow())
         {
-            return null;
+            return default;
         }
 
         // The writes are not canceled, so a take that commits always comes back as a handle that renews and releases it. On
         // SQLite the transaction begins once the database's one writer is free, so the lease starts from the clock then.
+        // Opened first, so that only the beginning of the transaction is timed, and not the connection and its pragmas.
+        await context.Database.OpenConnectionAsync(cancellationToken);
+        var beginning = time.GetTimestamp();
         await using var transaction = await context.Database.BeginTransactionAsync(CancellationToken.None);
+        var waited = time.GetElapsedTime(beginning) > LongBegin;
         var now = time.GetUtcNow();
         var until = StorageConventions.ToMicroseconds(now + Lease);
+
+        // Read again inside the transaction, so that what the take writes and logs is the row as it is now: the holder may
+        // have renewed or released the lock while the transaction waited to begin.
+        current = await context.Set<LockRow>().AsNoTracking().SingleOrDefaultAsync(row => row.Name == name, cancellationToken);
+        if (current is { Owner: not null })
+        {
+            if (current.LeaseUntil > now)
+            {
+                return default;
+            }
+
+            // On a database with one writer, a lease runs out while a write transaction keeps the holder's renewals waiting,
+            // and when it ends this take can get the writer before the renewal does. So a take-over gives the renewal time to
+            // get the writer: it takes only a lease that its try before, a confirmation ago, saw over and as it is, in a
+            // transaction that began at once, and a transaction that waited starts the confirmation again.
+            if (provider.HasOneWriter)
+            {
+                var same = !waited && sighting is not null && sighting.Owner == current.Owner && sighting.LeaseUntil == current.LeaseUntil;
+                if (!same)
+                {
+                    return new(null, new Sighting(current.Owner, current.LeaseUntil), Busy: false);
+                }
+            }
+        }
 
         if (current is null)
         {
@@ -88,7 +142,7 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
             {
                 await context.SaveChangesAsync(CancellationToken.None);
                 await transaction.CommitAsync(CancellationToken.None);
-                return until;
+                return new(until, null, Busy: false);
             }
             catch (DbUpdateException)
             {
@@ -97,15 +151,19 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
                 await transaction.RollbackAsync(CancellationToken.None);
                 if (await ExistsAsync(name))
                 {
-                    return null;
+                    return default;
                 }
 
                 throw;
             }
         }
 
-        var taken = await context.Set<LockRow>()
-            .Where(row => row.Name == name && (row.Owner == null || row.LeaseUntil == null || row.LeaseUntil <= now))
+        // Conditional on the row as read, so that a take-over that writes took over the lease of the holder it logs.
+        var rows = context.Set<LockRow>().Where(row => row.Name == name);
+        rows = current.Owner is { } owner
+            ? rows.Where(row => row.Owner == owner && (row.LeaseUntil == null || row.LeaseUntil <= now))
+            : rows.Where(row => row.Owner == null);
+        var taken = await rows
             .ExecuteUpdateAsync(
                 row => row
                     .SetProperty(column => column.Owner, holder)
@@ -116,7 +174,7 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
 
         if (taken == 0)
         {
-            return null;
+            return default;
         }
 
         if (current.Owner is not null)
@@ -124,8 +182,15 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
             LockLog.LeaseTakenOver(logger, name, current.Owner);
         }
 
-        return until;
+        return new(until, null, Busy: false);
     }
+
+    // What a take found: the end of the lease it took; or, while it did not, a lease over that it saw and waits to confirm, and
+    // whether the database kept it waiting for another connection's transaction until it gave up.
+    private readonly record struct Attempt(DateTimeOffset? Until, Sighting? Sighting, bool Busy);
+
+    // A lease over, as a take on a database with one writer saw it; the next try comes a confirmation later.
+    private sealed record Sighting(string Owner, DateTimeOffset? LeaseUntil);
 
     private async Task<bool> ExistsAsync(string name)
     {
