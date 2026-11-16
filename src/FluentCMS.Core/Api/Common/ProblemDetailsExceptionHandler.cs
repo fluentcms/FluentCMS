@@ -39,14 +39,14 @@ internal sealed partial class ProblemDetailsExceptionHandler(ILogger<ProblemDeta
         return true;
     }
 
-    private static Task WritePageAsync(HttpContext httpContext, ApiProblem problem, CancellationToken cancellationToken)
+    internal static Task WritePageAsync(HttpContext httpContext, ApiProblem problem, CancellationToken cancellationToken, string? message = null)
     {
         var response = httpContext.Response;
         response.StatusCode = problem.Status;
         response.ContentType = "text/html; charset=utf-8";
         response.Headers.ContentSecurityPolicy = "default-src 'none'; style-src 'unsafe-inline'";
         response.Headers.CacheControl = "no-store";
-        var message = problem.Status >= StatusCodes.Status500InternalServerError
+        message ??= problem.Status >= StatusCodes.Status500InternalServerError
             ? "Something went wrong on our side. Try again in a moment."
             : "The request could not be handled. Go back and try again.";
         return response.WriteAsync(
