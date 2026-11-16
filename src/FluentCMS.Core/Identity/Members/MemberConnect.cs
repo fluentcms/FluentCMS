@@ -58,9 +58,7 @@ internal static class MemberConnect
                 return ConnectEndpoints.Refuse(Errors.LoginRequired, "The sign-in is older than the client or the server accepts.");
             }
 
-            // The sign-in ends with the authorizations of its server session, as at a logout.
-            await context.RequestServices.GetRequiredService<UserSessions>()
-                .EndAsync(member.Id.ToString("D"), CmsSignInManager.ServerSession(cookie.Properties!), CancellationToken.None);
+            // The cookie alone ends: another site can send this request, so it revokes nothing (#3203).
             await signIn.SignOutAsync();
             return Results.Challenge(new AuthenticationProperties { RedirectUri = afterSignIn }, [MemberAuthentication.CookieScheme]);
         }

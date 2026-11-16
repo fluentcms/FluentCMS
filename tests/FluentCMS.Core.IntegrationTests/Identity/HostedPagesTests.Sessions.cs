@@ -44,13 +44,12 @@ public sealed partial class HostedPagesTests
             browser.HasCookie(SignInCookie).ShouldBeTrue();
         }
 
-        var ssoRefresh = await RotatedAsync(host, Text(ssoTokens, "refresh_token"));
-
-        // The sign-in it ends takes the tokens of its session with it (#3198), and the other sign-in keeps its own.
+        // Nothing authenticates the provider's request, so it ends the cookie alone and the session's tokens work on (#3204).
         using var signedOut = await sso.GetAsync($"/account/sso/{Corp}/signout");
         signedOut.StatusCode.ShouldBe(HttpStatusCode.OK);
         sso.HasCookie(SignInCookie).ShouldBeFalse();
-        (await RefusedAsync(host, ssoRefresh)).ShouldBe("invalid_grant");
+        var renewed = await RenewedAsync(host, Text(ssoTokens, "refresh_token"));
+        (await MeAsync(host, Text(renewed, "access_token"))).ShouldBe(HttpStatusCode.OK);
         (await RotatedAsync(host, Text(passwordTokens, "refresh_token"))).ShouldNotBeNullOrEmpty();
     }
 

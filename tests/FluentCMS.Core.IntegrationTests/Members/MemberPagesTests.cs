@@ -291,6 +291,64 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
         (await RefreshAsync(FluentCmsTestHost.OAuthClientId, adminRefresh)).ShouldBe(HttpStatusCode.OK);
     }
 
+    [Fact]
+    public async Task AnAdminLogoutLeavesTheMembersTokens()
+    {
+        var admin = await CreateAdminAsync();
+        var address = await fixture.RegisterVerifiedAsync();
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.8");
+        await SignInAdminAsync(browser, admin.Email);
+        await SignInMemberAsync(browser, address);
+        var adminTokens = await CodeFlowAsync(browser, FluentCmsTestHost.OAuthClientId, "openid offline_access management");
+        var memberTokens = await CodeFlowAsync(browser, FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+
+        var page = await browser.PageAsync("/account/logout");
+        using (var signedOut = await browser.PostAsync("/connect/logout", page, new Dictionary<string, string>()))
+        {
+            signedOut.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        }
+
+        (await RefreshAsync(FluentCmsTestHost.OAuthClientId, adminTokens.GetProperty("refresh_token").GetString()!)).ShouldBe(HttpStatusCode.BadRequest);
+        (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, memberTokens.GetProperty("refresh_token").GetString()!)).ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AMemberSignInOverALiveOneKeepsTheSameMembersSessionAndEndsOnlyAnothers()
+    {
+        var first = await fixture.RegisterVerifiedAsync();
+        var second = await fixture.RegisterVerifiedAsync();
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.9");
+        using var otherDevice = new HostedPagesBrowser(fixture.Host, "10.8.0.10");
+        await SignInMemberAsync(browser, first);
+        await SignInMemberAsync(otherDevice, first);
+        var before = await CodeFlowAsync(browser, FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+        var elsewhere = await CodeFlowAsync(otherDevice, FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+
+        // The same member signs in again: the browser's session goes on.
+        await SignInMemberAsync(browser, first);
+        var after = await CodeFlowAsync(browser, FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+        Sid(after).ShouldBe(Sid(before));
+        (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, before.GetProperty("refresh_token").GetString()!)).ShouldBe(HttpStatusCode.OK);
+
+        // Another member signs in over it: the first member's session in this browser ends, and its other device's stays.
+        await SignInMemberAsync(browser, second);
+        (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, after.GetProperty("refresh_token").GetString()!)).ShouldBe(HttpStatusCode.BadRequest);
+        (await RefreshAsync(FluentCmsTestHost.OAuthMemberClientId, elsewhere.GetProperty("refresh_token").GetString()!)).ShouldBe(HttpStatusCode.OK);
+        Sid(await CodeFlowAsync(browser, FluentCmsTestHost.OAuthMemberClientId, "openid offline_access")).ShouldNotBe(Sid(after));
+    }
+
+    private async Task<JsonElement> CodeFlowAsync(HostedPagesBrowser browser, string clientId, string scope)
+    {
+        var request = AuthorizeRequest.For(clientId, scope);
+        using var code = await browser.GetAsync(request.Url);
+        return await request.ExchangeAsync(fixture.Host, code);
+    }
+
+    private static string? Sid(JsonElement tokens)
+    {
+        using var payload = JsonDocument.Parse(Base64Url.DecodeFromChars(tokens.GetProperty("id_token").GetString()!.Split('.')[1]));
+        return payload.RootElement.GetProperty("sid").GetString();
+    }
     private async Task<HttpStatusCode> RefreshAsync(string clientId, string refreshToken)
     {
         using var client = fixture.Host.CreateSecureClient();

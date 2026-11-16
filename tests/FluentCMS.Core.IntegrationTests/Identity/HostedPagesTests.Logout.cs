@@ -2,7 +2,9 @@ using System.Buffers.Text;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.IntegrationTests.Management;
 using FluentCMS.Testing;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -109,7 +111,12 @@ public sealed partial class HostedPagesTests
 
         // A consent is no session's, so its identity token names none, and its hint is asked about.
         Payload(Text(issued, "id_token")).TryGetProperty("sid", out _).ShouldBeFalse();
+        using (var hinted = await browser.GetAsync("/connect/logout?id_token_hint=" + Uri.EscapeDataString(Text(issued, "id_token"))))
+        {
+            hinted.Headers.Location!.OriginalString.ShouldStartWith("/account/logout?");
+        }
 
+        browser.HasCookie(SignInCookie).ShouldBeTrue();
         await SignOutAsync(browser);
 
         // The client keeps its token, and the next sign-in is not asked again.
@@ -120,7 +127,7 @@ public sealed partial class HostedPagesTests
     }
 
     [Fact]
-    public async Task ASignInOverALiveOneKeepsTheSessionOfItsUserAndEndsAnothersAndAReauthenticationEndsIt()
+    public async Task ASignInOverALiveOneKeepsTheSessionOfItsUserAndEndsAnothers()
     {
         var editor = await CreateUserAsync(_host);
         var other = await CreateUserAsync(_host);
@@ -141,17 +148,63 @@ public sealed partial class HostedPagesTests
         var replaced = await CodeFlowAsync(_host, browser);
         await SignInAsync(browser, other.Email);
         (await RefusedAsync(_host, Text(replaced, "refresh_token"))).ShouldBe("invalid_grant");
-        var others = await CodeFlowAsync(_host, browser);
-        Sid(others).ShouldNotBe(Sid(replaced));
-
-        // prompt=login ends the sign-in it replaces, with what was issued in it.
-        var request = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri, prompt: "login");
-        using var login = await browser.GetAsync(request.Url);
-        login.Headers.Location!.AbsolutePath.ShouldBe("/account/login");
-        browser.HasCookie(SignInCookie).ShouldBeFalse();
-        (await RefusedAsync(_host, Text(others, "refresh_token"))).ShouldBe("invalid_grant");
+        Sid(await CodeFlowAsync(_host, browser)).ShouldNotBe(Sid(replaced));
     }
 
+    [Fact]
+    public async Task AReauthenticationAnotherSiteCanAskForEndsTheCookieAndRevokesNothing()
+    {
+        await using var host = NewHost(_emails).Configure(cms => cms.Clients.AbsoluteSessionLifetime = TimeSpan.FromHours(8));
+        var editor = await CreateUserAsync(host);
+        using var browser = new HostedPagesBrowser(host);
+
+        // A top-level GET from another site carries the cookie and nothing secret: prompt=login, max_age=0, and any
+        // authorize request past the absolute lifetime sign the cookie out and leave the session's tokens working.
+        var authorize = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri).Url;
+        var login = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri, prompt: "login").Url;
+        foreach (var (url, wait) in new[] { (login, TimeSpan.Zero), (authorize + "&max_age=0", TimeSpan.Zero), (authorize, TimeSpan.FromHours(2)) })
+        {
+            await SignInAsync(browser, editor.Email);
+            host.Time.Advance(TimeSpan.FromHours(7));
+            var tokens = await CodeFlowAsync(host, browser);
+            host.Time.Advance(wait);
+
+            using var foreign = await browser.GetAsync(url);
+            new Uri(OAuthBase, foreign.Headers.Location!).AbsolutePath.ShouldBe("/account/login", url);
+            browser.HasCookie(SignInCookie).ShouldBeFalse();
+
+            var renewed = await RenewedAsync(host, Text(tokens, "refresh_token"));
+            (await MeAsync(host, Text(renewed, "access_token"))).ShouldBe(HttpStatusCode.OK, url);
+        }
+    }
+
+    [Fact]
+    public async Task ASecondFactorTheRoleNowRequiresEndsTheSessionAtAuthorize()
+    {
+        using var admin = await _host.AsUserAsync(await _host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token));
+        var editor = await CreateUserAsync(_host);
+        await EnableTwoFactorAsync(_host, editor);
+        using var browser = new HostedPagesBrowser(_host, "10.1.0.13");
+        browser.SetCookie(await _host.SignInCookieAsync(editor));
+        var tokens = await CodeFlowAsync(_host, browser);
+        (await MeAsync(_host, Text(tokens, "access_token"))).ShouldBe(HttpStatusCode.OK);
+
+        (await AdminFixture.SendAsync(admin, HttpMethod.Put, $"users/{editor.Id:D}/roles/{await GuardedRoleAsync(admin)}")).Status.ShouldBe(HttpStatusCode.OK);
+        using var challenged = await browser.GetAsync(AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri).Url);
+        challenged.Headers.Location!.AbsolutePath.ShouldBe("/account/login");
+
+        // The session's tokens, which the token endpoint would refuse at their next refresh anyway, end with the cookie.
+        (await MeAsync(_host, Text(tokens, "access_token"))).ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task AnUnreadableHintWithoutTheCookieGoesToTheLogoutPage()
+    {
+        using var browser = new HostedPagesBrowser(_host, "10.1.0.14");
+        using var response = await browser.GetAsync($"/connect/logout?id_token_hint=not.a.token&client_id={ThirdPartyClientId}&post_logout_redirect_uri={Uri.EscapeDataString(ThirdPartySignedOutUri)}");
+        response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.ShouldStartWith("/account/logout?");
+    }
     [Fact]
     public async Task ASignInWithTheSecondFactorAndAPasswordChangeKeepTheSessionThatTheLogoutEnds()
     {
@@ -211,6 +264,14 @@ public sealed partial class HostedPagesTests
         return json.RootElement.GetProperty("refresh_token").GetString()!;
     }
 
+    private static async Task<JsonElement> RenewedAsync(FluentCmsTestHost host, string refreshToken)
+    {
+        using var response = await RefreshAsync(host, refreshToken);
+        var body = await response.Content.ReadAsStringAsync(Token);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK, body);
+        using var json = JsonDocument.Parse(body);
+        return json.RootElement.Clone();
+    }
     private static async Task<string?> RefusedAsync(FluentCmsTestHost host, string refreshToken)
     {
         using var response = await RefreshAsync(host, refreshToken);
