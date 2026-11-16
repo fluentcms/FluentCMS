@@ -1,1 +1,55 @@
 #nullable enable
+FluentCMS.Admin.Configuration.AdminBranding
+FluentCMS.Admin.Configuration.AdminBranding.<Clone>$() -> FluentCMS.Admin.Configuration.AdminBranding!
+FluentCMS.Admin.Configuration.AdminBranding.AccentColor.get -> string?
+FluentCMS.Admin.Configuration.AdminBranding.AccentColor.init -> void
+FluentCMS.Admin.Configuration.AdminBranding.AdminBranding() -> void
+FluentCMS.Admin.Configuration.AdminBranding.Equals(FluentCMS.Admin.Configuration.AdminBranding? other) -> bool
+FluentCMS.Admin.Configuration.AdminBranding.FaviconUrl.get -> System.Uri?
+FluentCMS.Admin.Configuration.AdminBranding.FaviconUrl.init -> void
+FluentCMS.Admin.Configuration.AdminBranding.LogoUrl.get -> System.Uri?
+FluentCMS.Admin.Configuration.AdminBranding.LogoUrl.init -> void
+FluentCMS.Admin.Configuration.AdminBranding.Name.get -> string!
+FluentCMS.Admin.Configuration.AdminBranding.Name.init -> void
+FluentCMS.Admin.Configuration.AdminConfiguration
+FluentCMS.Admin.Configuration.AdminConfiguration.<Clone>$() -> FluentCMS.Admin.Configuration.AdminConfiguration!
+FluentCMS.Admin.Configuration.AdminConfiguration.AdminConfiguration() -> void
+FluentCMS.Admin.Configuration.AdminConfiguration.ApiBaseUrl.get -> System.Uri!
+FluentCMS.Admin.Configuration.AdminConfiguration.ApiBaseUrl.init -> void
+FluentCMS.Admin.Configuration.AdminConfiguration.Authority.get -> System.Uri!
+FluentCMS.Admin.Configuration.AdminConfiguration.Authority.init -> void
+FluentCMS.Admin.Configuration.AdminConfiguration.Branding.get -> FluentCMS.Admin.Configuration.AdminBranding!
+FluentCMS.Admin.Configuration.AdminConfiguration.Branding.init -> void
+FluentCMS.Admin.Configuration.AdminConfiguration.ClientId.get -> string!
+FluentCMS.Admin.Configuration.AdminConfiguration.ClientId.init -> void
+FluentCMS.Admin.Configuration.AdminConfiguration.Cultures.get -> FluentCMS.Admin.Configuration.AdminCultures!
+FluentCMS.Admin.Configuration.AdminConfiguration.Cultures.init -> void
+FluentCMS.Admin.Configuration.AdminConfiguration.Equals(FluentCMS.Admin.Configuration.AdminConfiguration? other) -> bool
+FluentCMS.Admin.Configuration.AdminConfiguration.PreviewEnabled.get -> bool
+FluentCMS.Admin.Configuration.AdminConfiguration.PreviewOrigins.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Configuration.AdminConfiguration.PreviewOrigins.init -> void
+FluentCMS.Admin.Configuration.AdminConfiguration.Scopes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Configuration.AdminConfiguration.Scopes.init -> void
+FluentCMS.Admin.Configuration.AdminCultures
+FluentCMS.Admin.Configuration.AdminCultures.<Clone>$() -> FluentCMS.Admin.Configuration.AdminCultures!
+FluentCMS.Admin.Configuration.AdminCultures.AdminCultures() -> void
+FluentCMS.Admin.Configuration.AdminCultures.Default.get -> string!
+FluentCMS.Admin.Configuration.AdminCultures.Default.init -> void
+FluentCMS.Admin.Configuration.AdminCultures.Equals(FluentCMS.Admin.Configuration.AdminCultures? other) -> bool
+FluentCMS.Admin.Configuration.AdminCultures.Offered.get -> System.Collections.Generic.IReadOnlyList<string!>?
+FluentCMS.Admin.Configuration.AdminCultures.Offered.init -> void
+override FluentCMS.Admin.Configuration.AdminBranding.Equals(object? obj) -> bool
+override FluentCMS.Admin.Configuration.AdminBranding.GetHashCode() -> int
+override FluentCMS.Admin.Configuration.AdminBranding.ToString() -> string!
+override FluentCMS.Admin.Configuration.AdminConfiguration.Equals(object? obj) -> bool
+override FluentCMS.Admin.Configuration.AdminConfiguration.GetHashCode() -> int
+override FluentCMS.Admin.Configuration.AdminConfiguration.ToString() -> string!
+override FluentCMS.Admin.Configuration.AdminCultures.Equals(object? obj) -> bool
+override FluentCMS.Admin.Configuration.AdminCultures.GetHashCode() -> int
+override FluentCMS.Admin.Configuration.AdminCultures.ToString() -> string!
+static FluentCMS.Admin.Configuration.AdminBranding.operator !=(FluentCMS.Admin.Configuration.AdminBranding? left, FluentCMS.Admin.Configuration.AdminBranding? right) -> bool
+static FluentCMS.Admin.Configuration.AdminBranding.operator ==(FluentCMS.Admin.Configuration.AdminBranding? left, FluentCMS.Admin.Configuration.AdminBranding? right) -> bool
+static FluentCMS.Admin.Configuration.AdminConfiguration.operator !=(FluentCMS.Admin.Configuration.AdminConfiguration? left, FluentCMS.Admin.Configuration.AdminConfiguration? right) -> bool
+static FluentCMS.Admin.Configuration.AdminConfiguration.operator ==(FluentCMS.Admin.Configuration.AdminConfiguration? left, FluentCMS.Admin.Configuration.AdminConfiguration? right) -> bool
+static FluentCMS.Admin.Configuration.AdminCultures.operator !=(FluentCMS.Admin.Configuration.AdminCultures? left, FluentCMS.Admin.Configuration.AdminCultures? right) -> bool
+static FluentCMS.Admin.Configuration.AdminCultures.operator ==(FluentCMS.Admin.Configuration.AdminCultures? left, FluentCMS.Admin.Configuration.AdminCultures? right) -> bool
