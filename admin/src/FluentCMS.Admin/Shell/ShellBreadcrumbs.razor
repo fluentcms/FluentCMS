@@ -1,0 +1,64 @@
+@* The breadcrumbs of the route (spec 4.1): section, type, entry, view. A route that is a section of its own, such as the start
+   page, has none. *@
+@implements IDisposable
+@inject AdminContext Context
+@inject NavigationManager Navigation
+@inject IStringLocalizer<AdminResources> L
+
+<CmsBreadcrumb Label="@L["Shell.Breadcrumbs.Label"]" Items="@Items()" />
+
+@code {
+    protected override void OnInitialized()
+    {
+        Context.Changed += OnChanged;
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    public void Dispose()
+    {
+        Context.Changed -= OnChanged;
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+
+    // An entry is named by its id until its page, which reads it, names it (A2).
+    private List<CmsBreadcrumbItem> Items()
+    {
+        var segments = Segments();
+        switch (segments)
+        {
+            case ["content", var type, ..]:
+                var name = Uri.UnescapeDataString(type);
+                var label = Context.Schema?.Types.FirstOrDefault(item => item.Name == name) is { } described
+                    ? AdminLabels.Type(described, L)
+                    : AdminLabels.Readable(name);
+                List<CmsBreadcrumbItem> items = [new(L["Shell.Breadcrumbs.Content"]), new(label, ShellNavigation.ContentRoute(name))];
+                if (segments.Length > 2)
+                {
+                    items.Add(new(segments[2] == "new" ? L["Shell.Breadcrumbs.New"] : Uri.UnescapeDataString(segments[2])));
+                }
+
+                return items;
+            case ["system", "components"]:
+                return [new(L["Shell.Breadcrumbs.System"]), new(L["Shell.Breadcrumbs.Components"])];
+            default:
+                return [];
+        }
+    }
+
+    private string[] Segments()
+    {
+        var uri = Navigation.Uri;
+        if (!uri.StartsWith(Navigation.BaseUri, StringComparison.Ordinal))
+        {
+            return [];
+        }
+
+        var path = Navigation.ToBaseRelativePath(uri);
+        var end = path.IndexOfAny(['?', '#']);
+        return (end < 0 ? path : path[..end]).Split('/', StringSplitOptions.RemoveEmptyEntries);
+    }
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => OnChanged();
+}

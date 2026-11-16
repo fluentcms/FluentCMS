@@ -6,6 +6,8 @@ using Bunit.TestDoubles;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Authentication;
 using FluentCMS.Admin.Forms;
+using FluentCMS.Admin.Interop;
+using FluentCMS.Admin.Shell;
 using FluentCMS.Admin.Tests.Api;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -389,6 +391,54 @@ public sealed class SignInTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task SignOutClearsTheTabBeforeTheServerAnswers()
+    {
+        var tab = SignIn();
+        _authority.HoldRevoke = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var signingOut = tab.Session.SignOutAsync(Token);
+
+        _storage.Items.ShouldBeEmpty();
+        tab.Session.User.ShouldBeNull();
+        signingOut.IsCompleted.ShouldBeFalse();
+        _authority.HoldRevoke.SetResult();
+        await signingOut;
+        AssertSignedOut(tab);
+    }
+
+    [Fact]
+    public async Task SignOutWaitsOnTheServerForAFewSecondsAtMost()
+    {
+        var tab = SignIn();
+        _authority.HoldRevoke = new TaskCompletionSource();
+        var signingOut = tab.Session.SignOutAsync(Token);
+        _time.Advance(AdminSession.SignOutWait - TimeSpan.FromMilliseconds(1));
+        signingOut.IsCompleted.ShouldBeFalse();
+
+        _time.Advance(TimeSpan.FromMilliseconds(1));
+
+        await signingOut.WaitAsync(TimeSpan.FromSeconds(10), Token);
+        AssertSignedOut(tab);
+    }
+
+    // The tab is cleared at once, so the gate takes its place until the page leaves; it says so, and not that it signs in.
+    [Fact]
+    public async Task WhileTheServerIsAskedTheGateSaysThatTheTabSignsOut()
+    {
+        var tab = SignIn();
+        _authority.HoldRevoke = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var signingOut = tab.Session.SignOutAsync(Token);
+
+        var app = tab.App!;
+        app.WaitForAssertion(() => app.Find("p.sign-in-gate[role=status]").TextContent.ShouldBe("Signing out…"));
+        app.FindAll("[role=status]").Where(status => status.TextContent.Contains("Signing", StringComparison.Ordinal)).ShouldHaveSingleItem();
+        tab.Navigation.History.ShouldNotContain(entry => entry.Uri.Contains("/connect/authorize", StringComparison.Ordinal));
+        _authority.HoldRevoke.SetResult();
+        await signingOut;
+    }
+
+    [Fact]
     public void AReloadedTabRestoresItsSessionWithoutARedirect()
     {
         SignIn();
@@ -624,7 +674,9 @@ public sealed class SignInTests : IAsyncDisposable
         tab.StorageWrites().ShouldContain(write => write[0] == AdminSession.SessionKey && write[1].Contains("refresh-1"));
         foreach (var tabOfTest in new[] { start, tab })
         {
-            tabOfTest.JSInterop.Invocations.ShouldAllBe(call => !call.Identifier.StartsWith("localStorage", StringComparison.Ordinal));
+            // localStorage holds the theme only.
+            tabOfTest.JSInterop.Invocations.ShouldAllBe(call =>
+                !call.Identifier.StartsWith("localStorage", StringComparison.Ordinal) || (string?)call.Arguments[0] == ThemeStorageInterop.Key);
             tabOfTest.JSInterop.Invocations.SelectMany(call => call.Arguments).OfType<string>().ShouldAllBe(argument => !argument.Contains("access-1", StringComparison.Ordinal));
         }
     }
@@ -718,7 +770,9 @@ public sealed class SignInTests : IAsyncDisposable
                 JSInterop.Setup<string?>("sessionStorage.getItem", call => (string?)call.Arguments[0] == AdminSession.SignInKey).SetResult(pendingSignIn);
             }
 
-            Services.Configure<ManagementApiOptions>(options => options.PrimaryHandler = () => api ?? new ScriptedServer());
+            var scripted = api ?? new ScriptedServer();
+            Services.Configure<ManagementApiOptions>(options => options.PrimaryHandler = () =>
+                new ShellReadsAside(Management, scripted, () => Services.GetRequiredService<AdminContext>().Status == ShellStatus.Loading));
         }
 
         public IRenderedComponent<AdminApp>? App { get; private set; }
@@ -742,7 +796,12 @@ public sealed class SignInTests : IAsyncDisposable
             return new Uri(Navigation.History.First().Uri);
         }
 
-        public void WaitForSignIn(IRenderedComponent<AdminApp> app) => app.WaitForAssertion(() => Session.User.ShouldNotBeNull());
+        // Until the shell has read what it reads after sign-in.
+        public void WaitForSignIn(IRenderedComponent<AdminApp> app) => app.WaitForAssertion(() =>
+        {
+            Session.User.ShouldNotBeNull();
+            Services.GetRequiredService<AdminContext>().Status.ShouldBe(ShellStatus.Ready);
+        });
 
         // The setItem calls on sessionStorage, as key and value.
         public List<string[]> StorageWrites() =>

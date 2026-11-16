@@ -1,0 +1,59 @@
+@* The site switcher, from GET /me/sites (spec 4.1); a user with one site has nothing to switch. Switching keeps the route when
+   its type exists in the new site, and otherwise goes to the start page. *@
+@implements IDisposable
+@inject AdminContext Context
+@inject NavigationManager Navigation
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<AdminResources> L
+
+@if (Context.Sites.Count > 1 && Context.Site is { } current)
+{
+    <div class="site-switcher">
+        <CmsSelect Label="@L["Shell.SiteSwitcher.Label"]"
+                   Options="@([.. Context.Sites.Select(site => new CmsOption(site.Id.ToString("D"), site.Name))])"
+                   Value="@current.Id.ToString("D")"
+                   ValueChanged="@SwitchAsync" />
+    </div>
+}
+
+@code {
+    protected override void OnInitialized() => Context.Changed += OnChanged;
+
+    public void Dispose() => Context.Changed -= OnChanged;
+
+    private async Task SwitchAsync(string? value)
+    {
+        if (!Guid.TryParse(value, out var id))
+        {
+            return;
+        }
+
+        await Context.SwitchSiteAsync(id);
+        if (Context.Status != ShellStatus.Ready || Context.Site is not { } site)
+        {
+            return;
+        }
+
+        if (ContentType() is { } type && Context.Schema?.Types.Any(item => item.Name == type) != true)
+        {
+            Navigation.NavigateTo("");
+        }
+
+        Announcer.Announce(L["Shell.SiteSwitcher.Switched", site.Name]);
+    }
+
+    // The type of a content route, such as article of content/article/0193….
+    private string? ContentType()
+    {
+        var uri = Navigation.Uri;
+        if (!uri.StartsWith(Navigation.BaseUri, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var segments = Navigation.ToBaseRelativePath(uri).Split(['/', '?', '#']);
+        return segments is ["content", { Length: > 0 } type, ..] ? Uri.UnescapeDataString(type) : null;
+    }
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+}

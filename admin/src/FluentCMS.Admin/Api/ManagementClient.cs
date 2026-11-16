@@ -32,6 +32,10 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
     public async Task<IReadOnlyList<MySiteInfo>> GetMySitesAsync(CancellationToken cancellationToken) =>
         (await api.SendAsync(new ApiRequest(HttpMethod.Get, "me/sites") { NoSite = true, NoLocale = true }, Json.ItemListMySiteInfo, cancellationToken)).Value.Items;
 
+    // What the caller may do in the site, in the site's default locale.
+    public async Task<MyAccessInfo> GetMyAccessAsync(string? site, CancellationToken cancellationToken) =>
+        (await api.SendAsync(SiteRead("me/access", site), Json.MyAccessInfo, cancellationToken)).Value;
+
     public async Task<SchemaDescription> GetSchemaAsync(string? site, CancellationToken cancellationToken) =>
         (await api.SendAsync(SiteRead("schema", site), Json.SchemaDescription, cancellationToken)).Value;
 

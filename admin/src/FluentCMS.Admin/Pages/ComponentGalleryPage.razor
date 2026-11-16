@@ -101,6 +101,19 @@
             </CmsStack>
         </CmsCard>
 
+        <CmsCard Title="@L["System.Components.Navigation"]">
+            <CmsStack>
+                <CmsBreadcrumb Label="@L["System.Components.Trail"]"
+                               Items="@([new(L["System.Components.Start"], ""), new(L["System.Components.Articles"]), new(L["System.Components.ThisPage"])])" />
+                <CmsNavigation Label="@L["System.Components.SampleNavigation"]">
+                    <CmsNavigationSection Title="@L["System.Components.Pages"]">
+                        <CmsNavigationLink Href="" Match="CmsNavigationMatch.All">@L["System.Components.Start"]</CmsNavigationLink>
+                        <CmsNavigationLink Href="system/components" Badge="@L["System.Components.Shared"]">@L["System.Components.ThisPage"]</CmsNavigationLink>
+                    </CmsNavigationSection>
+                </CmsNavigation>
+            </CmsStack>
+        </CmsCard>
+
         <CmsCard Title="@L["System.Components.DataGrid"]">
             <CmsDataGrid Label="@L["System.Components.Articles"]" Items="@articles" SelectionMode="CmsSelectionMode.Many" @bind-SelectedItems="selected">
                 <CmsDataGridColumn Title="@L["System.Components.Title"]" Value="@(a => a.Title)" SortKey="@(a => a.Title)" />
@@ -180,7 +193,7 @@
         ];
     }
 
-    private void OnThemeChanged(string? value) => Theme.Choose(Enum.TryParse<CmsThemeMode>(value, out var mode) ? mode : CmsThemeMode.System);
+    private Task OnThemeChanged(string? value) => Theme.ChooseAsync(Enum.TryParse<CmsThemeMode>(value, out var mode) ? mode : CmsThemeMode.System);
 
     private string? FolderName(string? id) => id is null ? null : Find(folders, id)?.Text;
 

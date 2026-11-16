@@ -5,6 +5,8 @@ namespace FluentCMS.Admin.Forms;
 // The store the forms use, over the drafts of the tab, for the signed-in user only.
 internal sealed class FormDraftStore(FormDrafts drafts, IAdminSession session) : IFormDraftStore
 {
+    public bool HasUnsavedForms => drafts.HasTracked;
+
     public IDisposable Track(IUnsavedForm form) => drafts.Track(form);
 
     public async Task<FormDraft?> FindAsync(FormDraftKey key, CancellationToken cancellationToken) =>

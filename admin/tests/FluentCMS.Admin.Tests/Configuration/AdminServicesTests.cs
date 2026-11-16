@@ -33,6 +33,7 @@ public sealed class AdminServicesTests
         var errorPage = new ServiceCollection().AddAdminLocalization(Culture, Formats).AddAdminAccessibility()
             .Select(descriptor => descriptor.ServiceType)
             .Append(typeof(AdminStartup))
+            .Append(typeof(IThemeStorage))
             .Append(typeof(ShellTheme));
         services.Select(descriptor => descriptor.ServiceType).ShouldBe(errorPage, ignoreOrder: true);
         services.ShouldNotContain(descriptor => descriptor.ServiceType == typeof(AdminConfiguration));

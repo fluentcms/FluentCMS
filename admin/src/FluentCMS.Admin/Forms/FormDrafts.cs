@@ -15,6 +15,17 @@ internal sealed class FormDrafts(ISessionStorage storage)
     private readonly Lock _gate = new();
     private readonly List<IUnsavedForm> _forms = [];
 
+    public bool HasTracked
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _forms.Count > 0;
+            }
+        }
+    }
+
     public IDisposable Track(IUnsavedForm form)
     {
         ArgumentNullException.ThrowIfNull(form);

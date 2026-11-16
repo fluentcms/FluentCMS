@@ -1,0 +1,88 @@
+@* The user menu (spec 4.1): the account page (A-09), the theme and sign-out. The interface language joins it once a second
+   culture ships, since English is the only one (AQ14). Signing out with unsaved forms asks first: their changes are lost. *@
+@implements IDisposable
+@using FluentCMS.Admin.Authentication
+@using FluentCMS.Admin.Forms
+@inject IAdminSession Session
+@inject AdminContext Context
+@inject ShellTheme Theme
+@inject IFormDraftStore Drafts
+@inject NavigationManager Navigation
+@inject IStringLocalizer<AdminResources> L
+
+<CmsMenu Label="@L["Shell.UserMenu.Label", Name]" Icon="CmsIconName.Person">
+    <CmsMenuItem Icon="CmsIconName.Person" OnClick="@(() => Navigation.NavigateTo(AccountRoute))">@L["Shell.UserMenu.Account"]</CmsMenuItem>
+    @foreach (var (mode, key) in Themes)
+    {
+        <CmsMenuItem @key="mode" Icon="@(Theme.Mode == mode ? CmsIconName.Checkmark : null)" OnClick="@(() => Theme.ChooseAsync(mode))">
+            @if (Theme.Mode == mode)
+            {
+                <span aria-hidden="true">@L[key]</span>
+                <span class="cms-visually-hidden">@L["Shell.UserMenu.CurrentTheme", L[key]]</span>
+            }
+            else
+            {
+                @L[key]
+            }
+        </CmsMenuItem>
+    }
+    <CmsMenuItem OnClick="SignOutAsync">@L["Shell.UserMenu.SignOut"]</CmsMenuItem>
+</CmsMenu>
+<CmsDialog Title="@L["Shell.SignOut.Title"]" Open="@confirming" OpenChanged="@(open => confirming = open)">
+    <ChildContent>
+        <p>@L["Shell.SignOut.Text"]</p>
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="ConfirmSignOutAsync">@L["Shell.SignOut.Confirm"]</CmsButton>
+        <CmsButton OnClick="@(() => confirming = false)">@L["Shell.SignOut.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+@code {
+    // The account page of spec 3.2's reserved segment, which A-09 adds.
+    public const string AccountRoute = "account";
+
+    // The current theme is marked by a check and, for assistive technology, by text: the library raises the change of a
+    // checkbox or radio item again when its state is set back, so the items are plain ones.
+    private static readonly (CmsThemeMode Mode, string Key)[] Themes =
+    [
+        (CmsThemeMode.System, "Shell.UserMenu.ThemeSystem"),
+        (CmsThemeMode.Light, "Shell.UserMenu.ThemeLight"),
+        (CmsThemeMode.Dark, "Shell.UserMenu.ThemeDark"),
+    ];
+
+    private bool confirming;
+
+    private string Name => Context.User?.Name ?? Session.User?.Name ?? Session.User?.Email ?? L["Shell.UserMenu.Unnamed"].Value;
+
+    protected override void OnInitialized()
+    {
+        Theme.Changed += OnChanged;
+        Context.Changed += OnChanged;
+    }
+
+    public void Dispose()
+    {
+        Theme.Changed -= OnChanged;
+        Context.Changed -= OnChanged;
+    }
+
+    private async Task SignOutAsync()
+    {
+        if (Drafts.HasUnsavedForms)
+        {
+            confirming = true;
+            return;
+        }
+
+        await Session.SignOutAsync(CancellationToken.None);
+    }
+
+    private async Task ConfirmSignOutAsync()
+    {
+        confirming = false;
+        await Session.SignOutAsync(CancellationToken.None);
+    }
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+}
