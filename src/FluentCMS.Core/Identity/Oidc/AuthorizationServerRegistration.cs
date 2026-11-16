@@ -50,7 +50,7 @@ internal static class AuthorizationServerRegistration
             .Configure<ClientOptions>((cookie, options) => cookie.ExpireTimeSpan = options.SignInCookieLifetime);
 
         // The stamp check rebuilds the cookie's principal from the user every half hour, which would drop how the user
-        // signed in: amr is what a role that requires two-factor reads, and the provider the remote sign-out of SSO does.
+        // signed in: amr is what a role that requires two-factor reads, and the authentication method names the SSO provider.
         services.Configure<SecurityStampValidatorOptions>(options =>
         {
             var next = options.OnRefreshingPrincipal;

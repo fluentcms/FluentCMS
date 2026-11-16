@@ -90,6 +90,11 @@ internal sealed class FakeOidcProvider : IDisposable
             claims["amr"] = grant.User.Amr;
         }
 
+        if (grant.User.Sid is not null)
+        {
+            claims["sid"] = grant.User.Sid;
+        }
+
         return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
             Issuer = Issuer,
@@ -178,6 +183,9 @@ internal sealed record FakeIdentity(string Subject, string? Email, string[] Grou
 
     // As a provider that verifies addresses says; null leaves the claim out.
     public bool? EmailVerified { get; init; } = true;
+
+    // The provider's session id, which a provider that supports front-channel logout puts in the token; null leaves it out.
+    public string? Sid { get; init; }
 
     public static FakeIdentity Of(string? email, params string[] groups) => new("sub-" + Guid.NewGuid().ToString("N"), email, groups, ["pwd"]);
 }

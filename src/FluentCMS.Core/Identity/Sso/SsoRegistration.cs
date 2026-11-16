@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Events;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -97,30 +98,67 @@ internal static class SsoRegistration
                 }
             }
 
-            options.Events.OnTokenValidated = KeepSubject;
+            options.Events.OnTokenValidated = KeepSubjectAndSession;
             options.Events.OnRemoteFailure = BackToLoginAsync;
-            options.Events.OnRemoteSignOut = OwnSignInOnlyAsync;
+            options.Events.OnRemoteSignOut = NamedSignInOnlyAsync;
         }
 
-        // The provider's front-channel logout ends the sign-in on the hosted pages, the admin session. The cookie holds no
-        // session id of the provider for the handler to match, so a sign-in made another way, with a password or another
-        // provider, is left as it is.
-        private static async Task OwnSignInOnlyAsync(RemoteSignOutContext context)
+        // The provider's front-channel logout ends the sign-in on the hosted pages, the admin session, only when it carries
+        // the sid and iss of the id token that sign-in was made with. The handler skips its own check when the cookie has no
+        // such claims, so it is never left to the handler. A match ends the server session's authorizations with the
+        // cookie, as a confirmed logout does; anything else, a sign-in made with a password, through another provider or
+        // with a token without sid included, ends nothing, and the answer is the same.
+        private static async Task NamedSignInOnlyAsync(RemoteSignOutContext context)
         {
+            context.HandleResponse();
+            context.Response.Headers.CacheControl = "no-cache, no-store";
+            context.Response.Headers.Pragma = "no-cache";
+
+            var services = context.HttpContext.RequestServices;
+            var logger = services.GetRequiredService<ILogger<SsoSignIn>>();
             var cookie = await context.HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
-            if (!string.Equals(cookie.Principal?.FindFirstValue(ClaimTypes.AuthenticationMethod), context.Scheme.Name, StringComparison.OrdinalIgnoreCase))
+            if (!cookie.Succeeded || SsoSession.Of(cookie.Properties!) is not { } session)
             {
-                context.HandleResponse();
+                SsoLog.RemoteSignOutIgnored(logger, context.Scheme.Name, "the request carries no sign-in made through a provider with a session id.");
+                return;
             }
+
+            if (await RepeatsAsync(context.Request, OpenIdConnectParameterNames.Sid) || await RepeatsAsync(context.Request, OpenIdConnectParameterNames.Iss))
+            {
+                SsoLog.RemoteSignOutIgnored(logger, context.Scheme.Name, "the sid or iss is sent more than once.");
+                return;
+            }
+
+            if (!session.IsNamedBy(context.Scheme.Name, context.ProtocolMessage?.Sid, context.ProtocolMessage?.Iss))
+            {
+                SsoLog.RemoteSignOutIgnored(logger, context.Scheme.Name, "the sign-in is another provider's, or the sid and iss are missing or are not those of the sign-in.");
+                return;
+            }
+
+            var userId = services.GetRequiredService<UserManager<CmsUser>>().GetUserId(cookie.Principal!);
+            await services.GetRequiredService<UserSessions>().EndAsync(userId, CmsSignInManager.ServerSession(cookie.Properties!), CancellationToken.None);
+            await context.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+            SsoLog.RemoteSignOut(logger, context.Scheme.Name, userId);
         }
 
-        // Identity takes the external login's key from the name identifier, which the token calls sub.
-        private static Task KeepSubject(TokenValidatedContext context)
+        // The handler's message keeps the first of several values of a parameter, so a repeated one could hide another.
+        private static async Task<bool> RepeatsAsync(HttpRequest request, string name) =>
+            request.Query[name].Count > 1 || (request.HasFormContentType && (await request.ReadFormAsync()).TryGetValue(name, out var values) && values.Count > 1);
+
+        // Identity takes the external login's key from the name identifier, which the token calls sub. The token's sid and
+        // iss go with the external cookie, for the sign-in to keep.
+        private static Task KeepSubjectAndSession(TokenValidatedContext context)
         {
             if (context.Principal?.Identity is ClaimsIdentity identity && !identity.HasClaim(claim => claim.Type == ClaimTypes.NameIdentifier)
                 && identity.FindFirst("sub") is { } subject)
             {
                 identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, subject.Value, subject.ValueType, subject.Issuer));
+            }
+
+            if (context.SecurityToken is { } token && context.Properties is { } properties
+                && token.Payload.TryGetValue("sid", out var value) && value is string { Length: > 0 } sid && !string.IsNullOrEmpty(token.Issuer))
+            {
+                new SsoSession(context.Scheme.Name, sid, token.Issuer).WriteTo(properties);
             }
 
             return Task.CompletedTask;
