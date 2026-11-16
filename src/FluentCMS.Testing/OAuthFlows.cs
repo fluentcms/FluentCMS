@@ -58,6 +58,7 @@ internal static class OAuthFlows
         var now = provider.GetRequiredService<TimeProvider>().GetUtcNow();
         var properties = new AuthenticationProperties { IssuedUtc = now, ExpiresUtc = now + options.ExpireTimeSpan };
         properties.Items[CmsSignInManager.SignedInAtItem] = now.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
+        properties.Items[CmsSignInManager.ServerSessionItem] = Guid.NewGuid().ToString("N");
         var ticket = new AuthenticationTicket(principal, properties, MemberAuthentication.CookieScheme);
         return $"{options.Cookie.Name}={options.TicketDataFormat.Protect(ticket)}";
     }
@@ -74,6 +75,7 @@ internal static class OAuthFlows
         var now = provider.GetRequiredService<TimeProvider>().GetUtcNow();
         var properties = new AuthenticationProperties { IssuedUtc = now, ExpiresUtc = now + options.ExpireTimeSpan };
         properties.Items[CmsSignInManager.SignedInAtItem] = now.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
+        properties.Items[CmsSignInManager.ServerSessionItem] = Guid.NewGuid().ToString("N");
         var ticket = new AuthenticationTicket(principal, properties, IdentityConstants.ApplicationScheme);
         return $"{options.Cookie.Name}={options.TicketDataFormat.Protect(ticket)}";
     }

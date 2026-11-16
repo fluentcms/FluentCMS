@@ -242,6 +242,33 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
         browser.HasCookie(AdminCookie).ShouldBeTrue();
     }
 
+    [Fact]
+    public async Task TheMemberLogoutPageRevokesTheRefreshTokenOfItsSession()
+    {
+        var address = await fixture.RegisterVerifiedAsync();
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.6");
+        await SignInMemberAsync(browser, address);
+        var request = AuthorizeRequest.For(FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
+        using var code = await browser.GetAsync(request.Url);
+        var refreshToken = (await request.ExchangeAsync(fixture.Host, code)).GetProperty("refresh_token").GetString()!;
+
+        var page = await browser.PageAsync("/account/members/logout");
+        using (var signedOut = await browser.PostAsync("/account/members/logout", page, new Dictionary<string, string>()))
+        {
+            signedOut.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        }
+
+        using var client = fixture.Host.CreateSecureClient();
+        using var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = refreshToken,
+            ["client_id"] = FluentCmsTestHost.OAuthMemberClientId,
+        });
+        using var refreshed = await client.PostAsync("/connect/token", content, Token);
+        refreshed.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
     [Theory]
     [InlineData("https://evil.example/")]
     [InlineData("//evil.example/")]

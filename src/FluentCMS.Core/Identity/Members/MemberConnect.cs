@@ -67,6 +67,13 @@ internal static class MemberConnect
             .SetClaim(Claims.AuthenticationTime, signedInAt.ToUnixTimeSeconds())
             .SetClaim(TokenClaims.SessionStart, now.ToUnixTimeSeconds());
         TokenClaims.ForMember(identity, member, await signIn.UserManager.GetSecurityStampAsync(member), request.GetScopes(), methods);
+        if (CmsSignInManager.ServerSession(cookie.Properties!) is { } serverSession
+            && await context.RequestServices.GetRequiredService<IOpenIddictApplicationManager>().FindByClientIdAsync(request.ClientId!, context.RequestAborted) is { } application)
+        {
+            identity.SetAuthorizationId(await context.RequestServices.GetRequiredService<UserSessions>()
+                .BeginAsync(new ClaimsPrincipal(identity), application, serverSession, context.RequestAborted));
+        }
+
         return Results.SignIn(new ClaimsPrincipal(identity), properties: null, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 

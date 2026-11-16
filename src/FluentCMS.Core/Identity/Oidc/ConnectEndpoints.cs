@@ -176,6 +176,11 @@ internal static class ConnectEndpoints
 
             identity.SetAuthorizationId(await context.RequestServices.GetRequiredService<IOpenIddictAuthorizationManager>().GetIdAsync(consent, context.RequestAborted));
         }
+        else if (CmsSignInManager.ServerSession(cookie.Properties!) is { } serverSession)
+        {
+            identity.SetAuthorizationId(await context.RequestServices.GetRequiredService<UserSessions>()
+                .BeginAsync(new ClaimsPrincipal(identity), application, serverSession, context.RequestAborted));
+        }
 
         return Results.SignIn(new ClaimsPrincipal(identity), properties: null, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
@@ -325,6 +330,7 @@ internal static class ConnectEndpoints
     // or to the logout page. The user confirms on the logout page, whose form posts back with an antiforgery token, or the
     // client sends a valid id_token_hint of the signed-in user. Anything else, a cross-site POST included, goes to the logout
     // page, which asks. A request without the sign-in cookie has no sign-in to end, so it sends no expiring cookie either.
+    // Ending a sign-in revokes the authorizations issued in its server session, with their tokens, and no others.
     // The client the request names, by its client_id or by the audience of its hint, says whose sign-in ends: a client of
     // the member pool ends the member's on the member pages, and any other request the admin user's, so that neither
     // signs the other out.
@@ -349,6 +355,8 @@ internal static class ConnectEndpoints
 
         if (cookie.Succeeded)
         {
+            // A logout the browser stops waiting for still ends the authorizations of the session.
+            await context.RequestServices.GetRequiredService<UserSessions>().EndAsync(SignedInUserId(context, cookie, members), cookie.Properties!, CancellationToken.None);
             await context.SignOutAsync(scheme);
         }
 
@@ -411,11 +419,12 @@ internal static class ConnectEndpoints
             return HttpMethods.IsGet(context.Request.Method);
         }
 
-        var signedIn = members
-            ? context.RequestServices.GetRequiredService<MemberManager>().GetUserId(cookie.Principal)
-            : context.RequestServices.GetRequiredService<UserManager<CmsUser>>().GetUserId(cookie.Principal);
-        return signedIn == subject;
+        return SignedInUserId(context, cookie, members) == subject;
     }
+
+    private static string? SignedInUserId(HttpContext context, AuthenticateResult cookie, bool members) => members
+        ? context.RequestServices.GetRequiredService<MemberManager>().GetUserId(cookie.Principal!)
+        : context.RequestServices.GetRequiredService<UserManager<CmsUser>>().GetUserId(cookie.Principal!);
 
     // A new sign-in answers prompt=login and max_age, so the request it comes back with no longer asks for one.
     internal static IEnumerable<KeyValuePair<string, StringValues>> WithoutReauthentication(List<KeyValuePair<string, StringValues>> parameters)

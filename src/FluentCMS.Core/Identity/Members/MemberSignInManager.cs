@@ -122,16 +122,13 @@ internal sealed class MemberSignInManager : SignInManager<CmsMember>
         return await base.CheckPasswordSignInAsync(user, password, lockoutOnFailure);
     }
 
-    // Every sign-in that makes a new cookie comes here. The time of the sign-in is kept in the cookie's properties, as
-    // for an admin user: prompt=login, max_age and the absolute session lifetime read it.
+    // Every sign-in that makes a new cookie comes here. The time of the sign-in and the id of its server session are kept
+    // in the cookie's properties, as for an admin user: prompt=login, max_age and the absolute session lifetime read the
+    // time, and the logout ends the authorizations of the session.
     public override Task SignInWithClaimsAsync(CmsMember user, AuthenticationProperties? authenticationProperties, IEnumerable<Claim> additionalClaims)
     {
         var properties = authenticationProperties ?? new AuthenticationProperties();
-        if (!properties.Items.ContainsKey(CmsSignInManager.SignedInAtItem))
-        {
-            properties.Items[CmsSignInManager.SignedInAtItem] = _time.GetUtcNow().ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
-        }
-
+        CmsSignInManager.MarkSignIn(properties, _time);
         return base.SignInWithClaimsAsync(user, properties, additionalClaims);
     }
 

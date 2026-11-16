@@ -32,6 +32,10 @@ internal sealed class CmsSignInManager(
     // issue time: prompt=login, max_age and the absolute session lifetime read it.
     internal const string SignedInAtItem = ".fcms.signed_in_at";
 
+    // The id of the server session, kept in the cookie's properties in the same way: the authorizations issued in it carry
+    // it, so that the logout of that session ends them (#3198). A cookie from before has none.
+    internal const string ServerSessionItem = ".fcms.server_session";
+
     public static DateTimeOffset? SignedInAt(AuthenticationProperties properties)
     {
         ArgumentNullException.ThrowIfNull(properties);
@@ -39,6 +43,20 @@ internal sealed class CmsSignInManager(
         return properties.Items.TryGetValue(SignedInAtItem, out var value) && long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var seconds)
             ? DateTimeOffset.FromUnixTimeSeconds(seconds)
             : properties.IssuedUtc;
+    }
+
+    public static string? ServerSession(AuthenticationProperties properties)
+    {
+        ArgumentNullException.ThrowIfNull(properties);
+
+        return properties.Items.TryGetValue(ServerSessionItem, out var value) && !string.IsNullOrEmpty(value) ? value : null;
+    }
+
+    // Marks a new sign-in with its time and the id of its server session, unless the properties are a renewal's.
+    internal static void MarkSignIn(AuthenticationProperties properties, TimeProvider time)
+    {
+        properties.Items.TryAdd(SignedInAtItem, time.GetUtcNow().ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture));
+        properties.Items.TryAdd(ServerSessionItem, Guid.NewGuid().ToString("N"));
     }
 
     public override async Task<bool> CanSignInAsync(CmsUser user)
@@ -114,11 +132,7 @@ internal sealed class CmsSignInManager(
     public override Task SignInWithClaimsAsync(CmsUser user, AuthenticationProperties? authenticationProperties, IEnumerable<Claim> additionalClaims)
     {
         var properties = authenticationProperties ?? new AuthenticationProperties();
-        if (!properties.Items.ContainsKey(SignedInAtItem))
-        {
-            properties.Items[SignedInAtItem] = time.GetUtcNow().ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
-        }
-
+        MarkSignIn(properties, time);
         return base.SignInWithClaimsAsync(user, properties, additionalClaims);
     }
 
