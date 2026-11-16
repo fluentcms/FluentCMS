@@ -25,8 +25,9 @@ internal sealed class Seen
     // Runs inside the handler, so a test can look at the database at the moment the event arrives or make the handler fail.
     public Func<CmsEvent, EventDelivery?, Task> Behavior { get; set; } = (_, _) => Task.CompletedTask;
 
+    // A copy, so that an assertion and its message read the same events.
     public IEnumerable<T> Of<T>()
-        where T : CmsEvent => Events.OfType<T>();
+        where T : CmsEvent => [.. Events.OfType<T>()];
 
     public async ValueTask HeardAsync(string name, CmsEvent @event, EventDelivery? delivery, CancellationToken token)
     {
