@@ -30,6 +30,9 @@ internal sealed partial class HostedPagesBrowser : IDisposable
 
     public bool HasCookie(string name) => _cookies.GetCookies(_client.BaseAddress!).Any(cookie => cookie.Name == name && !cookie.Expired);
 
+    // A cookie the browser holds without a page having set it, as name=value.
+    public void SetCookie(string cookie) => _cookies.SetCookies(_client.BaseAddress!, cookie + "; path=/; secure");
+
     public Task<HttpResponseMessage> GetAsync(string url) => _client.GetAsync(url, Token);
 
     public async Task<string> PageAsync(string url)

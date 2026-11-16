@@ -34,9 +34,9 @@ public sealed partial class AuthorizationServerTests
     public async Task ALogoutPostWithoutTheLogoutPagesTokenSignsNoOneOut()
     {
         var editor = await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
-        var tokens = await _host.SignInAsync(editor, "openid", "management");
         var cookie = await _host.SignInCookieAsync(editor);
         using var client = _host.CreateSecureClient();
+        var tokens = await SignInAsync(client, cookie, "openid management");
 
         // A form on another site that posts here: the logout page asks, and the cookie stays.
         using (var forged = await SendAsync(client, HttpMethod.Post, "/connect/logout", cookie, Form(("state", "xyz"))))
