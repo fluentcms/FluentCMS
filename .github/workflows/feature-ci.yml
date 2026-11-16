@@ -17,7 +17,7 @@ env:
   TESTINGPLATFORM_DIAGNOSTIC: 1
   TESTINGPLATFORM_DIAGNOSTIC_VERBOSITY: Information
   TESTINGPLATFORM_DIAGNOSTIC_OUTPUT_DIRECTORY: ${{ github.workspace }}/artifacts/test-results
-  TESTINGPLATFORM_DIAGNOSTIC_FILELOGGER_SYNCHRONOUSWRITE: 1
+  TESTINGPLATFORM_DIAGNOSTIC_SYNCHRONOUS_WRITE: 1
 
 jobs:
   markdown:
@@ -75,26 +75,26 @@ jobs:
 
       # Each --timeout is well past the slowest healthy run of its tests, so a hang ends with time left to name its tests.
       - name: Test SDK
-        run: dotnet test --project tests/FluentCMS.Sdk.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 10m
+        run: dotnet test --project tests/FluentCMS.Sdk.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 5m
 
       - name: Test core units
-        run: dotnet test --project tests/FluentCMS.Core.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 10m
+        run: dotnet test --project tests/FluentCMS.Core.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 5m
 
       - name: Test architecture
-        run: dotnet test --project tests/FluentCMS.Architecture.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 10m
+        run: dotnet test --project tests/FluentCMS.Architecture.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 5m
 
       # The tool, and the host's commands with export and import on SQLite, so that a crash of either shows before full CI.
       - name: Test the tool
-        run: dotnet test --project tests/FluentCMS.Cli.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 10m
+        run: dotnet test --project tests/FluentCMS.Cli.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 5m
 
       # The test projects ignore exit code 8, zero tests, so a filter that matched nothing would pass without a minimum.
       - name: Test the commands
-        run: dotnet test --project tests/FluentCMS.Core.IntegrationTests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --filter-namespace "FluentCMS.Core.IntegrationTests.Commands*" --minimum-expected-tests 40 --timeout 10m
+        run: dotnet test --project tests/FluentCMS.Core.IntegrationTests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --filter-namespace "FluentCMS.Core.IntegrationTests.Commands*" --minimum-expected-tests 40 --timeout 5m
 
       - name: Name the tests that were running
         if: failure() || cancelled()
         shell: bash
-        run: grep -h -e "xUnit.net" -e "\[Long Running Test\]" artifacts/test-results/*.diag || true
+        run: grep -h -A6 -e "\[Long Running Test\]" -e "\[FAIL\]" artifacts/test-results/*.diag 2>/dev/null || true
 
       - name: Upload test results
         if: always()

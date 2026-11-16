@@ -22,7 +22,7 @@ env:
   TESTINGPLATFORM_DIAGNOSTIC: 1
   TESTINGPLATFORM_DIAGNOSTIC_VERBOSITY: Information
   TESTINGPLATFORM_DIAGNOSTIC_OUTPUT_DIRECTORY: ${{ github.workspace }}/artifacts/test-results
-  TESTINGPLATFORM_DIAGNOSTIC_FILELOGGER_SYNCHRONOUSWRITE: 1
+  TESTINGPLATFORM_DIAGNOSTIC_SYNCHRONOUS_WRITE: 1
 
 jobs:
   markdown:
@@ -81,10 +81,13 @@ jobs:
       matrix:
         include:
           - group: units
+            timeout: 5m
             projects: tests/FluentCMS.Sdk.Tests tests/FluentCMS.Core.Tests tests/FluentCMS.Architecture.Tests tests/FluentCMS.Generators.Tests
           - group: integration
+            timeout: 12m
             projects: tests/FluentCMS.Core.IntegrationTests tests/FluentCMS.Cli.Tests tests/FluentCMS.Client.Tests
           - group: plugins
+            timeout: 5m
             projects: tests/FluentCMS.Plugins.Tests tests/FluentCMS.Plugins.Media.Tests tests/FluentCMS.Plugins.Webhooks.Tests tests/FluentCMS.Plugins.Mcp.Tests tests/FluentCMS.Plugins.GraphQL.Tests tests/FluentCMS.Plugins.MultiSite.Tests tests/FluentCMS.Plugins.AiAssist.Tests tests/FluentCMS.Plugins.Search.Tests tests/FluentCMS.Host.Tests
     steps:
       - name: Checkout
@@ -100,20 +103,20 @@ jobs:
             **/*.csproj
 
       # Run every project of the shard even after one fails, so one run reports all failures. A project still running after
-      # 12 minutes, well past the slowest healthy one, has hung, and ends with time left to name its tests.
+      # the shard's timeout, well past its slowest healthy project, has hung, and ends with time left to name its tests.
       - name: Test
         shell: bash
         run: |
           status=0
           for project in ${{ matrix.projects }}; do
-            dotnet test --project "$project" -c Release --report-xunit-trx --results-directory artifacts/test-results --timeout 12m || status=1
+            dotnet test --project "$project" -c Release --report-xunit-trx --results-directory artifacts/test-results --timeout ${{ matrix.timeout }} || status=1
           done
           exit $status
 
       - name: Name the tests that were running
         if: failure() || cancelled()
         shell: bash
-        run: grep -h -e "xUnit.net" -e "\[Long Running Test\]" artifacts/test-results/*.diag || true
+        run: grep -h -A6 -e "\[Long Running Test\]" -e "\[FAIL\]" artifacts/test-results/*.diag 2>/dev/null || true
 
       - name: Upload test results
         if: always()
@@ -156,7 +159,7 @@ jobs:
   build-test-windows:
     name: Build and test (windows-latest)
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       # Pull requests and pushes to main run only the fast tests on Windows, because the Linux shards
       # already run the full suite. Only the nightly and manual runs run the full suite on Windows.
@@ -181,7 +184,8 @@ jobs:
         run: dotnet build -c Release --no-restore -warnaserror
 
       # xunit.v3 ships its own TRX reporter; --report-trx needs an extra package. Each --timeout is well past the slowest
-      # healthy run of its tests, so a hang ends with time left to name its tests.
+      # healthy run of its tests, so a hang ends with time left to name its tests. It counts from the start of each test app,
+      # and in the full run the apps start up to 12 minutes into the job, which the job's 40 minutes allow for.
       - name: Test
         if: env.FULL_TESTS == 'true'
         run: dotnet test -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 25m
@@ -211,7 +215,7 @@ jobs:
       - name: Name the tests that were running
         if: failure() || cancelled()
         shell: bash
-        run: grep -h -e "xUnit.net" -e "\[Long Running Test\]" artifacts/test-results/*.diag || true
+        run: grep -h -A6 -e "\[Long Running Test\]" -e "\[FAIL\]" artifacts/test-results/*.diag 2>/dev/null || true
 
       - name: Upload test results
         if: always()
@@ -224,7 +228,7 @@ jobs:
   data-tests:
     name: Data tests (${{ matrix.provider }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       # The tests start each server in a container through Testcontainers. SQLite and PostgreSQL run in every run. SQL Server
@@ -253,12 +257,12 @@ jobs:
 
       # Well past the slowest healthy run, on SQL Server, so that a hang ends with time left to name its tests.
       - name: Test
-        run: dotnet test --project tests/FluentCMS.Data.Tests -c Release --report-xunit-trx --results-directory artifacts/test-results --timeout 17m
+        run: dotnet test --project tests/FluentCMS.Data.Tests -c Release --report-xunit-trx --results-directory artifacts/test-results --timeout 20m
 
       - name: Name the tests that were running
         if: failure() || cancelled()
         shell: bash
-        run: grep -h -e "xUnit.net" -e "\[Long Running Test\]" artifacts/test-results/*.diag || true
+        run: grep -h -A6 -e "\[Long Running Test\]" -e "\[FAIL\]" artifacts/test-results/*.diag 2>/dev/null || true
 
       - name: Upload test results
         if: always()
