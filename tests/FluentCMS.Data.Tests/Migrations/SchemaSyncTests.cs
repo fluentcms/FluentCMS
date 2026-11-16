@@ -399,6 +399,7 @@ public sealed class SchemaSyncTests : IDisposable
         var exception = await Should.ThrowAsync<TimeoutException>(Runner(host).SyncContentSchemaAsync(ArticleSchemas.WithSubtitle, Token).WaitAsync(TimeSpan.FromSeconds(30), Token));
 
         exception.Message.ShouldStartWith($"The lock {MigrationRunner.SchemaSyncLock} was not free within 15 minutes, so the content tables were not changed; check the owner and lease_until of its row in cms_lock");
+        exception.Message.ShouldContain("when the log has event 9166 for the lock, the database was busy instead");
         _database.Columns("cms_article").ShouldNotContain("subtitle");
     }
 

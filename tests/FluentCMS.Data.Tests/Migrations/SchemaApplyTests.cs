@@ -628,6 +628,36 @@ public sealed partial class SchemaApplyTests : IDisposable
         _database.Columns("cms_article").ShouldContain("summary");
     }
 
+    // Another holder takes the lock, as a waiter on SQLite could at the end of a long transaction, while the operations run or
+    // after they committed and before the history is written.
+    [Theory]
+    [InlineData(false, "FCMS3339: another holder took the lock fluentcms:schema-sync while the operations were applied; their transaction was rolled back")]
+    [InlineData(true, "FCMS3340: the content tables match schema ")]
+    public async Task ARunThatLosesItsLockSaysToRunAgain(bool afterTheOperations, string message)
+    {
+        await MigrateAndApplyAsync(ArticleSchemas.Titled);
+        var schema = ArticleSchemas.Article("title", "subtitle", "summary");
+        using var lost = new LostLock(afterTheOperations);
+
+        using (var host = _database.CreateHost(schema, Production, settings: NoMigrationOnStartup, services: lost.Lock, configure: lost.Configure))
+        {
+            var (exitCode, _, error) = await RunAsync(host, "schema", "apply");
+
+            exitCode.ShouldBe(1);
+            error.ShouldStartWith(message);
+            error.ShouldContain("run 'fluentcms schema apply' again");
+        }
+
+        History().ShouldHaveSingleItem();
+        _database.Columns("cms_article").Contains("subtitle").ShouldBe(afterTheOperations);
+
+        var (again, _, againError) = await RunAsync(schema, "schema", "apply");
+
+        again.ShouldBe(0, againError);
+        _database.Columns("cms_article").ShouldContain("summary");
+        History().Count.ShouldBe(2);
+    }
+
     [Theory]
     [InlineData(new[] { "--output", "schema.sql" }, "FCMS3300: --output names the file of --script, so it needs --script")]
     [InlineData(new[] { "--script", "--dry-run" }, "FCMS3300: --script and --dry-run both apply nothing; give one")]

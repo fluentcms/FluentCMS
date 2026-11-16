@@ -3,6 +3,7 @@ using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
+using FluentCMS.Providers;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -107,6 +108,12 @@ internal sealed class SchemaApplyCommand : HostCommand
                     CommandErrorCodes.SchemaApplyFailed,
                     $"the database refused an operation ({exception.GetType().Name}: {SecretScrubber.Of(exception.Message)}); its transaction was rolled back, except what SQLite committed before a table rebuild, which the next run leaves out, and the schema history keeps its last row");
             }
+            catch (OperationCanceledException) when (LockLost(held, cancellationToken))
+            {
+                throw new CommandException(
+                    CommandErrorCodes.SchemaApplyFailed,
+                    $"another holder took the lock {MigrationRunner.SchemaSyncLock} while the operations were applied; their transaction was rolled back, except what SQLite committed before a table rebuild, which the next run leaves out, and the schema history keeps its last row; run 'fluentcms schema apply' again");
+            }
         }
 
         var hash = SchemaSnapshot.Of(schema).Hash;
@@ -120,12 +127,22 @@ internal sealed class SchemaApplyCommand : HostCommand
                 CommandErrorCodes.SchemaNotRecorded,
                 $"the content tables match schema {hash}, but the schema history could not be written ({exception.GetType().Name}); run 'fluentcms schema apply' again with the same options to record it");
         }
+        catch (OperationCanceledException) when (LockLost(held, cancellationToken))
+        {
+            throw new CommandException(
+                CommandErrorCodes.SchemaNotRecorded,
+                $"the content tables match schema {hash}, but another holder took the lock {MigrationRunner.SchemaSyncLock} before the schema history was written; run 'fluentcms schema apply' again with the same options to record it");
+        }
 
         await context.Output.WriteLineAsync(steps.Count == 0
             ? $"Nothing to apply; the content tables match schema {hash}, which the schema history records."
             : $"Applied {Count(steps.Count)}; the schema history records schema {hash}.");
         return CommandExitCodes.Success;
     }
+
+    // The lock's Lost canceled the work, and not the caller.
+    private static bool LockLost(IDistributedLockHandle? held, CancellationToken cancellationToken) =>
+        held is { Lost.IsCancellationRequested: true } && !cancellationToken.IsCancellationRequested;
 
     private static async Task RefuseAsync(MigrationRunner runner, CancellationToken cancellationToken)
     {
