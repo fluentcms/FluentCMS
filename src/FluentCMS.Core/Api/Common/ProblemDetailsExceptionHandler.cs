@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,7 +26,7 @@ internal sealed partial class ProblemDetailsExceptionHandler(ILogger<ProblemDeta
         var endpoint = httpContext.Features.Get<IExceptionHandlerFeature>()?.Endpoint ?? httpContext.GetEndpoint();
         if (endpoint?.Metadata.GetMetadata<HostedPageMetadata>() is not null)
         {
-            await WritePageAsync(httpContext, problem, cancellationToken);
+            await WritePageAsync(httpContext, problem, cancellationToken: cancellationToken);
             return true;
         }
 
@@ -39,14 +40,14 @@ internal sealed partial class ProblemDetailsExceptionHandler(ILogger<ProblemDeta
         return true;
     }
 
-    private static Task WritePageAsync(HttpContext httpContext, ApiProblem problem, CancellationToken cancellationToken)
+    internal static Task WritePageAsync(HttpContext httpContext, ApiProblem problem, string? message = null, CancellationToken cancellationToken = default)
     {
         var response = httpContext.Response;
         response.StatusCode = problem.Status;
         response.ContentType = "text/html; charset=utf-8";
         response.Headers.ContentSecurityPolicy = "default-src 'none'; style-src 'unsafe-inline'";
         response.Headers.CacheControl = "no-store";
-        var message = problem.Status >= StatusCodes.Status500InternalServerError
+        message ??= problem.Status >= StatusCodes.Status500InternalServerError
             ? "Something went wrong on our side. Try again in a moment."
             : "The request could not be handled. Go back and try again.";
         return response.WriteAsync(
@@ -56,7 +57,7 @@ internal sealed partial class ProblemDetailsExceptionHandler(ILogger<ProblemDeta
             <head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow"><title>Something went wrong</title></head>
             <body style="font-family: system-ui, sans-serif; max-width: 32rem; margin: 4rem auto; padding: 0 1rem">
             <h1>Something went wrong</h1>
-            <p>{message}</p>
+            <p>{HtmlEncoder.Default.Encode(message)}</p>
             <p>Error: <code>{problem.Code}</code></p>
             </body>
             </html>
