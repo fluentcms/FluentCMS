@@ -1,0 +1,42 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+
+<PageTitle>@Branding.Name</PageTitle>
+@if (Branding.FaviconUrl is { } favicon)
+{
+    <HeadContent>
+        <link rel="icon" href="@favicon.OriginalString" />
+    </HeadContent>
+}
+
+@code {
+    public const string AccentProperty = "--fluentcms-brand-accent";
+    public const string LogoProperty = "--fluentcms-brand-logo";
+    public const string SetPropertyFunction = "document.documentElement.style.setProperty";
+
+    [Parameter, EditorRequired]
+    public AdminBranding Branding { get; set; } = new();
+
+    // Set through the CSS object model rather than a <style> element, which a strict Content-Security-Policy would block.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        if (Branding.AccentColor is { } accent)
+        {
+            await JS.InvokeVoidAsync(SetPropertyFunction, AccentProperty, accent);
+        }
+
+        if (Branding.LogoUrl is { } logo)
+        {
+            // Resolved here, since a relative url() in a custom property resolves against the stylesheet that uses it.
+            var absolute = new Uri(new Uri(Navigation.BaseUri), logo);
+            await JS.InvokeVoidAsync(SetPropertyFunction, LogoProperty, $"url(\"{absolute.AbsoluteUri}\")");
+        }
+    }
+}

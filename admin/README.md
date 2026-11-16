@@ -14,4 +14,6 @@ The Blazor WebAssembly admin of FluentCMS, a pure client of the Management API. 
 | `tests/FluentCMS.Admin.ApiTests` | The admin's client against `FluentCmsTestHost`, in full CI |
 | `tests/FluentCMS.Admin.EndToEnd` | Browser tests against the reference host, in full CI |
 
+A lane registers its services in `AddAdminServices` of `AdminHostBuilderExtensions`, which runs only with a valid `config.json` and hands it the `AdminConfiguration`.
+
 The browser libraries are trimmable and the app publishes trimmed, so a trim warning in a FluentCMS assembly fails `dotnet build -warnaserror` (the trim analyzer) and the publish. In a FluentCMS component, the framework's `Router` (IL2111), `LayoutView` (IL2110, IL2111) and `DynamicComponent` (IL2111) raise such warnings; `RouteView`, `CascadingValue`, `ErrorBoundary`, `NavLink`, `PageTitle` and `HeadOutlet` do not. The component that hosts one of the three carries `@attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = ...)]` and the same for `IL2111`, with the reason, and then both pass.

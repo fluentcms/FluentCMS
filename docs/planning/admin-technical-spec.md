@@ -171,19 +171,23 @@ The admin is the public OAuth client `fluentcms-admin`, the default of `cms.Clie
 
 ### 2.5 Runtime configuration (`config.json`)
 
-At start the app reads `config.json` from its own base URL with `cache: no-store` (row 3.2), so one prebuilt build works against any API host. *Proposed* members:
+At start the app reads `config.json` from its own base URL with `cache: no-store` (row 3.2), so one prebuilt build works against any API host. Members, as `FluentCMS.Admin.Abstractions` exposes them in the record `AdminConfiguration`, which the app registers as a singleton only when the file is valid:
 
 | Member | Meaning | Default |
 | --- | --- | --- |
-| `apiBaseUrl` | Origin and path base of the API host, such as `https://cms.example.com` or `https://example.com/cms` | required |
-| `authority` | Issuer of the authorization server | `apiBaseUrl` |
-| `clientId` | OAuth client id | `fluentcms-admin` |
-| `scopes` | Scopes asked at sign-in | `openid profile email offline_access management` |
-| `branding` | `name`, `logoUrl`, `faviconUrl`, `accentColor` | FluentCMS |
-| `cultures` | Interface cultures offered, and the default | the shipped ones, `en` |
-| `previewOrigins` | Origins the preview frame may load; the admin refuses a preview URL of another origin, and the reference host puts them in the page's `frame-src` (4.12, 6.1) | none, which turns preview off |
+| `apiBaseUrl` | Origin and path base of the API host, such as `https://cms.example.com` or `https://example.com/cms`: an absolute `http` or `https` URL without user info, query or fragment. A trailing slash is optional; the admin always adds one, so that a relative address resolves under the path base | required |
+| `authority` | Issuer of the authorization server, a URL as `apiBaseUrl`, kept as written without a slash added, since the issuer of the discovery document is compared as an exact string | `apiBaseUrl` as written |
+| `clientId` | OAuth client id, visible ASCII without spaces | `fluentcms-admin` |
+| `scopes` | Scopes asked at sign-in, an array of distinct scope tokens | `["openid", "profile", "email", "offline_access", "management"]` |
+| `branding` | An object of `name` (text), `logoUrl` and `faviconUrl` (an absolute `http` or `https` URL, or a path relative to the admin's base) and `accentColor` (a hex color: `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`) | `FluentCMS`, the built-in logo and favicon, the theme's accent |
+| `cultures` | An object of `offered`, an array of distinct culture names, and `default`, which must be one of them | every shipped culture, `en` |
+| `previewOrigins` | Origins the preview frame may load, each an `http` or `https` URL without a path; the admin refuses a preview URL of another origin, and the reference host puts them in the page's `frame-src` (4.12, 6.1) | none, which turns preview off |
 
-A missing or invalid member shows a static error page that names it, before anything else runs; the app makes no request to the API until its configuration is valid. A member the app does not know is ignored with a console warning, so a newer `config.json` works with an older build. In the reference host, `config.json` is an endpoint built from the host's configuration, so the image needs no file (6.1).
+Every URL is ASCII only; an internationalized host name is written in its `xn--` form. A plain `http` URL of `apiBaseUrl` or `authority` on a host that is not loopback is accepted with a console warning.
+
+A missing or invalid member shows a static error page that names it, before anything else runs; the app makes no request to the API until its configuration is valid. A member set to `null` counts as not set, and a member that appears twice in one object is refused. A file that cannot be read within 15 seconds is a problem of the file. A member the app does not know, also inside `branding` and `cultures`, is ignored with a console warning, so a newer `config.json` works with an older build. In the reference host, `config.json` is an endpoint built from the host's configuration, so the image needs no file (6.1). `config.json` is as trusted as `index.html`: whoever can write it can already point `authority` anywhere, so the validation guards against mistakes, not against an attacker.
+
+The branding is applied without a `<style>` element, which a strict `Content-Security-Policy` blocks: `name` is the page title, `faviconUrl` a `<link rel="icon">`, and `accentColor` and `logoUrl` the custom properties `--fluentcms-brand-accent` and `--fluentcms-brand-logo` (a `url()` resolved against the admin's base) on the document element, which the wrapped set reads (2.3).
 
 ### 2.6 Lazy loading by plugin assembly
 
@@ -272,7 +276,7 @@ Elsewhere: the admin's rules join `tests/FluentCMS.Architecture.Tests` (3.3); `t
 - The app publishes trimmed. Records are serialized through source-generated contexts, and trim warnings are errors.
 - Static web assets are fingerprinted and compressed at publish, so the host can cache them for a year and `index.html` and `config.json` not at all.
 - Strings shown to a user come from resources (4.17); a test with a pseudo-culture fails on a hard-coded one (7).
-- No JavaScript outside an allow-list: the script of the component library, loaded by `FluentCMS.Admin.Components` (2.3); the rich text bundle; and small interop modules for focus, clipboard, file drop and `BroadcastChannel`, each in `FluentCMS.Admin` or `FluentCMS.Admin.RichText`.
+- No JavaScript outside an allow-list: the script of the component library, loaded by `FluentCMS.Admin.Components` (2.3); the rich text bundle; setting the branding custom properties on the document element through `style.setProperty` (2.5); and small interop modules for focus, clipboard, file drop and `BroadcastChannel`, each in `FluentCMS.Admin` or `FluentCMS.Admin.RichText`.
 
 ### 3.2 Naming conventions
 
