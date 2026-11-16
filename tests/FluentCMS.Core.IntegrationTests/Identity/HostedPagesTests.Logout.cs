@@ -27,7 +27,7 @@ public sealed partial class HostedPagesTests
     public async Task AConfirmedLogoutRevokesTheTokensOfItsSessionAndLeavesTheUsersOtherSessions()
     {
         var editor = await CreateUserAsync(_host);
-        using var browser = new HostedPagesBrowser(_host);
+        using var browser = new HostedPagesBrowser(_host, "10.1.0.16");
         using var otherDevice = new HostedPagesBrowser(_host, "10.1.0.9");
         await SignInAsync(browser, editor.Email);
         await SignInAsync(otherDevice, editor.Email);
@@ -62,7 +62,7 @@ public sealed partial class HostedPagesTests
     public async Task ALogoutWithAHintRevokesOnlyWhenItEndsTheSessionOfItsCookie()
     {
         var editor = await CreateUserAsync(_host);
-        using var browser = new HostedPagesBrowser(_host);
+        using var browser = new HostedPagesBrowser(_host, "10.1.0.17");
         using var otherDevice = new HostedPagesBrowser(_host, "10.1.0.11");
         await SignInAsync(browser, editor.Email);
         await SignInAsync(otherDevice, editor.Email);
@@ -102,7 +102,7 @@ public sealed partial class HostedPagesTests
     public async Task ALogoutLeavesTheConsentOfAThirdPartyClient()
     {
         var editor = await CreateUserAsync(_host);
-        using var browser = new HostedPagesBrowser(_host);
+        using var browser = new HostedPagesBrowser(_host, "10.1.0.18");
         await SignInAsync(browser, editor.Email);
 
         var request = AuthorizeRequest.For(ThirdPartyClientId, ThirdPartyRedirectUri, "openid management");
@@ -135,7 +135,7 @@ public sealed partial class HostedPagesTests
     {
         var editor = await CreateUserAsync(_host);
         var other = await CreateUserAsync(_host);
-        using var browser = new HostedPagesBrowser(_host);
+        using var browser = new HostedPagesBrowser(_host, "10.1.0.19");
         await SignInAsync(browser, editor.Email);
         var before = await CodeFlowAsync(_host, browser);
 
@@ -294,7 +294,7 @@ public sealed partial class HostedPagesTests
     public async Task TheLogoutOfACookieFromBeforeSessionsWereMarkedEndsTheCookieAlone()
     {
         var editor = await CreateUserAsync(_host);
-        using var browser = new HostedPagesBrowser(_host);
+        using var browser = new HostedPagesBrowser(_host, "10.1.0.20");
         browser.SetCookie(await UnmarkedCookieAsync(editor));
         var tokens = await CodeFlowAsync(_host, browser);
         Payload(Text(tokens, "id_token")).TryGetProperty("sid", out _).ShouldBeFalse();

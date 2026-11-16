@@ -246,7 +246,7 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
     public async Task TheMemberLogoutPageRevokesTheRefreshTokenOfItsSession()
     {
         var address = await fixture.RegisterVerifiedAsync();
-        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.6");
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.20");
         await SignInMemberAsync(browser, address);
         var request = AuthorizeRequest.For(FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
         using var code = await browser.GetAsync(request.Url);
@@ -266,7 +266,7 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
     {
         var admin = await CreateAdminAsync();
         var address = await fixture.RegisterVerifiedAsync();
-        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.7");
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.21");
         await SignInAdminAsync(browser, admin.Email);
         await SignInMemberAsync(browser, address);
         var adminRequest = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, "openid offline_access management");
@@ -296,7 +296,7 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
     {
         var admin = await CreateAdminAsync();
         var address = await fixture.RegisterVerifiedAsync();
-        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.8");
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.22");
         await SignInAdminAsync(browser, admin.Email);
         await SignInMemberAsync(browser, address);
         var adminTokens = await CodeFlowAsync(browser, FluentCmsTestHost.OAuthClientId, "openid offline_access management");
@@ -317,8 +317,8 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
     {
         var first = await fixture.RegisterVerifiedAsync();
         var second = await fixture.RegisterVerifiedAsync();
-        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.9");
-        using var otherDevice = new HostedPagesBrowser(fixture.Host, "10.8.0.10");
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.23");
+        using var otherDevice = new HostedPagesBrowser(fixture.Host, "10.8.0.24");
         await SignInMemberAsync(browser, first);
         await SignInMemberAsync(otherDevice, first);
         var before = await CodeFlowAsync(browser, FluentCmsTestHost.OAuthMemberClientId, "openid offline_access");
@@ -341,7 +341,7 @@ public sealed class MemberPagesTests(MemberFixture fixture) : IClassFixture<Memb
     public async Task AMemberReauthenticationAnotherSiteCanAskForEndsTheCookieAndRevokesNothing()
     {
         var address = await fixture.RegisterVerifiedAsync();
-        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.11");
+        using var browser = new HostedPagesBrowser(fixture.Host, "10.8.0.25");
         foreach (var prompt in new[] { "&prompt=login", "&max_age=0" })
         {
             await SignInMemberAsync(browser, address);
