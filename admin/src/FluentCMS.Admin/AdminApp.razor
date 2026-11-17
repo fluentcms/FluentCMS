@@ -25,7 +25,7 @@
                 <Router AppAssembly="typeof(AdminApp).Assembly" NotFoundPage="typeof(NotFoundPage)">
                     <Found Context="routeData">
                         <RouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)" />
-                        <FocusOnNavigate RouteData="routeData" Selector="@(focusHeading ? "h1" : NoFocus)" />
+                        <HeadingFocus Path="@currentPath" Enabled="@focusHeading" />
                     </Found>
                 </Router>
             </SignInGate>
@@ -39,12 +39,10 @@ else
 }
 
 @code {
-    // A selector that matches no element, so that FocusOnNavigate leaves focus where it is.
-    private const string NoFocus = ":not(*)";
-
     private bool themeRestored;
     private bool focusHeading;
     private string previousRoute = string.Empty;
+    private string currentPath = string.Empty;
 
     // This assembly is trimmed and nothing references its pages, so each page is kept here or Router does not find it. A test
     // checks that every routable page of the assembly is listed.
@@ -53,6 +51,7 @@ else
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComponentGalleryPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AccountPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(LoginCallbackPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ContentListPage))]
     public AdminApp()
     {
     }
@@ -71,6 +70,7 @@ else
 
         Theme.Changed += OnThemeChanged;
         previousRoute = Route(Navigation.Uri);
+        currentPath = PathOf(previousRoute);
         Navigation.LocationChanged += OnLocationChanged;
         if (Startup.Configuration is not null)
         {
@@ -98,13 +98,21 @@ else
 
     // The first page of a load keeps focus at the start of the document, so the first Tab reaches the skip link; so does the
     // page the callback of the sign-in returns to, which is the first the user sees. A route change after that moves focus to
-    // the page's heading (spec 4.18). FocusOnNavigate focuses when the page changes; this handler runs before any render of
-    // the navigation, since it subscribed before the gate and the Router existed, so the new page gets the selector chosen here.
+    // the page's heading (spec 4.18), when the path changes, so from one type's list to another's too, and not when only the
+    // query string does, as a sort. This handler runs before any render of the navigation, since it subscribed before the gate
+    // and the Router existed, so HeadingFocus gets the path and the choice made here.
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         var from = previousRoute;
         previousRoute = Route(e.Location);
+        currentPath = PathOf(previousRoute);
         focusHeading = !from.StartsWith("authentication/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string PathOf(string route)
+    {
+        var end = route.IndexOfAny(['?', '#']);
+        return end < 0 ? route : route[..end];
     }
 
     private string Route(string uri) => uri.StartsWith(Navigation.BaseUri, StringComparison.Ordinal) ? Navigation.ToBaseRelativePath(uri) : uri;

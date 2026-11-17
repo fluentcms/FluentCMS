@@ -7,8 +7,15 @@ namespace FluentCMS.Admin.Components.Resources;
 // applies to it too. A host that reads them through its own localizer registers another ICmsTextSource.
 internal sealed class CmsStrings : ICmsTextSource
 {
-    public const string GridSortedAscending = nameof(GridSortedAscending);
-    public const string GridSortedDescending = nameof(GridSortedDescending);
+    public const string GridSortedBy = nameof(GridSortedBy);
+    public const string GridSortAscending = nameof(GridSortAscending);
+    public const string GridSortDescending = nameof(GridSortDescending);
+    public const string GridSortThen = nameof(GridSortThen);
+    public const string GridSortLevel = nameof(GridSortLevel);
+    public const string GridSelectAll = nameof(GridSelectAll);
+    public const string GridSelectRow = nameof(GridSelectRow);
+    public const string GridLoading = nameof(GridLoading);
+    public const string GridEmpty = nameof(GridEmpty);
     public const string GridRowsSelected = nameof(GridRowsSelected);
     public const string DropZoneChoose = nameof(DropZoneChoose);
     public const string Close = nameof(Close);

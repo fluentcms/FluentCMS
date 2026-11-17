@@ -28,6 +28,8 @@ internal sealed class FakeManagementServer : HttpMessageHandler
 
     public string UserName { get; set; } = "ada";
 
+    public Guid UserId { get; set; }
+
     // Every request with its method and body, for the routes a test writes to.
     public List<(HttpMethod Method, string Path, string? Body)> Calls { get; } = [];
 
@@ -38,6 +40,14 @@ internal sealed class FakeManagementServer : HttpMessageHandler
     public JsonObject TwoFactor { get; set; } = new() { ["enabled"] = false, ["required"] = false, ["pending"] = false, ["recoveryCodesLeft"] = 0 };
 
     public JsonObject Preferences { get; set; } = new() { ["culture"] = null, ["timeZone"] = null, ["dateFormat"] = null, ["numberFormat"] = null };
+
+    // The entries GET /content/{type} answers with, keyed by the type; the total counts them unless set.
+    public Dictionary<string, JsonArray> Entries { get; } = [];
+
+    public long? Total { get; set; }
+
+    // The query string of every read of a content list, without the leading "?".
+    public List<string> ContentQueries { get; } = [];
 
     // Answers a request before the routes above do, when it returns one.
     public Func<HttpMethod, string, HttpResponseMessage?>? Answer { get; set; }
@@ -179,9 +189,19 @@ internal sealed class FakeManagementServer : HttpMessageHandler
         }
 
         var site = Guid.TryParse(siteHeader, out var id) ? id : MainSite;
+        if (request.Method == HttpMethod.Get && path.StartsWith("content/", StringComparison.Ordinal) && Entries.TryGetValue(path["content/".Length..], out var entries))
+        {
+            lock (_gate)
+            {
+                ContentQueries.Add(request.RequestUri.Query.TrimStart('?'));
+            }
+
+            return Json(new JsonObject { ["items"] = entries.DeepClone(), ["total"] = Total ?? entries.Count, ["page"] = 1, ["pageSize"] = 25 });
+        }
+
         return path switch
         {
-            "me" => Json(new JsonObject { ["id"] = Guid.Empty, ["kind"] = "adminUser", ["name"] = UserName, ["roles"] = new JsonArray() }),
+            "me" => Json(new JsonObject { ["id"] = UserId, ["kind"] = "adminUser", ["name"] = UserName, ["roles"] = new JsonArray() }),
             "me/sites" => Json(new JsonObject { ["items"] = Sites.DeepClone() }),
             "me/access" => Json(Access[site]),
             "schema" when RefusesSchema || !Access[site]["permissions"]!.AsArray().Any(name => name!.GetValue<string>() == "schema.read") => Forbidden(),

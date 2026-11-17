@@ -54,6 +54,30 @@ public sealed class CmsDialogTests : ComponentTestContext
         open.ShouldBe(false);
     }
 
+    // A dialog closed by its parent raises no OpenChanged, and still says once it has closed, after the library gave focus back.
+    [Fact]
+    public async Task ClosedIsRaisedWhoeverClosedTheDialog()
+    {
+        var closed = 0;
+        bool? open = null;
+        var dialog = Render<CmsDialog>(p => p
+            .Add(x => x.Title, "Discard changes?")
+            .Add(x => x.Open, true)
+            .Add(x => x.OpenChanged, v => open = v)
+            .Add(x => x.OnClosed, () => closed++));
+        var host = dialog.Find("fluent-dialog");
+
+        dialog.Render(p => p.Add(x => x.Open, false));
+        await host.TriggerEventAsync("ondialogtoggle", new DialogToggleEventArgs { Id = host.Id, OldState = "open", NewState = "closed" });
+
+        open.ShouldBeNull();
+        closed.ShouldBe(1);
+
+        await host.TriggerEventAsync("ondialogtoggle", new DialogToggleEventArgs { Id = "menu", NewState = "closed" });
+
+        closed.ShouldBe(1);
+    }
+
     [Fact]
     public async Task APopoverClosingInsideTheDialogLeavesItOpen()
     {

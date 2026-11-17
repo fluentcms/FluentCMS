@@ -47,23 +47,47 @@ FluentCMS.Admin.Components.CmsDataGrid<TItem>
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.ChildContent.set -> void
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.CmsDataGrid() -> void
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.EmptyContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.EmptyContent.set -> void
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.Items.get -> System.Collections.Generic.IReadOnlyList<TItem>!
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.Items.set -> void
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.Label.get -> string!
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.Label.set -> void
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.Loading.get -> bool
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.Loading.set -> void
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.LoadingContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.LoadingContent.set -> void
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.OnRowActivated.get -> Microsoft.AspNetCore.Components.EventCallback<TItem>
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.OnRowActivated.set -> void
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.RowLabel.get -> System.Func<TItem, string?>?
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.RowLabel.set -> void
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.RowOffset.get -> long
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.RowOffset.set -> void
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.SelectedItems.get -> System.Collections.Generic.IReadOnlyList<TItem>!
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.SelectedItems.set -> void
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.SelectedItemsChanged.get -> Microsoft.AspNetCore.Components.EventCallback<System.Collections.Generic.IReadOnlyList<TItem>!>
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.SelectedItemsChanged.set -> void
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.SelectionMode.get -> FluentCMS.Admin.Components.CmsSelectionMode
 FluentCMS.Admin.Components.CmsDataGrid<TItem>.SelectionMode.set -> void
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.Sort.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Components.CmsSortKey!>!
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.Sort.set -> void
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.SortChanged.get -> Microsoft.AspNetCore.Components.EventCallback<System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Components.CmsSortKey!>!>
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.SortChanged.set -> void
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.TotalItems.get -> long?
+FluentCMS.Admin.Components.CmsDataGrid<TItem>.TotalItems.set -> void
 FluentCMS.Admin.Components.CmsDataGridColumn<TItem>
 FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment<TItem>?
 FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.ChildContent.set -> void
 FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.CmsDataGridColumn() -> void
 FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.Dispose() -> void
+FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.Name.get -> string?
+FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.Name.set -> void
+FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.Order.get -> int
+FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.Order.set -> void
 FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.SortKey.get -> System.Func<TItem, System.IComparable?>?
 FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.SortKey.set -> void
+FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.Sortable.get -> bool
+FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.Sortable.set -> void
 FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.Title.get -> string!
 FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.Title.set -> void
 FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.Value.get -> System.Func<TItem, string?>?
@@ -82,6 +106,8 @@ FluentCMS.Admin.Components.CmsDialogBase.Actions.set -> void
 FluentCMS.Admin.Components.CmsDialogBase.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
 FluentCMS.Admin.Components.CmsDialogBase.ChildContent.set -> void
 FluentCMS.Admin.Components.CmsDialogBase.CmsDialogBase() -> void
+FluentCMS.Admin.Components.CmsDialogBase.OnClosed.get -> Microsoft.AspNetCore.Components.EventCallback
+FluentCMS.Admin.Components.CmsDialogBase.OnClosed.set -> void
 FluentCMS.Admin.Components.CmsDialogBase.Open.get -> bool
 FluentCMS.Admin.Components.CmsDialogBase.Open.set -> void
 FluentCMS.Admin.Components.CmsDialogBase.OpenChanged.get -> Microsoft.AspNetCore.Components.EventCallback<bool>
@@ -121,6 +147,7 @@ FluentCMS.Admin.Components.CmsIconName.Checkmark = 16 -> FluentCMS.Admin.Compone
 FluentCMS.Admin.Components.CmsIconName.Delete = 1 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Dismiss = 6 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Document = 10 -> FluentCMS.Admin.Components.CmsIconName
+FluentCMS.Admin.Components.CmsIconName.Down = 22 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Edit = 2 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Folder = 9 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Globe = 13 -> FluentCMS.Admin.Components.CmsIconName
@@ -135,6 +162,7 @@ FluentCMS.Admin.Components.CmsIconName.Save = 3 -> FluentCMS.Admin.Components.Cm
 FluentCMS.Admin.Components.CmsIconName.Search = 4 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Settings = 5 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Sun = 18 -> FluentCMS.Admin.Components.CmsIconName
+FluentCMS.Admin.Components.CmsIconName.Up = 21 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Upload = 8 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Warning = 15 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsInputBase<TValue>
@@ -232,6 +260,15 @@ FluentCMS.Admin.Components.CmsSelectionMode
 FluentCMS.Admin.Components.CmsSelectionMode.Many = 2 -> FluentCMS.Admin.Components.CmsSelectionMode
 FluentCMS.Admin.Components.CmsSelectionMode.None = 0 -> FluentCMS.Admin.Components.CmsSelectionMode
 FluentCMS.Admin.Components.CmsSelectionMode.One = 1 -> FluentCMS.Admin.Components.CmsSelectionMode
+FluentCMS.Admin.Components.CmsSortKey
+FluentCMS.Admin.Components.CmsSortKey.<Clone>$() -> FluentCMS.Admin.Components.CmsSortKey!
+FluentCMS.Admin.Components.CmsSortKey.CmsSortKey(string! Column, bool Descending = false) -> void
+FluentCMS.Admin.Components.CmsSortKey.Column.get -> string!
+FluentCMS.Admin.Components.CmsSortKey.Column.init -> void
+FluentCMS.Admin.Components.CmsSortKey.Deconstruct(out string! Column, out bool Descending) -> void
+FluentCMS.Admin.Components.CmsSortKey.Descending.get -> bool
+FluentCMS.Admin.Components.CmsSortKey.Descending.init -> void
+FluentCMS.Admin.Components.CmsSortKey.Equals(FluentCMS.Admin.Components.CmsSortKey? other) -> bool
 FluentCMS.Admin.Components.CmsSpace
 FluentCMS.Admin.Components.CmsSpace.Large = 3 -> FluentCMS.Admin.Components.CmsSpace
 FluentCMS.Admin.Components.CmsSpace.Medium = 2 -> FluentCMS.Admin.Components.CmsSpace
@@ -344,8 +381,9 @@ override FluentCMS.Admin.Components.CmsBreadcrumbItem.Equals(object? obj) -> boo
 override FluentCMS.Admin.Components.CmsBreadcrumbItem.GetHashCode() -> int
 override FluentCMS.Admin.Components.CmsBreadcrumbItem.ToString() -> string!
 override FluentCMS.Admin.Components.CmsButton.OnParametersSet() -> void
-override FluentCMS.Admin.Components.CmsDataGrid<TItem>.OnParametersSetAsync() -> System.Threading.Tasks.Task!
+override FluentCMS.Admin.Components.CmsDataGrid<TItem>.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.OnInitialized() -> void
+override FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsDialogBase.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
 override FluentCMS.Admin.Components.CmsDialogBase.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsFileDropZone.OnParametersSet() -> void
@@ -356,6 +394,9 @@ override FluentCMS.Admin.Components.CmsNavigationLink.OnInitialized() -> void
 override FluentCMS.Admin.Components.CmsOption.Equals(object? obj) -> bool
 override FluentCMS.Admin.Components.CmsOption.GetHashCode() -> int
 override FluentCMS.Admin.Components.CmsOption.ToString() -> string!
+override FluentCMS.Admin.Components.CmsSortKey.Equals(object? obj) -> bool
+override FluentCMS.Admin.Components.CmsSortKey.GetHashCode() -> int
+override FluentCMS.Admin.Components.CmsSortKey.ToString() -> string!
 override FluentCMS.Admin.Components.CmsThemeRoot.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
 override FluentCMS.Admin.Components.CmsTree.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsTreeNode.Equals(object? obj) -> bool
@@ -365,6 +406,8 @@ static FluentCMS.Admin.Components.CmsBreadcrumbItem.operator !=(FluentCMS.Admin.
 static FluentCMS.Admin.Components.CmsBreadcrumbItem.operator ==(FluentCMS.Admin.Components.CmsBreadcrumbItem? left, FluentCMS.Admin.Components.CmsBreadcrumbItem? right) -> bool
 static FluentCMS.Admin.Components.CmsOption.operator !=(FluentCMS.Admin.Components.CmsOption? left, FluentCMS.Admin.Components.CmsOption? right) -> bool
 static FluentCMS.Admin.Components.CmsOption.operator ==(FluentCMS.Admin.Components.CmsOption? left, FluentCMS.Admin.Components.CmsOption? right) -> bool
+static FluentCMS.Admin.Components.CmsSortKey.operator !=(FluentCMS.Admin.Components.CmsSortKey? left, FluentCMS.Admin.Components.CmsSortKey? right) -> bool
+static FluentCMS.Admin.Components.CmsSortKey.operator ==(FluentCMS.Admin.Components.CmsSortKey? left, FluentCMS.Admin.Components.CmsSortKey? right) -> bool
 static FluentCMS.Admin.Components.CmsTreeNode.operator !=(FluentCMS.Admin.Components.CmsTreeNode? left, FluentCMS.Admin.Components.CmsTreeNode? right) -> bool
 static FluentCMS.Admin.Components.CmsTreeNode.operator ==(FluentCMS.Admin.Components.CmsTreeNode? left, FluentCMS.Admin.Components.CmsTreeNode? right) -> bool
 static Microsoft.Extensions.DependencyInjection.CmsComponentsServiceCollectionExtensions.AddCmsComponents(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

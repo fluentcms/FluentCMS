@@ -35,10 +35,17 @@ public sealed class LocalizationTests : AdminTestContext
     public void EveryTextOfEveryPageComesFromTheResources(string culture, string route)
     {
         UseInterfaceCulture(culture);
+        // The list of a type, whose name, the data of the fake, is marked as a resource is.
+        Management.SetTypes(FakeManagementServer.MainSite, FakeManagementServer.Type("article", displayName: PseudoCulture.Transform("Articles", culture == PseudoCulture.RightToLeft)));
+        Management.Entries["article"] = [];
         Start();
-        Services.GetRequiredService<NavigationManager>().NavigateTo(route);
+        Services.GetRequiredService<NavigationManager>().NavigateTo(route.Replace("{Type}", "article", StringComparison.Ordinal));
 
         var app = Render<AdminApp>();
+        if (route.Contains("{Type}", StringComparison.Ordinal))
+        {
+            app.WaitForAssertion(() => app.Find(".cms-data-grid-message"));
+        }
 
         // FocusOnNavigate does nothing on a page without a heading.
         app.FindAll("h1").ShouldHaveSingleItem();

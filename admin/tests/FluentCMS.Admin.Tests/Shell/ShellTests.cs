@@ -137,7 +137,8 @@ public sealed class ShellTests : AdminTestContext
         app.Find(".site-switcher select").Change(Shop.ToString("D"));
 
         app.WaitForAssertion(() => Links(app.Find(".shell-sidebar")).ShouldBe(["", "content/article", "content/product"]));
-        Management.Requests.ShouldBe([("me/access", Shop.ToString("D")), ("schema", Shop.ToString("D")), ("plugins", Shop.ToString("D"))], ignoreOrder: true);
+        Management.Requests.Where(request => !request.Path.StartsWith("content/", StringComparison.Ordinal))
+            .ShouldBe([("me/access", Shop.ToString("D")), ("schema", Shop.ToString("D")), ("plugins", Shop.ToString("D"))], ignoreOrder: true);
         Navigation.Uri.ShouldEndWith("/content/article");
         Storage[TabStorageKeys.Site].ShouldBe(Shop.ToString("D"));
         app.FindAll("[role=status] > div").Select(message => message.TextContent).ShouldContain("Showing the site Shop");
@@ -299,6 +300,28 @@ public sealed class ShellTests : AdminTestContext
         app.WaitForAssertion(() => app.FindComponent<CmsDrawer>().Instance.Open.ShouldBeFalse());
     }
 
+    // The library gives focus back to the drawer's opener once it has closed, after the page moved it to its heading, so the
+    // layout moves it to the heading again; a drawer the user dismissed leaves focus on the opener (#3178).
+    [Fact]
+    public async Task ANavigationFromTheDrawerEndsWithFocusOnThePageHeading()
+    {
+        Management.SetTypes(MainSite, Type("article"));
+        var app = Load();
+        app.Find(".shell-open-navigation fluent-button").Click();
+        var host = DrawerHost(app);
+
+        await host.TriggerEventAsync("ondialogtoggle", new DialogToggleEventArgs { Id = host.Id, NewState = "closed" });
+
+        HeadingFocuses().ShouldBe(0);
+
+        app.Find(".shell-open-navigation fluent-button").Click();
+        Navigation.NavigateTo("content/article");
+        var focused = HeadingFocuses();
+        await DrawerHost(app).TriggerEventAsync("ondialogtoggle", new DialogToggleEventArgs { Id = host.Id, NewState = "closed" });
+
+        HeadingFocuses().ShouldBe(focused + 1);
+    }
+
     [Fact]
     public void TheThemeFollowsTheSystemUntilTheUserChoosesAndTheChoiceIsKeptInTheBrowser()
     {
@@ -397,6 +420,11 @@ public sealed class ShellTests : AdminTestContext
     }
 
     private static string Main => MainSite.ToString("D");
+
+    private static IElement DrawerHost(IRenderedComponent<AdminApp> app) =>
+        app.FindAll("fluent-drawer").Single(drawer => drawer.GetAttribute("aria-label") == "Navigation");
+
+    private int HeadingFocuses() => Document.Invocations.Count(call => call.Identifier == "focusHeading");
 
     private static IElement MenuItem(IRenderedComponent<AdminApp> app, string text) =>
         app.FindAll("fluent-menu-item").Single(item => item.TextContent.Trim().StartsWith(text, StringComparison.Ordinal));

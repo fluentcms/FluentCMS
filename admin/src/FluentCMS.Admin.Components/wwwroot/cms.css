@@ -424,3 +424,83 @@ fluent-field .cms-field-message {
 .cms-breadcrumb a {
     color: var(--cms-color-accent-text);
 }
+
+.cms-data-grid {
+    overflow: auto;
+}
+
+.cms-data-grid table {
+    inline-size: 100%;
+    border-collapse: collapse;
+}
+
+.cms-data-grid th,
+.cms-data-grid td {
+    padding: var(--cms-space-s);
+    border-block-end: 1px solid var(--cms-color-border);
+    text-align: start;
+    vertical-align: middle;
+}
+
+.cms-data-grid th {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.cms-data-grid .cms-data-grid-select {
+    inline-size: var(--cms-target-size);
+}
+
+.cms-data-grid-checkbox {
+    inline-size: var(--cms-target-size);
+    block-size: var(--cms-target-size);
+    margin: 0;
+    accent-color: var(--cms-color-accent);
+}
+
+.cms-data-grid-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cms-space-xs);
+    min-block-size: var(--cms-target-size);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.cms-data-grid-sort-mark {
+    color: var(--cms-color-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* A row is a tab stop when it has no checkbox; its ring is drawn inside, so that the table's overflow does not cut it. */
+.cms-data-grid tbody tr:focus-visible {
+    outline: var(--cms-focus-ring-width) solid var(--cms-focus-ring-color);
+    outline-offset: calc(-1 * var(--cms-focus-ring-width));
+}
+
+.cms-data-grid tbody tr:hover {
+    background: var(--cms-color-surface);
+}
+
+/* Selection is shown by the checkbox and by a bar on the start edge, not by color alone. */
+.cms-data-grid tbody tr.cms-data-grid-selected {
+    background: color-mix(in srgb, var(--cms-color-accent) 10%, transparent);
+}
+
+.cms-data-grid tbody td:first-child {
+    border-inline-start: 3px solid transparent;
+}
+
+.cms-data-grid tbody tr.cms-data-grid-selected td:first-child {
+    border-inline-start-color: var(--cms-color-accent);
+}
+
+.cms-data-grid-message td {
+    padding-block: var(--cms-space-l);
+    color: var(--cms-color-text-muted);
+    text-align: center;
+}

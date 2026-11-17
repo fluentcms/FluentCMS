@@ -480,6 +480,7 @@ FluentCMS.Admin.Forms.IUnsavedForm
 FluentCMS.Admin.Forms.IUnsavedForm.CaptureDraft() -> FluentCMS.Admin.Forms.FormDraft!
 FluentCMS.Admin.IAdminAccess
 FluentCMS.Admin.IAdminAccess.Allows(string! permission) -> bool
+FluentCMS.Admin.IAdminAccess.ForType(string! type) -> FluentCMS.Admin.Api.TypeAccessInfo?
 FluentCMS.Admin.IAdminContext
 FluentCMS.Admin.IAdminContext.Access.get -> FluentCMS.Admin.IAdminAccess!
 FluentCMS.Admin.IAdminContext.Changed -> System.Action?
@@ -488,6 +489,20 @@ FluentCMS.Admin.IAdminContext.Site.get -> FluentCMS.Admin.Api.MySiteInfo?
 FluentCMS.Admin.IAdminContext.User.get -> FluentCMS.Admin.Api.MeResponse?
 FluentCMS.Admin.IAnnouncer
 FluentCMS.Admin.IAnnouncer.Announce(string! message, FluentCMS.Admin.AnnouncementPoliteness politeness = FluentCMS.Admin.AnnouncementPoliteness.Polite) -> void
+FluentCMS.Admin.Lists.ListCellBase
+FluentCMS.Admin.Lists.ListCellBase.Entry.get -> FluentCMS.Admin.Api.ContentEntry!
+FluentCMS.Admin.Lists.ListCellBase.Entry.set -> void
+FluentCMS.Admin.Lists.ListCellBase.Field.get -> FluentCMS.Admin.Api.SchemaFieldDescription!
+FluentCMS.Admin.Lists.ListCellBase.Field.set -> void
+FluentCMS.Admin.Lists.ListCellBase.ListCellBase() -> void
+FluentCMS.Admin.Lists.ListCellBase.Value.get -> System.Text.Json.Nodes.JsonNode?
+FluentCMS.Admin.Lists.ListCellRegistry
+FluentCMS.Admin.Lists.ListCellRegistry.Add<TCell>(string! fieldType) -> void
+FluentCMS.Admin.Lists.ListCellRegistry.CellFor(string! fieldType) -> System.Type!
+FluentCMS.Admin.Lists.ListCellRegistry.ListCellRegistry() -> void
+FluentCMS.Admin.Lists.ListCellRegistry.Shows(FluentCMS.Admin.Api.SchemaFieldDescription! field) -> bool
+FluentCMS.Admin.Lists.TextListCell
+FluentCMS.Admin.Lists.TextListCell.TextListCell() -> void
 const FluentCMS.Admin.Api.ApiRequest.NewLocale = "\"0\"" -> string!
 override FluentCMS.Admin.Api.ApiProblem.Equals(object? obj) -> bool
 override FluentCMS.Admin.Api.ApiProblem.GetHashCode() -> int

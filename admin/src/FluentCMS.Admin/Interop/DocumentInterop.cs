@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 namespace FluentCMS.Admin.Interop;
 
 // The allow-listed user of IJSRuntime for the document (spec 3.1): its lang and dir, the branding's accent as a custom
-// property, and the return of focus to an opener.
+// property, the return of focus to an opener, and focus on the page's heading.
 internal sealed class DocumentInterop(IJSRuntime js) : IAsyncDisposable
 {
     public const string ModulePath = "./_content/FluentCMS.Admin/document.js";
@@ -29,6 +29,13 @@ internal sealed class DocumentInterop(IJSRuntime js) : IAsyncDisposable
     {
         var document = await Module();
         return new FocusOpener(this, await document.InvokeAsync<IJSObjectReference>("rememberFocus"));
+    }
+
+    // After a drawer closed on a navigation, which gave focus back to the drawer's opener (spec 4.18).
+    public async ValueTask FocusHeadingAsync()
+    {
+        var document = await Module();
+        await document.InvokeVoidAsync("focusHeading");
     }
 
     public async ValueTask DisposeAsync()

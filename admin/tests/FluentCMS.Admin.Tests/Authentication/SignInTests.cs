@@ -106,7 +106,7 @@ public sealed class SignInTests : IAsyncDisposable
         }, ignoreOrder: true);
         tab.Session.User.ShouldBe(new SignedInUser(_authority.Subject, "ada", "ada@example.com"));
         _storage[AdminSession.SignInKey].ShouldBeNull();
-        app.Find("main#main h1").TextContent.ShouldBe("Page not found");
+        app.Find("main#main h1").TextContent.ShouldBe("Content type not found");
     }
 
     [Fact]

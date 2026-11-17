@@ -181,6 +181,12 @@ public enum CmsIconName
 
     /// <summary>Opens the navigation.</summary>
     Navigation,
+
+    /// <summary>Moves up, or earlier in a list.</summary>
+    Up,
+
+    /// <summary>Moves down, or later in a list.</summary>
+    Down,
 }
 
 /// <summary>When a <see cref="CmsNavigationLink"/> is the current page.</summary>

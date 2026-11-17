@@ -1,0 +1,33 @@
+@* Moves focus to the page's heading once the page of a new path has rendered. Blazor's FocusOnNavigate acts only when the
+   page's type changes, and the lists of two types are one page. *@
+@inject DocumentInterop Document
+
+@code {
+    private string? focusedPath;
+    private bool pending;
+
+    [Parameter, EditorRequired]
+    public string Path { get; set; } = string.Empty;
+
+    // False keeps focus where it is, as on the first page of a load.
+    [Parameter]
+    public bool Enabled { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (Path != focusedPath)
+        {
+            focusedPath = Path;
+            pending = Enabled;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (pending)
+        {
+            pending = false;
+            await Document.FocusHeadingAsync();
+        }
+    }
+}

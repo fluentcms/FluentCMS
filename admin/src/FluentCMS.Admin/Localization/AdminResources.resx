@@ -201,6 +201,12 @@
   <data name="System.Components.IconNavigation" xml:space="preserve">
     <value>Navigation</value>
   </data>
+  <data name="System.Components.IconUp" xml:space="preserve">
+    <value>Up</value>
+  </data>
+  <data name="System.Components.IconDown" xml:space="preserve">
+    <value>Down</value>
+  </data>
   <data name="System.Components.Inputs" xml:space="preserve">
     <value>Inputs and selects</value>
   </data>
@@ -829,5 +835,119 @@
   </data>
   <data name="Account.Preferences.LanguageFailed" xml:space="preserve">
     <value>Your language could not be read.</value>
+  </data>
+  <data name="Content.List.NotFoundHeading" xml:space="preserve">
+    <value>Content type not found</value>
+  </data>
+  <data name="Content.List.NotFoundText" xml:space="preserve">
+    <value>This content type does not exist in the site, or your roles do not let you read it.</value>
+  </data>
+  <data name="Content.List.SingletonPending" xml:space="preserve">
+    <value>This type has a single entry, which is edited in its form.</value>
+  </data>
+  <data name="Content.List.Columns" xml:space="preserve">
+    <value>Columns</value>
+  </data>
+  <data name="Content.List.New" xml:space="preserve">
+    <value>New</value>
+  </data>
+  <data name="Content.List.TraceId" xml:space="preserve">
+    <value>Trace id: {0}</value>
+  </data>
+  <data name="Content.List.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Content.List.Forbidden" xml:space="preserve">
+    <value>Your roles do not let you read the entries of this type.</value>
+  </data>
+  <data name="Content.List.Failed" xml:space="preserve">
+    <value>The list could not be read.</value>
+  </data>
+  <data name="Content.List.PageSelected" xml:space="preserve">
+    <value>{0} selected on this page.</value>
+  </data>
+  <data name="Content.List.SelectAllMatching" xml:space="preserve">
+    <value>Select all {0} that match</value>
+  </data>
+  <data name="Content.List.AllMatchingSelected" xml:space="preserve">
+    <value>All {0} entries that match are selected.</value>
+  </data>
+  <data name="Content.List.ClearSelection" xml:space="preserve">
+    <value>Clear selection</value>
+  </data>
+  <data name="Content.List.SelectionCleared" xml:space="preserve">
+    <value>Selection cleared.</value>
+  </data>
+  <data name="Content.List.Empty" xml:space="preserve">
+    <value>No entries yet.</value>
+  </data>
+  <data name="Content.List.Paging" xml:space="preserve">
+    <value>Pages</value>
+  </data>
+  <data name="Content.List.Total" xml:space="preserve">
+    <value>{0} entries</value>
+  </data>
+  <data name="Content.List.PageSize" xml:space="preserve">
+    <value>Per page</value>
+  </data>
+  <data name="Content.List.Previous" xml:space="preserve">
+    <value>Previous page</value>
+  </data>
+  <data name="Content.List.Next" xml:space="preserve">
+    <value>Next page</value>
+  </data>
+  <data name="Content.List.PageOf" xml:space="preserve">
+    <value>Page {0} of {1}</value>
+  </data>
+  <data name="Content.List.ColumnsTitle" xml:space="preserve">
+    <value>Choose columns</value>
+  </data>
+  <data name="Content.List.ColumnsText" xml:space="preserve">
+    <value>{0} is always shown first. Choose the other columns and their order.</value>
+  </data>
+  <data name="Content.List.MoveUp" xml:space="preserve">
+    <value>Move {0} up</value>
+  </data>
+  <data name="Content.List.MoveDown" xml:space="preserve">
+    <value>Move {0} down</value>
+  </data>
+  <data name="Content.List.ColumnsApply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="Content.List.ColumnsReset" xml:space="preserve">
+    <value>Reset to default</value>
+  </data>
+  <data name="Content.List.ColumnsCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Content.List.Column.Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Content.List.Column.Locale" xml:space="preserve">
+    <value>Locale</value>
+  </data>
+  <data name="Content.List.Column.UpdatedAt" xml:space="preserve">
+    <value>Updated</value>
+  </data>
+  <data name="Content.List.Column.UpdatedBy" xml:space="preserve">
+    <value>Updated by</value>
+  </data>
+  <data name="Content.List.Column.Id" xml:space="preserve">
+    <value>Id</value>
+  </data>
+  <data name="Content.List.You" xml:space="preserve">
+    <value>You</value>
+  </data>
+  <data name="Content.Status.draft" xml:space="preserve">
+    <value>Draft</value>
+  </data>
+  <data name="Content.Status.published" xml:space="preserve">
+    <value>Published</value>
+  </data>
+  <data name="Content.Status.modified" xml:space="preserve">
+    <value>Modified</value>
+  </data>
+  <data name="Content.Status.unpublished" xml:space="preserve">
+    <value>Unpublished</value>
   </data>
 </root>
