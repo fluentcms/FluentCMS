@@ -49,8 +49,12 @@ public sealed class RelationTests(EndToEndHost host) : BrowserTest(host)
         await DialogButton(tags, "Content.Relation.Choose").ClickAsync();
         await Expect(Labels(tab, "tags")).ToHaveTextAsync(["dotnet", "release notes"]);
 
-        // The closed picker gives focus back to the button that opened it, on the library's own timer; until it has, a key
-        // pressed on an entry can land on that button instead.
+        // The closed picker gives focus back to the button that opened it twice: the dialog's close does at once, and the
+        // library again on a 25 ms timer (FocusOnPreviousActiveElement in its script). Focus moved to an entry before that
+        // timer is taken back, so a key lands on that button or focus leaves the moved entry. A timer of the page set now
+        // runs after the library's, since timers run in the order they expire.
+        await Expect(FieldButton(tab, "tags", "Content.Relation.ChooseEntries")).ToBeFocusedAsync();
+        await tab.Page.EvaluateAsync("() => new Promise(resolve => setTimeout(resolve, 100))");
         await Expect(FieldButton(tab, "tags", "Content.Relation.ChooseEntries")).ToBeFocusedAsync();
         await Entry(tab, "tags", "release notes").FocusAsync();
         await tab.Page.Keyboard.PressAsync("Alt+ArrowUp");
