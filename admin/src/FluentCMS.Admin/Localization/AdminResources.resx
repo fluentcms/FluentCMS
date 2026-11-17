@@ -1445,4 +1445,85 @@
   <data name="Content.Cell.No" xml:space="preserve">
     <value>No</value>
   </data>
+  <data name="Content.List.Column.Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Content.List.OpenInPanel" xml:space="preserve">
+    <value>Open {0} in a side panel</value>
+  </data>
+  <data name="Content.Panel.Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Content.Panel.Leave.Title" xml:space="preserve">
+    <value>Close with unsaved changes?</value>
+  </data>
+  <data name="Content.Panel.Leave.Text" xml:space="preserve">
+    <value>This entry has changes that are not saved. They are lost when you close the panel.</value>
+  </data>
+  <data name="Content.Panel.Leave.Confirm" xml:space="preserve">
+    <value>Close without saving</value>
+  </data>
+  <data name="Content.Panel.Leave.Cancel" xml:space="preserve">
+    <value>Keep editing</value>
+  </data>
+  <data name="Content.Relation.None" xml:space="preserve">
+    <value>No entry chosen.</value>
+  </data>
+  <data name="Content.Relation.ChooseEntry" xml:space="preserve">
+    <value>Choose an entry</value>
+  </data>
+  <data name="Content.Relation.ChooseEntries" xml:space="preserve">
+    <value>Choose entries</value>
+  </data>
+  <data name="Content.Relation.Create" xml:space="preserve">
+    <value>New {0}</value>
+  </data>
+  <data name="Content.Relation.OpenHint" xml:space="preserve">
+    <value>, open in a side panel</value>
+  </data>
+  <data name="Content.Relation.MoveUp" xml:space="preserve">
+    <value>Move {0} up</value>
+  </data>
+  <data name="Content.Relation.MoveDown" xml:space="preserve">
+    <value>Move {0} down</value>
+  </data>
+  <data name="Content.Relation.Remove" xml:space="preserve">
+    <value>Remove {0}</value>
+  </data>
+  <data name="Content.Relation.OrderHint" xml:space="preserve">
+    <value>Drag an entry, or press Alt with the up or down arrow, to change the order.</value>
+  </data>
+  <data name="Content.Relation.Removed" xml:space="preserve">
+    <value>{0} removed.</value>
+  </data>
+  <data name="Content.Relation.Moved" xml:space="preserve">
+    <value>{0} moved to position {1} of {2}.</value>
+  </data>
+  <data name="Content.Relation.Created" xml:space="preserve">
+    <value>{0} created and chosen.</value>
+  </data>
+  <data name="Content.Relation.PickerTitle" xml:space="preserve">
+    <value>Choose entries: {0}</value>
+  </data>
+  <data name="Content.Relation.PickerTitleOne" xml:space="preserve">
+    <value>Choose an entry: {0}</value>
+  </data>
+  <data name="Content.Relation.LoadMore" xml:space="preserve">
+    <value>Load more</value>
+  </data>
+  <data name="Content.Relation.Shown" xml:space="preserve">
+    <value>{0} entries shown.</value>
+  </data>
+  <data name="Content.Relation.ChosenOne" xml:space="preserve">
+    <value>1 entry chosen.</value>
+  </data>
+  <data name="Content.Relation.Chosen" xml:space="preserve">
+    <value>{0} entries chosen.</value>
+  </data>
+  <data name="Content.Relation.Choose" xml:space="preserve">
+    <value>Choose</value>
+  </data>
+  <data name="Content.Relation.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
 </root>

@@ -1,0 +1,247 @@
+@* The relation picker (spec 4.9, A-15): a dialog over the list of the target type, with a search that sends q when the target
+   is searchable and the site has an index, or a contains filter on its label field otherwise, the target's filters (A-48),
+   and "load more" by the cursor of the last page. A relation to many takes several entries, kept in the order they were
+   chosen in, and keeps those chosen before that the pages read do not show. *@
+@implements IDisposable
+@inject ManagementClient Client
+@inject AdminContext Context
+@inject ListFilterRegistry FilterTypes
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<AdminResources> L
+
+<CmsDialog Title="@L[Multiple ? "Content.Relation.PickerTitle" : "Content.Relation.PickerTitleOne", TypeLabel]" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : OnClose.InvokeAsync())">
+    <ChildContent>
+        @if (Open)
+        {
+            <div class="relation-picker">
+                <ListToolbar Type="@Target" Searchable="@Searches" Query="@criteria" QueryChanged="OnCriteriaAsync" />
+                @if (failed)
+                {
+                    <div class="relation-picker-problem" role="alert">
+                        <p>@L["Content.List.Failed"]</p>
+                        <CmsButton OnClick="TryAgainAsync">@L["Content.List.TryAgain"]</CmsButton>
+                    </div>
+                }
+                else
+                {
+                    <CmsDataGrid TItem="ContentEntry"
+                                 Label="@TypeLabel"
+                                 Items="@entries"
+                                 SelectionMode="@(Multiple ? CmsSelectionMode.Many : CmsSelectionMode.One)"
+                                 SelectedItems="@SelectedRows"
+                                 SelectedItemsChanged="OnSelected"
+                                 OnRowActivated="OnRowActivatedAsync"
+                                 RowLabel="@(entry => AdminLabels.Entry(Target, entry))"
+                                 Loading="@loading">
+                        <EmptyContent>@L[filters.Count > 0 || search is not null ? "Content.List.NoMatch" : "Content.List.Empty"]</EmptyContent>
+                        <ChildContent>
+                            <CmsDataGridColumn TItem="ContentEntry" Name="label" Title="@LabelTitle" Order="0">
+                                <span lang="@context.Locale">@AdminLabels.Entry(Target, context)</span>
+                            </CmsDataGridColumn>
+                            <CmsDataGridColumn TItem="ContentEntry" Name="status" Title="@L["Content.List.Column.Status"]" Order="1">
+                                <EntryBadges Entry="@context" />
+                            </CmsDataGridColumn>
+                        </ChildContent>
+                    </CmsDataGrid>
+                    @if (cursor is not null)
+                    {
+                        <CmsButton @ref="moreButton" OnClick="LoadMoreAsync">@L["Content.Relation.LoadMore"]</CmsButton>
+                    }
+                }
+                <p class="relation-picker-count">@(chosen.Count == 1 ? L["Content.Relation.ChosenOne"] : L["Content.Relation.Chosen", chosen.Count])</p>
+            </div>
+        }
+    </ChildContent>
+    <Actions>
+        <CmsButton @ref="chooseButton" Appearance="CmsButtonAppearance.Primary" OnClick="ChooseAsync">@L["Content.Relation.Choose"]</CmsButton>
+        <CmsButton OnClick="@(() => OnClose.InvokeAsync())">@L["Content.Relation.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+@code {
+    private CancellationTokenSource? reading;
+    private bool wasOpen;
+    // The filters and the search, as a query string in the grammar of a list's address.
+    private string criteria = "";
+    private IReadOnlyList<FieldFilter> filters = [];
+    private string? search;
+    private List<ContentEntry> entries = [];
+    private string? cursor;
+    private bool loading;
+    private bool failed;
+    private List<Guid> chosen = [];
+    private readonly Dictionary<Guid, ContentEntry> known = [];
+    private CmsButton? moreButton;
+    private CmsButton? chooseButton;
+    private bool focusAfterMore;
+
+    [Parameter, EditorRequired]
+    public SchemaTypeDescription Target { get; set; } = null!;
+
+    // A relation to many: several entries, by checkboxes; otherwise one.
+    [Parameter]
+    public bool Multiple { get; set; }
+
+    // The ids chosen when the picker opens, in their order.
+    [Parameter]
+    public IReadOnlyList<Guid> Selected { get; set; } = [];
+
+    // The content locale of the form the relation is in; the view's when null.
+    [Parameter]
+    public string? Locale { get; set; }
+
+    [Parameter]
+    public bool Open { get; set; }
+
+    // Raised when the picker closes without a choice; the opener answers by setting Open to false.
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    // Raised with the chosen entries in their order; one that no page read shows has its id only.
+    [Parameter]
+    public EventCallback<IReadOnlyList<ContentEntry>> OnPicked { get; set; }
+
+    private string TypeLabel => AdminLabels.Type(Target, L);
+
+    private string LabelTitle => AdminLabels.LabelField(Target) is { } name && Target.Fields.FirstOrDefault(item => item.Name == name) is { } labelField
+        ? AdminLabels.Field(labelField)
+        : L["Content.List.Column.Id"];
+
+    // A search needs a searchable target and an index in the site, as the list's does; without them a search filters the label.
+    private bool SearchIndex => Target.Fields.Any(item => item.Searchable && !item.Hidden) && Context.SearchIndex;
+
+    private bool Searches => SearchIndex || RelationReads.FiltersLabel(Target, FilterTypes);
+
+    private IReadOnlyList<ContentEntry> SelectedRows => chosen.ToHashSet() is var on ? [.. entries.Where(entry => on.Contains(entry.Id))] : [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open == wasOpen)
+        {
+            return;
+        }
+
+        wasOpen = Open;
+        if (!Open)
+        {
+            reading?.Cancel();
+            return;
+        }
+
+        (criteria, filters, search, chosen) = ("", [], null, [.. Selected.Distinct()]);
+        known.Clear();
+        await ReadAsync(more: false, announce: false);
+    }
+
+    public void Dispose()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // The button is gone once the last page is read, so focus goes to the dialog's choice.
+        if (focusAfterMore && !loading)
+        {
+            focusAfterMore = false;
+            await ((cursor is not null ? moreButton : null) ?? chooseButton)!.FocusAsync();
+        }
+    }
+
+    private async Task ReadAsync(bool more, bool announce = true)
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+        var current = reading = new CancellationTokenSource();
+        (loading, failed) = (true, false);
+        if (!more)
+        {
+            (entries, cursor) = ([], null);
+        }
+
+        try
+        {
+            var query = RelationReads.Page(Target, filters, search, SearchIndex, more ? cursor : null, Locale);
+            var page = await Client.ListEntriesAsync(Target.Name, query, current.Token);
+            if (current.IsCancellationRequested)
+            {
+                return;
+            }
+
+            var shown = entries.Select(entry => entry.Id).ToHashSet();
+            entries = [.. entries, .. page.Items.Where(entry => shown.Add(entry.Id))];
+            foreach (var entry in page.Items)
+            {
+                known[entry.Id] = entry;
+            }
+
+            cursor = page.NextCursor;
+            if (announce)
+            {
+                Announcer.Announce(entries.Count == 0 ? L["Content.List.NoMatch"] : L["Content.Relation.Shown", entries.Count]);
+            }
+        }
+        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or TaskCanceledException or JsonException)
+        {
+            failed = true;
+        }
+
+        loading = false;
+    }
+
+    private Task OnCriteriaAsync(string query)
+    {
+        criteria = query;
+        filters = ListFilters.Parse(query, ListFilters.Fields(Target, FilterTypes));
+        search = Searches ? ListFilters.ParseSearch(ListFilters.SearchOf(query)) : null;
+        return ReadAsync(more: false);
+    }
+
+    private Task TryAgainAsync() => ReadAsync(more: false);
+
+    private async Task LoadMoreAsync()
+    {
+        if (cursor is null || loading)
+        {
+            return;
+        }
+
+        focusAfterMore = true;
+        await ReadAsync(more: true);
+    }
+
+    // The grid passes the rows chosen among those it shows; a row it does not show keeps its place in the choice.
+    private void OnSelected(IReadOnlyList<ContentEntry> rows)
+    {
+        if (!Multiple)
+        {
+            chosen = rows.Count > 0 ? [rows[^1].Id] : [];
+            return;
+        }
+
+        var on = rows.Select(row => row.Id).ToHashSet();
+        var shown = entries.Select(entry => entry.Id).ToHashSet();
+        chosen = [.. chosen.Where(id => !shown.Contains(id) || on.Contains(id)), .. rows.Select(row => row.Id).Where(id => !chosen.Contains(id))];
+    }
+
+    // Enter on a row chooses it: one entry is chosen at once, and a row of a relation to many is toggled.
+    private Task OnRowActivatedAsync(ContentEntry entry)
+    {
+        if (!Multiple)
+        {
+            chosen = [entry.Id];
+            return ChooseAsync();
+        }
+
+        chosen = chosen.Contains(entry.Id) ? [.. chosen.Where(id => id != entry.Id)] : [.. chosen, entry.Id];
+        return Task.CompletedTask;
+    }
+
+    private Task ChooseAsync() =>
+        OnPicked.InvokeAsync([.. chosen.Select(id => known.GetValueOrDefault(id) ?? new ContentEntry { Id = id })]);
+}

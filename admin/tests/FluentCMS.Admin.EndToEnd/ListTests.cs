@@ -62,10 +62,12 @@ public sealed class ListTests(EndToEndHost host) : BrowserTest(host)
         await tab.ReloadAsync();
         await Expect(Headers(grid)).ToHaveTextAsync([Starts("Title"), Starts(Text("Content.List.Column.UpdatedAt")), Starts("Category")]);
 
-        // By keyboard alone: one tab stop per row, so Tab goes from a row's checkbox to the next row's, as the arrows do; Space
-        // selects and Enter opens.
+        // By keyboard alone: a row's checkbox, then its button that opens it in a side panel (A-15), and the next row's checkbox,
+        // which the arrows also move to; Space selects and Enter opens.
         var rows = grid.Locator("tbody tr");
         await rows.Nth(0).Locator("input[type=checkbox]").FocusAsync();
+        await tab.Page.Keyboard.PressAsync("Tab");
+        await tab.Page.WaitForFunctionAsync("() => document.activeElement?.closest('tbody tr td:last-child fluent-button') != null", null, new PageWaitForFunctionOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         await tab.Page.Keyboard.PressAsync("Tab");
         await Expect(rows.Nth(1).Locator("input[type=checkbox]")).ToBeFocusedAsync();
         await tab.Page.Keyboard.PressAsync("ArrowDown");
@@ -114,7 +116,8 @@ public sealed class ListTests(EndToEndHost host) : BrowserTest(host)
     }
 
     // The column headers but the selection's; a sorted one also holds its mark and, with several keys, its level.
-    private static ILocator Headers(ILocator grid) => grid.Locator("thead th:not(.cms-data-grid-select)");
+    // The columns of the entry, without the last one of the row's actions.
+    private static ILocator Headers(ILocator grid) => grid.Locator("thead th:not(.cms-data-grid-select):not(:last-child)");
 
     // The number of entries the pager shows, from the resource's text around it.
     private static async Task<int> TotalAsync(AdminTab tab)

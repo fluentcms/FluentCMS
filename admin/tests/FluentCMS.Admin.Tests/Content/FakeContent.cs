@@ -7,11 +7,13 @@ namespace FluentCMS.Admin.Tests.Content;
 
 internal sealed record ContentWrite(HttpMethod Method, string Path, JsonObject Body, string? IfMatch, string? IdempotencyKey, string? Locale);
 
-// The content routes a form calls, over FakeManagementServer: read an entry with its tag, list a singleton, create with a
+// The content routes a form calls, over FakeManagementServer: read an entry with its tag, list a type, create with a
 // Location, and save with If-Match, which a stale tag fails with a 412 that holds the entry as it is now. Publish, unpublish
 // and discard move the status as the server does. Each entry is kept per locale: a request is in its locale query parameter,
 // else its X-Cms-Locale, else en; a read of a locale the entry lacks is a 404, locale=all answers every locale it has, and a
-// save with If-Match "0" adds a locale. A test can answer the next write itself.
+// save with If-Match "0" adds a locale. A test can answer the next write itself. A list reads every field of its entries in
+// its locale, in the order they were added, and takes filter[id][in], filter[field][contains], q on every text, pageSize
+// and a cursor, which is the number of entries before the page.
 internal sealed class FakeContent
 {
     public const string DefaultLocale = "en";
@@ -30,6 +32,9 @@ internal sealed class FakeContent
     public List<ContentWrite> Writes { get; } = [];
 
     public List<string> Reads { get; } = [];
+
+    // The content locale each read was sent in, by its path and query.
+    public List<(string Read, string? Locale)> ReadLocales { get; } = [];
 
     // Answers the next write instead of the store, when it returns an answer, or fails it by throwing.
     public Func<ContentWrite, HttpResponseMessage?>? NextWrite { get; set; }
@@ -81,15 +86,12 @@ internal sealed class FakeContent
         if (request.Method == HttpMethod.Get)
         {
             Reads.Add(request.RequestUri!.PathAndQuery);
+            ReadLocales.Add((request.RequestUri.PathAndQuery, Header(request, "X-Cms-Locale")));
             return rest switch
             {
                 // A list the server holds rows for is the server's to answer.
                 [] when _server.Entries.ContainsKey(type) => null,
-                [] => FakeManagementServer.Json(new JsonObject
-                {
-                    ["items"] = new JsonArray([.. _entries.Where(entry => entry.Value.Type == type && entry.Key.Locale == locale).Select(entry => (JsonNode)new JsonObject { ["id"] = entry.Key.Id })]),
-                    ["pageSize"] = 1,
-                }),
+                [] => List(type, locale, System.Web.HttpUtility.ParseQueryString(request.RequestUri.Query)),
                 [var id] when Guid.TryParse(id, out var key) && locale == "all" && Locales(key).Count > 0 => FakeManagementServer.Json(new JsonObject
                 {
                     ["id"] = key,
@@ -169,6 +171,42 @@ internal sealed class FakeContent
 
         return null;
     }
+
+    private HttpResponseMessage List(string type, string locale, System.Collections.Specialized.NameValueCollection query)
+    {
+        IEnumerable<JsonObject> matches = _entries.Where(entry => entry.Value.Type == type && entry.Key.Locale == locale).Select(entry => Document(entry.Key.Id, locale));
+        foreach (var key in query.AllKeys.OfType<string>())
+        {
+            var value = query[key]!;
+            if (key == "filter[id][in]")
+            {
+                var ids = value.Split(',').Select(Guid.Parse).ToHashSet();
+                matches = matches.Where(entry => ids.Contains(entry["id"]!.GetValue<Guid>()));
+            }
+            else if (key.StartsWith("filter[", StringComparison.Ordinal) && key.EndsWith("][contains]", StringComparison.Ordinal))
+            {
+                var field = key["filter[".Length..^"][contains]".Length];
+                matches = matches.Where(entry => Text(entry[field])?.Contains(value, StringComparison.OrdinalIgnoreCase) == true);
+            }
+            else if (key == "q")
+            {
+                matches = matches.Where(entry => entry.Any(member => !FluentCMS.Admin.Api.ContentEntry.SystemMembers.Contains(member.Key) && Text(member.Value)?.Contains(value, StringComparison.OrdinalIgnoreCase) == true));
+            }
+        }
+
+        var all = matches.ToList();
+        var skip = int.TryParse(query["cursor"], out var cursor) ? cursor : 0;
+        var size = int.TryParse(query["pageSize"], out var pageSize) ? pageSize : 25;
+        var page = new JsonObject { ["items"] = new JsonArray([.. all.Skip(skip).Take(size)]), ["pageSize"] = size };
+        if (skip + size < all.Count)
+        {
+            page["nextCursor"] = (skip + size).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        return FakeManagementServer.Json(page);
+    }
+
+    private static string? Text(JsonNode? node) => node is JsonValue value && value.GetValueKind() == System.Text.Json.JsonValueKind.String ? value.GetValue<string>() : null;
 
     private HttpResponseMessage Act(Guid id, string locale, string action, ContentWrite write)
     {

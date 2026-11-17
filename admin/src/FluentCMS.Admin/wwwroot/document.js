@@ -1,6 +1,13 @@
 // The admin's interop with the document: its language and direction, the branding's accent as a custom property, the
 // return of focus to a dialog's opener, focus on the page's heading, the question before a tab with unsaved forms closes,
-// and the keyboard shortcuts of a form.
+// the keyboard shortcuts of a form, and the drag of an item that orders by drag.
+
+// Firefox starts a drag only when its data is set, which Blazor's drag events cannot do; the item's order is the page's.
+document.addEventListener("dragstart", event => {
+    if (event.target instanceof Element && event.target.closest("[data-drag-item]") && event.dataTransfer?.types.length === 0) {
+        event.dataTransfer.setData("text/plain", "");
+    }
+});
 
 export function setLanguage(lang, dir) {
     document.documentElement.lang = lang;

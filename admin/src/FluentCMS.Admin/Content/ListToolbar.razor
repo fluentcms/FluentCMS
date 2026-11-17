@@ -1,8 +1,10 @@
 @* The search box and the filters of a list (spec 4.4), which it reads from the address of the list and writes back to it,
-   so that the page reads what the address says. A filter is set in a dialog: a field the list may filter on, an operator
-   its type takes, and an operand read as the field's type, numbers in the user's format. Until the relation picker of
-   A-15, a relation takes entry ids. *@
+   so that the page reads what the address says; the relation picker (A-15) passes them instead, and takes each change. A
+   filter is set in a dialog: a field the list may filter on, an operator its type takes, and an operand read as the field's
+   type, numbers in the user's format, and the entries of a relation from the picker. *@
 @inject FormatService Format
+@inject ManagementClient Client
+@inject AdminContext Context
 @inject NavigationManager Navigation
 @inject ListFilterRegistry FilterTypes
 @inject IStringLocalizer<AdminResources> L
@@ -61,7 +63,31 @@
                            ValueChanged="@ChooseOperator" />
                 @if (!ListFilters.TakesNoValue(draftOperator))
                 {
-                    @if (draftOperator == FilterOperator.Between)
+                    @if (TargetOf(field) is not null)
+                    {
+                        <fieldset class="content-filter-options">
+                            <legend>@L[ListFilters.TakesList(draftOperator) ? "Content.Filter.Values" : "Content.Filter.Value"]</legend>
+                            @if (values.Count == 0)
+                            {
+                                <p>@L["Content.Relation.None"]</p>
+                            }
+                            else
+                            {
+                                <ul class="content-filter-related">
+                                    @foreach (var value in values)
+                                    {
+                                        <li @key="value">@RelatedLabel(value)</li>
+                                    }
+                                </ul>
+                            }
+                            <CmsButton Icon="CmsIconName.Search" OnClick="@(() => picking = true)">@L[ListFilters.TakesList(draftOperator) ? "Content.Relation.ChooseEntries" : "Content.Relation.ChooseEntry"]</CmsButton>
+                            @if (error is not null)
+                            {
+                                <p class="content-filter-error">@error</p>
+                            }
+                        </fieldset>
+                    }
+                    else if (draftOperator == FilterOperator.Between)
                     {
                         @Input(field, 0, L["Content.Filter.From"], error)
                         @Input(field, 1, L["Content.Filter.To"], null)
@@ -101,6 +127,15 @@
         <CmsButton OnClick="@(() => open = false)">@L["Content.Filter.Cancel"]</CmsButton>
     </Actions>
 </CmsDialog>
+@if (Draft is { } related && TargetOf(related) is { } target)
+{
+    <RelationPicker Target="@target"
+                    Multiple="@ListFilters.TakesList(draftOperator)"
+                    Selected="@([.. values.Select(value => Guid.TryParse(value, out var id) ? id : Guid.Empty).Where(id => id != Guid.Empty)])"
+                    Open="@picking"
+                    OnClose="@(() => picking = false)"
+                    OnPicked="Picked" />
+}
 
 @code {
     private IReadOnlyList<FilterField> fields = [];
@@ -121,6 +156,11 @@
     private string? error;
     private CmsButton? addButton;
     private bool focusAdd;
+    private bool picking;
+
+    // The labels of the entries of relation filters, by id, as the picker or a read gave them.
+    private readonly Dictionary<Guid, string> labels = [];
+    private readonly HashSet<Guid> asked = [];
 
     [Parameter, EditorRequired]
     public SchemaTypeDescription Type { get; set; } = null!;
@@ -129,12 +169,22 @@
     [Parameter]
     public bool Searchable { get; set; }
 
+    // With a QueryChanged, the filters and the search are those of this query string, in the address's grammar, rather than
+    // the address's, and a change raises QueryChanged with the new one.
+    [Parameter]
+    public string? Query { get; set; }
+
+    [Parameter]
+    public EventCallback<string> QueryChanged { get; set; }
+
+    private bool Bound => !QueryChanged.HasDelegate;
+
     private FilterField? Draft => draftField is null ? null : fields.Find(draftField);
 
     // The page renders again on every change of its address, which passes the type again.
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        var query = new Uri(Navigation.Uri).Query;
+        var query = Bound ? new Uri(Navigation.Uri).Query : Query;
         fields = ListFilters.Fields(Type, FilterTypes);
         filters = ListFilters.Parse(query, fields);
         search = Searchable ? ListFilters.ParseSearch(ListFilters.SearchOf(query)) : null;
@@ -144,10 +194,74 @@
         {
             (searchText, appliedSearch) = (search, search);
         }
+
+        await ReadLabelsAsync();
     }
 
-    private void Navigate(IReadOnlyList<FieldFilter> filters, string? text) =>
-        Navigation.NavigateTo(ListFilters.Address(Navigation.ToBaseRelativePath(Navigation.Uri), filters, text));
+    private async Task Navigate(IReadOnlyList<FieldFilter> filters, string? text)
+    {
+        if (Bound)
+        {
+            Navigation.NavigateTo(ListFilters.Address(Navigation.ToBaseRelativePath(Navigation.Uri), filters, text));
+        }
+        else
+        {
+            await QueryChanged.InvokeAsync(ListFilters.Address("", filters, text));
+        }
+    }
+
+    // The target of a relation filter, when the user may read it; a relation to another type takes ids as text.
+    private SchemaTypeDescription? TargetOf(FilterField field) =>
+        field.Field is { Type: "relation", Relation.Target: var target } ? Context.Schema?.Types.FirstOrDefault(type => type.Name == target) : null;
+
+    private string RelatedLabel(string value) => Guid.TryParse(value, out var id) && labels.TryGetValue(id, out var label) ? label : value;
+
+    private void Picked(IReadOnlyList<ContentEntry> entries)
+    {
+        if (Draft is { } field && TargetOf(field) is { } target)
+        {
+            foreach (var entry in entries.Where(entry => entry.Fields.Count > 0))
+            {
+                labels[entry.Id] = AdminLabels.Entry(target, entry);
+            }
+        }
+
+        values = [.. entries.Select(entry => entry.Id.ToString("D"))];
+        (picking, error) = (false, null);
+    }
+
+    // The labels of the entries that relation filters of the address name, read once each.
+    private async Task ReadLabelsAsync()
+    {
+        foreach (var group in filters.GroupBy(filter => filter.Path))
+        {
+            if (fields.Find(group.Key) is not { } field || TargetOf(field) is not { } target)
+            {
+                continue;
+            }
+
+            var missing = group.SelectMany(filter => ListFilters.Texts(filter.Value))
+                .Select(text => Guid.TryParse(text, out var id) ? id : Guid.Empty)
+                .Where(id => id != Guid.Empty && !labels.ContainsKey(id) && asked.Add(id))
+                .ToList();
+            if (missing.Count == 0)
+            {
+                continue;
+            }
+
+            try
+            {
+                foreach (var (id, entry) in await RelationReads.LabelsAsync(Client, target, missing, null, CancellationToken.None))
+                {
+                    labels[id] = AdminLabels.Entry(target, entry);
+                }
+            }
+            catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or TaskCanceledException or JsonException)
+            {
+                // The filter shows the ids it has.
+            }
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -166,8 +280,7 @@
         }
 
         appliedSearch = ListFilters.ParseSearch(searchText);
-        Navigate(filters, appliedSearch);
-        return Task.CompletedTask;
+        return Navigate(filters, appliedSearch);
     }
 
     private void Add()
@@ -248,14 +361,14 @@
         }
     }
 
-    private void Apply()
+    private async Task Apply()
     {
         if (Draft is not { } field)
         {
             return;
         }
 
-        if (ListFilters.TakesList(draftOperator) && field.Filter.Operand != FilterOperand.Option)
+        if (ListFilters.TakesList(draftOperator) && field.Filter.Operand != FilterOperand.Option && TargetOf(field) is null)
         {
             values = [.. ListFilters.Items(listText ?? "").Select(item => item.Trim()).Where(item => item.Length > 0).Select(item => Invariant(field, item))];
         }
@@ -283,20 +396,20 @@
         }
 
         open = false;
-        Navigate([.. next.Distinct()], appliedSearch);
+        await Navigate([.. next.Distinct()], appliedSearch);
     }
 
     // The removed filter's buttons leave the document, so focus goes to Add filter.
-    private void Remove(int index)
+    private Task Remove(int index)
     {
         focusAdd = true;
-        Navigate([.. filters.Where((_, position) => position != index)], appliedSearch);
+        return Navigate([.. filters.Where((_, position) => position != index)], appliedSearch);
     }
 
-    private void Clear()
+    private Task Clear()
     {
         focusAdd = true;
-        Navigate([], appliedSearch);
+        return Navigate([], appliedSearch);
     }
 
     private RenderFragment Input(FilterField field, int slot, string label, string? message) => __builder =>
@@ -412,6 +525,7 @@
         FilterOperand.DateTime when ListFilters.Moment(text) is { } moment => Format.DateTime(moment),
         FilterOperand.Boolean => L[text == "true" ? "Content.Filter.Yes" : "Content.Filter.No"],
         FilterOperand.Option => field.Label(text),
+        FilterOperand.Id => RelatedLabel(text),
         _ => text,
     };
 }

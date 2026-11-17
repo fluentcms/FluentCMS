@@ -8,7 +8,9 @@
    discard in the form's locale, each shown by the status of the locale and what the caller may do with the type, the
    status badge, and the warnings of a publish. Its locales (A-17): the form edits the content locale of its address, with
    a switcher and the status of every locale of the site; a locale the entry has no translation in starts empty or as a copy
-   of another and is added by its first save, and a second locale can be shown read-only beside each field. *@
+   of another and is added by its first save, and a second locale can be shown read-only beside each field. In a side panel
+   (A-15) it creates and saves without leaving the page: it raises OnSaved instead of moving to the entry's route, and its
+   heading is the panel's. *@
 @implements IUnsavedForm
 @implements IAsyncDisposable
 @using System.Net
@@ -28,7 +30,14 @@
 @inject IStringLocalizer<AdminResources> L
 
 <div class="content-form">
-    <h1 tabindex="-1">@Heading</h1>
+    @if (InPanel)
+    {
+        <h2 @ref="panelHeading" tabindex="-1">@Heading</h2>
+    }
+    else
+    {
+        <h1 tabindex="-1">@Heading</h1>
+    }
     @if (OwnsAddress && localizedType == Type)
     {
         <ContentLocaleSwitcher />
@@ -311,7 +320,7 @@
     private readonly Dictionary<EntryAction, CmsButton> cancelButtons = [];
     private ElementReference summary;
     private int generation;
-    private (string Type, Guid? Id, string? Locale)? shown;
+    private (string Type, Guid? Id, string? Locale, bool InPanel)? shown;
 
     // The entry in every locale it has, by locale, for the status of each and the shared fields of a new locale; null while
     // unknown, for a new entry and for a type that is not localized.
@@ -347,6 +356,8 @@
     private bool conflictOpen;
     private bool comparing;
     private Dictionary<string, bool> keepMine = new(StringComparer.Ordinal);
+    private ElementReference panelHeading;
+    private bool focusPanelHeading;
 
     // The name of the content type, as the route has it.
     [Parameter, EditorRequired]
@@ -356,18 +367,31 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    // The content locale to edit; null for the shell's. The access and the schema are the shell's, so a form in a side panel
-    // edits the shell's locale.
+    // The content locale to edit; null for the shell's. The access and the schema are the shell's; a side panel is given
+    // the locale of the form or list that opened it.
     [Parameter]
     public string? Locale { get; set; }
 
     // Whether the form is the page and its address names its locale: it then offers the locale switcher and side by side.
+    // A side panel never does, so it never changes the shell's locale.
     [Parameter]
     public bool OwnsAddress { get; set; }
 
+    // In a side panel: a new entry stays in the panel once created, and the page's heading is not the form's.
+    [Parameter]
+    public bool InPanel { get; set; }
+
+    // Raised with the entry as each save answered it, so that a panel's opener can select or relabel it.
+    [Parameter]
+    public EventCallback<ContentEntry> OnSaved { get; set; }
+
+    internal bool HasUnsavedChanges => IsDirty;
+
     private bool IsSingleton => type?.Kind == "singleton";
 
-    private FormDraftKey Key => new(site, Type, entryId, locale);
+    // A panel's drafts are kept apart from the page's, so that a panel over a form of its own type, or a new entry's panel
+    // and the page's New, neither restores nor removes the other's.
+    private FormDraftKey Key => new(site, InPanel ? $"panel:{Type}" : Type, entryId, locale);
 
     private FormTab? Untabbed => tabs.FirstOrDefault(tab => tab.Name is null);
 
@@ -426,6 +450,9 @@
         _ => AdminLabels.Type(type, L),
     };
 
+    // A side panel closed on its unsaved changes gives them up, and any draft of them, as a confirmed leave does.
+    internal Task DiscardChangesAsync() => DropChangesAsync();
+
     public FormDraft CaptureDraft() => new(Key, read?.EntityTag, fields.DeepClone().AsObject());
 
     public async ValueTask DisposeAsync()
@@ -446,22 +473,29 @@
     protected override async Task OnParametersSetAsync()
     {
         // The route of an entry this form has just created shows the same entry, which is not read again.
-        if (shown == (Type, Id, Locale)
-            || (Id is { } id && id == entryId && Type == type?.Name && string.Equals(Locale, locale, StringComparison.OrdinalIgnoreCase)))
+        if (shown == (Type, Id, Locale, InPanel)
+            || (shown?.InPanel == InPanel && Id is { } id && id == entryId && Type == type?.Name && string.Equals(Locale, locale, StringComparison.OrdinalIgnoreCase)))
         {
-            shown = (Type, Id, Locale);
+            shown = (Type, Id, Locale, InPanel);
             return;
         }
 
-        shown = (Type, Id, Locale);
+        shown = (Type, Id, Locale, InPanel);
         await LoadAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        // A panel is a dialog, where the document's shortcuts do not run.
+        if (firstRender && !InPanel)
         {
             await ListenForShortcutsAsync();
+        }
+
+        if (focusPanelHeading && state != FormState.Loading)
+        {
+            focusPanelHeading = false;
+            await panelHeading.FocusAsync();
         }
 
         // The library's dialog focuses itself as it opens; the safe choice takes focus once it has.
@@ -528,6 +562,7 @@
         tracking?.Dispose();
         tracking = null;
         state = FormState.Loading;
+        focusPanelHeading = InPanel;
         (type, access, tabs, tabbed, read, entryId, activeTab) = (null, null, [], [], null, null, null);
         (restored, done, saveFailure, pendingCreate, publishTried) = (false, null, null, null, false);
         (warnings, confirming) = ([], null);
@@ -938,11 +973,13 @@
                 tracking = null;
             }
 
-            if (draftKey.Entry is null && !IsSingleton)
+            if (draftKey.Entry is null && !IsSingleton && !InPanel)
             {
                 NavigationFocus.KeepNext();
                 NavigateAway(ContentRoutes.InLocale(RouteOf(saved), locale), replace: true);
             }
+
+            await OnSaved.InvokeAsync(saved.Entry);
         }
         catch (ApiProblemException exception) when (current == generation)
         {
@@ -1066,7 +1103,7 @@
             Announcer.Announce(done);
             if (focus != FocusAfter.Shortcut)
             {
-                await Document.FocusHeadingAsync(afterDialog: focus == FocusAfter.Dialog);
+                await FocusHeadingAsync(afterDialog: focus == FocusAfter.Dialog);
             }
         }
         catch (ApiProblemException exception) when (current == generation)
@@ -1288,8 +1325,25 @@
     {
         if (reopened && saveFailure is null)
         {
-            await Document.FocusHeadingAsync(afterDialog: true);
+            await FocusHeadingAsync(afterDialog: true);
         }
+    }
+
+    // The page's heading is behind a panel, so a form in one focuses its own.
+    private async Task FocusHeadingAsync(bool afterDialog)
+    {
+        if (!InPanel)
+        {
+            await Document.FocusHeadingAsync(afterDialog);
+            return;
+        }
+
+        if (afterDialog)
+        {
+            await Task.Delay(DocumentInterop.DialogFocusDelay);
+        }
+
+        await panelHeading.FocusAsync();
     }
 
     private void Rebase(EntryRead current, JsonObject values)

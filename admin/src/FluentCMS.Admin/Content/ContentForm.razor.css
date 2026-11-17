@@ -3,6 +3,11 @@
     font-size: var(--cms-font-size-xl);
 }
 
+.content-form h2 {
+    margin: 0 0 var(--cms-space-m);
+    font-size: var(--cms-font-size-l);
+}
+
 .content-form-toolbar {
     display: flex;
     flex-wrap: wrap;
