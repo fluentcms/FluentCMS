@@ -16,6 +16,8 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
     private const string SignOutTitle = "Shell.SignOut.Title";
     private const string SwitchTitle = "Shell.SiteSwitcher.UnsavedTitle";
 
+    private static PageAssertionsToHaveURLOptions UrlWait => new() { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds };
+
     [Fact]
     public async Task ASaveThatASecondTabMadeStaleOpensTheDialogAndKeepMineAndTakeTheirsEndInTheirStates()
     {
@@ -28,7 +30,7 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
         var location = (await create.HeaderValueAsync("location")).ShouldNotBeNull();
         var id = Guid.Parse(location[(location.LastIndexOf('/') + 1)..]);
         var entry = first.ManagementUrl($"content/article/{id:D}");
-        await first.Page.WaitForURLAsync(new Regex($"/admin/content/article/{id:D}$"));
+        await Expect(first.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}\\?locale=en$"), UrlWait);
 
         // The second tab of the browser signs in through the server's session and saves first.
         var second = await browser.NewTabAsync();
@@ -55,7 +57,7 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
         await Expect(Title(second)).ToHaveValueAsync("Saved by the first");
         await Expect(Shown(second, ConflictTitle)).ToBeHiddenAsync();
         await Home(second).ClickAsync();
-        await second.Page.WaitForURLAsync(new Uri(Host.Admin, "").AbsoluteUri);
+        await Expect(second.Page).ToHaveURLAsync(new Uri(Host.Admin, "").AbsoluteUri, UrlWait);
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
@@ -81,11 +83,11 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
 
         // The form's address names its content locale (A-17).
         var form = new Uri(Host.Admin, "content/article/new?locale=en").AbsoluteUri;
-        await tab.Page.WaitForURLAsync(form);
+        await Expect(tab.Page).ToHaveURLAsync(form, UrlWait);
 
         // Nothing changed: the route changes at once.
         await Home(tab).ClickAsync();
-        await tab.Page.WaitForURLAsync(new Uri(Host.Admin, "").AbsoluteUri);
+        await Expect(tab.Page).ToHaveURLAsync(new Uri(Host.Admin, "").AbsoluteUri, UrlWait);
         await tab.Page.GoBackAsync();
         await Expect(Title(tab)).ToBeVisibleAsync();
 
@@ -140,13 +142,13 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
         await Expect(Shown(tab, LeaveTitle)).ToBeVisibleAsync();
         await DialogButton(tab, LeaveTitle, "Content.Form.Leave.Cancel").ClickAsync();
         await Expect(Shown(tab, LeaveTitle)).ToBeHiddenAsync();
-        await tab.Page.WaitForURLAsync(form);
+        await Expect(tab.Page).ToHaveURLAsync(form, UrlWait);
         await Expect(Title(tab)).ToHaveValueAsync(new Regex(" changed$"));
 
         await tab.Page.EvaluateAsync("() => history.back()");
         await DialogButton(tab, LeaveTitle, "Content.Form.Leave.Confirm").ClickAsync();
 
-        await tab.Page.WaitForURLAsync(start);
+        await Expect(tab.Page).ToHaveURLAsync(start, UrlWait);
         (await tab.Page.EvaluateAsync<int>("() => history.length")).ShouldBe(entries);
         browser.PolicyViolations.ShouldBeEmpty();
     }
@@ -200,7 +202,7 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
         await Title(tab).ClickAsync();
         await Title(tab).PressSequentiallyAsync(" saved");
         await SaveAsync(tab, () => tab.Button("Content.Form.Save").ClickAsync(), "POST", tab.ManagementUrl("content/article"));
-        await tab.Page.WaitForURLAsync(new Regex("/admin/content/article/[0-9a-f-]{36}$"));
+        await Expect(tab.Page).ToHaveURLAsync(new Regex("/admin/content/article/[0-9a-f-]{36}\\?locale=en$"), UrlWait);
 
         await tab.Page.CloseAsync(new PageCloseOptions { RunBeforeUnload = true });
 
