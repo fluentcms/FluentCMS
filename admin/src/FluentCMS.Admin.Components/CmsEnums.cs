@@ -187,6 +187,12 @@ public enum CmsIconName
 
     /// <summary>Moves down, or later in a list.</summary>
     Down,
+
+    /// <summary>A comment.</summary>
+    Comment,
+
+    /// <summary>A plugin, and the icon of a name the set does not know.</summary>
+    Plugin,
 }
 
 /// <summary>When a <see cref="CmsNavigationLink"/> is the current page.</summary>

@@ -30,6 +30,8 @@ internal static class CmsIcons
         CmsIconName.Navigation => new Size20.Navigation(),
         CmsIconName.Up => new Size20.ArrowUp(),
         CmsIconName.Down => new Size20.ArrowDown(),
+        CmsIconName.Comment => new Size20.Comment(),
+        CmsIconName.Plugin => new Size20.PuzzlePiece(),
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, null),
     };
 }

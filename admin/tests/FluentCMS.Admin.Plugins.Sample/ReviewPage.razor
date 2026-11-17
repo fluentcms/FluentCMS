@@ -1,0 +1,13 @@
+@page "/reviews/{Id:guid}"
+@page "/reviews/new"
+@attribute [AdminPage("/reviews/{Id:guid}", Permission = "reviews.notes.manage")]
+@attribute [AdminPage("/reviews/new", Permission = "reviews.notes.create")]
+
+<CmsCard Title="Review">
+    <p>@Id</p>
+</CmsCard>
+
+@code {
+    [Parameter]
+    public Guid? Id { get; set; }
+}

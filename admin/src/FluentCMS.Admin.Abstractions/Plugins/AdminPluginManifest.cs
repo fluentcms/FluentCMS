@@ -1,0 +1,230 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
+
+namespace FluentCMS.Admin.Plugins;
+
+/// <summary>
+/// The manifest of an admin half, <c>fluentcms-admin.json</c>: what the shell knows of the half before its assembly is
+/// loaded. It is a static web asset of the half's package and says what the attributes of the assembly say, which
+/// <see cref="AdminPluginManifestCheck"/> holds a test to. Each contribution names its class by its full name.
+/// </summary>
+public sealed record AdminPluginManifest
+{
+    // The source-generated metadata sets every init-only member of a type with required members, an absent one to its
+    // default, so the members below answer for an absent value themselves and not with an initializer.
+
+    /// <summary>The name of the manifest file among the static web assets of a half.</summary>
+    public const string FileName = "fluentcms-admin.json";
+
+    /// <summary>The version of the manifest's format that this version of the contract writes.</summary>
+    public const int CurrentManifestVersion = 1;
+
+    /// <summary>The version of the manifest's format. A later version only adds members, which an earlier reader skips.</summary>
+    public int ManifestVersion { get => field == 0 ? CurrentManifestVersion : field; init; }
+
+    /// <summary>The name of the server plugin, as <c>GET /plugins</c> lists it.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>The version of the admin half.</summary>
+    public string? Version { get; init; }
+
+    /// <summary>The range of <c>FluentCMS.Admin.Abstractions</c> the half was built for, in NuGet's notation.</summary>
+    public string? AdminRange { get; init; }
+
+    /// <summary>The name of the half's assembly, without an extension.</summary>
+    public required string Assembly { get; init; }
+
+    /// <summary>The pages.</summary>
+    public IReadOnlyList<AdminManifestPage> Pages { get => field ?? []; init; }
+
+    /// <summary>The menu items.</summary>
+    public IReadOnlyList<AdminManifestMenuItem> MenuItems { get => field ?? []; init; }
+
+    /// <summary>The settings pages.</summary>
+    public IReadOnlyList<AdminManifestSettingsPage> SettingsPages { get => field ?? []; init; }
+
+    /// <summary>The field editors.</summary>
+    public IReadOnlyList<AdminManifestFieldComponent> FieldEditors { get => field ?? []; init; }
+
+    /// <summary>The list cells.</summary>
+    public IReadOnlyList<AdminManifestFieldComponent> ListCells { get => field ?? []; init; }
+
+    /// <summary>The entry actions.</summary>
+    public IReadOnlyList<AdminManifestAction> EntryActions { get => field ?? []; init; }
+
+    /// <summary>The bulk actions.</summary>
+    public IReadOnlyList<AdminManifestAction> BulkActions { get => field ?? []; init; }
+
+    /// <summary>The field actions.</summary>
+    public IReadOnlyList<AdminManifestFieldAction> FieldActions { get => field ?? []; init; }
+
+    /// <summary>The dashboard widgets.</summary>
+    public IReadOnlyList<AdminManifestWidget> Widgets { get => field ?? []; init; }
+
+    /// <summary>The services the half provides to other halves and the admin.</summary>
+    public IReadOnlyList<AdminManifestService> Services { get => field ?? []; init; }
+}
+
+/// <summary>A page of an admin half, from <see cref="AdminPageAttribute"/>.</summary>
+public sealed record AdminManifestPage
+{
+    /// <summary>The full name of the component.</summary>
+    public required string Type { get; init; }
+
+    /// <summary>The route template.</summary>
+    public required string Route { get; init; }
+
+    /// <summary>The permission a user needs to see the page, if it needs one.</summary>
+    public string? Permission { get; init; }
+}
+
+/// <summary>A menu item of an admin half, from <see cref="AdminMenuItemAttribute"/>.</summary>
+public sealed record AdminManifestMenuItem
+{
+    /// <summary>The full name of the page's component.</summary>
+    public required string Type { get; init; }
+
+    /// <summary>The resource key of the label.</summary>
+    public required string Label { get; init; }
+
+    /// <summary>The route the item links to.</summary>
+    public required string Route { get; init; }
+
+    /// <summary>The section of the sidebar.</summary>
+    public AdminSection Section { get; init; }
+
+    /// <summary>The name of the icon, if the item names one.</summary>
+    public string? Icon { get; init; }
+
+    /// <summary>The place among the items of the section.</summary>
+    public int Order { get; init; }
+
+    /// <summary>The permission of the page the item links to, if it needs one.</summary>
+    public string? Permission { get; init; }
+}
+
+/// <summary>A settings page of an admin half, from <see cref="SettingsPageAttribute"/>.</summary>
+public sealed record AdminManifestSettingsPage
+{
+    /// <summary>The full name of the component.</summary>
+    public required string Type { get; init; }
+
+    /// <summary>The settings area.</summary>
+    public required string Area { get; init; }
+}
+
+/// <summary>A field editor or a list cell of an admin half, from <see cref="FieldEditorAttribute"/> or <see cref="ListCellAttribute"/>.</summary>
+public sealed record AdminManifestFieldComponent
+{
+    /// <summary>The full name of the component.</summary>
+    public required string Type { get; init; }
+
+    /// <summary>The field type.</summary>
+    public required string FieldType { get; init; }
+}
+
+/// <summary>An entry action or a bulk action of an admin half, from <see cref="EntryActionAttribute"/> or <see cref="BulkActionAttribute"/>.</summary>
+public sealed record AdminManifestAction
+{
+    /// <summary>The full name of the action's class.</summary>
+    public required string Type { get; init; }
+
+    /// <summary>The name of the action.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>The content types the action is offered on; every type when empty.</summary>
+    public IReadOnlyList<string> ContentTypes { get => field ?? []; init; }
+
+    /// <summary>The permission a user needs to see the action, if it needs one.</summary>
+    public string? Permission { get; init; }
+}
+
+/// <summary>A field action of an admin half, from <see cref="FieldActionAttribute"/>.</summary>
+public sealed record AdminManifestFieldAction
+{
+    /// <summary>The full name of the action's class.</summary>
+    public required string Type { get; init; }
+
+    /// <summary>The name of the action.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>The field types the action is offered on; every type when empty.</summary>
+    public IReadOnlyList<string> FieldTypes { get => field ?? []; init; }
+
+    /// <summary>The permission a user needs to see the action, if it needs one.</summary>
+    public string? Permission { get; init; }
+}
+
+/// <summary>A dashboard widget of an admin half, from <see cref="DashboardWidgetAttribute"/>.</summary>
+public sealed record AdminManifestWidget
+{
+    /// <summary>The full name of the component.</summary>
+    public required string Type { get; init; }
+
+    /// <summary>The resource key of the title.</summary>
+    public required string Title { get; init; }
+
+    /// <summary>The size the widget asks for.</summary>
+    public WidgetSize Size { get; init; }
+
+    /// <summary>The permission a user needs to see the widget, if it needs one.</summary>
+    public string? Permission { get; init; }
+
+    /// <summary>The role a user needs to see the widget, if it needs one.</summary>
+    public string? Role { get; init; }
+}
+
+/// <summary>A service of an admin half, from <see cref="AdminServiceAttribute"/>.</summary>
+public sealed record AdminManifestService
+{
+    /// <summary>The full name of the class that implements the service.</summary>
+    public required string Type { get; init; }
+
+    /// <summary>The full name of the service.</summary>
+    public required string Service { get; init; }
+}
+
+/// <summary>
+/// Reads and writes manifests as JSON with source-generated metadata, so a trimmed app reads them. Member names are in
+/// camel case, sections and sizes are written by name, and a hand-written file may hold comments and trailing commas.
+/// </summary>
+public static class AdminPluginManifestJson
+{
+    /// <summary>Gets the metadata of one manifest, the file of a half.</summary>
+    public static JsonTypeInfo<AdminPluginManifest> Manifest => AdminPluginManifestJsonContext.Default.AdminPluginManifest;
+
+    /// <summary>Gets the metadata of a list of manifests, the file an app's build gathers from the halves it references.</summary>
+    public static JsonTypeInfo<IReadOnlyList<AdminPluginManifest>> Manifests => AdminPluginManifestJsonContext.Default.IReadOnlyListAdminPluginManifest;
+
+    /// <summary>Reads a manifest.</summary>
+    /// <param name="json">The text of <c>fluentcms-admin.json</c>.</param>
+    /// <returns>The manifest.</returns>
+    /// <exception cref="JsonException">The text is not a manifest.</exception>
+    public static AdminPluginManifest Read(string json)
+    {
+        ArgumentNullException.ThrowIfNull(json);
+        return JsonSerializer.Deserialize(json, Manifest) ?? throw new JsonException("The manifest is null.");
+    }
+
+    /// <summary>Writes a manifest.</summary>
+    /// <param name="manifest">The manifest.</param>
+    /// <returns>The text of <c>fluentcms-admin.json</c>.</returns>
+    public static string Write(AdminPluginManifest manifest)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+        return JsonSerializer.Serialize(manifest, Manifest);
+    }
+}
+
+[JsonSourceGenerationOptions(
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    ReadCommentHandling = JsonCommentHandling.Skip,
+    AllowTrailingCommas = true,
+    WriteIndented = true)]
+[JsonSerializable(typeof(AdminPluginManifest))]
+[JsonSerializable(typeof(IReadOnlyList<AdminPluginManifest>))]
+internal sealed partial class AdminPluginManifestJsonContext : JsonSerializerContext
+{
+}
