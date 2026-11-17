@@ -136,6 +136,12 @@ public sealed class RelationTests(EndToEndHost host) : BrowserTest(host)
             document.addEventListener('focusout', e => at('focusout ' + d(e.target) + ' -> ' + d(e.relatedTarget)), true);
             document.addEventListener('keydown', e => at('keydown ' + e.key + (e.altKey ? '+alt' : '') + ' on ' + d(e.target)), true);
             new MutationObserver(m => at('mutations ' + m.length + ' ' + m.map(x => x.type + ':' + (x.target.tagName || '#text')).slice(0, 4).join(','))).observe(document.querySelector("[data-field='tags']"), { childList: true, subtree: true, attributes: true, characterData: true });
+            const error = console.error;
+            console.error = (...args) => { at('console.error ' + args.map(String).join(' ').slice(0, 300)); return error.apply(console, args); };
+            const warn = console.warn;
+            console.warn = (...args) => { at('console.warn ' + args.map(String).join(' ').slice(0, 300)); return warn.apply(console, args); };
+            window.addEventListener('error', e => at('error ' + e.message));
+            window.addEventListener('unhandledrejection', e => at('rejection ' + String(e.reason).slice(0, 300)));
             window.__mark = s => { log.length = 0; at(s); };
             window.__diag = () => 'active=' + d(document.activeElement) + ' deep=' + d(deep()) + ' hasFocus=' + document.hasFocus() + ' visibility=' + document.visibilityState + ' || ' + log.join(' || ');
         }
