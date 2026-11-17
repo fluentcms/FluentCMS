@@ -469,10 +469,15 @@ public sealed class FieldEditorTests : AdminTestContext
         var left = 0;
         var editor = RenderEditor(FieldOf("dateTime"), parameters: new() { [nameof(FieldEditorBase.OnBlur)] = EventCallback.Factory.Create(this, () => left++) });
 
-        // As the browser does, focusin on the next input comes before the handler of focusout has finished.
-        var leaving = editor.Find("fieldset").FocusOutAsync(new FocusEventArgs());
-        await editor.Find("fieldset").FocusInAsync(new FocusEventArgs());
-        await leaving;
+        // As the browser does: focusout on one input and focusin on the next come in one task, before any timer of the page
+        // runs. Two separate dispatches would let the timer of the focusout run between them on a busy machine.
+        var fieldset = editor.Find("fieldset");
+        await editor.InvokeAsync(async () =>
+        {
+            var leaving = fieldset.FocusOutAsync(new FocusEventArgs());
+            await fieldset.FocusInAsync(new FocusEventArgs());
+            await leaving;
+        });
         left.ShouldBe(0);
 
         editor.Find("fieldset").FocusOut();
