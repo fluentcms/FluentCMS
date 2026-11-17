@@ -79,8 +79,12 @@ public sealed class AdminBrowser
     {
         Keep(editor.Password);
         var page = tab.Page;
-        await page.WaitForURLAsync(url => new Uri(url).AbsolutePath == "/account/login");
-        await page.GetByLabel("User name or email").FillAsync(editor.Email);
+        // The login page is waited for by its field: a wait for the navigation to its address can start after Playwright has
+        // taken that navigation in, and then waits for one that does not come.
+        var login = page.GetByLabel("User name or email");
+        await login.WaitForAsync(new LocatorWaitForOptions { Timeout = (float)Wait.TotalMilliseconds });
+        new Uri(page.Url).AbsolutePath.ShouldBe("/account/login");
+        await login.FillAsync(editor.Email);
         try
         {
             await page.GetByLabel("Password", new PageGetByLabelOptions { Exact = true }).FillAsync(editor.Password);

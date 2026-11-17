@@ -21,8 +21,11 @@ public sealed class ListTests(EndToEndHost host) : BrowserTest(host)
         var grid = tab.Page.GetByRole(AriaRole.Grid, new PageGetByRoleOptions { Name = "Article", Exact = true });
         await Expect(grid.Locator("tbody tr")).ToHaveCountAsync(3);
         await Expect(Headers(grid)).ToHaveTextAsync([Starts("Title"), Starts(Text("Content.List.Column.Status")), Starts(Text("Content.List.Column.UpdatedAt"))]);
-        await Expect(tab.Page.Locator(".content-list-pager")).ToContainTextAsync(Text("Content.List.PageOf", "1", "2"));
-        await Expect(tab.Page.Locator(".content-list-pager")).ToContainTextAsync(Text("Content.List.Total", "4"));
+        // The host is shared, so other cases may have added articles: the expectations follow the total the list shows, of the
+        // Blog sample's four at least.
+        var total = await TotalAsync(tab);
+        total.ShouldBeGreaterThanOrEqualTo(4);
+        await Expect(tab.Page.Locator(".content-list-pager")).ToContainTextAsync(Text("Content.List.PageOf", "1", $"{(total + 2) / 3}"));
 
         // The columns: Category is added and the status taken out; the read names only what is shown.
         await tab.Button("Content.List.Columns").ClickAsync();
@@ -46,9 +49,9 @@ public sealed class ListTests(EndToEndHost host) : BrowserTest(host)
         await Expect(grid.Locator("th[aria-sort=ascending]")).ToHaveTextAsync(new Regex("^Category"));
         await Expect(tab.Announced("Sorted by Category, ascending, then by Title, descending")).ToBeAttachedAsync();
 
-        // The second page has the fourth article.
+        // The second page starts at the fourth article.
         await tab.Button("Content.List.Next").ClickAsync();
-        await Expect(grid.Locator("tbody tr")).ToHaveCountAsync(1);
+        await Expect(grid.Locator("tbody tr")).ToHaveCountAsync(Math.Min(3, total - 3));
         await Expect(grid.Locator("tbody tr").First).ToHaveAttributeAsync("aria-rowindex", "5");
         await tab.Button("Content.List.Previous").ClickAsync();
         await Expect(grid.Locator("tbody tr")).ToHaveCountAsync(3);
@@ -111,6 +114,16 @@ public sealed class ListTests(EndToEndHost host) : BrowserTest(host)
 
     // The column headers but the selection's; a sorted one also holds its mark and, with several keys, its level.
     private static ILocator Headers(ILocator grid) => grid.Locator("thead th:not(.cms-data-grid-select)");
+
+    // The number of entries the pager shows, from the resource's text around it.
+    private static async Task<int> TotalAsync(AdminTab tab)
+    {
+        var pattern = "^" + Regex.Escape(Text("Content.List.Total")).Replace(@"\{0}", @"([0-9,.\s]+)", StringComparison.Ordinal) + "$";
+        var shown = tab.Page.Locator(".content-list-pager > span").First;
+        await Expect(shown).ToHaveTextAsync(new Regex(pattern));
+        var text = Regex.Match((await shown.TextContentAsync())!.Trim(), pattern).Groups[1].Value;
+        return int.Parse(new string([.. text.Where(char.IsDigit)]), System.Globalization.CultureInfo.InvariantCulture);
+    }
 
     // A checkbox of the columns dialog: the wrapped set puts its label beside it, in the field that holds both.
     private static ILocator ColumnCheckbox(AdminTab tab, string label) =>
