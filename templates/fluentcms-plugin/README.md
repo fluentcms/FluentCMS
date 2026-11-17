@@ -49,7 +49,7 @@ The tests start a host on an in-memory SQLite database that discovers the plugin
 
 ## Change the admin half
 
-The admin reads `wwwroot/fluentcms-admin.json` before it loads the half's assembly, the first time one of its contributions is used, so the file lists every page, menu item, settings page and widget with the full name of its class. When you add, change or remove a contribution attribute, change the file with it: the manifest test names each difference. A page carries its route twice, `@page` for the router and `[AdminPage]` for the manifest, under `/starter-plugin`. The admin shows the half's contributions only in a site where the server plugin is enabled, and each only to a user who holds the permission it declares.
+The admin reads `wwwroot/fluentcms-admin.json` before it loads the half's assembly, the first time one of its contributions is used, so the file lists every page, menu item, settings page and widget with the full name of its class. When you add, change or remove a contribution attribute, change the file with it: the manifest test names each difference. A page carries its route twice, `@page` for the router and `[AdminPage]` for the manifest, under `/starter-plugin`. A menu item's `labels` in the file are its texts by culture, `en` among them, which the sidebar shows before the half is loaded. The admin shows the half's contributions only in a site where the server plugin is enabled, and each only to a user who holds the permission it declares.
 
 ## Use it in a host
 

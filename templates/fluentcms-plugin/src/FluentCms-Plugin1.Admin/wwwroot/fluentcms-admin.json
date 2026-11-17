@@ -12,6 +12,7 @@
     {
       "type": "FluentCms_Plugin1.Admin.StarterPage",
       "label": "Starter.Menu",
+      "labels": { "en": "Notes" },
       "route": "/starter-plugin",
       "section": "content",
       "icon": "document",
