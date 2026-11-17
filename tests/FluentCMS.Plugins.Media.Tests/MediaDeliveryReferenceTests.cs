@@ -65,7 +65,7 @@ public sealed class MediaDeliveryReferenceTests(PublicStoryHost media) : IClassF
             Urls(entry["hero"]).ShouldBe((original, card));
             entry["gallery"]!.AsArray().Select(item => Urls(item)).ShouldBe([(original, card)]);
             Urls(entry["sections"]![0]!["image"]).ShouldBe((original, card));
-            entry["body"]!.GetValue<string>().ShouldContain($"<img src=\"{original}\" alt=\"\" data-media-id=\"{hero:D}\">");
+            entry["body"]!.GetValue<string>().ShouldContain($"<img src=\"{WebUtility.HtmlEncode(original)}\" alt=\"\" data-media-id=\"{hero:D}\">");
         }
 
         (await GetAsync(anonymous, $"{Delivery}/{id:D}"))["hero"]!.AsObject().Select(pair => pair.Key).ShouldBe(["id", "type"]);
@@ -89,7 +89,7 @@ public sealed class MediaDeliveryReferenceTests(PublicStoryHost media) : IClassF
         Urls(draft["hero"]).Original.ShouldBe(original);
         draft["gallery"]!.AsArray().ShouldBeEmpty();
         var body = draft["body"]!.GetValue<string>();
-        body.ShouldContain($"<img src=\"{original}\" alt=\"\" data-media-id=\"{hero:D}\">");
+        body.ShouldContain($"<img src=\"{WebUtility.HtmlEncode(original)}\" alt=\"\" data-media-id=\"{hero:D}\">");
         body.ShouldContain($"<img alt=\"\" data-media-id=\"{secret:D}\">");
     }
 

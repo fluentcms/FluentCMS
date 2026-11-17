@@ -126,6 +126,7 @@ curl -H "Authorization: ApiKey $KEY" -F folderId=$FOLDER -F files=@photo.jpg -F 
 | `f` | `auto`, `webp`, `avif`, `jpeg` or `png`; the asset's own type when left out. `auto` picks WebP when `Accept` lists it, AVIF only where the processor encodes it, and the asset's type otherwise, and answers with `Vary: Accept`. The default processor encodes no AVIF. |
 | `fx`, `fy` | The focal point of a `cover`, from 0 to 1, given together; the asset's own focal point, or its centre, by default. |
 | `preset` | A preset of the site, whose parameters apply under those of the URL. |
+| `v` | A part of the asset's checksum, which the signature covers and nothing compares, so that a replace gives new URLs. |
 | `sig` | The signature. |
 
 A request over the limits of the site's media settings is refused with `FCMS1591` before the image is read. An image over `maxSourcePixels`, or whose side that follows the aspect ratio would be over the width or height limit, is refused from its header before it is decoded. Every result is stored as a variant in the asset's storage, so the same request, under any file name, is served from storage. The orientation of a photo is applied, and its EXIF, IPTC and XMP metadata are left out. A daily job, `media.variants.cleanup`, removes the variants of deleted assets.
@@ -134,7 +135,7 @@ Host code and other plugins build a URL with `IMediaService.GetImageUrlAsync`:
 
 ```csharp
 var url = await media.GetImageUrlAsync(asset, new MediaImageOptions { Width = 1200, Height = 630, Fit = ImageFit.Cover, Format = MediaImageFormat.Auto });
-// /media/0193a0c2-.../hero.jpg?w=1200&h=630&fit=cover&f=auto&sig=...
+// /media/0193a0c2-.../hero.jpg?w=1200&h=630&fit=cover&f=auto&v=...&sig=...
 ```
 
 ## Delivery API
@@ -147,14 +148,14 @@ var url = await media.GetImageUrlAsync(asset, new MediaImageOptions { Width = 12
   "title": "Harbour", "locale": "en", "alt": "Boats in a harbour", "caption": null, "credit": null, "tags": [],
   "focalPoint": { "x": 0.5, "y": 0.4 }, "isPrivate": false, "createdAt": "...", "updatedAt": "...",
   "urls": {
-    "original": "/media/0193a0c2-.../original/hero.jpg?sig=...",
-    "presets": { "hero": "/media/0193a0c2-.../hero.jpg?preset=hero&sig=..." },
+    "original": "/media/0193a0c2-.../original/hero.jpg?v=...&sig=...",
+    "presets": { "hero": "/media/0193a0c2-.../hero.jpg?preset=hero&v=...&sig=..." },
     "template": null
   }
 }
 ```
 
-The URLs are signed. `presets` has one transform URL for each preset of the site, for an image the processor reads, and `template`, only where `RequireSignedUrls` is `false`, is a transform URL whose `{w}`, `{h}`, `{fit}`, `{q}` and `{f}` a client fills in or leaves out. The answer has the cache headers of content: an `ETag`, the `Cache-Control` of `FluentCms:Delivery:Cache`, and a copy in the output cache that a change to the asset or to the site's presets evicts. A private asset is answered, without URLs, only to a caller whose `media.read` reaches its folder; the anonymous caller and Delivery keys hold no permission but reading content, so they never read one.
+The URLs are signed and carry `v` from the asset's checksum, so a replace gives the asset new URLs and no cache serves the old file under them. `presets` has one transform URL for each preset of the site, for an image the processor reads, and `template`, only where `RequireSignedUrls` is `false`, is a transform URL whose `{w}`, `{h}`, `{fit}`, `{q}` and `{f}` a client fills in or leaves out. The answer has the cache headers of content: an `ETag`, the `Cache-Control` of `FluentCms:Delivery:Cache`, and a copy in the output cache that a change to the asset or to the site's presets evicts. A private asset is answered, without URLs, only to a caller whose `media.read` reaches its folder; the anonymous caller and Delivery keys hold no permission but reading content, so they never read one.
 
 ## URLs for the media library and the picker
 

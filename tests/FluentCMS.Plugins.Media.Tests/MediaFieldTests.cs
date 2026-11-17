@@ -148,7 +148,7 @@ public sealed class MediaFieldTests(StoryHost media) : IClassFixture<StoryHost>
         english.AsObject().ContainsKey("createdBy").ShouldBeFalse();
 
         var url = english["urls"]!["original"]!.GetValue<string>();
-        url.ShouldStartWith($"/media/{hero:D}/original/hero.png?sig=");
+        url.ShouldStartWith($"/media/{hero:D}/original/hero.png?v=");
         var thumb = english["urls"]!["presets"]!["thumb"]!.GetValue<string>();
         thumb.ShouldContain("preset=thumb");
         using var image = await admin.GetAsync(new Uri(url, UriKind.Relative), Token);
@@ -201,12 +201,12 @@ public sealed class MediaFieldTests(StoryHost media) : IClassFixture<StoryHost>
         var populated = await GetAsync(admin, $"{Stories}/{id:D}?populate=sections");
         var everything = await GetAsync(admin, $"{Stories}/{id:D}?populate=*");
 
-        html.ShouldContain($"<img src=\"/media/{image:D}/original/photo.png?sig=");
+        html.ShouldContain($"<img src=\"/media/{image:D}/original/photo.png?v=");
         html.ShouldContain("alt=\"A &lt;b&gt; &amp; &quot;quote&quot;\"");
         html.ShouldContain("alt=\"Own alt\"");
-        markdown.ShouldContain($"![A <b> & \"quote\"](/media/{image:D}/original/photo.png?sig=");
+        markdown.ShouldContain($"![A <b> & \"quote\"](/media/{image:D}/original/photo.png?v=");
         JsonNode.DeepEquals(plain["sections"]![0]!["image"], new JsonObject { ["id"] = image.ToString("D"), ["type"] = "media" }).ShouldBeTrue();
-        populated["sections"]![0]!["image"]!["urls"]!["original"]!.GetValue<string>().ShouldStartWith($"/media/{image:D}/original/photo.png?sig=");
+        populated["sections"]![0]!["image"]!["urls"]!["original"]!.GetValue<string>().ShouldStartWith($"/media/{image:D}/original/photo.png?v=");
         populated["sections"]![0]!["heading"]!.GetValue<string>().ShouldBe("Banner");
         everything["sections"]![0]!["image"]!["alt"]!.GetValue<string>().ShouldBe("A <b> & \"quote\"");
     }

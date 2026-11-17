@@ -94,7 +94,7 @@ public sealed class MediaSigningTests
         var restarted = ActivatorUtilities.CreateInstance<MediaSigning>(media.Services);
         using var response = await FetchAsync(anonymous, url);
 
-        (await restarted.VerifyAsync($"{asset.Id:D}?w=10", signature, Token)).ShouldBeTrue();
+        (await restarted.VerifyAsync($"{asset.Id:D}?v={asset.Checksum[..16]}&w=10", signature, Token)).ShouldBeTrue();
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
@@ -112,9 +112,9 @@ public sealed class MediaSigningTests
         var replaced = new MediaOptions { SigningKey = Convert.ToBase64String(RandomNumberGenerator.GetBytes(MediaSigning.KeyLength)) };
         var other = ActivatorUtilities.CreateInstance<MediaSigning>(media.Services, Options.Create(replaced));
 
-        var expected = WebEncoders.Base64UrlEncode(HMACSHA256.HashData(configured, Encoding.UTF8.GetBytes($"{asset.Id:D}?fit=cover&w=10")));
+        var expected = WebEncoders.Base64UrlEncode(HMACSHA256.HashData(configured, Encoding.UTF8.GetBytes($"{asset.Id:D}?fit=cover&v={asset.Checksum[..16]}&w=10")));
         signature.ShouldBe(expected);
-        (await other.VerifyAsync($"{asset.Id:D}?fit=cover&w=10", signature, Token)).ShouldBeFalse();
+        (await other.VerifyAsync($"{asset.Id:D}?fit=cover&v={asset.Checksum[..16]}&w=10", signature, Token)).ShouldBeFalse();
     }
 
     [Fact]
