@@ -200,7 +200,7 @@ public sealed class ContentFormBehaviourTests : AdminTestContext
         Input(app, "title").GetAttribute("value").ShouldBe("Mine");
 
         Navigation.NavigateTo("not-found");
-        app.WaitForAssertion(() => Button(app, "Leave").Click());
+        LeaveWhenAsked(app);
 
         app.WaitForAssertion(() => Navigation.Uri.ShouldBe("http://localhost/not-found"));
         Services.GetRequiredService<IFormDraftStore>().HasUnsavedForms.ShouldBeFalse();
@@ -484,7 +484,7 @@ public sealed class ContentFormBehaviourTests : AdminTestContext
         Input(app, "title").Input("Mine");
 
         Navigation.NavigateTo("not-found", replace: true);
-        app.WaitForAssertion(() => Button(app, "Leave").Click());
+        LeaveWhenAsked(app);
 
         app.WaitForAssertion(() => Navigation.Uri.ShouldBe("http://localhost/not-found"));
         var history = ((BunitNavigationManager)Navigation).History.Where(entry => entry.Uri == "not-found").ToList();
@@ -580,6 +580,14 @@ public sealed class ContentFormBehaviourTests : AdminTestContext
     }
 
     private static void Save(IRenderedComponent<AdminApp> app) => Button(app, "Save").Click();
+
+    // The dialog's buttons are in the markup while it is closed, and a click before the form asks answers nothing, so the
+    // click waits for the question.
+    private static void LeaveWhenAsked(IRenderedComponent<AdminApp> app)
+    {
+        app.WaitForAssertion(() => Dialog(app, "Leave with unsaved changes?").Instance.Open.ShouldBeTrue());
+        Button(app, "Leave").Click();
+    }
 
     private static IElement Button(IRenderedComponent<AdminApp> app, string text) =>
         app.FindAll("fluent-button").Single(button => button.TextContent.Trim() == text);
