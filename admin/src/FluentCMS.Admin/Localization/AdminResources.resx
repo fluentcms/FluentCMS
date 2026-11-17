@@ -562,6 +562,18 @@
   <data name="Shell.SiteSwitcher.Switched" xml:space="preserve">
     <value>Showing the site {0}</value>
   </data>
+  <data name="Shell.SiteSwitcher.UnsavedTitle" xml:space="preserve">
+    <value>Switch site with unsaved changes?</value>
+  </data>
+  <data name="Shell.SiteSwitcher.UnsavedText" xml:space="preserve">
+    <value>A form has changes that are not saved. They are lost when you switch to another site.</value>
+  </data>
+  <data name="Shell.SiteSwitcher.UnsavedConfirm" xml:space="preserve">
+    <value>Switch site</value>
+  </data>
+  <data name="Shell.SiteSwitcher.UnsavedCancel" xml:space="preserve">
+    <value>Keep working</value>
+  </data>
   <data name="Shell.UserMenu.Label" xml:space="preserve">
     <value>{0}</value>
     <comment>The button of the user menu: {0} is the signed-in user's name. A culture may add words around it.</comment>
@@ -1003,6 +1015,129 @@
   </data>
   <data name="Content.Form.NoValue" xml:space="preserve">
     <value>No value</value>
+  </data>
+  <data name="Content.Form.MayNotChange" xml:space="preserve">
+    <value>You can read this entry but not change it.</value>
+  </data>
+  <data name="Content.Form.NotPublishedErrors" xml:space="preserve">
+    <value>The entry was not published. Correct the problems shown and try again.</value>
+  </data>
+  <data name="Content.Form.Rule.Required" xml:space="preserve">
+    <value>A value is required to publish.</value>
+  </data>
+  <data name="Content.Form.Rule.MinLengthCharacters" xml:space="preserve">
+    <value>Enter at least {0} characters. This has {1}.</value>
+  </data>
+  <data name="Content.Form.Rule.MaxLengthCharacters" xml:space="preserve">
+    <value>Enter at most {0} characters. This has {1}.</value>
+  </data>
+  <data name="Content.Form.Rule.MinLengthItems" xml:space="preserve">
+    <value>Add at least {0} items. This has {1}.</value>
+  </data>
+  <data name="Content.Form.Rule.MaxLengthItems" xml:space="preserve">
+    <value>Keep at most {0} items. This has {1}.</value>
+  </data>
+  <data name="Content.Form.Rule.Minimum" xml:space="preserve">
+    <value>Enter {0} or more.</value>
+  </data>
+  <data name="Content.Form.Rule.Maximum" xml:space="preserve">
+    <value>Enter {0} or less.</value>
+  </data>
+  <data name="Content.Form.Rule.Pattern" xml:space="preserve">
+    <value>The value does not have the expected format.</value>
+  </data>
+  <data name="Content.Form.Leave.Title" xml:space="preserve">
+    <value>Leave with unsaved changes?</value>
+  </data>
+  <data name="Content.Form.Leave.Text" xml:space="preserve">
+    <value>This entry has changes that are not saved. They are lost when you leave.</value>
+  </data>
+  <data name="Content.Form.Leave.Confirm" xml:space="preserve">
+    <value>Leave</value>
+  </data>
+  <data name="Content.Form.Leave.Cancel" xml:space="preserve">
+    <value>Keep editing</value>
+  </data>
+  <data name="Content.Form.Shortcuts.Title" xml:space="preserve">
+    <value>Keyboard shortcuts</value>
+  </data>
+  <data name="Content.Form.Shortcuts.SaveKeys" xml:space="preserve">
+    <value>Ctrl+S, or ⌘+S on a Mac</value>
+  </data>
+  <data name="Content.Form.Shortcuts.Save" xml:space="preserve">
+    <value>Save the entry</value>
+  </data>
+  <data name="Content.Form.Shortcuts.PublishKeys" xml:space="preserve">
+    <value>Ctrl+Shift+Enter, or ⌘+Shift+Enter on a Mac</value>
+  </data>
+  <data name="Content.Form.Shortcuts.Publish" xml:space="preserve">
+    <value>Publish the entry</value>
+  </data>
+  <data name="Content.Form.Shortcuts.CloseKeys" xml:space="preserve">
+    <value>Escape</value>
+  </data>
+  <data name="Content.Form.Shortcuts.Close" xml:space="preserve">
+    <value>Close a dialog or a side panel</value>
+  </data>
+  <data name="Content.Form.Shortcuts.HelpKeys" xml:space="preserve">
+    <value>?</value>
+  </data>
+  <data name="Content.Form.Shortcuts.Help" xml:space="preserve">
+    <value>Show this list</value>
+  </data>
+  <data name="Content.Form.Shortcuts.Done" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Content.Form.Conflict.Title" xml:space="preserve">
+    <value>Someone saved this entry first</value>
+  </data>
+  <data name="Content.Form.Conflict.Text" xml:space="preserve">
+    <value>This entry was saved in another tab or by someone else after you read it. Your values are shown beside the saved ones.</value>
+  </data>
+  <data name="Content.Form.Conflict.CompareText" xml:space="preserve">
+    <value>Choose the value to keep for each field, then save.</value>
+  </data>
+  <data name="Content.Form.Conflict.NoDifference" xml:space="preserve">
+    <value>No field you can change differs from the saved version.</value>
+  </data>
+  <data name="Content.Form.Conflict.Field" xml:space="preserve">
+    <value>Field</value>
+  </data>
+  <data name="Content.Form.Conflict.Mine" xml:space="preserve">
+    <value>Your version</value>
+  </data>
+  <data name="Content.Form.Conflict.Theirs" xml:space="preserve">
+    <value>Saved version</value>
+  </data>
+  <data name="Content.Form.Conflict.KeepMine" xml:space="preserve">
+    <value>Keep mine</value>
+  </data>
+  <data name="Content.Form.Conflict.TakeTheirs" xml:space="preserve">
+    <value>Take theirs</value>
+  </data>
+  <data name="Content.Form.Conflict.Compare" xml:space="preserve">
+    <value>Compare field by field</value>
+  </data>
+  <data name="Content.Form.Conflict.SaveChosen" xml:space="preserve">
+    <value>Save the chosen values</value>
+  </data>
+  <data name="Content.Form.Conflict.Back" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="Content.Form.Conflict.Show" xml:space="preserve">
+    <value>Compare the versions</value>
+  </data>
+  <data name="Content.Form.Conflict.TookTheirs" xml:space="preserve">
+    <value>The saved version is shown. Your changes were dropped.</value>
+  </data>
+  <data name="Content.Form.Conflict.NothingToSave" xml:space="preserve">
+    <value>Your values match the saved version, which is shown now. There was nothing to save.</value>
+  </data>
+  <data name="Content.Form.Conflict.MineOf" xml:space="preserve">
+    <value>Your version of {0}: </value>
+  </data>
+  <data name="Content.Form.Conflict.TheirsOf" xml:space="preserve">
+    <value>Saved version of {0}: </value>
   </data>
   <data name="Content.Field.EmailInvalid" xml:space="preserve">
     <value>Enter an email address such as name@example.com.</value>

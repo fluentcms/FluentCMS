@@ -1,8 +1,13 @@
 @* The site switcher, from GET /me/sites (spec 4.1); a user with one site has nothing to switch. Switching keeps the route when
    its type exists in the new site, and otherwise goes to the start page; an entry of a type that is not global belongs to
-   the site before, so its route goes to the type's list, and a list leaves its query string behind. *@
+   the site before, so its route goes to the type's list, and a list leaves its query string behind. The page is dropped
+   while the new site loads, so a switch with an unsaved form asks first (#3178). *@
 @implements IDisposable
+@using FluentCMS.Admin.Authentication
+@using FluentCMS.Admin.Forms
 @inject AdminContext Context
+@inject FormDrafts Drafts
+@inject IAdminSession Session
 @inject NavigationManager Navigation
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<AdminResources> L
@@ -10,14 +15,28 @@
 @if (Context.Sites.Count > 1 && Context.Site is { } current)
 {
     <div class="site-switcher">
+        @* While the question is open the select shows the site chosen, as the browser's does, so that a cancel draws the site
+           before again: Blazor sends only what differs from the last render. *@
         <CmsSelect Label="@L["Shell.SiteSwitcher.Label"]"
                    Options="@([.. Context.Sites.Select(site => new CmsOption(site.Id.ToString("D"), site.Name))])"
-                   Value="@current.Id.ToString("D")"
+                   Value="@((pending ?? current.Id).ToString("D"))"
                    ValueChanged="@SwitchAsync" />
     </div>
+    <CmsDialog Title="@L["Shell.SiteSwitcher.UnsavedTitle"]" Open="@(pending is not null)" OpenChanged="@(open => { if (!open) pending = null; })">
+        <ChildContent>
+            <p>@L["Shell.SiteSwitcher.UnsavedText"]</p>
+        </ChildContent>
+        <Actions>
+            <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="ConfirmSwitchAsync">@L["Shell.SiteSwitcher.UnsavedConfirm"]</CmsButton>
+            <CmsButton OnClick="@(() => pending = null)">@L["Shell.SiteSwitcher.UnsavedCancel"]</CmsButton>
+        </Actions>
+    </CmsDialog>
 }
 
 @code {
+    // The site the user chose while a form was unsaved, until they confirm or cancel the switch.
+    private Guid? pending;
+
     protected override void OnInitialized() => Context.Changed += OnChanged;
 
     public void Dispose() => Context.Changed -= OnChanged;
@@ -29,6 +48,30 @@
             return;
         }
 
+        if (Drafts.HasTracked)
+        {
+            pending = id;
+            return;
+        }
+
+        await SwitchToAsync(id);
+    }
+
+    // The unsaved forms are given up, with any draft of them a past session kept, as the question said.
+    private async Task ConfirmSwitchAsync()
+    {
+        if (pending is not { } id)
+        {
+            return;
+        }
+
+        pending = null;
+        await Drafts.DiscardTrackedAsync(Session.User?.Subject);
+        await SwitchToAsync(id);
+    }
+
+    private async Task SwitchToAsync(Guid id)
+    {
         await Context.SwitchSiteAsync(id);
         if (Context.Status != ShellStatus.Ready || Context.Site is not { } site)
         {

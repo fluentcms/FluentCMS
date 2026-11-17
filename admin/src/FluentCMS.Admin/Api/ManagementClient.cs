@@ -138,6 +138,24 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
         return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), basedOn.Site, basedOn.Locale);
     }
 
+    // The entry as it is now, which a 412 of a save holds, as a read in the site and locale of the save; its version is the
+    // tag a save on it sends. Null when the answer holds none that reads.
+    public static EntryRead? CurrentOf(ApiProblem problem, EntryRead basedOn)
+    {
+        ArgumentNullException.ThrowIfNull(problem);
+        ArgumentNullException.ThrowIfNull(basedOn);
+        try
+        {
+            return problem.Current?.Deserialize(Json.ContentEntry) is { } entry
+                ? new EntryRead(entry, $"\"{entry.Version.ToString(System.Globalization.CultureInfo.InvariantCulture)}\"", basedOn.Site, basedOn.Locale)
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     private static EntryRead Read(ApiResponse<ContentEntry> answer, string? site, string? locale) =>
         new(answer.Value, answer.EntityTag ?? $"\"{answer.Value.Version}\"", site, locale);
 

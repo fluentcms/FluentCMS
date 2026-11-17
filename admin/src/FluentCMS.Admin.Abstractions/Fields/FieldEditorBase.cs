@@ -29,7 +29,10 @@ public abstract class FieldEditorBase : ComponentBase
     [Parameter]
     public EventCallback<JsonNode?> ValueChanged { get; set; }
 
-    /// <summary>Gets or sets the errors of the last save whose path is in this field, such as <c>seo.metaTitle</c> for <c>seo</c>.</summary>
+    /// <summary>
+    /// Gets or sets the errors of the field: those the form found itself as the user left it, such as a text over its maximum
+    /// length, and those of the last save whose path is in this field, such as <c>seo.metaTitle</c> for <c>seo</c>.
+    /// </summary>
     [Parameter]
     public IReadOnlyList<ApiProblemError> Errors { get; set; } = [];
 
