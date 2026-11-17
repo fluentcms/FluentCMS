@@ -52,6 +52,9 @@ internal sealed class FakeManagementServer : HttpMessageHandler
     // Answers a request before the routes above do, when it returns one.
     public Func<HttpMethod, string, HttpResponseMessage?>? Answer { get; set; }
 
+    // Answers a request with its headers and body, after Answer, when it returns one; the content routes of a form's test.
+    public Func<HttpRequestMessage, string, string?, HttpResponseMessage?>? Respond { get; set; }
+
     // /schema answers 403 even to a holder of schema.read.
     public bool RefusesSchema { get; set; }
 
@@ -180,6 +183,11 @@ internal sealed class FakeManagementServer : HttpMessageHandler
         if (Answer?.Invoke(request.Method, path) is { } answer)
         {
             return answer;
+        }
+
+        if (Respond?.Invoke(request, path, body) is { } response)
+        {
+            return response;
         }
 
         if (request.Method == HttpMethod.Put && path == "me/preferences")

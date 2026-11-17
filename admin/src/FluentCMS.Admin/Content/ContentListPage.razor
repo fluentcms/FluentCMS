@@ -20,9 +20,8 @@
 }
 else if (type.Kind == "singleton")
 {
-    @* The form of a singleton is A-13's; until it is wired here, the page names the type only. *@
-    <h1 tabindex="-1">@AdminLabels.Type(type, L)</h1>
-    <p>@L["Content.List.SingletonPending"]</p>
+    @* A singleton has one entry, so its route is its form (A-13). *@
+    <ContentForm Type="@type.Name" />
 }
 else if (view is { } shownView)
 {
@@ -346,11 +345,11 @@ else if (view is { } shownView)
         },
     };
 
-    private string EntryRoute(ContentEntry entry) => $"{ShellNavigation.ContentRoute(Type)}/{entry.Id:D}";
+    private string EntryRoute(ContentEntry entry) => ContentRoutes.Entry(Type, entry.Id);
 
     private void Open(ContentEntry entry) => Navigation.NavigateTo(EntryRoute(entry));
 
-    private void NewEntry() => Navigation.NavigateTo($"{ShellNavigation.ContentRoute(Type)}/new");
+    private void NewEntry() => Navigation.NavigateTo(ContentRoutes.New(Type));
 
     private static string Number(long value) => value.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
 

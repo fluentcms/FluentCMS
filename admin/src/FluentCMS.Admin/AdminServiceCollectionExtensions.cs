@@ -21,6 +21,7 @@ internal static class AdminServiceCollectionExtensions
         services.AddSingleton<Announcer>();
         services.AddSingleton<IAnnouncer>(provider => provider.GetRequiredService<Announcer>());
         services.AddSingleton<IFocusService, FocusService>();
+        services.AddSingleton<NavigationFocus>();
         return services;
     }
 }

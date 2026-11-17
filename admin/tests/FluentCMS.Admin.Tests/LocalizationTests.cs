@@ -35,14 +35,11 @@ public sealed class LocalizationTests : AdminTestContext
     public void EveryTextOfEveryPageComesFromTheResources(string culture, string route)
     {
         UseInterfaceCulture(culture);
-        // The list of a type, whose name, the data of the fake, is marked as a resource is.
-        Management.SetTypes(FakeManagementServer.MainSite, FakeManagementServer.Type("article", displayName: PseudoCulture.Transform("Articles", culture == PseudoCulture.RightToLeft)));
-        Management.Entries["article"] = [];
         Start();
-        Services.GetRequiredService<NavigationManager>().NavigateTo(route.Replace("{Type}", "article", StringComparison.Ordinal));
+        Services.GetRequiredService<NavigationManager>().NavigateTo(Concrete(route, culture));
 
         var app = Render<AdminApp>();
-        if (route.Contains("{Type}", StringComparison.Ordinal))
+        if (route == ListRoute)
         {
             app.WaitForAssertion(() => app.Find(".cms-data-grid-message"));
         }
@@ -130,6 +127,25 @@ public sealed class LocalizationTests : AdminTestContext
         PseudoCulture.Unlocalized(app.Nodes).ShouldBeEmpty();
         PseudoCulture.Unlocalized(head.Nodes).ShouldBeEmpty();
         head.Find("title").TextContent.ShouldBe(Text("Configuration.Error.Title"));
+    }
+
+    // A route's parameters as data the page shows, marked as a resource is: a type name, and an id without letters.
+    private const string ListRoute = "/content/{Type}";
+
+    // The list is drawn for a collection of the schema, whose display name, the data of the fake, is marked as a resource is;
+    // the other content routes name a type the schema lacks.
+    private string Concrete(string route, string culture)
+    {
+        if (route == ListRoute)
+        {
+            Management.SetTypes(FakeManagementServer.MainSite, FakeManagementServer.Type("article", displayName: PseudoCulture.Transform("Articles", culture == PseudoCulture.RightToLeft)));
+            Management.Entries["article"] = [];
+            return "/content/article";
+        }
+
+        return route
+            .Replace("{Type}", PseudoCulture.Transform("article", culture == PseudoCulture.RightToLeft), StringComparison.Ordinal)
+            .Replace("{Id:guid}", "00000000-0000-0000-0000-000000000001", StringComparison.Ordinal);
     }
 
     [Fact]

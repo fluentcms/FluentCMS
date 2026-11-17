@@ -1,0 +1,13 @@
+@* The form of a new entry and of an entry of a collection (spec 3.2). *@
+@page "/content/{Type}/new"
+@page "/content/{Type}/{Id:guid}"
+
+<ContentForm Type="@Type" Id="@Id" />
+
+@code {
+    [Parameter]
+    public string Type { get; set; } = "";
+
+    [Parameter]
+    public Guid? Id { get; set; }
+}

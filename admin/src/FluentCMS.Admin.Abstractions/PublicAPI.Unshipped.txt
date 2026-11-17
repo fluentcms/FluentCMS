@@ -59,6 +59,8 @@ FluentCMS.Admin.Api.ApiRequest.Site.init -> void
 FluentCMS.Admin.Api.ApiResponse
 FluentCMS.Admin.Api.ApiResponse.ApiResponse(System.Net.HttpStatusCode status, string? entityTag) -> void
 FluentCMS.Admin.Api.ApiResponse.EntityTag.get -> string?
+FluentCMS.Admin.Api.ApiResponse.Location.get -> System.Uri?
+FluentCMS.Admin.Api.ApiResponse.Location.init -> void
 FluentCMS.Admin.Api.ApiResponse.Status.get -> System.Net.HttpStatusCode
 FluentCMS.Admin.Api.ApiResponse<T>
 FluentCMS.Admin.Api.ApiResponse<T>.ApiResponse(System.Net.HttpStatusCode status, string? entityTag, T value) -> void
@@ -447,6 +449,36 @@ FluentCMS.Admin.Configuration.AdminCultures.Default.init -> void
 FluentCMS.Admin.Configuration.AdminCultures.Equals(FluentCMS.Admin.Configuration.AdminCultures? other) -> bool
 FluentCMS.Admin.Configuration.AdminCultures.Offered.get -> System.Collections.Generic.IReadOnlyList<string!>?
 FluentCMS.Admin.Configuration.AdminCultures.Offered.init -> void
+FluentCMS.Admin.Fields.FieldEditorBase
+FluentCMS.Admin.Fields.FieldEditorBase.ChangeAsync(System.Text.Json.Nodes.JsonNode? value) -> System.Threading.Tasks.Task!
+FluentCMS.Admin.Fields.FieldEditorBase.ContentLocale.get -> string?
+FluentCMS.Admin.Fields.FieldEditorBase.ContentLocale.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.ErrorText.get -> string?
+FluentCMS.Admin.Fields.FieldEditorBase.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.ApiProblemError!>!
+FluentCMS.Admin.Fields.FieldEditorBase.Errors.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.Field.get -> FluentCMS.Admin.Api.SchemaFieldDescription!
+FluentCMS.Admin.Fields.FieldEditorBase.Field.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.FieldEditorBase() -> void
+FluentCMS.Admin.Fields.FieldEditorBase.Help.get -> string?
+FluentCMS.Admin.Fields.FieldEditorBase.Label.get -> string!
+FluentCMS.Admin.Fields.FieldEditorBase.Placeholder.get -> string?
+FluentCMS.Admin.Fields.FieldEditorBase.ReadOnly.get -> bool
+FluentCMS.Admin.Fields.FieldEditorBase.ReadOnly.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.Required.get -> bool
+FluentCMS.Admin.Fields.FieldEditorBase.Required.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.TextDirection.get -> string!
+FluentCMS.Admin.Fields.FieldEditorBase.TextDirection.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.Value.get -> System.Text.Json.Nodes.JsonNode?
+FluentCMS.Admin.Fields.FieldEditorBase.Value.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.ValueChanged.get -> Microsoft.AspNetCore.Components.EventCallback<System.Text.Json.Nodes.JsonNode?>
+FluentCMS.Admin.Fields.FieldEditorBase.ValueChanged.set -> void
+FluentCMS.Admin.Fields.FieldEditorRegistration
+FluentCMS.Admin.Fields.FieldEditorRegistration.Editor.get -> System.Type!
+FluentCMS.Admin.Fields.FieldEditorRegistration.FieldType.get -> string!
+FluentCMS.Admin.Fields.FieldEditorRegistry
+FluentCMS.Admin.Fields.FieldEditorRegistry.Add<TEditor>(string! fieldType) -> void
+FluentCMS.Admin.Fields.FieldEditorRegistry.FieldEditorRegistry() -> void
+FluentCMS.Admin.Fields.FieldEditorRegistry.Find(string! fieldType) -> FluentCMS.Admin.Fields.FieldEditorRegistration?
 FluentCMS.Admin.Forms.FormDraft
 FluentCMS.Admin.Forms.FormDraft.<Clone>$() -> FluentCMS.Admin.Forms.FormDraft!
 FluentCMS.Admin.Forms.FormDraft.BaseVersion.get -> string?
@@ -504,6 +536,8 @@ FluentCMS.Admin.Lists.ListCellRegistry.Shows(FluentCMS.Admin.Api.SchemaFieldDesc
 FluentCMS.Admin.Lists.TextListCell
 FluentCMS.Admin.Lists.TextListCell.TextListCell() -> void
 const FluentCMS.Admin.Api.ApiRequest.NewLocale = "\"0\"" -> string!
+const FluentCMS.Admin.Fields.FieldEditorBase.LeftToRight = "ltr" -> string!
+const FluentCMS.Admin.Fields.FieldEditorBase.RightToLeft = "rtl" -> string!
 override FluentCMS.Admin.Api.ApiProblem.Equals(object? obj) -> bool
 override FluentCMS.Admin.Api.ApiProblem.GetHashCode() -> int
 override FluentCMS.Admin.Api.ApiProblem.ToString() -> string!
@@ -644,7 +678,9 @@ static FluentCMS.Admin.Configuration.AdminConfiguration.operator !=(FluentCMS.Ad
 static FluentCMS.Admin.Configuration.AdminConfiguration.operator ==(FluentCMS.Admin.Configuration.AdminConfiguration? left, FluentCMS.Admin.Configuration.AdminConfiguration? right) -> bool
 static FluentCMS.Admin.Configuration.AdminCultures.operator !=(FluentCMS.Admin.Configuration.AdminCultures? left, FluentCMS.Admin.Configuration.AdminCultures? right) -> bool
 static FluentCMS.Admin.Configuration.AdminCultures.operator ==(FluentCMS.Admin.Configuration.AdminCultures? left, FluentCMS.Admin.Configuration.AdminCultures? right) -> bool
+static FluentCMS.Admin.Fields.FieldEditorBase.LabelOf(FluentCMS.Admin.Api.SchemaFieldDescription! field) -> string!
 static FluentCMS.Admin.Forms.FormDraft.operator !=(FluentCMS.Admin.Forms.FormDraft? left, FluentCMS.Admin.Forms.FormDraft? right) -> bool
 static FluentCMS.Admin.Forms.FormDraft.operator ==(FluentCMS.Admin.Forms.FormDraft? left, FluentCMS.Admin.Forms.FormDraft? right) -> bool
 static FluentCMS.Admin.Forms.FormDraftKey.operator !=(FluentCMS.Admin.Forms.FormDraftKey? left, FluentCMS.Admin.Forms.FormDraftKey? right) -> bool
 static FluentCMS.Admin.Forms.FormDraftKey.operator ==(FluentCMS.Admin.Forms.FormDraftKey? left, FluentCMS.Admin.Forms.FormDraftKey? right) -> bool
+virtual FluentCMS.Admin.Fields.FieldEditorBase.FocusAsync() -> System.Threading.Tasks.ValueTask

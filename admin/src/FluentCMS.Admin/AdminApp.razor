@@ -11,6 +11,7 @@
 @inject InterfaceCulture Culture
 @inject DocumentInterop Document
 @inject NavigationManager Navigation
+@inject NavigationFocus NavigationFocus
 
 @if (Startup.Configuration is { } configuration)
 {
@@ -52,6 +53,7 @@ else
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AccountPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(LoginCallbackPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ContentListPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ContentEntryPage))]
     public AdminApp()
     {
     }
@@ -101,12 +103,14 @@ else
     // the page's heading (spec 4.18), when the path changes, so from one type's list to another's too, and not when only the
     // query string does, as a sort. This handler runs before any render of the navigation, since it subscribed before the gate
     // and the Router existed, so HeadingFocus gets the path and the choice made here.
+    // A navigation the page asked to keep focus for, as a new entry's move to its route after the save, leaves it where it is.
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         var from = previousRoute;
         previousRoute = Route(e.Location);
         currentPath = PathOf(previousRoute);
-        focusHeading = !from.StartsWith("authentication/", StringComparison.OrdinalIgnoreCase);
+        var keep = NavigationFocus.TakeKeep();
+        focusHeading = !from.StartsWith("authentication/", StringComparison.OrdinalIgnoreCase) && !keep;
     }
 
     private static string PathOf(string route)

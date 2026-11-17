@@ -3,6 +3,7 @@ using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Authentication;
 using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Configuration;
+using FluentCMS.Admin.Fields;
 using FluentCMS.Admin.Interop;
 using FluentCMS.Admin.Lists;
 using FluentCMS.Admin.Localization;
@@ -75,6 +76,7 @@ public static class AdminHostBuilderExtensions
         services.AddAdminShell();
         services.TryAddSingleton<ListCellRegistry>();
         services.AddSingleton<IColumnStorage, ColumnStorageInterop>();
+        services.AddFieldEditors();
         services.AddManagementApi();
         services.AddOptions<ManagementApiOptions>().Configure(options => options.ApiBaseUrl = configuration.ApiBaseUrl);
         return services;

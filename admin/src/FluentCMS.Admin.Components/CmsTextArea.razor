@@ -4,7 +4,10 @@
 @* Native, for the reason given in CmsTextInput. *@
 <div class="cms-field">
     @LabelTemplate
-    <textarea id="@InputId"
+    <textarea @ref="Element"
+              id="@InputId"
+              lang="@Lang"
+              dir="@Dir"
               class="cms-input cms-textarea"
               rows="@Rows"
               placeholder="@Placeholder"

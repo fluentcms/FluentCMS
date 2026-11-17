@@ -169,10 +169,15 @@ FluentCMS.Admin.Components.CmsIconName.Warning = 15 -> FluentCMS.Admin.Component
 FluentCMS.Admin.Components.CmsInputBase<TValue>
 FluentCMS.Admin.Components.CmsInputBase<TValue>.AriaAttributes.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>!
 FluentCMS.Admin.Components.CmsInputBase<TValue>.CmsInputBase() -> void
+FluentCMS.Admin.Components.CmsInputBase<TValue>.Dir.get -> string?
+FluentCMS.Admin.Components.CmsInputBase<TValue>.Dir.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Disabled.get -> bool
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Disabled.set -> void
+FluentCMS.Admin.Components.CmsInputBase<TValue>.Element.get -> Microsoft.AspNetCore.Components.ElementReference
+FluentCMS.Admin.Components.CmsInputBase<TValue>.Element.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Error.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Error.set -> void
+FluentCMS.Admin.Components.CmsInputBase<TValue>.FocusAsync() -> System.Threading.Tasks.ValueTask
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Help.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Help.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Id.get -> string?
@@ -182,6 +187,8 @@ FluentCMS.Admin.Components.CmsInputBase<TValue>.Invalid.get -> bool
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Label.get -> string!
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Label.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.LabelTemplate.get -> Microsoft.AspNetCore.Components.RenderFragment!
+FluentCMS.Admin.Components.CmsInputBase<TValue>.Lang.get -> string?
+FluentCMS.Admin.Components.CmsInputBase<TValue>.Lang.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Message.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.MessageId.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.MessageTemplate.get -> Microsoft.AspNetCore.Components.RenderFragment?
@@ -382,6 +389,7 @@ override FluentCMS.Admin.Components.CmsBreadcrumbItem.Equals(object? obj) -> boo
 override FluentCMS.Admin.Components.CmsBreadcrumbItem.GetHashCode() -> int
 override FluentCMS.Admin.Components.CmsBreadcrumbItem.ToString() -> string!
 override FluentCMS.Admin.Components.CmsButton.OnParametersSet() -> void
+override FluentCMS.Admin.Components.CmsCheckbox.OnAfterRender(bool firstRender) -> void
 override FluentCMS.Admin.Components.CmsDataGrid<TItem>.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.OnInitialized() -> void
 override FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.OnParametersSet() -> void
@@ -398,6 +406,7 @@ override FluentCMS.Admin.Components.CmsOption.ToString() -> string!
 override FluentCMS.Admin.Components.CmsSortKey.Equals(object? obj) -> bool
 override FluentCMS.Admin.Components.CmsSortKey.GetHashCode() -> int
 override FluentCMS.Admin.Components.CmsSortKey.ToString() -> string!
+override FluentCMS.Admin.Components.CmsSwitch.OnAfterRender(bool firstRender) -> void
 override FluentCMS.Admin.Components.CmsThemeRoot.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
 override FluentCMS.Admin.Components.CmsTree.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsTreeNode.Equals(object? obj) -> bool

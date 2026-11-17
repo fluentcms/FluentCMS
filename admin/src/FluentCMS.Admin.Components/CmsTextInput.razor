@@ -4,7 +4,10 @@
 @* A native input: the library's keeps its control in a shadow root, where help, errors and aria-invalid cannot reach it. *@
 <div class="cms-field">
     @LabelTemplate
-    <input id="@InputId"
+    <input @ref="Element"
+           id="@InputId"
+           lang="@Lang"
+           dir="@Dir"
            class="cms-input"
            type="@ToHtml(Type)"
            value="@Value"
