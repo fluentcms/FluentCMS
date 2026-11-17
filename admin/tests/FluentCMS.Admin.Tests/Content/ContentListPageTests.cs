@@ -41,7 +41,7 @@ public sealed class ContentListPageTests : AdminTestContext
         Rows(app)[0].QuerySelector("a")!.GetAttribute("href").ShouldBe($"content/article/{Id(1)}");
         Rows(app)[0].QuerySelector("a")!.GetAttribute("tabindex").ShouldBe("-1");
         Cells(Rows(app)[0])[1].ShouldBe("Draft");
-        Management.ContentQueries.Single().ShouldBe("sort=-updatedAt&page=1&pageSize=25&fields=title,status,updatedAt&withTotal=true");
+        Management.ContentQueries.Single().ShouldBe("sort=-updatedAt&page=1&pageSize=25&fields=title,status,updatedAt,scheduledPublishAt,scheduledUnpublishAt&withTotal=true");
         app.Find("main h1").TextContent.ShouldBe("Article");
     }
 
@@ -119,7 +119,7 @@ public sealed class ContentListPageTests : AdminTestContext
         Management.Total = 60;
         var app = Load("content/article?page=2&pageSize=10");
 
-        Management.ContentQueries.Single().ShouldBe("sort=-updatedAt&page=2&pageSize=10&fields=title,status,updatedAt&withTotal=true");
+        Management.ContentQueries.Single().ShouldBe("sort=-updatedAt&page=2&pageSize=10&fields=title,status,updatedAt,scheduledPublishAt,scheduledUnpublishAt&withTotal=true");
         app.Find(".content-list-pager").TextContent.ShouldContain("60 entries");
         app.Find(".content-list-pager").TextContent.ShouldContain("Page 2 of 6");
         app.Find("table").GetAttribute("aria-rowcount").ShouldBe("61");
@@ -217,7 +217,7 @@ public sealed class ContentListPageTests : AdminTestContext
         app.WaitForAssertion(() => app.Find("main h1").TextContent.ShouldBe("Author"));
         app.WaitForAssertion(() => Rows(app).Select(row => Cells(row)[0]).ShouldBe(["Grace"]));
         Headers(app).ShouldBe(["Name", "Status", "Updated"]);
-        Management.ContentQueries.Last().ShouldBe("sort=-updatedAt&page=1&pageSize=25&fields=name,status,updatedAt&withTotal=true");
+        Management.ContentQueries.Last().ShouldBe("sort=-updatedAt&page=1&pageSize=25&fields=name,status,updatedAt,scheduledPublishAt,scheduledUnpublishAt&withTotal=true");
     }
 
     [Fact]
@@ -261,7 +261,7 @@ public sealed class ContentListPageTests : AdminTestContext
     {
         var app = Load("content/article?page=abc&pageSize=99999999999&sort=%2C-&columns=%2C%2C");
 
-        Management.ContentQueries.Single().ShouldBe("sort=-updatedAt&page=1&pageSize=25&fields=title,status,updatedAt&withTotal=true");
+        Management.ContentQueries.Single().ShouldBe("sort=-updatedAt&page=1&pageSize=25&fields=title,status,updatedAt,scheduledPublishAt,scheduledUnpublishAt&withTotal=true");
         Headers(app).ShouldBe(["Title", "Status", "Updated"]);
     }
 

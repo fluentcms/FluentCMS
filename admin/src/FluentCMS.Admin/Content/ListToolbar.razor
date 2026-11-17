@@ -1,0 +1,377 @@
+@* The search box and the filters of a list (spec 4.4), which it reads from the address of the list and writes back to it,
+   so that the page reads what the address says. A filter is set in a dialog: a field the list may filter on, an operator its type takes, and an operand
+   read as the field's type. Until the relation picker of A-15, a relation takes entry ids. *@
+@inject FormatService Format
+@inject NavigationManager Navigation
+@inject ListFilterRegistry FilterTypes
+@inject IStringLocalizer<AdminResources> L
+
+<div class="content-list-toolbar">
+    @if (Searchable)
+    {
+        <form role="search" class="content-list-search" @onsubmit="SubmitSearchAsync">
+            <CmsTextInput Type="CmsTextInputType.Search"
+                          Label="@L["Content.Search.Label"]"
+                          Value="@searchText"
+                          ValueChanged="@(text => searchText = text)"
+                          Error="@(searchText?.Trim().Length > ListFilters.MaxSearchLength ? L["Content.Search.TooLong", ListFilters.MaxSearchLength].Value : null)" />
+            <CmsButton Icon="CmsIconName.Search" OnClick="SubmitSearchAsync">@L["Content.Search.Submit"]</CmsButton>
+        </form>
+    }
+
+    @if (fields.Count > 0)
+    {
+        <div class="content-list-filters">
+            @if (filters.Count > 0)
+            {
+                <ul aria-label="@L["Content.Filter.Applied"]">
+                    @for (var index = 0; index < filters.Count; index++)
+                    {
+                        var position = index;
+                        var summary = Describe(filters[position]);
+                        <li class="content-filter" @key="@($"{position}/{summary}")">
+                            <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="@(() => Edit(position))">@summary</CmsButton>
+                            <CmsButton Appearance="CmsButtonAppearance.Subtle" Icon="CmsIconName.Dismiss" Label="@L["Content.Filter.Remove", summary]" OnClick="@(() => Remove(position))" />
+                        </li>
+                    }
+                </ul>
+            }
+            <CmsButton @ref="addButton" Icon="CmsIconName.Add" OnClick="Add">@L["Content.Filter.Add"]</CmsButton>
+            @if (filters.Count > 1)
+            {
+                <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="Clear">@L["Content.Filter.Clear"]</CmsButton>
+            }
+        </div>
+    }
+</div>
+
+<CmsDialog Title="@L[editing < 0 ? "Content.Filter.AddTitle" : "Content.Filter.EditTitle"]" Open="@open" OpenChanged="@(value => open = value)">
+    <ChildContent>
+        @if (Draft is { } field)
+        {
+            <div class="content-filter-form">
+                <CmsSelect Label="@L["Content.Filter.Field"]"
+                           Options="@([.. fields.Select(item => new CmsOption(item.Name, AdminLabels.Field(item.Field)))])"
+                           Value="@field.Name"
+                           ValueChanged="@ChooseField" />
+                <CmsSelect Label="@L["Content.Filter.Operator"]"
+                           Options="@([.. field.Filter.Operators.Select(item => new CmsOption(ListFilters.Name(item), OperatorText(field, item)))])"
+                           Value="@ListFilters.Name(draftOperator)"
+                           ValueChanged="@ChooseOperator" />
+                @if (!ListFilters.TakesNoValue(draftOperator))
+                {
+                    @if (draftOperator == FilterOperator.Between)
+                    {
+                        @Input(field, 0, L["Content.Filter.From"], error)
+                        @Input(field, 1, L["Content.Filter.To"], null)
+                    }
+                    else if (ListFilters.TakesList(draftOperator) && field.Filter.Operand == FilterOperand.Option)
+                    {
+                        <fieldset class="content-filter-options">
+                            <legend>@L["Content.Filter.Values"]</legend>
+                            @foreach (var option in field.Options)
+                            {
+                                <CmsCheckbox @key="option" Label="@option" Value="@values.Contains(option)" ValueChanged="@(on => Toggle(option, on))" />
+                            }
+                            @if (error is not null)
+                            {
+                                <p class="content-filter-error">@error</p>
+                            }
+                        </fieldset>
+                    }
+                    else if (ListFilters.TakesList(draftOperator))
+                    {
+                        <CmsTextInput Label="@L["Content.Filter.Values"]"
+                                      Help="@L[field.Filter.Operand == FilterOperand.Id ? "Content.Filter.IdsHelp" : "Content.Filter.ValuesHelp"]"
+                                      Numeric="@(field.Filter.Operand is FilterOperand.WholeNumber or FilterOperand.DecimalNumber)"
+                                      Value="@listText"
+                                      ValueChanged="@(text => listText = text)"
+                                      Error="@error" />
+                    }
+                    else
+                    {
+                        @Input(field, 0, L["Content.Filter.Value"], error)
+                    }
+                }
+            </div>
+        }
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="Apply">@L["Content.Filter.Apply"]</CmsButton>
+        <CmsButton OnClick="@(() => open = false)">@L["Content.Filter.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+@code {
+    private IReadOnlyList<FilterField> fields = [];
+    private IReadOnlyList<FieldFilter> filters = [];
+    private string? search;
+    private string? searchText;
+    private string? appliedSearch;
+    private bool open;
+    private int editing = -1;
+    private string? draftField;
+    private FilterOperator draftOperator;
+    private List<string> values = [];
+
+    // The text of a list of values, comma separated, which is split when the filter is applied.
+    private string? listText;
+    private string? error;
+    private CmsButton? addButton;
+    private bool focusAdd;
+
+    [Parameter, EditorRequired]
+    public SchemaTypeDescription Type { get; set; } = null!;
+
+    // Whether the search box is shown: the type is searchable and the site has a search index.
+    [Parameter]
+    public bool Searchable { get; set; }
+
+    private FilterField? Draft => draftField is null ? null : fields.Find(draftField);
+
+    // The page renders again on every change of its address, which passes the type again.
+    protected override void OnParametersSet()
+    {
+        var query = new Uri(Navigation.Uri).Query;
+        fields = ListFilters.Fields(Type, FilterTypes);
+        filters = ListFilters.Parse(query, fields);
+        search = Searchable ? ListFilters.ParseSearch(ListFilters.SearchOf(query)) : null;
+
+        // The box shows the search of the address, unless the user is typing another.
+        if (search != appliedSearch)
+        {
+            (searchText, appliedSearch) = (search, search);
+        }
+    }
+
+    private void Navigate(IReadOnlyList<FieldFilter> filters, string? text) =>
+        Navigation.NavigateTo(ListFilters.Address(Navigation.ToBaseRelativePath(Navigation.Uri), filters, text));
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAdd && addButton is not null)
+        {
+            focusAdd = false;
+            await addButton.FocusAsync();
+        }
+    }
+
+    private Task SubmitSearchAsync()
+    {
+        if (searchText?.Trim().Length > ListFilters.MaxSearchLength)
+        {
+            return Task.CompletedTask;
+        }
+
+        appliedSearch = ListFilters.ParseSearch(searchText);
+        Navigate(filters, appliedSearch);
+        return Task.CompletedTask;
+    }
+
+    private void Add()
+    {
+        editing = -1;
+        Start(fields[0], null);
+    }
+
+    private void Edit(int index)
+    {
+        var filter = filters[index];
+        if (fields.Find(filter.Path) is not { } field)
+        {
+            return;
+        }
+
+        editing = index;
+        Start(field, filter);
+    }
+
+    private void Start(FilterField field, FieldFilter? filter)
+    {
+        draftField = field.Name;
+        draftOperator = filter?.Operator ?? field.Filter.Operators[0];
+        values = [.. ListFilters.Texts(filter?.Value)];
+        listText = string.Join(", ", values);
+        error = null;
+        open = true;
+    }
+
+    private void ChooseField(string? name)
+    {
+        if (name is not null && fields.Find(name) is { } field && field.Name != draftField)
+        {
+            Start(field, null);
+        }
+    }
+
+    private void ChooseOperator(string? name)
+    {
+        if (Draft?.Filter.Operators.FirstOrDefault(item => ListFilters.Name(item) == name) is { } chosen && chosen != draftOperator)
+        {
+            // A value is kept from one operator that takes one to another; any other change starts empty.
+            var keep = TakesOne(chosen) && TakesOne(draftOperator);
+            (draftOperator, error) = (chosen, null);
+            values = keep ? [.. values.Take(1)] : [];
+            listText = null;
+        }
+    }
+
+    private static bool TakesOne(FilterOperator filterOperator) =>
+        !ListFilters.TakesNoValue(filterOperator) && !ListFilters.TakesList(filterOperator) && filterOperator != FilterOperator.Between;
+
+    private void Toggle(string option, bool on)
+    {
+        values.Remove(option);
+        if (on)
+        {
+            values.Add(option);
+        }
+    }
+
+    private void Apply()
+    {
+        if (Draft is not { } field)
+        {
+            return;
+        }
+
+        if (ListFilters.TakesList(draftOperator) && field.Filter.Operand != FilterOperand.Option)
+        {
+            values = [.. (listText ?? "").Split(',').Select(item => item.Trim()).Where(item => item.Length > 0)];
+        }
+
+        var (valid, operand) = ListFilters.Operand(field, draftOperator, values);
+        if (!valid)
+        {
+            error = L[ListFilters.TakesList(draftOperator) && values.Count == 0 ? "Content.Filter.NeedsValue" : "Content.Filter.Invalid"];
+            return;
+        }
+
+        var filter = new FieldFilter(field.Name, draftOperator, operand);
+        List<FieldFilter> next = [.. filters];
+        if (editing >= 0 && editing < next.Count)
+        {
+            next[editing] = filter;
+        }
+        else
+        {
+            next.Add(filter);
+        }
+
+        open = false;
+        Navigate([.. next.Distinct()], appliedSearch);
+    }
+
+    // The removed filter's buttons leave the document, so focus goes to Add filter.
+    private void Remove(int index)
+    {
+        focusAdd = true;
+        Navigate([.. filters.Where((_, position) => position != index)], appliedSearch);
+    }
+
+    private void Clear()
+    {
+        focusAdd = true;
+        Navigate([], appliedSearch);
+    }
+
+    private RenderFragment Input(FilterField field, int slot, string label, string? message) => __builder =>
+    {
+        var text = slot < values.Count ? values[slot] : null;
+        switch (field.Filter.Operand)
+        {
+            case FilterOperand.Date:
+                <CmsDatePicker Label="@label" Value="@Day(text)" ValueChanged="@(day => Set(slot, day?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)))" Error="@message" />
+                break;
+            case FilterOperand.DateTime:
+                var local = Moment(text) is { } moment ? TimeZoneInfo.ConvertTime(moment, Format.TimeZone) : (DateTimeOffset?)null;
+                <div class="content-filter-moment">
+                    <CmsDatePicker Label="@label" Value="@(local is { } day ? DateOnly.FromDateTime(day.DateTime) : null)" ValueChanged="@(day => SetMoment(slot, day, local is { } at ? TimeOnly.FromDateTime(at.DateTime) : null))" Error="@message" />
+                    <CmsTimePicker Label="@L["Content.Filter.Time", label]" Value="@(local is { } time ? TimeOnly.FromDateTime(time.DateTime) : null)" ValueChanged="@(time => SetMoment(slot, local is { } at ? DateOnly.FromDateTime(at.DateTime) : null, time))" />
+                </div>
+                break;
+            case FilterOperand.Boolean:
+                <CmsSelect Label="@label" Options="@([new CmsOption("true", L["Content.Filter.Yes"]), new CmsOption("false", L["Content.Filter.No"])])" Value="@text" ValueChanged="@(value => Set(slot, value))" Error="@message" />
+                break;
+            case FilterOperand.Option:
+                <CmsSelect Label="@label" Options="@([.. field.Options.Select(option => new CmsOption(option, option))])" Value="@text" ValueChanged="@(value => Set(slot, value))" Error="@message" />
+                break;
+            default:
+                <CmsTextInput Label="@label"
+                              Help="@(field.Filter.Operand == FilterOperand.Id ? L["Content.Filter.IdHelp"].Value : null)"
+                              Numeric="@(field.Filter.Operand is FilterOperand.WholeNumber or FilterOperand.DecimalNumber)"
+                              Value="@text"
+                              ValueChanged="@(value => Set(slot, value))"
+                              Error="@message" />
+                break;
+        }
+    };
+
+    private void Set(int slot, string? text)
+    {
+        while (values.Count <= slot)
+        {
+            values.Add("");
+        }
+
+        values[slot] = text ?? "";
+    }
+
+    // A moment is entered as a day and a time in the user's time zone; midnight until a time is chosen.
+    private void SetMoment(int slot, DateOnly? day, TimeOnly? time)
+    {
+        if (day is not { } date)
+        {
+            Set(slot, null);
+            return;
+        }
+
+        var wall = date.ToDateTime(time ?? TimeOnly.MinValue);
+        var moment = new DateTimeOffset(wall, Format.TimeZone.GetUtcOffset(wall)).ToUniversalTime();
+        Set(slot, moment.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    private static DateOnly? Day(string? text) =>
+        DateOnly.TryParseExact(text, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var day) ? day : null;
+
+    private static DateTimeOffset? Moment(string? text) =>
+        DateTimeOffset.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var moment) ? moment : null;
+
+    private string OperatorText(FilterField field, FilterOperator filterOperator)
+    {
+        var dated = field.Filter.Operand is FilterOperand.Date or FilterOperand.DateTime
+            && filterOperator is FilterOperator.LessThan or FilterOperator.LessThanOrEqual or FilterOperator.GreaterThan or FilterOperator.GreaterThanOrEqual;
+        return L[$"Content.Filter.Operator.{filterOperator}{(dated ? ".Date" : "")}"];
+    }
+
+    // What a filter says in words, such as "Title contains news" or "Published on is after 1/1/2026 12:00 AM".
+    private string Describe(FieldFilter filter)
+    {
+        if (fields.Find(filter.Path) is not { } field)
+        {
+            return filter.Path;
+        }
+
+        var label = AdminLabels.Field(field.Field);
+        var operatorText = OperatorText(field, filter.Operator);
+        if (ListFilters.TakesNoValue(filter.Operator))
+        {
+            return L["Content.Filter.SummaryNoValue", label, operatorText];
+        }
+
+        var texts = ListFilters.Texts(filter.Value).Select(text => ValueText(field, text)).ToList();
+        var value = filter.Operator == FilterOperator.Between && texts.Count == 2
+            ? L["Content.Filter.Range", texts[0], texts[1]].Value
+            : string.Join(", ", texts);
+        return L["Content.Filter.Summary", label, operatorText, value];
+    }
+
+    private string ValueText(FilterField field, string text) => field.Filter.Operand switch
+    {
+        FilterOperand.WholeNumber or FilterOperand.DecimalNumber when decimal.TryParse(text, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var number) => Format.Number(number),
+        FilterOperand.Date when Day(text) is { } day => day.ToString("d", Format.Culture),
+        FilterOperand.DateTime when Moment(text) is { } moment => Format.DateTime(moment),
+        FilterOperand.Boolean => L[text == "true" ? "Content.Filter.Yes" : "Content.Filter.No"],
+        _ => text,
+    };
+}

@@ -26,6 +26,12 @@ internal sealed class ListView
 {
     public const string UpdatedAt = "updatedAt";
 
+    public const string ScheduledPublishAt = "scheduledPublishAt";
+
+    public const string ScheduledUnpublishAt = "scheduledUnpublishAt";
+
+    public const string EveryLocale = "all";
+
     public static readonly IReadOnlyList<int> PageSizes = [10, 25, 50, 100];
 
     public const int DefaultPageSize = 25;
@@ -38,11 +44,12 @@ internal sealed class ListView
 
     private readonly Dictionary<string, ListColumn> _byName;
 
-    private ListView(SchemaTypeDescription type, ListColumn label, IReadOnlyList<ListColumn> available)
+    private ListView(SchemaTypeDescription type, ListColumn label, IReadOnlyList<ListColumn> available, IReadOnlyList<FilterField> filters)
     {
         Type = type;
         Label = label;
         Available = available;
+        Filters = filters;
         _byName = new Dictionary<string, ListColumn>(StringComparer.Ordinal) { [label.Name] = label };
         foreach (var column in available)
         {
@@ -57,15 +64,22 @@ internal sealed class ListView
     // Every column but the label, in the order of the type: the system fields, then the fields in schema order.
     public IReadOnlyList<ListColumn> Available { get; }
 
+    // The fields a filter may be set on.
+    public IReadOnlyList<FilterField> Filters { get; }
+
+    // Whether a search box is offered: the type has a field the index holds (FCMS1700 otherwise).
+    public bool Searchable => Type.Fields.Any(item => item.Searchable && !item.Hidden);
+
     public IReadOnlyList<string> DefaultColumns => [.. new[] { "status", UpdatedAt }.Where(_byName.ContainsKey)];
 
     public static IReadOnlyList<SortField> DefaultSort { get; } = [new SortField(UpdatedAt, Descending: true)];
 
-    public static ListView For(SchemaTypeDescription type, SchemaDescription schema, ListCellRegistry cells)
+    public static ListView For(SchemaTypeDescription type, SchemaDescription schema, ListCellRegistry cells, ListFilterRegistry? filters = null)
     {
         ArgumentNullException.ThrowIfNull(type);
         ArgumentNullException.ThrowIfNull(schema);
         ArgumentNullException.ThrowIfNull(cells);
+        filters ??= new ListFilterRegistry();
 
         var labelName = AdminLabels.LabelField(type);
         var labelField = type.Fields.FirstOrDefault(field => field.Name == labelName && !field.Hidden);
@@ -89,7 +103,7 @@ internal sealed class ListView
             available.Add(new(field.Name, ListColumnKind.Field, Sorts(field), field, ReadPath(field, schema)));
         }
 
-        return new ListView(type, label, available);
+        return new ListView(type, label, available, ListFilters.Fields(type, filters));
     }
 
     // The chosen columns that exist, once each and in the order given; the default when none of them does.
@@ -135,12 +149,16 @@ internal sealed class ListView
         int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var value) ? value : null;
 
     // fields= names the label and the shown columns, system members included, since a read with fields= has only what it
-    // names; populate= names the relations among them. A list that shows nothing else still names the id, since a read
-    // without fields= has every field.
-    public ContentQuery Query(IReadOnlyList<ListColumn> shown, IReadOnlyList<SortField> sort, int page, int pageSize)
+    // names, and the pending schedules with the status; populate= names the relations among them. A list that shows nothing
+    // else still names the id, since a read without fields= has every field. Under locale=all the engine matches, sorts and
+    // pages in the site's default locale and answers every locale of each entry.
+    public ContentQuery Query(IReadOnlyList<ListColumn> shown, IReadOnlyList<SortField> sort, int page, int pageSize, IReadOnlyList<FieldFilter>? filters = null, string? search = null, bool everyLocale = false)
     {
         ArgumentNullException.ThrowIfNull(shown);
-        var paths = new[] { Label }.Concat(shown).Select(column => column.ReadPath).OfType<string>().Distinct(StringComparer.Ordinal).ToList();
+        var paths = new[] { Label }.Concat(shown).Select(column => column.ReadPath).OfType<string>()
+            .Concat(shown.Any(column => column.Kind == ListColumnKind.Status) ? [ScheduledPublishAt, ScheduledUnpublishAt] : [])
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
         var populate = new[] { Label }.Concat(shown)
             .Where(column => column.Field is { Type: "relation" } && column.ReadPath?.Contains('.', StringComparison.Ordinal) == true)
             .Select(column => column.Name)
@@ -148,6 +166,9 @@ internal sealed class ListView
             .ToList();
         return new ContentQuery
         {
+            Filter = filters switch { null or [] => null, [var one] => one, _ => new And([.. filters]) },
+            Search = search,
+            Locale = everyLocale ? EveryLocale : null,
             Fields = paths.Count > 0 ? paths : ["id"],
             Populate = populate,
             Sort = sort,

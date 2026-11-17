@@ -521,6 +521,30 @@ FluentCMS.Admin.IAdminContext.Site.get -> FluentCMS.Admin.Api.MySiteInfo?
 FluentCMS.Admin.IAdminContext.User.get -> FluentCMS.Admin.Api.MeResponse?
 FluentCMS.Admin.IAnnouncer
 FluentCMS.Admin.IAnnouncer.Announce(string! message, FluentCMS.Admin.AnnouncementPoliteness politeness = FluentCMS.Admin.AnnouncementPoliteness.Polite) -> void
+FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.Boolean = 5 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.Date = 3 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.DateTime = 4 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.DecimalNumber = 2 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.Id = 7 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.Option = 6 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.Text = 0 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.WholeNumber = 1 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.Between = 8 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.Contains = 9 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.Equal = 0 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.GreaterThan = 6 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.GreaterThanOrEqual = 7 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.HasBlock = 13 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.In = 2 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.IsNotNull = 12 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.IsNull = 11 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.LessThan = 4 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.LessThanOrEqual = 5 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.NotEqual = 1 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.NotIn = 3 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.StartsWith = 10 -> FluentCMS.Admin.Lists.FilterOperator
 FluentCMS.Admin.Lists.ListCellBase
 FluentCMS.Admin.Lists.ListCellBase.Entry.get -> FluentCMS.Admin.Api.ContentEntry!
 FluentCMS.Admin.Lists.ListCellBase.Entry.set -> void
@@ -533,6 +557,14 @@ FluentCMS.Admin.Lists.ListCellRegistry.Add<TCell>(string! fieldType) -> void
 FluentCMS.Admin.Lists.ListCellRegistry.CellFor(string! fieldType) -> System.Type!
 FluentCMS.Admin.Lists.ListCellRegistry.ListCellRegistry() -> void
 FluentCMS.Admin.Lists.ListCellRegistry.Shows(FluentCMS.Admin.Api.SchemaFieldDescription! field) -> bool
+FluentCMS.Admin.Lists.ListFilterDefinition
+FluentCMS.Admin.Lists.ListFilterDefinition.FieldType.get -> string!
+FluentCMS.Admin.Lists.ListFilterDefinition.Operand.get -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.ListFilterDefinition.Operators.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Lists.FilterOperator>!
+FluentCMS.Admin.Lists.ListFilterRegistry
+FluentCMS.Admin.Lists.ListFilterRegistry.Add(string! fieldType, FluentCMS.Admin.Lists.FilterOperand operand, params System.Collections.Generic.IEnumerable<FluentCMS.Admin.Lists.FilterOperator>! operators) -> void
+FluentCMS.Admin.Lists.ListFilterRegistry.Find(FluentCMS.Admin.Api.SchemaFieldDescription! field) -> FluentCMS.Admin.Lists.ListFilterDefinition?
+FluentCMS.Admin.Lists.ListFilterRegistry.ListFilterRegistry() -> void
 FluentCMS.Admin.Lists.TextListCell
 FluentCMS.Admin.Lists.TextListCell.TextListCell() -> void
 const FluentCMS.Admin.Api.ApiRequest.NewLocale = "\"0\"" -> string!

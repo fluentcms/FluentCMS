@@ -1,25 +1,7 @@
 using System.Collections;
+using FluentCMS.Admin.Lists;
 
 namespace FluentCMS.Admin.Content;
-
-// The operators of the bracket grammar (backend spec 4.4), named as FluentCMS.Client names them.
-internal enum FilterOperator
-{
-    Equal,
-    NotEqual,
-    In,
-    NotIn,
-    LessThan,
-    LessThanOrEqual,
-    GreaterThan,
-    GreaterThanOrEqual,
-    Between,
-    Contains,
-    StartsWith,
-    IsNull,
-    IsNotNull,
-    HasBlock,
-}
 
 internal abstract record ContentFilter
 {

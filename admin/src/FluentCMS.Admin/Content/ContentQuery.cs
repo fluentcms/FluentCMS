@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Globalization;
 using System.Text;
+using FluentCMS.Admin.Lists;
 
 namespace FluentCMS.Admin.Content;
 
@@ -15,6 +16,9 @@ internal enum ContentStatus
 internal sealed record ContentQuery
 {
     public ContentFilter? Filter { get; init; }
+
+    // The text of a search, q=, which the search index answers (backend 4.4).
+    public string? Search { get; init; }
 
     public IReadOnlyList<SortField> Sort { get; init; } = [];
 
@@ -47,6 +51,7 @@ internal sealed record ContentQuery
             WriteFilter(filter, "filter", pairs);
         }
 
+        Add("q", Search);
         if (Sort.Count > 0)
         {
             pairs.Add(("sort", string.Join(',', Sort.Select(field => (field.Descending ? "-" : "") + field.Path))));

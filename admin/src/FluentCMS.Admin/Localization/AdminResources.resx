@@ -953,6 +953,156 @@
   <data name="Content.List.FirstPage" xml:space="preserve">
     <value>Go to the first page</value>
   </data>
+  <data name="Content.List.NoMatch" xml:space="preserve">
+    <value>No entries match the search and filters.</value>
+  </data>
+  <data name="Content.Search.Label" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Content.Search.Submit" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Content.Search.TooLong" xml:space="preserve">
+    <value>A search has at most {0} characters.</value>
+  </data>
+  <data name="Content.Filter.Applied" xml:space="preserve">
+    <value>Filters</value>
+  </data>
+  <data name="Content.Filter.Add" xml:space="preserve">
+    <value>Add filter</value>
+  </data>
+  <data name="Content.Filter.Clear" xml:space="preserve">
+    <value>Clear filters</value>
+  </data>
+  <data name="Content.Filter.Remove" xml:space="preserve">
+    <value>Remove the filter: {0}</value>
+  </data>
+  <data name="Content.Filter.AddTitle" xml:space="preserve">
+    <value>Add a filter</value>
+  </data>
+  <data name="Content.Filter.EditTitle" xml:space="preserve">
+    <value>Change the filter</value>
+  </data>
+  <data name="Content.Filter.Field" xml:space="preserve">
+    <value>Field</value>
+  </data>
+  <data name="Content.Filter.Operator" xml:space="preserve">
+    <value>Condition</value>
+  </data>
+  <data name="Content.Filter.Value" xml:space="preserve">
+    <value>Value</value>
+  </data>
+  <data name="Content.Filter.Values" xml:space="preserve">
+    <value>Values</value>
+  </data>
+  <data name="Content.Filter.ValuesHelp" xml:space="preserve">
+    <value>Separate the values with commas.</value>
+  </data>
+  <data name="Content.Filter.IdHelp" xml:space="preserve">
+    <value>The id of an entry.</value>
+  </data>
+  <data name="Content.Filter.IdsHelp" xml:space="preserve">
+    <value>The ids of entries, separated with commas.</value>
+  </data>
+  <data name="Content.Filter.From" xml:space="preserve">
+    <value>From</value>
+  </data>
+  <data name="Content.Filter.To" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="Content.Filter.Time" xml:space="preserve">
+    <value>Time of {0}</value>
+  </data>
+  <data name="Content.Filter.Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="Content.Filter.No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Content.Filter.Apply" xml:space="preserve">
+    <value>Apply filter</value>
+  </data>
+  <data name="Content.Filter.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Content.Filter.Invalid" xml:space="preserve">
+    <value>Enter a value of the field's type.</value>
+  </data>
+  <data name="Content.Filter.NeedsValue" xml:space="preserve">
+    <value>Choose at least one value.</value>
+  </data>
+  <data name="Content.Filter.Summary" xml:space="preserve">
+    <value>{0} {1} {2}</value>
+  </data>
+  <data name="Content.Filter.SummaryNoValue" xml:space="preserve">
+    <value>{0} {1}</value>
+  </data>
+  <data name="Content.Filter.Range" xml:space="preserve">
+    <value>{0} and {1}</value>
+  </data>
+  <data name="Content.Filter.Operator.Equal" xml:space="preserve">
+    <value>is</value>
+  </data>
+  <data name="Content.Filter.Operator.NotEqual" xml:space="preserve">
+    <value>is not</value>
+  </data>
+  <data name="Content.Filter.Operator.In" xml:space="preserve">
+    <value>is one of</value>
+  </data>
+  <data name="Content.Filter.Operator.NotIn" xml:space="preserve">
+    <value>is none of</value>
+  </data>
+  <data name="Content.Filter.Operator.LessThan" xml:space="preserve">
+    <value>is less than</value>
+  </data>
+  <data name="Content.Filter.Operator.LessThanOrEqual" xml:space="preserve">
+    <value>is at most</value>
+  </data>
+  <data name="Content.Filter.Operator.GreaterThan" xml:space="preserve">
+    <value>is greater than</value>
+  </data>
+  <data name="Content.Filter.Operator.GreaterThanOrEqual" xml:space="preserve">
+    <value>is at least</value>
+  </data>
+  <data name="Content.Filter.Operator.LessThan.Date" xml:space="preserve">
+    <value>is before</value>
+  </data>
+  <data name="Content.Filter.Operator.LessThanOrEqual.Date" xml:space="preserve">
+    <value>is on or before</value>
+  </data>
+  <data name="Content.Filter.Operator.GreaterThan.Date" xml:space="preserve">
+    <value>is after</value>
+  </data>
+  <data name="Content.Filter.Operator.GreaterThanOrEqual.Date" xml:space="preserve">
+    <value>is on or after</value>
+  </data>
+  <data name="Content.Filter.Operator.Between" xml:space="preserve">
+    <value>is between</value>
+  </data>
+  <data name="Content.Filter.Operator.Contains" xml:space="preserve">
+    <value>contains</value>
+  </data>
+  <data name="Content.Filter.Operator.StartsWith" xml:space="preserve">
+    <value>starts with</value>
+  </data>
+  <data name="Content.Filter.Operator.IsNull" xml:space="preserve">
+    <value>is empty</value>
+  </data>
+  <data name="Content.Filter.Operator.IsNotNull" xml:space="preserve">
+    <value>is not empty</value>
+  </data>
+  <data name="Content.Filter.Operator.HasBlock" xml:space="preserve">
+    <value>has a block of type</value>
+  </data>
+  <data name="Content.Badge.Missing" xml:space="preserve">
+    <value>Not translated</value>
+  </data>
+  <data name="Content.Badge.PublishAt" xml:space="preserve">
+    <value>Publishes</value>
+  </data>
+  <data name="Content.Badge.UnpublishAt" xml:space="preserve">
+    <value>Unpublishes</value>
+  </data>
   <data name="Content.Form.Heading" xml:space="preserve">
     <value>Entry</value>
   </data>
