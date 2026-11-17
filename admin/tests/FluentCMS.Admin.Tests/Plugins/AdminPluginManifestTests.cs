@@ -102,7 +102,7 @@ public sealed class AdminPluginManifestTests
               "assembly": "FluentCMS.Plugins.Media.Admin",
               "later": { "any": true },
               "menuItems": [
-                { "type": "Media.MediaPage", "label": "Media.Menu", "route": "/media", "section": "media", "later": 1, },
+                { "type": "Media.MediaPage", "label": "Media.Menu", "route": "/media", "section": "Media", "later": 1, },
               ],
             }
             """);
@@ -115,11 +115,47 @@ public sealed class AdminPluginManifestTests
 
     [Theory]
     [InlineData("""{ "assembly": "Reviews.Admin" }""")]
-    [InlineData("""{ "name": "reviews", "assembly": "Reviews.Admin", "widgets": [{ "type": "W", "title": "T", "size": "huge" }] }""")]
-    [InlineData("""{ "name": "media", "assembly": "Media.Admin", "menuItems": [{ "type": "P", "label": "L", "route": "/media", "section": "Media" }] }""")]
     [InlineData("null")]
     public void ATextThatIsNoManifestIsRefused(string json) =>
         Should.Throw<JsonException>(() => AdminPluginManifestJson.Read(json));
+
+    [Fact]
+    public void ASectionOrASizeOfALaterVersionDoesNotStopTheRead()
+    {
+        var manifests = JsonSerializer.Deserialize("""
+            [
+              {
+                "manifestVersion": 2,
+                "name": "later",
+                "assembly": "Later.Admin",
+                "menuItems": [{ "type": "P", "label": "L", "route": "/later", "section": "tools" }],
+                "widgets": [{ "type": "W", "title": "T", "size": 4 }, { "type": "V", "title": "U", "size": "huge" }]
+              },
+              { "name": "media", "assembly": "Media.Admin", "widgets": [{ "type": "W", "title": "T", "size": "wide" }] }
+            ]
+            """, AdminPluginManifestJson.Manifests).ShouldNotBeNull();
+
+        manifests[0].ManifestVersion.ShouldBe(2);
+        manifests[0].MenuItems.ShouldHaveSingleItem().Section.ShouldBe(AdminSection.Content);
+        manifests[0].Widgets.Select(widget => widget.Size).ShouldBe([WidgetSize.Small, WidgetSize.Small]);
+        manifests[1].Widgets.ShouldHaveSingleItem().Size.ShouldBe(WidgetSize.Wide);
+    }
+
+    [Fact]
+    public void AVersionOfZeroAndAnUnknownSectionOrSizeInTheFileOfAHalfAreNamed()
+    {
+        var json = System.IO.File.ReadAllText(ManifestPath)
+            .Replace("\"manifestVersion\": 1", "\"manifestVersion\": 0", StringComparison.Ordinal)
+            .Replace("\"section\": \"content\"", "\"section\": \"contnet\"", StringComparison.Ordinal)
+            .Replace("\"size\": \"small\"", "\"size\": 1", StringComparison.Ordinal);
+
+        AdminPluginManifestCheck.Differences(Half, json).ShouldBe(
+        [
+            "manifestVersion is 0 in the manifest and this contract reads 1",
+            "menu item 'Reviews.Menu': section is \"contnet\" in the manifest, which this contract does not know",
+            "widget 'Reviews.Widget.Title': size is 1 in the manifest, which this contract does not know",
+        ]);
+    }
 
     [Fact]
     public void AContributionMissingFromTheManifestIsNamed()

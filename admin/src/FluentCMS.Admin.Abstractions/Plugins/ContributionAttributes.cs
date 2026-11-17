@@ -4,40 +4,33 @@ using System.Text.Json.Serialization;
 namespace FluentCMS.Admin.Plugins;
 
 /// <summary>The section of the sidebar a menu item of an admin half is in.</summary>
-[JsonConverter(typeof(JsonStringEnumConverter<AdminSection>))]
+[JsonConverter(typeof(AdminSectionJsonConverter))]
 public enum AdminSection
 {
     /// <summary>With the content types.</summary>
-    [JsonStringEnumMemberName("content")]
     Content,
 
     /// <summary>Media.</summary>
-    [JsonStringEnumMemberName("media")]
     Media,
 
     /// <summary>Administration, such as users and jobs.</summary>
-    [JsonStringEnumMemberName("administration")]
     Administration,
 
     /// <summary>Settings.</summary>
-    [JsonStringEnumMemberName("settings")]
     Settings,
 }
 
 /// <summary>The size a dashboard widget asks for on the home page.</summary>
-[JsonConverter(typeof(JsonStringEnumConverter<WidgetSize>))]
+[JsonConverter(typeof(WidgetSizeJsonConverter))]
 public enum WidgetSize
 {
     /// <summary>One column.</summary>
-    [JsonStringEnumMemberName("small")]
     Small,
 
     /// <summary>Two columns.</summary>
-    [JsonStringEnumMemberName("medium")]
     Medium,
 
     /// <summary>The whole row.</summary>
-    [JsonStringEnumMemberName("wide")]
     Wide,
 }
 

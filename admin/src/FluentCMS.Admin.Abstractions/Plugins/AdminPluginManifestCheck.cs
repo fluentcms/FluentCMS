@@ -47,7 +47,9 @@ public static class AdminPluginManifestCheck
         {
             try
             {
-                problems.AddRange(Compare(AdminPluginManifestJson.Read(manifestJson), declared));
+                var manifest = AdminPluginManifestJson.Read(manifestJson);
+                problems.AddRange(Unreadable(manifestJson));
+                problems.AddRange(Compare(manifest, declared));
             }
             catch (JsonException unreadable)
             {
@@ -261,6 +263,42 @@ public static class AdminPluginManifestCheck
         return manifest;
     }
 
+    // What the reader takes without a word and a half's own file should not hold: a version of 0, which reads as absent, and
+    // a section or a size the contract does not know, which reads as the first.
+    private static List<string> Unreadable(string manifestJson)
+    {
+        var found = new List<string>();
+        using var document = JsonDocument.Parse(manifestJson, new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
+        var root = document.RootElement;
+        if (root.TryGetProperty("manifestVersion", out var version) && version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var number) && number == 0)
+        {
+            found.Add($"manifestVersion is 0 in the manifest and this contract reads {AdminPluginManifest.CurrentManifestVersion}");
+        }
+
+        foreach (var (list, member, key, kind, known) in new (string, string, string, string, Func<string?, bool>)[]
+        {
+            ("menuItems", "section", "label", "menu item", ManifestNames.IsSection),
+            ("widgets", "size", "title", "widget", ManifestNames.IsSize),
+        })
+        {
+            if (!root.TryGetProperty(list, out var items) || items.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            foreach (var item in items.EnumerateArray().Where(item => item.ValueKind == JsonValueKind.Object))
+            {
+                if (item.TryGetProperty(member, out var value) && !(value.ValueKind == JsonValueKind.String && known(value.GetString())))
+                {
+                    var name = item.TryGetProperty(key, out var text) && text.ValueKind == JsonValueKind.String ? text.GetString() : null;
+                    found.Add($"{kind} {Quote(name)}: {member} is {value.GetRawText()} in the manifest, which this contract does not know");
+                }
+            }
+        }
+
+        return found;
+    }
+
     private static void Require<TBase>(Type type, string contribution, List<string> problems)
     {
         if (!typeof(TBase).IsAssignableFrom(type))
@@ -275,7 +313,7 @@ public static class AdminPluginManifestCheck
         .. manifest.Pages.Select(page => new Item("page", page.Type, "route", page.Route, [("permission", page.Permission)])),
         .. manifest.MenuItems.Select(item => new Item("menu item", item.Type, "label", item.Label,
         [
-            ("route", item.Route), ("section", Text(item.Section)), ("icon", item.Icon), ("order", Text(item.Order)), ("permission", item.Permission),
+            ("route", item.Route), ("section", ManifestNames.Of(item.Section)), ("icon", item.Icon), ("order", Text(item.Order)), ("permission", item.Permission),
         ])),
         .. manifest.SettingsPages.Select(page => new Item("settings page", page.Type, "area", page.Area, [])),
         .. manifest.FieldEditors.Select(editor => new Item("field editor", editor.Type, "fieldType", editor.FieldType, [])),
@@ -287,7 +325,7 @@ public static class AdminPluginManifestCheck
         .. manifest.FieldActions.Select(action => new Item("field action", action.Type, "name", action.Name,
             [("fieldTypes", Text(action.FieldTypes)), ("permission", action.Permission)])),
         .. manifest.Widgets.Select(widget => new Item("widget", widget.Type, "title", widget.Title,
-            [("size", Text(widget.Size)), ("permission", widget.Permission), ("role", widget.Role)])),
+            [("size", ManifestNames.Of(widget.Size)), ("permission", widget.Permission), ("role", widget.Role)])),
         .. manifest.Services.Select(service => new Item("service", service.Type, "service", service.Service, [])),
     ];
 
@@ -344,23 +382,6 @@ public static class AdminPluginManifestCheck
     private static string Text(IReadOnlyList<string> values) => string.Join(", ", values.Order(StringComparer.Ordinal));
 
     private static string Text(int value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-
-    private static string Text(AdminSection section) => section switch
-    {
-        AdminSection.Content => "content",
-        AdminSection.Media => "media",
-        AdminSection.Administration => "administration",
-        AdminSection.Settings => "settings",
-        _ => Text((int)section),
-    };
-
-    private static string Text(WidgetSize size) => size switch
-    {
-        WidgetSize.Small => "small",
-        WidgetSize.Medium => "medium",
-        WidgetSize.Wide => "wide",
-        _ => Text((int)size),
-    };
 
     private sealed record Item(string Kind, string Type, string KeyName, string Key, (string Name, string? Value)[] Members);
 }

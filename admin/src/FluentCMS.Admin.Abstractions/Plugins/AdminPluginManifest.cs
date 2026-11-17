@@ -187,7 +187,9 @@ public sealed record AdminManifestService
 
 /// <summary>
 /// Reads and writes manifests as JSON with source-generated metadata, so a trimmed app reads them. Member names are in
-/// camel case, sections and sizes are written by name, and a hand-written file may hold comments and trailing commas.
+/// camel case, sections and sizes are written by name in lower case, and a hand-written file may hold comments and trailing
+/// commas. A member, a section or a size that this version does not know does not stop the read: the member is skipped,
+/// and the section or the size reads as the first one.
 /// </summary>
 public static class AdminPluginManifestJson
 {
