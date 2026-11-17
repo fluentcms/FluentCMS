@@ -25,7 +25,10 @@ public sealed class FormTests(EndToEndHost host) : BrowserTest(host)
 
         create.Status.ShouldBe(201);
         (await create.Request.HeaderValueAsync("idempotency-key")).ShouldNotBeNullOrEmpty();
-        var id = (await create.JsonAsync())!.Value.GetProperty("id").GetGuid();
+        // The answers are read by their headers and by the page: the admin reads a body as a stream, and Chromium does not
+        // always keep such a body for the test to read again.
+        var location = await create.HeaderValueAsync("location");
+        var id = Guid.Parse(location.ShouldNotBeNull()[(location.LastIndexOf('/') + 1)..]);
         await tab.Page.WaitForURLAsync(new Regex($"/admin/content/article/{id:D}$"));
         await Expect(tab.Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = "Written in the browser", Exact = true })).ToBeVisibleAsync();
         await Expect(tab.Announced(Repository.AdminText("Content.Form.Saved"))).ToBeAttachedAsync();
@@ -36,7 +39,7 @@ public sealed class FormTests(EndToEndHost host) : BrowserTest(host)
 
         save.Status.ShouldBe(200);
         (await save.Request.HeaderValueAsync("if-match")).ShouldBe("\"1\"");
-        (await save.JsonAsync())!.Value.GetProperty("title").GetString().ShouldBe("Changed in the browser");
+        (await save.HeaderValueAsync("etag")).ShouldBe("\"2\"");
         await Expect(tab.Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = "Changed in the browser", Exact = true })).ToBeVisibleAsync();
         browser.PolicyViolations.ShouldBeEmpty();
     }

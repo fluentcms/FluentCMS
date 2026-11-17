@@ -26,8 +26,8 @@ public sealed class ListTests(EndToEndHost host) : BrowserTest(host)
 
         // The columns: Category is added and the status taken out; the read names only what is shown.
         await tab.Button("Content.List.Columns").ClickAsync();
-        await tab.Page.Locator("fluent-checkbox", new PageLocatorOptions { HasText = "Category" }).ClickAsync();
-        await tab.Page.Locator("fluent-checkbox", new PageLocatorOptions { HasText = Text("Content.List.Column.Status") }).ClickAsync();
+        await ColumnCheckbox(tab, "Category").ClickAsync();
+        await ColumnCheckbox(tab, Text("Content.List.Column.Status")).ClickAsync();
         var read = await ListReadOfAsync(tab, () => tab.Button("Content.List.ColumnsApply").ClickAsync(), "fields=title,updatedAt,category&");
         await Expect(Headers(grid)).ToHaveTextAsync([Starts("Title"), Starts(Text("Content.List.Column.UpdatedAt")), Starts("Category")]);
         read.ShouldContain("withTotal=true");
@@ -112,10 +112,15 @@ public sealed class ListTests(EndToEndHost host) : BrowserTest(host)
     // The column headers but the selection's; a sorted one also holds its mark and, with several keys, its level.
     private static ILocator Headers(ILocator grid) => grid.Locator("thead th:not(.cms-data-grid-select)");
 
+    // A checkbox of the columns dialog: the wrapped set puts its label beside it, in the field that holds both.
+    private static ILocator ColumnCheckbox(AdminTab tab, string label) =>
+        tab.Page.Locator(".content-list-columns fluent-field").Filter(new LocatorFilterOptions { HasTextRegex = new Regex($@"^\s*{Regex.Escape(label)}\s*$") }).Locator("fluent-checkbox");
+
     private static ILocator SortButton(ILocator grid, string title) =>
         grid.Locator("thead th button").Filter(new LocatorFilterOptions { HasTextRegex = new Regex($"^{Regex.Escape(title)}") });
 
-    private static Regex Starts(string text) => new($"^\\s*{Regex.Escape(text)}\\s*$");
+    // A sorted header also holds its mark, such as "Updated↓", so a header is matched by how it starts.
+    private static Regex Starts(string text) => new($"^\\s*{Regex.Escape(text)}");
 
     // Runs the action and returns the query string of the read of the list it caused, unescaped, once one has that part.
     private static async Task<string> ListReadOfAsync(AdminTab tab, Func<Task> action, string part)
