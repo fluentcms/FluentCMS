@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="{{version:Microsoft.NET.Test.Sdk}}" />
+    <PackageReference Include="xunit.v3" Version="{{version:xunit.v3}}" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="{{version:xunit.runner.visualstudio}}" />
+    <PackageReference Include="bunit" Version="{{version:bunit}}" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/FluentCms-Plugin1.Admin/FluentCms-Plugin1.Admin.csproj" />
+  </ItemGroup>
+
+  <!-- The manifest the half ships, which the manifest test compares with the attributes of the half's assembly. -->
+  <ItemGroup>
+    <None Include="../../src/FluentCms-Plugin1.Admin/wwwroot/fluentcms-admin.json" Link="fluentcms-admin.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

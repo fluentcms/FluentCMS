@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Starter.Menu" xml:space="preserve">
+    <value>Notes</value>
+  </data>
+  <data name="Starter.Notes.Heading" xml:space="preserve">
+    <value>Notes</value>
+  </data>
+  <data name="Starter.Notes.Empty" xml:space="preserve">
+    <value>This site has no notes yet.</value>
+  </data>
+  <data name="Starter.Notes.Loading" xml:space="preserve">
+    <value>Loading the notes…</value>
+  </data>
+  <data name="Starter.Settings.Heading" xml:space="preserve">
+    <value>Notes settings</value>
+  </data>
+  <data name="Starter.Settings.MaxNotes" xml:space="preserve">
+    <value>Most notes a site keeps</value>
+  </data>
+  <data name="Starter.Settings.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Starter.Settings.Range" xml:space="preserve">
+    <value>Enter a whole number from 1 to 10000.</value>
+  </data>
+  <data name="Starter.Settings.Failed" xml:space="preserve">
+    <value>The settings could not be saved.</value>
+  </data>
+  <data name="Starter.Settings.Saved" xml:space="preserve">
+    <value>The settings are saved.</value>
+  </data>
+  <data name="Starter.Widget.Title" xml:space="preserve">
+    <value>Notes</value>
+  </data>
+  <data name="Starter.Widget.Count" xml:space="preserve">
+    <value>Notes in this site: {0}</value>
+  </data>
+</root>

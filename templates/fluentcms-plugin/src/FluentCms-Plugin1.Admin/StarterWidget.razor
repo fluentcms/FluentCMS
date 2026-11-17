@@ -1,0 +1,18 @@
+@attribute [DashboardWidget("Starter.Widget.Title", Size = WidgetSize.Small, Permission = StarterAdminPlugin.NotesManage)]
+@inject IAdminPluginServices Plugins
+@inject IStringLocalizer<StarterAdminResources> Text
+
+@* A widget of the home page, shown to a user who holds the permission. *@
+<CmsCard Title="@Text["Starter.Widget.Title"]">
+    @if (count is not null)
+    {
+        <p><a href="starter-plugin">@Text["Starter.Widget.Count", count]</a></p>
+    }
+</CmsCard>
+
+@code {
+    private int? count;
+
+    protected override async Task OnInitializedAsync() =>
+        count = (await Plugins.ProviderOf(GetType()).GetRequiredService<StarterApi>().NotesAsync(CancellationToken.None)).Count;
+}

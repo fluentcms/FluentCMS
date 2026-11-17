@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Installs FluentCMS.Templates from a folder feed that holds it and the FluentCMS packages of the same version, creates every
-# combination of the templates, builds each with warnings as errors and runs the plugin's tests. Then it starts the SQLite
-# hosts in Development and reads their sample type through the Delivery API, and, when FLUENTCMS_TEMPLATES_POSTGRES holds a
-# connection string, brings up a PostgreSQL host with `fluentcms migrations add Initial` and `fluentcms migrate`.
+# combination of the templates, builds each with warnings as errors and runs the plugin's tests, with its admin half and
+# without, and checks that the half's manifest test fails on a manifest that disagrees. Then it starts the SQLite hosts in
+# Development and reads their sample type through the Delivery API, and, when FLUENTCMS_TEMPLATES_POSTGRES holds a connection
+# string, brings up a PostgreSQL host with `fluentcms migrations add Initial` and `fluentcms migrate`.
 #
 #   templates/test-templates.sh <feed> <version> <work directory>
 #
@@ -82,11 +83,35 @@ dotnet build "$work/$plugin/$plugin.slnx" -c Release -warnaserror
 dotnet test "$work/$plugin/$plugin.slnx" -c Release --no-build
 end
 
+# The manifest test fails when the hand-written manifest and the attributes of the half disagree: here without the widget.
+step "The manifest test of $plugin.Admin fails on a manifest without a contribution"
+manifest="$work/$plugin/src/$plugin.Admin/wwwroot/fluentcms-admin.json"
+cp "$manifest" "$work/fluentcms-admin.json"
+sed -i '/ReviewNotesWidget"/d' "$manifest"
+cmp -s "$manifest" "$work/fluentcms-admin.json" && fail "the widget was not removed from the manifest"
+if dotnet test "$work/$plugin/tests/$plugin.Admin.Tests/$plugin.Admin.Tests.csproj" -c Release > "$work/manifest-test.log" 2>&1; then
+  fail "the manifest test passed on a manifest without the widget"
+fi
+grep -q "ReviewNotesWidget" "$work/manifest-test.log" || { cat "$work/manifest-test.log"; fail "the manifest test did not name the widget"; }
+cp "$work/fluentcms-admin.json" "$manifest"
+end
+
+server=Acme.ServerOnly
+step "dotnet new fluentcms-plugin -n $server --admin false"
+new fluentcms-plugin -n "$server" -o "$work/$server" --admin false
+[ ! -e "$work/$server/src/$server.Admin" ] && [ ! -e "$work/$server/tests/$server.Admin.Tests" ] || fail "--admin false kept the admin half"
+if grep -q 'Admin' "$work/$server/$server.slnx"; then
+  fail "the solution of $server names an admin project"
+fi
+dotnet build "$work/$server/$server.slnx" -c Release -warnaserror
+dotnet test "$work/$server/$server.slnx" -c Release --no-build
+end
+
 step "The FluentCMS packages and the tool of every project are version $version"
-if grep -rl "{{version:" "$work"/Host* "$work/$plugin" --include=*.csproj --include=*.json; then
+if grep -rl "{{version:" "$work"/Host* "$work/$plugin" "$work/$server" --include=*.csproj --include=*.json; then
   fail "a version token was left in a created project"
 fi
-versions=$( (grep -rhoE 'Include="FluentCMS\.[A-Za-z.]+" Version="[^"]+"' "$work"/Host* "$work/$plugin" --include=*.csproj || true) \
+versions=$( (grep -rhoE 'Include="FluentCMS\.[A-Za-z.]+" Version="[^"]+"' "$work"/Host* "$work/$plugin" "$work/$server" --include=*.csproj || true) \
   | sed -E 's/.*Version="([^"]+)"/\1/' | sort -u)
 [ "$versions" = "$version" ] || fail "the FluentCMS packages of the created projects are '$versions', not $version"
 for host in "${hosts[@]}"; do
@@ -94,6 +119,8 @@ for host in "${hosts[@]}"; do
 done
 grep -q '\[FluentCmsPlugin(Name, ' "$work/$plugin/src/$plugin/ReviewNotesPlugin.cs" || fail "the plugin class is not ReviewNotesPlugin"
 grep -q 'Name = "review-notes"' "$work/$plugin/src/$plugin/ReviewNotesPlugin.cs" || fail "the plugin is not named review-notes"
+grep -q '"assembly": "Acme.ReviewNotes.Admin"' "$work/$plugin/src/$plugin.Admin/wwwroot/fluentcms-admin.json" || fail "the manifest does not name Acme.ReviewNotes.Admin"
+grep -q '"name": "review-notes"' "$work/$plugin/src/$plugin.Admin/wwwroot/fluentcms-admin.json" || fail "the manifest does not name the plugin review-notes"
 end
 
 step "The Dockerfile of each provider"
@@ -122,6 +149,7 @@ dotnet build "$work/my-site/my-site.csproj" -c Release -warnaserror
 grep -q '^COPY my-site.csproj ./' "$work/my-site/Dockerfile" || fail "the Dockerfile of my-site does not copy my-site.csproj"
 new fluentcms-plugin -n my-plugin -o "$work/my-plugin"
 dotnet build "$work/my-plugin/my-plugin.slnx" -c Release -warnaserror
+dotnet test "$work/my-plugin/tests/my-plugin.Admin.Tests/my-plugin.Admin.Tests.csproj" -c Release --no-build
 end
 
 secret=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
