@@ -233,7 +233,15 @@ internal sealed class FakeManagementServer : HttpMessageHandler
                 ContentQueries.Add(request.RequestUri.Query.TrimStart('?'));
             }
 
-            return Json(new JsonObject { ["items"] = inLocale.DeepClone(), ["page"] = 1, ["pageSize"] = 25 });
+            // As the server, which counts each id against MaxFilterNodes (100) with the node of the filter.
+            var named = request.RequestUri.Query.TrimStart('?').Split('&').FirstOrDefault(pair => pair.StartsWith("filter[id][in]=", StringComparison.Ordinal))?["filter[id][in]=".Length..].Split(',');
+            if (named is { Length: > 99 })
+            {
+                return Problem(HttpStatusCode.BadRequest, "FCMS1712");
+            }
+
+            var rows = inLocale.Where(row => named is null || named.Contains(row!["id"]!.ToJsonString().Trim('"'), StringComparer.OrdinalIgnoreCase)).Select(row => row!.DeepClone());
+            return Json(new JsonObject { ["items"] = new JsonArray([.. rows]), ["page"] = 1, ["pageSize"] = 25 });
         }
 
         if (request.Method == HttpMethod.Get && path.StartsWith("content/", StringComparison.Ordinal) && Entries.TryGetValue(path["content/".Length..], out var entries))

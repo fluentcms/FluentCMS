@@ -75,10 +75,13 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
 
             await dialog.DismissAsync();
         };
-        var form = new Uri(Host.Admin, "content/article/new").AbsoluteUri;
-        await tab.Page.GotoAsync(form);
+        await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article/new").AbsoluteUri);
         await browser.SignInOnTheHostedPageAsync(tab, editor);
         await Expect(Title(tab)).ToBeVisibleAsync();
+
+        // The form's address names its content locale (A-17).
+        var form = new Uri(Host.Admin, "content/article/new?locale=en").AbsoluteUri;
+        await tab.Page.WaitForURLAsync(form);
 
         // Nothing changed: the route changes at once.
         await Home(tab).ClickAsync();

@@ -32,7 +32,7 @@ public sealed class StatusTests(EndToEndHost host) : BrowserTest(host)
         published.Url.ShouldBe($"{entry}/publish");
         published.Status.ShouldBe(200);
         (await published.Request.HeaderValueAsync("if-match")).ShouldBe("\"1\"");
-        await Expect(tab.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}$"), new PageAssertionsToHaveURLOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        await Expect(tab.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}\\?locale=en$"), new PageAssertionsToHaveURLOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         await Expect(Badges(tab)).ToHaveTextAsync([Badge("published")]);
         await Expect(tab.Announced(Repository.AdminText("Content.Form.Published"))).ToBeAttachedAsync();
         await Expect(Control(tab, "Content.Form.Publish")).ToHaveCountAsync(0);

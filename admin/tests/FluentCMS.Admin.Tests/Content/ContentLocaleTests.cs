@@ -6,6 +6,7 @@ using FluentCMS.Admin.Forms;
 using FluentCMS.Admin.Shell;
 using FluentCMS.Admin.Tests.Shell;
 using Microsoft.AspNetCore.Components;
+using Bunit.TestDoubles;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -28,18 +29,120 @@ public sealed class ContentLocaleTests : AdminTestContext
         Management.SetTypes(MainSite, Post(), Type("tag", fields: [Field("name")]));
     }
 
+    private static readonly string[] EnglishAndFrench = ["en Published", "fr Draft"];
+
     private NavigationManager Navigation => Services.GetRequiredService<NavigationManager>();
 
     private AdminContext Context => Services.GetRequiredService<AdminContext>();
 
     [Fact]
-    public void ALocalizedListHasALinkPerLocaleWithTheDefaultWithoutOne()
+    public void ALocalizedListNamesItsLocaleInTheAddressAndLinksTheOthers()
     {
         Management.Entries["post"] = [];
 
         var app = Load("content/post");
 
-        Locales(app).ShouldBe([("en", "content/post?locale=en", true), ("fr", "content/post?locale=fr", false)]);
+        Navigation.Uri.ShouldBe("http://localhost/content/post?locale=en");
+        Locales(app).ShouldBe([("en", null, true), ("fr", "content/post?locale=fr", false)]);
+        var french = app.Find(".content-locales a");
+        (french.GetAttribute("hreflang"), french.GetAttribute("aria-label")).ShouldBe(("fr", "fr (français)"));
+        app.Find(".content-locales [aria-current]").GetAttribute("aria-label").ShouldBe("en (English)");
+    }
+
+    // An address without a locale, as the sidebar's, is replaced by one that names the locale there is, so that Back goes
+    // to the locale it was in and a reload keeps it.
+    [Fact]
+    public void BackAndAReloadKeepTheLocaleOfAnAddress()
+    {
+        Management.Entries["post"] = [];
+        var app = Load("content/post");
+
+        Navigation.NavigateTo(Locales(app)[1].Href!);
+        app.WaitForAssertion(() => Context.ContentLocale.ShouldBe("fr"));
+        Navigation.NavigateTo("content/post");
+
+        app.WaitForAssertion(() => Navigation.Uri.ShouldBe("http://localhost/content/post?locale=fr"));
+        var history = ((BunitNavigationManager)Navigation).History.Select(entry => entry.Uri).ToList();
+        history.ShouldContain("http://localhost/content/post?locale=en");
+        history.ShouldContain("http://localhost/content/post?locale=fr");
+
+        Navigation.NavigateTo("http://localhost/content/post?locale=en");
+        app.WaitForAssertion(() => Context.ContentLocale.ShouldBe("en"));
+    }
+
+    [Fact]
+    public void AnAddressThatNamesALocaleSetsItOnAColdLoadOfAnyPage()
+    {
+        var app = Load("?locale=fr");
+
+        app.WaitForAssertion(() => Context.ContentLocale.ShouldBe("fr"));
+    }
+
+    [Fact]
+    public void ASwitchIsAnnouncedAndMovesFocusToTheHeading()
+    {
+        Management.Entries["post"] = [];
+        var app = Load("content/post");
+        var focuses = Document.Invocations.Count(call => call.Identifier == "focusHeading");
+
+        Navigation.NavigateTo(Locales(app)[1].Href!);
+
+        app.WaitForAssertion(() => app.FindAll("[role=status] > div").Select(message => message.TextContent).ShouldContain("Content locale: fr"));
+        Document.Invocations.Count(call => call.Identifier == "focusHeading").ShouldBe(focuses + 1);
+    }
+
+    // Each id is a node of the filter, and the server allows 100 with the filter's own.
+    [Fact]
+    public void AFullPageReadsTheStatusOfTheOtherLocalesInBatchesUnderTheServersLimit()
+    {
+        var ids = Enumerable.Range(0, 100).Select(_ => Guid.CreateVersion7()).ToList();
+        Management.Entries["post"] = [.. ids.Select(id => (JsonNode)Row(id, "Bonjour", "fr", "draft"))];
+        Management.LocaleEntries[("post", "en")] = [.. ids.Select(id => (JsonNode)Row(id, null, "en", "published"))];
+
+        var app = Load("content/post?locale=fr&pageSize=100");
+
+        Management.ContentQueries.Skip(1).Select(query => query.Split("&")[0].Split(',').Length).ShouldBe([99, 1]);
+        app.WaitForAssertion(() => app.FindAll(".cms-data-grid tbody tr").Select(Badges).ShouldAllBe(badges => badges.SequenceEqual(EnglishAndFrench)));
+    }
+
+    // A locale the user may not read gets no badge, and a refused read of one locale costs the others nothing.
+    [Fact]
+    public void ALocaleTheUserMayNotReadGetsNoBadgeInTheListOrTheForm()
+    {
+        Management.AddLocale(MainSite, "de", 2);
+        var limited = Management.Access[MainSite].DeepClone().AsObject();
+        limited["types"]!.AsObject().Remove("post");
+        Management.LocaleAccess[(MainSite, "de")] = limited;
+        var id = Guid.CreateVersion7();
+        Management.Entries["post"] = [Row(id, "Bonjour", "fr", "draft")];
+        Management.LocaleEntries[("post", "en")] = [Row(id, null, "en", "published")];
+
+        _content.Add("post", new JsonObject { ["title"] = "Hello" }, id: id, status: "published");
+        _content.Add("post", new JsonObject { ["title"] = "Bonjour" }, id: id, locale: "fr");
+        _content.Add("post", new JsonObject { ["title"] = "Hallo" }, id: id, locale: "de");
+
+        var app = Load("content/post?locale=fr");
+
+        app.WaitForAssertion(() => Badges(app.Find(".cms-data-grid tbody tr")).ShouldBe(["en Published", "fr Draft"]));
+        Management.ContentQueries.ShouldNotContain(query => query.EndsWith("locale=de", StringComparison.Ordinal));
+
+        Navigation.NavigateTo($"content/post/{id:D}?locale=fr");
+        app.WaitForAssertion(() => Badges(app.Find(".content-form-toolbar")).ShouldBe(["en Published", "fr Draft"]));
+        app.FindAll(".content-form-compare-choice option").Select(option => option.GetAttribute("value")).ShouldBe(["", "en"]);
+    }
+
+    [Fact]
+    public void ARefusedStatusReadOfOneLocaleLeavesTheOthersTheirBadges()
+    {
+        Management.AddLocale(MainSite, "de", 2);
+        var id = Guid.CreateVersion7();
+        Management.Entries["post"] = [Row(id, "Bonjour", "fr", "draft")];
+        Management.LocaleEntries[("post", "de")] = [Row(id, null, "de", "published")];
+        RefuseListReadsIn("en");
+
+        var app = Load("content/post?locale=fr");
+
+        app.WaitForAssertion(() => Badges(app.Find(".cms-data-grid tbody tr")).ShouldBe(["fr Draft", "de Published"]));
     }
 
     [Fact]
@@ -61,12 +164,12 @@ public sealed class ContentLocaleTests : AdminTestContext
 
         var app = Load("content/post?locale=fr");
 
-        Management.MetadataLocales.ShouldBe([("me/access", null), ("schema", null), ("me/access", "fr"), ("schema", "fr")]);
+        Management.MetadataLocales[..4].ShouldBe([("me/access", null), ("schema", null), ("me/access", "fr"), ("schema", "fr")]);
         Management.ContentQueries[0].ShouldNotContain("locale=");
         Management.ContentQueries[1].ShouldBe($"filter[id][in]={id:D}&pageSize=1&fields=id,status,scheduledPublishAt,scheduledUnpublishAt&locale=en");
         app.WaitForAssertion(() => Badges(app.Find(".cms-data-grid tbody tr")).ShouldBe(["en Published", "fr Draft"]));
         app.Find(".cms-data-grid tbody tr a").GetAttribute("href").ShouldBe($"content/post/{id:D}?locale=fr");
-        Locales(app).ShouldBe([("en", "content/post?locale=en", false), ("fr", "content/post?locale=fr", true)]);
+        Locales(app).ShouldBe([("en", "content/post?locale=en", false), ("fr", null, true)]);
     }
 
     [Fact]
@@ -76,8 +179,9 @@ public sealed class ContentLocaleTests : AdminTestContext
 
         Load("content/post?locale=de");
 
-        Context.ContentLocale.ShouldBe("en");
-        Management.MetadataLocales.ShouldAllBe(read => read.Locale == null);
+        (Context.ContentLocale, Context.NamedLocale).ShouldBe(("en", null));
+        Management.MetadataLocales[..2].ShouldAllBe(read => read.Locale == null);
+        Management.MetadataLocales.ShouldNotContain(read => read.Locale == "de");
     }
 
     [Fact]
@@ -88,7 +192,7 @@ public sealed class ContentLocaleTests : AdminTestContext
         var app = Load($"content/post/{id:D}");
 
         Badges(app.Find(".content-form-toolbar")).ShouldBe(["en Published", "fr Not translated"]);
-        Locales(app).ShouldBe([("en", $"content/post/{id:D}?locale=en", true), ("fr", $"content/post/{id:D}?locale=fr", false)]);
+        Locales(app).ShouldBe([("en", null, true), ("fr", $"content/post/{id:D}?locale=fr", false)]);
         _content.Reads.ShouldContain($"/api/management/v1/content/post/{id:D}?fallback=none");
         _content.Reads.ShouldContain($"/api/management/v1/content/post/{id:D}");
     }
@@ -149,13 +253,87 @@ public sealed class ContentLocaleTests : AdminTestContext
     }
 
     [Fact]
+    public void ACopyOverTypedValuesAsksFirst()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/post/{id:D}?locale=fr");
+        Input(app, "title").Input("Mine");
+
+        Button(app, "Copy from en").Click();
+
+        var question = Dialog(app, "Replace your changes?");
+        app.WaitForAssertion(() => question.Instance.Open.ShouldBeTrue());
+        Input(app, "title").GetAttribute("value").ShouldBe("Mine");
+        question.FindAll("fluent-button").Single(button => button.TextContent.Trim() == "Keep my values").Click();
+        app.WaitForAssertion(() => question.Instance.Open.ShouldBeFalse());
+        Input(app, "title").GetAttribute("value").ShouldBe("Mine");
+
+        Button(app, "Copy from en").Click();
+        app.WaitForAssertion(() => question.Instance.Open.ShouldBeTrue());
+        question.FindAll("fluent-button").Single(button => button.TextContent.Trim() == "Copy from en").Click();
+
+        app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("Hello"));
+    }
+
+    // A singleton has one entry: where it has none in the content locale, the form adds that locale to it.
+    [Fact]
+    public void ALocalizedSingletonWithoutTheContentLocaleIsTranslatedNotCreated()
+    {
+        var settings = Type("settings", kind: "singleton", fields: [Field("title")]);
+        settings["localized"] = true;
+        settings["fields"]![0]!["localizable"] = true;
+        Management.SetTypes(MainSite, Post(), settings);
+        var id = _content.Add("settings", new JsonObject { ["title"] = "Réglages" }, locale: "fr");
+
+        var app = Load("content/settings");
+        app.Find(".content-form-new-locale").TextContent.ShouldContain("no translation in en");
+        Input(app, "title").Input("Settings");
+        Button(app, "Save").Click();
+
+        app.WaitForAssertion(() => _content.Writes.ShouldHaveSingleItem());
+        (_content.Writes[0].Method, _content.Writes[0].Path, _content.Writes[0].IfMatch).ShouldBe((HttpMethod.Put, $"content/settings/{id:D}", "\"0\""));
+        _content.Fields(id, "en")["title"]!.GetValue<string>().ShouldBe("Settings");
+    }
+
+    // In a side panel the form edits the locale it is given, without the switcher and without moving the shell's locale.
+    [Fact]
+    public void AFormThatDoesNotOwnTheAddressEditsItsLocaleAlone()
+    {
+        Management.Entries["post"] = [];
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        _content.Add("post", new JsonObject { ["title"] = "Bonjour" }, id: id, locale: "fr");
+        Load("content/post");
+
+        var panel = Render<FluentCMS.Admin.Content.ContentForm>(parameters => parameters.Add(form => form.Type, "post").Add(form => form.Id, id).Add(form => form.Locale, "fr"));
+
+        panel.WaitForAssertion(() => panel.FindAll("[data-field='title'] input")[0].GetAttribute("value").ShouldBe("Bonjour"));
+        panel.FindAll(".content-locales, .content-form-compare-choice").ShouldBeEmpty();
+        (Context.ContentLocale, Navigation.Uri).ShouldBe(("en", "http://localhost/content/post?locale=en"));
+    }
+
+    [Fact]
+    public void QuickSuccessiveSwitchesEndInTheLastLocale()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        _content.Add("post", new JsonObject { ["title"] = "Bonjour" }, id: id, locale: "fr");
+        var app = Load($"content/post/{id:D}");
+
+        Navigation.NavigateTo($"content/post/{id:D}?locale=fr");
+        Navigation.NavigateTo($"content/post/{id:D}?locale=en");
+        Navigation.NavigateTo($"content/post/{id:D}?locale=fr");
+
+        app.WaitForAssertion(() => (Context.ContentLocale, Input(app, "title").GetAttribute("value")).ShouldBe(("fr", "Bonjour")));
+        Locales(app).Select(locale => locale.Current).ShouldBe([false, true]);
+    }
+
+    [Fact]
     public void SwitchingTheLocaleOfAFormReadsTheEntryAndTheAccessInTheNewLocale()
     {
         var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
         _content.Add("post", new JsonObject { ["title"] = "Bonjour" }, id: id, locale: "fr");
         var app = Load($"content/post/{id:D}");
 
-        Navigation.NavigateTo(Locales(app)[1].Href);
+        Navigation.NavigateTo(Locales(app)[1].Href!);
 
         app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("Bonjour"));
         Context.ContentLocale.ShouldBe("fr");
@@ -171,14 +349,14 @@ public sealed class ContentLocaleTests : AdminTestContext
         var app = Load($"content/post/{id:D}");
         Input(app, "title").Input("Mine");
 
-        Navigation.NavigateTo(Locales(app)[1].Href);
+        Navigation.NavigateTo(Locales(app)[1].Href!);
 
         app.WaitForAssertion(() => Dialog(app, "Leave with unsaved changes?").Instance.Open.ShouldBeTrue());
         Button(app, "Keep editing").Click();
-        Navigation.Uri.ShouldBe($"http://localhost/content/post/{id:D}");
+        Navigation.Uri.ShouldBe($"http://localhost/content/post/{id:D}?locale=en");
         Input(app, "title").GetAttribute("value").ShouldBe("Mine");
 
-        Navigation.NavigateTo(Locales(app)[1].Href);
+        Navigation.NavigateTo(Locales(app)[1].Href!);
         app.WaitForAssertion(() => Dialog(app, "Leave with unsaved changes?").Instance.Open.ShouldBeTrue());
         Button(app, "Leave").Click();
 
@@ -215,7 +393,7 @@ public sealed class ContentLocaleTests : AdminTestContext
         app.WaitForAssertion(() => app.FindAll(".content-form-compare").Count.ShouldBe(2));
         var other = app.Find("[data-field='title'] .content-form-compare input");
         (other.GetAttribute("value"), other.GetAttribute("lang"), other.GetAttribute("dir"), other.HasAttribute("readonly")).ShouldBe(("مرحبا", "ar", "rtl", true));
-        app.Find("[data-field='title'] .content-form-compare").GetAttribute("aria-label").ShouldBe("Title in ar");
+        app.Find("[data-field='title'] .content-form-compare label").TextContent.Trim().ShouldBe("Title in ar");
         (Input(app, "title").GetAttribute("value"), Input(app, "title").GetAttribute("dir")).ShouldBe(("Hello", "ltr"));
 
         choice.InvokeAsync(() => choice.Instance.ValueChanged.InvokeAsync("fr"));
@@ -256,7 +434,7 @@ public sealed class ContentLocaleTests : AdminTestContext
         app.Find(".content-form").TextContent.ShouldContain("You can read this entry but not change it.");
         Input(app, "title").HasAttribute("readonly").ShouldBeTrue();
 
-        Navigation.NavigateTo(Locales(app)[1].Href);
+        Navigation.NavigateTo(Locales(app)[1].Href!);
 
         app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("Bonjour"));
         Input(app, "title").HasAttribute("readonly").ShouldBeFalse();
@@ -277,7 +455,7 @@ public sealed class ContentLocaleTests : AdminTestContext
 
         var notice = app.FindAll(".shell-sidebar .shell-sidebar-locales").ShouldHaveSingleItem();
         notice.TextContent.ShouldContain("You can read no content in en.");
-        Navigation.NavigateTo(notice.QuerySelectorAll("a")[1].GetAttribute("href")!);
+        Navigation.NavigateTo(notice.QuerySelector("a")!.GetAttribute("href")!);
 
         app.WaitForAssertion(() => app.FindAll(".shell-sidebar a").Select(link => link.TextContent.Trim()).ShouldContain("Post"));
         app.FindAll(".shell-sidebar-locales").ShouldBeEmpty();
@@ -287,7 +465,18 @@ public sealed class ContentLocaleTests : AdminTestContext
         Navigation.NavigateTo("content/post");
         app.WaitForAssertion(() => app.Find("main h1").TextContent.ShouldBe("Post"));
         Context.ContentLocale.ShouldBe("fr");
-        Management.MetadataLocales.Count(read => read.Locale == "fr").ShouldBe(2);
+        Navigation.Uri.ShouldBe("http://localhost/content/post?locale=fr");
+    }
+
+    // A site whose types the user may read in no locale, as one with none, offers no other locale.
+    [Fact]
+    public void ASiteWithNoTypeOffersNoOtherLocale()
+    {
+        Management.SetTypes(MainSite);
+
+        var app = Load("");
+
+        app.FindAll(".shell-sidebar-locales").ShouldBeEmpty();
     }
 
     [Fact]
@@ -296,7 +485,7 @@ public sealed class ContentLocaleTests : AdminTestContext
         Management.Entries["post"] = [];
         var app = Load("content/post?locale=fr");
 
-        Navigation.NavigateTo(Locales(app)[0].Href);
+        Navigation.NavigateTo(Locales(app)[0].Href!);
 
         app.WaitForAssertion(() => (Context.ContentLocale, Context.NamedLocale).ShouldBe(("en", null)));
         Management.MetadataLocales[^2..].ShouldBe([("me/access", null), ("schema", null)]);
@@ -316,9 +505,8 @@ public sealed class ContentLocaleTests : AdminTestContext
         var sites = app.FindComponents<CmsSelect>().Single(select => select.Instance.Label == "Site");
         sites.InvokeAsync(() => sites.Instance.ValueChanged.InvokeAsync(second.ToString("D")));
 
-        app.WaitForAssertion(() => Navigation.Uri.ShouldBe("http://localhost/content/post"));
         app.WaitForAssertion(() => (Context.Site!.Id, Context.ContentLocale, Context.NamedLocale).ShouldBe((second, "en", null)));
-        Management.MetadataLocales[^2..].ShouldBe([("me/access", null), ("schema", null)]);
+        app.WaitForAssertion(() => Navigation.Uri.ShouldBe("http://localhost/content/post?locale=en"));
     }
 
     private IRenderedComponent<AdminApp> Load(string route)
@@ -332,8 +520,19 @@ public sealed class ContentLocaleTests : AdminTestContext
         return app;
     }
 
-    private static List<(string Code, string Href, bool Current)> Locales(IRenderedComponent<AdminApp> app) =>
-        [.. app.FindAll(".content-locales a").Select(link => (link.TextContent.Trim(), link.GetAttribute("href")!.Replace("http://localhost/", "", StringComparison.Ordinal), link.GetAttribute("aria-current") == "true"))];
+    // The current locale is text, the others links.
+    private static List<(string Code, string? Href, bool Current)> Locales(IRenderedComponent<AdminApp> app) =>
+        [.. app.FindAll(".content-locales li > *").Select(item => (item.TextContent.Trim(), item.GetAttribute("href")?.Replace("http://localhost/", "", StringComparison.Ordinal), item.GetAttribute("aria-current") == "true"))];
+
+    // A read of a list in the locale is refused, as for a grant that does not reach it.
+    private void RefuseListReadsIn(string locale)
+    {
+        var content = Management.Respond;
+        Management.Respond = (request, path, body) =>
+            request.Method == HttpMethod.Get && path == "content/post" && request.RequestUri!.Query.EndsWith($"locale={locale}", StringComparison.Ordinal)
+                ? Problem(System.Net.HttpStatusCode.Forbidden, "FCMS2001")
+                : content?.Invoke(request, path, body);
+    }
 
     private static List<string> Badges(IElement scope) =>
         [.. scope.QuerySelectorAll(".content-badge").Select(badge => string.Join(' ', badge.TextContent.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)))];

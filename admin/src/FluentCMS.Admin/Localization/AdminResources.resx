@@ -1154,6 +1154,24 @@
   <data name="Content.Locale.Label" xml:space="preserve">
     <value>Content locale</value>
   </data>
+  <data name="Content.Locale.Name" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="Content.Locale.Switched" xml:space="preserve">
+    <value>Content locale: {0}</value>
+  </data>
+  <data name="Content.Form.Copy.Title" xml:space="preserve">
+    <value>Replace your changes?</value>
+  </data>
+  <data name="Content.Form.Copy.Text" xml:space="preserve">
+    <value>Copying from {0} replaces the values you typed in this locale.</value>
+  </data>
+  <data name="Content.Form.Copy.Confirm" xml:space="preserve">
+    <value>Copy from {0}</value>
+  </data>
+  <data name="Content.Form.Copy.Cancel" xml:space="preserve">
+    <value>Keep my values</value>
+  </data>
   <data name="Content.Form.NewLocale" xml:space="preserve">
     <value>This entry has no translation in {0} yet. Fill it in, or copy another locale, and save to add it.</value>
   </data>

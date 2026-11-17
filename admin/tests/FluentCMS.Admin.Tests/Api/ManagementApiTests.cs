@@ -55,7 +55,7 @@ public sealed class ManagementApiTests
         harness.Session.Locale = "fr";
         harness.Server.Answer(HttpStatusCode.OK, """{"types":[],"components":[],"blocks":[]}""");
 
-        await harness.Client.GetSchemaAsync(null, Token);
+        await harness.Client.GetSchemaAsync(null, null, Token);
 
         var sent = harness.Server.Requests.Single();
         (sent.Header("X-Cms-Site"), sent.Header("X-Cms-Locale")).ShouldBe((null, null));

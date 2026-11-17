@@ -1,21 +1,28 @@
 @* The content locale switcher (spec 4.17): a link per enabled locale of the site, in its order, which puts the locale in the
-   address of the page, so that a form with unsaved changes asks first, as for any route change (A-49). An address without
-   one keeps the locale there is, so each link names its locale, the site's default too. *@
+   address of the page, so that a form with unsaved changes asks first, as for any route change (A-49). The current locale
+   is text. Each link names its language, which the code alone may not say. *@
+@using System.Globalization
 @implements IDisposable
 @inject AdminContext Context
 @inject NavigationManager Navigation
 @inject IStringLocalizer<AdminResources> L
 
-@if (Context.ContentLocales.Count > 1)
+@if (Shown.Count > 1 || (Locales is not null && Shown.Count > 0))
 {
     <nav class="content-locales" aria-label="@L["Content.Locale.Label"]">
         <span class="content-locales-label" aria-hidden="true">@L["Content.Locale.Label"]</span>
         <ul>
-            @foreach (var tag in Context.ContentLocales)
+            @foreach (var tag in Shown)
             {
-                var current = string.Equals(tag, Context.ContentLocale, StringComparison.OrdinalIgnoreCase);
                 <li @key="tag">
-                    <a href="@Href(tag)" class="@(current ? "content-locale content-locale-current" : "content-locale")" aria-current="@(current ? "true" : null)">@tag</a>
+                    @if (string.Equals(tag, Context.ContentLocale, StringComparison.OrdinalIgnoreCase))
+                    {
+                        <span class="content-locale content-locale-current" aria-current="true" aria-label="@Name(tag)">@tag</span>
+                    }
+                    else
+                    {
+                        <a href="@Href(tag)" hreflang="@tag" class="content-locale" aria-label="@Name(tag)">@tag</a>
+                    }
                 </li>
             }
         </ul>
@@ -23,12 +30,40 @@
 }
 
 @code {
-    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+    // The locales to offer; every enabled locale of the site when null.
+    [Parameter]
+    public IReadOnlyList<string>? Locales { get; set; }
 
-    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+    private IReadOnlyList<string> Shown => Locales ?? Context.ContentLocales;
 
-    // The address of the page in the locale, with the rest of its query string.
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        Context.Changed += OnChanged;
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+        Context.Changed -= OnChanged;
+    }
+
     private string Href(string code) => Navigation.GetUriWithQueryParameter("locale", code);
 
+    // The language in itself, as a speaker of it looks for it, beside the code that is shown.
+    private string Name(string code)
+    {
+        try
+        {
+            return L["Content.Locale.Name", code, CultureInfo.GetCultureInfo(code, predefinedOnly: true).NativeName];
+        }
+        catch (CultureNotFoundException)
+        {
+            return code;
+        }
+    }
+
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
 }

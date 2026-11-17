@@ -1,5 +1,6 @@
 @* The sidebar of the shell, for the site of the context (spec 4.1); the drawer of a narrow window holds it too. A grant may
-   be limited to locales, so where the content locale shows no type and the site has others, it says so and offers them. *@
+   be limited to locales, so where the content locale shows no type the user may read and another locale shows some, it
+   says so and offers those. *@
 @implements IDisposable
 @inject AdminContext Context
 @inject AdminMenu Menu
@@ -19,20 +20,43 @@
         </CmsNavigationSection>
     }
 </CmsNavigation>
-@if (Context.ContentLocales.Count > 1 && Context.Schema is { } schema && !schema.Types.Any(type => Context.MayRead(type.Name)))
+@if (elsewhere.Count > 0)
 {
     <div class="shell-sidebar-locales">
         <p>@L["Shell.Sidebar.NoTypesInLocale", Context.ContentLocale ?? ""]</p>
-        <ContentLocaleSwitcher />
+        <ContentLocaleSwitcher Locales="@elsewhere" />
     </div>
 }
 
 @code {
-    protected override void OnInitialized() => Context.Changed += OnChanged;
+    // The other locales in which the user may read some type, while the content locale shows none.
+    private IReadOnlyList<string> elsewhere = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        Context.Changed += OnChanged;
+        await FindElsewhereAsync();
+    }
 
     public void Dispose() => Context.Changed -= OnChanged;
 
+    private async Task FindElsewhereAsync()
+    {
+        var locale = Context.ContentLocale;
+        var none = Context.Status == ShellStatus.Ready && Context.ContentLocales.Count > 1 && !(Context.Schema?.Types ?? []).Any(type => Context.MayRead(type.Name));
+        var found = none ? await Context.LocalesWithContentAsync() : [];
+        if (locale == Context.ContentLocale)
+        {
+            elsewhere = found;
+        }
+    }
+
     private string Label(ShellLink link) => link.Type is { } type ? AdminLabels.Type(type, L) : L[link.Entry!.LabelKey];
 
-    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnChanged() => _ = InvokeAsync(async () =>
+    {
+        StateHasChanged();
+        await FindElsewhereAsync();
+        StateHasChanged();
+    });
 }

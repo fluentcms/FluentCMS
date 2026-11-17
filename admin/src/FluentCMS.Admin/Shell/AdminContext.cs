@@ -37,6 +37,7 @@ internal sealed class AdminContext(
     private Task? _starting;
     private int _generation;
     private Task _localeReads = Task.CompletedTask;
+    private Task<IReadOnlyDictionary<string, MyAccessInfo>>? _localeAccess;
 
     public event Action? Changed;
 
@@ -50,7 +51,7 @@ internal sealed class AdminContext(
 
     public string? ContentLocale => site.Locale ?? Site?.DefaultLocale;
 
-    // The content locale when it is not the site's default, as the address of a content page names it; null otherwise.
+    // The content locale when it is not the site's default; null otherwise.
     public string? NamedLocale => site.Locale;
 
     // The enabled locales of the site, in its order: those a view may be in, and that the badges of a localized type follow.
@@ -130,6 +131,42 @@ internal sealed class AdminContext(
         return _localeReads = RunAsync(generation, () => SiteReadsAsync(generation));
     }
 
+    // The locales of the site in which the user may read the type: a grant may be limited to locales, and a read of every
+    // locale leaves out those it may not read, which would otherwise look untranslated. A locale whose access could not be
+    // read counts as readable.
+    public async Task<IReadOnlyList<string>> ReadableLocalesAsync(string type)
+    {
+        var access = await LocaleAccessAsync();
+        return [.. ContentLocales.Where(code => !access.TryGetValue(code, out var found) || found.Types.ContainsKey(type))];
+    }
+
+    // The other locales of the site in which the user may read some type, for a locale that shows none.
+    public async Task<IReadOnlyList<string>> LocalesWithContentAsync()
+    {
+        var access = await LocaleAccessAsync();
+        return [.. ContentLocales.Where(code => code != ContentLocale && access.TryGetValue(code, out var found) && found.Types.Count > 0)];
+    }
+
+    // /me/access in each enabled locale of the site, read once per site when a view first needs it.
+    private Task<IReadOnlyDictionary<string, MyAccessInfo>> LocaleAccessAsync() =>
+        _localeAccess ??= ReadLocaleAccessAsync(site.Site, ContentLocales);
+
+    private async Task<IReadOnlyDictionary<string, MyAccessInfo>> ReadLocaleAccessAsync(string? siteId, IReadOnlyList<string> codes)
+    {
+        var reads = await Task.WhenAll(codes.Select(async code =>
+        {
+            try
+            {
+                return (Code: code, Access: (MyAccessInfo?)await client.GetMyAccessAsync(siteId, code, CancellationToken.None));
+            }
+            catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or TaskCanceledException)
+            {
+                return (Code: code, Access: null);
+            }
+        }));
+        return reads.Where(read => read.Access is not null).ToDictionary(read => read.Code, read => read.Access!, StringComparer.Ordinal);
+    }
+
     public bool Allows(string permission) => AccessInfo is { } access && Holds(access, permission);
 
     public TypeAccessInfo? ForType(string type) => AccessInfo is { } access && access.Types.TryGetValue(type, out var found) ? found : null;
@@ -196,7 +233,7 @@ internal sealed class AdminContext(
     // Nothing read for the site before is kept, so that Allows answers false until the new site's access is read.
     private void Enter(MySiteInfo chosen)
     {
-        (site.Current, site.ContentLocale) = (chosen, null);
+        (site.Current, site.ContentLocale, _localeAccess) = (chosen, null, null);
         (AccessInfo, Schema, SchemaRefused, Plugins) = (null, null, false, []);
         Status = ShellStatus.Loading;
         Changed?.Invoke();

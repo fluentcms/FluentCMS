@@ -178,6 +178,10 @@ internal sealed class ListView
         };
     }
 
+    // The ids one status read names: the filter counts each against the server's MaxFilterNodes (100) with the node of the
+    // filter itself.
+    public const int MaxStatusIds = 99;
+
     // The status of a page's entries in another locale than the one the page was matched in, which locale=all cannot give:
     // it matches in the site's default locale, which an entry may lack. A read of that locale limited to their ids.
     public static ContentQuery StatusQuery(string locale, IReadOnlyCollection<Guid> ids)

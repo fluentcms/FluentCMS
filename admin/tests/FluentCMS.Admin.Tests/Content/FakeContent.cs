@@ -87,7 +87,7 @@ internal sealed class FakeContent
                 [] when _server.Entries.ContainsKey(type) => null,
                 [] => FakeManagementServer.Json(new JsonObject
                 {
-                    ["items"] = new JsonArray([.. _entries.Where(entry => entry.Value.Type == type).Select(entry => entry.Key.Id).Distinct().Select(id => (JsonNode)new JsonObject { ["id"] = id })]),
+                    ["items"] = new JsonArray([.. _entries.Where(entry => entry.Value.Type == type && entry.Key.Locale == locale).Select(entry => (JsonNode)new JsonObject { ["id"] = entry.Key.Id })]),
                     ["pageSize"] = 1,
                 }),
                 [var id] when Guid.TryParse(id, out var key) && locale == "all" && Locales(key).Count > 0 => FakeManagementServer.Json(new JsonObject

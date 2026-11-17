@@ -101,7 +101,7 @@
         Navigation.LocationChanged += OnLocationChanged;
         if (SignedIn)
         {
-            await Context.StartAsync();
+            await StartAsync();
         }
     }
 
@@ -118,7 +118,7 @@
 
     private void OpenNavigation() => (drawerOpen, closedByNavigation) = (true, false);
 
-    private Task TryAgainAsync() => Context.StartAsync();
+    private Task TryAgainAsync() => StartAsync();
 
     // A user who signs in on this page load, as the callback does, starts the shell.
     private void OnSessionChanged() => _ = InvokeAsync(async () =>
@@ -126,13 +126,20 @@
         StateHasChanged();
         if (SignedIn)
         {
-            await Context.StartAsync();
+            await StartAsync();
         }
     });
 
+    // The address the app was loaded at may name a content locale too.
+    private async Task StartAsync()
+    {
+        await Context.StartAsync();
+        await Context.UseLocaleAsync(ContentRoutes.LocaleOf(new Uri(Navigation.Uri)));
+    }
+
     private void OnContextChanged() => _ = InvokeAsync(StateHasChanged);
 
-    // A content page sets the locale of its address itself before it reads; this sets it for the others.
+    // A content page sets the locale of its address itself before it reads; this sets it on the others.
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) =>
         _ = InvokeAsync(() => Context.UseLocaleAsync(ContentRoutes.LocaleOf(Navigation.ToAbsoluteUri(e.Location))));
 

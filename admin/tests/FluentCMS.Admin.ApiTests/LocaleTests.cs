@@ -45,6 +45,21 @@ public sealed class LocaleTests
         (row.Id, row.Status).ShouldBe((id, "published"));
     }
 
+    // Each id of a status read is a node of the filter, beside the filter's own, and the server allows 100.
+    [Fact]
+    public async Task AStatusReadTakesTheIdsOfABatchAndNotOneMore()
+    {
+        await using var admin = new AdminHost();
+        using var editor = await admin.SignInAsync(BuiltInRoles.EditorName);
+        var batch = Enumerable.Range(0, ListView.MaxStatusIds).Select(_ => Guid.CreateVersion7()).ToList();
+
+        var read = await editor.Client.ListEntriesAsync("article", ListView.StatusQuery("fr", batch), Token);
+        var refused = await Should.ThrowAsync<ApiProblemException>(() => editor.Client.ListEntriesAsync("article", ListView.StatusQuery("fr", [.. batch, Guid.CreateVersion7()]), Token));
+
+        read.Items.ShouldBeEmpty();
+        refused.Problem.Status.ShouldBe(400);
+    }
+
     // A second add of the same locale on "0" meets the version the first one wrote.
     [Fact]
     public async Task AddingALocaleThatAnotherTabAddedFirstIsAConflict()

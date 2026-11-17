@@ -74,12 +74,8 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
 
     // What the caller may do in the site, in the locale named or else the site's default: a grant limited to locales counts
     // only in them, so the server narrows both reads by the locale.
-    public Task<MyAccessInfo> GetMyAccessAsync(string? site, CancellationToken cancellationToken) => GetMyAccessAsync(site, null, cancellationToken);
-
     public async Task<MyAccessInfo> GetMyAccessAsync(string? site, string? locale, CancellationToken cancellationToken) =>
         (await api.SendAsync(Pinned(HttpMethod.Get, "me/access", site, locale), Json.MyAccessInfo, cancellationToken)).Value;
-
-    public Task<SchemaDescription> GetSchemaAsync(string? site, CancellationToken cancellationToken) => GetSchemaAsync(site, null, cancellationToken);
 
     public async Task<SchemaDescription> GetSchemaAsync(string? site, string? locale, CancellationToken cancellationToken) =>
         (await api.SendAsync(Pinned(HttpMethod.Get, "schema", site, locale), Json.SchemaDescription, cancellationToken)).Value;
@@ -134,10 +130,10 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
         return Read(answer, action.Site, action.Locale) with { Location = answer.Location };
     }
 
-    // The id of a singleton's one entry, or null while it has none.
-    public async Task<Guid?> FindSingletonAsync(string type, CancellationToken cancellationToken)
+    // The id of a singleton's one entry, or null while it has none in the locale; null reads the view's.
+    public async Task<Guid?> FindSingletonAsync(string type, string? locale, CancellationToken cancellationToken)
     {
-        var page = await ListEntriesAsync(type, new ContentQuery { PageSize = 1, Fields = ["id"] }, cancellationToken);
+        var page = await ListEntriesAsync(type, new ContentQuery { PageSize = 1, Fields = ["id"], Locale = locale }, cancellationToken);
         return page.Items.Count > 0 ? page.Items[0].Id : null;
     }
 

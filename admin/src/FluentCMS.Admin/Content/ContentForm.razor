@@ -29,7 +29,7 @@
 
 <div class="content-form">
     <h1 tabindex="-1">@Heading</h1>
-    @if (localizedType == Type)
+    @if (OwnsAddress && localizedType == Type)
     {
         <ContentLocaleSwitcher />
     }
@@ -90,7 +90,7 @@
                         <div class="content-form-toolbar">
                             @foreach (var source in CopySources)
                             {
-                                <CmsButton @key="source" OnClick="@(() => CopyFromAsync(source))">@L["Content.Form.CopyFrom", source]</CmsButton>
+                                <CmsButton @key="source" OnClick="@(() => AskCopy(source))">@L["Content.Form.CopyFrom", source]</CmsButton>
                             }
                         </div>
                     }
@@ -189,6 +189,15 @@
                 </CmsTabs>
             }
             @ConflictDialog()
+            <CmsDialog Title="@L["Content.Form.Copy.Title"]" Open="@(copyAsked is not null)" OpenChanged="@(open => { if (!open) copyAsked = null; })">
+                <ChildContent>
+                    <p>@L["Content.Form.Copy.Text", copyAsked ?? ""]</p>
+                </ChildContent>
+                <Actions>
+                    <CmsButton OnClick="@(() => copyAsked = null)">@L["Content.Form.Copy.Cancel"]</CmsButton>
+                    <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="ConfirmCopyAsync">@L["Content.Form.Copy.Confirm", copyAsked ?? ""]</CmsButton>
+                </Actions>
+            </CmsDialog>
             @Confirmation(EntryAction.Discard, "Content.Form.Discard")
             @Confirmation(EntryAction.Unpublish, "Content.Form.Unpublish")
             break;
@@ -314,14 +323,16 @@
     // The type while it is localized, kept while the form reads it again in another locale, so that the switcher stays.
     private string? localizedType;
 
-    // The locale whose read for the side by side failed, until another is chosen.
+    // Until another is chosen.
     private string? compareFailed;
-
-    // The locale last chosen for the side by side, whose read is the one kept.
     private string? compareChoice;
-
-    // A copy from another locale is being read.
     private bool copying;
+
+    // The locale to copy from while the user is asked whether it may replace the values typed.
+    private string? copyAsked;
+
+    // The locales of the site in which the user may read the type; a read of every locale leaves the others out.
+    private IReadOnlyList<string> readableLocales = [];
     private IDisposable? leaveGuard;
     // The question before unsaved changes are left, answered true to leave; the navigation waits for it.
     private TaskCompletionSource<bool>? leaveAnswer;
@@ -345,9 +356,14 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    // The content locale the address names; null keeps the one there is. The shell reads the access and the schema in it.
+    // The content locale to edit; null for the shell's. The access and the schema are the shell's, so a form in a side panel
+    // edits the shell's locale.
     [Parameter]
     public string? Locale { get; set; }
+
+    // Whether the form is the page and its address names its locale: it then offers the locale switcher and side by side.
+    [Parameter]
+    public bool OwnsAddress { get; set; }
 
     private bool IsSingleton => type?.Kind == "singleton";
 
@@ -370,10 +386,10 @@
 
     // The locales a new locale may be copied from: those the entry has, in the site's order.
     private IReadOnlyList<string> CopySources =>
-        locales is null ? [] : [.. Context.ContentLocales.Where(code => code != ContentCode && locales.ContainsKey(code))];
+        locales is null ? [] : [.. readableLocales.Where(code => code != ContentCode && locales.ContainsKey(code))];
 
     private IReadOnlyList<string> CompareChoices =>
-        HasLocales && entryId is not null ? [.. Context.ContentLocales.Where(code => code != ContentCode)] : [];
+        OwnsAddress && HasLocales && entryId is not null ? [.. readableLocales.Where(code => code != ContentCode)] : [];
 
     // Save is absent for a caller who may not create entries of the type, or not change them (GET /me/access).
     private bool MaySave => access is not null && (entryId is null ? access.Create : access.Update);
@@ -397,7 +413,7 @@
     // The form's own tracking may have been given up by a confirmed site switch or sign-out.
     private bool IsDirty => tracking is not null && Drafts.HasUnsavedForms;
 
-    private bool DialogOpen => leaveAnswer is not null || conflictOpen || showingShortcuts || confirming is not null;
+    private bool DialogOpen => leaveAnswer is not null || conflictOpen || showingShortcuts || confirming is not null || copyAsked is not null;
 
     private string Heading => state switch
     {
@@ -516,11 +532,10 @@
         (restored, done, saveFailure, pendingCreate, publishTried) = (false, null, null, null, false);
         (warnings, confirming) = ([], null);
         (conflict, conflictOpen, comparing) = (null, false, false);
-        (locales, compare, compareFailed, copying) = (null, null, null, false);
+        (locales, compare, compareFailed, compareChoice, copying, copyAsked, readableLocales) = (null, null, null, null, false, null, []);
         ClearErrors();
         try
         {
-            await Context.UseLocaleAsync(Locale);
             var schema = await Metadata.GetSchemaAsync(CancellationToken.None);
             if (current != generation)
             {
@@ -535,29 +550,33 @@
 
             localizedType = found.Localized ? found.Name : null;
 
+            var several = found.Localized && Context.ContentLocales.Count > 1;
+            var readable = several ? Context.ReadableLocalesAsync(found.Name) : null;
             var id = Id;
             if (id is null && found.Kind == "singleton")
             {
-                id = await Client.FindSingletonAsync(Type, CancellationToken.None);
+                id = await FindSingletonAsync(several);
             }
 
             EntryRead? entry = null;
             IReadOnlyDictionary<string, ContentEntry>? everyLocale = null;
             if (id is { } existing)
             {
-                var every = found.Localized && Context.ContentLocales.Count > 1 ? ReadLocalesAsync(existing, CurrentSite.Site) : null;
-                entry = await Client.GetEntryAsync(Type, existing, null, CancellationToken.None);
+                var every = several ? ReadLocalesAsync(existing, CurrentSite.Site) : null;
+                entry = await Client.GetEntryAsync(Type, existing, Locale, CancellationToken.None);
                 everyLocale = every is null ? null : await every;
             }
 
+            var readableNow = readable is null ? [] : await readable;
             if (current != generation)
             {
                 return;
             }
 
-            (type, access, tabs, read, entryId, locales) = (found, Access.ForType(found.Name), ContentFormLayout.Build(found), entry, id, everyLocale);
+            (type, access, tabs, read, entryId) = (found, Access.ForType(found.Name), ContentFormLayout.Build(found), entry, id);
+            (locales, readableLocales) = (everyLocale, readableNow);
             tabbed = [.. tabs.Where(tab => tab.Name is not null)];
-            (site, locale) = entry is not null ? (entry.Site, entry.Locale) : (CurrentSite.Site, ContentLocaleSource.Locale);
+            (site, locale) = entry is not null ? (entry.Site, entry.Locale) : (CurrentSite.Site, Locale ?? ContentLocaleSource.Locale);
             fields = entry switch
             {
                 { Entry: { } value } => value.Fields.DeepClone().AsObject(),
@@ -596,6 +615,26 @@
         return defaults;
     }
 
+    // A localized singleton that has no entry in the form's locale may have one in another, which the form then adds the
+    // locale to, since a second create would be refused.
+    private async Task<Guid?> FindSingletonAsync(bool several)
+    {
+        if (await Client.FindSingletonAsync(Type, Locale, CancellationToken.None) is { } found)
+        {
+            return found;
+        }
+
+        foreach (var code in several ? Context.ContentLocales.Where(code => !string.Equals(code, Locale ?? Context.ContentLocale, StringComparison.OrdinalIgnoreCase)) : [])
+        {
+            if (await Client.FindSingletonAsync(Type, code, CancellationToken.None) is { } other)
+            {
+                return other;
+            }
+        }
+
+        return null;
+    }
+
     // The status of every locale is shown beside the form, so a failed read of them leaves the form without it.
     private async Task<IReadOnlyDictionary<string, ContentEntry>?> ReadLocalesAsync(Guid id, string? entrySite)
     {
@@ -628,6 +667,25 @@
         }
 
         return values;
+    }
+
+    // A copy replaces what the user typed in the new locale, so it asks first when there is any.
+    private Task AskCopy(string source)
+    {
+        if (IsDirty)
+        {
+            copyAsked = source;
+            return Task.CompletedTask;
+        }
+
+        return CopyFromAsync(source);
+    }
+
+    private Task ConfirmCopyAsync()
+    {
+        var source = copyAsked;
+        copyAsked = null;
+        return source is null ? Task.CompletedTask : CopyFromAsync(source);
     }
 
     // Copy from another locale: a read in that locale fills each field the caller may change in the new one, which the first
@@ -1371,7 +1429,7 @@
                 @Editor(field)
                 @if (compare is { } other)
                 {
-                    <div class="content-form-compare" role="group" aria-label="@L["Content.Form.Compare.Field", FieldEditorBase.LabelOf(field), other.Locale ?? ""]">
+                    <div class="content-form-compare" lang="@other.Locale">
                         @if (other.Entry is null)
                         {
                             <p class="content-form-notice">@L["Content.Form.Compare.Missing", other.Locale ?? ""]</p>
@@ -1393,13 +1451,13 @@
     {
         if (locales is not null && ContentCode is { } code)
         {
-            var every = locales.Where(pair => pair.Key != code).ToDictionary(StringComparer.Ordinal);
+            var every = locales.Where(pair => pair.Key != code && readableLocales.Contains(pair.Key)).ToDictionary(StringComparer.Ordinal);
             if (read?.Entry is { } own)
             {
                 every[code] = own with { Locale = code };
             }
 
-            <EntryBadges Entry="@(read?.Entry ?? new ContentEntry())" Locales="@every" SiteLocales="@Context.ContentLocales" />
+            <EntryBadges Entry="@(read?.Entry ?? new ContentEntry())" Locales="@every" SiteLocales="@readableLocales" />
             return;
         }
 
@@ -1530,8 +1588,9 @@
     private RenderFragment CompareEditor(SchemaFieldDescription field, EntryRead other) => builder =>
     {
         var values = other.Entry!.Fields;
+        var label = L["Content.Form.Compare.Field", FieldEditorBase.LabelOf(field), other.Locale ?? ""].Value;
         builder.OpenComponent(0, EditorOf(field));
-        builder.AddComponentParameter(1, nameof(FieldEditorBase.Field), field);
+        builder.AddComponentParameter(1, nameof(FieldEditorBase.Field), field with { Display = (field.Display ?? new FieldDisplayDescription()) with { Label = label } });
         builder.AddComponentParameter(2, nameof(FieldEditorBase.Value), values[field.Name]);
         builder.AddComponentParameter(3, nameof(FieldEditorBase.ReadOnly), true);
         builder.AddComponentParameter(4, nameof(FieldEditorBase.ContentLocale), other.Locale);
