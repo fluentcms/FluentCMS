@@ -1,0 +1,33 @@
+@* A field the schema marks readOnly, which the server sets: its value as text. *@
+@inherits FieldEditorBase
+@inject IStringLocalizer<AdminResources> L
+
+<div class="cms-field" role="group" aria-labelledby="@labelId" aria-describedby="@DescribedBy">
+    <span id="@labelId" class="cms-field-label">@Label</span>
+    <span @ref="element" class="content-text" tabindex="-1" lang="@ContentLocale" dir="@TextDirection">@(Text ?? L["Content.Form.NoValue"])</span>
+    @if (ErrorText is not null)
+    {
+        <span id="@messageId" class="cms-field-message cms-field-message-error">@ErrorText</span>
+    }
+    else if (Help is not null)
+    {
+        <span id="@messageId" class="cms-field-message">@Help</span>
+    }
+</div>
+
+@code {
+    private readonly string labelId = ElementIds.Next("field-label");
+    private readonly string messageId = ElementIds.Next("field-message");
+    private ElementReference element;
+
+    private string? DescribedBy => ErrorText is null && Help is null ? null : messageId;
+
+    private string? Text => Value switch
+    {
+        null => null,
+        JsonValue value when value.TryGetValue<string>(out var text) => string.IsNullOrEmpty(text) ? null : text,
+        _ => Value.ToJsonString(),
+    };
+
+    public override ValueTask FocusAsync() => element.Context is null ? ValueTask.CompletedTask : element.FocusAsync();
+}

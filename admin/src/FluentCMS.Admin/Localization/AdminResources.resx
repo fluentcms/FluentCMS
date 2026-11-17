@@ -830,4 +830,58 @@
   <data name="Account.Preferences.LanguageFailed" xml:space="preserve">
     <value>Your language could not be read.</value>
   </data>
+  <data name="Content.Form.Heading" xml:space="preserve">
+    <value>Entry</value>
+  </data>
+  <data name="Content.Form.Loading" xml:space="preserve">
+    <value>Loading the entry…</value>
+  </data>
+  <data name="Content.Form.TypeNotFoundHeading" xml:space="preserve">
+    <value>Content type not found</value>
+  </data>
+  <data name="Content.Form.TypeNotFound" xml:space="preserve">
+    <value>This site has no content type of this name, or you may not read it.</value>
+  </data>
+  <data name="Content.Form.EntryNotFoundHeading" xml:space="preserve">
+    <value>Entry not found</value>
+  </data>
+  <data name="Content.Form.EntryNotFound" xml:space="preserve">
+    <value>There is no entry at this address. It may have been moved to the trash.</value>
+  </data>
+  <data name="Content.Form.ReadFailed" xml:space="preserve">
+    <value>The entry could not be read.</value>
+  </data>
+  <data name="Content.Form.NewHeading" xml:space="preserve">
+    <value>{0}: new entry</value>
+  </data>
+  <data name="Content.Form.NewEntry" xml:space="preserve">
+    <value>New entry</value>
+  </data>
+  <data name="Content.Form.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Content.Form.Saved" xml:space="preserve">
+    <value>Saved.</value>
+  </data>
+  <data name="Content.Form.Restored" xml:space="preserve">
+    <value>Your unsaved changes from the last session were restored. Save to keep them.</value>
+  </data>
+  <data name="Content.Form.NotSaved" xml:space="preserve">
+    <value>The entry was not saved.</value>
+  </data>
+  <data name="Content.Form.NotSavedErrors" xml:space="preserve">
+    <value>The entry was not saved. Correct the problems shown and save again.</value>
+  </data>
+  <data name="Content.Form.NotSavedUnreachable" xml:space="preserve">
+    <value>The entry was not saved: the server could not be reached. Try again.</value>
+  </data>
+  <data name="Content.Form.Reload" xml:space="preserve">
+    <value>Reload the entry</value>
+  </data>
+  <data name="Content.Form.NoEditor" xml:space="preserve">
+    <value>This field type has no editor in the admin. Its value is shown as JSON and saved unchanged.</value>
+  </data>
+  <data name="Content.Form.NoValue" xml:space="preserve">
+    <value>No value</value>
+  </data>
 </root>

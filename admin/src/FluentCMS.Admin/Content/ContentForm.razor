@@ -1,0 +1,499 @@
+@* The generated edit form of an entry (spec 4.5, A-13): the fields of the type laid out from their display, each with the
+   editor of its field type, a save with If-Match, and the errors of a 422 on their fields. The entry is edited as its JSON
+   document. A new entry is created by its first save and the form moves to its route; a singleton's form stays on the
+   type's route. While it has unsaved changes the form is tracked, so the end of a session keeps them as a draft. *@
+@implements IUnsavedForm
+@implements IDisposable
+@using System.Net
+@using FluentCMS.Admin.Forms
+@inject ManagementClient Client
+@inject SiteMetadata Metadata
+@inject ICurrentSite CurrentSite
+@inject IContentLocale ContentLocaleSource
+@inject IFormDraftStore Drafts
+@inject FieldEditorRegistry Editors
+@inject IAnnouncer Announcer
+@inject NavigationManager Navigation
+@inject IStringLocalizer<AdminResources> L
+
+<div class="content-form">
+    <h1 tabindex="-1">@Heading</h1>
+    @switch (state)
+    {
+        case FormState.Loading:
+            <p role="status">@L["Content.Form.Loading"]</p>
+            break;
+        case FormState.TypeNotFound:
+            <p>@L["Content.Form.TypeNotFound"]</p>
+            break;
+        case FormState.EntryNotFound:
+            <p>@L["Content.Form.EntryNotFound"]</p>
+            break;
+        case FormState.Failed:
+            <p>@L["Content.Form.ReadFailed"]</p>
+            <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="ReloadAsync">@L["Shell.Start.TryAgain"]</CmsButton>
+            break;
+        default:
+            <div class="content-form-toolbar">
+                @* Not disabled while saving, which would take focus from it; a click while a save runs is ignored. *@
+                <CmsButton Appearance="CmsButtonAppearance.Primary" Icon="CmsIconName.Save" OnClick="SaveAsync">@L["Content.Form.Save"]</CmsButton>
+                @if (savedAt is not null)
+                {
+                    <span class="content-form-saved">@L["Content.Form.Saved"]</span>
+                }
+            </div>
+            @if (restored)
+            {
+                <p class="content-form-notice"><CmsIcon Name="CmsIconName.Info" />@L["Content.Form.Restored"]</p>
+            }
+            @if (saveFailure is not null)
+            {
+                <div @ref="summary" class="content-form-problem" tabindex="-1">
+                    @if (saveFailure.Kind == SaveFailureKind.Invalid)
+                    {
+                        <p>@L["Content.Form.NotSavedErrors"]</p>
+                        @if (formErrors.Count > 0)
+                        {
+                            <ul>
+                                @foreach (var error in formErrors)
+                                {
+                                    <li>@error.Message</li>
+                                }
+                            </ul>
+                        }
+                    }
+                    else if (saveFailure.Kind == SaveFailureKind.Unreachable)
+                    {
+                        <p>@L["Content.Form.NotSavedUnreachable"]</p>
+                    }
+                    else
+                    {
+                        <p><strong>@(saveFailure.Problem?.Title ?? L["Content.Form.NotSaved"])</strong></p>
+                        @if (saveFailure.Problem?.Detail is { } detail)
+                        {
+                            <p>@detail</p>
+                        }
+                        @if (saveFailure.Kind == SaveFailureKind.Conflict)
+                        {
+                            <CmsButton OnClick="ReloadAsync">@L["Content.Form.Reload"]</CmsButton>
+                        }
+                    }
+                </div>
+            }
+            @if (Untabbed is { } main)
+            {
+                @Groups(main)
+            }
+            @if (tabbed.Count > 0)
+            {
+                <CmsTabs ActiveTabId="@ActiveTab" ActiveTabIdChanged="@(id => activeTab = id)">
+                    @for (var index = 0; index < tabbed.Count; index++)
+                    {
+                        var tab = tabbed[index];
+                        <CmsTab Id="@TabId(index)" Title="@(tab.Name!)">@Groups(tab)</CmsTab>
+                    }
+                </CmsTabs>
+            }
+            break;
+    }
+</div>
+
+@code {
+    private enum FormState
+    {
+        Loading,
+        TypeNotFound,
+        EntryNotFound,
+        Failed,
+        Ready,
+    }
+
+    private enum SaveFailureKind
+    {
+        Invalid,
+        Conflict,
+        Problem,
+        Unreachable,
+    }
+
+    private sealed record SaveFailure(SaveFailureKind Kind, ApiProblem? Problem = null);
+
+    private readonly Dictionary<string, FieldEditorBase> editors = new(StringComparer.Ordinal);
+    private FormState state;
+    private SchemaTypeDescription? type;
+    private IReadOnlyList<FormTab> tabs = [];
+
+    // The tabs with a name, in order; the fields that name none are shown above them.
+    private List<FormTab> tabbed = [];
+    private EntryRead? read;
+    private Guid? entryId;
+    private string? site;
+    private string? locale;
+    private JsonObject fields = [];
+    private IDisposable? tracking;
+    private bool restored;
+    private bool saving;
+    private DateTimeOffset? savedAt;
+    private SaveFailure? saveFailure;
+    private Dictionary<string, List<ApiProblemError>> fieldErrors = new(StringComparer.Ordinal);
+    private List<ApiProblemError> formErrors = [];
+    private UserAction? pendingCreate;
+    private string? activeTab;
+    private bool focusFirstError;
+    private ElementReference summary;
+    private int generation;
+    private (string Type, Guid? Id)? shown;
+
+    // The name of the content type, as the route has it.
+    [Parameter, EditorRequired]
+    public string Type { get; set; } = "";
+
+    // The entry; null for a new entry of a collection and for a singleton, whose one entry the form finds.
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    private bool IsSingleton => type?.Kind == "singleton";
+
+    private FormDraftKey Key => new(site, Type, entryId, locale);
+
+    private FormTab? Untabbed => tabs.FirstOrDefault(tab => tab.Name is null);
+
+    private string? ActiveTab => activeTab ?? (tabbed.Count > 0 ? TabId(0) : null);
+
+    private string TextDirectionOfLocale => locale is null ? FieldEditorBase.LeftToRight : TextDirection.Of(locale);
+
+    private string Heading => state switch
+    {
+        FormState.TypeNotFound => L["Content.Form.TypeNotFoundHeading"],
+        FormState.EntryNotFound => L["Content.Form.EntryNotFoundHeading"],
+        _ when type is null => L["Content.Form.Heading"],
+        _ when IsSingleton => AdminLabels.Type(type, L),
+        _ when entryId is null => L["Content.Form.NewHeading", AdminLabels.Type(type, L)],
+        _ when read?.Entry is { } entry => AdminLabels.Entry(type, entry),
+        _ => AdminLabels.Type(type, L),
+    };
+
+    public FormDraft CaptureDraft() => new(Key, read?.EntityTag, fields.DeepClone().AsObject());
+
+    public void Dispose()
+    {
+        generation++;
+        tracking?.Dispose();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // The route of an entry this form has just created shows the same entry, which is not read again.
+        if (shown == (Type, Id) || (Id is { } id && id == entryId && Type == type?.Name))
+        {
+            shown = (Type, Id);
+            return;
+        }
+
+        shown = (Type, Id);
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!focusFirstError)
+        {
+            return;
+        }
+
+        focusFirstError = false;
+        if (ContentFormLayout.InOrder(tabs).FirstOrDefault(field => fieldErrors.ContainsKey(field.Name)) is { } first
+            && editors.GetValueOrDefault(first.Name) is { } editor)
+        {
+            await editor.FocusAsync();
+        }
+        else if (saveFailure is not null)
+        {
+            await summary.FocusAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        var current = ++generation;
+        tracking?.Dispose();
+        tracking = null;
+        state = FormState.Loading;
+        (type, tabs, tabbed, read, entryId, activeTab) = (null, [], [], null, null, null);
+        (restored, savedAt, saveFailure, pendingCreate) = (false, null, null, null);
+        ClearErrors();
+        try
+        {
+            var schema = await Metadata.GetSchemaAsync(CancellationToken.None);
+            if (current != generation)
+            {
+                return;
+            }
+
+            if (schema.Types.FirstOrDefault(item => item.Name == Type) is not { } found)
+            {
+                state = FormState.TypeNotFound;
+                return;
+            }
+
+            var id = Id;
+            if (id is null && found.Kind == "singleton")
+            {
+                id = await Client.FindSingletonAsync(Type, CancellationToken.None);
+            }
+
+            EntryRead? entry = null;
+            if (id is { } existing)
+            {
+                entry = await Client.GetEntryAsync(Type, existing, null, CancellationToken.None);
+            }
+
+            if (current != generation)
+            {
+                return;
+            }
+
+            (type, tabs, read, entryId) = (found, ContentFormLayout.Build(found), entry, id);
+            tabbed = [.. tabs.Where(tab => tab.Name is not null)];
+            (site, locale) = entry is not null ? (entry.Site, entry.Locale) : (CurrentSite.Site, ContentLocaleSource.Locale);
+            fields = entry?.Entry?.Fields.DeepClone().AsObject() ?? ContentFormLayout.Defaults(found);
+            await RestoreDraftAsync(current);
+            if (current == generation)
+            {
+                state = FormState.Ready;
+            }
+        }
+        catch (ApiProblemException problem) when (problem.Problem.Status == (int)HttpStatusCode.NotFound && current == generation)
+        {
+            state = FormState.EntryNotFound;
+        }
+        catch (ApiProblemException problem) when (problem.Problem.Status == (int)HttpStatusCode.Forbidden && current == generation)
+        {
+            state = FormState.TypeNotFound;
+        }
+        catch (Exception exception) when (IsFailure(exception) && current == generation)
+        {
+            state = FormState.Failed;
+        }
+    }
+
+    // A draft kept when the session ended; its base version is what the next save sends, so a change made meanwhile is a 412.
+    private async Task RestoreDraftAsync(int current)
+    {
+        if (await Drafts.FindAsync(Key, CancellationToken.None) is not { } draft || current != generation)
+        {
+            return;
+        }
+
+        fields = draft.Fields.DeepClone().AsObject();
+        if (read is not null && draft.BaseVersion is { } baseVersion)
+        {
+            read = read with { EntityTag = baseVersion };
+        }
+
+        restored = true;
+        tracking = Drafts.Track(this);
+    }
+
+    private static bool IsFailure(Exception exception) =>
+        exception is ApiProblemException or HttpRequestException or TaskCanceledException or JsonException;
+
+    private Task ReloadAsync()
+    {
+        tracking?.Dispose();
+        tracking = null;
+        return RemoveDraftThenLoadAsync();
+    }
+
+    private async Task RemoveDraftThenLoadAsync()
+    {
+        if (state == FormState.Ready)
+        {
+            await Drafts.RemoveAsync(Key, CancellationToken.None);
+        }
+
+        await LoadAsync();
+    }
+
+    private void Change(SchemaFieldDescription field, JsonNode? value)
+    {
+        fields[field.Name] = value?.Parent is null ? value : value.DeepClone();
+        savedAt = null;
+        tracking ??= Drafts.Track(this);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (saving || type is null)
+        {
+            return;
+        }
+
+        saving = true;
+        saveFailure = null;
+        ClearErrors();
+        var draftKey = Key;
+        var sent = fields.DeepClone();
+        try
+        {
+            EntryRead saved;
+            if (entryId is { } id)
+            {
+                saved = await Client.SaveEntryAsync(Type, id, fields, read!, CancellationToken.None);
+            }
+            else
+            {
+                // One key per user action, kept for a retry after the server could not be reached (spec 2.7).
+                pendingCreate ??= new UserAction(ApiRequest.NewIdempotencyKey(), site, locale);
+                saved = await Client.CreateEntryAsync(Type, fields, pendingCreate, CancellationToken.None);
+                pendingCreate = null;
+            }
+
+            (read, entryId) = (saved, saved.Entry!.Id);
+            (restored, savedAt) = (false, DateTimeOffset.UtcNow);
+
+            // A change typed while the save ran is kept, and the form stays tracked with it.
+            if (JsonNode.DeepEquals(fields, sent))
+            {
+                fields = saved.Entry.Fields.DeepClone().AsObject();
+                tracking?.Dispose();
+                tracking = null;
+            }
+
+            await Drafts.RemoveAsync(draftKey, CancellationToken.None);
+            Announcer.Announce(L["Content.Form.Saved"]);
+            if (draftKey.Entry is null && !IsSingleton)
+            {
+                Navigation.NavigateTo(RouteOf(saved), new NavigationOptions { ReplaceHistoryEntry = true, HistoryEntryState = ContentRoutes.KeepFocus });
+            }
+        }
+        catch (ApiProblemException exception)
+        {
+            pendingCreate = null;
+            Failed(exception.Problem);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            saveFailure = new SaveFailure(SaveFailureKind.Unreachable);
+            Announcer.Announce(L["Content.Form.NotSavedUnreachable"], AnnouncementPoliteness.Assertive);
+            focusFirstError = true;
+        }
+        catch (JsonException)
+        {
+            pendingCreate = null;
+            saveFailure = new SaveFailure(SaveFailureKind.Problem);
+            Announcer.Announce(L["Content.Form.NotSaved"], AnnouncementPoliteness.Assertive);
+            focusFirstError = true;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    // A 422 puts each error on the field its path is in, and one in no field of the form above the form; a 412 is shown with a
+    // reload, until the conflict dialog of A-49; anything else is shown as the answer.
+    private void Failed(ApiProblem problem)
+    {
+        if (problem.Status == (int)HttpStatusCode.UnprocessableEntity)
+        {
+            var shownFields = ContentFormLayout.InOrder(tabs).Select(field => field.Name).ToHashSet(StringComparer.Ordinal);
+            IReadOnlyList<ApiProblemError> errors = problem.Errors.Count > 0 ? problem.Errors : [new ApiProblemError { Message = problem.Detail ?? problem.Title }];
+            foreach (var error in errors)
+            {
+                if (ContentFormLayout.FieldOf(error.Path) is { } name && shownFields.Contains(name))
+                {
+                    (fieldErrors.TryGetValue(name, out var list) ? list : fieldErrors[name] = []).Add(error);
+                }
+                else
+                {
+                    formErrors.Add(error);
+                }
+            }
+
+            saveFailure = new SaveFailure(SaveFailureKind.Invalid, problem);
+            if (ContentFormLayout.InOrder(tabs).FirstOrDefault(field => fieldErrors.ContainsKey(field.Name)) is { } first
+                && tabbed.FindIndex(tab => tab.Fields.Contains(first)) is var index and >= 0)
+            {
+                activeTab = TabId(index);
+            }
+
+            Announcer.Announce(L["Content.Form.NotSavedErrors"], AnnouncementPoliteness.Assertive);
+        }
+        else
+        {
+            saveFailure = new SaveFailure(problem.Status == (int)HttpStatusCode.PreconditionFailed ? SaveFailureKind.Conflict : SaveFailureKind.Problem, problem);
+            Announcer.Announce(problem.Title ?? L["Content.Form.NotSaved"], AnnouncementPoliteness.Assertive);
+        }
+
+        focusFirstError = true;
+    }
+
+    private void ClearErrors()
+    {
+        fieldErrors = new(StringComparer.Ordinal);
+        formErrors = [];
+    }
+
+    // The entry's route from the Location of the create, which names it under the Management API; its id otherwise.
+    private string RouteOf(EntryRead created)
+    {
+        if (created.Location is { } location)
+        {
+            var path = (location.IsAbsoluteUri ? location.AbsolutePath : location.OriginalString).Split('?', 2)[0];
+            var start = path.IndexOf(ContentRoutes.ManagementPrefix, StringComparison.Ordinal);
+            if (start >= 0 && path[(start + ContentRoutes.ManagementPrefix.Length)..] is var route && route.StartsWith("content/", StringComparison.Ordinal))
+            {
+                return route;
+            }
+        }
+
+        return ContentRoutes.Entry(Type, created.Entry!.Id);
+    }
+
+    private static string TabId(int index) => $"content-form-tab-{index}";
+
+    private RenderFragment Groups(FormTab tab) => @<div class="content-form-groups">
+        @foreach (var group in tab.Groups)
+        {
+            @if (group.Name is null)
+            {
+                <div class="content-form-grid">@Fields(group)</div>
+            }
+            else
+            {
+                <fieldset class="content-form-group">
+                    <legend>@group.Name</legend>
+                    <div class="content-form-grid">@Fields(group)</div>
+                </fieldset>
+            }
+        }
+    </div>;
+
+    private RenderFragment Fields(FormGroup group) => @<text>
+        @foreach (var field in group.Fields)
+        {
+            <div class="content-form-field content-form-span-@ContentFormLayout.Span(field)" data-field="@field.Name" @key="field.Name">
+                @Editor(field)
+            </div>
+        }
+    </text>;
+
+    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+    private System.Type EditorOf(SchemaFieldDescription field) =>
+        field.ReadOnly ? typeof(ReadOnlyFieldView) : Editors.Find(field.Type)?.Editor ?? typeof(JsonFieldView);
+
+    private RenderFragment Editor(SchemaFieldDescription field) => builder =>
+    {
+        builder.OpenComponent(0, EditorOf(field));
+        builder.AddComponentParameter(1, nameof(FieldEditorBase.Field), field);
+        builder.AddComponentParameter(2, nameof(FieldEditorBase.Value), fields[field.Name]);
+        builder.AddComponentParameter(3, nameof(FieldEditorBase.ValueChanged), EventCallback.Factory.Create<JsonNode?>(this, value => Change(field, value)));
+        builder.AddComponentParameter(4, nameof(FieldEditorBase.Errors), fieldErrors.TryGetValue(field.Name, out var errors) ? errors : Array.Empty<ApiProblemError>());
+        builder.AddComponentParameter(5, nameof(FieldEditorBase.ReadOnly), field.ReadOnly);
+        builder.AddComponentParameter(6, nameof(FieldEditorBase.ContentLocale), locale);
+        builder.AddComponentParameter(7, nameof(FieldEditorBase.TextDirection), TextDirectionOfLocale);
+        builder.AddComponentReferenceCapture(8, instance => editors[field.Name] = (FieldEditorBase)instance);
+        builder.CloseComponent();
+    };
+}

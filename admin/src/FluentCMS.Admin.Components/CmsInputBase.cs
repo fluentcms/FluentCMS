@@ -46,6 +46,9 @@ public abstract class CmsInputBase<TValue> : ComponentBase
     /// <summary>Gets the identifier of the input element.</summary>
     protected string InputId => Id ?? _generatedId;
 
+    /// <summary>Gets or sets the reference of the input element, which <see cref="FocusAsync"/> focuses.</summary>
+    protected ElementReference Element { get; set; }
+
     /// <summary>Gets whether the input has an error.</summary>
     protected bool Invalid => !string.IsNullOrEmpty(Error);
 
@@ -112,6 +115,10 @@ public abstract class CmsInputBase<TValue> : ComponentBase
 
     /// <inheritdoc />
     protected override void OnParametersSet() => CmsGuard.Named(Label, GetType().Name, nameof(Label));
+
+    /// <summary>Moves focus to the input element, which scrolls it into view; does nothing before it is rendered.</summary>
+    /// <returns>A task that completes when focus has moved.</returns>
+    public ValueTask FocusAsync() => Element.Context is null ? ValueTask.CompletedTask : Element.FocusAsync();
 
     /// <summary>Sets <see cref="Value"/> and raises <see cref="ValueChanged"/>.</summary>
     /// <param name="value">The new value.</param>
