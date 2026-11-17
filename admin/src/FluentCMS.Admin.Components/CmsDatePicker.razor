@@ -4,7 +4,8 @@
 @* Native, for the reason given in CmsTextInput; the browser's own picker is keyboard operable and follows the culture. *@
 <div class="cms-field">
     @LabelTemplate
-    <input id="@InputId"
+    <input @ref="Element"
+           id="@InputId"
            class="cms-input"
            type="date"
            value="@Value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"

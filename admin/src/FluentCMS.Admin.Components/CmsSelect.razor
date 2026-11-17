@@ -4,7 +4,10 @@
 @* Native, for the reason given in CmsTextInput. *@
 <div class="cms-field">
     @LabelTemplate
-    <select id="@InputId"
+    <select @ref="Element"
+            id="@InputId"
+            lang="@Lang"
+            dir="@Dir"
             class="cms-input cms-select"
             disabled="@Disabled"
             value="@(Value ?? string.Empty)"

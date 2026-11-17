@@ -37,6 +37,13 @@ public abstract class FieldEditorBase : ComponentBase
     [Parameter]
     public bool ReadOnly { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether a value is required, which the form sets from the field's validation and, once conditions are
+    /// evaluated, from <c>requiredWhen</c>.
+    /// </summary>
+    [Parameter]
+    public bool Required { get; set; }
+
     /// <summary>Gets or sets the content locale the form edits, or <see langword="null"/> for the site's default.</summary>
     [Parameter]
     public string? ContentLocale { get; set; }
@@ -54,8 +61,6 @@ public abstract class FieldEditorBase : ComponentBase
     /// <summary>Gets the placeholder of the field, if it has one.</summary>
     protected string? Placeholder => Field.Display?.Placeholder;
 
-    /// <summary>Gets whether a value is required to publish.</summary>
-    protected bool Required => Field.Validation.Required;
 
     /// <summary>Gets the messages of <see cref="Errors"/> as one text, or <see langword="null"/> without errors.</summary>
     protected string? ErrorText =>

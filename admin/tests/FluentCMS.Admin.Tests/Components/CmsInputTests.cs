@@ -221,4 +221,38 @@ public sealed class CmsInputTests : ComponentTestContext
 
         input.Find("input").HasAttribute("disabled").ShouldBeTrue();
     }
+
+    // FocusAsync moves focus to the element that takes input, which a form calls for the first field with an error.
+    [Fact]
+    public async Task FocusAsyncFocusesTheInputOfEveryInput()
+    {
+        await ShouldFocusAsync(Render<CmsTextInput>(p => p.Add(x => x.Label, "Title")), input => input.FocusAsync());
+        await ShouldFocusAsync(Render<CmsTextArea>(p => p.Add(x => x.Label, "Summary")), input => input.FocusAsync());
+        await ShouldFocusAsync(Render<CmsSelect>(p => p.Add(x => x.Label, "Status").Add(x => x.Options, [new CmsOption("draft", "Draft")])), input => input.FocusAsync());
+        await ShouldFocusAsync(Render<CmsDatePicker>(p => p.Add(x => x.Label, "Day")), input => input.FocusAsync());
+        await ShouldFocusAsync(Render<CmsTimePicker>(p => p.Add(x => x.Label, "Time")), input => input.FocusAsync());
+        await ShouldFocusAsync(Render<CmsCheckbox>(p => p.Add(x => x.Label, "Featured")), input => input.FocusAsync());
+        await ShouldFocusAsync(Render<CmsSwitch>(p => p.Add(x => x.Label, "Visible")), input => input.FocusAsync());
+    }
+
+    [Fact]
+    public void LangAndDirAreOnTheInputOnly()
+    {
+        var input = Render<CmsTextInput>(p => p.Add(x => x.Label, "Title").Add(x => x.Help, "Shown in lists.").Add(x => x.Lang, "ar").Add(x => x.Dir, "rtl"));
+
+        var element = input.Find("input");
+        (element.GetAttribute("lang"), element.GetAttribute("dir")).ShouldBe(("ar", "rtl"));
+        input.Find("label").Closest("[lang]").ShouldBeNull();
+        input.Find(".cms-field-message").Closest("[dir]").ShouldBeNull();
+    }
+
+    private async Task ShouldFocusAsync<TComponent>(IRenderedComponent<TComponent> input, Func<TComponent, ValueTask> focus)
+        where TComponent : Microsoft.AspNetCore.Components.IComponent
+    {
+        var before = Focuses();
+        await input.InvokeAsync(() => focus(input.Instance).AsTask());
+        Focuses().ShouldBe(before + 1, typeof(TComponent).Name);
+    }
+
+    private int Focuses() => JSInterop.Invocations.Count(call => call.Identifier == "Blazor._internal.domWrapper.focus");
 }

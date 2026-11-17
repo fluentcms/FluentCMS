@@ -465,6 +465,7 @@ FluentCMS.Admin.Fields.FieldEditorBase.Placeholder.get -> string?
 FluentCMS.Admin.Fields.FieldEditorBase.ReadOnly.get -> bool
 FluentCMS.Admin.Fields.FieldEditorBase.ReadOnly.set -> void
 FluentCMS.Admin.Fields.FieldEditorBase.Required.get -> bool
+FluentCMS.Admin.Fields.FieldEditorBase.Required.set -> void
 FluentCMS.Admin.Fields.FieldEditorBase.TextDirection.get -> string!
 FluentCMS.Admin.Fields.FieldEditorBase.TextDirection.set -> void
 FluentCMS.Admin.Fields.FieldEditorBase.Value.get -> System.Text.Json.Nodes.JsonNode?

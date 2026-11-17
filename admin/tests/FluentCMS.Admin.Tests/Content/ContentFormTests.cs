@@ -126,6 +126,95 @@ public sealed class ContentFormTests : AdminTestContext
     }
 
     [Fact]
+    public void AfterTheMoveToANewEntrysRouteTheNextRouteChangeFocusesTheHeadingAgain()
+    {
+        var app = Load("content/article/new");
+        Save(app);
+        app.WaitForAssertion(() => Navigation.Uri.ShouldNotEndWith("/new"));
+        var focuses = HeadingFocuses();
+
+        Navigation.NavigateTo("not-found");
+
+        app.WaitForAssertion(() => HeadingFocuses().ShouldBe(focuses + 1));
+    }
+
+    [Fact]
+    public void ACreateThatEndsAfterTheUserLeftTheFormDoesNotTakeThemBack()
+    {
+        var app = Load("content/article/new");
+        Input(app, "title").Input("Hello");
+        Management.Hold = new TaskCompletionSource();
+        Save(app);
+        Navigation.NavigateTo("not-found");
+
+        Management.Hold.SetResult();
+
+        app.WaitForAssertion(() => _content.Writes.ShouldHaveSingleItem().Method.ShouldBe(HttpMethod.Post));
+        app.WaitForAssertion(() => app.Find("main h1").TextContent.ShouldBe("Page not found"));
+        Navigation.Uri.ShouldBe("http://localhost/not-found");
+        Services.GetRequiredService<IFormDraftStore>().HasUnsavedForms.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ARetryAfterTheServerCouldNotBeReachedSendsTheSameKeyAndBodyAndKeepsLaterChanges()
+    {
+        var app = Load("content/article/new");
+        Input(app, "title").Input("First");
+        _content.NextWrite = _ => throw new HttpRequestException("The connection closed.");
+        Save(app);
+        app.WaitForAssertion(() => app.Find(".content-form-problem").TextContent.ShouldContain("could not be reached"));
+
+        Input(app, "title").Input("Second");
+        Save(app);
+
+        app.WaitForAssertion(() => _content.Writes.Count.ShouldBe(2));
+        var (lost, retry) = (_content.Writes[0], _content.Writes[1]);
+        retry.IdempotencyKey.ShouldBe(lost.IdempotencyKey);
+        JsonNode.DeepEquals(retry.Body, lost.Body).ShouldBeTrue();
+        retry.Body["title"]!.GetValue<string>().ShouldBe("First");
+        app.WaitForAssertion(() => Navigation.Uri.ShouldNotEndWith("/new"));
+        Input(app, "title").GetAttribute("value").ShouldBe("Second");
+        Services.GetRequiredService<IFormDraftStore>().HasUnsavedForms.ShouldBeTrue();
+
+        Save(app);
+
+        app.WaitForAssertion(() => _content.Writes.Count.ShouldBe(3));
+        (_content.Writes[2].Method, _content.Writes[2].Body["title"]!.GetValue<string>()).ShouldBe((HttpMethod.Put, "Second"));
+    }
+
+    [Fact]
+    public void SavedIsNoLongerShownOnceTheNextSaveFails()
+    {
+        var id = _content.Add("article", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/article/{id:D}");
+        Save(app);
+        app.WaitForAssertion(() => app.Find(".content-form-saved"));
+        _content.ChangeElsewhere(id, "title", "Theirs");
+
+        Save(app);
+
+        app.WaitForAssertion(() => app.Find(".content-form-problem strong").TextContent.ShouldBe("The entry was changed"));
+        app.FindAll(".content-form-saved").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AnErrorOnAReadOnlyFieldFocusesItsLabelledGroup()
+    {
+        var id = _content.Add("article", new JsonObject { ["title"] = "Hello", ["views"] = 42 });
+        var app = Load($"content/article/{id:D}");
+        _content.NextWrite = _ => FakeContent.Invalid(("views", "Not yours to set."));
+
+        Save(app);
+
+        var view = app.FindComponents<ReadOnlyFieldView>().Single();
+        app.WaitForAssertion(() => Focused().ShouldBe(Reference(view.Instance, "element")));
+        var group = Wrapper(app, "views").QuerySelector("[role='group']")!;
+        group.GetAttribute("tabindex").ShouldBe("-1");
+        app.Find($"#{group.GetAttribute("aria-labelledby")}").TextContent.ShouldBe("Views");
+        app.Find($"#{group.GetAttribute("aria-describedby")}").TextContent.ShouldBe("Not yours to set.");
+    }
+
+    [Fact]
     public void A422PutsEachErrorOnTheFieldOfItsPathShowsTheRestAboveTheFormAndFocusesTheFirst()
     {
         var id = _content.Add("article", new JsonObject { ["title"] = "Hello" });

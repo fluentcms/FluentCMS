@@ -14,6 +14,7 @@
 @inject FieldEditorRegistry Editors
 @inject IAnnouncer Announcer
 @inject NavigationManager Navigation
+@inject NavigationFocus NavigationFocus
 @inject IStringLocalizer<AdminResources> L
 
 <div class="content-form">
@@ -137,7 +138,8 @@
     private SaveFailure? saveFailure;
     private Dictionary<string, List<ApiProblemError>> fieldErrors = new(StringComparer.Ordinal);
     private List<ApiProblemError> formErrors = [];
-    private UserAction? pendingCreate;
+    // A create whose answer did not come, with the body it sent: a retry sends both again, so the server answers it as the first.
+    private (UserAction Action, JsonObject Body)? pendingCreate;
     private string? activeTab;
     private bool focusFirstError;
     private ElementReference summary;
@@ -330,25 +332,37 @@
         }
 
         saving = true;
-        saveFailure = null;
+        (saveFailure, savedAt) = (null, null);
         ClearErrors();
+        var current = generation;
         var draftKey = Key;
-        var sent = fields.DeepClone();
+        JsonObject sent;
         try
         {
             EntryRead saved;
             if (entryId is { } id)
             {
-                saved = await Client.SaveEntryAsync(Type, id, fields, read!, CancellationToken.None);
+                sent = fields.DeepClone().AsObject();
+                saved = await Client.SaveEntryAsync(Type, id, sent, read!, CancellationToken.None);
             }
             else
             {
-                // One key per user action, kept for a retry after the server could not be reached (spec 2.7).
-                pendingCreate ??= new UserAction(ApiRequest.NewIdempotencyKey(), site, locale);
-                saved = await Client.CreateEntryAsync(Type, fields, pendingCreate, CancellationToken.None);
-                pendingCreate = null;
+                // One key per user action, kept with its body for a retry after the server could not be reached (spec 2.7).
+                pendingCreate ??= (new UserAction(ApiRequest.NewIdempotencyKey(), site, locale), fields.DeepClone().AsObject());
+                sent = pendingCreate.Value.Body;
+                saved = await Client.CreateEntryAsync(Type, sent, pendingCreate.Value.Action, CancellationToken.None);
             }
 
+            await Drafts.RemoveAsync(draftKey, CancellationToken.None);
+            Announcer.Announce(L["Content.Form.Saved"]);
+
+            // The user left the form, or it read another entry, while the save ran: the save is done, but the form is no longer its.
+            if (current != generation)
+            {
+                return;
+            }
+
+            pendingCreate = null;
             (read, entryId) = (saved, saved.Entry!.Id);
             (restored, savedAt) = (false, DateTimeOffset.UtcNow);
 
@@ -360,30 +374,33 @@
                 tracking = null;
             }
 
-            await Drafts.RemoveAsync(draftKey, CancellationToken.None);
-            Announcer.Announce(L["Content.Form.Saved"]);
             if (draftKey.Entry is null && !IsSingleton)
             {
-                Navigation.NavigateTo(RouteOf(saved), new NavigationOptions { ReplaceHistoryEntry = true, HistoryEntryState = ContentRoutes.KeepFocus });
+                NavigationFocus.KeepNext();
+                Navigation.NavigateTo(RouteOf(saved), replace: true);
             }
         }
-        catch (ApiProblemException exception)
+        catch (ApiProblemException exception) when (current == generation)
         {
             pendingCreate = null;
             Failed(exception.Problem);
         }
-        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        catch (Exception exception) when ((exception is HttpRequestException or TaskCanceledException) && current == generation)
         {
             saveFailure = new SaveFailure(SaveFailureKind.Unreachable);
             Announcer.Announce(L["Content.Form.NotSavedUnreachable"], AnnouncementPoliteness.Assertive);
             focusFirstError = true;
         }
-        catch (JsonException)
+        catch (JsonException) when (current == generation)
         {
             pendingCreate = null;
             saveFailure = new SaveFailure(SaveFailureKind.Problem);
             Announcer.Announce(L["Content.Form.NotSaved"], AnnouncementPoliteness.Assertive);
             focusFirstError = true;
+        }
+        catch (Exception exception) when (IsFailure(exception))
+        {
+            // A save that failed after the form moved on has no form to show it on.
         }
         finally
         {
@@ -491,9 +508,10 @@
         builder.AddComponentParameter(3, nameof(FieldEditorBase.ValueChanged), EventCallback.Factory.Create<JsonNode?>(this, value => Change(field, value)));
         builder.AddComponentParameter(4, nameof(FieldEditorBase.Errors), fieldErrors.TryGetValue(field.Name, out var errors) ? errors : Array.Empty<ApiProblemError>());
         builder.AddComponentParameter(5, nameof(FieldEditorBase.ReadOnly), field.ReadOnly);
-        builder.AddComponentParameter(6, nameof(FieldEditorBase.ContentLocale), locale);
-        builder.AddComponentParameter(7, nameof(FieldEditorBase.TextDirection), TextDirectionOfLocale);
-        builder.AddComponentReferenceCapture(8, instance => editors[field.Name] = (FieldEditorBase)instance);
+        builder.AddComponentParameter(6, nameof(FieldEditorBase.Required), field.Validation.Required);
+        builder.AddComponentParameter(7, nameof(FieldEditorBase.ContentLocale), locale);
+        builder.AddComponentParameter(8, nameof(FieldEditorBase.TextDirection), TextDirectionOfLocale);
+        builder.AddComponentReferenceCapture(9, instance => editors[field.Name] = (FieldEditorBase)instance);
         builder.CloseComponent();
     };
 }

@@ -39,6 +39,17 @@ public abstract class CmsInputBase<TValue> : ComponentBase
     [Parameter]
     public bool Disabled { get; set; }
 
+    /// <summary>
+    /// Gets or sets the language of the value, as <c>lang</c> on the input element only, so that the label, help and error
+    /// stay in the interface's language; the content locale of a field of an entry. Used by the inputs that take text.
+    /// </summary>
+    [Parameter]
+    public string? Lang { get; set; }
+
+    /// <summary>Gets or sets the direction of the value, <c>ltr</c> or <c>rtl</c>, as <c>dir</c> on the input element only, like <see cref="Lang"/>.</summary>
+    [Parameter]
+    public string? Dir { get; set; }
+
     /// <summary>Gets or sets the identifier of the input element; one is generated when it is not set.</summary>
     [Parameter]
     public string? Id { get; set; }

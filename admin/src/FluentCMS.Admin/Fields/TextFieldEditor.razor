@@ -1,17 +1,18 @@
-@* The editor of a text field: one line, in the content locale's language and direction. A-14 adds the length counter. *@
+@* The editor of a text field: one line, its value in the content locale's language and direction. A-14 adds the length
+   counter. *@
 @inherits FieldEditorBase
 
-<div lang="@ContentLocale" dir="@TextDirection">
-    <CmsTextInput @ref="input"
-                  Label="@Label"
-                  Help="@Help"
-                  Error="@ErrorText"
-                  Required="@Required"
-                  Disabled="@ReadOnly"
-                  Placeholder="@Placeholder"
-                  Value="@Text"
-                  ValueChanged="@(text => ChangeAsync(text is null ? null : JsonValue.Create(text)))" />
-</div>
+<CmsTextInput @ref="input"
+              Label="@Label"
+              Help="@Help"
+              Error="@ErrorText"
+              Required="@Required"
+              Disabled="@ReadOnly"
+              Placeholder="@Placeholder"
+              Lang="@ContentLocale"
+              Dir="@TextDirection"
+              Value="@Text"
+              ValueChanged="@(text => ChangeAsync(text is null ? null : JsonValue.Create(text)))" />
 
 @code {
     private CmsTextInput? input;

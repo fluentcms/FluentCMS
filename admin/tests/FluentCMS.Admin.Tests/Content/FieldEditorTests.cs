@@ -57,11 +57,20 @@ public sealed class FieldEditorTests : AdminTestContext
             .Add(p => p.TextDirection, FieldEditorBase.RightToLeft)
             .Add(p => p.ValueChanged, value => changed = value));
 
-        var wrapper = editor.Find("div[lang]");
-        (wrapper.GetAttribute("lang"), wrapper.GetAttribute("dir")).ShouldBe(("ar", "rtl"));
-        editor.Find("input").Input("سلام");
+        var input = editor.Find("input");
+        (input.GetAttribute("lang"), input.GetAttribute("dir")).ShouldBe(("ar", "rtl"));
+        editor.Find("label").Closest("[lang]").ShouldBeNull();
+        input.Input("سلام");
 
         changed!.GetValue<string>().ShouldBe("سلام");
+    }
+
+    [Fact]
+    public void TheFormSaysWhetherAValueIsRequired()
+    {
+        var editor = Render<TextFieldEditor>(parameters => parameters.Add(p => p.Field, Field("title")).Add(p => p.Required, true));
+
+        editor.Find("input").GetAttribute("aria-required").ShouldBe("true");
     }
 
     [Fact]

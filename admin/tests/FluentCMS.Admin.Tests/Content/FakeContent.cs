@@ -20,7 +20,7 @@ internal sealed class FakeContent
 
     public List<string> Reads { get; } = [];
 
-    // Answers the next write instead of the store, when it returns an answer.
+    // Answers the next write instead of the store, when it returns an answer, or fails it by throwing.
     public Func<ContentWrite, HttpResponseMessage?>? NextWrite { get; set; }
 
     public Guid Add(string type, JsonObject fields, int version = 1, Guid? id = null)
@@ -80,9 +80,10 @@ internal sealed class FakeContent
             Header(request, "Idempotency-Key"),
             Header(request, "X-Cms-Locale"));
         Writes.Add(write);
-        if (NextWrite?.Invoke(write) is { } answer)
+        var next = NextWrite;
+        NextWrite = null;
+        if (next?.Invoke(write) is { } answer)
         {
-            NextWrite = null;
             return answer;
         }
 

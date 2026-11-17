@@ -2,9 +2,10 @@
 @inherits FieldEditorBase
 @inject IStringLocalizer<AdminResources> L
 
-<div class="cms-field" role="group" aria-labelledby="@labelId" aria-describedby="@DescribedBy">
+@* The group is what an error focuses, so that its label and message are read with it. *@
+<div @ref="element" class="cms-field" role="group" tabindex="-1" aria-labelledby="@labelId" aria-describedby="@DescribedBy">
     <span id="@labelId" class="cms-field-label">@Label</span>
-    <span @ref="element" class="content-text" tabindex="-1" lang="@ContentLocale" dir="@TextDirection">@(Text ?? L["Content.Form.NoValue"])</span>
+    <span class="content-text" lang="@ContentLocale" dir="@TextDirection">@(Text ?? L["Content.Form.NoValue"])</span>
     @if (ErrorText is not null)
     {
         <span id="@messageId" class="cms-field-message cms-field-message-error">@ErrorText</span>

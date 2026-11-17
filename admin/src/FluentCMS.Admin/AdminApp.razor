@@ -11,6 +11,7 @@
 @inject InterfaceCulture Culture
 @inject DocumentInterop Document
 @inject NavigationManager Navigation
+@inject NavigationFocus NavigationFocus
 
 @if (Startup.Configuration is { } configuration)
 {
@@ -102,13 +103,13 @@ else
     // page the callback of the sign-in returns to, which is the first the user sees. A route change after that moves focus to
     // the page's heading (spec 4.18). FocusOnNavigate focuses when the page changes; this handler runs before any render of
     // the navigation, since it subscribed before the gate and the Router existed, so the new page gets the selector chosen here.
-    // A navigation that asks to keep focus, as a new entry's move to its route after the save, leaves it where it is.
+    // A navigation the page asked to keep focus for, as a new entry's move to its route after the save, leaves it where it is.
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         var from = previousRoute;
         previousRoute = Route(e.Location);
-        focusHeading = !from.StartsWith("authentication/", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(e.HistoryEntryState, ContentRoutes.KeepFocus, StringComparison.Ordinal);
+        var keep = NavigationFocus.TakeKeep();
+        focusHeading = !from.StartsWith("authentication/", StringComparison.OrdinalIgnoreCase) && !keep;
     }
 
     private string Route(string uri) => uri.StartsWith(Navigation.BaseUri, StringComparison.Ordinal) ? Navigation.ToBaseRelativePath(uri) : uri;

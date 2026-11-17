@@ -4,7 +4,8 @@
 @* Native, for the reason given in CmsDatePicker. *@
 <div class="cms-field">
     @LabelTemplate
-    <input id="@InputId"
+    <input @ref="Element"
+           id="@InputId"
            class="cms-input"
            type="time"
            value="@Value?.ToString("HH:mm", CultureInfo.InvariantCulture)"
