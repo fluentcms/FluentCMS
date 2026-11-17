@@ -59,6 +59,8 @@ FluentCMS.Admin.Api.ApiRequest.Site.init -> void
 FluentCMS.Admin.Api.ApiResponse
 FluentCMS.Admin.Api.ApiResponse.ApiResponse(System.Net.HttpStatusCode status, string? entityTag) -> void
 FluentCMS.Admin.Api.ApiResponse.EntityTag.get -> string?
+FluentCMS.Admin.Api.ApiResponse.Location.get -> System.Uri?
+FluentCMS.Admin.Api.ApiResponse.Location.init -> void
 FluentCMS.Admin.Api.ApiResponse.Status.get -> System.Net.HttpStatusCode
 FluentCMS.Admin.Api.ApiResponse<T>
 FluentCMS.Admin.Api.ApiResponse<T>.ApiResponse(System.Net.HttpStatusCode status, string? entityTag, T value) -> void
@@ -447,6 +449,40 @@ FluentCMS.Admin.Configuration.AdminCultures.Default.init -> void
 FluentCMS.Admin.Configuration.AdminCultures.Equals(FluentCMS.Admin.Configuration.AdminCultures? other) -> bool
 FluentCMS.Admin.Configuration.AdminCultures.Offered.get -> System.Collections.Generic.IReadOnlyList<string!>?
 FluentCMS.Admin.Configuration.AdminCultures.Offered.init -> void
+FluentCMS.Admin.Fields.FieldEditorBase
+FluentCMS.Admin.Fields.FieldEditorBase.ChangeAsync(System.Text.Json.Nodes.JsonNode? value) -> System.Threading.Tasks.Task!
+FluentCMS.Admin.Fields.FieldEditorBase.ContentLocale.get -> string?
+FluentCMS.Admin.Fields.FieldEditorBase.ContentLocale.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.Document.get -> System.Collections.Generic.IReadOnlyDictionary<string!, System.Text.Json.Nodes.JsonNode?>?
+FluentCMS.Admin.Fields.FieldEditorBase.Document.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.ErrorText.get -> string?
+FluentCMS.Admin.Fields.FieldEditorBase.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.ApiProblemError!>!
+FluentCMS.Admin.Fields.FieldEditorBase.Errors.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.Field.get -> FluentCMS.Admin.Api.SchemaFieldDescription!
+FluentCMS.Admin.Fields.FieldEditorBase.Field.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.FieldEditorBase() -> void
+FluentCMS.Admin.Fields.FieldEditorBase.Help.get -> string?
+FluentCMS.Admin.Fields.FieldEditorBase.Label.get -> string!
+FluentCMS.Admin.Fields.FieldEditorBase.OnBlur.get -> Microsoft.AspNetCore.Components.EventCallback
+FluentCMS.Admin.Fields.FieldEditorBase.OnBlur.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.Placeholder.get -> string?
+FluentCMS.Admin.Fields.FieldEditorBase.ReadOnly.get -> bool
+FluentCMS.Admin.Fields.FieldEditorBase.ReadOnly.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.Required.get -> bool
+FluentCMS.Admin.Fields.FieldEditorBase.Required.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.TextDirection.get -> string!
+FluentCMS.Admin.Fields.FieldEditorBase.TextDirection.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.Value.get -> System.Text.Json.Nodes.JsonNode?
+FluentCMS.Admin.Fields.FieldEditorBase.Value.set -> void
+FluentCMS.Admin.Fields.FieldEditorBase.ValueChanged.get -> Microsoft.AspNetCore.Components.EventCallback<System.Text.Json.Nodes.JsonNode?>
+FluentCMS.Admin.Fields.FieldEditorBase.ValueChanged.set -> void
+FluentCMS.Admin.Fields.FieldEditorRegistration
+FluentCMS.Admin.Fields.FieldEditorRegistration.Editor.get -> System.Type!
+FluentCMS.Admin.Fields.FieldEditorRegistration.FieldType.get -> string!
+FluentCMS.Admin.Fields.FieldEditorRegistry
+FluentCMS.Admin.Fields.FieldEditorRegistry.Add<TEditor>(string! fieldType) -> void
+FluentCMS.Admin.Fields.FieldEditorRegistry.FieldEditorRegistry() -> void
+FluentCMS.Admin.Fields.FieldEditorRegistry.Find(string! fieldType) -> FluentCMS.Admin.Fields.FieldEditorRegistration?
 FluentCMS.Admin.Forms.FormDraft
 FluentCMS.Admin.Forms.FormDraft.<Clone>$() -> FluentCMS.Admin.Forms.FormDraft!
 FluentCMS.Admin.Forms.FormDraft.BaseVersion.get -> string?
@@ -480,6 +516,7 @@ FluentCMS.Admin.Forms.IUnsavedForm
 FluentCMS.Admin.Forms.IUnsavedForm.CaptureDraft() -> FluentCMS.Admin.Forms.FormDraft!
 FluentCMS.Admin.IAdminAccess
 FluentCMS.Admin.IAdminAccess.Allows(string! permission) -> bool
+FluentCMS.Admin.IAdminAccess.ForType(string! type) -> FluentCMS.Admin.Api.TypeAccessInfo?
 FluentCMS.Admin.IAdminContext
 FluentCMS.Admin.IAdminContext.Access.get -> FluentCMS.Admin.IAdminAccess!
 FluentCMS.Admin.IAdminContext.Changed -> System.Action?
@@ -488,7 +525,56 @@ FluentCMS.Admin.IAdminContext.Site.get -> FluentCMS.Admin.Api.MySiteInfo?
 FluentCMS.Admin.IAdminContext.User.get -> FluentCMS.Admin.Api.MeResponse?
 FluentCMS.Admin.IAnnouncer
 FluentCMS.Admin.IAnnouncer.Announce(string! message, FluentCMS.Admin.AnnouncementPoliteness politeness = FluentCMS.Admin.AnnouncementPoliteness.Polite) -> void
+FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.Boolean = 5 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.Date = 3 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.DateTime = 4 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.DecimalNumber = 2 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.Id = 7 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.Option = 6 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.Text = 0 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperand.WholeNumber = 1 -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.Between = 8 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.Contains = 9 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.Equal = 0 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.GreaterThan = 6 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.GreaterThanOrEqual = 7 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.HasBlock = 13 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.In = 2 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.IsNotNull = 12 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.IsNull = 11 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.LessThan = 4 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.LessThanOrEqual = 5 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.NotEqual = 1 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.NotIn = 3 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.FilterOperator.StartsWith = 10 -> FluentCMS.Admin.Lists.FilterOperator
+FluentCMS.Admin.Lists.ListCellBase
+FluentCMS.Admin.Lists.ListCellBase.Entry.get -> FluentCMS.Admin.Api.ContentEntry!
+FluentCMS.Admin.Lists.ListCellBase.Entry.set -> void
+FluentCMS.Admin.Lists.ListCellBase.Field.get -> FluentCMS.Admin.Api.SchemaFieldDescription!
+FluentCMS.Admin.Lists.ListCellBase.Field.set -> void
+FluentCMS.Admin.Lists.ListCellBase.ListCellBase() -> void
+FluentCMS.Admin.Lists.ListCellBase.Value.get -> System.Text.Json.Nodes.JsonNode?
+FluentCMS.Admin.Lists.ListCellRegistry
+FluentCMS.Admin.Lists.ListCellRegistry.Add<TCell>(string! fieldType) -> void
+FluentCMS.Admin.Lists.ListCellRegistry.CellFor(string! fieldType) -> System.Type!
+FluentCMS.Admin.Lists.ListCellRegistry.ListCellRegistry() -> void
+FluentCMS.Admin.Lists.ListCellRegistry.Shows(FluentCMS.Admin.Api.SchemaFieldDescription! field) -> bool
+FluentCMS.Admin.Lists.ListFilterDefinition
+FluentCMS.Admin.Lists.ListFilterDefinition.FieldType.get -> string!
+FluentCMS.Admin.Lists.ListFilterDefinition.Operand.get -> FluentCMS.Admin.Lists.FilterOperand
+FluentCMS.Admin.Lists.ListFilterDefinition.Operators.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Lists.FilterOperator>!
+FluentCMS.Admin.Lists.ListFilterRegistry
+FluentCMS.Admin.Lists.ListFilterRegistry.Add(string! fieldType, FluentCMS.Admin.Lists.FilterOperand operand, System.Collections.Generic.IEnumerable<FluentCMS.Admin.Lists.FilterOperator>! operators, System.Collections.Generic.IEnumerable<FluentCMS.Admin.Lists.FilterOperator>! listOperators) -> void
+FluentCMS.Admin.Lists.ListFilterRegistry.Add(string! fieldType, FluentCMS.Admin.Lists.FilterOperand operand, params System.Collections.Generic.IEnumerable<FluentCMS.Admin.Lists.FilterOperator>! operators) -> void
+FluentCMS.Admin.Lists.ListFilterRegistry.Find(FluentCMS.Admin.Api.SchemaFieldDescription! field) -> FluentCMS.Admin.Lists.ListFilterDefinition?
+FluentCMS.Admin.Lists.ListFilterRegistry.ListFilterRegistry() -> void
+FluentCMS.Admin.Lists.TextListCell
+FluentCMS.Admin.Lists.TextListCell.TextListCell() -> void
 const FluentCMS.Admin.Api.ApiRequest.NewLocale = "\"0\"" -> string!
+const FluentCMS.Admin.Fields.FieldEditorBase.LeftToRight = "ltr" -> string!
+const FluentCMS.Admin.Fields.FieldEditorBase.RightToLeft = "rtl" -> string!
 override FluentCMS.Admin.Api.ApiProblem.Equals(object? obj) -> bool
 override FluentCMS.Admin.Api.ApiProblem.GetHashCode() -> int
 override FluentCMS.Admin.Api.ApiProblem.ToString() -> string!
@@ -629,7 +715,9 @@ static FluentCMS.Admin.Configuration.AdminConfiguration.operator !=(FluentCMS.Ad
 static FluentCMS.Admin.Configuration.AdminConfiguration.operator ==(FluentCMS.Admin.Configuration.AdminConfiguration? left, FluentCMS.Admin.Configuration.AdminConfiguration? right) -> bool
 static FluentCMS.Admin.Configuration.AdminCultures.operator !=(FluentCMS.Admin.Configuration.AdminCultures? left, FluentCMS.Admin.Configuration.AdminCultures? right) -> bool
 static FluentCMS.Admin.Configuration.AdminCultures.operator ==(FluentCMS.Admin.Configuration.AdminCultures? left, FluentCMS.Admin.Configuration.AdminCultures? right) -> bool
+static FluentCMS.Admin.Fields.FieldEditorBase.LabelOf(FluentCMS.Admin.Api.SchemaFieldDescription! field) -> string!
 static FluentCMS.Admin.Forms.FormDraft.operator !=(FluentCMS.Admin.Forms.FormDraft? left, FluentCMS.Admin.Forms.FormDraft? right) -> bool
 static FluentCMS.Admin.Forms.FormDraft.operator ==(FluentCMS.Admin.Forms.FormDraft? left, FluentCMS.Admin.Forms.FormDraft? right) -> bool
 static FluentCMS.Admin.Forms.FormDraftKey.operator !=(FluentCMS.Admin.Forms.FormDraftKey? left, FluentCMS.Admin.Forms.FormDraftKey? right) -> bool
 static FluentCMS.Admin.Forms.FormDraftKey.operator ==(FluentCMS.Admin.Forms.FormDraftKey? left, FluentCMS.Admin.Forms.FormDraftKey? right) -> bool
+virtual FluentCMS.Admin.Fields.FieldEditorBase.FocusAsync() -> System.Threading.Tasks.ValueTask

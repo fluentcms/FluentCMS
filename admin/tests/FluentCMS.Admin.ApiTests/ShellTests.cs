@@ -1,5 +1,7 @@
+using System.Globalization;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Interop;
+using FluentCMS.Admin.Localization;
 using FluentCMS.Admin.Shell;
 using FluentCMS.Core.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -118,6 +120,8 @@ public sealed class ShellTests
             services.AddSingleton<IAccessTokenSource>(this);
             services.AddSingleton<IRateLimitNotice>(this);
             services.AddSingleton<ISessionStorage>(new TabStorage());
+            // The app registers it at start, before the shell, which applies the user's preferences to it.
+            services.AddSingleton(new FormatService(CultureInfo.InvariantCulture, TimeZoneInfo.Utc));
             services.AddAdminShell();
             services.AddManagementApi();
             services.Configure<ManagementApiOptions>(options =>

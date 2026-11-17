@@ -12,8 +12,8 @@ internal sealed record UserAction(string IdempotencyKey, string? Site, string? L
 
 // A form's read of an entry in one locale, with the site and locale it was read in, which its save sends again so that a
 // view that switched in between cannot write another locale under a matching tag. A locale the entry does not have yet has
-// no entry, and its tag is ApiRequest.NewLocale, which the save sends to add it.
-internal sealed record EntryRead(ContentEntry? Entry, string EntityTag, string? Site, string? Locale)
+// no entry, and its tag is ApiRequest.NewLocale, which the save sends to add it. A create's read has the Location it answered.
+internal sealed record EntryRead(ContentEntry? Entry, string EntityTag, string? Site, string? Locale, Uri? Location = null)
 {
     public bool IsNewLocale => Entry is null;
 }
@@ -72,12 +72,21 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
     public async Task<MyPreferences> SetMyPreferencesAsync(MyPreferences preferences, CancellationToken cancellationToken) =>
         (await api.SendAsync(Me(HttpMethod.Put, "me/preferences", JsonSerializer.SerializeToNode(preferences, Json.MyPreferences)), Json.MyPreferences, cancellationToken)).Value;
 
-    // What the caller may do in the site, in the site's default locale.
-    public async Task<MyAccessInfo> GetMyAccessAsync(string? site, CancellationToken cancellationToken) =>
-        (await api.SendAsync(SiteRead("me/access", site), Json.MyAccessInfo, cancellationToken)).Value;
+    // What the caller may do in the site, in the locale named or else the site's default: a grant limited to locales counts
+    // only in them, so the server narrows both reads by the locale.
+    public async Task<MyAccessInfo> GetMyAccessAsync(string? site, string? locale, CancellationToken cancellationToken) =>
+        (await api.SendAsync(Pinned(HttpMethod.Get, "me/access", site, locale), Json.MyAccessInfo, cancellationToken)).Value;
 
-    public async Task<SchemaDescription> GetSchemaAsync(string? site, CancellationToken cancellationToken) =>
-        (await api.SendAsync(SiteRead("schema", site), Json.SchemaDescription, cancellationToken)).Value;
+    public async Task<SchemaDescription> GetSchemaAsync(string? site, string? locale, CancellationToken cancellationToken) =>
+        (await api.SendAsync(Pinned(HttpMethod.Get, "schema", site, locale), Json.SchemaDescription, cancellationToken)).Value;
+
+    // The entry in every locale it has, by locale, with the status of each (GET /content/{type}/{id}?locale=all), in the site
+    // named. An entry the caller may read in no locale is a 404, as a missing one.
+    public async Task<IReadOnlyDictionary<string, ContentEntry>> GetEntryLocalesAsync(string type, Guid id, string? site, CancellationToken cancellationToken)
+    {
+        var read = await api.SendAsync(Pinned(HttpMethod.Get, Entry(type, id), site, "all"), Json.ContentEntry, cancellationToken);
+        return EveryLocaleRows.Read([read.Value], null, []).Locales.GetValueOrDefault(id) ?? new Dictionary<string, ContentEntry>();
+    }
 
     public async Task<IReadOnlyList<PluginInfo>> GetPluginsAsync(string? site, CancellationToken cancellationToken) =>
         (await api.SendAsync(SiteRead("plugins", site), Json.ItemListPluginInfo, cancellationToken)).Value.Items;
@@ -117,7 +126,15 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
         ArgumentNullException.ThrowIfNull(action);
         ArgumentException.ThrowIfNullOrWhiteSpace(action.IdempotencyKey);
         var request = Pinned(HttpMethod.Post, Content(type), action.Site, action.Locale, WithoutSystemMembers(fields), idempotencyKey: action.IdempotencyKey);
-        return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), action.Site, action.Locale);
+        var answer = await api.SendAsync(request, Json.ContentEntry, cancellationToken);
+        return Read(answer, action.Site, action.Locale) with { Location = answer.Location };
+    }
+
+    // The id of a singleton's one entry, or null while it has none in the locale; null reads the view's.
+    public async Task<Guid?> FindSingletonAsync(string type, string? locale, CancellationToken cancellationToken)
+    {
+        var page = await ListEntriesAsync(type, new ContentQuery { PageSize = 1, Fields = ["id"], Locale = locale }, cancellationToken);
+        return page.Items.Count > 0 ? page.Items[0].Id : null;
     }
 
     // Saves in exactly the site and locale of the read, with its tag: the version it was based on, or "0" to add the locale.
@@ -128,6 +145,47 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
         ArgumentException.ThrowIfNullOrWhiteSpace(basedOn.EntityTag);
         var request = Pinned(HttpMethod.Put, Entry(type, id), basedOn.Site, basedOn.Locale, WithoutSystemMembers(fields), ifMatch: basedOn.EntityTag);
         return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), basedOn.Site, basedOn.Locale);
+    }
+
+    // In the site and locale of the read, as a save. Unpublish takes no If-Match.
+    public async Task<PublishedRead> PublishEntryAsync(string type, Guid id, EntryRead basedOn, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(basedOn);
+        var request = Pinned(HttpMethod.Post, $"{Entry(type, id)}/publish", basedOn.Site, basedOn.Locale, ifMatch: basedOn.IsNewLocale ? null : basedOn.EntityTag);
+        var answer = await api.SendAsync(request, Json.PublishAnswer, cancellationToken);
+        return new PublishedRead(new EntryRead(answer.Value.Entry, answer.EntityTag ?? $"\"{answer.Value.Entry.Version}\"", basedOn.Site, basedOn.Locale), answer.Value.Warnings);
+    }
+
+    public async Task<EntryRead> UnpublishEntryAsync(string type, Guid id, EntryRead basedOn, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(basedOn);
+        var request = Pinned(HttpMethod.Post, $"{Entry(type, id)}/unpublish", basedOn.Site, basedOn.Locale);
+        return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), basedOn.Site, basedOn.Locale);
+    }
+
+    public async Task<EntryRead> DiscardDraftAsync(string type, Guid id, EntryRead basedOn, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(basedOn);
+        var request = Pinned(HttpMethod.Post, $"{Entry(type, id)}/discard", basedOn.Site, basedOn.Locale, ifMatch: basedOn.IsNewLocale ? null : basedOn.EntityTag);
+        return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), basedOn.Site, basedOn.Locale);
+    }
+
+    // The entry as it is now, which a 412 of a save holds, as a read in the site and locale of the save; its version is the
+    // tag a save on it sends. Null when the answer holds none that reads.
+    public static EntryRead? CurrentOf(ApiProblem problem, EntryRead basedOn)
+    {
+        ArgumentNullException.ThrowIfNull(problem);
+        ArgumentNullException.ThrowIfNull(basedOn);
+        try
+        {
+            return problem.Current?.Deserialize(Json.ContentEntry) is { } entry
+                ? new EntryRead(entry, $"\"{entry.Version.ToString(System.Globalization.CultureInfo.InvariantCulture)}\"", basedOn.Site, basedOn.Locale)
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static EntryRead Read(ApiResponse<ContentEntry> answer, string? site, string? locale) =>

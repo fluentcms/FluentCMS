@@ -1,0 +1,17 @@
+.relation-picker {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-s);
+    min-inline-size: min(40rem, 80vw);
+}
+
+.relation-picker-problem {
+    padding: var(--cms-space-m);
+    border-inline-start: 3px solid var(--cms-color-error);
+    background: var(--cms-color-surface);
+}
+
+.relation-picker-count {
+    margin: 0;
+    color: var(--cms-color-text-muted);
+}

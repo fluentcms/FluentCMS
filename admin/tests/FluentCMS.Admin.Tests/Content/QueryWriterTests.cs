@@ -1,6 +1,9 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Content;
+using FluentCMS.Admin.Lists;
 using Shouldly;
 using Xunit;
 
@@ -41,6 +44,65 @@ public sealed class QueryWriterTests
         Items("filters").Count().ShouldBeGreaterThan(40);
         QueryNames.Count.ShouldBe(Items("queries").Count());
     }
+
+    // A list's address holds its filters in the same grammar: each case the list offers on a field of its type is read from
+    // the address and written back as the clients write it; one the list does not offer, such as a key of a JSON field or a
+    // field of a block, is not read.
+    [Theory]
+    [MemberData(nameof(FilterNames))]
+    public void TheAddressOfAListReadsACaseItOffersAndWritesItAsTheOtherClients(string name)
+    {
+        var item = Items("filters").Single(candidate => Name(candidate) == name);
+        var query = item.GetProperty("query").GetString()!;
+        var expected = Filter(item);
+
+        var read = ListFilters.Parse(query, AddressFields);
+
+        if (Offered(expected))
+        {
+            read.Single().Path.ShouldBe(expected.Path);
+            read.Single().Operator.ShouldBe(expected.Operator);
+            new ContentQuery { Filter = read.Single() }.ToQueryString().ShouldBe(query);
+        }
+        else
+        {
+            read.ShouldBeEmpty();
+        }
+    }
+
+    [Fact]
+    public void TheAddressOfAListReadsMostCases() =>
+        Items("filters").Count(item => Offered(Filter(item))).ShouldBeGreaterThan(30);
+
+    // The fields of the cases' paths with the field type each case's class stands for; media as an admin half would name it.
+    private static readonly IReadOnlyList<FilterField> AddressFields = CaseFields();
+
+    private static bool Offered(FieldFilter filter) =>
+        AddressFields.Find(filter.Path) is { } field && field.Filter.Operators.Contains(filter.Operator);
+
+    private static List<FilterField> CaseFields()
+    {
+        var registry = new ListFilterRegistry();
+        registry.Add("media", FilterOperand.Id, FilterOperator.Equal, FilterOperator.In);
+        SchemaFieldDescription[] fields =
+        [
+            Field("title", "text"), Field("slug", "slug"), Field("videoUrl", "url"), Field("body", "richText"),
+            Field("category", "select", options: ["news", "video", "opinion"]), Field("publishedOn", "dateTime"),
+            Field("author", "relation"), Field("tags", "relation", multiple: true), Field("hero", "media"), Field("sections", "blocks", options: ["hero", "quote", "gallery"]),
+            Field("rating", "integer"), Field("price", "decimal"), Field("day", "date"), Field("featured", "boolean"),
+            Field("summary", "longText"), Field("labels", "select", multiple: true, options: ["a", "b"]), Field("meta", "json"),
+        ];
+        return [.. fields.Select(field => registry.Find(field) is { } filter ? new FilterField(field, filter) : null).OfType<FilterField>()];
+    }
+
+    private static SchemaFieldDescription Field(string name, string type, bool multiple = false, string[]? options = null) => new()
+    {
+        Name = name,
+        Type = type,
+        Multiple = multiple,
+        Validation = new FieldValidationDescription(),
+        Settings = options is null ? [] : new JsonObject { [type == "blocks" ? "blocks" : "options"] = new JsonArray([.. options.Select(option => (JsonNode)option)]) },
+    };
 
     [Fact]
     public void AnEmptyListOrGroupIsRefused()

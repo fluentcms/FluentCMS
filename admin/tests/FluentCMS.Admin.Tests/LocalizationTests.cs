@@ -36,9 +36,13 @@ public sealed class LocalizationTests : AdminTestContext
     {
         UseInterfaceCulture(culture);
         Start();
-        Services.GetRequiredService<NavigationManager>().NavigateTo(route);
+        Services.GetRequiredService<NavigationManager>().NavigateTo(Concrete(route, culture));
 
         var app = Render<AdminApp>();
+        if (route == ListRoute)
+        {
+            app.WaitForAssertion(() => app.Find(".cms-data-grid-message"));
+        }
 
         // FocusOnNavigate does nothing on a page without a heading.
         app.FindAll("h1").ShouldHaveSingleItem();
@@ -123,6 +127,25 @@ public sealed class LocalizationTests : AdminTestContext
         PseudoCulture.Unlocalized(app.Nodes).ShouldBeEmpty();
         PseudoCulture.Unlocalized(head.Nodes).ShouldBeEmpty();
         head.Find("title").TextContent.ShouldBe(Text("Configuration.Error.Title"));
+    }
+
+    // A route's parameters as data the page shows, marked as a resource is: a type name, and an id without letters.
+    private const string ListRoute = "/content/{Type}";
+
+    // The list is drawn for a collection of the schema, whose display name, the data of the fake, is marked as a resource is;
+    // the other content routes name a type the schema lacks.
+    private string Concrete(string route, string culture)
+    {
+        if (route == ListRoute)
+        {
+            Management.SetTypes(FakeManagementServer.MainSite, FakeManagementServer.Type("article", displayName: PseudoCulture.Transform("Articles", culture == PseudoCulture.RightToLeft)));
+            Management.Entries["article"] = [];
+            return "/content/article";
+        }
+
+        return route
+            .Replace("{Type}", PseudoCulture.Transform("article", culture == PseudoCulture.RightToLeft), StringComparison.Ordinal)
+            .Replace("{Id:guid}", "00000000-0000-0000-0000-000000000001", StringComparison.Ordinal);
     }
 
     [Fact]
@@ -243,7 +266,21 @@ public sealed class LocalizationTests : AdminTestContext
     [InlineData("dv", "rtl")]
     [InlineData("az-Arab", "rtl")]
     [InlineData("pa-Arab-PK", "rtl")]
+    [InlineData("yi-Hebr", "rtl")]
+    [InlineData("dv-Thaa", "rtl")]
+    [InlineData("syr-Syrc", "rtl")]
+    [InlineData("man-Nkoo", "rtl")]
+    [InlineData("ff-Adlm", "rtl")]
+    [InlineData("rhg-Rohg", "rtl")]
+    [InlineData("ar-u-nu-latn", "rtl")]
+    [InlineData("en-x-arab", "ltr")]
+    [InlineData("en-US-x-Arab", "ltr")]
+    [InlineData("zh-yue-Arab", "rtl")]
     [InlineData("ar-Latn", "ltr")]
+    [InlineData("ff-Latn", "ltr")]
+    [InlineData("ks-Deva", "ltr")]
+    [InlineData("ks", "rtl")]
+    [InlineData("ug", "rtl")]
     [InlineData("sr-Latn", "ltr")]
     [InlineData("sr-Cyrl-RS", "ltr")]
     [InlineData("az", "ltr")]

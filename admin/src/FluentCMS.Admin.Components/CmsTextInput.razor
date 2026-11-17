@@ -1,10 +1,14 @@
 @namespace FluentCMS.Admin.Components
 @inherits CmsInputBase<string>
+@inject ICmsTextSource Texts
 
 @* A native input: the library's keeps its control in a shadow root, where help, errors and aria-invalid cannot reach it. *@
 <div class="cms-field">
     @LabelTemplate
-    <input id="@InputId"
+    <input @ref="Element"
+           id="@InputId"
+           lang="@Lang"
+           dir="@Dir"
            class="cms-input"
            type="@ToHtml(Type)"
            value="@Value"
@@ -12,9 +16,16 @@
            autocomplete="@Autocomplete"
            inputmode="@(Numeric ? "numeric" : null)"
            disabled="@Disabled"
+           readonly="@ReadOnly"
            @oninput="@(args => SetValueAsync(args.Value as string))"
+           @onblur="@OnBlur"
            @attributes="@AriaAttributes" />
     @MessageTemplate
+    @if (MaxLength is { } max)
+    {
+        @* Not live, so that typing is not interrupted; the limit is not enforced, so that pasted text is not cut without a word. *@
+        <span id="@CounterId" class="@(Value?.Length > max ? "cms-field-counter cms-field-counter-over" : "cms-field-counter")">@CmsStrings.Format(Texts.Text(CmsStrings.InputCharacterCount), Value?.Length ?? 0, max)</span>
+    }
 </div>
 
 @code {
@@ -31,6 +42,14 @@
     // Asks a touch device for its numeric keyboard; the value is still text, so leading zeros stay.
     [Parameter]
     public bool Numeric { get; set; }
+
+    // The most characters the value may have, shown with a counter under the input.
+    [Parameter]
+    public int? MaxLength { get; set; }
+
+    private string CounterId => InputId + "-count";
+
+    protected override string? AdditionalDescriptionId => MaxLength is null ? null : CounterId;
 
     private static string ToHtml(CmsTextInputType type) => type switch
     {

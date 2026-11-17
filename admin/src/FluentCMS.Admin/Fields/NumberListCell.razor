@@ -1,0 +1,5 @@
+@* The cell of an integer or decimal field, in the user's number format. *@
+@inherits ListCellBase
+@inject FormatService Formats
+
+<span class="list-cell-number">@(FieldValues.Number(Value) is { } number ? Formats.Number(number) : null)</span>

@@ -18,10 +18,11 @@ internal sealed class AdminHost : IAsyncDisposable
 {
     private readonly DirectoryInfo _media = Directory.CreateTempSubdirectory("fluentcms-admin-api-");
 
-    public AdminHost(int managementLimit = 10_000)
+    // A test adds the types it needs beside the sample's.
+    public AdminHost(int managementLimit = 10_000, params Type[] contentTypes)
     {
         Host = new FluentCmsTestHost()
-            .WithContentTypes([.. BlogSample.ContentTypes])
+            .WithContentTypes([.. BlogSample.ContentTypes, .. contentTypes])
             .WithServices(services =>
             {
                 services.PostConfigure<MediaOptions>(options => options.Local.Root = _media.FullName);

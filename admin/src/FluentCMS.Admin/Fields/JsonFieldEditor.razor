@@ -1,0 +1,108 @@
+@* The editor of a JSON field: a text area, left to right, without spelling checks. Text that does not parse names its line
+   and is not sent: the form keeps the last value that parsed until the text does again. Format indents the text. *@
+@inherits FieldEditorBase
+@inject IStringLocalizer<AdminResources> L
+
+<div class="field-json">
+    <CmsTextArea @ref="input"
+                 Label="@Label"
+                 Help="@Help"
+                 Error="@FieldValues.Errors(parseError, ErrorText)"
+                 Required="@Required"
+                 ReadOnly="@ReadOnly"
+                 Placeholder="@Placeholder"
+                 Rows="6"
+                 AutoGrow="true"
+                 Spellcheck="false"
+                 Dir="@LeftToRight"
+                 Value="@text"
+                 ValueChanged="@TypeAsync"
+                 OnBlur="@OnBlur" />
+    @if (!ReadOnly)
+    {
+        <div class="field-json-actions">
+            <CmsButton Appearance="CmsButtonAppearance.Subtle" Disabled="@(parseError is not null)" OnClick="Format">@L["Content.Field.JsonFormat"]</CmsButton>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true, NewLine = "\n" };
+
+    // A name twice in one object is refused, as the server refuses it; System.Text.Json would otherwise keep the last.
+    private static readonly JsonDocumentOptions Strict = new() { AllowDuplicateProperties = false };
+
+    private CmsTextArea? input;
+    private string text = "";
+    private string? parseError;
+
+    // The value the text stands for, so that a value from outside, such as a restored draft, replaces the text.
+    private JsonNode? shown;
+    private bool started;
+
+    public override ValueTask FocusAsync() => input?.FocusAsync() ?? ValueTask.CompletedTask;
+
+    protected override void OnParametersSet()
+    {
+        if (!started || !Same(Value, shown))
+        {
+            started = true;
+            (text, shown, parseError) = (Value is null ? "" : Value.ToJsonString(Indented), Value?.DeepClone(), null);
+        }
+    }
+
+    private Task TypeAsync(string? typed)
+    {
+        text = typed ?? "";
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            parseError = null;
+            shown = null;
+            return ChangeAsync(null);
+        }
+
+        JsonNode? node;
+        try
+        {
+            // Written once here, so that what cannot be written, such as a lone surrogate (an InvalidOperationException), never
+            // reaches the form.
+            node = JsonNode.Parse(text, documentOptions: Strict);
+            _ = node?.ToJsonString();
+        }
+        catch (JsonException exception)
+        {
+            parseError = exception.LineNumber is { } line ? L["Content.Field.JsonInvalid", line + 1] : L["Content.Field.JsonInvalidNoLine"];
+            return Task.CompletedTask;
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+        {
+            parseError = L["Content.Field.JsonInvalidNoLine"];
+            return Task.CompletedTask;
+        }
+
+        parseError = null;
+        shown = node?.DeepClone();
+        return ChangeAsync(node);
+    }
+
+    // A value DeepEquals cannot compare, such as one with a name twice or a lone surrogate, is taken as a new value.
+    private static bool Same(JsonNode? value, JsonNode? other)
+    {
+        try
+        {
+            return JsonNode.DeepEquals(value, other);
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
+    private void Format()
+    {
+        if (parseError is null)
+        {
+            text = shown is null ? "" : shown.ToJsonString(Indented);
+        }
+    }
+}

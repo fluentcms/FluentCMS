@@ -1,0 +1,184 @@
+.content-form h1 {
+    margin: 0 0 var(--cms-space-l);
+    font-size: var(--cms-font-size-xl);
+}
+
+.content-form h2 {
+    margin: 0 0 var(--cms-space-m);
+    font-size: var(--cms-font-size-l);
+}
+
+.content-form-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cms-space-m);
+    margin-block-end: var(--cms-space-l);
+}
+
+.content-form-saved,
+.content-form-notice {
+    color: var(--cms-color-text-muted);
+}
+
+.content-form-notice {
+    display: flex;
+    align-items: center;
+    gap: var(--cms-space-s);
+}
+
+.content-form-problem {
+    margin-block-end: var(--cms-space-l);
+    padding: var(--cms-space-m);
+    border: 1px solid var(--cms-color-error);
+    border-radius: var(--cms-radius-m);
+}
+
+.content-form-problem p {
+    margin: 0 0 var(--cms-space-s);
+}
+
+.content-form-warnings {
+    margin-block-end: var(--cms-space-l);
+    padding: var(--cms-space-m);
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-m);
+}
+
+.content-form-warnings p {
+    display: flex;
+    align-items: center;
+    gap: var(--cms-space-s);
+    margin: 0 0 var(--cms-space-s);
+}
+
+.content-form-warnings ul {
+    margin: 0;
+}
+
+.content-form-groups {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-l);
+    padding-block: var(--cms-space-m);
+}
+
+.content-form-group {
+    margin: 0;
+    padding: var(--cms-space-m);
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-m);
+}
+
+.content-form-group legend {
+    padding-inline: var(--cms-space-s);
+    font-weight: 600;
+}
+
+/* The twelve columns of display.width; under 768 CSS pixels every field takes the whole row. */
+.content-form-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: var(--cms-space-m);
+}
+
+.content-form-field {
+    grid-column: span 12;
+    min-inline-size: 0;
+}
+
+@media (min-width: 768px) {
+    .content-form-span-1 { grid-column: span 1; }
+    .content-form-span-2 { grid-column: span 2; }
+    .content-form-span-3 { grid-column: span 3; }
+    .content-form-span-4 { grid-column: span 4; }
+    .content-form-span-5 { grid-column: span 5; }
+    .content-form-span-6 { grid-column: span 6; }
+    .content-form-span-7 { grid-column: span 7; }
+    .content-form-span-8 { grid-column: span 8; }
+    .content-form-span-9 { grid-column: span 9; }
+    .content-form-span-10 { grid-column: span 10; }
+    .content-form-span-11 { grid-column: span 11; }
+}
+
+::deep .content-json {
+    margin: 0;
+    max-block-size: 20rem;
+    overflow: auto;
+    padding: var(--cms-space-s);
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-s);
+    background: var(--cms-color-surface);
+    font-size: var(--cms-font-size-s);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+::deep .content-text {
+    overflow-wrap: anywhere;
+}
+
+.content-form-conflict {
+    inline-size: 100%;
+    border-collapse: collapse;
+    font-size: var(--cms-font-size-s);
+}
+
+.content-form-conflict th,
+.content-form-conflict td {
+    padding: var(--cms-space-s);
+    border-block-end: 1px solid var(--cms-color-border);
+    text-align: start;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+}
+
+.content-form-choice {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--cms-space-s);
+    min-block-size: 24px;
+}
+
+.content-form-shortcuts {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: var(--cms-space-s) var(--cms-space-l);
+    margin: 0;
+}
+
+.content-form-shortcuts dt {
+    font-weight: 600;
+}
+
+.content-form-shortcuts dd {
+    margin: 0;
+}
+
+.content-form-new-locale .content-form-toolbar {
+    margin-block-end: var(--cms-space-m);
+}
+
+.content-form-compare-choice {
+    max-inline-size: 20rem;
+    margin-block-end: var(--cms-space-l);
+}
+
+/* The other locale beside the field, read-only; one above the other on a narrow screen. */
+.content-form-field-compared {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--cms-space-s);
+}
+
+@media (min-width: 768px) {
+    .content-form-field-compared {
+        grid-column: span 12;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.content-form-compare {
+    padding-inline-start: var(--cms-space-m);
+    border-inline-start: 3px solid var(--cms-color-border);
+}

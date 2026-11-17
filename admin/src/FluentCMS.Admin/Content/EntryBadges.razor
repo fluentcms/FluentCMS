@@ -1,0 +1,81 @@
+@* The status of an entry in a list (spec 4.4): one badge, or under locale=all one per locale of the site, in its order, with an
+   empty badge for a locale the entry has no translation in; and a badge with the time of each pending schedule, in the
+   user's time zone. Each badge says its status in words, so its colour is never the only sign. *@
+@inject FormatService Format
+@inject IStringLocalizer<AdminResources> L
+
+<span class="content-badges">
+    @if (Locales is null)
+    {
+        @Badge(Entry, null)
+        @Schedules(Entry, null)
+    }
+    else
+    {
+        @foreach (var locale in SiteLocales)
+        {
+            if (Locales.TryGetValue(locale, out var entry))
+            {
+                @Badge(entry, locale)
+            }
+            else
+            {
+                <span class="content-badge content-badge-missing">
+                    <span class="content-badge-locale">@locale</span>
+                    <span class="cms-visually-hidden">@L["Content.Badge.Missing"]</span>
+                </span>
+            }
+        }
+        @foreach (var locale in SiteLocales)
+        {
+            if (Locales.TryGetValue(locale, out var entry))
+            {
+                @Schedules(entry, locale)
+            }
+        }
+    }
+</span>
+
+@code {
+    // The row's entry, which a read of one locale shows alone.
+    [Parameter, EditorRequired]
+    public ContentEntry Entry { get; set; } = null!;
+
+    // The entry in each locale it has, under locale=all; null for a read of one locale.
+    [Parameter]
+    public IReadOnlyDictionary<string, ContentEntry>? Locales { get; set; }
+
+    // The enabled locales of the site, in its order.
+    [Parameter]
+    public IReadOnlyList<string> SiteLocales { get; set; } = [];
+
+    private RenderFragment Badge(ContentEntry entry, string? locale) => __builder =>
+    {
+        if (entry.Status is not { } status)
+        {
+            return;
+        }
+
+        <span class="content-badge content-badge-@status">
+            <span class="content-badge-locale">@locale</span> @L[$"Content.Status.{status}"]
+        </span>
+    };
+
+    private RenderFragment Schedules(ContentEntry entry, string? locale) => __builder =>
+    {
+        @Schedule(entry.ScheduledPublishAt, "Content.Badge.PublishAt", locale)
+        @Schedule(entry.ScheduledUnpublishAt, "Content.Badge.UnpublishAt", locale)
+    };
+
+    private RenderFragment Schedule(DateTimeOffset? at, string key, string? locale) => __builder =>
+    {
+        if (at is not { } moment)
+        {
+            return;
+        }
+
+        <span class="content-badge content-badge-schedule">
+            <span class="content-badge-locale">@locale</span> @L[key] <time datetime="@moment.ToString("O", System.Globalization.CultureInfo.InvariantCulture)">@Format.DateTime(moment)</time>
+        </span>
+    };
+}

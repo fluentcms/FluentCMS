@@ -1,0 +1,43 @@
+@* A field whose type has no editor in the loaded admin, such as a plugin's without an admin half: its JSON, read-only, with
+   a note. The value is kept as it is and saved back unchanged. *@
+@inherits FieldEditorBase
+@inject IStringLocalizer<AdminResources> L
+
+<div class="cms-field">
+    <span id="@labelId" class="cms-field-label">@Label</span>
+    <pre @ref="element"
+         class="content-json"
+         tabindex="0"
+         role="textbox"
+         aria-readonly="true"
+         aria-multiline="true"
+         aria-labelledby="@labelId"
+         aria-describedby="@DescribedBy"
+         aria-required="@(Required ? "true" : null)"
+         aria-invalid="@(ErrorText is null ? null : "true")">@Json</pre>
+    <span id="@noteId" class="cms-field-message">@L["Content.Form.NoEditor"]</span>
+    @if (Help is not null)
+    {
+        <span id="@helpId" class="cms-field-message">@Help</span>
+    }
+    @if (ErrorText is not null)
+    {
+        <span id="@errorId" class="cms-field-message cms-field-message-error">@ErrorText</span>
+    }
+</div>
+
+@code {
+    private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };
+
+    private readonly string labelId = ElementIds.Next("field-label");
+    private readonly string noteId = ElementIds.Next("field-note");
+    private readonly string helpId = ElementIds.Next("field-help");
+    private readonly string errorId = ElementIds.Next("field-error");
+    private ElementReference element;
+
+    private string Json => Value is null ? "null" : Value.ToJsonString(Indented);
+
+    private string DescribedBy => string.Join(' ', new[] { ErrorText is null ? null : errorId, noteId, Help is null ? null : helpId }.OfType<string>());
+
+    public override ValueTask FocusAsync() => element.Context is null ? ValueTask.CompletedTask : element.FocusAsync();
+}

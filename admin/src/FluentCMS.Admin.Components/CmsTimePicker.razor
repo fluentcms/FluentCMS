@@ -1,20 +1,60 @@
 @namespace FluentCMS.Admin.Components
 @inherits CmsInputBase<TimeOnly?>
+@inject ICmsTextSource Texts
 
-@* Native, for the reason given in CmsDatePicker. *@
+@* A text input in the culture's time format, for the reason given in CmsDatePicker. With Seconds, the long time format,
+   so that a value with seconds keeps them. *@
 <div class="cms-field">
     @LabelTemplate
-    <input id="@InputId"
-           class="cms-input"
-           type="time"
-           value="@Value?.ToString("HH:mm", CultureInfo.InvariantCulture)"
+    <input @ref="Element"
+           id="@InputId"
+           class="cms-input cms-input-time"
+           type="text"
+           value="@Value?.ToString(Pattern, ShownCulture)"
+           autocomplete="off"
            disabled="@Disabled"
-           @onchange="@(args => SetValueAsync(Parse(args.Value as string)))"
+           readonly="@ReadOnly"
+           @onchange="@(args => ChangeAsync(args.Value as string))"
+           @onblur="@OnBlur"
            @attributes="@AriaAttributes" />
     @MessageTemplate
 </div>
 
 @code {
-    private static TimeOnly? Parse(string? value) =>
-        TimeOnly.TryParseExact(value, ["HH:mm", "HH:mm:ss"], CultureInfo.InvariantCulture, DateTimeStyles.None, out var time) ? time : null;
+    private static readonly TimeOnly ExampleTime = new(9, 30, 15);
+
+    // The culture whose time format is shown and read; the current culture when null.
+    [Parameter]
+    public CultureInfo? Culture { get; set; }
+
+    // Shows and reads seconds.
+    [Parameter]
+    public bool Seconds { get; set; }
+
+    private CultureInfo ShownCulture => Culture ?? CultureInfo.CurrentCulture;
+
+    private string Pattern => Seconds ? ShownCulture.DateTimeFormat.LongTimePattern : ShownCulture.DateTimeFormat.ShortTimePattern;
+
+    private Task ChangeAsync(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            InputError = null;
+            return SetValueAsync(null);
+        }
+
+        if (Parse(text.Trim(), ShownCulture) is not { } time)
+        {
+            InputError = CmsStrings.Format(Texts.Text(CmsStrings.InputTimeInvalid), ExampleTime.ToString(Pattern, ShownCulture));
+            return Task.CompletedTask;
+        }
+
+        InputError = null;
+        return SetValueAsync(time);
+    }
+
+    internal static TimeOnly? Parse(string text, CultureInfo culture) =>
+        TimeOnly.TryParseExact(text, [culture.DateTimeFormat.LongTimePattern, culture.DateTimeFormat.ShortTimePattern, "HH:mm:ss", "HH:mm"], culture, DateTimeStyles.AllowWhiteSpaces, out var exact) ? exact
+        : TimeOnly.TryParse(text, culture, DateTimeStyles.AllowWhiteSpaces, out var loose) ? loose
+        : null;
 }

@@ -1,0 +1,3 @@
+.entry-panel {
+    min-inline-size: min(40rem, 90vw);
+}

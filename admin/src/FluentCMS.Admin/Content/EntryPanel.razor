@@ -1,0 +1,160 @@
+@* A side panel with the form of an entry (spec 4.9, A-15): a new entry of a type, or one to open without leaving the page,
+   as the relation picker's inline create, a related entry and the list's row action open it. It takes focus as it opens,
+   gives it back to the control that opened it as it closes, and asks first when its form has unsaved changes; Escape or a
+   click outside close it as the close button does, and keeping the changes opens it again. *@
+@implements IAsyncDisposable
+@inject IFocusService Focus
+@inject IStringLocalizer<AdminResources> L
+
+<CmsDrawer Side="CmsDrawerSide.End" Title="@AdminLabels.Type(Type, L)" Open="@shown" OpenChanged="OnDismissedAsync">
+    <ChildContent>
+        @if (Open)
+        {
+            <div class="entry-panel">
+                <ContentForm @ref="form" @key="opened" Type="@Type.Name" Id="@Id" Locale="@Locale" InPanel="true" OnSaved="OnSaved" />
+            </div>
+        }
+    </ChildContent>
+    <Actions>
+        <CmsButton Icon="CmsIconName.Dismiss" OnClick="CloseAsync">@L["Content.Panel.Close"]</CmsButton>
+    </Actions>
+</CmsDrawer>
+<CmsDialog Title="@L["Content.Panel.Leave.Title"]" Open="@asking" OpenChanged="@(open => { if (!open) Stay(); })">
+    <ChildContent>
+        <p>@L["Content.Panel.Leave.Text"]</p>
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="LeaveAsync">@L["Content.Panel.Leave.Confirm"]</CmsButton>
+        <CmsButton OnClick="Stay">@L["Content.Panel.Leave.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+@code {
+    private ContentForm? form;
+    private bool shown;
+    private bool asking;
+    private bool wasOpen;
+    private int opened;
+    private IAsyncDisposable? opener;
+
+    [Parameter, EditorRequired]
+    public SchemaTypeDescription Type { get; set; } = null!;
+
+    // The entry to open; null for a new one.
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    // The content locale of the form; the view's when null.
+    [Parameter]
+    public string? Locale { get; set; }
+
+    [Parameter]
+    public bool Open { get; set; }
+
+    // Raised once the panel has closed, which the opener answers by setting Open to false.
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback<ContentEntry> OnSaved { get; set; }
+
+    private bool Unsaved => form?.HasUnsavedChanges == true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open == wasOpen)
+        {
+            return;
+        }
+
+        wasOpen = Open;
+        if (!Open)
+        {
+            (shown, asking) = (false, false);
+            return;
+        }
+
+        opened++;
+        opener = await RememberOpenerAsync();
+        shown = true;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (opener is not null)
+        {
+            await opener.DisposeAsync();
+        }
+    }
+
+    // The library gives focus back to the element focused as the panel opened; after the question of unsaved changes that
+    // is not the opener any more, so the panel keeps the opener itself. The panel works without it when the script fails.
+    private async Task<IAsyncDisposable?> RememberOpenerAsync()
+    {
+        try
+        {
+            return await Focus.RememberOpenerAsync();
+        }
+        catch (Microsoft.JSInterop.JSException)
+        {
+            return null;
+        }
+    }
+
+    private Task CloseAsync()
+    {
+        if (Unsaved)
+        {
+            asking = true;
+            return Task.CompletedTask;
+        }
+
+        return FinishAsync();
+    }
+
+    // Escape or a click outside closed the drawer already; with unsaved changes it opens again if the user keeps them.
+    private Task OnDismissedAsync(bool open)
+    {
+        if (open)
+        {
+            return Task.CompletedTask;
+        }
+
+        shown = false;
+        if (Unsaved)
+        {
+            asking = true;
+            return Task.CompletedTask;
+        }
+
+        return FinishAsync();
+    }
+
+    private void Stay() => (asking, shown) = (false, true);
+
+    private async Task LeaveAsync()
+    {
+        asking = false;
+        if (form is not null)
+        {
+            await form.DiscardChangesAsync();
+        }
+
+        await FinishAsync();
+    }
+
+    // Focus goes back once the library has given it to the element focused last, which the question may have been.
+    private async Task FinishAsync()
+    {
+        (shown, asking) = (false, false);
+        if (opener is { } handle)
+        {
+            opener = null;
+            StateHasChanged();
+            await Task.Delay(DocumentInterop.DialogFocusDelay);
+            await handle.DisposeAsync();
+        }
+
+        await OnClose.InvokeAsync();
+    }
+}

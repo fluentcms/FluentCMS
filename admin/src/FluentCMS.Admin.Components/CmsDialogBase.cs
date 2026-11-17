@@ -25,6 +25,10 @@ public abstract class CmsDialogBase : ComponentBase
     [Parameter]
     public EventCallback<bool> OpenChanged { get; set; }
 
+    /// <summary>Gets or sets the callback raised once the dialog has closed, by the user or by <see cref="Open"/>.</summary>
+    [Parameter]
+    public EventCallback OnClosed { get; set; }
+
     /// <summary>Gets or sets the body of the dialog.</summary>
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
@@ -75,10 +79,18 @@ public abstract class CmsDialogBase : ComponentBase
     private async Task OnToggleAsync(DialogToggleEventArgs args)
     {
         // Popovers inside the dialog, such as a menu, raise the same event.
-        if (args.Id == DialogId && args.NewState == "closed" && _shown)
+        if (args.Id != DialogId || args.NewState != "closed")
+        {
+            return;
+        }
+
+        if (_shown)
         {
             _shown = false;
             await OpenChanged.InvokeAsync(false);
         }
+
+        // The library has given focus back to the opener by now, so a caller that moves it elsewhere does it here.
+        await OnClosed.InvokeAsync();
     }
 }

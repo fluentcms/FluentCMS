@@ -10,4 +10,7 @@ internal static partial class ShellLog
 
     [LoggerMessage(EventId = 21, EventName = "ThemeNotKept", Level = LogLevel.Warning, Message = "The browser's storage could not be used for the theme; the choice lasts until the page is left.")]
     public static partial void ThemeNotKept(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 22, EventName = "ColumnsNotKept", Level = LogLevel.Warning, Message = "The browser's storage could not be used for the columns of a list; the choice lasts until the page is left.")]
+    public static partial void ColumnsNotKept(ILogger logger, Exception exception);
 }

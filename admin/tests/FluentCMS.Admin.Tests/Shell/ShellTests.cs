@@ -1,9 +1,11 @@
+using System.Net;
 using System.Text.Json.Nodes;
 using AngleSharp.Dom;
 using Bunit;
 using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Forms;
 using FluentCMS.Admin.Interop;
+using FluentCMS.Admin.Localization;
 using FluentCMS.Admin.Shell;
 using FluentCMS.Admin.Tests.Authentication;
 using Microsoft.AspNetCore.Components;
@@ -27,15 +29,39 @@ public sealed class ShellTests : AdminTestContext
     private AdminContext Context => Services.GetRequiredService<AdminContext>();
 
     [Fact]
-    public void AfterSignInTheShellReadsTheUserItsSitesAndForTheSiteTheAccessTheSchemaAndThePlugins()
+    public void AfterSignInTheShellReadsTheUserItsSitesItsPreferencesAndForTheSiteTheAccessTheSchemaAndThePlugins()
     {
         Load();
 
         Management.Requests.ShouldBe(
-            [("me", null), ("me/sites", null), ("me/access", Main), ("schema", Main), ("plugins", Main)],
+            [("me", null), ("me/sites", null), ("me/preferences", null), ("me/access", Main), ("schema", Main), ("plugins", Main)],
             ignoreOrder: true);
         Context.Site!.Id.ShouldBe(MainSite);
         Context.User!.Name.ShouldBe("ada");
+    }
+
+    [Fact]
+    public void TheFormatsOfThePreferencesApplyOnceTheShellHasReadThem()
+    {
+        Management.Preferences = new JsonObject { ["culture"] = null, ["timeZone"] = "Asia/Tokyo", ["dateFormat"] = "de-DE", ["numberFormat"] = "fr-FR" };
+
+        Load();
+
+        var formats = Services.GetRequiredService<FormatService>();
+        formats.Culture.Name.ShouldBe("de-DE");
+        formats.NumberCulture.Name.ShouldBe("fr-FR");
+        formats.Date(new DateTimeOffset(2026, 11, 15, 20, 0, 0, TimeSpan.Zero)).ShouldBe("16.11.2026");
+    }
+
+    [Fact]
+    public void WithoutPreferencesTheShellStartsWithTheBrowsersFormats()
+    {
+        Management.Answer = (method, path) => path == "me/preferences" ? new HttpResponseMessage(HttpStatusCode.Forbidden) : null;
+
+        Load();
+
+        Context.Status.ShouldBe(ShellStatus.Ready);
+        Services.GetRequiredService<FormatService>().TimeZone.ShouldBe(TimeZoneInfo.Utc);
     }
 
     [Fact]
@@ -137,7 +163,8 @@ public sealed class ShellTests : AdminTestContext
         app.Find(".site-switcher select").Change(Shop.ToString("D"));
 
         app.WaitForAssertion(() => Links(app.Find(".shell-sidebar")).ShouldBe(["", "content/article", "content/product"]));
-        Management.Requests.ShouldBe([("me/access", Shop.ToString("D")), ("schema", Shop.ToString("D")), ("plugins", Shop.ToString("D"))], ignoreOrder: true);
+        Management.Requests.Where(request => !request.Path.StartsWith("content/", StringComparison.Ordinal))
+            .ShouldBe([("me/access", Shop.ToString("D")), ("schema", Shop.ToString("D")), ("plugins", Shop.ToString("D"))], ignoreOrder: true);
         Navigation.Uri.ShouldEndWith("/content/article");
         Storage[TabStorageKeys.Site].ShouldBe(Shop.ToString("D"));
         app.FindAll("[role=status] > div").Select(message => message.TextContent).ShouldContain("Showing the site Shop");
@@ -299,6 +326,28 @@ public sealed class ShellTests : AdminTestContext
         app.WaitForAssertion(() => app.FindComponent<CmsDrawer>().Instance.Open.ShouldBeFalse());
     }
 
+    // The library gives focus back to the drawer's opener once it has closed, after the page moved it to its heading, so the
+    // layout moves it to the heading again; a drawer the user dismissed leaves focus on the opener (#3178).
+    [Fact]
+    public async Task ANavigationFromTheDrawerEndsWithFocusOnThePageHeading()
+    {
+        Management.SetTypes(MainSite, Type("article"));
+        var app = Load();
+        app.Find(".shell-open-navigation fluent-button").Click();
+        var host = DrawerHost(app);
+
+        await host.TriggerEventAsync("ondialogtoggle", new DialogToggleEventArgs { Id = host.Id, NewState = "closed" });
+
+        HeadingFocuses().ShouldBe(0);
+
+        app.Find(".shell-open-navigation fluent-button").Click();
+        Navigation.NavigateTo("content/article");
+        var focused = HeadingFocuses();
+        await DrawerHost(app).TriggerEventAsync("ondialogtoggle", new DialogToggleEventArgs { Id = host.Id, NewState = "closed" });
+
+        HeadingFocuses().ShouldBe(focused + 1);
+    }
+
     [Fact]
     public void TheThemeFollowsTheSystemUntilTheUserChoosesAndTheChoiceIsKeptInTheBrowser()
     {
@@ -397,6 +446,11 @@ public sealed class ShellTests : AdminTestContext
     }
 
     private static string Main => MainSite.ToString("D");
+
+    private static IElement DrawerHost(IRenderedComponent<AdminApp> app) =>
+        app.FindAll("fluent-drawer").Single(drawer => drawer.GetAttribute("aria-label") == "Navigation");
+
+    private int HeadingFocuses() => Document.Invocations.Count(call => call.Identifier == "focusHeading");
 
     private static IElement MenuItem(IRenderedComponent<AdminApp> app, string text) =>
         app.FindAll("fluent-menu-item").Single(item => item.TextContent.Trim().StartsWith(text, StringComparison.Ordinal));

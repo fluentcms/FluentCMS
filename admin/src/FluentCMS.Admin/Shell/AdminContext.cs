@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Interop;
+using FluentCMS.Admin.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Admin.Shell;
@@ -18,13 +19,16 @@ internal enum ShellStatus
     Failed,
 }
 
-// What the shell reads after sign-in (spec 4.1): GET /me and /me/sites, then for the chosen site /me/access, /schema and
-// /plugins. The site chosen last is kept for the tab, so that a reload stays in it. A read that a later switch overtook is
-// dropped.
+// What the shell reads after sign-in (spec 4.1): GET /me, /me/sites and /me/preferences, whose formats apply from then on,
+// then for the chosen site /me/access, /schema and /plugins. The site chosen last is kept for the tab, so that a reload stays
+// in it. The content locale is the site's default until an address names another (spec 4.17), and stays until one names
+// another again; /me/access and /schema are read again in it, since the server narrows both by the locale, and a site switch
+// resets it. A read that a later switch overtook is dropped.
 internal sealed class AdminContext(
     ManagementClient client,
     SiteMetadata metadata,
     ShellSite site,
+    FormatService formats,
     ISessionStorage storage,
     ILogger<AdminContext> logger) : IAdminContext, IAdminAccess
 {
@@ -32,6 +36,8 @@ internal sealed class AdminContext(
 
     private Task? _starting;
     private int _generation;
+    private Task _localeReads = Task.CompletedTask;
+    private Task<IReadOnlyDictionary<string, MyAccessInfo>>? _localeAccess;
 
     public event Action? Changed;
 
@@ -43,7 +49,14 @@ internal sealed class AdminContext(
 
     public MySiteInfo? Site => site.Current;
 
-    public string? ContentLocale => Site?.DefaultLocale;
+    public string? ContentLocale => site.Locale ?? Site?.DefaultLocale;
+
+    // The content locale when it is not the site's default; null otherwise.
+    public string? NamedLocale => site.Locale;
+
+    // The enabled locales of the site, in its order: those a view may be in, and that the badges of a localized type follow.
+    public IReadOnlyList<string> ContentLocales =>
+        [.. (Site?.Locales ?? []).Where(locale => locale.Enabled).OrderBy(locale => locale.Position).Select(locale => locale.Code)];
 
     public IAdminAccess Access => this;
 
@@ -55,6 +68,10 @@ internal sealed class AdminContext(
     public bool SchemaRefused { get; private set; }
 
     public IReadOnlyList<PluginInfo> Plugins { get; private set; } = [];
+
+    // Whether the site answers a search: an index is registered and the search plugin, when it is the one, is not disabled
+    // there (FCMS2211).
+    public bool SearchIndex => AccessInfo?.Search == true && !Plugins.Any(plugin => plugin.Name == "search" && !plugin.Enabled);
 
     // Once per page load; after a failure the next call reads again.
     public Task StartAsync()
@@ -87,10 +104,79 @@ internal sealed class AdminContext(
         });
     }
 
+    // The content locale an address names: one of the site's enabled locales, else the site's default; null keeps the one
+    // there is. The access and the schema of the locale before stay until those of the new one are read, so a page awaits
+    // this before it reads.
+    public Task UseLocaleAsync(string? locale)
+    {
+        if (Status != ShellStatus.Ready || Site is not { } current)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (locale is null)
+        {
+            return _localeReads;
+        }
+
+        var chosen = ContentLocales.FirstOrDefault(code => string.Equals(code, locale, StringComparison.OrdinalIgnoreCase));
+        if (string.Equals(chosen, current.DefaultLocale, StringComparison.OrdinalIgnoreCase))
+        {
+            chosen = null;
+        }
+
+        if (string.Equals(chosen, site.ContentLocale, StringComparison.Ordinal))
+        {
+            return _localeReads;
+        }
+
+        var generation = ++_generation;
+        site.ContentLocale = chosen;
+        return _localeReads = RunAsync(generation, () => SiteReadsAsync(generation));
+    }
+
+    // The locales of the site in which the user may read the type: a grant may be limited to locales, and a read of every
+    // locale leaves out those it may not read, which would otherwise look untranslated. A locale whose access could not be
+    // read counts as readable.
+    public async Task<IReadOnlyList<string>> ReadableLocalesAsync(string type)
+    {
+        var access = await LocaleAccessAsync();
+        return [.. ContentLocales.Where(code => !access.TryGetValue(code, out var found) || found.Types.ContainsKey(type))];
+    }
+
+    // The other locales of the site in which the user may read some type, for a locale that shows none.
+    public async Task<IReadOnlyList<string>> LocalesWithContentAsync()
+    {
+        var access = await LocaleAccessAsync();
+        return [.. ContentLocales.Where(code => code != ContentLocale && access.TryGetValue(code, out var found) && found.Types.Count > 0)];
+    }
+
+    // /me/access in each enabled locale of the site, read once per site when a view first needs it.
+    private Task<IReadOnlyDictionary<string, MyAccessInfo>> LocaleAccessAsync() =>
+        _localeAccess ??= ReadLocaleAccessAsync(site.Site, ContentLocales);
+
+    private async Task<IReadOnlyDictionary<string, MyAccessInfo>> ReadLocaleAccessAsync(string? siteId, IReadOnlyList<string> codes)
+    {
+        var reads = await Task.WhenAll(codes.Select(async code =>
+        {
+            try
+            {
+                return (Code: code, Access: (MyAccessInfo?)await client.GetMyAccessAsync(siteId, code, CancellationToken.None));
+            }
+            catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or TaskCanceledException)
+            {
+                return (Code: code, Access: null);
+            }
+        }));
+        return reads.Where(read => read.Access is not null).ToDictionary(read => read.Code, read => read.Access!, StringComparer.Ordinal);
+    }
+
     public bool Allows(string permission) => AccessInfo is { } access && Holds(access, permission);
 
+    public TypeAccessInfo? ForType(string type) => AccessInfo is { } access && access.Types.TryGetValue(type, out var found) ? found : null;
+
     // /schema shows only the types the user may read; the access says so too, and both are asked.
-    public bool MayRead(string type) => AccessInfo?.Types.ContainsKey(type) == true;
+    public bool MayRead(string type) => ForType(type) is not null;
 
     public bool PluginEnabled(string name) => Plugins.Any(plugin => plugin.Enabled && string.Equals(plugin.Name, name, StringComparison.Ordinal));
 
@@ -101,11 +187,18 @@ internal sealed class AdminContext(
     {
         var me = client.GetMeAsync(CancellationToken.None);
         var sites = client.GetMySitesAsync(CancellationToken.None);
+        var preferences = ReadPreferencesAsync();
         var user = await me;
         var mine = await sites;
+        var chosen = await preferences;
         if (generation != _generation)
         {
             return;
+        }
+
+        if (chosen is not null)
+        {
+            formats.Apply(chosen.DateFormat, chosen.NumberFormat, chosen.TimeZone);
         }
 
         (User, Sites) = (user, mine);
@@ -127,11 +220,24 @@ internal sealed class AdminContext(
         await SiteReadsAsync(generation);
     }
 
-    // From here the client sends the new site, and SiteMetadata drops what it read for the one before. Nothing read for the
-    // site before is kept, so that Allows answers false until the new site's access is read.
+    // A key or a service account has no preferences, and a failed read leaves the browser's formats: neither stops the shell.
+    private async Task<MyPreferences?> ReadPreferencesAsync()
+    {
+        try
+        {
+            return await client.GetMyPreferencesAsync(CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or TaskCanceledException)
+        {
+            return null;
+        }
+    }
+
+    // From here the client sends the new site in its default locale, and SiteMetadata drops what it read for the one before.
+    // Nothing read for the site before is kept, so that Allows answers false until the new site's access is read.
     private void Enter(MySiteInfo chosen)
     {
-        site.Current = chosen;
+        (site.Current, site.ContentLocale, _localeAccess) = (chosen, null, null);
         (AccessInfo, Schema, SchemaRefused, Plugins) = (null, null, false, []);
         Status = ShellStatus.Loading;
         Changed?.Invoke();
@@ -139,7 +245,7 @@ internal sealed class AdminContext(
 
     private async Task SiteReadsAsync(int generation)
     {
-        var access = await client.GetMyAccessAsync(site.Site, CancellationToken.None);
+        var access = await client.GetMyAccessAsync(site.Site, site.Locale, CancellationToken.None);
         var plugins = metadata.GetPluginsAsync(CancellationToken.None);
         SchemaDescription? schema = null;
         var refused = !Holds(access, SchemaRead);

@@ -1,14 +1,31 @@
 @namespace FluentCMS.Admin.Components
 @inherits CmsInputBase<bool>
 
-<FluentCheckbox Id="@InputId"
+@* Read-only is disabled too, for the reason given in CmsSwitch. *@
+<FluentCheckbox @ref="control"
+                Id="@InputId"
                 Label="@Label"
                 Required="@Required"
-                Disabled="@Disabled"
+                Disabled="@(Disabled || ReadOnly)"
+                ReadOnly="@ReadOnly"
                 Value="@Value"
                 ValueChanged="@SetValueAsync"
+                @onfocusout="@OnBlur"
                 Message="@Message"
                 MessageState="@(Invalid ? MessageState.Error : null)"
                 MessageTemplate="@MessageTemplate"
                 Class="cms-target"
                 @attributes="@AriaAttributes" />
+
+@code {
+    private FluentCheckbox? control;
+
+    // FocusAsync focuses the library's element, which takes focus for its control.
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (control is not null)
+        {
+            Element = control.Element;
+        }
+    }
+}

@@ -1,0 +1,20 @@
+@* The editor of a date field, in the user's date format; a date has no time zone, and is sent as yyyy-MM-dd. *@
+@inherits FieldEditorBase
+@inject FormatService Formats
+
+<CmsDatePicker @ref="input"
+               Label="@Label"
+               Help="@Help"
+               Error="@ErrorText"
+               Required="@Required"
+               ReadOnly="@ReadOnly"
+               Culture="@Formats.Culture"
+               Value="@FieldValues.Date(Value)"
+               ValueChanged="@(date => ChangeAsync(FieldValues.FromDate(date)))"
+               OnBlur="@OnBlur" />
+
+@code {
+    private CmsDatePicker? input;
+
+    public override ValueTask FocusAsync() => input?.FocusAsync() ?? ValueTask.CompletedTask;
+}

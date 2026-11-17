@@ -33,6 +33,31 @@ internal static class AdminLabels
         return words.Length == 0 ? name : char.ToUpperInvariant(words[0]) + words[1..];
     }
 
+    // The field's display.label, or its camelCase name as words: publishedOn is "Published on".
+    public static string Field(SchemaFieldDescription field)
+    {
+        ArgumentNullException.ThrowIfNull(field);
+        if (!string.IsNullOrWhiteSpace(field.Display?.Label))
+        {
+            return field.Display.Label;
+        }
+
+        var words = new System.Text.StringBuilder(field.Name.Length + 4);
+        foreach (var character in field.Name)
+        {
+            if (char.IsUpper(character) && words.Length > 0)
+            {
+                words.Append(' ').Append(char.ToLowerInvariant(character));
+            }
+            else
+            {
+                words.Append(character);
+            }
+        }
+
+        return Readable(words.ToString());
+    }
+
     // The first that has a value: the titleField, a text field named title or name, the source field of the slug, the first
     // required text field; else the id.
     public static string Entry(SchemaTypeDescription type, ContentEntry entry)
@@ -49,6 +74,14 @@ internal static class AdminLabels
         }
 
         return entry.Id.ToString("D");
+    }
+
+    // The field a list or a picker reads for the label: the first of the fields above that the type has and does not hide,
+    // since a read leaves a hidden field out, or null when it has none.
+    public static string? LabelField(SchemaTypeDescription type)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+        return Candidates(type).FirstOrDefault(name => type.Fields.Any(field => field.Name == name && !field.Hidden));
     }
 
     private static IEnumerable<string> Candidates(SchemaTypeDescription type)

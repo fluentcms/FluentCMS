@@ -7,11 +7,28 @@ namespace FluentCMS.Admin.Components.Resources;
 // applies to it too. A host that reads them through its own localizer registers another ICmsTextSource.
 internal sealed class CmsStrings : ICmsTextSource
 {
-    public const string GridSortedAscending = nameof(GridSortedAscending);
-    public const string GridSortedDescending = nameof(GridSortedDescending);
+    public const string GridSortedBy = nameof(GridSortedBy);
+    public const string GridSortAscending = nameof(GridSortAscending);
+    public const string GridSortDescending = nameof(GridSortDescending);
+    public const string GridSortThen = nameof(GridSortThen);
+    public const string GridSortLevel = nameof(GridSortLevel);
+    public const string GridSortHint = nameof(GridSortHint);
+    public const string GridSelectAll = nameof(GridSelectAll);
+    public const string GridSelectRow = nameof(GridSelectRow);
+    public const string GridLoading = nameof(GridLoading);
+    public const string GridEmpty = nameof(GridEmpty);
     public const string GridRowsSelected = nameof(GridRowsSelected);
     public const string DropZoneChoose = nameof(DropZoneChoose);
     public const string Close = nameof(Close);
+    public const string InputCharacterCount = nameof(InputCharacterCount);
+    public const string InputDateInvalid = nameof(InputDateInvalid);
+    public const string InputDateTooEarly = nameof(InputDateTooEarly);
+    public const string InputDateTooLate = nameof(InputDateTooLate);
+    public const string InputTimeInvalid = nameof(InputTimeInvalid);
+    public const string InputNumberInvalid = nameof(InputNumberInvalid);
+    public const string InputWholeNumberInvalid = nameof(InputWholeNumberInvalid);
+    public const string InputNumberNotNegative = nameof(InputNumberNotNegative);
+    public const string SelectNone = nameof(SelectNone);
 
     private static readonly ResourceManager Manager = new("FluentCMS.Admin.Components.Resources.CmsStrings", typeof(CmsStrings).Assembly);
 

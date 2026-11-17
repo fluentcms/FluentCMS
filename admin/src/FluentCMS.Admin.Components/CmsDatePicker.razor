@@ -1,28 +1,65 @@
 @namespace FluentCMS.Admin.Components
 @inherits CmsInputBase<DateOnly?>
+@inject ICmsTextSource Texts
 
-@* Native, for the reason given in CmsTextInput; the browser's own picker is keyboard operable and follows the culture. *@
+@* A text input in the culture's short date, not the browser's date input, which shows the browser's locale whatever the
+   user's culture (spec 4.17). An example date is the placeholder; the ISO form is read too. *@
 <div class="cms-field">
     @LabelTemplate
-    <input id="@InputId"
-           class="cms-input"
-           type="date"
-           value="@Value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
-           min="@Min?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
-           max="@Max?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+    <input @ref="Element"
+           id="@InputId"
+           class="cms-input cms-input-date"
+           type="text"
+           value="@Value?.ToString("d", ShownCulture)"
+           placeholder="@Example"
+           autocomplete="off"
            disabled="@Disabled"
-           @onchange="@(args => SetValueAsync(Parse(args.Value as string)))"
+           readonly="@ReadOnly"
+           @onchange="@(args => ChangeAsync(args.Value as string))"
+           @onblur="@OnBlur"
            @attributes="@AriaAttributes" />
     @MessageTemplate
 </div>
 
 @code {
+    private static readonly DateOnly ExampleDate = new(2026, 12, 31);
+
     [Parameter]
     public DateOnly? Min { get; set; }
 
     [Parameter]
     public DateOnly? Max { get; set; }
 
-    private static DateOnly? Parse(string? value) =>
-        DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ? date : null;
+    // The culture whose date format is shown and read; the current culture when null.
+    [Parameter]
+    public CultureInfo? Culture { get; set; }
+
+    private CultureInfo ShownCulture => Culture ?? CultureInfo.CurrentCulture;
+
+    private string Example => ExampleDate.ToString("d", ShownCulture);
+
+    private Task ChangeAsync(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            InputError = null;
+            return SetValueAsync(null);
+        }
+
+        if (Parse(text.Trim(), ShownCulture) is not { } date)
+        {
+            InputError = CmsStrings.Format(Texts.Text(CmsStrings.InputDateInvalid), Example);
+            return Task.CompletedTask;
+        }
+
+        InputError = date < Min ? CmsStrings.Format(Texts.Text(CmsStrings.InputDateTooEarly), Min.Value.ToString("d", ShownCulture))
+            : date > Max ? CmsStrings.Format(Texts.Text(CmsStrings.InputDateTooLate), Max.Value.ToString("d", ShownCulture))
+            : null;
+        return InputError is null ? SetValueAsync(date) : Task.CompletedTask;
+    }
+
+    internal static DateOnly? Parse(string text, CultureInfo culture) =>
+        DateOnly.TryParseExact(text, [culture.DateTimeFormat.ShortDatePattern, "yyyy-MM-dd"], culture, DateTimeStyles.AllowWhiteSpaces, out var exact) ? exact
+        : DateOnly.TryParse(text, culture, DateTimeStyles.AllowWhiteSpaces, out var loose) ? loose
+        : null;
 }

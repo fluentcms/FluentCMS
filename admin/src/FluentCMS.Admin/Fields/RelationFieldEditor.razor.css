@@ -1,0 +1,49 @@
+.relation-field {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-inline-size: 0;
+}
+
+.relation-field-empty {
+    margin: 0 0 var(--cms-space-s);
+    color: var(--cms-color-text-muted);
+}
+
+.relation-field-items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-xs);
+    margin: 0 0 var(--cms-space-s);
+    padding: 0;
+    list-style: none;
+}
+
+.relation-field-item {
+    display: flex;
+    align-items: center;
+    gap: var(--cms-space-xs);
+    padding: var(--cms-space-xs);
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-s);
+}
+
+.relation-field-item[draggable="true"] {
+    cursor: grab;
+}
+
+.relation-field-entry {
+    flex: 1;
+    min-inline-size: 0;
+}
+
+.relation-field-drop {
+    border-color: var(--cms-color-accent);
+    border-block-start-width: 3px;
+}
+
+.relation-field-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cms-space-s);
+}
