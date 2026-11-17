@@ -52,6 +52,20 @@ public abstract class CmsInputBase<TValue> : ComponentBase
     public EventCallback OnBlur { get; set; }
 
     /// <summary>
+    /// Gets or sets the identifier of an element outside the input that describes it too, such as the error of the group
+    /// of checkboxes it is one of.
+    /// </summary>
+    [Parameter]
+    public string? DescribedBy { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the input is marked invalid for an error shown elsewhere, such as under its group, without a
+    /// message of its own.
+    /// </summary>
+    [Parameter]
+    public bool MarkedInvalid { get; set; }
+
+    /// <summary>
     /// Gets or sets the language of the value, as <c>lang</c> on the input element only, so that the label, help and error
     /// stay in the interface's language; the content locale of a field of an entry. Used by the inputs that take text.
     /// </summary>
@@ -128,7 +142,7 @@ public abstract class CmsInputBase<TValue> : ComponentBase
         {
             var attributes = new Dictionary<string, object>(StringComparer.Ordinal);
 
-            var describedBy = string.Join(' ', new[] { MessageId, AdditionalDescriptionId }.Where(id => id is not null));
+            var describedBy = string.Join(' ', new[] { MessageId, AdditionalDescriptionId, DescribedBy }.Where(id => id is not null));
             if (describedBy.Length > 0)
             {
                 attributes["aria-describedby"] = describedBy;
@@ -139,7 +153,7 @@ public abstract class CmsInputBase<TValue> : ComponentBase
                 attributes["aria-required"] = "true";
             }
 
-            if (Invalid)
+            if (Invalid || MarkedInvalid)
             {
                 attributes["aria-invalid"] = "true";
             }

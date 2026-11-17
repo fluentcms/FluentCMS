@@ -29,6 +29,9 @@
 @code {
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true, NewLine = "\n" };
 
+    // A name twice in one object is refused, as the server refuses it; System.Text.Json would otherwise keep the last.
+    private static readonly JsonDocumentOptions Strict = new() { AllowDuplicateProperties = false };
+
     private CmsTextArea? input;
     private string text = "";
     private string? parseError;
@@ -41,7 +44,7 @@
 
     protected override void OnParametersSet()
     {
-        if (!started || !JsonNode.DeepEquals(Value, shown))
+        if (!started || !Same(Value, shown))
         {
             started = true;
             (text, shown, parseError) = (Value is null ? "" : Value.ToJsonString(Indented), Value?.DeepClone(), null);
@@ -58,17 +61,40 @@
             return ChangeAsync(null);
         }
 
+        JsonNode? node;
         try
         {
-            var node = JsonNode.Parse(text);
-            parseError = null;
-            shown = node?.DeepClone();
-            return ChangeAsync(node);
+            // Written once here, so that what cannot be written, such as a lone surrogate (an InvalidOperationException), never
+            // reaches the form.
+            node = JsonNode.Parse(text, documentOptions: Strict);
+            _ = node?.ToJsonString();
         }
         catch (JsonException exception)
         {
-            parseError = L["Content.Field.JsonInvalid", (exception.LineNumber ?? 0) + 1];
+            parseError = exception.LineNumber is { } line ? L["Content.Field.JsonInvalid", line + 1] : L["Content.Field.JsonInvalidNoLine"];
             return Task.CompletedTask;
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+        {
+            parseError = L["Content.Field.JsonInvalidNoLine"];
+            return Task.CompletedTask;
+        }
+
+        parseError = null;
+        shown = node?.DeepClone();
+        return ChangeAsync(node);
+    }
+
+    // A value DeepEquals cannot compare, such as one with a name twice or a lone surrogate, is taken as a new value.
+    private static bool Same(JsonNode? value, JsonNode? other)
+    {
+        try
+        {
+            return JsonNode.DeepEquals(value, other);
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
+        {
+            return false;
         }
     }
 

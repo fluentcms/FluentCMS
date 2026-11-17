@@ -43,6 +43,7 @@ public sealed class ListCellTests : AdminTestContext
 
         Cell("decimal", JsonValue.Create(1234567.5m)).Find("span").TextContent.ShouldBe(1234567.5m.ToString("#,0.#", Formats.NumberCulture));
         Cell("integer", JsonValue.Create(42)).Find("span").TextContent.ShouldBe("42");
+        Cell("decimal", null).Find("span").TextContent.ShouldBeEmpty();
     }
 
     [Fact]
@@ -76,10 +77,24 @@ public sealed class ListCellTests : AdminTestContext
 
         time.GetAttribute("datetime").ShouldBe("2026-11-15");
         time.TextContent.ShouldBe(new DateOnly(2026, 11, 15).ToString("d", Formats.Culture));
+        Cell("date", null).FindAll("time").ShouldBeEmpty();
+    }
+
+    [Theory]
+    [MemberData(nameof(Cultures))]
+    public void ADateTimeIsInTheUsersFormatAndTimeZone(string pseudo)
+    {
+        Begin(pseudo);
+        Formats.Apply(null, null, "Asia/Tokyo");
+
+        var time = Cell("dateTime", JsonValue.Create("2026-11-15T20:00:00Z")).Find("time");
+
+        time.TextContent.ShouldBe(new DateTime(2026, 11, 16, 5, 0, 0).ToString("g", Formats.Culture));
+        Cell("dateTime", null).FindAll("time").ShouldBeEmpty();
     }
 
     [Fact]
-    public void ADateTimeIsInTheUsersTimeZone()
+    public void ADateTimeFollowsTheDateFormatOfThePreferences()
     {
         Begin(PseudoCulture.LeftToRight);
         Formats.Apply("de-DE", null, "Asia/Tokyo");
@@ -87,32 +102,48 @@ public sealed class ListCellTests : AdminTestContext
         Cell("dateTime", JsonValue.Create("2026-11-15T20:00:00Z")).Find("time").TextContent.ShouldBe("16.11.2026 05:00");
     }
 
-    [Fact]
-    public void ASelectShowsItsValues()
+    [Theory]
+    [MemberData(nameof(Cultures))]
+    public void ASelectShowsItsValues(string pseudo)
     {
-        Begin(PseudoCulture.LeftToRight);
+        Begin(pseudo);
 
         Cell("select", JsonValue.Create("news")).Find("span").TextContent.ShouldBe("news");
         Cell("select", new JsonArray("a", "b")).Find("span").TextContent.ShouldBe("a, b");
+        Cell("select", null).Find("span").TextContent.ShouldBeEmpty();
     }
 
-    [Fact]
-    public void TextIsInTheLanguageAndDirectionOfTheEntryAndAnEmailIsLeftToRight()
+    [Theory]
+    [MemberData(nameof(Cultures))]
+    public void TextIsInTheLanguageAndDirectionOfTheEntryAndAnEmailOrUrlIsLeftToRight(string pseudo)
     {
-        Begin(PseudoCulture.LeftToRight);
+        Begin(pseudo);
 
         var text = Cell("text", JsonValue.Create("مرحبا"), "ar").Find("span");
         (text.GetAttribute("lang"), text.GetAttribute("dir")).ShouldBe(("ar", "rtl"));
         Cell("longText", JsonValue.Create("long"), "en").Find("span").ClassList.ShouldContain("list-cell-long");
 
-        var email = Cell("email", JsonValue.Create("ada@example.com"), "ar").Find("span");
-        (email.HasAttribute("lang"), email.GetAttribute("dir")).ShouldBe((false, "ltr"));
+        var slug = Cell("slug", JsonValue.Create("مرحبا"), "ar").Find("span");
+        (slug.GetAttribute("lang"), slug.GetAttribute("dir")).ShouldBe(("ar", "rtl"));
+        Cell("text", JsonValue.Create("hello"), "en").Find("span").GetAttribute("dir").ShouldBe("ltr");
+
+        foreach (var type in new[] { "email", "url" })
+        {
+            var address = Cell(type, JsonValue.Create("https://example.com"), "ar").Find("span");
+            (address.HasAttribute("lang"), address.GetAttribute("dir")).ShouldBe((false, "ltr"), type);
+        }
+
+        foreach (var type in new[] { "text", "longText", "slug", "email", "url" })
+        {
+            Cell(type, null, "en").Find("span").TextContent.ShouldBeEmpty(type);
+        }
     }
 
-    [Fact]
-    public void JsonIsOnOneLine()
+    [Theory]
+    [MemberData(nameof(Cultures))]
+    public void JsonIsOnOneLine(string pseudo)
     {
-        Begin(PseudoCulture.LeftToRight);
+        Begin(pseudo);
 
         Cell("json", new JsonObject { ["a"] = new JsonArray(1, 2) }).Find("code").TextContent.ShouldBe("""{"a":[1,2]}""");
         Cell("json", null).FindAll("code").ShouldBeEmpty();

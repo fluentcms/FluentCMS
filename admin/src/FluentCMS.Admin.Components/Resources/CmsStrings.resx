@@ -75,6 +75,9 @@
   <data name="InputNumberNotNegative" xml:space="preserve">
     <value>Enter a number of zero or more.</value>
   </data>
+  <data name="SelectNone" xml:space="preserve">
+    <value>None</value>
+  </data>
   <data name="Tabs_MoreItems" xml:space="preserve">
     <value>View {0} more tabs</value>
     <comment>A text of the library under the set, under the library's key.</comment>

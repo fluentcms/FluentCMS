@@ -1,6 +1,7 @@
 @* The editor of a slug field: while it follows, the slug is made from its source field (settings.source) as the user types
    there. It stops following when the user types into it or turns on "Keep this slug", and follows again when that is
-   turned off. An existing slug that is not the one its source gives is kept from the start. *@
+   turned off. An entry that has a slug keeps it, so that a new title does not move a published URL; and the first render
+   raises nothing, so that a source with a default value does not make a new form dirty. *@
 @inherits FieldEditorBase
 @inject IStringLocalizer<AdminResources> L
 
@@ -36,7 +37,7 @@
 
     private string? Source => FieldValues.Text(Field.Settings["source"]);
 
-    private string? SourceText => Source is { } source ? FieldValues.Text(Document?[source]) : null;
+    private string? SourceText => Source is { } source ? FieldValues.Text(Document?.GetValueOrDefault(source)) : null;
 
     private string FromSource => Slugs.Slugify(SourceText ?? "", Field.Validation.MaxLength);
 
@@ -48,8 +49,8 @@
         {
             started = true;
             var slug = FieldValues.Text(Value);
-            follows = Source is not null && (string.IsNullOrEmpty(slug) || slug == FromSource);
-            followed = string.IsNullOrEmpty(slug) ? null : SourceText;
+            follows = Source is not null && string.IsNullOrEmpty(slug);
+            followed = SourceText;
         }
 
         await FollowAsync();

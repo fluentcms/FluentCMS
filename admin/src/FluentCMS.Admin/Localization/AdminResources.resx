@@ -1031,6 +1031,12 @@
   <data name="Content.Field.JsonInvalid" xml:space="preserve">
     <value>The JSON does not parse at line {0}. It is not saved until it does.</value>
   </data>
+  <data name="Content.Field.JsonInvalidNoLine" xml:space="preserve">
+    <value>The JSON does not parse. It is not saved until it does.</value>
+  </data>
+  <data name="Content.Field.NotAnOption" xml:space="preserve">
+    <value>{0} (no longer an option)</value>
+  </data>
   <data name="Content.Cell.Yes" xml:space="preserve">
     <value>Yes</value>
   </data>

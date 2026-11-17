@@ -1,5 +1,6 @@
 @namespace FluentCMS.Admin.Components
 @inherits CmsInputBase<string>
+@inject ICmsTextSource Texts
 
 @* Native, for the reason given in CmsTextInput. A native select has no read-only state, so a read-only one is disabled. *@
 <div class="cms-field">
@@ -16,7 +17,7 @@
             @attributes="@AriaAttributes">
         @if (Placeholder is not null || Clearable || !Options.Any(option => option.Value == Value))
         {
-            <option value="">@Placeholder</option>
+            <option value="">@(Placeholder ?? (Clearable ? Texts.Text(CmsStrings.SelectNone) : null))</option>
         }
         @foreach (var option in Options)
         {

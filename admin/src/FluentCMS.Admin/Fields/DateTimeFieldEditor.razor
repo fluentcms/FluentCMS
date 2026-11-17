@@ -1,10 +1,16 @@
 @* The editor of a date and time field: a date and a time in the user's formats and time zone, sent as the instant in UTC.
-   A time is taken once a date is chosen; a date without a time is at midnight. Seconds show when the value has them. *@
+   A time is taken once a date is chosen; a date without a time is at midnight. Seconds show when the value has them. OnBlur
+   is raised once focus leaves both inputs. *@
 @inherits FieldEditorBase
 @inject FormatService Formats
 @inject IStringLocalizer<AdminResources> L
 
-<fieldset @ref="group" class="cms-field field-moment" tabindex="-1" aria-describedby="@zoneId">
+<fieldset @ref="group"
+          class="cms-field field-moment"
+          tabindex="-1"
+          aria-describedby="@zoneId"
+          @onfocusin="@focus.Entered"
+          @onfocusout="@(() => focus.LeftAsync(OnBlur))">
     <legend class="cms-field-label">
         @Label
         @if (Required)
@@ -21,8 +27,7 @@
                        ReadOnly="@ReadOnly"
                        Culture="@Formats.Culture"
                        Value="@Day"
-                       ValueChanged="@ChangeDayAsync"
-                       OnBlur="@OnBlur" />
+                       ValueChanged="@ChangeDayAsync" />
         <CmsTimePicker Label="@L["Content.Field.Time"]"
                        Error="@timeError"
                        Required="@Required"
@@ -30,14 +35,14 @@
                        Culture="@Formats.Culture"
                        Seconds="@(Time is { Second: not 0 })"
                        Value="@Time"
-                       ValueChanged="@ChangeTimeAsync"
-                       OnBlur="@OnBlur" />
+                       ValueChanged="@ChangeTimeAsync" />
     </div>
     <span id="@zoneId" class="cms-field-message">@L["Content.Field.TimeZone", Formats.TimeZone.Id]</span>
 </fieldset>
 
 @code {
     private readonly string zoneId = ElementIds.Next("field-zone");
+    private readonly GroupFocus focus = new();
     private ElementReference group;
     private CmsDatePicker? dateInput;
     private string? timeError;

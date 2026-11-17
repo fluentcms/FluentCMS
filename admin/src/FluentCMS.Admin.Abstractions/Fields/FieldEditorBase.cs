@@ -53,11 +53,12 @@ public abstract class FieldEditorBase : ComponentBase
     public string TextDirection { get; set; } = LeftToRight;
 
     /// <summary>
-    /// Gets or sets the values of every field of the form's document, which an editor reads another field from, such as a
-    /// slug its source; an editor changes only its own value, through <see cref="ValueChanged"/>.
+    /// Gets or sets the values of every field of the form's document by field name, which an editor reads another field
+    /// from, such as a slug its source. The nodes are the form's own: an editor must not change them or add them to another
+    /// node, and changes only its own value, through <see cref="ValueChanged"/>.
     /// </summary>
     [Parameter]
-    public JsonObject? Document { get; set; }
+    public IReadOnlyDictionary<string, JsonNode?>? Document { get; set; }
 
     /// <summary>Gets or sets the callback the editor raises when focus leaves its input, such as for validation as the user leaves a field.</summary>
     [Parameter]

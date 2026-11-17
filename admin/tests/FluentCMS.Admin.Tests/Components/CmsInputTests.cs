@@ -443,6 +443,7 @@ public sealed class CmsInputTests : ComponentTestContext
             .Add(x => x.ValueChanged, v => value = v));
 
         select.FindAll("option")[0].GetAttribute("value").ShouldBe(string.Empty);
+        select.FindAll("option")[0].TextContent.ShouldBe("None");
         select.Find("select").Change("");
 
         value.ShouldBeNull();

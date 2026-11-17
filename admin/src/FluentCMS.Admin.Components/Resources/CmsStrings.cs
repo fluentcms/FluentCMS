@@ -28,6 +28,7 @@ internal sealed class CmsStrings : ICmsTextSource
     public const string InputNumberInvalid = nameof(InputNumberInvalid);
     public const string InputWholeNumberInvalid = nameof(InputWholeNumberInvalid);
     public const string InputNumberNotNegative = nameof(InputNumberNotNegative);
+    public const string SelectNone = nameof(SelectNone);
 
     private static readonly ResourceManager Manager = new("FluentCMS.Admin.Components.Resources.CmsStrings", typeof(CmsStrings).Assembly);
 

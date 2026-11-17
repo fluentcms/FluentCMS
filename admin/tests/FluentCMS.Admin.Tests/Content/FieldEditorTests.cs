@@ -8,6 +8,7 @@ using FluentCMS.Admin.Content;
 using FluentCMS.Admin.Fields;
 using FluentCMS.Admin.Localization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -27,7 +28,7 @@ public sealed class FieldEditorTests : AdminTestContext
         get
         {
             var data = new TheoryData<string, string>();
-            foreach (var type in CoreTypes)
+            foreach (var type in CoreTypes.Append("multipleSelect"))
             {
                 data.Add(type, PseudoCulture.LeftToRight);
                 data.Add(type, PseudoCulture.RightToLeft);
@@ -340,10 +341,12 @@ public sealed class FieldEditorTests : AdminTestContext
     public void ASlugFollowsItsSourceUntilItIsTypedInto()
     {
         Begin(PseudoCulture.LeftToRight);
-        var document = new JsonObject { ["title"] = "Hello World" };
+        var document = new JsonObject { ["title"] = "" };
         JsonNode? value = null;
         var editor = RenderEditor(Slug(), document: document, changed: changed => value = changed);
 
+        document["title"] = "Hello World";
+        editor.Render(p => p.Add(x => x.Document, document));
         value!.GetValue<string>().ShouldBe("hello-world");
 
         document["title"] = "Crème brûlée, again!";
@@ -361,16 +364,16 @@ public sealed class FieldEditorTests : AdminTestContext
     public void ASlugIsKeptWhileLockedAndFollowsAgainOnceUnlocked()
     {
         Begin(PseudoCulture.LeftToRight);
-        var document = new JsonObject { ["title"] = "First" };
-        JsonNode? value = JsonValue.Create("first");
-        var editor = RenderEditor(Slug(), value, document: document, changed: changed => value = changed);
+        var document = new JsonObject { ["title"] = "" };
+        JsonNode? value = null;
+        var editor = RenderEditor(Slug(), document: document, changed: changed => value = changed);
         var keep = editor.FindComponent<CmsSwitch>();
 
         keep.Instance.Value.ShouldBeFalse();
         keep.InvokeAsync(() => keep.Instance.ValueChanged.InvokeAsync(true));
         document["title"] = "Second";
         editor.Render(p => p.Add(x => x.Value, value).Add(x => x.Document, document));
-        value!.GetValue<string>().ShouldBe("first");
+        value.ShouldBeNull();
 
         keep = editor.FindComponent<CmsSwitch>();
         keep.InvokeAsync(() => keep.Instance.ValueChanged.InvokeAsync(false));
@@ -378,15 +381,115 @@ public sealed class FieldEditorTests : AdminTestContext
         value!.GetValue<string>().ShouldBe("second");
     }
 
-    [Fact]
-    public void ASlugThatIsNotItsSourcesIsKeptFromTheStart()
+    // A published URL does not move with a new title, whether or not the slug was made from the old one.
+    [Theory]
+    [InlineData("hello")]
+    [InlineData("custom")]
+    public void AnEntryWithASlugKeepsItWhenItsSourceChanges(string slug)
     {
         Begin(PseudoCulture.LeftToRight);
         var raised = false;
-        var editor = RenderEditor(Slug(), JsonValue.Create("custom"), document: new JsonObject { ["title"] = "Hello" }, changed: _ => raised = true);
+        var document = new JsonObject { ["title"] = "Hello" };
+        var editor = RenderEditor(Slug(), JsonValue.Create(slug), document: document, changed: _ => raised = true);
+
+        document["title"] = "Hello again";
+        editor.Render(p => p.Add(x => x.Document, document));
 
         raised.ShouldBeFalse();
         editor.FindComponent<CmsSwitch>().Instance.Value.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ANewEntryWhoseSourceHasADefaultIsNotChangedByItsFirstRender()
+    {
+        Begin(PseudoCulture.LeftToRight);
+        var raised = false;
+
+        RenderEditor(Slug(), document: new JsonObject { ["title"] = "Default title" }, changed: _ => raised = true);
+
+        raised.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void TheDocumentIsReadOnly()
+    {
+        Begin(PseudoCulture.LeftToRight);
+        var editor = RenderEditor(Slug(), document: new JsonObject { ["title"] = "x" });
+
+        editor.FindComponent<SlugFieldEditor>().Instance.Document.ShouldBeAssignableTo<IReadOnlyDictionary<string, JsonNode?>>();
+        (editor.FindComponent<SlugFieldEditor>().Instance.Document as IDictionary<string, JsonNode?>)!.IsReadOnly.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("""{"a":1,"a":2}""")]
+    [InlineData("""{"x":"\udc00"}""")]
+    public void JsonThatTheServerWouldRefuseIsNotSentAndDoesNotBreakTheEditor(string typed)
+    {
+        Begin(PseudoCulture.LeftToRight);
+        var raised = 0;
+        var editor = RenderEditor(FieldOf("json"), new JsonObject { ["a"] = 1 }, changed: _ => raised++);
+
+        editor.Find("textarea").Input(typed);
+        editor.Render(p => p.Add(x => x.Value, new JsonObject { ["a"] = 1 }));
+
+        raised.ShouldBe(0);
+        editor.Find("textarea").GetAttribute("aria-invalid").ShouldBe("true");
+        editor.Find(".cms-field-message-error").TextContent.ShouldBeOneOf(Text("Content.Field.JsonInvalid", 1), Text("Content.Field.JsonInvalidNoLine"));
+    }
+
+    [Fact]
+    public void AChosenValueTheOptionsNoLongerListIsShownAndCanBeTakenOff()
+    {
+        Begin(PseudoCulture.LeftToRight);
+        JsonNode? value = new JsonArray("a", "gone");
+        var editor = RenderEditor(Select(true, "a", "b"), value, changed: changed => value = changed);
+
+        var boxes = editor.FindComponents<CmsCheckbox>();
+        boxes.Select(box => box.Instance.Label).ShouldBe(["a", "b", Text("Content.Field.NotAnOption", "gone")]);
+        boxes[2].Instance.Value.ShouldBeTrue();
+        boxes[2].InvokeAsync(() => boxes[2].Instance.ValueChanged.InvokeAsync(false));
+
+        value!.ToJsonString().ShouldBe("""["a"]""");
+    }
+
+    [Fact]
+    public void ASingleValueTheOptionsNoLongerListIsShownAsItsOption()
+    {
+        Begin(PseudoCulture.LeftToRight);
+        var editor = RenderEditor(Select(false, "a", "b"), JsonValue.Create("gone"));
+
+        editor.FindAll("option").Select(option => option.TextContent).ShouldBe([Services.GetRequiredService<ICmsTextSource>().GetText("SelectNone"), "a", "b", Text("Content.Field.NotAnOption", "gone")]);
+        editor.Find("option[selected]").GetAttribute("value").ShouldBe("gone");
+    }
+
+    [Fact]
+    public async Task FocusMovingInsideADateTimeIsNoBlurAndLeavingItIs()
+    {
+        Begin(PseudoCulture.LeftToRight);
+        var left = 0;
+        var editor = RenderEditor(FieldOf("dateTime"), parameters: new() { [nameof(FieldEditorBase.OnBlur)] = EventCallback.Factory.Create(this, () => left++) });
+
+        // As the browser does, focusin on the next input comes before the handler of focusout has finished.
+        var leaving = editor.Find("fieldset").FocusOutAsync(new FocusEventArgs());
+        await editor.Find("fieldset").FocusInAsync(new FocusEventArgs());
+        await leaving;
+        left.ShouldBe(0);
+
+        editor.Find("fieldset").FocusOut();
+
+        editor.WaitForAssertion(() => left.ShouldBe(1));
+    }
+
+    [Fact]
+    public void LeavingTheCheckboxesOfAMultipleSelectIsOneBlur()
+    {
+        Begin(PseudoCulture.LeftToRight);
+        var left = 0;
+        var editor = RenderEditor(Select(true, "a", "b"), parameters: new() { [nameof(FieldEditorBase.OnBlur)] = EventCallback.Factory.Create(this, () => left++) });
+
+        editor.Find("fieldset").FocusOut();
+
+        editor.WaitForAssertion(() => left.ShouldBe(1));
     }
 
     [Fact]
@@ -474,6 +577,7 @@ public sealed class FieldEditorTests : AdminTestContext
     private SchemaFieldDescription FieldOf(string type) => type switch
     {
         "select" => Select(false, Data("news"), Data("video")),
+        "multipleSelect" => Select(true, Data("news"), Data("video")),
         "slug" => Slug(),
         _ => Field("field", type),
     };
@@ -554,7 +658,7 @@ public sealed class FieldEditorTests : AdminTestContext
             builder.AddComponentParameter(4, nameof(FieldEditorBase.ReadOnly), ReadOnly);
             builder.AddComponentParameter(5, nameof(FieldEditorBase.ContentLocale), Locale);
             builder.AddComponentParameter(6, nameof(FieldEditorBase.TextDirection), Locale is null ? FieldEditorBase.LeftToRight : TextDirection.Of(Locale));
-            builder.AddComponentParameter(7, nameof(FieldEditorBase.Document), Document);
+            builder.AddComponentParameter(7, nameof(FieldEditorBase.Document), Document is null ? null : new System.Collections.ObjectModel.ReadOnlyDictionary<string, JsonNode?>(Document));
             var sequence = 8;
             foreach (var (name, parameter) in Parameters)
             {

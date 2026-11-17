@@ -19,9 +19,9 @@ internal enum ShellStatus
     Failed,
 }
 
-// What the shell reads after sign-in (spec 4.1): GET /me, /me/sites and /me/preferences, whose formats apply from then on, then for the chosen site /me/access, /schema and
-// /plugins. The site chosen last is kept for the tab, so that a reload stays in it. A read that a later switch overtook is
-// dropped.
+// What the shell reads after sign-in (spec 4.1): GET /me, /me/sites and /me/preferences, whose formats apply from then on,
+// then for the chosen site /me/access, /schema and /plugins. The site chosen last is kept for the tab, so that a reload stays
+// in it. A read that a later switch overtook is dropped.
 internal sealed class AdminContext(
     ManagementClient client,
     SiteMetadata metadata,

@@ -171,6 +171,8 @@ FluentCMS.Admin.Components.CmsIconName.Warning = 15 -> FluentCMS.Admin.Component
 FluentCMS.Admin.Components.CmsInputBase<TValue>
 FluentCMS.Admin.Components.CmsInputBase<TValue>.AriaAttributes.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>!
 FluentCMS.Admin.Components.CmsInputBase<TValue>.CmsInputBase() -> void
+FluentCMS.Admin.Components.CmsInputBase<TValue>.DescribedBy.get -> string?
+FluentCMS.Admin.Components.CmsInputBase<TValue>.DescribedBy.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Dir.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Dir.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Disabled.get -> bool
@@ -193,6 +195,8 @@ FluentCMS.Admin.Components.CmsInputBase<TValue>.Label.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.LabelTemplate.get -> Microsoft.AspNetCore.Components.RenderFragment!
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Lang.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Lang.set -> void
+FluentCMS.Admin.Components.CmsInputBase<TValue>.MarkedInvalid.get -> bool
+FluentCMS.Admin.Components.CmsInputBase<TValue>.MarkedInvalid.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Message.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.MessageId.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.MessageTemplate.get -> Microsoft.AspNetCore.Components.RenderFragment?

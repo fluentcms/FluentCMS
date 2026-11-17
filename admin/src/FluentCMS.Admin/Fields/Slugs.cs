@@ -5,7 +5,7 @@ namespace FluentCMS.Admin.Fields;
 
 // The slug the server derives from a source field (SlugFieldType.Slugify of FluentCMS.Core), so that the slug shown while
 // the user types is the one a save without it would get. The admin is a client of the API only, so it keeps its own copy;
-// SlugsTests pins the cases.
+// FieldEditorTests.ASlugIsMadeAsTheServerMakesIt pins the cases.
 internal static class Slugs
 {
     private static readonly Dictionary<char, string> Transliterations = new()

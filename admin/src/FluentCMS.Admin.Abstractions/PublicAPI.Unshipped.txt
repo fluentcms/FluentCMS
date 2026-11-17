@@ -453,7 +453,7 @@ FluentCMS.Admin.Fields.FieldEditorBase
 FluentCMS.Admin.Fields.FieldEditorBase.ChangeAsync(System.Text.Json.Nodes.JsonNode? value) -> System.Threading.Tasks.Task!
 FluentCMS.Admin.Fields.FieldEditorBase.ContentLocale.get -> string?
 FluentCMS.Admin.Fields.FieldEditorBase.ContentLocale.set -> void
-FluentCMS.Admin.Fields.FieldEditorBase.Document.get -> System.Text.Json.Nodes.JsonObject?
+FluentCMS.Admin.Fields.FieldEditorBase.Document.get -> System.Collections.Generic.IReadOnlyDictionary<string!, System.Text.Json.Nodes.JsonNode?>?
 FluentCMS.Admin.Fields.FieldEditorBase.Document.set -> void
 FluentCMS.Admin.Fields.FieldEditorBase.ErrorText.get -> string?
 FluentCMS.Admin.Fields.FieldEditorBase.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.ApiProblemError!>!
