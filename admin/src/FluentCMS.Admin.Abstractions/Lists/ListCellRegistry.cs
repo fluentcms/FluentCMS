@@ -37,5 +37,6 @@ public sealed class ListCellRegistry
     public Type CellFor(string fieldType) =>
         fieldType is not null && _cells.TryGetValue(fieldType, out var registration) ? registration.Cell : typeof(TextListCell);
 
-    private sealed record Registration([property: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type Cell);
+    private sealed record Registration(
+        [property: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)][param: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type Cell);
 }

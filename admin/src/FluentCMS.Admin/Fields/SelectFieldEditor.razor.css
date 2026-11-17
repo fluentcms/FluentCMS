@@ -1,0 +1,21 @@
+.field-choices {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-inline-size: 0;
+}
+
+.field-choices-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-xs);
+}
+
+/* From five options, the list scrolls rather than push the form down. */
+.field-choices-many .field-choices-list {
+    max-block-size: 14rem;
+    overflow-y: auto;
+    padding: var(--cms-space-xs);
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-s);
+}

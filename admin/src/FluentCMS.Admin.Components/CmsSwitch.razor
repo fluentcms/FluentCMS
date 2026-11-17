@@ -1,13 +1,16 @@
 @namespace FluentCMS.Admin.Components
 @inherits CmsInputBase<bool>
 
+@* The library's switch has no read-only state of its own that stops a click, so a read-only one is disabled too. *@
 <FluentSwitch @ref="control"
               Id="@InputId"
               Label="@Label"
               Required="@Required"
-              Disabled="@Disabled"
+              Disabled="@(Disabled || ReadOnly)"
+              ReadOnly="@ReadOnly"
               Value="@Value"
               ValueChanged="@SetValueAsync"
+              @onfocusout="@OnBlur"
               Message="@Message"
               MessageState="@(Invalid ? MessageState.Error : null)"
               MessageTemplate="@MessageTemplate"

@@ -1,0 +1,5 @@
+@* The cell of a boolean field: yes or no in words, and nothing for no value. *@
+@inherits ListCellBase
+@inject IStringLocalizer<AdminResources> L
+
+<span>@(FieldValues.Boolean(Value) switch { true => L["Content.Cell.Yes"].Value, false => L["Content.Cell.No"].Value, null => null })</span>

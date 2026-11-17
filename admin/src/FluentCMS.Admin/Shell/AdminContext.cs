@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Interop;
+using FluentCMS.Admin.Localization;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Admin.Shell;
@@ -18,13 +19,14 @@ internal enum ShellStatus
     Failed,
 }
 
-// What the shell reads after sign-in (spec 4.1): GET /me and /me/sites, then for the chosen site /me/access, /schema and
-// /plugins. The site chosen last is kept for the tab, so that a reload stays in it. A read that a later switch overtook is
-// dropped.
+// What the shell reads after sign-in (spec 4.1): GET /me, /me/sites and /me/preferences, whose formats apply from then on,
+// then for the chosen site /me/access, /schema and /plugins. The site chosen last is kept for the tab, so that a reload stays
+// in it. A read that a later switch overtook is dropped.
 internal sealed class AdminContext(
     ManagementClient client,
     SiteMetadata metadata,
     ShellSite site,
+    FormatService formats,
     ISessionStorage storage,
     ILogger<AdminContext> logger) : IAdminContext, IAdminAccess
 {
@@ -103,11 +105,18 @@ internal sealed class AdminContext(
     {
         var me = client.GetMeAsync(CancellationToken.None);
         var sites = client.GetMySitesAsync(CancellationToken.None);
+        var preferences = ReadPreferencesAsync();
         var user = await me;
         var mine = await sites;
+        var chosen = await preferences;
         if (generation != _generation)
         {
             return;
+        }
+
+        if (chosen is not null)
+        {
+            formats.Apply(chosen.DateFormat, chosen.NumberFormat, chosen.TimeZone);
         }
 
         (User, Sites) = (user, mine);
@@ -127,6 +136,19 @@ internal sealed class AdminContext(
             ?? mine.FirstOrDefault(item => item.IsDefault)
             ?? mine[0]);
         await SiteReadsAsync(generation);
+    }
+
+    // A key or a service account has no preferences, and a failed read leaves the browser's formats: neither stops the shell.
+    private async Task<MyPreferences?> ReadPreferencesAsync()
+    {
+        try
+        {
+            return await client.GetMyPreferencesAsync(CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or TaskCanceledException)
+        {
+            return null;
+        }
     }
 
     // From here the client sends the new site, and SiteMetadata drops what it read for the one before. Nothing read for the

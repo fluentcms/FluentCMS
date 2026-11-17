@@ -1,0 +1,82 @@
+@* The editor of a slug field: while it follows, the slug is made from its source field (settings.source) as the user types
+   there. It stops following when the user types into it or turns on "Keep this slug", and follows again when that is
+   turned off. An entry that has a slug keeps it, so that a new title does not move a published URL; and the first render
+   raises nothing, so that a source with a default value does not make a new form dirty. *@
+@inherits FieldEditorBase
+@inject IStringLocalizer<AdminResources> L
+
+<div class="field-slug">
+    <CmsTextInput @ref="input"
+                  Label="@Label"
+                  Help="@Help"
+                  Error="@ErrorText"
+                  Required="@Required"
+                  ReadOnly="@ReadOnly"
+                  Placeholder="@Placeholder"
+                  Autocomplete="off"
+                  MaxLength="@Field.Validation.MaxLength"
+                  Lang="@ContentLocale"
+                  Dir="@TextDirection"
+                  Value="@FieldValues.Text(Value)"
+                  ValueChanged="@TypeAsync"
+                  OnBlur="@OnBlur" />
+    @if (Source is not null && !ReadOnly)
+    {
+        <CmsSwitch Label="@L["Content.Field.SlugKeep"]" Value="@(!follows)" ValueChanged="@KeepAsync" />
+    }
+</div>
+
+@code {
+    private CmsTextInput? input;
+    private bool follows;
+    private bool started;
+
+    // The source text the slug was last made from: a slug is made once per change of the source, so that a parent that does
+    // not take the value cannot make the editor raise it again and again.
+    private string? followed;
+
+    private string? Source => FieldValues.Text(Field.Settings["source"]);
+
+    private string? SourceText => Source is { } source ? FieldValues.Text(Document?.GetValueOrDefault(source)) : null;
+
+    private string FromSource => Slugs.Slugify(SourceText ?? "", Field.Validation.MaxLength);
+
+    public override ValueTask FocusAsync() => input?.FocusAsync() ?? ValueTask.CompletedTask;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!started)
+        {
+            started = true;
+            var slug = FieldValues.Text(Value);
+            follows = Source is not null && string.IsNullOrEmpty(slug);
+            followed = SourceText;
+        }
+
+        await FollowAsync();
+    }
+
+    private Task FollowAsync(bool again = false)
+    {
+        if (!follows || ReadOnly || Source is null || (!again && SourceText == followed))
+        {
+            return Task.CompletedTask;
+        }
+
+        followed = SourceText;
+        var slug = FromSource;
+        return slug == (FieldValues.Text(Value) ?? "") ? Task.CompletedTask : ChangeAsync(FieldValues.FromText(slug));
+    }
+
+    private Task TypeAsync(string? text)
+    {
+        follows = false;
+        return ChangeAsync(FieldValues.FromText(text));
+    }
+
+    private Task KeepAsync(bool keep)
+    {
+        follows = !keep;
+        return FollowAsync(again: true);
+    }
+}

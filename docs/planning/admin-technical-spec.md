@@ -429,7 +429,7 @@ One editor and one list cell for each core field type of row 1.3, reading the fi
 | integer, decimal | number input in the user's number format | range |
 | boolean | switch | |
 | date, date-time | pickers in the user's format; a date-time is shown and entered in the user's time zone | range |
-| select (single, multi) | dropdown, or a list of checkboxes under five options | `options` |
+| select (single, multi) | single: a dropdown, which an optional field can clear (the wrapped set has no radio group); multiple: a list of checkboxes at any number of options, scrolling from five, since the wrapped set has no multi-select dropdown; a chosen value the options no longer list is shown so that it can be taken off | `options` |
 | slug | text generated from its source field as the user types, until locked; a lock button keeps it | `source` |
 | JSON | code area with parse errors on the line, and formatting | |
 | email, URL | input with type-specific keyboard and validation | pattern |

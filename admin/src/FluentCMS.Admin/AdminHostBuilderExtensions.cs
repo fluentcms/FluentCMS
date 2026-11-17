@@ -74,7 +74,6 @@ public static class AdminHostBuilderExtensions
         services.AddScoped<IRateLimitNotice, RateLimitNotice>();
         services.AddAdminAuthentication();
         services.AddAdminShell();
-        services.TryAddSingleton<ListCellRegistry>();
         services.TryAddSingleton<ListFilterRegistry>();
         services.AddSingleton<IColumnStorage, ColumnStorageInterop>();
         services.AddFieldEditors();

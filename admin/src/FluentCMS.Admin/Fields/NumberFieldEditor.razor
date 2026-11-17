@@ -1,0 +1,35 @@
+@* The editor of an integer or decimal field, in the user's number format; the value sent is a JSON number. A range that
+   starts at zero or above asks a touch device for its numeric keyboard. *@
+@inherits FieldEditorBase
+@inject FormatService Formats
+
+<CmsNumberInput @ref="input"
+                Label="@Label"
+                Help="@Help"
+                Error="@ErrorText"
+                Required="@Required"
+                ReadOnly="@ReadOnly"
+                Placeholder="@Placeholder"
+                Culture="@Formats.NumberCulture"
+                WholeNumbers="@IsInteger"
+                AllowNegative="@(Field.Validation.Minimum is not >= 0)"
+                Autocomplete="off"
+                Value="@FieldValues.Number(Value)"
+                ValueChanged="@(number => ChangeAsync(ToJson(number)))"
+                OnBlur="@OnBlur" />
+
+@code {
+    private CmsNumberInput? input;
+
+    private bool IsInteger => Field.Type == "integer";
+
+    public override ValueTask FocusAsync() => input?.FocusAsync() ?? ValueTask.CompletedTask;
+
+    // A whole number beyond 64 bits is sent as it is, for the server to refuse.
+    private JsonNode? ToJson(decimal? number) => number switch
+    {
+        null => null,
+        { } whole when IsInteger && whole >= long.MinValue && whole <= long.MaxValue => JsonValue.Create((long)whole),
+        { } value => JsonValue.Create(value),
+    };
+}

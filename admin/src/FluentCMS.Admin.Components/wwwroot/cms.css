@@ -187,8 +187,39 @@
     cursor: not-allowed;
 }
 
+.cms-input:read-only:not(select) {
+    background-color: var(--cms-color-bg-subtle, var(--cms-color-bg));
+}
+
 .cms-textarea {
     resize: vertical;
+}
+
+/* Where the browser can size a field to its content; elsewhere the user resizes it. */
+.cms-textarea-grow {
+    field-sizing: content;
+    min-block-size: 4.5rem;
+    max-block-size: 32rem;
+}
+
+.cms-input-number {
+    font-variant-numeric: tabular-nums;
+}
+
+.cms-input-date,
+.cms-input-time {
+    max-inline-size: 12rem;
+}
+
+.cms-field-counter {
+    align-self: flex-end;
+    color: var(--cms-color-text-muted);
+    font-size: var(--cms-font-size-s);
+    font-variant-numeric: tabular-nums;
+}
+
+.cms-field-counter-over {
+    color: var(--cms-color-error);
 }
 
 .cms-field-message {

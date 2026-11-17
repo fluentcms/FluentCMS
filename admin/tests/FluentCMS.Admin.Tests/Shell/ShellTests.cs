@@ -1,9 +1,11 @@
+using System.Net;
 using System.Text.Json.Nodes;
 using AngleSharp.Dom;
 using Bunit;
 using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Forms;
 using FluentCMS.Admin.Interop;
+using FluentCMS.Admin.Localization;
 using FluentCMS.Admin.Shell;
 using FluentCMS.Admin.Tests.Authentication;
 using Microsoft.AspNetCore.Components;
@@ -27,15 +29,39 @@ public sealed class ShellTests : AdminTestContext
     private AdminContext Context => Services.GetRequiredService<AdminContext>();
 
     [Fact]
-    public void AfterSignInTheShellReadsTheUserItsSitesAndForTheSiteTheAccessTheSchemaAndThePlugins()
+    public void AfterSignInTheShellReadsTheUserItsSitesItsPreferencesAndForTheSiteTheAccessTheSchemaAndThePlugins()
     {
         Load();
 
         Management.Requests.ShouldBe(
-            [("me", null), ("me/sites", null), ("me/access", Main), ("schema", Main), ("plugins", Main)],
+            [("me", null), ("me/sites", null), ("me/preferences", null), ("me/access", Main), ("schema", Main), ("plugins", Main)],
             ignoreOrder: true);
         Context.Site!.Id.ShouldBe(MainSite);
         Context.User!.Name.ShouldBe("ada");
+    }
+
+    [Fact]
+    public void TheFormatsOfThePreferencesApplyOnceTheShellHasReadThem()
+    {
+        Management.Preferences = new JsonObject { ["culture"] = null, ["timeZone"] = "Asia/Tokyo", ["dateFormat"] = "de-DE", ["numberFormat"] = "fr-FR" };
+
+        Load();
+
+        var formats = Services.GetRequiredService<FormatService>();
+        formats.Culture.Name.ShouldBe("de-DE");
+        formats.NumberCulture.Name.ShouldBe("fr-FR");
+        formats.Date(new DateTimeOffset(2026, 11, 15, 20, 0, 0, TimeSpan.Zero)).ShouldBe("16.11.2026");
+    }
+
+    [Fact]
+    public void WithoutPreferencesTheShellStartsWithTheBrowsersFormats()
+    {
+        Management.Answer = (method, path) => path == "me/preferences" ? new HttpResponseMessage(HttpStatusCode.Forbidden) : null;
+
+        Load();
+
+        Context.Status.ShouldBe(ShellStatus.Ready);
+        Services.GetRequiredService<FormatService>().TimeZone.ShouldBe(TimeZoneInfo.Utc);
     }
 
     [Fact]

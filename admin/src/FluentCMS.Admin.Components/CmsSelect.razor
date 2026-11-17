@@ -1,7 +1,8 @@
 @namespace FluentCMS.Admin.Components
 @inherits CmsInputBase<string>
+@inject ICmsTextSource Texts
 
-@* Native, for the reason given in CmsTextInput. *@
+@* Native, for the reason given in CmsTextInput. A native select has no read-only state, so a read-only one is disabled. *@
 <div class="cms-field">
     @LabelTemplate
     <select @ref="Element"
@@ -9,13 +10,14 @@
             lang="@Lang"
             dir="@Dir"
             class="cms-input cms-select"
-            disabled="@Disabled"
+            disabled="@(Disabled || ReadOnly)"
             value="@(Value ?? string.Empty)"
             @onchange="@(args => SetValueAsync(string.IsNullOrEmpty(args.Value as string) ? null : (string)args.Value!))"
+            @onblur="@OnBlur"
             @attributes="@AriaAttributes">
-        @if (Placeholder is not null || !Options.Any(option => option.Value == Value))
+        @if (Placeholder is not null || Clearable || !Options.Any(option => option.Value == Value))
         {
-            <option value="">@Placeholder</option>
+            <option value="">@(Placeholder ?? (Clearable ? Texts.Text(CmsStrings.SelectNone) : null))</option>
         }
         @foreach (var option in Options)
         {
@@ -32,4 +34,8 @@
     // The text of the empty option, shown while no value is chosen.
     [Parameter]
     public string? Placeholder { get; set; }
+
+    // Keeps the empty option once a value is chosen, so that the choice can be taken back.
+    [Parameter]
+    public bool Clearable { get; set; }
 }

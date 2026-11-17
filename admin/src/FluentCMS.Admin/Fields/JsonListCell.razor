@@ -1,0 +1,7 @@
+@* The cell of a JSON field: the value on one line, cut to the column. *@
+@inherits ListCellBase
+
+@if (Value is not null)
+{
+    <code class="list-cell-json" dir="ltr">@Value.ToJsonString()</code>
+}
