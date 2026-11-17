@@ -1172,6 +1172,60 @@
   <data name="Content.Form.NotPublishedErrors" xml:space="preserve">
     <value>The entry was not published. Correct the problems shown and try again.</value>
   </data>
+  <data name="Content.Form.Publish" xml:space="preserve">
+    <value>Publish</value>
+  </data>
+  <data name="Content.Form.Published" xml:space="preserve">
+    <value>Published.</value>
+  </data>
+  <data name="Content.Form.PublishedWithWarnings" xml:space="preserve">
+    <value>Published, with warnings about its references.</value>
+  </data>
+  <data name="Content.Form.Warnings" xml:space="preserve">
+    <value>The entry was published, with these warnings about its references:</value>
+  </data>
+  <data name="Content.Form.Unpublish" xml:space="preserve">
+    <value>Unpublish</value>
+  </data>
+  <data name="Content.Form.Unpublish.Title" xml:space="preserve">
+    <value>Unpublish this entry?</value>
+  </data>
+  <data name="Content.Form.Unpublish.Text" xml:space="preserve">
+    <value>The entry is taken off the site. Its draft is kept, so it can be published again.</value>
+  </data>
+  <data name="Content.Form.Unpublish.Cancel" xml:space="preserve">
+    <value>Keep it published</value>
+  </data>
+  <data name="Content.Form.Unpublished" xml:space="preserve">
+    <value>Unpublished.</value>
+  </data>
+  <data name="Content.Form.Discard" xml:space="preserve">
+    <value>Discard changes</value>
+  </data>
+  <data name="Content.Form.Discard.Title" xml:space="preserve">
+    <value>Discard the changes?</value>
+  </data>
+  <data name="Content.Form.Discard.Text" xml:space="preserve">
+    <value>The draft goes back to the published version. Every change since the last publish is lost, saved or not.</value>
+  </data>
+  <data name="Content.Form.Discard.Cancel" xml:space="preserve">
+    <value>Keep the changes</value>
+  </data>
+  <data name="Content.Form.Discarded" xml:space="preserve">
+    <value>The changes were discarded. The published version is shown.</value>
+  </data>
+  <data name="Content.Form.NotPublished" xml:space="preserve">
+    <value>The entry was not published.</value>
+  </data>
+  <data name="Content.Form.NotUnpublished" xml:space="preserve">
+    <value>The entry was not unpublished.</value>
+  </data>
+  <data name="Content.Form.NotDiscarded" xml:space="preserve">
+    <value>The changes were not discarded.</value>
+  </data>
+  <data name="Content.Form.Unreachable" xml:space="preserve">
+    <value>The server could not be reached. Try again.</value>
+  </data>
   <data name="Content.Form.Rule.Required" xml:space="preserve">
     <value>A value is required to publish.</value>
   </data>

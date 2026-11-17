@@ -4,7 +4,9 @@
    type's route. While it has unsaved changes the form is tracked, so the end of a session keeps them as a draft.
    Its behaviours (A-49): conditions evaluated on every change, lengths, range and pattern checked as a field is left and
    required before a publish, fields the caller may not change read-only, a question before leaving unsaved changes, the
-   keyboard shortcuts, and the dialog of a conflicting save. *@
+   keyboard shortcuts, and the dialog of a conflicting save. Its status controls (A-16): save draft, publish, unpublish and
+   discard in the form's locale, each shown by the status of the locale and what the caller may do with the type, the
+   status badge, and the warnings of a publish. *@
 @implements IUnsavedForm
 @implements IAsyncDisposable
 @using System.Net
@@ -40,16 +42,28 @@
             <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="ReloadAsync">@L["Shell.Start.TryAgain"]</CmsButton>
             break;
         default:
-            @* The actions of the entry; A-16 adds its own beside Save. *@
+            @* The actions of the entry. None is disabled while one runs, which would take focus from it; a click meanwhile is ignored. *@
             <div class="content-form-toolbar">
+                @StatusBadge()
                 @if (MaySave)
                 {
-                    @* Not disabled while saving, which would take focus from it; a click while a save runs is ignored. *@
-                    <CmsButton Appearance="CmsButtonAppearance.Primary" Icon="CmsIconName.Save" OnClick="SaveAsync">@L["Content.Form.Save"]</CmsButton>
+                    <CmsButton Appearance="@(MayPublish ? CmsButtonAppearance.Default : CmsButtonAppearance.Primary)" Icon="CmsIconName.Save" OnClick="SaveAsync">@L["Content.Form.Save"]</CmsButton>
                 }
-                @if (savedAt is not null)
+                @if (MayPublish)
                 {
-                    <span class="content-form-saved">@L["Content.Form.Saved"]</span>
+                    <CmsButton Appearance="CmsButtonAppearance.Primary" Icon="CmsIconName.Checkmark" OnClick="@(() => PublishAsync(fromButton: true))">@L["Content.Form.Publish"]</CmsButton>
+                }
+                @if (MayDiscard)
+                {
+                    <CmsButton OnClick="@(() => Ask(EntryAction.Discard))">@L["Content.Form.Discard"]</CmsButton>
+                }
+                @if (MayUnpublish)
+                {
+                    <CmsButton OnClick="@(() => Ask(EntryAction.Unpublish))">@L["Content.Form.Unpublish"]</CmsButton>
+                }
+                @if (done is not null)
+                {
+                    <span class="content-form-saved">@done</span>
                 }
             </div>
             @if (!MaySave)
@@ -65,7 +79,7 @@
                 <div @ref="summary" class="content-form-problem" tabindex="-1">
                     @if (saveFailure.Kind == SaveFailureKind.Invalid)
                     {
-                        <p>@(saveFailure.Publishing ? L["Content.Form.NotPublishedErrors"] : L["Content.Form.NotSavedErrors"])</p>
+                        <p>@NotDoneErrors(saveFailure.Action)</p>
                         @if (formErrors.Count > 0)
                         {
                             <ul>
@@ -76,13 +90,18 @@
                             </ul>
                         }
                     }
-                    else if (saveFailure.Kind == SaveFailureKind.Unreachable)
+                    else if (saveFailure.Kind == SaveFailureKind.Unreachable && saveFailure.Action == EntryAction.Save)
                     {
                         <p>@L["Content.Form.NotSavedUnreachable"]</p>
                     }
+                    else if (saveFailure.Kind == SaveFailureKind.Unreachable)
+                    {
+                        <p><strong>@NotDone(saveFailure.Action)</strong></p>
+                        <p>@L["Content.Form.Unreachable"]</p>
+                    }
                     else
                     {
-                        <p><strong>@(saveFailure.Problem?.Title ?? L["Content.Form.NotSaved"])</strong></p>
+                        <p><strong>@(saveFailure.Problem?.Title ?? NotDone(saveFailure.Action))</strong></p>
                         @if (saveFailure.Problem?.Detail is { } detail)
                         {
                             <p>@detail</p>
@@ -100,6 +119,27 @@
                     }
                 </div>
             }
+            @if (warnings.Count > 0)
+            {
+                <div class="content-form-warnings">
+                    <p><CmsIcon Name="CmsIconName.Warning" />@L["Content.Form.Warnings"]</p>
+                    <ul>
+                        @foreach (var warning in warnings)
+                        {
+                            <li>
+                                @if (warning is { TargetType: { } targetType, TargetId: { } targetId })
+                                {
+                                    <a href="@ContentRoutes.Entry(targetType, targetId)">@warning.Message</a>
+                                }
+                                else
+                                {
+                                    @warning.Message
+                                }
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
             @if (Untabbed is { } main)
             {
                 @Groups(main)
@@ -114,6 +154,8 @@
                 </CmsTabs>
             }
             @ConflictDialog()
+            @Confirmation(EntryAction.Discard, "Content.Form.Discard")
+            @Confirmation(EntryAction.Unpublish, "Content.Form.Unpublish")
             break;
     }
 </div>
@@ -131,7 +173,7 @@
         <dl class="content-form-shortcuts">
             <dt>@L["Content.Form.Shortcuts.SaveKeys"]</dt>
             <dd>@L["Content.Form.Shortcuts.Save"]</dd>
-            @if (Publish is not null)
+            @if (access?.Publish == true)
             {
                 <dt>@L["Content.Form.Shortcuts.PublishKeys"]</dt>
                 <dd>@L["Content.Form.Shortcuts.Publish"]</dd>
@@ -165,7 +207,24 @@
         Unreachable,
     }
 
-    private sealed record SaveFailure(SaveFailureKind Kind, ApiProblem? Problem = null, bool Publishing = false);
+    // What the user asked of the entry, which a failure names.
+    private enum EntryAction
+    {
+        Save,
+        Publish,
+        Unpublish,
+        Discard,
+    }
+
+    // Where focus goes once an action is done: a shortcut leaves it, the control that ran is gone with the status it changed.
+    private enum FocusAfter
+    {
+        Shortcut,
+        Button,
+        Dialog,
+    }
+
+    private sealed record SaveFailure(SaveFailureKind Kind, ApiProblem? Problem = null, EntryAction Action = EntryAction.Save);
 
     // A save that met a newer version: the entry as it is now, the form's values when it was sent, and the fields the user
     // may change whose value differs from the newer one, each marked when the user changed it.
@@ -189,7 +248,12 @@
     private IDisposable? tracking;
     private bool restored;
     private bool saving;
-    private DateTimeOffset? savedAt;
+    // The publish, unpublish or discard that runs, and the one whose question is open.
+    private EntryAction? running;
+    private EntryAction? confirming;
+    // What the last action did, shown beside the actions until the next change.
+    private string? done;
+    private IReadOnlyList<PublishWarningInfo> warnings = [];
     private SaveFailure? saveFailure;
     private Dictionary<string, List<ApiProblemError>> fieldErrors = new(StringComparer.Ordinal);
     private List<ApiProblemError> formErrors = [];
@@ -227,10 +291,6 @@
     [Parameter]
     public Guid? Id { get; set; }
 
-    // The publish of the entry, which A-16 gives: Ctrl+Shift+Enter, and its button, run it once the form passes the checks of
-    // a publish. Without it the shortcut does nothing and is not listed.
-    internal Func<Task>? Publish { get; set; }
-
     private bool IsSingleton => type?.Kind == "singleton";
 
     private FormDraftKey Key => new(site, Type, entryId, locale);
@@ -248,10 +308,27 @@
     // Save is absent for a caller who may not create entries of the type, or not change them (GET /me/access).
     private bool MaySave => access is not null && (entryId is null ? access.Create : access.Update);
 
+    // The status of the form's locale; none for a new entry or a locale the entry does not have yet.
+    private string? Status => read?.Entry?.Status;
+
+    // A publish saves first when the form holds what the server does not: a new entry or locale, or unsaved changes.
+    private bool NeedsSave => entryId is null || read is null || read.IsNewLocale || IsDirty;
+
+    // Each control is absent when the status or the caller's access leaves it nothing to do (spec 4.10). A published locale
+    // with nothing unsaved has nothing to publish; only a published locale has a version to discard to or to withdraw.
+    private bool MayPublish => access?.Publish == true && (NeedsSave ? MaySave : Status != EntryStatuses.Published);
+
+    private bool MayUnpublish => access?.Unpublish == true && entryId is not null && Status is EntryStatuses.Published or EntryStatuses.Modified;
+
+    private bool MayDiscard =>
+        access?.Update == true && entryId is not null && (Status == EntryStatuses.Modified || (Status == EntryStatuses.Published && IsDirty));
+
+    private bool Busy => saving || running is not null;
+
     // The form's own tracking may have been given up by a confirmed site switch or sign-out.
     private bool IsDirty => tracking is not null && Drafts.HasUnsavedForms;
 
-    private bool DialogOpen => leaveAnswer is not null || conflictOpen || showingShortcuts;
+    private bool DialogOpen => leaveAnswer is not null || conflictOpen || showingShortcuts || confirming is not null;
 
     private string Heading => state switch
     {
@@ -348,7 +425,8 @@
         tracking = null;
         state = FormState.Loading;
         (type, access, tabs, tabbed, read, entryId, activeTab) = (null, null, [], [], null, null, null);
-        (restored, savedAt, saveFailure, pendingCreate, publishTried) = (false, null, null, null, false);
+        (restored, done, saveFailure, pendingCreate, publishTried) = (false, null, null, null, false);
+        (warnings, confirming) = ([], null);
         (conflict, conflictOpen, comparing) = (null, false, false);
         ClearErrors();
         try
@@ -467,7 +545,7 @@
     private void Change(SchemaFieldDescription field, JsonNode? value)
     {
         fields[field.Name] = value?.Parent is null ? value : value.DeepClone();
-        savedAt = null;
+        done = null;
         if (!IsDirty)
         {
             tracking?.Dispose();
@@ -526,7 +604,7 @@
             return true;
         }
 
-        saveFailure = new SaveFailure(SaveFailureKind.Invalid, Publishing: publishing);
+        saveFailure = new SaveFailure(SaveFailureKind.Invalid, Action: publishing ? EntryAction.Publish : EntryAction.Save);
         OpenTabOfFirstError();
         Announcer.Announce(publishing ? L["Content.Form.NotPublishedErrors"] : L["Content.Form.NotSavedErrors"], AnnouncementPoliteness.Assertive);
         focusFirstError = true;
@@ -535,12 +613,12 @@
 
     private async Task SaveAsync()
     {
-        if (saving || type is null || !MaySave)
+        if (Busy || type is null || !MaySave)
         {
             return;
         }
 
-        savedAt = null;
+        (done, warnings) = (null, []);
         if (!CheckFields(publishing: false))
         {
             return;
@@ -580,7 +658,7 @@
 
             pendingCreate = null;
             (read, entryId) = (saved, saved.Entry!.Id);
-            (restored, savedAt) = (false, DateTimeOffset.UtcNow);
+            (restored, done) = (false, L["Content.Form.Saved"]);
 
             // A change typed while the save ran is kept, and the form stays tracked with it.
             if (JsonNode.DeepEquals(fields, sent))
@@ -624,19 +702,146 @@
         }
     }
 
-    private async Task PublishAsync()
+    // Required and requiredWhen are checked first, and nothing is sent while one is missing. Unsaved changes are saved, and
+    // the publish sends the tag of that save, so it publishes exactly what the form showed.
+    private async Task PublishAsync(bool fromButton)
     {
-        if (Publish is null || saving || type is null || !MaySave || !CheckFields(publishing: true))
+        if (Busy || type is null || !MayPublish || !CheckFields(publishing: true))
         {
             return;
         }
 
-        await Publish();
+        if (NeedsSave)
+        {
+            await SaveAsync();
+            if (saveFailure is not null || entryId is null || read is null || read.IsNewLocale)
+            {
+                return;
+            }
+        }
+
+        await RunAsync(EntryAction.Publish, fromButton ? FocusAfter.Button : FocusAfter.Shortcut);
     }
 
-    // A 422 puts each error on the field its path is in, and one in no field of the form above the form; a 412 opens the
-    // conflict dialog when it holds the entry as it is now; anything else is shown as the answer.
-    private void Failed(ApiProblem problem)
+    // Discard drops the draft and unpublish withdraws the locale, so both ask first.
+    private void Ask(EntryAction action)
+    {
+        if (!Busy)
+        {
+            confirming = action;
+        }
+    }
+
+    private async Task ConfirmAsync(EntryAction action)
+    {
+        confirming = null;
+        await RunAsync(action, FocusAfter.Dialog);
+    }
+
+    // The form goes on with the entry as the answer has it, with its new tag. A discard drops the unsaved changes with the
+    // draft; after a publish or unpublish, changes typed meanwhile stay unsaved.
+    private async Task RunAsync(EntryAction action, FocusAfter focus)
+    {
+        if (Busy || entryId is not { } id || read is not { } basedOn)
+        {
+            return;
+        }
+
+        running = action;
+        (saveFailure, done, warnings) = (null, null, []);
+        (fieldErrors, formErrors) = (new(StringComparer.Ordinal), []);
+        var current = generation;
+        try
+        {
+            IReadOnlyList<PublishWarningInfo> found = [];
+            EntryRead answer;
+            switch (action)
+            {
+                case EntryAction.Publish:
+                    (answer, found) = await Client.PublishEntryAsync(Type, id, basedOn, CancellationToken.None);
+                    break;
+                case EntryAction.Unpublish:
+                    answer = await Client.UnpublishEntryAsync(Type, id, basedOn, CancellationToken.None);
+                    break;
+                case EntryAction.Discard:
+                    answer = await Client.DiscardDraftAsync(Type, id, basedOn, CancellationToken.None);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(action), action, null);
+            }
+
+            if (current != generation)
+            {
+                return;
+            }
+
+            read = answer;
+            if (action == EntryAction.Discard || !IsDirty)
+            {
+                ClearErrors();
+                fields = answer.Entry!.Fields.DeepClone().AsObject();
+                await DropChangesAsync();
+            }
+
+            warnings = found;
+            done = action switch
+            {
+                EntryAction.Publish when found.Count > 0 => L["Content.Form.PublishedWithWarnings"],
+                EntryAction.Publish => L["Content.Form.Published"],
+                EntryAction.Unpublish => L["Content.Form.Unpublished"],
+                _ => L["Content.Form.Discarded"],
+            };
+            Announcer.Announce(done);
+            if (focus != FocusAfter.Shortcut)
+            {
+                await Document.FocusHeadingAsync(afterDialog: focus == FocusAfter.Dialog);
+            }
+        }
+        catch (ApiProblemException exception) when (current == generation)
+        {
+            Failed(exception.Problem, action);
+        }
+        catch (Exception exception) when ((exception is HttpRequestException or TaskCanceledException) && current == generation)
+        {
+            saveFailure = new SaveFailure(SaveFailureKind.Unreachable, Action: action);
+            Announcer.Announce(NotDone(action), AnnouncementPoliteness.Assertive);
+            focusFirstError = true;
+        }
+        catch (JsonException) when (current == generation)
+        {
+            saveFailure = new SaveFailure(SaveFailureKind.Problem, Action: action);
+            Announcer.Announce(NotDone(action), AnnouncementPoliteness.Assertive);
+            focusFirstError = true;
+        }
+        catch (Exception exception) when (IsFailure(exception))
+        {
+            // An action that failed after the form moved on has no form to show it on.
+        }
+        finally
+        {
+            running = null;
+        }
+    }
+
+    private string NotDone(EntryAction action) => action switch
+    {
+        EntryAction.Publish => L["Content.Form.NotPublished"],
+        EntryAction.Unpublish => L["Content.Form.NotUnpublished"],
+        EntryAction.Discard => L["Content.Form.NotDiscarded"],
+        _ => L["Content.Form.NotSaved"],
+    };
+
+    private string NotDoneErrors(EntryAction action) => action switch
+    {
+        EntryAction.Save => L["Content.Form.NotSavedErrors"],
+        EntryAction.Publish => L["Content.Form.NotPublishedErrors"],
+        _ => NotDone(action),
+    };
+
+    // A 422 puts each error on the field its path is in, and one in no field of the form above the form, as a type set to block
+    // unpublished references answers a publish; a 412 of a save or a publish opens the conflict dialog when it holds the entry
+    // as it is now; anything else is shown as the answer.
+    private void Failed(ApiProblem problem, EntryAction action = EntryAction.Save)
     {
         if (problem.Status == (int)HttpStatusCode.UnprocessableEntity)
         {
@@ -654,15 +859,15 @@
                 }
             }
 
-            saveFailure = new SaveFailure(SaveFailureKind.Invalid, problem);
+            saveFailure = new SaveFailure(SaveFailureKind.Invalid, problem, action);
             OpenTabOfFirstError();
-            Announcer.Announce(L["Content.Form.NotSavedErrors"], AnnouncementPoliteness.Assertive);
+            Announcer.Announce(NotDoneErrors(action), AnnouncementPoliteness.Assertive);
         }
         else if (problem.Status == (int)HttpStatusCode.PreconditionFailed)
         {
-            saveFailure = new SaveFailure(SaveFailureKind.Conflict, problem);
-            Announcer.Announce(problem.Title ?? L["Content.Form.NotSaved"], AnnouncementPoliteness.Assertive);
-            if (read is not null && ManagementClient.CurrentOf(problem, read) is { } current)
+            saveFailure = new SaveFailure(SaveFailureKind.Conflict, problem, action);
+            Announcer.Announce(problem.Title ?? NotDone(action), AnnouncementPoliteness.Assertive);
+            if (action is EntryAction.Save or EntryAction.Publish && read is not null && ManagementClient.CurrentOf(problem, read) is { } current)
             {
                 OpenConflict(current);
                 return;
@@ -670,8 +875,8 @@
         }
         else
         {
-            saveFailure = new SaveFailure(SaveFailureKind.Problem, problem);
-            Announcer.Announce(problem.Title ?? L["Content.Form.NotSaved"], AnnouncementPoliteness.Assertive);
+            saveFailure = new SaveFailure(SaveFailureKind.Problem, problem, action);
+            Announcer.Announce(problem.Title ?? NotDone(action), AnnouncementPoliteness.Assertive);
         }
 
         focusFirstError = true;
@@ -888,7 +1093,7 @@
                 await SaveAsync();
                 break;
             case FormShortcut.Publish:
-                await PublishAsync();
+                await PublishAsync(fromButton: false);
                 break;
             case FormShortcut.Help:
                 showingShortcuts = true;
@@ -942,6 +1147,45 @@
             </div>
         }
     </text>;
+
+    // The status of the form's locale, named for a localized type as the entry has it, since a form in the site's default
+    // locale reads it without naming one; a published locale with a newer draft is also marked
+    // Modified. Each says its status in words, so its colour is never the only sign.
+    private RenderFragment StatusBadge() => __builder =>
+    {
+        if (Status is not { } status)
+        {
+            return;
+        }
+
+        var shown = status == EntryStatuses.Modified ? EntryStatuses.Published : status;
+        <span class="content-form-status">
+            <span class="content-form-badge content-form-badge-@shown">
+                @if (type?.Localized == true && (read?.Entry?.Locale ?? locale) is { Length: > 0 } named)
+                {
+                    <span class="content-form-badge-locale">@named</span>@(" ")@L[$"Content.Status.{shown}"]
+                }
+                else
+                {
+                    @L[$"Content.Status.{shown}"]
+                }
+            </span>
+            @if (status == EntryStatuses.Modified)
+            {
+                <span class="content-form-badge content-form-badge-modified">@L["Content.Status.modified"]</span>
+            }
+        </span>
+    };
+
+    private RenderFragment Confirmation(EntryAction action, string key) => @<CmsDialog Title="@L[$"{key}.Title"]" Open="@(confirming == action)" OpenChanged="@(open => { if (!open && confirming == action) confirming = null; })">
+        <ChildContent>
+            <p>@L[$"{key}.Text"]</p>
+        </ChildContent>
+        <Actions>
+            <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => ConfirmAsync(action))">@L[key]</CmsButton>
+            <CmsButton OnClick="@(() => confirming = null)">@L[$"{key}.Cancel"]</CmsButton>
+        </Actions>
+    </CmsDialog>;
 
     private RenderFragment ConflictDialog() => @<CmsDialog Title="@L["Content.Form.Conflict.Title"]" Open="@conflictOpen" OpenChanged="@(open => conflictOpen = open)">
         <ChildContent>

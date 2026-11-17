@@ -138,6 +138,31 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
         return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), basedOn.Site, basedOn.Locale);
     }
 
+    // The status actions of one locale of an entry (spec 4.10), each in exactly the site and locale of the read, so that a
+    // form in another locale acts on that one. Publish and discard send the read's tag, so they act on the version the form
+    // showed; unpublish takes none. Each answer is the read the form goes on with.
+    public async Task<PublishedRead> PublishEntryAsync(string type, Guid id, EntryRead basedOn, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(basedOn);
+        var request = Pinned(HttpMethod.Post, $"{Entry(type, id)}/publish", basedOn.Site, basedOn.Locale, ifMatch: basedOn.IsNewLocale ? null : basedOn.EntityTag);
+        var answer = await api.SendAsync(request, Json.PublishAnswer, cancellationToken);
+        return new PublishedRead(new EntryRead(answer.Value.Entry, answer.EntityTag ?? $"\"{answer.Value.Entry.Version}\"", basedOn.Site, basedOn.Locale), answer.Value.Warnings);
+    }
+
+    public async Task<EntryRead> UnpublishEntryAsync(string type, Guid id, EntryRead basedOn, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(basedOn);
+        var request = Pinned(HttpMethod.Post, $"{Entry(type, id)}/unpublish", basedOn.Site, basedOn.Locale);
+        return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), basedOn.Site, basedOn.Locale);
+    }
+
+    public async Task<EntryRead> DiscardDraftAsync(string type, Guid id, EntryRead basedOn, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(basedOn);
+        var request = Pinned(HttpMethod.Post, $"{Entry(type, id)}/discard", basedOn.Site, basedOn.Locale, ifMatch: basedOn.IsNewLocale ? null : basedOn.EntityTag);
+        return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), basedOn.Site, basedOn.Locale);
+    }
+
     // The entry as it is now, which a 412 of a save holds, as a read in the site and locale of the save; its version is the
     // tag a save on it sends. Null when the answer holds none that reads.
     public static EntryRead? CurrentOf(ApiProblem problem, EntryRead basedOn)
