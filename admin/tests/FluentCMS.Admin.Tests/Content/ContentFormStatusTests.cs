@@ -33,7 +33,7 @@ public sealed class ContentFormStatusTests : AdminTestContext
     [Theory]
     [InlineData("draft", new[] { "Save", "Publish" }, new[] { "en Draft" })]
     [InlineData("published", new[] { "Save", "Unpublish" }, new[] { "en Published" })]
-    [InlineData("modified", new[] { "Save", "Publish", "Discard changes", "Unpublish" }, new[] { "en Published", "Modified" })]
+    [InlineData("modified", new[] { "Save", "Publish", "Discard changes", "Unpublish" }, new[] { "en Modified" })]
     [InlineData("unpublished", new[] { "Save", "Publish" }, new[] { "en Unpublished" })]
     public void TheControlsAndTheBadgeFollowTheStatusOfTheLocale(string status, string[] controls, string[] badges)
     {
@@ -51,7 +51,7 @@ public sealed class ContentFormStatusTests : AdminTestContext
         var app = Load("content/post/new");
 
         Controls(app).ShouldBe(["Save", "Publish"]);
-        app.FindAll(".content-form-badge").ShouldBeEmpty();
+        app.FindAll(".content-badge").ShouldBeEmpty();
     }
 
     [Fact]
@@ -181,7 +181,6 @@ public sealed class ContentFormStatusTests : AdminTestContext
 
         // The warnings belong to that publish, and go with the next change.
         Input(app, "title").Input("Changed");
-        Save(app);
         app.WaitForAssertion(() => app.FindAll(".content-form-warnings").ShouldBeEmpty());
     }
 
@@ -211,6 +210,7 @@ public sealed class ContentFormStatusTests : AdminTestContext
         var dialog = Dialog(app, "Discard the changes?");
         app.WaitForAssertion(() => dialog.Instance.Open.ShouldBeTrue());
         _content.Writes.ShouldBeEmpty();
+        dialog.FindAll("fluent-button").Select(button => button.TextContent.Trim()).ShouldBe(["Keep the changes", "Discard changes"]);
         DialogButton(dialog, "Keep the changes").Click();
         app.WaitForAssertion(() => dialog.Instance.Open.ShouldBeFalse());
         _content.Writes.ShouldBeEmpty();
@@ -246,6 +246,8 @@ public sealed class ContentFormStatusTests : AdminTestContext
         var dialog = Dialog(app, "Unpublish this entry?");
         app.WaitForAssertion(() => dialog.Instance.Open.ShouldBeTrue());
         _content.Writes.ShouldBeEmpty();
+        dialog.Find("p").TextContent.ShouldStartWith("The entry is taken off the site in en. Its other locales stay as they are");
+        dialog.FindAll("fluent-button").Select(button => button.TextContent.Trim()).ShouldBe(["Keep it published", "Unpublish"]);
         DialogButton(dialog, "Unpublish").Click();
 
         app.WaitForAssertion(() => Badges(app).ShouldBe(["en Unpublished"]));
@@ -269,6 +271,76 @@ public sealed class ContentFormStatusTests : AdminTestContext
         app.WaitForAssertion(() => app.Find(".content-form-problem").TextContent.ShouldContain("The entry was not unpublished."));
         app.Find(".content-form-problem").TextContent.ShouldContain("The server could not be reached.");
         Badges(app).ShouldBe(["en Published"]);
+    }
+
+    [Fact]
+    public async Task APublishWaitingOnItsSaveDoesNotPublishTheEntryTheFormMovedTo()
+    {
+        var first = _content.Add("post", new JsonObject { ["title"] = "First" });
+        var second = _content.Add("post", new JsonObject { ["title"] = "Second" });
+        var app = Load($"content/post/{first:D}");
+        Input(app, "title").Input("Changed");
+        var save = new TaskCompletionSource();
+        Management.Hold = save;
+
+        // Only the save waits: the form has read the second entry by the time it ends.
+        ToolbarButton(app, "Publish").Click();
+        app.WaitForAssertion(() => Management.Calls.ShouldContain(call => call.Method == HttpMethod.Put));
+        Management.Hold = null;
+        Navigation.NavigateTo($"content/post/{second:D}");
+        app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("Second"));
+        save.SetResult();
+
+        app.WaitForAssertion(() => _content.Version(first).ShouldBe(2));
+        await Task.Delay(200, Xunit.TestContext.Current.CancellationToken);
+        _content.Writes.ShouldHaveSingleItem().Method.ShouldBe(HttpMethod.Put);
+        (_content.Status(first), _content.Status(second)).ShouldBe(("draft", "draft"));
+    }
+
+    [Fact]
+    public void APublishOnAStaleTagOpensTheConflictAndSaysItDidNotPublish()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/post/{id:D}");
+        _content.ChangeElsewhere(id, "title", "Theirs");
+
+        ToolbarButton(app, "Publish").Click();
+
+        var dialog = Dialog(app, "Someone saved this entry first");
+        app.WaitForAssertion(() => dialog.Instance.Open.ShouldBeTrue());
+        _content.Writes.ShouldHaveSingleItem().IfMatch.ShouldBe("\"1\"");
+        DialogButton(dialog, "Keep mine").Click();
+
+        app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("Theirs"));
+        const string NotPublished = "The entry was not published, since it was saved after you read it. The saved version is shown now; publish again to publish it.";
+        app.Find(".content-form-saved").TextContent.ShouldBe(NotPublished);
+        Announced(app).ShouldContain(NotPublished);
+        _content.Status(id).ShouldBe("draft");
+
+        ToolbarButton(app, "Publish").Click();
+        app.WaitForAssertion(() => _content.Status(id).ShouldBe("published"));
+        _content.Writes[^1].IfMatch.ShouldBe("\"2\"");
+    }
+
+    [Fact]
+    public void ADiscardThatMeetsANewerVersionOffersOnlyAReloadNotAnEarlierSavesConflict()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Draft" }, status: "modified", published: new JsonObject { ["title"] = "Published" });
+        var app = Load($"content/post/{id:D}");
+        _content.ChangeElsewhere(id, "title", "Theirs");
+        Input(app, "title").Input("Mine");
+        Save(app);
+        var conflict = Dialog(app, "Someone saved this entry first");
+        app.WaitForAssertion(() => conflict.Instance.Open.ShouldBeTrue());
+        conflict.InvokeAsync(() => conflict.Instance.OpenChanged.InvokeAsync(false));
+        app.WaitForAssertion(() => app.FindAll(".content-form-problem fluent-button").Select(button => button.TextContent.Trim()).ShouldContain("Compare the versions"));
+
+        ToolbarButton(app, "Discard changes").Click();
+        DialogButton(Dialog(app, "Discard the changes?"), "Discard changes").Click();
+
+        app.WaitForAssertion(() => _content.Writes.Count.ShouldBe(2));
+        app.WaitForAssertion(() => app.FindAll(".content-form-problem fluent-button").Select(button => button.TextContent.Trim()).ShouldBe(["Reload the entry"]));
+        Dialog(app, "Someone saved this entry first").Instance.Open.ShouldBeFalse();
     }
 
     [Fact]
@@ -307,7 +379,7 @@ public sealed class ContentFormStatusTests : AdminTestContext
         [.. app.FindAll(".content-form-toolbar fluent-button").Select(button => button.TextContent.Trim())];
 
     private static string[] Badges(IRenderedComponent<AdminApp> app) =>
-        [.. app.FindAll(".content-form-badge").Select(badge => string.Join(' ', badge.TextContent.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)))];
+        [.. app.FindAll(".content-form-toolbar .content-badge").Select(badge => string.Join(' ', badge.TextContent.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)))];
 
     private static List<string> Announced(IRenderedComponent<AdminApp> app) =>
         [.. app.FindAll("[role=status] > div").Select(message => message.TextContent)];

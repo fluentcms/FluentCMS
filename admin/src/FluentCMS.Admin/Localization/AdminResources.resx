@@ -1193,6 +1193,9 @@
   <data name="Content.Form.Unpublish.Text" xml:space="preserve">
     <value>The entry is taken off the site. Its draft is kept, so it can be published again.</value>
   </data>
+  <data name="Content.Form.Unpublish.LocaleText" xml:space="preserve">
+    <value>The entry is taken off the site in {0}. Its other locales stay as they are, and its draft is kept, so it can be published again.</value>
+  </data>
   <data name="Content.Form.Unpublish.Cancel" xml:space="preserve">
     <value>Keep it published</value>
   </data>
@@ -1342,6 +1345,12 @@
   </data>
   <data name="Content.Form.Conflict.TheirsOf" xml:space="preserve">
     <value>Saved version of {0}: </value>
+  </data>
+  <data name="Content.Form.Conflict.NotPublished" xml:space="preserve">
+    <value>The entry was not published, since it was saved after you read it. The saved version is shown now; publish again to publish it.</value>
+  </data>
+  <data name="Content.Form.Conflict.SavedNotPublished" xml:space="preserve">
+    <value>Your values were saved on the newer version, but not published. Publish again to publish them.</value>
   </data>
   <data name="Content.Field.EmailInvalid" xml:space="preserve">
     <value>Enter an email address such as name@example.com.</value>

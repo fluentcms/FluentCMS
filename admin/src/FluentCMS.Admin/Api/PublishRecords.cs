@@ -1,7 +1,6 @@
 namespace FluentCMS.Admin.Api;
 
-// The answer of a publish (spec 4.10): the entry as published, and what the server warns about its references. Only the
-// form reads it, so it stays internal.
+// Only the form reads these, so they stay internal.
 internal sealed record PublishAnswer
 {
     public required ContentEntry Entry { get; init; }
@@ -9,8 +8,7 @@ internal sealed record PublishAnswer
     public IReadOnlyList<PublishWarningInfo> Warnings { get; init; } = [];
 }
 
-// A reference of the published entry to one that is not published or cannot be reached; the target is named only when the
-// caller may read it.
+// The target is named only when the caller may read it.
 internal sealed record PublishWarningInfo
 {
     public string Path { get; init; } = "";
@@ -24,5 +22,4 @@ internal sealed record PublishWarningInfo
     public Guid? TargetId { get; init; }
 }
 
-// A publish's answer as the form goes on with it: the read in the locale it published, and the warnings.
 internal sealed record PublishedRead(EntryRead Read, IReadOnlyList<PublishWarningInfo> Warnings);

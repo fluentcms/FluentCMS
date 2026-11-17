@@ -51,43 +51,6 @@
     margin: 0;
 }
 
-.content-form-status {
-    display: inline-flex;
-    flex-wrap: wrap;
-    gap: var(--cms-space-xs);
-}
-
-.content-form-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--cms-space-xs);
-    min-block-size: 1.5rem;
-    padding-inline: var(--cms-space-s);
-    border: 1px solid var(--cms-color-border);
-    border-radius: var(--cms-radius-s);
-    white-space: nowrap;
-}
-
-.content-form-badge-locale {
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.content-form-badge-published {
-    border-color: var(--cms-color-accent);
-    color: var(--cms-color-accent-text);
-}
-
-.content-form-badge-modified {
-    border-color: var(--cms-color-accent);
-    border-style: dashed;
-}
-
-.content-form-badge-draft,
-.content-form-badge-unpublished {
-    color: var(--cms-color-text-muted);
-}
-
 .content-form-groups {
     display: flex;
     flex-direction: column;

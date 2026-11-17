@@ -138,9 +138,7 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
         return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), basedOn.Site, basedOn.Locale);
     }
 
-    // The status actions of one locale of an entry (spec 4.10), each in exactly the site and locale of the read, so that a
-    // form in another locale acts on that one. Publish and discard send the read's tag, so they act on the version the form
-    // showed; unpublish takes none. Each answer is the read the form goes on with.
+    // In the site and locale of the read, as a save. Unpublish takes no If-Match.
     public async Task<PublishedRead> PublishEntryAsync(string type, Guid id, EntryRead basedOn, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(basedOn);

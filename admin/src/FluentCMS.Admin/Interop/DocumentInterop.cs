@@ -10,7 +10,7 @@ internal sealed class DocumentInterop(IJSRuntime js) : IAsyncDisposable
     public const string ModulePath = "./_content/FluentCMS.Admin/document.js";
 
     // The library returns focus 25 ms after a dialog closed (FocusOnPreviousActiveElement in its script); this runs later.
-    private const int DialogFocusDelay = 100;
+    public const int DialogFocusDelay = 100;
 
     private Task<IJSObjectReference>? module;
 

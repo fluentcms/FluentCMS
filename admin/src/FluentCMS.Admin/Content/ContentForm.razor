@@ -207,7 +207,6 @@
         Unreachable,
     }
 
-    // What the user asked of the entry, which a failure names.
     private enum EntryAction
     {
         Save,
@@ -228,7 +227,7 @@
 
     // A save that met a newer version: the entry as it is now, the form's values when it was sent, and the fields the user
     // may change whose value differs from the newer one, each marked when the user changed it.
-    private sealed record Conflict(EntryRead Current, JsonObject Mine, IReadOnlyList<ConflictRow> Rows);
+    private sealed record Conflict(EntryRead Current, JsonObject Mine, IReadOnlyList<ConflictRow> Rows, bool Publishing);
 
     private sealed record ConflictRow(SchemaFieldDescription Field, bool ChangedByUser);
 
@@ -248,10 +247,8 @@
     private IDisposable? tracking;
     private bool restored;
     private bool saving;
-    // The publish, unpublish or discard that runs, and the one whose question is open.
     private EntryAction? running;
     private EntryAction? confirming;
-    // What the last action did, shown beside the actions until the next change.
     private string? done;
     private IReadOnlyList<PublishWarningInfo> warnings = [];
     private SaveFailure? saveFailure;
@@ -265,6 +262,9 @@
     private (UserAction Action, JsonObject Body)? pendingCreate;
     private string? activeTab;
     private bool focusFirstError;
+    private bool focusAfterDialog;
+    private bool focusCancel;
+    private readonly Dictionary<EntryAction, CmsButton> cancelButtons = [];
     private ElementReference summary;
     private int generation;
     private (string Type, Guid? Id)? shown;
@@ -308,7 +308,6 @@
     // Save is absent for a caller who may not create entries of the type, or not change them (GET /me/access).
     private bool MaySave => access is not null && (entryId is null ? access.Create : access.Update);
 
-    // The status of the form's locale; none for a new entry or a locale the entry does not have yet.
     private string? Status => read?.Entry?.Status;
 
     // A publish saves first when the form holds what the server does not: a new entry or locale, or unsaved changes.
@@ -378,12 +377,30 @@
             await ListenForShortcutsAsync();
         }
 
+        // The library's dialog focuses itself as it opens; the safe choice takes focus once it has.
+        if (focusCancel && confirming is { } asked && cancelButtons.GetValueOrDefault(asked) is { } cancel)
+        {
+            focusCancel = false;
+            await Task.Delay(DocumentInterop.DialogFocusDelay);
+            if (confirming == asked)
+            {
+                await cancel.FocusAsync();
+            }
+        }
+
         if (!focusFirstError)
         {
             return;
         }
 
         focusFirstError = false;
+        if (focusAfterDialog)
+        {
+            // The dialog gives focus back to its opener on a timer once it closed, which would take it from the problem.
+            focusAfterDialog = false;
+            await Task.Delay(DocumentInterop.DialogFocusDelay);
+        }
+
         if (ContentFormLayout.InOrder(tabs).Where(Shows).FirstOrDefault(field => HasErrors(field.Name)) is { } first
             && editors.GetValueOrDefault(first.Name) is { } editor)
         {
@@ -545,7 +562,7 @@
     private void Change(SchemaFieldDescription field, JsonNode? value)
     {
         fields[field.Name] = value?.Parent is null ? value : value.DeepClone();
-        done = null;
+        (done, warnings) = (null, []);
         if (!IsDirty)
         {
             tracking?.Dispose();
@@ -711,10 +728,12 @@
             return;
         }
 
+        // The save may end after the form left for another entry, which must not be published in its place.
+        var current = generation;
         if (NeedsSave)
         {
             await SaveAsync();
-            if (saveFailure is not null || entryId is null || read is null || read.IsNewLocale)
+            if (current != generation || disposed || saveFailure is not null || entryId is null || read is null || read.IsNewLocale)
             {
                 return;
             }
@@ -728,7 +747,7 @@
     {
         if (!Busy)
         {
-            confirming = action;
+            (confirming, focusCancel) = (action, true);
         }
     }
 
@@ -748,7 +767,7 @@
         }
 
         running = action;
-        (saveFailure, done, warnings) = (null, null, []);
+        (saveFailure, done, warnings, conflict) = (null, null, [], null);
         (fieldErrors, formErrors) = (new(StringComparer.Ordinal), []);
         var current = generation;
         try
@@ -820,6 +839,7 @@
         finally
         {
             running = null;
+            focusAfterDialog = focusFirstError && focus == FocusAfter.Dialog;
         }
     }
 
@@ -869,7 +889,7 @@
             Announcer.Announce(problem.Title ?? NotDone(action), AnnouncementPoliteness.Assertive);
             if (action is EntryAction.Save or EntryAction.Publish && read is not null && ManagementClient.CurrentOf(problem, read) is { } current)
             {
-                OpenConflict(current);
+                OpenConflict(current, action == EntryAction.Publish);
                 return;
             }
         }
@@ -909,7 +929,7 @@
         formErrors = [];
     }
 
-    private void OpenConflict(EntryRead current)
+    private void OpenConflict(EntryRead current, bool publishing)
     {
         var mine = fields.DeepClone().AsObject();
         var before = read?.Entry?.Fields ?? [];
@@ -920,7 +940,7 @@
                 .Where(field => Changeable(field) && !JsonNode.DeepEquals(mine[field.Name], theirs[field.Name]))
                 .Select(field => new ConflictRow(field, !JsonNode.DeepEquals(mine[field.Name], before[field.Name]))),
         ];
-        conflict = new Conflict(current, mine, rows);
+        conflict = new Conflict(current, mine, rows, publishing);
         keepMine = rows.ToDictionary(row => row.Field.Name, row => row.ChangedByUser, StringComparer.Ordinal);
         (comparing, conflictOpen, conflictReopened) = (false, true, false);
     }
@@ -930,7 +950,7 @@
     {
         if (conflict is { } open)
         {
-            OpenConflict(open.Current);
+            OpenConflict(open.Current, open.Publishing);
             conflictReopened = true;
         }
     }
@@ -957,11 +977,15 @@
         if (kept.Count == 0)
         {
             await DropChangesAsync();
-            Announcer.Announce(L["Content.Form.Conflict.NothingToSave"]);
+            Announce(open.Publishing ? L["Content.Form.Conflict.NotPublished"] : L["Content.Form.Conflict.NothingToSave"]);
         }
         else
         {
             await SaveAsync();
+            if (open.Publishing && saveFailure is null)
+            {
+                Announce(L["Content.Form.Conflict.SavedNotPublished"]);
+            }
         }
 
         await FocusAfterConflictAsync(reopened);
@@ -988,8 +1012,14 @@
         var reopened = conflictReopened;
         Rebase(open.Current, open.Current.Entry!.Fields.DeepClone().AsObject());
         await DropChangesAsync();
-        Announcer.Announce(L["Content.Form.Conflict.TookTheirs"]);
+        Announce(open.Publishing ? L["Content.Form.Conflict.NotPublished"] : L["Content.Form.Conflict.TookTheirs"]);
         await FocusAfterConflictAsync(reopened);
+    }
+
+    private void Announce(string text)
+    {
+        done = text;
+        Announcer.Announce(text);
     }
 
     private async Task DropChangesAsync()
@@ -1148,44 +1178,39 @@
         }
     </text>;
 
-    // The status of the form's locale, named for a localized type as the entry has it, since a form in the site's default
-    // locale reads it without naming one; a published locale with a newer draft is also marked
-    // Modified. Each says its status in words, so its colour is never the only sign.
+    // As the list shows it; a localized type names the locale as the entry has it, since a form in the site's default
+    // locale reads it without naming one.
     private RenderFragment StatusBadge() => __builder =>
     {
-        if (Status is not { } status)
+        if (read?.Entry is not { Status: not null } entry)
         {
             return;
         }
 
-        var shown = status == EntryStatuses.Modified ? EntryStatuses.Published : status;
-        <span class="content-form-status">
-            <span class="content-form-badge content-form-badge-@shown">
-                @if (type?.Localized == true && (read?.Entry?.Locale ?? locale) is { Length: > 0 } named)
-                {
-                    <span class="content-form-badge-locale">@named</span>@(" ")@L[$"Content.Status.{shown}"]
-                }
-                else
-                {
-                    @L[$"Content.Status.{shown}"]
-                }
-            </span>
-            @if (status == EntryStatuses.Modified)
-            {
-                <span class="content-form-badge content-form-badge-modified">@L["Content.Status.modified"]</span>
-            }
-        </span>
+        if (type?.Localized == true && entry.Locale is { Length: > 0 } named)
+        {
+            <EntryBadges Entry="@entry" Locales="@(new Dictionary<string, ContentEntry> { [named] = entry })" SiteLocales="@([named])" />
+        }
+        else
+        {
+            <EntryBadges Entry="@entry" />
+        }
     };
 
     private RenderFragment Confirmation(EntryAction action, string key) => @<CmsDialog Title="@L[$"{key}.Title"]" Open="@(confirming == action)" OpenChanged="@(open => { if (!open && confirming == action) confirming = null; })">
         <ChildContent>
-            <p>@L[$"{key}.Text"]</p>
+            <p>@ConfirmationText(action, key)</p>
         </ChildContent>
         <Actions>
+            <CmsButton @ref="cancelButtons[action]" OnClick="@(() => confirming = null)">@L[$"{key}.Cancel"]</CmsButton>
             <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => ConfirmAsync(action))">@L[key]</CmsButton>
-            <CmsButton OnClick="@(() => confirming = null)">@L[$"{key}.Cancel"]</CmsButton>
         </Actions>
     </CmsDialog>;
+
+    private string ConfirmationText(EntryAction action, string key) =>
+        action == EntryAction.Unpublish && type?.Localized == true && (read?.Entry?.Locale ?? locale) is { Length: > 0 } named
+            ? L["Content.Form.Unpublish.LocaleText", named]
+            : L[$"{key}.Text"];
 
     private RenderFragment ConflictDialog() => @<CmsDialog Title="@L["Content.Form.Conflict.Title"]" Open="@conflictOpen" OpenChanged="@(open => conflictOpen = open)">
         <ChildContent>

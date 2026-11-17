@@ -33,26 +33,27 @@ public sealed class StatusTests(EndToEndHost host) : BrowserTest(host)
         published.Status.ShouldBe(200);
         (await published.Request.HeaderValueAsync("if-match")).ShouldBe("\"1\"");
         await Expect(tab.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}$"), new PageAssertionsToHaveURLOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
-        await Expect(Badges(tab)).ToHaveTextAsync([new Regex($"^\\s*en\\s+{Status("published")}\\s*$", RegexOptions.IgnoreCase)]);
+        await Expect(Badges(tab)).ToHaveTextAsync([Badge("published")]);
         await Expect(tab.Announced(Repository.AdminText("Content.Form.Published"))).ToBeAttachedAsync();
         await Expect(Control(tab, "Content.Form.Publish")).ToHaveCountAsync(0);
 
         await Title(tab).FillAsync("Changed after the publish");
         (await AnswerAsync(tab, () => Control(tab, "Content.Form.Save").ClickAsync(), "PUT", entry)).Status.ShouldBe(200);
-        await Expect(Badges(tab).Last).ToHaveTextAsync(Status("modified"));
+        await Expect(Badges(tab)).ToHaveTextAsync([Badge("modified")]);
 
         await Control(tab, "Content.Form.Discard").ClickAsync();
         await Expect(Shown(tab, DiscardTitle)).ToBeVisibleAsync();
+        (await FocusedButtonAsync(tab)).ShouldBe(Repository.AdminText("Content.Form.Discard.Cancel"));
         var discarded = await AnswerAsync(tab, () => DialogButton(tab, DiscardTitle, "Content.Form.Discard").ClickAsync(), "POST", $"{entry}/discard");
         discarded.Status.ShouldBe(200);
         (await discarded.Request.HeaderValueAsync("if-match")).ShouldBe("\"2\"");
         await Expect(Title(tab)).ToHaveValueAsync("Published from the form");
-        await Expect(Badges(tab)).ToHaveCountAsync(1);
+        await Expect(Badges(tab)).ToHaveTextAsync([Badge("published")]);
 
         await Control(tab, "Content.Form.Unpublish").ClickAsync();
         await Expect(Shown(tab, UnpublishTitle)).ToBeVisibleAsync();
         (await AnswerAsync(tab, () => DialogButton(tab, UnpublishTitle, "Content.Form.Unpublish").ClickAsync(), "POST", $"{entry}/unpublish")).Status.ShouldBe(200);
-        await Expect(Badges(tab)).ToHaveTextAsync([new Regex($"^\\s*en\\s+{Status("unpublished")}\\s*$", RegexOptions.IgnoreCase)]);
+        await Expect(Badges(tab)).ToHaveTextAsync([Badge("unpublished")]);
         await Expect(Control(tab, "Content.Form.Publish")).ToBeVisibleAsync();
         await Expect(Title(tab)).ToHaveValueAsync("Published from the form");
         browser.PolicyViolations.ShouldBeEmpty();
@@ -62,9 +63,17 @@ public sealed class StatusTests(EndToEndHost host) : BrowserTest(host)
 
     private static ILocator Title(AdminTab tab) => tab.Page.Locator("[data-field='title'] input");
 
-    private static ILocator Badges(AdminTab tab) => tab.Page.Locator(".content-form-badge");
+    private static ILocator Badges(AdminTab tab) => tab.Page.Locator(".content-form-toolbar .content-badge");
 
-    private static string Status(string status) => Repository.AdminText($"Content.Status.{status}");
+    private static Regex Badge(string status) =>
+        new($@"^\s*en\s+{Regex.Escape(Repository.AdminText($"Content.Status.{status}"))}\s*$", RegexOptions.IgnoreCase);
+
+    // The library moves focus into the dialog on its own timer, so the check waits for it.
+    private static async Task<string> FocusedButtonAsync(AdminTab tab)
+    {
+        await tab.Page.WaitForFunctionAsync("() => document.activeElement?.closest('fluent-button') != null", null, new PageWaitForFunctionOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        return await tab.Page.EvaluateAsync<string>("() => document.activeElement?.closest('fluent-button')?.textContent?.trim() ?? ''");
+    }
 
     // A control of the toolbar, which the confirming button of its dialog has the same text as.
     private static ILocator Control(AdminTab tab, string resourceKey) =>
