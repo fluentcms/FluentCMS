@@ -72,12 +72,21 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
     public async Task<MyPreferences> SetMyPreferencesAsync(MyPreferences preferences, CancellationToken cancellationToken) =>
         (await api.SendAsync(Me(HttpMethod.Put, "me/preferences", JsonSerializer.SerializeToNode(preferences, Json.MyPreferences)), Json.MyPreferences, cancellationToken)).Value;
 
-    // What the caller may do in the site, in the site's default locale.
-    public async Task<MyAccessInfo> GetMyAccessAsync(string? site, CancellationToken cancellationToken) =>
-        (await api.SendAsync(SiteRead("me/access", site), Json.MyAccessInfo, cancellationToken)).Value;
+    // What the caller may do in the site, in the locale named or else the site's default: a grant limited to locales counts
+    // only in them, so the server narrows both reads by the locale.
+    public async Task<MyAccessInfo> GetMyAccessAsync(string? site, string? locale, CancellationToken cancellationToken) =>
+        (await api.SendAsync(Pinned(HttpMethod.Get, "me/access", site, locale), Json.MyAccessInfo, cancellationToken)).Value;
 
-    public async Task<SchemaDescription> GetSchemaAsync(string? site, CancellationToken cancellationToken) =>
-        (await api.SendAsync(SiteRead("schema", site), Json.SchemaDescription, cancellationToken)).Value;
+    public async Task<SchemaDescription> GetSchemaAsync(string? site, string? locale, CancellationToken cancellationToken) =>
+        (await api.SendAsync(Pinned(HttpMethod.Get, "schema", site, locale), Json.SchemaDescription, cancellationToken)).Value;
+
+    // The entry in every locale it has, by locale, with the status of each (GET /content/{type}/{id}?locale=all), in the site
+    // named. An entry the caller may read in no locale is a 404, as a missing one.
+    public async Task<IReadOnlyDictionary<string, ContentEntry>> GetEntryLocalesAsync(string type, Guid id, string? site, CancellationToken cancellationToken)
+    {
+        var read = await api.SendAsync(Pinned(HttpMethod.Get, Entry(type, id), site, "all"), Json.ContentEntry, cancellationToken);
+        return EveryLocaleRows.Read([read.Value], null, []).Locales.GetValueOrDefault(id) ?? new Dictionary<string, ContentEntry>();
+    }
 
     public async Task<IReadOnlyList<PluginInfo>> GetPluginsAsync(string? site, CancellationToken cancellationToken) =>
         (await api.SendAsync(SiteRead("plugins", site), Json.ItemListPluginInfo, cancellationToken)).Value.Items;
@@ -121,10 +130,10 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
         return Read(answer, action.Site, action.Locale) with { Location = answer.Location };
     }
 
-    // The id of a singleton's one entry, or null while it has none.
-    public async Task<Guid?> FindSingletonAsync(string type, CancellationToken cancellationToken)
+    // The id of a singleton's one entry, or null while it has none in the locale; null reads the view's.
+    public async Task<Guid?> FindSingletonAsync(string type, string? locale, CancellationToken cancellationToken)
     {
-        var page = await ListEntriesAsync(type, new ContentQuery { PageSize = 1, Fields = ["id"] }, cancellationToken);
+        var page = await ListEntriesAsync(type, new ContentQuery { PageSize = 1, Fields = ["id"], Locale = locale }, cancellationToken);
         return page.Items.Count > 0 ? page.Items[0].Id : null;
     }
 

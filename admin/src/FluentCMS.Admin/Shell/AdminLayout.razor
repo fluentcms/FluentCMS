@@ -1,6 +1,7 @@
 @* The layout of the admin's pages (spec 4.1): a header, the sidebar, and the content, which shows the page once the shell
    has read what the user may do. Without a signed-in user, as on the callback of the sign-in, it shows the header and the
-   page only, and nothing of it calls the API. While a form is unsaved, closing the tab asks first. *@
+   page only, and nothing of it calls the API. While a form is unsaved, closing the tab asks first. An address that names a
+   content locale sets it, on any page. *@
 @inherits LayoutComponentBase
 @implements IDisposable
 @using FluentCMS.Admin.Authentication
@@ -97,9 +98,10 @@
         Context.Changed += OnContextChanged;
         Drafts.TrackedChanged += OnTrackedChanged;
         closesDrawer = Navigation.RegisterLocationChangingHandler(CloseDrawer);
+        Navigation.LocationChanged += OnLocationChanged;
         if (SignedIn)
         {
-            await Context.StartAsync();
+            await StartAsync();
         }
     }
 
@@ -108,6 +110,7 @@
         Session.Changed -= OnSessionChanged;
         Context.Changed -= OnContextChanged;
         Drafts.TrackedChanged -= OnTrackedChanged;
+        Navigation.LocationChanged -= OnLocationChanged;
         closesDrawer?.Dispose();
     }
 
@@ -115,7 +118,7 @@
 
     private void OpenNavigation() => (drawerOpen, closedByNavigation) = (true, false);
 
-    private Task TryAgainAsync() => Context.StartAsync();
+    private Task TryAgainAsync() => StartAsync();
 
     // A user who signs in on this page load, as the callback does, starts the shell.
     private void OnSessionChanged() => _ = InvokeAsync(async () =>
@@ -123,11 +126,22 @@
         StateHasChanged();
         if (SignedIn)
         {
-            await Context.StartAsync();
+            await StartAsync();
         }
     });
 
+    // The address the app was loaded at may name a content locale too.
+    private async Task StartAsync()
+    {
+        await Context.StartAsync();
+        await Context.UseLocaleAsync(ContentRoutes.LocaleOf(new Uri(Navigation.Uri)));
+    }
+
     private void OnContextChanged() => _ = InvokeAsync(StateHasChanged);
+
+    // A content page sets the locale of its address itself before it reads; this sets it on the others.
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) =>
+        _ = InvokeAsync(() => Context.UseLocaleAsync(ContentRoutes.LocaleOf(Navigation.ToAbsoluteUri(e.Location))));
 
     // A closed or reloaded tab asks first while a form is unsaved (spec 4.5). Called at once, not through the dispatcher, so
     // that a release just before a redirect turns the question off before the page goes.

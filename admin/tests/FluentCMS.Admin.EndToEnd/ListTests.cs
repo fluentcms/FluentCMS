@@ -80,7 +80,8 @@ public sealed class ListTests(EndToEndHost host) : BrowserTest(host)
         var title = await rows.Nth(1).Locator("a").TextContentAsync();
         var href = await rows.Nth(1).Locator("a").GetAttributeAsync("href") ?? "";
         await tab.Page.Keyboard.PressAsync("Enter");
-        await Expect(tab.Page).ToHaveURLAsync(new Uri(Host.Admin, href).AbsoluteUri);
+        // The address names the content locale of the list (A-17).
+        await Expect(tab.Page).ToHaveURLAsync(new Uri(Host.Admin, href + "?locale=en").AbsoluteUri);
         title.ShouldNotBeNullOrWhiteSpace();
         href.ShouldMatch("^content/article/[0-9a-f-]{36}$");
         browser.PolicyViolations.ShouldBeEmpty();

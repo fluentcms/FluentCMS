@@ -1,6 +1,7 @@
 @* The site switcher, from GET /me/sites (spec 4.1); a user with one site has nothing to switch. Switching keeps the route when
    its type exists in the new site, and otherwise goes to the start page; an entry of a type that is not global belongs to
-   the site before, so its route goes to the type's list, and a list leaves its query string behind. The page is dropped
+   the site before, so its route goes to the type's list, and a list leaves its query string behind. The content locale is
+   reset to the new site's default with it, which a route kept then names. The page is dropped
    while the new site loads, so a switch with an unsaved form asks first (#3178). *@
 @implements IDisposable
 @using FluentCMS.Admin.Authentication
@@ -72,7 +73,15 @@
 
     private async Task SwitchToAsync(Guid id)
     {
-        await Context.SwitchSiteAsync(id);
+        // The switch enters the new site at once, in its default locale, which the address then names, so that the page does
+        // not set the locale of the site before again.
+        var switching = Context.SwitchSiteAsync(id);
+        if (ContentRoutes.LocaleOf(new Uri(Navigation.Uri)) is not null && Context.Site is { } entered)
+        {
+            Navigation.NavigateTo(Navigation.GetUriWithQueryParameter("locale", entered.DefaultLocale), replace: true);
+        }
+
+        await switching;
         if (Context.Status != ShellStatus.Ready || Context.Site is not { } site)
         {
             return;

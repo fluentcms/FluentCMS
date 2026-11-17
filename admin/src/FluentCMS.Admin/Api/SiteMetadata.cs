@@ -1,11 +1,14 @@
 namespace FluentCMS.Admin.Api;
 
 // /schema and /plugins, read once per site per session and again after a site switch or a reload; the schema changes only
-// with a new server process (spec 2.7). Nothing else is cached. Callers share one read, and a read that failed is not kept.
-internal sealed class SiteMetadata(ManagementClient client, ICurrentSite current)
+// with a new server process (spec 2.7). The schema is read in the content locale, since the server narrows it to the types
+// and fields the caller may read there (#3178), and again when the locale changes; the plugins are the site's. Nothing else
+// is cached. Callers share one read, and a read that failed is not kept.
+internal sealed class SiteMetadata(ManagementClient client, ICurrentSite current, IContentLocale contentLocale)
 {
     private readonly Lock _gate = new();
     private string? _site;
+    private string? _locale;
     private Task<SchemaDescription>? _schema;
     private Task<IReadOnlyList<PluginInfo>>? _plugins;
 
@@ -15,7 +18,13 @@ internal sealed class SiteMetadata(ManagementClient client, ICurrentSite current
         lock (_gate)
         {
             var site = SwitchTo(current.Site);
-            read = Usable(_schema) ?? (_schema = client.GetSchemaAsync(site, CancellationToken.None));
+            var locale = contentLocale.Locale;
+            if (!string.Equals(locale, _locale, StringComparison.Ordinal))
+            {
+                (_locale, _schema) = (locale, null);
+            }
+
+            read = Usable(_schema) ?? (_schema = client.GetSchemaAsync(site, locale, CancellationToken.None));
         }
 
         return read.WaitAsync(cancellationToken);

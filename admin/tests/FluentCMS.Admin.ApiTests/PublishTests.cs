@@ -22,7 +22,7 @@ public sealed class PublishTests
     {
         await using var admin = new AdminHost();
         using var client = await admin.SignInAsync(role);
-        var access = (await client.Client.GetMyAccessAsync(null, Token)).Types["article"];
+        var access = (await client.Client.GetMyAccessAsync(null, null, Token)).Types["article"];
         (access.Publish, access.Unpublish, access.Update).ShouldBe((true, true, true));
         var created = await client.Client.CreateEntryAsync("article", new JsonObject { ["title"] = "Published by the admin" }, client.Client.StartAction("en"), Token);
         var id = created.Entry!.Id;

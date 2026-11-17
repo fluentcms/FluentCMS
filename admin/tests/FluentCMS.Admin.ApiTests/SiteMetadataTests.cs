@@ -33,7 +33,9 @@ public sealed class SiteMetadataTests
         other.Plugins.Select(plugin => plugin.Name).ShouldContain("media");
     }
 
-    // The second site has only en. The site switches while the view's locale is still fr, as the shell switches site first.
+    // The second site has only en. The caller's own reads name no locale, so a locale the site lacks fails none of them, and a
+    // read of content in it is refused; the shell resets the content locale with the site, so the site's reads that follow
+    // are in its default locale. The schema is read in the content locale.
     [Fact]
     public async Task AStaleLocaleFailsNoneOfTheReadsThatFollowASiteSwitch()
     {
@@ -42,15 +44,17 @@ public sealed class SiteMetadataTests
         var second = new JsonObject { ["name"] = "Second", ["slug"] = "second", ["defaultLocale"] = "en" };
         await client.Api.SendAsync(new ApiRequest(HttpMethod.Post, "sites") { Body = second }, Token);
         client.Locale = "fr";
-        await client.Metadata.GetSchemaAsync(Token);
+        var french = await client.Metadata.GetSchemaAsync(Token);
 
         client.Site = "second";
-        var schema = await client.Metadata.GetSchemaAsync(Token);
-        var plugins = await client.Metadata.GetPluginsAsync(Token);
         var me = await client.Client.GetMeAsync(Token);
         var sites = await client.Client.GetMySitesAsync(Token);
         var refused = await Should.ThrowAsync<ApiProblemException>(() => client.Client.ListEntriesAsync("article", null, Token));
+        client.Locale = null;
+        var schema = await client.Metadata.GetSchemaAsync(Token);
+        var plugins = await client.Metadata.GetPluginsAsync(Token);
 
+        french.Types.ShouldNotBeEmpty();
         schema.Types.ShouldNotBeEmpty();
         plugins.ShouldNotBeEmpty();
         me.Kind.ShouldBe("adminUser");

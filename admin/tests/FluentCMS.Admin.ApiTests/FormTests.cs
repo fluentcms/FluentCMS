@@ -53,7 +53,7 @@ public sealed class FormTests
         await using var admin = new AdminHost();
         using var client = await admin.SignInAsync(role);
         var article = (await client.Metadata.GetSchemaAsync(Token)).Types.Single(type => type.Name == "article");
-        var access = (await client.Client.GetMyAccessAsync(null, Token)).Types["article"];
+        var access = (await client.Client.GetMyAccessAsync(null, null, Token)).Types["article"];
 
         (access.Create, access.Update).ShouldBe((true, true));
         access.CreatableFields.ShouldContain("title");
@@ -106,7 +106,7 @@ public sealed class FormTests
         }
 
         using var client = await admin.SignInAsync("Title editor");
-        var access = (await client.Client.GetMyAccessAsync(null, Token)).Types["article"];
+        var access = (await client.Client.GetMyAccessAsync(null, null, Token)).Types["article"];
         var read = await client.Client.GetEntryAsync("article", created.Entry!.Id, null, Token);
         var changed = read.Entry!.Fields.DeepClone().AsObject();
         changed["title"] = "Changed by the title editor";
