@@ -30,7 +30,7 @@ public sealed class ListTests
         var second = await client.Client.ListEntriesAsync("article", query with { Page = 2 }, Token);
 
         shown.Select(column => column.Name).ShouldBe(Shown);
-        query.Fields.ShouldBe(["title", "status", "updatedAt", "updatedBy", "category", "author.name", "tags.name"]);
+        query.Fields.ShouldBe(["title", "status", "updatedAt", "updatedBy", "category", "author.name", "tags.name", "scheduledPublishAt", "scheduledUnpublishAt"]);
         query.Populate.ShouldBe(["author", "tags"]);
         first.Total.ShouldBe(4);
         first.Page.ShouldBe(1);

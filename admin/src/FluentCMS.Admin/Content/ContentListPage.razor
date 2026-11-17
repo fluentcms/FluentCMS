@@ -1,13 +1,14 @@
-@* The generated list of a collection (spec 4.4): the columns the user chose, sort by several keys, paging with a total, and
-   selection for the bulk actions of A-32. Sort, page and columns are in the query string, so a reload and Back keep them;
-   the column choice is also kept in the browser per user, site and type. The server decides what the user may read: a 403
-   or 404 of the list is shown as the answer. *@
+@* The generated list of a collection (spec 4.4): the columns the user chose, sort by several keys, filters, search, paging
+   with a total, status badges, and selection for the bulk actions of A-32. Sort, page, columns, filters and the search are
+   in the query string, so a reload and Back keep them; the column choice is also kept in the browser per user, site and
+   type. The server decides what the user may read: a 403 or 404 of the list is shown as the answer. *@
 @page "/content/{Type}"
 @implements IDisposable
 @inject AdminContext Context
 @inject ManagementClient Client
 @inject NavigationManager Navigation
 @inject ListCellRegistry Cells
+@inject ListFilterRegistry FilterTypes
 @inject IColumnStorage ColumnStorage
 @inject FormatService Format
 @inject IAnnouncer Announcer
@@ -35,6 +36,8 @@ else if (view is { } shownView)
             }
         </div>
     </div>
+
+    <ListToolbar Type="@type" Searchable="@Searchable(shownView)" />
 
     @if (problem is { } failed)
     {
@@ -96,7 +99,7 @@ else if (view is { } shownView)
                      Loading="@loading"
                      TotalItems="@total"
                      RowOffset="@((long)(page - 1) * pageSize)">
-            <EmptyContent>@L["Content.List.Empty"]</EmptyContent>
+            <EmptyContent>@L[filters.Count > 0 || search is not null ? "Content.List.NoMatch" : "Content.List.Empty"]</EmptyContent>
             <ChildContent>
                 <CmsDataGridColumn TItem="ContentEntry" @key="shownView.Label.Name" Name="@shownView.Label.Name" Title="@Title(shownView.Label)" Order="0" Sortable="@shownView.Label.Sortable">
                     <a href="@EntryRoute(context)" tabindex="-1">@AdminLabels.Entry(type, context)</a>
@@ -156,12 +159,21 @@ else if (view is { } shownView)
     private string? storedKey;
     private IReadOnlyList<string>? stored;
     private string? readKey;
+
+    // The site, type, filters and search of the last read that answered, so that a change of the filters or the search is
+    // announced with the number it finds (WCAG 4.1.3), and the first read of a list is not.
+    private (string Scope, string Criteria)? answered;
     private ListView? view;
     private IReadOnlyList<ListColumn> shown = [];
     private IReadOnlyList<SortField> sort = ListView.DefaultSort;
     private int page = 1;
     private int pageSize = ListView.DefaultPageSize;
     private IReadOnlyList<ContentEntry> entries = [];
+    private IReadOnlyList<FieldFilter> filters = [];
+    private string? search;
+
+    // Each row's entry in every locale it has, by the entry's id, under locale=all.
+    private IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, ContentEntry>> localesById = new Dictionary<Guid, IReadOnlyDictionary<string, ContentEntry>>();
     private long total;
     private bool loading;
     private ApiFailure? problem;
@@ -193,12 +205,19 @@ else if (view is { } shownView)
     [SupplyParameterFromQuery(Name = "columns")]
     public string? ColumnsQuery { get; set; }
 
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? SearchQuery { get; set; }
+
     // A failed read: the problem the API answered, or none when it did not answer.
     private sealed record ApiFailure(ApiProblem? Problem);
 
     private SchemaTypeDescription? Described => Context.Schema?.Types.FirstOrDefault(item => item.Name == Type);
 
     private long Pages => Math.Max(1, (total + pageSize - 1) / pageSize);
+
+    // The enabled locales of the site, in its order, which the badges of a localized type follow.
+    private IReadOnlyList<string> SiteLocales =>
+        [.. (Context.Site?.Locales ?? []).Where(locale => locale.Enabled).OrderBy(locale => locale.Position).Select(locale => locale.Code)];
 
     private IReadOnlyList<CmsSortKey> GridSort => [.. sort.Select(key => new CmsSortKey(key.Path, key.Descending))];
 
@@ -212,7 +231,7 @@ else if (view is { } shownView)
 
         if (view?.Type != type)
         {
-            view = ListView.For(type, schema, Cells);
+            view = ListView.For(type, schema, Cells, FilterTypes);
         }
 
         var names = ColumnsQuery is not null
@@ -222,8 +241,27 @@ else if (view is { } shownView)
         sort = view.ParseSort(SortQuery);
         page = ListView.ParsePage(PageQuery);
         pageSize = ListView.ParsePageSize(PageSizeQuery);
-        await ReadAsync(view.Query(shown, sort, page, pageSize));
+        filters = ListFilters.Parse(new Uri(Navigation.Uri).Query, view.Filters);
+        search = Searchable(view) ? ListFilters.ParseSearch(SearchQuery) : null;
+        await ReadAsync(Query(view));
     }
+
+    // Each locale's status needs every locale of the entries, so a localized type in a site of several locales is read with
+    // locale=all while its status is shown. The engine then matches, sorts and searches in the site's default locale, so only
+    // while that is the content locale; another content locale reads its own (A-17).
+    private ContentQuery Query(ListView list) =>
+        list.Query(shown, sort, page, pageSize, filters, search, everyLocale:
+            list.Type.Localized
+            && SiteLocales.Count > 1
+            && Context.ContentLocale == Context.Site?.DefaultLocale
+            && shown.Any(column => column.Kind == ListColumnKind.Status));
+
+    // A search needs a searchable type and an index in the site: one is registered and the search plugin, when it is the one,
+    // is not disabled there (FCMS2211).
+    private bool Searchable(ListView list) =>
+        list.Searchable
+        && Context.AccessInfo?.Search == true
+        && !Context.Plugins.Any(plugin => plugin.Name == "search" && !plugin.Enabled);
 
     public void Dispose()
     {
@@ -276,7 +314,9 @@ else if (view is { } shownView)
                 return;
             }
 
-            (entries, total) = (result.Items, result.Total ?? result.Items.Count);
+            (entries, localesById) = query.Locale == ListView.EveryLocale ? EveryLocaleRows.Read(result.Items, Context.ContentLocale, SiteLocales) : (result.Items, new Dictionary<Guid, IReadOnlyDictionary<string, ContentEntry>>());
+            total = result.Total ?? result.Items.Count;
+            AnnounceFound(query);
             if (entries.Count == 0 && total > 0 && page > Pages)
             {
                 // A page past the end, as after entries were deleted or another site was chosen: its last page instead.
@@ -299,7 +339,23 @@ else if (view is { } shownView)
         loading = false;
     }
 
-    private Task TryAgainAsync() => view is null ? Task.CompletedTask : ReadAsync(view.Query(shown, sort, page, pageSize), again: true);
+    private void AnnounceFound(ContentQuery query)
+    {
+        var now = ($"{Context.Site?.Id}/{Type}", new ContentQuery { Filter = query.Filter, Search = query.Search }.ToQueryString());
+        if (answered is { } before && before.Scope == now.Item1 && before.Criteria != now.Item2)
+        {
+            Announcer.Announce(total switch
+            {
+                0 => L[now.Item2.Length > 0 ? "Content.List.NoMatch" : "Content.List.Empty"],
+                1 => L["Content.List.TotalOne"],
+                _ => L["Content.List.Total", Number(total)],
+            });
+        }
+
+        answered = now;
+    }
+
+    private Task TryAgainAsync() => view is null ? Task.CompletedTask : ReadAsync(Query(view), again: true);
 
     private string ProblemTitle(ApiFailure failure) => failure.Problem switch
     {
@@ -321,7 +377,14 @@ else if (view is { } shownView)
 
     private RenderFragment Cell(ListColumn column, ContentEntry entry) => column.Kind switch
     {
-        ListColumnKind.Status => builder => builder.AddContent(0, entry.Status is { } status ? L[$"Content.Status.{status}"].Value : null),
+        ListColumnKind.Status => builder =>
+        {
+            builder.OpenComponent<EntryBadges>(0);
+            builder.AddComponentParameter(1, nameof(EntryBadges.Entry), entry);
+            builder.AddComponentParameter(2, nameof(EntryBadges.Locales), localesById.GetValueOrDefault(entry.Id));
+            builder.AddComponentParameter(3, nameof(EntryBadges.SiteLocales), SiteLocales);
+            builder.CloseComponent();
+        },
         ListColumnKind.Locale => builder => builder.AddContent(0, entry.Locale),
         ListColumnKind.UpdatedAt => builder =>
         {

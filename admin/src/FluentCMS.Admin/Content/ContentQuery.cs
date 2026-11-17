@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Globalization;
 using System.Text;
+using FluentCMS.Admin.Lists;
 
 namespace FluentCMS.Admin.Content;
 
@@ -15,6 +16,9 @@ internal enum ContentStatus
 internal sealed record ContentQuery
 {
     public ContentFilter? Filter { get; init; }
+
+    // The text of a search, q=, which the search index answers (backend 4.4).
+    public string? Search { get; init; }
 
     public IReadOnlyList<SortField> Sort { get; init; } = [];
 
@@ -47,6 +51,7 @@ internal sealed record ContentQuery
             WriteFilter(filter, "filter", pairs);
         }
 
+        Add("q", Search);
         if (Sort.Count > 0)
         {
             pairs.Add(("sort", string.Join(',', Sort.Select(field => (field.Descending ? "-" : "") + field.Path))));
@@ -82,7 +87,7 @@ internal sealed record ContentQuery
             case FieldFilter { Operator: FilterOperator.In or FilterOperator.NotIn or FilterOperator.Between, Value: null or ICollection { Count: 0 } } field:
                 throw new ArgumentException($"The filter on '{field.Path}' needs at least one value.", nameof(filter));
             case FieldFilter field:
-                pairs.Add(($"{prefix}[{field.Path}][{OperatorName(field.Operator)}]", Operand(field)));
+                pairs.Add(($"{prefix}[{field.Path}][{ListFilters.Name(field.Operator)}]", Operand(field)));
                 break;
             case Not negated:
                 WriteFilter(negated.Filter, $"{prefix}[not]", pairs);
@@ -118,25 +123,6 @@ internal sealed record ContentQuery
         || every.Filters.Count(item => item is Not) > 1
         || every.Filters.OfType<FieldFilter>().GroupBy(field => (field.Path, field.Operator)).Any(group => group.Count() > 1);
 
-    private static string OperatorName(FilterOperator filterOperator) => filterOperator switch
-    {
-        FilterOperator.Equal => "eq",
-        FilterOperator.NotEqual => "ne",
-        FilterOperator.In => "in",
-        FilterOperator.NotIn => "nin",
-        FilterOperator.LessThan => "lt",
-        FilterOperator.LessThanOrEqual => "lte",
-        FilterOperator.GreaterThan => "gt",
-        FilterOperator.GreaterThanOrEqual => "gte",
-        FilterOperator.Between => "between",
-        FilterOperator.Contains => "contains",
-        FilterOperator.StartsWith => "startsWith",
-        FilterOperator.IsNull => "null",
-        FilterOperator.IsNotNull => "notNull",
-        FilterOperator.HasBlock => "hasBlock",
-        _ => throw new ArgumentOutOfRangeException(nameof(filterOperator), filterOperator, null),
-    };
-
     private static string Operand(FieldFilter field) => field.Operator switch
     {
         FilterOperator.IsNull or FilterOperator.IsNotNull => "true",
@@ -146,18 +132,19 @@ internal sealed record ContentQuery
     };
 
     // A moment in UTC with Z and no trailing zeros in its fraction, which a JavaScript Date also gives.
-    private static string Text(object? value) => value switch
+    internal static string Text(object? value) => value switch
     {
         null => "",
         bool flag => flag ? "true" : "false",
         DateTimeOffset moment => moment.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'", CultureInfo.InvariantCulture),
         DateTime moment => moment.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'", CultureInfo.InvariantCulture),
         DateOnly day => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        Guid id => id.ToString("D"),
         IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
         _ => value.ToString() ?? "",
     };
 
-    private static string EscapeItem(string text) => text.Replace("\\", "\\\\", StringComparison.Ordinal).Replace(",", "\\,", StringComparison.Ordinal);
+    internal static string EscapeItem(string text) => text.Replace("\\", "\\\\", StringComparison.Ordinal).Replace(",", "\\,", StringComparison.Ordinal);
 
     // Brackets and the commas of the grammar stay readable; everything else in a key or value is percent-encoded.
     private static string EscapeKey(string key) =>
