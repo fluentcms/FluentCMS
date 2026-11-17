@@ -29,7 +29,9 @@ public sealed class FormTests(EndToEndHost host) : BrowserTest(host)
         // always keep such a body for the test to read again.
         var location = await create.HeaderValueAsync("location");
         var id = Guid.Parse(location.ShouldNotBeNull()[(location.LastIndexOf('/') + 1)..]);
-        await tab.Page.WaitForURLAsync(new Regex($"/admin/content/article/{id:D}$"));
+        // The admin moves to the entry's route within the page. The address is polled: a wait for a navigation can start after
+        // Playwright has taken that move in and then waits for one that does not come.
+        await Expect(tab.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}$"), new PageAssertionsToHaveURLOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         await Expect(tab.Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = "Written in the browser", Exact = true })).ToBeVisibleAsync();
         await Expect(tab.Announced(Repository.AdminText("Content.Form.Saved"))).ToBeAttachedAsync();
         (await tab.Page.EvaluateAsync<string>("() => document.activeElement?.closest('fluent-button')?.textContent?.trim() ?? ''")).ShouldBe(Repository.AdminText("Content.Form.Save"));
