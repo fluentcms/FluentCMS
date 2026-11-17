@@ -1,0 +1,34 @@
+@* The content locale switcher (spec 4.17): a link per enabled locale of the site, in its order, which puts the locale in the
+   address of the page, so that a form with unsaved changes asks first, as for any route change (A-49). An address without
+   one keeps the locale there is, so each link names its locale, the site's default too. *@
+@implements IDisposable
+@inject AdminContext Context
+@inject NavigationManager Navigation
+@inject IStringLocalizer<AdminResources> L
+
+@if (Context.ContentLocales.Count > 1)
+{
+    <nav class="content-locales" aria-label="@L["Content.Locale.Label"]">
+        <span class="content-locales-label" aria-hidden="true">@L["Content.Locale.Label"]</span>
+        <ul>
+            @foreach (var tag in Context.ContentLocales)
+            {
+                var current = string.Equals(tag, Context.ContentLocale, StringComparison.OrdinalIgnoreCase);
+                <li @key="tag">
+                    <a href="@Href(tag)" class="@(current ? "content-locale content-locale-current" : "content-locale")" aria-current="@(current ? "true" : null)">@tag</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
+
+@code {
+    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+
+    // The address of the page in the locale, with the rest of its query string.
+    private string Href(string code) => Navigation.GetUriWithQueryParameter("locale", code);
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+}

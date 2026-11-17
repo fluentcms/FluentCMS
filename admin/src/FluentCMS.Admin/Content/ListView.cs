@@ -178,6 +178,20 @@ internal sealed class ListView
         };
     }
 
+    // The status of a page's entries in another locale than the one the page was matched in, which locale=all cannot give:
+    // it matches in the site's default locale, which an entry may lack. A read of that locale limited to their ids.
+    public static ContentQuery StatusQuery(string locale, IReadOnlyCollection<Guid> ids)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        return new ContentQuery
+        {
+            Filter = new FieldFilter("id", FilterOperator.In, ids.ToList()),
+            Locale = locale,
+            Fields = ["id", "status", ScheduledPublishAt, ScheduledUnpublishAt],
+            PageSize = Math.Max(1, ids.Count),
+        };
+    }
+
     private static bool Sorts(SchemaFieldDescription field) => !field.Multiple && SortableTypes.Contains(field.Type);
 
     // A relation is read with its target's label, when the user may read the target and it has one.

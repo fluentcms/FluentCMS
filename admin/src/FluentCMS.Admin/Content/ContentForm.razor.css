@@ -149,3 +149,31 @@
 .content-form-shortcuts dd {
     margin: 0;
 }
+
+.content-form-new-locale .content-form-toolbar {
+    margin-block-end: var(--cms-space-m);
+}
+
+.content-form-compare-choice {
+    max-inline-size: 20rem;
+    margin-block-end: var(--cms-space-l);
+}
+
+/* The other locale beside the field, read-only; one above the other on a narrow screen. */
+.content-form-field-compared {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--cms-space-s);
+}
+
+@media (min-width: 768px) {
+    .content-form-field-compared {
+        grid-column: span 12;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.content-form-compare {
+    padding-inline-start: var(--cms-space-m);
+    border-inline-start: 3px solid var(--cms-color-border);
+}

@@ -1,4 +1,5 @@
-@* The sidebar of the shell, for the site of the context (spec 4.1); the drawer of a narrow window holds it too. *@
+@* The sidebar of the shell, for the site of the context (spec 4.1); the drawer of a narrow window holds it too. A grant may
+   be limited to locales, so where the content locale shows no type and the site has others, it says so and offers them. *@
 @implements IDisposable
 @inject AdminContext Context
 @inject AdminMenu Menu
@@ -18,6 +19,13 @@
         </CmsNavigationSection>
     }
 </CmsNavigation>
+@if (Context.ContentLocales.Count > 1 && Context.Schema is { } schema && !schema.Types.Any(type => Context.MayRead(type.Name)))
+{
+    <div class="shell-sidebar-locales">
+        <p>@L["Shell.Sidebar.NoTypesInLocale", Context.ContentLocale ?? ""]</p>
+        <ContentLocaleSwitcher />
+    </div>
+}
 
 @code {
     protected override void OnInitialized() => Context.Changed += OnChanged;

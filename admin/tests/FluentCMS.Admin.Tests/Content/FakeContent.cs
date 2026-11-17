@@ -9,13 +9,23 @@ internal sealed record ContentWrite(HttpMethod Method, string Path, JsonObject B
 
 // The content routes a form calls, over FakeManagementServer: read an entry with its tag, list a singleton, create with a
 // Location, and save with If-Match, which a stale tag fails with a 412 that holds the entry as it is now. Publish, unpublish
-// and discard move the status as the server does. A test can answer the next write itself.
+// and discard move the status as the server does. Each entry is kept per locale: a request is in its locale query parameter,
+// else its X-Cms-Locale, else en; a read of a locale the entry lacks is a 404, locale=all answers every locale it has, and a
+// save with If-Match "0" adds a locale. A test can answer the next write itself.
 internal sealed class FakeContent
 {
-    private readonly Dictionary<Guid, (string Type, int Version, JsonObject Fields)> _entries = [];
-    private readonly Dictionary<Guid, (string Status, JsonObject? Published)> _states = [];
+    public const string DefaultLocale = "en";
 
-    public FakeContent(FakeManagementServer server) => server.Respond = Handle;
+    private readonly Dictionary<(Guid Id, string Locale), (string Type, int Version, JsonObject Fields)> _entries = [];
+    private readonly Dictionary<(Guid Id, string Locale), (string Status, JsonObject? Published)> _states = [];
+
+    private readonly FakeManagementServer _server;
+
+    public FakeContent(FakeManagementServer server)
+    {
+        _server = server;
+        server.Respond = Handle;
+    }
 
     public List<ContentWrite> Writes { get; } = [];
 
@@ -28,26 +38,28 @@ internal sealed class FakeContent
     public JsonArray Warnings { get; set; } = [];
 
     // A published entry starts with its fields as the published version, and a modified one with these.
-    public Guid Add(string type, JsonObject fields, int version = 1, Guid? id = null, string status = "draft", JsonObject? published = null)
+    public Guid Add(string type, JsonObject fields, int version = 1, Guid? id = null, string status = "draft", JsonObject? published = null, string locale = DefaultLocale)
     {
         var key = id ?? Guid.CreateVersion7();
-        _entries[key] = (type, version, fields);
-        _states[key] = (status, status switch { "published" => fields.DeepClone().AsObject(), "modified" => published, _ => null });
+        _entries[(key, locale)] = (type, version, fields);
+        _states[(key, locale)] = (status, status switch { "published" => fields.DeepClone().AsObject(), "modified" => published, _ => null });
         return key;
     }
 
-    public string Status(Guid id) => _states[id].Status;
+    public bool Has(Guid id, string locale) => _entries.ContainsKey((id, locale));
 
-    public JsonObject Fields(Guid id) => _entries[id].Fields;
+    public string Status(Guid id, string locale = DefaultLocale) => _states[(id, locale)].Status;
 
-    public int Version(Guid id) => _entries[id].Version;
+    public JsonObject Fields(Guid id, string locale = DefaultLocale) => _entries[(id, locale)].Fields;
+
+    public int Version(Guid id, string locale = DefaultLocale) => _entries[(id, locale)].Version;
 
     // Another tab's save, so that this form's tag is stale.
-    public void ChangeElsewhere(Guid id, string field, string value)
+    public void ChangeElsewhere(Guid id, string field, string value, string locale = DefaultLocale)
     {
-        var (type, version, fields) = _entries[id];
+        var (type, version, fields) = _entries[(id, locale)];
         fields[field] = value;
-        _entries[id] = (type, version + 1, fields);
+        _entries[(id, locale)] = (type, version + 1, fields);
     }
 
     public static HttpResponseMessage Invalid(params (string Path, string Message)[] errors) => Problem(HttpStatusCode.UnprocessableEntity, new JsonObject
@@ -65,17 +77,25 @@ internal sealed class FakeContent
             return null;
         }
 
+        var locale = LocaleOf(request);
         if (request.Method == HttpMethod.Get)
         {
             Reads.Add(request.RequestUri!.PathAndQuery);
             return rest switch
             {
+                // A list the server holds rows for is the server's to answer.
+                [] when _server.Entries.ContainsKey(type) => null,
                 [] => FakeManagementServer.Json(new JsonObject
                 {
-                    ["items"] = new JsonArray([.. _entries.Where(entry => entry.Value.Type == type).Select(entry => (JsonNode)new JsonObject { ["id"] = entry.Key })]),
+                    ["items"] = new JsonArray([.. _entries.Where(entry => entry.Value.Type == type).Select(entry => entry.Key.Id).Distinct().Select(id => (JsonNode)new JsonObject { ["id"] = id })]),
                     ["pageSize"] = 1,
                 }),
-                [var id] when Guid.TryParse(id, out var key) && _entries.ContainsKey(key) => Entry(key, HttpStatusCode.OK),
+                [var id] when Guid.TryParse(id, out var key) && locale == "all" && Locales(key).Count > 0 => FakeManagementServer.Json(new JsonObject
+                {
+                    ["id"] = key,
+                    ["locales"] = new JsonObject(Locales(key).Select(code => KeyValuePair.Create<string, JsonNode?>(code, Document(key, code)))),
+                }),
+                [var id] when Guid.TryParse(id, out var key) && _entries.ContainsKey((key, locale)) => Entry(key, locale, HttpStatusCode.OK),
                 _ => FakeManagementServer.Problem(HttpStatusCode.NotFound, "FCMS3104"),
             };
         }
@@ -97,15 +117,30 @@ internal sealed class FakeContent
 
         if (request.Method == HttpMethod.Post && rest is [])
         {
-            var created = Add(type, write.Body);
-            var response = Entry(created, HttpStatusCode.Created);
+            var created = Add(type, write.Body, locale: locale);
+            var response = Entry(created, locale, HttpStatusCode.Created);
             response.Headers.Location = new Uri($"/api/management/v1/content/{type}/{created:D}", UriKind.Relative);
             return response;
         }
 
         if (request.Method == HttpMethod.Put && rest is [var saved] && Guid.TryParse(saved, out var savedId))
         {
-            var (entryType, version, _) = _entries[savedId];
+            if (!_entries.TryGetValue((savedId, locale), out var stored))
+            {
+                if (Locales(savedId).Count == 0)
+                {
+                    return FakeManagementServer.Problem(HttpStatusCode.NotFound, "FCMS3104");
+                }
+
+                // A locale the entry does not have yet is version 0, which "0" adds.
+                stored = (_entries.First(entry => entry.Key.Id == savedId).Value.Type, 0, []);
+                if (write.IfMatch == "\"0\"")
+                {
+                    _states[(savedId, locale)] = ("draft", null);
+                }
+            }
+
+            var (entryType, version, _) = stored;
             if (write.IfMatch != $"\"{version}\"")
             {
                 return Problem(HttpStatusCode.PreconditionFailed, new JsonObject
@@ -114,36 +149,41 @@ internal sealed class FakeContent
                     ["code"] = "FCMS3105",
                     ["title"] = "The entry was changed",
                     ["detail"] = "Someone saved the entry after you read it.",
-                    ["current"] = Document(savedId),
+                    ["current"] = version == 0 ? null : Document(savedId, locale),
                 });
             }
 
-            _entries[savedId] = (entryType, version + 1, write.Body);
-            if (_states[savedId] is ("published", var published))
+            _entries[(savedId, locale)] = (entryType, version + 1, write.Body);
+            if (_states[(savedId, locale)] is ("published", var published))
             {
-                _states[savedId] = ("modified", published);
+                _states[(savedId, locale)] = ("modified", published);
             }
 
-            return Entry(savedId, HttpStatusCode.OK);
+            return Entry(savedId, locale, HttpStatusCode.OK);
         }
 
         if (request.Method == HttpMethod.Post && rest is [var acted, var action] && Guid.TryParse(acted, out var actedId))
         {
-            return Act(actedId, action, write);
+            return Act(actedId, locale, action, write);
         }
 
         return null;
     }
 
-    private HttpResponseMessage Act(Guid id, string action, ContentWrite write)
+    private HttpResponseMessage Act(Guid id, string locale, string action, ContentWrite write)
     {
-        var (type, version, fields) = _entries[id];
-        if (write.IfMatch is { } tag && tag != $"\"{version}\"")
+        if (!_entries.TryGetValue((id, locale), out var stored))
         {
-            return Problem(HttpStatusCode.PreconditionFailed, new JsonObject { ["status"] = 412, ["code"] = "FCMS3105", ["title"] = "The entry was changed", ["current"] = Document(id) });
+            return FakeManagementServer.Problem(HttpStatusCode.NotFound, "FCMS3104");
         }
 
-        var (status, published) = _states[id];
+        var (type, version, fields) = stored;
+        if (write.IfMatch is { } tag && tag != $"\"{version}\"")
+        {
+            return Problem(HttpStatusCode.PreconditionFailed, new JsonObject { ["status"] = 412, ["code"] = "FCMS3105", ["title"] = "The entry was changed", ["current"] = Document(id, locale) });
+        }
+
+        var (status, published) = _states[(id, locale)];
         if (action is "unpublish" or "discard" && published is null)
         {
             return Problem(HttpStatusCode.Conflict, new JsonObject { ["status"] = 409, ["title"] = "This entry is not published in this locale." });
@@ -152,42 +192,50 @@ internal sealed class FakeContent
         switch (action)
         {
             case "publish":
-                _states[id] = ("published", fields.DeepClone().AsObject());
-                var answer = new JsonObject { ["entry"] = Document(id), ["warnings"] = Warnings.DeepClone() };
+                _states[(id, locale)] = ("published", fields.DeepClone().AsObject());
+                var answer = new JsonObject { ["entry"] = Document(id, locale), ["warnings"] = Warnings.DeepClone() };
                 Warnings = [];
                 var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(answer.ToJsonString(), Encoding.UTF8, "application/json") };
                 response.Headers.ETag = new($"\"{version}\"");
                 return response;
             case "unpublish":
-                _states[id] = ("unpublished", null);
-                return Entry(id, HttpStatusCode.OK);
+                _states[(id, locale)] = ("unpublished", null);
+                return Entry(id, locale, HttpStatusCode.OK);
             default:
                 if (status == "modified")
                 {
-                    _entries[id] = (type, version + 1, published!.DeepClone().AsObject());
+                    _entries[(id, locale)] = (type, version + 1, published!.DeepClone().AsObject());
                 }
 
-                _states[id] = ("published", published);
-                return Entry(id, HttpStatusCode.OK);
+                _states[(id, locale)] = ("published", published);
+                return Entry(id, locale, HttpStatusCode.OK);
         }
     }
 
-    private JsonObject Document(Guid id)
+    private List<string> Locales(Guid id) => [.. _entries.Keys.Where(key => key.Id == id).Select(key => key.Locale)];
+
+    private JsonObject Document(Guid id, string locale)
     {
-        var (_, version, fields) = _entries[id];
+        var (_, version, fields) = _entries[(id, locale)];
         var document = fields.DeepClone().AsObject();
         document["id"] = id;
-        document["status"] = _states[id].Status;
-        document["locale"] = "en";
+        document["status"] = _states[(id, locale)].Status;
+        document["locale"] = locale;
         document["version"] = version;
         return document;
     }
 
-    private HttpResponseMessage Entry(Guid id, HttpStatusCode status)
+    private HttpResponseMessage Entry(Guid id, string locale, HttpStatusCode status)
     {
-        var response = new HttpResponseMessage(status) { Content = new StringContent(Document(id).ToJsonString(), Encoding.UTF8, "application/json") };
-        response.Headers.ETag = new($"\"{_entries[id].Version}\"");
+        var response = new HttpResponseMessage(status) { Content = new StringContent(Document(id, locale).ToJsonString(), Encoding.UTF8, "application/json") };
+        response.Headers.ETag = new($"\"{_entries[(id, locale)].Version}\"");
         return response;
+    }
+
+    private static string LocaleOf(HttpRequestMessage request)
+    {
+        var query = request.RequestUri!.Query.TrimStart('?').Split('&').FirstOrDefault(pair => pair.StartsWith("locale=", StringComparison.Ordinal));
+        return query is not null ? Uri.UnescapeDataString(query["locale=".Length..]) : Header(request, "X-Cms-Locale") ?? DefaultLocale;
     }
 
     private static string? Header(HttpRequestMessage request, string name) =>

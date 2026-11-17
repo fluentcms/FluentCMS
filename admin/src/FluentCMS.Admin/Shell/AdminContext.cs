@@ -21,7 +21,9 @@ internal enum ShellStatus
 
 // What the shell reads after sign-in (spec 4.1): GET /me, /me/sites and /me/preferences, whose formats apply from then on,
 // then for the chosen site /me/access, /schema and /plugins. The site chosen last is kept for the tab, so that a reload stays
-// in it. A read that a later switch overtook is dropped.
+// in it. The content locale is the site's default until an address names another (spec 4.17), and stays until one names
+// another again; /me/access and /schema are read again in it, since the server narrows both by the locale, and a site switch
+// resets it. A read that a later switch overtook is dropped.
 internal sealed class AdminContext(
     ManagementClient client,
     SiteMetadata metadata,
@@ -34,6 +36,7 @@ internal sealed class AdminContext(
 
     private Task? _starting;
     private int _generation;
+    private Task _localeReads = Task.CompletedTask;
 
     public event Action? Changed;
 
@@ -45,7 +48,14 @@ internal sealed class AdminContext(
 
     public MySiteInfo? Site => site.Current;
 
-    public string? ContentLocale => Site?.DefaultLocale;
+    public string? ContentLocale => site.Locale ?? Site?.DefaultLocale;
+
+    // The content locale when it is not the site's default, as the address of a content page names it; null otherwise.
+    public string? NamedLocale => site.Locale;
+
+    // The enabled locales of the site, in its order: those a view may be in, and that the badges of a localized type follow.
+    public IReadOnlyList<string> ContentLocales =>
+        [.. (Site?.Locales ?? []).Where(locale => locale.Enabled).OrderBy(locale => locale.Position).Select(locale => locale.Code)];
 
     public IAdminAccess Access => this;
 
@@ -87,6 +97,37 @@ internal sealed class AdminContext(
             await storage.SetAsync(TabStorageKeys.Site, chosen.Id.ToString("D"));
             await SiteReadsAsync(generation);
         });
+    }
+
+    // The content locale an address names: one of the site's enabled locales, else the site's default; null keeps the one
+    // there is. The access and the schema of the locale before stay until those of the new one are read, so a page awaits
+    // this before it reads.
+    public Task UseLocaleAsync(string? locale)
+    {
+        if (Status != ShellStatus.Ready || Site is not { } current)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (locale is null)
+        {
+            return _localeReads;
+        }
+
+        var chosen = ContentLocales.FirstOrDefault(code => string.Equals(code, locale, StringComparison.OrdinalIgnoreCase));
+        if (string.Equals(chosen, current.DefaultLocale, StringComparison.OrdinalIgnoreCase))
+        {
+            chosen = null;
+        }
+
+        if (string.Equals(chosen, site.ContentLocale, StringComparison.Ordinal))
+        {
+            return _localeReads;
+        }
+
+        var generation = ++_generation;
+        site.ContentLocale = chosen;
+        return _localeReads = RunAsync(generation, () => SiteReadsAsync(generation));
     }
 
     public bool Allows(string permission) => AccessInfo is { } access && Holds(access, permission);
@@ -151,11 +192,11 @@ internal sealed class AdminContext(
         }
     }
 
-    // From here the client sends the new site, and SiteMetadata drops what it read for the one before. Nothing read for the
-    // site before is kept, so that Allows answers false until the new site's access is read.
+    // From here the client sends the new site in its default locale, and SiteMetadata drops what it read for the one before.
+    // Nothing read for the site before is kept, so that Allows answers false until the new site's access is read.
     private void Enter(MySiteInfo chosen)
     {
-        site.Current = chosen;
+        (site.Current, site.ContentLocale) = (chosen, null);
         (AccessInfo, Schema, SchemaRefused, Plugins) = (null, null, false, []);
         Status = ShellStatus.Loading;
         Changed?.Invoke();
@@ -163,7 +204,7 @@ internal sealed class AdminContext(
 
     private async Task SiteReadsAsync(int generation)
     {
-        var access = await client.GetMyAccessAsync(site.Site, CancellationToken.None);
+        var access = await client.GetMyAccessAsync(site.Site, site.Locale, CancellationToken.None);
         var plugins = metadata.GetPluginsAsync(CancellationToken.None);
         SchemaDescription? schema = null;
         var refused = !Holds(access, SchemaRead);

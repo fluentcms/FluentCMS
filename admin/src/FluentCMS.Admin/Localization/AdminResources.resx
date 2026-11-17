@@ -537,6 +537,9 @@
   <data name="Shell.Sidebar.Settings" xml:space="preserve">
     <value>Settings</value>
   </data>
+  <data name="Shell.Sidebar.NoTypesInLocale" xml:space="preserve">
+    <value>You can read no content in {0}. Choose another content locale.</value>
+  </data>
   <data name="Shell.Sidebar.Global" xml:space="preserve">
     <value>Global</value>
     <comment>Marks a content type shared by every site.</comment>
@@ -1147,6 +1150,39 @@
   </data>
   <data name="Content.Form.Restored" xml:space="preserve">
     <value>Your unsaved changes from the last session were restored. Save to keep them.</value>
+  </data>
+  <data name="Content.Locale.Label" xml:space="preserve">
+    <value>Content locale</value>
+  </data>
+  <data name="Content.Form.NewLocale" xml:space="preserve">
+    <value>This entry has no translation in {0} yet. Fill it in, or copy another locale, and save to add it.</value>
+  </data>
+  <data name="Content.Form.NoLocale" xml:space="preserve">
+    <value>This entry has no translation in {0}.</value>
+  </data>
+  <data name="Content.Form.CopyFrom" xml:space="preserve">
+    <value>Copy from {0}</value>
+  </data>
+  <data name="Content.Form.Copied" xml:space="preserve">
+    <value>Copied from {0}. Save to add the translation.</value>
+  </data>
+  <data name="Content.Form.NotCopied" xml:space="preserve">
+    <value>The entry in {0} could not be read, so nothing was copied.</value>
+  </data>
+  <data name="Content.Form.Compare.Label" xml:space="preserve">
+    <value>Side by side with</value>
+  </data>
+  <data name="Content.Form.Compare.None" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Content.Form.Compare.Field" xml:space="preserve">
+    <value>{0} in {1}</value>
+  </data>
+  <data name="Content.Form.Compare.Missing" xml:space="preserve">
+    <value>No translation in {0}</value>
+  </data>
+  <data name="Content.Form.Compare.Failed" xml:space="preserve">
+    <value>The entry in {0} could not be read.</value>
   </data>
   <data name="Content.Form.NotSaved" xml:space="preserve">
     <value>The entry was not saved.</value>

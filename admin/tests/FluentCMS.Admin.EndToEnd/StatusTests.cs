@@ -63,7 +63,8 @@ public sealed class StatusTests(EndToEndHost host) : BrowserTest(host)
 
     private static ILocator Title(AdminTab tab) => tab.Page.Locator("[data-field='title'] input");
 
-    private static ILocator Badges(AdminTab tab) => tab.Page.Locator(".content-form-toolbar .content-badge");
+    // The English badge; the form shows one per locale of the site, French without a translation here (A-17).
+    private static ILocator Badges(AdminTab tab) => tab.Page.Locator(".content-form-toolbar .content-badge").Filter(new LocatorFilterOptions { HasNotText = "fr" });
 
     private static Regex Badge(string status) =>
         new($@"^\s*en\s+{Regex.Escape(Repository.AdminText($"Content.Status.{status}"))}\s*$", RegexOptions.IgnoreCase);

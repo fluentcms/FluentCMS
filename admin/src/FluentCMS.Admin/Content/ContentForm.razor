@@ -6,7 +6,9 @@
    required before a publish, fields the caller may not change read-only, a question before leaving unsaved changes, the
    keyboard shortcuts, and the dialog of a conflicting save. Its status controls (A-16): save draft, publish, unpublish and
    discard in the form's locale, each shown by the status of the locale and what the caller may do with the type, the
-   status badge, and the warnings of a publish. *@
+   status badge, and the warnings of a publish. Its locales (A-17): the form edits the content locale of its address, with
+   a switcher and the status of every locale of the site; a locale the entry has no translation in starts empty or as a copy
+   of another and is added by its first save, and a second locale can be shown read-only beside each field. *@
 @implements IUnsavedForm
 @implements IAsyncDisposable
 @using System.Net
@@ -16,6 +18,7 @@
 @inject ICurrentSite CurrentSite
 @inject IContentLocale ContentLocaleSource
 @inject IAdminAccess Access
+@inject AdminContext Context
 @inject IFormDraftStore Drafts
 @inject FieldEditorRegistry Editors
 @inject IAnnouncer Announcer
@@ -26,6 +29,10 @@
 
 <div class="content-form">
     <h1 tabindex="-1">@Heading</h1>
+    @if (localizedType == Type)
+    {
+        <ContentLocaleSwitcher />
+    }
     @switch (state)
     {
         case FormState.Loading:
@@ -73,6 +80,34 @@
             @if (restored)
             {
                 <p class="content-form-notice"><CmsIcon Name="CmsIconName.Info" />@L["Content.Form.Restored"]</p>
+            }
+            @if (read?.IsNewLocale == true)
+            {
+                <div class="content-form-new-locale">
+                    <p class="content-form-notice"><CmsIcon Name="CmsIconName.Info" />@L[MaySave ? "Content.Form.NewLocale" : "Content.Form.NoLocale", ContentCode ?? ""]</p>
+                    @if (MaySave && CopySources.Count > 0)
+                    {
+                        <div class="content-form-toolbar">
+                            @foreach (var source in CopySources)
+                            {
+                                <CmsButton @key="source" OnClick="@(() => CopyFromAsync(source))">@L["Content.Form.CopyFrom", source]</CmsButton>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            @if (CompareChoices.Count > 0)
+            {
+                <div class="content-form-compare-choice">
+                    <CmsSelect Label="@L["Content.Form.Compare.Label"]"
+                               Options="@([new CmsOption("", L["Content.Form.Compare.None"]), .. CompareChoices.Select(code => new CmsOption(code, code))])"
+                               Value="@(compare?.Locale ?? compareFailed ?? "")"
+                               ValueChanged="@CompareWithAsync" />
+                    @if (compareFailed is { } failedLocale)
+                    {
+                        <p class="content-form-notice">@L["Content.Form.Compare.Failed", failedLocale]</p>
+                    }
+                </div>
             }
             @if (saveFailure is not null)
             {
@@ -267,7 +302,26 @@
     private readonly Dictionary<EntryAction, CmsButton> cancelButtons = [];
     private ElementReference summary;
     private int generation;
-    private (string Type, Guid? Id)? shown;
+    private (string Type, Guid? Id, string? Locale)? shown;
+
+    // The entry in every locale it has, by locale, for the status of each and the shared fields of a new locale; null while
+    // unknown, for a new entry and for a type that is not localized.
+    private IReadOnlyDictionary<string, ContentEntry>? locales;
+
+    // The locale shown read-only beside the form, field by field; its entry is null where it has no translation.
+    private EntryRead? compare;
+
+    // The type while it is localized, kept while the form reads it again in another locale, so that the switcher stays.
+    private string? localizedType;
+
+    // The locale whose read for the side by side failed, until another is chosen.
+    private string? compareFailed;
+
+    // The locale last chosen for the side by side, whose read is the one kept.
+    private string? compareChoice;
+
+    // A copy from another locale is being read.
+    private bool copying;
     private IDisposable? leaveGuard;
     // The question before unsaved changes are left, answered true to leave; the navigation waits for it.
     private TaskCompletionSource<bool>? leaveAnswer;
@@ -291,6 +345,10 @@
     [Parameter]
     public Guid? Id { get; set; }
 
+    // The content locale the address names; null keeps the one there is. The shell reads the access and the schema in it.
+    [Parameter]
+    public string? Locale { get; set; }
+
     private bool IsSingleton => type?.Kind == "singleton";
 
     private FormDraftKey Key => new(site, Type, entryId, locale);
@@ -303,7 +361,19 @@
     private string? ActiveTab =>
         ShownTabs.Select(TabId).ToList() is { Count: > 0 } shownTabs ? (activeTab is not null && shownTabs.Contains(activeTab) ? activeTab : shownTabs[0]) : null;
 
-    private string TextDirectionOfLocale => locale is null ? FieldEditorBase.LeftToRight : TextDirection.Of(locale);
+    // The language tag of the form's locale, which a request leaves out when it is the site's default.
+    private string? ContentCode => locale ?? Context.Site?.DefaultLocale;
+
+    private string TextDirectionOfLocale => ContentCode is { } code ? TextDirection.Of(code) : FieldEditorBase.LeftToRight;
+
+    private bool HasLocales => type?.Localized == true && Context.ContentLocales.Count > 1;
+
+    // The locales a new locale may be copied from: those the entry has, in the site's order.
+    private IReadOnlyList<string> CopySources =>
+        locales is null ? [] : [.. Context.ContentLocales.Where(code => code != ContentCode && locales.ContainsKey(code))];
+
+    private IReadOnlyList<string> CompareChoices =>
+        HasLocales && entryId is not null ? [.. Context.ContentLocales.Where(code => code != ContentCode)] : [];
 
     // Save is absent for a caller who may not create entries of the type, or not change them (GET /me/access).
     private bool MaySave => access is not null && (entryId is null ? access.Create : access.Update);
@@ -322,7 +392,7 @@
     private bool MayDiscard =>
         access?.Update == true && entryId is not null && (Status == EntryStatuses.Modified || (Status == EntryStatuses.Published && IsDirty));
 
-    private bool Busy => saving || running is not null;
+    private bool Busy => saving || running is not null || copying;
 
     // The form's own tracking may have been given up by a confirmed site switch or sign-out.
     private bool IsDirty => tracking is not null && Drafts.HasUnsavedForms;
@@ -360,13 +430,14 @@
     protected override async Task OnParametersSetAsync()
     {
         // The route of an entry this form has just created shows the same entry, which is not read again.
-        if (shown == (Type, Id) || (Id is { } id && id == entryId && Type == type?.Name))
+        if (shown == (Type, Id, Locale)
+            || (Id is { } id && id == entryId && Type == type?.Name && string.Equals(Locale, locale, StringComparison.OrdinalIgnoreCase)))
         {
-            shown = (Type, Id);
+            shown = (Type, Id, Locale);
             return;
         }
 
-        shown = (Type, Id);
+        shown = (Type, Id, Locale);
         await LoadAsync();
     }
 
@@ -445,9 +516,11 @@
         (restored, done, saveFailure, pendingCreate, publishTried) = (false, null, null, null, false);
         (warnings, confirming) = ([], null);
         (conflict, conflictOpen, comparing) = (null, false, false);
+        (locales, compare, compareFailed, copying) = (null, null, null, false);
         ClearErrors();
         try
         {
+            await Context.UseLocaleAsync(Locale);
             var schema = await Metadata.GetSchemaAsync(CancellationToken.None);
             if (current != generation)
             {
@@ -456,9 +529,11 @@
 
             if (schema.Types.FirstOrDefault(item => item.Name == Type) is not { } found)
             {
-                state = FormState.TypeNotFound;
+                (state, localizedType) = (FormState.TypeNotFound, null);
                 return;
             }
+
+            localizedType = found.Localized ? found.Name : null;
 
             var id = Id;
             if (id is null && found.Kind == "singleton")
@@ -467,9 +542,12 @@
             }
 
             EntryRead? entry = null;
+            IReadOnlyDictionary<string, ContentEntry>? everyLocale = null;
             if (id is { } existing)
             {
+                var every = found.Localized && Context.ContentLocales.Count > 1 ? ReadLocalesAsync(existing, CurrentSite.Site) : null;
                 entry = await Client.GetEntryAsync(Type, existing, null, CancellationToken.None);
+                everyLocale = every is null ? null : await every;
             }
 
             if (current != generation)
@@ -477,10 +555,15 @@
                 return;
             }
 
-            (type, access, tabs, read, entryId) = (found, Access.ForType(found.Name), ContentFormLayout.Build(found), entry, id);
+            (type, access, tabs, read, entryId, locales) = (found, Access.ForType(found.Name), ContentFormLayout.Build(found), entry, id, everyLocale);
             tabbed = [.. tabs.Where(tab => tab.Name is not null)];
             (site, locale) = entry is not null ? (entry.Site, entry.Locale) : (CurrentSite.Site, ContentLocaleSource.Locale);
-            fields = entry?.Entry?.Fields.DeepClone().AsObject() ?? CreatableDefaults(found);
+            fields = entry switch
+            {
+                { Entry: { } value } => value.Fields.DeepClone().AsObject(),
+                { IsNewLocale: true } => NewLocaleFields(found),
+                _ => CreatableDefaults(found),
+            };
             await RestoreDraftAsync(current);
             if (current == generation)
             {
@@ -511,6 +594,113 @@
         }
 
         return defaults;
+    }
+
+    // The status of every locale is shown beside the form, so a failed read of them leaves the form without it.
+    private async Task<IReadOnlyDictionary<string, ContentEntry>?> ReadLocalesAsync(Guid id, string? entrySite)
+    {
+        try
+        {
+            return await Client.GetEntryLocalesAsync(Type, id, entrySite, CancellationToken.None);
+        }
+        catch (Exception exception) when (IsFailure(exception))
+        {
+            return null;
+        }
+    }
+
+    // A locale the entry has no translation in starts from the defaults of the fields the caller may change, and the fields
+    // the locales share as the entry has them, which the server keeps as they are when it adds the locale.
+    private JsonObject NewLocaleFields(SchemaTypeDescription found)
+    {
+        var values = ContentFormLayout.Defaults(found);
+        foreach (var name in values.Select(member => member.Key).Where(name => access?.UpdatableFields.Contains(name, StringComparer.Ordinal) != true).ToList())
+        {
+            values.Remove(name);
+        }
+
+        if (locales is not null && Context.ContentLocales.Select(locales.GetValueOrDefault).OfType<ContentEntry>().FirstOrDefault() is { } source)
+        {
+            foreach (var field in found.Fields.Where(field => !field.Localizable && source.Fields.ContainsKey(field.Name)))
+            {
+                values[field.Name] = source.Fields[field.Name]?.DeepClone();
+            }
+        }
+
+        return values;
+    }
+
+    // Copy from another locale: a read in that locale fills each field the caller may change in the new one, which the first
+    // save adds. Until then nothing is sent, and the copy is an unsaved change of the form.
+    private async Task CopyFromAsync(string source)
+    {
+        if (Busy || entryId is not { } id || read is not { IsNewLocale: true })
+        {
+            return;
+        }
+
+        var current = generation;
+        copying = true;
+        (done, warnings, saveFailure) = (null, [], null);
+        try
+        {
+            var from = await Client.GetEntryAsync(Type, id, source, CancellationToken.None);
+            if (current != generation || from.Entry is not { } entry)
+            {
+                return;
+            }
+
+            foreach (var field in ContentFormLayout.InOrder(tabs).Where(Changeable))
+            {
+                fields[field.Name] = entry.Fields[field.Name]?.DeepClone();
+            }
+
+            ClearErrors();
+            if (!IsDirty)
+            {
+                tracking?.Dispose();
+                tracking = Drafts.Track(this);
+            }
+
+            Announce(L["Content.Form.Copied", source]);
+        }
+        catch (Exception exception) when (IsFailure(exception) && current == generation)
+        {
+            done = L["Content.Form.NotCopied", source];
+            Announcer.Announce(done, AnnouncementPoliteness.Assertive);
+        }
+        finally
+        {
+            copying = false;
+        }
+    }
+
+    // Side by side: the entry in another locale, read on its own, read-only beside each field.
+    private async Task CompareWithAsync(string? code)
+    {
+        compareChoice = code;
+        if (string.IsNullOrEmpty(code) || entryId is not { } id)
+        {
+            (compare, compareFailed) = (null, null);
+            return;
+        }
+
+        // A read that a later choice overtook is dropped.
+        var current = generation;
+        bool Current() => current == generation && compareChoice == code;
+        try
+        {
+            var other = await Client.GetEntryAsync(Type, id, code, CancellationToken.None);
+            if (Current())
+            {
+                (compare, compareFailed) = (other, null);
+            }
+        }
+        catch (Exception exception) when (IsFailure(exception) && Current())
+        {
+            (compare, compareFailed) = (null, code);
+            Announcer.Announce(L["Content.Form.Compare.Failed", code], AnnouncementPoliteness.Assertive);
+        }
     }
 
     // A draft kept when the session ended; its base version is what the next save sends, so a change made meanwhile is a 412.
@@ -551,10 +741,12 @@
         await LoadAsync();
     }
 
-    // A field the schema marks readOnly is the server's; one the caller may read but not change is read-only for it.
+    // A field the schema marks readOnly is the server's; one the caller may read but not change is read-only for it. A field
+    // shared by the locales keeps its value when a locale is added, so it is read-only in a new locale.
     private bool Changeable(SchemaFieldDescription field) =>
         !field.ReadOnly
         && MaySave
+        && !(read?.IsNewLocale == true && type?.Localized == true && !field.Localizable)
         && (entryId is null ? access!.CreatableFields : access!.UpdatableFields).Contains(field.Name, StringComparer.Ordinal);
 
     private bool Shows(SchemaFieldDescription field) => FormConditions.Shows(field, fields);
@@ -675,6 +867,9 @@
 
             pendingCreate = null;
             (read, entryId) = (saved, saved.Entry!.Id);
+
+            // A created entry has its one locale, which the badges show as the read has it.
+            locales ??= HasLocales ? new Dictionary<string, ContentEntry>() : null;
             (restored, done) = (false, L["Content.Form.Saved"]);
 
             // A change typed while the save ran is kept, and the form stays tracked with it.
@@ -688,7 +883,7 @@
             if (draftKey.Entry is null && !IsSingleton)
             {
                 NavigationFocus.KeepNext();
-                NavigateAway(RouteOf(saved), replace: true);
+                NavigateAway(ContentRoutes.InLocale(RouteOf(saved), locale), replace: true);
             }
         }
         catch (ApiProblemException exception) when (current == generation)
@@ -1172,16 +1367,42 @@
     private RenderFragment Fields(FormGroup group) => @<text>
         @foreach (var field in group.Fields.Where(Shows))
         {
-            <div class="content-form-field content-form-span-@ContentFormLayout.Span(field)" data-field="@field.Name" @key="field.Name">
+            <div class="@(compare is null ? "content-form-field" : "content-form-field content-form-field-compared") content-form-span-@ContentFormLayout.Span(field)" data-field="@field.Name" @key="field.Name">
                 @Editor(field)
+                @if (compare is { } other)
+                {
+                    <div class="content-form-compare" role="group" aria-label="@L["Content.Form.Compare.Field", FieldEditorBase.LabelOf(field), other.Locale ?? ""]">
+                        @if (other.Entry is null)
+                        {
+                            <p class="content-form-notice">@L["Content.Form.Compare.Missing", other.Locale ?? ""]</p>
+                        }
+                        else
+                        {
+                            @CompareEditor(field, other)
+                        }
+                    </div>
+                }
             </div>
         }
     </text>;
 
     // As the list shows it; a localized type names the locale as the entry has it, since a form in the site's default
-    // locale reads it without naming one.
+    // locale reads it without naming one. With the entry's every locale read, a badge for each locale of the site, the
+    // form's own as it is now, and an empty one where the entry has no translation.
     private RenderFragment StatusBadge() => __builder =>
     {
+        if (locales is not null && ContentCode is { } code)
+        {
+            var every = locales.Where(pair => pair.Key != code).ToDictionary(StringComparer.Ordinal);
+            if (read?.Entry is { } own)
+            {
+                every[code] = own with { Locale = code };
+            }
+
+            <EntryBadges Entry="@(read?.Entry ?? new ContentEntry())" Locales="@every" SiteLocales="@Context.ContentLocales" />
+            return;
+        }
+
         if (read?.Entry is not { Status: not null } entry)
         {
             return;
@@ -1243,21 +1464,21 @@
                                             <label class="content-form-choice">
                                                 <input type="radio" name="@($"conflict-{name}")" value="mine" checked="@keepMine[name]" @onchange="@(() => keepMine[name] = true)" />
                                                 <span class="cms-visually-hidden">@L["Content.Form.Conflict.MineOf", FieldEditorBase.LabelOf(row.Field)]</span>
-                                                <span lang="@locale" dir="@TextDirectionOfLocale">@ValueText(open.Mine[name])</span>
+                                                <span lang="@ContentCode" dir="@TextDirectionOfLocale">@ValueText(open.Mine[name])</span>
                                             </label>
                                         </td>
                                         <td>
                                             <label class="content-form-choice">
                                                 <input type="radio" name="@($"conflict-{name}")" value="theirs" checked="@(!keepMine[name])" @onchange="@(() => keepMine[name] = false)" />
                                                 <span class="cms-visually-hidden">@L["Content.Form.Conflict.TheirsOf", FieldEditorBase.LabelOf(row.Field)]</span>
-                                                <span lang="@locale" dir="@TextDirectionOfLocale">@ValueText(open.Current.Entry!.Fields[name])</span>
+                                                <span lang="@ContentCode" dir="@TextDirectionOfLocale">@ValueText(open.Current.Entry!.Fields[name])</span>
                                             </label>
                                         </td>
                                     }
                                     else
                                     {
-                                        <td lang="@locale" dir="@TextDirectionOfLocale">@ValueText(open.Mine[name])</td>
-                                        <td lang="@locale" dir="@TextDirectionOfLocale">@ValueText(open.Current.Entry!.Fields[name])</td>
+                                        <td lang="@ContentCode" dir="@TextDirectionOfLocale">@ValueText(open.Mine[name])</td>
+                                        <td lang="@ContentCode" dir="@TextDirectionOfLocale">@ValueText(open.Current.Entry!.Fields[name])</td>
                                     }
                                 </tr>
                             }
@@ -1297,11 +1518,25 @@
         builder.AddComponentParameter(4, nameof(FieldEditorBase.Errors), ErrorsOf(field));
         builder.AddComponentParameter(5, nameof(FieldEditorBase.ReadOnly), !Changeable(field));
         builder.AddComponentParameter(6, nameof(FieldEditorBase.Required), FormConditions.Requires(field, fields));
-        builder.AddComponentParameter(7, nameof(FieldEditorBase.ContentLocale), locale);
+        builder.AddComponentParameter(7, nameof(FieldEditorBase.ContentLocale), ContentCode);
         builder.AddComponentParameter(8, nameof(FieldEditorBase.TextDirection), TextDirectionOfLocale);
         builder.AddComponentParameter(9, nameof(FieldEditorBase.Document), new System.Collections.ObjectModel.ReadOnlyDictionary<string, JsonNode?>(fields));
         builder.AddComponentParameter(10, nameof(FieldEditorBase.OnBlur), EventCallback.Factory.Create(this, () => Check(field)));
         builder.AddComponentReferenceCapture(11, instance => editors[field.Name] = (FieldEditorBase)instance);
+        builder.CloseComponent();
+    };
+
+    // The field's editor, read-only, on the value of the other locale, in that locale's language and direction.
+    private RenderFragment CompareEditor(SchemaFieldDescription field, EntryRead other) => builder =>
+    {
+        var values = other.Entry!.Fields;
+        builder.OpenComponent(0, EditorOf(field));
+        builder.AddComponentParameter(1, nameof(FieldEditorBase.Field), field);
+        builder.AddComponentParameter(2, nameof(FieldEditorBase.Value), values[field.Name]);
+        builder.AddComponentParameter(3, nameof(FieldEditorBase.ReadOnly), true);
+        builder.AddComponentParameter(4, nameof(FieldEditorBase.ContentLocale), other.Locale);
+        builder.AddComponentParameter(5, nameof(FieldEditorBase.TextDirection), other.Locale is { } code ? TextDirection.Of(code) : FieldEditorBase.LeftToRight);
+        builder.AddComponentParameter(6, nameof(FieldEditorBase.Document), new System.Collections.ObjectModel.ReadOnlyDictionary<string, JsonNode?>(values));
         builder.CloseComponent();
     };
 }
