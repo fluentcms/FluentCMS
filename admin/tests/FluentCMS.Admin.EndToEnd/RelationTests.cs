@@ -53,9 +53,17 @@ public sealed class RelationTests(EndToEndHost host) : BrowserTest(host)
         // pressed on an entry can land on that button instead.
         await Expect(FieldButton(tab, "tags", "Content.Relation.ChooseEntries")).ToBeFocusedAsync();
         await Entry(tab, "tags", "release notes").FocusAsync();
+        await tab.Page.EvaluateAsync(TmpDiagnostic);
         await tab.Page.Keyboard.PressAsync("Alt+ArrowUp");
         await Expect(Labels(tab, "tags")).ToHaveTextAsync(["release notes", "dotnet"]);
-        await Expect(Entry(tab, "tags", "release notes")).ToBeFocusedAsync();
+        try
+        {
+            await Expect(Entry(tab, "tags", "release notes")).ToBeFocusedAsync();
+        }
+        catch (PlaywrightException exception)
+        {
+            throw new PlaywrightException("TMPDIAG " + await tab.Page.EvaluateAsync<string>("() => window.__diag()"), exception);
+        }
         await Item(tab, "tags", "release notes").DragToAsync(Item(tab, "tags", "dotnet"));
         await Expect(Labels(tab, "tags")).ToHaveTextAsync(["dotnet", "release notes"]);
         await tab.Page.Locator($"[data-field='tags'] fluent-button[aria-label=\"{Text("Content.Relation.MoveDown", "dotnet")}\"]").ClickAsync();
@@ -97,6 +105,29 @@ public sealed class RelationTests(EndToEndHost host) : BrowserTest(host)
 
     private static LocatorFilterOptions Exactly(string key, string? argument = null) =>
         new() { HasTextRegex = new Regex($@"^\s*{Regex.Escape(argument is null ? Repository.AdminText(key) : Text(key, argument))}\s*$") };
+
+    // Temporary: what takes focus after the move in CI, logged when the focus check fails.
+    private const string TmpDiagnostic = """
+        () => {
+            const d = e => {
+                if (!e) return 'null';
+                const field = e.closest ? e.closest('[data-field]')?.dataset.field : undefined;
+                const item = e.closest ? Array.from(document.querySelectorAll("[data-field='tags'] .relation-field-item")).indexOf(e.closest('.relation-field-item')) : -1;
+                return e.tagName + (e.id ? '#' + e.id : '') + '[' + (e.getAttribute?.('aria-label') || (e.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 24)) + '] field=' + field + ' item=' + item;
+            };
+            const deep = () => { let a = document.activeElement; while (a && a.shadowRoot && a.shadowRoot.activeElement) a = a.shadowRoot.activeElement; return a; };
+            const t0 = performance.now();
+            const log = [];
+            const at = s => log.push(Math.round(performance.now() - t0) + 'ms ' + s);
+            const focus = HTMLElement.prototype.focus;
+            HTMLElement.prototype.focus = function (...args) { at('focus() ' + d(this) + ' from ' + (new Error().stack || '').split(String.fromCharCode(10)).slice(2, 4).map(x => x.trim()).join(' < ')); return focus.apply(this, args); };
+            document.addEventListener('focusin', e => at('focusin ' + d(e.target)), true);
+            document.addEventListener('focusout', e => at('focusout ' + d(e.target) + ' -> ' + d(e.relatedTarget)), true);
+            document.addEventListener('keydown', e => at('keydown ' + e.key + (e.altKey ? '+alt' : '') + ' on ' + d(e.target)), true);
+            new MutationObserver(m => at('mutations ' + m.length + ' ' + m.map(x => x.type + ':' + (x.target.tagName || '#text')).slice(0, 4).join(','))).observe(document.querySelector("[data-field='tags']"), { childList: true, subtree: true, attributes: true, characterData: true });
+            window.__diag = () => 'active=' + d(document.activeElement) + ' deep=' + d(deep()) + ' hasFocus=' + document.hasFocus() + ' visibility=' + document.visibilityState + ' || ' + log.join(' || ');
+        }
+        """;
 
     private static ILocator FieldButton(AdminTab tab, string field, string key, string? argument = null) =>
         tab.Page.Locator($"[data-field='{field}'] .relation-field-actions fluent-button").Filter(Exactly(key, argument));
