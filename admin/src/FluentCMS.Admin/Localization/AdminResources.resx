@@ -1139,4 +1139,43 @@
   <data name="Content.Form.Conflict.TheirsOf" xml:space="preserve">
     <value>Saved version of {0}: </value>
   </data>
+  <data name="Content.Field.EmailInvalid" xml:space="preserve">
+    <value>Enter an email address such as name@example.com.</value>
+  </data>
+  <data name="Content.Field.UrlInvalid" xml:space="preserve">
+    <value>Enter an address that starts with https:// or http://.</value>
+  </data>
+  <data name="Content.Field.Date" xml:space="preserve">
+    <value>Date</value>
+  </data>
+  <data name="Content.Field.Time" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="Content.Field.TimeZone" xml:space="preserve">
+    <value>Time zone: {0}</value>
+  </data>
+  <data name="Content.Field.TimeSkipped" xml:space="preserve">
+    <value>This time does not exist in your time zone, since the clock skips it. Choose another time.</value>
+  </data>
+  <data name="Content.Field.SlugKeep" xml:space="preserve">
+    <value>Keep this slug</value>
+  </data>
+  <data name="Content.Field.JsonFormat" xml:space="preserve">
+    <value>Format</value>
+  </data>
+  <data name="Content.Field.JsonInvalid" xml:space="preserve">
+    <value>The JSON does not parse at line {0}. It is not saved until it does.</value>
+  </data>
+  <data name="Content.Field.JsonInvalidNoLine" xml:space="preserve">
+    <value>The JSON does not parse. It is not saved until it does.</value>
+  </data>
+  <data name="Content.Field.NotAnOption" xml:space="preserve">
+    <value>{0} (no longer an option)</value>
+  </data>
+  <data name="Content.Cell.Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="Content.Cell.No" xml:space="preserve">
+    <value>No</value>
+  </data>
 </root>

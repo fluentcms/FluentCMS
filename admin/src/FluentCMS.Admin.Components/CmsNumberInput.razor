@@ -1,0 +1,91 @@
+@namespace FluentCMS.Admin.Components
+@inherits CmsInputBase<decimal?>
+@inject ICmsTextSource Texts
+
+@* A text input in the culture's number format, not the browser's number input, which takes the browser's decimal separator.
+   Group separators are neither shown nor read: in de-DE "1.5" would read as fifteen. The value changes as the user leaves
+   the input or presses Enter, so that "1," is not cut to "1" while it is typed. *@
+<div class="cms-field">
+    @LabelTemplate
+    <input @ref="Element"
+           id="@InputId"
+           lang="@Lang"
+           dir="@Dir"
+           class="cms-input cms-input-number"
+           type="text"
+           value="@Value?.ToString(WholeNumbers ? "0" : Digits, ShownCulture)"
+           placeholder="@Placeholder"
+           autocomplete="@Autocomplete"
+           inputmode="@InputMode"
+           disabled="@Disabled"
+           readonly="@ReadOnly"
+           @onchange="@(args => ChangeAsync(args.Value as string))"
+           @onblur="@OnBlur"
+           @attributes="@AriaAttributes" />
+    @MessageTemplate
+</div>
+
+@code {
+    private const string Digits = "0.############################";
+
+    // The culture whose number format is shown and read; the current culture when null.
+    [Parameter]
+    public CultureInfo? Culture { get; set; }
+
+    // Takes whole numbers only.
+    [Parameter]
+    public bool WholeNumbers { get; set; }
+
+    // Whether a value below zero is taken; without, a touch device shows its numeric keyboard, which has no minus sign.
+    [Parameter]
+    public bool AllowNegative { get; set; } = true;
+
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    // The autocomplete token of the input, such as off; the browser's default when null.
+    [Parameter]
+    public string? Autocomplete { get; set; }
+
+    private CultureInfo ShownCulture => Culture ?? CultureInfo.CurrentCulture;
+
+    private string? InputMode => AllowNegative ? null : WholeNumbers ? "numeric" : "decimal";
+
+    private Task ChangeAsync(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            InputError = null;
+            return SetValueAsync(null);
+        }
+
+        var parsed = Parse(text, ShownCulture, WholeNumbers);
+        if (parsed is < 0 && !AllowNegative)
+        {
+            InputError = Texts.Text(CmsStrings.InputNumberNotNegative);
+            return Task.CompletedTask;
+        }
+
+        if (parsed is not { } number)
+        {
+            InputError = WholeNumbers
+                ? CmsStrings.Format(Texts.Text(CmsStrings.InputWholeNumberInvalid), 1234.ToString(ShownCulture))
+                : CmsStrings.Format(Texts.Text(CmsStrings.InputNumberInvalid), 1234.5m.ToString(Digits, ShownCulture));
+            return Task.CompletedTask;
+        }
+
+        InputError = null;
+        return SetValueAsync(number);
+    }
+
+    internal static decimal? Parse(string text, CultureInfo culture, bool wholeNumbers)
+    {
+        var styles = NumberStyles.AllowLeadingWhite | NumberStyles.AllowTrailingWhite | NumberStyles.AllowLeadingSign
+            | (wholeNumbers ? NumberStyles.None : NumberStyles.AllowDecimalPoint);
+        // A culture whose minus sign is not the keyboard's, such as one with a direction mark before it, takes the keyboard's too.
+        return decimal.TryParse(text, styles, culture, out var number)
+            || (culture.NumberFormat.NegativeSign != "-" && decimal.TryParse(text.Replace("-", culture.NumberFormat.NegativeSign, StringComparison.Ordinal), styles, culture, out number))
+            ? number
+            : null;
+    }
+}

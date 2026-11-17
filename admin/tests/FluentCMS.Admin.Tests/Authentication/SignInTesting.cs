@@ -283,7 +283,7 @@ internal sealed class FakeAuthority : HttpMessageHandler
 // the requests it makes itself.
 internal sealed class ShellReadsAside(HttpMessageHandler shell, HttpMessageHandler api, Func<bool> shellLoading) : HttpMessageHandler
 {
-    private static readonly string[] ShellReads = ["me", "me/sites", "me/access", "schema", "plugins"];
+    private static readonly string[] ShellReads = ["me", "me/sites", "me/preferences", "me/access", "schema", "plugins"];
 
     private readonly HttpMessageInvoker _shell = new(shell, disposeHandler: false);
     private readonly HttpMessageInvoker _api = new(api, disposeHandler: false);

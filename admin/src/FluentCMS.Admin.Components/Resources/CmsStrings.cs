@@ -20,6 +20,15 @@ internal sealed class CmsStrings : ICmsTextSource
     public const string GridRowsSelected = nameof(GridRowsSelected);
     public const string DropZoneChoose = nameof(DropZoneChoose);
     public const string Close = nameof(Close);
+    public const string InputCharacterCount = nameof(InputCharacterCount);
+    public const string InputDateInvalid = nameof(InputDateInvalid);
+    public const string InputDateTooEarly = nameof(InputDateTooEarly);
+    public const string InputDateTooLate = nameof(InputDateTooLate);
+    public const string InputTimeInvalid = nameof(InputTimeInvalid);
+    public const string InputNumberInvalid = nameof(InputNumberInvalid);
+    public const string InputWholeNumberInvalid = nameof(InputWholeNumberInvalid);
+    public const string InputNumberNotNegative = nameof(InputNumberNotNegative);
+    public const string SelectNone = nameof(SelectNone);
 
     private static readonly ResourceManager Manager = new("FluentCMS.Admin.Components.Resources.CmsStrings", typeof(CmsStrings).Assembly);
 

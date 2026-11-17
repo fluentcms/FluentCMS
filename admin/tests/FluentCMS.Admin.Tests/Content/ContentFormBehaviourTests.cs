@@ -77,16 +77,16 @@ public sealed class ContentFormBehaviourTests : AdminTestContext
 
         Input(app, "title").Input("A title that is far too long");
         Input(app, "title").HasAttribute("aria-invalid").ShouldBeFalse();
-        Input(app, "title").FocusOut();
+        Input(app, "title").Blur();
         Input(app, "slug").Input("Not A Slug");
-        Input(app, "slug").FocusOut();
-        Input(app, "rating").Input("9");
-        Input(app, "rating").FocusOut();
+        Input(app, "slug").Blur();
+        Input(app, "rating").Change("9");
+        Input(app, "rating").Blur();
 
         app.WaitForAssertion(() => Message(app, "title").ShouldBe("Enter at most 10 characters. This has 28."));
         Input(app, "title").GetAttribute("aria-invalid").ShouldBe("true");
         Message(app, "slug").ShouldBe("The value does not have the expected format.");
-        app.Find("[data-field='rating'] .rule-error").TextContent.ShouldBe("Enter 5 or less.");
+        Message(app, "rating").ShouldBe("Enter 5 or less.");
         Management.Calls.Count.ShouldBe(requests);
 
         // Fixed, the finding goes as it is typed.
@@ -147,8 +147,8 @@ public sealed class ContentFormBehaviourTests : AdminTestContext
         var id = _content.Add("link", new JsonObject { ["title"] = "Hello", ["summary"] = "Kept as it is" });
         var app = Load($"content/link/{id:D}");
 
-        Input(app, "summary").HasAttribute("disabled").ShouldBeTrue();
-        Input(app, "title").HasAttribute("disabled").ShouldBeFalse();
+        Input(app, "summary").HasAttribute("readonly").ShouldBeTrue();
+        Input(app, "title").HasAttribute("readonly").ShouldBeFalse();
         Input(app, "title").Input("Changed");
         Save(app);
 
@@ -179,7 +179,7 @@ public sealed class ContentFormBehaviourTests : AdminTestContext
 
         app.FindAll("fluent-button").Where(button => button.TextContent.Trim() == "Save").ShouldBeEmpty();
         app.Find(".content-form-notice").TextContent.ShouldBe("You can read this entry but not change it.");
-        Input(app, "title").HasAttribute("disabled").ShouldBeTrue();
+        Input(app, "title").HasAttribute("readonly").ShouldBeTrue();
     }
 
     [Fact]
@@ -572,7 +572,6 @@ public sealed class ContentFormBehaviourTests : AdminTestContext
     private IRenderedComponent<AdminApp> Load(string route)
     {
         Start();
-        Services.GetRequiredService<FieldEditorRegistry>().Add<NumberTestEditor>("integer");
         Navigation.NavigateTo(route);
         var app = Render<AdminApp>();
         app.WaitForAssertion(() => app.FindAll(".content-form p[role='status']").ShouldBeEmpty());
@@ -593,7 +592,7 @@ public sealed class ContentFormBehaviourTests : AdminTestContext
     private static string Message(IRenderedComponent<AdminApp> app, string field)
     {
         var input = Input(app, field);
-        return app.Find($"#{input.GetAttribute("aria-describedby")}").TextContent;
+        return app.Find($"#{input.GetAttribute("aria-describedby")!.Split(' ')[0]}").TextContent;
     }
 
     private static (string Field, string Mine, string Theirs)[] Rows(IRenderedComponent<CmsDialog> dialog) =>
@@ -620,25 +619,5 @@ public sealed class ContentFormBehaviourTests : AdminTestContext
         rating["validation"]!["maximum"] = 5;
         rating["defaultValue"] = 3;
         return Type("link", fields: [title, Field("kind"), url, summary, slug, rating]);
-    }
-}
-
-// A number editor for the tests, until A-14 brings the core one: an input whose text is sent as a number.
-internal sealed class NumberTestEditor : FieldEditorBase
-{
-    protected override void BuildRenderTree(RenderTreeBuilder builder)
-    {
-        builder.OpenElement(0, "input");
-        builder.AddAttribute(1, "value", Value?.ToJsonString());
-        builder.AddAttribute(2, "oninput", EventCallback.Factory.Create<ChangeEventArgs>(this, args =>
-            ChangeAsync(decimal.TryParse(args.Value as string, System.Globalization.CultureInfo.InvariantCulture, out var number) ? JsonValue.Create(number) : null)));
-        builder.CloseElement();
-        if (ErrorText is { } error)
-        {
-            builder.OpenElement(3, "span");
-            builder.AddAttribute(4, "class", "rule-error");
-            builder.AddContent(5, error);
-            builder.CloseElement();
-        }
     }
 }

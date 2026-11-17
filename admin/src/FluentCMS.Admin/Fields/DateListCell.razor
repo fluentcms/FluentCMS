@@ -1,0 +1,9 @@
+@* The cell of a date field, in the user's date format; a date is the same day in every time zone. *@
+@inherits ListCellBase
+@using System.Globalization
+@inject FormatService Formats
+
+@if (FieldValues.Date(Value) is { } date)
+{
+    <time datetime="@date.ToString(FieldValues.DateFormat, CultureInfo.InvariantCulture)">@Formats.Date(date)</time>
+}

@@ -1,0 +1,9 @@
+.field-json ::deep textarea {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: var(--cms-font-size-s);
+}
+
+.field-json-actions {
+    display: flex;
+    justify-content: flex-end;
+}

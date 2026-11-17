@@ -937,7 +937,7 @@
     private RenderFragment Fields(FormGroup group) => @<text>
         @foreach (var field in group.Fields.Where(Shows))
         {
-            <div class="content-form-field content-form-span-@ContentFormLayout.Span(field)" data-field="@field.Name" @key="field.Name" @onfocusout="@(() => Check(field))">
+            <div class="content-form-field content-form-span-@ContentFormLayout.Span(field)" data-field="@field.Name" @key="field.Name">
                 @Editor(field)
             </div>
         }
@@ -1030,7 +1030,9 @@
         builder.AddComponentParameter(6, nameof(FieldEditorBase.Required), FormConditions.Requires(field, fields));
         builder.AddComponentParameter(7, nameof(FieldEditorBase.ContentLocale), locale);
         builder.AddComponentParameter(8, nameof(FieldEditorBase.TextDirection), TextDirectionOfLocale);
-        builder.AddComponentReferenceCapture(9, instance => editors[field.Name] = (FieldEditorBase)instance);
+        builder.AddComponentParameter(9, nameof(FieldEditorBase.Document), new System.Collections.ObjectModel.ReadOnlyDictionary<string, JsonNode?>(fields));
+        builder.AddComponentParameter(10, nameof(FieldEditorBase.OnBlur), EventCallback.Factory.Create(this, () => Check(field)));
+        builder.AddComponentReferenceCapture(11, instance => editors[field.Name] = (FieldEditorBase)instance);
         builder.CloseComponent();
     };
 }

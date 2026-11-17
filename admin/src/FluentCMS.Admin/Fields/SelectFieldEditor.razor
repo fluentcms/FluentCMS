@@ -1,0 +1,107 @@
+@* The editor of a select field, from the options of its settings. One value: a dropdown, which an optional field can clear;
+   the wrapped set has no radio group. Several: a checkbox per option, in a box that scrolls from five options on; the
+   values are sent in the order of the options. A value the options no longer list, which the server refuses on every save,
+   is shown, marked so, and can be taken off. *@
+@inherits FieldEditorBase
+@inject IStringLocalizer<AdminResources> L
+
+@if (!Field.Multiple)
+{
+    <CmsSelect @ref="select"
+               Label="@Label"
+               Help="@Help"
+               Error="@ErrorText"
+               Required="@Required"
+               ReadOnly="@ReadOnly"
+               Placeholder="@Placeholder"
+               Clearable="@(!Required)"
+               Options="@Choices"
+               Value="@FieldValues.Text(Value)"
+               ValueChanged="@(value => ChangeAsync(FieldValues.FromText(value)))"
+               OnBlur="@OnBlur" />
+}
+else
+{
+    <fieldset @ref="group"
+              class="@(Options.Count >= 5 ? "cms-field field-choices field-choices-many" : "cms-field field-choices")"
+              tabindex="-1"
+              aria-describedby="@DescribedBy"
+              @onfocusin="@focus.Entered"
+              @onfocusout="@(() => focus.LeftAsync(OnBlur))">
+        <legend class="cms-field-label">
+            @Label
+            @if (Required)
+            {
+                <span class="cms-field-required" aria-hidden="true"> *</span>
+            }
+        </legend>
+        <div class="field-choices-list">
+            @foreach (var option in Choices)
+            {
+                <CmsCheckbox @key="option.Value"
+                             Label="@option.Text"
+                             ReadOnly="@ReadOnly"
+                             MarkedInvalid="@(ErrorText is not null)"
+                             DescribedBy="@DescribedBy"
+                             Value="@Chosen.Contains(option.Value)"
+                             ValueChanged="@(on => ToggleAsync(option.Value, on))" />
+            }
+        </div>
+        @if (ErrorText is not null)
+        {
+            <span id="@messageId" class="cms-field-message cms-field-message-error">@ErrorText</span>
+        }
+        else if (Help is not null)
+        {
+            <span id="@messageId" class="cms-field-message">@Help</span>
+        }
+    </fieldset>
+}
+
+@code {
+    private readonly string messageId = ElementIds.Next("field-message");
+    private readonly GroupFocus focus = new();
+    private CmsSelect? select;
+    private ElementReference group;
+    private SchemaFieldDescription? optionsOf;
+
+    private IReadOnlyList<CmsOption> Options { get; set; } = [];
+
+    private IReadOnlyList<string> Chosen => FieldValues.Strings(Value);
+
+    private IEnumerable<CmsOption> Unlisted =>
+        Chosen.Where(value => !Options.Any(option => option.Value == value)).Select(value => new CmsOption(value, L["Content.Field.NotAnOption", value]));
+
+    private IReadOnlyList<CmsOption> Choices => [.. Options, .. Unlisted];
+
+    private string? DescribedBy => ErrorText is null && Help is null ? null : messageId;
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(optionsOf, Field))
+        {
+            optionsOf = Field;
+            Options = [.. FieldValues.Options(Field).Select(option => new CmsOption(option, option))];
+        }
+    }
+
+    public override ValueTask FocusAsync() =>
+        select?.FocusAsync() ?? (group.Context is null ? ValueTask.CompletedTask : group.FocusAsync());
+
+    private Task ToggleAsync(string option, bool on)
+    {
+        var chosen = Chosen.ToHashSet(StringComparer.Ordinal);
+        if (on)
+        {
+            chosen.Add(option);
+        }
+        else
+        {
+            chosen.Remove(option);
+        }
+
+        var listed = Options.Select(item => item.Value).ToList();
+        var ordered = listed.Where(chosen.Contains).Concat(Chosen.Where(value => !listed.Contains(value) && chosen.Contains(value)));
+        return ChangeAsync(new JsonArray([.. ordered.Select(value => (JsonNode)JsonValue.Create(value))]));
+    }
+}
