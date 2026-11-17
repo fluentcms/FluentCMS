@@ -16,6 +16,7 @@ internal static class AuthenticationServiceCollectionExtensions
         services.AddOptions<AuthorityOptions>();
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddScoped<ISessionStorage, SessionStorageInterop>();
+        services.TryAddScoped<ITabChannel, TabChannelInterop>();
         services.TryAddScoped(provider =>
         {
             var options = provider.GetRequiredService<IOptions<AuthorityOptions>>().Value;

@@ -42,6 +42,7 @@ public class AdminRulesTests
         "FluentCMS.Admin.Interop.ColumnStorageInterop",
         "FluentCMS.Admin.Interop.DocumentInterop",
         "FluentCMS.Admin.Interop.SessionStorageInterop",
+        "FluentCMS.Admin.Interop.TabChannelInterop",
         "FluentCMS.Admin.Interop.ThemeStorageInterop",
     ];
 
