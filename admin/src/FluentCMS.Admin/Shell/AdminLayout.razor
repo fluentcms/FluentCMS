@@ -145,7 +145,7 @@
         if (closedByNavigation)
         {
             closedByNavigation = false;
-            await Document.FocusHeadingAsync();
+            await Document.FocusHeadingAsync(afterDialog: true);
         }
     }
 }

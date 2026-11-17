@@ -22,9 +22,12 @@ export function returnFocus(opener) {
     }
 }
 
-export function focusHeading() {
-    const heading = document.querySelector("main h1");
-    if (heading instanceof HTMLElement) {
-        heading.focus();
-    }
+// A delay lets a timer that gives focus back to a dialog's opener run first; timers of the page run in the order they expire.
+export function focusHeading(delay) {
+    setTimeout(() => {
+        const heading = document.querySelector("main h1");
+        if (heading instanceof HTMLElement) {
+            heading.focus();
+        }
+    }, delay);
 }

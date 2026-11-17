@@ -8,6 +8,9 @@ internal sealed class DocumentInterop(IJSRuntime js) : IAsyncDisposable
 {
     public const string ModulePath = "./_content/FluentCMS.Admin/document.js";
 
+    // The library returns focus 25 ms after a dialog closed (FocusOnPreviousActiveElement in its script); this runs later.
+    private const int DialogFocusDelay = 100;
+
     private Task<IJSObjectReference>? module;
 
     public async ValueTask SetLanguageAsync(string lang, string dir)
@@ -31,11 +34,12 @@ internal sealed class DocumentInterop(IJSRuntime js) : IAsyncDisposable
         return new FocusOpener(this, await document.InvokeAsync<IJSObjectReference>("rememberFocus"));
     }
 
-    // After a drawer closed on a navigation, which gave focus back to the drawer's opener (spec 4.18).
-    public async ValueTask FocusHeadingAsync()
+    // On a route change, and after a drawer closed on one (spec 4.18). A dialog of the component library gives focus back to
+    // its opener on a timer once it has closed, so after a dialog the heading is focused once that timer has run.
+    public async ValueTask FocusHeadingAsync(bool afterDialog = false)
     {
         var document = await Module();
-        await document.InvokeVoidAsync("focusHeading");
+        await document.InvokeVoidAsync("focusHeading", afterDialog ? DialogFocusDelay : 0);
     }
 
     public async ValueTask DisposeAsync()
