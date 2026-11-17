@@ -107,8 +107,9 @@ public sealed class ContentListFilterTests : AdminTestContext
         Management.ContentQueries.Count.ShouldBe(reads);
     }
 
+    // The picker needs the target in the schema, which leaves out a type the caller may not read.
     [Fact]
-    public void ARelationTakesEntryIdsUntilItsPickerExists()
+    public void ARelationToATypeTheCallerMayNotReadTakesEntryIds()
     {
         var app = Load();
 
@@ -468,8 +469,9 @@ public sealed class ContentListFilterTests : AdminTestContext
 
     private static IReadOnlyList<IElement> Rows(IRenderedComponent<AdminApp> app) => app.FindAll(".cms-data-grid tbody tr");
 
+    // The cells of the entry, without the last one of the row's actions.
     private static List<string> Cells(IElement row) =>
-        row.QuerySelectorAll("td:not(.cms-data-grid-select)").Select(cell => cell.TextContent.Trim()).ToList();
+        row.QuerySelectorAll("td:not(.cms-data-grid-select)").Select(cell => cell.TextContent.Trim()).SkipLast(1).ToList();
 
     private static IElement Button(IRenderedComponent<AdminApp> app, string text) =>
         app.FindAll("fluent-button").First(button => button.TextContent.Trim() == text);

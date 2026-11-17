@@ -422,13 +422,15 @@ public sealed class ContentListPageTests : AdminTestContext
 
     private int HeadingFocuses() => Document.Invocations.Count(call => call.Identifier == "focusHeading");
 
+    // The columns of the entry, without the last one of the row's actions.
     private static List<string> Headers(IRenderedComponent<AdminApp> app) =>
-        app.FindAll(".cms-data-grid thead th:not(.cms-data-grid-select)").Select(th => th.QuerySelector("button > span")?.TextContent ?? th.TextContent.Trim()).ToList();
+        app.FindAll(".cms-data-grid thead th:not(.cms-data-grid-select)").Select(th => th.QuerySelector("button > span")?.TextContent ?? th.TextContent.Trim()).SkipLast(1).ToList();
 
     private static IReadOnlyList<IElement> Rows(IRenderedComponent<AdminApp> app) => app.FindAll(".cms-data-grid tbody tr");
 
+    // The cells of the entry, without the last one of the row's actions.
     private static List<string> Cells(IElement row) =>
-        row.QuerySelectorAll("td:not(.cms-data-grid-select)").Select(cell => cell.TextContent.Trim()).ToList();
+        row.QuerySelectorAll("td:not(.cms-data-grid-select)").Select(cell => cell.TextContent.Trim()).SkipLast(1).ToList();
 
     private static List<string> Buttons(IRenderedComponent<AdminApp> app) =>
         app.FindAll("main fluent-button").Select(button => button.TextContent.Trim()).ToList();

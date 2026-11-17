@@ -62,3 +62,8 @@
     margin: var(--cms-space-xs) 0 0;
     color: var(--cms-color-error);
 }
+
+.content-filter-related {
+    margin: 0 0 var(--cms-space-s);
+    padding-inline-start: var(--cms-space-l);
+}

@@ -58,6 +58,10 @@ internal sealed class AdminContext(
 
     public IReadOnlyList<PluginInfo> Plugins { get; private set; } = [];
 
+    // Whether the site answers a search: an index is registered and the search plugin, when it is the one, is not disabled
+    // there (FCMS2211).
+    public bool SearchIndex => AccessInfo?.Search == true && !Plugins.Any(plugin => plugin.Name == "search" && !plugin.Enabled);
+
     // Once per page load; after a failure the next call reads again.
     public Task StartAsync()
     {

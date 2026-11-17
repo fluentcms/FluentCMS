@@ -31,8 +31,7 @@ public sealed class ListCellTests : AdminTestContext
             cells.CellFor(type).ShouldNotBe(typeof(TextListCell), type);
         }
 
-        // A relation shows the label it is read with until the picker of A-15.
-        cells.CellFor("relation").ShouldBe(typeof(TextListCell));
+        cells.CellFor("relation").ShouldBe(typeof(RelationListCell));
     }
 
     [Theory]

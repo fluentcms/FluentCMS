@@ -7,9 +7,11 @@ namespace FluentCMS.Admin.Tests.Content;
 
 internal sealed record ContentWrite(HttpMethod Method, string Path, JsonObject Body, string? IfMatch, string? IdempotencyKey, string? Locale);
 
-// The content routes a form calls, over FakeManagementServer: read an entry with its tag, list a singleton, create with a
+// The content routes a form calls, over FakeManagementServer: read an entry with its tag, list a type, create with a
 // Location, and save with If-Match, which a stale tag fails with a 412 that holds the entry as it is now. Publish, unpublish
-// and discard move the status as the server does. A test can answer the next write itself.
+// and discard move the status as the server does. A test can answer the next write itself. A list reads every field of its
+// entries in the order they were added, and takes filter[id][in], filter[field][contains], q on every text, pageSize and a
+// cursor, which is the number of entries before the page.
 internal sealed class FakeContent
 {
     private readonly Dictionary<Guid, (string Type, int Version, JsonObject Fields)> _entries = [];
@@ -70,11 +72,7 @@ internal sealed class FakeContent
             Reads.Add(request.RequestUri!.PathAndQuery);
             return rest switch
             {
-                [] => FakeManagementServer.Json(new JsonObject
-                {
-                    ["items"] = new JsonArray([.. _entries.Where(entry => entry.Value.Type == type).Select(entry => (JsonNode)new JsonObject { ["id"] = entry.Key })]),
-                    ["pageSize"] = 1,
-                }),
+                [] => List(type, System.Web.HttpUtility.ParseQueryString(request.RequestUri.Query)),
                 [var id] when Guid.TryParse(id, out var key) && _entries.ContainsKey(key) => Entry(key, HttpStatusCode.OK),
                 _ => FakeManagementServer.Problem(HttpStatusCode.NotFound, "FCMS3104"),
             };
@@ -134,6 +132,42 @@ internal sealed class FakeContent
 
         return null;
     }
+
+    private HttpResponseMessage List(string type, System.Collections.Specialized.NameValueCollection query)
+    {
+        IEnumerable<JsonObject> matches = _entries.Where(entry => entry.Value.Type == type).Select(entry => Document(entry.Key));
+        foreach (var key in query.AllKeys.OfType<string>())
+        {
+            var value = query[key]!;
+            if (key == "filter[id][in]")
+            {
+                var ids = value.Split(',').Select(Guid.Parse).ToHashSet();
+                matches = matches.Where(entry => ids.Contains(entry["id"]!.GetValue<Guid>()));
+            }
+            else if (key.StartsWith("filter[", StringComparison.Ordinal) && key.EndsWith("][contains]", StringComparison.Ordinal))
+            {
+                var field = key["filter[".Length..^"][contains]".Length];
+                matches = matches.Where(entry => Text(entry[field])?.Contains(value, StringComparison.OrdinalIgnoreCase) == true);
+            }
+            else if (key == "q")
+            {
+                matches = matches.Where(entry => entry.Any(member => !FluentCMS.Admin.Api.ContentEntry.SystemMembers.Contains(member.Key) && Text(member.Value)?.Contains(value, StringComparison.OrdinalIgnoreCase) == true));
+            }
+        }
+
+        var all = matches.ToList();
+        var skip = int.TryParse(query["cursor"], out var cursor) ? cursor : 0;
+        var size = int.TryParse(query["pageSize"], out var pageSize) ? pageSize : 25;
+        var page = new JsonObject { ["items"] = new JsonArray([.. all.Skip(skip).Take(size)]), ["pageSize"] = size };
+        if (skip + size < all.Count)
+        {
+            page["nextCursor"] = (skip + size).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        return FakeManagementServer.Json(page);
+    }
+
+    private static string? Text(JsonNode? node) => node is JsonValue value && value.GetValueKind() == System.Text.Json.JsonValueKind.String ? value.GetValue<string>() : null;
 
     private HttpResponseMessage Act(Guid id, string action, ContentWrite write)
     {

@@ -111,6 +111,12 @@ else if (view is { } shownView)
                         @Cell(column, context)
                     </CmsDataGridColumn>
                 }
+                <CmsDataGridColumn TItem="ContentEntry" @key="PanelColumn" Name="@PanelColumn" Title="@L["Content.List.Column.Actions"]" Order="@(shown.Count + 1)">
+                    @* The row's keys, Enter that opens it and the arrows that move between rows, are the button's own here. *@
+                    <span @onkeydown:stopPropagation="true">
+                        <CmsButton Icon="CmsIconName.Open" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.List.OpenInPanel", AdminLabels.Entry(type, context)]" OnClick="@(() => OpenInPanel(context))" />
+                    </span>
+                </CmsDataGridColumn>
             </ChildContent>
         </CmsDataGrid>
 
@@ -152,6 +158,8 @@ else if (view is { } shownView)
             <CmsButton OnClick="@(() => choosing = false)">@L["Content.List.ColumnsCancel"]</CmsButton>
         </Actions>
     </CmsDialog>
+
+    <EntryPanel Type="@type" Id="@panelEntry" Open="@panelOpen" OnClose="ClosePanelAsync" OnSaved="@(_ => panelSaved = true)" />
 }
 
 @code {
@@ -188,6 +196,12 @@ else if (view is { } shownView)
 
     // The button that gets focus after the next render, since the one that had it moved or became disabled.
     private Func<CmsButton?>? focusAfterRender;
+
+    // The row action that opens an entry in a side panel (A-15); a hyphen keeps its name apart from every field's.
+    private const string PanelColumn = "open-in-panel";
+    private Guid? panelEntry;
+    private bool panelOpen;
+    private bool panelSaved;
 
     [Parameter]
     public string Type { get; set; } = string.Empty;
@@ -258,10 +272,7 @@ else if (view is { } shownView)
 
     // A search needs a searchable type and an index in the site: one is registered and the search plugin, when it is the one,
     // is not disabled there (FCMS2211).
-    private bool Searchable(ListView list) =>
-        list.Searchable
-        && Context.AccessInfo?.Search == true
-        && !Context.Plugins.Any(plugin => plugin.Name == "search" && !plugin.Enabled);
+    private bool Searchable(ListView list) => list.Searchable && Context.SearchIndex;
 
     public void Dispose()
     {
@@ -413,6 +424,19 @@ else if (view is { } shownView)
     private void Open(ContentEntry entry) => Navigation.NavigateTo(EntryRoute(entry));
 
     private void NewEntry() => Navigation.NavigateTo(ContentRoutes.New(Type));
+
+    private void OpenInPanel(ContentEntry entry) => (panelEntry, panelOpen, panelSaved) = (entry.Id, true, false);
+
+    // An entry saved in the panel may have changed what the list shows of it.
+    private async Task ClosePanelAsync()
+    {
+        panelOpen = false;
+        if (panelSaved)
+        {
+            panelSaved = false;
+            await TryAgainAsync();
+        }
+    }
 
     private static string Number(long value) => value.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
 

@@ -1,0 +1,24 @@
+@* The cell of a relation: the label of each related entry (spec 4.1), as the list read it with populate and fields, comma
+   separated; an entry the list could not populate shows its id. *@
+@inherits ListCellBase
+@inject AdminContext Context
+
+<span class="list-cell-text" lang="@Entry.Locale" dir="@(Entry.Locale is { } locale ? TextDirection.Of(locale) : null)">@Text</span>
+
+@code {
+    private SchemaTypeDescription? Target =>
+        Field.Relation?.Target is { } name ? Context.Schema?.Types.FirstOrDefault(type => type.Name == name) : null;
+
+    private string? Text => Value switch
+    {
+        JsonArray items => string.Join(", ", items.Select(LabelOf).OfType<string>()),
+        var single => LabelOf(single),
+    };
+
+    private string? LabelOf(JsonNode? node) => node switch
+    {
+        JsonObject entry when entry["id"] is JsonValue id && Guid.TryParse(FieldValues.Text(id), out var key) =>
+            Target is { } target ? AdminLabels.Entry(target, new ContentEntry { Id = key, Fields = entry }) : key.ToString("D"),
+        _ => FieldValues.Text(node),
+    };
+}

@@ -6,8 +6,8 @@ namespace FluentCMS.Admin.Fields;
 
 internal static class FieldServiceCollectionExtensions
 {
-    // The editors and list cells of the core field types (spec 4.6). Relation, rich text, component, blocks and media wait for
-    // their issues and show their JSON read-only in a form; a relation's cell is the label TextListCell shows.
+    // The editors and list cells of the core field types (spec 4.6). Rich text, component, blocks and media wait for their
+    // issues and show their JSON read-only in a form.
     public static IServiceCollection AddFieldEditors(this IServiceCollection services)
     {
         services.TryAddSingleton(_ =>
@@ -25,6 +25,7 @@ internal static class FieldServiceCollectionExtensions
             editors.Add<SelectFieldEditor>("select");
             editors.Add<SlugFieldEditor>("slug");
             editors.Add<JsonFieldEditor>("json");
+            editors.Add<RelationFieldEditor>("relation");
             return editors;
         });
         services.TryAddSingleton(_ =>
@@ -42,6 +43,7 @@ internal static class FieldServiceCollectionExtensions
             cells.Add<DateTimeListCell>("dateTime");
             cells.Add<SelectListCell>("select");
             cells.Add<JsonListCell>("json");
+            cells.Add<RelationListCell>("relation");
             return cells;
         });
         return services;

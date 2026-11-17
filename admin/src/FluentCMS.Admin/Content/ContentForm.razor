@@ -6,7 +6,8 @@
    required before a publish, fields the caller may not change read-only, a question before leaving unsaved changes, the
    keyboard shortcuts, and the dialog of a conflicting save. Its status controls (A-16): save draft, publish, unpublish and
    discard in the form's locale, each shown by the status of the locale and what the caller may do with the type, the
-   status badge, and the warnings of a publish. *@
+   status badge, and the warnings of a publish. In a side panel (A-15) it creates and saves without leaving the page: it
+   raises OnSaved instead of moving to the entry's route, and its heading is the panel's. *@
 @implements IUnsavedForm
 @implements IAsyncDisposable
 @using System.Net
@@ -25,7 +26,14 @@
 @inject IStringLocalizer<AdminResources> L
 
 <div class="content-form">
-    <h1 tabindex="-1">@Heading</h1>
+    @if (InPanel)
+    {
+        <h2 @ref="panelHeading" tabindex="-1">@Heading</h2>
+    }
+    else
+    {
+        <h1 tabindex="-1">@Heading</h1>
+    }
     @switch (state)
     {
         case FormState.Loading:
@@ -282,6 +290,8 @@
     private bool conflictOpen;
     private bool comparing;
     private Dictionary<string, bool> keepMine = new(StringComparer.Ordinal);
+    private ElementReference panelHeading;
+    private bool focusPanelHeading;
 
     // The name of the content type, as the route has it.
     [Parameter, EditorRequired]
@@ -290,6 +300,20 @@
     // The entry; null for a new entry of a collection and for a singleton, whose one entry the form finds.
     [Parameter]
     public Guid? Id { get; set; }
+
+    // The content locale the form edits; the view's when null.
+    [Parameter]
+    public string? Locale { get; set; }
+
+    // In a side panel: a new entry stays in the panel once created, and the page's heading is not the form's.
+    [Parameter]
+    public bool InPanel { get; set; }
+
+    // Raised with the entry as each save answered it, so that a panel's opener can select or relabel it.
+    [Parameter]
+    public EventCallback<ContentEntry> OnSaved { get; set; }
+
+    internal bool HasUnsavedChanges => IsDirty;
 
     private bool IsSingleton => type?.Kind == "singleton";
 
@@ -340,6 +364,9 @@
         _ => AdminLabels.Type(type, L),
     };
 
+    // A side panel closed on its unsaved changes gives them up, and any draft of them, as a confirmed leave does.
+    internal Task DiscardChangesAsync() => DropChangesAsync();
+
     public FormDraft CaptureDraft() => new(Key, read?.EntityTag, fields.DeepClone().AsObject());
 
     public async ValueTask DisposeAsync()
@@ -372,9 +399,16 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        // A panel is a dialog, where the document's shortcuts do not run.
+        if (firstRender && !InPanel)
         {
             await ListenForShortcutsAsync();
+        }
+
+        if (focusPanelHeading && state != FormState.Loading)
+        {
+            focusPanelHeading = false;
+            await panelHeading.FocusAsync();
         }
 
         // The library's dialog focuses itself as it opens; the safe choice takes focus once it has.
@@ -441,6 +475,7 @@
         tracking?.Dispose();
         tracking = null;
         state = FormState.Loading;
+        focusPanelHeading = InPanel;
         (type, access, tabs, tabbed, read, entryId, activeTab) = (null, null, [], [], null, null, null);
         (restored, done, saveFailure, pendingCreate, publishTried) = (false, null, null, null, false);
         (warnings, confirming) = ([], null);
@@ -469,7 +504,7 @@
             EntryRead? entry = null;
             if (id is { } existing)
             {
-                entry = await Client.GetEntryAsync(Type, existing, null, CancellationToken.None);
+                entry = await Client.GetEntryAsync(Type, existing, Locale, CancellationToken.None);
             }
 
             if (current != generation)
@@ -479,7 +514,7 @@
 
             (type, access, tabs, read, entryId) = (found, Access.ForType(found.Name), ContentFormLayout.Build(found), entry, id);
             tabbed = [.. tabs.Where(tab => tab.Name is not null)];
-            (site, locale) = entry is not null ? (entry.Site, entry.Locale) : (CurrentSite.Site, ContentLocaleSource.Locale);
+            (site, locale) = entry is not null ? (entry.Site, entry.Locale) : (CurrentSite.Site, Locale ?? ContentLocaleSource.Locale);
             fields = entry?.Entry?.Fields.DeepClone().AsObject() ?? CreatableDefaults(found);
             await RestoreDraftAsync(current);
             if (current == generation)
@@ -685,11 +720,13 @@
                 tracking = null;
             }
 
-            if (draftKey.Entry is null && !IsSingleton)
+            if (draftKey.Entry is null && !IsSingleton && !InPanel)
             {
                 NavigationFocus.KeepNext();
                 NavigateAway(RouteOf(saved), replace: true);
             }
+
+            await OnSaved.InvokeAsync(saved.Entry);
         }
         catch (ApiProblemException exception) when (current == generation)
         {
@@ -813,7 +850,7 @@
             Announcer.Announce(done);
             if (focus != FocusAfter.Shortcut)
             {
-                await Document.FocusHeadingAsync(afterDialog: focus == FocusAfter.Dialog);
+                await FocusHeadingAsync(afterDialog: focus == FocusAfter.Dialog);
             }
         }
         catch (ApiProblemException exception) when (current == generation)
@@ -1035,8 +1072,25 @@
     {
         if (reopened && saveFailure is null)
         {
-            await Document.FocusHeadingAsync(afterDialog: true);
+            await FocusHeadingAsync(afterDialog: true);
         }
+    }
+
+    // The page's heading is behind a panel, so a form in one focuses its own.
+    private async Task FocusHeadingAsync(bool afterDialog)
+    {
+        if (!InPanel)
+        {
+            await Document.FocusHeadingAsync(afterDialog);
+            return;
+        }
+
+        if (afterDialog)
+        {
+            await Task.Delay(DocumentInterop.DialogFocusDelay);
+        }
+
+        await panelHeading.FocusAsync();
     }
 
     private void Rebase(EntryRead current, JsonObject values)

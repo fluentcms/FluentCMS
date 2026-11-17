@@ -82,7 +82,8 @@ public sealed class FieldEditorTests : AdminTestContext
             editors.Find(type).ShouldNotBeNull(type);
         }
 
-        foreach (var type in new[] { "relation", "richText", "component", "blocks", "media" })
+        editors.Find("relation")!.Editor.ShouldBe(typeof(RelationFieldEditor));
+        foreach (var type in new[] { "richText", "component", "blocks", "media" })
         {
             editors.Find(type).ShouldBeNull(type);
         }

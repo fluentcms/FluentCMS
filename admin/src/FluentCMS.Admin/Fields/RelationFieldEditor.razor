@@ -1,0 +1,330 @@
+@* The editor of a relation field (spec 4.6, 4.9): the related entries by their labels (spec 4.1), each opening in a side panel
+   without leaving the form, the picker to choose them, and a new entry of the target made in a side panel, offered when the
+   caller may create one and chosen once saved. An ordered relation to many is ordered by drag, or by the buttons and
+   Alt with the up and down arrows (WCAG 2.5.7). A read gives the value as references and a change writes it as ids, an id
+   or a list of ids, as the Management API takes them. *@
+@inherits FieldEditorBase
+@inject SiteMetadata Metadata
+@inject ManagementClient Client
+@inject IAdminAccess Access
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<AdminResources> L
+
+<fieldset @ref="group"
+          class="cms-field relation-field"
+          tabindex="-1"
+          aria-describedby="@DescribedBy"
+          @onfocusin="@focus.Entered"
+          @onfocusout="@(() => focus.LeftAsync(OnBlur))">
+    <legend class="cms-field-label">
+        @Label
+        @if (Required)
+        {
+            <span class="cms-field-required" aria-hidden="true"> *</span>
+        }
+    </legend>
+    @if (Ids.Count == 0)
+    {
+        <p class="relation-field-empty">@L["Content.Relation.None"]</p>
+    }
+    else
+    {
+        <ul class="relation-field-items">
+            @for (var index = 0; index < Ids.Count; index++)
+            {
+                var position = index;
+                var id = Ids[position];
+                var label = LabelOf(id);
+                <li @key="id"
+                    class="@ItemClass(position)"
+                    data-drag-item="@(CanOrder ? "true" : null)"
+                    draggable="@(CanOrder ? "true" : null)"
+                    @ondragstart="@(() => dragging = position)"
+                    @ondragover="@(() => DragOver(position))"
+                    @ondragover:preventDefault="@CanOrder"
+                    @ondrop="@(() => DropAsync(position))"
+                    @ondragend="@(() => (dragging, over) = (null, null))"
+                    @onkeydown="@(e => OnItemKeyDownAsync(e, position))">
+                    <span class="relation-field-entry">
+                        @if (target is not null)
+                        {
+                            <CmsButton @ref="openButtons[id]" Appearance="CmsButtonAppearance.Subtle" OnClick="@(() => OpenEntry(id))">
+                                <span class="relation-field-name" lang="@ContentLocale" dir="@TextDirection">@label</span>
+                                <span class="cms-visually-hidden">@L["Content.Relation.OpenHint"]</span>
+                            </CmsButton>
+                        }
+                        else
+                        {
+                            @label
+                        }
+                    </span>
+                    @if (CanOrder)
+                    {
+                        <CmsButton @ref="upButtons[id]" Icon="CmsIconName.Up" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.Relation.MoveUp", label]" Disabled="@(position == 0)" OnClick="@(() => MoveAsync(position, -1, FocusAfterMove.Buttons))" />
+                        <CmsButton @ref="downButtons[id]" Icon="CmsIconName.Down" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.Relation.MoveDown", label]" Disabled="@(position == Ids.Count - 1)" OnClick="@(() => MoveAsync(position, 1, FocusAfterMove.Buttons))" />
+                    }
+                    @if (!ReadOnly)
+                    {
+                        <CmsButton Icon="CmsIconName.Dismiss" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.Relation.Remove", label]" OnClick="@(() => RemoveAsync(position))" />
+                    }
+                </li>
+            }
+        </ul>
+        @if (CanOrder)
+        {
+            <span id="@orderHintId" class="cms-visually-hidden">@L["Content.Relation.OrderHint"]</span>
+        }
+    }
+    @if (!ReadOnly && target is not null)
+    {
+        <div class="relation-field-actions">
+            <CmsButton @ref="chooseButton" Icon="CmsIconName.Search" OnClick="@(() => picking = true)">@L[Field.Multiple ? "Content.Relation.ChooseEntries" : "Content.Relation.ChooseEntry"]</CmsButton>
+            @if (MayCreate)
+            {
+                <CmsButton Icon="CmsIconName.Add" OnClick="NewEntry">@L["Content.Relation.Create", AdminLabels.Type(target, L)]</CmsButton>
+            }
+        </div>
+    }
+    @if (ErrorText is not null)
+    {
+        <span id="@messageId" class="cms-field-message cms-field-message-error">@ErrorText</span>
+    }
+    else if (Help is not null)
+    {
+        <span id="@messageId" class="cms-field-message">@Help</span>
+    }
+</fieldset>
+@if (target is not null)
+{
+    <RelationPicker Target="@target"
+                    Multiple="@Field.Multiple"
+                    Selected="@Ids"
+                    Locale="@ContentLocale"
+                    Open="@picking"
+                    OnClose="@(() => picking = false)"
+                    OnPicked="PickedAsync" />
+    <EntryPanel Type="@target"
+                Id="@panelEntry"
+                Locale="@ContentLocale"
+                Open="@panelOpen"
+                OnClose="@(() => panelOpen = false)"
+                OnSaved="SavedInPanelAsync" />
+}
+
+@code {
+    private enum FocusAfterMove
+    {
+        Buttons,
+        Entry,
+    }
+
+    private readonly string messageId = ElementIds.Next("field-message");
+    private readonly string orderHintId = ElementIds.Next("field-order");
+    private readonly GroupFocus focus = new();
+    private Dictionary<Guid, string> labels = [];
+    private HashSet<Guid> asked = [];
+    private readonly Dictionary<Guid, CmsButton> openButtons = [];
+    private readonly Dictionary<Guid, CmsButton> upButtons = [];
+    private readonly Dictionary<Guid, CmsButton> downButtons = [];
+    private ElementReference group;
+    private CmsButton? chooseButton;
+    private SchemaTypeDescription? target;
+    private bool picking;
+    private bool panelOpen;
+    private Guid? panelEntry;
+    private int? dragging;
+    private int? over;
+    private bool unchanged;
+    private IReadOnlyList<Guid>? idsRead;
+    private JsonNode? idsOf;
+    private string? labelsLocale;
+
+    // The control that gets focus after the next render, since the one that had it moved or left the document.
+    private Func<CmsButton?>? focusAfterRender;
+
+    // The value's ids, read again only when the form passes another value.
+    private IReadOnlyList<Guid> Ids
+    {
+        get
+        {
+            if (idsRead is null || !ReferenceEquals(idsOf, Value))
+            {
+                (idsRead, idsOf) = (RelationReads.Ids(Value), Value);
+            }
+
+            return idsRead;
+        }
+    }
+
+    private bool CanOrder => Field.Multiple && Field.Relation?.Ordered == true && !ReadOnly && Ids.Count > 1;
+
+    private bool MayCreate => target is not null && Access.ForType(target.Name)?.Create == true;
+
+    private string? DescribedBy =>
+        string.Join(' ', new[] { ErrorText is null && Help is null ? null : messageId, CanOrder ? orderHintId : null }.OfType<string>()) is { Length: > 0 } ids ? ids : null;
+
+    // The target is absent from the schema when the caller may not read it; the relation then shows its ids.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (target is null && Field.Relation?.Target is { } name)
+        {
+            try
+            {
+                target = (await Metadata.GetSchemaAsync(CancellationToken.None)).Types.FirstOrDefault(type => type.Name == name);
+            }
+            catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or TaskCanceledException or JsonException)
+            {
+                return;
+            }
+        }
+
+        await ReadLabelsAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender?.Invoke() is { } button)
+        {
+            focusAfterRender = null;
+            await button.FocusAsync();
+        }
+    }
+
+    public override ValueTask FocusAsync() => group.Context is null ? ValueTask.CompletedTask : group.FocusAsync();
+
+    // A drag raises dragover many times a second; the editor draws again only when the place it would drop on moves.
+    protected override bool ShouldRender()
+    {
+        var render = !unchanged;
+        unchanged = false;
+        return render;
+    }
+
+    private void DragOver(int position)
+    {
+        var next = CanOrder && dragging is not null ? position : (int?)null;
+        unchanged = next == over;
+        over = next;
+    }
+
+    // Labels are in the content locale, so another locale reads them again.
+    private async Task ReadLabelsAsync()
+    {
+        if (ContentLocale != labelsLocale)
+        {
+            (labelsLocale, labels, asked) = (ContentLocale, [], []);
+        }
+
+        if (target is null || Ids.Where(id => !labels.ContainsKey(id) && asked.Add(id)).ToList() is not { Count: > 0 } missing)
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (var (id, entry) in await RelationReads.LabelsAsync(Client, target, missing, ContentLocale, CancellationToken.None))
+            {
+                labels[id] = AdminLabels.Entry(target, entry);
+            }
+        }
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or TaskCanceledException or JsonException)
+        {
+            // An entry whose label could not be read shows its id.
+        }
+    }
+
+    private string LabelOf(Guid id) => labels.GetValueOrDefault(id) ?? id.ToString("D");
+
+    private string ItemClass(int position) =>
+        position == over && over != dragging ? "relation-field-item relation-field-drop" : "relation-field-item";
+
+    private Task WriteAsync(IReadOnlyList<Guid> ids) => ChangeAsync(Field.Multiple
+        ? new JsonArray([.. ids.Select(id => (JsonNode)JsonValue.Create(id.ToString("D")))])
+        : ids.Count > 0 ? JsonValue.Create(ids[^1].ToString("D")) : null);
+
+    private async Task PickedAsync(IReadOnlyList<ContentEntry> entries)
+    {
+        picking = false;
+        foreach (var entry in entries.Where(entry => entry.Fields.Count > 0))
+        {
+            labels[entry.Id] = AdminLabels.Entry(target!, entry);
+        }
+
+        await WriteAsync([.. entries.Select(entry => entry.Id)]);
+        await ReadLabelsAsync();
+    }
+
+    private async Task RemoveAsync(int position)
+    {
+        var ids = Ids.ToList();
+        var removed = ids[position];
+        ids.RemoveAt(position);
+        await WriteAsync(ids);
+
+        // The removed entry's buttons leave the document, so focus goes to the entry that took its place, or to the picker.
+        var next = ids.Count == 0 ? (Guid?)null : ids[Math.Min(position, ids.Count - 1)];
+        focusAfterRender = () => next is { } kept ? openButtons.GetValueOrDefault(kept) : chooseButton;
+        Announcer.Announce(L["Content.Relation.Removed", LabelOf(removed)]);
+    }
+
+    private Task OnItemKeyDownAsync(KeyboardEventArgs e, int position) =>
+        CanOrder && e.AltKey && e.Key is "ArrowUp" or "ArrowDown"
+            ? MoveAsync(position, e.Key == "ArrowUp" ? -1 : 1, FocusAfterMove.Entry)
+            : Task.CompletedTask;
+
+    private async Task DropAsync(int position)
+    {
+        if (dragging is { } from && CanOrder && from != position)
+        {
+            var ids = Ids.ToList();
+            var moved = ids[from];
+            ids.RemoveAt(from);
+            ids.Insert(position, moved);
+            await WriteAsync(ids);
+            Announce(moved, position, ids.Count);
+        }
+
+        (dragging, over) = (null, null);
+    }
+
+    // The moved entry's item moves in the document, which drops focus, so focus goes back to the control pressed, or to the
+    // other button when the entry reached an end and the pressed one became disabled.
+    private async Task MoveAsync(int position, int by, FocusAfterMove after)
+    {
+        var to = position + by;
+        var ids = Ids.ToList();
+        if (to < 0 || to >= ids.Count)
+        {
+            return;
+        }
+
+        (ids[position], ids[to]) = (ids[to], ids[position]);
+        var moved = ids[to];
+        await WriteAsync(ids);
+        var atEnd = by < 0 ? to == 0 : to == ids.Count - 1;
+        focusAfterRender = after == FocusAfterMove.Entry
+            ? () => openButtons.GetValueOrDefault(moved)
+            : (by < 0) != atEnd ? () => upButtons.GetValueOrDefault(moved) : () => downButtons.GetValueOrDefault(moved);
+        Announce(moved, to, ids.Count);
+    }
+
+    private void Announce(Guid moved, int position, int count) =>
+        Announcer.Announce(L["Content.Relation.Moved", LabelOf(moved), position + 1, count]);
+
+    private void OpenEntry(Guid id) => (panelEntry, panelOpen) = (id, true);
+
+    private void NewEntry() => (panelEntry, panelOpen) = (null, true);
+
+    // A new entry is chosen once saved, after the entries chosen before for a relation to many, and the panel goes on with
+    // it; a save of an open entry may change its label.
+    private async Task SavedInPanelAsync(ContentEntry entry)
+    {
+        labels[entry.Id] = AdminLabels.Entry(target!, entry);
+        if (panelEntry is null)
+        {
+            panelEntry = entry.Id;
+            await WriteAsync(Field.Multiple ? [.. Ids.Where(id => id != entry.Id), entry.Id] : [entry.Id]);
+            Announcer.Announce(L["Content.Relation.Created", labels[entry.Id]]);
+        }
+    }
+}
