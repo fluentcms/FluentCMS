@@ -26,15 +26,42 @@ internal sealed class FormDrafts(ISessionStorage storage)
         }
     }
 
+    // Raised when the tab gets its first unsaved form and when it has none left, for the question before the tab closes.
+    public event Action? TrackedChanged;
+
     public IDisposable Track(IUnsavedForm form)
     {
         ArgumentNullException.ThrowIfNull(form);
+        bool first;
         lock (_gate)
         {
             _forms.Add(form);
+            first = _forms.Count == 1;
+        }
+
+        if (first)
+        {
+            TrackedChanged?.Invoke();
         }
 
         return new Tracking(this, form);
+    }
+
+    // The user chose to leave the unsaved forms, as at a confirmed site switch or sign-out, or they are kept as drafts:
+    // nothing asks about them any more.
+    public void ReleaseAll()
+    {
+        bool had;
+        lock (_gate)
+        {
+            had = _forms.Count > 0;
+            _forms.Clear();
+        }
+
+        if (had)
+        {
+            TrackedChanged?.Invoke();
+        }
     }
 
     // Before the redirect to sign in, when the session has ended.
@@ -59,7 +86,9 @@ internal sealed class FormDrafts(ISessionStorage storage)
             stored.Add(new StoredDraft(user, site, type, entry, locale, draft.BaseVersion, draft.Fields.DeepClone().AsObject()));
         }
 
+        // Kept, so the redirect to sign in does not ask; a write that failed leaves the question.
         await WriteAsync(stored);
+        ReleaseAll();
     }
 
     public async Task<FormDraft?> FindAsync(string user, FormDraftKey key)
@@ -90,7 +119,12 @@ internal sealed class FormDrafts(ISessionStorage storage)
         }
     }
 
-    public ValueTask ClearAsync() => storage.RemoveAsync(StorageKey);
+    // At sign-out, which the user confirmed when a form was unsaved.
+    public ValueTask ClearAsync()
+    {
+        ReleaseAll();
+        return storage.RemoveAsync(StorageKey);
+    }
 
     private static bool Matches(StoredDraft draft, string user, FormDraftKey key) =>
         draft.User == user && draft.Site == key.Site && draft.Type == key.Type && draft.Entry == key.Entry && draft.Locale == key.Locale;
@@ -126,9 +160,15 @@ internal sealed class FormDrafts(ISessionStorage storage)
 
     private void Untrack(IUnsavedForm form)
     {
+        bool last;
         lock (_gate)
         {
-            _forms.Remove(form);
+            last = _forms.Remove(form) && _forms.Count == 0;
+        }
+
+        if (last)
+        {
+            TrackedChanged?.Invoke();
         }
     }
 

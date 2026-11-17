@@ -120,7 +120,8 @@ internal sealed class FakeManagementServer : HttpMessageHandler
         Plugins[id] = [];
     }
 
-    // The schema of the site holds the types, and the access lets the user read each of them.
+    // The schema of the site holds the types, and the access lets the user read each of them and do everything with every
+    // field, as the server lists the fields a caller may set.
     public void SetTypes(Guid site, params JsonObject[] types)
     {
         Schemas[site]["types"] = new JsonArray([.. types]);
@@ -128,6 +129,7 @@ internal sealed class FakeManagementServer : HttpMessageHandler
         access.Clear();
         foreach (var type in types)
         {
+            JsonNode[] names = [.. type["fields"]!.AsArray().Select(field => (JsonNode)field!["name"]!.GetValue<string>())];
             access[type["name"]!.GetValue<string>()] = new JsonObject
             {
                 ["drafts"] = true,
@@ -136,8 +138,8 @@ internal sealed class FakeManagementServer : HttpMessageHandler
                 ["delete"] = true,
                 ["publish"] = true,
                 ["unpublish"] = true,
-                ["creatableFields"] = new JsonArray(),
-                ["updatableFields"] = new JsonArray(),
+                ["creatableFields"] = new JsonArray([.. names.Select(name => name.DeepClone())]),
+                ["updatableFields"] = new JsonArray([.. names.Select(name => name.DeepClone())]),
                 ["conditional"] = new JsonArray(),
             };
         }

@@ -1,20 +1,25 @@
 @* The generated edit form of an entry (spec 4.5, A-13): the fields of the type laid out from their display, each with the
    editor of its field type, a save with If-Match, and the errors of a 422 on their fields. The entry is edited as its JSON
    document. A new entry is created by its first save and the form moves to its route; a singleton's form stays on the
-   type's route. While it has unsaved changes the form is tracked, so the end of a session keeps them as a draft. *@
+   type's route. While it has unsaved changes the form is tracked, so the end of a session keeps them as a draft.
+   Its behaviours (A-49): conditions evaluated on every change, lengths, range and pattern checked as a field is left and
+   required before a publish, fields the caller may not change read-only, a question before leaving unsaved changes, the
+   keyboard shortcuts, and the dialog of a conflicting save. *@
 @implements IUnsavedForm
-@implements IDisposable
+@implements IAsyncDisposable
 @using System.Net
 @using FluentCMS.Admin.Forms
 @inject ManagementClient Client
 @inject SiteMetadata Metadata
 @inject ICurrentSite CurrentSite
 @inject IContentLocale ContentLocaleSource
+@inject IAdminAccess Access
 @inject IFormDraftStore Drafts
 @inject FieldEditorRegistry Editors
 @inject IAnnouncer Announcer
 @inject NavigationManager Navigation
 @inject NavigationFocus NavigationFocus
+@inject DocumentInterop Document
 @inject IStringLocalizer<AdminResources> L
 
 <div class="content-form">
@@ -35,14 +40,22 @@
             <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="ReloadAsync">@L["Shell.Start.TryAgain"]</CmsButton>
             break;
         default:
+            @* The actions of the entry; A-16 adds its own beside Save. *@
             <div class="content-form-toolbar">
-                @* Not disabled while saving, which would take focus from it; a click while a save runs is ignored. *@
-                <CmsButton Appearance="CmsButtonAppearance.Primary" Icon="CmsIconName.Save" OnClick="SaveAsync">@L["Content.Form.Save"]</CmsButton>
+                @if (MaySave)
+                {
+                    @* Not disabled while saving, which would take focus from it; a click while a save runs is ignored. *@
+                    <CmsButton Appearance="CmsButtonAppearance.Primary" Icon="CmsIconName.Save" OnClick="SaveAsync">@L["Content.Form.Save"]</CmsButton>
+                }
                 @if (savedAt is not null)
                 {
                     <span class="content-form-saved">@L["Content.Form.Saved"]</span>
                 }
             </div>
+            @if (!MaySave)
+            {
+                <p class="content-form-notice"><CmsIcon Name="CmsIconName.Info" />@L["Content.Form.MayNotChange"]</p>
+            }
             @if (restored)
             {
                 <p class="content-form-notice"><CmsIcon Name="CmsIconName.Info" />@L["Content.Form.Restored"]</p>
@@ -52,7 +65,7 @@
                 <div @ref="summary" class="content-form-problem" tabindex="-1">
                     @if (saveFailure.Kind == SaveFailureKind.Invalid)
                     {
-                        <p>@L["Content.Form.NotSavedErrors"]</p>
+                        <p>@(saveFailure.Publishing ? L["Content.Form.NotPublishedErrors"] : L["Content.Form.NotSavedErrors"])</p>
                         @if (formErrors.Count > 0)
                         {
                             <ul>
@@ -76,7 +89,13 @@
                         }
                         @if (saveFailure.Kind == SaveFailureKind.Conflict)
                         {
-                            <CmsButton OnClick="ReloadAsync">@L["Content.Form.Reload"]</CmsButton>
+                            <div class="content-form-toolbar">
+                                @if (conflict is not null)
+                                {
+                                    <CmsButton OnClick="@(() => conflictOpen = true)">@L["Content.Form.Conflict.Show"]</CmsButton>
+                                }
+                                <CmsButton OnClick="ReloadAsync">@L["Content.Form.Reload"]</CmsButton>
+                            </div>
                         }
                     }
                 </div>
@@ -95,9 +114,39 @@
                     }
                 </CmsTabs>
             }
+            @ConflictDialog()
             break;
     }
 </div>
+<CmsDialog Title="@L["Content.Form.Leave.Title"]" Open="@(leaveTarget is not null)" OpenChanged="@(open => leaveTarget = open ? leaveTarget : null)">
+    <ChildContent>
+        <p>@L["Content.Form.Leave.Text"]</p>
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="LeaveAsync">@L["Content.Form.Leave.Confirm"]</CmsButton>
+        <CmsButton OnClick="@(() => leaveTarget = null)">@L["Content.Form.Leave.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+<CmsDialog Title="@L["Content.Form.Shortcuts.Title"]" Open="@showingShortcuts" OpenChanged="@(open => showingShortcuts = open)">
+    <ChildContent>
+        <dl class="content-form-shortcuts">
+            <dt>@L["Content.Form.Shortcuts.SaveKeys"]</dt>
+            <dd>@L["Content.Form.Shortcuts.Save"]</dd>
+            @if (Publish is not null)
+            {
+                <dt>@L["Content.Form.Shortcuts.PublishKeys"]</dt>
+                <dd>@L["Content.Form.Shortcuts.Publish"]</dd>
+            }
+            <dt>@L["Content.Form.Shortcuts.CloseKeys"]</dt>
+            <dd>@L["Content.Form.Shortcuts.Close"]</dd>
+            <dt>@L["Content.Form.Shortcuts.HelpKeys"]</dt>
+            <dd>@L["Content.Form.Shortcuts.Help"]</dd>
+        </dl>
+    </ChildContent>
+    <Actions>
+        <CmsButton OnClick="@(() => showingShortcuts = false)">@L["Content.Form.Shortcuts.Done"]</CmsButton>
+    </Actions>
+</CmsDialog>
 
 @code {
     private enum FormState
@@ -117,11 +166,18 @@
         Unreachable,
     }
 
-    private sealed record SaveFailure(SaveFailureKind Kind, ApiProblem? Problem = null);
+    private sealed record SaveFailure(SaveFailureKind Kind, ApiProblem? Problem = null, bool Publishing = false);
+
+    // A save that met a newer version: the entry as it is now, the form's values when it was sent, and the fields the user
+    // may change whose value differs from the newer one, each marked when the user changed it.
+    private sealed record Conflict(EntryRead Current, JsonObject Mine, IReadOnlyList<ConflictRow> Rows);
+
+    private sealed record ConflictRow(SchemaFieldDescription Field, bool ChangedByUser);
 
     private readonly Dictionary<string, FieldEditorBase> editors = new(StringComparer.Ordinal);
     private FormState state;
     private SchemaTypeDescription? type;
+    private TypeAccessInfo? access;
     private IReadOnlyList<FormTab> tabs = [];
 
     // The tabs with a name, in order; the fields that name none are shown above them.
@@ -138,6 +194,10 @@
     private SaveFailure? saveFailure;
     private Dictionary<string, List<ApiProblemError>> fieldErrors = new(StringComparer.Ordinal);
     private List<ApiProblemError> formErrors = [];
+
+    // The form's own findings, by field: lengths, range and pattern as a field is left, and required once a publish was tried.
+    private Dictionary<string, List<ApiProblemError>> ruleErrors = new(StringComparer.Ordinal);
+    private bool publishTried;
     // A create whose answer did not come, with the body it sent: a retry sends both again, so the server answers it as the first.
     private (UserAction Action, JsonObject Body)? pendingCreate;
     private string? activeTab;
@@ -145,6 +205,16 @@
     private ElementReference summary;
     private int generation;
     private (string Type, Guid? Id)? shown;
+    private IDisposable? leaveGuard;
+    private string? leaveTarget;
+    private string? allowedNavigation;
+    private IAsyncDisposable? shortcuts;
+    private bool disposed;
+    private bool showingShortcuts;
+    private Conflict? conflict;
+    private bool conflictOpen;
+    private bool comparing;
+    private Dictionary<string, bool> keepMine = new(StringComparer.Ordinal);
 
     // The name of the content type, as the route has it.
     [Parameter, EditorRequired]
@@ -153,6 +223,10 @@
     // The entry; null for a new entry of a collection and for a singleton, whose one entry the form finds.
     [Parameter]
     public Guid? Id { get; set; }
+
+    // The publish of the entry, which A-16 gives: Ctrl+Shift+Enter, and its button, run it once the form passes the checks of
+    // a publish. Without it the shortcut does nothing and is not listed.
+    internal Func<Task>? Publish { get; set; }
 
     private bool IsSingleton => type?.Kind == "singleton";
 
@@ -163,6 +237,14 @@
     private string? ActiveTab => activeTab ?? (tabbed.Count > 0 ? TabId(0) : null);
 
     private string TextDirectionOfLocale => locale is null ? FieldEditorBase.LeftToRight : TextDirection.Of(locale);
+
+    // Save is absent for a caller who may not create entries of the type, or not change them (GET /me/access).
+    private bool MaySave => access is not null && (entryId is null ? access.Create : access.Update);
+
+    // The form's own tracking may have been given up by a confirmed site switch or sign-out.
+    private bool IsDirty => tracking is not null && Drafts.HasUnsavedForms;
+
+    private bool DialogOpen => leaveTarget is not null || conflictOpen || showingShortcuts;
 
     private string Heading => state switch
     {
@@ -177,11 +259,19 @@
 
     public FormDraft CaptureDraft() => new(Key, read?.EntityTag, fields.DeepClone().AsObject());
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
+        disposed = true;
         generation++;
         tracking?.Dispose();
+        leaveGuard?.Dispose();
+        if (shortcuts is not null)
+        {
+            await shortcuts.DisposeAsync();
+        }
     }
+
+    protected override void OnInitialized() => leaveGuard = Navigation.RegisterLocationChangingHandler(OnLocationChanging);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -198,13 +288,18 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            await ListenForShortcutsAsync();
+        }
+
         if (!focusFirstError)
         {
             return;
         }
 
         focusFirstError = false;
-        if (ContentFormLayout.InOrder(tabs).FirstOrDefault(field => fieldErrors.ContainsKey(field.Name)) is { } first
+        if (ContentFormLayout.InOrder(tabs).Where(Shows).FirstOrDefault(field => HasErrors(field.Name)) is { } first
             && editors.GetValueOrDefault(first.Name) is { } editor)
         {
             await editor.FocusAsync();
@@ -215,14 +310,38 @@
         }
     }
 
+    // The form works without its shortcuts when the document's script cannot be reached.
+    private async Task ListenForShortcutsAsync()
+    {
+        IAsyncDisposable listening;
+        try
+        {
+            listening = await Document.ListenForShortcutsAsync(RunShortcutAsync);
+        }
+        catch (Microsoft.JSInterop.JSException)
+        {
+            return;
+        }
+
+        if (disposed)
+        {
+            await listening.DisposeAsync();
+        }
+        else
+        {
+            shortcuts = listening;
+        }
+    }
+
     private async Task LoadAsync()
     {
         var current = ++generation;
         tracking?.Dispose();
         tracking = null;
         state = FormState.Loading;
-        (type, tabs, tabbed, read, entryId, activeTab) = (null, [], [], null, null, null);
-        (restored, savedAt, saveFailure, pendingCreate) = (false, null, null, null);
+        (type, access, tabs, tabbed, read, entryId, activeTab) = (null, null, [], [], null, null, null);
+        (restored, savedAt, saveFailure, pendingCreate, publishTried) = (false, null, null, null, false);
+        (conflict, conflictOpen, comparing) = (null, false, false);
         ClearErrors();
         try
         {
@@ -255,10 +374,10 @@
                 return;
             }
 
-            (type, tabs, read, entryId) = (found, ContentFormLayout.Build(found), entry, id);
+            (type, access, tabs, read, entryId) = (found, Access.ForType(found.Name), ContentFormLayout.Build(found), entry, id);
             tabbed = [.. tabs.Where(tab => tab.Name is not null)];
             (site, locale) = entry is not null ? (entry.Site, entry.Locale) : (CurrentSite.Site, ContentLocaleSource.Locale);
-            fields = entry?.Entry?.Fields.DeepClone().AsObject() ?? ContentFormLayout.Defaults(found);
+            fields = entry?.Entry?.Fields.DeepClone().AsObject() ?? CreatableDefaults(found);
             await RestoreDraftAsync(current);
             if (current == generation)
             {
@@ -277,6 +396,18 @@
         {
             state = FormState.Failed;
         }
+    }
+
+    // A field the caller may not set at create is left to the server's default, so a create never sends it.
+    private JsonObject CreatableDefaults(SchemaTypeDescription found)
+    {
+        var defaults = ContentFormLayout.Defaults(found);
+        foreach (var name in defaults.Select(member => member.Key).Where(name => access?.CreatableFields.Contains(name, StringComparer.Ordinal) != true).ToList())
+        {
+            defaults.Remove(name);
+        }
+
+        return defaults;
     }
 
     // A draft kept when the session ended; its base version is what the next save sends, so a change made meanwhile is a 412.
@@ -317,23 +448,98 @@
         await LoadAsync();
     }
 
+    // A field the schema marks readOnly is the server's; one the caller may read but not change is read-only for it.
+    private bool Changeable(SchemaFieldDescription field) =>
+        !field.ReadOnly
+        && MaySave
+        && (entryId is null ? access!.CreatableFields : access!.UpdatableFields).Contains(field.Name, StringComparer.Ordinal);
+
+    private bool Shows(SchemaFieldDescription field) => FormConditions.Shows(field, fields);
+
     private void Change(SchemaFieldDescription field, JsonNode? value)
     {
         fields[field.Name] = value?.Parent is null ? value : value.DeepClone();
         savedAt = null;
-        tracking ??= Drafts.Track(this);
+        if (!IsDirty)
+        {
+            tracking?.Dispose();
+            tracking = Drafts.Track(this);
+        }
+
+        // A field that shows a finding of the form is checked again as it is typed in, so the finding goes once it is fixed.
+        if (ruleErrors.ContainsKey(field.Name))
+        {
+            Check(field);
+        }
+    }
+
+    // As the user leaves a field, without a request.
+    private void Check(SchemaFieldDescription field)
+    {
+        var errors = Changeable(field) && Shows(field) ? Findings(field, publishTried) : [];
+        if (errors.Count > 0)
+        {
+            ruleErrors[field.Name] = errors;
+        }
+        else
+        {
+            ruleErrors.Remove(field.Name);
+        }
+    }
+
+    private List<ApiProblemError> Findings(SchemaFieldDescription field, bool required)
+    {
+        var value = fields[field.Name];
+        var errors = FieldRules.Check(field, value, L);
+        if (required && FormConditions.IsEmpty(value) && FormConditions.Requires(field, fields))
+        {
+            errors.Add(FieldRules.Required(field, L));
+        }
+
+        return errors;
+    }
+
+    // Before a save, and with required before a publish: every field shown that the user may change. A field its condition
+    // hides is not checked, and keeps its value, as on the server.
+    private bool CheckFields(bool publishing)
+    {
+        ClearErrors();
+        publishTried |= publishing;
+        foreach (var field in ContentFormLayout.InOrder(tabs).Where(field => Changeable(field) && Shows(field)))
+        {
+            if (Findings(field, publishing) is { Count: > 0 } errors)
+            {
+                ruleErrors[field.Name] = errors;
+            }
+        }
+
+        if (ruleErrors.Count == 0)
+        {
+            return true;
+        }
+
+        saveFailure = new SaveFailure(SaveFailureKind.Invalid, Publishing: publishing);
+        OpenTabOfFirstError();
+        Announcer.Announce(publishing ? L["Content.Form.NotPublishedErrors"] : L["Content.Form.NotSavedErrors"], AnnouncementPoliteness.Assertive);
+        focusFirstError = true;
+        return false;
     }
 
     private async Task SaveAsync()
     {
-        if (saving || type is null)
+        if (saving || type is null || !MaySave)
+        {
+            return;
+        }
+
+        savedAt = null;
+        if (!CheckFields(publishing: false))
         {
             return;
         }
 
         saving = true;
-        (saveFailure, savedAt) = (null, null);
-        ClearErrors();
+        saveFailure = null;
         var current = generation;
         var draftKey = Key;
         JsonObject sent;
@@ -377,7 +583,7 @@
             if (draftKey.Entry is null && !IsSingleton)
             {
                 NavigationFocus.KeepNext();
-                Navigation.NavigateTo(RouteOf(saved), replace: true);
+                NavigateAway(RouteOf(saved), replace: true);
             }
         }
         catch (ApiProblemException exception) when (current == generation)
@@ -408,13 +614,23 @@
         }
     }
 
-    // A 422 puts each error on the field its path is in, and one in no field of the form above the form; a 412 is shown with a
-    // reload, until the conflict dialog of A-49; anything else is shown as the answer.
+    private async Task PublishAsync()
+    {
+        if (Publish is null || saving || type is null || !MaySave || !CheckFields(publishing: true))
+        {
+            return;
+        }
+
+        await Publish();
+    }
+
+    // A 422 puts each error on the field its path is in, and one in no field of the form above the form; a 412 opens the
+    // conflict dialog when it holds the entry as it is now; anything else is shown as the answer.
     private void Failed(ApiProblem problem)
     {
         if (problem.Status == (int)HttpStatusCode.UnprocessableEntity)
         {
-            var shownFields = ContentFormLayout.InOrder(tabs).Select(field => field.Name).ToHashSet(StringComparer.Ordinal);
+            var shownFields = ContentFormLayout.InOrder(tabs).Where(Shows).Select(field => field.Name).ToHashSet(StringComparer.Ordinal);
             IReadOnlyList<ApiProblemError> errors = problem.Errors.Count > 0 ? problem.Errors : [new ApiProblemError { Message = problem.Detail ?? problem.Title }];
             foreach (var error in errors)
             {
@@ -429,28 +645,196 @@
             }
 
             saveFailure = new SaveFailure(SaveFailureKind.Invalid, problem);
-            if (ContentFormLayout.InOrder(tabs).FirstOrDefault(field => fieldErrors.ContainsKey(field.Name)) is { } first
-                && tabbed.FindIndex(tab => tab.Fields.Contains(first)) is var index and >= 0)
-            {
-                activeTab = TabId(index);
-            }
-
+            OpenTabOfFirstError();
             Announcer.Announce(L["Content.Form.NotSavedErrors"], AnnouncementPoliteness.Assertive);
+        }
+        else if (problem.Status == (int)HttpStatusCode.PreconditionFailed)
+        {
+            saveFailure = new SaveFailure(SaveFailureKind.Conflict, problem);
+            Announcer.Announce(problem.Title ?? L["Content.Form.NotSaved"], AnnouncementPoliteness.Assertive);
+            if (read is not null && ManagementClient.CurrentOf(problem, read) is { } current)
+            {
+                OpenConflict(current);
+                return;
+            }
         }
         else
         {
-            saveFailure = new SaveFailure(problem.Status == (int)HttpStatusCode.PreconditionFailed ? SaveFailureKind.Conflict : SaveFailureKind.Problem, problem);
+            saveFailure = new SaveFailure(SaveFailureKind.Problem, problem);
             Announcer.Announce(problem.Title ?? L["Content.Form.NotSaved"], AnnouncementPoliteness.Assertive);
         }
 
         focusFirstError = true;
     }
 
+    private void OpenTabOfFirstError()
+    {
+        if (ContentFormLayout.InOrder(tabs).Where(Shows).FirstOrDefault(field => HasErrors(field.Name)) is { } first
+            && tabbed.FindIndex(tab => tab.Fields.Contains(first)) is var index and >= 0)
+        {
+            activeTab = TabId(index);
+        }
+    }
+
+    private bool HasErrors(string field) => fieldErrors.ContainsKey(field) || ruleErrors.ContainsKey(field);
+
+    private IReadOnlyList<ApiProblemError> ErrorsOf(SchemaFieldDescription field) =>
+        (fieldErrors.GetValueOrDefault(field.Name), ruleErrors.GetValueOrDefault(field.Name)) switch
+        {
+            (null, null) => [],
+            ({ } server, null) => server,
+            (null, { } own) => own,
+            ({ } server, { } own) => [.. own, .. server],
+        };
+
     private void ClearErrors()
     {
         fieldErrors = new(StringComparer.Ordinal);
+        ruleErrors = new(StringComparer.Ordinal);
         formErrors = [];
     }
+
+    private void OpenConflict(EntryRead current)
+    {
+        var mine = fields.DeepClone().AsObject();
+        var before = read?.Entry?.Fields ?? [];
+        var theirs = current.Entry!.Fields;
+        List<ConflictRow> rows =
+        [
+            .. ContentFormLayout.InOrder(tabs)
+                .Where(field => Changeable(field) && !JsonNode.DeepEquals(mine[field.Name], theirs[field.Name]))
+                .Select(field => new ConflictRow(field, !JsonNode.DeepEquals(mine[field.Name], before[field.Name]))),
+        ];
+        conflict = new Conflict(current, mine, rows);
+        keepMine = rows.ToDictionary(row => row.Field.Name, row => row.ChangedByUser, StringComparer.Ordinal);
+        (comparing, conflictOpen) = (false, true);
+    }
+
+    // Keep mine, and the choices of the comparison: the entry as it is now with the chosen values of the user's, saved on its
+    // version. A field the user did not change keeps the newer value unless they chose theirs field by field.
+    private async Task ResolveAsync()
+    {
+        if (conflict is not { } open)
+        {
+            return;
+        }
+
+        var merged = open.Current.Entry!.Fields.DeepClone().AsObject();
+        foreach (var row in open.Rows.Where(row => keepMine.GetValueOrDefault(row.Field.Name)))
+        {
+            merged[row.Field.Name] = open.Mine[row.Field.Name]?.DeepClone();
+        }
+
+        Rebase(open.Current, merged);
+        await SaveAsync();
+    }
+
+    private Task KeepMineAsync()
+    {
+        if (conflict is { } open)
+        {
+            keepMine = open.Rows.ToDictionary(row => row.Field.Name, row => row.ChangedByUser, StringComparer.Ordinal);
+        }
+
+        return ResolveAsync();
+    }
+
+    // Take theirs: the user's changes are dropped and the form shows the entry as it is now, with nothing unsaved.
+    private async Task TakeTheirsAsync()
+    {
+        if (conflict is not { } open)
+        {
+            return;
+        }
+
+        Rebase(open.Current, open.Current.Entry!.Fields.DeepClone().AsObject());
+        tracking?.Dispose();
+        tracking = null;
+        restored = false;
+        await Drafts.RemoveAsync(Key, CancellationToken.None);
+        Announcer.Announce(L["Content.Form.Conflict.TookTheirs"]);
+    }
+
+    private void Rebase(EntryRead current, JsonObject values)
+    {
+        (read, fields) = (current, values);
+        (conflict, conflictOpen, comparing, saveFailure) = (null, false, false, null);
+        ClearErrors();
+    }
+
+    private string ValueText(JsonNode? value) => value switch
+    {
+        _ when FormConditions.IsEmpty(value) => L["Content.Form.NoValue"],
+        JsonValue text when text.TryGetValue<string>(out var words) => words,
+        _ => value!.ToJsonString(),
+    };
+
+    // A route change asks first while the form is unsaved; the form's own moves, and a leave the user confirmed, pass.
+    private ValueTask OnLocationChanging(LocationChangingContext context)
+    {
+        if (allowedNavigation is { } allowed && Same(allowed, context.TargetLocation))
+        {
+            allowedNavigation = null;
+            return ValueTask.CompletedTask;
+        }
+
+        if (!IsDirty || state != FormState.Ready)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        context.PreventNavigation();
+        leaveTarget = context.TargetLocation;
+        _ = InvokeAsync(StateHasChanged);
+        return ValueTask.CompletedTask;
+    }
+
+    private bool Same(string left, string right) =>
+        string.Equals(Navigation.ToAbsoluteUri(left).AbsoluteUri, Navigation.ToAbsoluteUri(right).AbsoluteUri, StringComparison.Ordinal);
+
+    // The user leaves the unsaved changes, and any draft of them a past session kept.
+    private async Task LeaveAsync()
+    {
+        if (leaveTarget is not { } target)
+        {
+            return;
+        }
+
+        leaveTarget = null;
+        tracking?.Dispose();
+        tracking = null;
+        await Drafts.RemoveAsync(Key, CancellationToken.None);
+        NavigateAway(target);
+    }
+
+    private void NavigateAway(string target, bool replace = false)
+    {
+        allowedNavigation = target;
+        Navigation.NavigateTo(target, replace: replace);
+    }
+
+    private Task RunShortcutAsync(FormShortcut shortcut) => InvokeAsync(async () =>
+    {
+        if (state != FormState.Ready || DialogOpen)
+        {
+            return;
+        }
+
+        switch (shortcut)
+        {
+            case FormShortcut.Save:
+                await SaveAsync();
+                break;
+            case FormShortcut.Publish:
+                await PublishAsync();
+                break;
+            case FormShortcut.Help:
+                showingShortcuts = true;
+                break;
+        }
+
+        StateHasChanged();
+    });
 
     // The entry's route from the Location of the create, which names it under the Management API; its id otherwise.
     private string RouteOf(EntryRead created)
@@ -471,7 +855,7 @@
     private static string TabId(int index) => $"content-form-tab-{index}";
 
     private RenderFragment Groups(FormTab tab) => @<div class="content-form-groups">
-        @foreach (var group in tab.Groups)
+        @foreach (var group in tab.Groups.Where(group => group.Fields.Any(Shows)))
         {
             @if (group.Name is null)
             {
@@ -487,14 +871,85 @@
         }
     </div>;
 
+    // A field its condition hides is left out until the condition shows it, and keeps its value meanwhile.
     private RenderFragment Fields(FormGroup group) => @<text>
-        @foreach (var field in group.Fields)
+        @foreach (var field in group.Fields.Where(Shows))
         {
-            <div class="content-form-field content-form-span-@ContentFormLayout.Span(field)" data-field="@field.Name" @key="field.Name">
+            <div class="content-form-field content-form-span-@ContentFormLayout.Span(field)" data-field="@field.Name" @key="field.Name" @onfocusout="@(() => Check(field))">
                 @Editor(field)
             </div>
         }
     </text>;
+
+    private RenderFragment ConflictDialog() => @<CmsDialog Title="@L["Content.Form.Conflict.Title"]" Open="@conflictOpen" OpenChanged="@(open => conflictOpen = open)">
+        <ChildContent>
+            @if (conflict is { } open)
+            {
+                <p>@(comparing ? L["Content.Form.Conflict.CompareText"] : L["Content.Form.Conflict.Text"])</p>
+                @if (open.Rows.Count == 0)
+                {
+                    <p>@L["Content.Form.Conflict.NoDifference"]</p>
+                }
+                else
+                {
+                    <table class="content-form-conflict">
+                        <thead>
+                            <tr>
+                                <th scope="col">@L["Content.Form.Conflict.Field"]</th>
+                                <th scope="col">@L["Content.Form.Conflict.Mine"]</th>
+                                <th scope="col">@L["Content.Form.Conflict.Theirs"]</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in open.Rows)
+                            {
+                                var name = row.Field.Name;
+                                <tr data-field="@name" @key="name">
+                                    <th scope="row">@FieldEditorBase.LabelOf(row.Field)</th>
+                                    @if (comparing)
+                                    {
+                                        <td>
+                                            <label class="content-form-choice">
+                                                <input type="radio" name="@($"conflict-{name}")" value="mine" checked="@keepMine[name]" @onchange="@(() => keepMine[name] = true)" />
+                                                <span lang="@locale" dir="@TextDirectionOfLocale">@ValueText(open.Mine[name])</span>
+                                            </label>
+                                        </td>
+                                        <td>
+                                            <label class="content-form-choice">
+                                                <input type="radio" name="@($"conflict-{name}")" value="theirs" checked="@(!keepMine[name])" @onchange="@(() => keepMine[name] = false)" />
+                                                <span lang="@locale" dir="@TextDirectionOfLocale">@ValueText(open.Current.Entry!.Fields[name])</span>
+                                            </label>
+                                        </td>
+                                    }
+                                    else
+                                    {
+                                        <td lang="@locale" dir="@TextDirectionOfLocale">@ValueText(open.Mine[name])</td>
+                                        <td lang="@locale" dir="@TextDirectionOfLocale">@ValueText(open.Current.Entry!.Fields[name])</td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            }
+        </ChildContent>
+        <Actions>
+            @if (comparing)
+            {
+                <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="ResolveAsync">@L["Content.Form.Conflict.SaveChosen"]</CmsButton>
+                <CmsButton OnClick="@(() => comparing = false)">@L["Content.Form.Conflict.Back"]</CmsButton>
+            }
+            else
+            {
+                <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="KeepMineAsync">@L["Content.Form.Conflict.KeepMine"]</CmsButton>
+                <CmsButton OnClick="TakeTheirsAsync">@L["Content.Form.Conflict.TakeTheirs"]</CmsButton>
+                @if (conflict is { Rows.Count: > 0 })
+                {
+                    <CmsButton OnClick="@(() => comparing = true)">@L["Content.Form.Conflict.Compare"]</CmsButton>
+                }
+            }
+        </Actions>
+    </CmsDialog>;
 
     [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     private System.Type EditorOf(SchemaFieldDescription field) =>
@@ -506,9 +961,9 @@
         builder.AddComponentParameter(1, nameof(FieldEditorBase.Field), field);
         builder.AddComponentParameter(2, nameof(FieldEditorBase.Value), fields[field.Name]);
         builder.AddComponentParameter(3, nameof(FieldEditorBase.ValueChanged), EventCallback.Factory.Create<JsonNode?>(this, value => Change(field, value)));
-        builder.AddComponentParameter(4, nameof(FieldEditorBase.Errors), fieldErrors.TryGetValue(field.Name, out var errors) ? errors : Array.Empty<ApiProblemError>());
-        builder.AddComponentParameter(5, nameof(FieldEditorBase.ReadOnly), field.ReadOnly);
-        builder.AddComponentParameter(6, nameof(FieldEditorBase.Required), field.Validation.Required);
+        builder.AddComponentParameter(4, nameof(FieldEditorBase.Errors), ErrorsOf(field));
+        builder.AddComponentParameter(5, nameof(FieldEditorBase.ReadOnly), !Changeable(field));
+        builder.AddComponentParameter(6, nameof(FieldEditorBase.Required), FormConditions.Requires(field, fields));
         builder.AddComponentParameter(7, nameof(FieldEditorBase.ContentLocale), locale);
         builder.AddComponentParameter(8, nameof(FieldEditorBase.TextDirection), TextDirectionOfLocale);
         builder.AddComponentReferenceCapture(9, instance => editors[field.Name] = (FieldEditorBase)instance);

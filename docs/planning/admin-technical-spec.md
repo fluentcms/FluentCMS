@@ -400,10 +400,10 @@ Rows 3.5, 1.8 (conditional fields enforced in the admin), 1.10 (field metadata a
 - **Defaults.** A new entry starts from each field's `defaultValue`.
 - **Conditions.** `visibleWhen` and `requiredWhen`, as `{ "operator", "field", "values", "operands" }`, are evaluated on every change against the form's values, so a field appears, hides or turns required at once. The server enforces them again at publish (backend 4.4); the form's evaluation is a convenience.
 - **Validation.** Lengths, range and pattern of `validation` are checked inline as the user leaves a field, without a request. `required` is marked while editing and checked before a publish only, since a draft skips it (row 1.7); `unique` is the server's to check. A 422's `errors[].path` (`sections[0].text`, `seo.metaTitle`) is mapped to the field, block or component at that path, which is scrolled to and focused; an error whose path matches no field shows above the form.
-- **Changeable fields.** Fields the caller may read but not change are read-only, once #3096 says which. Until then a write of such a field is refused by the server and shown as its error.
-- **Dirty guard.** Leaving a form with unsaved changes asks first, for a route change, a site switch and a closed tab (`beforeunload`).
-- **Shortcuts (proposed).** `Ctrl+S` or `Cmd+S` saves, `Ctrl+Shift+Enter` or `Cmd+Shift+Enter` publishes, `Escape` closes a side panel; the list of shortcuts opens with `?`.
-- **Conflicts.** A 412 opens a dialog with the user's changes beside `current`, with three choices: keep mine (save again on `current`'s version), take theirs (discard mine) or compare field by field.
+- **Changeable fields.** Fields the caller may read but not change are read-only, from `creatableFields` or `updatableFields` of `GET /me/access` (#3096); the form sends them back as read, which the server takes as no write, and a create leaves out the default of one the caller may not set. Save is absent for a caller who may not create, or not update, entries of the type.
+- **Dirty guard.** Leaving a form with unsaved changes asks first, for a route change, a site switch, a sign-out and a closed tab (`beforeunload`). A site switch or sign-out the user confirmed, and a session end that kept the form as a draft, give the form up, so the redirect that follows does not ask again.
+- **Shortcuts.** `Ctrl+S` or `Cmd+S` saves, `Ctrl+Shift+Enter` or `Cmd+Shift+Enter` publishes (once A-16 gives the publish, after the checks of a publish), `Escape` closes a dialog or a side panel; the list of shortcuts opens with `?` outside a text field.
+- **Conflicts.** A 412 opens a dialog with the user's values beside `current` for each field the user may change that differs, with three choices: keep mine (`current` with the fields the user changed, saved on `current`'s version, so a field only the other save changed keeps its newer value), take theirs (discard mine) or compare field by field (a choice per field, then the same save).
 - **Unknown field types.** A field whose editor no loaded admin half provides, such as one of a plugin without an admin half or one disabled in the site, shows its JSON read-only with a note.
 
 | Endpoint | Use | Status |
@@ -413,7 +413,7 @@ Rows 3.5, 1.8 (conditional fields enforced in the admin), 1.10 (field metadata a
 | `POST /content/{type}` | create, 201 with `Location` | exists |
 | `PUT /content/{type}/{id}` with `If-Match` | save; `"0"` adds a locale | exists |
 | `PATCH /content/{type}/{id}` with `If-Match` | not used by the form, which sends the whole draft; kept for actions that change one field | exists |
-| the fields the caller may change | read-only state | [#3096] |
+| the fields the caller may change | read-only state | exists (#3096) |
 
 ### 4.6 Field editors
 
