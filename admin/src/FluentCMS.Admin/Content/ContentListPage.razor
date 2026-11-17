@@ -49,10 +49,17 @@ else if (view is { } shownView)
             {
                 <p>@L["Content.List.TraceId", trace]</p>
             }
-            @if (failed.Problem is null or { Status: >= 500 })
-            {
-                <CmsButton OnClick="TryAgainAsync">@L["Content.List.TryAgain"]</CmsButton>
-            }
+            @* A refusal answers the same again; anything else, a page past the server's last one too, may not. *@
+            <div class="content-list-actions">
+                @if (failed.Problem is not { Status: 403 or 404 })
+                {
+                    <CmsButton OnClick="TryAgainAsync">@L["Content.List.TryAgain"]</CmsButton>
+                }
+                @if (page > 1)
+                {
+                    <a href="@Navigation.GetUriWithQueryParameters(new Dictionary<string, object?> { ["page"] = null })">@L["Content.List.FirstPage"]</a>
+                }
+            </div>
         </div>
     }
     else
@@ -106,16 +113,16 @@ else if (view is { } shownView)
         </CmsDataGrid>
 
         <nav class="content-list-pager" aria-label="@L["Content.List.Paging"]">
-            <span>@L["Content.List.Total", Number(total)]</span>
+            <span>@(total == 1 ? L["Content.List.TotalOne"] : L["Content.List.Total", Number(total)])</span>
             <div class="content-list-page-size">
                 <CmsSelect Label="@L["Content.List.PageSize"]"
                            Options="@([.. ListView.PageSizes.Append(pageSize).Distinct().Order().Select(size => new CmsOption(Number(size), Number(size)))])"
                            Value="@Number(pageSize)"
                            ValueChanged="@ChangePageSize" />
             </div>
-            <CmsButton Disabled="@(page <= 1)" OnClick="@(() => GoToPage(page - 1))">@L["Content.List.Previous"]</CmsButton>
+            <CmsButton @ref="previousButton" Disabled="@(page <= 1)" OnClick="@(() => GoToPage(page - 1))">@L["Content.List.Previous"]</CmsButton>
             <span>@L["Content.List.PageOf", Number(page), Number(Pages)]</span>
-            <CmsButton Disabled="@(page >= Pages)" OnClick="@(() => GoToPage(page + 1))">@L["Content.List.Next"]</CmsButton>
+            <CmsButton @ref="nextButton" Disabled="@(page >= Pages)" OnClick="@(() => GoToPage(page + 1))">@L["Content.List.Next"]</CmsButton>
         </nav>
     }
 
@@ -130,8 +137,8 @@ else if (view is { } shownView)
                     var column = shownView.Available.First(item => item.Name == name);
                     <li @key="name">
                         <CmsCheckbox Label="@Title(column)" Value="@visible" ValueChanged="@(value => draft[position] = (name, value))" />
-                        <CmsButton Icon="CmsIconName.Up" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.List.MoveUp", Title(column)]" Disabled="@(position == 0)" OnClick="@(() => Move(position, -1))" />
-                        <CmsButton Icon="CmsIconName.Down" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.List.MoveDown", Title(column)]" Disabled="@(position == draft.Count - 1)" OnClick="@(() => Move(position, 1))" />
+                        <CmsButton @ref="upButtons[name]" Icon="CmsIconName.Up" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.List.MoveUp", Title(column)]" Disabled="@(position == 0)" OnClick="@(() => Move(position, -1))" />
+                        <CmsButton @ref="downButtons[name]" Icon="CmsIconName.Down" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.List.MoveDown", Title(column)]" Disabled="@(position == draft.Count - 1)" OnClick="@(() => Move(position, 1))" />
                     </li>
                 }
             </ul>
@@ -163,6 +170,13 @@ else if (view is { } shownView)
     private bool allMatching;
     private bool choosing;
     private List<(string Name, bool Visible)> draft = [];
+    private readonly Dictionary<string, CmsButton> upButtons = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, CmsButton> downButtons = new(StringComparer.Ordinal);
+    private CmsButton? previousButton;
+    private CmsButton? nextButton;
+
+    // The button that gets focus after the next render, since the one that had it moved or became disabled.
+    private Func<CmsButton?>? focusAfterRender;
 
     [Parameter]
     public string Type { get; set; } = string.Empty;
@@ -170,11 +184,12 @@ else if (view is { } shownView)
     [SupplyParameterFromQuery(Name = "sort")]
     public string? SortQuery { get; set; }
 
+    // Text, so that an address such as ?page=abc reads as the first page instead of failing the binding.
     [SupplyParameterFromQuery(Name = "page")]
-    public int? PageQuery { get; set; }
+    public string? PageQuery { get; set; }
 
     [SupplyParameterFromQuery(Name = "pageSize")]
-    public int? PageSizeQuery { get; set; }
+    public string? PageSizeQuery { get; set; }
 
     [SupplyParameterFromQuery(Name = "columns")]
     public string? ColumnsQuery { get; set; }
@@ -263,6 +278,11 @@ else if (view is { } shownView)
             }
 
             (entries, total) = (result.Items, result.Total ?? result.Items.Count);
+            if (entries.Count == 0 && total > 0 && page > Pages)
+            {
+                // A page past the end, as after entries were deleted or another site was chosen: its last page instead.
+                Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(new Dictionary<string, object?> { ["page"] = Pages > 1 ? (int)Pages : null }), replace: true);
+            }
         }
         catch (OperationCanceledException) when (current.IsCancellationRequested)
         {
@@ -344,7 +364,29 @@ else if (view is { } shownView)
         Query(("sort", text == ListView.WriteSort(ListView.DefaultSort) ? null : text), ("page", null));
     }
 
-    private void GoToPage(long number) => Query(("page", number <= 1 ? null : (int)number));
+    // A button that disables itself on the first or last page would drop focus to the document, so focus goes to the other.
+    private void GoToPage(long number)
+    {
+        if (number <= 1)
+        {
+            focusAfterRender = () => nextButton;
+        }
+        else if (number >= Pages)
+        {
+            focusAfterRender = () => previousButton;
+        }
+
+        Query(("page", number <= 1 ? null : (int)number));
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender?.Invoke() is { } button)
+        {
+            focusAfterRender = null;
+            await button.FocusAsync();
+        }
+    }
 
     private void ChangePageSize(string? value)
     {
@@ -380,13 +422,20 @@ else if (view is { } shownView)
         choosing = true;
     }
 
+    // The moved row's list item moves in the document, which drops focus, so focus goes back to the button pressed, or to
+    // the other one when the row reached an end and the pressed one became disabled.
     private void Move(int position, int by)
     {
         var target = position + by;
-        if (target >= 0 && target < draft.Count)
+        if (target < 0 || target >= draft.Count)
         {
-            (draft[position], draft[target]) = (draft[target], draft[position]);
+            return;
         }
+
+        (draft[position], draft[target]) = (draft[target], draft[position]);
+        var name = draft[target].Name;
+        var atEnd = by < 0 ? target == 0 : target == draft.Count - 1;
+        focusAfterRender = (by < 0) != atEnd ? () => upButtons.GetValueOrDefault(name) : () => downButtons.GetValueOrDefault(name);
     }
 
     private async Task ApplyColumnsAsync()

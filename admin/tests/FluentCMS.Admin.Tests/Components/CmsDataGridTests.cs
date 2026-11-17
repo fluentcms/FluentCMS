@@ -118,22 +118,66 @@ public sealed class CmsDataGridTests : ComponentTestContext
     }
 
     [Fact]
-    public void TheHeaderCheckboxSelectsAndClearsEveryRowOfThePage()
+    public void TheHeaderCheckboxSelectsAndClearsEveryRowOfThePageAndIsMixedInBetween()
     {
         IReadOnlyList<Article> selected = [];
         var grid = RenderGrid(CmsSelectionMode.Many, items => selected = items);
-        var all = grid.Find("thead input[type=checkbox]");
-        all.GetAttribute("aria-label").ShouldBe("Select all rows on this page");
+        AllBox(grid).GetAttribute("aria-label").ShouldBe("Select all rows on this page");
+        AllBox(grid).GetAttribute("aria-checked").ShouldBe("false");
 
-        all.Change(true);
+        AllBox(grid).Click();
 
         selected.Count.ShouldBe(3);
         grid.FindAll("tbody tr[aria-selected=true]").Count.ShouldBe(3);
-        grid.Find("thead input[type=checkbox]").HasAttribute("checked").ShouldBeTrue();
+        AllBox(grid).GetAttribute("aria-checked").ShouldBe("true");
 
-        grid.Find("thead input[type=checkbox]").Change(false);
+        Row(grid, 0).QuerySelector("input[type=checkbox]")!.Change(false);
 
+        AllBox(grid).GetAttribute("aria-checked").ShouldBe("mixed");
+
+        // From the mixed state the control selects every row, then clears them.
+        AllBox(grid).Click();
+        selected.Count.ShouldBe(3);
+        AllBox(grid).Click();
         selected.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void TheArrowKeysMoveFromARowToTheNext()
+    {
+        var grid = RenderGrid(CmsSelectionMode.Many);
+
+        // Down from the first row and up from the last reach the same row; up from it reaches another.
+        Row(grid, 0).KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+        var second = Focused();
+        Row(grid, 2).KeyDown(new KeyboardEventArgs { Key = "ArrowUp" });
+        Focused().ShouldBe(second);
+        Row(grid, 1).KeyDown(new KeyboardEventArgs { Key = "ArrowUp" });
+        Focused().ShouldNotBe(second);
+
+        // Past the first or last row nothing moves.
+        var focuses = Focuses();
+        Row(grid, 0).KeyDown(new KeyboardEventArgs { Key = "ArrowUp" });
+        Row(grid, 2).KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+        Focuses().ShouldBe(focuses);
+    }
+
+    [Fact]
+    public void ShiftWithEnterAddsASortKeyAndTheButtonsSaySo()
+    {
+        var grid = RenderGrid(CmsSelectionMode.None);
+        SortBy(grid, "Rank");
+        var title = Header(grid, "Title").QuerySelector("button")!;
+
+        title.KeyDown(new KeyboardEventArgs { Key = "Enter", ShiftKey = true });
+        title = Header(grid, "Title").QuerySelector("button")!;
+        title.Click();
+        title = Header(grid, "Title").QuerySelector("button")!;
+
+        Status(grid).ShouldBe("Sorted by Rank, ascending, then by Title, ascending");
+        var hint = grid.Find($"#{title.GetAttribute("aria-describedby")}");
+        hint.TextContent.ShouldBe("Shift with Enter or a click adds the column to the sort.");
+        grid.FindAll("th button").ShouldAllBe(button => button.GetAttribute("aria-describedby") == hint.Id);
     }
 
     // One tab stop per row: the checkbox when rows can be selected, the row otherwise; no cell is one (#3178).
@@ -144,6 +188,7 @@ public sealed class CmsDataGridTests : ComponentTestContext
         selecting.FindAll("tbody tr").ShouldAllBe(row => !row.HasAttribute("tabindex"));
         selecting.FindAll("tbody td").ShouldAllBe(cell => !cell.HasAttribute("tabindex"));
         selecting.FindAll("tbody input[type=checkbox]").Count.ShouldBe(3);
+        selecting.FindAll("tbody input[type=checkbox]").ShouldAllBe(box => !box.HasAttribute("tabindex"));
 
         var plain = RenderGrid(CmsSelectionMode.None);
         plain.FindAll("tbody tr").ShouldAllBe(row => row.GetAttribute("tabindex") == "0" && !row.HasAttribute("aria-selected"));
@@ -281,6 +326,12 @@ public sealed class CmsDataGridTests : ComponentTestContext
         grid.FindAll("th").Single(th => th.QuerySelector("button > span")?.TextContent == title || th.TextContent.Trim() == title);
 
     private static IElement Row(IRenderedComponent<CmsDataGrid<Article>> grid, int index) => grid.FindAll("tbody tr")[index];
+
+    private static IElement AllBox(IRenderedComponent<CmsDataGrid<Article>> grid) => grid.Find("thead button[role=checkbox]");
+
+    private int Focuses() => JSInterop.Invocations.Count(call => call.Identifier == "Blazor._internal.domWrapper.focus");
+
+    private string? Focused() => ((ElementReference)JSInterop.Invocations.Last(call => call.Identifier == "Blazor._internal.domWrapper.focus").Arguments[0]!).Id;
 
     private static List<string> FirstColumn(IRenderedComponent<CmsDataGrid<Article>> grid) =>
         grid.FindAll("tbody tr").Select(row => row.QuerySelectorAll("td:not(.cms-data-grid-select)")[0].TextContent.Trim()).ToList();

@@ -12,6 +12,7 @@ internal sealed class CmsStrings : ICmsTextSource
     public const string GridSortDescending = nameof(GridSortDescending);
     public const string GridSortThen = nameof(GridSortThen);
     public const string GridSortLevel = nameof(GridSortLevel);
+    public const string GridSortHint = nameof(GridSortHint);
     public const string GridSelectAll = nameof(GridSelectAll);
     public const string GridSelectRow = nameof(GridSelectRow);
     public const string GridLoading = nameof(GridLoading);

@@ -1,14 +1,16 @@
 @namespace FluentCMS.Admin.Components
-@typeparam TItem
+@typeparam TItem where TItem : notnull
 @attribute [CascadingTypeParameter(nameof(TItem))]
 @inject ICmsTextSource Texts
 
 @* A table of the set's own rather than the library's grid, whose cells are each a tab stop and whose selection column has
    no name or state (#3178). A row is one tab stop: its checkbox when rows can be selected, otherwise the row; Space toggles
-   the checkbox and Enter activates the row. Cell content should not be focusable, so that the row stays one tab stop. *@
+   the checkbox, Enter activates the row, and the up and down arrows move to the row above or below. Cell content should
+   not be focusable, so that the row stays one tab stop. *@
 @{
     var ordered = Ordered;
     var displayed = Displayed;
+    var anySorts = ordered.Any(column => column.CanSort);
 }
 <div class="cms-data-grid">
     @* The columns register here and render nothing; the grid renders their cells. *@
@@ -27,12 +29,17 @@
                     <th scope="col" class="cms-data-grid-select">
                         @if (SelectionMode == CmsSelectionMode.Many)
                         {
-                            <input type="checkbox"
-                                   class="cms-data-grid-checkbox"
-                                   aria-label="@Texts.Text(CmsStrings.GridSelectAll)"
-                                   checked="@AllSelected"
-                                   disabled="@(Items.Count == 0)"
-                                   @onchange="@(e => SelectAllAsync(e.Value is true))" />
+                            @* A button with the checkbox role, since a native checkbox shows the mixed state only through a
+                               script; a button takes Space and Enter by itself. *@
+                            <button type="button"
+                                    role="checkbox"
+                                    class="cms-data-grid-checkbox cms-data-grid-all"
+                                    aria-label="@Texts.Text(CmsStrings.GridSelectAll)"
+                                    aria-checked="@AllState"
+                                    disabled="@(Items.Count == 0)"
+                                    @onclick="@(() => SelectAllAsync(AllState != "true"))">
+                                <span aria-hidden="true">@(AllState switch { "true" => "✓", "mixed" => "–", _ => null })</span>
+                            </button>
                         }
                     </th>
                 }
@@ -42,7 +49,11 @@
                     <th @key="column" scope="col" aria-sort="@AriaSort(column, level)">
                         @if (column.CanSort)
                         {
-                            <button type="button" class="cms-data-grid-sort" @onclick="@(e => SortByAsync(column, e.ShiftKey))">
+                            <button type="button"
+                                    class="cms-data-grid-sort"
+                                    aria-describedby="@_sortHintId"
+                                    @onkeydown="@(e => _shiftEnter = e.Key == "Enter" && e.ShiftKey)"
+                                    @onclick="@(e => SortByAsync(column, e.ShiftKey))">
                                 <span>@column.Title</span>
                                 @if (level is { } key)
                                 {
@@ -80,6 +91,7 @@
             }
             @for (var index = 0; index < displayed.Count; index++)
             {
+                var position = index;
                 var item = displayed[index];
                 var selected = IsSelected(item);
                 <tr @key="item"
@@ -87,11 +99,13 @@
                     aria-selected="@(SelectionMode == CmsSelectionMode.None ? null : selected ? "true" : "false")"
                     aria-rowindex="@(RowCount is null ? null : RowOffset + index + 2)"
                     class="@(selected ? "cms-data-grid-selected" : null)"
-                    @onkeydown="@(e => OnRowKeyDownAsync(e, item))">
+                    @ref="_rows[item]"
+                    @onkeydown="@(e => OnRowKeyDownAsync(e, item, position))">
                     @if (SelectionMode != CmsSelectionMode.None)
                     {
                         <td class="cms-data-grid-select">
                             <input type="checkbox"
+                                   @ref="_checks[item]"
                                    class="cms-data-grid-checkbox"
                                    aria-label="@CmsStrings.Format(Texts.Text(CmsStrings.GridSelectRow), RowName(ordered, item, index))"
                                    checked="@selected"
@@ -106,6 +120,10 @@
             }
         </tbody>
     </table>
+    @if (anySorts)
+    {
+        <span id="@_sortHintId" class="cms-visually-hidden">@Texts.Text(CmsStrings.GridSortHint)</span>
+    }
     @* Sorting and selection are announced here, since a table announces neither (spec 4.18). *@
     <div role="status" class="cms-visually-hidden">@_status</div>
 </div>
@@ -114,6 +132,11 @@
     private readonly List<CmsDataGridColumn<TItem>> _columns = [];
     private List<CmsSortKey> _ownSort = [];
     private string? _status;
+    private readonly string _sortHintId = CmsIds.Next();
+    private bool _shiftEnter;
+    // A row keeps its element while its item stays, so the references are kept by item, and those of rows gone are dropped.
+    private readonly Dictionary<TItem, ElementReference> _rows = [];
+    private readonly Dictionary<TItem, ElementReference> _checks = [];
 
     // Names the grid for assistive technology.
     [Parameter, EditorRequired]
@@ -182,7 +205,12 @@
 
     private long? RowCount => TotalItems is { } total ? total + 1 : null;
 
-    private bool AllSelected => Items.Count > 0 && Items.All(IsSelected);
+    private string AllState => Items.Count(IsSelected) switch
+    {
+        0 => "false",
+        var count when count == Items.Count => "true",
+        _ => "mixed",
+    };
 
     private IReadOnlyList<TItem> Displayed => SortsOutside || _ownSort.Count == 0 ? Items : SortedInMemory();
 
@@ -203,7 +231,15 @@
 
     internal void ColumnChanged() => StateHasChanged();
 
-    protected override void OnParametersSet() => CmsGuard.Named(Label, nameof(CmsDataGrid<TItem>), nameof(Label));
+    protected override void OnParametersSet()
+    {
+        CmsGuard.Named(Label, nameof(CmsDataGrid<TItem>), nameof(Label));
+        foreach (var gone in _rows.Keys.Where(item => !Items.Contains(item)).ToList())
+        {
+            _rows.Remove(gone);
+            _checks.Remove(gone);
+        }
+    }
 
     private bool IsSelected(TItem item) => SelectedItems.Contains(item, EqualityComparer<TItem>.Default);
 
@@ -234,8 +270,11 @@
     private string RowName(List<CmsDataGridColumn<TItem>> ordered, TItem item, int index) =>
         RowLabel?.Invoke(item) ?? ordered.FirstOrDefault()?.Value?.Invoke(item) ?? (RowOffset + index + 1).ToString(CultureInfo.CurrentCulture);
 
+    // Shift with Enter adds a key as Shift with a click does; the click that Enter raises may not carry the Shift key.
     private async Task SortByAsync(CmsDataGridColumn<TItem> column, bool adding)
     {
+        adding |= _shiftEnter;
+        _shiftEnter = false;
         var sort = CurrentSort.ToList();
         var index = sort.FindIndex(key => key.Column == column.ColumnName);
         if (adding)
@@ -298,11 +337,23 @@
         return [.. sorted ?? Items.AsEnumerable()];
     }
 
-    private async Task OnRowKeyDownAsync(KeyboardEventArgs e, TItem item)
+    private async Task OnRowKeyDownAsync(KeyboardEventArgs e, TItem item, int position)
     {
-        if (e.Key == "Enter" && OnRowActivated.HasDelegate)
+        switch (e.Key)
         {
-            await OnRowActivated.InvokeAsync(item);
+            case "Enter" when OnRowActivated.HasDelegate:
+                await OnRowActivated.InvokeAsync(item);
+                break;
+            case "ArrowDown" or "ArrowUp":
+                var displayed = Displayed;
+                var target = position + (e.Key == "ArrowDown" ? 1 : -1);
+                if (target >= 0 && target < displayed.Count
+                    && (SelectionMode == CmsSelectionMode.None ? _rows : _checks).TryGetValue(displayed[target], out var element))
+                {
+                    await element.FocusAsync();
+                }
+
+                break;
         }
     }
 

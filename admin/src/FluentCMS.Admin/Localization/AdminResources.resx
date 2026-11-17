@@ -950,4 +950,10 @@
   <data name="Content.Status.unpublished" xml:space="preserve">
     <value>Unpublished</value>
   </data>
+  <data name="Content.List.TotalOne" xml:space="preserve">
+    <value>1 entry</value>
+  </data>
+  <data name="Content.List.FirstPage" xml:space="preserve">
+    <value>Go to the first page</value>
+  </data>
 </root>

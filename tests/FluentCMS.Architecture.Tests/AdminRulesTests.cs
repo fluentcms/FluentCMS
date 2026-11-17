@@ -33,9 +33,10 @@ public class AdminRulesTests
     private static readonly string[] CompilerPackages = ["FluentCMS.Analyzers", "FluentCMS.Generators"];
 
     // Spec 3.1: the types that may use JavaScript interop, the document module, the tab's sessionStorage of the sign-in, and
-    // localStorage for the theme's one key and for the column names of the lists. The component library's script is loaded by the library's own types, so no type of
-    // FluentCMS.Admin.Components is listed. The rich text bundle and the clipboard, file drop and BroadcastChannel modules join
-    // the list by name, in FluentCMS.Admin or FluentCMS.Admin.RichText, with the issues that write them.
+    // localStorage for the theme's one key and for the column names of the lists. The component library's script is loaded
+    // by the library's own types, so no type of FluentCMS.Admin.Components is listed. The rich text bundle and the clipboard,
+    // file drop and BroadcastChannel modules join the list by name, in FluentCMS.Admin or FluentCMS.Admin.RichText, with the
+    // issues that write them.
     private static readonly string[] InteropTypes =
     [
         "FluentCMS.Admin.Interop.ColumnStorageInterop",

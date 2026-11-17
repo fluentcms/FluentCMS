@@ -1,6 +1,6 @@
 @* The site switcher, from GET /me/sites (spec 4.1); a user with one site has nothing to switch. Switching keeps the route when
    its type exists in the new site, and otherwise goes to the start page; an entry of a type that is not global belongs to
-   the site before, so its route goes to the type's list. *@
+   the site before, so its route goes to the type's list, and a list leaves its query string behind. *@
 @implements IDisposable
 @inject AdminContext Context
 @inject NavigationManager Navigation
@@ -44,6 +44,11 @@
             }
             else if (rest is [var entry, ..] && entry != "new" && described.Scope != "global")
             {
+                Navigation.NavigateTo(ShellNavigation.ContentRoute(type));
+            }
+            else if (rest is [] && Navigation.Uri.Contains('?', StringComparison.Ordinal))
+            {
+                // The sort, page and columns of a list were chosen in the site before; its list starts afresh.
                 Navigation.NavigateTo(ShellNavigation.ContentRoute(type));
             }
         }

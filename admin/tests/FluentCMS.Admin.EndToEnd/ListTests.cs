@@ -38,7 +38,9 @@ public sealed class ListTests(EndToEndHost host) : BrowserTest(host)
         await Expect(grid.Locator("th[aria-sort=ascending]")).ToHaveTextAsync(new Regex("^Category"));
         await SortButton(grid, "Title").ClickAsync(new LocatorClickOptions { Modifiers = [KeyboardModifier.Shift] });
         await Expect(SortButton(grid, "Title")).ToContainTextAsync(Text("Components.GridSortLevel", "2", "2"));
-        read = await ListReadOfAsync(tab, () => SortButton(grid, "Title").ClickAsync(new LocatorClickOptions { Modifiers = [KeyboardModifier.Shift] }), "sort=category,-title&");
+        // The second toggle of Title is made by keyboard: Shift with Enter on its header.
+        await SortButton(grid, "Title").FocusAsync();
+        read = await ListReadOfAsync(tab, () => tab.Page.Keyboard.PressAsync("Shift+Enter"), "sort=category,-title&");
         await Expect(tab.Page).ToHaveURLAsync(new Regex("sort=category%2C-title"));
         read.ShouldStartWith("?sort=category,-title&page=1&pageSize=3&");
         await Expect(grid.Locator("th[aria-sort=ascending]")).ToHaveTextAsync(new Regex("^Category"));
@@ -57,11 +59,15 @@ public sealed class ListTests(EndToEndHost host) : BrowserTest(host)
         await tab.ReloadAsync();
         await Expect(Headers(grid)).ToHaveTextAsync([Starts("Title"), Starts(Text("Content.List.Column.UpdatedAt")), Starts("Category")]);
 
-        // By keyboard alone: one tab stop per row, so Tab goes from a row's checkbox to the next row's; Space selects and
-        // Enter opens.
+        // By keyboard alone: one tab stop per row, so Tab goes from a row's checkbox to the next row's, as the arrows do; Space
+        // selects and Enter opens.
         var rows = grid.Locator("tbody tr");
         await rows.Nth(0).Locator("input[type=checkbox]").FocusAsync();
         await tab.Page.Keyboard.PressAsync("Tab");
+        await Expect(rows.Nth(1).Locator("input[type=checkbox]")).ToBeFocusedAsync();
+        await tab.Page.Keyboard.PressAsync("ArrowDown");
+        await Expect(rows.Nth(2).Locator("input[type=checkbox]")).ToBeFocusedAsync();
+        await tab.Page.Keyboard.PressAsync("ArrowUp");
         await Expect(rows.Nth(1).Locator("input[type=checkbox]")).ToBeFocusedAsync();
         await tab.Page.Keyboard.PressAsync("Space");
         await Expect(rows.Nth(1)).ToHaveAttributeAsync("aria-selected", "true");

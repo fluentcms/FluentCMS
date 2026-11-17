@@ -22,6 +22,7 @@ FluentCMS.Admin.Components.CmsButton.ChildContent.set -> void
 FluentCMS.Admin.Components.CmsButton.CmsButton() -> void
 FluentCMS.Admin.Components.CmsButton.Disabled.get -> bool
 FluentCMS.Admin.Components.CmsButton.Disabled.set -> void
+FluentCMS.Admin.Components.CmsButton.FocusAsync() -> System.Threading.Tasks.ValueTask
 FluentCMS.Admin.Components.CmsButton.Icon.get -> FluentCMS.Admin.Components.CmsIconName?
 FluentCMS.Admin.Components.CmsButton.Icon.set -> void
 FluentCMS.Admin.Components.CmsButton.Label.get -> string?

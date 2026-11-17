@@ -1,3 +1,4 @@
+using System.Globalization;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Lists;
 using FluentCMS.Admin.Shell;
@@ -126,9 +127,12 @@ internal sealed class ListView
     // The server's largest page is 100 by default (backend 4.4); the address may ask for any size up to it.
     public const int MaxPageSize = 100;
 
-    public static int ParsePageSize(int? size) => size is > 0 and <= MaxPageSize ? size.Value : DefaultPageSize;
+    public static int ParsePageSize(string? size) => Number(size) is int value and > 0 and <= MaxPageSize ? value : DefaultPageSize;
 
-    public static int ParsePage(int? page) => page is > 0 ? page.Value : 1;
+    public static int ParsePage(string? page) => Number(page) is int value and > 0 ? value : 1;
+
+    private static int? Number(string? text) =>
+        int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var value) ? value : null;
 
     // fields= names the label and the shown columns, system members included, since a read with fields= has only what it
     // names; populate= names the relations among them. A list that shows nothing else still names the id, since a read

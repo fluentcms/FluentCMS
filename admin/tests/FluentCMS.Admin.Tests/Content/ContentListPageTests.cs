@@ -142,7 +142,7 @@ public sealed class ContentListPageTests : AdminTestContext
         Management.Total = 60;
         var app = Load();
 
-        app.Find("thead input[type=checkbox]").Change(true);
+        app.Find("thead button[role=checkbox]").Click();
 
         app.Find(".content-list-selection").TextContent.ShouldContain("2 selected on this page.");
 
@@ -256,6 +256,143 @@ public sealed class ContentListPageTests : AdminTestContext
         HeadingFocuses().ShouldBe(before + 1);
     }
 
+    [Fact]
+    public void AMalformedQueryStringReadsTheDefaults()
+    {
+        var app = Load("content/article?page=abc&pageSize=99999999999&sort=%2C-&columns=%2C%2C");
+
+        Management.ContentQueries.Single().ShouldBe("sort=-updatedAt&page=1&pageSize=25&fields=title,status,updatedAt&withTotal=true");
+        Headers(app).ShouldBe(["Title", "Status", "Updated"]);
+    }
+
+    [Fact]
+    public void APagePastTheEndGoesToTheLastPage()
+    {
+        Management.Total = 60;
+        Management.Entries["article"] = [];
+
+        var app = Load("content/article?page=9");
+
+        app.WaitForAssertion(() => Navigation.Uri.ShouldEndWith("content/article?page=3"));
+        app.WaitForAssertion(() => Management.ContentQueries.Last().ShouldContain("page=3&"));
+    }
+
+    [Fact]
+    public void BackThroughTheHistoryReadsTheSortAndPageOfEachStep()
+    {
+        Management.Total = 60;
+        var app = Load();
+        SortBy(app, "Title");
+        app.WaitForAssertion(() => Management.ContentQueries.Last().ShouldStartWith("sort=title&page=1"));
+        Button(app, "Next page").Click();
+        app.WaitForAssertion(() => Management.ContentQueries.Last().ShouldStartWith("sort=title&page=2"));
+
+        // Back is a navigation to the address before, which is how the browser's history reaches the page.
+        Navigation.NavigateTo("content/article?sort=title");
+
+        app.WaitForAssertion(() => Management.ContentQueries.Last().ShouldStartWith("sort=title&page=1"));
+        app.Find(".content-list-pager").TextContent.ShouldContain("Page 1 of 3");
+
+        Navigation.NavigateTo("content/article");
+
+        app.WaitForAssertion(() => Management.ContentQueries.Last().ShouldStartWith("sort=-updatedAt&page=1"));
+        app.Find("th[aria-sort=descending]").TextContent.ShouldContain("Updated");
+    }
+
+    [Fact]
+    public void AListTheServerDoesNotFindIsShownAsTheAnswer()
+    {
+        Management.Answer = (method, path) => path == "content/article" ? Problem(HttpStatusCode.NotFound, "FCMS3100") : null;
+
+        var app = Load();
+
+        app.Find(".content-list-problem").TextContent.ShouldContain("This content type does not exist in the site, or your roles do not let you read it.");
+        Buttons(app).ShouldNotContain("Try again");
+    }
+
+    [Fact]
+    public void AFailureOfTheServerOffersToTryAgain()
+    {
+        var failing = true;
+        Management.Answer = (method, path) => path == "content/article" && failing ? new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) : null;
+        var app = Load();
+        app.FindAll("table").ShouldBeEmpty();
+
+        failing = false;
+        Button(app, "Try again").Click();
+
+        app.WaitForAssertion(() => Rows(app).Count.ShouldBe(2));
+        app.FindAll(".content-list-problem").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AFailureOnALaterPageLinksToTheFirst()
+    {
+        Management.Answer = (method, path) => path == "content/article" ? Problem(HttpStatusCode.BadRequest, "FCMS2207") : null;
+
+        var app = Load("content/article?page=40&sort=title");
+
+        Buttons(app).ShouldContain("Try again");
+        var first = app.FindAll(".content-list-problem a").Single(link => link.TextContent == "Go to the first page");
+        first.GetAttribute("href")!.ShouldEndWith("content/article?sort=title");
+    }
+
+    [Fact]
+    public void OneEntryIsSaidInTheSingular()
+    {
+        Management.Entries["article"] = [Entry(1, "Hello", "news")];
+
+        var app = Load();
+
+        app.Find(".content-list-pager").TextContent.ShouldContain("1 entry");
+        app.Find(".content-list-pager").TextContent.ShouldNotContain("1 entries");
+    }
+
+    // A pager button that disables itself on the first or last page hands focus to the other.
+    [Fact]
+    public void ThePagerKeepsFocusWhenItsButtonIsDisabled()
+    {
+        Management.Total = 60;
+        var app = Load("content/article?page=2");
+        var focuses = Focuses();
+
+        Button(app, "Next page").Click();
+
+        app.WaitForAssertion(() => Focuses().ShouldBe(focuses + 1));
+        app.WaitForAssertion(() => app.FindAll("fluent-button").First(button => button.TextContent.Trim() == "Next page").HasAttribute("disabled").ShouldBeTrue());
+
+        Button(app, "Previous page").Click();
+        Button(app, "Previous page").Click();
+
+        app.WaitForAssertion(() => Focuses().ShouldBe(focuses + 2));
+    }
+
+    [Fact]
+    public void MovingAColumnKeepsFocusOnItsButtons()
+    {
+        var app = Load();
+        Button(app, "Columns").Click();
+        var focuses = Focuses();
+
+        MoveButton(app, "Updated", "up").Click();
+
+        Focuses().ShouldBe(focuses + 1);
+        app.FindAll(".content-list-columns li")[0].TextContent.ShouldContain("Updated");
+        MoveButton(app, "Updated", "up").HasAttribute("disabled").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ASwitchOfSiteLeavesTheQueryStringOfAList()
+    {
+        Management.AddSite(Shop, "Shop", "shop");
+        Management.SetTypes(Shop, Article());
+        var app = Load("content/article?sort=title&page=2&columns=category");
+
+        app.Find(".site-switcher select").Change(Shop.ToString("D"));
+
+        app.WaitForAssertion(() => Navigation.Uri.ShouldEndWith("content/article"));
+    }
+
     private static JsonObject Article()
     {
         var author = Field("author", "relation");
@@ -277,6 +414,11 @@ public sealed class ContentListPageTests : AdminTestContext
         ["category"] = category,
         ["author"] = new JsonObject { ["id"] = Id(9), ["type"] = "author", ["name"] = "Grace" },
     };
+
+    private int Focuses() => JSInterop.Invocations.Count(call => call.Identifier == "Blazor._internal.domWrapper.focus");
+
+    private static IElement MoveButton(IRenderedComponent<AdminApp> app, string column, string direction) =>
+        app.FindAll(".content-list-columns fluent-button").Single(button => button.GetAttribute("aria-label") == $"Move {column} {direction}");
 
     private int HeadingFocuses() => Document.Invocations.Count(call => call.Identifier == "focusHeading");
 

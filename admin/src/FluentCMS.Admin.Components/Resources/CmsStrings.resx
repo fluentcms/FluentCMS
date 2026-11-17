@@ -27,6 +27,9 @@
   <data name="GridSortLevel" xml:space="preserve">
     <value>sort key {0} of {1}</value>
   </data>
+  <data name="GridSortHint" xml:space="preserve">
+    <value>Shift with Enter or a click adds the column to the sort.</value>
+  </data>
   <data name="GridSelectAll" xml:space="preserve">
     <value>Select all rows on this page</value>
   </data>

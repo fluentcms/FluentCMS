@@ -65,10 +65,16 @@ public sealed class ListViewTests : BunitContext
         view.Choose(["nothing"]).Select(column => column.Name).ShouldBe(["status", "updatedAt"]);
         view.ParseSort("-rank, title,-rank,status,nothing").ShouldBe([new SortField("rank", true), new SortField("title")]);
         view.ParseSort("status").ShouldBe(ListView.DefaultSort);
-        ListView.ParsePageSize(7).ShouldBe(7);
-        ListView.ParsePageSize(101).ShouldBe(25);
-        ListView.ParsePageSize(100).ShouldBe(100);
-        ListView.ParsePage(0).ShouldBe(1);
+        ListView.ParsePageSize("7").ShouldBe(7);
+        ListView.ParsePageSize("101").ShouldBe(25);
+        ListView.ParsePageSize("100").ShouldBe(100);
+        ListView.ParsePageSize("99999999999").ShouldBe(25);
+        ListView.ParsePageSize("-5").ShouldBe(25);
+        ListView.ParsePage("0").ShouldBe(1);
+        ListView.ParsePage("2x").ShouldBe(1);
+        ListView.ParsePage(" 3").ShouldBe(1);
+        ListView.ParsePage("3").ShouldBe(3);
+        ListView.ParsePage(null).ShouldBe(1);
     }
 
     [Fact]

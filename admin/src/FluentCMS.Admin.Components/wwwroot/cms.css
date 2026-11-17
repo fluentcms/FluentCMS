@@ -504,3 +504,29 @@ fluent-field .cms-field-message {
     color: var(--cms-color-text-muted);
     text-align: center;
 }
+
+/* The select-all control is a button with the checkbox role, drawn as a checkbox, so that it can show the mixed state. */
+.cms-data-grid-all {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--cms-color-text-muted);
+    border-radius: var(--cms-radius-s);
+    background: var(--cms-color-bg);
+    color: var(--cms-color-on-accent);
+    font: inherit;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.cms-data-grid-all[aria-checked="true"],
+.cms-data-grid-all[aria-checked="mixed"] {
+    border-color: var(--cms-color-accent);
+    background: var(--cms-color-accent);
+}
+
+.cms-data-grid-all:disabled {
+    cursor: default;
+    opacity: 0.5;
+}
