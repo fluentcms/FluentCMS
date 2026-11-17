@@ -1,0 +1,25 @@
+@* The editor of a long text field: a text area that grows with its text, in the content locale's language and direction,
+   with the length counter of the field's maxLength. *@
+@inherits FieldEditorBase
+
+<CmsTextArea @ref="input"
+             Label="@Label"
+             Help="@Help"
+             Error="@ErrorText"
+             Required="@Required"
+             ReadOnly="@ReadOnly"
+             Placeholder="@Placeholder"
+             Rows="4"
+             AutoGrow="true"
+             MaxLength="@Field.Validation.MaxLength"
+             Lang="@ContentLocale"
+             Dir="@TextDirection"
+             Value="@(FieldValues.Text(Value) ?? Value?.ToJsonString())"
+             ValueChanged="@(text => ChangeAsync(FieldValues.FromText(text)))"
+             OnBlur="@OnBlur" />
+
+@code {
+    private CmsTextArea? input;
+
+    public override ValueTask FocusAsync() => input?.FocusAsync() ?? ValueTask.CompletedTask;
+}

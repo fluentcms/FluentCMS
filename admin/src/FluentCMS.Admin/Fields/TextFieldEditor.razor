@@ -1,23 +1,63 @@
-@* The editor of a text field: one line, its value in the content locale's language and direction. A-14 adds the length
-   counter. *@
+@* The editor of a one-line text, email or URL field. Text is in the content locale's language and direction; an email or
+   URL is left to right, with its own keyboard, and its form is checked as the user leaves it, as the server checks it.
+   The length counter follows the field's maxLength. *@
 @inherits FieldEditorBase
+@inject IStringLocalizer<AdminResources> L
 
 <CmsTextInput @ref="input"
               Label="@Label"
               Help="@Help"
-              Error="@ErrorText"
+              Error="@FieldValues.Errors(formatError, ErrorText)"
               Required="@Required"
-              Disabled="@ReadOnly"
+              ReadOnly="@ReadOnly"
               Placeholder="@Placeholder"
-              Lang="@ContentLocale"
-              Dir="@TextDirection"
+              Type="@InputType"
+              Autocomplete="off"
+              MaxLength="@Field.Validation.MaxLength"
+              Lang="@(IsText ? ContentLocale : null)"
+              Dir="@(IsText ? TextDirection : LeftToRight)"
               Value="@Text"
-              ValueChanged="@(text => ChangeAsync(text is null ? null : JsonValue.Create(text)))" />
+              ValueChanged="@ChangeTextAsync"
+              OnBlur="@BlurAsync" />
 
 @code {
     private CmsTextInput? input;
+    private string? formatError;
 
-    private string? Text => Value is JsonValue value && value.TryGetValue<string>(out var text) ? text : Value?.ToJsonString();
+    private bool IsText => Field.Type is not ("email" or "url");
+
+    private CmsTextInputType InputType => Field.Type switch
+    {
+        "email" => CmsTextInputType.Email,
+        "url" => CmsTextInputType.Url,
+        _ => CmsTextInputType.Text,
+    };
+
+    private string? Text => FieldValues.Text(Value) ?? Value?.ToJsonString();
 
     public override ValueTask FocusAsync() => input?.FocusAsync() ?? ValueTask.CompletedTask;
+
+    // An error of the form is taken back as soon as the value is right, and not raised while the user types.
+    private Task ChangeTextAsync(string? text)
+    {
+        if (formatError is not null)
+        {
+            formatError = FormatError(text);
+        }
+
+        return ChangeAsync(FieldValues.FromText(text));
+    }
+
+    private Task BlurAsync()
+    {
+        formatError = FormatError(FieldValues.Text(Value));
+        return OnBlur.InvokeAsync();
+    }
+
+    private string? FormatError(string? text) => string.IsNullOrEmpty(text) ? null : Field.Type switch
+    {
+        "email" when !FieldValues.IsEmail(text) => L["Content.Field.EmailInvalid"].Value,
+        "url" when !FieldValues.IsUrl(text) => L["Content.Field.UrlInvalid"].Value,
+        _ => null,
+    };
 }

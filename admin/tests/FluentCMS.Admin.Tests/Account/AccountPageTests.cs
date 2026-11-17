@@ -265,7 +265,9 @@ public sealed class AccountPageTests : AccountTestContext
         var app = Load();
 
         Section(app, "Theme").QuerySelectorAll("select").Count.ShouldBe(1);
-        Management.Count("me/preferences").ShouldBe(0);
+
+        // The shell's read of the formats only.
+        Management.Count("me/preferences").ShouldBe(1);
     }
 
     [Fact]
@@ -282,7 +284,7 @@ public sealed class AccountPageTests : AccountTestContext
         app.WaitForAssertion(() => Management.Preferences["culture"]!.GetValue<string>().ShouldBe("fr"));
         Management.Preferences["timeZone"]!.GetValue<string>().ShouldBe("Europe/Berlin");
         Management.Preferences["dateFormat"]!.GetValue<string>().ShouldBe("de-DE");
-        Management.Calls.Where(call => call.Path == "me/preferences").Select(call => call.Method.Method).ShouldBe(["GET", "GET", "PUT"]);
+        Management.Calls.Where(call => call.Path == "me/preferences").Select(call => call.Method.Method).ShouldBe(["GET", "GET", "GET", "PUT"]);
         app.Find("[role=status][aria-live=polite]").TextContent.ShouldContain("The language is saved.");
     }
 

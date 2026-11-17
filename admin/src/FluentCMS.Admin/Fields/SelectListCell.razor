@@ -1,0 +1,4 @@
+@* The cell of a select field: its value, or its values in the order they were chosen, comma separated. *@
+@inherits ListCellBase
+
+<span>@string.Join(", ", FieldValues.Strings(Value))</span>
