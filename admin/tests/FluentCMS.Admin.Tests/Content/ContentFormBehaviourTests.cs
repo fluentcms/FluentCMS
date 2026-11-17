@@ -114,13 +114,6 @@ public sealed class ContentFormBehaviourTests : AdminTestContext
     {
         var id = _content.Add("link", new JsonObject { ["title"] = "Hello" });
         var app = Load($"content/link/{id:D}");
-        var form = app.FindComponent<ContentForm>();
-        var published = 0;
-        form.Instance.Publish = () =>
-        {
-            published++;
-            return Task.CompletedTask;
-        };
         Input(app, "title").GetAttribute("aria-required").ShouldBe("true");
         Input(app, "title").Input("");
 
@@ -131,13 +124,13 @@ public sealed class ContentFormBehaviourTests : AdminTestContext
         await Shortcut(FormShortcut.Publish);
 
         app.WaitForAssertion(() => app.Find(".content-form-problem").TextContent.ShouldContain("The entry was not published."));
-        published.ShouldBe(0);
+        Publishes().ShouldBe(0);
         Message(app, "title").ShouldBe("A value is required to publish.");
 
         Input(app, "title").Input("Back");
         app.WaitForAssertion(() => Input(app, "title").HasAttribute("aria-invalid").ShouldBeFalse());
         await Shortcut(FormShortcut.Publish);
-        app.WaitForAssertion(() => published.ShouldBe(1));
+        app.WaitForAssertion(() => Publishes().ShouldBe(1));
     }
 
     [Fact]
@@ -296,7 +289,7 @@ public sealed class ContentFormBehaviourTests : AdminTestContext
 
         var list = Dialog(app, "Keyboard shortcuts");
         app.WaitForAssertion(() => list.Instance.Open.ShouldBeTrue());
-        list.FindAll("dd").Select(item => item.TextContent).ShouldBe(["Save the entry", "Close a dialog or a side panel", "Show this list"]);
+        list.FindAll("dd").Select(item => item.TextContent).ShouldBe(["Save the entry", "Publish the entry", "Close a dialog or a side panel", "Show this list"]);
 
         // While a dialog is open the form's shortcuts wait.
         await Shortcut(FormShortcut.Save);
@@ -304,22 +297,15 @@ public sealed class ContentFormBehaviourTests : AdminTestContext
     }
 
     [Fact]
-    public async Task ThePublishShortcutIsListedAndRunsOnceAPublishIsGiven()
+    public async Task ThePublishShortcutIsListedAndPublishes()
     {
         var id = _content.Add("link", new JsonObject { ["title"] = "Hello" });
         var app = Load($"content/link/{id:D}");
-        await Shortcut(FormShortcut.Publish);
-        var published = 0;
-        app.FindComponent<ContentForm>().Instance.Publish = () =>
-        {
-            published++;
-            return Task.CompletedTask;
-        };
 
         await Shortcut(FormShortcut.Publish);
+        app.WaitForAssertion(() => Publishes().ShouldBe(1));
         await Shortcut(FormShortcut.Help);
 
-        app.WaitForAssertion(() => published.ShouldBe(1));
         app.WaitForAssertion(() => Dialog(app, "Keyboard shortcuts").FindAll("dd").Select(item => item.TextContent).ShouldContain("Publish the entry"));
         Dialog(app, "Keyboard shortcuts").FindAll("dt").Select(item => item.TextContent).ShouldContain("Ctrl+Shift+Enter, or ⌘+Shift+Enter on a Mac");
     }
@@ -541,6 +527,8 @@ public sealed class ContentFormBehaviourTests : AdminTestContext
         var target = Document.Invocations.Last(call => call.Identifier == "listenForShortcuts").Arguments[0].ShouldBeOfType<DotNetObjectReference<DocumentInterop.ShortcutTarget>>();
         await target.Value.RunAsync(shortcut.ToString().ToLowerInvariant());
     }
+
+    private int Publishes() => _content.Writes.Count(write => write.Path.EndsWith("/publish", StringComparison.Ordinal));
 
     private void Writable(string[]? create = null, string[]? update = null, bool mayUpdate = true)
     {

@@ -8,11 +8,12 @@ namespace FluentCMS.Admin.Tests.Content;
 internal sealed record ContentWrite(HttpMethod Method, string Path, JsonObject Body, string? IfMatch, string? IdempotencyKey, string? Locale);
 
 // The content routes a form calls, over FakeManagementServer: read an entry with its tag, list a singleton, create with a
-// Location, and save with If-Match, which a stale tag fails with a 412 that holds the entry as it is now. A test can answer
-// the next write itself.
+// Location, and save with If-Match, which a stale tag fails with a 412 that holds the entry as it is now. Publish, unpublish
+// and discard move the status as the server does. A test can answer the next write itself.
 internal sealed class FakeContent
 {
     private readonly Dictionary<Guid, (string Type, int Version, JsonObject Fields)> _entries = [];
+    private readonly Dictionary<Guid, (string Status, JsonObject? Published)> _states = [];
 
     public FakeContent(FakeManagementServer server) => server.Respond = Handle;
 
@@ -23,12 +24,19 @@ internal sealed class FakeContent
     // Answers the next write instead of the store, when it returns an answer, or fails it by throwing.
     public Func<ContentWrite, HttpResponseMessage?>? NextWrite { get; set; }
 
-    public Guid Add(string type, JsonObject fields, int version = 1, Guid? id = null)
+    // What the next publish warns about, as the server writes its warnings.
+    public JsonArray Warnings { get; set; } = [];
+
+    // A published entry starts with its fields as the published version, and a modified one with these.
+    public Guid Add(string type, JsonObject fields, int version = 1, Guid? id = null, string status = "draft", JsonObject? published = null)
     {
         var key = id ?? Guid.CreateVersion7();
         _entries[key] = (type, version, fields);
+        _states[key] = (status, status switch { "published" => fields.DeepClone().AsObject(), "modified" => published, _ => null });
         return key;
     }
+
+    public string Status(Guid id) => _states[id].Status;
 
     public JsonObject Fields(Guid id) => _entries[id].Fields;
 
@@ -75,7 +83,7 @@ internal sealed class FakeContent
         var write = new ContentWrite(
             request.Method,
             path,
-            JsonNode.Parse(body!)!.AsObject(),
+            string.IsNullOrEmpty(body) ? [] : JsonNode.Parse(body)!.AsObject(),
             Header(request, "If-Match"),
             Header(request, "Idempotency-Key"),
             Header(request, "X-Cms-Locale"));
@@ -111,10 +119,57 @@ internal sealed class FakeContent
             }
 
             _entries[savedId] = (entryType, version + 1, write.Body);
+            if (_states[savedId] is ("published", var published))
+            {
+                _states[savedId] = ("modified", published);
+            }
+
             return Entry(savedId, HttpStatusCode.OK);
         }
 
+        if (request.Method == HttpMethod.Post && rest is [var acted, var action] && Guid.TryParse(acted, out var actedId))
+        {
+            return Act(actedId, action, write);
+        }
+
         return null;
+    }
+
+    private HttpResponseMessage Act(Guid id, string action, ContentWrite write)
+    {
+        var (type, version, fields) = _entries[id];
+        if (write.IfMatch is { } tag && tag != $"\"{version}\"")
+        {
+            return Problem(HttpStatusCode.PreconditionFailed, new JsonObject { ["status"] = 412, ["code"] = "FCMS3105", ["title"] = "The entry was changed", ["current"] = Document(id) });
+        }
+
+        var (status, published) = _states[id];
+        if (action is "unpublish" or "discard" && published is null)
+        {
+            return Problem(HttpStatusCode.Conflict, new JsonObject { ["status"] = 409, ["title"] = "This entry is not published in this locale." });
+        }
+
+        switch (action)
+        {
+            case "publish":
+                _states[id] = ("published", fields.DeepClone().AsObject());
+                var answer = new JsonObject { ["entry"] = Document(id), ["warnings"] = Warnings.DeepClone() };
+                Warnings = [];
+                var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(answer.ToJsonString(), Encoding.UTF8, "application/json") };
+                response.Headers.ETag = new($"\"{version}\"");
+                return response;
+            case "unpublish":
+                _states[id] = ("unpublished", null);
+                return Entry(id, HttpStatusCode.OK);
+            default:
+                if (status == "modified")
+                {
+                    _entries[id] = (type, version + 1, published!.DeepClone().AsObject());
+                }
+
+                _states[id] = ("published", published);
+                return Entry(id, HttpStatusCode.OK);
+        }
     }
 
     private JsonObject Document(Guid id)
@@ -122,7 +177,7 @@ internal sealed class FakeContent
         var (_, version, fields) = _entries[id];
         var document = fields.DeepClone().AsObject();
         document["id"] = id;
-        document["status"] = "draft";
+        document["status"] = _states[id].Status;
         document["locale"] = "en";
         document["version"] = version;
         return document;

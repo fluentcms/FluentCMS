@@ -33,6 +33,24 @@
     margin: 0 0 var(--cms-space-s);
 }
 
+.content-form-warnings {
+    margin-block-end: var(--cms-space-l);
+    padding: var(--cms-space-m);
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-m);
+}
+
+.content-form-warnings p {
+    display: flex;
+    align-items: center;
+    gap: var(--cms-space-s);
+    margin: 0 0 var(--cms-space-s);
+}
+
+.content-form-warnings ul {
+    margin: 0;
+}
+
 .content-form-groups {
     display: flex;
     flex-direction: column;
