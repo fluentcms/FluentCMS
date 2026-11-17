@@ -68,6 +68,12 @@ public sealed class RelationTests(EndToEndHost host) : BrowserTest(host)
             {
                 throw new PlaywrightException("TMPDIAG move " + move + " " + await tab.Page.EvaluateAsync<string>("() => window.__diag()"), exception);
             }
+
+            if (move == 0)
+            {
+                await tab.Page.WaitForTimeoutAsync(500);
+                TestContext.Current.TestOutputHelper?.WriteLine("TMPLOG move 0 " + await tab.Page.EvaluateAsync<string>("() => window.__diag()"));
+            }
         }
         await Item(tab, "tags", "release notes").DragToAsync(Item(tab, "tags", "dotnet"));
         await Expect(Labels(tab, "tags")).ToHaveTextAsync(["dotnet", "release notes"]);
