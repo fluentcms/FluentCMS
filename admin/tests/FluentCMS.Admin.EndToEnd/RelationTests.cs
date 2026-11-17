@@ -59,7 +59,15 @@ public sealed class RelationTests(EndToEndHost host) : BrowserTest(host)
             var up = move % 2 == 0;
             await tab.Page.EvaluateAsync("() => window.__mark('move " + move + "')");
             await tab.Page.Keyboard.PressAsync(up ? "Alt+ArrowUp" : "Alt+ArrowDown");
-            await Expect(Labels(tab, "tags")).ToHaveTextAsync(up ? ["release notes", "dotnet"] : ["dotnet", "release notes"]);
+            try
+            {
+                await Expect(Labels(tab, "tags")).ToHaveTextAsync(up ? ["release notes", "dotnet"] : ["dotnet", "release notes"], new LocatorAssertionsToHaveTextOptions { Timeout = 10000 });
+            }
+            catch (PlaywrightException exception)
+            {
+                throw new PlaywrightException("TMPDIAG order move " + move + " " + await tab.Page.EvaluateAsync<string>("() => window.__diag()"), exception);
+            }
+
             try
             {
                 await Expect(Entry(tab, "tags", "release notes")).ToBeFocusedAsync(new LocatorAssertionsToBeFocusedOptions { Timeout = 10000 });
