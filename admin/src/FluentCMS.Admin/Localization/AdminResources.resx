@@ -207,6 +207,12 @@
   <data name="System.Components.IconDown" xml:space="preserve">
     <value>Down</value>
   </data>
+  <data name="System.Components.IconComment" xml:space="preserve">
+    <value>Comment</value>
+  </data>
+  <data name="System.Components.IconPlugin" xml:space="preserve">
+    <value>Plugin</value>
+  </data>
   <data name="System.Components.Inputs" xml:space="preserve">
     <value>Inputs and selects</value>
   </data>

@@ -57,6 +57,8 @@
     <Project Path="admin/tests/FluentCMS.Admin.Tests/FluentCMS.Admin.Tests.csproj" />
     <Project Path="admin/tests/FluentCMS.Admin.ApiTests/FluentCMS.Admin.ApiTests.csproj" />
     <Project Path="admin/tests/FluentCMS.Admin.EndToEnd/FluentCMS.Admin.EndToEnd.csproj" />
+    <Project Path="admin/tests/FluentCMS.Admin.Plugins.Careless/FluentCMS.Admin.Plugins.Careless.csproj" />
+    <Project Path="admin/tests/FluentCMS.Admin.Plugins.Sample/FluentCMS.Admin.Plugins.Sample.csproj" />
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/Blog/Blog.csproj" />

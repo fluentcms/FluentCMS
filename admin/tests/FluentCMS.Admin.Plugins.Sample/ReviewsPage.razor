@@ -1,0 +1,8 @@
+@page "/reviews"
+@attribute [AdminPage("/reviews", Permission = "reviews.notes.manage")]
+@attribute [AdminMenuItem("Reviews.Menu", Section = AdminSection.Content, Icon = "comment", Order = 10)]
+@inject IAdminPluginServices Plugins
+
+<CmsCard Title="Reviews">
+    <p>@(((ReviewsApi?)Plugins.ProviderOf(typeof(ReviewsPage)).GetService(typeof(ReviewsApi)))?.Approved)</p>
+</CmsCard>

@@ -147,6 +147,7 @@ FluentCMS.Admin.Components.CmsIcon.Name.set -> void
 FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Add = 0 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Checkmark = 16 -> FluentCMS.Admin.Components.CmsIconName
+FluentCMS.Admin.Components.CmsIconName.Comment = 23 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Delete = 1 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Dismiss = 6 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Document = 10 -> FluentCMS.Admin.Components.CmsIconName
@@ -161,6 +162,7 @@ FluentCMS.Admin.Components.CmsIconName.More = 7 -> FluentCMS.Admin.Components.Cm
 FluentCMS.Admin.Components.CmsIconName.Navigation = 20 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Open = 17 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Person = 12 -> FluentCMS.Admin.Components.CmsIconName
+FluentCMS.Admin.Components.CmsIconName.Plugin = 24 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Save = 3 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Search = 4 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Settings = 5 -> FluentCMS.Admin.Components.CmsIconName
@@ -168,6 +170,7 @@ FluentCMS.Admin.Components.CmsIconName.Sun = 18 -> FluentCMS.Admin.Components.Cm
 FluentCMS.Admin.Components.CmsIconName.Up = 21 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Upload = 8 -> FluentCMS.Admin.Components.CmsIconName
 FluentCMS.Admin.Components.CmsIconName.Warning = 15 -> FluentCMS.Admin.Components.CmsIconName
+FluentCMS.Admin.Components.CmsIconNames
 FluentCMS.Admin.Components.CmsInputBase<TValue>
 FluentCMS.Admin.Components.CmsInputBase<TValue>.AriaAttributes.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>!
 FluentCMS.Admin.Components.CmsInputBase<TValue>.CmsInputBase() -> void
@@ -454,6 +457,10 @@ override FluentCMS.Admin.Components.CmsTreeNode.GetHashCode() -> int
 override FluentCMS.Admin.Components.CmsTreeNode.ToString() -> string!
 static FluentCMS.Admin.Components.CmsBreadcrumbItem.operator !=(FluentCMS.Admin.Components.CmsBreadcrumbItem? left, FluentCMS.Admin.Components.CmsBreadcrumbItem? right) -> bool
 static FluentCMS.Admin.Components.CmsBreadcrumbItem.operator ==(FluentCMS.Admin.Components.CmsBreadcrumbItem? left, FluentCMS.Admin.Components.CmsBreadcrumbItem? right) -> bool
+static FluentCMS.Admin.Components.CmsIconNames.All.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
+static FluentCMS.Admin.Components.CmsIconNames.Default.get -> FluentCMS.Admin.Components.CmsIconName
+static FluentCMS.Admin.Components.CmsIconNames.Find(string? name) -> FluentCMS.Admin.Components.CmsIconName
+static FluentCMS.Admin.Components.CmsIconNames.TryFind(string? name, out FluentCMS.Admin.Components.CmsIconName icon) -> bool
 static FluentCMS.Admin.Components.CmsOption.operator !=(FluentCMS.Admin.Components.CmsOption? left, FluentCMS.Admin.Components.CmsOption? right) -> bool
 static FluentCMS.Admin.Components.CmsOption.operator ==(FluentCMS.Admin.Components.CmsOption? left, FluentCMS.Admin.Components.CmsOption? right) -> bool
 static FluentCMS.Admin.Components.CmsSortKey.operator !=(FluentCMS.Admin.Components.CmsSortKey? left, FluentCMS.Admin.Components.CmsSortKey? right) -> bool
