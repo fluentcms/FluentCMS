@@ -76,11 +76,12 @@ internal static class AdminLabels
         return entry.Id.ToString("D");
     }
 
-    // The field a list reads for the label: the first of the fields above that the type has, or null when it has none.
+    // The field a list or a picker reads for the label: the first of the fields above that the type has and does not hide,
+    // since a read leaves a hidden field out, or null when it has none.
     public static string? LabelField(SchemaTypeDescription type)
     {
         ArgumentNullException.ThrowIfNull(type);
-        return Candidates(type).FirstOrDefault(name => type.Fields.Any(field => field.Name == name));
+        return Candidates(type).FirstOrDefault(name => type.Fields.Any(field => field.Name == name && !field.Hidden));
     }
 
     private static IEnumerable<string> Candidates(SchemaTypeDescription type)

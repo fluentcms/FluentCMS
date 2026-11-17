@@ -52,7 +52,7 @@ public sealed class RelationTests : AdminTestContext
         Click(Picker(app, "Author"), "Choose");
 
         app.WaitForAssertion(() => Labels(app, "author").ShouldBe(["Grace Hopper"]));
-        app.FindComponents<CmsDialog>().ShouldNotContain(dialog => dialog.Instance.Title == "Choose entries: Author" && dialog.Instance.Open);
+        app.FindComponents<CmsDialog>().ShouldNotContain(dialog => dialog.Instance.Title == "Choose an entry: Author" && dialog.Instance.Open);
         Input(app, "title").Input("With an author");
         Save(app);
         app.WaitForAssertion(() => _content.Writes.ShouldHaveSingleItem().Body["author"]!.GetValue<string>().ShouldBe(_grace.ToString("D")));
@@ -141,6 +141,88 @@ public sealed class RelationTests : AdminTestContext
         FieldOf(app, "tags").QuerySelector("fieldset")!.GetAttribute("aria-describedby").ShouldNotBeNull();
         Save(app);
         app.WaitForAssertion(() => Strings(_content.Writes.ShouldHaveSingleItem().Body["tags"]).ShouldBe([Text(a), Text(b), Text(c)]));
+    }
+
+    [Fact]
+    public void AnEntryTheValueHoldsTwiceKeepsBothPlacesWhenMovedAndWhenChosenAgain()
+    {
+        var a = _content.Add("tag", new JsonObject { ["name"] = "a" });
+        var b = _content.Add("tag", new JsonObject { ["name"] = "b" });
+        var id = _content.Add("article", new JsonObject { ["title"] = "Twice", ["tags"] = Ids(a, b, a) });
+        var app = Load($"content/article/{id:D}");
+        app.WaitForAssertion(() => Labels(app, "tags").ShouldBe(["a", "b", "a"]));
+
+        Items(app, "tags")[2].KeyDown(new KeyboardEventArgs { Key = "ArrowUp", AltKey = true });
+        app.WaitForAssertion(() => Labels(app, "tags").ShouldBe(["a", "a", "b"]));
+        Items(app, "tags")[0].KeyDown(new KeyboardEventArgs { Key = "ArrowDown", AltKey = true });
+        app.WaitForAssertion(() => Labels(app, "tags").ShouldBe(["a", "a", "b"]));
+
+        Click(FieldOf(app, "tags"), "Choose entries");
+        app.WaitForAssertion(() => Rows(Picker(app, "Tag")).Count.ShouldBe(2));
+        Click(Picker(app, "Tag"), "Choose");
+        app.WaitForAssertion(() => Labels(app, "tags").ShouldBe(["a", "a", "b"]));
+        Save(app);
+        app.WaitForAssertion(() => Strings(_content.Writes.ShouldHaveSingleItem().Body["tags"]).ShouldBe([Text(a), Text(a), Text(b)]));
+    }
+
+    [Fact]
+    public void AnEntryThatCannotBeReadShowsItsIdAndAFailedReadIsTriedAgain()
+    {
+        var gone = Guid.CreateVersion7();
+        var failures = 1;
+        Management.Answer = (method, path) => path == "content/author" && failures-- > 0 ? new HttpResponseMessage(System.Net.HttpStatusCode.ServiceUnavailable) : null;
+        var id = _content.Add("article", new JsonObject { ["title"] = "Two authors", ["author"] = Text(_ada), ["tags"] = Ids(gone) });
+        var app = Load($"content/article/{id:D}");
+
+        app.WaitForAssertion(() => Labels(app, "author").ShouldBe([Text(_ada)]));
+        app.WaitForAssertion(() => Labels(app, "tags").ShouldBe([Text(gone)]));
+        Input(app, "title").Input("Typed");
+
+        app.WaitForAssertion(() => Labels(app, "author").ShouldBe(["Ada Lovelace"]));
+        Labels(app, "tags").ShouldBe([Text(gone)]);
+    }
+
+    // The shell reads in the site's default locale until A-17, so the form is given its locale as a panel's opener gives it.
+    [Fact]
+    public async Task ThePickerAndThePanelReadInTheLocaleOfTheForm()
+    {
+        var author = Author();
+        author["localized"] = true;
+        Management.SetTypes(MainSite, Article(), author, Tag());
+        _content.Locale = "fr";
+        var id = _content.Add("article", new JsonObject { ["title"] = "En français", ["author"] = Text(_ada) });
+        Start();
+        await Services.GetRequiredService<AdminContext>().StartAsync();
+        var form = Render<FluentCMS.Admin.Content.ContentForm>(parameters => parameters.Add(x => x.Type, "article").Add(x => x.Id, id).Add(x => x.Locale, "fr"));
+
+        form.WaitForAssertion(() => form.Find("[data-field='author'] .relation-field-name").TextContent.ShouldBe("Ada Lovelace"));
+        _content.Reads.ShouldContain(read => read.StartsWith("/api/management/v1/content/author?filter[id][in]=", StringComparison.Ordinal) && read.EndsWith("&locale=fr", StringComparison.Ordinal));
+
+        Click(form.Find("[data-field='author'] fieldset"), "Choose an entry");
+        form.WaitForAssertion(() => _content.Reads.Last().ShouldStartWith("/api/management/v1/content/author?sort=name&"));
+        _content.Reads.Last().ShouldContain("&locale=fr&");
+        Click(form.Find("[data-field='tags'] fieldset"), "Choose entries");
+        form.WaitForAssertion(() => _content.Reads.Last().ShouldStartWith("/api/management/v1/content/tag?"));
+        _content.Reads.Last().ShouldNotContain("locale=");
+
+        form.Find("[data-field='author'] .relation-field-entry fluent-button").Click();
+        form.WaitForAssertion(() => form.FindComponents<CmsDrawer>().Single(drawer => drawer.Instance.Title == "Author").Find("h2").TextContent.ShouldBe("Ada Lovelace"));
+        _content.ReadLocales.Last(read => read.Read.StartsWith($"/api/management/v1/content/author/{_ada:D}", StringComparison.Ordinal)).Locale.ShouldBe("fr");
+    }
+
+    [Fact]
+    public async Task APanelKeepsItsDraftApartFromThePagesForms()
+    {
+        var app = Load("content/article/new");
+        Click(FieldOf(app, "author"), "New Author");
+        app.WaitForAssertion(() => Panel(app, "Author").Find("[data-field='name'] input"));
+        Panel(app, "Author").Find("[data-field='name'] input").Input("Unsaved in the panel");
+
+        await Services.GetRequiredService<FluentCMS.Admin.Forms.FormDrafts>().SaveTrackedAsync("user");
+
+        var stored = System.Text.Json.JsonSerializer.Deserialize(Storage.Items[FluentCMS.Admin.Forms.FormDrafts.StorageKey], FluentCMS.Admin.Authentication.AuthenticationJsonContext.Default.ListStoredDraft)!;
+        stored.ShouldHaveSingleItem().Type.ShouldBe("panel:author");
+        stored[0].Fields["name"]!.GetValue<string>().ShouldBe("Unsaved in the panel");
     }
 
     [Fact]
@@ -292,7 +374,7 @@ public sealed class RelationTests : AdminTestContext
 
         Click(app.Find(".content-list-toolbar"), "Add filter");
         Choose(app, "Field", "author");
-        Click(Dialog(app, "Add a filter"), "Choose entries");
+        Click(Dialog(app, "Add a filter"), "Choose an entry");
         app.WaitForAssertion(() => Rows(Picker(app, "Author")).ShouldBe(["Ada Lovelace", "Grace Hopper"]));
         Select(Picker(app, "Author"), "Ada Lovelace");
         Click(Picker(app, "Author"), "Choose");
@@ -372,14 +454,21 @@ public sealed class RelationTests : AdminTestContext
         where T : IComponent =>
         component.FindAll("fluent-button").First(button => button.TextContent.Trim() == text).Click();
 
+    // The picker's own button, after the Cancel of its filter dialog.
+    private static void CancelPicker(IRenderedComponent<AdminApp> app, string type) =>
+        Picker(app, type).FindAll("fluent-button").Last(button => button.TextContent.Trim() == "Cancel").Click();
+
     // The panel's own button, after those of the dialogs of its form.
     private static void ClosePanel(IRenderedComponent<AdminApp> app, string title) =>
         Panel(app, title).FindAll("fluent-button").Last(button => button.TextContent.Trim() == "Close").Click();
 
     private static IElement IconButton(IElement container, string label) => container.QuerySelector($"fluent-button[aria-label='{label}']")!;
 
+    // A relation to one chooses an entry, and one to many entries.
     private static IRenderedComponent<CmsDialog> Picker(IRenderedComponent<AdminApp> app, string type) =>
-        app.FindComponents<CmsDialog>().Single(dialog => dialog.Instance.Title == $"Choose entries: {type}" && dialog.Instance.Open);
+        app.FindComponents<CmsDialog>().Single(dialog =>
+            (dialog.Instance.Title == $"Choose an entry: {type}" && type == "Author" || dialog.Instance.Title == $"Choose entries: {type}" && type == "Tag")
+            && dialog.Instance.Open);
 
     private static IRenderedComponent<CmsDrawer> Panel(IRenderedComponent<AdminApp> app, string title) =>
         app.FindComponents<CmsDrawer>().Single(drawer => drawer.Instance.Title == title);

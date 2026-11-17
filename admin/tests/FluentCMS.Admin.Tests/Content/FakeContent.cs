@@ -23,6 +23,12 @@ internal sealed class FakeContent
 
     public List<string> Reads { get; } = [];
 
+    // The content locale each read was sent in, by its path and query.
+    public List<(string Read, string? Locale)> ReadLocales { get; } = [];
+
+    // The locale every entry is read in.
+    public string Locale { get; set; } = "en";
+
     // Answers the next write instead of the store, when it returns an answer, or fails it by throwing.
     public Func<ContentWrite, HttpResponseMessage?>? NextWrite { get; set; }
 
@@ -70,6 +76,7 @@ internal sealed class FakeContent
         if (request.Method == HttpMethod.Get)
         {
             Reads.Add(request.RequestUri!.PathAndQuery);
+            ReadLocales.Add((request.RequestUri.PathAndQuery, Header(request, "X-Cms-Locale")));
             return rest switch
             {
                 [] => List(type, System.Web.HttpUtility.ParseQueryString(request.RequestUri.Query)),
@@ -212,7 +219,7 @@ internal sealed class FakeContent
         var document = fields.DeepClone().AsObject();
         document["id"] = id;
         document["status"] = _states[id].Status;
-        document["locale"] = "en";
+        document["locale"] = Locale;
         document["version"] = version;
         return document;
     }

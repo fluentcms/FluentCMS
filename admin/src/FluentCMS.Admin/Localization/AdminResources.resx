@@ -1451,6 +1451,9 @@
   <data name="Content.Relation.PickerTitle" xml:space="preserve">
     <value>Choose entries: {0}</value>
   </data>
+  <data name="Content.Relation.PickerTitleOne" xml:space="preserve">
+    <value>Choose an entry: {0}</value>
+  </data>
   <data name="Content.Relation.LoadMore" xml:space="preserve">
     <value>Load more</value>
   </data>

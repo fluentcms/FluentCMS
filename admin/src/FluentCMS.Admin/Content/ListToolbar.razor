@@ -80,7 +80,7 @@
                                     }
                                 </ul>
                             }
-                            <CmsButton Icon="CmsIconName.Search" OnClick="@(() => picking = true)">@L["Content.Relation.ChooseEntries"]</CmsButton>
+                            <CmsButton Icon="CmsIconName.Search" OnClick="@(() => picking = true)">@L[ListFilters.TakesList(draftOperator) ? "Content.Relation.ChooseEntries" : "Content.Relation.ChooseEntry"]</CmsButton>
                             @if (error is not null)
                             {
                                 <p class="content-filter-error">@error</p>

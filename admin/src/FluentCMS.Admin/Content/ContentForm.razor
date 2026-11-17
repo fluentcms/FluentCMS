@@ -317,7 +317,9 @@
 
     private bool IsSingleton => type?.Kind == "singleton";
 
-    private FormDraftKey Key => new(site, Type, entryId, locale);
+    // A panel's drafts are kept apart from the page's, so that a panel over a form of its own type, or a new entry's panel
+    // and the page's New, neither restores nor removes the other's.
+    private FormDraftKey Key => new(site, InPanel ? $"panel:{Type}" : Type, entryId, locale);
 
     private FormTab? Untabbed => tabs.FirstOrDefault(tab => tab.Name is null);
 

@@ -23,12 +23,9 @@ internal static class RelationReads
     private static Guid? Id(JsonNode? node) =>
         Guid.TryParse(FluentCMS.Admin.Fields.FieldValues.Text(node is JsonObject reference ? reference["id"] : node), out var id) && id != Guid.Empty ? id : null;
 
-    public static string? LabelField(SchemaTypeDescription target) =>
-        AdminLabels.LabelField(target) is { } name && target.Fields.Any(field => field.Name == name && !field.Hidden) ? name : null;
-
     // Without a search index a search is a contains filter on the label field, when its type takes one.
     public static bool FiltersLabel(SchemaTypeDescription target, ListFilterRegistry filters) =>
-        LabelField(target) is { } name
+        AdminLabels.LabelField(target) is { } name
         && target.Fields.First(field => field.Name == name) is var field
         && filters.Find(field)?.Operators.Contains(FilterOperator.Contains) == true;
 
@@ -37,7 +34,7 @@ internal static class RelationReads
     {
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(filters);
-        var label = LabelField(target);
+        var label = AdminLabels.LabelField(target);
         List<ContentFilter> all = [.. filters];
         if (search is not null && !searchIndex && label is not null)
         {
@@ -70,7 +67,7 @@ internal static class RelationReads
             var query = new ContentQuery
             {
                 Filter = new FieldFilter("id", FilterOperator.In, chunk.Cast<object>().ToList()),
-                Fields = [.. new[] { "id", LabelField(target) }.OfType<string>()],
+                Fields = [.. new[] { "id", AdminLabels.LabelField(target) }.OfType<string>()],
                 PageSize = chunk.Length,
                 Locale = target.Localized ? locale : null,
             };

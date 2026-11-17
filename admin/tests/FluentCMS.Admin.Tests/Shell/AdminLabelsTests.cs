@@ -80,6 +80,16 @@ public sealed class AdminLabelsTests
         AdminLabels.Entry(type, Entry(new() { ["caption"] = "  ", ["count"] = 3 })).ShouldBe(Id.ToString("D"));
     }
 
+    // A read leaves a hidden field out, so the label falls back past a hidden titleField to the next candidate.
+    [Fact]
+    public void TheLabelFieldIsTheFirstCandidateThatIsNotHidden()
+    {
+        var type = Type("author", titleField: "secret", fields: [Text("secret") with { Hidden = true }, Text("name")]);
+
+        AdminLabels.LabelField(type).ShouldBe("name");
+        AdminLabels.LabelField(Type("author", fields: [Text("name") with { Hidden = true }])).ShouldBeNull();
+    }
+
     private static SchemaTypeDescription Type(string name, string? displayName = null, string? titleField = null, SchemaFieldDescription[]? fields = null) => new()
     {
         Name = name,

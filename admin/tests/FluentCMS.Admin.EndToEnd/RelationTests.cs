@@ -12,7 +12,7 @@ namespace FluentCMS.Admin.EndToEnd;
 // article's changes, and a related entry opened in a side panel that gives focus back to the control that opened it.
 public sealed class RelationTests(EndToEndHost host) : BrowserTest(host)
 {
-    private const string AuthorPicker = "Choose entries: Author";
+    private const string AuthorPicker = "Choose an entry: Author";
     private const string TagPicker = "Choose entries: Tag";
 
     [Fact]

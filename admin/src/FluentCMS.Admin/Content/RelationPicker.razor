@@ -2,13 +2,14 @@
    is searchable and the site has an index, or a contains filter on its label field otherwise, the target's filters (A-48),
    and "load more" by the cursor of the last page. A relation to many takes several entries, kept in the order they were
    chosen in, and keeps those chosen before that the pages read do not show. *@
+@implements IDisposable
 @inject ManagementClient Client
 @inject AdminContext Context
 @inject ListFilterRegistry FilterTypes
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<AdminResources> L
 
-<CmsDialog Title="@L["Content.Relation.PickerTitle", TypeLabel]" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : OnClose.InvokeAsync())">
+<CmsDialog Title="@L[Multiple ? "Content.Relation.PickerTitle" : "Content.Relation.PickerTitleOne", TypeLabel]" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : OnClose.InvokeAsync())">
     <ChildContent>
         @if (Open)
         {
@@ -102,7 +103,7 @@
 
     private string TypeLabel => AdminLabels.Type(Target, L);
 
-    private string LabelTitle => RelationReads.LabelField(Target) is { } name && Target.Fields.FirstOrDefault(item => item.Name == name) is { } labelField
+    private string LabelTitle => AdminLabels.LabelField(Target) is { } name && Target.Fields.FirstOrDefault(item => item.Name == name) is { } labelField
         ? AdminLabels.Field(labelField)
         : L["Content.List.Column.Id"];
 
@@ -130,6 +131,12 @@
         (criteria, filters, search, chosen) = ("", [], null, [.. Selected.Distinct()]);
         known.Clear();
         await ReadAsync(more: false, announce: false);
+    }
+
+    public void Dispose()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

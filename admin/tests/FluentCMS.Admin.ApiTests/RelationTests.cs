@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using FluentCMS.Admin.Content;
 using FluentCMS.Admin.Lists;
+using FluentCMS.Admin.Shell;
 using FluentCMS.Core.Authorization;
 using Shouldly;
 using Xunit;
@@ -30,7 +31,7 @@ public sealed class RelationTests
         var second = await client.Client.ListEntriesAsync("tag", query with { Cursor = first.NextCursor.ShouldNotBeNull() }, Token);
 
         article.Fields.Single(field => field.Name == "tags").Relation.ShouldNotBeNull().Ordered.ShouldBeTrue();
-        RelationReads.LabelField(tag).ShouldBe("name");
+        AdminLabels.LabelField(tag).ShouldBe("name");
         query.Locale.ShouldBeNull();
         query.ToQueryString().ShouldBe("sort=name&pageSize=2&fields=id,status,name,updatedAt&withTotal=false");
         first.Total.ShouldBeNull();
