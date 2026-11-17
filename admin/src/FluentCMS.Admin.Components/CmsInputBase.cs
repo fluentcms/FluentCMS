@@ -39,12 +39,26 @@ public abstract class CmsInputBase<TValue> : ComponentBase
     [Parameter]
     public bool Disabled { get; set; }
 
+    /// <summary>
+    /// Gets or sets the language of the value, as <c>lang</c> on the input element only, so that the label, help and error
+    /// stay in the interface's language; the content locale of a field of an entry. Used by the inputs that take text.
+    /// </summary>
+    [Parameter]
+    public string? Lang { get; set; }
+
+    /// <summary>Gets or sets the direction of the value, <c>ltr</c> or <c>rtl</c>, as <c>dir</c> on the input element only, like <see cref="Lang"/>.</summary>
+    [Parameter]
+    public string? Dir { get; set; }
+
     /// <summary>Gets or sets the identifier of the input element; one is generated when it is not set.</summary>
     [Parameter]
     public string? Id { get; set; }
 
     /// <summary>Gets the identifier of the input element.</summary>
     protected string InputId => Id ?? _generatedId;
+
+    /// <summary>Gets or sets the reference of the input element, which <see cref="FocusAsync"/> focuses.</summary>
+    protected ElementReference Element { get; set; }
 
     /// <summary>Gets whether the input has an error.</summary>
     protected bool Invalid => !string.IsNullOrEmpty(Error);
@@ -112,6 +126,10 @@ public abstract class CmsInputBase<TValue> : ComponentBase
 
     /// <inheritdoc />
     protected override void OnParametersSet() => CmsGuard.Named(Label, GetType().Name, nameof(Label));
+
+    /// <summary>Moves focus to the input element, which scrolls it into view; does nothing before it is rendered.</summary>
+    /// <returns>A task that completes when focus has moved.</returns>
+    public ValueTask FocusAsync() => Element.Context is null ? ValueTask.CompletedTask : Element.FocusAsync();
 
     /// <summary>Sets <see cref="Value"/> and raises <see cref="ValueChanged"/>.</summary>
     /// <param name="value">The new value.</param>

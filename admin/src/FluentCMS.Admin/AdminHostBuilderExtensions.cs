@@ -3,6 +3,7 @@ using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Authentication;
 using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Configuration;
+using FluentCMS.Admin.Fields;
 using FluentCMS.Admin.Interop;
 using FluentCMS.Admin.Localization;
 using FluentCMS.Admin.Shell;
@@ -72,6 +73,7 @@ public static class AdminHostBuilderExtensions
         services.AddScoped<IRateLimitNotice, RateLimitNotice>();
         services.AddAdminAuthentication();
         services.AddAdminShell();
+        services.AddFieldEditors();
         services.AddManagementApi();
         services.AddOptions<ManagementApiOptions>().Configure(options => options.ApiBaseUrl = configuration.ApiBaseUrl);
         return services;

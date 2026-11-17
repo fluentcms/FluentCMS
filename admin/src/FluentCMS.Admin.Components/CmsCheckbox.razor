@@ -1,7 +1,8 @@
 @namespace FluentCMS.Admin.Components
 @inherits CmsInputBase<bool>
 
-<FluentCheckbox Id="@InputId"
+<FluentCheckbox @ref="control"
+                Id="@InputId"
                 Label="@Label"
                 Required="@Required"
                 Disabled="@Disabled"
@@ -12,3 +13,16 @@
                 MessageTemplate="@MessageTemplate"
                 Class="cms-target"
                 @attributes="@AriaAttributes" />
+
+@code {
+    private FluentCheckbox? control;
+
+    // FocusAsync focuses the library's element, which takes focus for its control.
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (control is not null)
+        {
+            Element = control.Element;
+        }
+    }
+}

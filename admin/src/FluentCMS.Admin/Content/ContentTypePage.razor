@@ -1,0 +1,40 @@
+@* The route of a content type: a singleton's form. The list of a collection is A-12's (#3231), which takes this route and
+   keeps the singleton's form; until then a collection shows the way to a new entry. *@
+@page "/content/{Type}"
+@inject SiteMetadata Metadata
+@inject IStringLocalizer<AdminResources> L
+
+@* Nothing is drawn until the schema says which, so that the heading focused on arrival is the one that stays. *@
+@if (resolved && collection is { } type)
+{
+    <h1 tabindex="-1">@AdminLabels.Type(type, L)</h1>
+    <p><a href="@ContentRoutes.New(type.Name)">@L["Content.Form.NewEntry"]</a></p>
+}
+else if (resolved)
+{
+    <ContentForm Type="@Type" />
+}
+
+@code {
+    private SchemaTypeDescription? collection;
+    private bool resolved;
+
+    [Parameter]
+    public string Type { get; set; } = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        resolved = false;
+        try
+        {
+            var schema = await Metadata.GetSchemaAsync(CancellationToken.None);
+            collection = schema.Types.FirstOrDefault(item => item.Name == Type && item.Kind == "collection");
+        }
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            collection = null;
+        }
+
+        resolved = true;
+    }
+}

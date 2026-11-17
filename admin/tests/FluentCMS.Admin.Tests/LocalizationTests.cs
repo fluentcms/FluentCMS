@@ -36,7 +36,7 @@ public sealed class LocalizationTests : AdminTestContext
     {
         UseInterfaceCulture(culture);
         Start();
-        Services.GetRequiredService<NavigationManager>().NavigateTo(route);
+        Services.GetRequiredService<NavigationManager>().NavigateTo(Concrete(route, culture));
 
         var app = Render<AdminApp>();
 
@@ -124,6 +124,11 @@ public sealed class LocalizationTests : AdminTestContext
         PseudoCulture.Unlocalized(head.Nodes).ShouldBeEmpty();
         head.Find("title").TextContent.ShouldBe(Text("Configuration.Error.Title"));
     }
+
+    // A route's parameters as data the page shows, marked as a resource is: a type name, and an id without letters.
+    private static string Concrete(string route, string culture) => route
+        .Replace("{Type}", PseudoCulture.Transform("article", culture == PseudoCulture.RightToLeft), StringComparison.Ordinal)
+        .Replace("{Id:guid}", "00000000-0000-0000-0000-000000000001", StringComparison.Ordinal);
 
     [Fact]
     public void EveryRoutablePageIsKeptFromTheTrimmer()

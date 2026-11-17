@@ -12,8 +12,8 @@ internal sealed record UserAction(string IdempotencyKey, string? Site, string? L
 
 // A form's read of an entry in one locale, with the site and locale it was read in, which its save sends again so that a
 // view that switched in between cannot write another locale under a matching tag. A locale the entry does not have yet has
-// no entry, and its tag is ApiRequest.NewLocale, which the save sends to add it.
-internal sealed record EntryRead(ContentEntry? Entry, string EntityTag, string? Site, string? Locale)
+// no entry, and its tag is ApiRequest.NewLocale, which the save sends to add it. A create's read has the Location it answered.
+internal sealed record EntryRead(ContentEntry? Entry, string EntityTag, string? Site, string? Locale, Uri? Location = null)
 {
     public bool IsNewLocale => Entry is null;
 }
@@ -117,7 +117,15 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
         ArgumentNullException.ThrowIfNull(action);
         ArgumentException.ThrowIfNullOrWhiteSpace(action.IdempotencyKey);
         var request = Pinned(HttpMethod.Post, Content(type), action.Site, action.Locale, WithoutSystemMembers(fields), idempotencyKey: action.IdempotencyKey);
-        return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), action.Site, action.Locale);
+        var answer = await api.SendAsync(request, Json.ContentEntry, cancellationToken);
+        return Read(answer, action.Site, action.Locale) with { Location = answer.Location };
+    }
+
+    // The id of a singleton's one entry, or null while it has none.
+    public async Task<Guid?> FindSingletonAsync(string type, CancellationToken cancellationToken)
+    {
+        var page = await ListEntriesAsync(type, new ContentQuery { PageSize = 1, Fields = ["id"] }, cancellationToken);
+        return page.Items.Count > 0 ? page.Items[0].Id : null;
     }
 
     // Saves in exactly the site and locale of the read, with its tag: the version it was based on, or "0" to add the locale.

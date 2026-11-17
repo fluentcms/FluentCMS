@@ -13,13 +13,13 @@ internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposab
         using var response = await SendCoreAsync(request, cancellationToken);
         var value = await response.Content.ReadFromJsonAsync(answer, cancellationToken)
             ?? throw new JsonException($"{request.Method} {request.Path} answered {(int)response.StatusCode} with no body.");
-        return new ApiResponse<T>(response.StatusCode, EntityTag(response), value);
+        return new ApiResponse<T>(response.StatusCode, EntityTag(response), value) { Location = response.Headers.Location };
     }
 
     public async Task<ApiResponse> SendAsync(ApiRequest request, CancellationToken cancellationToken)
     {
         using var response = await SendCoreAsync(request, cancellationToken);
-        return new ApiResponse(response.StatusCode, EntityTag(response));
+        return new ApiResponse(response.StatusCode, EntityTag(response)) { Location = response.Headers.Location };
     }
 
     public void Dispose() => http.Dispose();
