@@ -121,6 +121,35 @@ public sealed class ContentListFilterTests : AdminTestContext
         app.WaitForAssertion(() => Management.ContentQueries.Last().ShouldStartWith("filter[author][in]=0193a1b2-0000-7000-8000-000000000009,0193a1b2-0000-7000-8000-00000000000a&"));
     }
 
+    // A value that holds a comma is kept whole when its filter is opened and applied again.
+    [Fact]
+    public void AListFilterKeepsAValueWithACommaAndItsValuesAcrossAChangeOfOperator()
+    {
+        var app = Load("content/article?filter[title][in]=a%5C,b,c");
+
+        Button(app, "Title is one of a,b, c").Click();
+        Choose(app, "Condition", "nin");
+        Button(app, "Apply filter").Click();
+
+        Navigation.Uri.ShouldEndWith("content/article?filter[title][nin]=a%5C,b,c");
+    }
+
+    // A time chosen before the day is kept until the day makes the moment.
+    [Fact]
+    public void ATimeChosenBeforeTheDayIsKept()
+    {
+        var app = Load();
+
+        Button(app, "Add filter").Click();
+        Choose(app, "Field", "publishedOn");
+        Choose(app, "Condition", "lt");
+        Set<CmsTimePicker, TimeOnly?>(app, "Time of Value", new TimeOnly(9, 30));
+        Set<CmsDatePicker, DateOnly?>(app, "Value", new DateOnly(2026, 3, 1));
+        Button(app, "Apply filter").Click();
+
+        app.WaitForAssertion(() => Management.ContentQueries.Last().ShouldStartWith("filter[publishedOn][lt]=2026-03-01T09%3A30%3A00Z&"));
+    }
+
     [Fact]
     public void AFilterIsChangedAndRemovedAndFocusStaysInTheToolbar()
     {

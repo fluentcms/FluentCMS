@@ -113,9 +113,11 @@
     private string? draftField;
     private FilterOperator draftOperator;
     private List<string> values = [];
-
-    // The text of a list of values, comma separated, which is split when the filter is applied.
     private string? listText;
+
+    // The day and time of each input of a moment, kept apart until both make one.
+    private readonly DateOnly?[] days = new DateOnly?[2];
+    private readonly TimeOnly?[] times = new TimeOnly?[2];
     private string? error;
     private CmsButton? addButton;
     private bool focusAdd;
@@ -191,7 +193,13 @@
         draftField = field.Name;
         draftOperator = filter?.Operator ?? field.Filter.Operators[0];
         values = [.. ListFilters.Texts(filter?.Value)];
-        listText = string.Join(", ", values);
+        listText = ListFilters.Join(values);
+        for (var slot = 0; slot < days.Length; slot++)
+        {
+            var local = slot < values.Count && ListFilters.Moment(values[slot]) is { } moment ? TimeZoneInfo.ConvertTime(moment, Format.TimeZone) : (DateTimeOffset?)null;
+            (days[slot], times[slot]) = local is { } at ? ((DateOnly?)DateOnly.FromDateTime(at.DateTime), (TimeOnly?)TimeOnly.FromDateTime(at.DateTime)) : (null, null);
+        }
+
         error = null;
         open = true;
     }
@@ -209,10 +217,20 @@
         if (Draft?.Filter.Operators.FirstOrDefault(item => ListFilters.Name(item) == name) is { } chosen && chosen != draftOperator)
         {
             // A value is kept from one operator that takes one to another; any other change starts empty.
-            var keep = TakesOne(chosen) && TakesOne(draftOperator);
+            var keepOne = TakesOne(chosen) && TakesOne(draftOperator);
+            var keepList = ListFilters.TakesList(chosen) && ListFilters.TakesList(draftOperator);
             (draftOperator, error) = (chosen, null);
-            values = keep ? [.. values.Take(1)] : [];
-            listText = null;
+            if (keepOne)
+            {
+                values = [.. values.Take(1)];
+            }
+            else if (!keepList)
+            {
+                values = [];
+                listText = null;
+                Array.Clear(days);
+                Array.Clear(times);
+            }
         }
     }
 
@@ -237,7 +255,7 @@
 
         if (ListFilters.TakesList(draftOperator) && field.Filter.Operand != FilterOperand.Option)
         {
-            values = [.. (listText ?? "").Split(',').Select(item => item.Trim()).Where(item => item.Length > 0)];
+            values = [.. ListFilters.Items(listText ?? "").Select(item => item.Trim()).Where(item => item.Length > 0)];
         }
 
         var (valid, operand) = ListFilters.Operand(field, draftOperator, values);
@@ -284,10 +302,9 @@
                 <CmsDatePicker Label="@label" Value="@Day(text)" ValueChanged="@(day => Set(slot, day?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)))" Error="@message" />
                 break;
             case FilterOperand.DateTime:
-                var local = Moment(text) is { } moment ? TimeZoneInfo.ConvertTime(moment, Format.TimeZone) : (DateTimeOffset?)null;
                 <div class="content-filter-moment">
-                    <CmsDatePicker Label="@label" Value="@(local is { } day ? DateOnly.FromDateTime(day.DateTime) : null)" ValueChanged="@(day => SetMoment(slot, day, local is { } at ? TimeOnly.FromDateTime(at.DateTime) : null))" Error="@message" />
-                    <CmsTimePicker Label="@L["Content.Filter.Time", label]" Value="@(local is { } time ? TimeOnly.FromDateTime(time.DateTime) : null)" ValueChanged="@(time => SetMoment(slot, local is { } at ? DateOnly.FromDateTime(at.DateTime) : null, time))" />
+                    <CmsDatePicker Label="@label" Value="@days[slot]" ValueChanged="@(day => SetMoment(slot, day, times[slot]))" Error="@message" />
+                    <CmsTimePicker Label="@L["Content.Filter.Time", label]" Value="@times[slot]" ValueChanged="@(time => SetMoment(slot, days[slot], time))" />
                 </div>
                 break;
             case FilterOperand.Boolean:
@@ -320,6 +337,7 @@
     // A moment is entered as a day and a time in the user's time zone; midnight until a time is chosen.
     private void SetMoment(int slot, DateOnly? day, TimeOnly? time)
     {
+        (days[slot], times[slot]) = (day, time);
         if (day is not { } date)
         {
             Set(slot, null);
@@ -334,8 +352,6 @@
     private static DateOnly? Day(string? text) =>
         DateOnly.TryParseExact(text, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var day) ? day : null;
 
-    private static DateTimeOffset? Moment(string? text) =>
-        DateTimeOffset.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var moment) ? moment : null;
 
     private string OperatorText(FilterField field, FilterOperator filterOperator)
     {
@@ -370,7 +386,7 @@
     {
         FilterOperand.WholeNumber or FilterOperand.DecimalNumber when decimal.TryParse(text, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var number) => Format.Number(number),
         FilterOperand.Date when Day(text) is { } day => day.ToString("d", Format.Culture),
-        FilterOperand.DateTime when Moment(text) is { } moment => Format.DateTime(moment),
+        FilterOperand.DateTime when ListFilters.Moment(text) is { } moment => Format.DateTime(moment),
         FilterOperand.Boolean => L[text == "true" ? "Content.Filter.Yes" : "Content.Filter.No"],
         _ => text,
     };

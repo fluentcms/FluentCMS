@@ -124,8 +124,8 @@ internal static class ListFilters
     public static IReadOnlyList<string> Texts(object? operand) => operand switch
     {
         null => [],
-        IEnumerable items and not string => [.. items.Cast<object?>().Select(Text)],
-        _ => [Text(operand)],
+        IEnumerable items and not string => [.. items.Cast<object?>().Select(ContentQuery.Text)],
+        _ => [ContentQuery.Text(operand)],
     };
 
     // The operand of a filter from the text of its inputs, typed as its field's; not valid when any does not read.
@@ -165,23 +165,11 @@ internal static class ListFilters
         FilterOperand.WholeNumber => long.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var number) ? number : null,
         FilterOperand.DecimalNumber => decimal.TryParse(text, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var number) ? number : null,
         FilterOperand.Date => DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day) ? day : null,
-        FilterOperand.DateTime => DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var moment) ? moment.ToUniversalTime() : null,
+        FilterOperand.DateTime => Moment(text),
         FilterOperand.Boolean => text switch { "true" => true, "false" => false, _ => null },
         FilterOperand.Option => field.Options.Contains(text) ? text : null,
         FilterOperand.Id => Guid.TryParse(text, out var id) ? id : null,
         _ => text,
-    };
-
-    // An operand as the API writes it, which is also what an input of the filter holds; a moment in UTC.
-    private static string Text(object? value) => value switch
-    {
-        null => "",
-        bool flag => flag ? "true" : "false",
-        DateTimeOffset moment => moment.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'", CultureInfo.InvariantCulture),
-        DateOnly day => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-        Guid id => id.ToString("D"),
-        IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
-        _ => value.ToString() ?? "",
     };
 
     private static (string Path, string Operator)? Key(string key)
@@ -195,8 +183,17 @@ internal static class ListFilters
         return parts is [{ Length: > 0 } path, { Length: > 0 } name] ? (path, name) : null;
     }
 
+    // A moment as the grammar writes it, with an offset or Z; the other forms of a culture are not read.
+    public static DateTimeOffset? Moment(string? text) =>
+        DateTimeOffset.TryParseExact(text, ["yyyy-MM-dd'T'HH:mm:ssK", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFFK"], CultureInfo.InvariantCulture, DateTimeStyles.None, out var moment)
+            ? moment.ToUniversalTime()
+            : null;
+
+    // The values of a list as one text, which Items reads back.
+    public static string Join(IEnumerable<string> values) => string.Join(", ", values.Select(ContentQuery.EscapeItem));
+
     // A list operand is comma separated, with \, and \\ for a comma and a backslash in a value.
-    private static List<string> Items(string text)
+    public static List<string> Items(string text)
     {
         List<string> items = [];
         var item = new StringBuilder();

@@ -105,6 +105,8 @@ public sealed class ListFilterTests
     [InlineData("filter[rank][between]=1")]
     [InlineData("filter[category][eq]=sport")]
     [InlineData("filter[day][eq]=03/01/2026")]
+    [InlineData("filter[at][lt]=03/04/2026")]
+    [InlineData("filter[at][lt]=2026-03-04")]
     [InlineData("filter[author][in]=1,2")]
     [InlineData("filter[title][eq]=")]
     [InlineData("filter[seo.metaTitle][eq]=x")]
