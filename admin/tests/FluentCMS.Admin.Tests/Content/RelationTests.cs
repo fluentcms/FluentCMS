@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json.Nodes;
 using AngleSharp.Dom;
 using Bunit;
@@ -141,6 +142,63 @@ public sealed class RelationTests : AdminTestContext
         FieldOf(app, "tags").QuerySelector("fieldset")!.GetAttribute("aria-describedby").ShouldNotBeNull();
         Save(app);
         app.WaitForAssertion(() => Strings(_content.Writes.ShouldHaveSingleItem().Body["tags"]).ShouldBe([Text(a), Text(b), Text(c)]));
+    }
+
+    // Focus follows the moved entry to its new place, at an end and in the middle, by keys to its entry and by a button to
+    // that button, or to the other one when the pressed one became disabled at an end.
+    [Fact]
+    public void FocusFollowsTheMovedEntry()
+    {
+        var a = _content.Add("tag", new JsonObject { ["name"] = "a" });
+        var b = _content.Add("tag", new JsonObject { ["name"] = "b" });
+        var c = _content.Add("tag", new JsonObject { ["name"] = "c" });
+        var id = _content.Add("article", new JsonObject { ["title"] = "Ordered", ["tags"] = Ids(a, b, c) });
+        var app = Load($"content/article/{id:D}");
+        app.WaitForAssertion(() => Labels(app, "tags").ShouldBe(["a", "b", "c"]));
+
+        Items(app, "tags")[0].KeyDown(new KeyboardEventArgs { Key = "ArrowDown", AltKey = true });
+        app.WaitForAssertion(() => Labels(app, "tags").ShouldBe(["b", "a", "c"]));
+        app.WaitForAssertion(() => Focused().ShouldBe(ButtonAt(app, "openButtons", 1)));
+
+        Items(app, "tags")[1].KeyDown(new KeyboardEventArgs { Key = "ArrowDown", AltKey = true });
+        app.WaitForAssertion(() => Labels(app, "tags").ShouldBe(["b", "c", "a"]));
+        app.WaitForAssertion(() => Focused().ShouldBe(ButtonAt(app, "openButtons", 2)));
+
+        Items(app, "tags")[2].KeyDown(new KeyboardEventArgs { Key = "ArrowUp", AltKey = true });
+        Items(app, "tags")[1].KeyDown(new KeyboardEventArgs { Key = "ArrowUp", AltKey = true });
+        app.WaitForAssertion(() => Labels(app, "tags").ShouldBe(["a", "b", "c"]));
+        app.WaitForAssertion(() => Focused().ShouldBe(ButtonAt(app, "openButtons", 0)));
+
+        IconButton(FieldOf(app, "tags"), "Move a down").Click();
+        app.WaitForAssertion(() => Labels(app, "tags").ShouldBe(["b", "a", "c"]));
+        app.WaitForAssertion(() => Focused().ShouldBe(ButtonAt(app, "downButtons", 1)));
+
+        IconButton(FieldOf(app, "tags"), "Move a down").Click();
+        app.WaitForAssertion(() => Labels(app, "tags").ShouldBe(["b", "c", "a"]));
+        app.WaitForAssertion(() => Focused().ShouldBe(ButtonAt(app, "upButtons", 2)));
+
+        IconButton(FieldOf(app, "tags"), "Move b up").HasAttribute("disabled").ShouldBeTrue();
+        IconButton(FieldOf(app, "tags"), "Move c up").Click();
+        app.WaitForAssertion(() => Labels(app, "tags").ShouldBe(["c", "b", "a"]));
+        app.WaitForAssertion(() => Focused().ShouldBe(ButtonAt(app, "downButtons", 0)));
+    }
+
+    // A move changes what the items show rather than moving them in the document, so the element that had focus stays.
+    [Fact]
+    public void AMoveKeepsTheItemsInPlace()
+    {
+        var a = _content.Add("tag", new JsonObject { ["name"] = "a" });
+        var b = _content.Add("tag", new JsonObject { ["name"] = "b" });
+        var id = _content.Add("article", new JsonObject { ["title"] = "Ordered", ["tags"] = Ids(a, b) });
+        var app = Load($"content/article/{id:D}");
+        app.WaitForAssertion(() => Labels(app, "tags").ShouldBe(["a", "b"]));
+        var before = ButtonAt(app, "openButtons", 1);
+
+        Items(app, "tags")[1].KeyDown(new KeyboardEventArgs { Key = "ArrowUp", AltKey = true });
+
+        app.WaitForAssertion(() => Labels(app, "tags").ShouldBe(["b", "a"]));
+        ButtonAt(app, "openButtons", 1).ShouldBe(before);
+        Focused().ShouldBe(ButtonAt(app, "openButtons", 0));
     }
 
     [Fact]
@@ -462,6 +520,20 @@ public sealed class RelationTests : AdminTestContext
     // The panel's own button, after those of the dialogs of its form.
     private static void ClosePanel(IRenderedComponent<AdminApp> app, string title) =>
         Panel(app, title).FindAll("fluent-button").Last(button => button.TextContent.Trim() == "Close").Click();
+
+    private string? Focused() =>
+        JSInterop.Invocations.Where(call => call.Identifier == "Blazor._internal.domWrapper.focus").Select(call => ((ElementReference)call.Arguments[0]!).Id).LastOrDefault();
+
+    // The element of a button the tags editor holds by position, read from the editor, since bUnit's markup does not name an
+    // element once it has rendered again.
+    private static string ButtonAt(IRenderedComponent<AdminApp> app, string buttons, int position)
+    {
+        const BindingFlags Flags = BindingFlags.Instance | BindingFlags.NonPublic;
+        var editor = app.FindComponents<FluentCMS.Admin.Fields.RelationFieldEditor>().Single(found => found.Instance.Field.Name == "tags").Instance;
+        var button = ((Dictionary<int, CmsButton>)editor.GetType().GetField(buttons, Flags)!.GetValue(editor)!)[position];
+        var library = typeof(CmsButton).GetField("_button", Flags)!.GetValue(button)!;
+        return ((ElementReference)library.GetType().GetProperty("Element")!.GetValue(library)!).Id;
+    }
 
     private static IElement IconButton(IElement container, string label) => container.QuerySelector($"fluent-button[aria-label='{label}']")!;
 

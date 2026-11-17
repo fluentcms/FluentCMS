@@ -34,9 +34,11 @@
             {
                 var position = index;
                 var id = Ids[position];
-                var key = KeyAt(Ids, position);
                 var label = LabelOf(id);
-                <li @key="key"
+                @* Keyed by position: a move changes what each item shows rather than moving items in the document, which
+                   would take focus out of the moved item, report a blur of the field, and leave focus to the order of the
+                   renders that follow. *@
+                <li @key="position"
                     class="@ItemClass(position)"
                     data-drag-item="@(CanOrder ? "true" : null)"
                     draggable="@(CanOrder ? "true" : null)"
@@ -49,7 +51,7 @@
                     <span class="relation-field-entry">
                         @if (target is not null)
                         {
-                            <CmsButton @ref="openButtons[key]" Appearance="CmsButtonAppearance.Subtle" OnClick="@(() => OpenEntry(id))">
+                            <CmsButton @ref="openButtons[position]" Appearance="CmsButtonAppearance.Subtle" OnClick="@(() => OpenEntry(id))">
                                 <span class="relation-field-name" lang="@ContentLocale" dir="@TextDirection">@label</span>
                                 <span class="cms-visually-hidden">@L["Content.Relation.OpenHint"]</span>
                             </CmsButton>
@@ -61,8 +63,8 @@
                     </span>
                     @if (CanOrder)
                     {
-                        <CmsButton @ref="upButtons[key]" Icon="CmsIconName.Up" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.Relation.MoveUp", label]" Disabled="@(position == 0)" OnClick="@(() => MoveAsync(position, -1, FocusAfterMove.Buttons))" />
-                        <CmsButton @ref="downButtons[key]" Icon="CmsIconName.Down" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.Relation.MoveDown", label]" Disabled="@(position == Ids.Count - 1)" OnClick="@(() => MoveAsync(position, 1, FocusAfterMove.Buttons))" />
+                        <CmsButton @ref="upButtons[position]" Icon="CmsIconName.Up" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.Relation.MoveUp", label]" Disabled="@(position == 0)" OnClick="@(() => MoveAsync(position, -1, FocusAfterMove.Buttons))" />
+                        <CmsButton @ref="downButtons[position]" Icon="CmsIconName.Down" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.Relation.MoveDown", label]" Disabled="@(position == Ids.Count - 1)" OnClick="@(() => MoveAsync(position, 1, FocusAfterMove.Buttons))" />
                     }
                     @if (!ReadOnly)
                     {
@@ -119,18 +121,15 @@
         Entry,
     }
 
-    // An item of the list: a relation to many may hold an entry more than once, which the server keeps, so an item is its
-    // entry and the number of times the entry comes before it.
-    private readonly record struct ItemKey(Guid Id, int Occurrence);
-
     private readonly string messageId = ElementIds.Next("field-message");
     private readonly string orderHintId = ElementIds.Next("field-order");
     private readonly GroupFocus focus = new();
     private Dictionary<Guid, string> labels = [];
     private HashSet<Guid> asked = [];
-    private readonly Dictionary<ItemKey, CmsButton> openButtons = [];
-    private readonly Dictionary<ItemKey, CmsButton> upButtons = [];
-    private readonly Dictionary<ItemKey, CmsButton> downButtons = [];
+    // The buttons of each item by its position; a relation to many may hold an entry more than once, which the server keeps.
+    private readonly Dictionary<int, CmsButton> openButtons = [];
+    private readonly Dictionary<int, CmsButton> upButtons = [];
+    private readonly Dictionary<int, CmsButton> downButtons = [];
     private ElementReference group;
     private CmsButton? chooseButton;
     private SchemaTypeDescription? target;
@@ -242,9 +241,6 @@
 
     private string LabelOf(Guid id) => labels.GetValueOrDefault(id) ?? id.ToString("D");
 
-    private static ItemKey KeyAt(IReadOnlyList<Guid> ids, int position) =>
-        new(ids[position], ids.Take(position).Count(id => id == ids[position]));
-
     private string ItemClass(int position) =>
         position == over && over != dragging ? "relation-field-item relation-field-drop" : "relation-field-item";
 
@@ -273,8 +269,8 @@
         ids.RemoveAt(position);
         await WriteAsync(ids);
 
-        // The removed entry's buttons leave the document, so focus goes to the entry that took its place, or to the picker.
-        ItemKey? next = ids.Count == 0 ? null : KeyAt(ids, Math.Min(position, ids.Count - 1));
+        // Focus goes to the entry that took the removed one's place, or to the picker when none is left.
+        int? next = ids.Count == 0 ? null : Math.Min(position, ids.Count - 1);
         focusAfterRender = () => next is { } kept ? openButtons.GetValueOrDefault(kept) : chooseButton;
         Announcer.Announce(L["Content.Relation.Removed", LabelOf(removed)]);
     }
@@ -299,8 +295,8 @@
         (dragging, over) = (null, null);
     }
 
-    // The moved entry's item moves in the document, which drops focus, so focus goes back to the control pressed, or to the
-    // other button when the entry reached an end and the pressed one became disabled.
+    // Focus follows the moved entry to its new position: to its entry after a key, or to the button pressed, or to the other
+    // one when the entry reached an end and the pressed one became disabled.
     private async Task MoveAsync(int position, int by, FocusAfterMove after)
     {
         var to = position + by;
@@ -312,12 +308,11 @@
 
         (ids[position], ids[to]) = (ids[to], ids[position]);
         var moved = ids[to];
-        var key = KeyAt(ids, to);
         await WriteAsync(ids);
         var atEnd = by < 0 ? to == 0 : to == ids.Count - 1;
         focusAfterRender = after == FocusAfterMove.Entry
-            ? () => openButtons.GetValueOrDefault(key)
-            : (by < 0) != atEnd ? () => upButtons.GetValueOrDefault(key) : () => downButtons.GetValueOrDefault(key);
+            ? () => openButtons.GetValueOrDefault(to)
+            : (by < 0) != atEnd ? () => upButtons.GetValueOrDefault(to) : () => downButtons.GetValueOrDefault(to);
         Announce(moved, to, ids.Count);
     }
 
