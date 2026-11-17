@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 using FluentCMS.Admin.Plugins;
+using FluentCMS.Admin.Plugins.Careless;
 using FluentCMS.Admin.Plugins.Sample;
 using Shouldly;
 using Xunit;
@@ -135,10 +136,12 @@ public sealed class AdminPluginManifestTests
             ]
             """, AdminPluginManifestJson.Manifests).ShouldNotBeNull();
 
+        manifests.Select(manifest => (manifest.Name, manifest.IsValid)).ShouldBe([("later", false), ("media", true)]);
         manifests[0].ManifestVersion.ShouldBe(2);
-        manifests[0].MenuItems.ShouldHaveSingleItem().Section.ShouldBe(AdminSection.Content);
-        manifests[0].Widgets.Select(widget => widget.Size).ShouldBe([WidgetSize.Small, WidgetSize.Small]);
+        Enum.IsDefined(manifests[0].MenuItems.ShouldHaveSingleItem().Section).ShouldBeFalse();
+        manifests[0].Widgets.ShouldAllBe(widget => !Enum.IsDefined(widget.Size));
         manifests[1].Widgets.ShouldHaveSingleItem().Size.ShouldBe(WidgetSize.Wide);
+        JsonSerializer.Serialize(manifests, AdminPluginManifestJson.Manifests).ShouldContain("\"section\": \"unknown\"");
     }
 
     [Fact]
@@ -152,8 +155,8 @@ public sealed class AdminPluginManifestTests
         AdminPluginManifestCheck.Differences(Half, json).ShouldBe(
         [
             "manifestVersion is 0 in the manifest and this contract reads 1",
-            "menu item 'Reviews.Menu': section is \"contnet\" in the manifest, which this contract does not know",
-            "widget 'Reviews.Widget.Title': size is 1 in the manifest, which this contract does not know",
+            $"menu item 'Reviews.Menu' of {Sample}ReviewsPage: section is 'content' in the assembly and 'unknown' in the manifest",
+            $"widget 'Reviews.Widget.Title' of {Sample}LatestReviewsWidget: size is 'small' in the assembly and 'unknown' in the manifest",
         ]);
     }
 
@@ -277,16 +280,18 @@ public sealed class AdminPluginManifestTests
         Should.Throw<InvalidOperationException>(() => AdminPluginManifestCheck.FromAssembly(assembly));
     }
 
-    // The test assembly names a careless plugin of its own (CarelessHalf.cs), whose declarations the admin could not use.
+    // The careless half of the tests (FluentCMS.Admin.Plugins.Careless) declares what the admin could not use.
     [Fact]
     public void ADeclarationTheAdminCouldNotUseIsNamed()
     {
-        var careless = typeof(AdminPluginManifestTests).Assembly;
-        const string Types = "FluentCMS.Admin.Tests.Plugins.";
+        var careless = typeof(CarelessPlugin).Assembly;
+        const string Types = "FluentCMS.Admin.Plugins.Careless.";
         var json = AdminPluginManifestJson.Write(AdminPluginManifestCheck.FromAssembly(careless));
 
         AdminPluginManifestCheck.Differences(careless, json).ShouldBe(
         [
+            "the plugin's name 'system' is a reserved first segment of the admin's routes",
+            $"AdminRange 'soon' of {Types}CarelessPlugin is not a range of versions, such as [1.0.0,2.0.0)",
             $"{Types}CarelessPlugin does not implement IAdminPlugin",
             $"entry action 'careless' of {Types}CarelessAction: the class does not derive from EntryActionBase",
             $"bulk action 'careless' of {Types}CarelessAction: the class does not derive from BulkActionBase",
@@ -295,15 +300,34 @@ public sealed class AdminPluginManifestTests
             $"menu item 'Careless.Menu' of {Types}CarelessMenuItem: the component declares no [AdminPage] for it to link to",
             $"field editor 'careless' of {Types}CarelessMenuItem: the class does not derive from FieldEditorBase",
             $"list cell 'careless' of {Types}CarelessMenuItem: the class does not derive from ListCellBase",
-            $"page '/careless' of {Types}CarelessPage: the component has no @page of that route, so the router cannot find it",
-            $"page '/careless/other' of {Types}CarelessPage: the component has no @page of that route, so the router cannot find it",
+            $"page '/system/careless' of {Types}CarelessPage: the component has no @page of that route, so the router cannot find it",
+            $"page '/system/careless/other' of {Types}CarelessPage: the component has no @page of that route, so the router cannot find it",
             $"menu item 'Careless.Pages' of {Types}CarelessPage: the component has several pages, so the item must name its Route",
             $"settings page 'careless' of {Types}CarelessPage: the class does not derive from IComponent",
             $"widget 'Careless.Widget' of {Types}CarelessPage: the class does not derive from IComponent",
             $"page '/careless/item' of {Types}CarelessTwin: the component has no @page of that route, so the router cannot find it",
+            $"page '/careless/item' of {Types}CarelessTwin: the route is not /system or below it",
             $"menu item 'Careless.Item' of {Types}CarelessTwin: the component declares no [AdminPage] of its Route '/careless/items'",
             $"service 'System.IDisposable' of {Types}CarelessTwin: the class does not implement it",
             $"service 'System.IDisposable' is declared more than once: by {Types}CarelessAction and {Types}CarelessTwin",
         ]);
     }
+
+    [Fact]
+    public void ANullWhereTheManifestTakesNoneIsRefusedOrNamedAndNeverThrows()
+    {
+        var file = System.IO.File.ReadAllText(ManifestPath);
+        var nullRoute = file.Replace("\"route\": \"/reviews\",", "\"route\": null,", StringComparison.Ordinal);
+        var nullList = file.Replace("\"widgets\": [", "\"widgets\": null, \"later\": [", StringComparison.Ordinal);
+        var nullEntry = file.Replace("\"pages\": [", "\"pages\": [null,", StringComparison.Ordinal);
+
+        Should.Throw<JsonException>(() => AdminPluginManifestJson.Read(nullRoute));
+        Should.Throw<JsonException>(() => AdminPluginManifestJson.Read(nullList));
+        AdminPluginManifestCheck.Differences(Half, nullRoute).ShouldHaveSingleItem().ShouldStartWith("the manifest cannot be read: ");
+        AdminPluginManifestJson.Read(nullEntry).IsValid.ShouldBeFalse();
+        AdminPluginManifestCheck.Differences(Half, nullEntry).ShouldBe(["pages holds a null in the manifest"]);
+    }
+
+    [Fact]
+    public void TheSampleHalfIsValid() => File.IsValid.ShouldBeTrue();
 }

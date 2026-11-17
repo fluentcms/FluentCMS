@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A careless admin half of the admin tests: each of its declarations is one the manifest check must name. It is a project
+       of its own so that the test assembly names no plugin. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

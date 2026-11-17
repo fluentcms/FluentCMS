@@ -1,6 +1,5 @@
 #nullable enable
 FluentCMS.Admin.Actions.AdminActionBase
-FluentCMS.Admin.Actions.AdminActionBase.AdminActionBase() -> void
 FluentCMS.Admin.Actions.BulkActionBase
 FluentCMS.Admin.Actions.BulkActionBase.BulkActionBase() -> void
 FluentCMS.Admin.Actions.BulkActionBase.ContentTypes.get -> System.Collections.Generic.IReadOnlyList<string!>!
@@ -795,6 +794,7 @@ FluentCMS.Admin.Plugins.AdminPluginManifest.FieldActions.get -> System.Collectio
 FluentCMS.Admin.Plugins.AdminPluginManifest.FieldActions.init -> void
 FluentCMS.Admin.Plugins.AdminPluginManifest.FieldEditors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Plugins.AdminManifestFieldComponent!>!
 FluentCMS.Admin.Plugins.AdminPluginManifest.FieldEditors.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.IsValid.get -> bool
 FluentCMS.Admin.Plugins.AdminPluginManifest.ListCells.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Plugins.AdminManifestFieldComponent!>!
 FluentCMS.Admin.Plugins.AdminPluginManifest.ListCells.init -> void
 FluentCMS.Admin.Plugins.AdminPluginManifest.ManifestVersion.get -> int
@@ -823,6 +823,8 @@ FluentCMS.Admin.Plugins.AdminSection.Settings = 3 -> FluentCMS.Admin.Plugins.Adm
 FluentCMS.Admin.Plugins.AdminServiceAttribute
 FluentCMS.Admin.Plugins.AdminServiceAttribute.AdminServiceAttribute(System.Type! serviceType) -> void
 FluentCMS.Admin.Plugins.AdminServiceAttribute.ServiceType.get -> System.Type!
+FluentCMS.Admin.Plugins.AdminVersionRange
+FluentCMS.Admin.Plugins.AdminVersionRange.Contains(System.Version! version) -> bool
 FluentCMS.Admin.Plugins.BulkActionAttribute
 FluentCMS.Admin.Plugins.BulkActionAttribute.BulkActionAttribute(string! name) -> void
 FluentCMS.Admin.Plugins.BulkActionAttribute.ContentTypes.get -> string![]!
@@ -1094,6 +1096,7 @@ static FluentCMS.Admin.Plugins.AdminPluginManifestJson.Manifest.get -> System.Te
 static FluentCMS.Admin.Plugins.AdminPluginManifestJson.Manifests.get -> System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Plugins.AdminPluginManifest!>!>!
 static FluentCMS.Admin.Plugins.AdminPluginManifestJson.Read(string! json) -> FluentCMS.Admin.Plugins.AdminPluginManifest!
 static FluentCMS.Admin.Plugins.AdminPluginManifestJson.Write(FluentCMS.Admin.Plugins.AdminPluginManifest! manifest) -> string!
+static FluentCMS.Admin.Plugins.AdminVersionRange.TryParse(string? text, out FluentCMS.Admin.Plugins.AdminVersionRange? range) -> bool
 virtual FluentCMS.Admin.Actions.AdminActionBase.Icon.get -> string?
 virtual FluentCMS.Admin.Actions.BulkActionBase.ConfirmationText(FluentCMS.Admin.Actions.BulkActionContext! context) -> string?
 virtual FluentCMS.Admin.Actions.EntryActionBase.AppliesToAsync(FluentCMS.Admin.Actions.EntryActionContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<bool>

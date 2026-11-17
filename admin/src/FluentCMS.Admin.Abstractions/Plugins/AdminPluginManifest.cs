@@ -64,6 +64,24 @@ public sealed record AdminPluginManifest
 
     /// <summary>The services the half provides to other halves and the admin.</summary>
     public IReadOnlyList<AdminManifestService> Services { get => field ?? []; init; }
+
+    /// <summary>
+    /// Whether every contribution is one this version of the contract reads: no list holds a null, and every section and
+    /// size is known. A reader of a list of manifests leaves out and reports the manifest of a half that is not, such as
+    /// one written for a later version, and still has the others.
+    /// </summary>
+    [JsonIgnore]
+    public bool IsValid =>
+        Pages.All(page => page is not null)
+        && MenuItems.All(item => item is not null && ManifestNames.IsKnown(item.Section))
+        && SettingsPages.All(page => page is not null)
+        && FieldEditors.All(editor => editor is not null)
+        && ListCells.All(cell => cell is not null)
+        && EntryActions.All(action => action is not null)
+        && BulkActions.All(action => action is not null)
+        && FieldActions.All(action => action is not null)
+        && Widgets.All(widget => widget is not null && ManifestNames.IsKnown(widget.Size))
+        && Services.All(service => service is not null);
 }
 
 /// <summary>A page of an admin half, from <see cref="AdminPageAttribute"/>.</summary>
@@ -189,7 +207,8 @@ public sealed record AdminManifestService
 /// Reads and writes manifests as JSON with source-generated metadata, so a trimmed app reads them. Member names are in
 /// camel case, sections and sizes are written by name in lower case, and a hand-written file may hold comments and trailing
 /// commas. A member, a section or a size that this version does not know does not stop the read: the member is skipped,
-/// and the section or the size reads as the first one.
+/// and the section or the size reads as a value outside its enumeration, which <see cref="AdminPluginManifest.IsValid"/>
+/// tells. A null where the manifest takes none is refused, but for a null in a list, which <c>IsValid</c> tells too.
 /// </summary>
 public static class AdminPluginManifestJson
 {
@@ -224,6 +243,7 @@ public static class AdminPluginManifestJson
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     ReadCommentHandling = JsonCommentHandling.Skip,
     AllowTrailingCommas = true,
+    RespectNullableAnnotations = true,
     WriteIndented = true)]
 [JsonSerializable(typeof(AdminPluginManifest))]
 [JsonSerializable(typeof(IReadOnlyList<AdminPluginManifest>))]

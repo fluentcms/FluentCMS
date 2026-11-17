@@ -1,16 +1,15 @@
 using FluentCMS.Admin.Plugins;
-using FluentCMS.Admin.Tests.Plugins;
+using FluentCMS.Admin.Plugins.Careless;
 
-// The test assembly as a careless admin half: each declaration below is one the manifest check must name.
 [assembly: FluentCmsAdminPlugin(typeof(CarelessPlugin))]
 
-namespace FluentCMS.Admin.Tests.Plugins;
+namespace FluentCMS.Admin.Plugins.Careless;
 
-[FluentCmsAdminPlugin("careless")]
+[FluentCmsAdminPlugin("system", AdminRange = "soon")]
 public sealed class CarelessPlugin;
 
-[AdminPage("/careless")]
-[AdminPage("/careless/other")]
+[AdminPage("/system/careless")]
+[AdminPage("/system/careless/other")]
 [AdminMenuItem("Careless.Pages")]
 [SettingsPage("careless")]
 [DashboardWidget("Careless.Widget")]

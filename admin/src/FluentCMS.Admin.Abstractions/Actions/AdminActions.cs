@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json.Nodes;
 using FluentCMS.Admin.Api;
@@ -6,11 +7,17 @@ using FluentCMS.Admin.Plugins;
 namespace FluentCMS.Admin.Actions;
 
 /// <summary>
-/// What the actions of an admin half share. An action is a class the provider of its half creates, so its constructor
-/// takes the half's services and the admin's.
+/// What the actions of an admin half share: <see cref="EntryActionBase"/>, <see cref="BulkActionBase"/> and
+/// <see cref="FieldActionBase"/>, which a half derives from. An action is a class the provider of its half creates, so its
+/// constructor takes the half's services and the admin's.
 /// </summary>
 public abstract class AdminActionBase
 {
+    // An action is an entry, a bulk or a field action; the admin knows no other kind.
+    private protected AdminActionBase()
+    {
+    }
+
     /// <summary>Gets the text of the action's button or menu item, from the half's resources.</summary>
     public abstract string Label { get; }
 
@@ -22,6 +29,7 @@ public abstract class AdminActionBase
 /// The base class of an action on one entry, declared with <see cref="EntryActionAttribute"/>. The admin reads the entry
 /// again once the action has run, and shows an <see cref="ApiProblemException"/> the action throws.
 /// </summary>
+[SuppressMessage("ApiDesign", "RS0022:Constructor make noninheritable base class inheritable", Justification = "The base is closed to other kinds of action on purpose and has no protected member to expose.")]
 public abstract class EntryActionBase : AdminActionBase
 {
     /// <summary>Gets the content types the action is offered on, from its attribute; every type when empty.</summary>
@@ -49,6 +57,7 @@ public abstract class EntryActionBase : AdminActionBase
 /// The base class of an action on the selection of a list, declared with <see cref="BulkActionAttribute"/>. The admin
 /// confirms it, shows the progress it reports, and reads the list again once it has run.
 /// </summary>
+[SuppressMessage("ApiDesign", "RS0022:Constructor make noninheritable base class inheritable", Justification = "The base is closed to other kinds of action on purpose and has no protected member to expose.")]
 public abstract class BulkActionBase : AdminActionBase
 {
     /// <summary>Gets the content types the action is offered on, from its attribute; every type when empty.</summary>
@@ -71,6 +80,7 @@ public abstract class BulkActionBase : AdminActionBase
 /// The base class of an action on a field of a form, declared with <see cref="FieldActionAttribute"/>. It changes the
 /// form's draft only, through its result, and never saves.
 /// </summary>
+[SuppressMessage("ApiDesign", "RS0022:Constructor make noninheritable base class inheritable", Justification = "The base is closed to other kinds of action on purpose and has no protected member to expose.")]
 public abstract class FieldActionBase : AdminActionBase
 {
     /// <summary>Gets the field types the action is offered on, from its attribute; every type when empty.</summary>

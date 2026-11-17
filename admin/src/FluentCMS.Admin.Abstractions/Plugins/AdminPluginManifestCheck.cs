@@ -17,6 +17,12 @@ public static class AdminPluginManifestCheck
 {
     private const string Reflects = "Reads every type of the assembly; for tests and build steps, not for a trimmed app.";
 
+    // The first segments of the admin's own routes (specification 3.2), which no plugin may be named after.
+    private static readonly HashSet<string> ReservedSegments = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "content", "settings", "account", "users", "roles", "api-keys", "members", "sites", "plugins", "jobs", "system", "authentication",
+    };
+
     /// <summary>The manifest the attributes of an assembly declare, its contributions in the order of their classes' names.</summary>
     /// <param name="assembly">The assembly of the half.</param>
     /// <returns>The manifest.</returns>
@@ -48,7 +54,11 @@ public static class AdminPluginManifestCheck
             try
             {
                 var manifest = AdminPluginManifestJson.Read(manifestJson);
-                problems.AddRange(Unreadable(manifestJson));
+                if (WritesVersionZero(manifestJson))
+                {
+                    problems.Add($"manifestVersion is 0 in the manifest and this contract reads {AdminPluginManifest.CurrentManifestVersion}");
+                }
+
                 problems.AddRange(Compare(manifest, declared));
             }
             catch (JsonException unreadable)
@@ -79,6 +89,16 @@ public static class AdminPluginManifestCheck
         CompareMember(differences, "version", declared.Version, manifest.Version);
         CompareMember(differences, "adminRange", declared.AdminRange, manifest.AdminRange);
         CompareMember(differences, "assembly", declared.Assembly, manifest.Assembly);
+        NullEntries(differences, "pages", manifest.Pages);
+        NullEntries(differences, "menuItems", manifest.MenuItems);
+        NullEntries(differences, "settingsPages", manifest.SettingsPages);
+        NullEntries(differences, "fieldEditors", manifest.FieldEditors);
+        NullEntries(differences, "listCells", manifest.ListCells);
+        NullEntries(differences, "entryActions", manifest.EntryActions);
+        NullEntries(differences, "bulkActions", manifest.BulkActions);
+        NullEntries(differences, "fieldActions", manifest.FieldActions);
+        NullEntries(differences, "widgets", manifest.Widgets);
+        NullEntries(differences, "services", manifest.Services);
         CompareItems(differences, Items(declared), Items(manifest));
         return differences;
     }
@@ -123,6 +143,21 @@ public static class AdminPluginManifestCheck
             return null;
         }
 
+        if (ReservedSegments.Contains(plugin.Name))
+        {
+            problems.Add($"the plugin's name '{plugin.Name}' is a reserved first segment of the admin's routes");
+        }
+
+        if (plugin.AdminRange is null)
+        {
+            problems.Add($"{pluginType.FullName} names no AdminRange, the range of FluentCMS.Admin.Abstractions the half was built for");
+        }
+        else if (!AdminVersionRange.TryParse(plugin.AdminRange, out _))
+        {
+            problems.Add($"AdminRange '{plugin.AdminRange}' of {pluginType.FullName} is not a range of versions, such as [1.0.0,2.0.0)");
+        }
+
+        var root = "/" + plugin.Name;
         if (!typeof(IAdminPlugin).IsAssignableFrom(pluginType))
         {
             problems.Add($"{pluginType.FullName} does not implement IAdminPlugin");
@@ -149,6 +184,11 @@ public static class AdminPluginManifestCheck
                 if (!routes.Contains(page.Route))
                 {
                     problems.Add($"page '{page.Route}' of {name}: the component has no @page of that route, so the router cannot find it");
+                }
+
+                if (!page.Route.Equals(root, StringComparison.OrdinalIgnoreCase) && !page.Route.StartsWith(root + "/", StringComparison.OrdinalIgnoreCase))
+                {
+                    problems.Add($"page '{page.Route}' of {name}: the route is not {root} or below it");
                 }
 
                 pages.Add(new AdminManifestPage { Type = name, Route = page.Route, Permission = page.Permission });
@@ -263,41 +303,24 @@ public static class AdminPluginManifestCheck
         return manifest;
     }
 
-    // What the reader takes without a word and a half's own file should not hold: a version of 0, which reads as absent, and
-    // a section or a size the contract does not know, which reads as the first.
-    private static List<string> Unreadable(string manifestJson)
+    // A version of 0 reads as an absent one, so the text is asked.
+    private static bool WritesVersionZero(string manifestJson)
     {
-        var found = new List<string>();
         using var document = JsonDocument.Parse(manifestJson, new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
-        var root = document.RootElement;
-        if (root.TryGetProperty("manifestVersion", out var version) && version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var number) && number == 0)
-        {
-            found.Add($"manifestVersion is 0 in the manifest and this contract reads {AdminPluginManifest.CurrentManifestVersion}");
-        }
-
-        foreach (var (list, member, key, kind, known) in new (string, string, string, string, Func<string?, bool>)[]
-        {
-            ("menuItems", "section", "label", "menu item", ManifestNames.IsSection),
-            ("widgets", "size", "title", "widget", ManifestNames.IsSize),
-        })
-        {
-            if (!root.TryGetProperty(list, out var items) || items.ValueKind != JsonValueKind.Array)
-            {
-                continue;
-            }
-
-            foreach (var item in items.EnumerateArray().Where(item => item.ValueKind == JsonValueKind.Object))
-            {
-                if (item.TryGetProperty(member, out var value) && !(value.ValueKind == JsonValueKind.String && known(value.GetString())))
-                {
-                    var name = item.TryGetProperty(key, out var text) && text.ValueKind == JsonValueKind.String ? text.GetString() : null;
-                    found.Add($"{kind} {Quote(name)}: {member} is {value.GetRawText()} in the manifest, which this contract does not know");
-                }
-            }
-        }
-
-        return found;
+        return document.RootElement.TryGetProperty("manifestVersion", out var version) && version.ValueKind == JsonValueKind.Number && version.TryGetInt32(out var number) && number == 0;
     }
+
+    private static void NullEntries<T>(List<string> differences, string list, IReadOnlyList<T> entries)
+        where T : class
+    {
+        if (entries.Any(entry => entry is null))
+        {
+            differences.Add($"{list} holds a null in the manifest");
+        }
+    }
+
+    private static IEnumerable<T> Present<T>(IReadOnlyList<T> entries)
+        where T : class => entries.Where(entry => entry is not null);
 
     private static void Require<TBase>(Type type, string contribution, List<string> problems)
     {
@@ -310,23 +333,23 @@ public static class AdminPluginManifestCheck
     // Every contribution of a manifest in one shape: its kind, its class, the member that names it, and its other members.
     private static List<Item> Items(AdminPluginManifest manifest) =>
     [
-        .. manifest.Pages.Select(page => new Item("page", page.Type, "route", page.Route, [("permission", page.Permission)])),
-        .. manifest.MenuItems.Select(item => new Item("menu item", item.Type, "label", item.Label,
+        .. Present(manifest.Pages).Select(page => new Item("page", page.Type, "route", page.Route, [("permission", page.Permission)])),
+        .. Present(manifest.MenuItems).Select(item => new Item("menu item", item.Type, "label", item.Label,
         [
             ("route", item.Route), ("section", ManifestNames.Of(item.Section)), ("icon", item.Icon), ("order", Text(item.Order)), ("permission", item.Permission),
         ])),
-        .. manifest.SettingsPages.Select(page => new Item("settings page", page.Type, "area", page.Area, [])),
-        .. manifest.FieldEditors.Select(editor => new Item("field editor", editor.Type, "fieldType", editor.FieldType, [])),
-        .. manifest.ListCells.Select(cell => new Item("list cell", cell.Type, "fieldType", cell.FieldType, [])),
-        .. manifest.EntryActions.Select(action => new Item("entry action", action.Type, "name", action.Name,
+        .. Present(manifest.SettingsPages).Select(page => new Item("settings page", page.Type, "area", page.Area, [])),
+        .. Present(manifest.FieldEditors).Select(editor => new Item("field editor", editor.Type, "fieldType", editor.FieldType, [])),
+        .. Present(manifest.ListCells).Select(cell => new Item("list cell", cell.Type, "fieldType", cell.FieldType, [])),
+        .. Present(manifest.EntryActions).Select(action => new Item("entry action", action.Type, "name", action.Name,
             [("contentTypes", Text(action.ContentTypes)), ("permission", action.Permission)])),
-        .. manifest.BulkActions.Select(action => new Item("bulk action", action.Type, "name", action.Name,
+        .. Present(manifest.BulkActions).Select(action => new Item("bulk action", action.Type, "name", action.Name,
             [("contentTypes", Text(action.ContentTypes)), ("permission", action.Permission)])),
-        .. manifest.FieldActions.Select(action => new Item("field action", action.Type, "name", action.Name,
+        .. Present(manifest.FieldActions).Select(action => new Item("field action", action.Type, "name", action.Name,
             [("fieldTypes", Text(action.FieldTypes)), ("permission", action.Permission)])),
-        .. manifest.Widgets.Select(widget => new Item("widget", widget.Type, "title", widget.Title,
+        .. Present(manifest.Widgets).Select(widget => new Item("widget", widget.Type, "title", widget.Title,
             [("size", ManifestNames.Of(widget.Size)), ("permission", widget.Permission), ("role", widget.Role)])),
-        .. manifest.Services.Select(service => new Item("service", service.Type, "service", service.Service, [])),
+        .. Present(manifest.Services).Select(service => new Item("service", service.Type, "service", service.Service, [])),
     ];
 
     private static void CompareItems(List<string> differences, List<Item> declared, List<Item> manifest)
