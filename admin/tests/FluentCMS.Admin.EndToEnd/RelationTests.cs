@@ -49,6 +49,9 @@ public sealed class RelationTests(EndToEndHost host) : BrowserTest(host)
         await DialogButton(tags, "Content.Relation.Choose").ClickAsync();
         await Expect(Labels(tab, "tags")).ToHaveTextAsync(["dotnet", "release notes"]);
 
+        // The closed picker gives focus back to the button that opened it, on the library's own timer; until it has, a key
+        // pressed on an entry can land on that button instead.
+        await Expect(FieldButton(tab, "tags", "Content.Relation.ChooseEntries")).ToBeFocusedAsync();
         await Entry(tab, "tags", "release notes").FocusAsync();
         await tab.Page.Keyboard.PressAsync("Alt+ArrowUp");
         await Expect(Labels(tab, "tags")).ToHaveTextAsync(["release notes", "dotnet"]);
