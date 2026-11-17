@@ -986,14 +986,17 @@ Tracking issue: [#3239]. Created on 16 Nov 2026, after `feature/a1` was merged. 
 
 ### 10.4 A3 Plugin contract and media
 
+Tracking issue: [#3294]. Created on 17 Nov 2026, after `feature/a2` was merged. The issues run on `feature/a3`, cut from `main`, in four waves: A-18, then A-19 and A-23, then A-21 and A-22, then A-20 and A-50.
+
 | Id | Issue | Section | Rows | Size | Needs |
 | --- | --- | --- | --- | --- | --- |
-| A-18 | `FluentCMS.Admin.Abstractions`: manifest, registration and contributions of an admin half | 5.1 | 8.1, 8.5, 8.7 to 8.9, d12 | M | |
-| A-19 | Lazy loading per plugin assembly with the build-time manifest, gated by enablement and access | 2.6 | 8.15, d29 | M | |
-| A-20 | Media admin half: field editor, list cell and the media picker | 5.2 | 3.10, 1.4, 5.7 | M | #3100, #3103, #3104 |
-| A-21 | Media library: grid and list, folders, upload by drop and paste, metadata, private flag, usage, replace, presets | 4.14 | 3.15, 5.2 to 5.4, 5.10, 5.11 | L | #3100, #3103, #3104 |
-| A-22 | Home page with plugin dashboard widgets | 5.1 | 8.9 | S | #3096 |
-| A-23 | Admin half in the `fluentcms-plugin` template | 5.1, 6.2 | 8.17 | S | |
+| A-18 [#3287] | `FluentCMS.Admin.Abstractions`: manifest, registration and contributions of an admin half | 5.1 | 8.1, 8.5, 8.7 to 8.9, d12 | M | |
+| A-19 [#3288] | Lazy loading per plugin assembly with the manifest, gated by enablement and access; creates the media half as a stub | 2.6 | 8.15, d29 | M | |
+| A-20 [#3289] | Media admin half: field editor, list cell and the media picker | 5.2 | 3.10, 1.4, 5.7 | M | #3100, #3103, #3104 |
+| A-21 [#3290] | Media library: grid and list, folders, search, upload by drop and paste | 4.14 | 3.15, 5.2, 5.4 | M | #3100, #3103, #3104 |
+| A-50 [#3291] | Asset detail: metadata per locale, focal point, private flag, usage, replace, and presets | 4.14, 5.2 | 5.3, 5.7, 5.10, 5.11 | M | #3100, #3103, #3104 |
+| A-22 [#3292] | Home page with plugin dashboard widgets | 5.1 | 8.9 | S | #3096 |
+| A-23 [#3293] | Admin half in the `fluentcms-plugin` template | 5.1, 6.2 | 8.17 | S | |
 
 ### 10.5 A4 Rich text and blocks
 
@@ -1039,7 +1042,7 @@ Tracking issue: [#3239]. Created on 16 Nov 2026, after `feature/a1` was merged. 
 | A-46 | Admin guides in `docs/`: hosting, configuration, writing an admin half | 5.1, 6 | 8.1 | S | |
 | A-47 | Release of the admin with a preview of the packages | 6 | 10.2, 11.11 | S | |
 
-49 issues: the 47 of the draft, and A-48 and A-49, split from A-12 and A-13 when the document was approved (AQ17) and numbered after A-47 so that no other reference moves. Should rows get issues when their milestone is planned, not now. The one exception is A-40, which takes the members and groups pages of row 4.22 early, for the reason AQ11 gives.
+50 issues: the 47 of the draft, A-48 and A-49, split from A-12 and A-13 when the document was approved (AQ17), and A-50, split from A-21 when A3 was planned (AQ18), each numbered after A-47 so that no other reference moves. Should rows get issues when their milestone is planned, not now. The one exception is A-40, which takes the members and groups pages of row 4.22 early, for the reason AQ11 gives.
 
 ## 11. Decisions on the open questions
 
@@ -1064,6 +1067,7 @@ The draft asked sixteen questions, each with a recommendation. All were decided 
 | AQ15 | The published view of the preview needs the front end's URL without a token, and #3099 gives the URL only in the token's answer. | Settled by #3099, as the draft said: the token's answer carries `url` with the token and `publishedUrl` without it, filled from the same template with the published row of the same locale, or null when that locale has no published row. |
 | AQ16 | Where do the plugin admin halves live: under `admin/src/plugins/`, or beside their server halves in `src/plugins/`? | As recommended: under `admin/` (3), so that a path filter tells admin work from backend work and the admin's CI shard builds what it tests. The shared ID prefix (row 8.1) keeps the two halves together in NuGet. |
 | AQ17 | A-12 and A-13 were L and both on the critical path of A2, and the sizing rule of section 10 says an L issue probably splits during implementation. | Split when the document was approved, so that the lanes of A2 stay parallel: A-12 keeps columns, sort, paging, selection and row actions, and A-48 takes filters, search and badges; A-13 keeps layout, defaults, save and error mapping, and A-49 takes conditions, inline validation, changeable fields, the dirty guard, shortcuts and the conflict dialog (10.3). The new issues are numbered after A-47 so that no other reference moves. |
+| AQ18 | A-21 was L: the library, its uploads, the asset detail and the presets in one issue, with the picker of A-20 waiting for its browse component. | Added and decided on 17 Nov 2026, when A3 was planned. Split, as AQ17 did: A-21 keeps browsing, folders, search and upload, and A-50 takes the asset detail (metadata, focal point, private flag, usage, replace) and the presets (10.4). A-19 creates the media half as a stub so that both start from an existing project. Upload shows a state per file and not a progress per byte, since the browser's fetch reports none and the access token stays in C#. |
 
 [#3050]: https://github.com/fluentcms/FluentCMS/issues/3050
 [#3094]: https://github.com/fluentcms/FluentCMS/issues/3094
@@ -1102,3 +1106,11 @@ The draft asked sixteen questions, each with a recommendation. All were decided 
 [#3237]: https://github.com/fluentcms/FluentCMS/issues/3237
 [#3238]: https://github.com/fluentcms/FluentCMS/issues/3238
 [#3239]: https://github.com/fluentcms/FluentCMS/issues/3239
+[#3287]: https://github.com/fluentcms/FluentCMS/issues/3287
+[#3288]: https://github.com/fluentcms/FluentCMS/issues/3288
+[#3289]: https://github.com/fluentcms/FluentCMS/issues/3289
+[#3290]: https://github.com/fluentcms/FluentCMS/issues/3290
+[#3291]: https://github.com/fluentcms/FluentCMS/issues/3291
+[#3292]: https://github.com/fluentcms/FluentCMS/issues/3292
+[#3293]: https://github.com/fluentcms/FluentCMS/issues/3293
+[#3294]: https://github.com/fluentcms/FluentCMS/issues/3294
