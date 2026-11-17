@@ -39,6 +39,10 @@ public sealed class LocalizationTests : AdminTestContext
         Services.GetRequiredService<NavigationManager>().NavigateTo(Concrete(route, culture));
 
         var app = Render<AdminApp>();
+        if (route == ListRoute)
+        {
+            app.WaitForAssertion(() => app.Find(".cms-data-grid-message"));
+        }
 
         // FocusOnNavigate does nothing on a page without a heading.
         app.FindAll("h1").ShouldHaveSingleItem();
@@ -126,9 +130,23 @@ public sealed class LocalizationTests : AdminTestContext
     }
 
     // A route's parameters as data the page shows, marked as a resource is: a type name, and an id without letters.
-    private static string Concrete(string route, string culture) => route
-        .Replace("{Type}", PseudoCulture.Transform("article", culture == PseudoCulture.RightToLeft), StringComparison.Ordinal)
-        .Replace("{Id:guid}", "00000000-0000-0000-0000-000000000001", StringComparison.Ordinal);
+    private const string ListRoute = "/content/{Type}";
+
+    // The list is drawn for a collection of the schema, whose display name, the data of the fake, is marked as a resource is;
+    // the other content routes name a type the schema lacks.
+    private string Concrete(string route, string culture)
+    {
+        if (route == ListRoute)
+        {
+            Management.SetTypes(FakeManagementServer.MainSite, FakeManagementServer.Type("article", displayName: PseudoCulture.Transform("Articles", culture == PseudoCulture.RightToLeft)));
+            Management.Entries["article"] = [];
+            return "/content/article";
+        }
+
+        return route
+            .Replace("{Type}", PseudoCulture.Transform("article", culture == PseudoCulture.RightToLeft), StringComparison.Ordinal)
+            .Replace("{Id:guid}", "00000000-0000-0000-0000-000000000001", StringComparison.Ordinal);
+    }
 
     [Fact]
     public void EveryRoutablePageIsKeptFromTheTrimmer()

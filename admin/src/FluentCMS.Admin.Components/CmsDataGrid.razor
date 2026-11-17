@@ -1,53 +1,148 @@
 @namespace FluentCMS.Admin.Components
-@typeparam TItem
+@typeparam TItem where TItem : notnull
 @attribute [CascadingTypeParameter(nameof(TItem))]
-@implements IHandleEvent
 @inject ICmsTextSource Texts
 
+@* A table of the set's own rather than the library's grid, whose cells are each a tab stop and whose selection column has
+   no name or state (#3178). A row is one tab stop: its checkbox when rows can be selected, otherwise the row; Space toggles
+   the checkbox, Enter activates the row, and the up and down arrows move to the row above or below. Cell content should
+   not be focusable, so that the row stays one tab stop. *@
+@{
+    var ordered = Ordered;
+    var displayed = Displayed;
+    var anySorts = ordered.Any(column => column.CanSort);
+}
 <div class="cms-data-grid">
-    @* The columns register here and render nothing; the grid renders them itself, since the library collects only direct columns. *@
+    @* The columns register here and render nothing; the grid renders their cells. *@
     <CascadingValue Value="this" IsFixed="true">
         @ChildContent
     </CascadingValue>
-    <FluentDataGrid TGridItem="TItem"
-                    @ref="_grid"
-                    ItemsProvider="@ProvideItemsAsync"
-                    aria-label="@Label">
-        @if (SelectionMode != CmsSelectionMode.None)
-        {
-            <SelectColumn TGridItem="TItem"
-                          SelectMode="@(SelectionMode == CmsSelectionMode.One ? DataGridSelectMode.Single : DataGridSelectMode.Multiple)"
-                          SelectedItems="@SelectedItems"
-                          SelectedItemsChanged="@OnSelectedItemsChangedAsync" />
-        }
-        @foreach (var column in _columns)
-        {
-            <TemplateColumn TGridItem="TItem"
-                            @key="@column.ColumnId"
-                            Title="@column.Title"
-                            ColumnId="@column.ColumnId"
-                            Sortable="@(column.SortKey is not null)">
-                @column.RenderCell(context)
-            </TemplateColumn>
-        }
-    </FluentDataGrid>
-    @* Sorting and selection are announced here, since the grid itself announces neither (spec 4.18). *@
+    <table role="grid"
+           aria-label="@Label"
+           aria-busy="@(Loading ? "true" : null)"
+           aria-multiselectable="@(SelectionMode == CmsSelectionMode.Many ? "true" : null)"
+           aria-rowcount="@RowCount">
+        <thead>
+            <tr aria-rowindex="@(RowCount is null ? null : 1)">
+                @if (SelectionMode != CmsSelectionMode.None)
+                {
+                    <th scope="col" class="cms-data-grid-select">
+                        @if (SelectionMode == CmsSelectionMode.Many)
+                        {
+                            @* A button with the checkbox role, since a native checkbox shows the mixed state only through a
+                               script; a button takes Space and Enter by itself. *@
+                            <button type="button"
+                                    role="checkbox"
+                                    class="cms-data-grid-checkbox cms-data-grid-all"
+                                    aria-label="@Texts.Text(CmsStrings.GridSelectAll)"
+                                    aria-checked="@AllState"
+                                    disabled="@(Items.Count == 0)"
+                                    @onclick="@(() => SelectAllAsync(AllState != "true"))">
+                                <span aria-hidden="true">@(AllState switch { "true" => "✓", "mixed" => "–", _ => null })</span>
+                            </button>
+                        }
+                    </th>
+                }
+                @foreach (var column in ordered)
+                {
+                    var level = SortLevel(column);
+                    <th @key="column" scope="col" aria-sort="@AriaSort(column, level)">
+                        @if (column.CanSort)
+                        {
+                            <button type="button"
+                                    class="cms-data-grid-sort"
+                                    aria-describedby="@_sortHintId"
+                                    @onkeydown="@(e => _shiftEnter = e.Key == "Enter" && e.ShiftKey)"
+                                    @onclick="@(e => SortByAsync(column, e.ShiftKey))">
+                                <span>@column.Title</span>
+                                @if (level is { } key)
+                                {
+                                    <span class="cms-data-grid-sort-mark" aria-hidden="true">@(CurrentSort[key].Descending ? "↓" : "↑")@(CurrentSort.Count > 1 ? (key + 1).ToString(CultureInfo.CurrentCulture) : null)</span>
+                                    @if (CurrentSort.Count > 1)
+                                    {
+                                        <span class="cms-visually-hidden">@Level(key)</span>
+                                    }
+                                }
+                            </button>
+                        }
+                        else
+                        {
+                            @column.Title
+                        }
+                    </th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @if (displayed.Count == 0)
+            {
+                <tr class="cms-data-grid-message">
+                    <td colspan="@ColumnCount">
+                        @if (Loading)
+                        {
+                            @(LoadingContent ?? (builder => builder.AddContent(0, Texts.Text(CmsStrings.GridLoading))))
+                        }
+                        else
+                        {
+                            @(EmptyContent ?? (builder => builder.AddContent(0, Texts.Text(CmsStrings.GridEmpty))))
+                        }
+                    </td>
+                </tr>
+            }
+            @for (var index = 0; index < displayed.Count; index++)
+            {
+                var position = index;
+                var item = displayed[index];
+                var selected = IsSelected(item);
+                <tr @key="item"
+                    tabindex="@(SelectionMode == CmsSelectionMode.None ? "0" : null)"
+                    aria-selected="@(SelectionMode == CmsSelectionMode.None ? null : selected ? "true" : "false")"
+                    aria-rowindex="@(RowCount is null ? null : RowOffset + index + 2)"
+                    class="@(selected ? "cms-data-grid-selected" : null)"
+                    @ref="_rows[item]"
+                    @onkeydown="@(e => OnRowKeyDownAsync(e, item, position))">
+                    @if (SelectionMode != CmsSelectionMode.None)
+                    {
+                        <td class="cms-data-grid-select">
+                            <input type="checkbox"
+                                   @ref="_checks[item]"
+                                   class="cms-data-grid-checkbox"
+                                   aria-label="@CmsStrings.Format(Texts.Text(CmsStrings.GridSelectRow), RowName(ordered, item, index))"
+                                   checked="@selected"
+                                   @onchange="@(e => ToggleAsync(item, e.Value is true))" />
+                        </td>
+                    }
+                    @foreach (var column in ordered)
+                    {
+                        <td @key="column">@column.RenderCell(item)</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (anySorts)
+    {
+        <span id="@_sortHintId" class="cms-visually-hidden">@Texts.Text(CmsStrings.GridSortHint)</span>
+    }
+    @* Sorting and selection are announced here, since a table announces neither (spec 4.18). *@
     <div role="status" class="cms-visually-hidden">@_status</div>
 </div>
 
 @code {
     private readonly List<CmsDataGridColumn<TItem>> _columns = [];
-    private FluentDataGrid<TItem>? _grid;
-    private IReadOnlyList<TItem>? _renderedItems;
+    private List<CmsSortKey> _ownSort = [];
     private string? _status;
-    private string? _sortedBy;
-    private bool _sortedAscending;
-    private int _parametersSet;
+    private readonly string _sortHintId = CmsIds.Next();
+    private bool _shiftEnter;
+    // A row keeps its element while its item stays, so the references are kept by item, and those of rows gone are dropped.
+    private readonly Dictionary<TItem, ElementReference> _rows = [];
+    private readonly Dictionary<TItem, ElementReference> _checks = [];
 
     // Names the grid for assistive technology.
     [Parameter, EditorRequired]
     public string Label { get; set; } = string.Empty;
 
+    // The rows; with a SortChanged, the rows as the caller sorted them, such as one page that a server read.
     [Parameter, EditorRequired]
     public IReadOnlyList<TItem> Items { get; set; } = [];
 
@@ -60,9 +155,64 @@
     [Parameter]
     public EventCallback<IReadOnlyList<TItem>> SelectedItemsChanged { get; set; }
 
+    // The sort the caller applied, first key first. With a SortChanged the caller sorts and the grid only shows the keys;
+    // without one the grid sorts the rows itself by the columns' SortKey.
+    [Parameter]
+    public IReadOnlyList<CmsSortKey> Sort { get; set; } = [];
+
+    // Raised with the sort the user asked for: a click sorts by the column alone, and Shift with a click adds it as a key.
+    [Parameter]
+    public EventCallback<IReadOnlyList<CmsSortKey>> SortChanged { get; set; }
+
+    // Raised by Enter on a row, its action, such as opening it.
+    [Parameter]
+    public EventCallback<TItem> OnRowActivated { get; set; }
+
+    // Names a row's checkbox; the first column's text when not given.
+    [Parameter]
+    public Func<TItem, string?>? RowLabel { get; set; }
+
+    // While set, the table is busy, and shows LoadingContent when it has no rows.
+    [Parameter]
+    public bool Loading { get; set; }
+
+    [Parameter]
+    public RenderFragment? LoadingContent { get; set; }
+
+    // Shown when there are no rows and nothing is loading.
+    [Parameter]
+    public RenderFragment? EmptyContent { get; set; }
+
+    // With paging by the caller: the number of rows of every page, and the number of rows before this page.
+    [Parameter]
+    public long? TotalItems { get; set; }
+
+    [Parameter]
+    public long RowOffset { get; set; }
+
     // The CmsDataGridColumn children.
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
+
+    private bool SortsOutside => SortChanged.HasDelegate;
+
+    private IReadOnlyList<CmsSortKey> CurrentSort => SortsOutside ? Sort : _ownSort;
+
+    // Columns of the same order keep the order they were added in, since OrderBy is stable.
+    private List<CmsDataGridColumn<TItem>> Ordered => [.. _columns.OrderBy(column => column.Order)];
+
+    private int ColumnCount => _columns.Count + (SelectionMode == CmsSelectionMode.None ? 0 : 1);
+
+    private long? RowCount => TotalItems is { } total ? total + 1 : null;
+
+    private string AllState => Items.Count(IsSelected) switch
+    {
+        0 => "false",
+        var count when count == Items.Count => "true",
+        _ => "mixed",
+    };
+
+    private IReadOnlyList<TItem> Displayed => SortsOutside || _ownSort.Count == 0 ? Items : SortedInMemory();
 
     internal void AddColumn(CmsDataGridColumn<TItem> column)
     {
@@ -74,78 +224,158 @@
     {
         if (_columns.Remove(column))
         {
+            _ownSort.RemoveAll(key => key.Column == column.ColumnName);
             StateHasChanged();
         }
     }
 
-    protected override async Task OnParametersSetAsync()
-    {
-        _parametersSet++;
-        CmsGuard.Named(Label, nameof(CmsDataGrid<TItem>), nameof(Label));
+    internal void ColumnChanged() => StateHasChanged();
 
-        if (_grid is not null && !ReferenceEquals(_renderedItems, Items))
+    protected override void OnParametersSet()
+    {
+        CmsGuard.Named(Label, nameof(CmsDataGrid<TItem>), nameof(Label));
+        foreach (var gone in _rows.Keys.Where(item => !Items.Contains(item)).ToList())
         {
-            await _grid.RefreshDataAsync();
+            _rows.Remove(gone);
+            _checks.Remove(gone);
         }
+    }
+
+    private bool IsSelected(TItem item) => SelectedItems.Contains(item, EqualityComparer<TItem>.Default);
+
+    private int? SortLevel(CmsDataGridColumn<TItem> column)
+    {
+        var sort = CurrentSort;
+        for (var index = 0; index < sort.Count; index++)
+        {
+            if (sort[index].Column == column.ColumnName)
+            {
+                return index;
+            }
+        }
+
+        return null;
+    }
+
+    // ARIA asks for aria-sort on one header at a time, so it marks the first key; the later keys are said in the button.
+    private string? AriaSort(CmsDataGridColumn<TItem> column, int? level) => level switch
+    {
+        0 => CurrentSort[0].Descending ? "descending" : "ascending",
+        _ when column.CanSort => "none",
+        _ => null,
+    };
+
+    private string Level(int key) => CmsStrings.Format(Texts.Text(CmsStrings.GridSortLevel), key + 1, CurrentSort.Count);
+
+    private string RowName(List<CmsDataGridColumn<TItem>> ordered, TItem item, int index) =>
+        RowLabel?.Invoke(item) ?? ordered.FirstOrDefault()?.Value?.Invoke(item) ?? (RowOffset + index + 1).ToString(CultureInfo.CurrentCulture);
+
+    // Shift with Enter adds a key as Shift with a click does; the click that Enter raises may not carry the Shift key.
+    private async Task SortByAsync(CmsDataGridColumn<TItem> column, bool adding)
+    {
+        adding |= _shiftEnter;
+        _shiftEnter = false;
+        var sort = CurrentSort.ToList();
+        var index = sort.FindIndex(key => key.Column == column.ColumnName);
+        if (adding)
+        {
+            if (index < 0)
+            {
+                sort.Add(new CmsSortKey(column.ColumnName));
+            }
+            else
+            {
+                sort[index] = sort[index] with { Descending = !sort[index].Descending };
+            }
+        }
+        else
+        {
+            sort = [index == 0 ? sort[0] with { Descending = !sort[0].Descending } : new CmsSortKey(column.ColumnName)];
+        }
+
+        _status = Announcement(sort);
+        if (SortsOutside)
+        {
+            await SortChanged.InvokeAsync(sort);
+        }
+        else
+        {
+            _ownSort = sort;
+        }
+    }
+
+    private string Announcement(IReadOnlyList<CmsSortKey> sort)
+    {
+        var keys = sort.Select(key =>
+        {
+            var title = _columns.Find(column => column.ColumnName == key.Column)?.Title ?? key.Column;
+            return CmsStrings.Format(Texts.Text(key.Descending ? CmsStrings.GridSortDescending : CmsStrings.GridSortAscending), title);
+        });
+        return CmsStrings.Format(Texts.Text(CmsStrings.GridSortedBy), string.Join(Texts.Text(CmsStrings.GridSortThen), keys));
     }
 
     // In-memory sorting through Enumerable, so that no FluentCMS assembly needs IQueryable (spec 3.1, trimming).
-    private ValueTask<GridItemsProviderResult<TItem>> ProvideItemsAsync(GridItemsProviderRequest<TItem> request)
+    private List<TItem> SortedInMemory()
     {
-        _renderedItems = Items;
-        IEnumerable<TItem> items = Items;
-        var sort = request.SortColumns.Count > 0 ? request.SortColumns[0] : null;
-
-        var column = _columns.Find(c => c.ColumnId == sort?.Column.ColumnId);
-        if (sort is not null && column?.SortKey is { } key)
+        IOrderedEnumerable<TItem>? sorted = null;
+        foreach (var key in _ownSort)
         {
-            items = sort.Ascending ? items.OrderBy(key) : items.OrderByDescending(key);
-            AnnounceSort(column.Title, sort.Ascending);
+            if (_columns.Find(column => column.ColumnName == key.Column)?.SortKey is not { } by)
+            {
+                continue;
+            }
+
+            sorted = (sorted, key.Descending) switch
+            {
+                (null, false) => Items.OrderBy(by),
+                (null, true) => Items.OrderByDescending(by),
+                (_, false) => sorted.ThenBy(by),
+                (_, true) => sorted.ThenByDescending(by),
+            };
         }
 
-        var page = items.Skip(request.StartIndex);
-        if (request.Count is { } count)
-        {
-            page = page.Take(count);
-        }
-
-        return ValueTask.FromResult(GridItemsProviderResult.From(page.ToList(), Items.Count));
+        return [.. sorted ?? Items.AsEnumerable()];
     }
 
-    private void AnnounceSort(string title, bool ascending)
+    private async Task OnRowKeyDownAsync(KeyboardEventArgs e, TItem item, int position)
     {
-        if (_sortedBy == title && _sortedAscending == ascending)
+        switch (e.Key)
         {
-            return;
-        }
+            case "Enter" when OnRowActivated.HasDelegate:
+                await OnRowActivated.InvokeAsync(item);
+                break;
+            case "ArrowDown" or "ArrowUp":
+                var displayed = Displayed;
+                var target = position + (e.Key == "ArrowDown" ? 1 : -1);
+                if (target >= 0 && target < displayed.Count
+                    && (SelectionMode == CmsSelectionMode.None ? _rows : _checks).TryGetValue(displayed[target], out var element))
+                {
+                    await element.FocusAsync();
+                }
 
-        _sortedBy = title;
-        _sortedAscending = ascending;
-        _status = CmsStrings.Format(Texts.Text(ascending ? CmsStrings.GridSortedAscending : CmsStrings.GridSortedDescending), title);
-        _ = InvokeAsync(StateHasChanged);
+                break;
+        }
     }
 
-    // Events re-render this grid only when asked to: a bound parent re-renders it anyway, and a second render in the same
-    // event re-creates the library's cells, which drops keyboard focus to the document.
-    Task IHandleEvent.HandleEventAsync(EventCallbackWorkItem callback, object? arg) => callback.InvokeAsync(arg);
-
-    private async Task OnSelectedItemsChangedAsync(IEnumerable<TItem> items)
+    private Task ToggleAsync(TItem item, bool selected)
     {
-        SelectedItems = items.ToList();
-        _status = CmsStrings.Format(Texts.Text(CmsStrings.GridRowsSelected), SelectedItems.Count);
-        var parametersSet = _parametersSet;
-        await SelectedItemsChanged.InvokeAsync(SelectedItems);
-        _ = RenderUnlessPassedBackAsync(parametersSet);
+        IReadOnlyList<TItem> next = SelectionMode == CmsSelectionMode.One
+            ? selected ? [item] : []
+            : selected
+                ? [.. SelectedItems.Where(other => !EqualityComparer<TItem>.Default.Equals(other, item)), item]
+                : [.. SelectedItems.Where(other => !EqualityComparer<TItem>.Default.Equals(other, item))];
+        return SelectAsync(next);
     }
 
-    // Runs after the event, since the library selects while it walks its columns and a render inside that walk throws. By then
-    // a bound parent has passed the selection back; without one, the grid renders its status itself.
-    private async Task RenderUnlessPassedBackAsync(int parametersSet)
+    // Selecting all keeps rows of other pages that the caller passed as selected.
+    private Task SelectAllAsync(bool selected) => SelectAsync(selected
+        ? [.. SelectedItems.Where(other => !Items.Contains(other, EqualityComparer<TItem>.Default)), .. Items]
+        : [.. SelectedItems.Where(other => !Items.Contains(other, EqualityComparer<TItem>.Default))]);
+
+    private async Task SelectAsync(IReadOnlyList<TItem> items)
     {
-        await Task.Yield();
-        if (_parametersSet == parametersSet)
-        {
-            await InvokeAsync(StateHasChanged);
-        }
+        SelectedItems = items;
+        _status = CmsStrings.Format(Texts.Text(CmsStrings.GridRowsSelected), items.Count);
+        await SelectedItemsChanged.InvokeAsync(items);
     }
 }

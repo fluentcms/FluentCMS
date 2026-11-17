@@ -177,22 +177,11 @@ public sealed class CmsWiringTests : ComponentTestContext
     [Fact]
     public void TheLibrarysTextsComeThroughTheTextSourceOrStayTheLibrarysOwn()
     {
-        Services.AddSingleton<ICmsTextSource>(new BracketedTexts("DataGrid_SelectColumn_RowUnchecked"));
+        Services.AddSingleton<ICmsTextSource>(new BracketedTexts("Tabs_MoreItems"));
+        var library = Services.GetRequiredService<IFluentLocalizer>();
 
-        var grid = Render<CmsDataGrid<string>>(p => p
-            .Add(x => x.Label, "Articles")
-            .Add(x => x.Items, ["a"])
-            .Add(x => x.SelectionMode, CmsSelectionMode.Many)
-            .Add(x => x.ChildContent, (RenderFragment)(b =>
-            {
-                b.OpenComponent<CmsDataGridColumn<string>>(0);
-                b.AddAttribute(1, nameof(CmsDataGridColumn<string>.Title), "Title");
-                b.AddAttribute(2, nameof(CmsDataGridColumn<string>.Value), (Func<string, string>)(a => a));
-                b.CloseComponent();
-            })));
-
-        grid.WaitForAssertion(() => grid.Markup.ShouldContain("[DataGrid_SelectColumn_RowUnchecked]"));
-        grid.Markup.ShouldContain("No rows are selected");
+        library["Tabs_MoreItems", 3].ShouldBe("[Tabs_MoreItems]");
+        library["TreeItem_LoadingMessage"].ShouldBe("Loading...");
     }
 
     // The set's resources hold some of the library's texts under the library's keys (with an underscore, which the set's own

@@ -35,6 +35,7 @@ public abstract class AdminTestContext : BunitContext
         Document = JSInterop.SetupModule(DocumentInterop.ModulePath);
         Document.SetupVoid("setLanguage", _ => true).SetVoidResult();
         Document.SetupVoid("setProperty", _ => true).SetVoidResult();
+        Document.SetupVoid("focusHeading", _ => true).SetVoidResult();
 
         // HeadOutlet reads the title the page had before the app started.
         JSInterop.Setup<string>("Blazor._internal.PageTitle.getAndRemoveExistingTitle").SetResult("");

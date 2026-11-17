@@ -1,6 +1,7 @@
 @namespace FluentCMS.Admin.Components
 
-<FluentButton Type="@(Submit ? ButtonType.Submit : ButtonType.Button)"
+<FluentButton @ref="_button"
+              Type="@(Submit ? ButtonType.Submit : ButtonType.Button)"
               Appearance="@ToLibrary(Appearance)"
               Disabled="@Disabled"
               IconStart="@(IconOnly || Icon is not { } icon ? null : CmsIcons.Get(icon))"
@@ -42,7 +43,12 @@
     [Parameter]
     public EventCallback OnClick { get; set; }
 
+    private FluentButton? _button;
+
     private bool IconOnly => ChildContent is null && Icon is not null;
+
+    // Moves focus to the button, as after an action that moved or disabled the control that had it.
+    public ValueTask FocusAsync() => _button is null ? ValueTask.CompletedTask : _button.Element.FocusAsync();
 
     protected override void OnParametersSet()
     {

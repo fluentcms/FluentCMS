@@ -1,5 +1,5 @@
 @namespace FluentCMS.Admin.Components
-@typeparam TItem
+@typeparam TItem where TItem : notnull
 @implements IDisposable
 
 @code {
@@ -9,6 +9,14 @@
     [Parameter, EditorRequired]
     public string Title { get; set; } = string.Empty;
 
+    // Names the column in the grid's sort; a generated name when none is given.
+    [Parameter]
+    public string? Name { get; set; }
+
+    // The place of the column among the others, lowest first; columns of the same order keep the order they were added in.
+    [Parameter]
+    public int Order { get; set; }
+
     // The text of a cell; ChildContent takes precedence when both are set.
     [Parameter]
     public Func<TItem, string?>? Value { get; set; }
@@ -16,11 +24,20 @@
     [Parameter]
     public RenderFragment<TItem>? ChildContent { get; set; }
 
-    // Makes the column sortable by the key it returns.
+    // Makes the column sortable in memory by the key it returns.
     [Parameter]
     public Func<TItem, IComparable?>? SortKey { get; set; }
 
-    internal string ColumnId { get; } = CmsIds.Next();
+    // Makes the column sortable by a grid whose caller sorts, as a server does.
+    [Parameter]
+    public bool Sortable { get; set; }
+
+    private readonly string _generatedName = CmsIds.Next();
+    private (int Order, string Title, bool CanSort)? _drawn;
+
+    internal string ColumnName => string.IsNullOrEmpty(Name) ? _generatedName : Name;
+
+    internal bool CanSort => Sortable || SortKey is not null;
 
     internal RenderFragment RenderCell(TItem item) => ChildContent?.Invoke(item) ?? (builder => builder.AddContent(0, Value?.Invoke(item)));
 
@@ -32,6 +49,19 @@
         }
 
         Grid.AddColumn(this);
+    }
+
+    // The grid draws the header, so a change of what it shows asks it to render again. Only a change does: the grid passes the
+    // columns their parameters on each of its renders.
+    protected override void OnParametersSet()
+    {
+        var drawn = (Order, Title, CanSort);
+        if (_drawn is { } before && before != drawn)
+        {
+            Grid?.ColumnChanged();
+        }
+
+        _drawn = drawn;
     }
 
     public void Dispose() => Grid?.RemoveColumn(this);

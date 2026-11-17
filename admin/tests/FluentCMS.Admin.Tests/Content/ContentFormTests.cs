@@ -350,7 +350,9 @@ public sealed class ContentFormTests : AdminTestContext
         var app = Load("content/article");
 
         app.Find("main h1").TextContent.ShouldBe("Article");
-        app.Find("main a[href='content/article/new']").TextContent.ShouldBe("New entry");
+        app.FindAll("main fluent-button").Single(button => button.TextContent.Trim() == "New").Click();
+
+        Navigation.Uri.ShouldEndWith("content/article/new");
     }
 
     [Theory]
@@ -364,8 +366,7 @@ public sealed class ContentFormTests : AdminTestContext
         app.FindAll("fluent-button").Where(button => button.TextContent.Trim() == "Save").ShouldBeEmpty();
     }
 
-    private int HeadingFocuses() =>
-        JSInterop.Invocations.Count(call => call.Identifier == "Blazor._internal.domWrapper.focusBySelector" && (string?)call.Arguments[0] == "h1");
+    private int HeadingFocuses() => Document.Invocations.Count(call => call.Identifier == "focusHeading");
 
     private string? Focused() =>
         JSInterop.Invocations.Where(call => call.Identifier == "Blazor._internal.domWrapper.focus").Select(call => call.Arguments[0]).LastOrDefault() is ElementReference element ? element.Id : null;

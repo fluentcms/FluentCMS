@@ -1,5 +1,6 @@
 @* The site switcher, from GET /me/sites (spec 4.1); a user with one site has nothing to switch. Switching keeps the route when
-   its type exists in the new site, and otherwise goes to the start page. *@
+   its type exists in the new site, and otherwise goes to the start page; an entry of a type that is not global belongs to
+   the site before, so its route goes to the type's list, and a list leaves its query string behind. *@
 @implements IDisposable
 @inject AdminContext Context
 @inject NavigationManager Navigation
@@ -34,16 +35,29 @@
             return;
         }
 
-        if (ContentType() is { } type && Context.Schema?.Types.Any(item => item.Name == type) != true)
+        if (ContentRoute() is [var type, .. var rest])
         {
-            Navigation.NavigateTo("");
+            var described = Context.Schema?.Types.FirstOrDefault(item => item.Name == type);
+            if (described is null)
+            {
+                Navigation.NavigateTo("");
+            }
+            else if (rest is [var entry, ..] && entry != "new" && described.Scope != "global")
+            {
+                Navigation.NavigateTo(ShellNavigation.ContentRoute(type));
+            }
+            else if (rest is [] && Navigation.Uri.Contains('?', StringComparison.Ordinal))
+            {
+                // The sort, page and columns of a list were chosen in the site before; its list starts afresh.
+                Navigation.NavigateTo(ShellNavigation.ContentRoute(type));
+            }
         }
 
         Announcer.Announce(L["Shell.SiteSwitcher.Switched", site.Name]);
     }
 
-    // The type of a content route, such as article of content/article/0193….
-    private string? ContentType()
+    // The segments of a content route after content/, such as article and 0193… of content/article/0193….
+    private string[]? ContentRoute()
     {
         var uri = Navigation.Uri;
         if (!uri.StartsWith(Navigation.BaseUri, StringComparison.Ordinal))
@@ -51,8 +65,10 @@
             return null;
         }
 
-        var segments = Navigation.ToBaseRelativePath(uri).Split(['/', '?', '#']);
-        return segments is ["content", { Length: > 0 } type, ..] ? Uri.UnescapeDataString(type) : null;
+        var path = Navigation.ToBaseRelativePath(uri);
+        var end = path.IndexOfAny(['?', '#']);
+        var segments = (end < 0 ? path : path[..end]).Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return segments is ["content", { Length: > 0 }, ..] ? [.. segments[1..].Select(Uri.UnescapeDataString)] : null;
     }
 
     private void OnChanged() => _ = InvokeAsync(StateHasChanged);

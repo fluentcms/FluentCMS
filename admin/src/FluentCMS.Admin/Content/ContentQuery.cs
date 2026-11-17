@@ -34,6 +34,9 @@ internal sealed record ContentQuery
 
     public string? Locale { get; init; }
 
+    // Asks for the number of entries that match, which a cursor read never has.
+    public bool? WithTotal { get; init; }
+
     // The query string of backend spec 4.4, in its order and with its escaping, without the leading "?". A list operand is
     // comma separated, with \, and \\ for a comma and a backslash in a value.
     public string ToQueryString()
@@ -57,6 +60,7 @@ internal sealed record ContentQuery
         Add("depth", Depth?.ToString(CultureInfo.InvariantCulture));
         Add("status", Status switch { ContentStatus.Published => "published", ContentStatus.Draft => "draft", _ => null });
         Add("locale", Locale);
+        Add("withTotal", WithTotal switch { true => "true", false => "false", null => null });
 
         return string.Join('&', pairs.Select(pair => $"{EscapeKey(pair.Key)}={EscapeValue(pair.Value)}"));
 

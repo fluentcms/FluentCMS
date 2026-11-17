@@ -20,6 +20,11 @@ internal static class Repository
     public static string AdminText(string key) =>
         AdminTexts.TryGetValue(key, out var text) ? text : throw new KeyNotFoundException($"AdminResources.resx has no key {key}.");
 
+    public static IReadOnlyDictionary<string, string> ComponentTexts { get; } = ReadTexts(Path.Combine(Root, "admin", "src", "FluentCMS.Admin.Components", "Resources", "CmsStrings.resx"));
+
+    public static string ComponentText(string key) =>
+        ComponentTexts.TryGetValue(key, out var text) ? text : throw new KeyNotFoundException($"CmsStrings.resx has no key {key}.");
+
     private static string FindRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)

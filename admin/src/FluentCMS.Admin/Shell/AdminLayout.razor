@@ -10,6 +10,7 @@
 @inject IAdminSession Session
 @inject AdminContext Context
 @inject NavigationManager Navigation
+@inject DocumentInterop Document
 
 <a class="skip-link" href="#main" @onclick="SkipToMainAsync" @onclick:preventDefault>@L["Shell.Layout.SkipToContent"]</a>
 <div class="shell">
@@ -73,7 +74,7 @@
 @if (ShowsNavigation)
 {
     @* Under 1024 CSS pixels the sidebar is hidden and this drawer holds it. *@
-    <CmsDrawer Side="CmsDrawerSide.Start" Title="@L["Shell.Layout.Navigation"]" Open="@drawerOpen" OpenChanged="@(open => drawerOpen = open)">
+    <CmsDrawer Side="CmsDrawerSide.Start" Title="@L["Shell.Layout.Navigation"]" Open="@drawerOpen" OpenChanged="@(open => drawerOpen = open)" OnClosed="OnDrawerClosedAsync">
         <ShellSidebar />
     </CmsDrawer>
 }
@@ -81,6 +82,7 @@
 @code {
     private ElementReference main;
     private bool drawerOpen;
+    private bool closedByNavigation;
     private IDisposable? closesDrawer;
 
     private bool SignedIn => Session.User is not null;
@@ -107,7 +109,7 @@
 
     private async Task SkipToMainAsync() => await main.FocusAsync();
 
-    private void OpenNavigation() => drawerOpen = true;
+    private void OpenNavigation() => (drawerOpen, closedByNavigation) = (true, false);
 
     private Task TryAgainAsync() => Context.StartAsync();
 
@@ -124,16 +126,26 @@
     private void OnContextChanged() => _ = InvokeAsync(StateHasChanged);
 
     // Closed before the new page renders. The library gives focus back to the button that opened the drawer when it closes,
-    // after the page has moved focus to its heading, so focus ends on that button: the wrapped set offers no hook after a
-    // closing it was asked for, which a follow-up adds.
+    // after the page has moved focus to its heading, so once it has closed focus moves to the heading again (spec 4.18).
     private ValueTask CloseDrawer(LocationChangingContext context)
     {
         if (drawerOpen)
         {
             drawerOpen = false;
+            closedByNavigation = true;
             StateHasChanged();
         }
 
         return ValueTask.CompletedTask;
+    }
+
+    // A drawer the user dismissed gives focus back to its opener, which is where it belongs.
+    private async Task OnDrawerClosedAsync()
+    {
+        if (closedByNavigation)
+        {
+            closedByNavigation = false;
+            await Document.FocusHeadingAsync();
+        }
     }
 }

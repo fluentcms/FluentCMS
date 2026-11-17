@@ -23,7 +23,7 @@ public sealed class AccessibilityTests : AdminTestContext
         Services.GetRequiredService<NavigationManager>().NavigateTo("/not-found");
 
         app.WaitForAssertion(() => HeadingFocuses().ShouldBe(1));
-        app.Find("h1").GetAttribute("tabindex").ShouldBe("-1");
+        app.Find("main h1").GetAttribute("tabindex").ShouldBe("-1");
     }
 
     // The page the callback of the sign-in returns to is the first the user sees of this load.
@@ -166,9 +166,9 @@ public sealed class AccessibilityTests : AdminTestContext
     private static string[] Messages(IRenderedComponent<AdminApp> app, string politeness) =>
         app.FindAll($"[aria-live={politeness}] > div").Select(message => message.TextContent).ToArray();
 
-    // FocusOnNavigate's calls that move focus to the heading.
+    // The calls that move focus to the page's heading.
     private int HeadingFocuses() =>
-        JSInterop.Invocations.Count(call => call.Identifier == "Blazor._internal.domWrapper.focusBySelector" && (string?)call.Arguments[0] == "h1");
+        Document.Invocations.Count(call => call.Identifier == "focusHeading");
 
     // A dialog of the admin's own applying the rule: remember the opener when it opens, return focus when it closes.
     private sealed class DialogWithOpener : ComponentBase

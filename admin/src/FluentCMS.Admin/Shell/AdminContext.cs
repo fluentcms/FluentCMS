@@ -89,8 +89,10 @@ internal sealed class AdminContext(
 
     public bool Allows(string permission) => AccessInfo is { } access && Holds(access, permission);
 
+    public TypeAccessInfo? ForType(string type) => AccessInfo is { } access && access.Types.TryGetValue(type, out var found) ? found : null;
+
     // /schema shows only the types the user may read; the access says so too, and both are asked.
-    public bool MayRead(string type) => AccessInfo?.Types.ContainsKey(type) == true;
+    public bool MayRead(string type) => ForType(type) is not null;
 
     public bool PluginEnabled(string name) => Plugins.Any(plugin => plugin.Enabled && string.Equals(plugin.Name, name, StringComparison.Ordinal));
 

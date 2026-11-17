@@ -1,0 +1,473 @@
+@* The generated list of a collection (spec 4.4): the columns the user chose, sort by several keys, paging with a total, and
+   selection for the bulk actions of A-32. Sort, page and columns are in the query string, so a reload and Back keep them;
+   the column choice is also kept in the browser per user, site and type. The server decides what the user may read: a 403
+   or 404 of the list is shown as the answer. *@
+@page "/content/{Type}"
+@implements IDisposable
+@inject AdminContext Context
+@inject ManagementClient Client
+@inject NavigationManager Navigation
+@inject ListCellRegistry Cells
+@inject IColumnStorage ColumnStorage
+@inject FormatService Format
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<AdminResources> L
+
+@if (Described is not { } type)
+{
+    <h1 tabindex="-1">@L["Content.List.NotFoundHeading"]</h1>
+    <p>@L["Content.List.NotFoundText"]</p>
+}
+else if (type.Kind == "singleton")
+{
+    @* A singleton has one entry, so its route is its form (A-13). *@
+    <ContentForm Type="@type.Name" />
+}
+else if (view is { } shownView)
+{
+    <div class="content-list-header">
+        <h1 tabindex="-1">@AdminLabels.Type(type, L)</h1>
+        <div class="content-list-actions">
+            <CmsButton Icon="CmsIconName.Settings" OnClick="OpenColumns">@L["Content.List.Columns"]</CmsButton>
+            @if (Context.ForType(type.Name)?.Create == true)
+            {
+                <CmsButton Appearance="CmsButtonAppearance.Primary" Icon="CmsIconName.Add" OnClick="NewEntry">@L["Content.List.New"]</CmsButton>
+            }
+        </div>
+    </div>
+
+    @if (problem is { } failed)
+    {
+        <div class="content-list-problem" role="alert">
+            <p><strong>@ProblemTitle(failed)</strong></p>
+            @if (failed.Problem?.Detail is { Length: > 0 } detail)
+            {
+                <p>@detail</p>
+            }
+            @if (failed.Problem?.TraceId is { Length: > 0 } trace)
+            {
+                <p>@L["Content.List.TraceId", trace]</p>
+            }
+            @* A refusal answers the same again; anything else, a page past the server's last one too, may not. *@
+            <div class="content-list-actions">
+                @if (failed.Problem is not { Status: 403 or 404 })
+                {
+                    <CmsButton OnClick="TryAgainAsync">@L["Content.List.TryAgain"]</CmsButton>
+                }
+                @if (page > 1)
+                {
+                    <a href="@Navigation.GetUriWithQueryParameters(new Dictionary<string, object?> { ["page"] = null })">@L["Content.List.FirstPage"]</a>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        @if (selected.Count > 0 || allMatching)
+        {
+            <div class="content-list-selection">
+                @if (allMatching)
+                {
+                    <span>@L["Content.List.AllMatchingSelected", Number(total)]</span>
+                    <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="ClearSelection">@L["Content.List.ClearSelection"]</CmsButton>
+                }
+                else
+                {
+                    <span>@L["Content.List.PageSelected", Number(selected.Count)]</span>
+                    @if (selected.Count == entries.Count && total > entries.Count)
+                    {
+                        <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="SelectAllMatching">@L["Content.List.SelectAllMatching", Number(total)]</CmsButton>
+                    }
+                    <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="ClearSelection">@L["Content.List.ClearSelection"]</CmsButton>
+                }
+            </div>
+        }
+
+        <CmsDataGrid TItem="ContentEntry"
+                     Label="@AdminLabels.Type(type, L)"
+                     Items="@entries"
+                     SelectionMode="CmsSelectionMode.Many"
+                     SelectedItems="@selected"
+                     SelectedItemsChanged="@OnSelected"
+                     Sort="@GridSort"
+                     SortChanged="@OnSortChanged"
+                     OnRowActivated="@Open"
+                     RowLabel="@(entry => AdminLabels.Entry(type, entry))"
+                     Loading="@loading"
+                     TotalItems="@total"
+                     RowOffset="@((long)(page - 1) * pageSize)">
+            <EmptyContent>@L["Content.List.Empty"]</EmptyContent>
+            <ChildContent>
+                <CmsDataGridColumn TItem="ContentEntry" @key="shownView.Label.Name" Name="@shownView.Label.Name" Title="@Title(shownView.Label)" Order="0" Sortable="@shownView.Label.Sortable">
+                    <a href="@EntryRoute(context)" tabindex="-1">@AdminLabels.Entry(type, context)</a>
+                </CmsDataGridColumn>
+                @for (var index = 0; index < shown.Count; index++)
+                {
+                    var column = shown[index];
+                    <CmsDataGridColumn TItem="ContentEntry" @key="column.Name" Name="@column.Name" Title="@Title(column)" Order="@(index + 1)" Sortable="@column.Sortable">
+                        @Cell(column, context)
+                    </CmsDataGridColumn>
+                }
+            </ChildContent>
+        </CmsDataGrid>
+
+        <nav class="content-list-pager" aria-label="@L["Content.List.Paging"]">
+            <span>@(total == 1 ? L["Content.List.TotalOne"] : L["Content.List.Total", Number(total)])</span>
+            <div class="content-list-page-size">
+                <CmsSelect Label="@L["Content.List.PageSize"]"
+                           Options="@([.. ListView.PageSizes.Append(pageSize).Distinct().Order().Select(size => new CmsOption(Number(size), Number(size)))])"
+                           Value="@Number(pageSize)"
+                           ValueChanged="@ChangePageSize" />
+            </div>
+            <CmsButton @ref="previousButton" Disabled="@(page <= 1)" OnClick="@(() => GoToPage(page - 1))">@L["Content.List.Previous"]</CmsButton>
+            <span>@L["Content.List.PageOf", Number(page), Number(Pages)]</span>
+            <CmsButton @ref="nextButton" Disabled="@(page >= Pages)" OnClick="@(() => GoToPage(page + 1))">@L["Content.List.Next"]</CmsButton>
+        </nav>
+    }
+
+    <CmsDialog Title="@L["Content.List.ColumnsTitle"]" Open="@choosing" OpenChanged="@(open => choosing = open)">
+        <ChildContent>
+            <p>@L["Content.List.ColumnsText", Title(shownView.Label)]</p>
+            <ul class="content-list-columns">
+                @for (var index = 0; index < draft.Count; index++)
+                {
+                    var position = index;
+                    var (name, visible) = draft[position];
+                    var column = shownView.Available.First(item => item.Name == name);
+                    <li @key="name">
+                        <CmsCheckbox Label="@Title(column)" Value="@visible" ValueChanged="@(value => draft[position] = (name, value))" />
+                        <CmsButton @ref="upButtons[name]" Icon="CmsIconName.Up" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.List.MoveUp", Title(column)]" Disabled="@(position == 0)" OnClick="@(() => Move(position, -1))" />
+                        <CmsButton @ref="downButtons[name]" Icon="CmsIconName.Down" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.List.MoveDown", Title(column)]" Disabled="@(position == draft.Count - 1)" OnClick="@(() => Move(position, 1))" />
+                    </li>
+                }
+            </ul>
+        </ChildContent>
+        <Actions>
+            @* With no column chosen the list would fall back to the default, so a choice needs one. *@
+            <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(!draft.Any(item => item.Visible))" OnClick="ApplyColumnsAsync">@L["Content.List.ColumnsApply"]</CmsButton>
+            <CmsButton OnClick="ResetColumnsAsync">@L["Content.List.ColumnsReset"]</CmsButton>
+            <CmsButton OnClick="@(() => choosing = false)">@L["Content.List.ColumnsCancel"]</CmsButton>
+        </Actions>
+    </CmsDialog>
+}
+
+@code {
+    private CancellationTokenSource? reading;
+    private string? storedKey;
+    private IReadOnlyList<string>? stored;
+    private string? readKey;
+    private ListView? view;
+    private IReadOnlyList<ListColumn> shown = [];
+    private IReadOnlyList<SortField> sort = ListView.DefaultSort;
+    private int page = 1;
+    private int pageSize = ListView.DefaultPageSize;
+    private IReadOnlyList<ContentEntry> entries = [];
+    private long total;
+    private bool loading;
+    private ApiFailure? problem;
+    private IReadOnlyList<ContentEntry> selected = [];
+    private bool allMatching;
+    private bool choosing;
+    private List<(string Name, bool Visible)> draft = [];
+    private readonly Dictionary<string, CmsButton> upButtons = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, CmsButton> downButtons = new(StringComparer.Ordinal);
+    private CmsButton? previousButton;
+    private CmsButton? nextButton;
+
+    // The button that gets focus after the next render, since the one that had it moved or became disabled.
+    private Func<CmsButton?>? focusAfterRender;
+
+    [Parameter]
+    public string Type { get; set; } = string.Empty;
+
+    [SupplyParameterFromQuery(Name = "sort")]
+    public string? SortQuery { get; set; }
+
+    // Text, so that an address such as ?page=abc reads as the first page instead of failing the binding.
+    [SupplyParameterFromQuery(Name = "page")]
+    public string? PageQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "pageSize")]
+    public string? PageSizeQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "columns")]
+    public string? ColumnsQuery { get; set; }
+
+    // A failed read: the problem the API answered, or none when it did not answer.
+    private sealed record ApiFailure(ApiProblem? Problem);
+
+    private SchemaTypeDescription? Described => Context.Schema?.Types.FirstOrDefault(item => item.Name == Type);
+
+    private long Pages => Math.Max(1, (total + pageSize - 1) / pageSize);
+
+    private IReadOnlyList<CmsSortKey> GridSort => [.. sort.Select(key => new CmsSortKey(key.Path, key.Descending))];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Described is not { Kind: "collection" } type || Context.Schema is not { } schema)
+        {
+            (view, readKey) = (null, null);
+            return;
+        }
+
+        if (view?.Type != type)
+        {
+            view = ListView.For(type, schema, Cells);
+        }
+
+        var names = ColumnsQuery is not null
+            ? ColumnsQuery.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            : await StoredColumnsAsync(type.Name);
+        shown = view.Choose(names);
+        sort = view.ParseSort(SortQuery);
+        page = ListView.ParsePage(PageQuery);
+        pageSize = ListView.ParsePageSize(PageSizeQuery);
+        await ReadAsync(view.Query(shown, sort, page, pageSize));
+    }
+
+    public void Dispose()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+    }
+
+    // Read once per user, site and type: only this page writes the choice, and it keeps what it writes.
+    private async Task<IReadOnlyList<string>?> StoredColumnsAsync(string type)
+    {
+        if (Context.User is not { } user || Context.Site is not { } site)
+        {
+            return null;
+        }
+
+        var key = $"{user.Id}/{site.Id}/{type}";
+        if (key != storedKey)
+        {
+            (storedKey, stored) = (key, await ColumnStorage.ReadAsync(user.Id, site.Id, type));
+        }
+
+        return stored;
+    }
+
+    // A read that a later one overtook is dropped; the same read twice, as a render with the same query, is made once.
+    private async Task ReadAsync(ContentQuery query, bool again = false)
+    {
+        var key = $"{Context.Site?.Id}/{Type}?{query.ToQueryString()}";
+        if (key == readKey && !again)
+        {
+            return;
+        }
+
+        if (key != readKey)
+        {
+            (selected, allMatching) = ([], false);
+        }
+
+        readKey = key;
+        reading?.Cancel();
+        reading?.Dispose();
+        var current = reading = new CancellationTokenSource();
+        (loading, problem) = (true, null);
+        StateHasChanged();
+        try
+        {
+            var result = await Client.ListEntriesAsync(Type, query, current.Token);
+            if (current.IsCancellationRequested)
+            {
+                return;
+            }
+
+            (entries, total) = (result.Items, result.Total ?? result.Items.Count);
+            if (entries.Count == 0 && total > 0 && page > Pages)
+            {
+                // A page past the end, as after entries were deleted or another site was chosen: its last page instead.
+                Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(new Dictionary<string, object?> { ["page"] = Pages > 1 ? (int)Pages : null }), replace: true);
+            }
+        }
+        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (ApiProblemException failure)
+        {
+            (entries, total, problem) = ([], 0, new ApiFailure(failure.Problem));
+        }
+        catch (Exception failure) when (failure is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            (entries, total, problem) = ([], 0, new ApiFailure(null));
+        }
+
+        loading = false;
+    }
+
+    private Task TryAgainAsync() => view is null ? Task.CompletedTask : ReadAsync(view.Query(shown, sort, page, pageSize), again: true);
+
+    private string ProblemTitle(ApiFailure failure) => failure.Problem switch
+    {
+        { Status: 403 } => L["Content.List.Forbidden"],
+        { Status: 404 } => L["Content.List.NotFoundText"],
+        { Title: { Length: > 0 } title } => title,
+        _ => L["Content.List.Failed"],
+    };
+
+    private string Title(ListColumn column) => column.Kind switch
+    {
+        ListColumnKind.Status => L["Content.List.Column.Status"],
+        ListColumnKind.Locale => L["Content.List.Column.Locale"],
+        ListColumnKind.UpdatedAt => L["Content.List.Column.UpdatedAt"],
+        ListColumnKind.UpdatedBy => L["Content.List.Column.UpdatedBy"],
+        _ when column.Field is { } field => AdminLabels.Field(field),
+        _ => L["Content.List.Column.Id"],
+    };
+
+    private RenderFragment Cell(ListColumn column, ContentEntry entry) => column.Kind switch
+    {
+        ListColumnKind.Status => builder => builder.AddContent(0, entry.Status is { } status ? L[$"Content.Status.{status}"].Value : null),
+        ListColumnKind.Locale => builder => builder.AddContent(0, entry.Locale),
+        ListColumnKind.UpdatedAt => builder =>
+        {
+            if (entry.UpdatedAt is { } moment)
+            {
+                builder.OpenElement(0, "time");
+                builder.AddAttribute(1, "datetime", moment.ToString("O", System.Globalization.CultureInfo.InvariantCulture));
+                builder.AddContent(2, Format.DateTime(moment));
+                builder.CloseElement();
+            }
+        },
+        ListColumnKind.UpdatedBy => builder => builder.AddContent(0, entry.UpdatedBy is { } by
+            ? by == Context.User?.Id ? L["Content.List.You"].Value : by.ToString("D")
+            : null),
+        _ => builder =>
+        {
+            builder.OpenComponent(0, Cells.CellFor(column.Field!.Type));
+            builder.AddComponentParameter(1, nameof(ListCellBase.Field), column.Field);
+            builder.AddComponentParameter(2, nameof(ListCellBase.Entry), entry);
+            builder.CloseComponent();
+        },
+    };
+
+    private string EntryRoute(ContentEntry entry) => ContentRoutes.Entry(Type, entry.Id);
+
+    private void Open(ContentEntry entry) => Navigation.NavigateTo(EntryRoute(entry));
+
+    private void NewEntry() => Navigation.NavigateTo(ContentRoutes.New(Type));
+
+    private static string Number(long value) => value.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+
+    private void Query(params (string Name, object? Value)[] values) =>
+        Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(values.ToDictionary(value => value.Name, value => value.Value)));
+
+    // A new sort starts at the first page; the default sort is left out of the address.
+    private void OnSortChanged(IReadOnlyList<CmsSortKey> keys)
+    {
+        var text = ListView.WriteSort(keys.Select(key => new SortField(key.Column, key.Descending)));
+        Query(("sort", text == ListView.WriteSort(ListView.DefaultSort) ? null : text), ("page", null));
+    }
+
+    // A button that disables itself on the first or last page would drop focus to the document, so focus goes to the other.
+    private void GoToPage(long number)
+    {
+        if (number <= 1)
+        {
+            focusAfterRender = () => nextButton;
+        }
+        else if (number >= Pages)
+        {
+            focusAfterRender = () => previousButton;
+        }
+
+        Query(("page", number <= 1 ? null : (int)number));
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender?.Invoke() is { } button)
+        {
+            focusAfterRender = null;
+            await button.FocusAsync();
+        }
+    }
+
+    private void ChangePageSize(string? value)
+    {
+        if (int.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out var size))
+        {
+            Query(("pageSize", size == ListView.DefaultPageSize ? null : size), ("page", null));
+        }
+    }
+
+    private void OnSelected(IReadOnlyList<ContentEntry> items) => (selected, allMatching) = (items, false);
+
+    private void SelectAllMatching()
+    {
+        allMatching = true;
+        Announcer.Announce(L["Content.List.AllMatchingSelected", Number(total)]);
+    }
+
+    private void ClearSelection()
+    {
+        (selected, allMatching) = ([], false);
+        Announcer.Announce(L["Content.List.SelectionCleared"]);
+    }
+
+    private void OpenColumns()
+    {
+        if (view is null)
+        {
+            return;
+        }
+
+        var visible = shown.Select(column => column.Name).ToList();
+        draft = [.. visible.Select(name => (name, true)), .. view.Available.Where(column => !visible.Contains(column.Name)).Select(column => (column.Name, false))];
+        choosing = true;
+    }
+
+    // The moved row's list item moves in the document, which drops focus, so focus goes back to the button pressed, or to
+    // the other one when the row reached an end and the pressed one became disabled.
+    private void Move(int position, int by)
+    {
+        var target = position + by;
+        if (target < 0 || target >= draft.Count)
+        {
+            return;
+        }
+
+        (draft[position], draft[target]) = (draft[target], draft[position]);
+        var name = draft[target].Name;
+        var atEnd = by < 0 ? target == 0 : target == draft.Count - 1;
+        focusAfterRender = (by < 0) != atEnd ? () => upButtons.GetValueOrDefault(name) : () => downButtons.GetValueOrDefault(name);
+    }
+
+    private async Task ApplyColumnsAsync()
+    {
+        choosing = false;
+        var names = draft.Where(item => item.Visible).Select(item => item.Name).ToList();
+        if (Context.User is { } user && Context.Site is { } site)
+        {
+            await ColumnStorage.WriteAsync(user.Id, site.Id, Type, names);
+            (storedKey, stored) = ($"{user.Id}/{site.Id}/{Type}", names);
+        }
+
+        Query(("columns", names.Count > 0 ? string.Join(',', names) : null));
+    }
+
+    private async Task ResetColumnsAsync()
+    {
+        choosing = false;
+        if (Context.User is { } user && Context.Site is { } site)
+        {
+            await ColumnStorage.RemoveAsync(user.Id, site.Id, Type);
+            (storedKey, stored) = ($"{user.Id}/{site.Id}/{Type}", null);
+        }
+
+        if (ColumnsQuery is null)
+        {
+            // Nothing in the address changes, so the page reads its columns again itself.
+            readKey = null;
+            await OnParametersSetAsync();
+        }
+        else
+        {
+            Query(("columns", null));
+        }
+    }
+}
