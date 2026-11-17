@@ -31,7 +31,8 @@
                 var label = Context.Schema?.Types.FirstOrDefault(item => item.Name == name) is { } described
                     ? AdminLabels.Type(described, L)
                     : AdminLabels.Readable(name);
-                List<CmsBreadcrumbItem> items = [new(L["Shell.Breadcrumbs.Content"]), new(label, ShellNavigation.ContentRoute(name))];
+                // The list stays in the content locale of the entry.
+                List<CmsBreadcrumbItem> items = [new(L["Shell.Breadcrumbs.Content"]), new(label, Content.ContentRoutes.InLocale(ShellNavigation.ContentRoute(name), Context.NamedLocale))];
                 if (segments.Length > 2)
                 {
                     items.Add(new(segments[2] == "new" ? L["Shell.Breadcrumbs.New"] : Uri.UnescapeDataString(segments[2])));

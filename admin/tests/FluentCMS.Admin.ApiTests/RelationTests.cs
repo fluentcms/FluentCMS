@@ -64,7 +64,7 @@ public sealed class RelationTests
         var schema = await client.Metadata.GetSchemaAsync(Token);
         var author = schema.Types.Single(type => type.Name == "author");
         var tag = schema.Types.Single(type => type.Name == "tag");
-        var access = await client.Client.GetMyAccessAsync(null, Token);
+        var access = await client.Client.GetMyAccessAsync(null, null, Token);
         var authors = await client.Client.ListEntriesAsync("author", RelationReads.Page(author, [], null, false, null, null), Token);
         var tags = (await client.Client.ListEntriesAsync("tag", RelationReads.Page(tag, [], null, false, null, null), Token)).Items.Select(entry => entry.Id).ToList();
         var fields = ContentFormLayout.Defaults(schema.Types.Single(type => type.Name == "article"));

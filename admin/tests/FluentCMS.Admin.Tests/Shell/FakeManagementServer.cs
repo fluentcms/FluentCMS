@@ -24,6 +24,15 @@ internal sealed class FakeManagementServer : HttpMessageHandler
 
     public Dictionary<Guid, JsonObject> Schemas { get; } = [];
 
+    // What /me/access and /schema answer in a locale of a site that is not its default, as for a grant limited to locales;
+    // without an entry, those of the site.
+    public Dictionary<(Guid Site, string Locale), JsonObject> LocaleAccess { get; } = [];
+
+    public Dictionary<(Guid Site, string Locale), JsonObject> LocaleSchemas { get; } = [];
+
+    // The locale of each read of /me/access and /schema, null for none.
+    public List<(string Path, string? Locale)> MetadataLocales { get; } = [];
+
     public Dictionary<Guid, JsonArray> Plugins { get; } = [];
 
     public string UserName { get; set; } = "ada";
@@ -43,6 +52,9 @@ internal sealed class FakeManagementServer : HttpMessageHandler
 
     // The entries GET /content/{type} answers with, keyed by the type; the total counts them unless set.
     public Dictionary<string, JsonArray> Entries { get; } = [];
+
+    // The entries a read of a list in a locale named by its query string answers, keyed by the type and the locale.
+    public Dictionary<(string Type, string Locale), JsonArray> LocaleEntries { get; } = [];
 
     public long? Total { get; set; }
 
@@ -119,6 +131,10 @@ internal sealed class FakeManagementServer : HttpMessageHandler
         Schemas[id] = new JsonObject { ["types"] = new JsonArray(), ["components"] = new JsonArray(), ["blocks"] = new JsonArray() };
         Plugins[id] = [];
     }
+
+    public void AddLocale(Guid site, string code, int position, bool enabled = true) =>
+        Sites.Single(item => item!["id"]!.GetValue<Guid>() == site)!["locales"]!.AsArray()
+            .Add(new JsonObject { ["code"] = code, ["position"] = position, ["enabled"] = enabled });
 
     // The schema of the site holds the types, and the access lets the user read each of them and do everything with every
     // field, as the server lists the fields a caller may set.
@@ -199,6 +215,35 @@ internal sealed class FakeManagementServer : HttpMessageHandler
         }
 
         var site = Guid.TryParse(siteHeader, out var id) ? id : MainSite;
+        var locale = request.Headers.TryGetValues("X-Cms-Locale", out var locales) ? locales.Single() : null;
+        if (path is "me/access" or "schema")
+        {
+            lock (_gate)
+            {
+                MetadataLocales.Add((path, locale));
+            }
+        }
+
+        var listLocale = request.RequestUri.Query.TrimStart('?').Split('&').FirstOrDefault(pair => pair.StartsWith("locale=", StringComparison.Ordinal))?["locale=".Length..];
+        if (request.Method == HttpMethod.Get && path.StartsWith("content/", StringComparison.Ordinal) && listLocale is not null and not "all"
+            && LocaleEntries.TryGetValue((path["content/".Length..], listLocale), out var inLocale))
+        {
+            lock (_gate)
+            {
+                ContentQueries.Add(request.RequestUri.Query.TrimStart('?'));
+            }
+
+            // As the server, which counts each id against MaxFilterNodes (100) with the node of the filter.
+            var named = request.RequestUri.Query.TrimStart('?').Split('&').FirstOrDefault(pair => pair.StartsWith("filter[id][in]=", StringComparison.Ordinal))?["filter[id][in]=".Length..].Split(',');
+            if (named is { Length: > 99 })
+            {
+                return Problem(HttpStatusCode.BadRequest, "FCMS1712");
+            }
+
+            var rows = inLocale.Where(row => named is null || named.Contains(row!["id"]!.ToJsonString().Trim('"'), StringComparer.OrdinalIgnoreCase)).Select(row => row!.DeepClone());
+            return Json(new JsonObject { ["items"] = new JsonArray([.. rows]), ["page"] = 1, ["pageSize"] = 25 });
+        }
+
         if (request.Method == HttpMethod.Get && path.StartsWith("content/", StringComparison.Ordinal) && Entries.TryGetValue(path["content/".Length..], out var entries))
         {
             lock (_gate)
@@ -213,9 +258,9 @@ internal sealed class FakeManagementServer : HttpMessageHandler
         {
             "me" => Json(new JsonObject { ["id"] = UserId, ["kind"] = "adminUser", ["name"] = UserName, ["roles"] = new JsonArray() }),
             "me/sites" => Json(new JsonObject { ["items"] = Sites.DeepClone() }),
-            "me/access" => Json(Access[site]),
+            "me/access" => Json(locale is not null && LocaleAccess.TryGetValue((site, locale), out var limited) ? limited : Access[site]),
             "schema" when RefusesSchema || !Access[site]["permissions"]!.AsArray().Any(name => name!.GetValue<string>() == "schema.read") => Forbidden(),
-            "schema" => Json(Schemas[site]),
+            "schema" => Json(locale is not null && LocaleSchemas.TryGetValue((site, locale), out var narrowed) ? narrowed : Schemas[site]),
             "plugins" => Json(new JsonObject { ["items"] = Plugins[site].DeepClone() }),
             "me/sessions" => Json(new JsonObject { ["items"] = Sessions.DeepClone() }),
             "me/logins" => Json(new JsonObject { ["items"] = Logins.DeepClone() }),

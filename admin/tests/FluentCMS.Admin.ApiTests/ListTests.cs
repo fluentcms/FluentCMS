@@ -62,7 +62,7 @@ public sealed class ListTests
         await using var admin = new AdminHost();
         using var client = await admin.SignInAsync(role);
 
-        var access = await client.Client.GetMyAccessAsync(null, Token);
+        var access = await client.Client.GetMyAccessAsync(null, null, Token);
 
         access.Types["article"].Create.ShouldBeTrue();
         access.Types.Keys.ShouldBe(["article", "author", "tag"], ignoreOrder: true);

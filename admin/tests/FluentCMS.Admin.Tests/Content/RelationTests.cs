@@ -189,8 +189,9 @@ public sealed class RelationTests : AdminTestContext
         var author = Author();
         author["localized"] = true;
         Management.SetTypes(MainSite, Article(), author, Tag());
-        _content.Locale = "fr";
-        var id = _content.Add("article", new JsonObject { ["title"] = "En français", ["author"] = Text(_ada) });
+        _content.Add("author", new JsonObject { ["name"] = "Ada Lovelace" }, id: _ada, locale: "fr");
+        _content.Add("author", new JsonObject { ["name"] = "Grace Hopper" }, id: _grace, locale: "fr");
+        var id = _content.Add("article", new JsonObject { ["title"] = "En français", ["author"] = Text(_ada) }, locale: "fr");
         Start();
         await Services.GetRequiredService<AdminContext>().StartAsync();
         var form = Render<FluentCMS.Admin.Content.ContentForm>(parameters => parameters.Add(x => x.Type, "article").Add(x => x.Id, id).Add(x => x.Locale, "fr"));

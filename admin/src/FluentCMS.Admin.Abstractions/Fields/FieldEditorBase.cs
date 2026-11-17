@@ -47,7 +47,7 @@ public abstract class FieldEditorBase : ComponentBase
     [Parameter]
     public bool Required { get; set; }
 
-    /// <summary>Gets or sets the content locale the form edits, or <see langword="null"/> for the site's default.</summary>
+    /// <summary>Gets or sets the language tag of the content locale the form edits, the site's default included.</summary>
     [Parameter]
     public string? ContentLocale { get; set; }
 

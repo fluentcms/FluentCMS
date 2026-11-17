@@ -40,7 +40,7 @@ public sealed class FilterTests
         await using var admin = new AdminHost();
         using var client = await admin.SignInAsync(role);
         var view = await ViewAsync(client);
-        var access = await client.Client.GetMyAccessAsync(null, Token);
+        var access = await client.Client.GetMyAccessAsync(null, null, Token);
 
         view.Searchable.ShouldBeTrue();
         access.Search.ShouldBeTrue();

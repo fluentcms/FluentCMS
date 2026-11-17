@@ -31,7 +31,7 @@ public sealed class FilterTests(EndToEndHost host) : BrowserTest(host)
         var search = tab.Page.GetByRole(AriaRole.Searchbox, new PageGetByRoleOptions { Name = Text("Content.Search.Label"), Exact = true });
         await search.FillAsync("tour");
         await search.PressAsync("Enter");
-        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"content/article\?q=tour$"));
+        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"content/article\?locale=en&q=tour$"));
         for (var attempt = 0; ; attempt++)
         {
             await Expect(tab.Page.Locator("table[aria-busy]")).ToHaveCountAsync(0);
@@ -47,26 +47,26 @@ public sealed class FilterTests(EndToEndHost host) : BrowserTest(host)
         await Expect(Titles(grid)).ToHaveTextAsync(["A tour of the blog sample"]);
         await search.FillAsync("");
         await search.PressAsync("Enter");
-        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"content/article$"));
+        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"content/article\?locale=en$"));
 
         // A text field.
         await AddFilterAsync(tab, "Title", "startsWith", () => tab.Page.GetByLabel(Text("Content.Filter.Value"), new PageGetByLabelOptions { Exact = true }).FillAsync("Typed"));
-        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"\?filter\[title\]\[startsWith\]=Typed$"));
+        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"\?locale=en&filter\[title\]\[startsWith\]=Typed$"));
         await Expect(Titles(grid)).ToHaveTextAsync(["Typed content, no magic"]);
 
         // A select field, beside the text filter, then the text filter removed.
         await AddFilterAsync(tab, "Category", "eq", () => tab.Page.GetByLabel(Text("Content.Filter.Value"), new PageGetByLabelOptions { Exact = true }).SelectOptionAsync("opinion"));
-        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"filter\[title\]\[startsWith\]=Typed&filter\[category\]\[eq\]=opinion$"));
+        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"\?locale=en&filter\[title\]\[startsWith\]=Typed&filter\[category\]\[eq\]=opinion$"));
         await Expect(Titles(grid)).ToHaveTextAsync(["Typed content, no magic"]);
         await tab.Page.Locator($"fluent-button[aria-label='{Text("Content.Filter.Remove", "Title starts with Typed")}']").ClickAsync();
-        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"\?filter\[category\]\[eq\]=opinion$"));
+        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"\?locale=en&filter\[category\]\[eq\]=opinion$"));
         await Expect(Titles(grid)).ToHaveTextAsync(["Typed content, no magic"]);
         await tab.Page.Locator($"fluent-button[aria-label='{Text("Content.Filter.Remove", "Category is opinion")}']").ClickAsync();
-        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"content/article$"));
+        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"content/article\?locale=en$"));
 
         // A date field, which a reload keeps.
         await AddFilterAsync(tab, "Published on", "gt", () => tab.Page.GetByLabel(Text("Content.Filter.Value"), new PageGetByLabelOptions { Exact = true }).FillAsync("2000-01-01"));
-        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"\?filter\[publishedOn\]\[gt\]=(2000-01-01|2000-01-02)T[0-9]{2}%3A[0-9]{2}%3A59\.9999999Z$"));
+        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"\?locale=en&filter\[publishedOn\]\[gt\]=(2000-01-01|2000-01-02)T[0-9]{2}%3A[0-9]{2}%3A59\.9999999Z$"));
         await Expect(Titles(grid)).ToHaveTextAsync(["Welcome to FluentCMS"]);
         await tab.ReloadAsync();
         await Expect(Titles(grid)).ToHaveTextAsync(["Welcome to FluentCMS"]);
@@ -74,9 +74,9 @@ public sealed class FilterTests(EndToEndHost host) : BrowserTest(host)
 
         // Back goes through the addresses before: no filter, then the select filter alone.
         await tab.Page.GoBackAsync();
-        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"content/article$"));
+        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"content/article\?locale=en$"));
         await tab.Page.GoBackAsync();
-        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"\?filter\[category\]\[eq\]=opinion$"));
+        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"\?locale=en&filter\[category\]\[eq\]=opinion$"));
         await Expect(Titles(grid)).ToHaveTextAsync(["Typed content, no magic"]);
         browser.PolicyViolations.ShouldBeEmpty();
     }

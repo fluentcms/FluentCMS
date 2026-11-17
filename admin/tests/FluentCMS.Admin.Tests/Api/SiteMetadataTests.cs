@@ -39,19 +39,31 @@ public sealed class SiteMetadataTests
         ]);
     }
 
+    // The server narrows the schema by the locale, so it is read in the content locale and again when that changes; the
+    // plugins are the site's, read in none.
     [Fact]
-    public async Task AReadOfASiteSendsNoLocaleSoAStaleLocaleCannotFailItAfterASwitch()
+    public async Task TheSchemaIsReadInTheContentLocaleAndThePluginsInNone()
     {
         using var harness = new ApiHarness();
-        harness.Session.Locale = "fr";
-        harness.Server.Answer(HttpStatusCode.OK, Schema).Answer(HttpStatusCode.OK, Plugins).Answer(HttpStatusCode.OK, Schema);
+        harness.Server.Answer(HttpStatusCode.OK, Schema).Answer(HttpStatusCode.OK, Plugins).Answer(HttpStatusCode.OK, Schema).Answer(HttpStatusCode.OK, Schema);
 
         await harness.Metadata.GetSchemaAsync(Token);
         await harness.Metadata.GetPluginsAsync(Token);
+        harness.Session.Locale = "fr";
+        await harness.Metadata.GetSchemaAsync(Token);
+        await harness.Metadata.GetPluginsAsync(Token);
+        await harness.Metadata.GetSchemaAsync(Token);
         harness.Session.Site = "second";
+        harness.Session.Locale = null;
         await harness.Metadata.GetSchemaAsync(Token);
 
-        harness.Server.Requests.Select(request => (request.Header("X-Cms-Site"), request.Header("X-Cms-Locale"))).ShouldBe([(null, null), (null, null), ("second", null)]);
+        harness.Server.Requests.Select(request => (request.Uri.AbsolutePath[19..], request.Header("X-Cms-Site"), request.Header("X-Cms-Locale"))).ShouldBe(
+        [
+            ("schema", null, null),
+            ("plugins", null, null),
+            ("schema", null, "fr"),
+            ("schema", "second", null),
+        ]);
     }
 
     [Fact]

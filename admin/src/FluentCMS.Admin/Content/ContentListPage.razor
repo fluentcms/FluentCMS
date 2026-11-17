@@ -1,7 +1,8 @@
 @* The generated list of a collection (spec 4.4): the columns the user chose, sort by several keys, filters, search, paging
    with a total, status badges, and selection for the bulk actions of A-32. Sort, page, columns, filters and the search are
    in the query string, so a reload and Back keep them; the column choice is also kept in the browser per user, site and
-   type. The server decides what the user may read: a 403 or 404 of the list is shown as the answer. *@
+   type. So is the content locale of a localized type, with a switcher (A-17), and the entries link to their form in it. The
+   server decides what the user may read: a 403 or 404 of the list is shown as the answer. *@
 @page "/content/{Type}"
 @implements IDisposable
 @inject AdminContext Context
@@ -12,6 +13,7 @@
 @inject IColumnStorage ColumnStorage
 @inject FormatService Format
 @inject IAnnouncer Announcer
+@inject DocumentInterop Document
 @inject IStringLocalizer<AdminResources> L
 
 @if (Described is not { } type)
@@ -21,13 +23,20 @@
 }
 else if (type.Kind == "singleton")
 {
-    @* A singleton has one entry, so its route is its form (A-13). *@
-    <ContentForm Type="@type.Name" />
+    @* A singleton has one entry, so its route is its form (A-13), once the shell is in the locale of the address. *@
+    @if (address?.Ready == true)
+    {
+        <ContentForm Type="@type.Name" Locale="@address.Locale" OwnsAddress="true" />
+    }
 }
 else if (view is { } shownView)
 {
     <div class="content-list-header">
         <h1 tabindex="-1">@AdminLabels.Type(type, L)</h1>
+        @if (type.Localized)
+        {
+            <ContentLocaleSwitcher />
+        }
         <div class="content-list-actions">
             <CmsButton Icon="CmsIconName.Settings" OnClick="OpenColumns">@L["Content.List.Columns"]</CmsButton>
             @if (Context.ForType(type.Name)?.Create == true)
@@ -163,6 +172,7 @@ else if (view is { } shownView)
 }
 
 @code {
+    private ContentLocaleAddress? address;
     private CancellationTokenSource? reading;
     private string? storedKey;
     private IReadOnlyList<string>? stored;
@@ -180,7 +190,7 @@ else if (view is { } shownView)
     private IReadOnlyList<FieldFilter> filters = [];
     private string? search;
 
-    // Each row's entry in every locale it has, by the entry's id, under locale=all.
+    // Each row's entry in every locale it has, by the entry's id: under locale=all, or from a read of each other locale.
     private IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, ContentEntry>> localesById = new Dictionary<Guid, IReadOnlyDictionary<string, ContentEntry>>();
     private long total;
     private bool loading;
@@ -222,6 +232,9 @@ else if (view is { } shownView)
     [SupplyParameterFromQuery(Name = "q")]
     public string? SearchQuery { get; set; }
 
+    [SupplyParameterFromQuery(Name = "locale")]
+    public string? LocaleQuery { get; set; }
+
     // A failed read: the problem the API answered, or none when it did not answer.
     private sealed record ApiFailure(ApiProblem? Problem);
 
@@ -230,13 +243,19 @@ else if (view is { } shownView)
     private long Pages => Math.Max(1, (total + pageSize - 1) / pageSize);
 
     // The enabled locales of the site, in its order, which the badges of a localized type follow.
-    private IReadOnlyList<string> SiteLocales =>
-        [.. (Context.Site?.Locales ?? []).Where(locale => locale.Enabled).OrderBy(locale => locale.Position).Select(locale => locale.Code)];
+    private IReadOnlyList<string> SiteLocales => Context.ContentLocales;
+
+    // The locales the badges show: those of the site in which the user may read the type, since a read of every locale
+    // leaves out the others, which would look untranslated.
+    private IReadOnlyList<string> badgeLocales = [];
 
     private IReadOnlyList<CmsSortKey> GridSort => [.. sort.Select(key => new CmsSortKey(key.Path, key.Descending))];
 
     protected override async Task OnParametersSetAsync()
     {
+        // The access and the schema are those of the content locale, so they are read in it before anything else.
+        address ??= new ContentLocaleAddress(Context, Navigation, Announcer, Document, L);
+        await address.FollowAsync(Type, LocaleQuery);
         if (Described is not { Kind: "collection" } type || Context.Schema is not { } schema)
         {
             (view, readKey) = (null, null);
@@ -262,13 +281,12 @@ else if (view is { } shownView)
 
     // Each locale's status needs every locale of the entries, so a localized type in a site of several locales is read with
     // locale=all while its status is shown. The engine then matches, sorts and searches in the site's default locale, so only
-    // while that is the content locale; another content locale reads its own (A-17).
+    // while that is the content locale; another content locale reads its own, and the status in each other locale after it.
     private ContentQuery Query(ListView list) =>
-        list.Query(shown, sort, page, pageSize, filters, search, everyLocale:
-            list.Type.Localized
-            && SiteLocales.Count > 1
-            && Context.ContentLocale == Context.Site?.DefaultLocale
-            && shown.Any(column => column.Kind == ListColumnKind.Status));
+        list.Query(shown, sort, page, pageSize, filters, search, everyLocale: EveryLocaleStatus(list) && Context.NamedLocale is null);
+
+    private bool EveryLocaleStatus(ListView list) =>
+        list.Type.Localized && SiteLocales.Count > 1 && shown.Any(column => column.Kind == ListColumnKind.Status);
 
     // A search needs a searchable type and an index in the site: one is registered and the search plugin, when it is the one,
     // is not disabled there (FCMS2211).
@@ -300,7 +318,7 @@ else if (view is { } shownView)
     // A read that a later one overtook is dropped; the same read twice, as a render with the same query, is made once.
     private async Task ReadAsync(ContentQuery query, bool again = false)
     {
-        var key = $"{Context.Site?.Id}/{Type}?{query.ToQueryString()}";
+        var key = $"{Context.Site?.Id}/{Context.ContentLocale}/{Type}?{query.ToQueryString()}";
         if (key == readKey && !again)
         {
             return;
@@ -319,13 +337,25 @@ else if (view is { } shownView)
         StateHasChanged();
         try
         {
+            var readable = view is { } shownList && EveryLocaleStatus(shownList) ? Context.ReadableLocalesAsync(Type) : null;
             var result = await Client.ListEntriesAsync(Type, query, current.Token);
+            var badges = readable is null ? SiteLocales : await readable;
             if (current.IsCancellationRequested)
             {
                 return;
             }
 
             (entries, localesById) = query.Locale == ListView.EveryLocale ? EveryLocaleRows.Read(result.Items, Context.ContentLocale, SiteLocales) : (result.Items, new Dictionary<Guid, IReadOnlyDictionary<string, ContentEntry>>());
+            if (readable is not null && query.Locale is null && entries.Count > 0)
+            {
+                (localesById, badges) = await OtherLocalesAsync(entries, badges, current.Token);
+                if (current.IsCancellationRequested)
+                {
+                    return;
+                }
+            }
+
+            badgeLocales = badges;
             total = result.Total ?? result.Items.Count;
             AnnounceFound(query);
             if (entries.Count == 0 && total > 0 && page > Pages)
@@ -348,6 +378,52 @@ else if (view is { } shownView)
         }
 
         loading = false;
+    }
+
+    // The status of the page's entries in each other locale, beside their own: a read of each locale by their ids, in batches
+    // under the server's limit of filter nodes. A locale whose read was refused or failed gets no badge, rather than show a
+    // translation the entry has as missing, and does not cost the others theirs.
+    private async Task<(IReadOnlyDictionary<Guid, IReadOnlyDictionary<string, ContentEntry>> Locales, IReadOnlyList<string> Badges)> OtherLocalesAsync(
+        IReadOnlyList<ContentEntry> rows,
+        IReadOnlyList<string> readable,
+        CancellationToken cancellationToken)
+    {
+        var contentLocale = Context.ContentLocale!;
+        var ids = rows.Select(row => row.Id).ToList();
+        var others = readable.Where(code => !string.Equals(code, contentLocale, StringComparison.OrdinalIgnoreCase)).ToList();
+        var reads = await Task.WhenAll(others.Select(code => StatusesAsync(code, ids, cancellationToken)));
+        var byId = rows.ToDictionary(row => row.Id, row => new Dictionary<string, ContentEntry>(StringComparer.Ordinal) { [contentLocale] = row });
+        for (var index = 0; index < others.Count; index++)
+        {
+            foreach (var item in reads[index] ?? [])
+            {
+                if (byId.TryGetValue(item.Id, out var locales))
+                {
+                    locales[others[index]] = item with { Locale = others[index] };
+                }
+            }
+        }
+
+        IReadOnlyList<string> badges = [.. readable.Where(code => code == contentLocale || reads[others.IndexOf(code)] is not null)];
+        return (byId.ToDictionary(pair => pair.Key, pair => (IReadOnlyDictionary<string, ContentEntry>)pair.Value), badges);
+    }
+
+    private async Task<IReadOnlyList<ContentEntry>?> StatusesAsync(string locale, IReadOnlyList<Guid> ids, CancellationToken cancellationToken)
+    {
+        try
+        {
+            List<ContentEntry> found = [];
+            foreach (var batch in ids.Chunk(ListView.MaxStatusIds))
+            {
+                found.AddRange((await Client.ListEntriesAsync(Type, ListView.StatusQuery(locale, batch), cancellationToken)).Items);
+            }
+
+            return found;
+        }
+        catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            return null;
+        }
     }
 
     private void AnnounceFound(ContentQuery query)
@@ -393,7 +469,7 @@ else if (view is { } shownView)
             builder.OpenComponent<EntryBadges>(0);
             builder.AddComponentParameter(1, nameof(EntryBadges.Entry), entry);
             builder.AddComponentParameter(2, nameof(EntryBadges.Locales), localesById.GetValueOrDefault(entry.Id));
-            builder.AddComponentParameter(3, nameof(EntryBadges.SiteLocales), SiteLocales);
+            builder.AddComponentParameter(3, nameof(EntryBadges.SiteLocales), badgeLocales);
             builder.CloseComponent();
         },
         ListColumnKind.Locale => builder => builder.AddContent(0, entry.Locale),
@@ -419,11 +495,11 @@ else if (view is { } shownView)
         },
     };
 
-    private string EntryRoute(ContentEntry entry) => ContentRoutes.Entry(Type, entry.Id);
+    private string EntryRoute(ContentEntry entry) => ContentRoutes.InLocale(ContentRoutes.Entry(Type, entry.Id), Context.NamedLocale);
 
     private void Open(ContentEntry entry) => Navigation.NavigateTo(EntryRoute(entry));
 
-    private void NewEntry() => Navigation.NavigateTo(ContentRoutes.New(Type));
+    private void NewEntry() => Navigation.NavigateTo(ContentRoutes.InLocale(ContentRoutes.New(Type), Context.NamedLocale));
 
     private void OpenInPanel(ContentEntry entry) => (panelEntry, panelOpen, panelSaved) = (entry.Id, true, false);
 
