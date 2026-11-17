@@ -60,8 +60,25 @@ function isTextEntry(element) {
         && (element.isContentEditable || element.closest("input, textarea, select, [contenteditable='true'], [role='textbox']") !== null);
 }
 
+function isDialog(node) {
+    return node instanceof HTMLDialogElement || (node instanceof HTMLElement && node.localName === "fluent-dialog");
+}
+
+// A modal dialog keeps focus inside it, so a key pressed while one is open comes from it; the library's dialog holds a
+// native one in its shadow root, which is open while it shows.
+function inOpenDialog(event) {
+    return event.composedPath().some(isDialog)
+        || document.querySelector("dialog[open]") !== null
+        || [...document.querySelectorAll("fluent-dialog")].some(host => host.shadowRoot?.querySelector("dialog[open]"));
+}
+
+// The letter of a shortcut by its key, or by its place on the keyboard for a layout whose key gives another letter.
+function isLetter(event, letter) {
+    return event.key.toLowerCase() === letter || event.code === `Key${letter.toUpperCase()}`;
+}
+
 // The shortcuts of a form (spec 4.5): Ctrl or Cmd with S saves and with Shift and Enter publishes, and ? lists them where it
-// types no character. A key the page handled already, such as Escape in a dialog, is left alone.
+// types no character. A key the page handled already, and any key while a dialog is open, are left alone.
 export function listenForShortcuts(target) {
     const listener = event => {
         if (event.defaultPrevented || event.isComposing || event.altKey || typeof event.key !== "string") {
@@ -69,9 +86,18 @@ export function listenForShortcuts(target) {
         }
 
         const command = event.ctrlKey || event.metaKey
-            ? (!event.shiftKey && event.key.toLowerCase() === "s" ? "save" : event.shiftKey && event.key === "Enter" ? "publish" : null)
+            ? (!event.shiftKey && isLetter(event, "s") ? "save" : event.shiftKey && event.key === "Enter" ? "publish" : null)
             : event.key === "?" && !isTextEntry(event.composedPath()[0] ?? event.target) ? "help" : null;
         if (command === null) {
+            return;
+        }
+
+        // Saving the page is not what Ctrl+S means here, in a dialog either.
+        if (inOpenDialog(event)) {
+            if (command === "save") {
+                event.preventDefault();
+            }
+
             return;
         }
 

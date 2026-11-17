@@ -146,7 +146,6 @@ public sealed class ContentFormTests : AdminTestContext
         Management.Hold = new TaskCompletionSource();
         Save(app);
         Navigation.NavigateTo("not-found");
-        app.WaitForAssertion(() => Button(app, "Leave").Click());
 
         Management.Hold.SetResult();
 

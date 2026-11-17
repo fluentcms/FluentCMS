@@ -3,9 +3,11 @@
    the site before, so its route goes to the type's list, and a list leaves its query string behind. The page is dropped
    while the new site loads, so a switch with an unsaved form asks first (#3178). *@
 @implements IDisposable
+@using FluentCMS.Admin.Authentication
 @using FluentCMS.Admin.Forms
 @inject AdminContext Context
 @inject FormDrafts Drafts
+@inject IAdminSession Session
 @inject NavigationManager Navigation
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<AdminResources> L
@@ -13,12 +15,14 @@
 @if (Context.Sites.Count > 1 && Context.Site is { } current)
 {
     <div class="site-switcher">
+        @* While the question is open the select shows the site chosen, as the browser's does, so that a cancel draws the site
+           before again: Blazor sends only what differs from the last render. *@
         <CmsSelect Label="@L["Shell.SiteSwitcher.Label"]"
                    Options="@([.. Context.Sites.Select(site => new CmsOption(site.Id.ToString("D"), site.Name))])"
-                   Value="@current.Id.ToString("D")"
+                   Value="@((pending ?? current.Id).ToString("D"))"
                    ValueChanged="@SwitchAsync" />
     </div>
-    <CmsDialog Title="@L["Shell.SiteSwitcher.UnsavedTitle"]" Open="@(pending is not null)" OpenChanged="@(open => pending = open ? pending : null)">
+    <CmsDialog Title="@L["Shell.SiteSwitcher.UnsavedTitle"]" Open="@(pending is not null)" OpenChanged="@(open => { if (!open) pending = null; })">
         <ChildContent>
             <p>@L["Shell.SiteSwitcher.UnsavedText"]</p>
         </ChildContent>
@@ -53,6 +57,7 @@
         await SwitchToAsync(id);
     }
 
+    // The unsaved forms are given up, with any draft of them a past session kept, as the question said.
     private async Task ConfirmSwitchAsync()
     {
         if (pending is not { } id)
@@ -61,7 +66,7 @@
         }
 
         pending = null;
-        Drafts.ReleaseAll();
+        await Drafts.DiscardTrackedAsync(Session.User?.Subject);
         await SwitchToAsync(id);
     }
 

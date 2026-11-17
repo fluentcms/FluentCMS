@@ -64,6 +64,29 @@ internal sealed class FormDrafts(ISessionStorage storage)
         }
     }
 
+    // A confirmed leave of every unsaved form, as at a site switch: each is released and the user's draft of it removed, so
+    // a draft restored from an earlier session does not come back.
+    public async Task DiscardTrackedAsync(string? user)
+    {
+        List<FormDraftKey> keys;
+        lock (_gate)
+        {
+            keys = [.. _forms.Select(form => form.CaptureDraft().Key)];
+        }
+
+        ReleaseAll();
+        if (user is null || keys.Count == 0)
+        {
+            return;
+        }
+
+        var stored = await ReadAsync();
+        if (stored.RemoveAll(draft => keys.Any(key => Matches(draft, user, key))) > 0)
+        {
+            await WriteAsync(stored);
+        }
+    }
+
     // Before the redirect to sign in, when the session has ended.
     public async Task SaveTrackedAsync(string user)
     {

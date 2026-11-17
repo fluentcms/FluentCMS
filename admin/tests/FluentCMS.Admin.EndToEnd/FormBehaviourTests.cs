@@ -8,12 +8,13 @@ namespace FluentCMS.Admin.EndToEnd;
 
 // The behaviours of the form (A-49) on the Blog sample: a save that another tab made stale opens the conflict dialog, whose
 // keep mine and take theirs end in the state they name, and leaving unsaved changes asks first for a route change, a closed
-// tab and a sign-out (#3213), and not otherwise.
+// tab, a site switch and a sign-out (#3213), and not otherwise.
 public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
 {
     private const string ConflictTitle = "Content.Form.Conflict.Title";
     private const string LeaveTitle = "Content.Form.Leave.Title";
     private const string SignOutTitle = "Shell.SignOut.Title";
+    private const string SwitchTitle = "Shell.SiteSwitcher.UnsavedTitle";
 
     [Fact]
     public async Task ASaveThatASecondTabMadeStaleOpensTheDialogAndKeepMineAndTakeTheirsEndInTheirStates()
@@ -113,6 +114,70 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
         await DialogButton(tab, SignOutTitle, "Shell.SignOut.Confirm").ClickAsync();
         await tab.Page.WaitForURLAsync(url => new Uri(url).AbsolutePath == "/account/logout");
         unloadQuestions.ShouldBe(1);
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    // Back asks too, and a confirmed leave goes back as Back does, adding no entry to the history.
+    [Fact]
+    public async Task BackWithUnsavedChangesAsksAndALeaveGoesBackWithoutANewHistoryEntry()
+    {
+        var browser = await OpenBrowserAsync();
+        var tab = await browser.NewTabAsync();
+        await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        await Expect(tab.Sidebar).ToBeVisibleAsync();
+        var start = tab.Page.Url;
+        await tab.Page.EvaluateAsync("() => Blazor.navigateTo('content/article/new')");
+        await Title(tab).ClickAsync();
+        await Title(tab).PressSequentiallyAsync(" changed");
+        var form = tab.Page.Url;
+        var entries = await tab.Page.EvaluateAsync<int>("() => history.length");
+
+        await tab.Page.EvaluateAsync("() => history.back()");
+        await Expect(Shown(tab, LeaveTitle)).ToBeVisibleAsync();
+        await DialogButton(tab, LeaveTitle, "Content.Form.Leave.Cancel").ClickAsync();
+        await Expect(Shown(tab, LeaveTitle)).ToBeHiddenAsync();
+        await tab.Page.WaitForURLAsync(form);
+        await Expect(Title(tab)).ToHaveValueAsync(new Regex(" changed$"));
+
+        await tab.Page.EvaluateAsync("() => history.back()");
+        await DialogButton(tab, LeaveTitle, "Content.Form.Leave.Confirm").ClickAsync();
+
+        await tab.Page.WaitForURLAsync(start);
+        (await tab.Page.EvaluateAsync<int>("() => history.length")).ShouldBe(entries);
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    // Keep working leaves the switcher showing the site of the form, the switch then asks again, and confirmed it switches.
+    [Fact]
+    public async Task ASiteSwitchWithUnsavedChangesAsksAndKeepWorkingShowsTheSiteBefore()
+    {
+        var browser = await OpenBrowserAsync();
+        var tab = await browser.NewTabAsync();
+        await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article/new").AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        await Expect(Title(tab)).ToBeVisibleAsync();
+        var site = await tab.SiteSwitcher.InputValueAsync();
+        var other = Host.Sites.First(candidate => !string.Equals(candidate.Id, site, StringComparison.OrdinalIgnoreCase)).Id;
+        await Title(tab).ClickAsync();
+        await Title(tab).PressSequentiallyAsync(" changed");
+
+        await tab.SiteSwitcher.FocusAsync();
+        await tab.SiteSwitcher.SelectOptionAsync(other);
+        await Expect(Shown(tab, SwitchTitle)).ToBeVisibleAsync();
+        await DialogButton(tab, SwitchTitle, "Shell.SiteSwitcher.UnsavedCancel").ClickAsync();
+
+        await Expect(Shown(tab, SwitchTitle)).ToBeHiddenAsync();
+        await Expect(tab.SiteSwitcher).ToHaveValueAsync(site);
+        await Expect(tab.SiteSwitcher).ToBeFocusedAsync();
+        await Expect(Title(tab)).ToHaveValueAsync(new Regex(" changed$"));
+
+        await tab.SiteSwitcher.SelectOptionAsync(other);
+        await Expect(Shown(tab, SwitchTitle)).ToBeVisibleAsync();
+        await DialogButton(tab, SwitchTitle, "Shell.SiteSwitcher.UnsavedConfirm").ClickAsync();
+
+        await Expect(tab.SiteSwitcher).ToHaveValueAsync(other);
+        await Expect(Shown(tab, LeaveTitle)).ToBeHiddenAsync();
         browser.PolicyViolations.ShouldBeEmpty();
     }
 

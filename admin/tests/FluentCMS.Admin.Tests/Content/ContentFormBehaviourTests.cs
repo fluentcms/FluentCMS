@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using AngleSharp.Dom;
 using Bunit;
+using Bunit.TestDoubles;
 using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Content;
 using FluentCMS.Admin.Fields;
@@ -24,6 +25,7 @@ namespace FluentCMS.Admin.Tests.Content;
 // a conflicting save.
 public sealed class ContentFormBehaviourTests : AdminTestContext
 {
+    private const string SignedInUser = "0193a1b2-0000-7000-8000-000000000001";
     private static readonly Guid Shop = new("0193a1b2-0000-7000-8000-00000000a002");
 
     private readonly FakeContent _content;
@@ -398,12 +400,137 @@ public sealed class ContentFormBehaviourTests : AdminTestContext
 
         var dialog = Dialog(app, "Someone saved this entry first");
         dialog.Find("tr[data-field='title'] input[value='mine']").HasAttribute("checked").ShouldBeTrue();
+        dialog.Find("tr[data-field='title'] input[value='mine']").ParentElement!.TextContent.Trim().ShouldStartWith("Your version of Title: ");
+        dialog.Find("tr[data-field='title'] input[value='theirs']").ParentElement!.TextContent.Trim().ShouldStartWith("Saved version of Title: ");
         dialog.Find("tr[data-field='title'] input[value='theirs']").Change(true);
         Button(app, "Save the chosen values").Click();
 
         app.WaitForAssertion(() => _content.Writes.Count.ShouldBe(2));
         _content.Writes[1].IfMatch.ShouldBe("\"3\"");
         (_content.Writes[1].Body["title"]!.GetValue<string>(), _content.Writes[1].Body["summary"]!.GetValue<string>()).ShouldBe(("Theirs", "My summary"));
+    }
+
+    [Fact]
+    public async Task TheConflictReopenedAfterAnEditComparesTheValuesTheFormHoldsNow()
+    {
+        var id = _content.Add("link", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/link/{id:D}");
+        _content.ChangeElsewhere(id, "summary", "Theirs");
+        Input(app, "title").Input("First");
+        Save(app);
+        var dialog = Dialog(app, "Someone saved this entry first");
+        app.WaitForAssertion(() => dialog.Instance.Open.ShouldBeTrue());
+
+        // Dismissed by Escape, then the user edits on and opens it again from the problem above the form.
+        await app.InvokeAsync(() => dialog.Instance.OpenChanged.InvokeAsync(false));
+        Input(app, "title").Input("Second");
+        Button(app, "Compare the versions").Click();
+
+        app.WaitForAssertion(() => Rows(Dialog(app, "Someone saved this entry first"))[0].ShouldBe(("Title", "Second", "Hello")));
+        Button(app, "Keep mine").Click();
+        app.WaitForAssertion(() => _content.Writes.Count.ShouldBe(2));
+        _content.Writes[1].Body["title"]!.GetValue<string>().ShouldBe("Second");
+        app.WaitForAssertion(() => Document.Invocations.Count(call => call.Identifier == "focusHeading").ShouldBeGreaterThan(0));
+    }
+
+    [Fact]
+    public void ASecond412WhileResolvingOpensTheDialogOnTheNewerVersion()
+    {
+        var id = _content.Add("link", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/link/{id:D}");
+        _content.ChangeElsewhere(id, "summary", "Theirs");
+        Input(app, "title").Input("Mine");
+        Save(app);
+        app.WaitForAssertion(() => Dialog(app, "Someone saved this entry first").Instance.Open.ShouldBeTrue());
+        _content.ChangeElsewhere(id, "slug", "their-slug");
+
+        Button(app, "Keep mine").Click();
+
+        app.WaitForAssertion(() => _content.Writes.Count.ShouldBe(2));
+        app.WaitForAssertion(() => Rows(Dialog(app, "Someone saved this entry first")).ShouldBe([("Title", "Mine", "Hello"), ("Slug", "No value", "their-slug")]));
+        Dialog(app, "Someone saved this entry first").Instance.Open.ShouldBeTrue();
+        Button(app, "Keep mine").Click();
+
+        app.WaitForAssertion(() => _content.Version(id).ShouldBe(4));
+        _content.Writes[2].IfMatch.ShouldBe("\"3\"");
+        (_content.Fields(id)["title"]!.GetValue<string>(), _content.Fields(id)["summary"]!.GetValue<string>(), _content.Fields(id)["slug"]!.GetValue<string>())
+            .ShouldBe(("Mine", "Theirs", "their-slug"));
+    }
+
+    [Fact]
+    public void KeepMineWithNothingOfTheUsersToKeepTakesTheSavedVersionWithoutASave()
+    {
+        var id = _content.Add("link", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/link/{id:D}");
+        _content.ChangeElsewhere(id, "title", "Same");
+        Input(app, "title").Input("Same");
+        Save(app);
+        app.WaitForAssertion(() => Dialog(app, "Someone saved this entry first").Instance.Open.ShouldBeTrue());
+        Dialog(app, "Someone saved this entry first").Find("p").TextContent.ShouldNotBeEmpty();
+
+        Button(app, "Keep mine").Click();
+
+        app.WaitForAssertion(() => Dialog(app, "Someone saved this entry first").Instance.Open.ShouldBeFalse());
+        _content.Writes.Count.ShouldBe(1);
+        _content.Version(id).ShouldBe(2);
+        Services.GetRequiredService<IFormDraftStore>().HasUnsavedForms.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void AConfirmedLeaveGoesOnAsTheNavigationItWas()
+    {
+        var id = _content.Add("link", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/link/{id:D}");
+        Input(app, "title").Input("Mine");
+
+        Navigation.NavigateTo("not-found", replace: true);
+        app.WaitForAssertion(() => Button(app, "Leave").Click());
+
+        app.WaitForAssertion(() => Navigation.Uri.ShouldBe("http://localhost/not-found"));
+        var history = ((BunitNavigationManager)Navigation).History.Where(entry => entry.Uri == "not-found").ToList();
+        history.ShouldHaveSingleItem().State.ShouldBe(NavigationState.Succeeded);
+        history[0].Options.ReplaceHistoryEntry.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ATabWhoseFieldsAreAllHiddenIsNotDrawn()
+    {
+        var more = Field("extra");
+        more["display"] = new JsonObject { ["tab"] = "More" };
+        more["visibleWhen"] = new JsonObject { ["operator"] = "equal", ["field"] = "kind", ["values"] = new JsonArray("external") };
+        Management.SetTypes(MainSite, Type("page", fields: [Field("kind"), more]));
+        var app = Load("content/page/new");
+        app.FindAll("fluent-tab").ShouldBeEmpty();
+
+        Input(app, "kind").Input("external");
+
+        app.WaitForAssertion(() => app.FindAll("fluent-tab").Select(tab => tab.TextContent.Trim()).ShouldBe(["More"]));
+    }
+
+    [Fact]
+    public async Task ACancelledSiteSwitchShowsTheSiteBeforeAgainAndAConfirmedOneRemovesTheRestoredDraft()
+    {
+        Management.AddSite(Shop, "Shop", "shop");
+        Management.SetTypes(Shop, Link());
+        var id = _content.Add("link", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/link/{id:D}");
+        Input(app, "title").Input("Mine");
+        // A draft kept for this entry, as an ended session keeps one, and the form unsaved again.
+        await app.InvokeAsync(() => Services.GetRequiredService<FormDrafts>().SaveTrackedAsync(SignedInUser));
+        Storage[FormDrafts.StorageKey].ShouldNotBeNull();
+        Input(app, "title").Input("Mine again");
+
+        app.Find(".site-switcher select").Change(Shop.ToString("D"));
+        app.Find(".site-switcher select").GetAttribute("value").ShouldBe(Shop.ToString("D"));
+        Dialog(app, "Switch site with unsaved changes?").FindAll("fluent-button").Single(button => button.TextContent.Trim() == "Keep working").Click();
+
+        app.Find(".site-switcher select").GetAttribute("value").ShouldBe(MainSite.ToString("D"));
+
+        app.Find(".site-switcher select").Change(Shop.ToString("D"));
+        Dialog(app, "Switch site with unsaved changes?").FindAll("fluent-button").Single(button => button.TextContent.Trim() == "Switch site").Click();
+
+        app.WaitForAssertion(() => Services.GetRequiredService<AdminContext>().Site!.Id.ShouldBe(Shop));
+        Storage[FormDrafts.StorageKey].ShouldBeNull();
     }
 
     private List<bool> UnloadGuards() =>

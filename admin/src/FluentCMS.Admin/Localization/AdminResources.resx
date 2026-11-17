@@ -1130,4 +1130,13 @@
   <data name="Content.Form.Conflict.TookTheirs" xml:space="preserve">
     <value>The saved version is shown. Your changes were dropped.</value>
   </data>
+  <data name="Content.Form.Conflict.NothingToSave" xml:space="preserve">
+    <value>Your values match the saved version, which is shown now. There was nothing to save.</value>
+  </data>
+  <data name="Content.Form.Conflict.MineOf" xml:space="preserve">
+    <value>Your version of {0}: </value>
+  </data>
+  <data name="Content.Form.Conflict.TheirsOf" xml:space="preserve">
+    <value>Saved version of {0}: </value>
+  </data>
 </root>

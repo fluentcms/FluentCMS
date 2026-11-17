@@ -92,7 +92,7 @@
                             <div class="content-form-toolbar">
                                 @if (conflict is not null)
                                 {
-                                    <CmsButton OnClick="@(() => conflictOpen = true)">@L["Content.Form.Conflict.Show"]</CmsButton>
+                                    <CmsButton OnClick="ReopenConflict">@L["Content.Form.Conflict.Show"]</CmsButton>
                                 }
                                 <CmsButton OnClick="ReloadAsync">@L["Content.Form.Reload"]</CmsButton>
                             </div>
@@ -104,13 +104,12 @@
             {
                 @Groups(main)
             }
-            @if (tabbed.Count > 0)
+            @if (ShownTabs.Any())
             {
                 <CmsTabs ActiveTabId="@ActiveTab" ActiveTabIdChanged="@(id => activeTab = id)">
-                    @for (var index = 0; index < tabbed.Count; index++)
+                    @foreach (var index in ShownTabs)
                     {
-                        var tab = tabbed[index];
-                        <CmsTab Id="@TabId(index)" Title="@(tab.Name!)">@Groups(tab)</CmsTab>
+                        <CmsTab @key="index" Id="@TabId(index)" Title="@(tabbed[index].Name!)">@Groups(tabbed[index])</CmsTab>
                     }
                 </CmsTabs>
             }
@@ -118,13 +117,13 @@
             break;
     }
 </div>
-<CmsDialog Title="@L["Content.Form.Leave.Title"]" Open="@(leaveTarget is not null)" OpenChanged="@(open => leaveTarget = open ? leaveTarget : null)">
+<CmsDialog Title="@L["Content.Form.Leave.Title"]" Open="@(leaveAnswer is not null)" OpenChanged="@(open => { if (!open) AnswerLeave(false); })">
     <ChildContent>
         <p>@L["Content.Form.Leave.Text"]</p>
     </ChildContent>
     <Actions>
-        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="LeaveAsync">@L["Content.Form.Leave.Confirm"]</CmsButton>
-        <CmsButton OnClick="@(() => leaveTarget = null)">@L["Content.Form.Leave.Cancel"]</CmsButton>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => AnswerLeave(true))">@L["Content.Form.Leave.Confirm"]</CmsButton>
+        <CmsButton OnClick="@(() => AnswerLeave(false))">@L["Content.Form.Leave.Cancel"]</CmsButton>
     </Actions>
 </CmsDialog>
 <CmsDialog Title="@L["Content.Form.Shortcuts.Title"]" Open="@showingShortcuts" OpenChanged="@(open => showingShortcuts = open)">
@@ -206,7 +205,11 @@
     private int generation;
     private (string Type, Guid? Id)? shown;
     private IDisposable? leaveGuard;
-    private string? leaveTarget;
+    // The question before unsaved changes are left, answered true to leave; the navigation waits for it.
+    private TaskCompletionSource<bool>? leaveAnswer;
+    // The body of the save that is running, so a navigation while it runs, with nothing changed since, does not ask.
+    private JsonObject? inFlight;
+    private bool conflictReopened;
     private string? allowedNavigation;
     private IAsyncDisposable? shortcuts;
     private bool disposed;
@@ -234,7 +237,11 @@
 
     private FormTab? Untabbed => tabs.FirstOrDefault(tab => tab.Name is null);
 
-    private string? ActiveTab => activeTab ?? (tabbed.Count > 0 ? TabId(0) : null);
+    // A tab whose fields are all hidden by their conditions is not drawn.
+    private IEnumerable<int> ShownTabs => Enumerable.Range(0, tabbed.Count).Where(index => tabbed[index].Fields.Any(Shows));
+
+    private string? ActiveTab =>
+        ShownTabs.Select(TabId).ToList() is { Count: > 0 } shownTabs ? (activeTab is not null && shownTabs.Contains(activeTab) ? activeTab : shownTabs[0]) : null;
 
     private string TextDirectionOfLocale => locale is null ? FieldEditorBase.LeftToRight : TextDirection.Of(locale);
 
@@ -244,7 +251,7 @@
     // The form's own tracking may have been given up by a confirmed site switch or sign-out.
     private bool IsDirty => tracking is not null && Drafts.HasUnsavedForms;
 
-    private bool DialogOpen => leaveTarget is not null || conflictOpen || showingShortcuts;
+    private bool DialogOpen => leaveAnswer is not null || conflictOpen || showingShortcuts;
 
     private string Heading => state switch
     {
@@ -264,6 +271,7 @@
         disposed = true;
         generation++;
         tracking?.Dispose();
+        leaveAnswer?.TrySetResult(false);
         leaveGuard?.Dispose();
         if (shortcuts is not null)
         {
@@ -549,6 +557,7 @@
             if (entryId is { } id)
             {
                 sent = fields.DeepClone().AsObject();
+                inFlight = sent;
                 saved = await Client.SaveEntryAsync(Type, id, sent, read!, CancellationToken.None);
             }
             else
@@ -556,6 +565,7 @@
                 // One key per user action, kept with its body for a retry after the server could not be reached (spec 2.7).
                 pendingCreate ??= (new UserAction(ApiRequest.NewIdempotencyKey(), site, locale), fields.DeepClone().AsObject());
                 sent = pendingCreate.Value.Body;
+                inFlight = sent;
                 saved = await Client.CreateEntryAsync(Type, sent, pendingCreate.Value.Action, CancellationToken.None);
             }
 
@@ -610,7 +620,7 @@
         }
         finally
         {
-            saving = false;
+            (saving, inFlight) = (false, null);
         }
     }
 
@@ -707,11 +717,22 @@
         ];
         conflict = new Conflict(current, mine, rows);
         keepMine = rows.ToDictionary(row => row.Field.Name, row => row.ChangedByUser, StringComparer.Ordinal);
-        (comparing, conflictOpen) = (false, true);
+        (comparing, conflictOpen, conflictReopened) = (false, true, false);
+    }
+
+    // The dialog dismissed earlier opens again on the values the form holds now, which the user may have changed meanwhile.
+    private void ReopenConflict()
+    {
+        if (conflict is { } open)
+        {
+            OpenConflict(open.Current);
+            conflictReopened = true;
+        }
     }
 
     // Keep mine, and the choices of the comparison: the entry as it is now with the chosen values of the user's, saved on its
-    // version. A field the user did not change keeps the newer value unless they chose theirs field by field.
+    // version. A field the user did not change keeps the newer value unless they chose theirs field by field. With no value
+    // of the user's to keep, the form takes the newer version and saves nothing.
     private async Task ResolveAsync()
     {
         if (conflict is not { } open)
@@ -719,14 +740,26 @@
             return;
         }
 
+        var reopened = conflictReopened;
         var merged = open.Current.Entry!.Fields.DeepClone().AsObject();
-        foreach (var row in open.Rows.Where(row => keepMine.GetValueOrDefault(row.Field.Name)))
+        var kept = open.Rows.Where(row => keepMine.GetValueOrDefault(row.Field.Name)).ToList();
+        foreach (var row in kept)
         {
             merged[row.Field.Name] = open.Mine[row.Field.Name]?.DeepClone();
         }
 
         Rebase(open.Current, merged);
-        await SaveAsync();
+        if (kept.Count == 0)
+        {
+            await DropChangesAsync();
+            Announcer.Announce(L["Content.Form.Conflict.NothingToSave"]);
+        }
+        else
+        {
+            await SaveAsync();
+        }
+
+        await FocusAfterConflictAsync(reopened);
     }
 
     private Task KeepMineAsync()
@@ -747,18 +780,34 @@
             return;
         }
 
+        var reopened = conflictReopened;
         Rebase(open.Current, open.Current.Entry!.Fields.DeepClone().AsObject());
+        await DropChangesAsync();
+        Announcer.Announce(L["Content.Form.Conflict.TookTheirs"]);
+        await FocusAfterConflictAsync(reopened);
+    }
+
+    private async Task DropChangesAsync()
+    {
         tracking?.Dispose();
         tracking = null;
         restored = false;
         await Drafts.RemoveAsync(Key, CancellationToken.None);
-        Announcer.Announce(L["Content.Form.Conflict.TookTheirs"]);
+    }
+
+    // The button that opened a dialog it reopened is gone with the problem it was in, so focus goes to the heading.
+    private async Task FocusAfterConflictAsync(bool reopened)
+    {
+        if (reopened && saveFailure is null)
+        {
+            await Document.FocusHeadingAsync(afterDialog: true);
+        }
     }
 
     private void Rebase(EntryRead current, JsonObject values)
     {
         (read, fields) = (current, values);
-        (conflict, conflictOpen, comparing, saveFailure) = (null, false, false, null);
+        (conflict, conflictOpen, comparing, conflictReopened, saveFailure) = (null, false, false, false, null);
         ClearErrors();
     }
 
@@ -769,43 +818,56 @@
         _ => value!.ToJsonString(),
     };
 
-    // A route change asks first while the form is unsaved; the form's own moves, and a leave the user confirmed, pass.
-    private ValueTask OnLocationChanging(LocationChangingContext context)
+    // A route change asks first while the form is unsaved, and waits for the answer, so a confirmed leave goes on as the
+    // navigation it was, a Back included. The form's own moves pass, and so does one while a save of these very values runs.
+    private async ValueTask OnLocationChanging(LocationChangingContext context)
     {
         if (allowedNavigation is { } allowed && Same(allowed, context.TargetLocation))
         {
             allowedNavigation = null;
-            return ValueTask.CompletedTask;
+            return;
         }
 
-        if (!IsDirty || state != FormState.Ready)
-        {
-            return ValueTask.CompletedTask;
-        }
-
-        context.PreventNavigation();
-        leaveTarget = context.TargetLocation;
-        _ = InvokeAsync(StateHasChanged);
-        return ValueTask.CompletedTask;
-    }
-
-    private bool Same(string left, string right) =>
-        string.Equals(Navigation.ToAbsoluteUri(left).AbsoluteUri, Navigation.ToAbsoluteUri(right).AbsoluteUri, StringComparison.Ordinal);
-
-    // The user leaves the unsaved changes, and any draft of them a past session kept.
-    private async Task LeaveAsync()
-    {
-        if (leaveTarget is not { } target)
+        if (!IsDirty || state != FormState.Ready || (inFlight is not null && JsonNode.DeepEquals(fields, inFlight)))
         {
             return;
         }
 
-        leaveTarget = null;
-        tracking?.Dispose();
-        tracking = null;
-        await Drafts.RemoveAsync(Key, CancellationToken.None);
-        NavigateAway(target);
+        leaveAnswer?.TrySetResult(false);
+        var answer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        leaveAnswer = answer;
+        await InvokeAsync(StateHasChanged);
+        bool leave;
+        using (context.CancellationToken.Register(() => answer.TrySetResult(false)))
+        {
+            leave = await answer.Task;
+        }
+
+        if (leaveAnswer == answer)
+        {
+            leaveAnswer = null;
+            await InvokeAsync(StateHasChanged);
+        }
+
+        if (context.CancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        if (!leave)
+        {
+            context.PreventNavigation();
+            return;
+        }
+
+        // The user leaves the unsaved changes, and any draft of them a past session kept.
+        await DropChangesAsync();
     }
+
+    private void AnswerLeave(bool leave) => leaveAnswer?.TrySetResult(leave);
+
+    private bool Same(string left, string right) =>
+        string.Equals(Navigation.ToAbsoluteUri(left).AbsoluteUri, Navigation.ToAbsoluteUri(right).AbsoluteUri, StringComparison.Ordinal);
 
     private void NavigateAway(string target, bool replace = false)
     {
@@ -911,12 +973,14 @@
                                         <td>
                                             <label class="content-form-choice">
                                                 <input type="radio" name="@($"conflict-{name}")" value="mine" checked="@keepMine[name]" @onchange="@(() => keepMine[name] = true)" />
+                                                <span class="cms-visually-hidden">@L["Content.Form.Conflict.MineOf", FieldEditorBase.LabelOf(row.Field)]</span>
                                                 <span lang="@locale" dir="@TextDirectionOfLocale">@ValueText(open.Mine[name])</span>
                                             </label>
                                         </td>
                                         <td>
                                             <label class="content-form-choice">
                                                 <input type="radio" name="@($"conflict-{name}")" value="theirs" checked="@(!keepMine[name])" @onchange="@(() => keepMine[name] = false)" />
+                                                <span class="cms-visually-hidden">@L["Content.Form.Conflict.TheirsOf", FieldEditorBase.LabelOf(row.Field)]</span>
                                                 <span lang="@locale" dir="@TextDirectionOfLocale">@ValueText(open.Current.Entry!.Fields[name])</span>
                                             </label>
                                         </td>
