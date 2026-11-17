@@ -1,0 +1,9 @@
+.list-cell-json {
+    display: inline-block;
+    max-inline-size: 32ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+    font-size: var(--cms-font-size-s);
+}

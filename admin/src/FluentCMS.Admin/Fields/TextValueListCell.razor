@@ -1,0 +1,13 @@
+@* The cell of a text, long text, slug, email or URL field: the text, in the entry's language and direction; an email or
+   URL left to right. A long text is cut to two lines. It is not a link, since a row is one tab stop. *@
+@inherits ListCellBase
+
+<span class="@(Field.Type == "longText" ? "list-cell-text list-cell-long" : "list-cell-text")"
+      lang="@(IsText ? Entry.Locale : null)"
+      dir="@(IsText ? Direction : FieldEditorBase.LeftToRight)">@FieldValues.Text(Value)</span>
+
+@code {
+    private bool IsText => Field.Type is not ("email" or "url");
+
+    private string? Direction => Entry.Locale is { } locale ? TextDirection.Of(locale) : null;
+}

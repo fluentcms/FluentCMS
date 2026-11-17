@@ -511,7 +511,8 @@
         builder.AddComponentParameter(6, nameof(FieldEditorBase.Required), field.Validation.Required);
         builder.AddComponentParameter(7, nameof(FieldEditorBase.ContentLocale), locale);
         builder.AddComponentParameter(8, nameof(FieldEditorBase.TextDirection), TextDirectionOfLocale);
-        builder.AddComponentReferenceCapture(9, instance => editors[field.Name] = (FieldEditorBase)instance);
+        builder.AddComponentParameter(9, nameof(FieldEditorBase.Document), fields);
+        builder.AddComponentReferenceCapture(10, instance => editors[field.Name] = (FieldEditorBase)instance);
         builder.CloseComponent();
     };
 }

@@ -10,6 +10,7 @@ namespace FluentCMS.Admin.Components;
 public abstract class CmsInputBase<TValue> : ComponentBase
 {
     private readonly string _generatedId = CmsIds.Next();
+    private TValue? _shownValue;
 
     /// <summary>Gets or sets the visible label of the input.</summary>
     [Parameter, EditorRequired]
@@ -40,6 +41,17 @@ public abstract class CmsInputBase<TValue> : ComponentBase
     public bool Disabled { get; set; }
 
     /// <summary>
+    /// Gets or sets whether the value is shown and cannot be changed. Unlike <see cref="Disabled"/>, a read-only input stays
+    /// in the tab order and is read by assistive technology; an input whose element has no read-only state is disabled.
+    /// </summary>
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    /// <summary>Gets or sets the callback raised when focus leaves the input, such as for validation as the user leaves a field.</summary>
+    [Parameter]
+    public EventCallback OnBlur { get; set; }
+
+    /// <summary>
     /// Gets or sets the language of the value, as <c>lang</c> on the input element only, so that the label, help and error
     /// stay in the interface's language; the content locale of a field of an entry. Used by the inputs that take text.
     /// </summary>
@@ -60,11 +72,22 @@ public abstract class CmsInputBase<TValue> : ComponentBase
     /// <summary>Gets or sets the reference of the input element, which <see cref="FocusAsync"/> focuses.</summary>
     protected ElementReference Element { get; set; }
 
+    /// <summary>
+    /// Gets or sets an error of the input itself, such as text that does not read as a date; shown while <see cref="Error"/>
+    /// is not set.
+    /// </summary>
+    protected string? InputError { get; set; }
+
+    /// <summary>Gets the identifier of another element that describes the input, such as a length counter, or <see langword="null"/>.</summary>
+    protected virtual string? AdditionalDescriptionId => null;
+
     /// <summary>Gets whether the input has an error.</summary>
-    protected bool Invalid => !string.IsNullOrEmpty(Error);
+    protected bool Invalid => !string.IsNullOrEmpty(ShownError);
 
     /// <summary>Gets the text that describes the input: the error when there is one, otherwise the help.</summary>
-    protected string? Message => Invalid ? Error : Help;
+    protected string? Message => Invalid ? ShownError : Help;
+
+    private string? ShownError => string.IsNullOrEmpty(Error) ? InputError : Error;
 
     /// <summary>Gets the identifier of the element that holds <see cref="Message"/>, or <see langword="null"/> without one.</summary>
     protected string? MessageId => string.IsNullOrEmpty(Message) ? null : InputId + "-message";
@@ -105,9 +128,10 @@ public abstract class CmsInputBase<TValue> : ComponentBase
         {
             var attributes = new Dictionary<string, object>(StringComparer.Ordinal);
 
-            if (MessageId is not null)
+            var describedBy = string.Join(' ', new[] { MessageId, AdditionalDescriptionId }.Where(id => id is not null));
+            if (describedBy.Length > 0)
             {
-                attributes["aria-describedby"] = MessageId;
+                attributes["aria-describedby"] = describedBy;
             }
 
             if (Required)
@@ -125,17 +149,33 @@ public abstract class CmsInputBase<TValue> : ComponentBase
     }
 
     /// <inheritdoc />
-    protected override void OnParametersSet() => CmsGuard.Named(Label, GetType().Name, nameof(Label));
+    protected override void OnParametersSet()
+    {
+        CmsGuard.Named(Label, GetType().Name, nameof(Label));
+
+        // A value set from outside, such as a restored draft, replaces the text the input could not read.
+        if (!EqualityComparer<TValue?>.Default.Equals(Value, _shownValue))
+        {
+            InputError = null;
+        }
+
+        _shownValue = Value;
+    }
 
     /// <summary>Moves focus to the input element, which scrolls it into view; does nothing before it is rendered.</summary>
     /// <returns>A task that completes when focus has moved.</returns>
     public ValueTask FocusAsync() => Element.Context is null ? ValueTask.CompletedTask : Element.FocusAsync();
 
-    /// <summary>Sets <see cref="Value"/> and raises <see cref="ValueChanged"/>.</summary>
+    /// <summary>Sets <see cref="Value"/> and raises <see cref="ValueChanged"/>; does nothing while the input is read-only.</summary>
     /// <param name="value">The new value.</param>
     /// <returns>A task that completes when the callback has run.</returns>
     protected Task SetValueAsync(TValue? value)
     {
+        if (ReadOnly)
+        {
+            return Task.CompletedTask;
+        }
+
         Value = value;
         return ValueChanged.InvokeAsync(value);
     }

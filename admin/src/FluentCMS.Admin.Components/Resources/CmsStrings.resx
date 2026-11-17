@@ -51,6 +51,30 @@
   <data name="Close" xml:space="preserve">
     <value>Close</value>
   </data>
+  <data name="InputCharacterCount" xml:space="preserve">
+    <value>{0} of {1} characters</value>
+  </data>
+  <data name="InputDateInvalid" xml:space="preserve">
+    <value>Enter a date such as {0}.</value>
+  </data>
+  <data name="InputDateTooEarly" xml:space="preserve">
+    <value>Enter a date on or after {0}.</value>
+  </data>
+  <data name="InputDateTooLate" xml:space="preserve">
+    <value>Enter a date on or before {0}.</value>
+  </data>
+  <data name="InputTimeInvalid" xml:space="preserve">
+    <value>Enter a time such as {0}.</value>
+  </data>
+  <data name="InputNumberInvalid" xml:space="preserve">
+    <value>Enter a number such as {0}.</value>
+  </data>
+  <data name="InputWholeNumberInvalid" xml:space="preserve">
+    <value>Enter a whole number such as {0}.</value>
+  </data>
+  <data name="InputNumberNotNegative" xml:space="preserve">
+    <value>Enter a number of zero or more.</value>
+  </data>
   <data name="Tabs_MoreItems" xml:space="preserve">
     <value>View {0} more tabs</value>
     <comment>A text of the library under the set, under the library's key.</comment>

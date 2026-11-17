@@ -1,0 +1,9 @@
+@* The cell of a date and time field, in the user's format and time zone. *@
+@inherits ListCellBase
+@using System.Globalization
+@inject FormatService Formats
+
+@if (FieldValues.Moment(Value) is { } moment)
+{
+    <time datetime="@moment.ToString("O", CultureInfo.InvariantCulture)">@Formats.DateTime(moment)</time>
+}

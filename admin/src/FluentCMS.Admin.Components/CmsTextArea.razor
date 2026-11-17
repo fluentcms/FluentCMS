@@ -1,5 +1,6 @@
 @namespace FluentCMS.Admin.Components
 @inherits CmsInputBase<string>
+@inject ICmsTextSource Texts
 
 @* Native, for the reason given in CmsTextInput. *@
 <div class="cms-field">
@@ -8,14 +9,22 @@
               id="@InputId"
               lang="@Lang"
               dir="@Dir"
-              class="cms-input cms-textarea"
+              class="@(AutoGrow ? "cms-input cms-textarea cms-textarea-grow" : "cms-input cms-textarea")"
               rows="@Rows"
               placeholder="@Placeholder"
+              spellcheck="@(Spellcheck ? null : "false")"
               disabled="@Disabled"
+              readonly="@ReadOnly"
               value="@Value"
               @oninput="@(args => SetValueAsync(args.Value as string))"
+              @onblur="@OnBlur"
               @attributes="@AriaAttributes"></textarea>
     @MessageTemplate
+    @if (MaxLength is { } max)
+    {
+        @* Not live, so that typing is not interrupted; the limit is not enforced, so that pasted text is not cut without a word. *@
+        <span id="@CounterId" class="@(Value?.Length > max ? "cms-field-counter cms-field-counter-over" : "cms-field-counter")">@CmsStrings.Format(Texts.Text(CmsStrings.InputCharacterCount), Value?.Length ?? 0, max)</span>
+    }
 </div>
 
 @code {
@@ -24,4 +33,20 @@
 
     [Parameter]
     public int Rows { get; set; } = 3;
+
+    // The text area grows with its text from Rows, where the browser can size a field to its content.
+    [Parameter]
+    public bool AutoGrow { get; set; }
+
+    // Off for text that is not prose, such as JSON.
+    [Parameter]
+    public bool Spellcheck { get; set; } = true;
+
+    // The most characters the value may have, shown with a counter under the text area.
+    [Parameter]
+    public int? MaxLength { get; set; }
+
+    private string CounterId => InputId + "-count";
+
+    protected override string? AdditionalDescriptionId => MaxLength is null ? null : CounterId;
 }

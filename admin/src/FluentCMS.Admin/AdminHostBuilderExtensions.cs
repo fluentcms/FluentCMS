@@ -5,7 +5,6 @@ using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Configuration;
 using FluentCMS.Admin.Fields;
 using FluentCMS.Admin.Interop;
-using FluentCMS.Admin.Lists;
 using FluentCMS.Admin.Localization;
 using FluentCMS.Admin.Shell;
 using Microsoft.AspNetCore.Components.Web;
@@ -74,7 +73,6 @@ public static class AdminHostBuilderExtensions
         services.AddScoped<IRateLimitNotice, RateLimitNotice>();
         services.AddAdminAuthentication();
         services.AddAdminShell();
-        services.TryAddSingleton<ListCellRegistry>();
         services.AddSingleton<IColumnStorage, ColumnStorageInterop>();
         services.AddFieldEditors();
         services.AddManagementApi();

@@ -95,6 +95,8 @@ FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.Value.get -> System.Func<TIt
 FluentCMS.Admin.Components.CmsDataGridColumn<TItem>.Value.set -> void
 FluentCMS.Admin.Components.CmsDatePicker
 FluentCMS.Admin.Components.CmsDatePicker.CmsDatePicker() -> void
+FluentCMS.Admin.Components.CmsDatePicker.Culture.get -> System.Globalization.CultureInfo?
+FluentCMS.Admin.Components.CmsDatePicker.Culture.set -> void
 FluentCMS.Admin.Components.CmsDatePicker.Max.get -> System.DateOnly?
 FluentCMS.Admin.Components.CmsDatePicker.Max.set -> void
 FluentCMS.Admin.Components.CmsDatePicker.Min.get -> System.DateOnly?
@@ -182,6 +184,8 @@ FluentCMS.Admin.Components.CmsInputBase<TValue>.Help.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Help.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Id.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Id.set -> void
+FluentCMS.Admin.Components.CmsInputBase<TValue>.InputError.get -> string?
+FluentCMS.Admin.Components.CmsInputBase<TValue>.InputError.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.InputId.get -> string!
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Invalid.get -> bool
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Label.get -> string!
@@ -192,6 +196,10 @@ FluentCMS.Admin.Components.CmsInputBase<TValue>.Lang.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Message.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.MessageId.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.MessageTemplate.get -> Microsoft.AspNetCore.Components.RenderFragment?
+FluentCMS.Admin.Components.CmsInputBase<TValue>.OnBlur.get -> Microsoft.AspNetCore.Components.EventCallback
+FluentCMS.Admin.Components.CmsInputBase<TValue>.OnBlur.set -> void
+FluentCMS.Admin.Components.CmsInputBase<TValue>.ReadOnly.get -> bool
+FluentCMS.Admin.Components.CmsInputBase<TValue>.ReadOnly.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Required.get -> bool
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Required.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.SetValueAsync(TValue? value) -> System.Threading.Tasks.Task!
@@ -249,6 +257,18 @@ FluentCMS.Admin.Components.CmsNavigationSection.ChildContent.set -> void
 FluentCMS.Admin.Components.CmsNavigationSection.CmsNavigationSection() -> void
 FluentCMS.Admin.Components.CmsNavigationSection.Title.get -> string?
 FluentCMS.Admin.Components.CmsNavigationSection.Title.set -> void
+FluentCMS.Admin.Components.CmsNumberInput
+FluentCMS.Admin.Components.CmsNumberInput.AllowNegative.get -> bool
+FluentCMS.Admin.Components.CmsNumberInput.AllowNegative.set -> void
+FluentCMS.Admin.Components.CmsNumberInput.Autocomplete.get -> string?
+FluentCMS.Admin.Components.CmsNumberInput.Autocomplete.set -> void
+FluentCMS.Admin.Components.CmsNumberInput.CmsNumberInput() -> void
+FluentCMS.Admin.Components.CmsNumberInput.Culture.get -> System.Globalization.CultureInfo?
+FluentCMS.Admin.Components.CmsNumberInput.Culture.set -> void
+FluentCMS.Admin.Components.CmsNumberInput.Placeholder.get -> string?
+FluentCMS.Admin.Components.CmsNumberInput.Placeholder.set -> void
+FluentCMS.Admin.Components.CmsNumberInput.WholeNumbers.get -> bool
+FluentCMS.Admin.Components.CmsNumberInput.WholeNumbers.set -> void
 FluentCMS.Admin.Components.CmsOption
 FluentCMS.Admin.Components.CmsOption.<Clone>$() -> FluentCMS.Admin.Components.CmsOption!
 FluentCMS.Admin.Components.CmsOption.CmsOption(string! Value, string! Text) -> void
@@ -259,6 +279,8 @@ FluentCMS.Admin.Components.CmsOption.Text.init -> void
 FluentCMS.Admin.Components.CmsOption.Value.get -> string!
 FluentCMS.Admin.Components.CmsOption.Value.init -> void
 FluentCMS.Admin.Components.CmsSelect
+FluentCMS.Admin.Components.CmsSelect.Clearable.get -> bool
+FluentCMS.Admin.Components.CmsSelect.Clearable.set -> void
 FluentCMS.Admin.Components.CmsSelect.CmsSelect() -> void
 FluentCMS.Admin.Components.CmsSelect.Options.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Components.CmsOption!>!
 FluentCMS.Admin.Components.CmsSelect.Options.set -> void
@@ -316,15 +338,23 @@ FluentCMS.Admin.Components.CmsTabs.ChildContent.get -> Microsoft.AspNetCore.Comp
 FluentCMS.Admin.Components.CmsTabs.ChildContent.set -> void
 FluentCMS.Admin.Components.CmsTabs.CmsTabs() -> void
 FluentCMS.Admin.Components.CmsTextArea
+FluentCMS.Admin.Components.CmsTextArea.AutoGrow.get -> bool
+FluentCMS.Admin.Components.CmsTextArea.AutoGrow.set -> void
 FluentCMS.Admin.Components.CmsTextArea.CmsTextArea() -> void
+FluentCMS.Admin.Components.CmsTextArea.MaxLength.get -> int?
+FluentCMS.Admin.Components.CmsTextArea.MaxLength.set -> void
 FluentCMS.Admin.Components.CmsTextArea.Placeholder.get -> string?
 FluentCMS.Admin.Components.CmsTextArea.Placeholder.set -> void
 FluentCMS.Admin.Components.CmsTextArea.Rows.get -> int
 FluentCMS.Admin.Components.CmsTextArea.Rows.set -> void
+FluentCMS.Admin.Components.CmsTextArea.Spellcheck.get -> bool
+FluentCMS.Admin.Components.CmsTextArea.Spellcheck.set -> void
 FluentCMS.Admin.Components.CmsTextInput
 FluentCMS.Admin.Components.CmsTextInput.Autocomplete.get -> string?
 FluentCMS.Admin.Components.CmsTextInput.Autocomplete.set -> void
 FluentCMS.Admin.Components.CmsTextInput.CmsTextInput() -> void
+FluentCMS.Admin.Components.CmsTextInput.MaxLength.get -> int?
+FluentCMS.Admin.Components.CmsTextInput.MaxLength.set -> void
 FluentCMS.Admin.Components.CmsTextInput.Numeric.get -> bool
 FluentCMS.Admin.Components.CmsTextInput.Numeric.set -> void
 FluentCMS.Admin.Components.CmsTextInput.Placeholder.get -> string?
@@ -350,6 +380,10 @@ FluentCMS.Admin.Components.CmsThemeRoot.Mode.get -> FluentCMS.Admin.Components.C
 FluentCMS.Admin.Components.CmsThemeRoot.Mode.set -> void
 FluentCMS.Admin.Components.CmsTimePicker
 FluentCMS.Admin.Components.CmsTimePicker.CmsTimePicker() -> void
+FluentCMS.Admin.Components.CmsTimePicker.Culture.get -> System.Globalization.CultureInfo?
+FluentCMS.Admin.Components.CmsTimePicker.Culture.set -> void
+FluentCMS.Admin.Components.CmsTimePicker.Seconds.get -> bool
+FluentCMS.Admin.Components.CmsTimePicker.Seconds.set -> void
 FluentCMS.Admin.Components.CmsToastIntent
 FluentCMS.Admin.Components.CmsToastIntent.Error = 3 -> FluentCMS.Admin.Components.CmsToastIntent
 FluentCMS.Admin.Components.CmsToastIntent.Info = 0 -> FluentCMS.Admin.Components.CmsToastIntent
@@ -407,6 +441,8 @@ override FluentCMS.Admin.Components.CmsSortKey.Equals(object? obj) -> bool
 override FluentCMS.Admin.Components.CmsSortKey.GetHashCode() -> int
 override FluentCMS.Admin.Components.CmsSortKey.ToString() -> string!
 override FluentCMS.Admin.Components.CmsSwitch.OnAfterRender(bool firstRender) -> void
+override FluentCMS.Admin.Components.CmsTextArea.AdditionalDescriptionId.get -> string?
+override FluentCMS.Admin.Components.CmsTextInput.AdditionalDescriptionId.get -> string?
 override FluentCMS.Admin.Components.CmsThemeRoot.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
 override FluentCMS.Admin.Components.CmsTree.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsTreeNode.Equals(object? obj) -> bool
@@ -421,6 +457,7 @@ static FluentCMS.Admin.Components.CmsSortKey.operator ==(FluentCMS.Admin.Compone
 static FluentCMS.Admin.Components.CmsTreeNode.operator !=(FluentCMS.Admin.Components.CmsTreeNode? left, FluentCMS.Admin.Components.CmsTreeNode? right) -> bool
 static FluentCMS.Admin.Components.CmsTreeNode.operator ==(FluentCMS.Admin.Components.CmsTreeNode? left, FluentCMS.Admin.Components.CmsTreeNode? right) -> bool
 static Microsoft.Extensions.DependencyInjection.CmsComponentsServiceCollectionExtensions.AddCmsComponents(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+virtual FluentCMS.Admin.Components.CmsInputBase<TValue>.AdditionalDescriptionId.get -> string?
 ~override FluentCMS.Admin.Components.CmsBreadcrumb.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsButton.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsCard.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
@@ -438,6 +475,7 @@ static Microsoft.Extensions.DependencyInjection.CmsComponentsServiceCollectionEx
 ~override FluentCMS.Admin.Components.CmsNavigation.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsNavigationLink.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsNavigationSection.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+~override FluentCMS.Admin.Components.CmsNumberInput.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsSelect.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsStack.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsSwitch.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void

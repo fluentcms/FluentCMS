@@ -1,0 +1,18 @@
+@* The editor of a boolean field: a switch. No value is shown as off, and is sent as false once the switch is used. *@
+@inherits FieldEditorBase
+
+<CmsSwitch @ref="input"
+           Label="@Label"
+           Help="@Help"
+           Error="@ErrorText"
+           Required="@Required"
+           ReadOnly="@ReadOnly"
+           Value="@(FieldValues.Boolean(Value) ?? false)"
+           ValueChanged="@(on => ChangeAsync(JsonValue.Create(on)))"
+           OnBlur="@OnBlur" />
+
+@code {
+    private CmsSwitch? input;
+
+    public override ValueTask FocusAsync() => input?.FocusAsync() ?? ValueTask.CompletedTask;
+}

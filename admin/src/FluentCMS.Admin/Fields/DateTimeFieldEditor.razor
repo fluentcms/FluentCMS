@@ -1,0 +1,89 @@
+@* The editor of a date and time field: a date and a time in the user's formats and time zone, sent as the instant in UTC.
+   A time is taken once a date is chosen; a date without a time is at midnight. Seconds show when the value has them. *@
+@inherits FieldEditorBase
+@inject FormatService Formats
+@inject IStringLocalizer<AdminResources> L
+
+<fieldset @ref="group" class="cms-field field-moment" tabindex="-1" aria-describedby="@zoneId">
+    <legend class="cms-field-label">
+        @Label
+        @if (Required)
+        {
+            <span class="cms-field-required" aria-hidden="true"> *</span>
+        }
+    </legend>
+    <div class="field-moment-inputs">
+        <CmsDatePicker @ref="dateInput"
+                       Label="@L["Content.Field.Date"]"
+                       Help="@Help"
+                       Error="@ErrorText"
+                       Required="@Required"
+                       ReadOnly="@ReadOnly"
+                       Culture="@Formats.Culture"
+                       Value="@Day"
+                       ValueChanged="@ChangeDayAsync"
+                       OnBlur="@OnBlur" />
+        <CmsTimePicker Label="@L["Content.Field.Time"]"
+                       Error="@timeError"
+                       Required="@Required"
+                       ReadOnly="@ReadOnly"
+                       Culture="@Formats.Culture"
+                       Seconds="@(Time is { Second: not 0 })"
+                       Value="@Time"
+                       ValueChanged="@ChangeTimeAsync"
+                       OnBlur="@OnBlur" />
+    </div>
+    <span id="@zoneId" class="cms-field-message">@L["Content.Field.TimeZone", Formats.TimeZone.Id]</span>
+</fieldset>
+
+@code {
+    private readonly string zoneId = ElementIds.Next("field-zone");
+    private ElementReference group;
+    private CmsDatePicker? dateInput;
+    private string? timeError;
+
+    // A time typed before any date, kept until one is.
+    private TimeOnly? pendingTime;
+
+    private DateTime? Local => FieldValues.Moment(Value) is { } moment ? Formats.Local(moment) : null;
+
+    private DateOnly? Day => Local is { } local ? DateOnly.FromDateTime(local) : null;
+
+    private TimeOnly? Time => Local is { } local ? TimeOnly.FromDateTime(local) : pendingTime;
+
+    public override ValueTask FocusAsync() => dateInput?.FocusAsync() ?? (group.Context is null ? ValueTask.CompletedTask : group.FocusAsync());
+
+    private Task ChangeDayAsync(DateOnly? day) => day is { } date ? ComposeAsync(date, Time ?? TimeOnly.MinValue) : ClearAsync();
+
+    private Task ChangeTimeAsync(TimeOnly? time)
+    {
+        if (Day is { } date)
+        {
+            return ComposeAsync(date, time ?? TimeOnly.MinValue);
+        }
+
+        pendingTime = time;
+        return Task.CompletedTask;
+    }
+
+    private Task ClearAsync()
+    {
+        (timeError, pendingTime) = (null, null);
+        return ChangeAsync(null);
+    }
+
+    // A time the clock skips, in the hour a change to summer time leaves out, is no instant; one that it shows twice is the first.
+    private Task ComposeAsync(DateOnly date, TimeOnly time)
+    {
+        var local = date.ToDateTime(time, DateTimeKind.Unspecified);
+        if (Formats.TimeZone.IsInvalidTime(local))
+        {
+            timeError = L["Content.Field.TimeSkipped"];
+            return Task.CompletedTask;
+        }
+
+        (timeError, pendingTime) = (null, null);
+        var offset = Formats.TimeZone.IsAmbiguousTime(local) ? Formats.TimeZone.GetAmbiguousTimeOffsets(local).Max() : Formats.TimeZone.GetUtcOffset(local);
+        return ChangeAsync(FieldValues.FromMoment(new DateTimeOffset(local, offset)));
+    }
+}
