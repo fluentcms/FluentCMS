@@ -1,6 +1,7 @@
 @* The search box and the filters of a list (spec 4.4), which it reads from the address of the list and writes back to it,
-   so that the page reads what the address says. A filter is set in a dialog: a field the list may filter on, an operator its type takes, and an operand
-   read as the field's type. Until the relation picker of A-15, a relation takes entry ids. *@
+   so that the page reads what the address says. A filter is set in a dialog: a field the list may filter on, an operator
+   its type takes, and an operand read as the field's type, numbers in the user's format. Until the relation picker of
+   A-15, a relation takes entry ids. *@
 @inject FormatService Format
 @inject NavigationManager Navigation
 @inject ListFilterRegistry FilterTypes
@@ -29,7 +30,7 @@
                     {
                         var position = index;
                         var summary = Describe(filters[position]);
-                        <li class="content-filter" @key="@($"{position}/{summary}")">
+                        <li class="content-filter" @key="position">
                             <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="@(() => Edit(position))">@summary</CmsButton>
                             <CmsButton Appearance="CmsButtonAppearance.Subtle" Icon="CmsIconName.Dismiss" Label="@L["Content.Filter.Remove", summary]" OnClick="@(() => Remove(position))" />
                         </li>
@@ -71,7 +72,7 @@
                             <legend>@L["Content.Filter.Values"]</legend>
                             @foreach (var option in field.Options)
                             {
-                                <CmsCheckbox @key="option" Label="@option" Value="@values.Contains(option)" ValueChanged="@(on => Toggle(option, on))" />
+                                <CmsCheckbox @key="option.Value" Label="@option.Text" Value="@values.Contains(option.Value)" ValueChanged="@(on => Toggle(option.Value, on))" />
                             }
                             @if (error is not null)
                             {
@@ -83,7 +84,6 @@
                     {
                         <CmsTextInput Label="@L["Content.Filter.Values"]"
                                       Help="@L[field.Filter.Operand == FilterOperand.Id ? "Content.Filter.IdsHelp" : "Content.Filter.ValuesHelp"]"
-                                      Numeric="@(field.Filter.Operand is FilterOperand.WholeNumber or FilterOperand.DecimalNumber)"
                                       Value="@listText"
                                       ValueChanged="@(text => listText = text)"
                                       Error="@error" />
@@ -193,7 +193,9 @@
         draftField = field.Name;
         draftOperator = filter?.Operator ?? field.Filter.Operators[0];
         values = [.. ListFilters.Texts(filter?.Value)];
-        listText = ListFilters.Join(values);
+        listText = ListFilters.Join(field.Filter.Operand is FilterOperand.WholeNumber or FilterOperand.DecimalNumber
+            ? values.Select(value => Number(value) is { } number ? number.ToString(Format.Culture) : value)
+            : values);
         for (var slot = 0; slot < days.Length; slot++)
         {
             var local = slot < values.Count && ListFilters.Moment(values[slot]) is { } moment ? TimeZoneInfo.ConvertTime(moment, Format.TimeZone) : (DateTimeOffset?)null;
@@ -255,7 +257,11 @@
 
         if (ListFilters.TakesList(draftOperator) && field.Filter.Operand != FilterOperand.Option)
         {
-            values = [.. ListFilters.Items(listText ?? "").Select(item => item.Trim()).Where(item => item.Length > 0)];
+            values = [.. ListFilters.Items(listText ?? "").Select(item => item.Trim()).Where(item => item.Length > 0).Select(item => Invariant(field, item))];
+        }
+        else if (field.Filter.Operand == FilterOperand.DateTime && !ListFilters.TakesNoValue(draftOperator))
+        {
+            values = [.. Enumerable.Range(0, draftOperator == FilterOperator.Between ? 2 : 1).Select(Moment)];
         }
 
         var (valid, operand) = ListFilters.Operand(field, draftOperator, values);
@@ -311,12 +317,19 @@
                 <CmsSelect Label="@label" Options="@([new CmsOption("true", L["Content.Filter.Yes"]), new CmsOption("false", L["Content.Filter.No"])])" Value="@text" ValueChanged="@(value => Set(slot, value))" Error="@message" />
                 break;
             case FilterOperand.Option:
-                <CmsSelect Label="@label" Options="@([.. field.Options.Select(option => new CmsOption(option, option))])" Value="@text" ValueChanged="@(value => Set(slot, value))" Error="@message" />
+                <CmsSelect Label="@label" Options="@field.Options" Value="@text" ValueChanged="@(value => Set(slot, value))" Error="@message" />
+                break;
+            case FilterOperand.WholeNumber or FilterOperand.DecimalNumber:
+                <CmsNumberInput Label="@label"
+                                Culture="@Format.Culture"
+                                WholeNumbers="@(field.Filter.Operand == FilterOperand.WholeNumber)"
+                                Value="@Number(text)"
+                                ValueChanged="@(number => Set(slot, number?.ToString(System.Globalization.CultureInfo.InvariantCulture)))"
+                                Error="@message" />
                 break;
             default:
                 <CmsTextInput Label="@label"
                               Help="@(field.Filter.Operand == FilterOperand.Id ? L["Content.Filter.IdHelp"].Value : null)"
-                              Numeric="@(field.Filter.Operand is FilterOperand.WholeNumber or FilterOperand.DecimalNumber)"
                               Value="@text"
                               ValueChanged="@(value => Set(slot, value))"
                               Error="@message" />
@@ -334,24 +347,34 @@
         values[slot] = text ?? "";
     }
 
-    // A moment is entered as a day and a time in the user's time zone; midnight until a time is chosen.
-    private void SetMoment(int slot, DateOnly? day, TimeOnly? time)
+    private void SetMoment(int slot, DateOnly? day, TimeOnly? time) => (days[slot], times[slot]) = (day, time);
+
+    // A moment is entered as a day and a time in the user's time zone. A day without a time is its start, or its end where
+    // the moment is an upper bound or is passed (on or before, after, the end of a range), so that the day is the one meant.
+    private string Moment(int slot)
     {
-        (days[slot], times[slot]) = (day, time);
-        if (day is not { } date)
+        if (days[slot] is not { } day)
         {
-            Set(slot, null);
-            return;
+            return "";
         }
 
-        var wall = date.ToDateTime(time ?? TimeOnly.MinValue);
-        var moment = new DateTimeOffset(wall, Format.TimeZone.GetUtcOffset(wall)).ToUniversalTime();
-        Set(slot, moment.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture));
+        var ends = draftOperator is FilterOperator.LessThanOrEqual or FilterOperator.GreaterThan || (draftOperator == FilterOperator.Between && slot == 1);
+        var wall = day.ToDateTime(times[slot] ?? (ends ? TimeOnly.MaxValue : TimeOnly.MinValue));
+        return ContentQuery.Text(new DateTimeOffset(wall, Format.TimeZone.GetUtcOffset(wall)));
     }
 
     private static DateOnly? Day(string? text) =>
         DateOnly.TryParseExact(text, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var day) ? day : null;
 
+    private static decimal? Number(string? text) =>
+        decimal.TryParse(text, System.Globalization.NumberStyles.AllowLeadingSign | System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var number) ? number : null;
+
+    // A number of a list as the API takes it, from the user's format; any other value as it was typed.
+    private string Invariant(FilterField field, string text) =>
+        field.Filter.Operand is FilterOperand.WholeNumber or FilterOperand.DecimalNumber
+        && decimal.TryParse(text, System.Globalization.NumberStyles.AllowLeadingSign | System.Globalization.NumberStyles.AllowDecimalPoint, Format.Culture, out var number)
+            ? number.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            : text;
 
     private string OperatorText(FilterField field, FilterOperator filterOperator)
     {
@@ -388,6 +411,7 @@
         FilterOperand.Date when Day(text) is { } day => day.ToString("d", Format.Culture),
         FilterOperand.DateTime when ListFilters.Moment(text) is { } moment => Format.DateTime(moment),
         FilterOperand.Boolean => L[text == "true" ? "Content.Filter.Yes" : "Content.Filter.No"],
+        FilterOperand.Option => field.Label(text),
         _ => text,
     };
 }

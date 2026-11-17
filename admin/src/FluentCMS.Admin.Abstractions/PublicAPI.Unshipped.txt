@@ -566,6 +566,7 @@ FluentCMS.Admin.Lists.ListFilterDefinition.FieldType.get -> string!
 FluentCMS.Admin.Lists.ListFilterDefinition.Operand.get -> FluentCMS.Admin.Lists.FilterOperand
 FluentCMS.Admin.Lists.ListFilterDefinition.Operators.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Lists.FilterOperator>!
 FluentCMS.Admin.Lists.ListFilterRegistry
+FluentCMS.Admin.Lists.ListFilterRegistry.Add(string! fieldType, FluentCMS.Admin.Lists.FilterOperand operand, System.Collections.Generic.IEnumerable<FluentCMS.Admin.Lists.FilterOperator>! operators, System.Collections.Generic.IEnumerable<FluentCMS.Admin.Lists.FilterOperator>! listOperators) -> void
 FluentCMS.Admin.Lists.ListFilterRegistry.Add(string! fieldType, FluentCMS.Admin.Lists.FilterOperand operand, params System.Collections.Generic.IEnumerable<FluentCMS.Admin.Lists.FilterOperator>! operators) -> void
 FluentCMS.Admin.Lists.ListFilterRegistry.Find(FluentCMS.Admin.Api.SchemaFieldDescription! field) -> FluentCMS.Admin.Lists.ListFilterDefinition?
 FluentCMS.Admin.Lists.ListFilterRegistry.ListFilterRegistry() -> void

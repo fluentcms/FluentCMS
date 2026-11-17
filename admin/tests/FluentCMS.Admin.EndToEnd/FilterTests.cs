@@ -66,7 +66,7 @@ public sealed class FilterTests(EndToEndHost host) : BrowserTest(host)
 
         // A date field, which a reload keeps.
         await AddFilterAsync(tab, "Published on", "gt", () => tab.Page.GetByLabel(Text("Content.Filter.Value"), new PageGetByLabelOptions { Exact = true }).FillAsync("2000-01-01"));
-        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"\?filter\[publishedOn\]\[gt\]=(1999-12-31|2000-01-01)T[0-9]{2}%3A[0-9]{2}%3A00Z$"));
+        await Expect(tab.Page).ToHaveURLAsync(new Regex(@"\?filter\[publishedOn\]\[gt\]=(2000-01-01|2000-01-02)T[0-9]{2}%3A[0-9]{2}%3A59\.9999999Z$"));
         await Expect(Titles(grid)).ToHaveTextAsync(["Welcome to FluentCMS"]);
         await tab.ReloadAsync();
         await Expect(Titles(grid)).ToHaveTextAsync(["Welcome to FluentCMS"]);

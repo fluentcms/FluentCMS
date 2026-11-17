@@ -88,7 +88,7 @@ public sealed class QueryWriterTests
         [
             Field("title", "text"), Field("slug", "slug"), Field("videoUrl", "url"), Field("body", "richText"),
             Field("category", "select", options: ["news", "video", "opinion"]), Field("publishedOn", "dateTime"),
-            Field("author", "relation"), Field("tags", "relation", multiple: true), Field("hero", "media"), Field("sections", "blocks"),
+            Field("author", "relation"), Field("tags", "relation", multiple: true), Field("hero", "media"), Field("sections", "blocks", options: ["hero", "quote", "gallery"]),
             Field("rating", "integer"), Field("price", "decimal"), Field("day", "date"), Field("featured", "boolean"),
             Field("summary", "longText"), Field("labels", "select", multiple: true, options: ["a", "b"]), Field("meta", "json"),
         ];
@@ -101,7 +101,7 @@ public sealed class QueryWriterTests
         Type = type,
         Multiple = multiple,
         Validation = new FieldValidationDescription(),
-        Settings = options is null ? [] : new JsonObject { ["options"] = new JsonArray([.. options.Select(option => (JsonNode)option)]) },
+        Settings = options is null ? [] : new JsonObject { [type == "blocks" ? "blocks" : "options"] = new JsonArray([.. options.Select(option => (JsonNode)option)]) },
     };
 
     [Fact]

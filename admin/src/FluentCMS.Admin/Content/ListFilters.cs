@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Admin.Api;
+using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Lists;
 
 namespace FluentCMS.Admin.Content;
@@ -13,17 +14,22 @@ internal sealed record FilterField(SchemaFieldDescription Field, ListFilterDefin
 {
     public string Name => Field.Name;
 
-    // The options of a select, as its settings list them.
-    public IReadOnlyList<string> Options => Field.Settings["options"] is JsonArray options
-        ? [.. options.Select(OptionValue).OfType<string>()]
+    // The values an option operand takes, with their labels: the options of a select, or the block types of a blocks field.
+    // An option is a value, or an object with a value and a label.
+    public IReadOnlyList<CmsOption> Options => Field.Settings[Field.Type == "blocks" ? "blocks" : "options"] is JsonArray options
+        ? [.. options.Select(Option).OfType<CmsOption>()]
         : [];
 
-    private static string? OptionValue(JsonNode? option) => option switch
+    public string Label(string value) => Options.FirstOrDefault(option => option.Value == value)?.Text ?? value;
+
+    private static CmsOption? Option(JsonNode? option) => option switch
     {
-        JsonValue value when value.GetValueKind() == JsonValueKind.String => value.GetValue<string>(),
-        JsonObject item when item["value"] is JsonValue value && value.GetValueKind() == JsonValueKind.String => value.GetValue<string>(),
+        JsonValue value when value.GetValueKind() == JsonValueKind.String => new CmsOption(value.GetValue<string>(), value.GetValue<string>()),
+        JsonObject item when Text(item["value"]) is { } value => new CmsOption(value, Text(item["label"]) ?? value),
         _ => null,
     };
+
+    private static string? Text(JsonNode? node) => node is JsonValue value && value.GetValueKind() == JsonValueKind.String ? value.GetValue<string>() : null;
 }
 
 // The filters of a list in its address, as the API's grammar writes them (backend 4.4): filter[title][contains]=a, once per
@@ -85,6 +91,19 @@ internal static class ListFilters
                 || !field.Filter.Operators.Contains(filterOperator))
             {
                 continue;
+            }
+
+            // A null test reads true, or false for its opposite, as the server does.
+            if (TakesNoValue(filterOperator))
+            {
+                if (value is "false")
+                {
+                    filterOperator = filterOperator == FilterOperator.IsNull ? FilterOperator.IsNotNull : FilterOperator.IsNull;
+                }
+                else if (value is not ("" or "true"))
+                {
+                    continue;
+                }
             }
 
             var (valid, operand) = OperandOf(field, filterOperator, value);
@@ -167,7 +186,7 @@ internal static class ListFilters
         FilterOperand.Date => DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day) ? day : null,
         FilterOperand.DateTime => Moment(text),
         FilterOperand.Boolean => text switch { "true" => true, "false" => false, _ => null },
-        FilterOperand.Option => field.Options.Contains(text) ? text : null,
+        FilterOperand.Option => field.Options.Any(option => option.Value == text) ? text : null,
         FilterOperand.Id => Guid.TryParse(text, out var id) ? id : null,
         _ => text,
     };

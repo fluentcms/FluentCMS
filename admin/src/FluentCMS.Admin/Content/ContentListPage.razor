@@ -159,6 +159,10 @@ else if (view is { } shownView)
     private string? storedKey;
     private IReadOnlyList<string>? stored;
     private string? readKey;
+
+    // The site, type, filters and search of the last read that answered, so that a change of the filters or the search is
+    // announced with the number it finds (WCAG 4.1.3), and the first read of a list is not.
+    private (string Scope, string Criteria)? answered;
     private ListView? view;
     private IReadOnlyList<ListColumn> shown = [];
     private IReadOnlyList<SortField> sort = ListView.DefaultSort;
@@ -243,9 +247,14 @@ else if (view is { } shownView)
     }
 
     // Each locale's status needs every locale of the entries, so a localized type in a site of several locales is read with
-    // locale=all while its status is shown.
+    // locale=all while its status is shown. The engine then matches, sorts and searches in the site's default locale, so only
+    // while that is the content locale; another content locale reads its own (A-17).
     private ContentQuery Query(ListView list) =>
-        list.Query(shown, sort, page, pageSize, filters, search, everyLocale: list.Type.Localized && SiteLocales.Count > 1 && shown.Any(column => column.Kind == ListColumnKind.Status));
+        list.Query(shown, sort, page, pageSize, filters, search, everyLocale:
+            list.Type.Localized
+            && SiteLocales.Count > 1
+            && Context.ContentLocale == Context.Site?.DefaultLocale
+            && shown.Any(column => column.Kind == ListColumnKind.Status));
 
     // A search needs a searchable type and an index in the site: one is registered and the search plugin, when it is the one,
     // is not disabled there (FCMS2211).
@@ -307,6 +316,7 @@ else if (view is { } shownView)
 
             (entries, localesById) = query.Locale == ListView.EveryLocale ? EveryLocaleRows.Read(result.Items, Context.ContentLocale, SiteLocales) : (result.Items, new Dictionary<Guid, IReadOnlyDictionary<string, ContentEntry>>());
             total = result.Total ?? result.Items.Count;
+            AnnounceFound(query);
             if (entries.Count == 0 && total > 0 && page > Pages)
             {
                 // A page past the end, as after entries were deleted or another site was chosen: its last page instead.
@@ -327,6 +337,22 @@ else if (view is { } shownView)
         }
 
         loading = false;
+    }
+
+    private void AnnounceFound(ContentQuery query)
+    {
+        var now = ($"{Context.Site?.Id}/{Type}", new ContentQuery { Filter = query.Filter, Search = query.Search }.ToQueryString());
+        if (answered is { } before && before.Scope == now.Item1 && before.Criteria != now.Item2)
+        {
+            Announcer.Announce(total switch
+            {
+                0 => L[now.Item2.Length > 0 ? "Content.List.NoMatch" : "Content.List.Empty"],
+                1 => L["Content.List.TotalOne"],
+                _ => L["Content.List.Total", Number(total)],
+            });
+        }
+
+        answered = now;
     }
 
     private Task TryAgainAsync() => view is null ? Task.CompletedTask : ReadAsync(Query(view), again: true);

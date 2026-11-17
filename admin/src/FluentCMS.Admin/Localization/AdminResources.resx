@@ -996,7 +996,7 @@
     <value>Values</value>
   </data>
   <data name="Content.Filter.ValuesHelp" xml:space="preserve">
-    <value>Separate the values with commas.</value>
+    <value>Separate the values with commas; write \, for a comma in a value.</value>
   </data>
   <data name="Content.Filter.IdHelp" xml:space="preserve">
     <value>The id of an entry.</value>

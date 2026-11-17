@@ -150,6 +150,102 @@ public sealed class ContentListFilterTests : AdminTestContext
         app.WaitForAssertion(() => Management.ContentQueries.Last().ShouldStartWith("filter[publishedOn][lt]=2026-03-01T09%3A30%3A00Z&"));
     }
 
+    // The chip keeps its element when its filter changes, so the dialog gives focus back to it rather than to the page.
+    [Fact]
+    public void AnEditedFilterKeepsItsButton()
+    {
+        var app = Load("content/article?filter[title][contains]=Hel");
+        var before = app.FindComponents<CmsButton>().Single(button => button.Find("fluent-button").TextContent.Trim() == "Title contains Hel").Instance;
+
+        Button(app, "Title contains Hel").Click();
+        Enter(app, "Value", "Wor");
+        Button(app, "Apply filter").Click();
+
+        app.WaitForAssertion(() => Chips(app).ShouldBe(["Title contains Wor"]));
+        app.FindComponents<CmsButton>().Single(button => button.Find("fluent-button").TextContent.Trim() == "Title contains Wor").Instance.ShouldBeSameAs(before);
+    }
+
+    // The number a changed filter or search finds is announced; the first read of the list is not.
+    [Fact]
+    public void TheNumberAChangedFilterFindsIsAnnounced()
+    {
+        var app = Load();
+        Announced(app).ShouldBeEmpty();
+
+        Navigation.NavigateTo("content/article?filter[title][eq]=Hello");
+
+        app.WaitForAssertion(() => Announced(app).ShouldBe(["2 entries"]));
+
+        Management.Entries["article"] = [];
+        Navigation.NavigateTo("content/article?filter[title][eq]=Nothing");
+
+        app.WaitForAssertion(() => Announced(app).Last().ShouldBe("No entries match the search and filters."));
+
+        Navigation.NavigateTo("content/article?filter[title][eq]=Nothing&sort=title");
+
+        app.WaitForAssertion(() => Management.ContentQueries.Last().ShouldContain("sort=title&"));
+        Announced(app).Count.ShouldBe(2);
+    }
+
+    // Options are shown by their labels, where the settings give them, and sent by their values.
+    [Fact]
+    public void AnOptionIsShownByItsLabel()
+    {
+        var article = Article();
+        article["fields"]![1]!["settings"] = new JsonObject
+        {
+            ["options"] = new JsonArray(new JsonObject { ["value"] = "news", ["label"] = "News" }, new JsonObject { ["value"] = "video", ["label"] = "Video" }),
+        };
+        Management.SetTypes(MainSite, article);
+        var app = Load("content/article?filter[category][eq]=news");
+
+        Chips(app).ShouldBe(["Category is News"]);
+        Button(app, "Add filter").Click();
+        Choose(app, "Field", "category");
+        Options(app, "Value").ShouldBe(["News", "Video"]);
+    }
+
+    // A number is entered in the user's format and sent as the API writes it.
+    [Fact]
+    public void ANumberIsEnteredInTheUsersFormat()
+    {
+        var article = Article();
+        article["fields"]!.AsArray().Add(Field("price", "decimal"));
+        Management.SetTypes(MainSite, article);
+        var app = Load(culture: "de-DE");
+
+        Button(app, "Add filter").Click();
+        Choose(app, "Field", "price");
+        Set<CmsNumberInput, decimal?>(app, "Value", 1.5m);
+        Button(app, "Apply filter").Click();
+        app.WaitForAssertion(() => Management.ContentQueries.Last().ShouldStartWith("filter[price][eq]=1.5&"));
+        Chips(app).ShouldBe(["Price is 1,5"]);
+
+        Button(app, "Add filter").Click();
+        Choose(app, "Field", "price");
+        Choose(app, "Condition", "in");
+        Enter(app, "Values", @"1\,5, 2");
+        Button(app, "Apply filter").Click();
+
+        app.WaitForAssertion(() => Management.ContentQueries.Last().ShouldStartWith("filter[price][eq]=1.5&filter[price][in]=1.5,2&"));
+    }
+
+    // A day given as an upper bound, or as the day after which, means its end.
+    [Fact]
+    public void ADayWithoutATimeIsTheEndOfTheDayForAnUpperBound()
+    {
+        var app = Load();
+
+        Button(app, "Add filter").Click();
+        Choose(app, "Field", "publishedOn");
+        Choose(app, "Condition", "between");
+        Set<CmsDatePicker, DateOnly?>(app, "From", new DateOnly(2026, 3, 1));
+        Set<CmsDatePicker, DateOnly?>(app, "To", new DateOnly(2026, 3, 31));
+        Button(app, "Apply filter").Click();
+
+        app.WaitForAssertion(() => Management.ContentQueries.Last().ShouldStartWith("filter[publishedOn][between]=2026-03-01T00%3A00%3A00Z,2026-03-31T23%3A59%3A59.9999999Z&"));
+    }
+
     [Fact]
     public void AFilterIsChangedAndRemovedAndFocusStaysInTheToolbar()
     {
@@ -397,12 +493,15 @@ public sealed class ContentListFilterTests : AdminTestContext
         input.InvokeAsync(() => input.Instance.ValueChanged.InvokeAsync(value)).GetAwaiter().GetResult();
     }
 
-    private IRenderedComponent<AdminApp> Load(string route = "content/article", TimeZoneInfo? zone = null)
+    private static List<string> Announced(IRenderedComponent<AdminApp> app) =>
+        [.. app.FindAll("[role=status] > div").Select(message => message.TextContent)];
+
+    private IRenderedComponent<AdminApp> Load(string route = "content/article", TimeZoneInfo? zone = null, string? culture = null)
     {
         Start();
-        if (zone is not null)
+        if (zone is not null || culture is not null)
         {
-            Services.Replace(ServiceDescriptor.Singleton(new FormatService(System.Globalization.CultureInfo.GetCultureInfo("en-US"), zone)));
+            Services.Replace(ServiceDescriptor.Singleton(new FormatService(System.Globalization.CultureInfo.GetCultureInfo(culture ?? "en-US"), zone ?? TimeZoneInfo.Utc)));
         }
 
         Navigation.NavigateTo(route);

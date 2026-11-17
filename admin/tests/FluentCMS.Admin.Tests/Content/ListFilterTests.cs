@@ -27,7 +27,7 @@ public sealed class ListFilterTests
         { "boolean", FilterOperand.Boolean, [Equal, NotEqual, IsNull, IsNotNull] },
         { "select", FilterOperand.Option, [Equal, NotEqual, In, NotIn, IsNull, IsNotNull] },
         { "relation", FilterOperand.Id, [Equal, In, IsNull, IsNotNull] },
-        { "blocks", FilterOperand.Text, [HasBlock, IsNull, IsNotNull] },
+        { "blocks", FilterOperand.Option, [HasBlock, IsNull, IsNotNull] },
     };
 
     [Theory]
@@ -58,6 +58,19 @@ public sealed class ListFilterTests
 
         filters.Find(Field("labels", "select") with { Multiple = true })!.Operators.ShouldBe([Contains, In, NotIn, IsNull, IsNotNull]);
         filters.Find(Field("tags", "relation") with { Multiple = true })!.Operators.ShouldBe([Equal, In, IsNull, IsNotNull]);
+    }
+
+    // A field that holds a list is offered only operators its type names.
+    [Fact]
+    public void AListFieldOfAPluginTypeIsOfferedOnlyTheOperatorsItsTypeNames()
+    {
+        var filters = new ListFilterRegistry();
+        filters.Add("tagged", FilterOperand.Text, Equal, In, IsNull);
+        filters.Add("ranked", FilterOperand.WholeNumber, [Equal, LessThan], []);
+
+        filters.Find(Field("labels", "tagged") with { Multiple = true })!.Operators.ShouldBe([In, IsNull]);
+        filters.Find(Field("ranks", "ranked") with { Multiple = true }).ShouldBeNull();
+        filters.Find(Field("rank", "ranked"))!.Operators.ShouldBe([Equal, LessThan]);
     }
 
     // The seam A-18 fills from an admin half's manifest.
@@ -111,8 +124,20 @@ public sealed class ListFilterTests
     [InlineData("filter[title][eq]=")]
     [InlineData("filter[seo.metaTitle][eq]=x")]
     [InlineData("filter[title]=x")]
+    [InlineData("filter[body][null]=yes")]
+    [InlineData("filter[sections][hasBlock]=banner")]
     public void AFilterTheListDoesNotOfferOrWhoseOperandDoesNotReadIsDropped(string query) =>
         ListFilters.Parse(query, Fields()).ShouldBeEmpty();
+
+    // As the server reads them: true, or nothing, is the test; false is its opposite.
+    [Fact]
+    public void ANullTestReadsTrueAndFalseAsTheServerDoes() =>
+        ListFilters.Parse("filter[body][null]=false&filter[title][notNull]=false&filter[rank][null]=&filter[day][notNull]=true", Fields())
+            .ShouldBe([new FieldFilter("body", IsNotNull), new FieldFilter("title", IsNull), new FieldFilter("rank", IsNull), new FieldFilter("day", IsNotNull)]);
+
+    [Fact]
+    public void AHasBlockFilterTakesABlockTypeOfTheField() =>
+        ListFilters.Parse("filter[sections][hasBlock]=hero", Fields()).ShouldBe([new FieldFilter("sections", HasBlock, "hero")]);
 
     [Fact]
     public void TheSameFilterTwiceIsKeptOnce() =>
@@ -152,7 +177,7 @@ public sealed class ListFilterTests
 
         query.ToQueryString().ShouldBe("filter[title][contains]=a&filter[category][eq]=news&q=tour&sort=-updatedAt&page=1&pageSize=25&fields=title,status,scheduledPublishAt,scheduledUnpublishAt&locale=all&withTotal=true");
         view.Searchable.ShouldBeTrue();
-        view.Filters.Select(field => field.Name).ShouldBe(["title", "rank", "day", "at", "category", "featured", "author", "body"]);
+        view.Filters.Select(field => field.Name).ShouldBe(["title", "rank", "day", "at", "category", "featured", "author", "body", "sections"]);
     }
 
     private static List<FilterField> Fields()
@@ -169,6 +194,7 @@ public sealed class ListFilterTests
             Field("featured", "boolean"),
             Field("author", "relation"),
             Field("body", "richText"),
+            Field("sections", "blocks") with { Settings = new JsonObject { ["blocks"] = new JsonArray("hero", "quote") } },
             Field("secret", "text") with { Hidden = true },
             Field("seo", "component"),
         ];
