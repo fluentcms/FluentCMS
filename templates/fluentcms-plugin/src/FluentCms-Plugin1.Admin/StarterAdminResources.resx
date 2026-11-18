@@ -24,6 +24,9 @@
   <data name="Starter.Notes.Loading" xml:space="preserve">
     <value>Loading the notes…</value>
   </data>
+  <data name="Starter.Notes.Failed" xml:space="preserve">
+    <value>The notes could not be read.</value>
+  </data>
   <data name="Starter.Settings.Heading" xml:space="preserve">
     <value>Notes settings</value>
   </data>

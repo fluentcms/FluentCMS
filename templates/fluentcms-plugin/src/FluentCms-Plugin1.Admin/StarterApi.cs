@@ -18,6 +18,9 @@ public sealed class StarterApi(IManagementApi api)
     private const string Notes = StarterAdminPlugin.Name + "/notes";
     private const string Settings = "settings/" + StarterAdminPlugin.Name;
 
+    // What the server said went wrong, for a component to show in place of its content.
+    public static string? Describe(ApiProblemException problem) => problem.Problem.Detail ?? problem.Problem.Title;
+
     public async Task<IReadOnlyList<StarterNote>> NotesAsync(CancellationToken cancellationToken) =>
         (await api.SendAsync(new ApiRequest(HttpMethod.Get, Notes), StarterAdminJson.Default.ListStarterNote, cancellationToken)).Value;
 

@@ -5,7 +5,11 @@
 @* Replaces the generated settings page of the area starter-plugin, which the server half registers. *@
 <h1>@Text["Starter.Settings.Heading"]</h1>
 
-@if (maxNotes is not null)
+@if (failure is not null)
+{
+    <p role="alert">@failure</p>
+}
+else if (maxNotes is not null)
 {
     <form @onsubmit="SaveAsync">
         <CmsStack>
@@ -23,6 +27,7 @@
     private decimal? maxNotes;
     private string? version;
     private string? error;
+    private string? failure;
     private bool saving;
     private bool saved;
 
@@ -30,8 +35,15 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var read = await Api.SettingsAsync(CancellationToken.None);
-        (maxNotes, version) = (read.Value.MaxNotes, read.Version);
+        try
+        {
+            var read = await Api.SettingsAsync(CancellationToken.None);
+            (maxNotes, version) = (read.Value.MaxNotes, read.Version);
+        }
+        catch (ApiProblemException problem)
+        {
+            failure = StarterApi.Describe(problem) ?? Text["Starter.Settings.Failed"];
+        }
     }
 
     private async Task SaveAsync()
@@ -54,7 +66,7 @@
         catch (ApiProblemException problem)
         {
             // Such as a version another user saved first.
-            error = problem.Problem.Detail ?? problem.Problem.Title ?? Text["Starter.Settings.Failed"];
+            error = StarterApi.Describe(problem) ?? Text["Starter.Settings.Failed"];
         }
         finally
         {

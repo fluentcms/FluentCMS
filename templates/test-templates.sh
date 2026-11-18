@@ -80,7 +80,8 @@ plugin=Acme.ReviewNotes
 step "dotnet new fluentcms-plugin -n $plugin"
 new fluentcms-plugin -n "$plugin" -o "$work/$plugin"
 dotnet build "$work/$plugin/$plugin.slnx" -c Release -warnaserror
-dotnet test "$work/$plugin/$plugin.slnx" -c Release --no-build
+# From inside the plugin, as its author runs them: the plugin's global.json chooses the test platform.
+(cd "$work/$plugin" && dotnet test -c Release --no-build)
 end
 
 # The manifest test fails when the hand-written manifest and the attributes of the half disagree: here without the widget.
@@ -89,7 +90,7 @@ manifest="$work/$plugin/src/$plugin.Admin/wwwroot/fluentcms-admin.json"
 cp "$manifest" "$work/fluentcms-admin.json"
 sed -i '/ReviewNotesWidget"/d' "$manifest"
 cmp -s "$manifest" "$work/fluentcms-admin.json" && fail "the widget was not removed from the manifest"
-if dotnet test "$work/$plugin/tests/$plugin.Admin.Tests/$plugin.Admin.Tests.csproj" -c Release > "$work/manifest-test.log" 2>&1; then
+if (cd "$work/$plugin" && dotnet test --project "tests/$plugin.Admin.Tests" -c Release) > "$work/manifest-test.log" 2>&1; then
   fail "the manifest test passed on a manifest without the widget"
 fi
 grep -q "ReviewNotesWidget" "$work/manifest-test.log" || { cat "$work/manifest-test.log"; fail "the manifest test did not name the widget"; }
@@ -103,8 +104,14 @@ new fluentcms-plugin -n "$server" -o "$work/$server" --admin false
 if grep -q 'Admin' "$work/$server/$server.slnx"; then
   fail "the solution of $server names an admin project"
 fi
+if grep -qF '.Admin' "$work/$server/README.md"; then
+  fail "the README of $server describes an admin half"
+fi
+if grep -l '<!--#' "$work/$plugin/README.md" "$work/$server/README.md"; then
+  fail "a README kept a template conditional"
+fi
 dotnet build "$work/$server/$server.slnx" -c Release -warnaserror
-dotnet test "$work/$server/$server.slnx" -c Release --no-build
+(cd "$work/$server" && dotnet test -c Release --no-build)
 end
 
 step "The FluentCMS packages and the tool of every project are version $version"
@@ -149,7 +156,7 @@ dotnet build "$work/my-site/my-site.csproj" -c Release -warnaserror
 grep -q '^COPY my-site.csproj ./' "$work/my-site/Dockerfile" || fail "the Dockerfile of my-site does not copy my-site.csproj"
 new fluentcms-plugin -n my-plugin -o "$work/my-plugin"
 dotnet build "$work/my-plugin/my-plugin.slnx" -c Release -warnaserror
-dotnet test "$work/my-plugin/tests/my-plugin.Admin.Tests/my-plugin.Admin.Tests.csproj" -c Release --no-build
+(cd "$work/my-plugin" && dotnet test --project tests/my-plugin.Admin.Tests -c Release --no-build)
 end
 
 secret=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')

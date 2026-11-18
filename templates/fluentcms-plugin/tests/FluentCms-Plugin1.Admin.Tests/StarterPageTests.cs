@@ -41,6 +41,16 @@ public sealed class StarterPageTests : BunitContext
         Assert.Empty(page.FindAll("li"));
     }
 
+    [Fact]
+    public void ARefusedReadIsShownOnThePage()
+    {
+        _api.Refusal = new ApiProblem { Status = 403, Title = "Forbidden" };
+
+        var page = Render<StarterPage>();
+
+        page.WaitForAssertion(() => Assert.Equal("Forbidden", page.Find("[role=alert]").TextContent));
+    }
+
     private sealed class HalfServices(IManagementApi api) : IAdminPluginServices
     {
         private readonly IServiceProvider _provider = Provider(api);
@@ -71,11 +81,18 @@ public sealed class StarterPageTests : BunitContext
     {
         public string Notes { get; set; } = "[]";
 
+        public ApiProblem? Refusal { get; set; }
+
         public List<string> Paths { get; } = [];
 
         public Task<ApiResponse<T>> SendAsync<T>(ApiRequest request, JsonTypeInfo<T> answer, CancellationToken cancellationToken)
         {
             Paths.Add(request.Path);
+            if (Refusal is not null)
+            {
+                throw new ApiProblemException(Refusal);
+            }
+
             return Task.FromResult(new ApiResponse<T>(HttpStatusCode.OK, null, JsonSerializer.Deserialize(Notes, answer)!));
         }
 
