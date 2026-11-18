@@ -20,6 +20,9 @@ public class AdminRulesTests
     private const string AdminComponents = "FluentCMS.Admin.Components";
     private const string AdminRichText = "FluentCMS.Admin.RichText";
     private const string AdminApp = "FluentCMS.Admin.App";
+
+    // The repository's own half, which every list of halves holds.
+    private const string MediaHalf = HalvesFolder + "FluentCMS.Plugins.Media.Admin/FluentCMS.Plugins.Media.Admin.csproj";
     private const string AdminHosting = "FluentCMS.Admin.Hosting";
     private const string Core = "FluentCMS.Core";
     private const string Client = "FluentCMS.Client";
@@ -225,7 +228,7 @@ public class AdminRulesTests
     {
         var byFolder = ProjectFile.FromXml(HalvesFolder + "Reviews/Reviews.csproj", "<Project />");
         var byName = ProjectFile.FromXml("samples/Reviews.Admin/Reviews.Admin.csproj", "<Project />");
-        var byNameInAdmin = ProjectFile.FromXml(AdminFolder + "FluentCMS.Plugins.Media.Admin/FluentCMS.Plugins.Media.Admin.csproj", "<Project />");
+        var byNameInAdmin = ProjectFile.FromXml(AdminFolder + "FluentCMS.Plugins.Reviews.Admin/FluentCMS.Plugins.Reviews.Admin.csproj", "<Project />");
         var byReference = ProjectFile.FromXml("samples/Reviews.Pages/Reviews.Pages.csproj", """
             <Project Sdk="Microsoft.NET.Sdk.Razor">
               <ItemGroup>
@@ -244,7 +247,7 @@ public class AdminRulesTests
 
         Halves([.. ProjectFile.RepositoryProjects, byFolder, byName, byNameInAdmin, byReference, byReferenceInAdmin, server])
             .Select(half => half.Location)
-            .ShouldBe([byFolder.Location, byName.Location, byNameInAdmin.Location, byReference.Location, byReferenceInAdmin.Location], ignoreOrder: true);
+            .ShouldBe([MediaHalf, byFolder.Location, byName.Location, byNameInAdmin.Location, byReference.Location, byReferenceInAdmin.Location], ignoreOrder: true);
 
         // Placed directly under admin/src/, a half that uses the shell and the library still breaks the rules.
         var careless = ProjectFile.FromXml(byNameInAdmin.Location, """
@@ -256,8 +259,8 @@ public class AdminRulesTests
             </Project>
             """);
 
-        HalfViolations(With(careless)).ShouldBe(["FluentCMS.Plugins.Media.Admin references FluentCMS.Admin"]);
-        LibraryReferences(With(careless)).ShouldBe(["FluentCMS.Plugins.Media.Admin references Microsoft.FluentUI.AspNetCore.Components"]);
+        HalfViolations(With(careless)).ShouldBe(["FluentCMS.Plugins.Reviews.Admin references FluentCMS.Admin"]);
+        LibraryReferences(With(careless)).ShouldBe(["FluentCMS.Plugins.Reviews.Admin references Microsoft.FluentUI.AspNetCore.Components"]);
     }
 
     // Spec 2.8: the contract depends on Microsoft.AspNetCore.Components.Web and the Microsoft.Extensions.* abstractions only.
@@ -299,7 +302,7 @@ public class AdminRulesTests
             </Project>
             """);
 
-        AdminProjectsReachingCore(With(careless)).ShouldBe([AdminHosting, Admin, AdminAbstractions, AdminApp, AdminComponents, AdminRichText], ignoreOrder: true);
+        AdminProjectsReachingCore(With(careless)).ShouldBe([AdminHosting, Admin, AdminAbstractions, AdminApp, AdminComponents, AdminRichText, "FluentCMS.Plugins.Media.Admin"], ignoreOrder: true);
 
         // That no assembly of the browser references the hosting package is checked by the first rule, which does not count
         // the hosting package as one.

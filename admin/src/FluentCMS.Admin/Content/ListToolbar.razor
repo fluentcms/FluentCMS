@@ -185,6 +185,7 @@
     protected override async Task OnParametersSetAsync()
     {
         var query = Bound ? new Uri(Navigation.Uri).Query : Query;
+        await PluginFieldTypes.LoadAsync(Type.Fields, async field => await FilterTypes.FindAsync(field));
         fields = ListFilters.Fields(Type, FilterTypes);
         filters = ListFilters.Parse(query, fields);
         search = Searchable ? ListFilters.ParseSearch(ListFilters.SearchOf(query)) : null;

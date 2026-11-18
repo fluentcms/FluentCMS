@@ -1,0 +1,35 @@
+@* The admin halves the app was built with that the shell does not load, with the reason of each (spec 5.1): the rest of the
+   admin works without them. Linked from the start page while there is one. *@
+@page "/system/plugins"
+@inject AdminPluginCatalog Catalog
+@inject IStringLocalizer<AdminResources> L
+
+<h1 tabindex="-1">@L["Plugins.Problems.Heading"]</h1>
+@if (Catalog.Problems.Count == 0)
+{
+    <p>@L["Plugins.Problems.None"]</p>
+}
+else
+{
+    <p>@L["Plugins.Problems.Intro"]</p>
+    <ul>
+        @foreach (var problem in Catalog.Problems)
+        {
+            <li>@Describe(problem)</li>
+        }
+    </ul>
+}
+
+@code {
+    private string Describe(PluginProblem problem) => problem.Kind switch
+    {
+        PluginProblemKind.Unreadable => L["Plugins.Problems.Unreadable"],
+        PluginProblemKind.OutOfRange => L["Plugins.Problems.OutOfRange", Name(problem), problem.AdminRange ?? "", AdminPluginCatalog.RunningVersion.ToString(3)],
+        PluginProblemKind.ReservedName => L["Plugins.Problems.ReservedName", Name(problem)],
+        PluginProblemKind.Duplicate => L["Plugins.Problems.Duplicate", Name(problem)],
+        _ => L["Plugins.Problems.Invalid", Name(problem)],
+    };
+
+    private string Name(PluginProblem problem) =>
+        problem.Name is { } name && problem.Assembly is { } assembly ? $"{name} ({assembly})" : problem.Name ?? problem.Assembly ?? L["Plugins.Problems.Unnamed"];
+}

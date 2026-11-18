@@ -1,0 +1,21 @@
+{
+  "manifestVersion": 1,
+  "name": "media",
+  "version": "1.0.0",
+  "adminRange": "[1.0.0,2.0.0)",
+  "assembly": "FluentCMS.Plugins.Media.Admin",
+  "pages": [
+    { "type": "FluentCMS.Plugins.Media.Admin.MediaPage", "route": "/media", "permission": "media.read" }
+  ],
+  "menuItems": [
+    {
+      "type": "FluentCMS.Plugins.Media.Admin.MediaPage",
+      "label": "Media.Menu",
+      "labels": { "en": "Media" },
+      "route": "/media",
+      "section": "media",
+      "icon": "image",
+      "permission": "media.read"
+    }
+  ]
+}

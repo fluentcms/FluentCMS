@@ -106,7 +106,7 @@ jobs:
             projects: tests/FluentCMS.Plugins.Mcp.Tests tests/FluentCMS.Plugins.GraphQL.Tests tests/FluentCMS.Plugins.MultiSite.Tests tests/FluentCMS.Plugins.AiAssist.Tests tests/FluentCMS.Plugins.Search.Tests
           - group: admin
             timeout: 5m
-            projects: admin/tests/FluentCMS.Admin.Tests admin/tests/FluentCMS.Admin.ApiTests
+            projects: admin/tests/FluentCMS.Admin.Tests admin/tests/FluentCMS.Admin.ApiTests admin/tests/FluentCMS.Plugins.Media.Admin.Tests
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7

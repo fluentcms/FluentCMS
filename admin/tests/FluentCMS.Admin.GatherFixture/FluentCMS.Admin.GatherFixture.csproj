@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <!-- An app with two admin halves, for the test of the build target that gathers their manifests. It is built, never run. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media.Admin/FluentCMS.Plugins.Media.Admin.csproj" />
+    <ProjectReference Include="../FluentCMS.Admin.Plugins.Sample/FluentCMS.Admin.Plugins.Sample.csproj" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.Media.Admin.wasm" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Admin.Plugins.Sample.wasm" />
+  </ItemGroup>
+
+  <Import Project="../../src/FluentCMS.Admin/build/FluentCMS.Admin.targets" />
+
+</Project>

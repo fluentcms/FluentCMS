@@ -49,6 +49,7 @@ public interface IAdminPluginServices
     /// <typeparam name="TService">The service, an interface both halves know, such as one of <c>FluentCMS.Admin.Abstractions</c>.</typeparam>
     /// <param name="cancellationToken">Cancels the load.</param>
     /// <returns>The service, or <see langword="null"/> when no half that is enabled in the site provides it.</returns>
+    /// <exception cref="InvalidOperationException">The half that provides the service could not be loaded; a later navigation tries again.</exception>
     ValueTask<TService?> FindAsync<TService>(CancellationToken cancellationToken = default)
         where TService : class;
 }

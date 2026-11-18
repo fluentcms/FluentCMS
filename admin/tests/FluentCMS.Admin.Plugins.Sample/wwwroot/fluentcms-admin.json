@@ -13,6 +13,7 @@
     {
       "type": "FluentCMS.Admin.Plugins.Sample.ReviewsPage",
       "label": "Reviews.Menu",
+      "labels": { "en": "Reviews", "fr": "Avis" },
       "route": "/reviews",
       "section": "content",
       "icon": "comment",

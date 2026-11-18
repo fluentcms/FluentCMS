@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media.Admin/FluentCMS.Plugins.Media.Admin.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../src/plugins/FluentCMS.Plugins.Media.Admin/wwwroot/fluentcms-admin.json" Link="fluentcms-admin.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -5,8 +5,8 @@ using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Configuration;
 using FluentCMS.Admin.Fields;
 using FluentCMS.Admin.Interop;
-using FluentCMS.Admin.Lists;
 using FluentCMS.Admin.Localization;
+using FluentCMS.Admin.Plugins;
 using FluentCMS.Admin.Shell;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -33,7 +33,9 @@ public static class AdminHostBuilderExtensions
             BaseAddress = new Uri(builder.HostEnvironment.BaseAddress),
             Timeout = AdminConfigurationLoader.Timeout,
         };
-        var startup = await AdminConfigurationLoader.LoadAsync(http);
+        var reading = AdminConfigurationLoader.LoadAsync(http);
+        var catalog = await AdminPluginCatalog.LoadAsync(http);
+        var startup = await reading;
 
         // At start the runtime has set the current culture to the browser's. The culture must be set before the host runs,
         // which loads its resources.
@@ -42,6 +44,7 @@ public static class AdminHostBuilderExtensions
             new NoInterfaceCulturePreference().Culture, browser, InterfaceCultureOptions.From(startup.Configuration?.Cultures)));
         culture.Apply(browser);
 
+        builder.Services.AddSingleton(catalog);
         builder.Services.AddAdminStartup(startup, culture, new FormatService(browser, TimeZoneInfo.Local));
     }
 
@@ -73,8 +76,8 @@ public static class AdminHostBuilderExtensions
         // Before AddManagementApi, whose signed-out defaults they replace.
         services.AddScoped<IRateLimitNotice, RateLimitNotice>();
         services.AddAdminAuthentication();
+        services.AddAdminPlugins();
         services.AddAdminShell();
-        services.TryAddSingleton<ListFilterRegistry>();
         services.AddSingleton<IColumnStorage, ColumnStorageInterop>();
         services.AddFieldEditors();
         services.AddManagementApi();

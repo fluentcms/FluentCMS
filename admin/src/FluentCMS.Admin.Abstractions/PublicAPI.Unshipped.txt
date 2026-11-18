@@ -1104,3 +1104,13 @@ virtual FluentCMS.Admin.Actions.EntryActionBase.ConfirmationText(FluentCMS.Admin
 virtual FluentCMS.Admin.Actions.FieldActionBase.AppliesToAsync(FluentCMS.Admin.Actions.FieldActionContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<bool>
 virtual FluentCMS.Admin.Actions.FieldActionBase.ConfirmationText(FluentCMS.Admin.Actions.FieldActionContext! context) -> string?
 virtual FluentCMS.Admin.Fields.FieldEditorBase.FocusAsync() -> System.Threading.Tasks.ValueTask
+const FluentCMS.Admin.Plugins.AdminManifestMenuItem.NeutralCulture = "en" -> string!
+FluentCMS.Admin.Fields.FieldEditorRegistry.AddLazy(string! fieldType, System.Func<bool>! isAvailable, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<System.Type!>!>! load) -> void
+FluentCMS.Admin.Fields.FieldEditorRegistry.FindAsync(string! fieldType, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Admin.Fields.FieldEditorRegistration?>
+FluentCMS.Admin.Lists.ListCellRegistry.AddLazy(string! fieldType, System.Func<bool>! isAvailable, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<System.Type!>!>! load) -> void
+FluentCMS.Admin.Lists.ListCellRegistry.CellForAsync(string! fieldType, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Type!>
+FluentCMS.Admin.Lists.ListFilterRegistry.AddLazy(string! fieldType, System.Func<bool>! isAvailable, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task!>! load) -> void
+FluentCMS.Admin.Lists.ListFilterRegistry.FindAsync(FluentCMS.Admin.Api.SchemaFieldDescription! field, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Admin.Lists.ListFilterDefinition?>
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.LabelFor(System.Globalization.CultureInfo! culture) -> string!
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Labels.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Labels.init -> void

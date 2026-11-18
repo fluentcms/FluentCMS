@@ -51,7 +51,10 @@
         }
     }
 
-    private string Label(ShellLink link) => link.Type is { } type ? AdminLabels.Type(type, L) : L[link.Entry!.LabelKey];
+    private string Label(ShellLink link) =>
+        link.Type is { } type ? AdminLabels.Type(type, L)
+        : link.Entry!.Item is { } item ? item.LabelFor(System.Globalization.CultureInfo.CurrentUICulture)
+        : L[link.Entry.LabelKey];
 
     private void OnChanged() => _ = InvokeAsync(async () =>
     {
