@@ -264,6 +264,11 @@ else if (view is { } shownView)
 
         if (view?.Type != type)
         {
+            await PluginFieldTypes.LoadAsync(type.Fields, async field =>
+            {
+                await Cells.CellForAsync(field.Type);
+                await FilterTypes.FindAsync(field);
+            });
             view = ListView.For(type, schema, Cells, FilterTypes);
         }
 

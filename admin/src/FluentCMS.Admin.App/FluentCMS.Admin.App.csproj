@@ -18,6 +18,11 @@
 
   <ItemGroup>
     <ProjectReference Include="../FluentCMS.Admin/FluentCMS.Admin.csproj" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.Media.Admin/FluentCMS.Plugins.Media.Admin.csproj" />
+    <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.Media.Admin.wasm" />
   </ItemGroup>
+
+  <!-- What the package's build folder gives an app that references FluentCMS.Admin as a package. -->
+  <Import Project="../FluentCMS.Admin/build/FluentCMS.Admin.targets" />
 
 </Project>

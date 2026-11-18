@@ -1,0 +1,81 @@
+<Project>
+
+  <!-- The app's build gathers the fluentcms-admin.json of every admin half it references into fluentcms-admin.plugins.json,
+       one static web asset of the app that the shell reads at start (spec 2.6). Each half must be loaded lazily, so a half
+       that the app does not list as BlazorWebAssemblyLazyLoad stops the build. -->
+  <PropertyGroup>
+    <ResolveStaticWebAssetsInputsDependsOn>
+      FluentCmsGatherAdminPlugins;
+      $(ResolveStaticWebAssetsInputsDependsOn)
+    </ResolveStaticWebAssetsInputsDependsOn>
+  </PropertyGroup>
+
+  <Target Name="FluentCmsGatherAdminPlugins" DependsOnTargets="ResolveCoreStaticWebAssets" Condition="'$(UsingMicrosoftNETSdkBlazorWebAssembly)' == 'true'">
+    <PropertyGroup>
+      <_FluentCmsAdminPluginsRoot>$(IntermediateOutputPath)fluentcms-admin\</_FluentCmsAdminPluginsRoot>
+      <_FluentCmsAdminPluginsPath>$(_FluentCmsAdminPluginsRoot)fluentcms-admin.plugins.json</_FluentCmsAdminPluginsPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <_FluentCmsAdminManifestCandidate Include="@(StaticWebAsset)"
+        Condition="'%(StaticWebAsset.Filename)%(StaticWebAsset.Extension)' == 'fluentcms-admin.json' and '%(StaticWebAsset.SourceId)' != '$(PackageId)' and '%(StaticWebAsset.AssetRole)' == 'Primary' and '%(StaticWebAsset.AssetKind)' != 'Publish'" />
+    </ItemGroup>
+
+    <RemoveDuplicates Inputs="@(_FluentCmsAdminManifestCandidate)">
+      <Output TaskParameter="Filtered" ItemName="_FluentCmsAdminManifest" />
+    </RemoveDuplicates>
+
+    <ItemGroup>
+      <_FluentCmsAdminLazyLoad Include="@(BlazorWebAssemblyLazyLoad->'%(Filename)')" />
+      <_FluentCmsAdminEagerHalf Include="@(_FluentCmsAdminManifest->'%(SourceId)')" Exclude="@(_FluentCmsAdminLazyLoad)" />
+    </ItemGroup>
+
+    <Error Condition="'@(_FluentCmsAdminEagerHalf)' != ''"
+      Text="The admin half %(_FluentCmsAdminEagerHalf.Identity) is referenced but not loaded lazily: add &lt;BlazorWebAssemblyLazyLoad Include=&quot;%(_FluentCmsAdminEagerHalf.Identity).wasm&quot; /&gt; to the app." />
+
+    <!-- Each file on lines of its own, so that a comment on a file's last line cannot take the comma after it; the reader
+         takes the trailing comma. -->
+    <ItemGroup>
+      <_FluentCmsAdminPluginsLine Include="[" />
+      <_FluentCmsAdminPluginsLine Include="$([MSBuild]::Escape($([System.IO.File]::ReadAllText('%(_FluentCmsAdminManifest.Identity)'))))" Condition="'@(_FluentCmsAdminManifest)' != ''" />
+      <_FluentCmsAdminPluginsLine Include="," Condition="'@(_FluentCmsAdminManifest)' != ''" KeepDuplicates="true" />
+      <_FluentCmsAdminPluginsLine Include="]" />
+    </ItemGroup>
+
+    <WriteLinesToFile File="$(_FluentCmsAdminPluginsPath)" Lines="@(_FluentCmsAdminPluginsLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+
+    <ItemGroup>
+      <_FluentCmsAdminPluginsCandidate Include="$(_FluentCmsAdminPluginsPath)">
+        <RelativePath>fluentcms-admin.plugins.json</RelativePath>
+      </_FluentCmsAdminPluginsCandidate>
+    </ItemGroup>
+
+    <DefineStaticWebAssets
+      CandidateAssets="@(_FluentCmsAdminPluginsCandidate)"
+      SourceId="$(PackageId)"
+      SourceType="Computed"
+      BasePath="$(StaticWebAssetBasePath)"
+      ContentRoot="$(_FluentCmsAdminPluginsRoot)"
+      AssetKind="All"
+      AssetMode="CurrentProject"
+      AssetRole="Primary"
+      AssetMergeSource="$(StaticWebAssetMergeTarget)"
+      FingerprintCandidates="false">
+      <Output TaskParameter="Assets" ItemName="_FluentCmsAdminPluginsAsset" />
+    </DefineStaticWebAssets>
+
+    <DefineStaticWebAssetEndpoints
+      CandidateAssets="@(_FluentCmsAdminPluginsAsset)"
+      ExistingEndpoints="@(StaticWebAssetEndpoint)"
+      ContentTypeMappings="@(StaticWebAssetContentTypeMapping)">
+      <Output TaskParameter="Endpoints" ItemName="_FluentCmsAdminPluginsEndpoint" />
+    </DefineStaticWebAssetEndpoints>
+
+    <ItemGroup>
+      <StaticWebAsset Include="@(_FluentCmsAdminPluginsAsset)" />
+      <StaticWebAssetEndpoint Include="@(_FluentCmsAdminPluginsEndpoint)" />
+      <FileWrites Include="$(_FluentCmsAdminPluginsPath)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

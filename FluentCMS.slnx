@@ -53,12 +53,16 @@
     <Project Path="admin/src/FluentCMS.Admin.App/FluentCMS.Admin.App.csproj" />
     <Project Path="admin/src/FluentCMS.Admin.Hosting/FluentCMS.Admin.Hosting.csproj" />
   </Folder>
+  <Folder Name="/admin/src/plugins/">
+    <Project Path="admin/src/plugins/FluentCMS.Plugins.Media.Admin/FluentCMS.Plugins.Media.Admin.csproj" />
+  </Folder>
   <Folder Name="/admin/tests/">
     <Project Path="admin/tests/FluentCMS.Admin.Tests/FluentCMS.Admin.Tests.csproj" />
     <Project Path="admin/tests/FluentCMS.Admin.ApiTests/FluentCMS.Admin.ApiTests.csproj" />
     <Project Path="admin/tests/FluentCMS.Admin.EndToEnd/FluentCMS.Admin.EndToEnd.csproj" />
     <Project Path="admin/tests/FluentCMS.Admin.Plugins.Careless/FluentCMS.Admin.Plugins.Careless.csproj" />
     <Project Path="admin/tests/FluentCMS.Admin.Plugins.Sample/FluentCMS.Admin.Plugins.Sample.csproj" />
+    <Project Path="admin/tests/FluentCMS.Plugins.Media.Admin.Tests/FluentCMS.Plugins.Media.Admin.Tests.csproj" />
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/Blog/Blog.csproj" />

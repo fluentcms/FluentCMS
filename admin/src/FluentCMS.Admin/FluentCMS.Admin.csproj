@@ -22,6 +22,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- An app that references the package gathers the manifests of its admin halves (spec 2.6). -->
+    <None Include="build/FluentCMS.Admin.targets" Pack="true" PackagePath="build/" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Account/QrCode.cs derives from an MIT work, whose notice the package carries. -->
     <None Include="../../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="" Visible="false" />
   </ItemGroup>

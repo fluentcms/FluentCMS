@@ -91,6 +91,7 @@ public static class AdminPluginManifestCheck
         CompareMember(differences, "assembly", declared.Assembly, manifest.Assembly);
         NullEntries(differences, "pages", manifest.Pages);
         NullEntries(differences, "menuItems", manifest.MenuItems);
+        LabelTexts(differences, manifest.MenuItems);
         NullEntries(differences, "settingsPages", manifest.SettingsPages);
         NullEntries(differences, "fieldEditors", manifest.FieldEditors);
         NullEntries(differences, "listCells", manifest.ListCells);
@@ -316,6 +317,48 @@ public static class AdminPluginManifestCheck
         if (entries.Any(entry => entry is null))
         {
             differences.Add($"{list} holds a null in the manifest");
+        }
+    }
+
+    // The sidebar shows a menu item before its half is loaded, so the item's texts are in the manifest and not only in the
+    // half's resources.
+    private static void LabelTexts(List<string> differences, IReadOnlyList<AdminManifestMenuItem> items)
+    {
+        foreach (var item in Present(items))
+        {
+            if (!item.Labels.TryGetValue(AdminManifestMenuItem.NeutralCulture, out var neutral) || string.IsNullOrWhiteSpace(neutral))
+            {
+                differences.Add($"menu item '{item.Label}' of {item.Type}: labels has no text for '{AdminManifestMenuItem.NeutralCulture}', which the sidebar shows when it has none of the interface culture");
+            }
+
+            foreach (var (culture, text) in item.Labels)
+            {
+                if (!IsCulture(culture))
+                {
+                    differences.Add($"menu item '{item.Label}' of {item.Type}: labels names '{culture}', which is not a culture");
+                }
+                else if (string.IsNullOrWhiteSpace(text) && culture != AdminManifestMenuItem.NeutralCulture)
+                {
+                    differences.Add($"menu item '{item.Label}' of {item.Type}: the label for '{culture}' is empty");
+                }
+            }
+        }
+    }
+
+    private static bool IsCulture(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        try
+        {
+            return System.Globalization.CultureInfo.GetCultureInfo(name, predefinedOnly: true).Name.Length > 0;
+        }
+        catch (System.Globalization.CultureNotFoundException)
+        {
+            return false;
         }
     }
 

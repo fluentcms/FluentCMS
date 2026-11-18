@@ -1,6 +1,57 @@
 @page "/not-found"
 @layout AdminLayout
+@using FluentCMS.Admin.Plugins
+@using Microsoft.Extensions.DependencyInjection
 @inject IStringLocalizer<AdminResources> L
+@inject NavigationManager Navigation
+@inject IServiceProvider Services
 
-<h1 tabindex="-1">@L["Shell.NotFound.Heading"]</h1>
-<p>@L["Shell.NotFound.Text"]</p>
+@* A page of an admin half that the user lacks the permission of, or whose half did not load, says so; any other address
+   has no page. *@
+@switch (State)
+{
+    case PageState.NoAccess:
+        <h1 tabindex="-1">@L["Shell.NoAccess.Heading"]</h1>
+        <p>@L["Shell.NoAccess.Text"]</p>
+        break;
+    case PageState.LoadFailed:
+        <h1 tabindex="-1">@L["Plugins.LoadFailed.Heading"]</h1>
+        <p>@L["Plugins.LoadFailed.Text"]</p>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="TryAgain">@L["Plugins.LoadFailed.TryAgain"]</CmsButton>
+        break;
+    default:
+        <h1 tabindex="-1">@L["Shell.NotFound.Heading"]</h1>
+        <p>@L["Shell.NotFound.Text"]</p>
+        break;
+}
+
+@code {
+    private enum PageState
+    {
+        NotFound,
+        NoAccess,
+        LoadFailed,
+    }
+
+    private PageState State
+    {
+        get
+        {
+            if (Services.GetService<AdminPlugins>() is not { } plugins)
+            {
+                return PageState.NotFound;
+            }
+
+            var route = Navigation.ToBaseRelativePath(Navigation.Uri);
+            return plugins.Gate(route) switch
+            {
+                PluginPageGate.NoAccess => PageState.NoAccess,
+                PluginPageGate.Allowed when plugins.Catalog.HalfOfRoute(route) is { } half && plugins.LoadFailed(half) => PageState.LoadFailed,
+                _ => PageState.NotFound,
+            };
+        }
+    }
+
+    // The same address again, which the router's navigation loads the half for.
+    private void TryAgain() => Navigation.NavigateTo(Navigation.Uri, replace: true);
+}

@@ -73,7 +73,7 @@ public sealed class AdminPluginManifestTests
     [Fact]
     public void AManifestIsWrittenAndReadBack()
     {
-        var json = AdminPluginManifestJson.Write(Declared);
+        var json = AdminPluginManifestJson.Write(Labelled(Declared));
 
         json.ShouldContain("\"manifestVersion\": 1");
         json.ShouldContain("\"section\": \"content\"");
@@ -330,4 +330,10 @@ public sealed class AdminPluginManifestTests
 
     [Fact]
     public void TheSampleHalfIsValid() => File.IsValid.ShouldBeTrue();
+
+    // The texts of the menu items, which only the file has.
+    private static AdminPluginManifest Labelled(AdminPluginManifest manifest) => manifest with
+    {
+        MenuItems = [.. manifest.MenuItems.Select(item => item with { Labels = new Dictionary<string, string> { ["en"] = item.Label } })],
+    };
 }
