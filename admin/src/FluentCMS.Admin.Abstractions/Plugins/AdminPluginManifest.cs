@@ -73,7 +73,7 @@ public sealed record AdminPluginManifest
     [JsonIgnore]
     public bool IsValid =>
         Pages.All(page => page is not null)
-        && MenuItems.All(item => item is not null && ManifestNames.IsKnown(item.Section))
+        && MenuItems.All(item => item is not null && ManifestNames.IsKnown(item.Section) && item.Labels.Values.All(label => label is not null))
         && SettingsPages.All(page => page is not null)
         && FieldEditors.All(editor => editor is not null)
         && ListCells.All(cell => cell is not null)
@@ -105,6 +105,35 @@ public sealed record AdminManifestMenuItem
 
     /// <summary>The resource key of the label.</summary>
     public required string Label { get; init; }
+
+    /// <summary>
+    /// The texts of the label by culture name, such as <c>en</c> and <c>fr</c>, which the sidebar shows before the half is
+    /// loaded: the text of the interface culture, else of its parent cultures, else of <see cref="NeutralCulture"/>, which
+    /// every item has.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Labels { get => field ?? EmptyLabels; init; }
+
+    /// <summary>The culture of the label text every menu item has, the admin's neutral culture.</summary>
+    public const string NeutralCulture = "en";
+
+    private static readonly IReadOnlyDictionary<string, string> EmptyLabels = new Dictionary<string, string>();
+
+    /// <summary>The text of the label for a culture: of the culture, else of its parent cultures, else of <see cref="NeutralCulture"/>.</summary>
+    /// <param name="culture">The interface culture.</param>
+    /// <returns>The text, or <see cref="Label"/> when the item has no text for any of them.</returns>
+    public string LabelFor(System.Globalization.CultureInfo culture)
+    {
+        ArgumentNullException.ThrowIfNull(culture);
+        for (var current = culture; !string.IsNullOrEmpty(current.Name); current = current.Parent)
+        {
+            if (Labels.TryGetValue(current.Name, out var text) && !string.IsNullOrWhiteSpace(text))
+            {
+                return text;
+            }
+        }
+
+        return Labels.TryGetValue(NeutralCulture, out var neutral) && !string.IsNullOrWhiteSpace(neutral) ? neutral : Label;
+    }
 
     /// <summary>The route the item links to.</summary>
     public required string Route { get; init; }

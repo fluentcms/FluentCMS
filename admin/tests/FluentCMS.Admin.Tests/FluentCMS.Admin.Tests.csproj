@@ -14,6 +14,8 @@
     <ProjectReference Include="../../src/FluentCMS.Admin/FluentCMS.Admin.csproj" />
     <ProjectReference Include="../FluentCMS.Admin.Plugins.Sample/FluentCMS.Admin.Plugins.Sample.csproj" />
     <ProjectReference Include="../FluentCMS.Admin.Plugins.Careless/FluentCMS.Admin.Plugins.Careless.csproj" />
+    <!-- Built first for the file its build gathers, which a test reads. -->
+    <ProjectReference Include="../FluentCMS.Admin.GatherFixture/FluentCMS.Admin.GatherFixture.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

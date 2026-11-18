@@ -1,7 +1,12 @@
 @* A stub page, until the shell (A-08) gives the admin its start page. *@
 @page "/"
 @inject IStringLocalizer<AdminResources> L
+@inject FluentCMS.Admin.Plugins.AdminPluginCatalog Plugins
 
 <h1 tabindex="-1">@L["Home.Page.Heading"]</h1>
 <p>@L["Home.Page.Intro"]</p>
 <p><a href="system/components">@L["Home.Page.ComponentGallery"]</a></p>
+@if (Plugins.Problems.Count > 0)
+{
+    <p class="shell-notice"><CmsIcon Name="CmsIconName.Warning" /><a href="system/plugins">@L["Home.Page.PluginProblems"]</a></p>
+}

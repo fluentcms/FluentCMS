@@ -584,6 +584,11 @@
             }
 
             localizedType = found.Localized ? found.Name : null;
+            await PluginFieldTypes.LoadAsync(found.Fields, async field => await Editors.FindAsync(field.Type));
+            if (current != generation)
+            {
+                return;
+            }
 
             var several = found.Localized && Context.ContentLocales.Count > 1;
             var readable = several ? Context.ReadableLocalesAsync(found.Name) : null;

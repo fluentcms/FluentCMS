@@ -24,4 +24,13 @@ The app's `index.html` links the stylesheet of the wrapped set and the app's own
 <link rel="stylesheet" href="MyApp.styles.css" />
 ```
 
+A plugin's admin half is in the app because the app references it, and it loads the first time one of its contributions is used; the app lists it as lazy, and the build stops when it does not:
+
+```xml
+<ItemGroup>
+  <PackageReference Include="FluentCMS.Plugins.Media.Admin" />
+  <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.Media.Admin.wasm" />
+</ItemGroup>
+```
+
 This preview holds the entry points only; section 2 of the [admin technical specification](https://github.com/fluentcms/FluentCMS/blob/main/docs/planning/admin-technical-spec.md) has the design.

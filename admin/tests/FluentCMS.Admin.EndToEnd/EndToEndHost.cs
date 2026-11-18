@@ -55,7 +55,8 @@ public sealed class EndToEndHost : IAsyncLifetime
     public string MigrateOutput { get; private set; } = "";
 
     // The default site of the Blog sample and a second one, made through the Management API of the multi-site plugin with a
-    // key from the host's own command, since no command makes a site. The instance-wide Editor role reaches both.
+    // key from the host's own command, since no command makes a site. The instance-wide Editor role reaches both. The media
+    // plugin is disabled in the second site, where its admin half must never load.
     public IReadOnlyList<Site> Sites { get; private set; } = [];
 
     // Why the browser tests are skipped: Chromium is not installed for this version of Playwright.
@@ -280,7 +281,14 @@ public sealed class EndToEndHost : IAsyncLifetime
         }
 
         var list = await client.GetFromJsonAsync<JsonObject>(new Uri("api/management/v1/sites", UriKind.Relative), Token);
-        return [.. list!["items"]!.AsArray().Select(site => new Site((string)site!["id"]!, (string)site["name"]!, (bool)site["isDefault"]!)).OrderByDescending(site => site.IsDefault)];
+        Site[] sites = [.. list!["items"]!.AsArray().Select(site => new Site((string)site!["id"]!, (string)site["name"]!, (bool)site["isDefault"]!)).OrderByDescending(site => site.IsDefault)];
+        using var disabled = await client.PutAsJsonAsync(new Uri($"api/management/v1/plugins/media/sites/{sites[1].Id}", UriKind.Relative), new { enabled = false }, Token);
+        if (disabled.StatusCode != HttpStatusCode.OK)
+        {
+            throw new InvalidOperationException($"Disabling media in the second site answered {(int)disabled.StatusCode}: {await disabled.Content.ReadAsStringAsync(Token)}");
+        }
+
+        return sites;
     }
 
     private async Task StartAsync()

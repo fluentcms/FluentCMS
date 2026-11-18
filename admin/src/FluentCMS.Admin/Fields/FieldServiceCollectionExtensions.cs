@@ -1,4 +1,5 @@
 using FluentCMS.Admin.Lists;
+using FluentCMS.Admin.Plugins;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -6,11 +7,12 @@ namespace FluentCMS.Admin.Fields;
 
 internal static class FieldServiceCollectionExtensions
 {
-    // The editors and list cells of the core field types (spec 4.6). Rich text, component, blocks and media wait for their
-    // issues and show their JSON read-only in a form.
+    // The editors and list cells of the core field types (spec 4.6), and those of the app's admin halves, which load on first
+    // use. Rich text, component and blocks wait for their issues and show their JSON read-only in a form. Scoped, as the
+    // halves' are gated by the shell's site.
     public static IServiceCollection AddFieldEditors(this IServiceCollection services)
     {
-        services.TryAddSingleton(_ =>
+        services.TryAddScoped(provider =>
         {
             var editors = new FieldEditorRegistry();
             editors.Add<TextFieldEditor>("text");
@@ -26,9 +28,10 @@ internal static class FieldServiceCollectionExtensions
             editors.Add<SlugFieldEditor>("slug");
             editors.Add<JsonFieldEditor>("json");
             editors.Add<RelationFieldEditor>("relation");
+            provider.GetService<AdminPlugins>()?.Declare(editors);
             return editors;
         });
-        services.TryAddSingleton(_ =>
+        services.TryAddScoped(provider =>
         {
             var cells = new ListCellRegistry();
             cells.Add<TextValueListCell>("text");
@@ -44,7 +47,14 @@ internal static class FieldServiceCollectionExtensions
             cells.Add<SelectListCell>("select");
             cells.Add<JsonListCell>("json");
             cells.Add<RelationListCell>("relation");
+            provider.GetService<AdminPlugins>()?.Declare(cells);
             return cells;
+        });
+        services.TryAddScoped(provider =>
+        {
+            var filters = new ListFilterRegistry();
+            provider.GetService<AdminPlugins>()?.Declare(filters);
+            return filters;
         });
         return services;
     }

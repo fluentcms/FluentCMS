@@ -1,0 +1,7 @@
+@* The media library (spec 4.14), which A-21 fills. *@
+@page "/media"
+@attribute [AdminPage("/media", Permission = "media.read")]
+@attribute [AdminMenuItem("Media.Menu", Section = AdminSection.Media, Icon = "image")]
+@inject IStringLocalizer<MediaResources> L
+
+<h1 tabindex="-1">@L["Media.Page.Heading"]</h1>
