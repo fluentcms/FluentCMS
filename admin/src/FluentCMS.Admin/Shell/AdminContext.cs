@@ -180,6 +180,11 @@ internal sealed class AdminContext(
 
     public bool PluginEnabled(string name) => Plugins.Any(plugin => plugin.Enabled && string.Equals(plugin.Name, name, StringComparison.Ordinal));
 
+    // A role the user holds in the site or in every site, by name in any case, as the server compares role names; a key or a
+    // service account holds none.
+    public bool HasRole(string role) =>
+        User?.Roles.Any(held => string.Equals(held.Name, role, StringComparison.OrdinalIgnoreCase) && (held.SiteId is null || held.SiteId == Site?.Id)) == true;
+
     private static bool Holds(MyAccessInfo access, string permission) =>
         access.Permissions.Contains(permission, StringComparer.Ordinal) || access.InstancePermissions.Contains(permission, StringComparer.Ordinal);
 

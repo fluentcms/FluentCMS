@@ -17,5 +17,8 @@
       "icon": "image",
       "permission": "media.read"
     }
+  ],
+  "widgets": [
+    { "type": "FluentCMS.Plugins.Media.Admin.LatestUploadsWidget", "title": "Media.Widget.Title", "size": "small", "permission": "media.read" }
   ]
 }
