@@ -587,6 +587,8 @@ FluentCMS.Admin.IAdminContext.Changed -> System.Action?
 FluentCMS.Admin.IAdminContext.ContentLocale.get -> string?
 FluentCMS.Admin.IAdminContext.Site.get -> FluentCMS.Admin.Api.MySiteInfo?
 FluentCMS.Admin.IAdminContext.User.get -> FluentCMS.Admin.Api.MeResponse?
+FluentCMS.Admin.IAdminOverlays
+FluentCMS.Admin.IAdminOverlays.Show(Microsoft.AspNetCore.Components.RenderFragment! content) -> System.IDisposable!
 FluentCMS.Admin.IAnnouncer
 FluentCMS.Admin.IAnnouncer.Announce(string! message, FluentCMS.Admin.AnnouncementPoliteness politeness = FluentCMS.Admin.AnnouncementPoliteness.Polite) -> void
 FluentCMS.Admin.Lists.FilterOperand
@@ -708,6 +710,8 @@ FluentCMS.Admin.Plugins.AdminManifestFieldComponent.AdminManifestFieldComponent(
 FluentCMS.Admin.Plugins.AdminManifestFieldComponent.Equals(FluentCMS.Admin.Plugins.AdminManifestFieldComponent? other) -> bool
 FluentCMS.Admin.Plugins.AdminManifestFieldComponent.FieldType.get -> string!
 FluentCMS.Admin.Plugins.AdminManifestFieldComponent.FieldType.init -> void
+FluentCMS.Admin.Plugins.AdminManifestFieldComponent.Populate.get -> bool
+FluentCMS.Admin.Plugins.AdminManifestFieldComponent.Populate.init -> void
 FluentCMS.Admin.Plugins.AdminManifestFieldComponent.Type.get -> string!
 FluentCMS.Admin.Plugins.AdminManifestFieldComponent.Type.init -> void
 FluentCMS.Admin.Plugins.AdminManifestMenuItem
@@ -885,6 +889,8 @@ FluentCMS.Admin.Plugins.IAdminPluginServices.ProviderOf(System.Type! type) -> Sy
 FluentCMS.Admin.Plugins.ListCellAttribute
 FluentCMS.Admin.Plugins.ListCellAttribute.FieldType.get -> string!
 FluentCMS.Admin.Plugins.ListCellAttribute.ListCellAttribute(string! fieldType) -> void
+FluentCMS.Admin.Plugins.ListCellAttribute.Populate.get -> bool
+FluentCMS.Admin.Plugins.ListCellAttribute.Populate.set -> void
 FluentCMS.Admin.Plugins.SettingsPageAttribute
 FluentCMS.Admin.Plugins.SettingsPageAttribute.Area.get -> string!
 FluentCMS.Admin.Plugins.SettingsPageAttribute.SettingsPageAttribute(string! area) -> void
@@ -1113,7 +1119,8 @@ virtual FluentCMS.Admin.Fields.FieldEditorBase.FocusAsync() -> System.Threading.
 const FluentCMS.Admin.Plugins.AdminManifestMenuItem.NeutralCulture = "en" -> string!
 FluentCMS.Admin.Fields.FieldEditorRegistry.AddLazy(string! fieldType, System.Func<bool>! isAvailable, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<System.Type!>!>! load) -> void
 FluentCMS.Admin.Fields.FieldEditorRegistry.FindAsync(string! fieldType, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Admin.Fields.FieldEditorRegistration?>
-FluentCMS.Admin.Lists.ListCellRegistry.AddLazy(string! fieldType, System.Func<bool>! isAvailable, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<System.Type!>!>! load) -> void
+FluentCMS.Admin.Lists.ListCellRegistry.AddLazy(string! fieldType, System.Func<bool>! isAvailable, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<System.Type!>!>! load, bool populate = false) -> void
+FluentCMS.Admin.Lists.ListCellRegistry.Populates(string! fieldType) -> bool
 FluentCMS.Admin.Lists.ListCellRegistry.CellForAsync(string! fieldType, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Type!>
 FluentCMS.Admin.Lists.ListFilterRegistry.AddLazy(string! fieldType, System.Func<bool>! isAvailable, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task!>! load) -> void
 FluentCMS.Admin.Lists.ListFilterRegistry.FindAsync(FluentCMS.Admin.Api.SchemaFieldDescription! field, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Admin.Lists.ListFilterDefinition?>

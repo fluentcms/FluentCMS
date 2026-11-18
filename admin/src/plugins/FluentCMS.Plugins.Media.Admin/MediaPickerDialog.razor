@@ -1,0 +1,168 @@
+@* The media picker's dialog (spec 5.2): MediaBrowser with its folders, search and filters, held to the types the request
+   takes, and the upload into the open folder for a caller who may upload, which refuses a file of another type. A picker
+   of several keeps the assets in the order they were chosen; activating an asset chooses it in a picker of one and adds or
+   removes it in a picker of several. An asset chosen before that cannot be read, as one outside the caller's folders, stays
+   chosen with its id only, so a pick never drops it. It answers once the dialog has closed, so focus is back on the
+   opener. *@
+@inject IManagementApi Api
+@inject IAdminContext Context
+@inject IStringLocalizer<MediaResources> L
+
+<CmsDialog Title="@L[Request.Multiple ? "Media.Picker.TitleMany" : "Media.Picker.TitleOne"]" Open="@open" OpenChanged="@(value => open = value)" OnClosed="Closed">
+    <ChildContent>
+        <div class="media-picker">
+            <MediaBrowser @ref="browser"
+                          State="@state"
+                          StateChanged="@(next => state = next)"
+                          SelectionMode="@(Request.Multiple ? CmsSelectionMode.Many : CmsSelectionMode.One)"
+                          Selected="@Shown"
+                          SelectedChanged="Select"
+                          Accept="@Accept"
+                          OnOpen="OpenAsync">
+                <Actions>
+                    @if (Context.Access.Allows(MediaPermissions.Upload))
+                    {
+                        <MediaUpload Folder="@state.Folder" Accept="@Accept" OnUploaded="@(_ => browser!.ReloadAsync())" />
+                    }
+                </Actions>
+            </MediaBrowser>
+            <p class="media-picker-count">@(order.Count == 1 ? L["Media.Picker.ChosenOne"] : L["Media.Picker.Chosen", MediaFormat.Number(order.Count)])</p>
+            @if (failed)
+            {
+                <p class="media-dialog-error" role="alert">@L["Media.Picker.Failed"]</p>
+            }
+        </div>
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(order.Count == 0 || busy)" OnClick="ChooseAsync">@L["Media.Picker.Choose"]</CmsButton>
+        <CmsButton OnClick="Cancel">@L["Media.Dialog.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+@code {
+    private MediaBrowseState state = MediaBrowseState.Default;
+    private MediaBrowser? browser;
+    // The chosen ids in the order of choice, and the assets read of them; an id without an asset could not be read.
+    private List<Guid> order = [];
+    private readonly Dictionary<Guid, MediaAssetInfo> read = [];
+    private IReadOnlyList<MediaPickerItem>? answer;
+    private bool open = true;
+    private bool busy;
+    private bool failed;
+    private bool done;
+
+    [Parameter, EditorRequired]
+    public MediaPickerRequest Request { get; set; } = null!;
+
+    // Raised once, with the chosen assets or null for none, after the dialog has closed.
+    [Parameter, EditorRequired]
+    public Action<IReadOnlyList<MediaPickerItem>?> OnDone { get; set; } = null!;
+
+    private IReadOnlyList<string>? Accept => Request.Accept is { Count: > 0 } accept ? accept : null;
+
+    // The content locale of the request, when it is not the view's; the assets' texts are read in it.
+    private string? Locale => Request.Locale is { } locale && locale != Context.ContentLocale ? locale : null;
+
+    private IReadOnlyList<MediaAssetInfo> Shown => [.. order.Where(read.ContainsKey).Select(id => read[id])];
+
+    // The assets chosen before, in their order; a choice made while they are read is kept.
+    protected override async Task OnInitializedAsync()
+    {
+        order = [.. Request.Selected.Distinct()];
+        foreach (var asset in await ReadAsync(order, Request.Locale))
+        {
+            read.TryAdd(asset.Id, asset);
+        }
+    }
+
+    private async Task<IReadOnlyList<MediaAssetInfo>> ReadAsync(IReadOnlyList<Guid> ids, string? locale)
+    {
+        List<MediaAssetInfo> assets = [];
+        foreach (var id in ids)
+        {
+            try
+            {
+                assets.Add(await new MediaApi(Api).GetAsync(id, locale, CancellationToken.None));
+            }
+            catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+            {
+            }
+        }
+
+        return assets;
+    }
+
+    // The browser's selection in the order chosen: those kept stay where they were, new ones follow, and an id that could
+    // not be read stays, since the browser cannot show it. A picker of one takes the browser's choice alone.
+    private void Select(IReadOnlyList<MediaAssetInfo> selected)
+    {
+        foreach (var asset in selected)
+        {
+            read[asset.Id] = asset;
+        }
+
+        order = Request.Multiple
+            ? [.. order.Where(id => !read.ContainsKey(id) || selected.Any(asset => asset.Id == id)), .. selected.Select(asset => asset.Id).Where(id => !order.Contains(id))]
+            : [.. selected.Select(asset => asset.Id)];
+    }
+
+    private Task OpenAsync(MediaAssetInfo asset)
+    {
+        if (!Request.Multiple)
+        {
+            Select([asset]);
+            return ChooseAsync();
+        }
+
+        Select(Shown.Any(item => item.Id == asset.Id) ? [.. Shown.Where(item => item.Id != asset.Id)] : [.. Shown, asset]);
+        return Task.CompletedTask;
+    }
+
+    // In another locale than the view's the chosen assets are read again in it; a read that fails keeps the dialog open.
+    private async Task ChooseAsync()
+    {
+        if (busy || order.Count == 0)
+        {
+            return;
+        }
+
+        (busy, failed) = (true, false);
+        var shown = Shown;
+        var assets = Locale is { } locale ? await ReadAsync([.. shown.Select(asset => asset.Id)], locale) : shown;
+        busy = false;
+        if (assets.Count != shown.Count)
+        {
+            failed = true;
+            return;
+        }
+
+        answer = [.. order.Select(id => assets.FirstOrDefault(asset => asset.Id == id) is { } asset ? Item(asset) : Unread(id))];
+        open = false;
+    }
+
+    private void Cancel() => (answer, open) = (null, false);
+
+    private void Closed()
+    {
+        if (!done)
+        {
+            done = true;
+            OnDone(answer);
+        }
+    }
+
+    private static MediaPickerItem Item(MediaAssetInfo asset) => new()
+    {
+        Id = asset.Id,
+        FileName = asset.FileName,
+        MimeType = asset.MimeType,
+        Url = asset.Urls.Original,
+        ThumbnailUrl = asset.Urls.Thumbnail,
+        Alt = asset.Alt,
+        Width = asset.Width,
+        Height = asset.Height,
+    };
+
+    // An asset chosen before that the picker could not read, answered with its id only, as IRelationPicker answers one.
+    private static MediaPickerItem Unread(Guid id) => new() { Id = id, FileName = "", MimeType = "" };
+}

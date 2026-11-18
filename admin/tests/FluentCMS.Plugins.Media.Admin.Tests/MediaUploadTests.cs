@@ -74,7 +74,7 @@ public sealed class MediaUploadTests : MediaTestContext
         var queue = new MediaUploadQueue(new Api.MediaApi(Library));
         var file = new FakeFile("huge.mov", MediaUploadQueue.MaxFileBytes + 1);
 
-        (await queue.AddAsync([file], null, () => Task.CompletedTask, Token)).ShouldBeTrue();
+        (await queue.AddAsync([file], null, null, () => Task.CompletedTask, Token)).ShouldBeTrue();
 
         queue.Items.Single().State.ShouldBe(MediaUploadState.Refused);
         queue.Items.Single().Code.ShouldBe("FCMS1582");
@@ -99,7 +99,7 @@ public sealed class MediaUploadTests : MediaTestContext
         };
         var queue = new MediaUploadQueue(new Api.MediaApi(Library));
 
-        await queue.AddAsync(files, null, () => Task.CompletedTask, Token);
+        await queue.AddAsync(files, null, null, () => Task.CompletedTask, Token);
 
         // Each file is opened right before its upload, after the one before has been sent.
         openedAtEachUpload.ShouldBe([1, 2, 3, 4, 5]);
@@ -115,10 +115,10 @@ public sealed class MediaUploadTests : MediaTestContext
         Library.BeforeAnswer = request => request.Path == "media" ? release.Task : Task.CompletedTask;
         var queue = new MediaUploadQueue(new Api.MediaApi(Library));
 
-        var first = queue.AddAsync([new FakeFile("a.png", 10), new FakeFile("b.png", 10)], null, () => Task.CompletedTask, Token);
+        var first = queue.AddAsync([new FakeFile("a.png", 10), new FakeFile("b.png", 10)], null, null, () => Task.CompletedTask, Token);
         await WaitUntilAsync(() => queue.Items.Any(item => item.State == MediaUploadState.Uploading));
         queue.HasUnread.ShouldBeTrue();
-        var second = await queue.AddAsync([new FakeFile("c.png", 10)], null, () => Task.CompletedTask, Token);
+        var second = await queue.AddAsync([new FakeFile("c.png", 10)], null, null, () => Task.CompletedTask, Token);
         release.SetResult();
 
         second.ShouldBeFalse();

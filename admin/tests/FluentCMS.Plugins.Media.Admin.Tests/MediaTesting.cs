@@ -9,6 +9,7 @@ using FluentCMS.Admin;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Configuration;
+using FluentCMS.Admin.Plugins;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -28,7 +29,11 @@ public abstract class MediaTestContext : BunitContext
         Services.AddSingleton<IAdminContext>(Admin);
         Services.AddSingleton<IAnnouncer>(Announcer);
         Services.AddSingleton(new AdminConfiguration { ApiBaseUrl = new Uri("https://cms.example.com/") });
+        Services.AddSingleton<IAdminOverlays>(Overlays);
+        Services.AddSingleton<IAdminPluginServices>(provider => new FakePluginServices(provider));
     }
+
+    internal FakeOverlays Overlays { get; } = new();
 
     internal FakeMediaLibrary Library { get; } = new();
 
@@ -50,6 +55,43 @@ public abstract class MediaTestContext : BunitContext
         var found = cut.FindAll("label").First(element => element.TextContent.Trim().TrimEnd('*').TrimEnd() == label);
         return cut.Find("#" + found.GetAttribute("for"));
     }
+}
+
+// What the half shows through the shell's overlays, which a test renders with Render(Overlays.Host).
+internal sealed class FakeOverlays : IAdminOverlays
+{
+    public List<RenderFragment> Shown { get; } = [];
+
+    public RenderFragment Host => builder =>
+    {
+        foreach (var content in Shown)
+        {
+            builder.AddContent(0, content);
+        }
+    };
+
+    public IDisposable Show(RenderFragment content)
+    {
+        Shown.Add(content);
+        return new Removal(() => Shown.Remove(content));
+    }
+
+    private sealed class Removal(Action remove) : IDisposable
+    {
+        public void Dispose() => remove();
+    }
+}
+
+// The half's services as the admin finds them once it has loaded the half: the picker over the test's overlays.
+internal sealed class FakePluginServices(IServiceProvider provider) : IAdminPluginServices
+{
+    public IServiceProvider ProviderOf(Type type) => provider;
+
+    public ValueTask<TService?> FindAsync<TService>(CancellationToken cancellationToken = default)
+        where TService : class =>
+        ValueTask.FromResult(typeof(TService) == typeof(FluentCMS.Admin.Pickers.IMediaPicker)
+            ? (TService)(object)new MediaPicker(provider.GetRequiredService<IAdminOverlays>())
+            : null);
 }
 
 internal sealed class FakeAnnouncer : IAnnouncer
@@ -337,7 +379,8 @@ internal sealed class FakeMediaLibrary : IManagementApi
     // The asset with its alt text and caption in the locale of the request, or the view's.
     private JsonObject View(Guid id, string? locale)
     {
-        var asset = (JsonObject)Asset(id).DeepClone();
+        var asset = (JsonObject?)Assets.SingleOrDefault(item => (Guid)item["id"]! == id)?.DeepClone()
+            ?? throw new ApiProblemException(new ApiProblem { Status = 404, Code = "FCMS1585" });
         var texts = asset["texts"]!.AsObject();
         asset.Remove("texts");
         locale ??= "en";

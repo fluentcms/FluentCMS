@@ -237,7 +237,7 @@ internal sealed class AdminPlugins(
         {
             foreach (var cell in half.ListCells)
             {
-                cells.AddLazy(cell.FieldType, () => IsAvailable(half), cancellationToken => ComponentAsync(half, cell.Type, cancellationToken));
+                cells.AddLazy(cell.FieldType, () => IsAvailable(half), cancellationToken => ComponentAsync(half, cell.Type, cancellationToken), cell.Populate);
             }
         }
     }

@@ -169,6 +169,9 @@ public sealed record AdminManifestFieldComponent
 
     /// <summary>The field type.</summary>
     public required string FieldType { get; init; }
+
+    /// <summary>Whether a list reads the field populated, for a list cell; see <see cref="ListCellAttribute.Populate"/>.</summary>
+    public bool Populate { get; init; }
 }
 
 /// <summary>An entry action or a bulk action of an admin half, from <see cref="EntryActionAttribute"/> or <see cref="BulkActionAttribute"/>.</summary>

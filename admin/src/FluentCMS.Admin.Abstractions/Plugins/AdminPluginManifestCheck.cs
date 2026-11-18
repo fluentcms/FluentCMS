@@ -249,7 +249,7 @@ public static class AdminPluginManifestCheck
             foreach (var cell in type.GetCustomAttributes<ListCellAttribute>())
             {
                 Require<ListCellBase>(type, $"list cell '{cell.FieldType}'", problems);
-                listCells.Add(new AdminManifestFieldComponent { Type = name, FieldType = cell.FieldType });
+                listCells.Add(new AdminManifestFieldComponent { Type = name, FieldType = cell.FieldType, Populate = cell.Populate });
             }
 
             if (type.GetCustomAttribute<EntryActionAttribute>() is { } entryAction)
@@ -394,7 +394,7 @@ public static class AdminPluginManifestCheck
         ])),
         .. Present(manifest.SettingsPages).Select(page => new Item("settings page", page.Type, "area", page.Area, [])),
         .. Present(manifest.FieldEditors).Select(editor => new Item("field editor", editor.Type, "fieldType", editor.FieldType, [])),
-        .. Present(manifest.ListCells).Select(cell => new Item("list cell", cell.Type, "fieldType", cell.FieldType, [])),
+        .. Present(manifest.ListCells).Select(cell => new Item("list cell", cell.Type, "fieldType", cell.FieldType, [("populate", cell.Populate ? "true" : null)])),
         .. Present(manifest.EntryActions).Select(action => new Item("entry action", action.Type, "name", action.Name,
             [("contentTypes", Text(action.ContentTypes)), ("permission", action.Permission)])),
         .. Present(manifest.BulkActions).Select(action => new Item("bulk action", action.Type, "name", action.Name,

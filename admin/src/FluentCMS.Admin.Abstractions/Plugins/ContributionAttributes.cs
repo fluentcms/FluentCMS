@@ -135,6 +135,12 @@ public sealed class ListCellAttribute : Attribute
 
     /// <summary>Gets the field type.</summary>
     public string FieldType { get; }
+
+    /// <summary>
+    /// Gets or sets whether a list reads the field populated, for a field type the server populates as a reference, so that
+    /// the cell shows what the field refers to without a read per row.
+    /// </summary>
+    public bool Populate { get; set; }
 }
 
 /// <summary>Declares an <see cref="Actions.EntryActionBase"/> as an action on one entry, in its form and its row.</summary>

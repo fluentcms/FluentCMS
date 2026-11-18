@@ -112,7 +112,7 @@
                          Items="@assets"
                          SelectionMode="@SelectionMode"
                          SelectedItems="@ShownSelected"
-                         SelectedItemsChanged="@SelectedChanged"
+                         SelectedItemsChanged="@GridSelectedAsync"
                          OnRowActivated="@OnOpen"
                          RowLabel="@(asset => asset.Name)"
                          Loading="@loading"
@@ -396,6 +396,11 @@
     private IReadOnlyList<MediaAssetInfo> ShownSelected => [.. assets.Where(IsSelected)];
 
     private bool IsSelected(MediaAssetInfo asset) => Selected.Any(item => item.Id == asset.Id);
+
+    // The grid knows the shown page alone; what is selected on other pages or in other folders stays selected.
+    private Task GridSelectedAsync(IReadOnlyList<MediaAssetInfo> shown) => SelectedChanged.InvokeAsync(SelectionMode == CmsSelectionMode.Many
+        ? [.. Selected.Where(item => assets.All(asset => asset.Id != item.Id)), .. shown]
+        : shown);
 
     private Task ToggleAsync(MediaAssetInfo asset)
     {
