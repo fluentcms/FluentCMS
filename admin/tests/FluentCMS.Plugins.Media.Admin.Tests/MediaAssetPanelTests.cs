@@ -1,8 +1,10 @@
 using Bunit;
 using FluentCMS.Admin.Api;
+using FluentCMS.Admin.Components;
 using FluentCMS.Plugins.Media.Admin.Api;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -40,7 +42,7 @@ public sealed class MediaAssetPanelTests : MediaTestContext
         cut.WaitForAssertion(() => Library.Text(id, "en", "alt").ShouldBe("A cat"));
 
         Field(cut, "Locale").Change("fr");
-        cut.WaitForAssertion(() => Field(cut, "Caption").TextContent.ShouldBeEmpty());
+        cut.WaitForAssertion(() => Field(cut, "Caption").GetAttribute("value").ShouldBeNull());
         Field(cut, "Alt text").GetAttribute("value").ShouldBeNull();
         Field(cut, "Caption").Input("Un chat sur un tapis");
         cut.Find("form.media-asset-form").Submit();
@@ -89,7 +91,156 @@ public sealed class MediaAssetPanelTests : MediaTestContext
         Library.Requests.ShouldNotContain(request => request.Method == HttpMethod.Patch);
         Button(cut, "Use the other change").Click();
         cut.WaitForAssertion(() => Field(cut, "Title").GetAttribute("value").ShouldBe("Their title"));
-        Field(cut, "Credit").GetAttribute("value").ShouldBe("Jo");
+
+        // The other change is what shows, and nothing is left to save over it.
+        Field(cut, "Credit").GetAttribute("value").ShouldBeNull();
+        cut.Find(".media-asset-form fluent-button").HasAttribute("disabled").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ASaveAfterAMoveIsBasedOnTheMove()
+    {
+        Admin.Grant(MediaPermissions.Update);
+        var photos = Library.AddFolder("Photos");
+        var id = Library.AddAsset("cat.png");
+        var cut = Open(id, [new MediaFolderInfo { Id = photos, Name = "Photos" }]);
+
+        Button(cut, "Move").Click();
+        Field(cut, "Move to").Change(photos.ToString("D"));
+        cut.Find(".media-panel-step fluent-button").Click();
+        cut.WaitForAssertion(() => Library.FolderOf(id).ShouldBe(photos));
+        Field(cut, "Alt text").Input("A cat");
+        Field(cut, "Alt text").Blur();
+
+        cut.WaitForAssertion(() => Library.Text(id, "en", "alt").ShouldBe("A cat"));
+        cut.FindAll("[role=alert]").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void SavesOfDifferentPartsInARowAreNoConflict()
+    {
+        Admin.Grant(MediaPermissions.Update);
+        var id = Library.AddAsset("cat.png");
+        var cut = Open(id);
+
+        Field(cut, "Alt text").Input("A cat");
+        Field(cut, "Alt text").Blur();
+        cut.WaitForAssertion(() => Library.Text(id, "en", "alt").ShouldBe("A cat"));
+        Field(cut, "Title").Input("Our cat");
+        cut.Find("form.media-asset-form").Submit();
+
+        cut.WaitForAssertion(() => Library.Asset(id)["title"]!.GetValue<string>().ShouldBe("Our cat"));
+        cut.FindAll("[role=alert]").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task SavesThatOverlapGoOneAfterAnotherAndTheLatestPointWins()
+    {
+        Admin.Grant(MediaPermissions.Update);
+        var id = Library.AddAsset("cat.png");
+        var cut = Open(id);
+        var release = new TaskCompletionSource();
+        Library.BeforeAnswer = request => request.Method == HttpMethod.Patch ? release.Task : Task.CompletedTask;
+
+        // The alt text is saved as the field loses focus to a click on the image; two more clicks follow while it saves.
+        Field(cut, "Alt text").Input("A cat");
+        var altSaved = Field(cut, "Alt text").BlurAsync(new FocusEventArgs());
+        var firstClick = cut.Find(".media-focal-image img").ClickAsync(new MouseEventArgs { OffsetX = 32, OffsetY = 24 });
+        var secondClick = cut.Find(".media-focal-image img").ClickAsync(new MouseEventArgs { OffsetX = 288, OffsetY = 216 });
+        Library.Requests.Count(request => request.Method == HttpMethod.Patch).ShouldBe(0);
+        release.SetResult();
+        await Task.WhenAll(altSaved, firstClick, secondClick);
+
+        cut.WaitForAssertion(() => Library.Requests.Count(request => request.Method == HttpMethod.Patch).ShouldBe(2));
+        cut.WaitForAssertion(() => cut.Find(".media-focal-marker").GetAttribute("style").ShouldBe("left:90%;top:90%"));
+        Library.Text(id, "en", "alt").ShouldBe("A cat");
+        Library.Asset(id)["focalPoint"]!.ToJsonString().ShouldBe("""{"x":0.9,"y":0.9}""");
+        cut.FindAll("[role=alert]").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ALocaleChosenWhileTheUsageIsReadKeepsTheUsage()
+    {
+        var id = Library.AddAsset("cat.png");
+        Library.AddUsage(id, "article", Guid.NewGuid(), "Cats at home");
+        var release = new TaskCompletionSource();
+        Library.BeforeAnswer = request => request.Path.EndsWith("/usage", StringComparison.Ordinal) ? release.Task : Task.CompletedTask;
+        var asset = await new MediaApi(Library).GetAsync(id, null, CancellationToken.None);
+        Admin.Grant(MediaPermissions.Delete);
+        var cut = Render<MediaAssetPanel>(parameters => parameters.Add(panel => panel.Asset, asset).Add(panel => panel.Open, true));
+        cut.WaitForAssertion(() => cut.FindAll(".media-asset-form").Count.ShouldBe(1));
+
+        Field(cut, "Locale").Change("fr");
+        cut.WaitForAssertion(() => Library.Requests.ShouldContain(request => request.Method == HttpMethod.Get && request.Locale == "fr"));
+        release.SetResult();
+
+        cut.WaitForAssertion(() => cut.Find(".media-panel-usage").TextContent.ShouldContain("Cats at home"));
+        Button(cut, "Delete").Click();
+        cut.WaitForAssertion(() => cut.FindAll(".media-panel-step fluent-button")[0].HasAttribute("disabled").ShouldBeFalse());
+    }
+
+    [Fact]
+    public async Task AReplaceThatEndsAfterTheUserOpenedAnotherAssetChangesNothingInIt()
+    {
+        Admin.Grant(MediaPermissions.Update, MediaPermissions.Delete);
+        var first = Library.AddAsset("cat.png");
+        var second = Library.AddAsset("dog.png");
+        var cut = Open(first);
+        var release = new TaskCompletionSource();
+        var reached = new TaskCompletionSource();
+        Library.BeforeAnswer = request =>
+        {
+            if (!request.Path.EndsWith("/replace", StringComparison.Ordinal))
+            {
+                return Task.CompletedTask;
+            }
+
+            reached.TrySetResult();
+            return release.Task;
+        };
+
+        // The upload waits for its handler, which waits for the replace this test holds back.
+        var input = cut.FindComponent<InputFile>();
+        var upload = Task.Run(() => input.UploadFiles(InputFileContent.CreateFromText("png", "big.png")), Xunit.TestContext.Current.CancellationToken);
+        await reached.Task.WaitAsync(TimeSpan.FromSeconds(5), Xunit.TestContext.Current.CancellationToken);
+        cut.Render(parameters => parameters.Add(panel => panel.Open, false));
+        var dog = await new MediaApi(Library).GetAsync(second, null, CancellationToken.None);
+        cut.Render(parameters => parameters.Add(panel => panel.Asset, dog).Add(panel => panel.Open, true));
+        cut.WaitForAssertion(() => cut.Find(".media-panel-facts").TextContent.ShouldContain("dog.png"));
+        release.SetResult();
+        await upload;
+
+        cut.WaitForAssertion(() => changes.ShouldBe(1));
+        cut.Find(".media-panel-facts").TextContent.ShouldContain("dog.png");
+        cut.Find(".media-panel-facts").TextContent.ShouldNotContain("big.png");
+        Announcer.Messages.ShouldNotContain(message => message.Contains("replaced", StringComparison.Ordinal));
+        Library.Asset(first)["fileName"]!.GetValue<string>().ShouldBe("big.png");
+    }
+
+    [Fact]
+    public void ASwitchOfLocaleWithAnUnsavedCaptionAsksAndKeepsTheValuesThatAreNotPerLocale()
+    {
+        Admin.Grant(MediaPermissions.Update);
+        var id = Library.AddAsset("cat.png");
+        var cut = Open(id);
+        Field(cut, "Title").Input("Our cat");
+        Field(cut, "Caption").Input("On a mat");
+
+        Field(cut, "Locale").Change("fr");
+        cut.WaitForAssertion(() => cut.FindComponent<CmsDialog>().Instance.Open.ShouldBeTrue());
+        Library.Requests.ShouldNotContain(request => request.Locale == "fr");
+        Button(cut, "Keep editing").Click();
+        cut.WaitForAssertion(() => cut.FindComponent<CmsDialog>().Instance.Open.ShouldBeFalse());
+        Field(cut, "Locale").GetAttribute("value").ShouldBe("en");
+        Field(cut, "Caption").GetAttribute("value").ShouldBe("On a mat");
+        Library.Requests.ShouldNotContain(request => request.Locale == "fr");
+
+        Field(cut, "Locale").Change("fr");
+        cut.WaitForAssertion(() => cut.FindComponent<CmsDialog>().Instance.Open.ShouldBeTrue());
+        Button(cut, "Switch without saving").Click();
+
+        cut.WaitForAssertion(() => Field(cut, "Caption").GetAttribute("value").ShouldBeNull());
+        Field(cut, "Title").GetAttribute("value").ShouldBe("Our cat");
     }
 
     [Fact]

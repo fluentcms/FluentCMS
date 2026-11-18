@@ -9,11 +9,19 @@ namespace FluentCMS.Plugins.Media.Admin;
 
 // A part of an asset's detail that saves its own metadata with PATCH /media/{id}: the alt text and the focal point, which
 // the field editor of a media field reuses, and the panel's form. A save after the asset changed elsewhere is not sent;
-// the part shows the conflict and lets the user take the asset as it is now or save theirs over it.
+// the part shows the conflict and lets the user take the asset as it is now or save theirs over it. The saves of the parts
+// that share a MediaSaveGate, as those of the panel do, go one after another, each based on the answer of the one before;
+// changes made while a save of the part waits join it.
 public abstract class MediaAssetPart : ComponentBase
 {
+    private readonly MediaSaveGate own = new();
+    private JsonObject? queued;
+    private bool queuedOverwrite;
+    private Task queuedSave = Task.CompletedTask;
+    private int sending;
     private JsonObject? pending;
     private MediaAssetInfo? conflict;
+    private bool reset;
 
     [Parameter, EditorRequired]
     public MediaAssetInfo Asset { get; set; } = default!;
@@ -25,61 +33,125 @@ public abstract class MediaAssetPart : ComponentBase
     [Parameter]
     public EventCallback<MediaAssetInfo> OnChanged { get; set; }
 
+    [CascadingParameter]
+    private MediaSaveGate? Gate { get; set; }
+
     [Inject]
     private IManagementApi Api { get; set; } = default!;
 
     [Inject]
     private protected IStringLocalizer<MediaResources> L { get; set; } = default!;
 
-    protected bool Busy { get; private set; }
+    protected bool Busy => sending > 0 || queued is not null;
 
     protected string? Error { get; private set; }
 
     protected bool Conflicted => conflict is not null;
 
-    protected async Task SaveAsync(JsonObject changes, bool overwrite = false)
+    // What a save or a conflict of one asset left is not shown with another.
+    public override Task SetParametersAsync(ParameterView parameters)
     {
-        if (ReadOnly)
+        var before = Asset?.Id;
+        parameters.SetParameterProperties(this);
+        if (before is not null && before != Asset?.Id)
         {
-            return;
+            (Error, conflict, pending) = (null, null, null);
         }
 
-        (Busy, Error, conflict, pending) = (true, null, null, null);
+        return base.SetParametersAsync(ParameterView.Empty);
+    }
+
+    // Whether the user took the other change since the last call, so that the part shows the asset's values instead of its own.
+    protected bool TakeReset()
+    {
+        var taken = reset;
+        reset = false;
+        return taken;
+    }
+
+    protected Task SaveAsync(JsonObject changes, bool overwrite = false)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+        if (ReadOnly)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (queued is not null)
+        {
+            foreach (var (name, value) in changes)
+            {
+                queued[name] = value?.DeepClone();
+            }
+
+            queuedOverwrite |= overwrite;
+            return queuedSave;
+        }
+
+        (queued, queuedOverwrite) = ((JsonObject)changes.DeepClone(), overwrite);
+        return queuedSave = SendAsync();
+    }
+
+    private async Task SendAsync()
+    {
+        var gate = Gate ?? own;
+        await gate.Lock.WaitAsync();
+        var (changes, overwrite) = (queued!, queuedOverwrite);
+        queued = null;
+        sending++;
+        var basis = gate.Basis(Asset);
+        (Error, conflict, pending) = (null, null, null);
         try
         {
-            var saved = await new MediaApi(Api).UpdateAsync(Asset, changes, overwrite, CancellationToken.None);
+            var saved = await new MediaApi(Api).UpdateAsync(basis, changes, overwrite, CancellationToken.None);
+            gate.Latest = saved;
             await OnChanged.InvokeAsync(saved);
         }
         catch (MediaConflictException changed)
         {
-            (conflict, pending) = (changed.Current, changes);
+            if (changed.Current.Id == Asset.Id)
+            {
+                (conflict, pending) = (changed.Current, changes);
+            }
         }
         catch (ApiProblemException failure)
         {
-            Error = MediaRefusal.Text(failure.Problem, L);
+            Error = basis.Id == Asset.Id ? MediaRefusal.Text(failure.Problem, L) : null;
         }
         catch (Exception failure) when (failure is HttpRequestException or TaskCanceledException or JsonException)
         {
-            Error = L["Media.Dialog.Failed"];
+            Error = basis.Id == Asset.Id ? L["Media.Dialog.Failed"].Value : null;
         }
         finally
         {
-            Busy = false;
+            sending--;
+            gate.Lock.Release();
         }
     }
 
-    // Takes the asset as it is now, leaving the user's change.
+    // Takes the asset as it is now: the part shows its values and leaves the user's change.
     protected async Task TakeTheirsAsync()
     {
         if (conflict is { } current)
         {
-            (conflict, pending) = (null, null);
+            (conflict, pending, reset) = (null, null, true);
             await OnChanged.InvokeAsync(current);
         }
     }
 
     // Saves the user's change over the other.
     protected Task KeepMineAsync() => pending is { } changes ? SaveAsync(changes, overwrite: true) : Task.CompletedTask;
+}
+
+// The saves of one panel, one at a time; each is based on the newest of the asset its part shows and the last answer.
+internal sealed class MediaSaveGate
+{
+    public SemaphoreSlim Lock { get; } = new(1, 1);
+
+    public MediaAssetInfo? Latest { get; set; }
+
+    public MediaAssetInfo Basis(MediaAssetInfo shown) =>
+        Latest is { } latest && latest.Id == shown.Id && latest.Locale == shown.Locale && latest.UpdatedAt > shown.UpdatedAt ? latest : shown;
 }
 
 internal static class MediaRefusal

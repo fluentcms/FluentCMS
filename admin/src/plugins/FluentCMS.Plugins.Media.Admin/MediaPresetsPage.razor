@@ -178,6 +178,13 @@
             return;
         }
 
+        // A PUT replaces a preset of the same name, so an add with a name taken is refused here.
+        if (!editing && presets?.Any(item => item.Name == preset) == true)
+        {
+            (errors, formError) = ([new ApiProblemError { Path = "name", Message = L["Media.Presets.NameTaken", preset] }], null);
+            return;
+        }
+
         (busy, errors, formError) = (true, [], null);
         try
         {

@@ -23,15 +23,21 @@
     private bool isPrivate;
     private MediaAssetInfo? shown;
 
-    // A new asset or locale shows its values; the same asset read again replaces only the values the user left alone.
+    // Whether the caption, the one value of the form in the asset's locale, holds text that is not saved.
+    public bool LocaleDirty => !ReadOnly && (caption ?? "").Trim() != (Asset.Caption ?? "");
+
+    // A new asset, or the other change taken, shows its values; another locale of the same asset shows its caption and keeps
+    // the other values the user changed, which are not per locale; the same asset read again replaces only the values the
+    // user left alone.
     protected override void OnParametersSet()
     {
-        var fresh = shown is null || shown.Id != Asset.Id || shown.Locale != Asset.Locale;
-        title = fresh || title == shown!.Title ? Asset.Title : title;
-        caption = fresh || caption == shown!.Caption ? Asset.Caption : caption;
-        credit = fresh || credit == shown!.Credit ? Asset.Credit : credit;
-        tags = fresh || tags == Join(shown!.Tags) ? Join(Asset.Tags) : tags;
-        isPrivate = fresh || isPrivate == shown!.IsPrivate ? Asset.IsPrivate : isPrivate;
+        var other = TakeReset() || shown is null || shown.Id != Asset.Id;
+        var locale = other || shown!.Locale != Asset.Locale;
+        title = other || title == shown!.Title ? Asset.Title : title;
+        caption = locale || caption == shown!.Caption ? Asset.Caption : caption;
+        credit = other || credit == shown!.Credit ? Asset.Credit : credit;
+        tags = other || tags == Join(shown!.Tags) ? Join(Asset.Tags) : tags;
+        isPrivate = other || isPrivate == shown!.IsPrivate ? Asset.IsPrivate : isPrivate;
         shown = Asset;
     }
 

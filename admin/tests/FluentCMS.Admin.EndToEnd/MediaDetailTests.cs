@@ -53,7 +53,8 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
             new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         JsonNode.Parse(await altSaved.TextAsync())!["alt"]!.GetValue<string>().ShouldBe("A red square");
 
-        // The focal point moves with the arrow keys on its slider, saved once after the last key.
+        // The focal point moves with the arrow keys on its slider; a slow runner may save between keys, so the save waited for
+        // is the one of the last key.
         var across = panel.GetByLabel(Text("Media.Focal.X"), new LocatorGetByLabelOptions { Exact = true });
         await across.FocusAsync();
         var focal = await tab.Page.RunAndWaitForResponseAsync(
@@ -64,7 +65,7 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
                     await tab.Page.Keyboard.PressAsync("ArrowRight");
                 }
             },
-            response => response.Request.Method == "PATCH",
+            response => response.Request.Method == "PATCH" && (response.Request.PostData ?? "").Contains("\"x\":0.55", StringComparison.Ordinal),
             new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         JsonNode.Parse(await focal.TextAsync())!["focalPoint"]!["x"]!.GetValue<double>().ShouldBe(0.55);
         await Expect(panel.Locator(".media-focal-marker")).ToHaveAttributeAsync("style", new Regex("left:55%"));
@@ -103,12 +104,14 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
         await MediaButton(tab, "Media.Presets.DeleteConfirm").ClickAsync();
         await Expect(row).ToHaveCountAsync(0);
 
-        var editorTab = await (await OpenBrowserAsync()).NewTabAsync();
+        var editorBrowser = await OpenBrowserAsync();
+        var editorTab = await editorBrowser.NewTabAsync();
         await editorTab.Page.GotoAsync(new Uri(Host.Admin, "media").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(editorTab, Host.Editor);
+        await editorBrowser.SignInOnTheHostedPageAsync(editorTab, Host.Editor);
         await Expect(Content(editorTab).GetByRole(AriaRole.Heading, new LocatorGetByRoleOptions { Name = Text("Media.Page.Heading"), Exact = true })).ToBeVisibleAsync();
         await Expect(editorTab.Page.GetByRole(AriaRole.Link, new PageGetByRoleOptions { Name = Text("Media.Presets.Menu"), Exact = true })).ToHaveCountAsync(0);
         browser.PolicyViolations.ShouldBeEmpty();
+        editorBrowser.PolicyViolations.ShouldBeEmpty();
     }
 
     private static string Text(string key, params string[] arguments)

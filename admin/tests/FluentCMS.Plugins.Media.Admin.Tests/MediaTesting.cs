@@ -82,8 +82,9 @@ internal sealed class FakeAdminContext : IAdminContext, IAdminAccess
     public void RaiseChanged() => Changed?.Invoke();
 }
 
-// GET and POST /media, the moves and the folders, as the server answers them, over assets and folders in memory. An
-// upload refuses a name ending in .exe (FCMS1583), .svg (FCMS1584) or .txt (FCMS1581).
+// The media routes, the schema and the list reads of entries, as the server answers them, over assets, folders, presets
+// and entries in memory. Every write of an asset moves its updatedAt on, as the server's does. An upload refuses a name
+// ending in .exe (FCMS1583), .svg (FCMS1584) or .txt (FCMS1581).
 internal sealed class FakeMediaLibrary : IManagementApi
 {
     public List<JsonObject> Assets { get; } = [];
@@ -429,6 +430,7 @@ internal sealed class FakeMediaLibrary : IManagementApi
 
         var asset = Assets.Single(item => (Guid)item["id"]! == id);
         asset["folderId"] = folder;
+        asset["updatedAt"] = clock = clock.AddMinutes(1);
         return new JsonObject { ["id"] = id, ["folderId"] = folder, ["fileName"] = asset["fileName"]!.DeepClone() };
     }
 

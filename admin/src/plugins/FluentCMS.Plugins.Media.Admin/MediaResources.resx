@@ -192,6 +192,18 @@
   <data name="Media.Form.Title" xml:space="preserve">
     <value>Title</value>
   </data>
+  <data name="Media.Locale.Cancel" xml:space="preserve">
+    <value>Keep editing</value>
+  </data>
+  <data name="Media.Locale.Confirm" xml:space="preserve">
+    <value>Switch without saving</value>
+  </data>
+  <data name="Media.Locale.Text" xml:space="preserve">
+    <value>The alt text or the caption of this locale has changes that are not saved. They are lost when you switch.</value>
+  </data>
+  <data name="Media.Locale.Title" xml:space="preserve">
+    <value>Switch the locale with unsaved changes?</value>
+  </data>
   <data name="Media.Menu" xml:space="preserve">
     <value>Media</value>
   </data>
@@ -356,6 +368,9 @@
   </data>
   <data name="Media.Presets.NameHelp" xml:space="preserve">
     <value>Lower-case letters, digits and hyphens, such as card or hero-wide.</value>
+  </data>
+  <data name="Media.Presets.NameTaken" xml:space="preserve">
+    <value>A preset named {0} exists. Change it from the list.</value>
   </data>
   <data name="Media.Presets.None" xml:space="preserve">
     <value>The site has no presets yet.</value>

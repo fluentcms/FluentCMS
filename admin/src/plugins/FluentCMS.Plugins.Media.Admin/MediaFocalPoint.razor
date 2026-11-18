@@ -1,6 +1,7 @@
 @* The focal point of an image, which a crop to a preset with fit=cover keeps in view: set by a click on the image, or with
    the arrow keys on its two sliders, and saved a moment after the last key. The panel of the library and the field editor
-   of a media field show it. *@
+   of a media field show it. The point is in the image's own coordinates, from its physical left, so the image and the
+   sliders run left to right in a right-to-left page too. *@
 @inherits MediaAssetPart
 @implements IDisposable
 @inject AdminConfiguration Configuration
@@ -8,20 +9,22 @@
 @if (Image is { } image && image is var (thumbnail, width, height))
 {
     <div class="media-part media-focal">
-        <div class="media-focal-image" style="@($"inline-size:{Css(width)}px;block-size:{Css(height)}px")">
-            <img src="@thumbnail" alt="" width="@width" height="@height" @onclick="PickAsync" class="@(ReadOnly ? null : "media-focal-pick")" />
-            <span class="media-focal-marker" style="@($"left:{Css(x * 100)}%;top:{Css(y * 100)}%")" aria-hidden="true"></span>
+        <div class="media-focal-frame" dir="ltr">
+            <div class="media-focal-image" style="@($"inline-size:{Css(width)}px;block-size:{Css(height)}px")">
+                <img src="@thumbnail" alt="" width="@width" height="@height" @onclick="PickAsync" class="@(ReadOnly ? null : "media-focal-pick")" />
+                <span class="media-focal-marker" style="@($"left:{Css(x * 100)}%;top:{Css(y * 100)}%")" aria-hidden="true"></span>
+            </div>
         </div>
         <fieldset class="media-focal-sliders" disabled="@ReadOnly">
             <legend>@L["Media.Focal.Label"]</legend>
             <label>
                 @L["Media.Focal.X"]
-                <input type="range" min="0" max="100" step="1" value="@Percent(x)" aria-valuetext="@L["Media.Focal.Value", Percent(x)]"
+                <input type="range" dir="ltr" min="0" max="100" step="1" value="@Percent(x)" aria-valuetext="@L["Media.Focal.Value", Percent(x)]"
                        @oninput="@(args => Move(args, horizontal: true))" @onchange="@(args => Move(args, horizontal: true, save: true))" />
             </label>
             <label>
                 @L["Media.Focal.Y"]
-                <input type="range" min="0" max="100" step="1" value="@Percent(y)" aria-valuetext="@L["Media.Focal.Value", Percent(y)]"
+                <input type="range" dir="ltr" min="0" max="100" step="1" value="@Percent(y)" aria-valuetext="@L["Media.Focal.Value", Percent(y)]"
                        @oninput="@(args => Move(args, horizontal: false))" @onchange="@(args => Move(args, horizontal: false, save: true))" />
             </label>
         </fieldset>
@@ -33,8 +36,8 @@
 }
 
 @code {
-    // The image is drawn at a size of its own, fitted inside the thumbnail's 320 by 320 pixels, so that a click's offset
-    // gives the point without asking the browser for the size.
+    // The image is drawn at a size of its own, fitted inside the thumbnail's 320 by 320 pixels and never scaled (its frame
+    // scrolls when narrower), so that a click's offset gives the point without asking the browser for the size.
     private const double Box = 320;
     private static readonly TimeSpan SaveDelay = TimeSpan.FromMilliseconds(500);
 
@@ -50,7 +53,7 @@
 
     protected override void OnParametersSet()
     {
-        if (shown is null || shown.FocalPoint != Asset.FocalPoint || shown.Id != Asset.Id)
+        if (TakeReset() || shown is null || shown.FocalPoint != Asset.FocalPoint || shown.Id != Asset.Id)
         {
             (x, y) = Asset.FocalPoint is { } point ? (point.X, point.Y) : (0.5, 0.5);
         }

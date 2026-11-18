@@ -46,6 +46,22 @@ public sealed class MediaPresetsPageTests : MediaTestContext
     }
 
     [Fact]
+    public void AnAddWithTheNameOfAPresetIsRefusedByTheField()
+    {
+        Library.Presets.Add(new System.Text.Json.Nodes.JsonObject { ["name"] = "card", ["options"] = new System.Text.Json.Nodes.JsonObject { ["width"] = 400 } });
+        var cut = Render<MediaPresetsPage>();
+        cut.WaitForAssertion(() => cut.Find(".media-presets-table tbody").TextContent.ShouldContain("card"));
+
+        Field(cut, "Name").Input("card");
+        Field(cut, "Width in pixels").Change("10");
+        cut.Find("form.media-presets-form").Submit();
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("A preset named card exists."));
+        Field(cut, "Name").GetAttribute("aria-invalid").ShouldBe("true");
+        Library.Requests.ShouldNotContain(request => request.Method == HttpMethod.Put);
+    }
+
+    [Fact]
     public void ARefusedFieldShowsItsMessageByTheField()
     {
         var cut = Render<MediaPresetsPage>();
