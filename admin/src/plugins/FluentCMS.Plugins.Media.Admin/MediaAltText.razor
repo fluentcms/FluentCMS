@@ -19,8 +19,8 @@
     private string? text;
     private MediaAssetInfo? shown;
 
-    // Whether the field holds text that is not saved and not being saved.
-    public bool Dirty => !ReadOnly && !Busy && (text ?? "") != (Asset.Alt ?? "");
+    // Whether the field holds text that is not saved, or a save of it has not ended.
+    public bool Dirty => !ReadOnly && (Busy || (text ?? "") != (Asset.Alt ?? ""));
 
     // A new asset or locale, or the other change taken, shows its text; the same asset read again keeps what the user is typing.
     protected override void OnParametersSet()

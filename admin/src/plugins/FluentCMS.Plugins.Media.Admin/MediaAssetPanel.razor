@@ -261,7 +261,8 @@
     }
 
     // A switch loses the text of the asset's locale that is not saved, so the user is asked first, as a form asks before it
-    // is left; the form keeps the values it holds that are not per locale.
+    // is left; a part whose save has not ended counts as not saved. The form keeps the values it holds that are not per
+    // locale. The read of the other locale waits for the saves under way, which end in the locale they were made in.
     private Task ChangeLocaleAsync(string? locale)
     {
         if (asset is not { } shown || locale is null || locale == shown.Locale)
@@ -276,21 +277,37 @@
             return Task.CompletedTask;
         }
 
-        return ReadAsync(shown.Id, locale);
+        return SwitchToAsync(shown.Id, locale);
     }
 
     private Task SwitchLocaleAsync()
     {
         var locale = askedLocale;
         askedLocale = null;
-        return asset is { } shown && locale is not null ? ReadAsync(shown.Id, locale) : Task.CompletedTask;
+        return asset is { } shown && locale is not null ? SwitchToAsync(shown.Id, locale) : Task.CompletedTask;
+    }
+
+    private async Task SwitchToAsync(Guid id, string locale)
+    {
+        var leave = await gate.EnterAsync();
+        try
+        {
+            await ReadAsync(id, locale);
+        }
+        finally
+        {
+            leave();
+        }
     }
 
     private void StayInLocale() => askedLocale = null;
 
+    // Whether an answer about an asset is about the one the panel shows, in the locale it shows.
+    private bool ShowsInLocale(MediaAssetInfo changed) => Shows(changed.Id) && (asset is null || asset.Locale == changed.Locale);
+
     private void Changed(MediaAssetInfo changed)
     {
-        if (Shows(changed.Id))
+        if (ShowsInLocale(changed))
         {
             asset = changed;
         }
@@ -298,7 +315,7 @@
 
     private async Task SavedAsync(MediaAssetInfo changed)
     {
-        if (Shows(changed.Id))
+        if (ShowsInLocale(changed))
         {
             asset = changed;
             Announcer.Announce(L["Media.Panel.Saved", changed.Name]);
@@ -342,7 +359,7 @@
 
             var replaced = await Media.ReplaceAsync(shown.Id, body, shown.Locale, CancellationToken.None);
             gate.Latest = replaced;
-            if (Shows(shown.Id))
+            if (ShowsInLocale(replaced))
             {
                 asset = replaced;
                 Announcer.Announce(L["Media.Panel.Replaced", replaced.Name]);
@@ -389,7 +406,9 @@
 
     private void StartDelete() => (step, actionError) = (Step.Delete, null);
 
-    // A move changes the asset's time of change, so the asset is read again: the next save is based on it.
+    // A move changes the asset's time of change, so the asset is read again: the next save is based on it. When that read
+    // fails, the move is still done; the asset is kept without its time of change, so the next save compares its metadata
+    // alone (MediaApi.UpdateAsync) instead of reporting the user's own move as a conflict.
     private async Task MoveAsync()
     {
         if (asset is not { } shown || target is null)
@@ -401,11 +420,24 @@
         await RunAsync(shown.Id, async () =>
         {
             await Media.MoveAsync(shown.Id, destination, CancellationToken.None);
-            var moved = await Media.GetAsync(shown.Id, shown.Locale, CancellationToken.None);
-            gate.Latest = moved;
-            if (Shows(shown.Id))
+            MediaAssetInfo moved;
+            try
+            {
+                moved = await Media.GetAsync(shown.Id, shown.Locale, CancellationToken.None);
+            }
+            catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+            {
+                moved = shown with { FolderId = destination, UpdatedAt = null };
+            }
+
+            gate.Latest = moved.UpdatedAt is null ? null : moved;
+            if (ShowsInLocale(moved))
             {
                 (asset, step) = (moved, Step.None);
+            }
+
+            if (Shows(shown.Id))
+            {
                 Announcer.Announce(L["Media.Panel.Moved", shown.Name, destination is { } folder ? MediaFolders.Path(Folders, folder) : L["Media.Folders.Root"]]);
             }
 

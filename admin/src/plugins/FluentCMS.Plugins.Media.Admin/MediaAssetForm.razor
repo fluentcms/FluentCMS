@@ -23,8 +23,9 @@
     private bool isPrivate;
     private MediaAssetInfo? shown;
 
-    // Whether the caption, the one value of the form in the asset's locale, holds text that is not saved.
-    public bool LocaleDirty => !ReadOnly && (caption ?? "").Trim() != (Asset.Caption ?? "");
+    // Whether the caption, the one value of the form in the asset's locale, holds text that is not saved, or a save of the
+    // form has not ended.
+    public bool LocaleDirty => !ReadOnly && (Busy || (caption ?? "").Trim() != (Asset.Caption ?? ""));
 
     // A new asset, or the other change taken, shows its values; another locale of the same asset shows its caption and keeps
     // the other values the user changed, which are not per locale; the same asset read again replaces only the values the

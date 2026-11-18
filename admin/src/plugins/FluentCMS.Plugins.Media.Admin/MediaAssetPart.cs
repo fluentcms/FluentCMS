@@ -11,11 +11,13 @@ namespace FluentCMS.Plugins.Media.Admin;
 // the field editor of a media field reuses, and the panel's form. A save after the asset changed elsewhere is not sent;
 // the part shows the conflict and lets the user take the asset as it is now or save theirs over it. The saves of the parts
 // that share a MediaSaveGate, as those of the panel do, go one after another, each based on the answer of the one before;
-// changes made while a save of the part waits join it.
+// changes made while a save of the part waits join it. A change is saved in the locale of the asset it was made on, even
+// when the part shows another by the time it is sent.
 public abstract class MediaAssetPart : ComponentBase
 {
     private readonly MediaSaveGate own = new();
     private JsonObject? queued;
+    private MediaAssetInfo? queuedFor;
     private bool queuedOverwrite;
     private Task queuedSave = Task.CompletedTask;
     private int sending;
@@ -77,6 +79,11 @@ public abstract class MediaAssetPart : ComponentBase
             return Task.CompletedTask;
         }
 
+        if (queued is not null && (queuedFor!.Id != Asset.Id || queuedFor.Locale != Asset.Locale))
+        {
+            return queuedSave = AfterAsync(queuedSave, changes, overwrite);
+        }
+
         if (queued is not null)
         {
             foreach (var (name, value) in changes)
@@ -88,18 +95,24 @@ public abstract class MediaAssetPart : ComponentBase
             return queuedSave;
         }
 
-        (queued, queuedOverwrite) = ((JsonObject)changes.DeepClone(), overwrite);
+        (queued, queuedFor, queuedOverwrite) = ((JsonObject)changes.DeepClone(), Asset, overwrite);
         return queuedSave = SendAsync();
+    }
+
+    private async Task AfterAsync(Task before, JsonObject changes, bool overwrite)
+    {
+        await before;
+        await SaveAsync(changes, overwrite);
     }
 
     private async Task SendAsync()
     {
         var gate = Gate ?? own;
         var leave = await gate.EnterAsync();
-        var (changes, overwrite) = (queued!, queuedOverwrite);
-        queued = null;
+        var (changes, overwrite, made) = (queued!, queuedOverwrite, queuedFor!);
+        (queued, queuedFor) = (null, null);
         sending++;
-        var basis = gate.Basis(Asset);
+        var basis = gate.Basis(made);
         (Error, conflict, pending) = (null, null, null);
         try
         {
@@ -109,7 +122,7 @@ public abstract class MediaAssetPart : ComponentBase
         }
         catch (MediaConflictException changed)
         {
-            if (changed.Current.Id == Asset.Id)
+            if (changed.Current.Id == Asset.Id && changed.Current.Locale == Asset.Locale)
             {
                 (conflict, pending) = (changed.Current, changes);
             }
@@ -153,7 +166,8 @@ internal sealed class MediaSaveGate
     public async Task<Action> EnterAsync()
     {
         var before = tail;
-        var done = new TaskCompletionSource();
+        // The next step runs after the one that ends returns, not inside it.
+        var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         tail = done.Task;
         await before;
         return done.SetResult;

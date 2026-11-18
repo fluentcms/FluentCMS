@@ -134,6 +134,73 @@ public sealed class MediaAssetPanelTests : MediaTestContext
     }
 
     [Fact]
+    public async Task ASaveQueuedBeforeALocaleSwitchIsWrittenInItsOwnLocale()
+    {
+        Admin.Grant(MediaPermissions.Update);
+        var id = Library.AddAsset("cat.png");
+        var cut = Open(id);
+        var release = new TaskCompletionSource();
+        Library.BeforeAnswer = request => request.Method == HttpMethod.Patch ? release.Task : Task.CompletedTask;
+
+        // A focal point save is under way; the alt text left meanwhile waits for it.
+        var click = cut.Find(".media-focal-image img").ClickAsync(new MouseEventArgs { OffsetX = 32, OffsetY = 24 });
+        Field(cut, "Alt text").Input("A cat");
+        var blur = Field(cut, "Alt text").BlurAsync(new FocusEventArgs());
+
+        // A save that has not ended counts as not saved, so the switch asks; once answered it waits for the saves.
+        Field(cut, "Locale").Change("fr");
+        cut.WaitForAssertion(() => cut.FindComponent<CmsDialog>().Instance.Open.ShouldBeTrue());
+        var switched = Button(cut, "Switch without saving").ClickAsync(new MouseEventArgs());
+        Library.Requests.ShouldNotContain(request => request.Method == HttpMethod.Get && request.Locale == "fr");
+        release.SetResult();
+        await Task.WhenAll(click, blur, switched);
+
+        cut.WaitForAssertion(() => Field(cut, "Locale").GetAttribute("value").ShouldBe("fr"));
+        Library.Text(id, "en", "alt").ShouldBe("A cat");
+        Library.Text(id, "fr", "alt").ShouldBeNull();
+        Library.Requests.Where(request => request.Method == HttpMethod.Patch).Select(request => request.Locale).ShouldBe(["en", "en"]);
+        Field(cut, "Alt text").GetAttribute("value").ShouldBeNull();
+        cut.FindAll("[role=alert]").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AMoveWhoseReadAfterFailsIsStillDoneAndTheNextSaveIsNoConflict()
+    {
+        Admin.Grant(MediaPermissions.Update);
+        var photos = Library.AddFolder("Photos");
+        var id = Library.AddAsset("cat.png");
+        var cut = Open(id, [new MediaFolderInfo { Id = photos, Name = "Photos" }]);
+        var moved = false;
+        Library.BeforeAnswer = request =>
+        {
+            if (request.Path.EndsWith("/move", StringComparison.Ordinal))
+            {
+                moved = true;
+            }
+            else if (moved && request.Method == HttpMethod.Get && request.Path == $"media/{id:D}")
+            {
+                moved = false;
+                throw new HttpRequestException("The network is down.");
+            }
+
+            return Task.CompletedTask;
+        };
+
+        Button(cut, "Move").Click();
+        Field(cut, "Move to").Change(photos.ToString("D"));
+        cut.Find(".media-panel-step fluent-button").Click();
+
+        cut.WaitForAssertion(() => Announcer.Messages.ShouldContain("cat.png moved to Photos."));
+        Library.FolderOf(id).ShouldBe(photos);
+        changes.ShouldBe(1);
+        cut.FindAll(".media-panel-error").ShouldBeEmpty();
+        Field(cut, "Alt text").Input("A cat");
+        Field(cut, "Alt text").Blur();
+        cut.WaitForAssertion(() => Library.Text(id, "en", "alt").ShouldBe("A cat"));
+        cut.FindAll("[role=alert]").ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task SavesThatOverlapGoOneAfterAnotherAndTheLatestPointWins()
     {
         Admin.Grant(MediaPermissions.Update);
