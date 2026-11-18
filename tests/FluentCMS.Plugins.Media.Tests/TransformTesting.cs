@@ -89,6 +89,27 @@ internal static class Transforms
         return await client.SendAsync(request, Token);
     }
 
+    public static async Task<HttpResponseMessage> RangeAsync(HttpClient client, string url, string? range, string? ifRange = null, HttpMethod? method = null, string? ifNoneMatch = null)
+    {
+        using var request = new HttpRequestMessage(method ?? HttpMethod.Get, new Uri(url, UriKind.Relative));
+        if (range is not null)
+        {
+            request.Headers.TryAddWithoutValidation("Range", range).ShouldBeTrue();
+        }
+
+        if (ifRange is not null)
+        {
+            request.Headers.TryAddWithoutValidation("If-Range", ifRange).ShouldBeTrue();
+        }
+
+        if (ifNoneMatch is not null)
+        {
+            request.Headers.TryAddWithoutValidation("If-None-Match", ifNoneMatch).ShouldBeTrue();
+        }
+
+        return await client.SendAsync(request, Token);
+    }
+
     public static async Task<(string? Type, byte[] Bytes)> ImageAsync(HttpResponseMessage response)
     {
         var bytes = await response.Content.ReadAsByteArrayAsync(Token);
@@ -151,6 +172,11 @@ internal sealed class ProcessorCalls
 
     public bool EncodesAvif { get; set; }
 
+    // Set, ProcessAsync says it has started and then waits for Hold.
+    public TaskCompletionSource? Entered { get; set; }
+
+    public TaskCompletionSource? Hold { get; set; }
+
     public int Identified => Volatile.Read(ref _identified);
 
     public int Processed => Volatile.Read(ref _processed);
@@ -178,6 +204,12 @@ internal sealed class RecordingProcessor(ProcessorCalls calls) : IImageProcessor
     public async Task ProcessAsync(Stream image, ImageTransform transform, Stream output, CancellationToken cancellationToken = default)
     {
         calls.Process();
+        if (calls.Hold is { } hold)
+        {
+            calls.Entered?.TrySetResult();
+            await hold.Task.WaitAsync(cancellationToken);
+        }
+
         if (transform.MimeType == "image/avif")
         {
             await output.WriteAsync("AVIF"u8.ToArray(), cancellationToken);

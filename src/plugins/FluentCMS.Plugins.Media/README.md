@@ -15,6 +15,7 @@ The instance's options are in `FluentCms:Media`:
 | `SigningKey` | none | The base64 of at least 32 bytes that signs transform URLs. Left out, the plugin generates one key (see below). |
 | `CacheControl` | `public, max-age=86400` | The `Cache-Control` of a transformed image and of the original file and the thumbnail of a public asset. |
 | `DeletedRetention` | `30.00:00:00` | How long a deleted asset keeps its file and its row before the daily cleanup purges them. |
+| `MaxConcurrentDecodes` | `4` | How many images the instance decodes at once to make variants, thumbnails and copies, from 1 to 256. A decode at the default `maxSourcePixels` may take about 200 MB; requests beyond the limit wait. |
 
 ## One library or one per site
 
@@ -126,15 +127,16 @@ curl -H "Authorization: ApiKey $KEY" -F folderId=$FOLDER -F files=@photo.jpg -F 
 | `f` | `auto`, `webp`, `avif`, `jpeg` or `png`; the asset's own type when left out. `auto` picks WebP when `Accept` lists it, AVIF only where the processor encodes it, and the asset's type otherwise, and answers with `Vary: Accept`. The default processor encodes no AVIF. |
 | `fx`, `fy` | The focal point of a `cover`, from 0 to 1, given together; the asset's own focal point, or its centre, by default. |
 | `preset` | A preset of the site, whose parameters apply under those of the URL. |
+| `v` | A part of the asset's checksum, which the signature covers and nothing compares, so that a replace gives new URLs. |
 | `sig` | The signature. |
 
-A request over the limits of the site's media settings is refused with `FCMS1591` before the image is read. An image over `maxSourcePixels`, or whose side that follows the aspect ratio would be over the width or height limit, is refused from its header before it is decoded. Every result is stored as a variant in the asset's storage, so the same request, under any file name, is served from storage. The orientation of a photo is applied, and its EXIF, IPTC and XMP metadata are left out. A daily job, `media.variants.cleanup`, removes the variants of deleted assets.
+A request over the limits of the site's media settings is refused with `FCMS1591` before the image is read. An image over `maxSourcePixels`, or whose side that follows the aspect ratio would be over the width or height limit, is refused from its header before it is decoded. Every result is stored as a variant in the asset's storage, so the same request, under any file name, is served from storage. Concurrent requests for a variant not yet stored wait for one decode, and at most `MaxConcurrentDecodes` images are decoded at once on an instance; an original in S3 or Azure Blob is read once, into a temporary file deleted after the decode, and an image far larger than the result is decoded at a smaller scale where its format allows, as JPEG and WebP do. The orientation of a photo is applied, and its EXIF, IPTC and XMP metadata are left out. A daily job, `media.variants.cleanup`, removes the variants of deleted assets.
 
 Host code and other plugins build a URL with `IMediaService.GetImageUrlAsync`:
 
 ```csharp
 var url = await media.GetImageUrlAsync(asset, new MediaImageOptions { Width = 1200, Height = 630, Fit = ImageFit.Cover, Format = MediaImageFormat.Auto });
-// /media/0193a0c2-.../hero.jpg?w=1200&h=630&fit=cover&f=auto&sig=...
+// /media/0193a0c2-.../hero.jpg?w=1200&h=630&fit=cover&f=auto&v=...&sig=...
 ```
 
 ## Delivery API
@@ -147,14 +149,14 @@ var url = await media.GetImageUrlAsync(asset, new MediaImageOptions { Width = 12
   "title": "Harbour", "locale": "en", "alt": "Boats in a harbour", "caption": null, "credit": null, "tags": [],
   "focalPoint": { "x": 0.5, "y": 0.4 }, "isPrivate": false, "createdAt": "...", "updatedAt": "...",
   "urls": {
-    "original": "/media/0193a0c2-.../original/hero.jpg?sig=...",
-    "presets": { "hero": "/media/0193a0c2-.../hero.jpg?preset=hero&sig=..." },
+    "original": "/media/0193a0c2-.../original/hero.jpg?v=...&sig=...",
+    "presets": { "hero": "/media/0193a0c2-.../hero.jpg?preset=hero&v=...&sig=..." },
     "template": null
   }
 }
 ```
 
-The URLs are signed. `presets` has one transform URL for each preset of the site, for an image the processor reads, and `template`, only where `RequireSignedUrls` is `false`, is a transform URL whose `{w}`, `{h}`, `{fit}`, `{q}` and `{f}` a client fills in or leaves out. The answer has the cache headers of content: an `ETag`, the `Cache-Control` of `FluentCms:Delivery:Cache`, and a copy in the output cache that a change to the asset or to the site's presets evicts. A private asset is answered, without URLs, only to a caller whose `media.read` reaches its folder; the anonymous caller and Delivery keys hold no permission but reading content, so they never read one.
+The URLs are signed and carry `v` from the asset's checksum, so a replace gives the asset new URLs and no cache serves the old file under them. `presets` has one transform URL for each preset of the site, for an image the processor reads, and `template`, only where `RequireSignedUrls` is `false`, is a transform URL whose `{w}`, `{h}`, `{fit}`, `{q}` and `{f}` a client fills in or leaves out. The answer has the cache headers of content: an `ETag`, the `Cache-Control` of `FluentCms:Delivery:Cache`, and a copy in the output cache that a change to the asset or to the site's presets evicts. A private asset is answered, without URLs, only to a caller whose `media.read` reaches its folder; the anonymous caller and Delivery keys hold no permission but reading content, so they never read one.
 
 ## URLs for the media library and the picker
 
@@ -183,7 +185,7 @@ The URLs are signed. `presets` has one transform URL for each preset of the site
 
 ## Original files and private downloads
 
-`GET /media/{id}/original/{fileName}` sends a file as it was stored, with `X-Content-Type-Options: nosniff`, and an SVG with a `Content-Security-Policy` that runs nothing. A file whose stored type is none the plugin reads from bytes is sent as `application/octet-stream`, as an attachment. Without `exp`, it serves a public asset with a signature that the Delivery API's `urls.original` carries. A private asset is served only by a download URL:
+`GET /media/{id}/original/{fileName}` sends a file as it was stored, or the `Range` of it asked for, with `X-Content-Type-Options: nosniff`, and an SVG with a `Content-Security-Policy` that runs nothing. A file whose stored type is none the plugin reads from bytes is sent as `application/octet-stream`, as an attachment. Without `exp`, it serves a public asset with a signature that the Delivery API's `urls.original` carries. A private asset is served only by a download URL:
 
 ```bash
 curl -X POST -H "Authorization: ApiKey $KEY" https://cms.example.com/api/management/v1/media/$ID/download-url

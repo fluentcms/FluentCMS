@@ -144,6 +144,77 @@ public sealed class MediaOriginalTests(MediaHost media) : IClassFixture<MediaHos
         image.Content.Headers.ContentDisposition.ShouldBeNull();
     }
 
+    [Fact]
+    public async Task AnOriginalIsServedInTheRangeAskedForAndWholeWhenTheRangeIsStale()
+    {
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var bytes = Bands(8, 8);
+        var length = bytes.Length;
+        var asset = await UploadAsync(admin, bytes, "bands.png");
+        var original = await OriginalAsync(anonymous, asset.Id);
+
+        using var single = await RangeAsync(anonymous, original, "bytes=2-5");
+        using var suffix = await RangeAsync(anonymous, original, "bytes=-4");
+        using var open = await RangeAsync(anonymous, original, "bytes=10-");
+        using var unsatisfiable = await RangeAsync(anonymous, original, $"bytes={length}-");
+        using var current = await RangeAsync(anonymous, original, "bytes=0-0", $"\"{asset.Checksum}\"");
+        using var stale = await RangeAsync(anonymous, original, "bytes=0-0", "\"other\"");
+        using var dated = await RangeAsync(anonymous, original, "bytes=0-0", "Wed, 21 Oct 2026 07:28:00 GMT");
+        using var several = await RangeAsync(anonymous, original, "bytes=0-1,4-5");
+        using var malformed = await RangeAsync(anonymous, original, "bytes=five-");
+        using var cached = await RangeAsync(anonymous, original, "bytes=0-0", ifNoneMatch: $"\"{asset.Checksum}\"");
+        using var head = await RangeAsync(anonymous, original, range: null, method: HttpMethod.Head);
+
+        single.StatusCode.ShouldBe(HttpStatusCode.PartialContent);
+        single.Content.Headers.ContentRange!.ToString().ShouldBe($"bytes 2-5/{length}");
+        (await single.Content.ReadAsByteArrayAsync(Token)).ShouldBe(bytes[2..6]);
+        single.Headers.ETag!.Tag.ShouldBe($"\"{asset.Checksum}\"");
+        single.Headers.GetValues("X-Content-Type-Options").ShouldBe(["nosniff"]);
+        suffix.StatusCode.ShouldBe(HttpStatusCode.PartialContent);
+        (await suffix.Content.ReadAsByteArrayAsync(Token)).ShouldBe(bytes[^4..]);
+        open.StatusCode.ShouldBe(HttpStatusCode.PartialContent);
+        open.Content.Headers.ContentRange!.ToString().ShouldBe($"bytes 10-{length - 1}/{length}");
+        (await open.Content.ReadAsByteArrayAsync(Token)).ShouldBe(bytes[10..]);
+        unsatisfiable.StatusCode.ShouldBe(HttpStatusCode.RequestedRangeNotSatisfiable);
+        unsatisfiable.Content.Headers.ContentRange!.ToString().ShouldBe($"bytes */{length}");
+        current.StatusCode.ShouldBe(HttpStatusCode.PartialContent);
+        (await current.Content.ReadAsByteArrayAsync(Token)).ShouldBe(bytes[..1]);
+        stale.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await stale.Content.ReadAsByteArrayAsync(Token)).ShouldBe(bytes);
+        dated.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await dated.Content.ReadAsByteArrayAsync(Token)).ShouldBe(bytes);
+        several.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await several.Content.ReadAsByteArrayAsync(Token)).ShouldBe(bytes);
+        malformed.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await malformed.Content.ReadAsByteArrayAsync(Token)).ShouldBe(bytes);
+        cached.StatusCode.ShouldBe(HttpStatusCode.NotModified);
+        (await cached.Content.ReadAsByteArrayAsync(Token)).ShouldBeEmpty();
+        head.StatusCode.ShouldBe(HttpStatusCode.OK);
+        head.Headers.AcceptRanges.ShouldBe(["bytes"]);
+        head.Content.Headers.ContentLength.ShouldBe(length);
+        (await head.Content.ReadAsByteArrayAsync(Token)).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ADownloadUrlServesARangeOfAPrivateFile()
+    {
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var pdf = Files.Pdf();
+        var asset = Id((await UploadedAsync(admin, null, ("plan.pdf", pdf))).Single()!);
+        (await admin.PatchAsJsonAsync(new Uri($"{Root}/{asset:D}", UriKind.Relative), new { isPrivate = true }, Token)).Dispose();
+        using var issued = await admin.PostAsync(new Uri($"{Root}/{asset:D}/download-url", UriKind.Relative), null, Token);
+        var url = (await JsonAsync(issued))["url"]!.GetValue<string>();
+
+        using var served = await RangeAsync(anonymous, url, "bytes=5-");
+
+        served.StatusCode.ShouldBe(HttpStatusCode.PartialContent);
+        (await served.Content.ReadAsByteArrayAsync(Token)).ShouldBe(pdf[5..]);
+        served.Content.Headers.ContentDisposition!.DispositionType.ShouldBe("attachment");
+        served.Headers.CacheControl!.NoStore.ShouldBeTrue();
+    }
+
     private static async Task<string> OriginalAsync(HttpClient client, Guid asset) =>
         (await GetAsync(client, $"/api/delivery/v1/media/{asset:D}"))["urls"]!["original"]!.GetValue<string>();
 }

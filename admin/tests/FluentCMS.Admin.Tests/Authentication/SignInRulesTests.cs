@@ -50,7 +50,7 @@ public sealed class SignInRulesTests
         var storage = new MemorySessionStorage();
         var configuration = new AdminConfiguration { ApiBaseUrl = new Uri(Issuer) };
         using var authority = new AuthorityClient(configuration, new HttpClient(new FakeAuthority()));
-        var session = new AdminSession(configuration, authority, storage, new FormDrafts(storage), new StubNavigationManager(), TimeProvider.System, NullLogger<AdminSession>.Instance);
+        var session = new AdminSession(configuration, authority, storage, new BrowserTabs().ChannelOf(storage), new FormDrafts(storage), new StubNavigationManager(), TimeProvider.System, NullLogger<AdminSession>.Instance);
 
         session.AppRoute(route).ShouldBe(expected);
     }

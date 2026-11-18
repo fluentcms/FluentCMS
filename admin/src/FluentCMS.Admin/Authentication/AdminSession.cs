@@ -17,6 +17,7 @@ internal sealed class AdminSession(
     AdminConfiguration configuration,
     AuthorityClient authority,
     ISessionStorage storage,
+    ITabChannel tabs,
     FormDrafts drafts,
     NavigationManager navigation,
     TimeProvider time,
@@ -27,6 +28,7 @@ internal sealed class AdminSession(
     internal const string SessionKey = "fluentcms-admin/session";
     internal const string SignInKey = "fluentcms-admin/sign-in";
     internal const string SignedInAtKey = "fluentcms-admin/signed-in-at";
+    internal const string TabKey = "fluentcms-admin/tab";
 
     // How long the user may take on the hosted pages, a password change and a two-factor enrolment included.
     public static readonly TimeSpan SignInLifetime = TimeSpan.FromMinutes(30);
@@ -84,9 +86,12 @@ internal sealed class AdminSession(
             return false;
         }
 
-        // A value another build or page wrote, without a token or a user, is no session.
-        if (await ReadAsync(SessionKey, Json.StoredSession) is { RefreshToken: { Length: > 0 }, User.Subject: { Length: > 0 } } stored)
+        // A value another build or page wrote, without a token or a user, is no session. A copy of a tab that still holds the
+        // session forgets it and signs in for itself, since a refresh token redeemed by both would end one of them.
+        if (await ReadAsync(SessionKey, Json.StoredSession) is { RefreshToken: { Length: > 0 }, User.Subject: { Length: > 0 } } stored
+            && !await CopiedAsync())
         {
+            await HoldTabAsync();
             _user = stored.User;
             _refreshToken = stored.RefreshToken;
             switch (await RefreshOnceAsync())
@@ -140,6 +145,7 @@ internal sealed class AdminSession(
         await storage.RemoveAsync(SessionKey);
         await storage.RemoveAsync(SignInKey);
         await storage.RemoveAsync(SignedInAtKey);
+        await storage.RemoveAsync(TabKey);
         await storage.RemoveAsync(TabStorageKeys.Site);
         await drafts.ClearAsync();
         Changed?.Invoke();
@@ -307,6 +313,7 @@ internal sealed class AdminSession(
         }
 
         await drafts.KeepOnlyAsync(user.Subject);
+        await HoldTabAsync();
         _user = user;
         _refreshToken = answer.RefreshToken;
         await KeepSessionAsync();
@@ -450,6 +457,29 @@ internal sealed class AdminSession(
             SessionLog.SignInUnavailable(logger, exception);
             Changed?.Invoke();
         }
+    }
+
+    private async Task<bool> CopiedAsync()
+    {
+        if (await storage.GetAsync(TabKey) is not { Length: > 0 } tabId || !await tabs.IsHeldElsewhereAsync(tabId))
+        {
+            return false;
+        }
+
+        await storage.RemoveAsync(SessionKey);
+        await storage.RemoveAsync(TabKey);
+        return true;
+    }
+
+    private async Task HoldTabAsync()
+    {
+        if (await storage.GetAsync(TabKey) is not { Length: > 0 } tabId)
+        {
+            tabId = ProofKey.NewSecret();
+            await storage.SetAsync(TabKey, tabId);
+        }
+
+        await tabs.HoldAsync(tabId);
     }
 
     private async Task<bool> SignedInRecentlyAsync() =>

@@ -21,18 +21,11 @@ internal sealed class S3FileStorage(IOptions<S3StorageOptions> options) : IFileS
 
     public string Name => ProviderName;
 
+    // A HEAD gives the length and the version; the body is fetched at the first read (StorageReadStream).
     public async Task<Stream?> OpenReadAsync(string key, CancellationToken cancellationToken = default)
     {
         var name = ObjectKey(key);
-        try
-        {
-            var response = await _client.GetObjectAsync(_bucket, name, cancellationToken);
-            return response.ResponseStream;
-        }
-        catch (AmazonS3Exception exception) when (exception.StatusCode == HttpStatusCode.NotFound && exception.ErrorCode != "NoSuchBucket")
-        {
-            return null;
-        }
+        return await HeadAsync(name, cancellationToken) is { } head ? new S3ObjectStream(_client, _bucket, name, head) : null;
     }
 
     // One PUT, so a reader sees the old object or the new one. The SDK needs the length first, so a stream that cannot seek is

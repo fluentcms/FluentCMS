@@ -32,7 +32,7 @@ internal sealed class SkiaImageProcessor : IImageProcessor
         ArgumentNullException.ThrowIfNull(image);
 
         await using var buffered = await BufferedAsync(image, cancellationToken);
-        using var codec = SKCodec.Create(buffered ?? image);
+        using var codec = CodecOf(buffered ?? image);
         if (codec is null)
         {
             return null;
@@ -57,16 +57,52 @@ internal sealed class SkiaImageProcessor : IImageProcessor
 
     private static SKData Encode(Stream image, ImageTransform transform, SKEncodedImageFormat format)
     {
-        using var codec = SKCodec.Create(image) ?? throw new InvalidDataException("The bytes are no image SkiaSharp reads.");
-        using var decoded = Decode(codec);
-        using var result = Render(decoded, codec.EncodedOrigin, transform);
+        using var codec = CodecOf(image) ?? throw new InvalidDataException("The bytes are no image SkiaSharp reads.");
+        var (width, height, source) = Plan(codec.Info.Size, codec.EncodedOrigin, transform);
+        using var decoded = Decode(codec, DecodedSize(codec, Math.Max(width / source.Width, height / source.Height)));
+        using var result = Render(decoded, codec.Info.Size, codec.EncodedOrigin, width, height, source);
         return result.Encode(format, transform.Quality) ?? throw new InvalidOperationException($"SkiaSharp could not encode the image as {transform.MimeType}.");
     }
 
-    // An image that is not whole, such as one cut short, is refused rather than served with its missing part blank.
-    private static SKImage Decode(SKCodec codec)
+    // SKCodec.Create(Stream) would close the stream, which is the caller's: MediaTransforms reads the header and then the
+    // pixels from one copy of the original.
+    private static SKCodec? CodecOf(Stream image)
     {
-        var info = codec.Info.WithColorType(SKImageInfo.PlatformColorType).WithAlphaType(codec.Info.AlphaType == SKAlphaType.Opaque ? SKAlphaType.Opaque : SKAlphaType.Premul).WithColorSpace(Srgb);
+        var stream = new SKManagedStream(image, disposeManagedStream: false);
+        var codec = SKCodec.Create(stream);
+        if (codec is null)
+        {
+            stream.Dispose();
+        }
+
+        return codec;
+    }
+
+    // The size to decode at for a result that takes a scale of the image: smaller where the codec decodes a scale itself, as
+    // JPEG does in eighths and WebP at any size, with at least twice the pixels of the result on each side, so that sampling
+    // down is as before; the whole size otherwise. The codec rounds the scale asked to the nearest it decodes, JPEG's to the
+    // nearest eighth and WebP's to a pixel, which can be under it, so a larger scale is asked until the size is not.
+    internal static SKSizeI DecodedSize(SKCodec codec, float scale)
+    {
+        var whole = codec.Info.Size;
+        var wanted = scale * 2;
+        var (width, height) = (Math.Ceiling(whole.Width * (double)wanted), Math.Ceiling(whole.Height * (double)wanted));
+        for (var asked = wanted; asked < 1; asked += 1 / 16f)
+        {
+            var size = codec.GetScaledDimensions(asked);
+            if (size.Width >= width && size.Height >= height)
+            {
+                return size;
+            }
+        }
+
+        return whole;
+    }
+
+    // An image that is not whole, such as one cut short, is refused rather than served with its missing part blank.
+    private static SKImage Decode(SKCodec codec, SKSizeI size)
+    {
+        var info = codec.Info.WithSize(size).WithColorType(SKImageInfo.PlatformColorType).WithAlphaType(codec.Info.AlphaType == SKAlphaType.Opaque ? SKAlphaType.Opaque : SKAlphaType.Premul).WithColorSpace(Srgb);
         using var bitmap = new SKBitmap(info);
         var result = codec.GetPixels(info, bitmap.GetPixels());
         if (result != SKCodecResult.Success)
@@ -91,22 +127,29 @@ internal sealed class SkiaImageProcessor : IImageProcessor
         _ => SKMatrix.Identity,
     };
 
-    // One draw turns the stored pixels as the orientation says and maps the part of the image shown, all of it or for a
-    // cover the part around the focal point with the aspect ratio asked for, onto the size that MediaTransforms.SizeOf
-    // gives, which the limits were checked with.
-    private static SKImage Render(SKImage image, SKEncodedOrigin origin, ImageTransform transform)
+    // The size that MediaTransforms.SizeOf gives, which the limits were checked with, and the part of the image shown that
+    // goes in it: all of it, or for a cover the part around the focal point with the aspect ratio asked for. Both are of the
+    // image's whole size, whatever size it is decoded at.
+    private static (int Width, int Height, SKRect Source) Plan(SKSizeI stored, SKEncodedOrigin origin, ImageTransform transform)
     {
-        var (shownWidth, shownHeight) = IsTurned(origin) ? (image.Height, image.Width) : (image.Width, image.Height);
+        var (shownWidth, shownHeight) = IsTurned(origin) ? (stored.Height, stored.Width) : (stored.Width, stored.Height);
         var (width, height) = MediaTransforms.SizeOf(transform, shownWidth, shownHeight);
         var source = transform is { Width: not null, Height: not null, Fit: ImageFit.Cover }
             ? CropOf(shownWidth, shownHeight, width, height, transform.FocalPoint ?? new MediaFocalPoint(0.5, 0.5))
             : SKRect.Create(shownWidth, shownHeight);
+        return (width, height, source);
+    }
 
+    // One draw scales the decoded pixels to the stored size, turns them as the orientation says and maps the source onto
+    // the result.
+    private static SKImage Render(SKImage image, SKSizeI stored, SKEncodedOrigin origin, int width, int height, SKRect source)
+    {
         using var surface = Surface(width, height, image.AlphaType);
         var canvas = surface.Canvas;
         canvas.Scale(width / source.Width, height / source.Height);
         canvas.Translate(-source.Left, -source.Top);
-        canvas.Concat(OrientationOf(origin, image.Width, image.Height));
+        canvas.Concat(OrientationOf(origin, stored.Width, stored.Height));
+        canvas.Scale((float)stored.Width / image.Width, (float)stored.Height / image.Height);
         canvas.DrawImage(image, 0, 0, Sampling);
         return surface.Snapshot();
     }
@@ -128,11 +171,11 @@ internal sealed class SkiaImageProcessor : IImageProcessor
     private static bool IsTurned(SKEncodedOrigin origin) =>
         origin is SKEncodedOrigin.LeftTop or SKEncodedOrigin.RightTop or SKEncodedOrigin.RightBottom or SKEncodedOrigin.LeftBottom;
 
-    // Skia's codecs rewind, which a stream that cannot seek allows only within a small buffer, so such a stream is read
-    // into memory first; null for one that can seek. An original is at most the site's file size limit.
+    // Skia's codecs rewind and read synchronously, so a stream that is not in memory or on disk, such as a storage's that
+    // seeks with a request, is read into memory first; null for one that is. An original is at most the site's file size limit.
     private static async Task<MemoryStream?> BufferedAsync(Stream image, CancellationToken cancellationToken)
     {
-        if (image.CanSeek)
+        if (image is MemoryStream or FileStream)
         {
             return null;
         }

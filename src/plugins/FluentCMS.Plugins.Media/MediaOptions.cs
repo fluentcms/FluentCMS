@@ -34,6 +34,10 @@ public sealed class MediaOptions
     // How long after its delete the daily cleanup removes an asset's bytes and its row.
     public TimeSpan DeletedRetention { get; set; } = TimeSpan.FromDays(30);
 
+    // How many images this instance decodes at once, for variants, thumbnails and copies such as alt text's. A decode at the
+    // default MaxSourcePixels may take about 200 MB.
+    public int MaxConcurrentDecodes { get; set; } = 4;
+
     internal byte[]? SigningKeyBytes => string.IsNullOrEmpty(SigningKey) ? null : Convert.FromBase64String(SigningKey);
 
     internal bool IsValid() =>
@@ -42,7 +46,8 @@ public sealed class MediaOptions
         && MaxRequestBodySize > 0
         && (string.IsNullOrEmpty(SigningKey) || (Convert.TryFromBase64String(SigningKey, new byte[SigningKey.Length], out var length) && length >= MediaSigning.KeyLength))
         && !string.IsNullOrWhiteSpace(CacheControl) && CacheControlHeaderValue.TryParse(CacheControl, out _)
-        && DeletedRetention > TimeSpan.Zero;
+        && DeletedRetention > TimeSpan.Zero
+        && MaxConcurrentDecodes is >= 1 and <= 256;
 }
 
 // The Cache-Control of the Delivery API, FluentCms:Delivery:Cache:CacheControl, which core checks, so that the media route

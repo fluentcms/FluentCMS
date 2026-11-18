@@ -19,13 +19,14 @@ internal sealed class AzureBlobFileStorage(IOptions<AzureBlobStorageOptions> opt
 
     public string Name => ProviderName;
 
+    // The properties give the length and the version; the body is fetched at the first read (StorageReadStream).
     public async Task<Stream?> OpenReadAsync(string key, CancellationToken cancellationToken = default)
     {
         var blob = Blob(key);
         try
         {
-            var response = await blob.DownloadStreamingAsync(cancellationToken: cancellationToken);
-            return response.Value.Content;
+            BlobProperties properties = await blob.GetPropertiesAsync(cancellationToken: cancellationToken);
+            return new AzureBlobStream(blob, properties);
         }
         catch (RequestFailedException exception) when (IsMissingBlob(exception))
         {

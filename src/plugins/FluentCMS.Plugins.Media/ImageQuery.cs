@@ -5,7 +5,8 @@ using FluentCMS.Media;
 
 namespace FluentCMS.Plugins.Media;
 
-// The parameters of a transform URL and of a preset, as the query names them: w, h, fit, q, f, fx and fy, and preset. The
+// The parameters of a transform URL and of a preset, as the query names them: w, h, fit, q, f, fx and fy, and preset, and
+// v, a part of the asset's checksum that the signature covers and nothing compares, so that a replace gives new URLs. The
 // canonical string that a signature covers is the asset's id and the parameters as the URL gives them, sorted by name and
 // escaped, so that two URLs sign alike only when they carry the same parameters.
 internal static partial class ImageQuery
@@ -18,6 +19,7 @@ internal static partial class ImageQuery
     public const string FocalX = "fx";
     public const string FocalY = "fy";
     public const string Preset = "preset";
+    public const string Version = MediaOriginals.Version;
     public const string Signature = "sig";
 
     // Read by the host to choose the site, so a URL may carry it; it changes nothing that the signature would cover.
@@ -25,7 +27,7 @@ internal static partial class ImageQuery
 
     public const int PresetNameMaxLength = 64;
 
-    private static readonly string[] Names = [Width, Height, Fit, Quality, Format, FocalX, FocalY, Preset];
+    private static readonly string[] Names = [Width, Height, Fit, Quality, Format, FocalX, FocalY, Preset, Version];
 
     private static readonly Dictionary<string, string> Members = new(StringComparer.Ordinal)
     {

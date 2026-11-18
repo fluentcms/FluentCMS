@@ -36,7 +36,7 @@ public sealed class MediaPlugin : IPlugin
             .BindConfiguration(MediaOptions.Section)
             .Validate(
                 options => options.IsValid(),
-                $"{MediaOptions.Section}: Local:Root must name a directory, MaxRequestBodySize must be positive, SigningKey must be the base64 of at least {MediaSigning.KeyLength} bytes when set, CacheControl a Cache-Control value, and DeletedRetention positive.");
+                $"{MediaOptions.Section}: Local:Root must name a directory, MaxRequestBodySize must be positive, SigningKey must be the base64 of at least {MediaSigning.KeyLength} bytes when set, CacheControl a Cache-Control value, DeletedRetention positive, and MaxConcurrentDecodes from 1 to 256.");
         plugin.Services.AddOptions<DeliveryCacheControl>().BindConfiguration(DeliveryCacheControl.Section);
         plugin.Services.AddScoped<MediaLibraries>();
         plugin.Services.AddScoped<MediaService>();
@@ -47,6 +47,7 @@ public sealed class MediaPlugin : IPlugin
         plugin.Services.AddScoped<MediaOriginals>();
         plugin.Services.AddScoped<MediaCache>();
         plugin.Services.AddSingleton<MediaSigning>();
+        plugin.Services.AddSingleton<MediaDecodes>();
         plugin.Services.AddSingleton<IInsecureDefaultSource, MediaInsecureDefaults>();
         plugin.Services.AddSingleton<IInsecureDefaultSource, SharedLibraryReport>();
         plugin.Services.AddHostedService<MediaStartup>();
