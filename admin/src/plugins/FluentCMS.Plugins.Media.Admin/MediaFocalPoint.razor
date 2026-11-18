@@ -1,0 +1,121 @@
+@* The focal point of an image, which a crop to a preset with fit=cover keeps in view: set by a click on the image, or with
+   the arrow keys on its two sliders, and saved a moment after the last key. The panel of the library and the field editor
+   of a media field show it. *@
+@inherits MediaAssetPart
+@implements IDisposable
+@inject AdminConfiguration Configuration
+
+@if (Image is { } image && image is var (thumbnail, width, height))
+{
+    <div class="media-part media-focal">
+        <div class="media-focal-image" style="@($"inline-size:{Css(width)}px;block-size:{Css(height)}px")">
+            <img src="@thumbnail" alt="" width="@width" height="@height" @onclick="PickAsync" class="@(ReadOnly ? null : "media-focal-pick")" />
+            <span class="media-focal-marker" style="@($"left:{Css(x * 100)}%;top:{Css(y * 100)}%")" aria-hidden="true"></span>
+        </div>
+        <fieldset class="media-focal-sliders" disabled="@ReadOnly">
+            <legend>@L["Media.Focal.Label"]</legend>
+            <label>
+                @L["Media.Focal.X"]
+                <input type="range" min="0" max="100" step="1" value="@Percent(x)" aria-valuetext="@L["Media.Focal.Value", Percent(x)]"
+                       @oninput="@(args => Move(args, horizontal: true))" @onchange="@(args => Move(args, horizontal: true, save: true))" />
+            </label>
+            <label>
+                @L["Media.Focal.Y"]
+                <input type="range" min="0" max="100" step="1" value="@Percent(y)" aria-valuetext="@L["Media.Focal.Value", Percent(y)]"
+                       @oninput="@(args => Move(args, horizontal: false))" @onchange="@(args => Move(args, horizontal: false, save: true))" />
+            </label>
+        </fieldset>
+        <div class="media-focal-preview" aria-hidden="true">
+            <img src="@thumbnail" alt="" style="@($"object-position:{Css(x * 100)}% {Css(y * 100)}%")" />
+        </div>
+        <MediaSaveNotice Error="@Error" Conflicted="@Conflicted" OnTakeTheirs="TakeTheirsAsync" OnKeepMine="KeepMineAsync" />
+    </div>
+}
+
+@code {
+    // The image is drawn at a size of its own, fitted inside the thumbnail's 320 by 320 pixels, so that a click's offset
+    // gives the point without asking the browser for the size.
+    private const double Box = 320;
+    private static readonly TimeSpan SaveDelay = TimeSpan.FromMilliseconds(500);
+
+    private double x = 0.5;
+    private double y = 0.5;
+    private MediaAssetInfo? shown;
+    private CancellationTokenSource? waiting;
+
+    private (string Thumbnail, double Width, double Height)? Image =>
+        Asset is { Urls.Thumbnail: { Length: > 0 } thumbnail, Width: { } width and > 0, Height: { } height and > 0 }
+            ? (MediaFormat.Resolve(Configuration.ApiBaseUrl, thumbnail), Fit(width, width, height), Fit(height, width, height))
+            : null;
+
+    protected override void OnParametersSet()
+    {
+        if (shown is null || shown.FocalPoint != Asset.FocalPoint || shown.Id != Asset.Id)
+        {
+            (x, y) = Asset.FocalPoint is { } point ? (point.X, point.Y) : (0.5, 0.5);
+        }
+
+        shown = Asset;
+    }
+
+    private static double Fit(double side, double width, double height) => Math.Round(side * Math.Min(1, Box / Math.Max(width, height)));
+
+    private static string Css(double value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static int Percent(double fraction) => (int)Math.Round(fraction * 100);
+
+    private async Task PickAsync(MouseEventArgs args)
+    {
+        if (ReadOnly || Image is not { } image)
+        {
+            return;
+        }
+
+        var (_, width, height) = image;
+        x = Math.Clamp(Math.Round(args.OffsetX / width, 2), 0, 1);
+        y = Math.Clamp(Math.Round(args.OffsetY / height, 2), 0, 1);
+        waiting?.Cancel();
+        await SavePointAsync();
+    }
+
+    private async Task Move(ChangeEventArgs args, bool horizontal, bool save = false)
+    {
+        if (ReadOnly || !int.TryParse(args.Value?.ToString(), System.Globalization.CultureInfo.InvariantCulture, out var percent))
+        {
+            return;
+        }
+
+        var value = Math.Clamp(percent, 0, 100) / 100.0;
+        (x, y) = horizontal ? (value, y) : (x, value);
+        if (!save)
+        {
+            return;
+        }
+
+        // One save for a run of keys rather than one a step.
+        waiting?.Cancel();
+        waiting?.Dispose();
+        var run = waiting = new CancellationTokenSource();
+        try
+        {
+            await Task.Delay(SaveDelay, run.Token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        await SavePointAsync();
+    }
+
+    private Task SavePointAsync() =>
+        Asset.FocalPoint is { } point && point.X == x && point.Y == y
+            ? Task.CompletedTask
+            : SaveAsync(new JsonObject { ["focalPoint"] = new JsonObject { ["x"] = x, ["y"] = y } });
+
+    public void Dispose()
+    {
+        waiting?.Cancel();
+        waiting?.Dispose();
+    }
+}

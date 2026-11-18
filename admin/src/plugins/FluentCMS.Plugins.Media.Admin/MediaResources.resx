@@ -12,6 +12,12 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="Media.Alt.Help" xml:space="preserve">
+    <value>Describes the image to someone who cannot see it, in this locale.</value>
+  </data>
+  <data name="Media.Alt.Label" xml:space="preserve">
+    <value>Alt text</value>
+  </data>
   <data name="Media.Asset.Select" xml:space="preserve">
     <value>Select {0}</value>
   </data>
@@ -51,6 +57,15 @@
   <data name="Media.Column.Type" xml:space="preserve">
     <value>Type</value>
   </data>
+  <data name="Media.Conflict.Mine" xml:space="preserve">
+    <value>Save mine over it</value>
+  </data>
+  <data name="Media.Conflict.Text" xml:space="preserve">
+    <value>This file was changed elsewhere after you opened it, so your change was not saved.</value>
+  </data>
+  <data name="Media.Conflict.Theirs" xml:space="preserve">
+    <value>Use the other change</value>
+  </data>
   <data name="Media.Dialog.Cancel" xml:space="preserve">
     <value>Cancel</value>
   </data>
@@ -59,6 +74,18 @@
   </data>
   <data name="Media.Dialog.Forbidden" xml:space="preserve">
     <value>You may not make this change.</value>
+  </data>
+  <data name="Media.Focal.Label" xml:space="preserve">
+    <value>Focal point</value>
+  </data>
+  <data name="Media.Focal.Value" xml:space="preserve">
+    <value>{0} %</value>
+  </data>
+  <data name="Media.Focal.X" xml:space="preserve">
+    <value>Across</value>
+  </data>
+  <data name="Media.Focal.Y" xml:space="preserve">
+    <value>Down</value>
   </data>
   <data name="Media.Folder.Create" xml:space="preserve">
     <value>Create</value>

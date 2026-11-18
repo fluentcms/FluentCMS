@@ -1,0 +1,35 @@
+@* The alt text of an asset in the locale it was read in, saved when the field loses focus. The panel of the library and
+   the field editor of a media field show it. *@
+@inherits MediaAssetPart
+
+<div class="media-part">
+    <CmsTextInput Label="@L["Media.Alt.Label"]"
+                  Help="@L["Media.Alt.Help"]"
+                  Value="@text"
+                  ValueChanged="@(value => text = value)"
+                  OnBlur="SaveTextAsync"
+                  ReadOnly="@ReadOnly"
+                  Disabled="@Busy"
+                  Lang="@Asset.Locale"
+                  MaxLength="1000" />
+    <MediaSaveNotice Error="@Error" Conflicted="@Conflicted" OnTakeTheirs="TakeTheirsAsync" OnKeepMine="KeepMineAsync" />
+</div>
+
+@code {
+    private string? text;
+    private MediaAssetInfo? shown;
+
+    // A new asset or locale shows its text; the same asset read again keeps what the user is typing.
+    protected override void OnParametersSet()
+    {
+        if (shown is null || shown.Id != Asset.Id || shown.Locale != Asset.Locale || text == shown.Alt)
+        {
+            text = Asset.Alt;
+        }
+
+        shown = Asset;
+    }
+
+    private Task SaveTextAsync() =>
+        (text ?? "") == (Asset.Alt ?? "") ? Task.CompletedTask : SaveAsync(new JsonObject { ["alt"] = text ?? "" });
+}
