@@ -1,0 +1,89 @@
+@* The upload of the media library (spec 4.14): a button that opens the file chooser and takes dropped files, and the
+   files of this visit with the state of each, waiting, uploading, done or refused, a refused one with its reason. The
+   library also hands it the files dropped on the page or pasted (MediaDropZone), and a picker may show it as it is. *@
+@implements IDisposable
+@inject IManagementApi Api
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<MediaResources> L
+
+<div class="media-upload" data-media-upload>
+    <CmsFileDropZone Label="@L["Media.Upload.Label"]" Help="@L["Media.Upload.Help"]" Multiple="true" OnFilesSelected="@AddAsync" />
+</div>
+
+@if (queue.Items.Count > 0)
+{
+    <section class="media-uploads" aria-labelledby="@headingId">
+        <h2 id="@headingId">@L["Media.Upload.Heading"]</h2>
+        <ul>
+            @foreach (var item in queue.Items)
+            {
+                <li class="@($"media-upload-item media-upload-{item.State.ToString().ToLowerInvariant()}")">
+                    <span class="media-upload-name">@item.FileName</span>
+                    <span class="media-upload-state">@StateText(item)</span>
+                    @if (item.State == MediaUploadState.Refused)
+                    {
+                        <span class="media-upload-reason">@Reason(item)</span>
+                    }
+                </li>
+            }
+        </ul>
+        @if (!queue.Running)
+        {
+            <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="@queue.Clear">@L["Media.Upload.Clear"]</CmsButton>
+        }
+    </section>
+}
+
+@code {
+    private readonly CancellationTokenSource stopping = new();
+    private readonly string headingId = "media-uploads-" + Guid.NewGuid().ToString("N");
+    private MediaUploadQueue queue = null!;
+
+    // The folder the files go into; the root when null.
+    [Parameter]
+    public Guid? Folder { get; set; }
+
+    // Raised once the files of a choice, a drop or a paste have each been uploaded or refused, with the number uploaded.
+    [Parameter]
+    public EventCallback<int> OnUploaded { get; set; }
+
+    protected override void OnInitialized() => queue = new MediaUploadQueue(new MediaApi(Api));
+
+    // Files arriving while others upload join them; the one that started the uploads reports for all.
+    public async Task AddAsync(IReadOnlyList<IBrowserFile> files)
+    {
+        if (files.Count == 0)
+        {
+            return;
+        }
+
+        var doneBefore = queue.Items.Count(item => item.State == MediaUploadState.Done);
+        var refusedBefore = queue.Items.Count(item => item.State == MediaUploadState.Refused);
+        var ran = await queue.AddAsync(files, Folder, () => InvokeAsync(StateHasChanged), stopping.Token);
+        if (!ran || stopping.IsCancellationRequested)
+        {
+            return;
+        }
+
+        var done = queue.Items.Count(item => item.State == MediaUploadState.Done) - doneBefore;
+        var refused = queue.Items.Count(item => item.State == MediaUploadState.Refused) - refusedBefore;
+        Announcer.Announce(
+            refused == 0 ? L["Media.Upload.Finished", MediaFormat.Number(done)] : L["Media.Upload.FinishedWithRefused", MediaFormat.Number(done), MediaFormat.Number(refused)],
+            refused == 0 ? AnnouncementPoliteness.Polite : AnnouncementPoliteness.Assertive);
+        await OnUploaded.InvokeAsync(done);
+    }
+
+    public void Dispose()
+    {
+        stopping.Cancel();
+        stopping.Dispose();
+    }
+
+    private string StateText(MediaUploadItem item) => L[$"Media.Upload.State.{item.State}"];
+
+    private string Reason(MediaUploadItem item) => item.Code switch
+    {
+        "FCMS1581" or "FCMS1582" or "FCMS1583" or "FCMS1584" => L[$"Media.Upload.Refused.{item.Code}"],
+        _ => item.Detail is { Length: > 0 } detail ? detail : L["Media.Upload.Failed"],
+    };
+}

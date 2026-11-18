@@ -1,0 +1,38 @@
+.media-upload {
+    margin-block-end: var(--cms-space-m);
+}
+
+.media-uploads {
+    margin-block-end: var(--cms-space-m);
+    padding: var(--cms-space-m);
+    border-radius: var(--cms-radius-m);
+    background: var(--cms-color-surface);
+}
+
+.media-uploads h2 {
+    margin-block-start: 0;
+    font-size: var(--cms-font-size-l);
+}
+
+.media-uploads ul {
+    margin: 0 0 var(--cms-space-s);
+    padding: 0;
+    list-style: none;
+}
+
+.media-upload-item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cms-space-s);
+    padding-block: var(--cms-space-xs);
+}
+
+.media-upload-name {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.media-upload-refused .media-upload-state,
+.media-upload-reason {
+    color: var(--cms-color-error);
+}

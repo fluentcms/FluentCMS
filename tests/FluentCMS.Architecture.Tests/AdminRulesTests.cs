@@ -36,18 +36,21 @@ public class AdminRulesTests
     // A development-only FluentCMS package is left out of the rules only when it is one of these, which run in the compiler.
     private static readonly string[] CompilerPackages = ["FluentCMS.Analyzers", "FluentCMS.Generators"];
 
-    // Spec 3.1: the types that may use JavaScript interop, the document module, the tab's sessionStorage of the sign-in, and
-    // localStorage for the theme's one key and for the column names of the lists. The component library's script is loaded
-    // by the library's own types, so no type of FluentCMS.Admin.Components is listed. The rich text bundle and the clipboard,
-    // file drop and BroadcastChannel modules join the list by name, in FluentCMS.Admin or FluentCMS.Admin.RichText, with the
-    // issues that write them.
+    // Spec 3.1: the types that may use JavaScript interop, the document module, the tab's sessionStorage of the sign-in,
+    // localStorage for the theme's one key and for the column names of the lists, and the drop and paste of the media
+    // library, in the media half (A-21). The component library's script is loaded by the library's own types, so no type of
+    // FluentCMS.Admin.Components is listed. The rich text bundle and the clipboard and BroadcastChannel modules join the list
+    // by name, in FluentCMS.Admin or FluentCMS.Admin.RichText, with the issues that write them.
     private static readonly string[] InteropTypes =
     [
         "FluentCMS.Admin.Interop.ColumnStorageInterop",
         "FluentCMS.Admin.Interop.DocumentInterop",
         "FluentCMS.Admin.Interop.SessionStorageInterop",
         "FluentCMS.Admin.Interop.ThemeStorageInterop",
+        "FluentCMS.Plugins.Media.Admin.MediaDropZone",
     ];
+
+    private const string MediaHalfAssembly = "FluentCMS.Plugins.Media.Admin";
 
     private static readonly string[] InteropNamespaces = ["Microsoft.JSInterop", "System.Runtime.InteropServices.JavaScript"];
 
@@ -343,13 +346,13 @@ public class AdminRulesTests
     }
 
     [Fact]
-    public void EachAllowListedInteropTypeIsInTheShellOrTheRichTextEditor()
+    public void EachAllowListedInteropTypeIsInTheShellTheRichTextEditorOrTheMediaHalf()
     {
         foreach (var name in InteropTypes)
         {
             var type = browser.Value.Types.SingleOrDefault(type => type.FullName == name);
             type.ShouldNotBeNull($"{name} is on the interop list but is not a type of the admin.");
-            type.Assembly.Name.Split(',')[0].ShouldBeOneOf(Admin, AdminRichText);
+            type.Assembly.Name.Split(',')[0].ShouldBeOneOf(Admin, AdminRichText, MediaHalfAssembly);
         }
     }
 

@@ -45,6 +45,9 @@ public sealed class ApiRequest
     /// <summary>The JSON body, if any.</summary>
     public JsonNode? Body { get; init; }
 
+    /// <summary>The <c>multipart/form-data</c> body, if any, in place of <see cref="Body"/>.</summary>
+    public ApiForm? Form { get; init; }
+
     /// <summary>
     /// The entity tag of the read a save is based on, sent as <c>If-Match</c>; <see cref="NewLocale"/> adds a locale. A weak
     /// tag is sent by its value.

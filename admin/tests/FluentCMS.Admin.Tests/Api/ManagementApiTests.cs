@@ -371,6 +371,43 @@ public sealed class ManagementApiTests
         Should.Throw<InvalidOperationException>(() => new ManagementApiOptions { ApiBaseUrl = address is null ? null : new Uri(address) }.ManagementAddress())
             .Message.ShouldContain("ApiBaseUrl");
 
+    [Fact]
+    public async Task AFormIsSentAsMultipartWithItsFieldsAndFilesAndAgainAfterA429()
+    {
+        using var harness = new ApiHarness();
+        harness.Server
+            .Problem(HttpStatusCode.TooManyRequests, """{"status":429,"code":"FCMS2901"}""", response => response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(1)))
+            .Answer(HttpStatusCode.Created, """{"items":[]}""");
+        var form = new ApiForm
+        {
+            Fields = new Dictionary<string, string> { ["folderId"] = "0193b1de-0000-7000-8000-000000000001" },
+            Files = [new ApiFormFile("files", "logo.png", "PNG"u8.ToArray())],
+        };
+
+        await harness.Api.SendAsync(new ApiRequest(HttpMethod.Post, "media") { Form = form }, Token);
+
+        harness.Server.Requests.Count.ShouldBe(2);
+        foreach (var sent in harness.Server.Requests)
+        {
+            sent.Body.ShouldNotBeNull();
+            sent.Body.ShouldContain("name=folderId");
+            sent.Body.ShouldContain("0193b1de-0000-7000-8000-000000000001");
+            sent.Body.ShouldContain("name=files; filename=logo.png");
+            sent.Body.ShouldContain("Content-Type: application/octet-stream");
+            sent.Body.ShouldContain("PNG");
+        }
+    }
+
+    [Fact]
+    public async Task ARequestWithABodyAndAFormIsRefused()
+    {
+        using var harness = new ApiHarness();
+
+        await Should.ThrowAsync<ArgumentException>(() => harness.Api.SendAsync(
+            new ApiRequest(HttpMethod.Post, "media") { Body = new JsonObject(), Form = new ApiForm() }, Token));
+        harness.Server.Requests.ShouldBeEmpty();
+    }
+
     [Theory]
     [InlineData("https://cms.example.com", "https://cms.example.com/api/management/v1/")]
     [InlineData("http://localhost:8080/", "http://localhost:8080/api/management/v1/")]

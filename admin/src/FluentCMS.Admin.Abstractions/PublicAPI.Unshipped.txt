@@ -96,10 +96,23 @@ FluentCMS.Admin.Api.ApiProblemException.ApiProblemException(FluentCMS.Admin.Api.
 FluentCMS.Admin.Api.ApiProblemException.ApiProblemException(string! message) -> void
 FluentCMS.Admin.Api.ApiProblemException.ApiProblemException(string! message, System.Exception! innerException) -> void
 FluentCMS.Admin.Api.ApiProblemException.Problem.get -> FluentCMS.Admin.Api.ApiProblem!
+FluentCMS.Admin.Api.ApiForm
+FluentCMS.Admin.Api.ApiForm.ApiForm() -> void
+FluentCMS.Admin.Api.ApiForm.Fields.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+FluentCMS.Admin.Api.ApiForm.Fields.init -> void
+FluentCMS.Admin.Api.ApiForm.Files.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.ApiFormFile!>!
+FluentCMS.Admin.Api.ApiForm.Files.init -> void
+FluentCMS.Admin.Api.ApiFormFile
+FluentCMS.Admin.Api.ApiFormFile.ApiFormFile(string! name, string! fileName, System.ReadOnlyMemory<byte> content) -> void
+FluentCMS.Admin.Api.ApiFormFile.Content.get -> System.ReadOnlyMemory<byte>
+FluentCMS.Admin.Api.ApiFormFile.FileName.get -> string!
+FluentCMS.Admin.Api.ApiFormFile.Name.get -> string!
 FluentCMS.Admin.Api.ApiRequest
 FluentCMS.Admin.Api.ApiRequest.ApiRequest(System.Net.Http.HttpMethod! method, string! path) -> void
 FluentCMS.Admin.Api.ApiRequest.Body.get -> System.Text.Json.Nodes.JsonNode?
 FluentCMS.Admin.Api.ApiRequest.Body.init -> void
+FluentCMS.Admin.Api.ApiRequest.Form.get -> FluentCMS.Admin.Api.ApiForm?
+FluentCMS.Admin.Api.ApiRequest.Form.init -> void
 FluentCMS.Admin.Api.ApiRequest.IdempotencyKey.get -> string?
 FluentCMS.Admin.Api.ApiRequest.IdempotencyKey.init -> void
 FluentCMS.Admin.Api.ApiRequest.IfMatch.get -> string?

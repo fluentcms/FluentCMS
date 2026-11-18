@@ -1,0 +1,9 @@
+.media-folder-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cms-space-s);
+}
+
+.media-dialog-error {
+    color: var(--cms-color-error);
+}

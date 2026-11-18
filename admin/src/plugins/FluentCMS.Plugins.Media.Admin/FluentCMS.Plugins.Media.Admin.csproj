@@ -17,6 +17,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="FluentCMS.Plugins.Media.Admin.Tests" />
+    <InternalsVisibleTo Include="FluentCMS.Admin.ApiTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../../FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj" />
     <ProjectReference Include="../../FluentCMS.Admin.Components/FluentCMS.Admin.Components.csproj" />
   </ItemGroup>

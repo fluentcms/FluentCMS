@@ -12,10 +12,250 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="Media.Asset.Select" xml:space="preserve">
+    <value>Select {0}</value>
+  </data>
+  <data name="Media.Browser.Empty" xml:space="preserve">
+    <value>This folder holds no files.</value>
+  </data>
+  <data name="Media.Browser.Failed" xml:space="preserve">
+    <value>The media library could not be read.</value>
+  </data>
+  <data name="Media.Browser.FolderNotFound" xml:space="preserve">
+    <value>The folder no longer exists.</value>
+  </data>
+  <data name="Media.Browser.Forbidden" xml:space="preserve">
+    <value>You may not see the files of this folder.</value>
+  </data>
+  <data name="Media.Browser.Loading" xml:space="preserve">
+    <value>Loading files…</value>
+  </data>
+  <data name="Media.Browser.NoMatch" xml:space="preserve">
+    <value>No file matches the search and filters.</value>
+  </data>
+  <data name="Media.Browser.ToRoot" xml:space="preserve">
+    <value>Go to all folders</value>
+  </data>
+  <data name="Media.Browser.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Media.Column.Dimensions" xml:space="preserve">
+    <value>Dimensions</value>
+  </data>
+  <data name="Media.Column.Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Media.Column.Size" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="Media.Column.Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Media.Dialog.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Media.Dialog.Failed" xml:space="preserve">
+    <value>The change could not be saved. Try again.</value>
+  </data>
+  <data name="Media.Dialog.Forbidden" xml:space="preserve">
+    <value>You may not make this change.</value>
+  </data>
+  <data name="Media.Folder.Create" xml:space="preserve">
+    <value>Create</value>
+  </data>
+  <data name="Media.Folder.Created" xml:space="preserve">
+    <value>Folder {0} created.</value>
+  </data>
+  <data name="Media.Folder.Cycle" xml:space="preserve">
+    <value>A folder cannot move into itself or into a folder inside it.</value>
+  </data>
+  <data name="Media.Folder.Delete" xml:space="preserve">
+    <value>Delete folder</value>
+  </data>
+  <data name="Media.Folder.DeleteConfirm" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Media.Folder.DeleteText" xml:space="preserve">
+    <value>Delete the folder {0}? Only an empty folder can be deleted.</value>
+  </data>
+  <data name="Media.Folder.DeleteTitle" xml:space="preserve">
+    <value>Delete folder</value>
+  </data>
+  <data name="Media.Folder.Deleted" xml:space="preserve">
+    <value>Folder {0} deleted.</value>
+  </data>
+  <data name="Media.Folder.Move" xml:space="preserve">
+    <value>Move folder</value>
+  </data>
+  <data name="Media.Folder.MoveTitle" xml:space="preserve">
+    <value>Move folder</value>
+  </data>
+  <data name="Media.Folder.Moved" xml:space="preserve">
+    <value>Folder {0} moved.</value>
+  </data>
+  <data name="Media.Folder.Name" xml:space="preserve">
+    <value>Folder name</value>
+  </data>
+  <data name="Media.Folder.NameTaken" xml:space="preserve">
+    <value>A folder of this name is already there.</value>
+  </data>
+  <data name="Media.Folder.New" xml:space="preserve">
+    <value>New folder</value>
+  </data>
+  <data name="Media.Folder.NewTitle" xml:space="preserve">
+    <value>New folder</value>
+  </data>
+  <data name="Media.Folder.NotEmpty" xml:space="preserve">
+    <value>The folder holds files or folders. Move or delete them first.</value>
+  </data>
+  <data name="Media.Folder.Rename" xml:space="preserve">
+    <value>Rename folder</value>
+  </data>
+  <data name="Media.Folder.RenameSave" xml:space="preserve">
+    <value>Rename</value>
+  </data>
+  <data name="Media.Folder.RenameTitle" xml:space="preserve">
+    <value>Rename folder</value>
+  </data>
+  <data name="Media.Folder.Renamed" xml:space="preserve">
+    <value>Folder renamed to {0}.</value>
+  </data>
+  <data name="Media.Folders.Failed" xml:space="preserve">
+    <value>The folders could not be read.</value>
+  </data>
+  <data name="Media.Folders.Label" xml:space="preserve">
+    <value>Folders</value>
+  </data>
+  <data name="Media.Folders.Root" xml:space="preserve">
+    <value>All media</value>
+  </data>
   <data name="Media.Menu" xml:space="preserve">
     <value>Media</value>
   </data>
+  <data name="Media.Move.Assets" xml:space="preserve">
+    <value>Move {0} selected</value>
+  </data>
+  <data name="Media.Move.AssetsTitle" xml:space="preserve">
+    <value>Move files</value>
+  </data>
+  <data name="Media.Move.Moved" xml:space="preserve">
+    <value>{0} moved.</value>
+  </data>
+  <data name="Media.Move.Save" xml:space="preserve">
+    <value>Move</value>
+  </data>
+  <data name="Media.Move.Target" xml:space="preserve">
+    <value>Move to</value>
+  </data>
   <data name="Media.Page.Heading" xml:space="preserve">
     <value>Media</value>
+  </data>
+  <data name="Media.Paging.Label" xml:space="preserve">
+    <value>Pages</value>
+  </data>
+  <data name="Media.Paging.Next" xml:space="preserve">
+    <value>Next</value>
+  </data>
+  <data name="Media.Paging.PageOf" xml:space="preserve">
+    <value>Page {0} of {1}</value>
+  </data>
+  <data name="Media.Paging.Previous" xml:space="preserve">
+    <value>Previous</value>
+  </data>
+  <data name="Media.Paging.Total" xml:space="preserve">
+    <value>{0} files</value>
+  </data>
+  <data name="Media.Paging.TotalOne" xml:space="preserve">
+    <value>1 file</value>
+  </data>
+  <data name="Media.Panel.Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Media.Panel.Name" xml:space="preserve">
+    <value>Title</value>
+  </data>
+  <data name="Media.Panel.Title" xml:space="preserve">
+    <value>File</value>
+  </data>
+  <data name="Media.Results.Label" xml:space="preserve">
+    <value>Files</value>
+  </data>
+  <data name="Media.Search.Label" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Media.Search.Submit" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Media.Tag.Label" xml:space="preserve">
+    <value>Tag</value>
+  </data>
+  <data name="Media.Type.Any" xml:space="preserve">
+    <value>Any type</value>
+  </data>
+  <data name="Media.Type.Audio" xml:space="preserve">
+    <value>Audio</value>
+  </data>
+  <data name="Media.Type.Images" xml:space="preserve">
+    <value>Images</value>
+  </data>
+  <data name="Media.Type.Label" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Media.Type.Pdf" xml:space="preserve">
+    <value>PDF</value>
+  </data>
+  <data name="Media.Type.Videos" xml:space="preserve">
+    <value>Videos</value>
+  </data>
+  <data name="Media.Upload.Clear" xml:space="preserve">
+    <value>Clear finished</value>
+  </data>
+  <data name="Media.Upload.Failed" xml:space="preserve">
+    <value>The upload failed.</value>
+  </data>
+  <data name="Media.Upload.Finished" xml:space="preserve">
+    <value>{0} uploaded.</value>
+  </data>
+  <data name="Media.Upload.FinishedWithRefused" xml:space="preserve">
+    <value>{0} uploaded, {1} refused.</value>
+  </data>
+  <data name="Media.Upload.Heading" xml:space="preserve">
+    <value>Uploads</value>
+  </data>
+  <data name="Media.Upload.Help" xml:space="preserve">
+    <value>Drop files here or anywhere on the page, paste them, or press to choose.</value>
+  </data>
+  <data name="Media.Upload.Label" xml:space="preserve">
+    <value>Upload files</value>
+  </data>
+  <data name="Media.Upload.Refused.FCMS1581" xml:space="preserve">
+    <value>Its type is not allowed in this site.</value>
+  </data>
+  <data name="Media.Upload.Refused.FCMS1582" xml:space="preserve">
+    <value>It is larger than this site allows.</value>
+  </data>
+  <data name="Media.Upload.Refused.FCMS1583" xml:space="preserve">
+    <value>It is a program, which is never stored.</value>
+  </data>
+  <data name="Media.Upload.Refused.FCMS1584" xml:space="preserve">
+    <value>It is an SVG, which this site refuses.</value>
+  </data>
+  <data name="Media.Upload.State.Done" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="Media.Upload.State.Refused" xml:space="preserve">
+    <value>Refused</value>
+  </data>
+  <data name="Media.Upload.State.Uploading" xml:space="preserve">
+    <value>Uploading</value>
+  </data>
+  <data name="Media.Upload.State.Waiting" xml:space="preserve">
+    <value>Waiting</value>
+  </data>
+  <data name="Media.View.Grid" xml:space="preserve">
+    <value>Grid view</value>
+  </data>
+  <data name="Media.View.List" xml:space="preserve">
+    <value>List view</value>
   </data>
 </root>

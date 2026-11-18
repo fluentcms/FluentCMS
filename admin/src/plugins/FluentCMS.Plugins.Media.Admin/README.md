@@ -9,4 +9,4 @@ The admin half of the [FluentCMS](https://github.com/fluentcms/FluentCMS) media 
 </ItemGroup>
 ```
 
-This preview holds the `/media` page and its menu item only; sections 4.14 and 5.2 of the [admin technical specification](https://github.com/fluentcms/FluentCMS/blob/main/docs/planning/admin-technical-spec.md) have the design.
+This preview holds the media library, the `/media` page and its menu item: folders, search, filters, grid and list views, and upload by button, drop and paste. Sections 4.14 and 5.2 of the [admin technical specification](https://github.com/fluentcms/FluentCMS/blob/main/docs/planning/admin-technical-spec.md) have the design.
