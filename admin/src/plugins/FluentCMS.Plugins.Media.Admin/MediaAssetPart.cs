@@ -95,7 +95,7 @@ public abstract class MediaAssetPart : ComponentBase
     private async Task SendAsync()
     {
         var gate = Gate ?? own;
-        await gate.Lock.WaitAsync();
+        var leave = await gate.EnterAsync();
         var (changes, overwrite) = (queued!, queuedOverwrite);
         queued = null;
         sending++;
@@ -125,7 +125,7 @@ public abstract class MediaAssetPart : ComponentBase
         finally
         {
             sending--;
-            gate.Lock.Release();
+            leave();
         }
     }
 
@@ -143,10 +143,21 @@ public abstract class MediaAssetPart : ComponentBase
     protected Task KeepMineAsync() => pending is { } changes ? SaveAsync(changes, overwrite: true) : Task.CompletedTask;
 }
 
-// The saves of one panel, one at a time; each is based on the newest of the asset its part shows and the last answer.
+// The saves of one panel, one at a time; each is based on the newest of the asset its part shows and the last answer. A
+// component runs on the renderer's one thread, so a chain of tasks orders them, which keeps a semaphore out of the app.
 internal sealed class MediaSaveGate
 {
-    public SemaphoreSlim Lock { get; } = new(1, 1);
+    private Task tail = Task.CompletedTask;
+
+    // Waits for the saves before this one and answers what ends it.
+    public async Task<Action> EnterAsync()
+    {
+        var before = tail;
+        var done = new TaskCompletionSource();
+        tail = done.Task;
+        await before;
+        return done.SetResult;
+    }
 
     public MediaAssetInfo? Latest { get; set; }
 

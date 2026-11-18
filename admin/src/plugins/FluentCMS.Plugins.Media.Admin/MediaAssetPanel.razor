@@ -444,7 +444,7 @@
     private async Task RunAsync(Guid id, Func<Task> action)
     {
         (busy, actionError) = (true, null);
-        await gate.Lock.WaitAsync();
+        var leave = await gate.EnterAsync();
         try
         {
             await action();
@@ -470,7 +470,7 @@
         }
         finally
         {
-            gate.Lock.Release();
+            leave();
             busy = false;
         }
     }
