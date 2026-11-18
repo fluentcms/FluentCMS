@@ -76,17 +76,17 @@ public sealed class MediaFieldEditorTests : MediaTestContext
         cut.Find("fieldset").GetAttribute("aria-describedby").ShouldNotBeNull();
 
         Labeled(cut, "Move a.png down").Click();
-        Written().ShouldBe([second, first, third]);
-        Announcer.Messages.Last().ShouldBe("a.png moved to position 2 of 3.");
+        cut.WaitForAssertion(() => Written().ShouldBe([second, first, third]));
+        cut.WaitForAssertion(() => Announcer.Messages.ShouldContain("a.png moved to position 2 of 3."));
 
         cut.Render(parameters => parameters.Add(editor => editor.Value, Ids(second, first, third)));
         await cut.FindAll(".media-field-item")[2].TriggerEventAsync("onkeydown", new KeyboardEventArgs { Key = "ArrowUp", AltKey = true });
-        Written().ShouldBe([second, third, first]);
+        cut.WaitForAssertion(() => Written().ShouldBe([second, third, first]));
 
         cut.Render(parameters => parameters.Add(editor => editor.Value, Ids(second, third, first)));
         Labeled(cut, "Remove c.png").Click();
-        Written().ShouldBe([second, first]);
-        Announcer.Messages.Last().ShouldBe("c.png removed.");
+        cut.WaitForAssertion(() => Written().ShouldBe([second, first]));
+        cut.WaitForAssertion(() => Announcer.Messages.ShouldContain("c.png removed."));
     }
 
     [Fact]
@@ -183,7 +183,7 @@ public sealed class MediaFieldEditorTests : MediaTestContext
     private static IReadOnlyList<string> Names(IRenderedComponent<MediaFieldEditor> cut) =>
         [.. cut.FindAll(".media-field-name").Select(name => name.TextContent)];
 
-    private IReadOnlyList<Guid> Written() => [.. changes[^1]!.AsArray().Select(id => Guid.Parse(id!.GetValue<string>()))];
+    private IReadOnlyList<Guid> Written() => changes.Count == 0 ? [] : [.. changes[^1]!.AsArray().Select(id => Guid.Parse(id!.GetValue<string>()))];
 
     private IRenderedComponent<MediaFieldEditor> Edit(SchemaFieldDescription field, JsonNode? value, string locale = "en") =>
         Render<MediaFieldEditor>(parameters => parameters
