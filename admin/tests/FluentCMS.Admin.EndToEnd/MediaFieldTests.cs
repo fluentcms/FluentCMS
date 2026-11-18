@@ -8,54 +8,61 @@ using static Microsoft.Playwright.Assertions;
 namespace FluentCMS.Admin.EndToEnd;
 
 // The media field, its list cell and the media picker of A-20 on the Blog sample's Article.Hero. The host is shared, so a
-// case finds the sample's image by a search and names what it makes with a mark of its own.
+// case works only on assets it uploads itself, under names with a mark of its own, and finds them by a search.
 public sealed class MediaFieldTests(EndToEndHost host) : BrowserTest(host)
 {
     // A PNG of one pixel.
     private const string Png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 
-    // The image the Blog sample seeds, by its title.
-    private const string Welcome = "Welcome";
-
     [Fact]
-    public async Task TheEditorUploadsFromThePickerRemovesItChoosesTheSamplesImageAndTheListShowsIt()
+    public async Task TheEditorPicksFromTheLibraryUploadsAnotherRemovesItSavesAndTheListShowsTheImage()
     {
         var mark = Mark();
         var browser = await OpenBrowserAsync();
         var tab = await NewArticleAsync(browser, Host.Editor, mark);
-
-        // An image uploaded from the picker, then chosen there.
-        await FieldButton(tab, "Media.Field.Choose").ClickAsync();
+        var choose = FieldButton(tab, "Media.Field.Choose");
         var picker = Picker(tab);
-        await Expect(picker.Locator(".media-tile").First).ToBeVisibleAsync();
-        await picker.Locator("[data-media-upload] input[type=file]").SetInputFilesAsync(
-            new FilePayload { Name = $"{mark}.png", MimeType = "image/png", Buffer = Convert.FromBase64String(Png) });
-        await Expect(picker.Locator(".media-upload-done")).ToHaveCountAsync(1);
-        await Tile(picker, $"{mark}.png").ClickAsync();
+
+        // An image of the library, put there by this case.
+        await choose.ClickAsync();
+        await UploadAsync(picker, $"{mark}-library.png");
+        await DialogButton(picker, "Media.Dialog.Cancel").ClickAsync();
         await Expect(picker).ToBeHiddenAsync();
-        await Expect(Names(tab)).ToHaveTextAsync([$"{mark}.png"]);
+
+        // Picked from the library by a search.
+        await choose.ClickAsync();
+        await SearchAsync(picker, mark);
+        await Tile(picker, $"{mark}-library.png").ClickAsync();
+        await Expect(picker).ToBeHiddenAsync();
+        await Expect(Names(tab)).ToHaveTextAsync([$"{mark}-library.png"]);
         await Expect(tab.Page.Locator("[data-field='hero'] .media-field-thumb img")).Not.ToHaveJSPropertyAsync("naturalWidth", 0);
 
-        // Removed, then the sample's image chosen from the library by a search.
-        await tab.Page.Locator($"[data-field='hero'] fluent-button[aria-label=\"{Text("Media.Field.Remove", $"{mark}.png")}\"]").ClickAsync();
+        // Another uploaded from the picker and chosen, then removed.
+        await choose.ClickAsync();
+        await SearchAsync(picker, mark);
+        await UploadAsync(picker, $"{mark}-upload.png");
+        await Tile(picker, $"{mark}-upload.png").ClickAsync();
+        await Expect(Names(tab)).ToHaveTextAsync([$"{mark}-upload.png"]);
+        await RemoveButton(tab, $"{mark}-upload.png").ClickAsync();
         await Expect(Names(tab)).ToHaveCountAsync(0);
-        await FieldButton(tab, "Media.Field.Choose").ClickAsync();
-        await SearchAsync(picker, "welcome");
-        await Tile(picker, Welcome).ClickAsync();
-        await Expect(Names(tab)).ToHaveTextAsync([Welcome]);
 
-        var saved = await tab.Page.RunAndWaitForResponseAsync(
+        // The library's image again, and the save.
+        await choose.ClickAsync();
+        await SearchAsync(picker, $"{mark}-library");
+        await Tile(picker, $"{mark}-library.png").ClickAsync();
+        await Expect(Names(tab)).ToHaveTextAsync([$"{mark}-library.png"]);
+        var saved = await AnswerAsync(
+            tab,
             () => tab.Page.Locator(".content-form-toolbar fluent-button").Filter(new LocatorFilterOptions { HasTextRegex = new Regex($@"^\s*{Regex.Escape(Repository.AdminText("Content.Form.Save"))}\s*$") }).First.ClickAsync(),
-            response => response.Request.Method == "POST" && response.Url == tab.ManagementUrl("content/article"),
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+            response => response.Request.Method == "POST" && response.Url == tab.ManagementUrl("content/article"));
         saved.Status.ShouldBe(201);
         var hero = Guid.Parse(JsonNode.Parse(saved.Request.PostData!)!["hero"]!.GetValue<string>());
 
         // The list reads the field populated, in its one read, and shows the image.
         var list = await AnswerAsync(tab, () => tab.Page.GotoAsync(new Uri(Host.Admin, "content/article?columns=hero").AbsoluteUri), response => response.Url.StartsWith(tab.ManagementUrl("content/article") + "?", StringComparison.Ordinal));
         list.Url.ShouldContain("populate=hero");
-        var row = tab.Page.Locator("tr").Filter(new LocatorFilterOptions { HasText = mark });
-        await Expect(row.Locator(".media-cell-name")).ToHaveTextAsync(Welcome);
+        var row = tab.Page.Locator("tr").Filter(new LocatorFilterOptions { HasText = $"{mark} with a hero" });
+        await Expect(row.Locator(".media-cell-name")).ToHaveTextAsync($"{mark}-library.png");
         await Expect(row.Locator(".media-cell img")).ToHaveAttributeAsync("src", new Regex($"/media/{hero:D}/original/"));
         await Expect(row.Locator(".media-cell img")).Not.ToHaveJSPropertyAsync("naturalWidth", 0);
         browser.PolicyViolations.ShouldBeEmpty();
@@ -69,27 +76,31 @@ public sealed class MediaFieldTests(EndToEndHost host) : BrowserTest(host)
         var tab = await NewArticleAsync(browser, Host.Editor, mark);
         var keyboard = tab.Page.Keyboard;
         var choose = FieldButton(tab, "Media.Field.Choose");
-
-        // Escape closes the picker without a choice and gives focus back.
-        await PressAsync(choose, "Enter");
         var picker = Picker(tab);
-        await Expect(picker.Locator(".media-tile").First).ToBeVisibleAsync();
+
+        // The upload's button opens the file chooser by Space; Escape closes the picker without a choice.
+        await PressAsync(choose, "Enter");
+        var upload = picker.Locator("[data-media-upload] input[type=file]");
+        await Expect(upload).ToBeEnabledAsync();
+        var chooser = await tab.Page.RunAndWaitForFileChooserAsync(() => PressAsync(upload, "Space"));
+        await chooser.SetFilesAsync(new FilePayload { Name = $"{mark}-keys.png", MimeType = "image/png", Buffer = Convert.FromBase64String(Png) });
+        await Expect(picker.Locator(".media-upload-done")).ToHaveCountAsync(1);
         await keyboard.PressAsync("Escape");
         await Expect(picker).ToBeHiddenAsync();
         await FocusReturnedAsync(choose);
         await Expect(Names(tab)).ToHaveCountAsync(0);
 
-        // The search by keys and its button, then Enter on a tile chooses it.
+        // The search by keys and its button, then Enter on the tile chooses it.
         await PressAsync(choose, "Enter");
         var search = picker.GetByLabel(Text("Media.Search.Label"), new LocatorGetByLabelOptions { Exact = true });
         await PressAsync(search, "Control+a");
-        await keyboard.TypeAsync("welcome");
-        await Expect(search).ToHaveValueAsync("welcome");
-        await PressAsync(picker.Locator("fluent-button").Filter(Exactly("Media.Search.Submit")), "Enter");
-        await Expect(picker.Locator(".media-tile-name")).ToHaveTextAsync([Welcome]);
-        await PressAsync(Tile(picker, Welcome), "Enter");
+        await keyboard.TypeAsync(mark);
+        await Expect(search).ToHaveValueAsync(mark);
+        await PressAsync(DialogButton(picker, "Media.Search.Submit"), "Enter");
+        await Expect(picker.Locator(".media-tile-name")).ToHaveTextAsync([$"{mark}-keys.png"]);
+        await PressAsync(Tile(picker, $"{mark}-keys.png"), "Enter");
         await Expect(picker).ToBeHiddenAsync();
-        await Expect(Names(tab)).ToHaveTextAsync([Welcome]);
+        await Expect(Names(tab)).ToHaveTextAsync([$"{mark}-keys.png"]);
         await FocusReturnedAsync(choose);
 
         // The alt text opens under the asset by Enter and is saved on the asset as focus leaves it.
@@ -104,10 +115,10 @@ public sealed class MediaFieldTests(EndToEndHost host) : BrowserTest(host)
         JsonNode.Parse(patched.Request.PostData!)!["alt"]!.GetValue<string>().ShouldBe($"{mark} banner");
 
         // Removed by Enter on its button; focus goes to the picker's button.
-        await PressAsync(tab.Page.Locator($"[data-field='hero'] fluent-button[aria-label=\"{Text("Media.Field.Remove", Welcome)}\"]"), "Enter");
+        await PressAsync(RemoveButton(tab, $"{mark}-keys.png"), "Enter");
         await Expect(Names(tab)).ToHaveCountAsync(0);
         await Expect(choose).ToBeFocusedAsync();
-        await Expect(tab.Announced(Text("Media.Field.Removed", Welcome))).ToBeAttachedAsync();
+        await Expect(tab.Announced(Text("Media.Field.Removed", $"{mark}-keys.png"))).ToBeAttachedAsync();
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
@@ -124,17 +135,30 @@ public sealed class MediaFieldTests(EndToEndHost host) : BrowserTest(host)
     private static async Task<IResponse> AnswerAsync(AdminTab tab, Func<Task> action, Func<IResponse, bool> answer) =>
         await tab.Page.RunAndWaitForResponseAsync(action, answer, new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
 
+    // Uploads one image from the picker's upload, into the open folder.
+    private static async Task UploadAsync(ILocator picker, string name)
+    {
+        var done = picker.Locator(".media-upload-done");
+        var before = await done.CountAsync();
+        await picker.Locator("[data-media-upload] input[type=file]").SetInputFilesAsync(
+            new FilePayload { Name = name, MimeType = "image/png", Buffer = Convert.FromBase64String(Png) });
+        await Expect(done).ToHaveCountAsync(before + 1);
+    }
+
     private static async Task SearchAsync(ILocator picker, string text)
     {
         await picker.GetByLabel(Text("Media.Search.Label"), new LocatorGetByLabelOptions { Exact = true }).FillAsync(text);
-        await picker.Locator("fluent-button").Filter(Exactly("Media.Search.Submit")).ClickAsync();
+        await DialogButton(picker, "Media.Search.Submit").ClickAsync();
     }
 
-    // A dialog gives focus back to its opener as it closes, and the component library does it again 25 ms later.
+    // A dialog gives focus back to its opener as it closes, and the component library does it again on a 25 ms timer
+    // (FocusOnPreviousActiveElement). A timer of the page set now runs after the library's, since timers run in the order
+    // they expire, so focus is where it stays once that timer has run.
     private static async Task FocusReturnedAsync(ILocator opener)
     {
         await Expect(opener).ToBeFocusedAsync();
-        await opener.Page.WaitForTimeoutAsync(150);
+        await opener.Page.EvaluateAsync("() => new Promise(resolve => setTimeout(resolve, 50))");
+        await Expect(opener).ToBeFocusedAsync();
     }
 
     // Focus as Tab would give it, then a key: no pointer is used.
@@ -162,6 +186,11 @@ public sealed class MediaFieldTests(EndToEndHost host) : BrowserTest(host)
 
     private static ILocator FieldButton(AdminTab tab, string key) =>
         tab.Page.Locator("[data-field='hero'] .media-field-actions fluent-button").Filter(Exactly(key));
+
+    private static ILocator RemoveButton(AdminTab tab, string name) =>
+        tab.Page.Locator($"[data-field='hero'] fluent-button[aria-label=\"{Text("Media.Field.Remove", name)}\"]");
+
+    private static ILocator DialogButton(ILocator dialog, string key) => dialog.Locator("fluent-button").Filter(Exactly(key));
 
     private static ILocator Names(AdminTab tab) => tab.Page.Locator("[data-field='hero'] .media-field-name");
 
