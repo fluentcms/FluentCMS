@@ -1577,4 +1577,16 @@
   <data name="Home.Page.PluginProblems" xml:space="preserve">
     <value>Some plugin admin parts of this admin are not loaded.</value>
   </data>
+  <data name="Home.Page.Empty" xml:space="preserve">
+    <value>There is nothing to show you in this site yet.</value>
+  </data>
+  <data name="Home.Content.Heading" xml:space="preserve">
+    <value>Content</value>
+  </data>
+  <data name="Home.Widget.Failed.Heading" xml:space="preserve">
+    <value>Widget of {0} unavailable</value>
+  </data>
+  <data name="Home.Widget.Failed" xml:space="preserve">
+    <value>A widget of the plugin {0} could not be shown.</value>
+  </data>
 </root>

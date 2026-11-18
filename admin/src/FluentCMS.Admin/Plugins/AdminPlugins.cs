@@ -24,6 +24,9 @@ internal enum PluginPageGate
     NoAccess,
 }
 
+// A dashboard widget of an admin half, as its manifest declares it, at its position in the manifest's list.
+internal sealed record PluginWidget(AdminPluginManifest Half, AdminManifestWidget Widget, int Position);
+
 // The admin halves of the app as the shell uses them (spec 2.6): each contribution counts only while its plugin is enabled
 // in the site and the user holds its permission, and a half is loaded with its assembly on the first use of one of them,
 // never in a site where its plugin is disabled. Loading runs the half's Configure once, into a provider of the half that
@@ -64,6 +67,15 @@ internal sealed class AdminPlugins(
         ArgumentNullException.ThrowIfNull(half);
         return IsAvailable(half) && (permission is null || context.Allows(permission));
     }
+
+    // The widgets of the home page the user may see, by the plugin's name and then in the order of its manifest: those whose
+    // plugin is enabled in the site, whose permission the user holds and whose role it has, for each that is set.
+    public IReadOnlyList<PluginWidget> Widgets() =>
+    [
+        .. catalog.Halves.OrderBy(half => half.Name, StringComparer.Ordinal).SelectMany(half => half.Widgets
+            .Select((widget, position) => new PluginWidget(half, widget, position))
+            .Where(item => Shows(half, item.Widget.Permission) && (item.Widget.Role is null || context.HasRole(item.Widget.Role)))),
+    ];
 
     // The class of a contribution, by the full name its manifest gives, once its half is loaded. Call it only for what Shows
     // allows; it throws for a half whose plugin is disabled or that failed to load. The app's partial trimming keeps the

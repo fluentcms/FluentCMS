@@ -1,0 +1,44 @@
+@* The latest uploads of the site, a widget of the home page for a user who may read the media library (spec 5.2). *@
+@attribute [DashboardWidget("Media.Widget.Title", Size = WidgetSize.Small, Permission = "media.read")]
+@using System.Text.Json
+@using FluentCMS.Admin.Api
+@inject IManagementApi Api
+@inject IStringLocalizer<MediaResources> L
+
+<CmsCard Title="@L["Media.Widget.Title"]">
+    @if (failed)
+    {
+        <p>@L["Media.Widget.Failed"]</p>
+    }
+    else if (uploads is { Count: 0 })
+    {
+        <p>@L["Media.Widget.Empty"]</p>
+    }
+    else if (uploads is not null)
+    {
+        <ul class="latest-uploads">
+            @foreach (var upload in uploads)
+            {
+                <li @key="upload.Id">@(string.IsNullOrWhiteSpace(upload.Title) ? upload.FileName : upload.Title)</li>
+            }
+        </ul>
+    }
+    <p><a href="media">@L["Media.Widget.Library"]</a></p>
+</CmsCard>
+
+@code {
+    private IReadOnlyList<LatestUpload>? uploads;
+    private bool failed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            uploads = await LatestUploads.ReadAsync(Api, CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or JsonException or TaskCanceledException)
+        {
+            failed = true;
+        }
+    }
+}

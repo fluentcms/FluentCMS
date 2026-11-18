@@ -27,12 +27,19 @@ internal static class ShellNavigation
 {
     public static string ContentRoute(string type) => $"content/{Uri.EscapeDataString(type)}";
 
+    // The types of the site's schema the user may read, in schema order.
+    public static List<SchemaTypeDescription> ReadableTypes(AdminContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return [.. (context.Schema?.Types ?? []).Where(type => context.MayRead(type.Name))];
+    }
+
     public static IReadOnlyList<ShellSection> Build(AdminContext context, AdminMenu menu)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(menu);
 
-        var types = (context.Schema?.Types ?? []).Where(type => context.MayRead(type.Name)).ToList();
+        var types = ReadableTypes(context);
         List<ShellSection> sections =
         [
             new(ShellSectionKind.Collections, [.. types.Where(type => type.Kind == "collection").Select(Link)]),

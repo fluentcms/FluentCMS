@@ -1,0 +1,8 @@
+@* A component that throws when it renders, which the home page's tests name as a widget in a manifest of their own; it
+   declares no widget, so the sample's manifest does not list it. *@
+
+<p>@Fail()</p>
+
+@code {
+    private static string Fail() => throw new InvalidOperationException("The widget broke.");
+}

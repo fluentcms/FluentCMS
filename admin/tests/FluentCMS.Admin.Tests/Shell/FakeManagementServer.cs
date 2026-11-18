@@ -37,6 +37,9 @@ internal sealed class FakeManagementServer : HttpMessageHandler
 
     public string UserName { get; set; } = "ada";
 
+    // The roles /me lists, each { id, name, siteId }; none by default.
+    public JsonArray Roles { get; } = [];
+
     public Guid UserId { get; set; }
 
     // Every request with its method and body, for the routes a test writes to.
@@ -256,7 +259,7 @@ internal sealed class FakeManagementServer : HttpMessageHandler
 
         return path switch
         {
-            "me" => Json(new JsonObject { ["id"] = UserId, ["kind"] = "adminUser", ["name"] = UserName, ["roles"] = new JsonArray() }),
+            "me" => Json(new JsonObject { ["id"] = UserId, ["kind"] = "adminUser", ["name"] = UserName, ["roles"] = Roles.DeepClone() }),
             "me/sites" => Json(new JsonObject { ["items"] = Sites.DeepClone() }),
             "me/access" => Json(locale is not null && LocaleAccess.TryGetValue((site, locale), out var limited) ? limited : Access[site]),
             "schema" when RefusesSchema || !Access[site]["permissions"]!.AsArray().Any(name => name!.GetValue<string>() == "schema.read") => Forbidden(),

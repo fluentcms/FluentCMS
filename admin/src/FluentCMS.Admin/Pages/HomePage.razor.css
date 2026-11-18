@@ -1,0 +1,45 @@
+/* One column on a phone, two from a tablet, four on a wide screen: a small tile takes one, a medium two and a wide the row. */
+.home-tiles {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--cms-space-l);
+}
+
+.home-tile {
+    min-inline-size: 0;
+}
+
+.home-tile-wide {
+    grid-column: 1 / -1;
+}
+
+.home-types {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cms-space-s) var(--cms-space-l);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.home-types a {
+    display: inline-block;
+    min-block-size: var(--cms-target-size);
+    line-height: var(--cms-target-size);
+}
+
+@media (min-width: 640px) {
+    .home-tiles {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .home-tile-medium {
+        grid-column: span 2;
+    }
+}
+
+@media (min-width: 1280px) {
+    .home-tiles {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}

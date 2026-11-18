@@ -258,4 +258,16 @@
   <data name="Media.View.List" xml:space="preserve">
     <value>List view</value>
   </data>
+  <data name="Media.Widget.Empty" xml:space="preserve">
+    <value>Nothing has been uploaded yet.</value>
+  </data>
+  <data name="Media.Widget.Failed" xml:space="preserve">
+    <value>The latest uploads could not be read.</value>
+  </data>
+  <data name="Media.Widget.Library" xml:space="preserve">
+    <value>Open the media library</value>
+  </data>
+  <data name="Media.Widget.Title" xml:space="preserve">
+    <value>Latest uploads</value>
+  </data>
 </root>
