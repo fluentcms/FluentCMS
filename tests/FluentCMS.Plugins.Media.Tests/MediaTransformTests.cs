@@ -242,6 +242,50 @@ public sealed class MediaTransformTests(TransformHosts hosts) : IClassFixture<Tr
     }
 
     [Fact]
+    public async Task ConcurrentRequestsForOneNewVariantDecodeItOnce()
+    {
+        var media = hosts.Recording;
+        var processor = media.Services.GetRequiredService<ProcessorCalls>();
+        var decodes = media.Services.GetRequiredService<MediaDecodes>();
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var asset = await UploadAsync(admin, Bands(400, 200));
+        var url = await UrlAsync(media, asset, new MediaImageOptions { Width = 100 });
+        var calls = CallsFrom(media);
+        var joined = decodes.Joined;
+        processor.Entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        processor.Hold = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        HttpResponseMessage[] responses;
+        try
+        {
+            Task<HttpResponseMessage>[] requests = [FetchAsync(anonymous, url), FetchAsync(anonymous, url), FetchAsync(anonymous, url)];
+            await processor.Entered.Task.WaitAsync(Token);
+
+            // The decode cannot end before Hold, so the two others can only join it.
+            SpinWait.SpinUntil(() => decodes.Joined - joined >= 2, TimeSpan.FromSeconds(30)).ShouldBeTrue();
+            processor.Hold.SetResult();
+            responses = await Task.WhenAll(requests);
+        }
+        finally
+        {
+            processor.Hold = null;
+            processor.Entered = null;
+        }
+
+        var images = new List<string>();
+        foreach (var response in responses)
+        {
+            using (response)
+            {
+                images.Add(Convert.ToHexString((await ImageAsync(response)).Bytes));
+            }
+        }
+
+        images.Distinct().Count().ShouldBe(1);
+        calls().ShouldBe((1, 1));
+    }
+
+    [Fact]
     public async Task ARequestOverTheLimitsIsRefusedBeforeTheImageIsRead()
     {
         var media = hosts.Recording;

@@ -172,6 +172,11 @@ internal sealed class ProcessorCalls
 
     public bool EncodesAvif { get; set; }
 
+    // Set, ProcessAsync says it has started and then waits for Hold.
+    public TaskCompletionSource? Entered { get; set; }
+
+    public TaskCompletionSource? Hold { get; set; }
+
     public int Identified => Volatile.Read(ref _identified);
 
     public int Processed => Volatile.Read(ref _processed);
@@ -199,6 +204,12 @@ internal sealed class RecordingProcessor(ProcessorCalls calls) : IImageProcessor
     public async Task ProcessAsync(Stream image, ImageTransform transform, Stream output, CancellationToken cancellationToken = default)
     {
         calls.Process();
+        if (calls.Hold is { } hold)
+        {
+            calls.Entered?.TrySetResult();
+            await hold.Task.WaitAsync(cancellationToken);
+        }
+
         if (transform.MimeType == "image/avif")
         {
             await output.WriteAsync("AVIF"u8.ToArray(), cancellationToken);

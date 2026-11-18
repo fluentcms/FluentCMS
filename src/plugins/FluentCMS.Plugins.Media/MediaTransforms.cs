@@ -7,6 +7,7 @@ using FluentCMS.Media;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -29,6 +30,8 @@ internal sealed class MediaTransforms(
     MediaStorage storages,
     IImageProcessor processor,
     MediaSigning signing,
+    MediaDecodes decodes,
+    IServiceScopeFactory scopes,
     IOptions<MediaOptions> options,
     TimeProvider time,
     ILogger<MediaTransforms> logger)
@@ -145,72 +148,120 @@ internal sealed class MediaTransforms(
         var variesByAccept = merged.Format == MediaImageFormat.Auto;
         var assetStorage = StorageOf(asset);
 
+        if (await StoredAsync(assetStorage, id, hash, cancellationToken) is { } stored)
+        {
+            return new TransformedImage(stored, transform.MimeType, etag, variesByAccept);
+        }
+
+        // The site and the limits are in the key, since the checks that the header allows are the caller's.
+        await decodes.RunAsync($"{site}/{id:N}/{hash}/{limited}", token => CreateAsync(assetStorage, asset, transform, hash, rules, limited, token), cancellationToken);
+
+        var made = await StoredAsync(assetStorage, id, hash, cancellationToken)
+            ?? throw new PluginException(MediaErrorCodes.AssetNotFound, $"The variant {hash} of the media asset {id:D} is missing from the storage.");
+        return new TransformedImage(made, transform.MimeType, etag, variesByAccept);
+    }
+
+    private async Task<Stream?> StoredAsync(IFileStorage assetStorage, Guid id, string hash, CancellationToken cancellationToken)
+    {
         var stored = await database.Set<Variant>().AsNoTracking().FirstOrDefaultAsync(item => item.AssetId == id && item.ParamsHash == hash, cancellationToken);
-        if (stored is not null)
+        if (stored is null)
         {
-            if (await assetStorage.OpenReadAsync(stored.StorageKey, cancellationToken) is { } content)
-            {
-                return new TransformedImage(content, transform.MimeType, etag, variesByAccept);
-            }
-
-            await database.Set<Variant>().Where(item => item.AssetId == id && item.ParamsHash == hash).ExecuteDeleteAsync(cancellationToken);
+            return null;
         }
 
-        await using (var source = await OpenAsync(assetStorage, asset, cancellationToken))
+        if (await assetStorage.OpenReadAsync(stored.StorageKey, cancellationToken) is { } content)
         {
-            var header = await processor.IdentifyAsync(source, cancellationToken)
-                ?? throw new PluginException(MediaErrorCodes.NotTransformable, $"The bytes of the asset {id:D} are no image the image processor reads.");
-            if ((long)header.Width * header.Height * header.FrameCount > rules.MaxSourcePixels)
-            {
-                throw SourceTooLarge(id, rules);
-            }
-
-            // A side that follows the aspect ratio is held to the same limits as a side the URL gives.
-            var (width, height) = SizeOf(transform, header.Width, header.Height);
-            if (limited && (width > rules.MaxTransformWidth || height > rules.MaxTransformHeight))
-            {
-                throw new PluginException(MediaErrorCodes.TransformLimit, $"The image would be {width} by {height} pixels, over the {rules.MaxTransformWidth} by {rules.MaxTransformHeight} the media settings of the site allow.");
-            }
+            return content;
         }
 
-        Stream output = MediaService.TemporaryFile();
+        await database.Set<Variant>().Where(item => item.AssetId == id && item.ParamsHash == hash).ExecuteDeleteAsync(cancellationToken);
+        return null;
+    }
+
+    // Run by MediaDecodes for every caller that waits, so it outlives the scope of the request that started it and records
+    // the variant in a scope of its own. The original is read once: from the local disk as it is, and from any other storage
+    // copied to a temporary file first, where the header and then the pixels are read. The header is read even when the
+    // asset recorded its size, since that size is before the orientation and counts no frames.
+    private async Task CreateAsync(IFileStorage assetStorage, Asset asset, ImageTransform transform, string hash, MediaSettings rules, bool limited, CancellationToken cancellationToken)
+    {
+        var id = asset.Id;
+        await using var scope = scopes.CreateAsyncScope();
+        var variants = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+
+        // A request that missed the variant just before an earlier run stored it starts a run after that one has ended.
+        if (await variants.Set<Variant>().AsNoTracking().AnyAsync(item => item.AssetId == id && item.ParamsHash == hash, cancellationToken))
+        {
+            return;
+        }
+
+        var images = scope.ServiceProvider.GetRequiredService<IImageProcessor>();
+        await using var source = await SpoolAsync(await OpenAsync(assetStorage, asset, cancellationToken), MediaService.TemporaryFile, cancellationToken);
+
+        var header = await images.IdentifyAsync(source, cancellationToken)
+            ?? throw new PluginException(MediaErrorCodes.NotTransformable, $"The bytes of the asset {id:D} are no image the image processor reads.");
+        if ((long)header.Width * header.Height * header.FrameCount > rules.MaxSourcePixels)
+        {
+            throw SourceTooLarge(id, rules);
+        }
+
+        // A side that follows the aspect ratio is held to the same limits as a side the URL gives.
+        var (width, height) = SizeOf(transform, header.Width, header.Height);
+        if (limited && (width > rules.MaxTransformWidth || height > rules.MaxTransformHeight))
+        {
+            throw new PluginException(MediaErrorCodes.TransformLimit, $"The image would be {width} by {height} pixels, over the {rules.MaxTransformWidth} by {rules.MaxTransformHeight} the media settings of the site allow.");
+        }
+
+        await using var output = MediaService.TemporaryFile();
+        source.Position = 0;
         try
         {
-            await using (var source = await OpenAsync(assetStorage, asset, cancellationToken))
-            {
-                try
-                {
-                    await processor.ProcessAsync(source, transform, output, cancellationToken);
-                }
-                catch (InvalidDataException exception)
-                {
-                    throw new PluginException(MediaErrorCodes.NotTransformable, $"The bytes of the asset {id:D} are no image the image processor reads: {exception.Message}");
-                }
-            }
+            await images.ProcessAsync(source, transform, output, cancellationToken);
+        }
+        catch (InvalidDataException exception)
+        {
+            throw new PluginException(MediaErrorCodes.NotTransformable, $"The bytes of the asset {id:D} are no image the image processor reads: {exception.Message}");
+        }
 
-            var key = $"{asset.StorageKey[..asset.StorageKey.LastIndexOf('/')]}/{hash}{ExtensionOf(transform.MimeType)}";
-            output.Position = 0;
-            await assetStorage.WriteAsync(key, output, cancellationToken);
-            try
-            {
-                await RecordAsync(new Variant { AssetId = id, ParamsHash = hash, StorageKey = key, Size = output.Length, CreatedAt = time.GetUtcNow() }, cancellationToken);
-            }
-            catch
-            {
-                // Without its row, nothing would ever remove the file.
-                await ForgetAsync(assetStorage, key);
-                throw;
-            }
-
-            MediaLog.VariantCreated(logger, id, hash, transform.MimeType, output.Length);
-
-            output.Position = 0;
-            return new TransformedImage(output, transform.MimeType, etag, variesByAccept);
+        var key = $"{asset.StorageKey[..asset.StorageKey.LastIndexOf('/')]}/{hash}{ExtensionOf(transform.MimeType)}";
+        output.Position = 0;
+        await assetStorage.WriteAsync(key, output, cancellationToken);
+        try
+        {
+            await RecordAsync(variants, new Variant { AssetId = id, ParamsHash = hash, StorageKey = key, Size = output.Length, CreatedAt = time.GetUtcNow() }, cancellationToken);
         }
         catch
         {
-            await output.DisposeAsync();
+            // Without its row, nothing would ever remove the file.
+            await ForgetAsync(assetStorage, key);
             throw;
+        }
+
+        MediaLog.VariantCreated(logger, id, hash, transform.MimeType, output.Length);
+    }
+
+    // A stream on the local disk or in memory is read where it is; any other, such as a storage's that fetches at each seek,
+    // is copied to a temporary file, deleted when it is disposed.
+    internal static async Task<Stream> SpoolAsync(Stream source, Func<FileStream> temporaryFile, CancellationToken cancellationToken)
+    {
+        if (source is FileStream or MemoryStream)
+        {
+            return source;
+        }
+
+        await using (source)
+        {
+            var copy = temporaryFile();
+            try
+            {
+                await source.CopyToAsync(copy, cancellationToken);
+                copy.Position = 0;
+                return copy;
+            }
+            catch
+            {
+                await copy.DisposeAsync();
+                throw;
+            }
         }
     }
 
@@ -306,17 +357,17 @@ internal sealed class MediaTransforms(
     }
 
     // Two requests that make the same variant at once write the same key and meet at the primary key.
-    private async Task RecordAsync(Variant variant, CancellationToken cancellationToken)
+    private static async Task RecordAsync(PluginDbContext<MediaPlugin> context, Variant variant, CancellationToken cancellationToken)
     {
-        database.Add(variant);
+        context.Add(variant);
         try
         {
-            await database.SaveChangesAsync(cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException)
         {
-            database.Entry(variant).State = EntityState.Detached;
-            if (!await database.Set<Variant>().AsNoTracking().AnyAsync(item => item.AssetId == variant.AssetId && item.ParamsHash == variant.ParamsHash, CancellationToken.None))
+            context.Entry(variant).State = EntityState.Detached;
+            if (!await context.Set<Variant>().AsNoTracking().AnyAsync(item => item.AssetId == variant.AssetId && item.ParamsHash == variant.ParamsHash, CancellationToken.None))
             {
                 throw;
             }
@@ -324,7 +375,7 @@ internal sealed class MediaTransforms(
             return;
         }
 
-        database.Entry(variant).State = EntityState.Detached;
+        context.Entry(variant).State = EntityState.Detached;
     }
 
     private IFileStorage StorageOf(Asset asset) => storages.Of(asset.StorageProvider);
