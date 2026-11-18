@@ -209,11 +209,14 @@ public sealed class MediaAssetPanelTests : MediaTestContext
         var release = new TaskCompletionSource();
         Library.BeforeAnswer = request => request.Method == HttpMethod.Patch ? release.Task : Task.CompletedTask;
 
-        // The alt text is saved as the field loses focus to a click on the image; two more clicks follow while it saves.
+        // The alt text is saved as the field loses focus to a click on the image; two more clicks follow while it saves. A
+        // click waits while the renderer is busy, so each is seen to reach the image before the save is let go.
         Field(cut, "Alt text").Input("A cat");
         var altSaved = Field(cut, "Alt text").BlurAsync(new FocusEventArgs());
         var firstClick = cut.Find(".media-focal-image img").ClickAsync(new MouseEventArgs { OffsetX = 32, OffsetY = 24 });
+        cut.WaitForAssertion(() => cut.Find(".media-focal-marker").GetAttribute("style").ShouldBe("left:10%;top:10%"));
         var secondClick = cut.Find(".media-focal-image img").ClickAsync(new MouseEventArgs { OffsetX = 288, OffsetY = 216 });
+        cut.WaitForAssertion(() => cut.Find(".media-focal-marker").GetAttribute("style").ShouldBe("left:90%;top:90%"));
         Library.Requests.Count(request => request.Method == HttpMethod.Patch).ShouldBe(0);
         release.SetResult();
         await Task.WhenAll(altSaved, firstClick, secondClick);
