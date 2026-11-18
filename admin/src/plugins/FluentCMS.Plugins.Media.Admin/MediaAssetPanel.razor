@@ -260,8 +260,9 @@
                 await using var stream = file.OpenReadStream(MediaUploadQueue.MaxFileBytes);
                 await stream.ReadExactlyAsync(body.File);
             }
-            catch (Exception failure) when (failure is IOException or InvalidOperationException or JSException)
+            catch (Exception failure) when (failure is not OperationCanceledException)
             {
+                // The browser could not read the file, as one deleted since it was chosen.
                 actionError = L["Media.Upload.Failed"];
                 return;
             }

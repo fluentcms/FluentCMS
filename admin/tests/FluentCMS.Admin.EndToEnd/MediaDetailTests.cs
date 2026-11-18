@@ -91,7 +91,8 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
         var page = Content(tab);
         await Expect(page.GetByRole(AriaRole.Heading, new LocatorGetByRoleOptions { Name = Text("Media.Presets.Heading"), Exact = true, Level = 1 })).ToBeVisibleAsync();
 
-        await page.GetByLabel(Text("Media.Presets.Name"), new LocatorGetByLabelOptions { Exact = true }).FillAsync(name);
+        // A required field's label ends with its mark.
+        await page.GetByLabel(new Regex($"^{Text("Media.Presets.Name")}")).FillAsync(name);
         await page.GetByLabel(Text("Media.Presets.Width"), new LocatorGetByLabelOptions { Exact = true }).FillAsync("400");
         await page.GetByLabel(Text("Media.Presets.Fit"), new LocatorGetByLabelOptions { Exact = true }).SelectOptionAsync("cover");
         await MediaButton(tab, "Media.Presets.Add").ClickAsync();
