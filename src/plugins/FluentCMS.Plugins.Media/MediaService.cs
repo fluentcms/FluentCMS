@@ -667,6 +667,7 @@ internal sealed class MediaService(
         }
 
         var parameters = ImageQuery.Of(given);
+        parameters.Add(new(ImageQuery.Version, MediaOriginals.VersionOf(asset.Checksum)));
         var signature = await signing.SignAsync(ImageQuery.Canonical(asset.Id, parameters), cancellationToken);
         var query = string.Join('&', parameters.Append(new(ImageQuery.Signature, signature)).Select(pair => $"{pair.Key}={Uri.EscapeDataString(pair.Value)}"));
         return $"/media/{asset.Id:D}/{Uri.EscapeDataString(asset.FileName)}?{query}";
@@ -787,10 +788,12 @@ internal sealed class MediaService(
     private static PluginException AssetNotFound(Guid id) => new(MediaErrorCodes.AssetNotFound, $"The site has no media asset {id:D}.");
 
     // The original of a public asset, signed without an expiry, and for an image the processor reads, the presets of the
-    // site and, where unsigned URLs are served, a template. A caller that resolves many assets reads the preset names once.
+    // site and, where unsigned URLs are served, a template; each carries v from the checksum, so a replace gives new URLs.
+    // A caller that resolves many assets reads the preset names once.
     internal async Task<MediaUrls> UrlsAsync(Asset asset, CancellationToken cancellationToken, IReadOnlyList<string>? presetNames = null)
     {
-        var original = await MediaOriginals.UrlAsync(signing, asset.Id, asset.FileName, null, cancellationToken);
+        var version = MediaOriginals.VersionOf(asset.Checksum);
+        var original = await MediaOriginals.UrlAsync(signing, asset.Id, asset.FileName, null, cancellationToken, version: version);
         Dictionary<string, string> presets = new(StringComparer.Ordinal);
         string? template = null;
         if (processor.CanDecode(asset.MimeType))
@@ -804,7 +807,7 @@ internal sealed class MediaService(
 
             if (!options.Value.RequireSignedUrls)
             {
-                template = $"/media/{asset.Id:D}/{Uri.EscapeDataString(asset.FileName)}?{ImageQuery.Width}={{w}}&{ImageQuery.Height}={{h}}&{ImageQuery.Fit}={{fit}}&{ImageQuery.Quality}={{q}}&{ImageQuery.Format}={{f}}";
+                template = $"/media/{asset.Id:D}/{Uri.EscapeDataString(asset.FileName)}?{ImageQuery.Width}={{w}}&{ImageQuery.Height}={{h}}&{ImageQuery.Fit}={{fit}}&{ImageQuery.Quality}={{q}}&{ImageQuery.Format}={{f}}&{ImageQuery.Version}={Uri.EscapeDataString(version)}";
             }
         }
 

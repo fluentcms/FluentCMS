@@ -40,7 +40,7 @@ public sealed class MediaDeliveryTests(MediaHost media) : IClassFixture<MediaHos
         (body["width"]!.GetValue<int>(), body["mimeType"]!.GetValue<string>()).ShouldBe((40, "image/png"));
         body.AsObject().Select(pair => pair.Key).ShouldNotContain("createdBy");
         body.AsObject().Select(pair => pair.Key).ShouldNotContain("siteId");
-        urls["original"]!.GetValue<string>().ShouldStartWith($"/media/{asset.Id:D}/original/bands.png?sig=");
+        urls["original"]!.GetValue<string>().ShouldStartWith($"/media/{asset.Id:D}/original/bands.png?v={asset.Checksum[..16]}&sig=");
         urls["template"].ShouldBeNull();
         response.Headers.ETag.ShouldNotBeNull();
         response.Headers.CacheControl!.ToString().ShouldBe("public, max-age=60, stale-while-revalidate=300");
@@ -156,9 +156,43 @@ public sealed class MediaDeliveryTests(MediaHost media) : IClassFixture<MediaHos
         var template = (await GetAsync(anonymous, $"{Delivery}/{image.Id:D}"))["urls"]!["template"]!.GetValue<string>();
         using var filled = await FetchAsync(anonymous, template.Replace("{w}", "4", StringComparison.Ordinal).Replace("&h={h}&fit={fit}&q={q}&f={f}", "", StringComparison.Ordinal));
 
-        template.ShouldBe($"/media/{image.Id:D}/bands.png?w={{w}}&h={{h}}&fit={{fit}}&q={{q}}&f={{f}}");
+        template.ShouldBe($"/media/{image.Id:D}/bands.png?w={{w}}&h={{h}}&fit={{fit}}&q={{q}}&f={{f}}&v={image.Checksum[..16]}");
         Decode((await ImageAsync(filled)).Bytes).Width.ShouldBe(4);
         (await GetAsync(anonymous, $"{Delivery}/{pdf:D}"))["urls"]!["template"].ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task AReplaceChangesEveryDeliveryUrlOfTheAssetSoNoCacheServesTheOldFile()
+    {
+        await using var media = new MediaHost();
+        media.Host.WithServices(services => services.PostConfigure<MediaOptions>(options => options.RequireSignedUrls = false));
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var asset = await UploadAsync(admin, Bands(8, 8), "bands.png");
+        (await admin.PutAsJsonAsync(new Uri($"{Root}/presets/thumb", UriKind.Relative), new { width = 4 }, Token)).Dispose();
+        var before = (await GetAsync(anonymous, $"{Delivery}/{asset.Id:D}"))["urls"]!;
+
+        using var form = new MultipartFormDataContent();
+        var content = new ByteArrayContent(Bands(16, 8));
+        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        form.Add(content, "file", "bands.png");
+        using var replace = await admin.PostAsync(new Uri($"{Root}/{asset.Id:D}/replace", UriKind.Relative), form, Token);
+        var version = (await JsonAsync(replace))["checksum"]!.GetValue<string>()[..16];
+        await media.DrainOutboxAsync();
+        var after = (await GetAsync(anonymous, $"{Delivery}/{asset.Id:D}"))["urls"]!;
+        using var original = await FetchAsync(anonymous, after["original"]!.GetValue<string>());
+        using var thumb = await FetchAsync(anonymous, after["presets"]!["thumb"]!.GetValue<string>());
+
+        foreach (var url in new[] { after["original"]!, after["presets"]!["thumb"]!, after["template"]! }.Select(url => url.GetValue<string>()))
+        {
+            url.ShouldContain($"v={version}");
+        }
+
+        after["original"]!.GetValue<string>().ShouldNotBe(before["original"]!.GetValue<string>());
+        after["presets"]!["thumb"]!.GetValue<string>().ShouldNotBe(before["presets"]!["thumb"]!.GetValue<string>());
+        after["template"]!.GetValue<string>().ShouldNotBe(before["template"]!.GetValue<string>());
+        original.StatusCode.ShouldBe(HttpStatusCode.OK);
+        Decode((await ImageAsync(thumb)).Bytes).Width.ShouldBe(4);
     }
 
     // The evictions recorded once the outbox is drained. The start evicts the site first, since it gives the built-in roles
