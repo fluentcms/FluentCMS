@@ -15,6 +15,7 @@ The instance's options are in `FluentCms:Media`:
 | `SigningKey` | none | The base64 of at least 32 bytes that signs transform URLs. Left out, the plugin generates one key (see below). |
 | `CacheControl` | `public, max-age=86400` | The `Cache-Control` of a transformed image and of the original file and the thumbnail of a public asset. |
 | `DeletedRetention` | `30.00:00:00` | How long a deleted asset keeps its file and its row before the daily cleanup purges them. |
+| `MaxConcurrentDecodes` | `4` | How many images the instance decodes at once to make variants, thumbnails and copies, from 1 to 256. A decode at the default `maxSourcePixels` may take about 200 MB; requests beyond the limit wait. |
 
 ## One library or one per site
 
@@ -129,7 +130,7 @@ curl -H "Authorization: ApiKey $KEY" -F folderId=$FOLDER -F files=@photo.jpg -F 
 | `v` | A part of the asset's checksum, which the signature covers and nothing compares, so that a replace gives new URLs. |
 | `sig` | The signature. |
 
-A request over the limits of the site's media settings is refused with `FCMS1591` before the image is read. An image over `maxSourcePixels`, or whose side that follows the aspect ratio would be over the width or height limit, is refused from its header before it is decoded. Every result is stored as a variant in the asset's storage, so the same request, under any file name, is served from storage. The orientation of a photo is applied, and its EXIF, IPTC and XMP metadata are left out. A daily job, `media.variants.cleanup`, removes the variants of deleted assets.
+A request over the limits of the site's media settings is refused with `FCMS1591` before the image is read. An image over `maxSourcePixels`, or whose side that follows the aspect ratio would be over the width or height limit, is refused from its header before it is decoded. Every result is stored as a variant in the asset's storage, so the same request, under any file name, is served from storage. Concurrent requests for a variant not yet stored wait for one decode, and at most `MaxConcurrentDecodes` images are decoded at once on an instance; an original in S3 or Azure Blob is read once, into a temporary file deleted after the decode, and an image far larger than the result is decoded at a smaller scale where its format allows, as JPEG and WebP do. The orientation of a photo is applied, and its EXIF, IPTC and XMP metadata are left out. A daily job, `media.variants.cleanup`, removes the variants of deleted assets.
 
 Host code and other plugins build a URL with `IMediaService.GetImageUrlAsync`:
 
