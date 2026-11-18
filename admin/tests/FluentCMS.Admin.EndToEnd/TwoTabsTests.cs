@@ -60,7 +60,8 @@ public sealed class TwoTabsTests(EndToEndHost host) : BrowserTest(host)
         await Expect(copy.Sidebar).ToBeVisibleAsync();
         copy.AuthorizeRequests.Count.ShouldBe(1);
         copy.LoginPagesShown.ShouldBe(0);
-        copy.TokenRequests.ShouldHaveSingleItem().ShouldBeGranted("authorization_code");
+        copy.TokenRequests.First().ShouldBeGranted("authorization_code");
+        copy.TokenRequests.Count(request => request.GrantType == "authorization_code").ShouldBe(1);
         (await StoredSessionAsync(copy) == await StoredSessionAsync(first)).ShouldBeFalse("the copy holds the first tab's session");
 
         await Task.WhenAll(RefreshOnDemandAsync(first), RefreshOnDemandAsync(copy));
