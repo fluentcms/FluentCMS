@@ -75,6 +75,25 @@ public sealed class SkiaImageProcessorTests
         }
     }
 
+    // JPEG decodes in eighths and rounds to the nearest, so 0.3 would decode at a quarter; WebP rounds to a pixel.
+    [Theory]
+    [InlineData(SkiaSharp.SKEncodedImageFormat.Jpeg)]
+    [InlineData(SkiaSharp.SKEncodedImageFormat.Webp)]
+    public void TheSizeDecodedIsNeverUnderTwiceTheScaleOfTheResult(SkiaSharp.SKEncodedImageFormat format)
+    {
+        using var codec = SkiaSharp.SKCodec.Create(new MemoryStream(Bands(2003, 1001, format)));
+
+        for (var scale = 0.01f; scale < 0.5f; scale += 0.01f)
+        {
+            var size = SkiaImageProcessor.DecodedSize(codec, scale);
+            size.Width.ShouldBeGreaterThanOrEqualTo((int)Math.Ceiling(2003 * scale * 2.0), $"{scale}");
+            size.Height.ShouldBeGreaterThanOrEqualTo((int)Math.Ceiling(1001 * scale * 2.0), $"{scale}");
+            size.Width.ShouldBeLessThanOrEqualTo(2003);
+        }
+
+        SkiaImageProcessor.DecodedSize(codec, 0.15f).Width.ShouldBeLessThan(2003, "0.3 decodes at three eighths, not whole");
+    }
+
     [Fact]
     public void AResultNotFarSmallerThanTheImageDecodesTheWholeSize()
     {

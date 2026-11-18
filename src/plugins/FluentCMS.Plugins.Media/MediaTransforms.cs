@@ -186,6 +186,14 @@ internal sealed class MediaTransforms(
     {
         var id = asset.Id;
         await using var scope = scopes.CreateAsyncScope();
+        var variants = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+
+        // A request that missed the variant just before an earlier run stored it starts a run after that one has ended.
+        if (await variants.Set<Variant>().AsNoTracking().AnyAsync(item => item.AssetId == id && item.ParamsHash == hash, cancellationToken))
+        {
+            return;
+        }
+
         var images = scope.ServiceProvider.GetRequiredService<IImageProcessor>();
         await using var source = await SpoolAsync(await OpenAsync(assetStorage, asset, cancellationToken), MediaService.TemporaryFile, cancellationToken);
 
@@ -219,7 +227,6 @@ internal sealed class MediaTransforms(
         await assetStorage.WriteAsync(key, output, cancellationToken);
         try
         {
-            var variants = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
             await RecordAsync(variants, new Variant { AssetId = id, ParamsHash = hash, StorageKey = key, Size = output.Length, CreatedAt = time.GetUtcNow() }, cancellationToken);
         }
         catch

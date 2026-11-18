@@ -80,9 +80,24 @@ internal sealed class SkiaImageProcessor : IImageProcessor
 
     // The size to decode at for a result that takes a scale of the image: smaller where the codec decodes a scale itself, as
     // JPEG does in eighths and WebP at any size, with at least twice the pixels of the result on each side, so that sampling
-    // down is as before; the whole size otherwise.
-    internal static SKSizeI DecodedSize(SKCodec codec, float scale) =>
-        scale * 2 < 1 ? codec.GetScaledDimensions(scale * 2) : codec.Info.Size;
+    // down is as before; the whole size otherwise. The codec rounds the scale asked to the nearest it decodes, JPEG's to the
+    // nearest eighth and WebP's to a pixel, which can be under it, so a larger scale is asked until the size is not.
+    internal static SKSizeI DecodedSize(SKCodec codec, float scale)
+    {
+        var whole = codec.Info.Size;
+        var wanted = scale * 2;
+        var (width, height) = (Math.Ceiling(whole.Width * (double)wanted), Math.Ceiling(whole.Height * (double)wanted));
+        for (var asked = wanted; asked < 1; asked += 1 / 16f)
+        {
+            var size = codec.GetScaledDimensions(asked);
+            if (size.Width >= width && size.Height >= height)
+            {
+                return size;
+            }
+        }
+
+        return whole;
+    }
 
     // An image that is not whole, such as one cut short, is refused rather than served with its missing part blank.
     private static SKImage Decode(SKCodec codec, SKSizeI size)

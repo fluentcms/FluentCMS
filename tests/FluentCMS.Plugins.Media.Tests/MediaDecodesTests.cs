@@ -95,6 +95,60 @@ public sealed class MediaDecodesTests
         await staying;
 
         cancelled.ShouldBeFalse();
+        decodes.FreeSlots.ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task ARunStillQueuedWhoseOnlyCallerLeavesNeverDecodesAndTakesNoSlot()
+    {
+        using var decodes = Decodes(1);
+        var gate = Gate();
+        var entered = Gate();
+        var queuedRuns = 0;
+
+        var holding = decodes.RunAsync("holding", async _ => { entered.SetResult(); await gate.Task; }, Token);
+        await entered.Task.WaitAsync(Token);
+        decodes.FreeSlots.ShouldBe(0);
+
+        using var leaving = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        var queued = decodes.RunAsync("queued", _ => { Interlocked.Increment(ref queuedRuns); return Task.CompletedTask; }, leaving.Token);
+        await leaving.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(queued);
+
+        // A call after the leave starts a run of its own rather than joining the cancelled one.
+        var again = decodes.RunAsync("queued", _ => { Interlocked.Increment(ref queuedRuns); return Task.CompletedTask; }, Token);
+        gate.SetResult();
+        await holding;
+        await again;
+
+        // The slot is FIFO, so the cancelled run, had it stayed queued, would have run before the new one.
+        queuedRuns.ShouldBe(1);
+        decodes.FreeSlots.ShouldBe(1);
+        decodes.Joined.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ARunStillQueuedGoesOnWhileACallerWaits()
+    {
+        using var decodes = Decodes(1);
+        var gate = Gate();
+        var entered = Gate();
+        var queuedRuns = 0;
+
+        var holding = decodes.RunAsync("holding", async _ => { entered.SetResult(); await gate.Task; }, Token);
+        await entered.Task.WaitAsync(Token);
+
+        using var leaving = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        var left = decodes.RunAsync("queued", _ => { Interlocked.Increment(ref queuedRuns); return Task.CompletedTask; }, leaving.Token);
+        var staying = decodes.RunAsync("queued", _ => { Interlocked.Increment(ref queuedRuns); return Task.CompletedTask; }, Token);
+        await leaving.CancelAsync();
+        await Should.ThrowAsync<OperationCanceledException>(left);
+        gate.SetResult();
+        await holding;
+        await staying;
+
+        queuedRuns.ShouldBe(1);
+        decodes.FreeSlots.ShouldBe(1);
     }
 
     [Fact]
