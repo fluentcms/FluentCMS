@@ -1,12 +1,13 @@
 @* A dashboard widget of an admin half on the home page (spec 2.6). The home page shows only the widgets the user may see, so
    the half is loaded when the tile first shows, and never for a widget that is not shown. A half that does not load, or a
-   widget that throws, leaves an error in this tile and nothing else. The widget draws its own title, from the half's
+   widget that cannot be created or throws, leaves an error in this tile and nothing else. The widget draws its own title, from the half's
    resources, which the shell cannot read. *@
 @implements IDisposable
 @using Microsoft.Extensions.Logging
 @inject AdminPlugins Plugins
 @inject IStringLocalizer<AdminResources> L
 @inject ILogger<PluginWidgetTile> Logger
+@inject IServiceProvider Services
 
 @if (failed)
 {
@@ -14,7 +15,7 @@
 }
 else if (type is null)
 {
-    <div class="plugin-widget-loading" aria-busy="true"></div>
+    <p class="plugin-widget-loading" role="status">@L["Home.Widget.Loading"]</p>
 }
 else
 {
@@ -55,9 +56,11 @@ else
         try
         {
             var loaded = await Plugins.ComponentAsync(Half, Widget.Type, cancellation.Token);
-            if (!typeof(IComponent).IsAssignableFrom(loaded))
+            if (PluginComponents.Problem(loaded, Services) is { } problem)
             {
-                throw new InvalidOperationException($"{loaded.FullName} is not a component.");
+                PluginLog.WidgetNotCreated(Logger, Half.Name, Widget.Type, problem);
+                failed = true;
+                return;
             }
 
             type = loaded;

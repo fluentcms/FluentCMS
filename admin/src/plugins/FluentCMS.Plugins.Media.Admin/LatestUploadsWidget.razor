@@ -8,13 +8,17 @@
 <CmsCard Title="@L["Media.Widget.Title"]">
     @if (failed)
     {
-        <p>@L["Media.Widget.Failed"]</p>
+        <p role="alert">@L["Media.Widget.Failed"]</p>
+    }
+    else if (uploads is null)
+    {
+        <p role="status">@L["Media.Widget.Loading"]</p>
     }
     else if (uploads is { Count: 0 })
     {
         <p>@L["Media.Widget.Empty"]</p>
     }
-    else if (uploads is not null)
+    else
     {
         <ul class="latest-uploads">
             @foreach (var upload in uploads)
