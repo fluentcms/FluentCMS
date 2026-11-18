@@ -31,6 +31,18 @@ internal sealed class MemorySessionStorage : ISessionStorage
 
     public string? this[string key] => Items.GetValueOrDefault(key);
 
+    // The sessionStorage of a tab duplicated from this one, or opened by it.
+    public MemorySessionStorage Copy()
+    {
+        var copy = new MemorySessionStorage();
+        foreach (var (key, value) in Items)
+        {
+            copy._items[key] = value;
+        }
+
+        return copy;
+    }
+
     public ValueTask<string?> GetAsync(string key)
     {
         lock (_gate)
@@ -61,6 +73,44 @@ internal sealed class MemorySessionStorage : ISessionStorage
         }
 
         return ValueTask.CompletedTask;
+    }
+}
+
+// The admin tabs of one browser, each by its sessionStorage: the last page load of a tab holds the tab id it was given.
+internal sealed class BrowserTabs
+{
+    private readonly Lock _gate = new();
+    private readonly Dictionary<MemorySessionStorage, string> _held = [];
+
+    public ITabChannel ChannelOf(MemorySessionStorage tab) => new Channel(this, tab);
+
+    public void Close(MemorySessionStorage tab)
+    {
+        lock (_gate)
+        {
+            _held.Remove(tab);
+        }
+    }
+
+    private sealed class Channel(BrowserTabs browser, MemorySessionStorage tab) : ITabChannel
+    {
+        public ValueTask<bool> IsHeldElsewhereAsync(string tabId)
+        {
+            lock (browser._gate)
+            {
+                return ValueTask.FromResult(browser._held.Any(held => held.Key != tab && held.Value == tabId));
+            }
+        }
+
+        public ValueTask HoldAsync(string tabId)
+        {
+            lock (browser._gate)
+            {
+                browser._held[tab] = tabId;
+            }
+
+            return ValueTask.CompletedTask;
+        }
     }
 }
 

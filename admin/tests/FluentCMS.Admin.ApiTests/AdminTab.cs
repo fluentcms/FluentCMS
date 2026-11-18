@@ -34,6 +34,7 @@ internal sealed class AdminTab : IDisposable
         services.AddSingleton<TimeProvider>(host.Time);
         services.AddAdminAuthentication();
         services.Replace(ServiceDescriptor.Scoped<ISessionStorage>(_ => Storage));
+        services.Replace(ServiceDescriptor.Scoped<ITabChannel, NoOtherTab>());
         services.Configure<AuthorityOptions>(options => options.PrimaryHandler = server);
         services.AddManagementApi();
         services.Configure<ManagementApiOptions>(options =>
@@ -98,6 +99,14 @@ internal sealed class TabStorage : ISessionStorage
         _items.Remove(key);
         return ValueTask.CompletedTask;
     }
+}
+
+// The tab is the only admin tab of its browser, so no other tab holds its session.
+internal sealed class NoOtherTab : ITabChannel
+{
+    public ValueTask<bool> IsHeldElsewhereAsync(string tabId) => ValueTask.FromResult(false);
+
+    public ValueTask HoldAsync(string tabId) => ValueTask.CompletedTask;
 }
 
 // The whole-page navigations of the tab; a test plays the browser's part of each.

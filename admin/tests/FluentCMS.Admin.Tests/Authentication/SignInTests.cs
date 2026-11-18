@@ -29,6 +29,7 @@ public sealed class SignInTests : IAsyncDisposable
     private static readonly Guid EntryId = Guid.Parse("01a1e1fa-4db2-7614-9c93-b8a7f6254fa5");
 
     private readonly MemorySessionStorage _storage = new();
+    private readonly BrowserTabs _browser = new();
     private readonly FakeAuthority _authority = new();
     private readonly MovableTime _time = new();
     private readonly List<Tab> _tabs = [];
@@ -531,6 +532,41 @@ public sealed class SignInTests : IAsyncDisposable
         tab.Navigation.History.ShouldAllBe(entry => !entry.Options.ForceLoad);
     }
 
+    // A duplicated tab starts with a copy of the opener's sessionStorage, its refresh token included. The fake server takes a
+    // refresh token once, with no reuse leeway, so a token redeemed by both would end the opener's session at its refresh.
+    [Fact]
+    public async Task ADuplicatedTabSignsInForItselfAndLeavesTheOpenersSessionAlone()
+    {
+        var opener = SignIn();
+        var copy = NewTab(storage: _storage.Copy());
+
+        var app = copy.Load(Route);
+
+        copy.WaitForRedirect(app).GetLeftPart(UriPartial.Path).ShouldBe("https://cms.example.com/connect/authorize");
+        _authority.Refreshes.ShouldBe(0);
+        copy.Storage[AdminSession.SessionKey].ShouldBeNull();
+        copy.Storage[AdminSession.TabKey].ShouldBeNull();
+        _time.Now += TimeSpan.FromHours(1);
+        (await opener.Session.GetAccessTokenAsync(Token)).ShouldNotBeNull();
+        _authority.Refreshes.ShouldBe(1);
+        opener.Session.User.ShouldNotBeNull();
+    }
+
+    // A copy whose opener has closed, or a tab reloaded, is answered by no other tab and keeps the session.
+    [Fact]
+    public void ACopyOfAClosedTabRestoresTheSession()
+    {
+        SignIn();
+        var copy = NewTab(storage: _storage.Copy());
+        _browser.Close(_storage);
+
+        var app = copy.Load("");
+
+        app.WaitForAssertion(() => app.Find("main#main h1").TextContent.ShouldBe("FluentCMS admin"));
+        _authority.Refreshes.ShouldBe(1);
+        copy.Navigation.History.ShouldAllBe(entry => !entry.Options.ForceLoad);
+    }
+
     [Fact]
     public void AReloadedTabWhoseRefreshTokenIsRefusedSignsInAgain()
     {
@@ -821,9 +857,9 @@ public sealed class SignInTests : IAsyncDisposable
         return tab;
     }
 
-    private Tab NewTab(bool browserStorage = false, string? pendingSignIn = null, HttpMessageHandler? api = null, TimeSpan? authorityTimeout = null)
+    private Tab NewTab(bool browserStorage = false, string? pendingSignIn = null, HttpMessageHandler? api = null, TimeSpan? authorityTimeout = null, MemorySessionStorage? storage = null)
     {
-        var tab = new Tab(_storage, _authority, _time, api, browserStorage, pendingSignIn, authorityTimeout);
+        var tab = new Tab(storage ?? _storage, _browser, _authority, _time, api, browserStorage, pendingSignIn, authorityTimeout);
         _tabs.Add(tab);
         return tab;
     }
@@ -831,11 +867,12 @@ public sealed class SignInTests : IAsyncDisposable
     // One page load of the tab.
     private sealed class Tab : AdminTestContext
     {
-        public Tab(MemorySessionStorage storage, FakeAuthority authority, TimeProvider time, HttpMessageHandler? api, bool browserStorage, string? pendingSignIn, TimeSpan? authorityTimeout)
+        public Tab(MemorySessionStorage storage, BrowserTabs browser, FakeAuthority authority, TimeProvider time, HttpMessageHandler? api, bool browserStorage, string? pendingSignIn, TimeSpan? authorityTimeout)
         {
             UseNeutralResources();
             UseSignInFlow();
             Storage = storage;
+            Tabs = browser;
             Authority = authority;
             Start();
             Services.AddSingleton(time);

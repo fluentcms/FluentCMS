@@ -48,6 +48,8 @@ public abstract class AdminTestContext : BunitContext
     // Shared by the page loads of one tab, which a test makes as contexts of their own.
     internal MemorySessionStorage Storage { get; set; } = new();
 
+    internal BrowserTabs Tabs { get; set; } = new();
+
     internal FakeAuthority Authority { get; set; } = new();
 
     internal FakeManagementServer Management { get; set; } = new();
@@ -78,6 +80,7 @@ public abstract class AdminTestContext : BunitContext
         if (startup.Configuration is not null)
         {
             Services.Replace(ServiceDescriptor.Scoped<ISessionStorage>(_ => Storage));
+            Services.Replace(ServiceDescriptor.Scoped(_ => Tabs.ChannelOf(Storage)));
             Services.Configure<AuthorityOptions>(options => options.PrimaryHandler = () => Authority);
             Services.Configure<ManagementApiOptions>(options => options.PrimaryHandler = () => Management);
             if (!signInFlow)
