@@ -85,7 +85,7 @@
     @if (!ReadOnly && Context.Access.Allows(MediaPermissions.Read))
     {
         <div class="media-field-actions">
-            <CmsButton @ref="chooseButton" Icon="CmsIconName.Image" Disabled="@picking" OnClick="PickAsync">@L[Field.Multiple ? "Media.Field.ChooseMany" : "Media.Field.Choose"]</CmsButton>
+            <CmsButton @ref="chooseButton" Icon="CmsIconName.Image" OnClick="PickAsync">@L[Field.Multiple ? "Media.Field.ChooseMany" : "Media.Field.Choose"]</CmsButton>
         </div>
     }
     @if (pickerFailed)
@@ -197,8 +197,14 @@
     private Task WriteAsync(IReadOnlyList<Guid> ids) => ChangeAsync(MediaFieldValues.Write(ids, Field.Multiple));
 
     // The picker chooses each asset once; one the value holds more than once keeps its places while it stays chosen.
+    // The button stays enabled while the picker is open, since the dialog gives focus back to it as it closes.
     private async Task PickAsync()
     {
+        if (picking)
+        {
+            return;
+        }
+
         (picking, pickerFailed) = (true, false);
         IReadOnlyList<MediaPickerItem>? picked = null;
         try
