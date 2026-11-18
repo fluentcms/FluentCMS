@@ -60,7 +60,7 @@ public sealed class GraphQLMediaTests(PublicBlogHost blog) : IClassFixture<Publi
             JsonNode.DeepEquals(entry["hero"], rest["hero"]).ShouldBeTrue();
             JsonNode.DeepEquals(entry["sections"]![0]!["image"], rest["sections"]![0]!["image"]).ShouldBeTrue();
             entry["body"]!.GetValue<string>().ShouldBe(rest["body"]!.GetValue<string>());
-            entry["body"]!.GetValue<string>().ShouldContain($"<img src=\"{original}\" alt=\"\" data-media-id=\"{hero:D}\">");
+            entry["body"]!.GetValue<string>().ShouldContain($"<img src=\"{WebUtility.HtmlEncode(original)}\" alt=\"\" data-media-id=\"{hero:D}\">");
         }
     }
 
@@ -86,7 +86,7 @@ public sealed class GraphQLMediaTests(PublicBlogHost blog) : IClassFixture<Publi
         JsonNode.DeepEquals(entry["hero"], rest["hero"]).ShouldBeTrue();
         entry["sections"]![0]!["image"].ShouldBeNull();
         entry["body"]!.GetValue<string>().ShouldBe(rest["body"]!.GetValue<string>());
-        entry["body"]!.GetValue<string>().ShouldContain($"<img src=\"{entry["hero"]!["urls"]!["original"]!.GetValue<string>()}\"");
+        entry["body"]!.GetValue<string>().ShouldContain($"<img src=\"{WebUtility.HtmlEncode(entry["hero"]!["urls"]!["original"]!.GetValue<string>())}\"");
         entry["body"]!.GetValue<string>().ShouldContain($"<img alt=\"\" data-media-id=\"{secret:D}\">");
     }
 

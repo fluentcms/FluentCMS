@@ -99,6 +99,22 @@ public sealed class MediaSigningTests
     }
 
     [Fact]
+    public async Task ATransformUrlSignedWithoutAVersionIsStillServed()
+    {
+        await using var media = new MediaHost();
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var asset = await UploadAsync(admin, Bands(40, 20));
+        var signature = await media.Services.GetRequiredService<MediaSigning>().SignAsync($"{asset.Id:D}?w=10", Token);
+
+        using var response = await FetchAsync(anonymous, $"/media/{asset.Id:D}/photo.png?w=10&sig={Uri.EscapeDataString(signature)}");
+
+        media.Services.GetRequiredService<IOptions<MediaOptions>>().Value.RequireSignedUrls.ShouldBeTrue();
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        Decode((await ImageAsync(response)).Bytes).Width.ShouldBe(10);
+    }
+
+    [Fact]
     public async Task AConfiguredKeyWinsAndReplacingItInvalidatesTheUrlsSignedBefore()
     {
         var configured = RandomNumberGenerator.GetBytes(MediaSigning.KeyLength);
