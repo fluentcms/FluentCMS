@@ -249,6 +249,25 @@ public sealed class MediaBrowserTests : MediaTestContext
     }
 
     [Fact]
+    public async Task TheListKeepsWhatIsSelectedOnOtherPagesWhenItsRowsAreSelected()
+    {
+        var shown = Library.AddAsset("shown.png");
+        var elsewhere = new MediaAssetInfo { Id = Guid.NewGuid(), FileName = "elsewhere.png", MimeType = "image/png", Size = 1, Tags = [], Urls = new MediaAssetUrls { Original = "/o" } };
+        IReadOnlyList<MediaAssetInfo>? selected = null;
+        var cut = Render<MediaBrowser>(parameters => parameters
+            .Add(browser => browser.State, MediaBrowseState.Default with { View = MediaView.List })
+            .Add(browser => browser.SelectionMode, CmsSelectionMode.Many)
+            .Add(browser => browser.Selected, [elsewhere])
+            .Add(browser => browser.SelectedChanged, items => selected = items));
+        cut.WaitForAssertion(() => cut.Find(".cms-data-grid tbody").TextContent.ShouldContain("shown.png"));
+
+        var grid = cut.FindComponent<CmsDataGrid<MediaAssetInfo>>();
+        await cut.InvokeAsync(() => grid.Instance.SelectedItemsChanged.InvokeAsync([grid.Instance.Items.Single()]));
+
+        selected.ShouldNotBeNull().Select(item => item.Id).ShouldBe([elsewhere.Id, shown]);
+    }
+
+    [Fact]
     public void ARefusedReadSaysWhyAndAMissingFolderLeadsBackToTheRoot()
     {
         Library.ListProblem = new ApiProblem { Status = 403, Code = "FCMS1100" };

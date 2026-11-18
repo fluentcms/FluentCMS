@@ -32,9 +32,6 @@ internal sealed class ListView
 
     public const string EveryLocale = "all";
 
-    // The field type of the media plugin, a reference to assets that a read populates as it does a relation.
-    private const string MediaFieldType = "media";
-
     public static readonly IReadOnlyList<int> PageSizes = [10, 25, 50, 100];
 
     public const int DefaultPageSize = 25;
@@ -103,9 +100,7 @@ internal sealed class ListView
         available.Add(new("updatedBy", ListColumnKind.UpdatedBy, Sortable: false, ReadPath: "updatedBy"));
         foreach (var field in type.Fields.Where(field => field.Name != label.Name && cells.Shows(field)))
         {
-            // Only the media half's cell reads a populated asset; the JSON shown while the plugin is disabled keeps the reference.
-            var populated = field.Type == MediaFieldType && cells.CellFor(field.Type) != typeof(TextListCell);
-            available.Add(new(field.Name, ListColumnKind.Field, Sorts(field), field, ReadPath(field, schema), populated));
+            available.Add(new(field.Name, ListColumnKind.Field, Sorts(field), field, ReadPath(field, schema), cells.Populates(field.Type)));
         }
 
         return new ListView(type, label, available, ListFilters.Fields(type, filters));
@@ -154,8 +149,8 @@ internal sealed class ListView
         int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var value) ? value : null;
 
     // fields= names the label and the shown columns, system members included, since a read with fields= has only what it
-    // names, and the pending schedules with the status; populate= names the relations among them, and the media fields the
-    // media half's cell shows, so that a page needs no read per row (spec 2.7). A list that shows nothing else still names
+    // names, and the pending schedules with the status; populate= names the relations among them, and the fields whose
+    // half's cell asks for it (ListCellAttribute.Populate), such as media, so that a page needs no read per row (spec 2.7). A list that shows nothing else still names
     // the id, since a read without fields= has every field. Under locale=all the engine matches, sorts and pages in the
     // site's default locale and answers every locale of each entry.
     public ContentQuery Query(IReadOnlyList<ListColumn> shown, IReadOnlyList<SortField> sort, int page, int pageSize, IReadOnlyList<FieldFilter>? filters = null, string? search = null, bool everyLocale = false)

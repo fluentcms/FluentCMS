@@ -57,11 +57,11 @@ public sealed class ListViewTests : BunitContext
     }
 
     [Fact]
-    public async Task AMediaFieldIsPopulatedOnlyForTheCellOfTheMediaHalf()
+    public async Task AFieldIsPopulatedOnlyForAHalfsCellThatAsksForIt()
     {
         var enabled = true;
         var cells = new ListCellRegistry();
-        cells.AddLazy("media", () => enabled, _ => Task.FromResult(typeof(StarsCell)));
+        cells.AddLazy("media", () => enabled, _ => Task.FromResult(typeof(StarsCell)), populate: true);
         var type = Article(localized: false) with { Fields = [Field("title", "text"), Field("hero", "media")] };
 
         var unloaded = View(type, cells);
@@ -75,6 +75,13 @@ public sealed class ListViewTests : BunitContext
 
         enabled = false;
         View(type, cells).Available.Select(column => column.Name).ShouldNotContain("hero");
+
+        // A cell that does not ask for it reads the field as it is.
+        enabled = true;
+        cells.AddLazy("media", () => enabled, _ => Task.FromResult(typeof(StarsCell)));
+        await cells.CellForAsync("media", Xunit.TestContext.Current.CancellationToken);
+        var plain = View(type, cells);
+        plain.Query(plain.Choose(["hero"]), ListView.DefaultSort, 1, 25).Populate.ShouldBeEmpty();
     }
 
     [Fact]

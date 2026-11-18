@@ -8,9 +8,17 @@
 }
 
 @code {
-    protected override void OnInitialized() => Overlays.Changed += OnChanged;
+    protected override void OnInitialized()
+    {
+        Overlays.Attach();
+        Overlays.Changed += OnChanged;
+    }
 
-    public void Dispose() => Overlays.Changed -= OnChanged;
+    public void Dispose()
+    {
+        Overlays.Changed -= OnChanged;
+        Overlays.Detach();
+    }
 
     private void OnChanged() => _ = InvokeAsync(StateHasChanged);
 }

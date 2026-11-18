@@ -55,6 +55,60 @@ public sealed class MediaPickerTests : MediaTestContext
     }
 
     [Fact]
+    public async Task AnAssetChosenBeforeThatCannotBeReadStaysChosenWithItsIdOnly()
+    {
+        var gone = Guid.NewGuid();
+        var first = Library.AddAsset("a.png");
+        var second = Library.AddAsset("b.png");
+
+        var (picked, host) = Open(new MediaPickerRequest { Multiple = true, Selected = [gone, first] });
+        host.WaitForAssertion(() => host.FindAll(".media-tile-check").Count.ShouldBe(2));
+        host.Markup.ShouldContain("2 assets chosen");
+        host.FindAll(".media-tile-check")[1].Change(true);
+        Button(host, "Choose").Click();
+        await CloseAsync(host);
+
+        var items = (await picked).ShouldNotBeNull();
+        items.Select(item => item.Id).ShouldBe([gone, first, second]);
+        items[0].FileName.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AChoiceMadeWhileTheAssetsChosenBeforeAreReadIsKept()
+    {
+        var before = Library.AddAsset("a.png");
+        var ticked = Library.AddAsset("b.png");
+        var held = new TaskCompletionSource();
+        Library.BeforeAnswer = request => request.Path == $"media/{before:D}" ? held.Task : Task.CompletedTask;
+
+        var (picked, host) = Open(new MediaPickerRequest { Multiple = true, Selected = [before] });
+        host.WaitForAssertion(() => host.FindAll(".media-tile-check").Count.ShouldBe(2));
+        host.FindAll(".media-tile-check")[1].Change(true);
+        held.SetResult();
+        host.WaitForAssertion(() => host.Markup.ShouldContain("2 assets chosen"));
+
+        Button(host, "Choose").Click();
+        await CloseAsync(host);
+        (await picked).ShouldNotBeNull().Select(item => item.Id).ShouldBe([before, ticked]);
+    }
+
+    [Fact]
+    public void AReadInTheRequestsLocaleThatFailsKeepsThePickerOpen()
+    {
+        var logo = Library.AddAsset("logo.png");
+        var (picked, host) = Open(new MediaPickerRequest { Locale = "fr" });
+        host.WaitForAssertion(() => host.FindAll(".media-tile-check").Count.ShouldBe(1));
+        host.FindAll(".media-tile-check")[0].Change(true);
+        Library.BeforeAnswer = request => request.Path == $"media/{logo:D}" ? throw new HttpRequestException("offline") : Task.CompletedTask;
+
+        Button(host, "Choose").Click();
+
+        host.WaitForAssertion(() => host.Find("[role=alert]").TextContent.ShouldBe("The chosen assets could not be read. Try again."));
+        host.FindComponent<CmsDialog>().Instance.Open.ShouldBeTrue();
+        picked.IsCompleted.ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task ClosingWithoutAChoiceAnswersNull()
     {
         Library.AddAsset("logo.png");

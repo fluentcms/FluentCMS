@@ -461,6 +461,10 @@ public sealed class ShellTests : AdminTestContext
         app.WaitForAssertion(() => app.FindAll("#picker").ShouldBeEmpty());
     }
 
+    [Fact]
+    public void AnOverlayWithoutTheShellToDrawItFailsAtOnce() =>
+        Should.Throw<InvalidOperationException>(() => new AdminOverlays().Show(builder => builder.AddMarkupContent(0, "<p>Picker</p>")));
+
     private static IElement DrawerHost(IRenderedComponent<AdminApp> app) =>
         app.FindAll("fluent-drawer").Single(drawer => drawer.GetAttribute("aria-label") == "Navigation");
 

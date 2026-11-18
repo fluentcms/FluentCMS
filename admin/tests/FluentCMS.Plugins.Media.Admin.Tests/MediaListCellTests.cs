@@ -46,6 +46,11 @@ public sealed class MediaListCellTests : MediaTestContext
     }
 
     [Fact]
+    public void AnAssetTheReadLeftNullIsCounted() =>
+        Cell(new JsonArray(Populated(Guid.NewGuid(), "a.png", "image/png"), null, Populated(Guid.NewGuid(), "c.png", "image/png")))
+            .Find(".media-cell-more").TextContent.ShouldBe("+2 more");
+
+    [Fact]
     public void AnEmptyFieldShowsNothing() => Cell(null).Markup.Trim().ShouldBeEmpty();
 
     private static JsonObject Populated(Guid id, string fileName, string mimeType, string? title = null) => new()

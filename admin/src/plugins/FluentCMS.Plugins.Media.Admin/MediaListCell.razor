@@ -1,7 +1,7 @@
 @* The cell of a media field (spec 5.2): the first asset's thumbnail and name, and the number of assets for several. The list
    populates the field, so the cell reads nothing; the image is the populated asset's original from the Delivery URLs,
    which a private asset and a file that is not an image lack. *@
-@attribute [ListCell("media")]
+@attribute [ListCell("media", Populate = true)]
 @inherits ListCellBase
 @inject AdminConfiguration Configuration
 @inject IStringLocalizer<MediaResources> L
@@ -16,15 +16,18 @@
             }
         </span>
         <span class="media-cell-name" lang="@Entry.Locale">@first.Name</span>
-        @if (shown.Count > 1)
+        @if (Count > 1)
         {
-            <span class="media-cell-more">@L["Media.Cell.More", MediaFormat.Number(shown.Count - 1)]</span>
+            <span class="media-cell-more">@L["Media.Cell.More", MediaFormat.Number(Count - 1)]</span>
         }
     </span>
 }
 
 @code {
     private IReadOnlyList<MediaFieldAsset> Shown => MediaFieldValues.Assets(Value);
+
+    // Every asset of the value, one the read left null, as one the caller may not read, included.
+    private int Count => Value is JsonArray items ? items.Count : 1;
 
     private string? ImageOf(MediaFieldAsset asset) =>
         asset.MimeType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true && asset.Urls?.Original is { } url

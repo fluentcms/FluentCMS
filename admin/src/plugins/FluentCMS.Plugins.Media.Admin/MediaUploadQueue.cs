@@ -60,7 +60,7 @@ internal sealed class MediaUploadQueue(MediaApi api)
     // Adds the files and uploads every waiting one, each into the folder it was added to; changed runs after each state.
     // False when the uploads that were already running take the files.
     // The browser's type of a file comes from its name; the server still finds the type from the bytes.
-    public async Task<bool> AddAsync(IReadOnlyList<IBrowserFile> files, Guid? folder, Func<Task> changed, CancellationToken cancellationToken, IReadOnlyList<string>? accept = null)
+    public async Task<bool> AddAsync(IReadOnlyList<IBrowserFile> files, Guid? folder, IReadOnlyList<string>? accept, Func<Task> changed, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(files);
         ArgumentNullException.ThrowIfNull(changed);

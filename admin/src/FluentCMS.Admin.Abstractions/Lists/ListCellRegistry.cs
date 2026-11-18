@@ -13,6 +13,7 @@ public sealed class ListCellRegistry
 {
     private readonly Dictionary<string, Registration> _cells = new(StringComparer.Ordinal);
     private readonly Dictionary<string, LazyFieldComponent> _lazy = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _populated = new(StringComparer.Ordinal);
 
     /// <summary>Registers the cell of a field type, in place of the one before.</summary>
     /// <typeparam name="TCell">The cell component.</typeparam>
@@ -22,6 +23,7 @@ public sealed class ListCellRegistry
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fieldType);
         _lazy.Remove(fieldType);
+        _populated.Remove(fieldType);
         _cells[fieldType] = new Registration(typeof(TCell));
     }
 
@@ -33,14 +35,32 @@ public sealed class ListCellRegistry
     /// <param name="fieldType">The field type, as <see cref="SchemaFieldDescription.Type"/> names it.</param>
     /// <param name="isAvailable">Whether the half may be used now.</param>
     /// <param name="load">Loads the half and answers the cell, a <see cref="ListCellBase"/>.</param>
-    public void AddLazy(string fieldType, Func<bool> isAvailable, Func<CancellationToken, Task<Type>> load)
+    /// <param name="populate">Whether a list reads the field populated for the cell (<c>ListCellAttribute.Populate</c>).</param>
+    public void AddLazy(string fieldType, Func<bool> isAvailable, Func<CancellationToken, Task<Type>> load, bool populate = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fieldType);
         ArgumentNullException.ThrowIfNull(isAvailable);
         ArgumentNullException.ThrowIfNull(load);
         _cells.Remove(fieldType);
         _lazy[fieldType] = new LazyFieldComponent(isAvailable, load, typeof(ListCellBase));
+        if (populate)
+        {
+            _populated.Add(fieldType);
+        }
+        else
+        {
+            _populated.Remove(fieldType);
+        }
     }
+
+    /// <summary>
+    /// Whether a list reads a field of the type populated: the half's cell asks for it and is loaded while its plugin is
+    /// enabled, so the read-only text shown otherwise keeps the field as it is.
+    /// </summary>
+    /// <param name="fieldType">The field type.</param>
+    /// <returns><see langword="true"/> when the field is read populated.</returns>
+    public bool Populates(string fieldType) =>
+        fieldType is not null && _populated.Contains(fieldType) && _lazy.TryGetValue(fieldType, out var lazy) && lazy.Loaded(out _);
 
     /// <summary>
     /// Whether a column can show the field: it is not hidden, and its type has a cell, which an admin half that may be used

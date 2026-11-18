@@ -357,4 +357,7 @@
   <data name="Media.Field.Details" xml:space="preserve">
     <value>Alt text and focal point of {0}</value>
   </data>
+  <data name="Media.Picker.Failed" xml:space="preserve">
+    <value>The chosen assets could not be read. Try again.</value>
+  </data>
 </root>

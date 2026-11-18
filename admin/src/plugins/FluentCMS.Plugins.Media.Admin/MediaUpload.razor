@@ -72,7 +72,7 @@
         bool ran;
         try
         {
-            ran = await queue.AddAsync(files, Folder, () => InvokeAsync(StateHasChanged), stopping.Token, Accept);
+            ran = await queue.AddAsync(files, Folder, Accept, () => InvokeAsync(StateHasChanged), stopping.Token);
         }
         catch (OperationCanceledException) when (stopping.IsCancellationRequested)
         {

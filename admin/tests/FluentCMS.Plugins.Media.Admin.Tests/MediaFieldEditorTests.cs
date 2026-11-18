@@ -156,6 +156,73 @@ public sealed class MediaFieldEditorTests : MediaTestContext
     }
 
     [Fact]
+    public async Task APickThatKeepsAnAssetThePickerCouldNotReadKeepsItInTheField()
+    {
+        var gone = Guid.NewGuid();
+        var logo = Library.AddAsset("logo.png");
+        var cut = Edit(Field(multiple: true), Ids(gone));
+        cut.WaitForAssertion(() => Names(cut).ShouldBe([gone.ToString("D")]));
+
+        var picking = cut.InvokeAsync(() => Button(cut, "Choose assets").Click());
+        cut.WaitForAssertion(() => Overlays.Shown.ShouldHaveSingleItem());
+        var host = Render(Overlays.Host);
+        host.WaitForAssertion(() => host.FindAll(".media-tile-check").Count.ShouldBe(1));
+        host.Find(".media-tile-check").Change(true);
+        Button(host, "Choose").Click();
+        host.WaitForAssertion(() => host.FindComponent<CmsDialog>().Instance.Open.ShouldBeFalse());
+        await host.InvokeAsync(() => host.FindComponent<CmsDialog>().Instance.OnClosed.InvokeAsync());
+        await picking;
+
+        cut.WaitForAssertion(() => Written().ShouldBe([gone, logo]));
+    }
+
+    [Fact]
+    public async Task LeavingTheFormWhileThePickerIsOpenClosesItWithoutAChange()
+    {
+        Library.AddAsset("logo.png");
+        var cut = Edit(Field(), null);
+        _ = cut.InvokeAsync(() => Button(cut, "Choose an asset").Click());
+        cut.WaitForAssertion(() => Overlays.Shown.ShouldHaveSingleItem());
+
+        await DisposeComponentsAsync();
+
+        Overlays.Shown.ShouldBeEmpty();
+        changes.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task FocusMovingIntoTheFieldsPickerIsNoBlur()
+    {
+        var blurs = 0;
+        Library.AddAsset("logo.png");
+        var cut = Render<MediaFieldEditor>(parameters => parameters
+            .Add(editor => editor.Field, Field())
+            .Add(editor => editor.OnBlur, () => blurs++));
+
+        await cut.Find("fieldset").TriggerEventAsync("onfocusin", new FocusEventArgs());
+        _ = cut.InvokeAsync(() => Button(cut, "Choose an asset").Click());
+        cut.WaitForAssertion(() => Overlays.Shown.ShouldHaveSingleItem());
+        await cut.Find("fieldset").TriggerEventAsync("onfocusout", new FocusEventArgs());
+        await Task.Delay(50, Xunit.TestContext.Current.CancellationToken);
+
+        blurs.ShouldBe(0);
+    }
+
+    [Fact]
+    public void AnAssetWhoseReadFailedWithoutAnAnswerIsReadAgain()
+    {
+        var hero = Library.AddAsset("hero.png", title: "Hero");
+        var failures = 1;
+        Library.BeforeAnswer = request => request.Path == $"media/{hero:D}" && failures-- > 0 ? throw new HttpRequestException("offline") : Task.CompletedTask;
+        var cut = Edit(Field(), JsonValue.Create(hero.ToString("D")));
+        cut.WaitForAssertion(() => Names(cut).ShouldBe([hero.ToString("D")]));
+
+        cut.Render(parameters => parameters.Add(editor => editor.Value, JsonValue.Create(hero.ToString("D"))));
+
+        cut.WaitForAssertion(() => Names(cut).ShouldBe(["Hero"]));
+    }
+
+    [Fact]
     public void ACallerWithoutMediaReadIsNotOfferedThePicker()
     {
         Admin.Permissions.Clear();

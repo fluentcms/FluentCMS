@@ -22,7 +22,7 @@
     { "type": "FluentCMS.Plugins.Media.Admin.MediaFieldEditor", "fieldType": "media" }
   ],
   "listCells": [
-    { "type": "FluentCMS.Plugins.Media.Admin.MediaListCell", "fieldType": "media" }
+    { "type": "FluentCMS.Plugins.Media.Admin.MediaListCell", "fieldType": "media", "populate": true }
   ],
   "widgets": [
     { "type": "FluentCMS.Plugins.Media.Admin.LatestUploadsWidget", "title": "Media.Widget.Title", "size": "small", "permission": "media.read" }

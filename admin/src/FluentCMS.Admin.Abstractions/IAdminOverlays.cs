@@ -11,5 +11,6 @@ public interface IAdminOverlays
     /// <summary>Shows content until the returned handle is disposed.</summary>
     /// <param name="content">The content, usually one component.</param>
     /// <returns>The handle that removes the content; disposing it again does nothing.</returns>
+    /// <exception cref="InvalidOperationException">The shell draws no overlays, as before it has started.</exception>
     IDisposable Show(RenderFragment content);
 }

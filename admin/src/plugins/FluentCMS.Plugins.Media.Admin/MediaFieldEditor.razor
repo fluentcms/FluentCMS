@@ -5,6 +5,7 @@
    list of ids in order. *@
 @attribute [FieldEditor("media")]
 @inherits FieldEditorBase
+@implements IDisposable
 @inject IManagementApi Api
 @inject IAdminContext Context
 @inject IAdminPluginServices Plugins
@@ -108,6 +109,7 @@
     private readonly Dictionary<int, CmsButton> upButtons = [];
     private readonly Dictionary<int, CmsButton> downButtons = [];
     private readonly Dictionary<int, CmsButton> removeButtons = [];
+    private readonly CancellationTokenSource disposed = new();
     private Dictionary<Guid, MediaAssetInfo> assets = [];
     private HashSet<Guid> asked = [];
     private string? assetsLocale;
@@ -157,19 +159,28 @@
 
     public override ValueTask FocusAsync() => group.Context is null ? ValueTask.CompletedTask : group.FocusAsync();
 
-    // Focus that moves between the field's buttons raises focusout before focusin; only leaving the field is a blur.
+    // A picker still open when the form goes away, as on a navigation, closes without a choice.
+    public void Dispose()
+    {
+        disposed.Cancel();
+        disposed.Dispose();
+    }
+
+    // Focus that moves between the field's buttons raises focusout before focusin; only leaving the field is a blur, and
+    // focus that moves into the field's own picker has not left it.
     private async Task LeftAsync()
     {
         var left = ++focusGeneration;
         await Task.Delay(1);
-        if (left == focusGeneration)
+        if (left == focusGeneration && !picking)
         {
             await OnBlur.InvokeAsync();
         }
     }
 
-    // The texts are in the content locale, so another locale reads them again. An asset that cannot be read, as one the
-    // caller may not read or one deleted since, shows its id.
+    // The texts are in the content locale, so another locale reads them again. An asset the server refuses, as one the
+    // caller may not read or one deleted since, shows its id; one that failed without an answer is read again on the next
+    // render.
     private async Task ReadAssetsAsync()
     {
         if (ContentLocale != assetsLocale)
@@ -183,8 +194,12 @@
             {
                 assets[id] = await new MediaApi(Api).GetAsync(id, ContentLocale, CancellationToken.None);
             }
-            catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+            catch (ApiProblemException)
             {
+            }
+            catch (Exception failure) when (failure is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+            {
+                asked.Remove(id);
             }
         }
     }
@@ -209,7 +224,7 @@
         IReadOnlyList<MediaPickerItem>? picked = null;
         try
         {
-            if (await Plugins.FindAsync<IMediaPicker>() is { } picker)
+            if (await Plugins.FindAsync<IMediaPicker>(disposed.Token) is { } picker)
             {
                 picked = await picker.PickAsync(new MediaPickerRequest
                 {
@@ -217,8 +232,11 @@
                     Selected = Ids,
                     Accept = MediaTypes.OfField(Field.Settings),
                     Locale = ContentLocale,
-                });
+                }, disposed.Token);
             }
+        }
+        catch (OperationCanceledException) when (disposed.IsCancellationRequested)
+        {
         }
         catch (InvalidOperationException)
         {
@@ -229,7 +247,7 @@
             picking = false;
         }
 
-        if (picked is null)
+        if (picked is null || disposed.IsCancellationRequested)
         {
             return;
         }
