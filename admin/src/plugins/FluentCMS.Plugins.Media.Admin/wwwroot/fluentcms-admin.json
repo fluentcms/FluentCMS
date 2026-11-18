@@ -1,0 +1,44 @@
+{
+  "manifestVersion": 1,
+  "name": "media",
+  "version": "1.0.0",
+  "adminRange": "[1.0.0,2.0.0)",
+  "assembly": "FluentCMS.Plugins.Media.Admin",
+  "pages": [
+    { "type": "FluentCMS.Plugins.Media.Admin.MediaPage", "route": "/media", "permission": "media.read" },
+    { "type": "FluentCMS.Plugins.Media.Admin.MediaPresetsPage", "route": "/media/presets", "permission": "media.presets.manage" }
+  ],
+  "menuItems": [
+    {
+      "type": "FluentCMS.Plugins.Media.Admin.MediaPage",
+      "label": "Media.Menu",
+      "labels": { "en": "Media" },
+      "route": "/media",
+      "section": "media",
+      "icon": "image",
+      "permission": "media.read"
+    },
+    {
+      "type": "FluentCMS.Plugins.Media.Admin.MediaPresetsPage",
+      "label": "Media.Presets.Menu",
+      "labels": { "en": "Image presets" },
+      "route": "/media/presets",
+      "section": "media",
+      "icon": "settings",
+      "order": 1,
+      "permission": "media.presets.manage"
+    }
+  ],
+  "fieldEditors": [
+    { "type": "FluentCMS.Plugins.Media.Admin.MediaFieldEditor", "fieldType": "media" }
+  ],
+  "listCells": [
+    { "type": "FluentCMS.Plugins.Media.Admin.MediaListCell", "fieldType": "media", "populate": true }
+  ],
+  "widgets": [
+    { "type": "FluentCMS.Plugins.Media.Admin.LatestUploadsWidget", "title": "Media.Widget.Title", "size": "small", "permission": "media.read" }
+  ],
+  "services": [
+    { "type": "FluentCMS.Plugins.Media.Admin.MediaPicker", "service": "FluentCMS.Admin.Pickers.IMediaPicker" }
+  ]
+}

@@ -11,6 +11,8 @@
     <ProjectReference Include="../../src/FluentCMS.Admin/FluentCMS.Admin.csproj" />
     <!-- For the config.json the hosting package builds, which the tests read with the admin's own reader. -->
     <ProjectReference Include="../../src/FluentCMS.Admin.Hosting/FluentCMS.Admin.Hosting.csproj" />
+    <!-- The media half's own client and records, held to the media routes. -->
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media.Admin/FluentCMS.Plugins.Media.Admin.csproj" />
     <ProjectReference Include="../../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
     <!-- The Blog sample and every first-party plugin, which the test host discovers, as the reference host runs them (spec 7). -->
     <ProjectReference Include="../../../samples/Blog/Blog.csproj" />

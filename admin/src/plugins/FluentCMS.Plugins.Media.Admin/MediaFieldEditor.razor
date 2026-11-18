@@ -1,0 +1,304 @@
+@* The editor of a media field (spec 5.2): each asset with its thumbnail and name, read with GET /media/{id} in the content
+   locale, removed by its button; the media picker chooses them, and uploads into the library from inside it. A field of
+   several assets is ordered by the buttons or Alt with the up and down arrows (WCAG 2.5.7). Each asset's alt text and focal
+   point open under it and are saved on the asset (A-50's parts, PATCH /media/{id}). The value is written as an id, or a
+   list of ids in order. *@
+@attribute [FieldEditor("media")]
+@inherits FieldEditorBase
+@implements IDisposable
+@inject IManagementApi Api
+@inject IAdminContext Context
+@inject IAdminPluginServices Plugins
+@inject IAnnouncer Announcer
+@inject AdminConfiguration Configuration
+@inject IStringLocalizer<MediaResources> L
+
+<fieldset @ref="group"
+          class="cms-field media-field"
+          tabindex="-1"
+          aria-describedby="@DescribedBy"
+          @onfocusin="@(() => focusGeneration++)"
+          @onfocusout="LeftAsync">
+    <legend class="cms-field-label">
+        @Label
+        @if (Required)
+        {
+            <span class="cms-field-required" aria-hidden="true"> *</span>
+        }
+    </legend>
+    @if (Ids.Count == 0)
+    {
+        <p class="media-field-empty">@L["Media.Field.Empty"]</p>
+    }
+    else
+    {
+        <ul class="media-field-items">
+            @for (var index = 0; index < Ids.Count; index++)
+            {
+                var position = index;
+                var id = Ids[position];
+                var name = NameOf(id);
+                @* Keyed by position, so that a move changes what each item shows and focus stays in the document. *@
+                <li @key="position" class="media-field-item" @onkeydown="@(e => OnItemKeyDownAsync(e, position))">
+                    <div class="media-field-row">
+                        <span class="media-field-thumb">
+                            @if (ThumbnailOf(id) is { } source)
+                            {
+                                <img src="@source" alt="" />
+                            }
+                            else
+                            {
+                                <CmsIcon Name="CmsIconName.Document" />
+                            }
+                        </span>
+                        <span class="media-field-name" lang="@ContentLocale" dir="@TextDirection">@name</span>
+                        @if (CanOrder)
+                        {
+                            <CmsButton @ref="upButtons[position]" Icon="CmsIconName.Up" Appearance="CmsButtonAppearance.Subtle" Label="@L["Media.Field.MoveUp", name]" Disabled="@(position == 0)" OnClick="@(() => MoveAsync(position, -1, byKey: false))" />
+                            <CmsButton @ref="downButtons[position]" Icon="CmsIconName.Down" Appearance="CmsButtonAppearance.Subtle" Label="@L["Media.Field.MoveDown", name]" Disabled="@(position == Ids.Count - 1)" OnClick="@(() => MoveAsync(position, 1, byKey: false))" />
+                        }
+                        @if (!ReadOnly)
+                        {
+                            <CmsButton @ref="removeButtons[position]" Icon="CmsIconName.Dismiss" Appearance="CmsButtonAppearance.Subtle" Label="@L["Media.Field.Remove", name]" OnClick="@(() => RemoveAsync(position))" />
+                        }
+                        @if (assets.GetValueOrDefault(id) is not null)
+                        {
+                            <button type="button" class="media-field-toggle" aria-expanded="@(expanded == position ? "true" : "false")" @onclick="@(() => expanded = expanded == position ? null : position)">
+                                @L["Media.Field.Details", name]
+                            </button>
+                        }
+                    </div>
+                    @if (expanded == position && assets.GetValueOrDefault(id) is { } asset)
+                    {
+                        @* One gate per asset, so that its two parts save one after another, each on the answer before. *@
+                        <div @key="id" class="media-field-details">
+                            <CascadingValue Value="@GateOf(id)" IsFixed="true">
+                                <MediaAltText Asset="@asset" ReadOnly="@(!MayUpdate)" OnChanged="@(changed => assets[id] = changed)" />
+                                <MediaFocalPoint Asset="@asset" ReadOnly="@(!MayUpdate)" OnChanged="@(changed => assets[id] = changed)" />
+                            </CascadingValue>
+                        </div>
+                    }
+                </li>
+            }
+        </ul>
+        @if (CanOrder)
+        {
+            <span id="@orderHintId" class="cms-visually-hidden">@L["Media.Field.OrderHint"]</span>
+        }
+    }
+    @if (!ReadOnly && Context.Access.Allows(MediaPermissions.Read))
+    {
+        <div class="media-field-actions">
+            <CmsButton @ref="chooseButton" Icon="CmsIconName.Image" OnClick="PickAsync">@L[Field.Multiple ? "Media.Field.ChooseMany" : "Media.Field.Choose"]</CmsButton>
+        </div>
+    }
+    @if (pickerFailed)
+    {
+        <span class="cms-field-message cms-field-message-error" role="alert">@L["Media.Field.PickerFailed"]</span>
+    }
+    @if (ErrorText is not null)
+    {
+        <span id="@messageId" class="cms-field-message cms-field-message-error">@ErrorText</span>
+    }
+    else if (Help is not null)
+    {
+        <span id="@messageId" class="cms-field-message">@Help</span>
+    }
+</fieldset>
+
+@code {
+    private readonly string messageId = "media-field-message-" + Guid.NewGuid().ToString("N");
+    private readonly string orderHintId = "media-field-order-" + Guid.NewGuid().ToString("N");
+    private readonly Dictionary<int, CmsButton> upButtons = [];
+    private readonly Dictionary<int, CmsButton> downButtons = [];
+    private readonly Dictionary<int, CmsButton> removeButtons = [];
+    private readonly CancellationTokenSource disposed = new();
+    private Dictionary<Guid, MediaAssetInfo> assets = [];
+    private readonly Dictionary<Guid, MediaSaveGate> gates = [];
+    private HashSet<Guid> asked = [];
+    private string? assetsLocale;
+    private ElementReference group;
+    private CmsButton? chooseButton;
+    private bool picking;
+    private int? expanded;
+    private bool pickerFailed;
+    private int focusGeneration;
+    private IReadOnlyList<Guid>? idsRead;
+    private JsonNode? idsOf;
+
+    // The control that gets focus after the next render, since the one that had it moved or left the document.
+    private Func<CmsButton?>? focusAfterRender;
+
+    private IReadOnlyList<Guid> Ids
+    {
+        get
+        {
+            if (idsRead is null || !ReferenceEquals(idsOf, Value))
+            {
+                (idsRead, idsOf) = (MediaFieldValues.Ids(Value), Value);
+            }
+
+            return idsRead;
+        }
+    }
+
+    // The alt text and focal point are saved on the asset, which the field's own read-only state does not hold back.
+    private bool MayUpdate => !ReadOnly && Context.Access.Allows(MediaPermissions.Update);
+
+    private bool CanOrder => Field.Multiple && !ReadOnly && Ids.Count > 1;
+
+    private string? DescribedBy =>
+        string.Join(' ', new[] { ErrorText is null && Help is null ? null : messageId, CanOrder ? orderHintId : null }.OfType<string>()) is { Length: > 0 } ids ? ids : null;
+
+    protected override Task OnParametersSetAsync() => ReadAssetsAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender?.Invoke() is { } button)
+        {
+            focusAfterRender = null;
+            await button.FocusAsync();
+        }
+    }
+
+    public override ValueTask FocusAsync() => group.Context is null ? ValueTask.CompletedTask : group.FocusAsync();
+
+    // A picker still open when the form goes away, as on a navigation, closes without a choice.
+    public void Dispose()
+    {
+        disposed.Cancel();
+        disposed.Dispose();
+    }
+
+    // Focus that moves between the field's buttons raises focusout before focusin; only leaving the field is a blur, and
+    // focus that moves into the field's own picker has not left it.
+    private async Task LeftAsync()
+    {
+        var left = ++focusGeneration;
+        await Task.Delay(1);
+        if (left == focusGeneration && !picking)
+        {
+            await OnBlur.InvokeAsync();
+        }
+    }
+
+    // The texts are in the content locale, so another locale reads them again. An asset the server refuses, as one the
+    // caller may not read or one deleted since, shows its id; one that failed without an answer is read again on the next
+    // render.
+    private async Task ReadAssetsAsync()
+    {
+        if (ContentLocale != assetsLocale)
+        {
+            (assetsLocale, assets, asked) = (ContentLocale, [], []);
+        }
+
+        foreach (var id in Ids.Where(id => !assets.ContainsKey(id) && asked.Add(id)).ToList())
+        {
+            try
+            {
+                assets[id] = await new MediaApi(Api).GetAsync(id, ContentLocale, CancellationToken.None);
+            }
+            catch (ApiProblemException)
+            {
+            }
+            catch (Exception failure) when (failure is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+            {
+                asked.Remove(id);
+            }
+        }
+    }
+
+    private MediaSaveGate GateOf(Guid id) => gates.TryGetValue(id, out var gate) ? gate : gates[id] = new MediaSaveGate();
+
+    private string NameOf(Guid id) => assets.GetValueOrDefault(id)?.Name ?? id.ToString("D");
+
+    private string? ThumbnailOf(Guid id) =>
+        assets.GetValueOrDefault(id)?.Urls.Thumbnail is { } url ? MediaFormat.Resolve(Configuration.ApiBaseUrl, url) : null;
+
+    private Task WriteAsync(IReadOnlyList<Guid> ids) => ChangeAsync(MediaFieldValues.Write(ids, Field.Multiple));
+
+    // The picker chooses each asset once; one the value holds more than once keeps its places while it stays chosen.
+    // The button stays enabled while the picker is open, since the dialog gives focus back to it as it closes.
+    private async Task PickAsync()
+    {
+        if (picking)
+        {
+            return;
+        }
+
+        (picking, pickerFailed) = (true, false);
+        IReadOnlyList<MediaPickerItem>? picked = null;
+        try
+        {
+            if (await Plugins.FindAsync<IMediaPicker>(disposed.Token) is { } picker)
+            {
+                picked = await picker.PickAsync(new MediaPickerRequest
+                {
+                    Multiple = Field.Multiple,
+                    Selected = Ids,
+                    Accept = MediaTypes.OfField(Field.Settings),
+                    Locale = ContentLocale,
+                }, disposed.Token);
+            }
+        }
+        catch (OperationCanceledException) when (disposed.IsCancellationRequested)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+            pickerFailed = true;
+        }
+        finally
+        {
+            picking = false;
+        }
+
+        if (picked is null || disposed.IsCancellationRequested)
+        {
+            return;
+        }
+
+        var ids = picked.Select(item => item.Id).ToList();
+        await WriteAsync(Field.Multiple ? [.. Ids.Where(ids.Contains), .. ids.Where(id => !Ids.Contains(id))] : ids);
+        await ReadAssetsAsync();
+    }
+
+    private async Task RemoveAsync(int position)
+    {
+        var ids = Ids.ToList();
+        var removed = NameOf(ids[position]);
+        ids.RemoveAt(position);
+        expanded = null;
+        await WriteAsync(ids);
+
+        // Focus goes to the asset that took the removed one's place, or to the picker when none is left.
+        int? next = ids.Count == 0 ? null : Math.Min(position, ids.Count - 1);
+        focusAfterRender = () => next is { } kept ? removeButtons.GetValueOrDefault(kept) : chooseButton;
+        Announcer.Announce(L["Media.Field.Removed", removed]);
+    }
+
+    private Task OnItemKeyDownAsync(KeyboardEventArgs e, int position) =>
+        CanOrder && e.AltKey && e.Key is "ArrowUp" or "ArrowDown" ? MoveAsync(position, e.Key == "ArrowUp" ? -1 : 1, byKey: true) : Task.CompletedTask;
+
+    // Focus follows the moved asset: to its remove button after a key, or to the button pressed, or to the other one when the
+    // asset reached an end and the pressed one became disabled.
+    private async Task MoveAsync(int position, int by, bool byKey)
+    {
+        var to = position + by;
+        var ids = Ids.ToList();
+        if (to < 0 || to >= ids.Count)
+        {
+            return;
+        }
+
+        (ids[position], ids[to]) = (ids[to], ids[position]);
+        expanded = expanded == position ? to : expanded == to ? position : expanded;
+        var moved = NameOf(ids[to]);
+        await WriteAsync(ids);
+        var atEnd = by < 0 ? to == 0 : to == ids.Count - 1;
+        focusAfterRender = byKey
+            ? () => removeButtons.GetValueOrDefault(to)
+            : (by < 0) != atEnd ? () => upButtons.GetValueOrDefault(to) : () => downButtons.GetValueOrDefault(to);
+        Announcer.Announce(L["Media.Field.Moved", moved, to + 1, ids.Count]);
+    }
+}

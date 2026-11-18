@@ -1,0 +1,48 @@
+{
+  "manifestVersion": 1,
+  "name": "reviews",
+  "version": "1.0.0",
+  "adminRange": "[1.0.0,2.0.0)",
+  "assembly": "FluentCMS.Admin.Plugins.Sample",
+  "pages": [
+    { "type": "FluentCMS.Admin.Plugins.Sample.ReviewsPage", "route": "/reviews", "permission": "reviews.notes.manage" },
+    { "type": "FluentCMS.Admin.Plugins.Sample.ReviewPage", "route": "/reviews/{Id:guid}", "permission": "reviews.notes.manage" },
+    { "type": "FluentCMS.Admin.Plugins.Sample.ReviewPage", "route": "/reviews/new", "permission": "reviews.notes.create" }
+  ],
+  "menuItems": [
+    {
+      "type": "FluentCMS.Admin.Plugins.Sample.ReviewsPage",
+      "label": "Reviews.Menu",
+      "labels": { "en": "Reviews", "fr": "Avis" },
+      "route": "/reviews",
+      "section": "content",
+      "icon": "comment",
+      "order": 10,
+      "permission": "reviews.notes.manage"
+    }
+  ],
+  "settingsPages": [
+    { "type": "FluentCMS.Admin.Plugins.Sample.ReviewsSettingsPage", "area": "reviews" }
+  ],
+  "fieldEditors": [
+    { "type": "FluentCMS.Admin.Plugins.Sample.RatingEditor", "fieldType": "rating" }
+  ],
+  "listCells": [
+    { "type": "FluentCMS.Admin.Plugins.Sample.RatingCell", "fieldType": "rating" }
+  ],
+  "entryActions": [
+    { "type": "FluentCMS.Admin.Plugins.Sample.ApproveAction", "name": "approve", "contentTypes": ["review"], "permission": "reviews.notes.manage" }
+  ],
+  "bulkActions": [
+    { "type": "FluentCMS.Admin.Plugins.Sample.ApproveAllAction", "name": "approveAll", "contentTypes": ["note", "review"], "permission": "reviews.notes.manage" }
+  ],
+  "fieldActions": [
+    { "type": "FluentCMS.Admin.Plugins.Sample.ShoutAction", "name": "shout", "fieldTypes": ["text", "longText"] }
+  ],
+  "widgets": [
+    { "type": "FluentCMS.Admin.Plugins.Sample.LatestReviewsWidget", "title": "Reviews.Widget.Title", "size": "small", "permission": "reviews.notes.manage", "role": "editor" }
+  ],
+  "services": [
+    { "type": "FluentCMS.Admin.Plugins.Sample.SampleMediaPicker", "service": "FluentCMS.Admin.Pickers.IMediaPicker" }
+  ]
+}

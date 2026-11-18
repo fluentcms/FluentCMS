@@ -1,0 +1,7 @@
+.media-picker {
+    min-inline-size: min(56rem, 80vw);
+}
+
+.media-dialog-error {
+    color: var(--cms-color-error);
+}

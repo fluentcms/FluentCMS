@@ -1,0 +1,105 @@
+@* The allow-listed user of IJSRuntime of the media half (spec 3.1): while Enabled, files dropped anywhere on its content or
+   pasted while it shows are handed to the file input of the MediaUpload inside it, as if they had been chosen, and a file
+   dropped elsewhere on the page is not opened by the browser. The JavaScript references stay inside this component. *@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="@Class" @ref="zone">@ChildContent</div>
+
+@code {
+    public const string ModulePath = "./_content/FluentCMS.Plugins.Media.Admin/media-drop.js";
+
+    // The class the zone has while files are dragged over it.
+    public const string ActiveClass = "media-drop-active";
+
+    private ElementReference zone;
+    private IJSObjectReference? module;
+    private IJSObjectReference? listener;
+
+    // Set before the first await, so that a render while the module loads does not listen twice.
+    private bool starting;
+    private bool disposed;
+
+    // The module did not load: the button stays the way to upload, and no render tries again.
+    private bool unavailable;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public bool Enabled { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Enabled && listener is null && !starting && !unavailable)
+        {
+            await StartAsync();
+        }
+        else if (!Enabled && listener is not null)
+        {
+            await StopAsync();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        disposed = true;
+        try
+        {
+            await StopAsync();
+            if (module is { } loaded)
+            {
+                module = null;
+                await loaded.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    // A module that does not load leaves the button as the way to upload.
+    private async Task StartAsync()
+    {
+        starting = true;
+        try
+        {
+            module ??= await JS.InvokeAsync<IJSObjectReference>("import", ModulePath);
+            if (disposed || !Enabled)
+            {
+                return;
+            }
+
+            var started = await module.InvokeAsync<IJSObjectReference>("listen", zone, ActiveClass);
+            listener = started;
+            if (disposed || !Enabled)
+            {
+                await StopAsync();
+            }
+        }
+        catch (JSException)
+        {
+            unavailable = true;
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        finally
+        {
+            starting = false;
+        }
+    }
+
+    private async Task StopAsync()
+    {
+        if (listener is { } active)
+        {
+            listener = null;
+            await active.InvokeVoidAsync("dispose");
+            await active.DisposeAsync();
+        }
+    }
+}

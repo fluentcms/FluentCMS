@@ -20,11 +20,15 @@ public class AdminRulesTests
     private const string AdminComponents = "FluentCMS.Admin.Components";
     private const string AdminRichText = "FluentCMS.Admin.RichText";
     private const string AdminApp = "FluentCMS.Admin.App";
+
+    // The repository's own half, which every list of halves holds.
+    private const string MediaHalf = HalvesFolder + "FluentCMS.Plugins.Media.Admin/FluentCMS.Plugins.Media.Admin.csproj";
     private const string AdminHosting = "FluentCMS.Admin.Hosting";
     private const string Core = "FluentCMS.Core";
     private const string Client = "FluentCMS.Client";
     private const string Library = "Microsoft.FluentUI.AspNetCore.Components";
     private const string LibraryNamespace = "Microsoft.FluentUI";
+    private const string TemplateHalf = "templates/fluentcms-plugin/src/FluentCms-Plugin1.Admin/FluentCms-Plugin1.Admin.csproj";
 
     // The packages of admin/src/ itself; any other project there, or elsewhere, may be a half.
     private static readonly string[] AdminPackages = [Admin, AdminAbstractions, AdminComponents, AdminRichText, AdminApp, AdminHosting];
@@ -32,11 +36,11 @@ public class AdminRulesTests
     // A development-only FluentCMS package is left out of the rules only when it is one of these, which run in the compiler.
     private static readonly string[] CompilerPackages = ["FluentCMS.Analyzers", "FluentCMS.Generators"];
 
-    // Spec 3.1: the types that may use JavaScript interop, the document module, the tab's sessionStorage of the sign-in, and
-    // localStorage for the theme's one key and for the column names of the lists. The component library's script is loaded
-    // by the library's own types, so no type of FluentCMS.Admin.Components is listed. The rich text bundle and the clipboard,
-    // file drop and BroadcastChannel modules join the list by name, in FluentCMS.Admin or FluentCMS.Admin.RichText, with the
-    // issues that write them.
+    // Spec 3.1: the types that may use JavaScript interop, the document module, the tab's sessionStorage of the sign-in,
+    // localStorage for the theme's one key and for the column names of the lists, and the drop and paste of the media
+    // library, in the media half (A-21). The component library's script is loaded by the library's own types, so no type of
+    // FluentCMS.Admin.Components is listed. The rich text bundle and the clipboard and BroadcastChannel modules join the list
+    // by name, in FluentCMS.Admin or FluentCMS.Admin.RichText, with the issues that write them.
     private static readonly string[] InteropTypes =
     [
         "FluentCMS.Admin.Interop.ColumnStorageInterop",
@@ -44,7 +48,10 @@ public class AdminRulesTests
         "FluentCMS.Admin.Interop.SessionStorageInterop",
         "FluentCMS.Admin.Interop.TabChannelInterop",
         "FluentCMS.Admin.Interop.ThemeStorageInterop",
+        "FluentCMS.Plugins.Media.Admin.MediaDropZone",
     ];
+
+    private const string MediaHalfAssembly = "FluentCMS.Plugins.Media.Admin";
 
     private static readonly string[] InteropNamespaces = ["Microsoft.JSInterop", "System.Runtime.InteropServices.JavaScript"];
 
@@ -151,6 +158,19 @@ public class AdminRulesTests
             ignoreOrder: true);
     }
 
+    // Spec 6.2: the admin half of the fluentcms-plugin template is found as a half, and among the FluentCMS packages it
+    // references the contract and the wrapped set only, and no project, so never its server half.
+    [Fact]
+    public void ThePluginTemplatesAdminHalfReferencesTheAdminAbstractionsAndTheWrappedComponentsOnly()
+    {
+        var half = ProjectFile.Load(TemplateHalf);
+
+        Halves(ProjectFile.RepositoryProjects).Select(project => project.Location).ShouldContain(TemplateHalf);
+        half.ProjectReferences.ShouldBeEmpty();
+        half.PackageReferences.Select(package => package.Name).Where(name => name.StartsWith("FluentCMS.", StringComparison.Ordinal))
+            .ShouldBe([AdminAbstractions, AdminComponents], ignoreOrder: true);
+    }
+
     // Spec 2.3: only the wrapped set compiles against the component library, which is what FluentCMS.Admin.Components
     // references. A package of the library is matched by its id and the ids below it, and through any project but the wrapped set.
     [Fact]
@@ -226,7 +246,7 @@ public class AdminRulesTests
     {
         var byFolder = ProjectFile.FromXml(HalvesFolder + "Reviews/Reviews.csproj", "<Project />");
         var byName = ProjectFile.FromXml("samples/Reviews.Admin/Reviews.Admin.csproj", "<Project />");
-        var byNameInAdmin = ProjectFile.FromXml(AdminFolder + "FluentCMS.Plugins.Media.Admin/FluentCMS.Plugins.Media.Admin.csproj", "<Project />");
+        var byNameInAdmin = ProjectFile.FromXml(AdminFolder + "FluentCMS.Plugins.Reviews.Admin/FluentCMS.Plugins.Reviews.Admin.csproj", "<Project />");
         var byReference = ProjectFile.FromXml("samples/Reviews.Pages/Reviews.Pages.csproj", """
             <Project Sdk="Microsoft.NET.Sdk.Razor">
               <ItemGroup>
@@ -245,7 +265,7 @@ public class AdminRulesTests
 
         Halves([.. ProjectFile.RepositoryProjects, byFolder, byName, byNameInAdmin, byReference, byReferenceInAdmin, server])
             .Select(half => half.Location)
-            .ShouldBe([byFolder.Location, byName.Location, byNameInAdmin.Location, byReference.Location, byReferenceInAdmin.Location], ignoreOrder: true);
+            .ShouldBe([TemplateHalf, MediaHalf, byFolder.Location, byName.Location, byNameInAdmin.Location, byReference.Location, byReferenceInAdmin.Location], ignoreOrder: true);
 
         // Placed directly under admin/src/, a half that uses the shell and the library still breaks the rules.
         var careless = ProjectFile.FromXml(byNameInAdmin.Location, """
@@ -257,8 +277,8 @@ public class AdminRulesTests
             </Project>
             """);
 
-        HalfViolations(With(careless)).ShouldBe(["FluentCMS.Plugins.Media.Admin references FluentCMS.Admin"]);
-        LibraryReferences(With(careless)).ShouldBe(["FluentCMS.Plugins.Media.Admin references Microsoft.FluentUI.AspNetCore.Components"]);
+        HalfViolations(With(careless)).ShouldBe(["FluentCMS.Plugins.Reviews.Admin references FluentCMS.Admin"]);
+        LibraryReferences(With(careless)).ShouldBe(["FluentCMS.Plugins.Reviews.Admin references Microsoft.FluentUI.AspNetCore.Components"]);
     }
 
     // Spec 2.8: the contract depends on Microsoft.AspNetCore.Components.Web and the Microsoft.Extensions.* abstractions only.
@@ -291,7 +311,7 @@ public class AdminRulesTests
     {
         AdminProjectsReachingCore(ProjectFile.RepositoryProjects).ShouldBe([AdminHosting]);
 
-        // Every admin project builds on the contract, so a reference from it reaches them all.
+        // Every admin project builds on the contract, so a reference from it reaches them all, the template's half too.
         var careless = ProjectFile.FromXml(AdminFolder + "FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj", """
             <Project Sdk="Microsoft.NET.Sdk">
               <ItemGroup>
@@ -300,7 +320,9 @@ public class AdminRulesTests
             </Project>
             """);
 
-        AdminProjectsReachingCore(With(careless)).ShouldBe([AdminHosting, Admin, AdminAbstractions, AdminApp, AdminComponents, AdminRichText], ignoreOrder: true);
+        AdminProjectsReachingCore(With(careless)).ShouldBe(
+            [AdminHosting, Admin, AdminAbstractions, AdminApp, AdminComponents, AdminRichText, "FluentCMS.Plugins.Media.Admin", "FluentCms-Plugin1.Admin"],
+            ignoreOrder: true);
 
         // That no assembly of the browser references the hosting package is checked by the first rule, which does not count
         // the hosting package as one.
@@ -325,13 +347,13 @@ public class AdminRulesTests
     }
 
     [Fact]
-    public void EachAllowListedInteropTypeIsInTheShellOrTheRichTextEditor()
+    public void EachAllowListedInteropTypeIsInTheShellTheRichTextEditorOrTheMediaHalf()
     {
         foreach (var name in InteropTypes)
         {
             var type = browser.Value.Types.SingleOrDefault(type => type.FullName == name);
             type.ShouldNotBeNull($"{name} is on the interop list but is not a type of the admin.");
-            type.Assembly.Name.Split(',')[0].ShouldBeOneOf(Admin, AdminRichText);
+            type.Assembly.Name.Split(',')[0].ShouldBeOneOf(Admin, AdminRichText, MediaHalfAssembly);
         }
     }
 

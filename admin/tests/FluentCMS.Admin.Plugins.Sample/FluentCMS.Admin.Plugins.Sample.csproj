@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!-- The sample admin half of the admin tests: a Razor Class Library that declares every contribution of the contract and
+       references the two contract packages only, as a plugin's admin half does. -->
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj" />
+    <ProjectReference Include="../../src/FluentCMS.Admin.Components/FluentCMS.Admin.Components.csproj" />
+  </ItemGroup>
+
+</Project>

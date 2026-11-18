@@ -4,6 +4,8 @@
 @implements IDisposable
 @using FluentCMS.Admin.Authentication
 @using FluentCMS.Admin.Configuration
+@using FluentCMS.Admin.Plugins
+@using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Logging
 @inject AdminStartup Startup
 @inject ShellTheme Theme
@@ -12,6 +14,7 @@
 @inject DocumentInterop Document
 @inject NavigationManager Navigation
 @inject NavigationFocus NavigationFocus
+@inject IServiceProvider Services
 
 @if (Startup.Configuration is { } configuration)
 {
@@ -23,13 +26,16 @@
     {
         <CmsThemeRoot Mode="@Theme.Mode">
             <SignInGate>
-                <Router AppAssembly="typeof(AdminApp).Assembly" NotFoundPage="typeof(NotFoundPage)">
+                @* A page of an admin half loads the half's assembly first, which the router then searches too (spec 2.6). The page
+                   before stays while it loads: a Navigating content would draw the layout again. *@
+                <Router AppAssembly="typeof(AdminApp).Assembly" AdditionalAssemblies="Plugins.Assemblies" OnNavigateAsync="@navigate" NotFoundPage="typeof(NotFoundPage)">
                     <Found Context="routeData">
-                        <RouteView RouteData="routeData" DefaultLayout="typeof(AdminLayout)" />
+                        <PluginRouteView RouteData="routeData" />
                         <HeadingFocus Path="@currentPath" Enabled="@focusHeading" />
                     </Found>
                 </Router>
             </SignInGate>
+            <AdminOverlayOutlet />
             <LiveRegions />
         </CmsThemeRoot>
     }
@@ -44,6 +50,13 @@ else
     private bool focusHeading;
     private string previousRoute = string.Empty;
     private string currentPath = string.Empty;
+    private AdminPlugins? plugins;
+
+    // Without a receiver, so that a navigation does not render this component again, which would move the heading's focus.
+    private readonly EventCallback<NavigationContext> navigate;
+
+    // Registered only with a valid configuration, as the router is shown only then.
+    private AdminPlugins Plugins => plugins ??= Services.GetRequiredService<AdminPlugins>();
 
     // This assembly is trimmed and nothing references its pages, so each page is kept here or Router does not find it. A test
     // checks that every routable page of the assembly is listed.
@@ -54,8 +67,10 @@ else
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(LoginCallbackPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ContentListPage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ContentEntryPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PluginProblemsPage))]
     public AdminApp()
     {
+        navigate = new(null, (Func<NavigationContext, Task>)(context => Plugins.NavigateAsync(context.Path, context.CancellationToken)));
     }
 
     protected override async Task OnInitializedAsync()
@@ -68,6 +83,14 @@ else
         foreach (var member in Startup.PlainHttpMembers)
         {
             ConfigurationLog.PlainHttp(Logger, member);
+        }
+
+        if (Startup.Configuration is not null)
+        {
+            foreach (var problem in Plugins.Catalog.Problems)
+            {
+                PluginLog.NotLoaded(Logger, problem.Name, problem.Assembly, problem.Kind);
+            }
         }
 
         Theme.Changed += OnThemeChanged;

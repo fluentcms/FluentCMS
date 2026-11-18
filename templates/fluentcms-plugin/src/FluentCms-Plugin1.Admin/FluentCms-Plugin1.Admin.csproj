@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Description>The admin half of a FluentCMS plugin.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <!-- An admin half references the admin's contract and its wrapped components only, never its server half or FluentCMS.Admin:
+       the admin loads it in the browser the first time one of its contributions is used. -->
+  <ItemGroup>
+    <PackageReference Include="FluentCMS.Admin.Abstractions" Version="{{version:FluentCMS}}" />
+    <PackageReference Include="FluentCMS.Admin.Components" Version="{{version:FluentCMS}}" />
+  </ItemGroup>
+
+  <!-- IStringLocalizer<T> over the half's own resources; the admin registers the localization services. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Localization" Version="{{version:Microsoft.Extensions.Localization}}" />
+  </ItemGroup>
+
+</Project>

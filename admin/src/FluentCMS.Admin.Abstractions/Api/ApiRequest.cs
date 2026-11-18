@@ -45,6 +45,9 @@ public sealed class ApiRequest
     /// <summary>The JSON body, if any.</summary>
     public JsonNode? Body { get; init; }
 
+    /// <summary>A body that is not JSON, if any, in place of <see cref="Body"/>.</summary>
+    public ApiContent? Content { get; init; }
+
     /// <summary>
     /// The entity tag of the read a save is based on, sent as <c>If-Match</c>; <see cref="NewLocale"/> adds a locale. A weak
     /// tag is sent by its value.

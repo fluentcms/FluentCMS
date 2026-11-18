@@ -5,10 +5,13 @@ namespace FluentCMS.Admin.Lists;
 /// <summary>
 /// The filters the generated lists offer, by field type: the operators of the query model each type takes in the admin, and
 /// the operand they compare with. The core field types are in it from the start; an admin half names the operators of its
-/// own field types with <c>Add</c>. A field type that is in neither is offered no filter.
+/// own field types with <c>Add</c> when it is loaded, which <c>FindAsync</c> does for a type added with <c>AddLazy</c>. A
+/// field type that is in neither is offered no filter.
 /// </summary>
 public sealed class ListFilterRegistry
 {
+    private readonly Dictionary<string, (Func<bool> IsAvailable, Func<CancellationToken, Task> Load)> _lazy = new(StringComparer.Ordinal);
+
     // What a field that holds a list takes: whether it holds a value, or any of some values.
     private static readonly FilterOperator[] ListOperators = [FilterOperator.Contains, FilterOperator.In, FilterOperator.NotIn, FilterOperator.IsNull, FilterOperator.IsNotNull];
 
@@ -76,20 +79,52 @@ public sealed class ListFilterRegistry
     }
 
     /// <summary>
+    /// Declares a field type whose operators an admin half names with <c>Add</c> when it is loaded. While
+    /// <paramref name="isAvailable"/> answers <see langword="false"/>, as when the half's plugin is disabled in the site,
+    /// the type is offered no filter.
+    /// </summary>
+    /// <param name="fieldType">The field type, as <see cref="SchemaFieldDescription.Type"/> names it.</param>
+    /// <param name="isAvailable">Whether the half may be used now.</param>
+    /// <param name="load">Loads the half, once loaded a call that does nothing.</param>
+    public void AddLazy(string fieldType, Func<bool> isAvailable, Func<CancellationToken, Task> load)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fieldType);
+        ArgumentNullException.ThrowIfNull(isAvailable);
+        ArgumentNullException.ThrowIfNull(load);
+        _lazy[fieldType] = (isAvailable, load);
+    }
+
+    /// <summary>
     /// The filter a list offers on a field: the one of its type, which a field that holds a list narrows to the operators
-    /// that test its members. A hidden field has none, nor does one whose type names no operators.
+    /// that test its members. A hidden field has none, nor does one whose type names no operators, nor one of an admin
+    /// half's type before <c>FindAsync</c> has loaded the half.
     /// </summary>
     /// <param name="field">The field.</param>
     /// <returns>The filter, or <see langword="null"/> when the field is offered none.</returns>
     public ListFilterDefinition? Find(SchemaFieldDescription field)
     {
         ArgumentNullException.ThrowIfNull(field);
-        if (field.Hidden || !_filters.TryGetValue(field.Type, out var filter))
+        if (field.Hidden || (_lazy.TryGetValue(field.Type, out var lazy) && !lazy.IsAvailable()) || !_filters.TryGetValue(field.Type, out var filter))
         {
             return null;
         }
 
         return field.Multiple ? filter.List : filter.One;
+    }
+
+    /// <summary>The filter a list offers on a field, as <c>Find</c> answers it once the admin half of its type is loaded.</summary>
+    /// <param name="field">The field.</param>
+    /// <param name="cancellationToken">Cancels the load.</param>
+    /// <returns>The filter, or <see langword="null"/> when the field is offered none.</returns>
+    public async ValueTask<ListFilterDefinition?> FindAsync(SchemaFieldDescription field, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(field);
+        if (!field.Hidden && _lazy.TryGetValue(field.Type, out var lazy) && lazy.IsAvailable())
+        {
+            await lazy.Load(cancellationToken);
+        }
+
+        return Find(field);
     }
 }
 

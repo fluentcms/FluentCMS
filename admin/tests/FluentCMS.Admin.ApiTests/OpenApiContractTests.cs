@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 using FluentCMS.Admin.Api;
+using FluentCMS.Plugins.Media.Admin.Api;
 using Shouldly;
 using Xunit;
 
@@ -12,8 +13,6 @@ namespace FluentCMS.Admin.ApiTests;
 // a record reads is in the schema of the answer it reads, and every member it requires the schema requires too.
 public sealed class OpenApiContractTests
 {
-    private static readonly JsonSerializerOptions Records = ManagementJsonContext.Default.Options;
-
     [Fact]
     public async Task EveryRecordTheAdminReadsMatchesTheOpenApiDocument()
     {
@@ -38,6 +37,56 @@ public sealed class OpenApiContractTests
         Check(ManagementJsonContext.Default.MyPreferences, Answer(paths, "/api/management/v1/me/preferences", "get"), "me/preferences", document, gaps);
         Check(ManagementJsonContext.Default.MyPreferences, Answer(paths, "/api/management/v1/me/preferences", "put"), "me/preferences put", document, gaps);
         Check(ManagementJsonContext.Default.ApiProblem, document["components"]!["schemas"]!["problem"]!, "problem", document, gaps);
+
+        gaps.ShouldBeEmpty();
+    }
+
+    // The media half's records are its own too (spec 5.1), held to the media routes of the same document (#3104).
+    [Fact]
+    public async Task EveryRecordTheMediaHalfReadsMatchesTheOpenApiDocument()
+    {
+        var document = await OpenApiDocument.ReadAsync();
+        var paths = document["paths"]!;
+        var media = MediaJsonContext.Default;
+        List<string> gaps = [];
+
+        Check(media.MediaAssetPage, Answer(paths, "/api/management/v1/media", "get"), "media", document, gaps);
+        Check(media.ItemListMediaAssetSaved, Answer(paths, "/api/management/v1/media", "post", "201"), "media post", document, gaps);
+        Check(media.MediaAssetSaved, Answer(paths, "/api/management/v1/media/{id}/move", "post"), "media/{id}/move", document, gaps);
+        Check(media.MediaAssetInfo, Answer(paths, "/api/management/v1/media/{id}", "get"), "media/{id}", document, gaps);
+
+        // A media field as a list populates it, which the field's cell reads: the alternative of the field with the file name.
+        var hero = Resolve(document["components"]!["schemas"]!["entry-article"], document)!["properties"]!["hero"]!;
+        var populated = hero["anyOf"]!.AsArray().Single(alternative => Resolve(alternative, document)?["properties"]?["fileName"] is not null)!;
+        Check(media.MediaFieldAsset, populated, "article.hero", document, gaps);
+        Check(media.ItemListMediaFolderInfo, Answer(paths, "/api/management/v1/media/folders", "get"), "media/folders", document, gaps);
+        Check(media.MediaFolderInfo, Answer(paths, "/api/management/v1/media/folders", "post", "201"), "media/folders post", document, gaps);
+        Check(media.MediaFolderInfo, Answer(paths, "/api/management/v1/media/folders/{id}", "patch"), "media/folders/{id}", document, gaps);
+        Check(media.MediaFolderInfo, Answer(paths, "/api/management/v1/media/folders/{id}/move", "post"), "media/folders/{id}/move", document, gaps);
+        Check(media.MediaAssetInfo, Answer(paths, "/api/management/v1/media/{id}", "get"), "media/{id}", document, gaps);
+        Check(media.MediaAssetChanged, Answer(paths, "/api/management/v1/media/{id}", "patch"), "media/{id} patch", document, gaps);
+        Check(media.MediaAssetChanged, Answer(paths, "/api/management/v1/media/{id}/replace", "post"), "media/{id}/replace", document, gaps);
+        Check(media.ItemListMediaUsageInfo, Answer(paths, "/api/management/v1/media/{id}/usage", "get"), "media/{id}/usage", document, gaps);
+        Check(media.MediaDownloadInfo, Answer(paths, "/api/management/v1/media/{id}/download-url", "post"), "media/{id}/download-url", document, gaps);
+        Check(media.ItemListMediaPresetInfo, Answer(paths, "/api/management/v1/media/presets", "get"), "media/presets", document, gaps);
+        Check(media.MediaPresetInfo, Answer(paths, "/api/management/v1/media/presets/{name}", "put"), "media/presets/{name}", document, gaps);
+        Check(media.MediaSchema, Answer(paths, "/api/management/v1/schema", "get"), "schema", document, gaps);
+
+        var body = paths["/api/management/v1/media"]!["post"]!["requestBody"]!["content"]!["multipart/form-data"]!["schema"]!;
+        var properties = Resolve(body, document)!["properties"]!.AsObject();
+        properties.ContainsKey("files").ShouldBeTrue();
+        properties.ContainsKey("folderId").ShouldBeTrue();
+        paths["/api/management/v1/media/folders/{id}"]!["delete"].ShouldNotBeNull();
+        paths["/api/management/v1/media/{id}"]!["delete"].ShouldNotBeNull();
+        paths["/api/management/v1/media/presets/{name}"]!["delete"].ShouldNotBeNull();
+        var patch = Resolve(paths["/api/management/v1/media/{id}"]!["patch"]!["requestBody"]!["content"]!["application/json"]!["schema"], document)!["properties"]!.AsObject();
+        foreach (var name in (string[])["title", "alt", "caption", "credit", "tags", "focalPoint", "isPrivate"])
+        {
+            patch.ContainsKey(name).ShouldBeTrue(name);
+        }
+
+        var replace = Resolve(paths["/api/management/v1/media/{id}/replace"]!["post"]!["requestBody"]!["content"]!["multipart/form-data"]!["schema"], document)!["properties"]!.AsObject();
+        replace.ContainsKey("file").ShouldBeTrue();
 
         gaps.ShouldBeEmpty();
     }
@@ -85,7 +134,8 @@ public sealed class OpenApiContractTests
                 }
 
                 var required = resolved["required"]?.AsArray().Select(name => name!.GetValue<string>()).ToHashSet(StringComparer.Ordinal) ?? [];
-                foreach (var property in record.Properties)
+                // A member with no setter is computed by the record and never read from an answer.
+                foreach (var property in record.Properties.Where(property => property.Set is not null))
                 {
                     if (properties[property.Name] is not { } member)
                     {
@@ -98,7 +148,7 @@ public sealed class OpenApiContractTests
                         gaps.Add($"{where}.{property.Name} is required by the admin but not by the document");
                     }
 
-                    Check(Records.GetTypeInfo(property.PropertyType), member, $"{where}.{property.Name}", document, gaps, checkedRecords);
+                    Check(record.Options.GetTypeInfo(property.PropertyType), member, $"{where}.{property.Name}", document, gaps, checkedRecords);
                 }
 
                 break;
@@ -109,7 +159,7 @@ public sealed class OpenApiContractTests
                     return;
                 }
 
-                Check(Records.GetTypeInfo(element), items, $"{where}[]", document, gaps, checkedRecords);
+                Check(record.Options.GetTypeInfo(element), items, $"{where}[]", document, gaps, checkedRecords);
                 break;
             case JsonTypeInfoKind.Dictionary when record.ElementType is { } value:
                 if (resolved?["additionalProperties"] is not JsonObject values)
@@ -118,7 +168,7 @@ public sealed class OpenApiContractTests
                     return;
                 }
 
-                Check(Records.GetTypeInfo(value), values, $"{where}{{}}", document, gaps, checkedRecords);
+                Check(record.Options.GetTypeInfo(value), values, $"{where}{{}}", document, gaps, checkedRecords);
                 break;
         }
     }

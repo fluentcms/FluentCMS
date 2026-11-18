@@ -1,0 +1,29 @@
+{
+  // Read by the admin before it loads the half, and kept in step with the attributes of the assembly by the manifest test.
+  "manifestVersion": 1,
+  "name": "starter-plugin",
+  "version": "1.0.0",
+  "adminRange": "[1.0.0,2.0.0)",
+  "assembly": "FluentCms-Plugin1.Admin",
+  "pages": [
+    { "type": "FluentCms_Plugin1.Admin.StarterPage", "route": "/starter-plugin", "permission": "starter-plugin.notes.manage" }
+  ],
+  "menuItems": [
+    {
+      "type": "FluentCms_Plugin1.Admin.StarterPage",
+      "label": "Starter.Menu",
+      "labels": { "en": "Notes" },
+      "route": "/starter-plugin",
+      "section": "content",
+      "icon": "document",
+      "order": 100,
+      "permission": "starter-plugin.notes.manage"
+    }
+  ],
+  "settingsPages": [
+    { "type": "FluentCms_Plugin1.Admin.StarterSettingsPage", "area": "starter-plugin" }
+  ],
+  "widgets": [
+    { "type": "FluentCms_Plugin1.Admin.StarterWidget", "title": "Starter.Widget.Title", "size": "small", "permission": "starter-plugin.notes.manage" }
+  ]
+}

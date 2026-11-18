@@ -32,6 +32,8 @@ public sealed class EndToEndHost : IAsyncLifetime
     private static readonly TimeSpan StaleAfter = TimeSpan.FromDays(1);
 
     private const string RootPrefix = "fluentcms-e2e-";
+    private const string ReaderRole = "Reader";
+    private const string EditorRoleId = "00000000-0000-7000-8000-000000000002";
     private static readonly TimeSpan CommandTimeout = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan StartTimeout = TimeSpan.FromMinutes(2);
 
@@ -55,8 +57,13 @@ public sealed class EndToEndHost : IAsyncLifetime
     public string MigrateOutput { get; private set; } = "";
 
     // The default site of the Blog sample and a second one, made through the Management API of the multi-site plugin with a
-    // key from the host's own command, since no command makes a site. The instance-wide Editor role reaches both.
+    // key from the host's own command, since no command makes a site. The instance-wide Editor role reaches both. The media
+    // plugin is disabled in the second site, where its admin half must never load. The same key makes the role Reader.
     public IReadOnlyList<Site> Sites { get; private set; } = [];
+
+    // A user of the instance-wide role Reader, which holds the Editor's grants without those of media, so that the media
+    // plugin's contributions are hidden from it in a site where the plugin is enabled.
+    public Editor Reader { get; private set; } = null!;
 
     // Why the browser tests are skipped: Chromium is not installed for this version of Playwright.
     public string? BrowserMissing { get; private set; }
@@ -83,6 +90,8 @@ public sealed class EndToEndHost : IAsyncLifetime
         EditorCreated = await CommandAsync(Editor.Password, "user", "create", "--email", Editor.Email, "--role", "Editor", "--password-stdin");
         await StartAsync();
         Sites = await AddSecondSiteAsync();
+        Reader = NewEditor();
+        await CommandAsync(Reader.Password, "user", "create", "--email", Reader.Email, "--role", ReaderRole, "--password-stdin");
         (_playwright, _browser, BrowserMissing) = await Chromium.LaunchAsync(ServerCertificateHash);
     }
 
@@ -157,11 +166,11 @@ public sealed class EndToEndHost : IAsyncLifetime
     // A directory of a test's own, deleted with the host's.
     public DirectoryInfo NewDirectory() => _root.CreateSubdirectory(Guid.NewGuid().ToString("N"));
 
-    // An editor of its own for a test that changes its user, such as by ending its sessions.
-    public async Task<Editor> CreateEditorAsync()
+    // An editor of its own for a test that changes its user, such as by ending its sessions, or a user of another role.
+    public async Task<Editor> CreateEditorAsync(string role = "Editor")
     {
         var editor = NewEditor();
-        await CommandAsync(editor.Password, "user", "create", "--email", editor.Email, "--role", "Editor", "--password-stdin");
+        await CommandAsync(editor.Password, "user", "create", "--email", editor.Email, "--role", role, "--password-stdin");
         return editor;
     }
 
@@ -280,7 +289,22 @@ public sealed class EndToEndHost : IAsyncLifetime
         }
 
         var list = await client.GetFromJsonAsync<JsonObject>(new Uri("api/management/v1/sites", UriKind.Relative), Token);
-        return [.. list!["items"]!.AsArray().Select(site => new Site((string)site!["id"]!, (string)site["name"]!, (bool)site["isDefault"]!)).OrderByDescending(site => site.IsDefault)];
+        Site[] sites = [.. list!["items"]!.AsArray().Select(site => new Site((string)site!["id"]!, (string)site["name"]!, (bool)site["isDefault"]!)).OrderByDescending(site => site.IsDefault)];
+        using var disabled = await client.PutAsJsonAsync(new Uri($"api/management/v1/plugins/media/sites/{sites[1].Id}", UriKind.Relative), new { enabled = false }, Token);
+        if (disabled.StatusCode != HttpStatusCode.OK)
+        {
+            throw new InvalidOperationException($"Disabling media in the second site answered {(int)disabled.StatusCode}: {await disabled.Content.ReadAsStringAsync(Token)}");
+        }
+
+        var editor = await client.GetFromJsonAsync<JsonObject>(new Uri($"api/management/v1/roles/{EditorRoleId}", UriKind.Relative), Token);
+        var grants = new JsonArray([.. editor!["grants"]!.AsArray().Where(grant => !((string)grant!["permission"]!).StartsWith("media.", StringComparison.Ordinal)).Select(grant => grant!.DeepClone())]);
+        using var reader = await client.PostAsJsonAsync(new Uri("api/management/v1/roles", UriKind.Relative), new JsonObject { ["name"] = ReaderRole, ["grants"] = grants }, Token);
+        if (reader.StatusCode != HttpStatusCode.Created)
+        {
+            throw new InvalidOperationException($"Creating the role {ReaderRole} answered {(int)reader.StatusCode}: {await reader.Content.ReadAsStringAsync(Token)}");
+        }
+
+        return sites;
     }
 
     private async Task StartAsync()

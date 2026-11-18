@@ -1,0 +1,11 @@
+.plugin-widget-loading {
+    display: flex;
+    align-items: center;
+    min-block-size: 8rem;
+    margin: 0;
+    padding-inline: var(--cms-space-l);
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-m);
+    background-color: var(--cms-color-surface);
+    color: var(--cms-color-text-muted);
+}

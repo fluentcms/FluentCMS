@@ -5,7 +5,7 @@
   "identity": "FluentCMS.Templates.Plugin",
   "groupIdentity": "FluentCMS.Templates.Plugin",
   "name": "FluentCMS plugin",
-  "description": "The server half of a FluentCMS plugin, with a table and its migrations, a permission, settings, a hook and a Management endpoint, and a test project that boots it in the test host.",
+  "description": "A FluentCMS plugin: the server half, with a table and its migrations, a permission, settings, a hook and a Management endpoint, and a test project that boots it in the test host; and the admin half, with a page, a menu item, a settings page, a dashboard widget and its manifest, and its tests.",
   "shortName": "fluentcms-plugin",
   "sourceName": "FluentCms-Plugin1",
   "preferNameDirectory": true,
@@ -70,6 +70,22 @@
       "valueTransform": "tableName",
       "replaces": "starter_plugin",
       "description": "The plugin's name with underscores, as its tables are named."
+    },
+    "admin": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "true",
+      "description": "Adds the admin half of the plugin and its tests; --admin false makes the server half only."
     }
-  }
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "condition": "(!admin)",
+          "exclude": ["src/FluentCms-Plugin1.Admin/**", "tests/FluentCms-Plugin1.Admin.Tests/**"]
+        }
+      ]
+    }
+  ]
 }

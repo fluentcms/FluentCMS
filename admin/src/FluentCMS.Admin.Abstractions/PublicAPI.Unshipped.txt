@@ -1,4 +1,62 @@
 #nullable enable
+FluentCMS.Admin.Actions.AdminActionBase
+FluentCMS.Admin.Actions.BulkActionBase
+FluentCMS.Admin.Actions.BulkActionBase.BulkActionBase() -> void
+FluentCMS.Admin.Actions.BulkActionBase.ContentTypes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Actions.BulkActionContext
+FluentCMS.Admin.Actions.BulkActionContext.BulkActionContext() -> void
+FluentCMS.Admin.Actions.BulkActionContext.ContentLocale.get -> string?
+FluentCMS.Admin.Actions.BulkActionContext.ContentLocale.init -> void
+FluentCMS.Admin.Actions.BulkActionContext.Ids.get -> System.Collections.Generic.IReadOnlyList<System.Guid>!
+FluentCMS.Admin.Actions.BulkActionContext.Ids.init -> void
+FluentCMS.Admin.Actions.BulkActionContext.Type.get -> FluentCMS.Admin.Api.SchemaTypeDescription!
+FluentCMS.Admin.Actions.BulkActionContext.Type.init -> void
+FluentCMS.Admin.Actions.BulkItemResult
+FluentCMS.Admin.Actions.BulkItemResult.BulkItemResult() -> void
+FluentCMS.Admin.Actions.BulkItemResult.Id.get -> System.Guid
+FluentCMS.Admin.Actions.BulkItemResult.Id.init -> void
+FluentCMS.Admin.Actions.BulkItemResult.Problem.get -> FluentCMS.Admin.Api.ApiProblem?
+FluentCMS.Admin.Actions.BulkItemResult.Problem.init -> void
+FluentCMS.Admin.Actions.BulkItemResult.Status.get -> string?
+FluentCMS.Admin.Actions.BulkItemResult.Status.init -> void
+FluentCMS.Admin.Actions.BulkItemResult.Warnings.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Actions.BulkItemResult.Warnings.init -> void
+FluentCMS.Admin.Actions.EntryActionBase
+FluentCMS.Admin.Actions.EntryActionBase.ContentTypes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Actions.EntryActionBase.EntryActionBase() -> void
+FluentCMS.Admin.Actions.EntryActionContext
+FluentCMS.Admin.Actions.EntryActionContext.ContentLocale.get -> string?
+FluentCMS.Admin.Actions.EntryActionContext.ContentLocale.init -> void
+FluentCMS.Admin.Actions.EntryActionContext.Entry.get -> FluentCMS.Admin.Api.ContentEntry!
+FluentCMS.Admin.Actions.EntryActionContext.Entry.init -> void
+FluentCMS.Admin.Actions.EntryActionContext.EntryActionContext() -> void
+FluentCMS.Admin.Actions.EntryActionContext.Type.get -> FluentCMS.Admin.Api.SchemaTypeDescription!
+FluentCMS.Admin.Actions.EntryActionContext.Type.init -> void
+FluentCMS.Admin.Actions.FieldActionBase
+FluentCMS.Admin.Actions.FieldActionBase.FieldActionBase() -> void
+FluentCMS.Admin.Actions.FieldActionBase.FieldTypes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Actions.FieldActionContext
+FluentCMS.Admin.Actions.FieldActionContext.ContentLocale.get -> string?
+FluentCMS.Admin.Actions.FieldActionContext.ContentLocale.init -> void
+FluentCMS.Admin.Actions.FieldActionContext.Document.get -> System.Collections.Generic.IReadOnlyDictionary<string!, System.Text.Json.Nodes.JsonNode?>!
+FluentCMS.Admin.Actions.FieldActionContext.Document.init -> void
+FluentCMS.Admin.Actions.FieldActionContext.EntryId.get -> System.Guid?
+FluentCMS.Admin.Actions.FieldActionContext.EntryId.init -> void
+FluentCMS.Admin.Actions.FieldActionContext.Field.get -> FluentCMS.Admin.Api.SchemaFieldDescription!
+FluentCMS.Admin.Actions.FieldActionContext.Field.init -> void
+FluentCMS.Admin.Actions.FieldActionContext.FieldActionContext() -> void
+FluentCMS.Admin.Actions.FieldActionContext.Type.get -> FluentCMS.Admin.Api.SchemaTypeDescription!
+FluentCMS.Admin.Actions.FieldActionContext.Type.init -> void
+FluentCMS.Admin.Actions.FieldActionContext.Value.get -> System.Text.Json.Nodes.JsonNode?
+FluentCMS.Admin.Actions.FieldActionContext.Value.init -> void
+FluentCMS.Admin.Actions.FieldActionResult
+FluentCMS.Admin.Actions.FieldActionResult.Replaces.get -> bool
+FluentCMS.Admin.Actions.FieldActionResult.Value.get -> System.Text.Json.Nodes.JsonNode?
+FluentCMS.Admin.Actions.IBulkProgress
+FluentCMS.Admin.Actions.IBulkProgress.Cancelled.get -> System.Threading.CancellationToken
+FluentCMS.Admin.Actions.IBulkProgress.Report(FluentCMS.Admin.Actions.BulkItemResult! result) -> void
+FluentCMS.Admin.Actions.IBulkProgressService
+FluentCMS.Admin.Actions.IBulkProgressService.Start(string! title, int total) -> FluentCMS.Admin.Actions.IBulkProgress!
 FluentCMS.Admin.AnnouncementPoliteness
 FluentCMS.Admin.AnnouncementPoliteness.Assertive = 1 -> FluentCMS.Admin.AnnouncementPoliteness
 FluentCMS.Admin.AnnouncementPoliteness.Polite = 0 -> FluentCMS.Admin.AnnouncementPoliteness
@@ -38,10 +96,16 @@ FluentCMS.Admin.Api.ApiProblemException.ApiProblemException(FluentCMS.Admin.Api.
 FluentCMS.Admin.Api.ApiProblemException.ApiProblemException(string! message) -> void
 FluentCMS.Admin.Api.ApiProblemException.ApiProblemException(string! message, System.Exception! innerException) -> void
 FluentCMS.Admin.Api.ApiProblemException.Problem.get -> FluentCMS.Admin.Api.ApiProblem!
+FluentCMS.Admin.Api.ApiContent
+FluentCMS.Admin.Api.ApiContent.ApiContent(string! mediaType, System.ReadOnlyMemory<byte> bytes) -> void
+FluentCMS.Admin.Api.ApiContent.Bytes.get -> System.ReadOnlyMemory<byte>
+FluentCMS.Admin.Api.ApiContent.MediaType.get -> string!
 FluentCMS.Admin.Api.ApiRequest
 FluentCMS.Admin.Api.ApiRequest.ApiRequest(System.Net.Http.HttpMethod! method, string! path) -> void
 FluentCMS.Admin.Api.ApiRequest.Body.get -> System.Text.Json.Nodes.JsonNode?
 FluentCMS.Admin.Api.ApiRequest.Body.init -> void
+FluentCMS.Admin.Api.ApiRequest.Content.get -> FluentCMS.Admin.Api.ApiContent?
+FluentCMS.Admin.Api.ApiRequest.Content.init -> void
 FluentCMS.Admin.Api.ApiRequest.IdempotencyKey.get -> string?
 FluentCMS.Admin.Api.ApiRequest.IdempotencyKey.init -> void
 FluentCMS.Admin.Api.ApiRequest.IfMatch.get -> string?
@@ -523,6 +587,8 @@ FluentCMS.Admin.IAdminContext.Changed -> System.Action?
 FluentCMS.Admin.IAdminContext.ContentLocale.get -> string?
 FluentCMS.Admin.IAdminContext.Site.get -> FluentCMS.Admin.Api.MySiteInfo?
 FluentCMS.Admin.IAdminContext.User.get -> FluentCMS.Admin.Api.MeResponse?
+FluentCMS.Admin.IAdminOverlays
+FluentCMS.Admin.IAdminOverlays.Show(Microsoft.AspNetCore.Components.RenderFragment! content) -> System.IDisposable!
 FluentCMS.Admin.IAnnouncer
 FluentCMS.Admin.IAnnouncer.Announce(string! message, FluentCMS.Admin.AnnouncementPoliteness politeness = FluentCMS.Admin.AnnouncementPoliteness.Polite) -> void
 FluentCMS.Admin.Lists.FilterOperand
@@ -572,9 +638,275 @@ FluentCMS.Admin.Lists.ListFilterRegistry.Find(FluentCMS.Admin.Api.SchemaFieldDes
 FluentCMS.Admin.Lists.ListFilterRegistry.ListFilterRegistry() -> void
 FluentCMS.Admin.Lists.TextListCell
 FluentCMS.Admin.Lists.TextListCell.TextListCell() -> void
+FluentCMS.Admin.Pickers.IMediaPicker
+FluentCMS.Admin.Pickers.IMediaPicker.PickAsync(FluentCMS.Admin.Pickers.MediaPickerRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Pickers.MediaPickerItem!>?>!
+FluentCMS.Admin.Pickers.IRelationPicker
+FluentCMS.Admin.Pickers.IRelationPicker.PickAsync(FluentCMS.Admin.Pickers.RelationPickerRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.ContentEntry!>?>!
+FluentCMS.Admin.Pickers.MediaPickerItem
+FluentCMS.Admin.Pickers.MediaPickerItem.Alt.get -> string?
+FluentCMS.Admin.Pickers.MediaPickerItem.Alt.init -> void
+FluentCMS.Admin.Pickers.MediaPickerItem.FileName.get -> string!
+FluentCMS.Admin.Pickers.MediaPickerItem.FileName.init -> void
+FluentCMS.Admin.Pickers.MediaPickerItem.Height.get -> int?
+FluentCMS.Admin.Pickers.MediaPickerItem.Height.init -> void
+FluentCMS.Admin.Pickers.MediaPickerItem.Id.get -> System.Guid
+FluentCMS.Admin.Pickers.MediaPickerItem.Id.init -> void
+FluentCMS.Admin.Pickers.MediaPickerItem.MediaPickerItem() -> void
+FluentCMS.Admin.Pickers.MediaPickerItem.MimeType.get -> string!
+FluentCMS.Admin.Pickers.MediaPickerItem.MimeType.init -> void
+FluentCMS.Admin.Pickers.MediaPickerItem.ThumbnailUrl.get -> string?
+FluentCMS.Admin.Pickers.MediaPickerItem.ThumbnailUrl.init -> void
+FluentCMS.Admin.Pickers.MediaPickerItem.Url.get -> string?
+FluentCMS.Admin.Pickers.MediaPickerItem.Url.init -> void
+FluentCMS.Admin.Pickers.MediaPickerItem.Width.get -> int?
+FluentCMS.Admin.Pickers.MediaPickerItem.Width.init -> void
+FluentCMS.Admin.Pickers.MediaPickerRequest
+FluentCMS.Admin.Pickers.MediaPickerRequest.Accept.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Pickers.MediaPickerRequest.Accept.init -> void
+FluentCMS.Admin.Pickers.MediaPickerRequest.Locale.get -> string?
+FluentCMS.Admin.Pickers.MediaPickerRequest.Locale.init -> void
+FluentCMS.Admin.Pickers.MediaPickerRequest.MediaPickerRequest() -> void
+FluentCMS.Admin.Pickers.MediaPickerRequest.Multiple.get -> bool
+FluentCMS.Admin.Pickers.MediaPickerRequest.Multiple.init -> void
+FluentCMS.Admin.Pickers.MediaPickerRequest.Selected.get -> System.Collections.Generic.IReadOnlyList<System.Guid>!
+FluentCMS.Admin.Pickers.MediaPickerRequest.Selected.init -> void
+FluentCMS.Admin.Pickers.RelationPickerRequest
+FluentCMS.Admin.Pickers.RelationPickerRequest.Locale.get -> string?
+FluentCMS.Admin.Pickers.RelationPickerRequest.Locale.init -> void
+FluentCMS.Admin.Pickers.RelationPickerRequest.Multiple.get -> bool
+FluentCMS.Admin.Pickers.RelationPickerRequest.Multiple.init -> void
+FluentCMS.Admin.Pickers.RelationPickerRequest.RelationPickerRequest() -> void
+FluentCMS.Admin.Pickers.RelationPickerRequest.Selected.get -> System.Collections.Generic.IReadOnlyList<System.Guid>!
+FluentCMS.Admin.Pickers.RelationPickerRequest.Selected.init -> void
+FluentCMS.Admin.Pickers.RelationPickerRequest.Type.get -> string!
+FluentCMS.Admin.Pickers.RelationPickerRequest.Type.init -> void
+FluentCMS.Admin.Plugins.AdminManifestAction
+FluentCMS.Admin.Plugins.AdminManifestAction.<Clone>$() -> FluentCMS.Admin.Plugins.AdminManifestAction!
+FluentCMS.Admin.Plugins.AdminManifestAction.AdminManifestAction() -> void
+FluentCMS.Admin.Plugins.AdminManifestAction.ContentTypes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Plugins.AdminManifestAction.ContentTypes.init -> void
+FluentCMS.Admin.Plugins.AdminManifestAction.Equals(FluentCMS.Admin.Plugins.AdminManifestAction? other) -> bool
+FluentCMS.Admin.Plugins.AdminManifestAction.Name.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestAction.Name.init -> void
+FluentCMS.Admin.Plugins.AdminManifestAction.Permission.get -> string?
+FluentCMS.Admin.Plugins.AdminManifestAction.Permission.init -> void
+FluentCMS.Admin.Plugins.AdminManifestAction.Type.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestAction.Type.init -> void
+FluentCMS.Admin.Plugins.AdminManifestFieldAction
+FluentCMS.Admin.Plugins.AdminManifestFieldAction.<Clone>$() -> FluentCMS.Admin.Plugins.AdminManifestFieldAction!
+FluentCMS.Admin.Plugins.AdminManifestFieldAction.AdminManifestFieldAction() -> void
+FluentCMS.Admin.Plugins.AdminManifestFieldAction.Equals(FluentCMS.Admin.Plugins.AdminManifestFieldAction? other) -> bool
+FluentCMS.Admin.Plugins.AdminManifestFieldAction.FieldTypes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Admin.Plugins.AdminManifestFieldAction.FieldTypes.init -> void
+FluentCMS.Admin.Plugins.AdminManifestFieldAction.Name.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestFieldAction.Name.init -> void
+FluentCMS.Admin.Plugins.AdminManifestFieldAction.Permission.get -> string?
+FluentCMS.Admin.Plugins.AdminManifestFieldAction.Permission.init -> void
+FluentCMS.Admin.Plugins.AdminManifestFieldAction.Type.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestFieldAction.Type.init -> void
+FluentCMS.Admin.Plugins.AdminManifestFieldComponent
+FluentCMS.Admin.Plugins.AdminManifestFieldComponent.<Clone>$() -> FluentCMS.Admin.Plugins.AdminManifestFieldComponent!
+FluentCMS.Admin.Plugins.AdminManifestFieldComponent.AdminManifestFieldComponent() -> void
+FluentCMS.Admin.Plugins.AdminManifestFieldComponent.Equals(FluentCMS.Admin.Plugins.AdminManifestFieldComponent? other) -> bool
+FluentCMS.Admin.Plugins.AdminManifestFieldComponent.FieldType.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestFieldComponent.FieldType.init -> void
+FluentCMS.Admin.Plugins.AdminManifestFieldComponent.Populate.get -> bool
+FluentCMS.Admin.Plugins.AdminManifestFieldComponent.Populate.init -> void
+FluentCMS.Admin.Plugins.AdminManifestFieldComponent.Type.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestFieldComponent.Type.init -> void
+FluentCMS.Admin.Plugins.AdminManifestMenuItem
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.<Clone>$() -> FluentCMS.Admin.Plugins.AdminManifestMenuItem!
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.AdminManifestMenuItem() -> void
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Equals(FluentCMS.Admin.Plugins.AdminManifestMenuItem? other) -> bool
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Icon.get -> string?
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Icon.init -> void
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Label.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Label.init -> void
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Order.get -> int
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Order.init -> void
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Permission.get -> string?
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Permission.init -> void
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Route.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Route.init -> void
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Section.get -> FluentCMS.Admin.Plugins.AdminSection
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Section.init -> void
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Type.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Type.init -> void
+FluentCMS.Admin.Plugins.AdminManifestPage
+FluentCMS.Admin.Plugins.AdminManifestPage.<Clone>$() -> FluentCMS.Admin.Plugins.AdminManifestPage!
+FluentCMS.Admin.Plugins.AdminManifestPage.AdminManifestPage() -> void
+FluentCMS.Admin.Plugins.AdminManifestPage.Equals(FluentCMS.Admin.Plugins.AdminManifestPage? other) -> bool
+FluentCMS.Admin.Plugins.AdminManifestPage.Permission.get -> string?
+FluentCMS.Admin.Plugins.AdminManifestPage.Permission.init -> void
+FluentCMS.Admin.Plugins.AdminManifestPage.Route.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestPage.Route.init -> void
+FluentCMS.Admin.Plugins.AdminManifestPage.Type.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestPage.Type.init -> void
+FluentCMS.Admin.Plugins.AdminManifestService
+FluentCMS.Admin.Plugins.AdminManifestService.<Clone>$() -> FluentCMS.Admin.Plugins.AdminManifestService!
+FluentCMS.Admin.Plugins.AdminManifestService.AdminManifestService() -> void
+FluentCMS.Admin.Plugins.AdminManifestService.Equals(FluentCMS.Admin.Plugins.AdminManifestService? other) -> bool
+FluentCMS.Admin.Plugins.AdminManifestService.Service.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestService.Service.init -> void
+FluentCMS.Admin.Plugins.AdminManifestService.Type.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestService.Type.init -> void
+FluentCMS.Admin.Plugins.AdminManifestSettingsPage
+FluentCMS.Admin.Plugins.AdminManifestSettingsPage.<Clone>$() -> FluentCMS.Admin.Plugins.AdminManifestSettingsPage!
+FluentCMS.Admin.Plugins.AdminManifestSettingsPage.AdminManifestSettingsPage() -> void
+FluentCMS.Admin.Plugins.AdminManifestSettingsPage.Area.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestSettingsPage.Area.init -> void
+FluentCMS.Admin.Plugins.AdminManifestSettingsPage.Equals(FluentCMS.Admin.Plugins.AdminManifestSettingsPage? other) -> bool
+FluentCMS.Admin.Plugins.AdminManifestSettingsPage.Type.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestSettingsPage.Type.init -> void
+FluentCMS.Admin.Plugins.AdminManifestWidget
+FluentCMS.Admin.Plugins.AdminManifestWidget.<Clone>$() -> FluentCMS.Admin.Plugins.AdminManifestWidget!
+FluentCMS.Admin.Plugins.AdminManifestWidget.AdminManifestWidget() -> void
+FluentCMS.Admin.Plugins.AdminManifestWidget.Equals(FluentCMS.Admin.Plugins.AdminManifestWidget? other) -> bool
+FluentCMS.Admin.Plugins.AdminManifestWidget.Permission.get -> string?
+FluentCMS.Admin.Plugins.AdminManifestWidget.Permission.init -> void
+FluentCMS.Admin.Plugins.AdminManifestWidget.Role.get -> string?
+FluentCMS.Admin.Plugins.AdminManifestWidget.Role.init -> void
+FluentCMS.Admin.Plugins.AdminManifestWidget.Size.get -> FluentCMS.Admin.Plugins.WidgetSize
+FluentCMS.Admin.Plugins.AdminManifestWidget.Size.init -> void
+FluentCMS.Admin.Plugins.AdminManifestWidget.Title.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestWidget.Title.init -> void
+FluentCMS.Admin.Plugins.AdminManifestWidget.Type.get -> string!
+FluentCMS.Admin.Plugins.AdminManifestWidget.Type.init -> void
+FluentCMS.Admin.Plugins.AdminMenuItemAttribute
+FluentCMS.Admin.Plugins.AdminMenuItemAttribute.AdminMenuItemAttribute(string! label) -> void
+FluentCMS.Admin.Plugins.AdminMenuItemAttribute.Icon.get -> string?
+FluentCMS.Admin.Plugins.AdminMenuItemAttribute.Icon.set -> void
+FluentCMS.Admin.Plugins.AdminMenuItemAttribute.Label.get -> string!
+FluentCMS.Admin.Plugins.AdminMenuItemAttribute.Order.get -> int
+FluentCMS.Admin.Plugins.AdminMenuItemAttribute.Order.set -> void
+FluentCMS.Admin.Plugins.AdminMenuItemAttribute.Route.get -> string?
+FluentCMS.Admin.Plugins.AdminMenuItemAttribute.Route.set -> void
+FluentCMS.Admin.Plugins.AdminMenuItemAttribute.Section.get -> FluentCMS.Admin.Plugins.AdminSection
+FluentCMS.Admin.Plugins.AdminMenuItemAttribute.Section.set -> void
+FluentCMS.Admin.Plugins.AdminPageAttribute
+FluentCMS.Admin.Plugins.AdminPageAttribute.AdminPageAttribute(string! route) -> void
+FluentCMS.Admin.Plugins.AdminPageAttribute.Permission.get -> string?
+FluentCMS.Admin.Plugins.AdminPageAttribute.Permission.set -> void
+FluentCMS.Admin.Plugins.AdminPageAttribute.Route.get -> string!
+FluentCMS.Admin.Plugins.AdminPluginManifest
+FluentCMS.Admin.Plugins.AdminPluginManifest.<Clone>$() -> FluentCMS.Admin.Plugins.AdminPluginManifest!
+FluentCMS.Admin.Plugins.AdminPluginManifest.AdminPluginManifest() -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.AdminRange.get -> string?
+FluentCMS.Admin.Plugins.AdminPluginManifest.AdminRange.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.Assembly.get -> string!
+FluentCMS.Admin.Plugins.AdminPluginManifest.Assembly.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.BulkActions.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Plugins.AdminManifestAction!>!
+FluentCMS.Admin.Plugins.AdminPluginManifest.BulkActions.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.EntryActions.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Plugins.AdminManifestAction!>!
+FluentCMS.Admin.Plugins.AdminPluginManifest.EntryActions.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.Equals(FluentCMS.Admin.Plugins.AdminPluginManifest? other) -> bool
+FluentCMS.Admin.Plugins.AdminPluginManifest.FieldActions.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Plugins.AdminManifestFieldAction!>!
+FluentCMS.Admin.Plugins.AdminPluginManifest.FieldActions.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.FieldEditors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Plugins.AdminManifestFieldComponent!>!
+FluentCMS.Admin.Plugins.AdminPluginManifest.FieldEditors.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.IsValid.get -> bool
+FluentCMS.Admin.Plugins.AdminPluginManifest.ListCells.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Plugins.AdminManifestFieldComponent!>!
+FluentCMS.Admin.Plugins.AdminPluginManifest.ListCells.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.ManifestVersion.get -> int
+FluentCMS.Admin.Plugins.AdminPluginManifest.ManifestVersion.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.MenuItems.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Plugins.AdminManifestMenuItem!>!
+FluentCMS.Admin.Plugins.AdminPluginManifest.MenuItems.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.Name.get -> string!
+FluentCMS.Admin.Plugins.AdminPluginManifest.Name.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.Pages.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Plugins.AdminManifestPage!>!
+FluentCMS.Admin.Plugins.AdminPluginManifest.Pages.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.Services.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Plugins.AdminManifestService!>!
+FluentCMS.Admin.Plugins.AdminPluginManifest.Services.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.SettingsPages.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Plugins.AdminManifestSettingsPage!>!
+FluentCMS.Admin.Plugins.AdminPluginManifest.SettingsPages.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.Version.get -> string?
+FluentCMS.Admin.Plugins.AdminPluginManifest.Version.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifest.Widgets.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Plugins.AdminManifestWidget!>!
+FluentCMS.Admin.Plugins.AdminPluginManifest.Widgets.init -> void
+FluentCMS.Admin.Plugins.AdminPluginManifestCheck
+FluentCMS.Admin.Plugins.AdminPluginManifestJson
+FluentCMS.Admin.Plugins.AdminSection
+FluentCMS.Admin.Plugins.AdminSection.Administration = 2 -> FluentCMS.Admin.Plugins.AdminSection
+FluentCMS.Admin.Plugins.AdminSection.Content = 0 -> FluentCMS.Admin.Plugins.AdminSection
+FluentCMS.Admin.Plugins.AdminSection.Media = 1 -> FluentCMS.Admin.Plugins.AdminSection
+FluentCMS.Admin.Plugins.AdminSection.Settings = 3 -> FluentCMS.Admin.Plugins.AdminSection
+FluentCMS.Admin.Plugins.AdminServiceAttribute
+FluentCMS.Admin.Plugins.AdminServiceAttribute.AdminServiceAttribute(System.Type! serviceType) -> void
+FluentCMS.Admin.Plugins.AdminServiceAttribute.ServiceType.get -> System.Type!
+FluentCMS.Admin.Plugins.AdminVersionRange
+FluentCMS.Admin.Plugins.AdminVersionRange.Contains(System.Version! version) -> bool
+FluentCMS.Admin.Plugins.BulkActionAttribute
+FluentCMS.Admin.Plugins.BulkActionAttribute.BulkActionAttribute(string! name) -> void
+FluentCMS.Admin.Plugins.BulkActionAttribute.ContentTypes.get -> string![]!
+FluentCMS.Admin.Plugins.BulkActionAttribute.ContentTypes.set -> void
+FluentCMS.Admin.Plugins.BulkActionAttribute.Name.get -> string!
+FluentCMS.Admin.Plugins.BulkActionAttribute.Permission.get -> string?
+FluentCMS.Admin.Plugins.BulkActionAttribute.Permission.set -> void
+FluentCMS.Admin.Plugins.DashboardWidgetAttribute
+FluentCMS.Admin.Plugins.DashboardWidgetAttribute.DashboardWidgetAttribute(string! title) -> void
+FluentCMS.Admin.Plugins.DashboardWidgetAttribute.Permission.get -> string?
+FluentCMS.Admin.Plugins.DashboardWidgetAttribute.Permission.set -> void
+FluentCMS.Admin.Plugins.DashboardWidgetAttribute.Role.get -> string?
+FluentCMS.Admin.Plugins.DashboardWidgetAttribute.Role.set -> void
+FluentCMS.Admin.Plugins.DashboardWidgetAttribute.Size.get -> FluentCMS.Admin.Plugins.WidgetSize
+FluentCMS.Admin.Plugins.DashboardWidgetAttribute.Size.set -> void
+FluentCMS.Admin.Plugins.DashboardWidgetAttribute.Title.get -> string!
+FluentCMS.Admin.Plugins.EntryActionAttribute
+FluentCMS.Admin.Plugins.EntryActionAttribute.ContentTypes.get -> string![]!
+FluentCMS.Admin.Plugins.EntryActionAttribute.ContentTypes.set -> void
+FluentCMS.Admin.Plugins.EntryActionAttribute.EntryActionAttribute(string! name) -> void
+FluentCMS.Admin.Plugins.EntryActionAttribute.Name.get -> string!
+FluentCMS.Admin.Plugins.EntryActionAttribute.Permission.get -> string?
+FluentCMS.Admin.Plugins.EntryActionAttribute.Permission.set -> void
+FluentCMS.Admin.Plugins.FieldActionAttribute
+FluentCMS.Admin.Plugins.FieldActionAttribute.FieldActionAttribute(string! name) -> void
+FluentCMS.Admin.Plugins.FieldActionAttribute.FieldTypes.get -> string![]!
+FluentCMS.Admin.Plugins.FieldActionAttribute.FieldTypes.set -> void
+FluentCMS.Admin.Plugins.FieldActionAttribute.Name.get -> string!
+FluentCMS.Admin.Plugins.FieldActionAttribute.Permission.get -> string?
+FluentCMS.Admin.Plugins.FieldActionAttribute.Permission.set -> void
+FluentCMS.Admin.Plugins.FieldEditorAttribute
+FluentCMS.Admin.Plugins.FieldEditorAttribute.FieldEditorAttribute(string! fieldType) -> void
+FluentCMS.Admin.Plugins.FieldEditorAttribute.FieldType.get -> string!
+FluentCMS.Admin.Plugins.FluentCmsAdminPluginAttribute
+FluentCMS.Admin.Plugins.FluentCmsAdminPluginAttribute.AdminRange.get -> string?
+FluentCMS.Admin.Plugins.FluentCmsAdminPluginAttribute.AdminRange.set -> void
+FluentCMS.Admin.Plugins.FluentCmsAdminPluginAttribute.FluentCmsAdminPluginAttribute(System.Type! pluginType) -> void
+FluentCMS.Admin.Plugins.FluentCmsAdminPluginAttribute.FluentCmsAdminPluginAttribute(string! name) -> void
+FluentCMS.Admin.Plugins.FluentCmsAdminPluginAttribute.Name.get -> string?
+FluentCMS.Admin.Plugins.FluentCmsAdminPluginAttribute.PluginType.get -> System.Type?
+FluentCMS.Admin.Plugins.FluentCmsAdminPluginAttribute.Version.get -> string?
+FluentCMS.Admin.Plugins.FluentCmsAdminPluginAttribute.Version.set -> void
+FluentCMS.Admin.Plugins.IAdminPlugin
+FluentCMS.Admin.Plugins.IAdminPlugin.Configure(FluentCMS.Admin.Plugins.IAdminPluginBuilder! admin) -> void
+FluentCMS.Admin.Plugins.IAdminPluginBuilder
+FluentCMS.Admin.Plugins.IAdminPluginBuilder.Filters.get -> FluentCMS.Admin.Lists.ListFilterRegistry!
+FluentCMS.Admin.Plugins.IAdminPluginBuilder.Name.get -> string!
+FluentCMS.Admin.Plugins.IAdminPluginBuilder.Services.get -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+FluentCMS.Admin.Plugins.IAdminPluginServices
+FluentCMS.Admin.Plugins.IAdminPluginServices.FindAsync<TService>(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<TService?>
+FluentCMS.Admin.Plugins.IAdminPluginServices.ProviderOf(System.Type! type) -> System.IServiceProvider!
+FluentCMS.Admin.Plugins.ListCellAttribute
+FluentCMS.Admin.Plugins.ListCellAttribute.FieldType.get -> string!
+FluentCMS.Admin.Plugins.ListCellAttribute.ListCellAttribute(string! fieldType) -> void
+FluentCMS.Admin.Plugins.ListCellAttribute.Populate.get -> bool
+FluentCMS.Admin.Plugins.ListCellAttribute.Populate.set -> void
+FluentCMS.Admin.Plugins.SettingsPageAttribute
+FluentCMS.Admin.Plugins.SettingsPageAttribute.Area.get -> string!
+FluentCMS.Admin.Plugins.SettingsPageAttribute.SettingsPageAttribute(string! area) -> void
+FluentCMS.Admin.Plugins.WidgetSize
+FluentCMS.Admin.Plugins.WidgetSize.Medium = 1 -> FluentCMS.Admin.Plugins.WidgetSize
+FluentCMS.Admin.Plugins.WidgetSize.Small = 0 -> FluentCMS.Admin.Plugins.WidgetSize
+FluentCMS.Admin.Plugins.WidgetSize.Wide = 2 -> FluentCMS.Admin.Plugins.WidgetSize
+abstract FluentCMS.Admin.Actions.AdminActionBase.Label.get -> string!
+abstract FluentCMS.Admin.Actions.BulkActionBase.RunAsync(FluentCMS.Admin.Actions.BulkActionContext! context, FluentCMS.Admin.Actions.IBulkProgress! progress, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+abstract FluentCMS.Admin.Actions.EntryActionBase.RunAsync(FluentCMS.Admin.Actions.EntryActionContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+abstract FluentCMS.Admin.Actions.FieldActionBase.RunAsync(FluentCMS.Admin.Actions.FieldActionContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<FluentCMS.Admin.Actions.FieldActionResult!>!
 const FluentCMS.Admin.Api.ApiRequest.NewLocale = "\"0\"" -> string!
 const FluentCMS.Admin.Fields.FieldEditorBase.LeftToRight = "ltr" -> string!
 const FluentCMS.Admin.Fields.FieldEditorBase.RightToLeft = "rtl" -> string!
+const FluentCMS.Admin.Plugins.AdminPluginManifest.CurrentManifestVersion = 1 -> int
+const FluentCMS.Admin.Plugins.AdminPluginManifest.FileName = "fluentcms-admin.json" -> string!
 override FluentCMS.Admin.Api.ApiProblem.Equals(object? obj) -> bool
 override FluentCMS.Admin.Api.ApiProblem.GetHashCode() -> int
 override FluentCMS.Admin.Api.ApiProblem.ToString() -> string!
@@ -661,6 +993,35 @@ override FluentCMS.Admin.Forms.FormDraft.ToString() -> string!
 override FluentCMS.Admin.Forms.FormDraftKey.Equals(object? obj) -> bool
 override FluentCMS.Admin.Forms.FormDraftKey.GetHashCode() -> int
 override FluentCMS.Admin.Forms.FormDraftKey.ToString() -> string!
+override FluentCMS.Admin.Plugins.AdminManifestAction.Equals(object? obj) -> bool
+override FluentCMS.Admin.Plugins.AdminManifestAction.GetHashCode() -> int
+override FluentCMS.Admin.Plugins.AdminManifestAction.ToString() -> string!
+override FluentCMS.Admin.Plugins.AdminManifestFieldAction.Equals(object? obj) -> bool
+override FluentCMS.Admin.Plugins.AdminManifestFieldAction.GetHashCode() -> int
+override FluentCMS.Admin.Plugins.AdminManifestFieldAction.ToString() -> string!
+override FluentCMS.Admin.Plugins.AdminManifestFieldComponent.Equals(object? obj) -> bool
+override FluentCMS.Admin.Plugins.AdminManifestFieldComponent.GetHashCode() -> int
+override FluentCMS.Admin.Plugins.AdminManifestFieldComponent.ToString() -> string!
+override FluentCMS.Admin.Plugins.AdminManifestMenuItem.Equals(object? obj) -> bool
+override FluentCMS.Admin.Plugins.AdminManifestMenuItem.GetHashCode() -> int
+override FluentCMS.Admin.Plugins.AdminManifestMenuItem.ToString() -> string!
+override FluentCMS.Admin.Plugins.AdminManifestPage.Equals(object? obj) -> bool
+override FluentCMS.Admin.Plugins.AdminManifestPage.GetHashCode() -> int
+override FluentCMS.Admin.Plugins.AdminManifestPage.ToString() -> string!
+override FluentCMS.Admin.Plugins.AdminManifestService.Equals(object? obj) -> bool
+override FluentCMS.Admin.Plugins.AdminManifestService.GetHashCode() -> int
+override FluentCMS.Admin.Plugins.AdminManifestService.ToString() -> string!
+override FluentCMS.Admin.Plugins.AdminManifestSettingsPage.Equals(object? obj) -> bool
+override FluentCMS.Admin.Plugins.AdminManifestSettingsPage.GetHashCode() -> int
+override FluentCMS.Admin.Plugins.AdminManifestSettingsPage.ToString() -> string!
+override FluentCMS.Admin.Plugins.AdminManifestWidget.Equals(object? obj) -> bool
+override FluentCMS.Admin.Plugins.AdminManifestWidget.GetHashCode() -> int
+override FluentCMS.Admin.Plugins.AdminManifestWidget.ToString() -> string!
+override FluentCMS.Admin.Plugins.AdminPluginManifest.Equals(object? obj) -> bool
+override FluentCMS.Admin.Plugins.AdminPluginManifest.GetHashCode() -> int
+override FluentCMS.Admin.Plugins.AdminPluginManifest.ToString() -> string!
+static FluentCMS.Admin.Actions.FieldActionResult.Replace(System.Text.Json.Nodes.JsonNode? value) -> FluentCMS.Admin.Actions.FieldActionResult!
+static FluentCMS.Admin.Actions.FieldActionResult.Unchanged.get -> FluentCMS.Admin.Actions.FieldActionResult!
 static FluentCMS.Admin.Api.ApiProblem.operator !=(FluentCMS.Admin.Api.ApiProblem? left, FluentCMS.Admin.Api.ApiProblem? right) -> bool
 static FluentCMS.Admin.Api.ApiProblem.operator ==(FluentCMS.Admin.Api.ApiProblem? left, FluentCMS.Admin.Api.ApiProblem? right) -> bool
 static FluentCMS.Admin.Api.ApiProblemError.operator !=(FluentCMS.Admin.Api.ApiProblemError? left, FluentCMS.Admin.Api.ApiProblemError? right) -> bool
@@ -720,4 +1081,49 @@ static FluentCMS.Admin.Forms.FormDraft.operator !=(FluentCMS.Admin.Forms.FormDra
 static FluentCMS.Admin.Forms.FormDraft.operator ==(FluentCMS.Admin.Forms.FormDraft? left, FluentCMS.Admin.Forms.FormDraft? right) -> bool
 static FluentCMS.Admin.Forms.FormDraftKey.operator !=(FluentCMS.Admin.Forms.FormDraftKey? left, FluentCMS.Admin.Forms.FormDraftKey? right) -> bool
 static FluentCMS.Admin.Forms.FormDraftKey.operator ==(FluentCMS.Admin.Forms.FormDraftKey? left, FluentCMS.Admin.Forms.FormDraftKey? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestAction.operator !=(FluentCMS.Admin.Plugins.AdminManifestAction? left, FluentCMS.Admin.Plugins.AdminManifestAction? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestAction.operator ==(FluentCMS.Admin.Plugins.AdminManifestAction? left, FluentCMS.Admin.Plugins.AdminManifestAction? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestFieldAction.operator !=(FluentCMS.Admin.Plugins.AdminManifestFieldAction? left, FluentCMS.Admin.Plugins.AdminManifestFieldAction? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestFieldAction.operator ==(FluentCMS.Admin.Plugins.AdminManifestFieldAction? left, FluentCMS.Admin.Plugins.AdminManifestFieldAction? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestFieldComponent.operator !=(FluentCMS.Admin.Plugins.AdminManifestFieldComponent? left, FluentCMS.Admin.Plugins.AdminManifestFieldComponent? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestFieldComponent.operator ==(FluentCMS.Admin.Plugins.AdminManifestFieldComponent? left, FluentCMS.Admin.Plugins.AdminManifestFieldComponent? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestMenuItem.operator !=(FluentCMS.Admin.Plugins.AdminManifestMenuItem? left, FluentCMS.Admin.Plugins.AdminManifestMenuItem? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestMenuItem.operator ==(FluentCMS.Admin.Plugins.AdminManifestMenuItem? left, FluentCMS.Admin.Plugins.AdminManifestMenuItem? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestPage.operator !=(FluentCMS.Admin.Plugins.AdminManifestPage? left, FluentCMS.Admin.Plugins.AdminManifestPage? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestPage.operator ==(FluentCMS.Admin.Plugins.AdminManifestPage? left, FluentCMS.Admin.Plugins.AdminManifestPage? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestService.operator !=(FluentCMS.Admin.Plugins.AdminManifestService? left, FluentCMS.Admin.Plugins.AdminManifestService? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestService.operator ==(FluentCMS.Admin.Plugins.AdminManifestService? left, FluentCMS.Admin.Plugins.AdminManifestService? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestSettingsPage.operator !=(FluentCMS.Admin.Plugins.AdminManifestSettingsPage? left, FluentCMS.Admin.Plugins.AdminManifestSettingsPage? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestSettingsPage.operator ==(FluentCMS.Admin.Plugins.AdminManifestSettingsPage? left, FluentCMS.Admin.Plugins.AdminManifestSettingsPage? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestWidget.operator !=(FluentCMS.Admin.Plugins.AdminManifestWidget? left, FluentCMS.Admin.Plugins.AdminManifestWidget? right) -> bool
+static FluentCMS.Admin.Plugins.AdminManifestWidget.operator ==(FluentCMS.Admin.Plugins.AdminManifestWidget? left, FluentCMS.Admin.Plugins.AdminManifestWidget? right) -> bool
+static FluentCMS.Admin.Plugins.AdminPluginManifest.operator !=(FluentCMS.Admin.Plugins.AdminPluginManifest? left, FluentCMS.Admin.Plugins.AdminPluginManifest? right) -> bool
+static FluentCMS.Admin.Plugins.AdminPluginManifest.operator ==(FluentCMS.Admin.Plugins.AdminPluginManifest? left, FluentCMS.Admin.Plugins.AdminPluginManifest? right) -> bool
+static FluentCMS.Admin.Plugins.AdminPluginManifestCheck.Compare(FluentCMS.Admin.Plugins.AdminPluginManifest! manifest, FluentCMS.Admin.Plugins.AdminPluginManifest! declared) -> System.Collections.Generic.IReadOnlyList<string!>!
+static FluentCMS.Admin.Plugins.AdminPluginManifestCheck.Differences(System.Reflection.Assembly! assembly, string! manifestJson) -> System.Collections.Generic.IReadOnlyList<string!>!
+static FluentCMS.Admin.Plugins.AdminPluginManifestCheck.FromAssembly(System.Reflection.Assembly! assembly) -> FluentCMS.Admin.Plugins.AdminPluginManifest!
+static FluentCMS.Admin.Plugins.AdminPluginManifestCheck.Verify(System.Reflection.Assembly! assembly, string! manifestJson) -> void
+static FluentCMS.Admin.Plugins.AdminPluginManifestCheck.VerifyFile(System.Reflection.Assembly! assembly, string! manifestPath) -> void
+static FluentCMS.Admin.Plugins.AdminPluginManifestJson.Manifest.get -> System.Text.Json.Serialization.Metadata.JsonTypeInfo<FluentCMS.Admin.Plugins.AdminPluginManifest!>!
+static FluentCMS.Admin.Plugins.AdminPluginManifestJson.Manifests.get -> System.Text.Json.Serialization.Metadata.JsonTypeInfo<System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Plugins.AdminPluginManifest!>!>!
+static FluentCMS.Admin.Plugins.AdminPluginManifestJson.Read(string! json) -> FluentCMS.Admin.Plugins.AdminPluginManifest!
+static FluentCMS.Admin.Plugins.AdminPluginManifestJson.Write(FluentCMS.Admin.Plugins.AdminPluginManifest! manifest) -> string!
+static FluentCMS.Admin.Plugins.AdminVersionRange.TryParse(string? text, out FluentCMS.Admin.Plugins.AdminVersionRange? range) -> bool
+virtual FluentCMS.Admin.Actions.AdminActionBase.Icon.get -> string?
+virtual FluentCMS.Admin.Actions.BulkActionBase.ConfirmationText(FluentCMS.Admin.Actions.BulkActionContext! context) -> string?
+virtual FluentCMS.Admin.Actions.EntryActionBase.AppliesToAsync(FluentCMS.Admin.Actions.EntryActionContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<bool>
+virtual FluentCMS.Admin.Actions.EntryActionBase.ConfirmationText(FluentCMS.Admin.Actions.EntryActionContext! context) -> string?
+virtual FluentCMS.Admin.Actions.FieldActionBase.AppliesToAsync(FluentCMS.Admin.Actions.FieldActionContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<bool>
+virtual FluentCMS.Admin.Actions.FieldActionBase.ConfirmationText(FluentCMS.Admin.Actions.FieldActionContext! context) -> string?
 virtual FluentCMS.Admin.Fields.FieldEditorBase.FocusAsync() -> System.Threading.Tasks.ValueTask
+const FluentCMS.Admin.Plugins.AdminManifestMenuItem.NeutralCulture = "en" -> string!
+FluentCMS.Admin.Fields.FieldEditorRegistry.AddLazy(string! fieldType, System.Func<bool>! isAvailable, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<System.Type!>!>! load) -> void
+FluentCMS.Admin.Fields.FieldEditorRegistry.FindAsync(string! fieldType, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Admin.Fields.FieldEditorRegistration?>
+FluentCMS.Admin.Lists.ListCellRegistry.AddLazy(string! fieldType, System.Func<bool>! isAvailable, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<System.Type!>!>! load, bool populate = false) -> void
+FluentCMS.Admin.Lists.ListCellRegistry.Populates(string! fieldType) -> bool
+FluentCMS.Admin.Lists.ListCellRegistry.CellForAsync(string! fieldType, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<System.Type!>
+FluentCMS.Admin.Lists.ListFilterRegistry.AddLazy(string! fieldType, System.Func<bool>! isAvailable, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task!>! load) -> void
+FluentCMS.Admin.Lists.ListFilterRegistry.FindAsync(FluentCMS.Admin.Api.SchemaFieldDescription! field, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Admin.Lists.ListFilterDefinition?>
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.LabelFor(System.Globalization.CultureInfo! culture) -> string!
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Labels.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.Labels.init -> void

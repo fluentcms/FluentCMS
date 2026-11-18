@@ -1,8 +1,14 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/FluentCms-Plugin1/FluentCms-Plugin1.csproj" />
+<!--#if (admin) -->
+    <Project Path="src/FluentCms-Plugin1.Admin/FluentCms-Plugin1.Admin.csproj" />
+<!--#endif -->
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FluentCms-Plugin1.Tests/FluentCms-Plugin1.Tests.csproj" />
+<!--#if (admin) -->
+    <Project Path="tests/FluentCms-Plugin1.Admin.Tests/FluentCms-Plugin1.Admin.Tests.csproj" />
+<!--#endif -->
   </Folder>
 </Solution>

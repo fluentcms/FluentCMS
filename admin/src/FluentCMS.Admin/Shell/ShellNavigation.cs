@@ -1,3 +1,4 @@
+using System.Globalization;
 using FluentCMS.Admin.Api;
 
 namespace FluentCMS.Admin.Shell;
@@ -26,12 +27,19 @@ internal static class ShellNavigation
 {
     public static string ContentRoute(string type) => $"content/{Uri.EscapeDataString(type)}";
 
+    // The types of the site's schema the user may read, in schema order.
+    public static List<SchemaTypeDescription> ReadableTypes(AdminContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return [.. (context.Schema?.Types ?? []).Where(type => context.MayRead(type.Name))];
+    }
+
     public static IReadOnlyList<ShellSection> Build(AdminContext context, AdminMenu menu)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(menu);
 
-        var types = (context.Schema?.Types ?? []).Where(type => context.MayRead(type.Name)).ToList();
+        var types = ReadableTypes(context);
         List<ShellSection> sections =
         [
             new(ShellSectionKind.Collections, [.. types.Where(type => type.Kind == "collection").Select(Link)]),
@@ -40,6 +48,8 @@ internal static class ShellNavigation
 
         var entries = menu.Entries
             .Where(entry => (entry.Plugin is null || context.PluginEnabled(entry.Plugin)) && (entry.Permission is null || context.Allows(entry.Permission)))
+            .OrderBy(entry => entry.Order)
+            .ThenBy(entry => entry.Item?.LabelFor(CultureInfo.CurrentUICulture), StringComparer.CurrentCulture)
             .ToList();
         foreach (var (section, kind) in new[]
         {

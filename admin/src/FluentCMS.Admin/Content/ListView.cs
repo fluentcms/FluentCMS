@@ -18,7 +18,7 @@ internal enum ListColumnKind
 
 // A column of a list. Its name is what the query string and the stored choice keep, and what the API sorts by: a field's
 // name, or a system member's.
-internal sealed record ListColumn(string Name, ListColumnKind Kind, bool Sortable, SchemaFieldDescription? Field = null, string? ReadPath = null);
+internal sealed record ListColumn(string Name, ListColumnKind Kind, bool Sortable, SchemaFieldDescription? Field = null, string? ReadPath = null, bool Populated = false);
 
 // The columns a list of one type may show (spec 4.4): the label first and always, then the system fields and the fields a
 // cell can show, in the order the user chose. The list reads only what it shows.
@@ -100,7 +100,7 @@ internal sealed class ListView
         available.Add(new("updatedBy", ListColumnKind.UpdatedBy, Sortable: false, ReadPath: "updatedBy"));
         foreach (var field in type.Fields.Where(field => field.Name != label.Name && cells.Shows(field)))
         {
-            available.Add(new(field.Name, ListColumnKind.Field, Sorts(field), field, ReadPath(field, schema)));
+            available.Add(new(field.Name, ListColumnKind.Field, Sorts(field), field, ReadPath(field, schema), cells.Populates(field.Type)));
         }
 
         return new ListView(type, label, available, ListFilters.Fields(type, filters));
@@ -149,9 +149,10 @@ internal sealed class ListView
         int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var value) ? value : null;
 
     // fields= names the label and the shown columns, system members included, since a read with fields= has only what it
-    // names, and the pending schedules with the status; populate= names the relations among them. A list that shows nothing
-    // else still names the id, since a read without fields= has every field. Under locale=all the engine matches, sorts and
-    // pages in the site's default locale and answers every locale of each entry.
+    // names, and the pending schedules with the status; populate= names the relations among them, and the fields whose
+    // half's cell asks for it (ListCellAttribute.Populate), such as media, so that a page needs no read per row (spec 2.7). A list that shows nothing else still names
+    // the id, since a read without fields= has every field. Under locale=all the engine matches, sorts and pages in the
+    // site's default locale and answers every locale of each entry.
     public ContentQuery Query(IReadOnlyList<ListColumn> shown, IReadOnlyList<SortField> sort, int page, int pageSize, IReadOnlyList<FieldFilter>? filters = null, string? search = null, bool everyLocale = false)
     {
         ArgumentNullException.ThrowIfNull(shown);
@@ -160,7 +161,7 @@ internal sealed class ListView
             .Distinct(StringComparer.Ordinal)
             .ToList();
         var populate = new[] { Label }.Concat(shown)
-            .Where(column => column.Field is { Type: "relation" } && column.ReadPath?.Contains('.', StringComparison.Ordinal) == true)
+            .Where(column => column.Field is { Type: "relation" } && column.ReadPath?.Contains('.', StringComparison.Ordinal) == true || column.Populated)
             .Select(column => column.Name)
             .Distinct(StringComparer.Ordinal)
             .ToList();

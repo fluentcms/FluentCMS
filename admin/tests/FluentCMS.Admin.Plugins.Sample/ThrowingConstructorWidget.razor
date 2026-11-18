@@ -1,0 +1,7 @@
+@* A component whose constructor throws, which the home page's tests name as a widget in a manifest of their own. *@
+
+<p>Never shown</p>
+
+@code {
+    public ThrowingConstructorWidget() => throw new InvalidOperationException("The widget cannot be made.");
+}

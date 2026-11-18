@@ -1,0 +1,46 @@
+.media-focal-frame {
+    max-inline-size: 100%;
+    overflow-x: auto;
+}
+
+.media-focal-image {
+    position: relative;
+    flex: none;
+}
+
+.media-focal-image img {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    max-inline-size: none;
+}
+
+.media-focal-pick {
+    cursor: crosshair;
+}
+
+.media-focal-marker {
+    position: absolute;
+    inline-size: 1rem;
+    block-size: 1rem;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px #000;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.media-focal-sliders {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cms-space-m);
+    border: 0;
+    padding: 0;
+    margin: var(--cms-space-s) 0;
+}
+
+.media-focal-preview img {
+    inline-size: 6rem;
+    block-size: 6rem;
+    object-fit: cover;
+}

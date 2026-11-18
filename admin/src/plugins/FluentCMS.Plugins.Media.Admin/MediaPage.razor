@@ -1,0 +1,330 @@
+@* The media library (spec 4.14): MediaBrowser over the folder, view, search, filters and page of the address; upload by
+   button, by dropping files on the page and by pasting; the folders created, renamed, moved and deleted; and the selected
+   assets moved to another folder. Opening an asset shows its detail, MediaAssetPanel. Each action shows only for a
+   caller who holds its media.* permission; the server checks every call. *@
+@page "/media"
+@attribute [AdminPage("/media", Permission = "media.read")]
+@attribute [AdminMenuItem("Media.Menu", Section = AdminSection.Media, Icon = "image")]
+@inject IManagementApi Api
+@inject IAdminContext Context
+@inject IAnnouncer Announcer
+@inject NavigationManager Navigation
+@inject IStringLocalizer<MediaResources> L
+
+<MediaDropZone Class="media-library" Enabled="@MayUpload">
+    <h1 tabindex="-1">@L["Media.Page.Heading"]</h1>
+
+    @if (MayUpload)
+    {
+        <MediaUpload Folder="@state.Folder" OnUploaded="@UploadedAsync" />
+    }
+
+    <MediaBrowser @ref="browser"
+                  State="@state"
+                  StateChanged="@Go"
+                  SelectionMode="@(MayMove ? CmsSelectionMode.Many : CmsSelectionMode.None)"
+                  Selected="@selected"
+                  SelectedChanged="@(items => selected = items)"
+                  OnOpen="@OpenAsset">
+        <Actions>
+            @if (MayMove && selected.Count > 0)
+            {
+                <CmsButton Icon="CmsIconName.Folder" OnClick="StartMoveAssets">@L["Media.Move.Assets", MediaFormat.Number(selected.Count)]</CmsButton>
+            }
+        </Actions>
+        <FolderActions>
+            @if (MayManageFolders)
+            {
+                <div class="media-folder-actions">
+                    <CmsButton Icon="CmsIconName.Add" OnClick="StartCreate">@L["Media.Folder.New"]</CmsButton>
+                    @if (state.Folder is not null)
+                    {
+                        <CmsButton Icon="CmsIconName.Edit" OnClick="StartRename">@L["Media.Folder.Rename"]</CmsButton>
+                        <CmsButton Icon="CmsIconName.Folder" OnClick="StartMoveFolder">@L["Media.Folder.Move"]</CmsButton>
+                        <CmsButton Icon="CmsIconName.Delete" OnClick="StartDelete">@L["Media.Folder.Delete"]</CmsButton>
+                    }
+                </div>
+            }
+        </FolderActions>
+    </MediaBrowser>
+</MediaDropZone>
+
+<CmsDialog Title="@L[renaming ? "Media.Folder.RenameTitle" : "Media.Folder.NewTitle"]" Open="@naming" OpenChanged="@(open => naming = open)">
+    <ChildContent>
+        <form @onsubmit="SaveNameAsync">
+            <CmsTextInput Label="@L["Media.Folder.Name"]" Value="@folderName" ValueChanged="@(text => folderName = text)" Required="true" Error="@dialogError" />
+        </form>
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(busy || string.IsNullOrWhiteSpace(folderName))" OnClick="SaveNameAsync">@L[renaming ? "Media.Folder.RenameSave" : "Media.Folder.Create"]</CmsButton>
+        <CmsButton OnClick="@(() => naming = false)">@L["Media.Dialog.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+<CmsDialog Title="@L[movingAssets ? "Media.Move.AssetsTitle" : "Media.Folder.MoveTitle"]" Open="@moving" OpenChanged="@(open => moving = open)">
+    <ChildContent>
+        <CmsSelect Label="@L["Media.Move.Target"]" Options="@targets" Value="@target" ValueChanged="@(value => target = value)" Error="@dialogError" />
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(busy || target is null)" OnClick="MoveAsync">@L["Media.Move.Save"]</CmsButton>
+        <CmsButton OnClick="@(() => moving = false)">@L["Media.Dialog.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+<CmsDialog Title="@L["Media.Folder.DeleteTitle"]" Open="@deleting" OpenChanged="@(open => deleting = open)">
+    <ChildContent>
+        <p>@L["Media.Folder.DeleteText", OpenFolderName]</p>
+        @if (dialogError is { } error)
+        {
+            <p class="media-dialog-error" role="alert">@error</p>
+        }
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="DeleteAsync">@L["Media.Folder.DeleteConfirm"]</CmsButton>
+        <CmsButton OnClick="@(() => deleting = false)">@L["Media.Dialog.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+<MediaAssetPanel Asset="@openAsset" Open="@panelOpen" OnClose="@(() => panelOpen = false)" Folders="@Folders" OnChanged="@AssetChangedAsync" />
+
+@code {
+    private const string RootValue = "root";
+
+    private MediaBrowseState state = MediaBrowseState.Default;
+    private IReadOnlyList<MediaAssetInfo> selected = [];
+    private MediaBrowser? browser;
+    private MediaAssetInfo? openAsset;
+    private bool panelOpen;
+
+    private bool naming;
+    private bool renaming;
+    private string? folderName;
+    private bool moving;
+    private bool movingAssets;
+    private IReadOnlyList<CmsOption> targets = [];
+    private string? target;
+    private bool deleting;
+    private bool busy;
+    private string? dialogError;
+
+    [SupplyParameterFromQuery(Name = "folder")]
+    public string? FolderQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "view")]
+    public string? ViewQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? SearchQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "type")]
+    public string? TypeQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "tag")]
+    public string? TagQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "page")]
+    public string? PageQuery { get; set; }
+
+    private bool MayUpload => Context.Access.Allows(MediaPermissions.Upload);
+
+    private bool MayMove => Context.Access.Allows(MediaPermissions.Update);
+
+    private bool MayManageFolders => Context.Access.Allows(MediaPermissions.ManageFolders);
+
+    private IReadOnlyList<MediaFolderInfo> Folders => browser?.Folders ?? [];
+
+    private string OpenFolderName => Folders.FirstOrDefault(folder => folder.Id == state.Folder)?.Name ?? "";
+
+    protected override void OnParametersSet()
+    {
+        var next = MediaBrowseState.Parse(FolderQuery, ViewQuery, SearchQuery, TypeQuery, TagQuery, PageQuery);
+        if (next.Folder != state.Folder || next.Query != state.Query)
+        {
+            selected = [];
+        }
+
+        state = next;
+    }
+
+    private void Go(MediaBrowseState next) => Navigation.NavigateTo(Navigation.GetUriWithQueryParameters(next.ToAddress()));
+
+    private async Task UploadedAsync(int count)
+    {
+        if (count > 0 && browser is not null)
+        {
+            await browser.ReloadAsync();
+        }
+    }
+
+    private void OpenAsset(MediaAssetInfo asset) => (openAsset, panelOpen) = (asset, true);
+
+    private Task AssetChangedAsync() => browser?.ReloadAsync() ?? Task.CompletedTask;
+
+    private void StartCreate() => (naming, renaming, folderName, dialogError) = (true, false, null, null);
+
+    private void StartRename() => (naming, renaming, folderName, dialogError) = (true, true, OpenFolderName, null);
+
+    private void StartMoveFolder()
+    {
+        if (state.Folder is not { } folder)
+        {
+            return;
+        }
+
+        // A folder cannot go into itself or a folder below it (FCMS1589), nor where it is.
+        var excluded = MediaFolders.WithDescendants(Folders, folder);
+        var parent = Folders.FirstOrDefault(item => item.Id == folder)?.ParentId;
+        targets = Targets(item => !excluded.Contains(item.Id) && item.Id != parent, includeRoot: parent is not null);
+        (moving, movingAssets, target, dialogError) = (true, false, null, null);
+    }
+
+    private void StartMoveAssets()
+    {
+        targets = Targets(item => item.Id != state.Folder, includeRoot: state.Folder is not null);
+        (moving, movingAssets, target, dialogError) = (true, true, null, null);
+    }
+
+    private IReadOnlyList<CmsOption> Targets(Func<MediaFolderInfo, bool> allowed, bool includeRoot) =>
+    [
+        .. includeRoot ? [new CmsOption(RootValue, L["Media.Folders.Root"])] : Array.Empty<CmsOption>(),
+        .. Folders.Where(allowed)
+            .Select(item => new CmsOption(item.Id.ToString("D"), MediaFolders.Path(Folders, item.Id)))
+            .OrderBy(option => option.Text, StringComparer.CurrentCultureIgnoreCase),
+    ];
+
+    private void StartDelete() => (deleting, dialogError) = (true, null);
+
+    private MediaApi Media => new(Api);
+
+    private async Task SaveNameAsync()
+    {
+        if (busy || MediaBrowseState.Text(folderName) is not { } name)
+        {
+            return;
+        }
+
+        await RunAsync(async () =>
+        {
+            if (renaming && state.Folder is { } folder)
+            {
+                await Media.RenameFolderAsync(folder, name, CancellationToken.None);
+                Announcer.Announce(L["Media.Folder.Renamed", name]);
+            }
+            else
+            {
+                await Media.CreateFolderAsync(name, state.Folder, CancellationToken.None);
+                Announcer.Announce(L["Media.Folder.Created", name]);
+            }
+
+            naming = false;
+        });
+    }
+
+    private async Task MoveAsync()
+    {
+        if (busy || target is null)
+        {
+            return;
+        }
+
+        Guid? destination = Guid.TryParse(target, out var id) ? id : null;
+        if (!movingAssets)
+        {
+            await RunAsync(async () =>
+            {
+                await Media.MoveFolderAsync(state.Folder!.Value, destination, CancellationToken.None);
+                Announcer.Announce(L["Media.Folder.Moved", OpenFolderName]);
+                moving = false;
+            });
+            return;
+        }
+
+        HashSet<Guid> moved = [];
+        await RunAsync(async () =>
+        {
+            foreach (var asset in selected)
+            {
+                await Media.MoveAsync(asset.Id, destination, CancellationToken.None);
+                moved.Add(asset.Id);
+            }
+
+            moving = false;
+            selected = [];
+            Announcer.Announce(L["Media.Move.Moved", MediaFormat.Number(moved.Count)]);
+        });
+
+        // Those moved before a failure are gone from the folder; the others stay selected, to try again.
+        if (moving && moved.Count > 0 && browser is not null)
+        {
+            selected = [.. selected.Where(asset => !moved.Contains(asset.Id))];
+            await browser.ReloadAsync();
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (busy || state.Folder is not { } folder)
+        {
+            return;
+        }
+
+        var parent = Folders.FirstOrDefault(item => item.Id == folder)?.ParentId;
+        var name = OpenFolderName;
+        var deleted = false;
+        await RunAsync(async () =>
+        {
+            await Media.DeleteFolderAsync(folder, CancellationToken.None);
+            (deleting, deleted) = (false, true);
+            Announcer.Announce(L["Media.Folder.Deleted", name]);
+        }, reload: false);
+
+        // The parent's read is the new address's; reading the deleted folder again would answer that it is gone.
+        if (deleted)
+        {
+            Go(state with { Folder = parent, Page = 1 });
+            if (browser is not null)
+            {
+                await browser.ReloadFoldersAsync();
+            }
+        }
+    }
+
+    // Runs an action of a dialog: a refusal shows in the dialog, and the library is read again after a success.
+    private async Task RunAsync(Func<Task> action, bool reload = true)
+    {
+        (busy, dialogError) = (true, null);
+        try
+        {
+            await action();
+            if (reload && browser is not null)
+            {
+                await browser.ReloadAsync();
+            }
+        }
+        catch (ApiProblemException failure)
+        {
+            dialogError = Refusal(failure.Problem);
+        }
+        catch (Exception failure) when (failure is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            dialogError = L["Media.Dialog.Failed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private string Refusal(ApiProblem problem) => problem switch
+    {
+        { Code: "FCMS1587" } => L["Media.Folder.NameTaken"],
+        { Code: "FCMS1588" } => L["Media.Folder.NotEmpty"],
+        { Code: "FCMS1589" } => L["Media.Folder.Cycle"],
+        { Code: "FCMS1586" } => L["Media.Browser.FolderNotFound"],
+        { Status: 403 } => L["Media.Dialog.Forbidden"],
+        { Errors: [{ Message: { Length: > 0 } message }, ..] } => message,
+        { Detail: { Length: > 0 } detail } => detail,
+        { Title: { Length: > 0 } title } => title,
+        _ => L["Media.Dialog.Failed"],
+    };
+}

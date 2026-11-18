@@ -1,0 +1,454 @@
+@* The browse part of the media library (spec 4.14): the folder tree, the grid and list views of a folder, the search, the
+   filters by type and tag, and paging. It keeps no address: the library keeps its state in the query string and a picker
+   in itself, each through State and StateChanged. The caller chooses the selection (none, one or many); activating an
+   asset raises OnOpen, where the library opens its detail and a picker takes it. *@
+@implements IDisposable
+@inject IManagementApi Api
+@inject IAdminContext Context
+@inject IAnnouncer Announcer
+@inject AdminConfiguration Configuration
+@inject IStringLocalizer<MediaResources> L
+
+<div class="media-browser">
+    <nav class="media-folders" aria-label="@L["Media.Folders.Label"]">
+        @if (foldersFailed)
+        {
+            <div role="alert">
+                <p>@L["Media.Folders.Failed"]</p>
+                <CmsButton OnClick="ReloadAsync">@L["Media.Browser.TryAgain"]</CmsButton>
+            </div>
+        }
+        else
+        {
+            <CmsTree Label="@L["Media.Folders.Label"]" Nodes="@nodes" SelectedId="@SelectedNode" SelectedIdChanged="@OpenFolderAsync" />
+        }
+        @FolderActions
+    </nav>
+
+    <div class="media-results">
+        <div class="media-toolbar">
+            <form role="search" class="media-search" @onsubmit="ApplyFiltersAsync">
+                <CmsTextInput Type="CmsTextInputType.Search" Label="@L["Media.Search.Label"]" Value="@searchText" ValueChanged="@(text => searchText = text)" />
+                <CmsTextInput Label="@L["Media.Tag.Label"]" Value="@tagText" ValueChanged="@(text => tagText = text)" />
+                <CmsButton Icon="CmsIconName.Search" OnClick="ApplyFiltersAsync">@L["Media.Search.Submit"]</CmsButton>
+            </form>
+            <div class="media-type">
+                <CmsSelect Label="@L["Media.Type.Label"]"
+                           Options="@TypeOptions"
+                           Value="@CurrentQuery.Type"
+                           Clearable="@(Accept is null)"
+                           Placeholder="@(Accept is null ? L["Media.Type.Any"].Value : null)"
+                           ValueChanged="@ChangeTypeAsync" />
+            </div>
+            <CmsButton Icon="@(State.View == MediaView.Grid ? CmsIconName.Document : CmsIconName.Image)" OnClick="ToggleViewAsync">@L[State.View == MediaView.Grid ? "Media.View.List" : "Media.View.Grid"]</CmsButton>
+            @Actions
+        </div>
+
+        @if (problem is { } failed)
+        {
+            <div class="media-problem" role="alert">
+                <p><strong>@ProblemTitle(failed)</strong></p>
+                @if (failed?.Detail is { Length: > 0 } detail)
+                {
+                    <p>@detail</p>
+                }
+                <div class="media-actions">
+                    @if (failed is not { Status: 403 })
+                    {
+                        <CmsButton OnClick="RetryAsync">@L["Media.Browser.TryAgain"]</CmsButton>
+                    }
+                    @if (State.Folder is not null)
+                    {
+                        <CmsButton OnClick="@(() => OpenFolderAsync(RootNode))">@L["Media.Browser.ToRoot"]</CmsButton>
+                    }
+                </div>
+            </div>
+        }
+        else if (State.View == MediaView.Grid)
+        {
+            @if (loading && assets.Count == 0)
+            {
+                <p class="media-status" role="status">@L["Media.Browser.Loading"]</p>
+            }
+            else if (assets.Count == 0)
+            {
+                <p class="media-status">@L[CurrentQuery.Filtered ? "Media.Browser.NoMatch" : "Media.Browser.Empty"]</p>
+            }
+            else
+            {
+                <ul class="media-grid" aria-label="@L["Media.Results.Label"]" aria-busy="@(loading ? "true" : null)">
+                    @foreach (var asset in assets)
+                    {
+                        var item = asset;
+                        var chosen = IsSelected(item);
+                        <li @key="item.Id" class="@(chosen ? "media-tile media-tile-selected" : "media-tile")">
+                            @if (SelectionMode != CmsSelectionMode.None)
+                            {
+                                <input type="checkbox" class="media-tile-check" checked="@chosen" aria-label="@L["Media.Asset.Select", item.Name]" @onchange="@(() => ToggleAsync(item))" />
+                            }
+                            <button type="button" class="media-tile-open" @onclick="@(() => OnOpen.InvokeAsync(item))">
+                                <span class="media-thumb">
+                                    @if (Thumbnail(item) is { } source)
+                                    {
+                                        <img src="@source" alt="" loading="lazy" />
+                                    }
+                                    else
+                                    {
+                                        <CmsIcon Name="CmsIconName.Document" />
+                                    }
+                                </span>
+                                <span class="media-tile-name">@item.Name</span>
+                                <span class="media-tile-meta">@MediaFormat.Type(item.MimeType) · @MediaFormat.Size(item.Size)</span>
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+        }
+        else
+        {
+            <CmsDataGrid TItem="MediaAssetInfo"
+                         Label="@L["Media.Results.Label"]"
+                         Items="@assets"
+                         SelectionMode="@SelectionMode"
+                         SelectedItems="@ShownSelected"
+                         SelectedItemsChanged="@GridSelectedAsync"
+                         OnRowActivated="@OnOpen"
+                         RowLabel="@(asset => asset.Name)"
+                         Loading="@loading"
+                         TotalItems="@total"
+                         RowOffset="@((long)(State.Page - 1) * MediaBrowseState.PageSize)">
+                <EmptyContent>@L[CurrentQuery.Filtered ? "Media.Browser.NoMatch" : "Media.Browser.Empty"]</EmptyContent>
+                <ChildContent>
+                    <CmsDataGridColumn TItem="MediaAssetInfo" Name="name" Title="@L["Media.Column.Name"]" Order="0">
+                        <span class="media-row-name">
+                            @if (Thumbnail(context) is { } source)
+                            {
+                                <img src="@source" alt="" loading="lazy" />
+                            }
+                            @context.Name
+                        </span>
+                    </CmsDataGridColumn>
+                    <CmsDataGridColumn TItem="MediaAssetInfo" Name="type" Title="@L["Media.Column.Type"]" Order="1" Value="@(asset => asset.MimeType)" />
+                    <CmsDataGridColumn TItem="MediaAssetInfo" Name="size" Title="@L["Media.Column.Size"]" Order="2" Value="@(asset => MediaFormat.Size(asset.Size))" />
+                    <CmsDataGridColumn TItem="MediaAssetInfo" Name="dimensions" Title="@L["Media.Column.Dimensions"]" Order="3" Value="@(asset => MediaFormat.Dimensions(asset))" />
+                </ChildContent>
+            </CmsDataGrid>
+        }
+
+        @if (problem is null)
+        {
+            <nav class="media-pager" aria-label="@L["Media.Paging.Label"]">
+                <span>@(total == 1 ? L["Media.Paging.TotalOne"] : L["Media.Paging.Total", MediaFormat.Number(total)])</span>
+                <CmsButton @ref="previousButton" Disabled="@(State.Page <= 1)" OnClick="@(() => GoToPageAsync(State.Page - 1))">@L["Media.Paging.Previous"]</CmsButton>
+                <span>@L["Media.Paging.PageOf", MediaFormat.Number(State.Page), MediaFormat.Number(Pages)]</span>
+                <CmsButton @ref="nextButton" Disabled="@(State.Page >= Pages)" OnClick="@(() => GoToPageAsync(State.Page + 1))">@L["Media.Paging.Next"]</CmsButton>
+            </nav>
+        }
+    </div>
+</div>
+
+@code {
+    private const string RootNode = "root";
+
+    private CancellationTokenSource? reading;
+    private string? readKey;
+    private string? foldersKey;
+    private int foldersVersion;
+    private (string Folder, string Criteria)? answered;
+    private IReadOnlyList<MediaAssetInfo> assets = [];
+    private IReadOnlyList<CmsTreeNode> nodes = [];
+    private long total;
+    private bool loading;
+    private ApiProblem? problem;
+    private bool failedWithoutAnswer;
+    private bool foldersFailed;
+    private string? searchText;
+    private string? tagText;
+    private (string? Search, string? Tag)? shownFilters;
+    private CmsButton? previousButton;
+    private CmsButton? nextButton;
+
+    // The pager's other button, once the one that had focus became disabled on the first or last page.
+    private Func<CmsButton?>? focusAfterRender;
+
+    [Parameter, EditorRequired]
+    public MediaBrowseState State { get; set; } = MediaBrowseState.Default;
+
+    [Parameter]
+    public EventCallback<MediaBrowseState> StateChanged { get; set; }
+
+    [Parameter]
+    public CmsSelectionMode SelectionMode { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<MediaAssetInfo> Selected { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<IReadOnlyList<MediaAssetInfo>> SelectedChanged { get; set; }
+
+    // Raised when the user opens an asset: by its tile, or by Enter on its row.
+    [Parameter]
+    public EventCallback<MediaAssetInfo> OnOpen { get; set; }
+
+    // The types the caller may see, each a MIME type or a family such as image/*, as a picker of an image field: every read
+    // is of one of them, the first unless the user chose another, and the type filter offers these alone. Every type, with
+    // MediaBrowseState.Types offered as filters, when null.
+    [Parameter]
+    public IReadOnlyList<string>? Accept { get; set; }
+
+    // Beside the search and filters, such as the library's upload and move.
+    [Parameter]
+    public RenderFragment? Actions { get; set; }
+
+    // Under the folder tree, such as the library's folder actions.
+    [Parameter]
+    public RenderFragment? FolderActions { get; set; }
+
+    // The folders of the site, as last read, which the caller's folder actions offer.
+    public IReadOnlyList<MediaFolderInfo> Folders { get; private set; } = [];
+
+    private long Pages => Math.Max(1, (total + MediaBrowseState.PageSize - 1) / MediaBrowseState.PageSize);
+
+    private string SelectedNode => State.Folder?.ToString("D") ?? RootNode;
+
+    private IReadOnlyList<CmsOption> TypeOptions =>
+        [.. (Accept is { Count: > 0 } accepted ? accepted : MediaBrowseState.Types).Select(type => new CmsOption(type, MediaFormat.TypeFilter(type, L)))];
+
+    // The read of the state, held to Accept.
+    private MediaListQuery CurrentQuery => Accept is { Count: > 0 } accepted
+        ? State.Query with { Type = State.Type is { } type && accepted.Contains(type, StringComparer.OrdinalIgnoreCase) ? type : accepted[0], TypeIsConstraint = true }
+        : State.Query;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var filters = (State.Search, State.Tag);
+        if (shownFilters != filters)
+        {
+            (searchText, tagText, shownFilters) = (State.Search, State.Tag, filters);
+        }
+
+        var site = "site:" + Context.Site?.Id.ToString("D");
+        if (foldersKey != site)
+        {
+            var switched = foldersKey is not null;
+            foldersKey = site;
+            await ReadFoldersAsync();
+
+            // After a site switch a folder of the other site is not in this one's tree: its root instead, as the content
+            // lists leave their query behind.
+            if (switched && !foldersFailed && State.Folder is { } folder && Folders.All(item => item.Id != folder))
+            {
+                await StateChanged.InvokeAsync(State with { Folder = null, Page = 1 });
+                return;
+            }
+        }
+        else
+        {
+            nodes = Tree();
+        }
+
+        await ReadAsync();
+    }
+
+    // Reads the folders and the assets again, as after the caller changed them.
+    public async Task ReloadAsync()
+    {
+        await ReadFoldersAsync();
+        await ReadAsync(again: true);
+        StateHasChanged();
+    }
+
+    // Reads the folders again, as after one was deleted; the assets follow the state.
+    public async Task ReloadFoldersAsync()
+    {
+        await ReadFoldersAsync();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+    }
+
+    // A read that a later one overtook, as after a site switch, is dropped.
+    private async Task ReadFoldersAsync()
+    {
+        var version = ++foldersVersion;
+        IReadOnlyList<MediaFolderInfo> read;
+        bool failed;
+        try
+        {
+            (read, failed) = (await new MediaApi(Api).FoldersAsync(CancellationToken.None), false);
+        }
+        catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            (read, failed) = ([], true);
+        }
+
+        if (version == foldersVersion)
+        {
+            (Folders, foldersFailed) = (read, failed);
+            nodes = Tree();
+        }
+    }
+
+    // The root holds the folders without a parent; the open folder's ancestors are open, so that it shows.
+    private IReadOnlyList<CmsTreeNode> Tree()
+    {
+        var byParent = Folders.ToLookup(folder => folder.ParentId);
+        var open = MediaFolders.Ancestors(Folders, State.Folder).ToHashSet();
+
+        IReadOnlyList<CmsTreeNode> Children(Guid? parent) =>
+            [.. byParent[parent]
+                .OrderBy(folder => folder.Name, StringComparer.CurrentCultureIgnoreCase)
+                .Select(folder => new CmsTreeNode(folder.Id.ToString("D"), folder.Name, Children(folder.Id) is { Count: > 0 } children ? children : null) { Expanded = open.Contains(folder.Id) })];
+
+        return [new CmsTreeNode(RootNode, L["Media.Folders.Root"], Children(null)) { Expanded = true }];
+    }
+
+    // A read that a later one overtook is dropped; the same read twice, as a render with the same state, is made once.
+    private async Task ReadAsync(bool again = false)
+    {
+        var query = CurrentQuery;
+        var key = $"{Context.Site?.Id}{query.ToQueryString()}";
+        if (key == readKey && !again)
+        {
+            return;
+        }
+
+        readKey = key;
+        reading?.Cancel();
+        reading?.Dispose();
+        var current = reading = new CancellationTokenSource();
+        (loading, problem, failedWithoutAnswer) = (true, null, false);
+        StateHasChanged();
+        try
+        {
+            var page = await new MediaApi(Api).ListAsync(query, current.Token);
+            if (current.IsCancellationRequested)
+            {
+                return;
+            }
+
+            (assets, total) = (page.Items, page.Total);
+            AnnounceFound(query);
+            if (assets.Count == 0 && total > 0 && State.Page > Pages)
+            {
+                // A page past the end, as after assets were moved away: its last page instead, read with the new state, so
+                // that the empty page is not shown meanwhile.
+                await StateChanged.InvokeAsync(State with { Page = (int)Pages });
+                return;
+            }
+        }
+        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (ApiProblemException failure)
+        {
+            (assets, total, problem) = ([], 0, failure.Problem);
+        }
+        catch (Exception failure) when (failure is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            (assets, total, problem, failedWithoutAnswer) = ([], 0, new ApiProblem(), true);
+        }
+
+        if (current == reading)
+        {
+            loading = false;
+        }
+    }
+
+    // A change of the search or a filter in the same folder is announced with the number it finds (WCAG 4.1.3).
+    private void AnnounceFound(MediaListQuery query)
+    {
+        var now = (query.Folder?.ToString("D") ?? RootNode, $"{query.Search}|{query.Type}|{query.Tag}");
+        if (answered is { } before && before.Folder == now.Item1 && before.Criteria != now.Item2)
+        {
+            Announcer.Announce(total switch
+            {
+                0 => L[query.Filtered ? "Media.Browser.NoMatch" : "Media.Browser.Empty"],
+                1 => L["Media.Paging.TotalOne"],
+                _ => L["Media.Paging.Total", MediaFormat.Number(total)],
+            });
+        }
+
+        answered = now;
+    }
+
+    private Task RetryAsync() => ReadAsync(again: true);
+
+    private string ProblemTitle(ApiProblem? failure) => failure switch
+    {
+        _ when failedWithoutAnswer => L["Media.Browser.Failed"],
+        { Status: 403 } => L["Media.Browser.Forbidden"],
+        { Code: "FCMS1586" } => L["Media.Browser.FolderNotFound"],
+        { Title: { Length: > 0 } title } => title,
+        _ => L["Media.Browser.Failed"],
+    };
+
+    private string? Thumbnail(MediaAssetInfo asset) =>
+        asset.Urls.Thumbnail is { Length: > 0 } url ? MediaFormat.Resolve(Configuration.ApiBaseUrl, url) : null;
+
+    // The grid matches its items by value, so the selection is given as the items of this read with the same ids.
+    private IReadOnlyList<MediaAssetInfo> ShownSelected => [.. assets.Where(IsSelected)];
+
+    private bool IsSelected(MediaAssetInfo asset) => Selected.Any(item => item.Id == asset.Id);
+
+    // The grid knows the shown page alone; what is selected on other pages or in other folders stays selected.
+    private Task GridSelectedAsync(IReadOnlyList<MediaAssetInfo> shown) => SelectedChanged.InvokeAsync(SelectionMode == CmsSelectionMode.Many
+        ? [.. Selected.Where(item => assets.All(asset => asset.Id != item.Id)), .. shown]
+        : shown);
+
+    private Task ToggleAsync(MediaAssetInfo asset)
+    {
+        IReadOnlyList<MediaAssetInfo> next = IsSelected(asset)
+            ? [.. Selected.Where(item => item.Id != asset.Id)]
+            : SelectionMode == CmsSelectionMode.One ? [asset] : [.. Selected, asset];
+        return SelectedChanged.InvokeAsync(next);
+    }
+
+    private Task ChangeAsync(MediaBrowseState next) => StateChanged.InvokeAsync(next);
+
+    private Task OpenFolderAsync(string? id)
+    {
+        if (id is null || id == SelectedNode)
+        {
+            return Task.CompletedTask;
+        }
+
+        return ChangeAsync(State with { Folder = Guid.TryParse(id, out var folder) ? folder : null, Page = 1 });
+    }
+
+    private Task ApplyFiltersAsync() =>
+        ChangeAsync(State with { Search = MediaBrowseState.Text(searchText), Tag = MediaBrowseState.Text(tagText), Page = 1 });
+
+    private Task ChangeTypeAsync(string? type) => ChangeAsync(State with { Type = MediaBrowseState.Text(type), Page = 1 });
+
+    private Task ToggleViewAsync() => ChangeAsync(State with { View = State.View == MediaView.Grid ? MediaView.List : MediaView.Grid });
+
+    private Task GoToPageAsync(int page)
+    {
+        if (page <= 1)
+        {
+            focusAfterRender = () => nextButton;
+        }
+        else if (page >= Pages)
+        {
+            focusAfterRender = () => previousButton;
+        }
+
+        return ChangeAsync(State with { Page = Math.Max(1, page) });
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender?.Invoke() is { } button)
+        {
+            focusAfterRender = null;
+            await button.FocusAsync();
+        }
+    }
+}
