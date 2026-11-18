@@ -20,12 +20,31 @@
 }
 
 .media-field-item {
-    display: flex;
-    align-items: center;
-    gap: var(--cms-space-s);
     padding: var(--cms-space-xs);
     border: 1px solid var(--cms-color-border);
     border-radius: var(--cms-radius-s);
+}
+
+.media-field-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cms-space-s);
+}
+
+.media-field-toggle {
+    font: inherit;
+    color: var(--cms-color-accent);
+    background: none;
+    border: 0;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.media-field-details {
+    display: grid;
+    gap: var(--cms-space-m);
+    padding-block-start: var(--cms-space-s);
 }
 
 .media-field-thumb {

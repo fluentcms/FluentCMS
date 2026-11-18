@@ -1,7 +1,8 @@
 @* The editor of a media field (spec 5.2): each asset with its thumbnail and name, read with GET /media/{id} in the content
    locale, removed by its button; the media picker chooses them, and uploads into the library from inside it. A field of
-   several assets is ordered by the buttons or Alt with the up and down arrows (WCAG 2.5.7). The value is written as an id,
-   or a list of ids in order. *@
+   several assets is ordered by the buttons or Alt with the up and down arrows (WCAG 2.5.7). Each asset's alt text and focal
+   point open under it and are saved on the asset (A-50's parts, PATCH /media/{id}). The value is written as an id, or a
+   list of ids in order. *@
 @attribute [FieldEditor("media")]
 @inherits FieldEditorBase
 @inject IManagementApi Api
@@ -38,25 +39,40 @@
                 var name = NameOf(id);
                 @* Keyed by position, so that a move changes what each item shows and focus stays in the document. *@
                 <li @key="position" class="media-field-item" @onkeydown="@(e => OnItemKeyDownAsync(e, position))">
-                    <span class="media-field-thumb">
-                        @if (ThumbnailOf(id) is { } source)
+                    <div class="media-field-row">
+                        <span class="media-field-thumb">
+                            @if (ThumbnailOf(id) is { } source)
+                            {
+                                <img src="@source" alt="" />
+                            }
+                            else
+                            {
+                                <CmsIcon Name="CmsIconName.Document" />
+                            }
+                        </span>
+                        <span class="media-field-name" lang="@ContentLocale" dir="@TextDirection">@name</span>
+                        @if (CanOrder)
                         {
-                            <img src="@source" alt="" />
+                            <CmsButton @ref="upButtons[position]" Icon="CmsIconName.Up" Appearance="CmsButtonAppearance.Subtle" Label="@L["Media.Field.MoveUp", name]" Disabled="@(position == 0)" OnClick="@(() => MoveAsync(position, -1, byKey: false))" />
+                            <CmsButton @ref="downButtons[position]" Icon="CmsIconName.Down" Appearance="CmsButtonAppearance.Subtle" Label="@L["Media.Field.MoveDown", name]" Disabled="@(position == Ids.Count - 1)" OnClick="@(() => MoveAsync(position, 1, byKey: false))" />
                         }
-                        else
+                        @if (!ReadOnly)
                         {
-                            <CmsIcon Name="CmsIconName.Document" />
+                            <CmsButton @ref="removeButtons[position]" Icon="CmsIconName.Dismiss" Appearance="CmsButtonAppearance.Subtle" Label="@L["Media.Field.Remove", name]" OnClick="@(() => RemoveAsync(position))" />
                         }
-                    </span>
-                    <span class="media-field-name" lang="@ContentLocale" dir="@TextDirection">@name</span>
-                    @if (CanOrder)
+                        @if (assets.GetValueOrDefault(id) is not null)
+                        {
+                            <button type="button" class="media-field-toggle" aria-expanded="@(expanded == position ? "true" : "false")" @onclick="@(() => expanded = expanded == position ? null : position)">
+                                @L["Media.Field.Details", name]
+                            </button>
+                        }
+                    </div>
+                    @if (expanded == position && assets.GetValueOrDefault(id) is { } asset)
                     {
-                        <CmsButton @ref="upButtons[position]" Icon="CmsIconName.Up" Appearance="CmsButtonAppearance.Subtle" Label="@L["Media.Field.MoveUp", name]" Disabled="@(position == 0)" OnClick="@(() => MoveAsync(position, -1, byKey: false))" />
-                        <CmsButton @ref="downButtons[position]" Icon="CmsIconName.Down" Appearance="CmsButtonAppearance.Subtle" Label="@L["Media.Field.MoveDown", name]" Disabled="@(position == Ids.Count - 1)" OnClick="@(() => MoveAsync(position, 1, byKey: false))" />
-                    }
-                    @if (!ReadOnly)
-                    {
-                        <CmsButton @ref="removeButtons[position]" Icon="CmsIconName.Dismiss" Appearance="CmsButtonAppearance.Subtle" Label="@L["Media.Field.Remove", name]" OnClick="@(() => RemoveAsync(position))" />
+                        <div class="media-field-details">
+                            <MediaAltText Asset="@asset" ReadOnly="@(!MayUpdate)" OnChanged="@(changed => assets[id] = changed)" />
+                            <MediaFocalPoint Asset="@asset" ReadOnly="@(!MayUpdate)" OnChanged="@(changed => assets[id] = changed)" />
+                        </div>
                     }
                 </li>
             }
@@ -98,6 +114,7 @@
     private ElementReference group;
     private CmsButton? chooseButton;
     private bool picking;
+    private int? expanded;
     private bool pickerFailed;
     private int focusGeneration;
     private IReadOnlyList<Guid>? idsRead;
@@ -118,6 +135,9 @@
             return idsRead;
         }
     }
+
+    // The alt text and focal point are saved on the asset, which the field's own read-only state does not hold back.
+    private bool MayUpdate => !ReadOnly && Context.Access.Allows(MediaPermissions.Update);
 
     private bool CanOrder => Field.Multiple && !ReadOnly && Ids.Count > 1;
 
@@ -218,6 +238,7 @@
         var ids = Ids.ToList();
         var removed = NameOf(ids[position]);
         ids.RemoveAt(position);
+        expanded = null;
         await WriteAsync(ids);
 
         // Focus goes to the asset that took the removed one's place, or to the picker when none is left.
@@ -241,6 +262,7 @@
         }
 
         (ids[position], ids[to]) = (ids[to], ids[position]);
+        expanded = expanded == position ? to : expanded == to ? position : expanded;
         var moved = NameOf(ids[to]);
         await WriteAsync(ids);
         var atEnd = by < 0 ? to == 0 : to == ids.Count - 1;

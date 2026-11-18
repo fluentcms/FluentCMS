@@ -63,12 +63,30 @@ public sealed class OpenApiContractTests
         Check(media.MediaFolderInfo, Answer(paths, "/api/management/v1/media/folders", "post", "201"), "media/folders post", document, gaps);
         Check(media.MediaFolderInfo, Answer(paths, "/api/management/v1/media/folders/{id}", "patch"), "media/folders/{id}", document, gaps);
         Check(media.MediaFolderInfo, Answer(paths, "/api/management/v1/media/folders/{id}/move", "post"), "media/folders/{id}/move", document, gaps);
+        Check(media.MediaAssetInfo, Answer(paths, "/api/management/v1/media/{id}", "get"), "media/{id}", document, gaps);
+        Check(media.MediaAssetChanged, Answer(paths, "/api/management/v1/media/{id}", "patch"), "media/{id} patch", document, gaps);
+        Check(media.MediaAssetChanged, Answer(paths, "/api/management/v1/media/{id}/replace", "post"), "media/{id}/replace", document, gaps);
+        Check(media.ItemListMediaUsageInfo, Answer(paths, "/api/management/v1/media/{id}/usage", "get"), "media/{id}/usage", document, gaps);
+        Check(media.MediaDownloadInfo, Answer(paths, "/api/management/v1/media/{id}/download-url", "post"), "media/{id}/download-url", document, gaps);
+        Check(media.ItemListMediaPresetInfo, Answer(paths, "/api/management/v1/media/presets", "get"), "media/presets", document, gaps);
+        Check(media.MediaPresetInfo, Answer(paths, "/api/management/v1/media/presets/{name}", "put"), "media/presets/{name}", document, gaps);
+        Check(media.MediaSchema, Answer(paths, "/api/management/v1/schema", "get"), "schema", document, gaps);
 
         var body = paths["/api/management/v1/media"]!["post"]!["requestBody"]!["content"]!["multipart/form-data"]!["schema"]!;
         var properties = Resolve(body, document)!["properties"]!.AsObject();
         properties.ContainsKey("files").ShouldBeTrue();
         properties.ContainsKey("folderId").ShouldBeTrue();
         paths["/api/management/v1/media/folders/{id}"]!["delete"].ShouldNotBeNull();
+        paths["/api/management/v1/media/{id}"]!["delete"].ShouldNotBeNull();
+        paths["/api/management/v1/media/presets/{name}"]!["delete"].ShouldNotBeNull();
+        var patch = Resolve(paths["/api/management/v1/media/{id}"]!["patch"]!["requestBody"]!["content"]!["application/json"]!["schema"], document)!["properties"]!.AsObject();
+        foreach (var name in (string[])["title", "alt", "caption", "credit", "tags", "focalPoint", "isPrivate"])
+        {
+            patch.ContainsKey(name).ShouldBeTrue(name);
+        }
+
+        var replace = Resolve(paths["/api/management/v1/media/{id}/replace"]!["post"]!["requestBody"]!["content"]!["multipart/form-data"]!["schema"], document)!["properties"]!.AsObject();
+        replace.ContainsKey("file").ShouldBeTrue();
 
         gaps.ShouldBeEmpty();
     }

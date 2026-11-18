@@ -120,6 +120,42 @@ public sealed class MediaFieldEditorTests : MediaTestContext
     }
 
     [Fact]
+    public void TheAltTextAndFocalPointOfAnAssetAreSavedOnTheAssetFromTheField()
+    {
+        Admin.Grant(MediaPermissions.Update);
+        var hero = Library.AddAsset("hero.png");
+        var cut = Edit(Field(), JsonValue.Create(hero.ToString("D")), locale: "fr");
+        cut.WaitForAssertion(() => cut.FindAll(".media-field-toggle").Count.ShouldBe(1));
+        var toggle = cut.Find(".media-field-toggle");
+        toggle.TextContent.Trim().ShouldBe("Alt text and focal point of hero.png");
+        toggle.GetAttribute("aria-expanded").ShouldBe("false");
+
+        toggle.Click();
+        cut.Find(".media-field-toggle").GetAttribute("aria-expanded").ShouldBe("true");
+        Field(cut, "Alt text").Input("Le héros");
+        Field(cut, "Alt text").Blur();
+        cut.WaitForAssertion(() => Library.Text(hero, "fr", "alt").ShouldBe("Le héros"));
+
+        cut.Find(".media-focal-image img").Click(new MouseEventArgs { OffsetX = 80, OffsetY = 180 });
+        cut.WaitForAssertion(() => Library.Asset(hero)["focalPoint"]!.ToJsonString().ShouldBe("""{"x":0.25,"y":0.75}"""));
+        Library.Requests.Where(request => request.Method == HttpMethod.Patch).Select(request => request.Locale).ShouldAllBe(locale => locale == "fr");
+        changes.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void WithoutMediaUpdateTheAltTextIsShownReadOnly()
+    {
+        var hero = Library.AddAsset("hero.png");
+        var cut = Edit(Field(), JsonValue.Create(hero.ToString("D")));
+        cut.WaitForAssertion(() => cut.FindAll(".media-field-toggle").Count.ShouldBe(1));
+
+        cut.Find(".media-field-toggle").Click();
+
+        Field(cut, "Alt text").HasAttribute("readonly").ShouldBeTrue();
+        cut.Find(".media-focal-sliders").HasAttribute("disabled").ShouldBeTrue();
+    }
+
+    [Fact]
     public void ACallerWithoutMediaReadIsNotOfferedThePicker()
     {
         Admin.Permissions.Clear();
