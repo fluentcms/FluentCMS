@@ -57,6 +57,27 @@ public sealed class ListViewTests : BunitContext
     }
 
     [Fact]
+    public async Task AMediaFieldIsPopulatedOnlyForTheCellOfTheMediaHalf()
+    {
+        var enabled = true;
+        var cells = new ListCellRegistry();
+        cells.AddLazy("media", () => enabled, _ => Task.FromResult(typeof(StarsCell)));
+        var type = Article(localized: false) with { Fields = [Field("title", "text"), Field("hero", "media")] };
+
+        var unloaded = View(type, cells);
+        unloaded.Query(unloaded.Choose(["hero"]), ListView.DefaultSort, 1, 25).Populate.ShouldBeEmpty();
+
+        await cells.CellForAsync("media", Xunit.TestContext.Current.CancellationToken);
+        var loaded = View(type, cells);
+        var query = loaded.Query(loaded.Choose(["hero"]), ListView.DefaultSort, 1, 25);
+        query.Fields.ShouldBe(["title", "hero"]);
+        query.Populate.ShouldBe(["hero"]);
+
+        enabled = false;
+        View(type, cells).Available.Select(column => column.Name).ShouldNotContain("hero");
+    }
+
+    [Fact]
     public void ChoiceAndSortKeepOnlyWhatExists()
     {
         var view = View(Article(localized: false), new ListCellRegistry());

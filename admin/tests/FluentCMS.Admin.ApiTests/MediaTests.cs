@@ -1,5 +1,8 @@
+using System.Text.Json.Nodes;
 using FluentCMS.Admin.Api;
+using FluentCMS.Admin.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Plugins.Media.Admin;
 using FluentCMS.Plugins.Media.Admin.Api;
 using Shouldly;
 using Xunit;
@@ -102,5 +105,41 @@ public sealed class MediaTests
         access.Permissions.ShouldContain("media.upload");
         access.Permissions.ShouldContain("media.update");
         access.Permissions.ShouldNotContain("media.folders.manage");
+    }
+
+    // The picker and the field of A-20 as the built-in roles that edit content use them (#3103): the picker reads and
+    // uploads, the field reads its asset in the content locale and saves its id, and a list populates the field for its cell.
+    [Theory]
+    [InlineData(BuiltInRoles.EditorName)]
+    [InlineData(BuiltInRoles.AuthorName)]
+    public async Task TheEditorAndTheAuthorPickAndUploadAnImageForAMediaFieldThatAListPopulates(string role)
+    {
+        await using var admin = new AdminHost();
+        using var client = await admin.SignInAsync(role);
+        var media = new MediaApi(client.Api);
+
+        (await media.ListAsync(new MediaListQuery { Type = "image/*", TypeIsConstraint = true }, Token)).Items.ShouldNotBeEmpty();
+        var uploaded = await UploadAsync(media, null, "hero.png", Png);
+        var asset = await media.GetAsync(uploaded.Id, "en", Token);
+        asset.Urls.Thumbnail.ShouldNotBeNull();
+
+        var created = await client.Client.CreateEntryAsync("article", new JsonObject
+        {
+            ["title"] = "With a hero " + role,
+            ["hero"] = MediaFieldValues.Write([asset.Id], multiple: false),
+        }, client.Client.StartAction("en"), Token);
+        MediaFieldValues.Ids(created.Entry!.Fields["hero"]).ShouldBe([asset.Id]);
+
+        var page = await client.Client.ListEntriesAsync("article", new ContentQuery
+        {
+            Filter = new FieldFilter("id", FluentCMS.Admin.Lists.FilterOperator.Equal, created.Entry.Id),
+            Fields = ["title", "hero"],
+            Populate = ["hero"],
+        }, Token);
+        var shown = MediaFieldValues.Assets(page.Items.Single().Fields["hero"]).ShouldHaveSingleItem();
+        shown.Id.ShouldBe(asset.Id);
+        shown.FileName.ShouldBe("hero.png");
+        shown.MimeType.ShouldBe("image/png");
+        shown.Urls!.Original.ShouldStartWith($"/media/{asset.Id:D}/original/");
     }
 }

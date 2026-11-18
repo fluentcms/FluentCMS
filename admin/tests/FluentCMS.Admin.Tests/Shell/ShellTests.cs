@@ -447,6 +447,20 @@ public sealed class ShellTests : AdminTestContext
 
     private static string Main => MainSite.ToString("D");
 
+    [Fact]
+    public void AnOverlayIsDrawnInTheThemeAfterThePageUntilItsHandleIsDisposed()
+    {
+        var app = Load();
+        var overlays = Services.GetRequiredService<IAdminOverlays>();
+
+        IDisposable shown = null!;
+        app.InvokeAsync(() => shown = overlays.Show(builder => builder.AddMarkupContent(0, "<p id=\"picker\">Picker</p>")));
+        app.WaitForAssertion(() => app.Find("#picker").Closest(".cms-root").ShouldNotBeNull());
+
+        app.InvokeAsync(() => { shown.Dispose(); shown.Dispose(); });
+        app.WaitForAssertion(() => app.FindAll("#picker").ShouldBeEmpty());
+    }
+
     private static IElement DrawerHost(IRenderedComponent<AdminApp> app) =>
         app.FindAll("fluent-drawer").Single(drawer => drawer.GetAttribute("aria-label") == "Navigation");
 

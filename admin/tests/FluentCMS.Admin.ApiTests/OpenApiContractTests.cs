@@ -53,6 +53,12 @@ public sealed class OpenApiContractTests
         Check(media.MediaAssetPage, Answer(paths, "/api/management/v1/media", "get"), "media", document, gaps);
         Check(media.ItemListMediaAssetSaved, Answer(paths, "/api/management/v1/media", "post", "201"), "media post", document, gaps);
         Check(media.MediaAssetSaved, Answer(paths, "/api/management/v1/media/{id}/move", "post"), "media/{id}/move", document, gaps);
+        Check(media.MediaAssetInfo, Answer(paths, "/api/management/v1/media/{id}", "get"), "media/{id}", document, gaps);
+
+        // A media field as a list populates it, which the field's cell reads: the alternative of the field with the file name.
+        var hero = Resolve(document["components"]!["schemas"]!["entry-article"], document)!["properties"]!["hero"]!;
+        var populated = hero["anyOf"]!.AsArray().Single(alternative => Resolve(alternative, document)?["properties"]?["fileName"] is not null)!;
+        Check(media.MediaFieldAsset, populated, "article.hero", document, gaps);
         Check(media.ItemListMediaFolderInfo, Answer(paths, "/api/management/v1/media/folders", "get"), "media/folders", document, gaps);
         Check(media.MediaFolderInfo, Answer(paths, "/api/management/v1/media/folders", "post", "201"), "media/folders post", document, gaps);
         Check(media.MediaFolderInfo, Answer(paths, "/api/management/v1/media/folders/{id}", "patch"), "media/folders/{id}", document, gaps);
