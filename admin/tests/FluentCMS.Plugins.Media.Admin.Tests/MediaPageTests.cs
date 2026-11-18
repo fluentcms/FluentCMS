@@ -152,6 +152,32 @@ public sealed class MediaPageTests : MediaTestContext
     }
 
     [Fact]
+    public void AfterAPartlyFailedMoveTheAssetsNotMovedStaySelected()
+    {
+        Admin.Grant(MediaPermissions.Update);
+        var photos = Library.AddFolder("Photos");
+        var logo = Library.AddAsset("logo.png");
+        var beach = Library.AddAsset("beach.png");
+        Library.RefuseMoveOf = beach;
+
+        var cut = Render<MediaPage>();
+        cut.WaitForAssertion(() => cut.FindAll(".media-tile-check").Count.ShouldBe(2));
+        cut.Find("input[aria-label='Select logo.png']").Change(true);
+        cut.WaitForAssertion(() => HasButton(cut, "Move 1 selected").ShouldBeTrue());
+        cut.Find("input[aria-label='Select beach.png']").Change(true);
+        cut.WaitForAssertion(() => HasButton(cut, "Move 2 selected").ShouldBeTrue());
+        Button(cut, "Move 2 selected").Click();
+        Field(cut, "Move to").Change(photos.ToString("D"));
+        Button(cut, "Move").Click();
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("You may not make this change."));
+        Library.FolderOf(logo).ShouldBe(photos);
+        Library.FolderOf(beach).ShouldBeNull();
+        cut.WaitForAssertion(() => HasButton(cut, "Move 1 selected").ShouldBeTrue());
+        cut.Find("input[aria-label='Select beach.png']").HasAttribute("checked").ShouldBeTrue();
+    }
+
+    [Fact]
     public void OpeningAnAssetShowsItsTitleTypeAndSizeInThePanel()
     {
         Library.AddAsset("logo.png", title: "Company logo");

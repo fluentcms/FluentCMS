@@ -147,6 +147,83 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task AFolderRoundTripAndAnUploadByTheButtonWorkByKeyboardAlone()
+    {
+        var mark = Mark();
+        var browser = await OpenBrowserAsync();
+        var admin = await Host.CreateEditorAsync("Super Admin");
+        var tab = await OpenLibraryAsync(browser, admin);
+        var keyboard = tab.Page.Keyboard;
+
+        // A folder is created: the button by Enter, the name typed, the dialog submitted by Enter.
+        await PressAsync(MediaButton(tab, "Media.Folder.New"), "Enter");
+        await PressAsync(tab.Page.GetByLabel(Text("Media.Folder.Name")), "Control+a");
+        await keyboard.TypeAsync($"{mark}-keys");
+        var created = await tab.Page.RunAndWaitForResponseAsync(
+            () => keyboard.PressAsync("Enter"),
+            response => response.Url == tab.ManagementUrl("media/folders") && response.Request.Method == "POST",
+            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        var folder = Guid.Parse(JsonNode.Parse(await created.TextAsync())!["id"]!.GetValue<string>());
+        await Expect(TreeItem(tab, folder)).ToHaveCountAsync(1);
+        await FocusReturnedAsync(MediaButton(tab, "Media.Folder.New"));
+
+        // Opened from the tree by Enter on its item.
+        await PressAsync(TreeItem(tab, folder), "Enter");
+        await Expect(tab.Page).ToHaveURLAsync(new Regex($"folder={folder:D}"));
+
+        // The upload's button opens the file chooser by Space.
+        var chooser = await tab.Page.RunAndWaitForFileChooserAsync(() => PressAsync(UploadInput(tab), "Space"));
+        await chooser.SetFilesAsync(new FilePayload { Name = $"{mark}-keys.png", MimeType = "image/png", Buffer = Convert.FromBase64String(Png) });
+        await Expect(Tiles(tab)).ToHaveTextAsync([$"{mark}-keys.png"]);
+
+        // The tile opens its detail by Enter, and Escape closes it.
+        await PressAsync(Content(tab).Locator(".media-tile-open"), "Enter");
+        await Expect(tab.Page.Locator(".media-panel-facts")).ToBeVisibleAsync();
+        await keyboard.PressAsync("Escape");
+        await Expect(tab.Page.Locator(".media-panel-facts")).ToBeHiddenAsync();
+        await FocusReturnedAsync(Content(tab).Locator(".media-tile-open"));
+
+        // Renamed by keyboard.
+        await PressAsync(MediaButton(tab, "Media.Folder.Rename"), "Enter");
+        await PressAsync(tab.Page.GetByLabel(Text("Media.Folder.Name")), "Control+a");
+        await keyboard.TypeAsync($"{mark}-renamed");
+        await keyboard.PressAsync("Enter");
+        await Expect(TreeItem(tab, folder)).ToContainTextAsync($"{mark}-renamed");
+        await FocusReturnedAsync(MediaButton(tab, "Media.Folder.Rename"));
+
+        // Not deleted while it holds the file; Escape closes the dialog.
+        await PressAsync(MediaButton(tab, "Media.Folder.Delete"), "Enter");
+        await PressAsync(MediaButton(tab, "Media.Folder.DeleteConfirm"), "Enter");
+        await Expect(tab.Page.GetByRole(AriaRole.Alert).Filter(new LocatorFilterOptions { HasText = Text("Media.Folder.NotEmpty") })).ToBeVisibleAsync();
+        await keyboard.PressAsync("Escape");
+        await FocusReturnedAsync(MediaButton(tab, "Media.Folder.Delete"));
+
+        // The file is selected by Space and moved to the root, and the empty folder goes.
+        await PressAsync(Content(tab).GetByLabel(Text("Media.Asset.Select", $"{mark}-keys.png"), new LocatorGetByLabelOptions { Exact = true }), "Space");
+        await PressAsync(MediaButton(tab, "Media.Move.Assets", "1"), "Enter");
+        await tab.Page.GetByLabel(Text("Media.Move.Target"), new PageGetByLabelOptions { Exact = true }).FocusAsync();
+        await keyboard.PressAsync("ArrowDown");
+        await Expect(tab.Page.GetByLabel(Text("Media.Move.Target"), new PageGetByLabelOptions { Exact = true })).ToHaveValueAsync("root");
+        await PressAsync(MediaButton(tab, "Media.Move.Save"), "Enter");
+        await Expect(Tiles(tab)).ToHaveCountAsync(0);
+        await PressAsync(MediaButton(tab, "Media.Folder.Delete"), "Enter");
+        await PressAsync(MediaButton(tab, "Media.Folder.DeleteConfirm"), "Enter");
+        await Expect(tab.Page).Not.ToHaveURLAsync(new Regex($"folder={folder:D}"));
+        await Expect(TreeItem(tab, folder)).ToHaveCountAsync(0);
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    // A dialog of the library gives focus back to its opener on a timer once it has closed; the next key waits for it.
+    private static Task FocusReturnedAsync(ILocator opener) => Expect(opener).ToBeFocusedAsync();
+
+    // Focus as Tab would give it, then a key: no pointer is used.
+    private static async Task PressAsync(ILocator target, string key)
+    {
+        await target.FocusAsync();
+        await target.Page.Keyboard.PressAsync(key);
+    }
+
     private static string Mark() => "m" + Guid.NewGuid().ToString("N")[..8];
 
     private static string Text(string key, params string[] arguments)

@@ -207,11 +207,14 @@
   <data name="Media.Type.Videos" xml:space="preserve">
     <value>Videos</value>
   </data>
+  <data name="Media.Upload.Busy" xml:space="preserve">
+    <value>Uploading the files chosen. More can be added once each has started.</value>
+  </data>
   <data name="Media.Upload.Clear" xml:space="preserve">
     <value>Clear finished</value>
   </data>
   <data name="Media.Upload.Failed" xml:space="preserve">
-    <value>The upload failed.</value>
+    <value>The file could not be read or uploaded. Try again.</value>
   </data>
   <data name="Media.Upload.Finished" xml:space="preserve">
     <value>{0} uploaded.</value>

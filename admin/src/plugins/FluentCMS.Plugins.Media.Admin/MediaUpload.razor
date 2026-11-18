@@ -1,13 +1,18 @@
 @* The upload of the media library (spec 4.14): a button that opens the file chooser and takes dropped files, and the
    files of this visit with the state of each, waiting, uploading, done or refused, a refused one with its reason. The
-   library also hands it the files dropped on the page or pasted (MediaDropZone), and a picker may show it as it is. *@
+   library also hands it the files dropped on the page or pasted (MediaDropZone), and a picker may show it as it is. While
+   files of a choice wait to be read, it takes no other: the browser would forget them. *@
 @implements IDisposable
 @inject IManagementApi Api
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<MediaResources> L
 
 <div class="media-upload" data-media-upload>
-    <CmsFileDropZone Label="@L["Media.Upload.Label"]" Help="@L["Media.Upload.Help"]" Multiple="true" OnFilesSelected="@AddAsync" />
+    <CmsFileDropZone Label="@L["Media.Upload.Label"]"
+                     Help="@L[queue.HasUnread ? "Media.Upload.Busy" : "Media.Upload.Help"]"
+                     Multiple="true"
+                     Disabled="@queue.HasUnread"
+                     OnFilesSelected="@AddAsync" />
 </div>
 
 @if (queue.Items.Count > 0)
@@ -59,7 +64,16 @@
 
         var doneBefore = queue.Items.Count(item => item.State == MediaUploadState.Done);
         var refusedBefore = queue.Items.Count(item => item.State == MediaUploadState.Refused);
-        var ran = await queue.AddAsync(files, Folder, () => InvokeAsync(StateHasChanged), stopping.Token);
+        bool ran;
+        try
+        {
+            ran = await queue.AddAsync(files, Folder, () => InvokeAsync(StateHasChanged), stopping.Token);
+        }
+        catch (OperationCanceledException) when (stopping.IsCancellationRequested)
+        {
+            return;
+        }
+
         if (!ran || stopping.IsCancellationRequested)
         {
             return;
@@ -73,11 +87,8 @@
         await OnUploaded.InvokeAsync(done);
     }
 
-    public void Dispose()
-    {
-        stopping.Cancel();
-        stopping.Dispose();
-    }
+    // The token stays usable for the uploads that see it cancelled, so the source is cancelled and not disposed here.
+    public void Dispose() => stopping.Cancel();
 
     private string StateText(MediaUploadItem item) => L[$"Media.Upload.State.{item.State}"];
 

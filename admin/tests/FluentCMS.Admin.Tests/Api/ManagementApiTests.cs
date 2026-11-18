@@ -372,39 +372,27 @@ public sealed class ManagementApiTests
             .Message.ShouldContain("ApiBaseUrl");
 
     [Fact]
-    public async Task AFormIsSentAsMultipartWithItsFieldsAndFilesAndAgainAfterA429()
+    public async Task AContentIsSentAsItsBytesWithItsTypeAndAgainAfterA429()
     {
         using var harness = new ApiHarness();
         harness.Server
             .Problem(HttpStatusCode.TooManyRequests, """{"status":429,"code":"FCMS2901"}""", response => response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(1)))
             .Answer(HttpStatusCode.Created, """{"items":[]}""");
-        var form = new ApiForm
-        {
-            Fields = new Dictionary<string, string> { ["folderId"] = "0193b1de-0000-7000-8000-000000000001" },
-            Files = [new ApiFormFile("files", "logo.png", "PNG"u8.ToArray())],
-        };
+        var content = new ApiContent("multipart/form-data; boundary=b1", "--b1\r\nbody\r\n--b1--\r\n"u8.ToArray());
 
-        await harness.Api.SendAsync(new ApiRequest(HttpMethod.Post, "media") { Form = form }, Token);
+        await harness.Api.SendAsync(new ApiRequest(HttpMethod.Post, "media") { Content = content }, Token);
 
         harness.Server.Requests.Count.ShouldBe(2);
-        foreach (var sent in harness.Server.Requests)
-        {
-            sent.Body.ShouldNotBeNull();
-            sent.Body.ShouldContain("name=folderId");
-            sent.Body.ShouldContain("0193b1de-0000-7000-8000-000000000001");
-            sent.Body.ShouldContain("name=files; filename=logo.png");
-            sent.Body.ShouldContain("Content-Type: application/octet-stream");
-            sent.Body.ShouldContain("PNG");
-        }
+        harness.Server.Requests.ShouldAllBe(sent => sent.Body == "--b1\r\nbody\r\n--b1--\r\n" && sent.Header("Content-Type") == "multipart/form-data; boundary=b1");
     }
 
     [Fact]
-    public async Task ARequestWithABodyAndAFormIsRefused()
+    public async Task ARequestWithABodyAndAContentIsRefused()
     {
         using var harness = new ApiHarness();
 
         await Should.ThrowAsync<ArgumentException>(() => harness.Api.SendAsync(
-            new ApiRequest(HttpMethod.Post, "media") { Body = new JsonObject(), Form = new ApiForm() }, Token));
+            new ApiRequest(HttpMethod.Post, "media") { Body = new JsonObject(), Content = new ApiContent("text/plain", Array.Empty<byte>()) }, Token));
         harness.Server.Requests.ShouldBeEmpty();
     }
 

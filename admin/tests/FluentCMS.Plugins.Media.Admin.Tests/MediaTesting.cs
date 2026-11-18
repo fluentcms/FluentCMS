@@ -65,7 +65,7 @@ internal sealed class FakeAdminContext : IAdminContext, IAdminAccess
 
     public MeResponse? User => null;
 
-    public MySiteInfo? Site => null;
+    public MySiteInfo? Site { get; set; }
 
     public string? ContentLocale => "en";
 
@@ -91,6 +91,15 @@ internal sealed class FakeMediaLibrary : IManagementApi
     public List<JsonObject> Folders { get; } = [];
 
     public List<ApiRequest> Requests { get; } = [];
+
+    // Each file uploaded, with its name and its bytes as Latin-1 text.
+    public List<(string FileName, string Bytes)> Uploads { get; } = [];
+
+    // Runs before each answer, so that a test can hold one back.
+    public Func<ApiRequest, Task>? BeforeAnswer { get; set; }
+
+    // Refuses a move of this asset.
+    public Guid? RefuseMoveOf { get; set; }
 
     // Answers the next GET /media with this problem instead.
     public ApiProblem? ListProblem { get; set; }
@@ -130,6 +139,11 @@ internal sealed class FakeMediaLibrary : IManagementApi
     public async Task<ApiResponse<T>> SendAsync<T>(ApiRequest request, JsonTypeInfo<T> answer, CancellationToken cancellationToken)
     {
         await Task.Yield();
+        if (BeforeAnswer is { } before)
+        {
+            await before(request);
+        }
+
         var node = Answer(request);
         return new ApiResponse<T>(HttpStatusCode.OK, null, node.Deserialize(answer)!);
     }
@@ -137,6 +151,11 @@ internal sealed class FakeMediaLibrary : IManagementApi
     public async Task<ApiResponse> SendAsync(ApiRequest request, CancellationToken cancellationToken)
     {
         await Task.Yield();
+        if (BeforeAnswer is { } before)
+        {
+            await before(request);
+        }
+
         Answer(request);
         return new ApiResponse(HttpStatusCode.NoContent, null);
     }
@@ -150,7 +169,7 @@ internal sealed class FakeMediaLibrary : IManagementApi
         {
             ("GET", ["media"]) => List(query),
             ("GET", ["media", "folders"]) => new JsonObject { ["items"] = new JsonArray([.. Folders.Select(folder => folder.DeepClone())]) },
-            ("POST", ["media"]) => Upload(request.Form!),
+            ("POST", ["media"]) => Upload(request.Content!),
             ("POST", ["media", var id, "move"]) => MoveAsset(Guid.Parse(id), Id(request.Body!["folderId"])),
             ("POST", ["media", "folders"]) => CreateFolder(request.Body!["name"]!.GetValue<string>(), Id(request.Body["parentId"])),
             ("PATCH", ["media", "folders", var id]) => Folder(Guid.Parse(id), folder => folder["name"] = request.Body!["name"]!.GetValue<string>()),
@@ -220,9 +239,23 @@ internal sealed class FakeMediaLibrary : IManagementApi
         return found;
     }
 
-    private JsonObject Upload(ApiForm form)
+    private const string Crlf = "\r\n";
+
+    // The body as the half writes it: an optional folderId part and one file part, whose name is in filename*.
+    private JsonObject Upload(ApiContent content)
     {
-        var file = form.Files.ShouldHaveOne();
+        var boundary = content.MediaType.Split("boundary=", 2)[1];
+        var text = System.Text.Encoding.Latin1.GetString(content.Bytes.Span);
+        var parts = text.Split("--" + boundary, StringSplitOptions.None)[1..^1];
+        var files = parts.Where(part => part.Contains("name=\"files\"", StringComparison.Ordinal)).ToList();
+        if (files.Count != 1 || !text.EndsWith("--" + boundary + "--" + Crlf, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException($"An upload of the library sends one file part in a closed body, not {files.Count}.");
+        }
+
+        var encoded = System.Text.RegularExpressions.Regex.Match(files[0], @"filename\*=UTF-8''([^\r\n;]+)").Groups[1].Value;
+        var file = (FileName: Uri.UnescapeDataString(encoded), Bytes: files[0][(files[0].IndexOf(Crlf + Crlf, StringComparison.Ordinal) + 4)..^2]);
+        Uploads.Add(file);
         var code = Path.GetExtension(file.FileName) switch
         {
             ".exe" => "FCMS1583",
@@ -235,13 +268,19 @@ internal sealed class FakeMediaLibrary : IManagementApi
             throw new ApiProblemException(new ApiProblem { Status = 400, Code = code, Detail = $"The file '{file.FileName}' is refused." });
         }
 
-        Guid? folder = form.Fields.TryGetValue("folderId", out var text) ? Guid.Parse(text) : null;
+        var folderPart = parts.SingleOrDefault(part => part.Contains("name=\"folderId\"", StringComparison.Ordinal));
+        Guid? folder = folderPart is null ? null : Guid.Parse(folderPart.Split(Crlf + Crlf, 2)[1].Trim());
         var id = AddAsset(file.FileName, folder);
         return new JsonObject { ["items"] = new JsonArray(new JsonObject { ["id"] = id, ["folderId"] = folder, ["fileName"] = file.FileName }) };
     }
 
     private JsonObject MoveAsset(Guid id, Guid? folder)
     {
+        if (id == RefuseMoveOf)
+        {
+            throw new ApiProblemException(new ApiProblem { Status = 403, Code = "FCMS1100" });
+        }
+
         var asset = Assets.Single(item => (Guid)item["id"]! == id);
         asset["folderId"] = folder;
         return new JsonObject { ["id"] = id, ["folderId"] = folder, ["fileName"] = asset["fileName"]!.DeepClone() };
@@ -277,8 +316,3 @@ internal sealed class FakeMediaLibrary : IManagementApi
     }
 }
 
-internal static class FormFiles
-{
-    public static ApiFormFile ShouldHaveOne(this IReadOnlyList<ApiFormFile> files) =>
-        files.Count == 1 ? files[0] : throw new InvalidOperationException($"An upload of the library sends one file, not {files.Count}.");
-}

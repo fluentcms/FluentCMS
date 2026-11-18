@@ -1,6 +1,6 @@
 @* The allow-listed user of IJSRuntime of the media half (spec 3.1): while Enabled, files dropped anywhere on its content or
-   pasted while it shows are handed to the file input of the MediaUpload inside it, as if they had been chosen. The
-   JavaScript references stay inside this component. *@
+   pasted while it shows are handed to the file input of the MediaUpload inside it, as if they had been chosen, and a file
+   dropped elsewhere on the page is not opened by the browser. The JavaScript references stay inside this component. *@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
@@ -16,6 +16,13 @@
     private IJSObjectReference? module;
     private IJSObjectReference? listener;
 
+    // Set before the first await, so that a render while the module loads does not listen twice.
+    private bool starting;
+    private bool disposed;
+
+    // The module did not load: the button stays the way to upload, and no render tries again.
+    private bool unavailable;
+
     [Parameter]
     public string? Class { get; set; }
 
@@ -27,10 +34,9 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (Enabled && listener is null)
+        if (Enabled && listener is null && !starting && !unavailable)
         {
-            module ??= await JS.InvokeAsync<IJSObjectReference>("import", ModulePath);
-            listener = await module.InvokeAsync<IJSObjectReference>("listen", zone, ActiveClass);
+            await StartAsync();
         }
         else if (!Enabled && listener is not null)
         {
@@ -40,17 +46,50 @@
 
     public async ValueTask DisposeAsync()
     {
+        disposed = true;
         try
         {
             await StopAsync();
-            if (module is not null)
+            if (module is { } loaded)
             {
-                await module.DisposeAsync();
                 module = null;
+                await loaded.DisposeAsync();
             }
         }
         catch (JSDisconnectedException)
         {
+        }
+    }
+
+    // A module that does not load leaves the button as the way to upload.
+    private async Task StartAsync()
+    {
+        starting = true;
+        try
+        {
+            module ??= await JS.InvokeAsync<IJSObjectReference>("import", ModulePath);
+            if (disposed || !Enabled)
+            {
+                return;
+            }
+
+            var started = await module.InvokeAsync<IJSObjectReference>("listen", zone, ActiveClass);
+            listener = started;
+            if (disposed || !Enabled)
+            {
+                await StopAsync();
+            }
+        }
+        catch (JSException)
+        {
+            unavailable = true;
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        finally
+        {
+            starting = false;
         }
     }
 

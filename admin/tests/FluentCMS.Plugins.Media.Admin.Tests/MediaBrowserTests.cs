@@ -95,13 +95,73 @@ public sealed class MediaBrowserTests : MediaTestContext
     }
 
     [Fact]
-    public void TheTypeFilterOffersTheTypesTheCallerNames()
+    public void AcceptHoldsEveryReadToTheTypesTheCallerTakesAndTheFilterCannotBeCleared()
     {
-        var cut = Render<MediaBrowser>(parameters => parameters
-            .Add(browser => browser.State, MediaBrowseState.Default)
-            .Add(browser => browser.Types, ["image/*"]));
+        Library.AddAsset("beach.jpg", mimeType: "image/jpeg");
+        Library.AddAsset("clip.mp4", mimeType: "video/mp4");
+        Library.AddAsset("guide.pdf", mimeType: "application/pdf");
 
-        cut.FindComponents<CmsSelect>().Single(select => select.Instance.Label == "Type").Instance.Options.Select(option => option.Text).ShouldBe(["Images"]);
+        var cut = Render<MediaBrowser>(parameters => parameters
+            .Add(browser => browser.State, MediaBrowseState.Default with { Type = "application/pdf" })
+            .Add(browser => browser.Accept, ["image/*", "video/*"])
+            .Add(browser => browser.StateChanged, next => changed = next));
+
+        cut.WaitForAssertion(() => Tiles(cut).ShouldBe(["beach.jpg"]));
+        Library.Requests.Last(request => request.Path.StartsWith("media?", StringComparison.Ordinal)).Path.ShouldBe("media?folder=root&type=image%2F%2A&page=1&pageSize=48");
+        var select = cut.FindComponents<CmsSelect>().Single(input => input.Instance.Label == "Type").Instance;
+        select.Options.Select(option => option.Text).ShouldBe(["Images", "Videos"]);
+        select.Clearable.ShouldBeFalse();
+        select.Value.ShouldBe("image/*");
+        cut.FindAll("select option[value='']").ShouldBeEmpty();
+
+        cut.Render(parameters => parameters.Add(browser => browser.State, MediaBrowseState.Default with { Type = "video/*" }));
+        cut.WaitForAssertion(() => Tiles(cut).ShouldBe(["clip.mp4"]));
+    }
+
+    [Fact]
+    public async Task AnAnswerThatALaterReadOvertookIsDropped()
+    {
+        var first = Library.AddFolder("First");
+        var second = Library.AddFolder("Second");
+        Library.AddAsset("old.png", first);
+        Library.AddAsset("new.png", second);
+        var held = new TaskCompletionSource();
+        Library.BeforeAnswer = request => request.Path.Contains(first.ToString("D"), StringComparison.Ordinal) ? held.Task : Task.CompletedTask;
+
+        var cut = Browse(MediaBrowseState.Default with { Folder = first });
+        cut.Render(parameters => parameters.Add(browser => browser.State, MediaBrowseState.Default with { Folder = second }));
+        cut.WaitForAssertion(() => Tiles(cut).ShouldBe(["new.png"]));
+
+        held.SetResult();
+        await Task.Delay(50, Xunit.TestContext.Current.CancellationToken);
+        cut.WaitForAssertion(() => Tiles(cut).ShouldBe(["new.png"]));
+    }
+
+    [Fact]
+    public void AfterASiteSwitchAFolderOfTheOtherSiteGivesWayToTheRoot()
+    {
+        var old = Library.AddFolder("Old site");
+        var cut = Browse(MediaBrowseState.Default with { Folder = old });
+        cut.WaitForAssertion(() => cut.FindComponent<CmsTree>().Instance.Nodes.Single().Children!.Count.ShouldBe(1));
+
+        Library.Folders.Clear();
+        Admin.Site = new FluentCMS.Admin.Api.MySiteInfo { Id = Guid.NewGuid(), Name = "Shop", Slug = "shop", DefaultLocale = "en", IsDefault = false, Locales = [] };
+        cut.Render(parameters => parameters.Add(browser => browser.State, MediaBrowseState.Default with { Folder = old }));
+
+        cut.WaitForAssertion(() => changed.ShouldBe(MediaBrowseState.Default));
+        cut.Markup.ShouldNotContain("The folder no longer exists.");
+    }
+
+    [Fact]
+    public void APagePastTheEndAsksForTheLastPageWithoutShowingAnEmptyFolder()
+    {
+        Library.AddAsset("logo.png");
+
+        var cut = Browse(MediaBrowseState.Default with { Page = 9 });
+
+        cut.WaitForAssertion(() => changed.ShouldBe(MediaBrowseState.Default));
+        cut.Markup.ShouldNotContain("This folder holds no files.");
+        cut.Markup.ShouldContain("Loading files");
     }
 
     [Fact]

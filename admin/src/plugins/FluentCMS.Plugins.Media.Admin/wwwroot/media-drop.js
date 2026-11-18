@@ -10,6 +10,11 @@ function uploadInput(zone) {
     return zone.querySelector("[data-media-upload] input[type=file]");
 }
 
+// A file input takes a drop onto it itself.
+function isFileInput(target) {
+    return target instanceof HTMLInputElement && target.type === "file";
+}
+
 function give(input, files) {
     const transfer = new DataTransfer();
     for (const file of files) {
@@ -27,13 +32,14 @@ function isTextPaste(event) {
     return editable && event.clipboardData?.types.includes("text/plain") === true;
 }
 
-// The zone takes the drops; the input, found when files come since the upload renders again, fills itself on a drop onto it.
+// The zone takes the drops; the input is found when files come, since the upload renders again. While the input is
+// disabled, as when files of an earlier choice wait to be read, a drop or paste is not taken.
 export function listen(zone, activeClass) {
     let depth = 0;
     const over = event => {
         if (hasFiles(event)) {
             event.preventDefault();
-            event.dataTransfer.dropEffect = "copy";
+            event.dataTransfer.dropEffect = uploadInput(zone)?.disabled === false ? "copy" : "none";
         }
     };
     const enter = event => {
@@ -53,12 +59,14 @@ export function listen(zone, activeClass) {
 
         depth = 0;
         zone.classList.remove(activeClass);
+        if (isFileInput(event.target)) {
+            return;
+        }
+
+        event.preventDefault();
         const input = uploadInput(zone);
-        if (input && event.target !== input) {
-            event.preventDefault();
+        if (input && !input.disabled) {
             give(input, event.dataTransfer.files);
-        } else if (!input) {
-            event.preventDefault();
         }
     };
     const paste = event => {
@@ -70,11 +78,23 @@ export function listen(zone, activeClass) {
         }
     };
 
+    // Elsewhere on the page, as the header or the sidebar, a dropped file would make the browser open it and leave the admin.
+    const away = event => {
+        if (hasFiles(event) && !zone.contains(event.target) && !isFileInput(event.target)) {
+            event.preventDefault();
+            if (event.type === "dragover") {
+                event.dataTransfer.dropEffect = "none";
+            }
+        }
+    };
+
     zone.addEventListener("dragover", over);
     zone.addEventListener("dragenter", enter);
     zone.addEventListener("dragleave", leave);
     zone.addEventListener("drop", drop);
     document.addEventListener("paste", paste);
+    document.addEventListener("dragover", away);
+    document.addEventListener("drop", away);
     return {
         dispose() {
             zone.removeEventListener("dragover", over);
@@ -82,6 +102,8 @@ export function listen(zone, activeClass) {
             zone.removeEventListener("dragleave", leave);
             zone.removeEventListener("drop", drop);
             document.removeEventListener("paste", paste);
+            document.removeEventListener("dragover", away);
+            document.removeEventListener("drop", away);
         },
     };
 }

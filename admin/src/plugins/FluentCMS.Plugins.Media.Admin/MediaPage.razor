@@ -237,24 +237,24 @@
             return;
         }
 
-        var moved = 0;
+        HashSet<Guid> moved = [];
         await RunAsync(async () =>
         {
             foreach (var asset in selected)
             {
                 await Media.MoveAsync(asset.Id, destination, CancellationToken.None);
-                moved++;
+                moved.Add(asset.Id);
             }
 
             moving = false;
             selected = [];
-            Announcer.Announce(L["Media.Move.Moved", MediaFormat.Number(moved)]);
+            Announcer.Announce(L["Media.Move.Moved", MediaFormat.Number(moved.Count)]);
         });
 
-        // Those moved before a failure are gone from the folder too.
-        if (moving && moved > 0 && browser is not null)
+        // Those moved before a failure are gone from the folder; the others stay selected, to try again.
+        if (moving && moved.Count > 0 && browser is not null)
         {
-            selected = [];
+            selected = [.. selected.Where(asset => !moved.Contains(asset.Id))];
             await browser.ReloadAsync();
         }
     }

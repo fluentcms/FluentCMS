@@ -32,9 +32,9 @@ internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposab
             throw new ArgumentException("A request that names its site or locale cannot also send none.", nameof(request));
         }
 
-        if (request.Body is not null && request.Form is not null)
+        if (request.Body is not null && request.Content is not null)
         {
-            throw new ArgumentException("A request sends a JSON body or a form, not both.", nameof(request));
+            throw new ArgumentException("A request sends a JSON body or another content, not both.", nameof(request));
         }
 
         // The bearer token goes only to the Management API: a path that resolves anywhere else is refused.
@@ -50,9 +50,10 @@ internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposab
         {
             message.Content = JsonContent.Create<JsonNode>(body, ManagementJsonContext.Default.JsonNode);
         }
-        else if (request.Form is { } form)
+        else if (request.Content is { } content)
         {
-            message.Content = FormContent(form);
+            message.Content = new ReadOnlyMemoryContent(content.Bytes);
+            message.Content.Headers.TryAddWithoutValidation("Content-Type", content.MediaType);
         }
 
         Add(message, ManagementHeaders.IfMatch, request.IfMatch is { } tag ? ManagementHeaders.StrongTag(tag) : null);
@@ -75,25 +76,6 @@ internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposab
         {
             throw new ApiProblemException(await ProblemAsync(response, cancellationToken));
         }
-    }
-
-    // The server reads a file's type from its bytes, so each part is sent as plain bytes.
-    private static MultipartFormDataContent FormContent(ApiForm form)
-    {
-        var content = new MultipartFormDataContent();
-        foreach (var (name, value) in form.Fields)
-        {
-            content.Add(new StringContent(value), name);
-        }
-
-        foreach (var file in form.Files)
-        {
-            var part = new ReadOnlyMemoryContent(file.Content);
-            part.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
-            content.Add(part, file.Name, file.FileName);
-        }
-
-        return content;
     }
 
     private static void Add(HttpRequestMessage message, string name, string? value)

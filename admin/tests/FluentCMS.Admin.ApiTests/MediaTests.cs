@@ -14,6 +14,14 @@ public sealed class MediaTests
 
     private static CancellationToken Token => AdminHost.Token;
 
+    // An upload as the library sends it: one file in the body the half writes.
+    private static Task<MediaAssetSaved> UploadAsync(MediaApi media, Guid? folder, string fileName, byte[] bytes)
+    {
+        var body = MediaUploadBody.Create(folder, fileName, bytes.Length);
+        bytes.CopyTo(body.File);
+        return media.UploadAsync(body, Token);
+    }
+
     [Fact]
     public async Task FilesUploadOneARequestIntoAFolderAndARefusedOneSaysWhy()
     {
@@ -22,22 +30,24 @@ public sealed class MediaTests
         var media = new MediaApi(client.Api);
 
         var photos = await media.CreateFolderAsync("Photos", null, Token);
-        var uploaded = await media.UploadAsync(photos.Id, "pixel.png", Png, Token);
-        var refused = await Should.ThrowAsync<ApiProblemException>(() => media.UploadAsync(photos.Id, "setup.exe", "MZ\u0090\0\u0003\0\0\0"u8.ToArray(), Token));
-        await media.UploadAsync(null, "root.png", Png, Token);
+        var uploaded = await UploadAsync(media, photos.Id, "pixel.png", Png);
+        var refused = await Should.ThrowAsync<ApiProblemException>(() => UploadAsync(media, photos.Id, "setup.exe", "MZ\u0090\0\u0003\0\0\0"u8.ToArray()));
+        await UploadAsync(media, null, "root.png", Png);
+        var named = await UploadAsync(media, photos.Id, "Café \"menu\" 2026.png", Png);
 
         uploaded.FileName.ShouldBe("pixel.png");
         uploaded.FolderId.ShouldBe(photos.Id);
         refused.Problem.Code.ShouldBe("FCMS1583");
+        named.FileName.ShouldBe("Café \"menu\" 2026.png");
 
         var inPhotos = await media.ListAsync(new MediaListQuery { Folder = photos.Id }, Token);
-        var asset = inPhotos.Items.ShouldHaveSingleItem();
+        var asset = inPhotos.Items.Single(item => item.Id == uploaded.Id);
         asset.Id.ShouldBe(uploaded.Id);
         asset.MimeType.ShouldBe("image/png");
         asset.Width.ShouldBe(1);
         asset.Urls.Original.ShouldStartWith($"/media/{uploaded.Id:D}/original/");
         asset.Urls.Thumbnail.ShouldNotBeNull();
-        inPhotos.Total.ShouldBe(1);
+        inPhotos.Total.ShouldBe(2);
 
         // The Blog sample has assets of its own at the root.
         var atRoot = await media.ListAsync(new MediaListQuery(), Token);
@@ -61,7 +71,7 @@ public sealed class MediaTests
         (await media.MoveFolderAsync(photos.Id, archive.Id, Token)).ParentId.ShouldBe(archive.Id);
         var cycle = await Should.ThrowAsync<ApiProblemException>(() => media.MoveFolderAsync(archive.Id, photos.Id, Token));
 
-        var asset = await media.UploadAsync(photos.Id, "pixel.png", Png, Token);
+        var asset = await UploadAsync(media, photos.Id, "pixel.png", Png);
         var notEmpty = await Should.ThrowAsync<ApiProblemException>(() => media.DeleteFolderAsync(photos.Id, Token));
         (await media.MoveAsync(asset.Id, null, Token)).FolderId.ShouldBeNull();
         await media.DeleteFolderAsync(photos.Id, Token);
@@ -82,7 +92,7 @@ public sealed class MediaTests
         using var editor = await admin.SignInAsync(BuiltInRoles.EditorName);
         var media = new MediaApi(editor.Api);
 
-        var asset = await media.UploadAsync(null, "pixel.png", Png, Token);
+        var asset = await UploadAsync(media, null, "pixel.png", Png);
         (await media.MoveAsync(asset.Id, photos.Id, Token)).FolderId.ShouldBe(photos.Id);
         (await media.FoldersAsync(Token)).Select(folder => folder.Id).ShouldBe([photos.Id]);
         var refused = await Should.ThrowAsync<ApiProblemException>(() => media.CreateFolderAsync("Mine", null, Token));

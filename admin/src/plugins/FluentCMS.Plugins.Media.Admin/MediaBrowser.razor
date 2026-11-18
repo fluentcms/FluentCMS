@@ -33,7 +33,12 @@
                 <CmsButton Icon="CmsIconName.Search" OnClick="ApplyFiltersAsync">@L["Media.Search.Submit"]</CmsButton>
             </form>
             <div class="media-type">
-                <CmsSelect Label="@L["Media.Type.Label"]" Options="@TypeOptions" Value="@State.Type" Clearable="true" Placeholder="@L["Media.Type.Any"]" ValueChanged="@ChangeTypeAsync" />
+                <CmsSelect Label="@L["Media.Type.Label"]"
+                           Options="@TypeOptions"
+                           Value="@CurrentQuery.Type"
+                           Clearable="@(Accept is null)"
+                           Placeholder="@(Accept is null ? L["Media.Type.Any"].Value : null)"
+                           ValueChanged="@ChangeTypeAsync" />
             </div>
             <CmsButton Icon="@(State.View == MediaView.Grid ? CmsIconName.Document : CmsIconName.Image)" OnClick="ToggleViewAsync">@L[State.View == MediaView.Grid ? "Media.View.List" : "Media.View.Grid"]</CmsButton>
             @Actions
@@ -67,7 +72,7 @@
             }
             else if (assets.Count == 0)
             {
-                <p class="media-status">@L[State.Query.Filtered ? "Media.Browser.NoMatch" : "Media.Browser.Empty"]</p>
+                <p class="media-status">@L[CurrentQuery.Filtered ? "Media.Browser.NoMatch" : "Media.Browser.Empty"]</p>
             }
             else
             {
@@ -113,7 +118,7 @@
                          Loading="@loading"
                          TotalItems="@total"
                          RowOffset="@((long)(State.Page - 1) * MediaBrowseState.PageSize)">
-                <EmptyContent>@L[State.Query.Filtered ? "Media.Browser.NoMatch" : "Media.Browser.Empty"]</EmptyContent>
+                <EmptyContent>@L[CurrentQuery.Filtered ? "Media.Browser.NoMatch" : "Media.Browser.Empty"]</EmptyContent>
                 <ChildContent>
                     <CmsDataGridColumn TItem="MediaAssetInfo" Name="name" Title="@L["Media.Column.Name"]" Order="0">
                         <span class="media-row-name">
@@ -149,6 +154,7 @@
     private CancellationTokenSource? reading;
     private string? readKey;
     private string? foldersKey;
+    private int foldersVersion;
     private (string Folder, string Criteria)? answered;
     private IReadOnlyList<MediaAssetInfo> assets = [];
     private IReadOnlyList<CmsTreeNode> nodes = [];
@@ -185,9 +191,11 @@
     [Parameter]
     public EventCallback<MediaAssetInfo> OnOpen { get; set; }
 
-    // The type filters offered, each a MIME type or a family such as image/*; MediaBrowseState.Types when null.
+    // The types the caller may see, each a MIME type or a family such as image/*, as a picker of an image field: every read
+    // is of one of them, the first unless the user chose another, and the type filter offers these alone. Every type, with
+    // MediaBrowseState.Types offered as filters, when null.
     [Parameter]
-    public IReadOnlyList<string>? Types { get; set; }
+    public IReadOnlyList<string>? Accept { get; set; }
 
     // Beside the search and filters, such as the library's upload and move.
     [Parameter]
@@ -205,7 +213,12 @@
     private string SelectedNode => State.Folder?.ToString("D") ?? RootNode;
 
     private IReadOnlyList<CmsOption> TypeOptions =>
-        [.. (Types ?? MediaBrowseState.Types).Select(type => new CmsOption(type, MediaFormat.TypeFilter(type, L)))];
+        [.. (Accept is { Count: > 0 } accepted ? accepted : MediaBrowseState.Types).Select(type => new CmsOption(type, MediaFormat.TypeFilter(type, L)))];
+
+    // The read of the state, held to Accept.
+    private MediaListQuery CurrentQuery => Accept is { Count: > 0 } accepted
+        ? State.Query with { Type = State.Type is { } type && accepted.Contains(type, StringComparer.OrdinalIgnoreCase) ? type : accepted[0], TypeIsConstraint = true }
+        : State.Query;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -218,8 +231,17 @@
         var site = "site:" + Context.Site?.Id.ToString("D");
         if (foldersKey != site)
         {
+            var switched = foldersKey is not null;
             foldersKey = site;
             await ReadFoldersAsync();
+
+            // After a site switch a folder of the other site is not in this one's tree: its root instead, as the content
+            // lists leave their query behind.
+            if (switched && !foldersFailed && State.Folder is { } folder && Folders.All(item => item.Id != folder))
+            {
+                await StateChanged.InvokeAsync(State with { Folder = null, Page = 1 });
+                return;
+            }
         }
         else
         {
@@ -250,19 +272,26 @@
         reading?.Dispose();
     }
 
+    // A read that a later one overtook, as after a site switch, is dropped.
     private async Task ReadFoldersAsync()
     {
+        var version = ++foldersVersion;
+        IReadOnlyList<MediaFolderInfo> read;
+        bool failed;
         try
         {
-            Folders = await new MediaApi(Api).FoldersAsync(CancellationToken.None);
-            foldersFailed = false;
+            (read, failed) = (await new MediaApi(Api).FoldersAsync(CancellationToken.None), false);
         }
         catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            (Folders, foldersFailed) = ([], true);
+            (read, failed) = ([], true);
         }
 
-        nodes = Tree();
+        if (version == foldersVersion)
+        {
+            (Folders, foldersFailed) = (read, failed);
+            nodes = Tree();
+        }
     }
 
     // The root holds the folders without a parent; the open folder's ancestors are open, so that it shows.
@@ -282,7 +311,7 @@
     // A read that a later one overtook is dropped; the same read twice, as a render with the same state, is made once.
     private async Task ReadAsync(bool again = false)
     {
-        var query = State.Query;
+        var query = CurrentQuery;
         var key = $"{Context.Site?.Id}{query.ToQueryString()}";
         if (key == readKey && !again)
         {
@@ -307,8 +336,10 @@
             AnnounceFound(query);
             if (assets.Count == 0 && total > 0 && State.Page > Pages)
             {
-                // A page past the end, as after assets were moved away: its last page instead.
+                // A page past the end, as after assets were moved away: its last page instead, read with the new state, so
+                // that the empty page is not shown meanwhile.
                 await StateChanged.InvokeAsync(State with { Page = (int)Pages });
+                return;
             }
         }
         catch (OperationCanceledException) when (current.IsCancellationRequested)
@@ -324,7 +355,10 @@
             (assets, total, problem, failedWithoutAnswer) = ([], 0, new ApiProblem(), true);
         }
 
-        loading = false;
+        if (current == reading)
+        {
+            loading = false;
+        }
     }
 
     // A change of the search or a filter in the same folder is announced with the number it finds (WCAG 4.1.3).

@@ -97,7 +97,8 @@ internal sealed class ScriptedServer : HttpMessageHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var headers = request.Headers.ToDictionary(header => header.Key, header => string.Join(",", header.Value), StringComparer.OrdinalIgnoreCase);
+        var headers = request.Headers.Concat(request.Content?.Headers ?? Enumerable.Empty<KeyValuePair<string, IEnumerable<string>>>())
+            .ToDictionary(header => header.Key, header => string.Join(",", header.Value), StringComparer.OrdinalIgnoreCase);
         var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
         Requests.Add(new SentRequest(request.Method, request.RequestUri!, headers, body));
         if (_answers.Count == 0)

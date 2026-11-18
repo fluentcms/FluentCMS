@@ -24,14 +24,10 @@ internal sealed class MediaApi(IManagementApi api)
     }
 
     // One file a request, so that the refusal of one does not refuse the others, as an upload of several would.
-    public async Task<MediaAssetSaved> UploadAsync(Guid? folder, string fileName, ReadOnlyMemory<byte> content, CancellationToken cancellationToken)
+    public async Task<MediaAssetSaved> UploadAsync(MediaUploadBody body, CancellationToken cancellationToken)
     {
-        var form = new ApiForm
-        {
-            Fields = folder is { } id ? new Dictionary<string, string>(StringComparer.Ordinal) { ["folderId"] = id.ToString("D") } : new Dictionary<string, string>(StringComparer.Ordinal),
-            Files = [new ApiFormFile("files", fileName, content)],
-        };
-        var request = new ApiRequest(HttpMethod.Post, "media") { Form = form };
+        ArgumentNullException.ThrowIfNull(body);
+        var request = new ApiRequest(HttpMethod.Post, "media") { Content = body.Content };
         var answer = await api.SendAsync(request, MediaJsonContext.Default.ItemListMediaAssetSaved, cancellationToken);
         return answer.Value.Items[0];
     }
@@ -67,8 +63,8 @@ internal sealed class MediaApi(IManagementApi api)
         api.SendAsync(new ApiRequest(HttpMethod.Delete, $"media/folders/{folder:D}"), cancellationToken);
 }
 
-// The query of GET /media. Without a search or a filter the open folder alone is listed; with one, the folder and its
-// subfolders, and every folder from the root.
+// The query of GET /media. Without a search or a filter of the user the open folder alone is listed; with one, the folder
+// and its subfolders, and every folder from the root.
 internal sealed record MediaListQuery
 {
     public Guid? Folder { get; init; }
@@ -83,7 +79,10 @@ internal sealed record MediaListQuery
 
     public int PageSize { get; init; } = MediaBrowseState.PageSize;
 
-    public bool Filtered => Search is not null || Type is not null || Tag is not null;
+    // Whether Type is the caller's limit rather than the user's filter, which leaves the folder's scope as it is.
+    public bool TypeIsConstraint { get; init; }
+
+    public bool Filtered => Search is not null || (Type is not null && !TypeIsConstraint) || Tag is not null;
 
     public string ToQueryString()
     {
