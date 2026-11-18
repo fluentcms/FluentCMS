@@ -3,6 +3,7 @@ using System.Reflection;
 using FluentCMS.Admin.Fields;
 using FluentCMS.Admin.Lists;
 using FluentCMS.Admin.Shell;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -37,23 +38,57 @@ internal sealed class AdminPlugins(
 {
     private const string KeptWhole = "An admin half is loaded lazily and kept whole by the app's partial trimming, which trims only the assemblies that opt in (spec 2.6).";
 
-    private readonly Dictionary<string, Task<LoadedHalf>> _loads = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, LoadedHalf> _loaded = new(StringComparer.OrdinalIgnoreCase);
-    private readonly HashSet<string> _failed = new(StringComparer.OrdinalIgnoreCase);
+    // Keyed by the plugin's name, which GET /plugins gives in lower-case kebab case and is compared as it is.
+    private readonly Dictionary<string, Task<LoadedHalf>> _loads = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, LoadedHalf> _loaded = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Exception> _failed = new(StringComparer.Ordinal);
 
     public AdminPluginCatalog Catalog => catalog;
 
     // The loaded halves' assemblies, which the router searches for pages besides the admin's own.
     public List<Assembly> Assemblies { get; } = [];
 
-    // As the route's first segment is matched, whatever the case.
-    public bool IsAvailable(AdminPluginManifest half) =>
-        context.Plugins.Any(plugin => plugin.Enabled && string.Equals(plugin.Name, half.Name, StringComparison.OrdinalIgnoreCase));
+    public bool IsAvailable(AdminPluginManifest half) => context.PluginEnabled(half.Name);
 
     public bool IsLoaded(AdminPluginManifest half) => _loaded.ContainsKey(half.Name);
 
-    // Whether the last load of the half failed, so that its page shows an error with a retry.
-    public bool LoadFailed(AdminPluginManifest half) => _failed.Contains(half.Name);
+    // Whether the last load of the half failed, so that its page shows an error with a retry. The failure is kept, and every
+    // use of the half fails at once, until the next navigation tries again.
+    public bool LoadFailed(AdminPluginManifest half) => _failed.ContainsKey(half.Name);
+
+    // Whether a contribution of a half that declares a permission, or none, may be shown: its plugin is enabled in the site and
+    // the user holds the permission. The entry point of every contribution the shell draws from a manifest, such as a widget
+    // (A-22), an action (A5) or a settings page (A6), with ComponentAsync to load its class.
+    public bool Shows(AdminPluginManifest half, string? permission)
+    {
+        ArgumentNullException.ThrowIfNull(half);
+        return IsAvailable(half) && (permission is null || context.Allows(permission));
+    }
+
+    // The class of a contribution, by the full name its manifest gives, once its half is loaded. Call it only for what Shows
+    // allows; it throws for a half whose plugin is disabled or that failed to load. The app's partial trimming keeps the
+    // half's types whole.
+    public async Task<Type> ComponentAsync(AdminPluginManifest half, string typeName, CancellationToken cancellationToken) =>
+        (await LoadAsync(half, cancellationToken)).Type(typeName);
+
+    // The gate of a page the router found: a page of a loaded half by its own assembly, so that a half's route outside its
+    // segment is gated too, and a page of the admin by the route, which answers for the halves not loaded yet.
+    public PluginPageGate Gate(RouteData routeData, string route)
+    {
+        ArgumentNullException.ThrowIfNull(routeData);
+        if (_loaded.Values.FirstOrDefault(loaded => loaded.Assembly == routeData.PageType.Assembly) is not { } owner)
+        {
+            return Gate(route);
+        }
+
+        var pages = owner.Manifest.Pages.Where(page => page.Type == routeData.PageType.FullName);
+        if (!IsAvailable(owner.Manifest) || AdminPluginRoutes.Match(pages, route) is not { } matched)
+        {
+            return PluginPageGate.NotFound;
+        }
+
+        return matched.Permission is null || context.Allows(matched.Permission) ? PluginPageGate.Allowed : PluginPageGate.NoAccess;
+    }
 
     public PluginPageGate Gate(string route)
     {
@@ -71,8 +106,10 @@ internal sealed class AdminPlugins(
     }
 
     // The router's OnNavigateAsync: a page of a half loads the half, once the shell knows the site, if the user may see it.
+    // A navigation tries a failed half again.
     public async Task NavigateAsync(string route, CancellationToken cancellationToken)
     {
+        _failed.Clear();
         if (catalog.HalfOfRoute(route) is not { } half || IsLoaded(half))
         {
             return;
@@ -119,9 +156,13 @@ internal sealed class AdminPlugins(
             throw new InvalidOperationException($"The plugin {half.Name} is not enabled in the site, so its admin half is not loaded.");
         }
 
+        if (_failed.TryGetValue(half.Name, out var failure))
+        {
+            return Task.FromException<LoadedHalf>(failure);
+        }
+
         if (!_loads.TryGetValue(half.Name, out var loading))
         {
-            _failed.Remove(half.Name);
             loading = RunLoadAsync(half);
             if (!loading.IsCompleted)
             {
@@ -147,7 +188,16 @@ internal sealed class AdminPlugins(
         {
             if (half.Services.FirstOrDefault(service => service.Service == name) is { } entry)
             {
-                var loaded = await LoadAsync(half, cancellationToken);
+                LoadedHalf loaded;
+                try
+                {
+                    loaded = await LoadAsync(half, cancellationToken);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    throw new InvalidOperationException($"The admin half {half.Name}, which provides {name}, could not be loaded.", exception);
+                }
+
                 return (TService)loaded.Service(typeof(TService), entry.Type);
             }
         }
@@ -163,7 +213,7 @@ internal sealed class AdminPlugins(
         {
             foreach (var editor in half.FieldEditors)
             {
-                editors.AddLazy(editor.FieldType, () => IsAvailable(half), cancellationToken => TypeAsync(half, editor.Type, cancellationToken));
+                editors.AddLazy(editor.FieldType, () => IsAvailable(half), cancellationToken => ComponentAsync(half, editor.Type, cancellationToken));
             }
         }
     }
@@ -175,7 +225,7 @@ internal sealed class AdminPlugins(
         {
             foreach (var cell in half.ListCells)
             {
-                cells.AddLazy(cell.FieldType, () => IsAvailable(half), cancellationToken => TypeAsync(half, cell.Type, cancellationToken));
+                cells.AddLazy(cell.FieldType, () => IsAvailable(half), cancellationToken => ComponentAsync(half, cell.Type, cancellationToken));
             }
         }
     }
@@ -192,8 +242,6 @@ internal sealed class AdminPlugins(
         }
     }
 
-    private async Task<Type> TypeAsync(AdminPluginManifest half, string typeName, CancellationToken cancellationToken) =>
-        (await LoadAsync(half, cancellationToken)).Type(typeName);
 
     private async Task<LoadedHalf> RunLoadAsync(AdminPluginManifest half)
     {
@@ -208,7 +256,7 @@ internal sealed class AdminPlugins(
         catch (Exception exception)
         {
             PluginLog.LoadFailed(logger, half.Name, exception);
-            _failed.Add(half.Name);
+            _failed[half.Name] = exception;
             throw;
         }
         finally
@@ -233,12 +281,14 @@ internal sealed class AdminPlugins(
         var collection = new ServiceCollection();
         plugin.Configure(new AdminPluginBuilder(half.Name, collection, services.GetRequiredService<ListFilterRegistry>()));
         descriptors.FallBackTo(collection, services);
-        return new LoadedHalf(assembly, collection.BuildServiceProvider());
+        return new LoadedHalf(half, assembly, collection.BuildServiceProvider());
     }
 
-    internal sealed class LoadedHalf(Assembly assembly, IServiceProvider provider)
+    internal sealed class LoadedHalf(AdminPluginManifest manifest, Assembly assembly, IServiceProvider provider)
     {
         private readonly Dictionary<Type, object> _services = [];
+
+        public AdminPluginManifest Manifest => manifest;
 
         public Assembly Assembly => assembly;
 

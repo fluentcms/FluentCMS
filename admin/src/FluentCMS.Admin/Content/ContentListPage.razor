@@ -269,6 +269,13 @@ else if (view is { } shownView)
                 await Cells.CellForAsync(field.Type);
                 await FilterTypes.FindAsync(field);
             });
+
+            // A later change of the parameters, or of the site, runs on its own.
+            if (Described != type || Context.Schema != schema)
+            {
+                return;
+            }
+
             view = ListView.For(type, schema, Cells, FilterTypes);
         }
 

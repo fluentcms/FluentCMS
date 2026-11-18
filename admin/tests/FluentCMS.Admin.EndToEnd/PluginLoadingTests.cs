@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using Shouldly;
 using Xunit;
@@ -10,7 +11,8 @@ namespace FluentCMS.Admin.EndToEnd;
 // the second site, where the host disables the media plugin (spec 2.6, row 8.15).
 public sealed class PluginLoadingTests(EndToEndHost host) : BrowserTest(host)
 {
-    private const string MediaHalf = "/_framework/FluentCMS.Plugins.Media.Admin.";
+    // The half's assembly as the publish names it, with the fingerprint, and none of the files beside it.
+    private static readonly Regex MediaHalf = new(@"/_framework/FluentCMS\.Plugins\.Media\.Admin(\.[0-9a-z]+)?\.wasm\z", RegexOptions.CultureInvariant);
 
     [Fact]
     public async Task TheMediaHalfIsNotInTheFirstDownloadAndIsFetchedOnceOnTheFirstVisitOfMedia()
@@ -68,7 +70,7 @@ public sealed class PluginLoadingTests(EndToEndHost host) : BrowserTest(host)
         var fetched = new ConcurrentQueue<string>();
         tab.Page.Request += (_, request) =>
         {
-            if (new Uri(request.Url).AbsolutePath.Contains(MediaHalf, StringComparison.Ordinal))
+            if (MediaHalf.IsMatch(new Uri(request.Url).AbsolutePath))
             {
                 fetched.Enqueue(request.Url);
             }

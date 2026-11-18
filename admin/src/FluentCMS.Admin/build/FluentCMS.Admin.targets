@@ -33,16 +33,19 @@
     <Error Condition="'@(_FluentCmsAdminEagerHalf)' != ''"
       Text="The admin half %(_FluentCmsAdminEagerHalf.Identity) is referenced but not loaded lazily: add &lt;BlazorWebAssemblyLazyLoad Include=&quot;%(_FluentCmsAdminEagerHalf.Identity).wasm&quot; /&gt; to the app." />
 
-    <!-- Each file on lines of its own, so that a comment on a file's last line cannot take the comma after it; the reader
-         takes the trailing comma. -->
+    <!-- One item per file, joined with a comma on a line of its own, so that a comment on a file's last line cannot take the
+         comma after it. -->
     <ItemGroup>
-      <_FluentCmsAdminPluginsLine Include="[" />
-      <_FluentCmsAdminPluginsLine Include="$([MSBuild]::Escape($([System.IO.File]::ReadAllText('%(_FluentCmsAdminManifest.Identity)'))))" Condition="'@(_FluentCmsAdminManifest)' != ''" />
-      <_FluentCmsAdminPluginsLine Include="," Condition="'@(_FluentCmsAdminManifest)' != ''" KeepDuplicates="true" />
-      <_FluentCmsAdminPluginsLine Include="]" />
+      <_FluentCmsAdminManifestText Include="@(_FluentCmsAdminManifest)">
+        <Text>$([MSBuild]::Escape($([System.IO.File]::ReadAllText('%(_FluentCmsAdminManifest.Identity)'))))</Text>
+      </_FluentCmsAdminManifestText>
     </ItemGroup>
 
-    <WriteLinesToFile File="$(_FluentCmsAdminPluginsPath)" Lines="@(_FluentCmsAdminPluginsLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <PropertyGroup>
+      <_FluentCmsAdminPluginsText>[%0A@(_FluentCmsAdminManifestText->'%(Text)', '%0A,%0A')%0A]</_FluentCmsAdminPluginsText>
+    </PropertyGroup>
+
+    <WriteLinesToFile File="$(_FluentCmsAdminPluginsPath)" Lines="$(_FluentCmsAdminPluginsText)" Overwrite="true" WriteOnlyWhenDifferent="true" />
 
     <ItemGroup>
       <_FluentCmsAdminPluginsCandidate Include="$(_FluentCmsAdminPluginsPath)">

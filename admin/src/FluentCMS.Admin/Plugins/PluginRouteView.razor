@@ -1,11 +1,11 @@
 @* The page the router found, or the not-found page in its place for a page of an admin half that the site or the user may
-   not see: after a site switch, a half loaded in the site before still has its routes, and the switch navigates to the
-   route again. NotFoundPage tells a page the user lacks the permission of. *@
+   not see, by the half that owns the page's assembly: after a site switch, a half loaded in the site before still has its
+   routes, and the switch navigates to the route again. NotFoundPage tells a page the user lacks the permission of. *@
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "NotFoundPage is kept by the DynamicDependency of AdminApp's constructor.")]
 @inject AdminPlugins Plugins
 @inject NavigationManager Navigation
 
-@if (Plugins.Gate(Navigation.ToBaseRelativePath(Navigation.Uri)) is PluginPageGate.None or PluginPageGate.Allowed)
+@if (Plugins.Gate(RouteData, Navigation.ToBaseRelativePath(Navigation.Uri)) is PluginPageGate.None or PluginPageGate.Allowed)
 {
     <RouteView RouteData="RouteData" DefaultLayout="typeof(AdminLayout)" />
 }

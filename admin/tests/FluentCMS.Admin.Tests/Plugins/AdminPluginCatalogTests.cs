@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Reflection;
 using FluentCMS.Admin.Plugins;
 using FluentCMS.Admin.Plugins.Sample;
 using Shouldly;
@@ -24,6 +25,7 @@ public sealed class AdminPluginCatalogTests
               { "name": "none", "assembly": "None.Admin" },
               { "name": "content", "assembly": "Content.Admin", "adminRange": "1.0.0" },
               { "name": "Media", "assembly": "Other.Admin", "adminRange": "1.0.0" },
+              { "name": "media", "assembly": "Again.Admin", "adminRange": "1.0.0" },
               { "name": "webhooks", "assembly": "Webhooks.Admin", "adminRange": "1.0.0" },
             ]
             """, Running);
@@ -37,7 +39,8 @@ public sealed class AdminPluginCatalogTests
             new(PluginProblemKind.OutOfRange, "old", "Old.Admin", "[0.1.0,1.0.0)"),
             new(PluginProblemKind.OutOfRange, "none", "None.Admin"),
             new(PluginProblemKind.ReservedName, "content", "Content.Admin"),
-            new(PluginProblemKind.Duplicate, "Media", "Other.Admin"),
+            new(PluginProblemKind.Invalid, "Media", "Other.Admin"),
+            new(PluginProblemKind.Duplicate, "media", "Again.Admin"),
         ]);
     }
 
@@ -113,4 +116,24 @@ public sealed class AdminPluginCatalogTests
         AdminPluginManifestJson.Read("""
             { "name": "media", "assembly": "Media.Admin", "menuItems": [{ "type": "P", "label": "L", "route": "/media", "labels": { "en": null } }] }
             """).IsValid.ShouldBeFalse();
+
+    // The fixture app references the media half and the sample half, so its build ran the target over two manifests.
+    [Fact]
+    public void TheBuildOfAnAppGathersTheManifestsOfItsHalvesIntoOneListTheShellReads()
+    {
+        var configuration = typeof(AdminPluginCatalogTests).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>()!.Configuration;
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (!File.Exists(Path.Combine(root.FullName, "FluentCMS.slnx")))
+        {
+            root = root.Parent!;
+        }
+
+        var gathered = Path.Combine(root.FullName, "admin", "tests", "FluentCMS.Admin.GatherFixture", "obj", configuration, "net10.0", "fluentcms-admin", AdminPluginCatalog.FileName);
+
+        var catalog = AdminPluginCatalog.Read(File.ReadAllText(gathered), AdminPluginCatalog.RunningVersion);
+
+        catalog.Problems.ShouldBeEmpty();
+        catalog.Halves.Select(half => half.Name).ShouldBe(["media", "reviews"], ignoreOrder: true);
+        catalog.Halves.Single(half => half.Name == "reviews").MenuItems.ShouldHaveSingleItem().LabelFor(CultureInfo.GetCultureInfo("fr")).ShouldBe("Avis");
+    }
 }

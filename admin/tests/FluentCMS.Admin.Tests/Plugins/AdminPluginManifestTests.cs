@@ -305,6 +305,8 @@ public sealed class AdminPluginManifestTests
             $"menu item 'Careless.Pages' of {Types}CarelessPage: the component has several pages, so the item must name its Route",
             $"settings page 'careless' of {Types}CarelessPage: the class does not derive from IComponent",
             $"widget 'Careless.Widget' of {Types}CarelessPage: the class does not derive from IComponent",
+            $"@page '/content/careless' of {Types}CarelessRoute: the component declares no [AdminPage] of that route, so the shell cannot gate it",
+            $"@page '/content/careless' of {Types}CarelessRoute: the route is not /system or below it",
             $"page '/careless/item' of {Types}CarelessTwin: the component has no @page of that route, so the router cannot find it",
             $"page '/careless/item' of {Types}CarelessTwin: the route is not /system or below it",
             $"menu item 'Careless.Item' of {Types}CarelessTwin: the component declares no [AdminPage] of its Route '/careless/items'",

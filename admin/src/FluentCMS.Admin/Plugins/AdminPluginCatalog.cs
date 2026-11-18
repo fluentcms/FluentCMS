@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
 
 namespace FluentCMS.Admin.Plugins;
@@ -27,7 +28,7 @@ internal sealed record PluginProblem(PluginProblemKind Kind, string? Name = null
 // The admin halves the app was built with, from the file its build gathers from their manifests (spec 2.6), read at start
 // with one request. A half that is invalid, outside the admin range or otherwise unusable is left out and listed, and the
 // others still load.
-internal sealed class AdminPluginCatalog
+internal sealed partial class AdminPluginCatalog
 {
     public const string FileName = "fluentcms-admin.plugins.json";
 
@@ -60,7 +61,9 @@ internal sealed class AdminPluginCatalog
         var path = (end < 0 ? route : route[..end]).TrimStart('/');
         var slash = path.IndexOf('/', StringComparison.Ordinal);
         var first = Uri.UnescapeDataString(slash < 0 ? path : path[..slash]);
-        return first.Length == 0 ? null : Halves.FirstOrDefault(half => string.Equals(half.Name, first, StringComparison.OrdinalIgnoreCase));
+        // The router matches a route whatever its case, and a plugin's name is in lower case.
+        var name = first.ToLowerInvariant();
+        return name.Length == 0 ? null : Halves.FirstOrDefault(half => string.Equals(half.Name, name, StringComparison.Ordinal));
     }
 
     // The file is the app's own and changes with each build, so it is read as config.json is, never from the cache. A file
@@ -126,7 +129,7 @@ internal sealed class AdminPluginCatalog
                     manifest = null;
                 }
 
-                if (manifest is null || !manifest.IsValid || string.IsNullOrWhiteSpace(manifest.Name) || string.IsNullOrWhiteSpace(manifest.Assembly))
+                if (manifest is null || !manifest.IsValid || !NamePattern().IsMatch(manifest.Name) || string.IsNullOrWhiteSpace(manifest.Assembly))
                 {
                     problems.Add(new PluginProblem(PluginProblemKind.Invalid, manifest?.Name ?? Member(element, "name"), manifest?.Assembly ?? Member(element, "assembly")));
                 }
@@ -138,7 +141,7 @@ internal sealed class AdminPluginCatalog
                 {
                     problems.Add(new PluginProblem(PluginProblemKind.ReservedName, manifest.Name, manifest.Assembly));
                 }
-                else if (halves.Any(half => string.Equals(half.Name, manifest.Name, StringComparison.OrdinalIgnoreCase)))
+                else if (halves.Any(half => string.Equals(half.Name, manifest.Name, StringComparison.Ordinal)))
                 {
                     problems.Add(new PluginProblem(PluginProblemKind.Duplicate, manifest.Name, manifest.Assembly));
                 }
@@ -151,6 +154,10 @@ internal sealed class AdminPluginCatalog
             return new(halves, problems);
         }
     }
+
+    // A server plugin's name as GET /plugins gives it, in lower-case kebab case.
+    [GeneratedRegex("^[a-z][a-z0-9]*(?:-[a-z0-9]+)*\\z", RegexOptions.CultureInvariant)]
+    private static partial Regex NamePattern();
 
     private static string? Member(JsonElement element, string name) =>
         element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;

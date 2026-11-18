@@ -216,6 +216,50 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
     }
 
     [Fact]
+    public async Task TwoFirstUsesAtOnceLoadTheHalfAndRunConfigureOnce()
+    {
+        loader.Gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var app = Load(enabled: true);
+        var configured = ReviewsAdminPlugin.Configured;
+
+        // On the renderer's dispatcher, as a component asks, so that no wait of the test holds their continuations.
+        Task<IMediaPicker?> picker = null!;
+        Task<FieldEditorRegistration?> editor = null!;
+        await app.InvokeAsync(() =>
+        {
+            picker = Services.GetRequiredService<IAdminPluginServices>().FindAsync<IMediaPicker>(Token).AsTask();
+            editor = Services.GetRequiredService<FieldEditorRegistry>().FindAsync("rating", Token).AsTask();
+        });
+        Navigation.NavigateTo("reviews");
+        loader.Gate.SetResult();
+
+        (await picker).ShouldBeOfType<SampleMediaPicker>();
+        (await editor).ShouldNotBeNull();
+        app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"));
+        loader.Loads.ShouldBe(1);
+        (ReviewsAdminPlugin.Configured - configured).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task AFailedLoadIsKeptUntilTheNextNavigationAndAServiceOfTheHalfThenThrows()
+    {
+        loader.Failures = 1;
+        Load(enabled: true);
+        var services = Services.GetRequiredService<IAdminPluginServices>();
+        var editors = Services.GetRequiredService<FieldEditorRegistry>();
+
+        await Should.ThrowAsync<InvalidOperationException>(services.FindAsync<IMediaPicker>(Token).AsTask());
+        await Should.ThrowAsync<HttpRequestException>(editors.FindAsync("rating", Token).AsTask());
+        await Should.ThrowAsync<InvalidOperationException>(services.FindAsync<IMediaPicker>(Token).AsTask());
+        loader.Loads.ShouldBe(1);
+
+        Navigation.NavigateTo("system/components");
+
+        (await services.FindAsync<IMediaPicker>(Token)).ShouldBeOfType<SampleMediaPicker>();
+        loader.Loads.ShouldBe(2);
+    }
+
+    [Fact]
     public void ProviderOfATypeOutsideALoadedHalfFails()
     {
         Load(enabled: true);
@@ -275,9 +319,13 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
 
         public int Failures { get; set; }
 
+        // A load waits for it while set, so that several uses meet one load in progress.
+        public TaskCompletionSource? Gate { get; set; }
+
         public async Task<Assembly> LoadAsync(string assemblyName, CancellationToken cancellationToken)
         {
             Loads++;
+            await (Gate?.Task ?? Task.CompletedTask);
             await Task.Yield();
             if (Failures > 0)
             {

@@ -195,6 +195,17 @@ public static class AdminPluginManifestCheck
                 pages.Add(new AdminManifestPage { Type = name, Route = page.Route, Permission = page.Permission });
             }
 
+            // The shell gates a page by its [AdminPage], so a route without one would show in a site where the plugin is
+            // disabled.
+            foreach (var route in routes.Where(route => !typePages.Exists(page => page.Route == route)).Order(StringComparer.Ordinal))
+            {
+                problems.Add($"@page '{route}' of {name}: the component declares no [AdminPage] of that route, so the shell cannot gate it");
+                if (!route.Equals(root, StringComparison.OrdinalIgnoreCase) && !route.StartsWith(root + "/", StringComparison.OrdinalIgnoreCase))
+                {
+                    problems.Add($"@page '{route}' of {name}: the route is not {root} or below it");
+                }
+            }
+
             if (type.GetCustomAttribute<AdminMenuItemAttribute>() is { } item)
             {
                 var page = item.Route is null

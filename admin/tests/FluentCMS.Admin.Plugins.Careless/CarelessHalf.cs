@@ -5,6 +5,10 @@ using FluentCMS.Admin.Plugins.Careless;
 
 namespace FluentCMS.Admin.Plugins.Careless;
 
+// A route of the router only, outside the plugin's segment.
+[Microsoft.AspNetCore.Components.Route("/content/careless")]
+public sealed class CarelessRoute;
+
 [FluentCmsAdminPlugin("system", AdminRange = "soon")]
 public sealed class CarelessPlugin;
 

@@ -118,7 +118,6 @@ else
         Navigation.LocationChanged -= OnLocationChanged;
     }
 
-
     private void OnThemeChanged() => _ = InvokeAsync(StateHasChanged);
 
     // The first page of a load keeps focus at the start of the document, so the first Tab reaches the skip link; so does the

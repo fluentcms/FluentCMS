@@ -23,7 +23,7 @@
 
   <ItemGroup>
     <!-- An app that references the package gathers the manifests of its admin halves (spec 2.6). -->
-    <None Include="build/FluentCMS.Admin.targets" Pack="true" PackagePath="build/" />
+    <None Include="build/FluentCMS.Admin.targets" Pack="true" PackagePath="build/;buildTransitive/" />
   </ItemGroup>
 
   <ItemGroup>
