@@ -23,11 +23,7 @@ public sealed class HomePageTests : AdminTestContext
 
     private readonly CountingLoader loader = new();
 
-    public HomePageTests()
-    {
-        UseNeutralResources();
-        Management.SetTypes(MainSite, Type("article"));
-    }
+    public HomePageTests() => Management.SetTypes(MainSite, Type("article"));
 
     private static AdminPluginManifest Reviews => AdminPluginManifestJson.Read(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, AdminPluginManifest.FileName)));
 
@@ -115,6 +111,40 @@ public sealed class HomePageTests : AdminTestContext
     }
 
     [Fact]
+    public void AWidgetTheRendererCannotCreateShowsAnErrorInItsTileAndTheOthersRender()
+    {
+        var reviews = Half("reviews", Widget("MisinjectedWidget", WidgetSize.Small), Widget("ThrowingConstructorWidget", WidgetSize.Small), Widget("ReviewsSettingsPage", WidgetSize.Small));
+
+        var app = Load([reviews], enabled: ["reviews"]);
+
+        app.WaitForAssertion(() => Headings(app).ShouldBe(["Content", "Widget of reviews unavailable", "Widget of reviews unavailable", "Reviews"]));
+        app.Find("main .home-types a[href='content/article']");
+    }
+
+    // The page's own texts, the error tile's among them, come from the resources in either direction; the type's label and the
+    // sample widget's texts are data, so they are not checked.
+    [Theory]
+    [InlineData(PseudoCulture.LeftToRight)]
+    [InlineData(PseudoCulture.RightToLeft)]
+    public void ThePageAndItsErrorTileAreLocalizedInBothDirections(string culture)
+    {
+        UseInterfaceCulture(culture);
+        var reviews = Half("reviews", Widget("ReviewsSettingsPage", WidgetSize.Small), Widget("ThrowingWidget", WidgetSize.Small));
+
+        var app = Load([reviews], enabled: ["reviews"], neutral: false);
+
+        app.WaitForAssertion(() => app.FindAll("main .home-tile h2").Count.ShouldBe(3));
+        var rightToLeft = culture == PseudoCulture.RightToLeft;
+        Headings(app)[0].ShouldBe(PseudoCulture.Transform("Content", rightToLeft));
+        Headings(app)[2].ShouldBe(PseudoCulture.Transform("Widget of reviews unavailable", rightToLeft));
+        app.Find("main h1").TextContent.ShouldBe(PseudoCulture.Transform("FluentCMS admin", rightToLeft));
+        var tiles = app.FindAll("main .home-tile");
+        PseudoCulture.Unlocalized(app.Find("main h1").ChildNodes).ShouldBeEmpty();
+        PseudoCulture.Unlocalized(tiles[0].QuerySelector("h2")!.ChildNodes).ShouldBeEmpty();
+        PseudoCulture.Unlocalized(tiles[2].ChildNodes).ShouldBeEmpty();
+    }
+
+    [Fact]
     public void CoreTileLinksTheTypesTheUserMayReadInSchemaOrder()
     {
         Management.SetTypes(MainSite, Type("article"), Type("site-settings", "singleton"), Type("author", displayName: "Writers"));
@@ -178,8 +208,13 @@ public sealed class HomePageTests : AdminTestContext
 
     private void HoldRole(string name, Guid? siteId) => Management.Roles.Add(Role(name, siteId));
 
-    private IRenderedComponent<AdminApp> Load(AdminPluginManifest[] halves, string[] enabled, string route = "", bool permitted = true)
+    private IRenderedComponent<AdminApp> Load(AdminPluginManifest[] halves, string[] enabled, string route = "", bool permitted = true, bool neutral = true)
     {
+        if (neutral)
+        {
+            UseNeutralResources();
+        }
+
         Services.AddSingleton(new AdminPluginCatalog(halves, []));
         Services.AddScoped<IAdminAssemblyLoader>(_ => loader);
         Management.Grant(MainSite, permitted ? ["schema.read", Permission] : ["schema.read"]);

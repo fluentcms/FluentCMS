@@ -13,4 +13,7 @@ internal static partial class PluginLog
 
     [LoggerMessage(EventId = 32, EventName = "PluginWidgetFailed", Level = LogLevel.Error, Message = "The widget {Type} of the admin half {Name} could not be shown.")]
     public static partial void WidgetFailed(ILogger logger, string name, string type, Exception exception);
+
+    [LoggerMessage(EventId = 33, EventName = "PluginWidgetNotCreated", Level = LogLevel.Error, Message = "The widget {Type} of the admin half {Name} cannot be created: {Problem}")]
+    public static partial void WidgetNotCreated(ILogger logger, string name, string type, string problem);
 }

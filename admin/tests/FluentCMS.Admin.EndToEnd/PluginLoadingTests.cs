@@ -9,8 +9,8 @@ namespace FluentCMS.Admin.EndToEnd;
 
 // The media half is the reference host's one admin half: its assembly is not in the first download, it is fetched once, by
 // its widget on the home page or by the first visit of /media, and never in the second site, where the host disables the
-// media plugin (spec 2.6, row 8.15). Each case signs in on a content list, which loads no half, so that the first fetch is the
-// one the case makes.
+// media plugin, nor for a user without its permission (spec 2.6, row 8.15). Each case signs in on the component gallery, which
+// can never load a half, so that the first fetch is the one the case makes.
 public sealed class PluginLoadingTests(EndToEndHost host) : BrowserTest(host)
 {
     // The half's assembly as the publish names it, with the fingerprint, and none of the files beside it.
@@ -22,7 +22,7 @@ public sealed class PluginLoadingTests(EndToEndHost host) : BrowserTest(host)
         var browser = await OpenBrowserAsync();
         var tab = await browser.NewTabAsync();
         var fetched = HalfRequests(tab);
-        await SignInOnTheArticlesAsync(browser, tab);
+        await SignInOnTheGalleryAsync(browser, tab, Host.Editor);
         await Expect(tab.SiteSwitcher).ToHaveValueAsync(Host.Sites[0].Id);
 
         var media = tab.Sidebar.GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = "Media", Exact = true });
@@ -40,6 +40,12 @@ public sealed class PluginLoadingTests(EndToEndHost host) : BrowserTest(host)
         await Home(tab).ClickAsync();
         await Expect(UploadsHeading(tab)).ToBeVisibleAsync();
         fetched.Count.ShouldBe(1);
+
+        // On a tablet, where the sidebar is a drawer, the tiles take two columns, and nothing is wider than the window.
+        await tab.Page.SetViewportSizeAsync(768, 1024);
+        await Expect(UploadsHeading(tab)).ToBeVisibleAsync();
+        (await tab.Page.EvaluateAsync<int>("() => getComputedStyle(document.querySelector('.home-tiles')).gridTemplateColumns.split(' ').length")).ShouldBe(2);
+        (await tab.Page.EvaluateAsync<bool>("() => document.documentElement.scrollWidth <= document.documentElement.clientWidth")).ShouldBeTrue();
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
@@ -49,7 +55,7 @@ public sealed class PluginLoadingTests(EndToEndHost host) : BrowserTest(host)
         var browser = await OpenBrowserAsync();
         var tab = await browser.NewTabAsync();
         var fetched = HalfRequests(tab);
-        await SignInOnTheArticlesAsync(browser, tab);
+        await SignInOnTheGalleryAsync(browser, tab, Host.Editor);
         await tab.SwitchSiteAsync(Host.Sites[1]);
         await Expect(tab.SiteSwitcher).ToHaveValueAsync(Host.Sites[1].Id);
         await Expect(tab.Sidebar.GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = "Article", Exact = true })).ToBeVisibleAsync();
@@ -58,6 +64,7 @@ public sealed class PluginLoadingTests(EndToEndHost host) : BrowserTest(host)
 
         await Home(tab).ClickAsync();
         await Expect(tab.Page.Locator("main").GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = "Article", Exact = true })).ToBeVisibleAsync();
+        await Expect(tab.Page.Locator("main .home-tile")).ToHaveCountAsync(1);
         await Expect(UploadsHeading(tab)).ToHaveCountAsync(0);
 
         // The tab keeps the second site across the load of /media.
@@ -68,11 +75,29 @@ public sealed class PluginLoadingTests(EndToEndHost host) : BrowserTest(host)
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
-    private async Task SignInOnTheArticlesAsync(AdminBrowser browser, AdminTab tab)
+    [Fact]
+    public async Task AUserWithoutTheMediaPermissionSeesNoMediaWidgetAndItsHalfIsNeverFetched()
     {
-        await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
-        await Expect(tab.Page.GetByRole(AriaRole.Grid, new PageGetByRoleOptions { Name = "Article", Exact = true })).ToBeVisibleAsync();
+        var browser = await OpenBrowserAsync();
+        var tab = await browser.NewTabAsync();
+        var fetched = HalfRequests(tab);
+        await SignInOnTheGalleryAsync(browser, tab, Host.Reader);
+        await Expect(tab.SiteSwitcher).ToHaveValueAsync(Host.Sites[0].Id);
+        await Expect(tab.Sidebar.GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = "Media", Exact = true })).ToHaveCountAsync(0);
+
+        await Home(tab).ClickAsync();
+        await Expect(tab.Page.Locator("main").GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = "Article", Exact = true })).ToBeVisibleAsync();
+        await Expect(tab.Page.Locator("main .home-tile")).ToHaveCountAsync(1);
+        await Expect(UploadsHeading(tab)).ToHaveCountAsync(0);
+        fetched.ShouldBeEmpty();
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    private async Task SignInOnTheGalleryAsync(AdminBrowser browser, AdminTab tab, Editor user)
+    {
+        await tab.Page.GotoAsync(new Uri(Host.Admin, "system/components").AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(tab, user);
+        await Expect(tab.Sidebar).ToBeVisibleAsync();
     }
 
     private static ILocator Home(AdminTab tab) =>

@@ -270,6 +270,9 @@
   <data name="Media.Widget.Library" xml:space="preserve">
     <value>Open the media library</value>
   </data>
+  <data name="Media.Widget.Loading" xml:space="preserve">
+    <value>Loading the latest uploads…</value>
+  </data>
   <data name="Media.Widget.Title" xml:space="preserve">
     <value>Latest uploads</value>
   </data>
