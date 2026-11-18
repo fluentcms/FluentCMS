@@ -168,6 +168,12 @@ internal static class MediaEndpoints
                 headers.ContentSecurityPolicy = SvgPolicy;
             }
 
+            // The answer has no Last-Modified, so an If-Range date never matches and the whole file is sent (RFC 9110 13.1.5).
+            if (context.Request.GetTypedHeaders().IfRange is { EntityTag: null })
+            {
+                context.Request.Headers.Remove(HeaderNames.Range);
+            }
+
             return Results.Stream(file.Content, file.MimeType, file.Attachment ? file.FileName : null, entityTag: new EntityTagHeaderValue($"\"{file.Checksum}\""), enableRangeProcessing: true);
         }).AllowAnonymous();
 

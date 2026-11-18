@@ -165,7 +165,7 @@ public sealed class StorageProviderTests(StorageServices services) : IDisposable
 
     [Theory]
     [MemberData(nameof(CloudProviders))]
-    public async Task AnOriginalInTheStorageIsServedInTheRangeAskedFor(string provider)
+    public async Task AnOriginalInTheStorageIsServedWholeInTheRangeAskedForAndToHead(string provider)
     {
         var cloud = await CloudAsync(provider);
         await using var host = StorageHosts.Create(_local, StorageHosts.SigningKey(), cloud.Use);
@@ -179,6 +179,8 @@ public sealed class StorageProviderTests(StorageServices services) : IDisposable
         using var single = await RangeAsync(anonymous, url, "bytes=10-19");
         using var suffix = await RangeAsync(anonymous, url, "bytes=-6");
         using var unsatisfiable = await RangeAsync(anonymous, url, $"bytes={pdf.Length}-");
+        using var whole = await RangeAsync(anonymous, url, range: null);
+        using var head = await RangeAsync(anonymous, url, range: null, method: HttpMethod.Head);
 
         single.StatusCode.ShouldBe(HttpStatusCode.PartialContent);
         single.Content.Headers.ContentRange!.ToString().ShouldBe($"bytes 10-19/{pdf.Length}");
@@ -186,6 +188,10 @@ public sealed class StorageProviderTests(StorageServices services) : IDisposable
         suffix.StatusCode.ShouldBe(HttpStatusCode.PartialContent);
         (await suffix.Content.ReadAsByteArrayAsync(Token)).ShouldBe(pdf[^6..]);
         unsatisfiable.StatusCode.ShouldBe(HttpStatusCode.RequestedRangeNotSatisfiable);
+        (await whole.Content.ReadAsByteArrayAsync(Token)).ShouldBe(pdf);
+        head.StatusCode.ShouldBe(HttpStatusCode.OK);
+        head.Content.Headers.ContentLength.ShouldBe(pdf.Length);
+        (await head.Content.ReadAsByteArrayAsync(Token)).ShouldBeEmpty();
     }
 
     [Theory]

@@ -89,7 +89,7 @@ internal static class Transforms
         return await client.SendAsync(request, Token);
     }
 
-    public static async Task<HttpResponseMessage> RangeAsync(HttpClient client, string url, string? range, string? ifRange = null, HttpMethod? method = null)
+    public static async Task<HttpResponseMessage> RangeAsync(HttpClient client, string url, string? range, string? ifRange = null, HttpMethod? method = null, string? ifNoneMatch = null)
     {
         using var request = new HttpRequestMessage(method ?? HttpMethod.Get, new Uri(url, UriKind.Relative));
         if (range is not null)
@@ -100,6 +100,11 @@ internal static class Transforms
         if (ifRange is not null)
         {
             request.Headers.TryAddWithoutValidation("If-Range", ifRange).ShouldBeTrue();
+        }
+
+        if (ifNoneMatch is not null)
+        {
+            request.Headers.TryAddWithoutValidation("If-None-Match", ifNoneMatch).ShouldBeTrue();
         }
 
         return await client.SendAsync(request, Token);

@@ -160,6 +160,10 @@ public sealed class MediaOriginalTests(MediaHost media) : IClassFixture<MediaHos
         using var unsatisfiable = await RangeAsync(anonymous, original, $"bytes={length}-");
         using var current = await RangeAsync(anonymous, original, "bytes=0-0", $"\"{asset.Checksum}\"");
         using var stale = await RangeAsync(anonymous, original, "bytes=0-0", "\"other\"");
+        using var dated = await RangeAsync(anonymous, original, "bytes=0-0", "Wed, 21 Oct 2026 07:28:00 GMT");
+        using var several = await RangeAsync(anonymous, original, "bytes=0-1,4-5");
+        using var malformed = await RangeAsync(anonymous, original, "bytes=five-");
+        using var cached = await RangeAsync(anonymous, original, "bytes=0-0", ifNoneMatch: $"\"{asset.Checksum}\"");
         using var head = await RangeAsync(anonymous, original, range: null, method: HttpMethod.Head);
 
         single.StatusCode.ShouldBe(HttpStatusCode.PartialContent);
@@ -178,6 +182,14 @@ public sealed class MediaOriginalTests(MediaHost media) : IClassFixture<MediaHos
         (await current.Content.ReadAsByteArrayAsync(Token)).ShouldBe(bytes[..1]);
         stale.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await stale.Content.ReadAsByteArrayAsync(Token)).ShouldBe(bytes);
+        dated.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await dated.Content.ReadAsByteArrayAsync(Token)).ShouldBe(bytes);
+        several.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await several.Content.ReadAsByteArrayAsync(Token)).ShouldBe(bytes);
+        malformed.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await malformed.Content.ReadAsByteArrayAsync(Token)).ShouldBe(bytes);
+        cached.StatusCode.ShouldBe(HttpStatusCode.NotModified);
+        (await cached.Content.ReadAsByteArrayAsync(Token)).ShouldBeEmpty();
         head.StatusCode.ShouldBe(HttpStatusCode.OK);
         head.Headers.AcceptRanges.ShouldBe(["bytes"]);
         head.Content.Headers.ContentLength.ShouldBe(length);
