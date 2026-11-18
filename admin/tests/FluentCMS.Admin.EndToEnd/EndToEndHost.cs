@@ -166,11 +166,11 @@ public sealed class EndToEndHost : IAsyncLifetime
     // A directory of a test's own, deleted with the host's.
     public DirectoryInfo NewDirectory() => _root.CreateSubdirectory(Guid.NewGuid().ToString("N"));
 
-    // An editor of its own for a test that changes its user, such as by ending its sessions.
-    public async Task<Editor> CreateEditorAsync()
+    // An editor of its own for a test that changes its user, such as by ending its sessions, or a user of another role.
+    public async Task<Editor> CreateEditorAsync(string role = "Editor")
     {
         var editor = NewEditor();
-        await CommandAsync(editor.Password, "user", "create", "--email", editor.Email, "--role", "Editor", "--password-stdin");
+        await CommandAsync(editor.Password, "user", "create", "--email", editor.Email, "--role", role, "--password-stdin");
         return editor;
     }
 

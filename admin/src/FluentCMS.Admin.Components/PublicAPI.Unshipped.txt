@@ -413,6 +413,8 @@ FluentCMS.Admin.Components.CmsTreeNode.Children.init -> void
 FluentCMS.Admin.Components.CmsTreeNode.CmsTreeNode(string! Id, string! Text, System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Components.CmsTreeNode!>? Children = null) -> void
 FluentCMS.Admin.Components.CmsTreeNode.Deconstruct(out string! Id, out string! Text, out System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Components.CmsTreeNode!>? Children) -> void
 FluentCMS.Admin.Components.CmsTreeNode.Equals(FluentCMS.Admin.Components.CmsTreeNode? other) -> bool
+FluentCMS.Admin.Components.CmsTreeNode.Expanded.get -> bool
+FluentCMS.Admin.Components.CmsTreeNode.Expanded.init -> void
 FluentCMS.Admin.Components.CmsTreeNode.Id.get -> string!
 FluentCMS.Admin.Components.CmsTreeNode.Id.init -> void
 FluentCMS.Admin.Components.CmsTreeNode.Text.get -> string!

@@ -25,7 +25,7 @@
     public EventCallback<string?> SelectedIdChanged { get; set; }
 
     private RenderFragment RenderNode(CmsTreeNode node) =>
-        @<FluentTreeItem @key="@node.Id" Id="@node.Id" Text="@node.Text">
+        @<FluentTreeItem @key="@node.Id" Id="@node.Id" Text="@node.Text" Expanded="@IsExpanded(node)" ExpandedChanged="@(open => _expanded[node.Id] = open)">
             @if (node.Children is { Count: > 0 } children)
             {
                 @foreach (var child in children)
@@ -34,6 +34,11 @@
                 }
             }
         </FluentTreeItem>;
+
+    // What the user opened or closed, by node; a node the user has not touched shows as the caller's Expanded says.
+    private readonly Dictionary<string, bool> _expanded = new(StringComparer.Ordinal);
+
+    private bool IsExpanded(CmsTreeNode node) => _expanded.TryGetValue(node.Id, out var open) ? open : node.Expanded;
 
     private Task OnSelectedIdChangedAsync(string? id)
     {

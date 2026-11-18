@@ -1,0 +1,38 @@
+@* The detail of an asset, opened from the library. A-50 (#3291) fills it with the metadata, focal point, usage, replace,
+   download, move and delete; until then it shows the title, the type and the size. *@
+@inject AdminConfiguration Configuration
+@inject IStringLocalizer<MediaResources> L
+
+<CmsDrawer Title="@(Asset?.Name ?? L["Media.Panel.Title"].Value)" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : OnClose.InvokeAsync())">
+    <ChildContent>
+        @if (Asset is { } asset)
+        {
+            @if (asset.Urls.Thumbnail is { Length: > 0 } thumbnail)
+            {
+                <img class="media-panel-image" src="@MediaFormat.Resolve(Configuration.ApiBaseUrl, thumbnail)" alt="@(asset.Alt ?? "")" />
+            }
+            <dl class="media-panel-facts">
+                <dt>@L["Media.Panel.Name"]</dt>
+                <dd>@asset.Name</dd>
+                <dt>@L["Media.Column.Type"]</dt>
+                <dd>@asset.MimeType</dd>
+                <dt>@L["Media.Column.Size"]</dt>
+                <dd>@MediaFormat.Size(asset.Size)</dd>
+            </dl>
+        }
+    </ChildContent>
+    <Actions>
+        <CmsButton OnClick="@OnClose">@L["Media.Panel.Close"]</CmsButton>
+    </Actions>
+</CmsDrawer>
+
+@code {
+    [Parameter]
+    public MediaAssetInfo? Asset { get; set; }
+
+    [Parameter]
+    public bool Open { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+}

@@ -371,6 +371,31 @@ public sealed class ManagementApiTests
         Should.Throw<InvalidOperationException>(() => new ManagementApiOptions { ApiBaseUrl = address is null ? null : new Uri(address) }.ManagementAddress())
             .Message.ShouldContain("ApiBaseUrl");
 
+    [Fact]
+    public async Task AContentIsSentAsItsBytesWithItsTypeAndAgainAfterA429()
+    {
+        using var harness = new ApiHarness();
+        harness.Server
+            .Problem(HttpStatusCode.TooManyRequests, """{"status":429,"code":"FCMS2901"}""", response => response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(1)))
+            .Answer(HttpStatusCode.Created, """{"items":[]}""");
+        var content = new ApiContent("multipart/form-data; boundary=b1", "--b1\r\nbody\r\n--b1--\r\n"u8.ToArray());
+
+        await harness.Api.SendAsync(new ApiRequest(HttpMethod.Post, "media") { Content = content }, Token);
+
+        harness.Server.Requests.Count.ShouldBe(2);
+        harness.Server.Requests.ShouldAllBe(sent => sent.Body == "--b1\r\nbody\r\n--b1--\r\n" && sent.Header("Content-Type") == "multipart/form-data; boundary=b1");
+    }
+
+    [Fact]
+    public async Task ARequestWithABodyAndAContentIsRefused()
+    {
+        using var harness = new ApiHarness();
+
+        await Should.ThrowAsync<ArgumentException>(() => harness.Api.SendAsync(
+            new ApiRequest(HttpMethod.Post, "media") { Body = new JsonObject(), Content = new ApiContent("text/plain", Array.Empty<byte>()) }, Token));
+        harness.Server.Requests.ShouldBeEmpty();
+    }
+
     [Theory]
     [InlineData("https://cms.example.com", "https://cms.example.com/api/management/v1/")]
     [InlineData("http://localhost:8080/", "http://localhost:8080/api/management/v1/")]

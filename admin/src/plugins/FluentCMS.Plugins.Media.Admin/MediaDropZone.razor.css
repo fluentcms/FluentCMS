@@ -1,0 +1,8 @@
+div {
+    border-radius: var(--cms-radius-m);
+}
+
+.media-drop-active {
+    outline: 2px dashed var(--cms-color-accent);
+    outline-offset: var(--cms-space-xs);
+}

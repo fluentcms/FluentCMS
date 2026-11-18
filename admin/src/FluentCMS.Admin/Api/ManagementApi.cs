@@ -32,6 +32,11 @@ internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposab
             throw new ArgumentException("A request that names its site or locale cannot also send none.", nameof(request));
         }
 
+        if (request.Body is not null && request.Content is not null)
+        {
+            throw new ArgumentException("A request sends a JSON body or another content, not both.", nameof(request));
+        }
+
         // The bearer token goes only to the Management API: a path that resolves anywhere else is refused.
         var baseAddress = http.BaseAddress!;
         if (!Uri.TryCreate(baseAddress, request.Path, out var target)
@@ -44,6 +49,11 @@ internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposab
         if (request.Body is { } body)
         {
             message.Content = JsonContent.Create<JsonNode>(body, ManagementJsonContext.Default.JsonNode);
+        }
+        else if (request.Content is { } content)
+        {
+            message.Content = new ReadOnlyMemoryContent(content.Bytes);
+            message.Content.Headers.TryAddWithoutValidation("Content-Type", content.MediaType);
         }
 
         Add(message, ManagementHeaders.IfMatch, request.IfMatch is { } tag ? ManagementHeaders.StrongTag(tag) : null);

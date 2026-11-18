@@ -22,6 +22,17 @@ public sealed class CmsNavigationTests : ComponentTestContext
     }
 
     [Fact]
+    public void ANodeTheCallerOpensShowsItsChildrenUntilTheUserClosesIt()
+    {
+        var tree = Render<CmsTree>(p => p
+            .Add(x => x.Label, "Folders")
+            .Add(x => x.Nodes, [new CmsTreeNode("images", "Images", [new CmsTreeNode("images/2026", "2026")]) { Expanded = true }, new CmsTreeNode("video", "Video")]));
+
+        tree.Find("fluent-tree-item#images").HasAttribute("expanded").ShouldBeTrue();
+        tree.Find("fluent-tree-item#video").HasAttribute("expanded").ShouldBeFalse();
+    }
+
+    [Fact]
     public void EveryTabHasItsTitleAndControlsItsPanel()
     {
         var tabs = Render<CmsTabs>(p => p
