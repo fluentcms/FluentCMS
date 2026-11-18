@@ -151,10 +151,11 @@ internal static class MediaEndpoints
     // transform says whether the type depends on Accept. An original is sent as it is stored, with nosniff and, for an SVG, a
     // policy that runs nothing; a download URL's answer is an attachment that no cache keeps, and a file of a type the plugin
     // does not find from bytes is an attachment too (MediaOriginals). A URL with an expiry that serves inline is kept by no
-    // shared cache, and by a browser only until it expires.
+    // shared cache, and by a browser only until it expires. An original answers HEAD and a range of its bytes, which a video
+    // player needs to seek and a download to resume.
     public static RouteGroupBuilder MapImageEndpoints(this RouteGroupBuilder group)
     {
-        group.MapGet("/{id:guid}/original/{fileName}", async (Guid id, HttpContext context, MediaOriginals originals, IOptions<MediaOptions> options, TimeProvider time, CancellationToken cancellationToken) =>
+        group.MapMethods("/{id:guid}/original/{fileName}", [HttpMethods.Get, HttpMethods.Head], async (Guid id, HttpContext context, MediaOriginals originals, IOptions<MediaOptions> options, TimeProvider time, CancellationToken cancellationToken) =>
         {
             var query = context.Request.Query.SelectMany(pair => pair.Value.Select(value => new KeyValuePair<string, string?>(pair.Key, value)));
             var file = await originals.OpenAsync(id, query, cancellationToken);
@@ -167,7 +168,7 @@ internal static class MediaEndpoints
                 headers.ContentSecurityPolicy = SvgPolicy;
             }
 
-            return Results.Stream(file.Content, file.MimeType, file.Attachment ? file.FileName : null, entityTag: new EntityTagHeaderValue($"\"{file.Checksum}\""));
+            return Results.Stream(file.Content, file.MimeType, file.Attachment ? file.FileName : null, entityTag: new EntityTagHeaderValue($"\"{file.Checksum}\""), enableRangeProcessing: true);
         }).AllowAnonymous();
 
         group.MapGet($"/{{id:guid}}/{MediaTransforms.Thumbnail}/{{fileName}}", async (Guid id, HttpContext context, MediaTransforms transforms, IOptions<MediaOptions> options, TimeProvider time, CancellationToken cancellationToken) =>

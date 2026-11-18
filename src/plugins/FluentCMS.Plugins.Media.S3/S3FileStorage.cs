@@ -26,8 +26,7 @@ internal sealed class S3FileStorage(IOptions<S3StorageOptions> options) : IFileS
         var name = ObjectKey(key);
         try
         {
-            var response = await _client.GetObjectAsync(_bucket, name, cancellationToken);
-            return response.ResponseStream;
+            return new S3ObjectStream(_client, _bucket, name, await _client.GetObjectAsync(_bucket, name, cancellationToken));
         }
         catch (AmazonS3Exception exception) when (exception.StatusCode == HttpStatusCode.NotFound && exception.ErrorCode != "NoSuchBucket")
         {

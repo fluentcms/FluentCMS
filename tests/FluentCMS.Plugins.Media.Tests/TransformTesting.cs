@@ -89,6 +89,22 @@ internal static class Transforms
         return await client.SendAsync(request, Token);
     }
 
+    public static async Task<HttpResponseMessage> RangeAsync(HttpClient client, string url, string? range, string? ifRange = null, HttpMethod? method = null)
+    {
+        using var request = new HttpRequestMessage(method ?? HttpMethod.Get, new Uri(url, UriKind.Relative));
+        if (range is not null)
+        {
+            request.Headers.TryAddWithoutValidation("Range", range).ShouldBeTrue();
+        }
+
+        if (ifRange is not null)
+        {
+            request.Headers.TryAddWithoutValidation("If-Range", ifRange).ShouldBeTrue();
+        }
+
+        return await client.SendAsync(request, Token);
+    }
+
     public static async Task<(string? Type, byte[] Bytes)> ImageAsync(HttpResponseMessage response)
     {
         var bytes = await response.Content.ReadAsByteArrayAsync(Token);

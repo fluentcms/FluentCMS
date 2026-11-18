@@ -73,6 +73,32 @@ public sealed class FileStorageContractTests(StorageServices services) : IDispos
         (await ReadAsync(storage, "from/forward-only.bin")).ShouldBe([5, 4, 3]);
     }
 
+    // So that an original is served in ranges.
+    [Theory]
+    [MemberData(nameof(Providers))]
+    public async Task AFileOpensAsAStreamThatKnowsItsLengthAndSeeks(string provider)
+    {
+        var storage = await services.StorageAsync(provider, _local);
+        var key = $"{Guid.NewGuid():N}/original.bin";
+        var bytes = Enumerable.Range(0, 1000).Select(value => (byte)value).ToArray();
+        await storage.WriteAsync(key, new MemoryStream(bytes), Token);
+
+        await using var stream = (await storage.OpenReadAsync(key, Token)).ShouldNotBeNull();
+        stream.CanSeek.ShouldBeTrue();
+        stream.Length.ShouldBe(1000);
+        var buffer = new byte[10];
+        await stream.ReadExactlyAsync(buffer, Token);
+        stream.Position.ShouldBe(10);
+        stream.Seek(700, SeekOrigin.Begin).ShouldBe(700);
+        await stream.ReadExactlyAsync(buffer, Token);
+        buffer.ShouldBe(bytes[700..710]);
+        stream.Position = 5;
+        using var rest = new MemoryStream();
+        await stream.CopyToAsync(rest, Token);
+
+        rest.ToArray().ShouldBe(bytes[5..]);
+    }
+
     [Theory]
     [MemberData(nameof(Providers))]
     public async Task AKeyThatIsNotPlainSegmentsIsRefusedBeforeTheStorageIsAsked(string provider)

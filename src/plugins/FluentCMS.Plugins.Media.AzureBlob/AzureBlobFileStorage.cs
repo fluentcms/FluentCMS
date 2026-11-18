@@ -19,13 +19,14 @@ internal sealed class AzureBlobFileStorage(IOptions<AzureBlobStorageOptions> opt
 
     public string Name => ProviderName;
 
+    // A stream that seeks, reading the blob in ranges, so that an original is served in ranges. It reads the version it
+    // opened, so a blob replaced while it is read fails the read rather than mixing two files.
     public async Task<Stream?> OpenReadAsync(string key, CancellationToken cancellationToken = default)
     {
         var blob = Blob(key);
         try
         {
-            var response = await blob.DownloadStreamingAsync(cancellationToken: cancellationToken);
-            return response.Value.Content;
+            return await blob.OpenReadAsync(new BlobOpenReadOptions(allowModifications: false), cancellationToken);
         }
         catch (RequestFailedException exception) when (IsMissingBlob(exception))
         {

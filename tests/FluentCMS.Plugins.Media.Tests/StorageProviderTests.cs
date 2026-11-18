@@ -165,6 +165,31 @@ public sealed class StorageProviderTests(StorageServices services) : IDisposable
 
     [Theory]
     [MemberData(nameof(CloudProviders))]
+    public async Task AnOriginalInTheStorageIsServedInTheRangeAskedFor(string provider)
+    {
+        var cloud = await CloudAsync(provider);
+        await using var host = StorageHosts.Create(_local, StorageHosts.SigningKey(), cloud.Use);
+        using var admin = await StorageHosts.AdminAsync(host);
+        using var anonymous = host.CreateClient();
+        var pdf = Files.Pdf();
+        var asset = await UploadAsync(admin, pdf, "plan.pdf");
+        using var issued = await admin.PostAsync(new Uri($"{Root}/{asset.Id:D}/download-url", UriKind.Relative), null, Token);
+        var url = (await JsonAsync(issued))["url"]!.GetValue<string>();
+
+        using var single = await RangeAsync(anonymous, url, "bytes=10-19");
+        using var suffix = await RangeAsync(anonymous, url, "bytes=-6");
+        using var unsatisfiable = await RangeAsync(anonymous, url, $"bytes={pdf.Length}-");
+
+        single.StatusCode.ShouldBe(HttpStatusCode.PartialContent);
+        single.Content.Headers.ContentRange!.ToString().ShouldBe($"bytes 10-19/{pdf.Length}");
+        (await single.Content.ReadAsByteArrayAsync(Token)).ShouldBe(pdf[10..20]);
+        suffix.StatusCode.ShouldBe(HttpStatusCode.PartialContent);
+        (await suffix.Content.ReadAsByteArrayAsync(Token)).ShouldBe(pdf[^6..]);
+        unsatisfiable.StatusCode.ShouldBe(HttpStatusCode.RequestedRangeNotSatisfiable);
+    }
+
+    [Theory]
+    [MemberData(nameof(CloudProviders))]
     public async Task ReadyIsUnhealthyWhileTheBucketOrContainerCannotBeReached(string provider)
     {
         var cloud = await CloudAsync(provider);

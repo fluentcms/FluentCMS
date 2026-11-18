@@ -15,7 +15,10 @@ public interface IFileStorage
     /// <summary>Opens a file for reading.</summary>
     /// <param name="key">The key.</param>
     /// <param name="cancellationToken">Cancels the work.</param>
-    /// <returns>The stream, which the caller disposes, or <see langword="null"/> when there is no such file.</returns>
+    /// <returns>
+    /// The stream, which the caller disposes, or <see langword="null"/> when there is no such file. A stream that can seek and
+    /// knows its length lets the media plugin serve a range of the file.
+    /// </returns>
     Task<Stream?> OpenReadAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>Writes a file, replacing one with the same key. A reader sees the old file or the new one, never a part.</summary>

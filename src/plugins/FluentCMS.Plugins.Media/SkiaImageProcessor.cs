@@ -128,11 +128,11 @@ internal sealed class SkiaImageProcessor : IImageProcessor
     private static bool IsTurned(SKEncodedOrigin origin) =>
         origin is SKEncodedOrigin.LeftTop or SKEncodedOrigin.RightTop or SKEncodedOrigin.RightBottom or SKEncodedOrigin.LeftBottom;
 
-    // Skia's codecs rewind, which a stream that cannot seek allows only within a small buffer, so such a stream is read
-    // into memory first; null for one that can seek. An original is at most the site's file size limit.
+    // Skia's codecs rewind and read synchronously, so a stream that is not in memory or on disk, such as a storage's that
+    // seeks with a request, is read into memory first; null for one that is. An original is at most the site's file size limit.
     private static async Task<MemoryStream?> BufferedAsync(Stream image, CancellationToken cancellationToken)
     {
-        if (image.CanSeek)
+        if (image is MemoryStream or FileStream)
         {
             return null;
         }
