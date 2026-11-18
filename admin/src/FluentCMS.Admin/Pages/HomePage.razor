@@ -1,12 +1,64 @@
-@* A stub page, until the shell (A-08) gives the admin its start page. *@
+@* The start page (spec 5.1, row 8.9): core's tile of the content types the user may read, then the dashboard widgets of the
+   admin halves the user may see, laid out by their size. A tile is keyed by the site and the content locale, so a switch of
+   either shows the widgets of the new one, each read again. *@
 @page "/"
+@implements IDisposable
 @inject IStringLocalizer<AdminResources> L
-@inject FluentCMS.Admin.Plugins.AdminPluginCatalog Plugins
+@inject AdminContext Context
+@inject AdminPlugins Plugins
 
 <h1 tabindex="-1">@L["Home.Page.Heading"]</h1>
 <p>@L["Home.Page.Intro"]</p>
 <p><a href="system/components">@L["Home.Page.ComponentGallery"]</a></p>
-@if (Plugins.Problems.Count > 0)
+@if (Plugins.Catalog.Problems.Count > 0)
 {
     <p class="shell-notice"><CmsIcon Name="CmsIconName.Warning" /><a href="system/plugins">@L["Home.Page.PluginProblems"]</a></p>
+}
+@{
+    var types = ShellNavigation.ReadableTypes(Context);
+    var widgets = Plugins.Widgets();
+    var view = $"{Context.Site?.Id:D}/{Context.ContentLocale}";
+}
+@if (types.Count == 0 && widgets.Count == 0)
+{
+    <p>@L["Home.Page.Empty"]</p>
+}
+else
+{
+    <div class="home-tiles">
+        @if (types.Count > 0)
+        {
+            <div @key="view" class="home-tile home-tile-medium">
+                <CmsCard Title="@L["Home.Content.Heading"]">
+                    <ul class="home-types">
+                        @foreach (var type in types)
+                        {
+                            <li @key="type.Name"><a href="@ShellNavigation.ContentRoute(type.Name)">@AdminLabels.Type(type, L)</a></li>
+                        }
+                    </ul>
+                </CmsCard>
+            </div>
+        }
+        @foreach (var widget in widgets)
+        {
+            <div @key="(view, widget.Half.Name, widget.Position)" class="@($"home-tile {SizeClass(widget.Widget.Size)}")">
+                <PluginWidgetTile Half="widget.Half" Widget="widget.Widget" />
+            </div>
+        }
+    </div>
+}
+
+@code {
+    protected override void OnInitialized() => Context.Changed += OnChanged;
+
+    public void Dispose() => Context.Changed -= OnChanged;
+
+    private static string SizeClass(WidgetSize size) => size switch
+    {
+        WidgetSize.Medium => "home-tile-medium",
+        WidgetSize.Wide => "home-tile-wide",
+        _ => "home-tile-small",
+    };
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
 }

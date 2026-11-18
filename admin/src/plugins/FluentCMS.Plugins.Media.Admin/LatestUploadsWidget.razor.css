@@ -1,0 +1,5 @@
+.latest-uploads {
+    margin: 0;
+    padding-inline-start: var(--cms-space-l);
+    overflow-wrap: anywhere;
+}

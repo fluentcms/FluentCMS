@@ -1,0 +1,5 @@
+@* A component that injects a service the half registers in Configure, which only the half's provider gives, so the renderer
+   cannot create it. The home page's tests name it as a widget in a manifest of their own; it declares none. *@
+@inject ReviewsApi Api
+
+<p>@Api.Approved</p>

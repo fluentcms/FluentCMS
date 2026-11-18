@@ -1,0 +1,85 @@
+@* A dashboard widget of an admin half on the home page (spec 2.6). The home page shows only the widgets the user may see, so
+   the half is loaded when the tile first shows, and never for a widget that is not shown. A half that does not load, or a
+   widget that cannot be created or throws, leaves an error in this tile and nothing else. The widget draws its own title, from the half's
+   resources, which the shell cannot read. *@
+@implements IDisposable
+@using Microsoft.Extensions.Logging
+@inject AdminPlugins Plugins
+@inject IStringLocalizer<AdminResources> L
+@inject ILogger<PluginWidgetTile> Logger
+@inject IServiceProvider Services
+
+@if (failed)
+{
+    @Failure
+}
+else if (type is null)
+{
+    <p class="plugin-widget-loading" role="status">@L["Home.Widget.Loading"]</p>
+}
+else
+{
+    <ErrorBoundary>
+        <ChildContent>@Component</ChildContent>
+        <ErrorContent>@Failure</ErrorContent>
+    </ErrorBoundary>
+}
+
+@code {
+    private readonly CancellationTokenSource cancellation = new();
+
+    private Type? type;
+
+    private bool failed;
+
+    [Parameter, EditorRequired]
+    public AdminPluginManifest Half { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public AdminManifestWidget Widget { get; set; } = null!;
+
+    private RenderFragment Failure => @<CmsCard Title="@L["Home.Widget.Failed.Heading", Half.Name]">
+        <p>@L["Home.Widget.Failed", Half.Name]</p>
+    </CmsCard>;
+
+    private RenderFragment Component => Render;
+
+    [UnconditionalSuppressMessage("Trimming", "IL2077", Justification = "An admin half is loaded lazily and kept whole by the app's partial trimming (spec 2.6).")]
+    private void Render(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+    {
+        builder.OpenComponent(0, type!);
+        builder.CloseComponent();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var loaded = await Plugins.ComponentAsync(Half, Widget.Type, cancellation.Token);
+            if (PluginComponents.Problem(loaded, Services) is { } problem)
+            {
+                PluginLog.WidgetNotCreated(Logger, Half.Name, Widget.Type, problem);
+                failed = true;
+                return;
+            }
+
+            type = loaded;
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+#pragma warning disable CA1031 // Whatever stops the widget from loading, the home page goes on without it.
+        catch (Exception exception)
+#pragma warning restore CA1031
+        {
+            PluginLog.WidgetFailed(Logger, Half.Name, Widget.Type, exception);
+            failed = true;
+        }
+    }
+
+    public void Dispose()
+    {
+        cancellation.Cancel();
+        cancellation.Dispose();
+    }
+}
