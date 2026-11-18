@@ -1,0 +1,51 @@
+@page "/starter-plugin"
+@attribute [AdminPage("/starter-plugin", Permission = StarterAdminPlugin.NotesManage)]
+@attribute [AdminMenuItem("Starter.Menu", Section = AdminSection.Content, Icon = "document", Order = 100)]
+@inject IAdminPluginServices Plugins
+@inject IStringLocalizer<StarterAdminResources> Text
+
+@* A page's route is under /starter-plugin, the plugin's name, and is declared twice: @page for the router and [AdminPage]
+   for the manifest. The menu item links to the page and takes its permission. *@
+<h1>@Text["Starter.Notes.Heading"]</h1>
+
+<CmsCard>
+    @if (failure is not null)
+    {
+        <p role="alert">@failure</p>
+    }
+    else if (notes is null)
+    {
+        <p>@Text["Starter.Notes.Loading"]</p>
+    }
+    else if (notes.Count == 0)
+    {
+        <p>@Text["Starter.Notes.Empty"]</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var note in notes)
+            {
+                <li @key="note.Id">@note.Text</li>
+            }
+        </ul>
+    }
+</CmsCard>
+
+@code {
+    private IReadOnlyList<StarterNote>? notes;
+    private string? failure;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            notes = await Plugins.ProviderOf(GetType()).GetRequiredService<StarterApi>().NotesAsync(CancellationToken.None);
+        }
+        catch (ApiProblemException problem)
+        {
+            // Such as a 403 for a user whose role lost the permission.
+            failure = StarterApi.Describe(problem) ?? Text["Starter.Notes.Failed"];
+        }
+    }
+}

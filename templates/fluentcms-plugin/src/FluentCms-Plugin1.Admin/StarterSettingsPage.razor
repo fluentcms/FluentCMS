@@ -1,0 +1,76 @@
+@attribute [SettingsPage(StarterAdminPlugin.Name)]
+@inject IAdminPluginServices Plugins
+@inject IStringLocalizer<StarterAdminResources> Text
+
+@* Replaces the generated settings page of the area starter-plugin, which the server half registers. *@
+<h1>@Text["Starter.Settings.Heading"]</h1>
+
+@if (failure is not null)
+{
+    <p role="alert">@failure</p>
+}
+else if (maxNotes is not null)
+{
+    <form @onsubmit="SaveAsync">
+        <CmsStack>
+            <CmsNumberInput Label="@Text["Starter.Settings.MaxNotes"]" @bind-Value="maxNotes" WholeNumbers="true" AllowNegative="false" Required="true" Error="@error" />
+            <CmsButton Submit="true" Appearance="CmsButtonAppearance.Primary" Disabled="saving">@Text["Starter.Settings.Save"]</CmsButton>
+            @if (saved)
+            {
+                <p role="status">@Text["Starter.Settings.Saved"]</p>
+            }
+        </CmsStack>
+    </form>
+}
+
+@code {
+    private decimal? maxNotes;
+    private string? version;
+    private string? error;
+    private string? failure;
+    private bool saving;
+    private bool saved;
+
+    private StarterApi Api => Plugins.ProviderOf(GetType()).GetRequiredService<StarterApi>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var read = await Api.SettingsAsync(CancellationToken.None);
+            (maxNotes, version) = (read.Value.MaxNotes, read.Version);
+        }
+        catch (ApiProblemException problem)
+        {
+            failure = StarterApi.Describe(problem) ?? Text["Starter.Settings.Failed"];
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        saved = false;
+        // The range of StarterSettings.MaxNotes; the server checks it too.
+        if (maxNotes is not (>= 1 and <= 10000))
+        {
+            error = Text["Starter.Settings.Range"];
+            return;
+        }
+
+        saving = true;
+        error = null;
+        try
+        {
+            var read = await Api.SaveSettingsAsync(new StarterSettingsValue((int)maxNotes.Value), version, CancellationToken.None);
+            (maxNotes, version, saved) = (read.Value.MaxNotes, read.Version, true);
+        }
+        catch (ApiProblemException problem)
+        {
+            // Such as a version another user saved first.
+            error = StarterApi.Describe(problem) ?? Text["Starter.Settings.Failed"];
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}
