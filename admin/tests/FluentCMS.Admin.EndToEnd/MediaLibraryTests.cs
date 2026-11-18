@@ -168,7 +168,8 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
         await Expect(TreeItem(tab, folder)).ToHaveCountAsync(1);
         await FocusReturnedAsync(MediaButton(tab, "Media.Folder.New"));
 
-        // Opened from the tree by Enter on its item.
+        // Opened from the tree by Enter on its item, once the tree's focus group has made it focusable.
+        await Expect(TreeItem(tab, folder)).ToHaveAttributeAsync("tabindex", new Regex("^-?[0-9]+$"));
         await PressAsync(TreeItem(tab, folder), "Enter");
         await Expect(tab.Page).ToHaveURLAsync(new Regex($"folder={folder:D}"));
 
@@ -200,7 +201,9 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
         await FocusReturnedAsync(MediaButton(tab, "Media.Folder.Delete"));
 
         // The file is selected by Space and moved to the root, and the empty folder goes.
-        await PressAsync(Content(tab).GetByLabel(Text("Media.Asset.Select", $"{mark}-keys.png"), new LocatorGetByLabelOptions { Exact = true }), "Space");
+        var check = Content(tab).GetByLabel(Text("Media.Asset.Select", $"{mark}-keys.png"), new LocatorGetByLabelOptions { Exact = true });
+        await PressAsync(check, "Space");
+        await Expect(check).ToBeCheckedAsync();
         await PressAsync(MediaButton(tab, "Media.Move.Assets", "1"), "Enter");
         await tab.Page.GetByLabel(Text("Media.Move.Target"), new PageGetByLabelOptions { Exact = true }).FocusAsync();
         await keyboard.PressAsync("ArrowDown");
@@ -214,13 +217,20 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
-    // A dialog of the library gives focus back to its opener on a timer once it has closed; the next key waits for it.
-    private static Task FocusReturnedAsync(ILocator opener) => Expect(opener).ToBeFocusedAsync();
+    // A dialog gives focus back to its opener as it closes, and the component library does it again 25 ms later
+    // (FocusOnPreviousActiveElement), which would take it from the next control; the admin waits 100 ms for the same reason
+    // (DocumentInterop.DialogFocusDelay).
+    private static async Task FocusReturnedAsync(ILocator opener)
+    {
+        await Expect(opener).ToBeFocusedAsync();
+        await opener.Page.WaitForTimeoutAsync(150);
+    }
 
     // Focus as Tab would give it, then a key: no pointer is used.
     private static async Task PressAsync(ILocator target, string key)
     {
         await target.FocusAsync();
+        await Expect(target).ToBeFocusedAsync();
         await target.Page.Keyboard.PressAsync(key);
     }
 
