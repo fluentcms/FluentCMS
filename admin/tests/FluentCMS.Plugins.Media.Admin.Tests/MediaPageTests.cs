@@ -178,7 +178,7 @@ public sealed class MediaPageTests : MediaTestContext
     }
 
     [Fact]
-    public void OpeningAnAssetShowsItsTitleTypeAndSizeInThePanel()
+    public void OpeningAnAssetShowsItsDetail()
     {
         Library.AddAsset("logo.png", title: "Company logo");
         var cut = Render<MediaPage>();
@@ -187,8 +187,9 @@ public sealed class MediaPageTests : MediaTestContext
         cut.Find(".media-tile-open").Click();
 
         cut.WaitForAssertion(() => cut.FindComponent<MediaAssetPanel>().Instance.Open.ShouldBeTrue());
+        cut.WaitForAssertion(() => Field(cut, "Title").GetAttribute("value").ShouldBe("Company logo"));
         var facts = cut.Find(".media-panel-facts").TextContent;
-        facts.ShouldContain("Company logo");
+        facts.ShouldContain("logo.png");
         facts.ShouldContain("image/png");
         facts.ShouldContain("2 KB");
     }

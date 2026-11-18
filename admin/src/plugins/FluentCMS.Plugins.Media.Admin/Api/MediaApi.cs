@@ -47,14 +47,15 @@ internal sealed class MediaApi(IManagementApi api)
     }
 
     // Saves changes of the metadata in the locale the asset was read in, and answers the asset as it is after them. The
-    // server keeps no version of an asset and takes no If-Match on it, so the asset is read right before the save: when it
-    // changed since basis was read, the save is not sent and MediaConflictException holds the asset as it is now.
+    // server keeps no version of an asset and takes no If-Match on it, so the asset is read right before the save: when its
+    // time of change or its metadata differ from basis, the save is not sent and MediaConflictException holds the asset as
+    // it is now. A change made between that read and the save is not seen.
     public async Task<MediaAssetInfo> UpdateAsync(MediaAssetInfo basis, JsonObject changes, bool overwrite, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(basis);
         ArgumentNullException.ThrowIfNull(changes);
         var current = await GetAsync(basis.Id, basis.Locale, cancellationToken);
-        if (!overwrite && !SameVersion(basis.UpdatedAt, current.UpdatedAt))
+        if (!overwrite && (!SameTime(basis.UpdatedAt, current.UpdatedAt) || !SameMetadata(basis, current)))
         {
             throw new MediaConflictException(current);
         }
@@ -73,8 +74,9 @@ internal sealed class MediaApi(IManagementApi api)
         return await GetAsync(asset, locale, cancellationToken);
     }
 
-    public Task DeleteAsync(Guid asset, CancellationToken cancellationToken) =>
-        api.SendAsync(new ApiRequest(HttpMethod.Delete, $"media/{asset:D}"), cancellationToken);
+    // With force, the asset is taken out of the entries that use it (FCMS1594 without).
+    public Task DeleteAsync(Guid asset, bool force, CancellationToken cancellationToken) =>
+        api.SendAsync(new ApiRequest(HttpMethod.Delete, force ? $"media/{asset:D}?force=true" : $"media/{asset:D}"), cancellationToken);
 
     public async Task<IReadOnlyList<MediaUsageInfo>> UsageAsync(Guid asset, CancellationToken cancellationToken) =>
         (await api.SendAsync(new ApiRequest(HttpMethod.Get, $"media/{asset:D}/usage"), MediaJsonContext.Default.ItemListMediaUsageInfo, cancellationToken)).Value.Items;
@@ -119,9 +121,13 @@ internal sealed class MediaApi(IManagementApi api)
     }
 
     // The server writes the time of a change at the precision of its database, which may be coarser than its answer to the
-    // change, so two times within a millisecond are the same version.
-    private static bool SameVersion(DateTimeOffset? basis, DateTimeOffset? current) =>
+    // change, so two times within a millisecond are the same; the metadata catches two changes within one.
+    private static bool SameTime(DateTimeOffset? basis, DateTimeOffset? current) =>
         basis is null || current is null || (basis.Value - current.Value).Duration() < TimeSpan.FromMilliseconds(1);
+
+    private static bool SameMetadata(MediaAssetInfo basis, MediaAssetInfo current) =>
+        basis.Title == current.Title && basis.Alt == current.Alt && basis.Caption == current.Caption && basis.Credit == current.Credit
+        && basis.Tags.SequenceEqual(current.Tags) && basis.FocalPoint == current.FocalPoint && basis.IsPrivate == current.IsPrivate;
 
     private static MediaAssetInfo Merge(MediaAssetInfo current, MediaAssetChanged changed) => current with
     {
