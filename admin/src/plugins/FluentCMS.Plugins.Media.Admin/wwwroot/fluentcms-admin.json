@@ -5,7 +5,8 @@
   "adminRange": "[1.0.0,2.0.0)",
   "assembly": "FluentCMS.Plugins.Media.Admin",
   "pages": [
-    { "type": "FluentCMS.Plugins.Media.Admin.MediaPage", "route": "/media", "permission": "media.read" }
+    { "type": "FluentCMS.Plugins.Media.Admin.MediaPage", "route": "/media", "permission": "media.read" },
+    { "type": "FluentCMS.Plugins.Media.Admin.MediaPresetsPage", "route": "/media/presets", "permission": "media.presets.manage" }
   ],
   "menuItems": [
     {
@@ -16,6 +17,16 @@
       "section": "media",
       "icon": "image",
       "permission": "media.read"
+    },
+    {
+      "type": "FluentCMS.Plugins.Media.Admin.MediaPresetsPage",
+      "label": "Media.Presets.Menu",
+      "labels": { "en": "Image presets" },
+      "route": "/media/presets",
+      "section": "media",
+      "icon": "settings",
+      "order": 1,
+      "permission": "media.presets.manage"
     }
   ],
   "fieldEditors": [

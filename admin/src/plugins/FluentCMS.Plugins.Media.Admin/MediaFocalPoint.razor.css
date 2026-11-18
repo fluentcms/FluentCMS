@@ -1,9 +1,18 @@
+.media-focal-frame {
+    max-inline-size: 100%;
+    overflow-x: auto;
+}
+
 .media-focal-image {
     position: relative;
+    flex: none;
 }
 
 .media-focal-image img {
     display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    max-inline-size: none;
 }
 
 .media-focal-pick {

@@ -1,0 +1,17 @@
+.media-presets-error {
+    color: var(--cms-color-error);
+}
+
+.media-presets-table {
+    border-collapse: collapse;
+    margin-block-end: var(--cms-space-l);
+}
+
+.media-presets-table :is(th, td) {
+    padding: var(--cms-space-xs) var(--cms-space-s);
+    text-align: start;
+}
+
+.media-presets-form {
+    max-inline-size: 32rem;
+}

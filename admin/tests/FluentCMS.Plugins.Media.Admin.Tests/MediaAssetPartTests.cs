@@ -85,6 +85,25 @@ public sealed class MediaAssetPartTests : MediaTestContext
         changed!.Title.ShouldBe("Their title");
         changed.Alt.ShouldBeNull();
         Patches.ShouldBe(0);
+
+        // Given the asset it raised, the part shows the other change and has nothing left to save.
+        cut.Render(parameters => parameters.Add(part => part.Asset, changed));
+        Field(cut, "Alt text").GetAttribute("value").ShouldBeNull();
+        Field(cut, "Alt text").Blur();
+        Patches.ShouldBe(0);
+    }
+
+    [Fact]
+    public void TheSlidersAndTheImageRunLeftToRightInARightToLeftPage()
+    {
+        var id = Library.AddAsset("beach.png");
+
+        var cut = Render<MediaFocalPoint>(parameters => parameters.Add(part => part.Asset, Read(id)));
+
+        cut.Find(".media-focal-frame").GetAttribute("dir").ShouldBe("ltr");
+        cut.FindAll(".media-focal-sliders input").ShouldAllBe(input => input.GetAttribute("dir") == "ltr");
+        cut.FindAll(".media-focal-sliders input")[0].Change("80");
+        cut.Find(".media-focal-marker").GetAttribute("style").ShouldBe("left:80%;top:50%");
     }
 
     [Fact]

@@ -143,6 +143,24 @@ public sealed class MediaFieldEditorTests : MediaTestContext
     }
 
     [Fact]
+    public void TheAltTextAndFocalPointOfOneAssetSavedTogetherDoNotConflict()
+    {
+        Admin.Grant(MediaPermissions.Update);
+        var hero = Library.AddAsset("hero.png");
+        var cut = Edit(Field(), JsonValue.Create(hero.ToString("D")));
+        cut.WaitForAssertion(() => cut.FindAll(".media-field-toggle").Count.ShouldBe(1));
+        cut.Find(".media-field-toggle").Click();
+
+        Field(cut, "Alt text").Input("A hero");
+        Field(cut, "Alt text").Blur();
+        cut.Find(".media-focal-image img").Click(new MouseEventArgs { OffsetX = 80, OffsetY = 180 });
+
+        cut.WaitForAssertion(() => Library.Asset(hero)["focalPoint"]!.ToJsonString().ShouldBe("""{"x":0.25,"y":0.75}"""));
+        cut.WaitForAssertion(() => Library.Text(hero, "en", "alt").ShouldBe("A hero"));
+        cut.FindAll(".media-save-conflict").ShouldBeEmpty();
+    }
+
+    [Fact]
     public void WithoutMediaUpdateTheAltTextIsShownReadOnly()
     {
         var hero = Library.AddAsset("hero.png");

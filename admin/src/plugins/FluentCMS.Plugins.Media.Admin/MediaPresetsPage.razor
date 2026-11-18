@@ -1,0 +1,244 @@
+@* The image presets of the site (spec 4.14), for a caller with media.presets.manage: each a named set of transform
+   parameters that a URL applies with preset=. A preset is added or changed with PUT /media/presets/{name}, which replaces
+   it whole, and deleted after a confirmation. *@
+@page "/media/presets"
+@attribute [AdminPage("/media/presets", Permission = "media.presets.manage")]
+@attribute [AdminMenuItem("Media.Presets.Menu", Section = AdminSection.Media, Icon = "settings", Order = 1)]
+@inject IManagementApi Api
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<MediaResources> L
+
+<div class="media-presets">
+    <h1 tabindex="-1">@L["Media.Presets.Heading"]</h1>
+    <p>@L["Media.Presets.Intro"]</p>
+
+    @if (problem is { } failure)
+    {
+        <p class="media-presets-error" role="alert">@failure</p>
+    }
+
+    @if (presets is null)
+    {
+        <p>@L["Media.Presets.Loading"]</p>
+    }
+    else if (presets.Count == 0)
+    {
+        <p>@L["Media.Presets.None"]</p>
+    }
+    else
+    {
+        <table class="media-presets-table">
+            <caption class="cms-visually-hidden">@L["Media.Presets.Heading"]</caption>
+            <thead>
+                <tr>
+                    <th scope="col">@L["Media.Presets.Name"]</th>
+                    <th scope="col">@L["Media.Presets.Parameters"]</th>
+                    <th scope="col"><span class="cms-visually-hidden">@L["Media.Presets.Actions"]</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var preset in presets)
+                {
+                    <tr>
+                        <th scope="row">@preset.Name</th>
+                        <td>@Describe(preset.Options)</td>
+                        <td>
+                            <CmsButton Icon="CmsIconName.Edit" Label="@L["Media.Presets.Edit", preset.Name]" OnClick="@(() => Edit(preset))" />
+                            <CmsButton Icon="CmsIconName.Delete" Label="@L["Media.Presets.Delete", preset.Name]" OnClick="@(() => StartDelete(preset.Name))" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <form class="media-presets-form" @onsubmit="SaveAsync">
+        <h2>@L[editing ? "Media.Presets.ChangeHeading" : "Media.Presets.AddHeading"]</h2>
+        <CmsTextInput Label="@L["Media.Presets.Name"]" Help="@L["Media.Presets.NameHelp"]" Value="@name" ValueChanged="@(value => name = value)" ReadOnly="@editing" Required="true" Error="@ErrorOf("name")" />
+        <CmsNumberInput Label="@L["Media.Presets.Width"]" Value="@width" ValueChanged="@(value => width = value)" WholeNumbers="true" AllowNegative="false" Error="@ErrorOf("width")" />
+        <CmsNumberInput Label="@L["Media.Presets.Height"]" Value="@height" ValueChanged="@(value => height = value)" WholeNumbers="true" AllowNegative="false" Error="@ErrorOf("height")" />
+        <CmsSelect Label="@L["Media.Presets.Fit"]" Options="@Fits" Value="@fit" ValueChanged="@(value => fit = value)" Clearable="true" Error="@ErrorOf("fit")" />
+        <CmsNumberInput Label="@L["Media.Presets.Quality"]" Help="@L["Media.Presets.QualityHelp"]" Value="@quality" ValueChanged="@(value => quality = value)" WholeNumbers="true" AllowNegative="false" Error="@ErrorOf("quality")" />
+        <CmsSelect Label="@L["Media.Presets.Format"]" Options="@Formats" Value="@format" ValueChanged="@(value => format = value)" Clearable="true" Error="@ErrorOf("format")" />
+        @if (formError is { } error)
+        {
+            <p class="media-presets-error" role="alert">@error</p>
+        }
+        <div class="media-presets-buttons">
+            <CmsButton Appearance="CmsButtonAppearance.Primary" Submit="true" Disabled="@(busy || string.IsNullOrWhiteSpace(name))">@L[editing ? "Media.Presets.SaveChange" : "Media.Presets.Add"]</CmsButton>
+            @if (editing)
+            {
+                <CmsButton OnClick="Reset">@L["Media.Dialog.Cancel"]</CmsButton>
+            }
+        </div>
+    </form>
+</div>
+
+<CmsDialog Title="@L["Media.Presets.DeleteTitle"]" Open="@(deleting is not null)" OpenChanged="@(open => { if (!open) deleting = null; })">
+    <ChildContent>
+        <p>@L["Media.Presets.DeleteText", deleting ?? ""]</p>
+        @if (dialogError is { } error)
+        {
+            <p class="media-presets-error" role="alert">@error</p>
+        }
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="DeleteAsync">@L["Media.Presets.DeleteConfirm"]</CmsButton>
+        <CmsButton OnClick="@(() => deleting = null)">@L["Media.Dialog.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+@code {
+    private IReadOnlyList<MediaPresetInfo>? presets;
+    private string? problem;
+    private bool editing;
+    private string? name;
+    private decimal? width;
+    private decimal? height;
+    private string? fit;
+    private decimal? quality;
+    private string? format;
+    private IReadOnlyList<ApiProblemError> errors = [];
+    private string? formError;
+    private string? deleting;
+    private string? dialogError;
+    private bool busy;
+
+    private MediaApi Media => new(Api);
+
+    private IReadOnlyList<CmsOption> Fits =>
+        [.. new[] { "contain", "cover", "fill" }.Select(value => new CmsOption(value, L[$"Media.Presets.Fit.{value}"]))];
+
+    private IReadOnlyList<CmsOption> Formats =>
+        [.. new[] { "auto", "webp", "avif", "jpeg", "png" }.Select(value => new CmsOption(value, L[$"Media.Presets.Format.{value}"]))];
+
+    protected override Task OnInitializedAsync() => ReadAsync();
+
+    private async Task ReadAsync()
+    {
+        try
+        {
+            presets = await Media.PresetsAsync(CancellationToken.None);
+            problem = null;
+        }
+        catch (ApiProblemException failure)
+        {
+            problem = MediaRefusal.Text(failure.Problem, L);
+        }
+        catch (Exception failure) when (failure is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            problem = L["Media.Dialog.Failed"];
+        }
+    }
+
+    private string Describe(MediaPresetOptions options)
+    {
+        List<string> parts = [];
+        if (options.Width is not null || options.Height is not null)
+        {
+            parts.Add($"{options.Width?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? "–"} × {options.Height?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? "–"}");
+        }
+
+        if (options.Fit is { } chosenFit)
+        {
+            parts.Add(L[$"Media.Presets.Fit.{chosenFit}"]);
+        }
+
+        if (options.Quality is { } chosenQuality)
+        {
+            parts.Add(L["Media.Presets.QualityValue", chosenQuality]);
+        }
+
+        if (options.Format is { } chosenFormat)
+        {
+            parts.Add(L[$"Media.Presets.Format.{chosenFormat}"]);
+        }
+
+        return string.Join(", ", parts);
+    }
+
+    private string? ErrorOf(string path) => errors.FirstOrDefault(error => string.Equals(error.Path, path, StringComparison.OrdinalIgnoreCase))?.Message;
+
+    private void Edit(MediaPresetInfo preset)
+    {
+        (editing, name, errors, formError) = (true, preset.Name, [], null);
+        (width, height, quality) = (preset.Options.Width, preset.Options.Height, preset.Options.Quality);
+        (fit, format) = (preset.Options.Fit, preset.Options.Format);
+    }
+
+    private void Reset()
+    {
+        (editing, name, width, height, fit, quality, format, errors, formError) = (false, null, null, null, null, null, null, [], null);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (busy || MediaBrowseState.Text(name) is not { } preset)
+        {
+            return;
+        }
+
+        // A PUT replaces a preset of the same name, so an add with a name taken is refused here.
+        if (!editing && presets?.Any(item => item.Name == preset) == true)
+        {
+            (errors, formError) = ([new ApiProblemError { Path = "name", Message = L["Media.Presets.NameTaken", preset] }], null);
+            return;
+        }
+
+        (busy, errors, formError) = (true, [], null);
+        try
+        {
+            var options = new MediaPresetOptions { Width = Whole(width), Height = Whole(height), Fit = fit, Quality = Whole(quality), Format = format };
+            await Media.SetPresetAsync(preset, options, CancellationToken.None);
+            Announcer.Announce(L[editing ? "Media.Presets.Changed" : "Media.Presets.Added", preset]);
+            Reset();
+            await ReadAsync();
+        }
+        catch (ApiProblemException failure)
+        {
+            errors = failure.Problem.Errors ?? [];
+            formError = errors.Any(error => error.Path is "name" or "width" or "height" or "fit" or "quality" or "format") ? null : MediaRefusal.Text(failure.Problem, L);
+        }
+        catch (Exception failure) when (failure is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            formError = L["Media.Dialog.Failed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private static int? Whole(decimal? value) => value is { } number ? (int)Math.Clamp(number, 0, int.MaxValue) : null;
+
+    private void StartDelete(string preset) => (deleting, dialogError) = (preset, null);
+
+    private async Task DeleteAsync()
+    {
+        if (busy || deleting is not { } preset)
+        {
+            return;
+        }
+
+        (busy, dialogError) = (true, null);
+        try
+        {
+            await Media.DeletePresetAsync(preset, CancellationToken.None);
+            deleting = null;
+            Announcer.Announce(L["Media.Presets.Deleted", preset]);
+            await ReadAsync();
+        }
+        catch (ApiProblemException failure)
+        {
+            dialogError = MediaRefusal.Text(failure.Problem, L);
+        }
+        catch (Exception failure) when (failure is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            dialogError = L["Media.Dialog.Failed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

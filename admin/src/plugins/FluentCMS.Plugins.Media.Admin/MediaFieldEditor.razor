@@ -70,9 +70,12 @@
                     </div>
                     @if (expanded == position && assets.GetValueOrDefault(id) is { } asset)
                     {
-                        <div class="media-field-details">
-                            <MediaAltText Asset="@asset" ReadOnly="@(!MayUpdate)" OnChanged="@(changed => assets[id] = changed)" />
-                            <MediaFocalPoint Asset="@asset" ReadOnly="@(!MayUpdate)" OnChanged="@(changed => assets[id] = changed)" />
+                        @* One gate per asset, so that its two parts save one after another, each on the answer before. *@
+                        <div @key="id" class="media-field-details">
+                            <CascadingValue Value="@GateOf(id)" IsFixed="true">
+                                <MediaAltText Asset="@asset" ReadOnly="@(!MayUpdate)" OnChanged="@(changed => assets[id] = changed)" />
+                                <MediaFocalPoint Asset="@asset" ReadOnly="@(!MayUpdate)" OnChanged="@(changed => assets[id] = changed)" />
+                            </CascadingValue>
                         </div>
                     }
                 </li>
@@ -111,6 +114,7 @@
     private readonly Dictionary<int, CmsButton> removeButtons = [];
     private readonly CancellationTokenSource disposed = new();
     private Dictionary<Guid, MediaAssetInfo> assets = [];
+    private readonly Dictionary<Guid, MediaSaveGate> gates = [];
     private HashSet<Guid> asked = [];
     private string? assetsLocale;
     private ElementReference group;
@@ -203,6 +207,8 @@
             }
         }
     }
+
+    private MediaSaveGate GateOf(Guid id) => gates.TryGetValue(id, out var gate) ? gate : gates[id] = new MediaSaveGate();
 
     private string NameOf(Guid id) => assets.GetValueOrDefault(id)?.Name ?? id.ToString("D");
 

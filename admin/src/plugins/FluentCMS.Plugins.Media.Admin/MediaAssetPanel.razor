@@ -1,32 +1,155 @@
-@* The detail of an asset, opened from the library. A-50 (#3291) fills it with the metadata, focal point, usage, replace,
-   download, move and delete; until then it shows the title, the type and the size. *@
+@* The detail of an asset, opened from the library (spec 4.14): its metadata in a locale of the site, its alt text and focal
+   point, the entries that use it, and replace, download, move and delete. Each change shows only for a caller who holds its
+   media.* permission; the server checks every call. The saves of the parts and the actions go one at a time through a
+   MediaSaveGate, and an answer about an asset the panel no longer shows changes nothing in it. *@
+@inject IManagementApi Api
+@inject IAdminContext Context
+@inject IAnnouncer Announcer
 @inject AdminConfiguration Configuration
+@inject NavigationManager Navigation
 @inject IStringLocalizer<MediaResources> L
 
-<CmsDrawer Title="@(Asset?.Name ?? L["Media.Panel.Title"].Value)" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : OnClose.InvokeAsync())">
-    <ChildContent>
-        @if (Asset is { } asset)
-        {
-            @if (asset.Urls.Thumbnail is { Length: > 0 } thumbnail)
+<CascadingValue Value="@gate" IsFixed="true">
+    <CmsDrawer Title="@((asset ?? Asset)?.Name ?? L["Media.Panel.Title"].Value)" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : OnClose.InvokeAsync())">
+        <ChildContent>
+            @if (problem is { } failure)
             {
-                <img class="media-panel-image" src="@MediaFormat.Resolve(Configuration.ApiBaseUrl, thumbnail)" alt="@(asset.Alt ?? "")" />
+                <p class="media-panel-error" role="alert">@failure</p>
             }
-            <dl class="media-panel-facts">
-                <dt>@L["Media.Panel.Name"]</dt>
-                <dd>@asset.Name</dd>
-                <dt>@L["Media.Column.Type"]</dt>
-                <dd>@asset.MimeType</dd>
-                <dt>@L["Media.Column.Size"]</dt>
-                <dd>@MediaFormat.Size(asset.Size)</dd>
-            </dl>
-        }
+            @if (asset is { } shown)
+            {
+                @if (Locales.Count > 1)
+                {
+                    <CmsSelect Label="@L["Media.Panel.Locale"]" Options="@Locales" Value="@(askedLocale ?? shown.Locale)" ValueChanged="@ChangeLocaleAsync" />
+                }
+
+                @if (shown.Width is > 0 && shown.Urls.Thumbnail is { Length: > 0 })
+                {
+                    <MediaFocalPoint Asset="@shown" ReadOnly="@(!MayUpdate)" OnChanged="@Changed" />
+                }
+
+                <dl class="media-panel-facts">
+                    <dt>@L["Media.Panel.File"]</dt>
+                    <dd>@shown.FileName</dd>
+                    <dt>@L["Media.Column.Type"]</dt>
+                    <dd>@shown.MimeType</dd>
+                    <dt>@L["Media.Column.Size"]</dt>
+                    <dd>@MediaFormat.Size(shown.Size)</dd>
+                    @if (MediaFormat.Dimensions(shown) is { } dimensions)
+                    {
+                        <dt>@L["Media.Column.Dimensions"]</dt>
+                        <dd>@dimensions</dd>
+                    }
+                </dl>
+
+                @if (shown.MimeType.StartsWith("image/", StringComparison.Ordinal))
+                {
+                    <MediaAltText @ref="altText" Asset="@shown" ReadOnly="@(!MayUpdate)" OnChanged="@Changed" />
+                }
+                <MediaAssetForm @ref="form" Asset="@shown" ReadOnly="@(!MayUpdate)" OnChanged="@SavedAsync" />
+
+                <h3 class="media-panel-heading">@L["Media.Usage.Heading"]</h3>
+                @Usage
+
+                <div class="media-panel-actions">
+                    @if (shown.IsPrivate)
+                    {
+                        <CmsButton Icon="CmsIconName.Open" Disabled="@busy" OnClick="DownloadAsync">@L["Media.Panel.Download"]</CmsButton>
+                    }
+                    else
+                    {
+                        <a class="media-panel-link" href="@MediaFormat.Resolve(Configuration.ApiBaseUrl, shown.Urls.Original)" target="_blank" rel="noopener">@L["Media.Panel.Download"]</a>
+                    }
+                    @if (MayUpdate)
+                    {
+                        <CmsButton Icon="CmsIconName.Folder" Disabled="@busy" OnClick="StartMove">@L["Media.Panel.Move"]</CmsButton>
+                    }
+                    @if (MayDelete)
+                    {
+                        <CmsButton Icon="CmsIconName.Delete" Disabled="@busy" OnClick="StartDelete">@L["Media.Panel.Delete"]</CmsButton>
+                    }
+                </div>
+
+                @if (step == Step.Move)
+                {
+                    <div class="media-panel-step">
+                        <CmsSelect Label="@L["Media.Move.Target"]" Options="@targets" Value="@target" ValueChanged="@(value => target = value)" />
+                        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(busy || target is null)" OnClick="MoveAsync">@L["Media.Move.Save"]</CmsButton>
+                        <CmsButton OnClick="@(() => step = Step.None)">@L["Media.Dialog.Cancel"]</CmsButton>
+                    </div>
+                }
+                else if (step == Step.Delete)
+                {
+                    <div class="media-panel-step" role="group" aria-label="@L["Media.Panel.Delete"]">
+                        @if (usage is null)
+                        {
+                            @Usage
+                        }
+                        else if (rows.Count > 0)
+                        {
+                            <p>@L["Media.Delete.Used", MediaFormat.Number(rows.Count)]</p>
+                            @Usage
+                        }
+                        else
+                        {
+                            <p>@L["Media.Delete.Unused"]</p>
+                        }
+                        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(busy || usage is null)" OnClick="DeleteAsync">@L["Media.Delete.Confirm"]</CmsButton>
+                        <CmsButton OnClick="@(() => step = Step.None)">@L["Media.Dialog.Cancel"]</CmsButton>
+                    </div>
+                }
+
+                @if (actionError is { } error)
+                {
+                    <p class="media-panel-error" role="alert">@error</p>
+                }
+
+                @if (MayUpdate)
+                {
+                    <CmsFileDropZone Label="@L["Media.Panel.Replace"]" Help="@L["Media.Panel.ReplaceHelp"]" Disabled="@busy" OnFilesSelected="ReplaceAsync" />
+                }
+            }
+        </ChildContent>
+        <Actions>
+            <CmsButton OnClick="@OnClose">@L["Media.Panel.Close"]</CmsButton>
+        </Actions>
+    </CmsDrawer>
+</CascadingValue>
+<CmsDialog Title="@L["Media.Locale.Title"]" Open="@(askedLocale is not null)" OpenChanged="@(open => { if (!open) askedLocale = null; })">
+    <ChildContent>
+        <p>@L["Media.Locale.Text"]</p>
     </ChildContent>
     <Actions>
-        <CmsButton OnClick="@OnClose">@L["Media.Panel.Close"]</CmsButton>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="SwitchLocaleAsync">@L["Media.Locale.Confirm"]</CmsButton>
+        <CmsButton OnClick="StayInLocale">@L["Media.Locale.Cancel"]</CmsButton>
     </Actions>
-</CmsDrawer>
+</CmsDialog>
 
 @code {
+    private enum Step
+    {
+        None,
+        Move,
+        Delete,
+    }
+
+    private readonly MediaSaveGate gate = new();
+    private MediaAssetInfo? asset;
+    private Guid? loaded;
+    private IReadOnlyList<MediaUsageInfo>? usage;
+    private IReadOnlyList<MediaUsageRow> rows = [];
+    private string? problem;
+    private string? actionError;
+    private bool busy;
+    private Step step;
+    private IReadOnlyList<CmsOption> targets = [];
+    private string? target;
+    private int reads;
+    private int usageReads;
+    private string? askedLocale;
+    private MediaAltText? altText;
+    private MediaAssetForm? form;
+
     [Parameter]
     public MediaAssetInfo? Asset { get; set; }
 
@@ -35,4 +158,352 @@
 
     [Parameter]
     public EventCallback OnClose { get; set; }
+
+    // The folders of the library, for a move.
+    [Parameter]
+    public IReadOnlyList<MediaFolderInfo> Folders { get; set; } = [];
+
+    // Raised after a change the library shows: the metadata, the file, the folder, or a delete.
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    private MediaApi Media => new(Api);
+
+    private bool MayUpdate => Context.Access.Allows(MediaPermissions.Update);
+
+    private bool MayDelete => Context.Access.Allows(MediaPermissions.Delete);
+
+    private IReadOnlyList<CmsOption> Locales =>
+        [.. (Context.Site?.Locales ?? []).Where(locale => locale.Enabled).OrderBy(locale => locale.Position).Select(locale => new CmsOption(locale.Code, locale.Code))];
+
+    private RenderFragment Usage => @<div class="media-panel-usage">
+        @if (usage is null)
+        {
+            <p>@L["Media.Usage.Loading"]</p>
+        }
+        else if (rows.Count == 0)
+        {
+            <p>@L["Media.Usage.None"]</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var row in rows)
+                {
+                    <li><a href="@row.Href">@row.Label</a> <span class="media-panel-muted">@row.Type · @row.Where</span></li>
+                }
+            </ul>
+        }
+    </div>;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Open && Asset is { } opened && opened.Id != loaded)
+        {
+            (loaded, asset, usage, rows, problem, actionError, step, askedLocale) = (opened.Id, null, null, [], null, null, Step.None, null);
+            var reading = ReadAsync(opened.Id, Context.ContentLocale);
+            await ReadUsageAsync(opened.Id, Context.ContentLocale);
+            await reading;
+        }
+        else if (!Open)
+        {
+            loaded = null;
+        }
+    }
+
+    // Whether an answer about an asset is still about the one the panel shows.
+    private bool Shows(Guid id) => Open && loaded == id;
+
+    // The asset in the locale; a read that a later one overtook, or one of an asset the panel no longer shows, is dropped.
+    private async Task ReadAsync(Guid id, string? locale)
+    {
+        var read = ++reads;
+        try
+        {
+            var found = await Media.GetAsync(id, locale, CancellationToken.None);
+            if (read == reads && Shows(id))
+            {
+                asset = found;
+                StateHasChanged();
+            }
+        }
+        catch (ApiProblemException failure) when (Shows(id))
+        {
+            problem = MediaRefusal.Text(failure.Problem, L);
+        }
+        catch (Exception failure) when (Shows(id) && failure is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            problem = L["Media.Dialog.Failed"];
+        }
+    }
+
+    // The entries that use the asset, read once each time the panel opens it, whatever locale it shows meanwhile.
+    private async Task ReadUsageAsync(Guid id, string? locale)
+    {
+        var read = ++usageReads;
+        try
+        {
+            var used = await Media.UsageAsync(id, CancellationToken.None);
+            var labelled = await MediaUsage.RowsAsync(Media, used, locale, CancellationToken.None);
+            if (read == usageReads && Shows(id))
+            {
+                (usage, rows) = (used, labelled);
+            }
+        }
+        catch (ApiProblemException failure) when (Shows(id))
+        {
+            problem = MediaRefusal.Text(failure.Problem, L);
+        }
+        catch (Exception failure) when (Shows(id) && failure is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            problem = L["Media.Dialog.Failed"];
+        }
+    }
+
+    // A switch loses the text of the asset's locale that is not saved, so the user is asked first, as a form asks before it
+    // is left; a part whose save has not ended counts as not saved. The form keeps the values it holds that are not per
+    // locale. The read of the other locale waits for the saves under way, which end in the locale they were made in.
+    private Task ChangeLocaleAsync(string? locale)
+    {
+        if (asset is not { } shown || locale is null || locale == shown.Locale)
+        {
+            askedLocale = null;
+            return Task.CompletedTask;
+        }
+
+        if (altText?.Dirty == true || form?.LocaleDirty == true)
+        {
+            askedLocale = locale;
+            return Task.CompletedTask;
+        }
+
+        return SwitchToAsync(shown.Id, locale);
+    }
+
+    private Task SwitchLocaleAsync()
+    {
+        var locale = askedLocale;
+        askedLocale = null;
+        return asset is { } shown && locale is not null ? SwitchToAsync(shown.Id, locale) : Task.CompletedTask;
+    }
+
+    private async Task SwitchToAsync(Guid id, string locale)
+    {
+        var leave = await gate.EnterAsync();
+        try
+        {
+            await ReadAsync(id, locale);
+        }
+        finally
+        {
+            leave();
+        }
+    }
+
+    private void StayInLocale() => askedLocale = null;
+
+    // Whether an answer about an asset is about the one the panel shows, in the locale it shows.
+    private bool ShowsInLocale(MediaAssetInfo changed) => Shows(changed.Id) && (asset is null || asset.Locale == changed.Locale);
+
+    private void Changed(MediaAssetInfo changed)
+    {
+        if (ShowsInLocale(changed))
+        {
+            asset = changed;
+        }
+    }
+
+    private async Task SavedAsync(MediaAssetInfo changed)
+    {
+        if (ShowsInLocale(changed))
+        {
+            asset = changed;
+            Announcer.Announce(L["Media.Panel.Saved", changed.Name]);
+        }
+
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task ReplaceAsync(IReadOnlyList<IBrowserFile> files)
+    {
+        if (asset is not { } shown || files is not [var file])
+        {
+            return;
+        }
+
+        if (file.Size > MediaUploadQueue.MaxFileBytes)
+        {
+            actionError = L["Media.Upload.Refused.FCMS1582"];
+            return;
+        }
+
+        await RunAsync(shown.Id, async () =>
+        {
+            MediaUploadBody body;
+            try
+            {
+                body = MediaUploadBody.Create(null, file.Name, file.Size);
+                await using var stream = file.OpenReadStream(MediaUploadQueue.MaxFileBytes);
+                await stream.ReadExactlyAsync(body.File);
+            }
+            catch (Exception failure) when (failure is not OperationCanceledException)
+            {
+                // The browser could not read the file, as one deleted since it was chosen.
+                if (Shows(shown.Id))
+                {
+                    actionError = L["Media.Upload.Failed"];
+                }
+
+                return;
+            }
+
+            var replaced = await Media.ReplaceAsync(shown.Id, body, shown.Locale, CancellationToken.None);
+            gate.Latest = replaced;
+            if (ShowsInLocale(replaced))
+            {
+                asset = replaced;
+                Announcer.Announce(L["Media.Panel.Replaced", replaced.Name]);
+            }
+
+            await OnChanged.InvokeAsync();
+        });
+    }
+
+    private async Task DownloadAsync()
+    {
+        if (asset is not { } shown)
+        {
+            return;
+        }
+
+        await RunAsync(shown.Id, async () =>
+        {
+            var download = await Media.DownloadUrlAsync(shown.Id, CancellationToken.None);
+            // The signed URL answers an attachment, so the browser saves the file and the admin stays where it is.
+            if (Shows(shown.Id))
+            {
+                Navigation.NavigateTo(MediaFormat.Resolve(Configuration.ApiBaseUrl, download.Url), forceLoad: true);
+            }
+        });
+    }
+
+    private void StartMove()
+    {
+        if (asset is not { } shown)
+        {
+            return;
+        }
+
+        targets =
+        [
+            .. shown.FolderId is null ? Array.Empty<CmsOption>() : [new CmsOption(MediaApi.Root, L["Media.Folders.Root"])],
+            .. Folders.Where(folder => folder.Id != shown.FolderId)
+                .Select(folder => new CmsOption(folder.Id.ToString("D"), MediaFolders.Path(Folders, folder.Id)))
+                .OrderBy(option => option.Text, StringComparer.CurrentCultureIgnoreCase),
+        ];
+        (step, target, actionError) = (Step.Move, null, null);
+    }
+
+    private void StartDelete() => (step, actionError) = (Step.Delete, null);
+
+    // A move changes the asset's time of change, so the asset is read again: the next save is based on it. When that read
+    // fails, the move is still done; the asset is kept without its time of change, so the next save compares its metadata
+    // alone (MediaApi.UpdateAsync) instead of reporting the user's own move as a conflict.
+    private async Task MoveAsync()
+    {
+        if (asset is not { } shown || target is null)
+        {
+            return;
+        }
+
+        Guid? destination = Guid.TryParse(target, out var id) ? id : null;
+        await RunAsync(shown.Id, async () =>
+        {
+            await Media.MoveAsync(shown.Id, destination, CancellationToken.None);
+            MediaAssetInfo moved;
+            try
+            {
+                moved = await Media.GetAsync(shown.Id, shown.Locale, CancellationToken.None);
+            }
+            catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+            {
+                moved = shown with { FolderId = destination, UpdatedAt = null };
+            }
+
+            gate.Latest = moved.UpdatedAt is null ? null : moved;
+            if (ShowsInLocale(moved))
+            {
+                (asset, step) = (moved, Step.None);
+            }
+
+            if (Shows(shown.Id))
+            {
+                Announcer.Announce(L["Media.Panel.Moved", shown.Name, destination is { } folder ? MediaFolders.Path(Folders, folder) : L["Media.Folders.Root"]]);
+            }
+
+            await OnChanged.InvokeAsync();
+        });
+    }
+
+    // The entries shown are those the caller may read; removing the asset from them is what the confirmation says.
+    private async Task DeleteAsync()
+    {
+        if (asset is not { } shown)
+        {
+            return;
+        }
+
+        var deleted = false;
+        await RunAsync(shown.Id, async () =>
+        {
+            await Media.DeleteAsync(shown.Id, force: rows.Count > 0, CancellationToken.None);
+            deleted = true;
+            Announcer.Announce(L["Media.Panel.Deleted", shown.Name]);
+        });
+
+        if (deleted)
+        {
+            await OnChanged.InvokeAsync();
+            if (Shows(shown.Id))
+            {
+                await OnClose.InvokeAsync();
+            }
+        }
+    }
+
+    // An action on the asset, after the saves of its parts that are under way. A refusal is shown while the panel still
+    // shows the asset.
+    private async Task RunAsync(Guid id, Func<Task> action)
+    {
+        (busy, actionError) = (true, null);
+        var leave = await gate.EnterAsync();
+        try
+        {
+            await action();
+        }
+        catch (ApiProblemException failure)
+        {
+            if (Shows(id))
+            {
+                actionError = failure.Problem.Code switch
+                {
+                    "FCMS1581" or "FCMS1582" or "FCMS1583" or "FCMS1584" => L[$"Media.Upload.Refused.{failure.Problem.Code}"],
+                    "FCMS1594" => L["Media.Delete.InUse"],
+                    _ => MediaRefusal.Text(failure.Problem, L),
+                };
+            }
+        }
+        catch (Exception failure) when (failure is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            if (Shows(id))
+            {
+                actionError = L["Media.Dialog.Failed"];
+            }
+        }
+        finally
+        {
+            leave();
+            busy = false;
+        }
+    }
 }

@@ -1,6 +1,6 @@
 @* The media library (spec 4.14): MediaBrowser over the folder, view, search, filters and page of the address; upload by
    button, by dropping files on the page and by pasting; the folders created, renamed, moved and deleted; and the selected
-   assets moved to another folder. Opening an asset shows MediaAssetPanel, which A-50 fills. Each action shows only for a
+   assets moved to another folder. Opening an asset shows its detail, MediaAssetPanel. Each action shows only for a
    caller who holds its media.* permission; the server checks every call. *@
 @page "/media"
 @attribute [AdminPage("/media", Permission = "media.read")]
@@ -85,7 +85,7 @@
     </Actions>
 </CmsDialog>
 
-<MediaAssetPanel Asset="@openAsset" Open="@panelOpen" OnClose="@(() => panelOpen = false)" />
+<MediaAssetPanel Asset="@openAsset" Open="@panelOpen" OnClose="@(() => panelOpen = false)" Folders="@Folders" OnChanged="@AssetChangedAsync" />
 
 @code {
     private const string RootValue = "root";
@@ -157,6 +157,8 @@
     }
 
     private void OpenAsset(MediaAssetInfo asset) => (openAsset, panelOpen) = (asset, true);
+
+    private Task AssetChangedAsync() => browser?.ReloadAsync() ?? Task.CompletedTask;
 
     private void StartCreate() => (naming, renaming, folderName, dialogError) = (true, false, null, null);
 
