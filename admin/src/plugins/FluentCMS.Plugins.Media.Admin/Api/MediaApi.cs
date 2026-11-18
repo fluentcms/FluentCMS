@@ -17,6 +17,13 @@ internal sealed class MediaApi(IManagementApi api)
         return answer.Value;
     }
 
+    // The asset with its title and alternative text in the given content locale, or the view's when null.
+    public async Task<MediaAssetInfo> GetAsync(Guid asset, string? locale, CancellationToken cancellationToken)
+    {
+        var answer = await api.SendAsync(new ApiRequest(HttpMethod.Get, $"media/{asset:D}") { Locale = locale }, MediaJsonContext.Default.MediaAssetInfo, cancellationToken);
+        return answer.Value;
+    }
+
     public async Task<IReadOnlyList<MediaFolderInfo>> FoldersAsync(CancellationToken cancellationToken)
     {
         var answer = await api.SendAsync(new ApiRequest(HttpMethod.Get, "media/folders"), MediaJsonContext.Default.ItemListMediaFolderInfo, cancellationToken);

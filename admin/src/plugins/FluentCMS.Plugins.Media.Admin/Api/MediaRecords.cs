@@ -71,7 +71,32 @@ internal sealed record MediaAssetSaved
     public required string FileName { get; init; }
 }
 
+// An asset of a media field as a content read populates it (the media plugin's MediaFieldType), which a list cell shows. Its
+// URLs are those of the Delivery API: none for a private asset, and no thumbnail.
+internal sealed record MediaFieldAsset
+{
+    public required Guid Id { get; init; }
+
+    public string? FileName { get; init; }
+
+    public string? MimeType { get; init; }
+
+    public string? Title { get; init; }
+
+    public MediaFieldUrls? Urls { get; init; }
+
+    [JsonIgnore]
+    public string Name => string.IsNullOrWhiteSpace(Title) ? FileName ?? Id.ToString("D") : Title;
+}
+
+internal sealed record MediaFieldUrls
+{
+    public string? Original { get; init; }
+}
+
 [JsonSourceGenerationOptions(JsonSerializerDefaults.Web)]
+[JsonSerializable(typeof(MediaAssetInfo))]
+[JsonSerializable(typeof(MediaFieldAsset))]
 [JsonSerializable(typeof(MediaAssetPage))]
 [JsonSerializable(typeof(MediaAssetSaved))]
 [JsonSerializable(typeof(ItemList<MediaAssetSaved>))]

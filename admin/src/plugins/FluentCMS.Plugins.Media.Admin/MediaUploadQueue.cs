@@ -41,6 +41,9 @@ internal sealed class MediaUploadQueue(MediaApi api)
 
     public const string TooLarge = "FCMS1582";
 
+    // A file of a type the picker does not take, as a PDF for an image field, refused unread by the admin, not the server.
+    public const string NotAccepted = "NotAccepted";
+
     private readonly List<MediaUploadItem> _items = [];
 
     private bool _running;
@@ -56,14 +59,19 @@ internal sealed class MediaUploadQueue(MediaApi api)
 
     // Adds the files and uploads every waiting one, each into the folder it was added to; changed runs after each state.
     // False when the uploads that were already running take the files.
-    public async Task<bool> AddAsync(IReadOnlyList<IBrowserFile> files, Guid? folder, Func<Task> changed, CancellationToken cancellationToken)
+    // The browser's type of a file comes from its name; the server still finds the type from the bytes.
+    public async Task<bool> AddAsync(IReadOnlyList<IBrowserFile> files, Guid? folder, Func<Task> changed, CancellationToken cancellationToken, IReadOnlyList<string>? accept = null)
     {
         ArgumentNullException.ThrowIfNull(files);
         ArgumentNullException.ThrowIfNull(changed);
         foreach (var file in files)
         {
             var item = new MediaUploadItem(file, folder);
-            if (file.Size > MaxFileBytes)
+            if (!MediaTypes.Accepts(accept, file.ContentType))
+            {
+                (item.State, item.Code, item.File) = (MediaUploadState.Refused, NotAccepted, null);
+            }
+            else if (file.Size > MaxFileBytes)
             {
                 (item.State, item.Code, item.File) = (MediaUploadState.Refused, TooLarge, null);
             }

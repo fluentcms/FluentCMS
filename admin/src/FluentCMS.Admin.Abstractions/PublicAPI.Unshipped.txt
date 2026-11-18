@@ -587,6 +587,8 @@ FluentCMS.Admin.IAdminContext.Changed -> System.Action?
 FluentCMS.Admin.IAdminContext.ContentLocale.get -> string?
 FluentCMS.Admin.IAdminContext.Site.get -> FluentCMS.Admin.Api.MySiteInfo?
 FluentCMS.Admin.IAdminContext.User.get -> FluentCMS.Admin.Api.MeResponse?
+FluentCMS.Admin.IAdminOverlays
+FluentCMS.Admin.IAdminOverlays.Show(Microsoft.AspNetCore.Components.RenderFragment! content) -> System.IDisposable!
 FluentCMS.Admin.IAnnouncer
 FluentCMS.Admin.IAnnouncer.Announce(string! message, FluentCMS.Admin.AnnouncementPoliteness politeness = FluentCMS.Admin.AnnouncementPoliteness.Polite) -> void
 FluentCMS.Admin.Lists.FilterOperand

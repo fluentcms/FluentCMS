@@ -276,4 +276,55 @@
   <data name="Media.Widget.Title" xml:space="preserve">
     <value>Latest uploads</value>
   </data>
+  <data name="Media.Upload.Refused.NotAccepted" xml:space="preserve">
+    <value>Its type is not one this field takes.</value>
+  </data>
+  <data name="Media.Picker.TitleOne" xml:space="preserve">
+    <value>Choose an asset</value>
+  </data>
+  <data name="Media.Picker.TitleMany" xml:space="preserve">
+    <value>Choose assets</value>
+  </data>
+  <data name="Media.Picker.Choose" xml:space="preserve">
+    <value>Choose</value>
+  </data>
+  <data name="Media.Picker.ChosenOne" xml:space="preserve">
+    <value>1 asset chosen</value>
+  </data>
+  <data name="Media.Picker.Chosen" xml:space="preserve">
+    <value>{0} assets chosen</value>
+  </data>
+  <data name="Media.Field.Empty" xml:space="preserve">
+    <value>No asset chosen.</value>
+  </data>
+  <data name="Media.Field.Choose" xml:space="preserve">
+    <value>Choose an asset</value>
+  </data>
+  <data name="Media.Field.ChooseMany" xml:space="preserve">
+    <value>Choose assets</value>
+  </data>
+  <data name="Media.Field.PickerFailed" xml:space="preserve">
+    <value>The media picker could not be opened. Try again.</value>
+  </data>
+  <data name="Media.Field.Remove" xml:space="preserve">
+    <value>Remove {0}</value>
+  </data>
+  <data name="Media.Field.Removed" xml:space="preserve">
+    <value>{0} removed.</value>
+  </data>
+  <data name="Media.Field.MoveUp" xml:space="preserve">
+    <value>Move {0} up</value>
+  </data>
+  <data name="Media.Field.MoveDown" xml:space="preserve">
+    <value>Move {0} down</value>
+  </data>
+  <data name="Media.Field.Moved" xml:space="preserve">
+    <value>{0} moved to position {1} of {2}.</value>
+  </data>
+  <data name="Media.Field.OrderHint" xml:space="preserve">
+    <value>Alt with the up or down arrow moves an asset.</value>
+  </data>
+  <data name="Media.Cell.More" xml:space="preserve">
+    <value>+{0} more</value>
+  </data>
 </root>

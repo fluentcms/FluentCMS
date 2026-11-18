@@ -18,7 +18,16 @@
       "permission": "media.read"
     }
   ],
+  "fieldEditors": [
+    { "type": "FluentCMS.Plugins.Media.Admin.MediaFieldEditor", "fieldType": "media" }
+  ],
+  "listCells": [
+    { "type": "FluentCMS.Plugins.Media.Admin.MediaListCell", "fieldType": "media" }
+  ],
   "widgets": [
     { "type": "FluentCMS.Plugins.Media.Admin.LatestUploadsWidget", "title": "Media.Widget.Title", "size": "small", "permission": "media.read" }
+  ],
+  "services": [
+    { "type": "FluentCMS.Plugins.Media.Admin.MediaPicker", "service": "FluentCMS.Admin.Pickers.IMediaPicker" }
   ]
 }

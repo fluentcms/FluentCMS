@@ -1,0 +1,16 @@
+.media-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cms-space-xs);
+}
+
+.media-cell-thumb img {
+    display: block;
+    inline-size: 2rem;
+    block-size: 2rem;
+    object-fit: cover;
+}
+
+.media-cell-more {
+    color: var(--cms-color-text-muted);
+}

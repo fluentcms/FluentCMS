@@ -1,0 +1,135 @@
+@* The media picker's dialog (spec 5.2): MediaBrowser with its folders, search and filters, held to the types the request
+   takes, and the upload into the open folder for a caller who may upload, which refuses a file of another type. A picker
+   of several keeps the assets in the order they were chosen; activating an asset chooses it in a picker of one and adds or
+   removes it in a picker of several. It answers once the dialog has closed, so focus is back on the opener. *@
+@inject IManagementApi Api
+@inject IAdminContext Context
+@inject IStringLocalizer<MediaResources> L
+
+<CmsDialog Title="@L[Request.Multiple ? "Media.Picker.TitleMany" : "Media.Picker.TitleOne"]" Open="@open" OpenChanged="@(value => open = value)" OnClosed="Closed">
+    <ChildContent>
+        <div class="media-picker">
+            <MediaBrowser @ref="browser"
+                          State="@state"
+                          StateChanged="@(next => state = next)"
+                          SelectionMode="@(Request.Multiple ? CmsSelectionMode.Many : CmsSelectionMode.One)"
+                          Selected="@chosen"
+                          SelectedChanged="Select"
+                          Accept="@Accept"
+                          OnOpen="OpenAsync">
+                <Actions>
+                    @if (Context.Access.Allows(MediaPermissions.Upload))
+                    {
+                        <MediaUpload Folder="@state.Folder" Accept="@Accept" OnUploaded="@(_ => browser!.ReloadAsync())" />
+                    }
+                </Actions>
+            </MediaBrowser>
+            <p class="media-picker-count">@(chosen.Count == 1 ? L["Media.Picker.ChosenOne"] : L["Media.Picker.Chosen", MediaFormat.Number(chosen.Count)])</p>
+        </div>
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(chosen.Count == 0 || busy)" OnClick="ChooseAsync">@L["Media.Picker.Choose"]</CmsButton>
+        <CmsButton OnClick="Cancel">@L["Media.Dialog.Cancel"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+@code {
+    private MediaBrowseState state = MediaBrowseState.Default;
+    private MediaBrowser? browser;
+    private IReadOnlyList<MediaAssetInfo> chosen = [];
+    private IReadOnlyList<MediaPickerItem>? answer;
+    private bool open = true;
+    private bool busy;
+    private bool done;
+
+    [Parameter, EditorRequired]
+    public MediaPickerRequest Request { get; set; } = null!;
+
+    // Raised once, with the chosen assets or null for none, after the dialog has closed.
+    [Parameter, EditorRequired]
+    public Action<IReadOnlyList<MediaPickerItem>?> OnDone { get; set; } = null!;
+
+    private IReadOnlyList<string>? Accept => Request.Accept is { Count: > 0 } accept ? accept : null;
+
+    // The content locale of the request, when it is not the view's; the assets' texts are read in it.
+    private string? Locale => Request.Locale is { } locale && locale != Context.ContentLocale ? locale : null;
+
+    // The assets chosen before, in their order; one that cannot be read, as one deleted since, is left out.
+    protected override async Task OnInitializedAsync()
+    {
+        if (Request.Selected.Count > 0)
+        {
+            chosen = await ReadAsync(Request.Selected.Distinct().ToList(), Request.Locale);
+        }
+    }
+
+    private async Task<IReadOnlyList<MediaAssetInfo>> ReadAsync(IReadOnlyList<Guid> ids, string? locale)
+    {
+        List<MediaAssetInfo> read = [];
+        foreach (var id in ids)
+        {
+            try
+            {
+                read.Add(await new MediaApi(Api).GetAsync(id, locale, CancellationToken.None));
+            }
+            catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+            {
+            }
+        }
+
+        return read;
+    }
+
+    // The browser's selection in the order chosen: those kept stay where they were, and new ones follow.
+    private void Select(IReadOnlyList<MediaAssetInfo> selected) =>
+        chosen = [.. chosen.Where(item => selected.Any(other => other.Id == item.Id)), .. selected.Where(item => chosen.All(other => other.Id != item.Id))];
+
+    private Task OpenAsync(MediaAssetInfo asset)
+    {
+        if (!Request.Multiple)
+        {
+            chosen = [asset];
+            return ChooseAsync();
+        }
+
+        Select(chosen.Any(item => item.Id == asset.Id) ? [.. chosen.Where(item => item.Id != asset.Id)] : [.. chosen, asset]);
+        return Task.CompletedTask;
+    }
+
+    private async Task ChooseAsync()
+    {
+        if (busy || chosen.Count == 0)
+        {
+            return;
+        }
+
+        busy = true;
+        var assets = Locale is { } locale ? await ReadAsync([.. chosen.Select(item => item.Id)], locale) : chosen;
+        busy = false;
+        answer = [.. assets.Select(Item)];
+        open = false;
+    }
+
+    private void Cancel() => (answer, open) = (null, false);
+
+    private void Closed()
+    {
+        if (!done)
+        {
+            done = true;
+            OnDone(answer);
+        }
+    }
+
+    private static MediaPickerItem Item(MediaAssetInfo asset) => new()
+    {
+        Id = asset.Id,
+        FileName = asset.FileName,
+        MimeType = asset.MimeType,
+        Url = asset.Urls.Original,
+        ThumbnailUrl = asset.Urls.Thumbnail,
+        Alt = asset.Alt,
+        Width = asset.Width,
+        Height = asset.Height,
+    };
+}

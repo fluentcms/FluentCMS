@@ -1,0 +1,16 @@
+@* Where IAdminOverlays draws, inside the theme root after the page (spec 5.1). *@
+@implements IDisposable
+@inject AdminOverlays Overlays
+
+@foreach (var overlay in Overlays.Shown)
+{
+    <div @key="overlay">@overlay.Content</div>
+}
+
+@code {
+    protected override void OnInitialized() => Overlays.Changed += OnChanged;
+
+    public void Dispose() => Overlays.Changed -= OnChanged;
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+}

@@ -10,6 +10,7 @@
 <div class="media-upload" data-media-upload>
     <CmsFileDropZone Label="@L["Media.Upload.Label"]"
                      Help="@L[queue.HasUnread ? "Media.Upload.Busy" : "Media.Upload.Help"]"
+                     Accept="@(Accept is { Count: > 0 } types ? string.Join(',', types) : null)"
                      Multiple="true"
                      Disabled="@queue.HasUnread"
                      OnFilesSelected="@AddAsync" />
@@ -52,6 +53,10 @@
     [Parameter]
     public EventCallback<int> OnUploaded { get; set; }
 
+    // The types a picker takes, as for an image field: a file of another type is refused before it is sent.
+    [Parameter]
+    public IReadOnlyList<string>? Accept { get; set; }
+
     protected override void OnInitialized() => queue = new MediaUploadQueue(new MediaApi(Api));
 
     // Files arriving while others upload join them; the one that started the uploads reports for all.
@@ -67,7 +72,7 @@
         bool ran;
         try
         {
-            ran = await queue.AddAsync(files, Folder, () => InvokeAsync(StateHasChanged), stopping.Token);
+            ran = await queue.AddAsync(files, Folder, () => InvokeAsync(StateHasChanged), stopping.Token, Accept);
         }
         catch (OperationCanceledException) when (stopping.IsCancellationRequested)
         {
@@ -94,7 +99,7 @@
 
     private string Reason(MediaUploadItem item) => item.Code switch
     {
-        "FCMS1581" or "FCMS1582" or "FCMS1583" or "FCMS1584" => L[$"Media.Upload.Refused.{item.Code}"],
+        "FCMS1581" or "FCMS1582" or "FCMS1583" or "FCMS1584" or MediaUploadQueue.NotAccepted => L[$"Media.Upload.Refused.{item.Code}"],
         _ => item.Detail is { Length: > 0 } detail ? detail : L["Media.Upload.Failed"],
     };
 }
