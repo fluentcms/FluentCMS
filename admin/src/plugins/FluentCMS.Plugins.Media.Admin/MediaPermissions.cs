@@ -8,4 +8,8 @@ internal static class MediaPermissions
     public const string Update = "media.update";
 
     public const string ManageFolders = "media.folders.manage";
+
+    public const string Delete = "media.delete";
+
+    public const string ManagePresets = "media.presets.manage";
 }

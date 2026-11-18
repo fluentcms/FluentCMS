@@ -1,0 +1,79 @@
+@* The metadata of an asset in the panel: the title, the caption in the locale the asset was read in, the credit, the tags
+   and the private flag, saved together. *@
+@inherits MediaAssetPart
+
+<form class="media-part media-asset-form" @onsubmit="SaveFormAsync">
+    <CmsTextInput Label="@L["Media.Form.Title"]" Value="@title" ValueChanged="@(value => title = value)" ReadOnly="@ReadOnly" MaxLength="256" />
+    <CmsTextArea Label="@L["Media.Form.Caption"]" Value="@caption" ValueChanged="@(value => caption = value)" ReadOnly="@ReadOnly" Lang="@Asset.Locale" MaxLength="2000" Rows="2" />
+    <CmsTextInput Label="@L["Media.Form.Credit"]" Value="@credit" ValueChanged="@(value => credit = value)" ReadOnly="@ReadOnly" MaxLength="256" />
+    <CmsTextInput Label="@L["Media.Form.Tags"]" Help="@L["Media.Form.TagsHelp"]" Value="@tags" ValueChanged="@(value => tags = value)" ReadOnly="@ReadOnly" />
+    <CmsSwitch Label="@L["Media.Form.Private"]" Help="@L["Media.Form.PrivateHelp"]" Value="@isPrivate" ValueChanged="@(value => isPrivate = value)" ReadOnly="@ReadOnly" />
+    @if (!ReadOnly)
+    {
+        <CmsButton Appearance="CmsButtonAppearance.Primary" Submit="true" Disabled="@(Busy || Changes().Count == 0)">@L["Media.Form.Save"]</CmsButton>
+    }
+    <MediaSaveNotice Error="@Error" Conflicted="@Conflicted" OnTakeTheirs="TakeTheirsAsync" OnKeepMine="KeepMineAsync" />
+</form>
+
+@code {
+    private string? title;
+    private string? caption;
+    private string? credit;
+    private string? tags;
+    private bool isPrivate;
+    private MediaAssetInfo? shown;
+
+    // Whether the caption, the one value of the form in the asset's locale, holds text that is not saved, or a save of the
+    // form has not ended.
+    public bool LocaleDirty => !ReadOnly && (Busy || (caption ?? "").Trim() != (Asset.Caption ?? ""));
+
+    // A new asset, or the other change taken, shows its values; another locale of the same asset shows its caption and keeps
+    // the other values the user changed, which are not per locale; the same asset read again replaces only the values the
+    // user left alone.
+    protected override void OnParametersSet()
+    {
+        var other = TakeReset() || shown is null || shown.Id != Asset.Id;
+        var locale = other || shown!.Locale != Asset.Locale;
+        title = other || title == shown!.Title ? Asset.Title : title;
+        caption = locale || caption == shown!.Caption ? Asset.Caption : caption;
+        credit = other || credit == shown!.Credit ? Asset.Credit : credit;
+        tags = other || tags == Join(shown!.Tags) ? Join(Asset.Tags) : tags;
+        isPrivate = other || isPrivate == shown!.IsPrivate ? Asset.IsPrivate : isPrivate;
+        shown = Asset;
+    }
+
+    private static string Join(IReadOnlyList<string> values) => string.Join(", ", values);
+
+    private static IReadOnlyList<string> Split(string? text) =>
+        [.. (text ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.Ordinal)];
+
+    // Only what differs from the asset is sent; an emptied text clears the value.
+    private JsonObject Changes()
+    {
+        var changes = new JsonObject();
+        Text(changes, "title", title, Asset.Title);
+        Text(changes, "caption", caption, Asset.Caption);
+        Text(changes, "credit", credit, Asset.Credit);
+        if (!Split(tags).SequenceEqual(Asset.Tags))
+        {
+            changes["tags"] = new JsonArray([.. Split(tags).Select(tag => (JsonNode)JsonValue.Create(tag))]);
+        }
+
+        if (isPrivate != Asset.IsPrivate)
+        {
+            changes["isPrivate"] = isPrivate;
+        }
+
+        return changes;
+    }
+
+    private static void Text(JsonObject changes, string name, string? value, string? stored)
+    {
+        if ((value ?? "").Trim() != (stored ?? ""))
+        {
+            changes[name] = (value ?? "").Trim();
+        }
+    }
+
+    private Task SaveFormAsync() => Changes() is { Count: > 0 } changes ? SaveAsync(changes) : Task.CompletedTask;
+}

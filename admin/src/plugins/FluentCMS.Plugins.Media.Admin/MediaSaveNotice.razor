@@ -1,0 +1,29 @@
+@* What became of a save of a MediaAssetPart: a refusal, or a conflict with a change made elsewhere since the read. *@
+@inject IStringLocalizer<MediaResources> L
+
+@if (Error is { } error)
+{
+    <p class="media-save-error" role="alert">@error</p>
+}
+else if (Conflicted)
+{
+    <div class="media-save-conflict" role="alert">
+        <p>@L["Media.Conflict.Text"]</p>
+        <CmsButton OnClick="@OnTakeTheirs">@L["Media.Conflict.Theirs"]</CmsButton>
+        <CmsButton OnClick="@OnKeepMine">@L["Media.Conflict.Mine"]</CmsButton>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string? Error { get; set; }
+
+    [Parameter]
+    public bool Conflicted { get; set; }
+
+    [Parameter]
+    public EventCallback OnTakeTheirs { get; set; }
+
+    [Parameter]
+    public EventCallback OnKeepMine { get; set; }
+}
