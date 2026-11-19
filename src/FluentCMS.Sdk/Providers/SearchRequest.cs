@@ -17,4 +17,10 @@ public sealed record SearchRequest(string Type, string Text, int Limit)
 
     /// <summary>The state the query reads.</summary>
     public QueryStatus Status { get; init; }
+
+    /// <summary>
+    /// The searchable fields the caller may read, which alone may match, or <see langword="null"/> when the caller may
+    /// read every one of them. An index that cannot match by field has to refuse a search that names fields.
+    /// </summary>
+    public IReadOnlyList<string>? Fields { get; init; }
 }

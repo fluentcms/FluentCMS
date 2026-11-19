@@ -7,6 +7,7 @@ using FluentCMS.Data.Tests.Migrations;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.Search;
+using FluentCMS.Providers;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
@@ -96,6 +97,22 @@ public sealed class SearchIndexProviderTests : IDisposable
         }
     }
 
+    // The words of a search may be in different fields, but only in the fields the request names when it names them.
+    [Fact]
+    public async Task OnlyTheFieldsTheRequestNamesMatch()
+    {
+        await MigrateAsync();
+        var article = await CreateAsync("Quarterly report", "Merger talks", publish: true);
+        await DrainAsync();
+
+        (await MatchAsync("quarterly merg", fields: null)).ShouldBe([article]);
+        (await MatchAsync("quarterly merg", ["title", "body"])).ShouldBe([article]);
+        (await MatchAsync("quarterly merg", ["title"])).ShouldBeEmpty();
+        (await MatchAsync("merger", ["title"])).ShouldBeEmpty();
+        (await MatchAsync("quart", ["title"])).ShouldBe([article]);
+        (await MatchAsync("quarterly", [])).ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task TheRebuildWritesTheIndexAgainAndASecondRunChangesNothing()
     {
@@ -103,7 +120,7 @@ public sealed class SearchIndexProviderTests : IDisposable
         var article = await CreateAsync("Rebuilt words", "Body", publish: true);
         await DrainAsync();
         var indexed = await RowsAsync();
-        indexed.Count.ShouldBe(2);
+        indexed.Count.ShouldBe(4);
 
         await using (var scope = _host.Services.CreateAsyncScope())
         {
@@ -114,8 +131,8 @@ public sealed class SearchIndexProviderTests : IDisposable
             await database.SaveChangesAsync(Token);
         }
 
-        (await RebuildAsync()).ShouldBe((2, 2));
-        (await RowsAsync()).Select(row => (row.DocumentId, row.Locale, row.State, row.Text)).ShouldBe(indexed.Select(row => (row.DocumentId, row.Locale, row.State, row.Text)), ignoreOrder: true);
+        (await RebuildAsync()).ShouldBe((4, 2));
+        (await RowsAsync()).Select(row => (row.DocumentId, row.Locale, row.State, row.Field, row.Text)).ShouldBe(indexed.Select(row => (row.DocumentId, row.Locale, row.State, row.Field, row.Text)), ignoreOrder: true);
         (await FindAsync("rebuilt")).ShouldBe([article]);
 
         (await RebuildAsync()).ShouldBe((0, 0));
@@ -140,6 +157,13 @@ public sealed class SearchIndexProviderTests : IDisposable
         var page = await content.QueryAsync("article", new ContentQuery { Search = text, Status = status, Locale = "en" }, Token);
         return page.Items.Select(item => (Guid)item["id"]!).ToList();
     });
+
+    private async Task<IReadOnlyList<Guid>> MatchAsync(string text, IReadOnlyList<string>? fields)
+    {
+        using var system = SystemOperation.Begin(_host.Services.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+        var request = new SearchRequest("article", text, 100) { Locale = "en", Site = new SiteId(DefaultSite.Id), Status = QueryStatus.Published, Fields = fields };
+        return await _host.Services.GetRequiredService<ISearchIndex>().SearchAsync(request, Token);
+    }
 
     private async Task<T> AsSystemAsync<T>(Func<IContentService, Task<T>> work)
     {

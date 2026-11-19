@@ -1981,6 +1981,8 @@ FluentCMS.Providers.SearchRequest
 FluentCMS.Providers.SearchRequest.<Clone>$() -> FluentCMS.Providers.SearchRequest!
 FluentCMS.Providers.SearchRequest.Deconstruct(out string! Type, out string! Text, out int Limit) -> void
 FluentCMS.Providers.SearchRequest.Equals(FluentCMS.Providers.SearchRequest? other) -> bool
+FluentCMS.Providers.SearchRequest.Fields.get -> System.Collections.Generic.IReadOnlyList<string!>?
+FluentCMS.Providers.SearchRequest.Fields.init -> void
 FluentCMS.Providers.SearchRequest.Limit.get -> int
 FluentCMS.Providers.SearchRequest.Limit.init -> void
 FluentCMS.Providers.SearchRequest.Locale.get -> string!

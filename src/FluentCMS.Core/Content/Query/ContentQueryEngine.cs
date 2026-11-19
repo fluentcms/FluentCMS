@@ -91,7 +91,8 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     // Asked once the query is known to be valid, so that a refused query costs no search.
     private async Task SearchAsync(CompiledQuery compiled, CancellationToken cancellationToken)
     {
-        if (compiled.Hits is { } hits)
+        // A caller who may read no searchable field matches nothing, whatever the index would find.
+        if (compiled.Hits is { } hits && hits.Request.Fields is not { Count: 0 })
         {
             var ids = await search.SearchAsync(hits.Request, cancellationToken);
             hits.Ids = [.. ids.Take(hits.Request.Limit)];
@@ -246,10 +247,20 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
                 Locale = type.Localized ? scope.Locale : "",
                 Site = type.Scope == ContentScope.Site ? scope.Site : null,
                 Status = query.Status ?? QueryStatus.Published,
+                Fields = ReadableSearchFields(scope, type),
             });
         }
 
         return null;
+    }
+
+    // Like a filter, a search may only look at the fields the caller may read in the locale, or a match would tell what a
+    // field it may not read holds.
+    private static List<string>? ReadableSearchFields(QueryScope scope, SchemaType type)
+    {
+        var searchable = type.Fields.Where(field => field.Searchable && !field.Hidden).ToList();
+        var readable = searchable.Where(field => scope.Access.CanReadField(type, field.Name)).Select(field => field.Name).ToList();
+        return readable.Count == searchable.Count ? null : readable;
     }
 
     private static Expression<Func<QueryRow, bool>> Lambda(Expression body, ParameterExpression row) => Expression.Lambda<Func<QueryRow, bool>>(body, row);

@@ -55,9 +55,9 @@ internal sealed class QueryDatabase : IDisposable
             .Field("name", "text"))
         .AddCollection("article", type => type
             .Localized()
-            .Field("title", "text", field => field.Required().Localizable())
+            .Field("title", "text", field => field.Required().Localizable().Searchable())
             .Field("slug", "slug", field => field.Localizable())
-            .Field("subtitle", "text", field => field.Localizable())
+            .Field("subtitle", "text", field => field.Localizable().Searchable())
             .Field("body", "richText", field => field.Localizable())
             .Field("views", "integer")
             .Field("price", "decimal")

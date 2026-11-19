@@ -4,8 +4,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Plugins.Search;
 
-// One row of the index to write: the folded text of a document in a locale and a state, or null to remove the row.
-internal sealed record SearchRow(Guid DocumentId, string Locale, int State, string Type, Guid? SiteId, string? Text);
+// What the index holds of a document in a locale and a state: the folded text of each searchable field, or null to remove
+// its rows.
+internal sealed record SearchRow(Guid DocumentId, string Locale, int State, string Type, Guid? SiteId, IReadOnlyDictionary<string, string>? Texts);
 
 // The plugin's own table, and the SQL of each provider that matches it: an FTS5 table on SQLite and a GIN index over
 // to_tsvector on PostgreSQL, which the migration of each set adds, and LIKE on SQL Server, which has no full-text catalogue
@@ -16,20 +17,36 @@ internal sealed class SearchStore(PluginDbContext<SearchPlugin> database, TimePr
     private const string PostgreSqlProvider = "Npgsql.EntityFrameworkCore.PostgreSQL";
     private const int DeleteBatch = 500;
 
-    // Every word matches, the last as the start of a word, or on SQL Server every word as a part of the text. The most
-    // recently indexed come first when more match than the limit, as the seam has no ranking.
+    // Every word matches a field of the request, not always the same one, the last word as the start of a word, or on SQL
+    // Server every word as a part of the text. The most recently indexed come first when more match than the limit, as the
+    // seam has no ranking; only the rows of those fields count, so a field the caller may not read decides nothing.
     public async Task<IReadOnlyList<Guid>> MatchAsync(SearchRequest request, IReadOnlyList<string> words, CancellationToken cancellationToken)
     {
         var state = request.Status == QueryStatus.Draft ? SearchStates.Draft : SearchStates.Published;
-        var rows = Matching(words).AsNoTracking().Where(entry => entry.Type == request.Type && entry.Locale == request.Locale && entry.State == state);
-        if (request.Site is { } site)
+        var site = request.Site?.Value;
+        var fields = request.Fields?.ToList();
+        IQueryable<SearchEntry> Of(IQueryable<SearchEntry> rows)
         {
-            var id = site.Value;
-            rows = rows.Where(entry => entry.SiteId == id);
+            rows = rows.Where(entry => entry.Type == request.Type && entry.Locale == request.Locale && entry.State == state);
+            if (site is not null)
+            {
+                rows = rows.Where(entry => entry.SiteId == site);
+            }
+
+            return fields is null ? rows : rows.Where(entry => fields.Contains(entry.Field));
         }
 
-        return await rows.OrderByDescending(entry => entry.UpdatedAt).ThenBy(entry => entry.Id)
-            .Select(entry => entry.DocumentId)
+        var hits = Of(database.Set<SearchEntry>().AsNoTracking());
+        for (var index = 0; index < words.Count; index++)
+        {
+            var matched = Of(Matching(words[index], prefix: index == words.Count - 1)).Select(entry => entry.DocumentId);
+            hits = hits.Where(entry => matched.Contains(entry.DocumentId));
+        }
+
+        return await hits.GroupBy(entry => entry.DocumentId)
+            .Select(group => new { DocumentId = group.Key, UpdatedAt = group.Max(entry => entry.UpdatedAt) })
+            .OrderByDescending(hit => hit.UpdatedAt).ThenBy(hit => hit.DocumentId)
+            .Select(hit => hit.DocumentId)
             .Take(request.Limit)
             .ToListAsync(cancellationToken);
     }
@@ -40,8 +57,8 @@ internal sealed class SearchStore(PluginDbContext<SearchPlugin> database, TimePr
     public async Task<List<string>> LocalesOfAsync(string type, Guid? site, CancellationToken cancellationToken) =>
         await database.Set<SearchEntry>().Where(entry => entry.Type == type && entry.SiteId == site).Select(entry => entry.Locale).Distinct().ToListAsync(cancellationToken);
 
-    // Inserts, changes and removes rows to match, and leaves a row whose text is already the same as it is. Returns how
-    // many rows changed.
+    // Inserts, changes and removes rows to match, a row per field, and leaves a row whose text is already the same as it
+    // is. The rows of a field that is not given go. Returns how many rows changed.
     public async Task<int> WriteAsync(IReadOnlyCollection<SearchRow> rows, CancellationToken cancellationToken)
     {
         if (rows.Count == 0)
@@ -51,36 +68,43 @@ internal sealed class SearchStore(PluginDbContext<SearchPlugin> database, TimePr
 
         var ids = rows.Select(row => row.DocumentId).Distinct().ToList();
         var existing = (await database.Set<SearchEntry>().Where(entry => ids.Contains(entry.DocumentId)).ToListAsync(cancellationToken))
-            .ToDictionary(entry => (entry.DocumentId, entry.Locale, entry.State));
+            .GroupBy(entry => (entry.DocumentId, entry.Locale, entry.State))
+            .ToDictionary(group => group.Key, group => group.ToDictionary(entry => entry.Field, StringComparer.Ordinal));
 
         var now = time.GetUtcNow();
         var changed = 0;
         foreach (var row in rows)
         {
-            existing.TryGetValue((row.DocumentId, row.Locale, row.State), out var entry);
-            if (row.Text is null)
+            var key = (row.DocumentId, row.Locale, row.State);
+            if (!existing.TryGetValue(key, out var fields))
             {
-                if (entry is not null)
+                existing[key] = fields = new(StringComparer.Ordinal);
+            }
+
+            foreach (var (field, entry) in fields.Where(pair => row.Texts?.ContainsKey(pair.Key) != true).ToList())
+            {
+                database.Remove(entry);
+                fields.Remove(field);
+                changed++;
+            }
+
+            foreach (var (field, text) in row.Texts ?? new Dictionary<string, string>())
+            {
+                if (!fields.TryGetValue(field, out var entry))
                 {
-                    database.Remove(entry);
-                    existing.Remove((row.DocumentId, row.Locale, row.State));
+                    entry = new SearchEntry { DocumentId = row.DocumentId, Locale = row.Locale, State = row.State, Type = row.Type, SiteId = row.SiteId, Field = field, Text = text, UpdatedAt = now };
+                    database.Add(entry);
+                    fields[field] = entry;
                     changed++;
                 }
-            }
-            else if (entry is null)
-            {
-                entry = new SearchEntry { DocumentId = row.DocumentId, Locale = row.Locale, State = row.State, Type = row.Type, SiteId = row.SiteId, Text = row.Text, UpdatedAt = now };
-                database.Add(entry);
-                existing[(row.DocumentId, row.Locale, row.State)] = entry;
-                changed++;
-            }
-            else if (entry.Text != row.Text || entry.Type != row.Type || entry.SiteId != row.SiteId)
-            {
-                entry.Text = row.Text;
-                entry.Type = row.Type;
-                entry.SiteId = row.SiteId;
-                entry.UpdatedAt = now;
-                changed++;
+                else if (entry.Text != text || entry.Type != row.Type || entry.SiteId != row.SiteId)
+                {
+                    entry.Text = text;
+                    entry.Type = row.Type;
+                    entry.SiteId = row.SiteId;
+                    entry.UpdatedAt = now;
+                    changed++;
+                }
             }
         }
 
@@ -143,28 +167,22 @@ internal sealed class SearchStore(PluginDbContext<SearchPlugin> database, TimePr
             .ExecuteDeleteAsync(cancellationToken);
     }
 
-    private IQueryable<SearchEntry> Matching(IReadOnlyList<string> words)
+    // The rows whose text holds the word, or a word that starts with it.
+    private IQueryable<SearchEntry> Matching(string word, bool prefix)
     {
-        var last = words.Count - 1;
         switch (database.Database.ProviderName)
         {
             case SqliteProvider:
-                var match = string.Join(' ', words.Select((word, index) => index == last ? $"\"{word}\"*" : $"\"{word}\""));
+                var match = prefix ? $"\"{word}\"*" : $"\"{word}\"";
                 return database.Set<SearchEntry>().FromSql(
                     $"""SELECT * FROM cms_search_entry WHERE id IN (SELECT rowid FROM cms_search_entry_fts WHERE cms_search_entry_fts MATCH {match})""");
             case PostgreSqlProvider:
-                var query = string.Join(" & ", words.Select((word, index) => index == last ? $"'{word}':*" : $"'{word}'"));
+                var query = prefix ? $"'{word}':*" : $"'{word}'";
                 return database.Set<SearchEntry>().FromSql(
                     $"""SELECT * FROM cms_search_entry WHERE to_tsvector('simple'::regconfig, "text") @@ to_tsquery('simple'::regconfig, {query})""");
             default:
-                var rows = database.Set<SearchEntry>().AsQueryable();
-                foreach (var word in words)
-                {
-                    var pattern = $"%{word}%";
-                    rows = rows.Where(entry => EF.Functions.Like(entry.Text, pattern));
-                }
-
-                return rows;
+                var pattern = $"%{word}%";
+                return database.Set<SearchEntry>().Where(entry => EF.Functions.Like(entry.Text, pattern));
         }
     }
 }

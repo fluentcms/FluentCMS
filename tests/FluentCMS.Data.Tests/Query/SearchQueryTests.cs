@@ -48,6 +48,23 @@ public sealed class SearchQueryTests : IDisposable
         index.Requests.ShouldHaveSingleItem().Site.ShouldBe(new SiteId(QueryDatabase.SiteA));
     }
 
+    // A match on a field the caller may not read would tell what it holds, so the index is asked for the readable ones,
+    // and not at all when there are none.
+    [Fact]
+    public async Task TheIndexIsAskedForTheSearchableFieldsTheCallerMayReadOnly()
+    {
+        var article = _database.AddArticle("First");
+        var index = new FakeSearchIndex(article);
+
+        await _database.RunAsync("locale=en&q=x", new QueryAccess(), search: index);
+        await _database.RunAsync("locale=en&q=x", new QueryAccess { DeniedFields = { "article.subtitle", "article.body" } }, search: index);
+        var none = await _database.RunAsync("locale=en&q=x&withTotal=true", new QueryAccess { DeniedFields = { "article.title", "article.subtitle" } }, search: index);
+
+        index.Requests.Select(request => request.Fields).ShouldBe([null, ["title"]]);
+        none.Items.ShouldBeEmpty();
+        none.Total.ShouldBe(0);
+    }
+
     [Fact]
     public async Task TheIndexIsAskedForTheStateTheQueryReads()
     {

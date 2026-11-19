@@ -13,7 +13,7 @@ namespace FluentCMS.Plugins.Search;
 // PostgreSQL, and a LIKE on SQL Server, then see the same words.
 internal static class SearchText
 {
-    // The most characters of folded text one entry keeps; a longer text is cut at a word.
+    // The most characters of folded text one field of an entry keeps; a longer text is cut at a word.
     public const int MaxLength = 100_000;
 
     // The fields of a type that the index reads. A hidden field is never in a response, so it is not searched either.
@@ -53,23 +53,27 @@ internal static class SearchText
 
     public static IReadOnlyList<string> Words(string text) => Fold(text).Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-    // The folded text of the fields that an entry read holds: text, the texts of a list, and rich text as plain text.
-    // Other values, such as numbers, relations and components, have no text to search.
-    public static string Of(ContentDocument entry, IEnumerable<SchemaField> fields)
+    // The folded text of each field that an entry read holds: text, the texts of a list, and rich text as plain text.
+    // Other values, such as numbers, relations and components, have no text to search, and a field without a value has
+    // an empty text.
+    public static Dictionary<string, string> Of(ContentDocument entry, IEnumerable<SchemaField> fields)
     {
         ArgumentNullException.ThrowIfNull(entry);
         ArgumentNullException.ThrowIfNull(fields);
 
-        var builder = new StringBuilder();
+        var texts = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var field in fields)
         {
+            var builder = new StringBuilder();
             if (entry.TryGetValue(field.Name, out var value))
             {
                 Append(builder, value);
             }
+
+            texts[field.Name] = Cut(Fold(builder.ToString()));
         }
 
-        return Cut(Fold(builder.ToString()));
+        return texts;
     }
 
     private static string Cut(string text)

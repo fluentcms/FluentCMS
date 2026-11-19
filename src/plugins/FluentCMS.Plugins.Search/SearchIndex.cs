@@ -6,8 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FluentCMS.Plugins.Search;
 
 // The ISearchIndex slot. A slot is a singleton, so each search reads the index in a scope of its own. The engine has
-// checked the query and the caller's right to read the type before it asks, and narrows the list to the ids found, so the
-// index decides only which entries hold the words.
+// checked the query and the caller's right to read the type before it asks, names the fields the caller may read, and
+// narrows the list to the ids found, so the index decides only which entries hold the words in those fields.
 internal sealed class SearchIndex(IServiceScopeFactory scopes, SchemaModel schema, IPluginState plugins, IOperationContextAccessor operations) : ISearchIndex
 {
     public async Task<IReadOnlyList<Guid>> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default)
@@ -26,7 +26,7 @@ internal sealed class SearchIndex(IServiceScopeFactory scopes, SchemaModel schem
         }
 
         var words = SearchText.Words(request.Text);
-        if (words.Count == 0 || request.Limit < 1)
+        if (words.Count == 0 || request.Limit < 1 || request.Fields is { Count: 0 })
         {
             return [];
         }
