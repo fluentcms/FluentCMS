@@ -9,6 +9,7 @@ using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
+using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -44,6 +45,7 @@ internal sealed partial class ContentService(
     EntryComposer composer,
     ContentEntryMapper mapper,
     ResponseRichText richText,
+    RichTextOptions richTextOptions,
     ReferenceResolvers resolvers,
     IEnumerable<IEntryChangeSink> sinks,
     IEnumerable<IEntryChangeStager> stagers,
