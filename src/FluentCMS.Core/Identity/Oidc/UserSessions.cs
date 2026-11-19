@@ -54,8 +54,47 @@ internal sealed class UserSessions(IOpenIddictAuthorizationManager authorization
     // A sign-in with the second factor in a server session ends what the session was issued without it (#3228), so that a
     // role that has come to require two-factor holds for the session's access tokens from then on, not only once they
     // expire. What was issued with the second factor stays, as do the user's other sessions.
-    public Task EndSingleFactorAsync(string? userId, string? serverSession, CancellationToken cancellationToken = default) =>
-        EndAsync(userId, serverSession, singleFactorOnly: true, cancellationToken);
+    // A client with RequireConsent has its codes issued under the consent, so the session's tokens of it are found by the
+    // mark SingleFactorTokenHandler gives them and revoked on their own, the consent left.
+    public async Task EndSingleFactorAsync(string? userId, string? serverSession, CancellationToken cancellationToken = default)
+    {
+        await EndAsync(userId, serverSession, singleFactorOnly: true, cancellationToken);
+        if (string.IsNullOrEmpty(serverSession) || !Guid.TryParse(userId, out var user))
+        {
+            return;
+        }
+
+        List<string> consents = [];
+        await foreach (var authorization in authorizations.FindBySubjectAsync(user.ToString("D"), cancellationToken))
+        {
+            if (await authorizations.HasTypeAsync(authorization, AuthorizationTypes.Permanent, cancellationToken)
+                && await authorizations.HasStatusAsync(authorization, Statuses.Valid, cancellationToken)
+                && await authorizations.GetIdAsync(authorization, cancellationToken) is { } id)
+            {
+                consents.Add(id);
+            }
+        }
+
+        foreach (var consent in consents)
+        {
+            List<object> marked = [];
+            await foreach (var token in tokens.FindByAuthorizationIdAsync(consent, cancellationToken))
+            {
+                if (await tokens.HasStatusAsync(token, Statuses.Valid, cancellationToken)
+                    && (await tokens.GetPropertiesAsync(token, cancellationToken)).TryGetValue(ServerSessionProperty, out var value)
+                    && value.ValueKind == JsonValueKind.String
+                    && value.GetString() == serverSession)
+                {
+                    marked.Add(token);
+                }
+            }
+
+            foreach (var token in marked)
+            {
+                await tokens.TryRevokeAsync(token, cancellationToken);
+            }
+        }
+    }
 
     private async Task EndAsync(string? userId, string? serverSession, bool singleFactorOnly, CancellationToken cancellationToken)
     {

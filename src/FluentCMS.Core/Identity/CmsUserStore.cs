@@ -205,6 +205,20 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
         }
     }
 
+    // A failed save of IdentityChanges clears the context, which leaves the caller's user detached, so that the next save of
+    // it, such as the failed attempt Identity counts after a refused code, would meet the copy a validator loads. The user is
+    // tracked again with what is stored.
+    public async Task ReattachAsync(CmsUser user, CancellationToken cancellationToken)
+    {
+        if (Context.Entry(user).State != EntityState.Detached || Context.ChangeTracker.Entries<CmsUser>().Any(entry => entry.Entity.Id == user.Id))
+        {
+            return;
+        }
+
+        Context.Attach(user);
+        await Context.Entry(user).ReloadAsync(cancellationToken);
+    }
+
     public async Task RemoveRoleAsync(CmsUser user, Guid roleId, CancellationToken cancellationToken)
     {
         if (await Context.Set<CmsUserRole>().FindAsync([user.Id, roleId], cancellationToken) is { } held)
@@ -213,11 +227,13 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
         }
     }
 
-    // Staged for the caller's save: the rows in which Identity's store keeps the authenticator key and the recovery codes.
+    // Staged for the caller's save: the rows in which Identity's store keeps the authenticator key and the recovery codes,
+    // and the step of the last code taken, which a new key's codes need not follow.
     public async Task ForgetTwoFactorAsync(CmsUser user, CancellationToken cancellationToken)
     {
         await RemoveTokenAsync(user, InternalLoginProvider, AuthenticatorKeyTokenName, cancellationToken);
         await RemoveTokenAsync(user, InternalLoginProvider, RecoveryCodeTokenName, cancellationToken);
+        await RemoveTokenAsync(user, InternalLoginProvider, OneTimeAuthenticatorTokenProvider.LastStepName, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Guid>> RoleIdsAsync(CmsUser user, CancellationToken cancellationToken) =>

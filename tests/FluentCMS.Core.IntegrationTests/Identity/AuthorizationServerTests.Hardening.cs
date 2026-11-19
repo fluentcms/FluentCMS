@@ -91,7 +91,7 @@ public sealed partial class AuthorizationServerTests
         authorize.Headers.Add("Cookie", cookie);
         using var response = await client.SendAsync(authorize, Token);
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
-        response.Headers.Location!.AbsolutePath.ShouldNotBe("/account/login");
+        response.Headers.Location!.AbsoluteUri.ShouldStartWith(FluentCmsTestHost.OAuthRedirectUri + "?code=");
     }
 
     [Fact]

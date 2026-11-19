@@ -99,6 +99,19 @@ public sealed class InvitationTests : IDisposable
         Succeeded(await AcceptAsync(_fixture, token));
     }
 
+    // Sign-in takes a name or an address, so the invitee may not pick a name that is another user's address (#3296).
+    [Fact]
+    public async Task AnInviteeCannotPickANameThatIsAnotherUsersAddress()
+    {
+        var bob = await _fixture.CreateUserAsync("bob");
+        await InviteAsync(_fixture, "ann@example.com", BuiltInRoles.Editor);
+        var token = TokenOf(_fixture.Email.Sent.Single());
+
+        (await AcceptAsync(_fixture, token, bob.Email!)).Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(Microsoft.AspNetCore.Identity.IdentityErrorDescriber.DuplicateUserName));
+        _fixture.Invitations().Single().AcceptedAt.ShouldBeNull();
+        Succeeded(await AcceptAsync(_fixture, token));
+    }
+
     [Fact]
     public async Task ANewInvitationToTheSameAddressEndsTheOneBefore()
     {

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.IntegrationTests.Management;
@@ -42,6 +43,8 @@ public sealed partial class HostedPagesTests
         (await users.CheckPasswordAsync((await users.FindByIdAsync(editor.Id.ToString()))!, Password)).ShouldBeTrue();
     }
 
+    // Each refusal is the replay's: the page says the code is wrong, and a fresh code passes right after it in the same
+    // browser.
     [Fact]
     public async Task AnAuthenticatorCodeIsTakenOnceAtEnrolmentAndAtSignIn()
     {
@@ -52,13 +55,8 @@ public sealed partial class HostedPagesTests
         // The code that turned two-factor on does not sign in.
         using (var browser = new HostedPagesBrowser(_host, "10.1.5.2"))
         {
-            using var password = await browser.SubmitAsync("/account/login", Credentials(editor.Email, Password));
-            var twoFactor = password.Headers.Location!.OriginalString;
-            using (var replayed = await browser.SubmitAsync(twoFactor, new Dictionary<string, string> { ["Input.Code"] = enrolled }))
-            {
-                replayed.StatusCode.ShouldBe(HttpStatusCode.OK);
-            }
-
+            var twoFactor = await PasswordStepAsync(browser, editor.Email);
+            await RefusedCodeAsync(browser, twoFactor, enrolled);
             using var fresh = await browser.SubmitAsync(twoFactor, new Dictionary<string, string> { ["Input.Code"] = Totp(_host, key) });
             fresh.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         }
@@ -67,20 +65,109 @@ public sealed partial class HostedPagesTests
         var used = TotpAt(key, _host.Time.GetUtcNow().ToUnixTimeSeconds() / 30);
         using (var browser = new HostedPagesBrowser(_host, "10.1.5.3"))
         {
-            using var password = await browser.SubmitAsync("/account/login", Credentials(editor.Email, Password));
-            var twoFactor = password.Headers.Location!.OriginalString;
-            using (var again = await browser.SubmitAsync(twoFactor, new Dictionary<string, string> { ["Input.Code"] = used }))
-            {
-                again.StatusCode.ShouldBe(HttpStatusCode.OK);
-            }
-
-            using (var earlier = await browser.SubmitAsync(twoFactor, new Dictionary<string, string> { ["Input.Code"] = enrolled }))
-            {
-                earlier.StatusCode.ShouldBe(HttpStatusCode.OK);
-            }
-
+            var twoFactor = await PasswordStepAsync(browser, editor.Email);
+            await RefusedCodeAsync(browser, twoFactor, used);
+            await RefusedCodeAsync(browser, twoFactor, enrolled);
             browser.HasCookie(SignInCookie).ShouldBeFalse();
+            using var fresh = await browser.SubmitAsync(twoFactor, new Dictionary<string, string> { ["Input.Code"] = Totp(_host, key) });
+            fresh.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         }
+    }
+
+    // Two sign-ins that bring the first code the user ever gives at once: one passes, the other is refused, neither fails.
+    [Fact]
+    public async Task TwoSignInsWithOneFirstCodeAtOncePassOnce()
+    {
+        await using var host = NewHost(new CapturedEmails());
+        var editor = await CreateUserAsync(host);
+        string key;
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<CmsUserManager>();
+            var user = (await users.FindByIdAsync(editor.Id.ToString()))!;
+            (await users.ResetAuthenticatorKeyAsync(user)).Succeeded.ShouldBeTrue();
+            key = (await users.GetAuthenticatorKeyAsync(user))!;
+            (await users.SetTwoFactorEnabledAsync(user, true)).Succeeded.ShouldBeTrue();
+        }
+
+        using var first = new HostedPagesBrowser(host, "10.1.5.7");
+        using var second = new HostedPagesBrowser(host, "10.1.5.8");
+        var firstStep = await PasswordStepAsync(first, editor.Email);
+        var secondStep = await PasswordStepAsync(second, editor.Email);
+        var code = Totp(host, key);
+
+        var answers = await Task.WhenAll(
+            first.SubmitAsync(firstStep, new Dictionary<string, string> { ["Input.Code"] = code }),
+            second.SubmitAsync(secondStep, new Dictionary<string, string> { ["Input.Code"] = code }));
+        try
+        {
+            answers.Select(answer => answer.StatusCode).ShouldBe([HttpStatusCode.Redirect, HttpStatusCode.OK], ignoreOrder: true);
+        }
+        finally
+        {
+            foreach (var answer in answers)
+            {
+                answer.Dispose();
+            }
+        }
+    }
+
+    // The enable-two-factor page leaves pwd and mfa on the cookie, and a renewal of the cookie, as a password change makes,
+    // keeps them both.
+    [Fact]
+    public async Task ACookieRenewalKeepsEveryAuthenticationMethod()
+    {
+        var editor = await CreateUserAsync(_host);
+        using var browser = new HostedPagesBrowser(_host, "10.1.5.9");
+        await SignInAsync(browser, editor.Email);
+
+        var key = SharedKeyOf(await browser.PageAsync("/account/enable-two-factor")).Replace(" ", "", StringComparison.Ordinal);
+        using (var enabled = await browser.SubmitAsync("/account/enable-two-factor", new Dictionary<string, string> { ["Input.Code"] = Totp(_host, key) }))
+        {
+            enabled.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        using (var changed = await browser.SubmitAsync("/account/change-password", new Dictionary<string, string>(NewPasswordFields(NewPassword)) { ["Input.CurrentPassword"] = Password }))
+        {
+            changed.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        }
+
+        Amr(Text(await CodeFlowAsync(_host, browser), "access_token")).ShouldBe(["pwd", "mfa"], ignoreOrder: true);
+    }
+
+    // A client with RequireConsent has its codes issued under the consent, which is no session's: a sign-in with the second
+    // factor still ends that session's tokens of it issued without the factor, and the consent stays (#3228).
+    [Fact]
+    public async Task ASignInWithTheSecondFactorEndsTheSessionsSingleFactorTokensOfAConsentClient()
+    {
+        using var admin = await _host.AsUserAsync(await _host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token));
+        var editor = await CreateUserAsync(_host);
+        var (key, _) = await EnableTwoFactorAsync(_host, editor);
+        using var browser = new HostedPagesBrowser(_host, "10.1.5.10");
+        var remembering = await PasswordStepAsync(browser, editor.Email);
+        using (var remembered = await browser.SubmitAsync(remembering, new Dictionary<string, string> { ["Input.Code"] = Totp(_host, key), ["Input.RememberMachine"] = "true" }))
+        {
+            remembered.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        }
+
+        var withSecondFactor = await ConsentFlowAsync(browser);
+        await SignInAsync(browser, editor.Email);
+        var withPassword = await ConsentFlowAsync(browser);
+        (await MeAsync(_host, Text(withPassword, "access_token"))).ShouldBe(HttpStatusCode.OK);
+
+        // A role that requires two-factor makes the next sign-in ask for it whatever the device.
+        (await AdminFixture.SendAsync(admin, HttpMethod.Put, $"users/{editor.Id:D}/roles/{await GuardedRoleAsync(admin)}")).Status.ShouldBe(HttpStatusCode.OK);
+        var twoFactor = await PasswordStepAsync(browser, editor.Email);
+        using (var passed = await browser.SubmitAsync(twoFactor, new Dictionary<string, string> { ["Input.Code"] = Totp(_host, key) }))
+        {
+            passed.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        }
+
+        (await MeAsync(_host, Text(withPassword, "access_token"))).ShouldBe(HttpStatusCode.Unauthorized);
+        (await MeAsync(_host, Text(withSecondFactor, "access_token"))).ShouldBe(HttpStatusCode.OK);
+        var next = AuthorizeRequest.For(ThirdPartyClientId, ThirdPartyRedirectUri, "openid management");
+        using var again = await browser.GetAsync(next.Url);
+        again.Headers.Location!.AbsoluteUri.ShouldStartWith(ThirdPartyRedirectUri + "?code=");
     }
 
     [Fact]
@@ -167,6 +254,39 @@ public sealed partial class HostedPagesTests
         var reverse = await AdminFixture.SendAsync(admin, HttpMethod.Patch, $"users/{bob.Id:D}", $$"""{ "email": "{{alias}}" }""");
         reverse.Status.ShouldBe(HttpStatusCode.Conflict, reverse.Body?.ToJsonString());
         reverse.Body!.ToJsonString().ShouldContain(IdentityErrorCodes.EmailTaken);
+    }
+
+    // The two-factor page a password sends the browser to.
+    private static async Task<string> PasswordStepAsync(HostedPagesBrowser browser, string userName)
+    {
+        using var password = await browser.SubmitAsync("/account/login", Credentials(userName, Password));
+        password.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        var twoFactor = password.Headers.Location!.OriginalString;
+        twoFactor.ShouldStartWith("/account/two-factor");
+        return twoFactor;
+    }
+
+    private static async Task RefusedCodeAsync(HostedPagesBrowser browser, string twoFactor, string code)
+    {
+        using var refused = await browser.SubmitAsync(twoFactor, new Dictionary<string, string> { ["Input.Code"] = code });
+        refused.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await refused.Content.ReadAsStringAsync(Token)).ShouldContain("The code is not right");
+    }
+
+    // The code flow of the third-party client, through its consent page the first time.
+    private async Task<JsonElement> ConsentFlowAsync(HostedPagesBrowser browser)
+    {
+        var request = AuthorizeRequest.For(ThirdPartyClientId, ThirdPartyRedirectUri, "openid management");
+        using var asked = await browser.GetAsync(request.Url);
+        var location = asked.Headers.Location!.OriginalString;
+        if (!location.StartsWith("/account/consent", StringComparison.Ordinal))
+        {
+            return await request.ExchangeAsync(_host, asked);
+        }
+
+        using var allowed = await browser.PostAsync(location, await browser.PageAsync(location), new Dictionary<string, string> { ["decision"] = "allow" });
+        using var done = await browser.FollowAsync(allowed, ThirdPartyRedirectUri);
+        return await request.ExchangeAsync(_host, done);
     }
 
     private static async Task<bool> LockedOutAsync(FluentCmsTestHost host, TestUser user)

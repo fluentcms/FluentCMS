@@ -14,7 +14,7 @@ internal sealed class OneTimeAuthenticatorTokenProvider(TimeProvider time) : IUs
 {
     // UserStoreBase keeps the authenticator key under this provider name too.
     private const string StoreProvider = "[AspNetUserStore]";
-    private const string LastStepName = "AuthenticatorLastStep";
+    internal const string LastStepName = "AuthenticatorLastStep";
     private const int Window = 2;
 
     public Task<string> GenerateAsync(string purpose, UserManager<CmsUser> manager, CmsUser user) => Task.FromResult("");

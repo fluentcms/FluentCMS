@@ -196,6 +196,28 @@ internal sealed class CmsSignInManager(
         await base.SignInWithClaimsAsync(user, properties, claims);
     }
 
+    // Identity's refresh keeps the first amr only, which after the enable-two-factor page is pwd and drops mfa; every one is
+    // kept here, with the provider.
+    public override async Task RefreshSignInAsync(CmsUser user)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+
+        var auth = await Context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        if (!auth.Succeeded || auth.Principal is null)
+        {
+            return;
+        }
+
+        if (UserManager.GetUserId(auth.Principal) != await UserManager.GetUserIdAsync(user))
+        {
+            throw new InvalidOperationException("The cookie belongs to another user, so it cannot be renewed for this one.");
+        }
+
+        List<Claim> methods = [.. auth.Principal.FindAll(claim => claim.Type is Claims.AuthenticationMethodReference or ClaimTypes.AuthenticationMethod)
+            .Select(claim => new Claim(claim.Type, claim.Value))];
+        await SignInWithClaimsAsync(user, auth.Properties, methods);
+    }
+
     public override async Task<SignInResult> TwoFactorAuthenticatorSignInAsync(string code, bool isPersistent, bool rememberClient)
     {
         var user = await GetTwoFactorAuthenticationUserAsync();

@@ -105,8 +105,8 @@ internal sealed class UserAdministration(
         return await InfoAsync(user, cancellationToken);
     }
 
-    // Sets the password with a new security stamp, which ends the user's sessions, and leaves the forced change as it was:
-    // a password the operator chose is not one the user chose. For the command line only.
+    // Sets the password with a new security stamp, which ends the user's sessions, and the forced change: a password the
+    // operator chose is not one the user chose. For the command line only.
     public async Task<UserInfo> SetPasswordAsync(Guid id, string password, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(password);

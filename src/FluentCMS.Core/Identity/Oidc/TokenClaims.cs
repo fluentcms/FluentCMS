@@ -25,6 +25,10 @@ internal static class TokenClaims
     // carries the sid of the cookie's session needs no confirmation.
     public const string ServerSession = "sid";
 
+    // The server session a token of a consent was issued in. A consent is no session's, so its identity token names none
+    // (sid); its access and refresh tokens carry this for SingleFactorTokenHandler.
+    public const string ConsentSession = "fcms_session";
+
     // The authentication method reference Identity gives a sign-in with a second factor.
     public const string MultiFactor = "mfa";
 
@@ -81,6 +85,9 @@ internal static class TokenClaims
     public static ClaimsIdentity ForServerSession(ClaimsIdentity identity, string serverSession) =>
         identity.SetClaim(ServerSession, serverSession).SetDestinations(Destinations);
 
+    public static ClaimsIdentity ForConsentSession(ClaimsIdentity identity, string serverSession) =>
+        identity.SetClaim(ConsentSession, serverSession).SetDestinations(Destinations);
+
     public static ClaimsIdentity ForServiceAccount(ClaimsIdentity identity, Guid applicationId, string name, IEnumerable<Guid> roles, IEnumerable<string> scopes)
     {
         identity.SetClaim(Claims.Subject, applicationId.ToString("D"))
@@ -133,7 +140,7 @@ internal static class TokenClaims
         Claims.Email when claim.Subject?.HasScope(Scopes.Email) == true => [OpenIddictConstants.Destinations.IdentityToken],
         Claims.AuthenticationMethodReference => [OpenIddictConstants.Destinations.AccessToken, OpenIddictConstants.Destinations.IdentityToken],
         Claims.AuthenticationTime or ServerSession => [OpenIddictConstants.Destinations.IdentityToken],
-        Claims.Name or CmsClaimTypes.Kind or CmsClaimTypes.Roles or CmsClaimTypes.ClientRole => [OpenIddictConstants.Destinations.AccessToken],
+        Claims.Name or CmsClaimTypes.Kind or CmsClaimTypes.Roles or CmsClaimTypes.ClientRole or ConsentSession => [OpenIddictConstants.Destinations.AccessToken],
         _ => [],
     };
 
