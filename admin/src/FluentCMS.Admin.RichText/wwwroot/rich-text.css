@@ -1,0 +1,219 @@
+/* The styles of the rich text editor, which rich-text.js loads with it, so that they are not in the first download. The
+   ProseMirror rules are those its view needs: text that keeps its spaces and breaks long words. */
+
+.rich-text-frame {
+    border: 1px solid var(--cms-color-border);
+    border-block-end-color: var(--cms-color-text-muted);
+    border-radius: var(--cms-radius-s);
+    background-color: var(--cms-color-bg);
+}
+
+.rich-text-frame-invalid {
+    border-color: var(--cms-color-error);
+}
+
+.rich-text-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: var(--cms-space-xs);
+    border-block-end: 1px solid var(--cms-color-border);
+}
+
+.rich-text-button {
+    min-inline-size: var(--cms-target-size, 2rem);
+    min-block-size: var(--cms-target-size, 2rem);
+    padding-inline: var(--cms-space-xs);
+    border: 1px solid transparent;
+    border-radius: var(--cms-radius-s);
+    background: none;
+    color: var(--cms-color-text);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.rich-text-button:hover {
+    border-color: var(--cms-color-border);
+}
+
+.rich-text-button[aria-pressed="true"] {
+    border-color: var(--cms-color-accent);
+    color: var(--cms-color-accent);
+}
+
+.rich-text-content {
+    position: relative;
+    min-block-size: 8rem;
+    padding: var(--cms-space-s);
+    color: var(--cms-color-text);
+    white-space: pre-wrap;
+    white-space: break-spaces;
+    word-wrap: break-word;
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0;
+    outline: none;
+}
+
+.rich-text-content:focus-visible {
+    outline: var(--cms-focus-ring-width) solid var(--cms-focus-ring-color);
+    outline-offset: calc(-1 * var(--cms-focus-ring-width));
+}
+
+.rich-text-content[contenteditable="false"] {
+    background-color: var(--cms-color-bg-subtle, var(--cms-color-bg));
+}
+
+.rich-text-content pre {
+    white-space: pre-wrap;
+    padding: var(--cms-space-s);
+    border-radius: var(--cms-radius-s);
+    background-color: var(--cms-color-bg-subtle, var(--cms-color-bg));
+}
+
+.rich-text-content blockquote {
+    margin-inline: 0;
+    padding-inline-start: var(--cms-space-m, 1rem);
+    border-inline-start: 3px solid var(--cms-color-border);
+}
+
+.rich-text-content li {
+    position: relative;
+}
+
+.rich-text-content img,
+.rich-text-content hr {
+    max-inline-size: 100%;
+}
+
+.rich-text-content .ProseMirror-selectednode {
+    outline: 2px solid var(--cms-color-accent);
+}
+
+.rich-text-content .ProseMirror-hideselection *::selection {
+    background: transparent;
+}
+
+.rich-text-content .ProseMirror-hideselection {
+    caret-color: transparent;
+}
+
+.rich-text-content .ProseMirror-gapcursor {
+    display: none;
+    pointer-events: none;
+    position: absolute;
+}
+
+.rich-text-content.ProseMirror-focused .ProseMirror-gapcursor {
+    display: block;
+}
+
+.rich-text-kept {
+    display: inline-block;
+    padding-inline: var(--cms-space-xs);
+    border: 1px dashed var(--cms-color-border);
+    border-radius: var(--cms-radius-s);
+    color: var(--cms-color-text-muted);
+    user-select: none;
+}
+
+div.rich-text-kept {
+    display: block;
+    margin-block: var(--cms-space-xs);
+    padding: var(--cms-space-xs);
+}
+
+.rich-text-entry-link {
+    text-decoration: underline dotted;
+    color: var(--cms-color-accent);
+}
+
+.rich-text-media {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--cms-space-xs);
+    margin-block: var(--cms-space-xs);
+    padding: var(--cms-space-xs);
+    border: 1px dashed var(--cms-color-border);
+    border-radius: var(--cms-radius-s);
+    color: var(--cms-color-text-muted);
+    user-select: none;
+}
+
+.rich-text-media-inline {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    margin-block: 0;
+    vertical-align: middle;
+}
+
+.rich-text-media img {
+    max-inline-size: min(100%, 24rem);
+    max-block-size: 16rem;
+    object-fit: contain;
+}
+
+.rich-text-media-inline img {
+    max-block-size: 2.5rem;
+}
+
+.rich-text-media-placeholder {
+    font-style: italic;
+}
+
+.rich-text-block {
+    border-style: solid;
+    color: var(--cms-color-text);
+}
+
+.rich-text-entry-current {
+    margin: 0;
+}
+
+.rich-text-media-dialog,
+.rich-text-block-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-s);
+    min-inline-size: min(32rem, 80vw);
+}
+
+.rich-text-media-dialog-image {
+    max-inline-size: 100%;
+    max-block-size: 16rem;
+    object-fit: contain;
+    align-self: flex-start;
+}
+
+.rich-text-media-dialog-name {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.rich-text-link {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-xs);
+    padding: var(--cms-space-s);
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-s);
+}
+
+.rich-text-link-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cms-space-xs);
+}
+
+.rich-text-json {
+    max-block-size: 20rem;
+    margin: 0;
+    padding: var(--cms-space-s);
+    overflow: auto;
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-s);
+    white-space: pre-wrap;
+    word-break: break-word;
+}

@@ -1,0 +1,156 @@
+@* The generated form of one block or component (spec 4.8): each field that is not hidden and that its condition shows, with
+   the registered editor of its type, the errors at its path with the path made relative to the field, and its lengths,
+   range and pattern checked as it is left. A change writes a copy of the block, so its type and id go with it. Errors at
+   the block itself, such as a repeated id, are shown above its fields. The forms around a field copy their values on every
+   change, so a form whose block and errors are equal to those it drew does not draw again. *@
+@inherits BlockFormBase
+@inject FieldEditorRegistry Editors
+@inject IStringLocalizer<AdminResources> L
+
+<CascadingValue Name="@NestedValues.Nesting" Value="@(Nesting + 1)" IsFixed="true">
+    <div class="block-form">
+        @foreach (var error in Errors.Where(error => !string.IsNullOrEmpty(error.Path) && NestedValues.Under(error.Path, Path) && !FieldErrorPaths(error.Path!)))
+        {
+            <p class="cms-field-message cms-field-message-error">@error.Message</p>
+        }
+        @if (loaded)
+        {
+            @foreach (var field in Shown)
+            {
+                <div @key="field.Name">@Editor(field)</div>
+            }
+        }
+    </div>
+</CascadingValue>
+
+@code {
+    private readonly Dictionary<string, FieldEditorBase> editors = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<ApiProblemError>> findings = new(StringComparer.Ordinal);
+    private SchemaTypeDescription? loadedFor;
+    private bool loaded;
+    private bool focusWhenLoaded;
+    private bool unchanged;
+    private (JsonObject? Value, IReadOnlyList<ApiProblemError> Errors, string Path, bool ReadOnly, string? Locale, string Direction)? drawn;
+
+    [CascadingParameter(Name = NestedValues.Nesting)]
+    public int Nesting { get; set; }
+
+    private JsonObject Values => Value ?? [];
+
+    private string Prefix => Path.Length == 0 ? "" : Path + ".";
+
+    private IEnumerable<SchemaFieldDescription> Shown => BlockType.Fields.Where(shown => !shown.Hidden && FormConditions.Shows(shown, Values));
+
+    // The editors of a plugin's field types load before the fields show, as the form's own do.
+    protected override async Task OnParametersSetAsync()
+    {
+        unchanged = loadedFor == BlockType && drawn is { } last
+            && last.Path == Path && last.ReadOnly == ReadOnly && last.Locale == ContentLocale && last.Direction == TextDirection
+            && last.Errors.SequenceEqual(Errors) && JsonNode.DeepEquals(last.Value, Value);
+        drawn = (Value, Errors, Path, ReadOnly, ContentLocale, TextDirection);
+        if (loadedFor == BlockType)
+        {
+            return;
+        }
+
+        (loadedFor, loaded) = (BlockType, false);
+        await PluginFieldTypes.LoadAsync(BlockType.Fields.Where(field => Editors.Find(field.Type) is null), async field => await Editors.FindAsync(field.Type));
+        loaded = loadedFor == BlockType;
+    }
+
+    protected override bool ShouldRender()
+    {
+        var render = !unchanged;
+        unchanged = false;
+        return render;
+    }
+
+    // Focus asked for while a plugin's editor loads goes to the field once it has.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusWhenLoaded && loaded)
+        {
+            focusWhenLoaded = false;
+            await FocusAsync();
+        }
+    }
+
+    // The editors of the fields shown, in their order, nested blocks included through theirs.
+    public override async ValueTask FlushAsync()
+    {
+        foreach (var editor in Shown.Select(field => editors.GetValueOrDefault(field.Name)).OfType<FieldEditorBase>().ToList())
+        {
+            await editor.FlushAsync();
+        }
+    }
+
+    public override async ValueTask FocusAsync()
+    {
+        if (!loaded)
+        {
+            focusWhenLoaded = true;
+            return;
+        }
+
+        var fields = Shown.Where(field => editors.ContainsKey(field.Name)).ToList();
+        if ((fields.FirstOrDefault(field => ErrorsOf(field).Count > 0) ?? fields.FirstOrDefault()) is { } first)
+        {
+            await editors[first.Name].FocusAsync();
+        }
+    }
+
+    private bool FieldErrorPaths(string path) => BlockType.Fields.Any(field => !field.Hidden && NestedValues.Under(path, Prefix + field.Name));
+
+    // The server's errors of the field with paths from the field's name, as the form gives them to a field at the top.
+    private IReadOnlyList<ApiProblemError> ErrorsOf(SchemaFieldDescription field)
+    {
+        var own = findings.GetValueOrDefault(field.Name) ?? [];
+        var at = Prefix + field.Name;
+        return [.. own, .. Errors.Where(error => NestedValues.Under(error.Path, at)).Select(error => error with { Path = error.Path![Prefix.Length..] })];
+    }
+
+    private Task ChangeAsync(SchemaFieldDescription field, JsonNode? value)
+    {
+        var values = Values.DeepClone().AsObject();
+        values[field.Name] = value?.Parent is null ? value : value.DeepClone();
+        if (findings.ContainsKey(field.Name))
+        {
+            Check(field, values);
+        }
+
+        return ValueChanged.InvokeAsync(values);
+    }
+
+    private void Check(SchemaFieldDescription field, JsonObject values)
+    {
+        if (FieldRules.Check(field, values[field.Name], L) is { Count: > 0 } errors)
+        {
+            findings[field.Name] = errors;
+        }
+        else
+        {
+            findings.Remove(field.Name);
+        }
+    }
+
+    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+    private System.Type EditorOf(SchemaFieldDescription field) =>
+        field.ReadOnly ? typeof(ReadOnlyFieldView) : Editors.Find(field.Type)?.Editor ?? typeof(JsonFieldView);
+
+    private RenderFragment Editor(SchemaFieldDescription field) => builder =>
+    {
+        builder.OpenComponent(0, EditorOf(field));
+        builder.AddComponentParameter(1, nameof(FieldEditorBase.Field), field);
+        builder.AddComponentParameter(2, nameof(FieldEditorBase.Value), Values[field.Name]);
+        builder.AddComponentParameter(3, nameof(FieldEditorBase.ValueChanged), EventCallback.Factory.Create<JsonNode?>(this, value => ChangeAsync(field, value)));
+        builder.AddComponentParameter(4, nameof(FieldEditorBase.Errors), ErrorsOf(field));
+        builder.AddComponentParameter(5, nameof(FieldEditorBase.ReadOnly), ReadOnly || field.ReadOnly);
+        builder.AddComponentParameter(6, nameof(FieldEditorBase.Required), FormConditions.Requires(field, Values));
+        builder.AddComponentParameter(7, nameof(FieldEditorBase.ContentLocale), ContentLocale);
+        builder.AddComponentParameter(8, nameof(FieldEditorBase.TextDirection), TextDirection);
+        builder.AddComponentParameter(9, nameof(FieldEditorBase.Document), new System.Collections.ObjectModel.ReadOnlyDictionary<string, JsonNode?>(Values));
+        builder.AddComponentParameter(10, nameof(FieldEditorBase.OnBlur), EventCallback.Factory.Create(this, () => Check(field, Values)));
+        builder.AddComponentReferenceCapture(11, instance => editors[field.Name] = (FieldEditorBase)instance);
+        builder.CloseComponent();
+    };
+}

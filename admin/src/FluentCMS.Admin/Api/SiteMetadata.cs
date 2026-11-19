@@ -4,7 +4,7 @@ namespace FluentCMS.Admin.Api;
 // with a new server process (spec 2.7). The schema is read in the content locale, since the server narrows it to the types
 // and fields the caller may read there (#3178), and again when the locale changes; the plugins are the site's. Nothing else
 // is cached. Callers share one read, and a read that failed is not kept.
-internal sealed class SiteMetadata(ManagementClient client, ICurrentSite current, IContentLocale contentLocale)
+internal sealed class SiteMetadata(ManagementClient client, ICurrentSite current, IContentLocale contentLocale) : IAdminSchema
 {
     private readonly Lock _gate = new();
     private string? _site;
@@ -12,7 +12,7 @@ internal sealed class SiteMetadata(ManagementClient client, ICurrentSite current
     private Task<SchemaDescription>? _schema;
     private Task<IReadOnlyList<PluginInfo>>? _plugins;
 
-    public Task<SchemaDescription> GetSchemaAsync(CancellationToken cancellationToken)
+    public Task<SchemaDescription> GetSchemaAsync(CancellationToken cancellationToken = default)
     {
         Task<SchemaDescription> read;
         lock (_gate)

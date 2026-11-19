@@ -1,0 +1,76 @@
+.nested-field {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-inline-size: 0;
+}
+
+.nested-empty {
+    margin: 0 0 var(--cms-space-s);
+    color: var(--cms-color-text-muted);
+}
+
+.nested-items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-s);
+    margin: 0 0 var(--cms-space-s);
+    padding: 0;
+    list-style: none;
+}
+
+.nested-item {
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-s);
+}
+
+.nested-drop {
+    border-color: var(--cms-color-accent);
+    border-block-start-width: 3px;
+}
+
+.nested-head {
+    display: flex;
+    align-items: center;
+    gap: var(--cms-space-xs);
+    padding: var(--cms-space-xs);
+}
+
+.nested-head[draggable="true"] {
+    cursor: grab;
+}
+
+.nested-toggle {
+    display: flex;
+    flex: 1;
+    gap: var(--cms-space-s);
+    min-block-size: 24px;
+    min-inline-size: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    text-align: start;
+    cursor: pointer;
+}
+
+.nested-preview {
+    overflow: hidden;
+    font-weight: 400;
+    color: var(--cms-color-text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nested-body {
+    padding: var(--cms-space-s);
+}
+
+.nested-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--cms-space-s);
+}

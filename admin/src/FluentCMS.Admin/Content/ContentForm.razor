@@ -920,6 +920,7 @@
 
     private async Task SaveAsync()
     {
+        await FlushEditorsAsync();
         if (Busy || type is null || !MaySave)
         {
             return;
@@ -1014,10 +1015,20 @@
         }
     }
 
+    // An editor that sends its value after a pause, as rich text does, gives it to the form before a save or a publish reads it.
+    private async Task FlushEditorsAsync()
+    {
+        foreach (var editor in editors.Values.ToList())
+        {
+            await editor.FlushAsync();
+        }
+    }
+
     // Required and requiredWhen are checked first, and nothing is sent while one is missing. Unsaved changes are saved, and
     // the publish sends the tag of that save, so it publishes exactly what the form showed.
     private async Task PublishAsync(bool fromButton)
     {
+        await FlushEditorsAsync();
         if (Busy || type is null || !MayPublish || !CheckFields(publishing: true))
         {
             return;

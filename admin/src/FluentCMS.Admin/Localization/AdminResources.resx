@@ -1472,6 +1472,57 @@
   <data name="Content.Panel.Leave.Cancel" xml:space="preserve">
     <value>Keep editing</value>
   </data>
+  <data name="Content.Nested.None" xml:space="preserve">
+    <value>Nothing added yet.</value>
+  </data>
+  <data name="Content.Nested.Item" xml:space="preserve">
+    <value>{0} {1}</value>
+  </data>
+  <data name="Content.Nested.Add" xml:space="preserve">
+    <value>Add {0}</value>
+  </data>
+  <data name="Content.Nested.Type" xml:space="preserve">
+    <value>Type to add</value>
+  </data>
+  <data name="Content.Nested.MoveUp" xml:space="preserve">
+    <value>Move {0} up</value>
+  </data>
+  <data name="Content.Nested.MoveDown" xml:space="preserve">
+    <value>Move {0} down</value>
+  </data>
+  <data name="Content.Nested.Duplicate" xml:space="preserve">
+    <value>Duplicate {0}</value>
+  </data>
+  <data name="Content.Nested.Remove" xml:space="preserve">
+    <value>Remove {0}</value>
+  </data>
+  <data name="Content.Nested.CollapseAll" xml:space="preserve">
+    <value>Collapse all</value>
+  </data>
+  <data name="Content.Nested.ExpandAll" xml:space="preserve">
+    <value>Expand all</value>
+  </data>
+  <data name="Content.Nested.OrderHint" xml:space="preserve">
+    <value>Drag an item by its title, or press Alt with the up or down arrow on its title, to change the order.</value>
+  </data>
+  <data name="Content.Nested.Moved" xml:space="preserve">
+    <value>{0} moved to position {1} of {2}.</value>
+  </data>
+  <data name="Content.Nested.Added" xml:space="preserve">
+    <value>{0} added.</value>
+  </data>
+  <data name="Content.Nested.Duplicated" xml:space="preserve">
+    <value>{0} duplicated.</value>
+  </data>
+  <data name="Content.Nested.Removed" xml:space="preserve">
+    <value>{0} removed.</value>
+  </data>
+  <data name="Content.Nested.AllCollapsed" xml:space="preserve">
+    <value>All items collapsed.</value>
+  </data>
+  <data name="Content.Nested.AllExpanded" xml:space="preserve">
+    <value>All items expanded.</value>
+  </data>
   <data name="Content.Relation.None" xml:space="preserve">
     <value>No entry chosen.</value>
   </data>

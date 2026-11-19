@@ -1,0 +1,37 @@
+{
+  "name": "@fluentcms/admin-rich-text",
+  "private": true,
+  "description": "The rich text editor of the FluentCMS admin: Tiptap on the server's rich text model, bundled into one ES module (admin spec 4.7, AQ7).",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "dependencies": {
+    "@tiptap/core": "3.32.3",
+    "@tiptap/extension-blockquote": "3.32.3",
+    "@tiptap/extension-bold": "3.32.3",
+    "@tiptap/extension-code": "3.32.3",
+    "@tiptap/extension-code-block": "3.32.3",
+    "@tiptap/extension-document": "3.32.3",
+    "@tiptap/extension-hard-break": "3.32.3",
+    "@tiptap/extension-heading": "3.32.3",
+    "@tiptap/extension-horizontal-rule": "3.32.3",
+    "@tiptap/extension-italic": "3.32.3",
+    "@tiptap/extension-link": "3.32.3",
+    "@tiptap/extension-list": "3.32.3",
+    "@tiptap/extension-paragraph": "3.32.3",
+    "@tiptap/extension-strike": "3.32.3",
+    "@tiptap/extension-text": "3.32.3",
+    "@tiptap/extension-underline": "3.32.3",
+    "@tiptap/extensions": "3.32.3",
+    "@tiptap/pm": "3.32.3"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

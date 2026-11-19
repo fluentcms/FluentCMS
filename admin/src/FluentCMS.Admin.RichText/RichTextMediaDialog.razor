@@ -1,0 +1,102 @@
+@* The dialog of a media node of rich text (A-25): its preview, the alternative text the node holds (which, when empty, leaves
+   the asset's own), and Replace and Remove. Done sets the text; Cancel and Escape leave the node as it was. *@
+@namespace FluentCMS.Admin.RichText
+@inject IStringLocalizer<RichTextResources> L
+
+<CmsDialog Title="@L["RichText.Media.Title"]" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : OnCancel.InvokeAsync())" OnClosed="@OnClosed">
+    <ChildContent>
+        @if (Open)
+        {
+            <div class="rich-text-media-dialog">
+                @if (Preview.State == MediaPreview.Ready && Preview.Preview is { } source)
+                {
+                    <img class="rich-text-media-dialog-image" src="@source" alt="" />
+                }
+                <p class="rich-text-media-dialog-name">@Description</p>
+                @if (Preview.State != MediaPreview.Unavailable)
+                {
+                    <CmsTextInput Label="@L["RichText.Media.Alt"]"
+                                  Help="@(Preview.Alt is { Length: > 0 } own ? L["RichText.Media.AltHelpOwn", own] : L["RichText.Media.AltHelp"])"
+                                  Value="@alt"
+                                  ValueChanged="@(value => alt = value)"
+                                  Lang="@ContentLocale"
+                                  Dir="@TextDirection" />
+                }
+            </div>
+        }
+    </ChildContent>
+    <Actions>
+        @if (Open)
+        {
+            <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => OnDone.InvokeAsync(string.IsNullOrWhiteSpace(alt) ? null : alt.Trim()))">@L["RichText.Media.Done"]</CmsButton>
+            @if (CanReplace)
+            {
+                <CmsButton OnClick="@OnReplace">@L["RichText.Media.Replace"]</CmsButton>
+            }
+            <CmsButton OnClick="@OnRemove">@L["RichText.Media.Remove"]</CmsButton>
+            <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="@OnCancel">@L["RichText.Media.Cancel"]</CmsButton>
+        }
+    </Actions>
+</CmsDialog>
+
+@code {
+    private string? alt;
+    private bool wasOpen;
+    private Guid? shownId;
+
+    [Parameter]
+    public bool Open { get; set; }
+
+    [Parameter, EditorRequired]
+    public MediaPreview Preview { get; set; } = null!;
+
+    // The alternative text the node holds, which the dialog starts from each time it opens or its asset is replaced.
+    [Parameter]
+    public string? Alt { get; set; }
+
+    [Parameter]
+    public Guid? MediaId { get; set; }
+
+    [Parameter]
+    public bool CanReplace { get; set; }
+
+    [Parameter]
+    public string? ContentLocale { get; set; }
+
+    [Parameter]
+    public string? TextDirection { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> OnDone { get; set; }
+
+    [Parameter]
+    public EventCallback OnReplace { get; set; }
+
+    [Parameter]
+    public EventCallback OnRemove { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public EventCallback OnClosed { get; set; }
+
+    private string Description => Preview.State switch
+    {
+        MediaPreview.Missing => L["RichText.Media.Missing"],
+        MediaPreview.Unavailable => L["RichText.Media.Unavailable"],
+        "failed" => L["RichText.Media.Failed"],
+        _ => Preview.Name ?? L["RichText.Kept.Media"],
+    };
+
+    protected override void OnParametersSet()
+    {
+        if (Open && (!wasOpen || MediaId != shownId))
+        {
+            alt = Alt;
+        }
+
+        wasOpen = Open;
+        shownId = MediaId;
+    }
+}
