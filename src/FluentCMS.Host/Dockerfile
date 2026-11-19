@@ -4,11 +4,11 @@
 #   docker buildx build -f src/FluentCMS.Host/Dockerfile --platform linux/amd64,linux/arm64 -t fluentcms .
 
 # The SDK runs on the build machine and compiles for the target, so no emulation is needed for the other architecture.
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0@sha256:bef136a371963aaa46ec97882845ef6f54dec15728bb4b128b1c2a400ffbc9b4 AS build
 ARG TARGETARCH
 WORKDIR /src
 
-COPY global.json Directory.Build.props Directory.Packages.props ./
+COPY global.json nuget.config Directory.Build.props Directory.Packages.props ./
 COPY docs/resources/icon.png docs/resources/
 # Every project the host references, directly or not; restore skips one that is missing, and the publish then fails.
 COPY src/FluentCMS.Sdk/FluentCMS.Sdk.csproj src/FluentCMS.Sdk/
@@ -50,7 +50,7 @@ RUN dotnet publish src/FluentCMS.Host/FluentCMS.Host.csproj -c Release -a $TARGE
 
 # Chiseled: no shell, no package manager, a non-root user. The extra variant adds ICU and time zone data, which
 # localized content and schedules in a time zone need.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra@sha256:cae5b962bfb786606def03d250c6a645cc98839095c89e806e4bd8978a68115b
 LABEL org.opencontainers.image.title="FluentCMS" \
       org.opencontainers.image.description="The reference host of FluentCMS, a headless CMS for .NET: the Delivery and Management APIs, the authorization server and health probes, configured by environment variables." \
       org.opencontainers.image.source="https://github.com/fluentcms/FluentCMS" \

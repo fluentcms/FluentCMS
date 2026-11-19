@@ -20,3 +20,47 @@ updates:
       nuget:
         patterns: ["*"]
         update-types: [minor, patch]
+
+  # The TypeScript client and the rich text bundle of the admin, each with its lockfile.
+  - package-ecosystem: npm
+    directories: ["/clients/typescript", "/admin/src/*/js"]
+    schedule:
+      interval: weekly
+    labels: ["type:chore", "area:build"]
+    groups:
+      npm:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  # The base images of the reference host and the template, pinned by tag and digest. .NET stays on the major the projects
+  # target, so a new major comes with the change of the target framework. Dependabot names an image without its registry, as
+  # its documentation's example does; the name with it is listed too.
+  - package-ecosystem: docker
+    directories: ["/src/FluentCMS.Host", "/templates/fluentcms"]
+    schedule:
+      interval: weekly
+    labels: ["type:chore", "area:build"]
+    ignore:
+      - dependency-name: "dotnet/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "mcr.microsoft.com/dotnet/*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      docker:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  # PostgreSQL and MinIO of the compose files. A new major of PostgreSQL cannot read the data of the old one, so it is a
+  # change of its own. The data and media tests pin the same digests, which an update must change with these.
+  - package-ecosystem: docker-compose
+    directories: ["/", "/src/FluentCMS.Host"]
+    schedule:
+      interval: weekly
+    labels: ["type:chore", "area:build"]
+    ignore:
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]
+    groups:
+      docker-compose:
+        patterns: ["*"]
+        update-types: [minor, patch]
