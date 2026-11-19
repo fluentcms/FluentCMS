@@ -1,0 +1,46 @@
+{
+  // Beside the Blog sample: the smallest type with blocks and components to depth 3 (decision 20), for BlockTests.
+  "collections": [
+    {
+      "name": "landing",
+      "fields": [
+        { "name": "title", "type": "text" },
+        { "name": "sections", "type": "blocks", "blocks": ["band", "note"] }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "name": "link",
+      "fields": [
+        { "name": "label", "type": "text" },
+        { "name": "url", "type": "url" }
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "name": "band",
+      "fields": [
+        { "name": "title", "type": "text" },
+        { "name": "cards", "type": "blocks", "blocks": ["card"] },
+        { "name": "links", "type": "component", "component": "link", "multiple": true }
+      ]
+    },
+    {
+      "name": "card",
+      "fields": [
+        { "name": "title", "type": "text" },
+        { "name": "link", "type": "component", "component": "link" },
+        { "name": "author", "type": "relation", "target": "author" },
+        { "name": "image", "type": "media" }
+      ]
+    },
+    {
+      "name": "note",
+      "fields": [
+        { "name": "text", "type": "text" }
+      ]
+    }
+  ]
+}
