@@ -19,9 +19,14 @@ public sealed class AiOptions
     // How long the usage log keeps a row.
     public TimeSpan UsageRetention { get; set; } = TimeSpan.FromDays(90);
 
+    // The tokens a day of each site that holds no key of its own and so calls with the operator's key. A site's
+    // dailyTokenBudget may lower it and cannot raise it or turn it off. 0, the default, sets none.
+    public int DailyTokenBudget { get; set; }
+
     public bool IsValid() =>
         MaxInputLength is >= 1 and <= 1_000_000
         && UsageRetention > TimeSpan.Zero
+        && DailyTokenBudget >= 0
         && AllowedEndpoints.All(endpoint => AiProviderEndpoints.Parse(endpoint) is not null);
 }
 

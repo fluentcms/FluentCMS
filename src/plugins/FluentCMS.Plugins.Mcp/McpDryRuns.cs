@@ -63,7 +63,7 @@ internal sealed class McpDryRuns(
         var plan = PlanOf(call, entries);
         if (dryRun)
         {
-            return await DescribeAsync(plan, type, Delete, entries, notFound: [], reach, cancellationToken);
+            return await DescribeAsync(plan, type, Delete, entries, notFound: [], locale: null, reach, cancellationToken);
         }
 
         if (Refusal(call, confirmations.Check(token, plan)) is { } refused)
@@ -96,7 +96,7 @@ internal sealed class McpDryRuns(
         var plan = PlanOf(call, entries);
         if (dryRun)
         {
-            return await DescribeAsync(plan, type, McpContentTools.Unpublish, entries, notFound: [], reach, cancellationToken);
+            return await DescribeAsync(plan, type, McpContentTools.Unpublish, entries, notFound: [], locale, reach, cancellationToken);
         }
 
         if (Refusal(call, confirmations.Check(token, plan)) is { } refused)
@@ -183,7 +183,7 @@ internal sealed class McpDryRuns(
         var plan = PlanOf(call, entries);
         if (dryRun)
         {
-            return await DescribeAsync(plan, type, action, entries, notFound, reach, cancellationToken);
+            return await DescribeAsync(plan, type, action, entries, notFound, locale, reach, cancellationToken);
         }
 
         if (Refusal(call, confirmations.Check(token, plan)) is { } refused)
@@ -256,7 +256,7 @@ internal sealed class McpDryRuns(
     // A plan names every entry it would touch, since the token is of them all, so its titles are what holds it to
     // MaxResultBytes: each is shortened as a list shortens a text, and where the plan is still over the limit they are left
     // out. A plan over it even then, of more entries than the limit holds, is answered whole.
-    private async Task<McpToolResult> DescribeAsync(McpPlan plan, SchemaType type, string action, List<PlannedEntry> entries, List<Guid> notFound, McpReach reach, CancellationToken cancellationToken)
+    private async Task<McpToolResult> DescribeAsync(McpPlan plan, SchemaType type, string action, List<PlannedEntry> entries, List<Guid> notFound, string? locale, McpReach reach, CancellationToken cancellationToken)
     {
         var limits = options.Value;
         var planned = new JsonArray([.. entries.Select(entry => (JsonNode)entry.Json)]);
@@ -279,7 +279,7 @@ internal sealed class McpDryRuns(
         // from every reader.
         var (references, more) = action == McpContentTools.Publish || entries.Count == 0
             ? ([], false)
-            : await ReferencesAsync(type, entries, published: action == McpContentTools.Unpublish, reach, cancellationToken);
+            : await ReferencesAsync(type, entries, published: action == McpContentTools.Unpublish, locale, reach, cancellationToken);
         foreach (var reference in references.OfType<JsonObject>())
         {
             ShortenTitle(reference, reference["type"]!.GetValue<string>(), reach, limits.MaxListTextLength);
@@ -359,8 +359,8 @@ internal sealed class McpDryRuns(
 
     // The entries of the exposed types the caller may read whose relation points to an entry of the plan: the fields of a
     // type itself, and not the relations inside its components and blocks. An entry of the plan is left out, since it goes
-    // with the others.
-    private async Task<(JsonArray References, bool More)> ReferencesAsync(SchemaType target, List<PlannedEntry> entries, bool published, McpReach reach, CancellationToken cancellationToken)
+    // with the others. They are read in the locale of the call, as the entries are, or of the connection when it names none.
+    private async Task<(JsonArray References, bool More)> ReferencesAsync(SchemaType target, List<PlannedEntry> entries, bool published, string? locale, McpReach reach, CancellationToken cancellationToken)
     {
         JsonArray references = [];
         var more = false;
@@ -381,6 +381,7 @@ internal sealed class McpDryRuns(
                     Select = title is null ? ["id"] : ["id", title],
                     Sort = [new SortField("id")],
                     Status = published || !reach.Drafts(type) ? QueryStatus.Published : QueryStatus.Draft,
+                    Locale = type.Localized ? locale : null,
                     Page = new PageRequest { Size = Math.Min(surface.MaxPageSize, MaxReferences + planned.Count), WithTotal = false },
                 };
 

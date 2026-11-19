@@ -131,6 +131,39 @@ public sealed class AiClientFactoryTests
         atOpenAi.Code.ShouldBe("FCMS1685");
     }
 
+    // The endpoint of a key is compared as the allow-list compares: the case of the host, the default port written out and
+    // a slash at the end do not make another endpoint, and another path or port does.
+    [Theory]
+    [InlineData("https://Models.Example.COM:443/v1/", true)]
+    [InlineData("https://models.example.com/v1", true)]
+    [InlineData("https://models.example.com:8443/v1", false)]
+    [InlineData("https://models.example.com/v2", false)]
+    [InlineData("http://models.example.com/v1", false)]
+    public async Task TheEndpointOfAKeyIsComparedAsTheAllowListCompares(string configured, bool sent)
+    {
+        using var factory = Factory(["https://models.example.com/v1"], new() { ["FluentCms:Ai:AzureOpenAi:ApiKey"] = "key-of-the-azure-account", ["FluentCms:Ai:AzureOpenAi:Endpoint"] = configured });
+        var settings = new AiSettings { Provider = AiProvider.AzureOpenAi, Model = "a-deployment", Endpoint = "https://MODELS.example.com/v1" };
+
+        if (sent)
+        {
+            (await factory.CreateAsync(Site, settings, Token)).ShouldNotBeNull();
+        }
+        else
+        {
+            (await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, settings, Token))).Code.ShouldBe("FCMS1685");
+        }
+    }
+
+    [Fact]
+    public async Task TheKeyOfOpenAiGoesToItsOwnEndpointWrittenWithItsDefaultPort()
+    {
+        using var factory = Factory(["https://API.openai.com:443/v1/"], new() { ["FluentCms:Ai:OpenAi:ApiKey"] = "key-of-the-operator" });
+
+        var written = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model", Endpoint = "https://API.openai.com:443/v1/" }, Token);
+
+        written.ShouldNotBeNull();
+    }
+
     [Theory]
     [InlineData("FluentCms:Ai:AzureOpenAi:ApiKey", "a-value")]
     [InlineData("FluentCms:Ai:OpenAiCompatible:ApiKey", "a-value")]

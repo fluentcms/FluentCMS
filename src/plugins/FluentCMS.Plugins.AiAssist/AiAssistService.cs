@@ -47,9 +47,10 @@ internal sealed record AiCall(
 
 // The actions of spec 5.5, in the site of the current operation. PrepareAsync checks, in this order: ai.use in the site,
 // that the site's settings opt the field in, and that the caller may update that field, since a suggestion is for a field
-// the caller edits. It then checks the body, the call limit and the site's daily budget, so that a caller who is over
-// either is refused before any work is done for it, reads what the action works on as the caller, through the content
-// and media services, asks the slot for the site's client and counts the call. RunAsync sends it and writes its usage row: one for every call
+// the caller edits. It then checks the body, takes the call from the call limit and checks the site's daily budget, so
+// that a caller who is over either is refused before any work is done for it, reads what the action works on as the
+// caller, through the content and media services, and asks the slot for the site's client. A call refused on the way
+// is given back to the limit. RunAsync sends it and writes its usage row: one for every call
 // that is sent, whether it succeeds, fails, times out or is cancelled. The plugin writes nothing to content, and the text
 // and the suggestion go to the provider and the caller only: never to a row, a log line or a span.
 internal sealed class AiAssistService(
@@ -131,7 +132,8 @@ internal sealed class AiAssistService(
             throw new ValidationException([Invalid(string.IsNullOrWhiteSpace(request.Type) ? "type" : "field", "An action names the content type and the field its suggestion is for.")]);
         }
 
-        var current = await settings.GetAsync(site, cancellationToken);
+        var read = await settings.ResolveAsync(site, cancellationToken);
+        var current = read.Value;
         var type = schema.FindContentType(request.Type.Trim());
         var field = type?.FindField(request.Field.Trim());
         if (type is null || field is null || !IsOptedIn(current, type, field))
@@ -183,65 +185,69 @@ internal sealed class AiAssistService(
             throw new ValidationException(errors);
         }
 
-        if (limits.Check(site, operation.Principal, current.CallsPerMinute) is { } early)
-        {
-            throw OverLimit(site, operation.Principal, early);
-        }
-
-        await CheckBudgetAsync(site, current, cancellationToken);
-
-        var richText = field.FieldType == RichTextFieldType;
-        var text = request.DocumentId is { } id ? await ReadFieldAsync(type, field, id, locale, richText, cancellationToken) : request.Text;
-        if (action != AiActions.AltText && string.IsNullOrWhiteSpace(text))
-        {
-            throw new ValidationException([Invalid("documentId", "The field of the draft holds no text.")]);
-        }
-
-        if (text?.Length > options.Value.MaxInputLength)
-        {
-            throw new PluginException(AiErrorCodes.InputTooLong, $"The text has more than the {options.Value.MaxInputLength} characters an AI action takes.");
-        }
-
-        List<AIContent> message = [];
-        if (action == AiActions.AltText)
-        {
-            message.Add(await ReadImageAsync(site, request.Options!.MediaId!.Value, cancellationToken));
-        }
-
-        if (!string.IsNullOrWhiteSpace(text))
-        {
-            message.Add(new TextContent(text));
-        }
-
-        // Whichever factory fills the slot: a host's own may not look at the provider, and none is off as FieldsAsync says.
-        if (AiProviders.IsRemoved(current.Provider))
-        {
-            throw AiProviders.Refuse(logger, site, current.Provider);
-        }
-
-        var client = (current.Provider == AiProvider.None ? null : await clients.CreateAsync(site, current, cancellationToken))
-            ?? throw new PluginException(AiErrorCodes.NoProvider, "The site has no AI provider. An administrator names one in the AI settings of the site.");
-
-        // Taken last, so that a call refused on the way takes nothing; a call let through by Check may still be refused
-        // here when the caller's other calls took the bucket meanwhile.
+        // Taken before any work is done for the call, so that calls sent together cannot all pass, and given back when the
+        // call is refused before it is sent.
         if (limits.Take(site, operation.Principal, current.CallsPerMinute) is { } refusal)
         {
             throw OverLimit(site, operation.Principal, refusal);
         }
 
-        return new AiCall(
-            action,
-            site,
-            operation.Principal,
-            type.Name,
-            field.Name,
-            client,
-            [
-                new ChatMessage(ChatRole.System, AiActions.Instructions(action, type.Name, field.Name, richText, field.MaxLength, locale, targetLocale)),
-                new ChatMessage(ChatRole.User, message),
-            ],
-            new ChatOptions { MaxOutputTokens = current.MaxOutputTokens },
-            TimeSpan.FromSeconds(current.RequestTimeout));
+        try
+        {
+            await CheckBudgetAsync(site, read, cancellationToken);
+
+            var richText = field.FieldType == RichTextFieldType;
+            var text = request.DocumentId is { } id ? await ReadFieldAsync(type, field, id, locale, richText, cancellationToken) : request.Text;
+            if (action != AiActions.AltText && string.IsNullOrWhiteSpace(text))
+            {
+                throw new ValidationException([Invalid("documentId", "The field of the draft holds no text.")]);
+            }
+
+            if (text?.Length > options.Value.MaxInputLength)
+            {
+                throw new PluginException(AiErrorCodes.InputTooLong, $"The text has more than the {options.Value.MaxInputLength} characters an AI action takes.");
+            }
+
+            List<AIContent> message = [];
+            if (action == AiActions.AltText)
+            {
+                message.Add(await ReadImageAsync(site, request.Options!.MediaId!.Value, cancellationToken));
+            }
+
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                message.Add(new TextContent(text));
+            }
+
+            // Whichever factory fills the slot: a host's own may not look at the provider, and none is off as FieldsAsync
+            // says.
+            if (AiProviders.IsRemoved(current.Provider))
+            {
+                throw AiProviders.Refuse(logger, site, current.Provider);
+            }
+
+            var client = (current.Provider == AiProvider.None ? null : await clients.CreateAsync(site, current, cancellationToken))
+                ?? throw new PluginException(AiErrorCodes.NoProvider, "The site has no AI provider. An administrator names one in the AI settings of the site.");
+
+            return new AiCall(
+                action,
+                site,
+                operation.Principal,
+                type.Name,
+                field.Name,
+                client,
+                [
+                    new ChatMessage(ChatRole.System, AiActions.Instructions(action, type.Name, field.Name, richText, field.MaxLength, locale, targetLocale)),
+                    new ChatMessage(ChatRole.User, message),
+                ],
+                new ChatOptions { MaxOutputTokens = current.MaxOutputTokens },
+                TimeSpan.FromSeconds(current.RequestTimeout));
+        }
+        catch
+        {
+            limits.GiveBack(site, operation.Principal, current.CallsPerMinute);
+            throw;
+        }
     }
 
     // With onDelta the provider streams, and each piece of text goes to it as it arrives; seo, whose suggestion is an
@@ -347,21 +353,34 @@ internal sealed class AiAssistService(
         return new PluginException(AiErrorCodes.CallLimitExceeded, $"The site allows {refusal.Limit} AI calls a minute for each caller. Try again in {refusal.RetryAfterSeconds} seconds.");
     }
 
-    // The tokens of the calls the site sent since midnight UTC. Calls that are in flight are not counted yet, so calls sent
-    // together may pass the budget by what they use; the next is refused.
-    private async Task CheckBudgetAsync(SiteId site, AiSettings current, CancellationToken cancellationToken)
+    // The tokens of the calls the site sent since midnight UTC, against the lower of the site's budget and, for a site that
+    // holds no key of its own and so calls with the operator's, the ceiling of the configuration. Calls that are in flight
+    // are not counted yet, so calls sent together may pass the budget by what they use; the next is refused.
+    private async Task CheckBudgetAsync(SiteId site, ResolvedSettings<AiSettings> read, CancellationToken cancellationToken)
     {
-        if (current.DailyTokenBudget <= 0)
+        var ownKey = !read.InheritedSecrets.Contains(nameof(AiSettings.ApiKey)) && !string.IsNullOrWhiteSpace(read.Value.ApiKey);
+        var budget = Lower(read.Value.DailyTokenBudget, ownKey ? 0 : options.Value.DailyTokenBudget);
+        if (budget <= 0)
         {
             return;
         }
 
-        var today = new DateTimeOffset(time.GetUtcNow().UtcDateTime.Date, TimeSpan.Zero);
-        if (await usage.TokensSinceAsync(site.Value, today, cancellationToken) >= current.DailyTokenBudget)
+        var now = time.GetUtcNow();
+        var today = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero);
+        var used = await usage.TokensSinceAsync(site.Value, today, cancellationToken);
+        if (used >= budget)
         {
             var resets = today.AddDays(1).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
-            throw new PluginException(AiErrorCodes.BudgetExceeded, $"The site has used its daily budget of {current.DailyTokenBudget} AI tokens. It resets at {resets}.");
+            if (limits.ReportOverBudget(site, DateOnly.FromDateTime(now.UtcDateTime)))
+            {
+                AiLog.BudgetExceeded(logger, site.Value, budget, used, resets);
+            }
+
+            throw new PluginException(AiErrorCodes.BudgetExceeded, $"The site has used its daily budget of {budget} AI tokens. It resets at {resets}.");
         }
+
+        // 0 is no budget, so it is the lower of two only when both are 0.
+        static int Lower(int first, int second) => first <= 0 ? second : second <= 0 ? first : Math.Min(first, second);
     }
 
     private static bool TakesActions(SchemaField field) =>

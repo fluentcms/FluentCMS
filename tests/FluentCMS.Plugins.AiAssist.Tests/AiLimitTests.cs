@@ -118,37 +118,59 @@ public sealed class AiLimitTests : IClassFixture<AiHost>
         _ai.Chat.Calls.ShouldHaveSingleItem();
     }
 
-    // The tokens of the site's rows since midnight UTC, the prompt and the completion, against dailyTokenBudget. A call is
-    // let through while the site is under it, so the call that passes it is answered, and the next is refused until the day
-    // ends, before its draft is read.
+    // The call is taken when it is let through, so that calls sent together cannot all pass while each is still reading
+    // its draft or its image, and given back when it is refused before it is sent. The host's factory holds each call that
+    // passed until the test lets it go.
     [Fact]
-    public async Task ASiteOverItsDailyBudgetIsRefusedUntilTheBudgetResets()
+    public async Task CallsSentTogetherPassTheLimitOnlyAsOftenAsItAllows()
     {
-        var site = await _ai.SiteAsync(settings => settings.DailyTokenBudget = 30);
-        var other = await _ai.SiteAsync(settings => settings.DailyTokenBudget = 30);
+        var site = await _ai.SiteAsync(settings => settings.CallsPerMinute = 2);
         using var admin = await _ai.AdminAsync(site);
-        using var colleague = await _ai.AdminAsync(site);
-        using var elsewhere = await _ai.AdminAsync(other);
         var body = new { type = "article", field = "summary", text = "Ships are big boats." };
+        _ai.Chat.FactoryGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        await SuggestAsync(admin, "rewrite", body);
-        await SuggestAsync(admin, "rewrite", body);
-        using var over = await ActAsync(colleague, "rewrite", body);
-        using var draft = await ActAsync(admin, "rewrite", new { type = "article", field = "summary", documentId = Guid.NewGuid() });
-        await SuggestAsync(elsewhere, "rewrite", body);
-        var problem = await JsonAsync(over, HttpStatusCode.TooManyRequests);
+        var calls = Enumerable.Range(0, 6).Select(_ => ActAsync(admin, "rewrite", body)).ToList();
+        var refused = new List<HttpResponseMessage>();
+        while (refused.Count < 4)
+        {
+            var done = await Task.WhenAny(calls).WaitAsync(TimeSpan.FromSeconds(30), Token);
+            calls.Remove(done);
+            refused.Add(await done);
+        }
 
-        var now = _ai.Host.Time.GetUtcNow();
-        var tomorrow = new DateTimeOffset(now.UtcDateTime.Date.AddDays(1), TimeSpan.Zero);
-        problem["code"]!.GetValue<string>().ShouldBe("FCMS1693");
-        problem["detail"]!.GetValue<string>().ShouldContain("30 AI tokens");
-        problem["detail"]!.GetValue<string>().ShouldContain($"resets at {tomorrow:yyyy-MM-dd}T00:00:00Z");
-        (await RefusedAsync(draft, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1693");
-        _ai.Chat.Calls.Count.ShouldBe(3);
-        (await _ai.UsageAsync(site)).Count.ShouldBe(2);
+        _ai.Chat.FactoryCalls.ShouldBe(2);
+        _ai.Chat.FactoryGate.SetResult();
+        var passed = await Task.WhenAll(calls);
 
-        _ai.Host.Time.Advance(tomorrow - now);
-        await SuggestAsync(colleague, "rewrite", body);
+        foreach (var response in refused)
+        {
+            (await RefusedAsync(response, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1687");
+            response.Dispose();
+        }
+
+        passed.ShouldAllBe(response => response.StatusCode == HttpStatusCode.OK);
+        _ai.Chat.Calls.Count.ShouldBe(2);
+        foreach (var response in passed)
+        {
+            response.Dispose();
+        }
+    }
+
+    // A call refused after it was taken, here for an entry that is not there, gives its call back.
+    [Fact]
+    public async Task ACallRefusedBeforeItIsSentGivesItsCallBack()
+    {
+        var site = await _ai.SiteAsync(settings => settings.CallsPerMinute = 1);
+        using var admin = await _ai.AdminAsync(site);
+
+        using var missing = await ActAsync(admin, "rewrite", new { type = "article", field = "summary", documentId = Guid.NewGuid() });
+        using var tooLong = await ActAsync(admin, "rewrite", new { type = "article", field = "summary", text = new string('a', 20_001) });
+        await SuggestAsync(admin, "rewrite", new { type = "article", field = "summary", text = "Ships are big boats." });
+        using var over = await ActAsync(admin, "rewrite", new { type = "article", field = "summary", text = "Ships are big boats." });
+
+        missing.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await RefusedAsync(tooLong, HttpStatusCode.RequestEntityTooLarge)).ShouldBe("FCMS1686");
+        (await RefusedAsync(over, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1687");
     }
 
     [Fact]

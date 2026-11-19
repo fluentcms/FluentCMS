@@ -33,4 +33,7 @@ internal static partial class AiLog
 
     [LoggerMessage(EventId = 9368, Level = LogLevel.Warning, Message = "Site {SiteId} names the AI provider {Provider}, which the plugin no longer has, so its AI calls are refused until it names openAiCompatible.")]
     public static partial void ProviderRemoved(ILogger logger, Guid siteId, string provider);
+
+    [LoggerMessage(EventId = 9369, Level = LogLevel.Warning, Message = "Site {SiteId} has used {Used} of its daily budget of {Budget} AI tokens, so its AI calls are refused until {ResetsAt}. Its next refusals today are not logged.")]
+    public static partial void BudgetExceeded(ILogger logger, Guid siteId, int budget, long used, string resetsAt);
 }

@@ -1,5 +1,8 @@
+using System.Net;
+using System.Text;
 using System.Text.Json;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Sites;
 using FluentCMS.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Client;
@@ -232,6 +235,53 @@ public sealed class McpDryRunTests(McpToolsFixture fixture) : IClassFixture<McpT
         stillLive.GetProperty("id").GetGuid().ShouldBe(writer);
         secondLive.GetProperty("id").GetGuid().ShouldBe(second);
         unpublished.GetProperty("status").GetString().ShouldBe("unpublished");
+    }
+
+    // The plan of an unpublish reads its entry and the references in the locale of the call, and its token is of that
+    // locale: the same call in another locale is another call. The chapter is published in French only, so only the plan
+    // in French names it.
+    [Fact]
+    public async Task ThePlanOfAnUnpublishIsOfTheLocaleOfTheCall()
+    {
+        await using var host = Host(Path.GetTempPath(), new FakeDownloads()).WithContentTypes(typeof(Guide), typeof(Chapter));
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<SiteManager>().EnsureLocaleAsync(DefaultSite.Id, "fr", Token);
+        }
+
+        using var http = await KeyAsync(host);
+        await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+        var guide = (await OkAsync(client, "guide_create_draft", new { fields = new { name = "Guide" } })).GetProperty("id").GetGuid();
+        await PatchAsync(http, $"guide/{guide:D}?locale=fr", """{ "name": "Guide" }""");
+        var chapter = (await OkAsync(client, "chapter_create_draft", new { fields = new { title = "On its own" } })).GetProperty("id").GetGuid();
+        await PatchAsync(http, $"chapter/{chapter:D}?locale=fr", $$"""{ "title": "Dans le guide", "guide": "{{guide:D}}" }""");
+        await OkAsync(client, McpContentTools.Publish, new { type = "guide", id = guide });
+        await OkAsync(client, McpContentTools.Publish, new { type = "guide", id = guide, locale = "fr" });
+        await OkAsync(client, McpContentTools.Publish, new { type = "chapter", id = chapter, locale = "fr" });
+
+        var french = await OkAsync(client, McpContentTools.Unpublish, new { type = "guide", id = guide, locale = "fr" });
+        var english = await OkAsync(client, McpContentTools.Unpublish, new { type = "guide", id = guide, locale = "en" });
+        var otherLocale = await CallAsync(client, McpContentTools.Unpublish, Confirmed(new { type = "guide", id = guide, locale = "en" }, TokenOf(french)));
+        var noLocale = await CallAsync(client, McpContentTools.Unpublish, Confirmed(new { type = "guide", id = guide }, TokenOf(french)));
+        var unpublished = await OkAsync(client, McpContentTools.Unpublish, Confirmed(new { type = "guide", id = guide, locale = "fr" }, TokenOf(french)));
+
+        french.GetProperty("references").EnumerateArray().ShouldHaveSingleItem().GetProperty("id").GetGuid().ShouldBe(chapter);
+        english.GetProperty("references").GetArrayLength().ShouldBe(0);
+        Code(otherLocale).ShouldBe("FCMS1631");
+        Code(noLocale).ShouldBe("FCMS1631");
+        unpublished.GetProperty("status").GetString().ShouldBe("unpublished");
+        (await OkAsync(client, "guide_get", new { id = guide, status = "published" })).GetProperty("id").GetGuid().ShouldBe(guide);
+
+        static async Task PatchAsync(HttpClient http, string path, string body)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Patch, new Uri($"/api/management/v1/content/{path}", UriKind.Relative))
+            {
+                Content = new StringContent(body, Encoding.UTF8, "application/merge-patch+json"),
+            };
+            request.Headers.TryAddWithoutValidation("If-Match", "\"0\"");
+            using var response = await http.SendAsync(request, Token);
+            response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Token));
+        }
     }
 
     private static async Task<Guid> PostAsync(McpClient client, string title) =>

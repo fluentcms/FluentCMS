@@ -18,7 +18,7 @@ The settings area `ai` (`GET` and `PUT /api/management/v1/settings/ai`, permissi
 | `legacyMaxTokens` | `false` | Sends `maxOutputTokens` as the older `max_tokens` instead of `max_completion_tokens`, for an endpoint that reads only that one, such as Ollama's. |
 | `requestTimeout` | `60` | How long a call may take, in seconds, from 1 to 600. |
 | `callsPerMinute` | `20` | The calls a principal may make in a minute in the site, counted on each instance. |
-| `dailyTokenBudget` | `0` | The prompt and completion tokens the site may use in a day, from midnight UTC. 0 sets no budget. |
+| `dailyTokenBudget` | `0` | The prompt and completion tokens the site may use in a day, from midnight UTC. 0 sets no budget. A site with no key of its own is also held by `FluentCms:Ai:DailyTokenBudget`, which this may lower and not raise. |
 | `fields` | empty | The opt-in: a map of content type to the fields that take actions, such as `{ "article": ["title", "summary", "body"] }`. |
 
 A field that takes actions is a text, long text or rich text field of a content type. A rich text field is sent and answered as Markdown.
@@ -73,6 +73,7 @@ The options are in `FluentCms:Ai`:
 | `AllowedEndpoints` | empty | The endpoints a site may name in its settings, each an absolute `http` or `https` URL with no user, query or fragment. Empty leaves a site OpenAI at its own endpoint. |
 | `{Provider}:ApiKey` | unset | The key of a provider for the sites whose settings hold none, such as `FluentCms:Ai:OpenAi:ApiKey`. Keep it in a secret store, not in a file of the repository. |
 | `{Provider}:Endpoint` | OpenAI's own for `OpenAi` | The endpoint the key of the provider is sent to, and to no other. `AzureOpenAi` and `OpenAiCompatible` need it beside a key, or the host does not start. |
+| `DailyTokenBudget` | `0` | The tokens a day of each site that holds no key of its own, and so calls with the operator's key. A site's `dailyTokenBudget` may lower it and cannot raise it or turn it off. 0 sets none. |
 | `MaxInputLength` | `20000` | The most characters of text an action takes. |
 | `UsageRetention` | `90.00:00:00` | How long the usage log keeps a row. |
 
@@ -165,8 +166,9 @@ The answer holds nothing of the provider's configuration: not the provider, the 
 - The text has at most `MaxInputLength` characters (`FCMS1686`).
 - The answer has at most `maxOutputTokens` tokens, sent as `max_completion_tokens`, or with `legacyMaxTokens` as `max_tokens` alone. Ollama reads only `max_tokens`, so an Ollama site turns it on; it stays off elsewhere, since OpenAI's reasoning models refuse `max_tokens`, also through a gateway.
 - A call ends at `requestTimeout` (`FCMS1688`) or when the caller goes away.
-- A principal makes at most `callsPerMinute` calls in a site (`FCMS1687`). The count is kept in memory on each instance, and a refused call takes nothing from it. A caller over it is refused before the draft is read or an image is decoded.
-- A site with a `dailyTokenBudget` uses at most about that many tokens a day, counted from its usage rows since midnight UTC (`FCMS1693`, whose detail says when it resets). Calls in flight are not counted yet, so calls sent together may pass the budget by what they use. The Management rate limit holds beside it.
+- A principal makes at most `callsPerMinute` calls in a site (`FCMS1687`). The count is kept in memory on each instance. A call is counted before its draft is read or its image decoded, so calls sent together pass only as often as the limit allows, and a call refused before it is sent is not counted.
+- A site's daily token budget is the lower of its `dailyTokenBudget` and, when the site holds no key of its own, `FluentCms:Ai:DailyTokenBudget`. It is counted from the site's usage rows since midnight UTC (`FCMS1693`, whose detail says when it resets, logged once a day as event 9369). The `dailyTokenBudget` of the instance defaults holds the sites that follow the defaults, not a site that saved settings of its own.
+- The budget counts what providers reported, so it is a floor of what was spent: calls in flight are not counted yet, a call that fails, times out or is cancelled before the provider reports its usage counts 0 tokens, and so does every call of a provider that reports no usage, which a budget then never stops. The Management rate limit holds beside it.
 - A call is one request to the provider: the retries of the client package are off.
 
 ### The text is content
