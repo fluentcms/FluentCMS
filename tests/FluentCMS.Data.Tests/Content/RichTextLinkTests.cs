@@ -1,12 +1,15 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Tests.Schema;
+using FluentCMS.Data.Tests.Jobs;
 using FluentCMS.Hooks;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Data.Tests.Content.ServiceDatabase;
@@ -33,6 +36,7 @@ public sealed class RichTextLinkTests : IDisposable
             .Field("cards", "blocks", field => field.Setting(FieldSettings.Blocks, Cards))
             .Field("box", "component", field => field.Setting(FieldSettings.Component, "box"))
             .Field("boxes", "component", field => field.Multiple().Setting(FieldSettings.Component, "box"))
+            .Field("locked", "richText", field => field.IsReadOnly())
             .Field("body", "richText"))
         .Build();
 
@@ -298,15 +302,137 @@ public sealed class RichTextLinkTests : IDisposable
         ((string)_database.Row("cms_article", id)["body"]).ShouldNotContain("javascript");
     }
 
+    // A value under a key that holds a URL that is not a string, and a URL inside an object of an attribute: the inline
+    // after the text "Click", the path of the error, and what a read must not hold.
+    public static TheoryData<string, string, string> Hostile() => new()
+    {
+        { """{"type":"text","text":"Go","marks":[{"type":"entryLink","attrs":{"entryId":"11111111-1111-1111-1111-111111111111","entryType":"article","href":["javascript:alert(1)"]}}]}""", "body.content[0].content[1].marks[0].attrs.href", "javascript" },
+        { """{"type":"inlineBlock","attrs":{"blockType":"gallery","data":{"url":["javascript:alert(1)"]}}}""", "body.content[0].content[1].attrs.data.url", "javascript" },
+        { """{"type":"media","attrs":{"mediaId":"11111111-1111-1111-1111-111111111111","src":{"value":"x"}}}""", "body.content[0].content[1].attrs.src", "\"src\"" },
+        { """{"type":"media","attrs":{"mediaId":"11111111-1111-1111-1111-111111111111","src":5}}""", "body.content[0].content[1].attrs.src", "\"src\"" },
+        { """{"type":"media","attrs":{"mediaId":"11111111-1111-1111-1111-111111111111","link":{"href":"javascript:alert(1)"}}}""", "body.content[0].content[1].attrs.link.href", "javascript" },
+    };
+
+    [Theory]
+    [MemberData(nameof(Hostile))]
+    public async Task AValueThatIsNotASafeStringIsRefusedAtItsPath(string inline, string path, string absent)
+    {
+        _ = absent;
+        var error = (await Should.ThrowAsync<ValidationException>(() => _database.CreateAsync(Editor, new() { ["title"] = "T", ["body"] = Paragraph("""{"type":"text","text":"Click"}""", inline) }))).Errors.ShouldHaveSingleItem();
+
+        error.Path.ShouldBe(path);
+        error.Code.ShouldBe(ValidationErrorCodes.UnsafeUrl);
+    }
+
+    [Theory]
+    [MemberData(nameof(Hostile))]
+    public async Task AStoredValueThatIsNotASafeStringIsLeftOutOfAMediaRead(string inline, string path, string absent)
+    {
+        _ = path;
+        var id = IdOf(await _database.CreateAsync(Editor, Placed("text", Safe)));
+        StoreUnsafe(Paragraph("""{"type":"text","text":"Click"}""", inline).Json);
+
+        var json = Json(await _database.GetAsync(Editor, id));
+
+        json.ShouldNotContain(absent);
+        json.ShouldContain("Click");
+    }
+
+    // As when a host takes a scheme off FluentCms:RichText:LinkSchemes: the stored link reads without it.
+    [Fact]
+    public async Task AStoredLinkWithASchemeNoLongerAllowedIsLeftOut()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, Placed("text", Safe)));
+        StoreUnsafe(Paragraph(Linked("sms:+15551234567")).Json);
+
+        Json(await _database.GetAsync(Editor, id)).ShouldNotContain("sms:");
+    }
+
+    [Fact]
+    public async Task EveryLocaleAVersionDiffAndAnExportLeaveAStoredUnsafeHrefOut()
+    {
+        var created = await _database.CreateAsync(Editor, Placed("text", Safe));
+        var id = IdOf(created);
+        await _database.PatchAsync(Editor, id, new() { ["body"] = Paragraph($$"""{"type":"text","text":"Click here","marks":[{{Link(Safe)}}]}""") }, VersionOf(created));
+        StoreUnsafe();
+
+        var everyLocale = await _database.GetAsync(Editor, id, locale: "all");
+        var diff = await _database.DiffAsync(Editor, id, 1, 2);
+        var exported = await _database.AsAsync(Editor, async services =>
+        {
+            List<object> entries = [];
+            await foreach (var entry in services.GetRequiredService<EntryExport>().ReadAsync(Model().FindContentType("article")!, SiteA, publishedOnly: false, Token))
+            {
+                entries.Add(entry);
+            }
+
+            return entries;
+        });
+
+        foreach (var read in new[] { Json(everyLocale), JsonSerializer.Serialize(diff), JsonSerializer.Serialize(exported) })
+        {
+            read.ShouldNotContain("javascript");
+            read.ShouldContain("Click");
+        }
+    }
+
+    [Fact]
+    public async Task ABulkUpdateIsNotRefusedByAStoredUnsafeHref()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, Placed("text", Safe)));
+        StoreUnsafe();
+
+        var result = await _database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().BulkAsync(
+            "article",
+            new BulkRequest { Operation = BulkOperation.Update, Items = [new BulkItem(id) { Patch = new() { ["title"] = "Bulk" }, ExpectedVersion = 1 }] },
+            Token));
+
+        result.Items.ShouldHaveSingleItem().Status.ShouldBe(BulkItemStatus.Succeeded);
+        ((string)_database.Row("cms_article", id)["body"]).ShouldNotContain("javascript");
+    }
+
+    [Fact]
+    public async Task AWriteThatStripsAStoredUnsafeHrefLogsIt()
+    {
+        var logs = new RecordingLogs();
+        using var database = new ServiceDatabase(cms => cms.Services.AddSingleton<ILoggerProvider>(logs), Model());
+        var created = await database.CreateAsync(Editor, Placed("text", Safe));
+        database.Read(context =>
+        {
+            var row = context.Rows("cms_article").Single();
+            row["body"] = Paragraph(Linked(Script)).Json;
+            return context.SaveChanges();
+        });
+
+        await database.PatchAsync(Editor, IdOf(created), new() { ["title"] = "Again" }, VersionOf(created));
+
+        logs.Count("UnsafeUrlStripped").ShouldBe(1);
+    }
+
+    // A read-only value sent back as stored, not as a read gave it, is a change the write refuses.
+    [Fact]
+    public async Task AnUpdateThatEchoesAStoredUnsafeReadOnlyValueIsRefused()
+    {
+        var created = await _database.CreateAsync(Editor, Placed("text", Safe));
+        var id = IdOf(created);
+        StoreUnsafe(Paragraph(Linked(Script)).Json, column: "locked");
+        var sent = Placed("text", Safe);
+        sent["locked"] = Paragraph(Linked(Script));
+
+        var refused = await Should.ThrowAsync<Exception>(() => _database.UpdateAsync(Editor, id, sent, VersionOf(created)));
+
+        refused.ShouldBeOfType<ValidationException>().Errors.ShouldContain(error => error.Path.StartsWith("locked", StringComparison.Ordinal));
+    }
+
     // Puts javascript: in place of the safe URL in every row and version, as data stored before the rule would have it, or
     // stores the body given in every row.
-    private void StoreUnsafe(string? body = null) => _database.Read(context =>
+    private void StoreUnsafe(string? body = null, string column = "body") => _database.Read(context =>
     {
         foreach (var row in context.Rows("cms_article").ToList())
         {
             foreach (var key in row.Keys.ToList())
             {
-                if (body is not null && key == "body")
+                if (body is not null && key == column)
                 {
                     row[key] = body;
                 }

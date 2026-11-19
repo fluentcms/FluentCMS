@@ -33,24 +33,32 @@ internal static class HiddenFields
     public static RichText DropUnsafeLinks(SchemaModel schema, RichText document, SafeUrl links) =>
         Remove(schema, document, dropUnknown: false, links, Nothing);
 
-    // One parse for both, and none for a document with no inline block and no URL that could be unsafe.
+    // One parse for both, and none for a document with nothing to remove and no URL that could be unsafe.
     private static RichText Remove(SchemaModel schema, RichText document, bool dropUnknown, SafeUrl? links, Func<SchemaField, bool> remove)
     {
-        var inline = InlineBlockJson.MayHold(document.Json);
+        var hides = !ReferenceEquals(remove, Nothing) && InlineBlockJson.MayHold(document.Json);
         var linked = links is not null && RichTextLinks.MayHoldUnsafe(document.Json, links);
-        if ((!inline && !linked) || InlineBlockJson.Parse(document.Json) is not { } node)
+        if ((!hides && !linked) || InlineBlockJson.Parse(document.Json) is not { } node)
         {
             return document;
         }
 
         var dropped = linked && RichTextLinks.DropUnsafe(node, schema, links!);
-        if (!inline)
+        if (!hides)
         {
+            // The rich text fields in the data of known inline blocks, which DropUnsafe leaves to their block's rules.
+            if (InlineBlockJson.MayHold(document.Json))
+            {
+                var inner = node.DeepClone();
+                RemoveInline(schema, node, dropUnknown: false, links, Nothing);
+                dropped |= !JsonNode.DeepEquals(inner, node);
+            }
+
             return dropped ? new RichText(InlineBlockJson.Text(node)) : document;
         }
 
         var before = node.DeepClone();
-        RemoveInline(schema, node, dropUnknown, links, remove);
+        RemoveInline(schema, node, dropUnknown, linked ? links : null, remove);
         return dropped || !JsonNode.DeepEquals(before, node) ? InlineBlockJson.ToRichText(node) : document;
     }
 

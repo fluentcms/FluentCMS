@@ -20,6 +20,11 @@ internal static class VersionSnapshot
         }
 
         var fields = UnderCurrentNames(schema, type, stored);
+        if (!RichTextLinks.MayHoldUnsafe(snapshot, links))
+        {
+            return fields;
+        }
+
         foreach (var field in type.Fields)
         {
             if (fields[field.Name] is { } value)

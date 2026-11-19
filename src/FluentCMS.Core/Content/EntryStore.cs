@@ -13,12 +13,13 @@ using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Content;
 
 // The rows behind one entry: cms_document, the content tables, cms_reference and cms_version. It knows nothing of
 // permissions; ContentService decides, and calls this inside its transaction.
-internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichTextOptions richText)
+internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichTextOptions richText, ILogger<EntryStore> logger)
 {
     private const string MediaTarget = "media";
 
@@ -155,8 +156,9 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
 
         ContentDocument entry = [];
         ApplySystem(entry, row);
-        FillFields(type, type, "", entry, shared, localized, byField, locale);
-        return new StoredDraft(entry, new StoredRows(shared, localized)) { References = references };
+        List<(string Field, string Scheme)> stripped = [];
+        FillFields(type, type, "", entry, shared, localized, byField, locale, stripped);
+        return new StoredDraft(entry, new StoredRows(shared, localized) { Stripped = stripped }) { References = references };
     }
 
     public static void ApplySystem(ContentDocument entry, Document row)
@@ -180,7 +182,8 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
         Dictionary<string, object>? shared,
         Dictionary<string, object>? localized,
         ILookup<(string Field, string Locale), Reference> references,
-        string locale)
+        string locale,
+        List<(string Field, string Scheme)> stripped)
     {
         var stored = FieldStorage.ByPath(schema, root);
         foreach (var field in owner.Fields)
@@ -190,7 +193,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
             {
                 ContentDocument group = [];
                 var component = schema.FindComponent((string)field.Settings[FieldSettings.Component])!;
-                FillFields(root, component, path + ".", group, shared, localized, references, locale);
+                FillFields(root, component, path + ".", group, shared, localized, references, locale, stripped);
                 into[field.Name] = group.Values.All(value => value is null or JsonArray { Count: 0 }) ? null : group;
                 continue;
             }
@@ -206,27 +209,49 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
             var row = leaf.Localized ? localized : shared;
             object? value = null;
             row?.TryGetValue(leaf.Column, out value);
-            into[field.Name] = FromColumn(leaf, value);
+            into[field.Name] = FromColumn(leaf, value, stripped);
         }
     }
 
     // A URL in rich text that a write would now refuse is dropped, so that a read never returns it and a write that
-    // carries the value on stores it without (RichTextLinks).
-    private object? FromColumn(StoredField stored, object? value)
+    // carries the value on stores it without (RichTextLinks). What was dropped goes to stripped, for that write to log.
+    private object? FromColumn(StoredField stored, object? value, List<(string Field, string Scheme)>? stripped)
     {
         if (stored.Kind != FieldStorageKind.Json || value is not string json)
         {
             return value;
         }
 
+        var scheme = RichTextLinks.FirstUnsafeScheme(json, richText.Links);
         if (stored.Field.FieldType == FieldTypeNames.RichText)
         {
-            return HiddenFields.DropUnsafeLinks(schema, context.ReordersJson ? StoredOrder.Of(schema, new RichText(json)) : new RichText(json), richText.Links);
+            var document = context.ReordersJson ? StoredOrder.Of(schema, new RichText(json)) : new RichText(json);
+            if (scheme is null)
+            {
+                return document;
+            }
+
+            var clean = HiddenFields.DropUnsafeLinks(schema, document, richText.Links);
+            if (!ReferenceEquals(clean, document))
+            {
+                stripped?.Add((stored.Location, scheme));
+            }
+
+            return clean;
         }
 
         var node = JsonDepth.Parse(json);
         var read = context.ReordersJson ? StoredOrder.Of(schema, stored.Field, node) : node;
-        HiddenFields.DropUnsafeLinks(schema, read, stored.Field, richText.Links);
+        if (scheme is not null)
+        {
+            var before = read?.DeepClone();
+            HiddenFields.DropUnsafeLinks(schema, read, stored.Field, richText.Links);
+            if (!JsonNode.DeepEquals(before, read))
+            {
+                stripped?.Add((stored.Location, scheme));
+            }
+        }
+
         return read;
     }
 
@@ -344,6 +369,11 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
             },
             () => PruneVersionsAsync(type, row, cancellationToken),
             cancellationToken);
+        foreach (var (field, scheme) in over.Stripped)
+        {
+            ContentLog.UnsafeUrlStripped(logger, type.Name, row.DocumentId, row.Locale, field, scheme);
+        }
+
         return written;
     }
 
@@ -950,6 +980,9 @@ internal sealed record ReferenceTargetRow(string Locale, bool IsPublished);
 internal sealed record StoredRows(Dictionary<string, object>? Shared, Dictionary<string, object>? Localized)
 {
     public static readonly StoredRows None = new(null, null);
+
+    // The fields whose stored value lost a URL that rich text no longer allows when read, with its scheme.
+    public IReadOnlyList<(string Field, string Scheme)> Stripped { get; init; } = [];
 }
 
 // References are those of the draft in its locale and the shared ones, in position order.

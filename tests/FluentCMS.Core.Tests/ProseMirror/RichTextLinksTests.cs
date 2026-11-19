@@ -89,11 +89,33 @@ public sealed class RichTextLinksTests
     [InlineData("""{"attrs":{"href":"javascript:x"}}""", true)]
     [InlineData("""{"attrs":{"HREF": "javascript:x"}}""", true)]
     [InlineData("""{"attrs":{"src":"data:x"}}""", true)]
+    [InlineData("""{"attrs":{"href":null}}""", false)]
+    [InlineData("""{"attrs":{"href": ["javascript:x"]}}""", true)]
+    [InlineData("""{"attrs":{"href":5}}""", true)]
+    [InlineData("""{"attrs":{"src":{"value":"x"}}}""", true)]
+    [InlineData("""{"title":"href"}""", false)]
     [InlineData("""{"attrs":{"href":"java\tscript:x"}}""", true)]
     [InlineData("{\"attrs\":{\"\\u0068ref\":\"javascript:x\"}}", true)]
     [InlineData("{\"text\":\"a \\u0026 b\"}", false)]
     public void APreScanFindsEveryUrlThatCouldBeUnsafe(string json, bool may) =>
         RichTextLinks.MayHoldUnsafe(json, SafeUrl.Default).ShouldBe(may);
+
+    [Fact]
+    public void AReadDropsAValueThatIsNotAStringAndAUrlInsideAnAttribute()
+    {
+        var document = Paragraph(
+            """{"type":"text","text":"A","marks":[{"type":"entryLink","attrs":{"entryId":"11111111-1111-1111-1111-111111111111","entryType":"article","href":["javascript:x"]}}]},""" +
+            """{"type":"media","attrs":{"mediaId":"22222222-2222-2222-2222-222222222222","src":5,"link":{"href":"javascript:y","label":"Kept"}}},""" +
+            """{"type":"inlineBlock","attrs":{"blockType":"gallery","data":{"url":["javascript:z"],"items":[{"src":{"value":"x"}}]}}}""");
+
+        var read = HiddenFields.DropUnsafeLinks(Schema, document, SafeUrl.Default).Json;
+
+        read.ShouldNotContain("javascript");
+        read.ShouldNotContain("\"src\"");
+        read.ShouldNotContain("\"url\"");
+        read.ShouldContain("Kept");
+        read.ShouldContain("entryLink");
+    }
 
     [Fact]
     public void ADocumentWithOnlySafeUrlsIsReturnedAsItWas()
