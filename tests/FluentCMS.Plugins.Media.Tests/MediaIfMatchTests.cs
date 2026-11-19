@@ -15,6 +15,9 @@ public sealed class MediaIfMatchTests(MediaHost media) : IClassFixture<MediaHost
     private const string VersionConflict = "FCMS3105";
     private const string IfMatchInvalid = "FCMS3131";
 
+    // Few enough writers that SQLite, which takes one writer at a time, serves them all well within its busy timeout.
+    private const int Writers = 4;
+
     public static TheoryData<string> Writes => ["patch", "move", "replace", "delete"];
 
     [Fact]
@@ -49,6 +52,7 @@ public sealed class MediaIfMatchTests(MediaHost media) : IClassFixture<MediaHost
 
         refused.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed, await refused.Content.ReadAsStringAsync(Token));
         (await CodeAsync(refused)).ShouldBe(VersionConflict);
+        (await refused.Content.ReadAsStringAsync(Token)).ShouldContain("the asset is at version 2");
         var after = await GetAsync(client, $"{Root}/{id:D}");
         after.ToJsonString().ShouldBe(before.ToJsonString());
         (await ReadAsync(client, id)).ShouldBe("\"2\"");
@@ -115,10 +119,73 @@ public sealed class MediaIfMatchTests(MediaHost media) : IClassFixture<MediaHost
             any.Headers.ETag!.Tag.ShouldBe("\"3\"");
         }
 
-        using var malformed = await WriteAsync(client, "patch", id, "\"3\", \"4\"");
-        malformed.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        (await CodeAsync(malformed)).ShouldBe(IfMatchInvalid);
+        foreach (var write in (string[])["patch", "move", "replace", "delete"])
+        {
+            using var malformed = await WriteAsync(client, write, id, "\"3\", \"4\"");
+            malformed.StatusCode.ShouldBe(HttpStatusCode.BadRequest, write);
+            (await CodeAsync(malformed)).ShouldBe(IfMatchInvalid, write);
+        }
+
         (await ReadAsync(client, id)).ShouldBe("\"3\"");
+    }
+
+    [Fact]
+    public async Task AStaleReplaceWritesNoFile()
+    {
+        using var client = await media.AdminAsync();
+        var id = await AssetAsync(client);
+        using (var other = await WriteAsync(client, "patch", id, null, title: "Other tab"))
+        {
+            await JsonAsync(other);
+        }
+
+        var before = Files();
+        using var refused = await WriteAsync(client, "replace", id, "\"1\"");
+
+        refused.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
+        Files().ShouldBe(before, ignoreOrder: true);
+
+        string[] Files() => [.. Directory.EnumerateFiles(media.StorageRoot, "*", SearchOption.AllDirectories).Where(file => file.Contains(id.ToString("N"), StringComparison.Ordinal))];
+    }
+
+    // An asset outside what the caller reaches is not found, whatever version it names.
+    [Fact]
+    public async Task ACallerOutsideTheAssetsFolderGetsNotFoundRatherThanAConflict()
+    {
+        using var admin = await media.AdminAsync();
+        var folder = await FolderAsync(admin, Unique("theirs"));
+        var id = await AssetAsync(admin);
+        using var outsider = await media.ClientWithAsync(admin, new { permission = "media.update", constraints = new { resources = new[] { folder.ToString("D") } } });
+
+        using var response = await WriteAsync(outsider, "patch", id, "\"7\"");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await ReadAsync(admin, id)).ShouldBe("\"1\"");
+    }
+
+    // A forced delete takes the asset out of the entries that use it; one refused for its version leaves them.
+    [Fact]
+    public async Task AForcedDeleteWithAStaleIfMatchLeavesTheReferences()
+    {
+        using var client = await media.AdminAsync();
+        var id = await AssetAsync(client);
+        await media.ReferAsync("post", Guid.NewGuid(), "hero", id);
+        using (var other = await WriteAsync(client, "patch", id, null, title: "Other tab"))
+        {
+            await JsonAsync(other);
+        }
+
+        using (var refused = await SendDeleteAsync(client, id, "\"1\""))
+        {
+            refused.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
+        }
+
+        (await media.ReferencesToAsync(id)).ShouldBe(1);
+        (await ReadAsync(client, id)).ShouldBe("\"2\"");
+
+        using var deleted = await SendDeleteAsync(client, id, "\"2\"");
+        deleted.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        (await media.ReferencesToAsync(id)).ShouldBe(0);
     }
 
     // The version is the row's concurrency token, so of writes that all read the same version exactly one is applied, even
@@ -130,12 +197,11 @@ public sealed class MediaIfMatchTests(MediaHost media) : IClassFixture<MediaHost
         var id = await AssetAsync(client);
         var read = await ReadAsync(client, id);
 
-        var responses = await Task.WhenAll(Enumerable.Range(0, 8).Select(index => WriteAsync(client, "patch", id, read, title: $"Tab {index}")));
+        var responses = await Task.WhenAll(Enumerable.Range(0, Writers).Select(index => WriteAsync(client, "patch", id, read, title: $"Tab {index}")));
 
         try
         {
-            responses.Count(response => response.StatusCode == HttpStatusCode.OK).ShouldBe(1);
-            responses.Count(response => response.StatusCode == HttpStatusCode.PreconditionFailed).ShouldBe(7);
+            responses.Select(response => response.StatusCode).Order().ShouldBe([HttpStatusCode.OK, .. Enumerable.Repeat(HttpStatusCode.PreconditionFailed, Writers - 1)]);
             (await ReadAsync(client, id)).ShouldBe("\"2\"");
         }
         finally
@@ -153,12 +219,12 @@ public sealed class MediaIfMatchTests(MediaHost media) : IClassFixture<MediaHost
         using var client = await media.AdminAsync();
         var id = await AssetAsync(client);
 
-        var responses = await Task.WhenAll(Enumerable.Range(0, 8).Select(index => WriteAsync(client, "patch", id, null, title: $"Tab {index}")));
+        var responses = await Task.WhenAll(Enumerable.Range(0, Writers).Select(index => WriteAsync(client, "patch", id, null, title: $"Tab {index}")));
 
         try
         {
             responses.ShouldAllBe(response => response.StatusCode == HttpStatusCode.OK);
-            (await ReadAsync(client, id)).ShouldBe("\"9\"");
+            (await ReadAsync(client, id)).ShouldBe($"\"{Writers + 1}\"");
         }
         finally
         {
@@ -199,6 +265,13 @@ public sealed class MediaIfMatchTests(MediaHost media) : IClassFixture<MediaHost
         {
             return await client.SendAsync(request, Token);
         }
+    }
+
+    private static async Task<HttpResponseMessage> SendDeleteAsync(HttpClient client, Guid id, string ifMatch)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, new Uri($"{Root}/{id:D}?force=true", UriKind.Relative));
+        request.Headers.TryAddWithoutValidation("If-Match", ifMatch).ShouldBeTrue();
+        return await client.SendAsync(request, Token);
     }
 
     private static MultipartFormDataContent File(string name, byte[] bytes)

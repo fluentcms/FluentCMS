@@ -450,7 +450,8 @@ internal sealed class MediaService(
     // The references go before the asset, so that a delete that fails between the two is tried again rather than leaving
     // references to an asset that is gone; whether an entry refers to it is asked across sites, as an id is unique.
     // A request that read the old row of a replaced asset just before the save may find its file gone and answer 404.
-    // The version is compared before the references go, so that a stale delete leaves them.
+    // With force and an expected version, the version is claimed before the references go, so that a delete refused for
+    // its version leaves them; the claim moves the version on, and the delete is then saved over any later write.
     public Task DeleteAsync(Guid id, bool force, CancellationToken cancellationToken = default) =>
         DeleteAsync(id, force, null, cancellationToken);
 
@@ -461,6 +462,12 @@ internal sealed class MediaService(
         var reach = await ReachAsync(MediaPermissions.Delete, site, library, cancellationToken);
         var asset = await FindAssetAsync(library, id, reach, tracked: true, cancellationToken);
         Expect(asset, expectedVersion);
+
+        if (force && expectedVersion is { } claimed)
+        {
+            await ClaimAsync(asset, claimed, cancellationToken);
+            expectedVersion = null;
+        }
 
         if (force)
         {
@@ -812,17 +819,41 @@ internal sealed class MediaService(
     {
         if (expectedVersion is { } expected && expected != asset.Version)
         {
-            throw new VersionConflictException(expected, asset.Version, current: null);
+            throw Conflict(expected, asset.Version);
         }
+    }
+
+    // A 412 as an entry's, with the code of a version conflict, worded for an asset.
+    private static PluginException Conflict(int expected, int current) =>
+        new(MediaErrorCodes.VersionConflict, $"The write was based on version {expected}, but the asset is at version {current}.");
+
+    // Moves the version on from the one expected in one conditional update, or refuses as a stale save would.
+    private async Task ClaimAsync(Asset asset, int expected, CancellationToken cancellationToken)
+    {
+        var claimed = await database.Set<Asset>()
+            .Where(row => row.Id == asset.Id && row.Version == expected && row.DeletedAt == null)
+            .ExecuteUpdateAsync(set => set.SetProperty(row => row.Version, expected + 1), cancellationToken);
+        if (claimed == 0)
+        {
+            var current = await database.Set<Asset>().AsNoTracking()
+                .Where(row => row.Id == asset.Id && row.DeletedAt == null)
+                .Select(row => (int?)row.Version)
+                .FirstOrDefaultAsync(cancellationToken);
+            throw current is { } version ? Conflict(expected, version) : AssetNotFound(asset.Id);
+        }
+
+        database.Entry(asset).Property(row => row.Version).OriginalValue = expected + 1;
+        asset.Version = expected + 1;
     }
 
     // Saves the row at the next version. The version is the row's concurrency token, so the update changes nothing when a
     // write came in after the read: with an expected version that is a conflict, and without one the write goes over the
-    // other at the version now stored, as the last write won before assets had a version.
+    // other at the version now stored, as the last write won before assets had a version, a few times at most.
     private async Task SaveAssetAsync(Asset asset, int? expectedVersion, CancellationToken cancellationToken)
     {
+        const int Attempts = 5;
         asset.Version++;
-        while (true)
+        for (var attempt = 1; ; attempt++)
         {
             try
             {
@@ -832,7 +863,7 @@ internal sealed class MediaService(
             catch (DbUpdateConcurrencyException exception)
             {
                 var entry = exception.Entries.FirstOrDefault(item => ReferenceEquals(item.Entity, asset));
-                if (entry is null)
+                if (entry is null || (expectedVersion is null && attempt == Attempts))
                 {
                     throw;
                 }
@@ -846,7 +877,7 @@ internal sealed class MediaService(
                 var current = stored.GetValue<int>(nameof(Asset.Version));
                 if (expectedVersion is { } expected)
                 {
-                    throw new VersionConflictException(expected, current, current: null);
+                    throw Conflict(expected, current);
                 }
 
                 entry.Property(nameof(Asset.Version)).OriginalValue = current;

@@ -4,14 +4,11 @@ using Microsoft.AspNetCore.Http;
 
 namespace FluentCMS.Plugins;
 
-// The version a write was based on travels as an entity tag, If-Match: "7", and a response that holds a version gives it
-// back as the ETag. The tag is strong, but a proxy that compresses responses, such as nginx with gzip on, hands the client
-// W/"7", so a weak tag is read by its opaque value where RFC 9110 would refuse it. A list of tags or anything but a whole
-// number is refused rather than read. Core's entries and settings read it here too.
-
 /// <summary>
-/// The version of a record of a plugin as an entity tag, as entries have it: a read gives it as the <c>ETag</c>, <c>"7"</c>,
-/// and a write that sends it back as <c>If-Match</c> is refused with a 412 when the record is at another version.
+/// The version of a record as an entity tag, as entries, settings and plugins have it: a read gives it as the <c>ETag</c>,
+/// <c>"7"</c>, and a write that sends it back as <c>If-Match</c> is refused with a 412 when the record is at another version.
+/// A proxy that compresses responses, such as nginx with gzip on, hands the client <c>W/"7"</c>, so a weak tag is read by its
+/// value where RFC 9110 would refuse it; a list of tags or anything but a whole number is refused rather than read.
 /// </summary>
 public static class EntityVersions
 {

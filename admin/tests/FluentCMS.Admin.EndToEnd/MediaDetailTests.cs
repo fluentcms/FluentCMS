@@ -99,7 +99,9 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
         await theirs.Page.GotoAsync(new Uri(Host.Admin, "media").AbsoluteUri);
         await Expect(Content(theirs).GetByRole(AriaRole.Heading, new LocatorGetByRoleOptions { Name = Text("Media.Page.Heading"), Exact = true })).ToBeVisibleAsync();
         var theirPanel = await OpenAssetAsync(theirs, mark);
-        await theirPanel.GetByLabel(Text("Media.Form.Title"), new LocatorGetByLabelOptions { Exact = true }).FillAsync($"{mark} theirs");
+        var theirTitle = theirPanel.GetByLabel(Text("Media.Form.Title"), new LocatorGetByLabelOptions { Exact = true });
+        await theirTitle.FillAsync($"{mark} theirs");
+        await Expect(theirTitle).ToHaveValueAsync($"{mark} theirs");
         // An access token lasts five seconds on this host, so a save may be answered 401 and sent again.
         var theirSave = await theirs.Page.RunAndWaitForResponseAsync(
             () => MediaButton(theirs, "Media.Form.Save").ClickAsync(),
@@ -121,13 +123,17 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
                 reads.Add(request.Url);
             }
         };
-        await panel.GetByLabel(Text("Media.Form.Caption"), new LocatorGetByLabelOptions { Exact = true }).FillAsync("Mine");
+        // The caption is checked as filled right before the save, so that a render between the two cannot drop it unseen.
+        var caption = panel.GetByLabel(Text("Media.Form.Caption"), new LocatorGetByLabelOptions { Exact = true });
+        await caption.FillAsync("Mine");
+        await Expect(caption).ToHaveValueAsync("Mine");
         var refused = await mine.Page.RunAndWaitForResponseAsync(
             () => MediaButton(mine, "Media.Form.Save").ClickAsync(),
             response => response.Request.Method == "PATCH" && response.Status != 401,
             new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         refused.Status.ShouldBe(412);
         (await refused.Request.HeaderValueAsync("if-match")).ShouldNotBeNullOrEmpty();
+        (refused.Request.PostData ?? "").ShouldContain("Mine");
         reads.ShouldBeEmpty();
 
         await Expect(panel.Locator(".media-save-conflict")).ToContainTextAsync(Text("Media.Conflict.Text"));

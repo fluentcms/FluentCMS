@@ -58,8 +58,8 @@ public sealed class MediaVersionTests : IDisposable
         (read.Title, read.Version) = ("Mine", 2);
         await Should.ThrowAsync<DbUpdateConcurrencyException>(() => context.SaveChangesAsync(Token));
 
-        var refused = await Should.ThrowAsync<VersionConflictException>(() => AsSystemAsync(media => media.UpdateAsync(id, new MediaAssetChanges { Title = "Mine" }, 1, Token)));
-        refused.CurrentVersion.ShouldBe(2);
+        var refused = await Should.ThrowAsync<PluginException>(() => AsSystemAsync(media => media.UpdateAsync(id, new MediaAssetChanges { Title = "Mine" }, 1, Token)));
+        (refused.Code, refused.Message).ShouldBe(("FCMS3105", "The write was based on version 1, but the asset is at version 2."));
         var applied = await AsSystemAsync(media => media.UpdateAsync(id, new MediaAssetChanges { Title = "Mine" }, null, Token));
         (applied.Version, applied.Asset.Title).ShouldBe((3, "Mine"));
     }

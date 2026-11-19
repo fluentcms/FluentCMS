@@ -135,6 +135,10 @@ internal sealed record MediaAssetChanged
     public bool IsPrivate { get; init; }
 
     public DateTimeOffset? UpdatedAt { get; init; }
+
+    // The ETag of a replace's answer.
+    [JsonIgnore]
+    public string? ETag { get; init; }
 }
 
 internal sealed record MediaUsageInfo

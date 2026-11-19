@@ -51,13 +51,12 @@ internal sealed class MediaApi(IManagementApi api)
 
     // Saves changes of the metadata in the locale the asset was read in, with the ETag of basis as If-Match, and answers
     // the asset as it is after them. When the asset changed since, the server refuses the save with 412 and
-    // MediaConflictException holds the asset as a read after the refusal finds it. With overwrite the save names no
-    // version and goes over any.
-    public async Task<MediaAssetInfo> UpdateAsync(MediaAssetInfo basis, JsonObject changes, bool overwrite, CancellationToken cancellationToken)
+    // MediaConflictException holds the asset as a read after the refusal finds it; a save over that change is based on it.
+    public async Task<MediaAssetInfo> UpdateAsync(MediaAssetInfo basis, JsonObject changes, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(basis);
         ArgumentNullException.ThrowIfNull(changes);
-        var request = new ApiRequest(HttpMethod.Patch, $"media/{basis.Id:D}") { Body = changes, Locale = basis.Locale, IfMatch = overwrite ? null : basis.ETag };
+        var request = new ApiRequest(HttpMethod.Patch, $"media/{basis.Id:D}") { Body = changes, Locale = basis.Locale, IfMatch = basis.ETag };
         ApiResponse<MediaAssetChanged> answer;
         try
         {
@@ -68,19 +67,20 @@ internal sealed class MediaApi(IManagementApi api)
             throw new MediaConflictException(await GetAsync(basis.Id, basis.Locale, cancellationToken));
         }
 
-        // A private asset's URLs are signed for it, so a change of the flag reads them again, as does a save over another
-        // change, which may have replaced the file.
+        // A private asset's URLs are signed for it, so a change of the flag reads them again.
         var changed = answer.Value;
-        return changed.IsPrivate == basis.IsPrivate && !overwrite
+        return changed.IsPrivate == basis.IsPrivate
             ? Merge(basis, changed) with { ETag = answer.EntityTag }
             : await GetAsync(basis.Id, basis.Locale, cancellationToken);
     }
 
-    public async Task<MediaAssetInfo> ReplaceAsync(Guid asset, MediaUploadBody body, string? locale, CancellationToken cancellationToken)
+    // The answer has no URLs, so the caller reads the asset after it; the answer's ETag is what a save is based on when that
+    // read fails.
+    public async Task<MediaAssetChanged> ReplaceAsync(Guid asset, MediaUploadBody body, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(body);
-        await api.SendAsync(new ApiRequest(HttpMethod.Post, $"media/{asset:D}/replace") { Content = body.Content }, MediaJsonContext.Default.MediaAssetChanged, cancellationToken);
-        return await GetAsync(asset, locale, cancellationToken);
+        var answer = await api.SendAsync(new ApiRequest(HttpMethod.Post, $"media/{asset:D}/replace") { Content = body.Content }, MediaJsonContext.Default.MediaAssetChanged, cancellationToken);
+        return answer.Value with { ETag = answer.EntityTag };
     }
 
     // With force, the asset is taken out of the entries that use it (FCMS1594 without).

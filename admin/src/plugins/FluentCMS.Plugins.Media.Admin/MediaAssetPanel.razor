@@ -357,7 +357,28 @@
                 return;
             }
 
-            var replaced = await Media.ReplaceAsync(shown.Id, body, shown.Locale, CancellationToken.None);
+            // A replace gives the asset a new version and new URLs, so the asset is read again; when that read fails, the next
+            // save is based on the ETag of the replace's answer, so that it does not report the user's own replace as a conflict.
+            var changed = await Media.ReplaceAsync(shown.Id, body, CancellationToken.None);
+            MediaAssetInfo replaced;
+            try
+            {
+                replaced = await Media.GetAsync(shown.Id, shown.Locale, CancellationToken.None);
+            }
+            catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+            {
+                replaced = shown with
+                {
+                    FileName = changed.FileName,
+                    MimeType = changed.MimeType,
+                    Size = changed.Size,
+                    Width = changed.Width,
+                    Height = changed.Height,
+                    UpdatedAt = changed.UpdatedAt,
+                    ETag = changed.ETag,
+                };
+            }
+
             gate.Latest = replaced;
             if (ShowsInLocale(replaced))
             {

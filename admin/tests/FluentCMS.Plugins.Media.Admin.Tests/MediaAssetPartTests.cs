@@ -75,8 +75,47 @@ public sealed class MediaAssetPartTests : MediaTestContext
         changed!.Alt.ShouldBe("A cat");
         changed.Title.ShouldBe("Their title");
         changed.ETag.ShouldBe("\"3\"");
-        Library.Requests.Last(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBeNull();
+        Library.Requests.Last(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBe("\"2\"");
         cut.FindAll("[role=alert]").ShouldBeEmpty();
+    }
+
+    // Saving over the other change is based on the asset the conflict showed, so a third change made since is a conflict too.
+    [Fact]
+    public void AChangeMadeAfterTheConflictWasShownIsNotOverwrittenBySavingMineOverIt()
+    {
+        var id = Library.AddAsset("cat.png");
+        MediaAssetInfo? changed = null;
+        var cut = Render<MediaAltText>(parameters => parameters.Add(part => part.Asset, Read(id)).Add(part => part.OnChanged, asset => changed = asset));
+        Library.ChangeElsewhere(id, "Their title");
+        Field(cut, "Alt text").Input("A cat");
+        Field(cut, "Alt text").Blur();
+        cut.WaitForAssertion(() => HasButton(cut, "Save mine over it").ShouldBeTrue());
+        Library.ChangeElsewhere(id, "A third title");
+
+        Button(cut, "Save mine over it").Click();
+
+        cut.WaitForAssertion(() => Patches.ShouldBe(2));
+        cut.WaitForAssertion(() => HasButton(cut, "Save mine over it").ShouldBeTrue());
+        Library.Requests.Last(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBe("\"2\"");
+        Library.Text(id, "en", "alt").ShouldBeNull();
+        changed.ShouldBeNull();
+
+        Button(cut, "Save mine over it").Click();
+        cut.WaitForAssertion(() => changed.ShouldNotBeNull());
+        (changed!.Alt, changed.Title, changed.ETag).ShouldBe(("A cat", "A third title", "\"4\""));
+        Library.Requests.Last(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBe("\"3\"");
+    }
+
+    // A proxy that compresses answers makes the ETag weak; the gate still orders by the version it holds.
+    [Fact]
+    public void TheGateOrdersByTheVersionOfAWeakTag()
+    {
+        var id = Library.AddAsset("cat.png");
+        var shown = Read(id) with { ETag = "W/\"2\"", UpdatedAt = DateTimeOffset.UnixEpoch.AddDays(2) };
+        var gate = new MediaSaveGate { Latest = shown with { ETag = "W/\"3\"", UpdatedAt = DateTimeOffset.UnixEpoch.AddDays(1), Title = "Latest" } };
+
+        gate.Basis(shown).Title.ShouldBe("Latest");
+        gate.Basis(shown with { ETag = "W/\"4\"" }).Title.ShouldNotBe("Latest");
     }
 
     [Fact]

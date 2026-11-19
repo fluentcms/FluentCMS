@@ -402,6 +402,39 @@ public sealed class MediaAssetPanelTests : MediaTestContext
     }
 
     [Fact]
+    public void AReplaceWhoseReadAfterFailsIsStillDoneAndTheNextSaveIsNoConflict()
+    {
+        Admin.Grant(MediaPermissions.Update);
+        var id = Library.AddAsset("cat.png");
+        var cut = Open(id);
+        var replaced = false;
+        Library.BeforeAnswer = request =>
+        {
+            if (request.Path.EndsWith("/replace", StringComparison.Ordinal))
+            {
+                replaced = true;
+            }
+            else if (replaced && request.Method == HttpMethod.Get && request.Path == $"media/{id:D}")
+            {
+                replaced = false;
+                throw new HttpRequestException("The network is down.");
+            }
+
+            return Task.CompletedTask;
+        };
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("png", "dog.png"));
+        cut.WaitForAssertion(() => cut.Find(".media-panel-facts").TextContent.ShouldContain("dog.png"));
+        Library.Asset(id)["fileName"]!.GetValue<string>().ShouldBe("dog.png");
+        Field(cut, "Alt text").Input("A dog");
+        Field(cut, "Alt text").Blur();
+
+        cut.WaitForAssertion(() => Library.Text(id, "en", "alt").ShouldBe("A dog"));
+        Library.Requests.Single(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBe("\"2\"");
+        cut.FindAll("[role=alert]").ShouldBeEmpty();
+    }
+
+    [Fact]
     public void APrivateAssetDownloadsThroughASignedUrl()
     {
         var id = Library.AddAsset("contract.pdf", mimeType: "application/pdf");
