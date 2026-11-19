@@ -7,9 +7,10 @@ using static Microsoft.Playwright.Assertions;
 
 namespace FluentCMS.Admin.EndToEnd;
 
-// The block editor of A-26 for the built-in Editor, on the host's landing type: a band holds cards, and a card a link, so a
-// link is at depth 3. Blocks are added, ordered, collapsed, duplicated and removed by keyboard alone, and once by drag; the
-// save sends each block with an id of its own, and a read of the entry gives them back unchanged.
+// The block editor of A-26 for the built-in Editor, on the host's landing type: a band holds cards and links, and a card a
+// link, an author and an image, so a link is at depth 3. Blocks are added, ordered, collapsed, duplicated and removed by
+// keyboard alone, and once by drag; the save sends each block with an id of its own, and a read of the entry gives them back
+// unchanged.
 public sealed partial class BlockTests(EndToEndHost host) : BrowserTest(host)
 {
     [Fact]
@@ -30,6 +31,21 @@ public sealed partial class BlockTests(EndToEndHost host) : BrowserTest(host)
         await Expect(Toggle(card)).ToBeFocusedAsync();
         await card.Locator("input").Nth(0).FillAsync("Ada");
         await card.Locator("input").Nth(1).FillAsync("Profile");
+
+        // The relation and the media editors work in a block as at the top level.
+        await Expect(card.Locator(".relation-field-actions fluent-button").Filter(Exactly("Content.Relation.ChooseEntry"))).ToBeVisibleAsync();
+        await Expect(card.Locator(".media-field")).ToBeVisibleAsync();
+
+        // A link of the band, collapsed, stays collapsed while the band's title is typed in.
+        var links = Item(tab, 0).Locator(":scope > .nested-body > .block-form > div:nth-of-type(3) > fieldset");
+        await PressAsync(links.Locator(":scope > .nested-actions fluent-button").Filter(Exactly("Content.Nested.Add", "Link")), "Enter");
+        await links.Locator(":scope > ul > li input").First.FillAsync("Home");
+        await PressAsync(Toggle(links.Locator(":scope > ul > li")), "Enter");
+        await Expect(Toggle(links.Locator(":scope > ul > li"))).ToHaveAttributeAsync("aria-expanded", "false");
+        await Item(tab, 0).Locator("input").First.FillAsync("Team and friends");
+        await Expect(Item(tab, 0).Locator("input").First).ToHaveValueAsync("Team and friends");
+        await Expect(Toggle(links.Locator(":scope > ul > li"))).ToHaveAttributeAsync("aria-expanded", "false");
+        await Expect(links.Locator(".nested-preview")).ToHaveTextAsync("Home");
         await AddAsync(tab, "note", "Note");
         await Item(tab, 1).Locator("input").FillAsync("Hello");
 
@@ -42,7 +58,7 @@ public sealed partial class BlockTests(EndToEndHost host) : BrowserTest(host)
         // The band collapses to its first text, is duplicated, and the note is removed, each by its control and Enter.
         await PressAsync(Toggle(Item(tab, 1)), "Enter");
         await Expect(Toggle(Item(tab, 1))).ToHaveAttributeAsync("aria-expanded", "false");
-        await Expect(Item(tab, 1).Locator(".nested-preview")).ToHaveTextAsync("Team");
+        await Expect(Toggle(Item(tab, 1)).Locator(".nested-preview")).ToHaveTextAsync("Team and friends");
         await PressAsync(Action(tab, "Content.Nested.Duplicate", "Band", "2"), "Enter");
         await Expect(Titles(tab)).ToHaveCountAsync(3);
         await Expect(Toggle(Item(tab, 2))).ToBeFocusedAsync();
@@ -51,7 +67,7 @@ public sealed partial class BlockTests(EndToEndHost host) : BrowserTest(host)
         await Expect(Titles(tab)).ToHaveTextAsync([Text("Content.Nested.Item", "Band", "1"), Text("Content.Nested.Item", "Band", "2")]);
         await Expect(Toggle(Item(tab, 0))).ToBeFocusedAsync();
 
-        // The copy is dragged above the band, and the band stays collapsed.
+        // The copy is dragged above the band, and the band stays collapsed; the assertions wait for the drop to land.
         await Item(tab, 1).Locator(":scope > .nested-head").DragToAsync(Item(tab, 0));
         await Expect(Toggle(Item(tab, 0))).ToHaveAttributeAsync("aria-expanded", "true");
         await Expect(Toggle(Item(tab, 1))).ToHaveAttributeAsync("aria-expanded", "false");
@@ -65,14 +81,18 @@ public sealed partial class BlockTests(EndToEndHost host) : BrowserTest(host)
         ids.Distinct().Count().ShouldBe(4);
         foreach (var band in sent)
         {
-            band!["title"]!.GetValue<string>().ShouldBe("Team");
+            band!["title"]!.GetValue<string>().ShouldBe("Team and friends");
             band["cards"]![0]!["link"]!["label"]!.GetValue<string>().ShouldBe("Profile");
+            band["links"]!.ToJsonString().ShouldBe("""[{"label":"Home"}]""");
         }
 
         // Read again, the entry has the blocks as they were sent, with their ids, and a save sends them back unchanged.
         await Expect(tab.Page).ToHaveURLAsync(new Regex("content/landing/[0-9a-f-]{36}"));
         await tab.ReloadAsync();
+        await Expect(tab.Page.Locator("[data-field='title'] input")).ToHaveValueAsync("Blocks in the browser");
         await Expect(Titles(tab)).ToHaveCountAsync(2);
+        await Expect(Item(tab, 0).Locator(".media-field")).ToBeVisibleAsync();
+        await Expect(Item(tab, 0).Locator(".relation-field")).ToBeVisibleAsync();
         await tab.Page.Locator("[data-field='title'] input").FocusAsync();
         var location = (await created.HeaderValueAsync("location")).ShouldNotBeNull();
         var id = location[(location.LastIndexOf('/') + 1)..].Split('?')[0];

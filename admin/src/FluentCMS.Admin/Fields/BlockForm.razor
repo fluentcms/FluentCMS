@@ -1,7 +1,8 @@
 @* The generated form of one block or component (spec 4.8): each field that is not hidden and that its condition shows, with
    the registered editor of its type, the errors at its path with the path made relative to the field, and its lengths,
    range and pattern checked as it is left. A change writes a copy of the block, so its type and id go with it. Errors at
-   the block itself, such as a repeated id, are shown above its fields. *@
+   the block itself, such as a repeated id, are shown above its fields. The forms around a field copy their values on every
+   change, so a form whose block and errors are equal to those it drew does not draw again. *@
 @inherits BlockFormBase
 @inject FieldEditorRegistry Editors
 @inject IStringLocalizer<AdminResources> L
@@ -27,6 +28,9 @@
     private readonly Dictionary<string, List<ApiProblemError>> findings = new(StringComparer.Ordinal);
     private SchemaTypeDescription? loadedFor;
     private bool loaded;
+    private bool focusWhenLoaded;
+    private bool unchanged;
+    private (JsonObject? Value, IReadOnlyList<ApiProblemError> Errors, string Path, bool ReadOnly, string? Locale, string Direction)? drawn;
 
     [CascadingParameter(Name = NestedValues.Nesting)]
     public int Nesting { get; set; }
@@ -40,6 +44,10 @@
     // The editors of a plugin's field types load before the fields show, as the form's own do.
     protected override async Task OnParametersSetAsync()
     {
+        unchanged = loadedFor == BlockType && drawn is { } last
+            && last.Path == Path && last.ReadOnly == ReadOnly && last.Locale == ContentLocale && last.Direction == TextDirection
+            && last.Errors.SequenceEqual(Errors) && JsonNode.DeepEquals(last.Value, Value);
+        drawn = (Value, Errors, Path, ReadOnly, ContentLocale, TextDirection);
         if (loadedFor == BlockType)
         {
             return;
@@ -50,8 +58,31 @@
         loaded = loadedFor == BlockType;
     }
 
+    protected override bool ShouldRender()
+    {
+        var render = !unchanged;
+        unchanged = false;
+        return render;
+    }
+
+    // Focus asked for while a plugin's editor loads goes to the field once it has.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusWhenLoaded && loaded)
+        {
+            focusWhenLoaded = false;
+            await FocusAsync();
+        }
+    }
+
     public override async ValueTask FocusAsync()
     {
+        if (!loaded)
+        {
+            focusWhenLoaded = true;
+            return;
+        }
+
         var fields = Shown.Where(field => editors.ContainsKey(field.Name)).ToList();
         if ((fields.FirstOrDefault(field => ErrorsOf(field).Count > 0) ?? fields.FirstOrDefault()) is { } first)
         {

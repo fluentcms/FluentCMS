@@ -84,7 +84,7 @@ internal static class NestedValues
             copy.Insert(Math.Min(1, copy.Count), IdKey, NewId());
         }
 
-        RenewIds(schema, type, copy, 1);
+        RenewIds(schema, type, copy);
         return copy;
     }
 
@@ -119,13 +119,9 @@ internal static class NestedValues
         return deepest + 1;
     }
 
-    private static void RenewIds(SchemaDescription schema, SchemaTypeDescription type, JsonObject values, int depth)
+    // Every depth the value has, which a value stored before a change of the schema may hold beyond MaxDepth.
+    private static void RenewIds(SchemaDescription schema, SchemaTypeDescription type, JsonObject values)
     {
-        if (depth > MaxDepth)
-        {
-            return;
-        }
-
         foreach (var field in type.Fields)
         {
             switch (field.Type, values[field.Name])
@@ -140,7 +136,7 @@ internal static class NestedValues
 
                         if (schema.Blocks.FirstOrDefault(item => item.Name == TypeOf(block)) is { } blockType)
                         {
-                            RenewIds(schema, blockType, block, depth + 1);
+                            RenewIds(schema, blockType, block);
                         }
                     }
 
@@ -148,18 +144,18 @@ internal static class NestedValues
                 case ("component", JsonNode component) when ComponentOf(schema, field) is { } componentType:
                     foreach (var item in component is JsonArray items ? items.OfType<JsonObject>() : component is JsonObject one ? [one] : [])
                     {
-                        RenewIds(schema, componentType, item, depth + 1);
+                        RenewIds(schema, componentType, item);
                     }
 
                     break;
                 case ("richText", JsonObject document):
-                    RenewInlineIds(schema, document, depth);
+                    RenewInlineIds(schema, document);
                     break;
             }
         }
     }
 
-    private static void RenewInlineIds(SchemaDescription schema, JsonObject node, int depth)
+    private static void RenewInlineIds(SchemaDescription schema, JsonObject node)
     {
         if (Text(node, TypeKey) == "inlineBlock" && node["attrs"] is JsonObject attributes)
         {
@@ -170,7 +166,7 @@ internal static class NestedValues
 
             if (attributes["data"] is JsonObject data && schema.Blocks.FirstOrDefault(item => item.Name == Text(attributes, "blockType")) is { } blockType)
             {
-                RenewIds(schema, blockType, data, depth + 1);
+                RenewIds(schema, blockType, data);
             }
         }
 
@@ -178,7 +174,7 @@ internal static class NestedValues
         {
             foreach (var child in content.OfType<JsonObject>())
             {
-                RenewInlineIds(schema, child, depth);
+                RenewInlineIds(schema, child);
             }
         }
     }

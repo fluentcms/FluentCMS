@@ -23,14 +23,17 @@
       "name": "band",
       "fields": [
         { "name": "title", "type": "text" },
-        { "name": "cards", "type": "blocks", "blocks": ["card"] }
+        { "name": "cards", "type": "blocks", "blocks": ["card"] },
+        { "name": "links", "type": "component", "component": "link", "multiple": true }
       ]
     },
     {
       "name": "card",
       "fields": [
         { "name": "title", "type": "text" },
-        { "name": "link", "type": "component", "component": "link" }
+        { "name": "link", "type": "component", "component": "link" },
+        { "name": "author", "type": "relation", "target": "author" },
+        { "name": "image", "type": "media" }
       ]
     },
     {

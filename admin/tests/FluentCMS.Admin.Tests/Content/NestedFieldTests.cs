@@ -17,7 +17,8 @@ using static FluentCMS.Admin.Tests.Shell.FakeManagementServer;
 namespace FluentCMS.Admin.Tests.Content;
 
 // The component and block editors of A-26. A page has blocks of a union (hero, quote, section, and a tower that nests four
-// deep), a component and a repeatable component. A section holds cards, and a card a link component, so a link is at depth 3.
+// deep), a component and a repeatable component. A section holds cards, and a card a link component, so a link is at depth 3;
+// a panel holds a repeatable link component.
 public sealed partial class NestedFieldTests : AdminTestContext
 {
     private readonly FakeContent _content;
@@ -39,7 +40,8 @@ public sealed partial class NestedFieldTests : AdminTestContext
             Type("card", "block", fields: [Field("title"), Component("link", "link")]),
             Type("tower", "block", fields: [Blocks("floors", "floor")]),
             Type("floor", "block", fields: [Blocks("rooms", "room")]),
-            Type("room", "block", fields: [Component("door", "link")]));
+            Type("room", "block", fields: [Component("door", "link")]),
+            Type("panel", "block", fields: [Field("heading"), Component("links", "link", multiple: true)]));
     }
 
     [Fact]
@@ -96,23 +98,171 @@ public sealed partial class NestedFieldTests : AdminTestContext
         Ids(_content.Writes[0].Body["sections"]).ShouldBe(["cccccccccccc", "aaaaaaaaaaaa", "bbbbbbbbbbbb"]);
     }
 
-    // A move changes what the items show rather than moving them in the document, and each block's fields go with it.
+    // A move takes each item's editors, their state and the item's collapsed state with it.
     [Fact]
-    public void AMoveKeepsTheItemsInPlaceAndTheCollapsedStateWithItsBlock()
+    public void AMoveTakesTheEditorsAndTheCollapsedStateOfEachItemWithIt()
     {
         var id = Page(Hero("aaaaaaaaaaaa", "A"), Quote("bbbbbbbbbbbb", "B"));
         var app = Load($"content/page/{id:D}");
-        var toggle = Toggle(app, 0);
+        var heading = app.FindComponents<TextFieldEditor>().Single(editor => editor.Instance.Field.Name == "heading").Instance;
+        var form = Forms(app)["aaaaaaaaaaaa"];
         Items(app)[1].QuerySelector(".nested-toggle")!.Click();
         app.WaitForAssertion(() => Items(app)[1].QuerySelector(".nested-preview")!.TextContent.ShouldBe("B"));
 
         Heads(app)[1].KeyDown(new KeyboardEventArgs { Key = "ArrowUp", AltKey = true });
 
         app.WaitForAssertion(() => Titles(app).ShouldBe(["Quote 1", "Hero 2"]));
-        Toggle(app, 0).ShouldBe(toggle);
+        app.FindComponents<TextFieldEditor>().Single(editor => editor.Instance.Field.Name == "heading").Instance.ShouldBeSameAs(heading);
+        Forms(app)["aaaaaaaaaaaa"].ShouldBeSameAs(form);
         Items(app)[0].QuerySelector(".nested-toggle")!.GetAttribute("aria-expanded").ShouldBe("false");
         Items(app)[1].QuerySelector(".nested-toggle")!.GetAttribute("aria-expanded").ShouldBe("true");
-        Items(app)[1].QuerySelector("input")!.GetAttribute("value").ShouldBe("A");
+        app.WaitForAssertion(() => Focused().ShouldBe(Toggle(app, 0)));
+    }
+
+    // Each change copies the values of the forms around it; the items beside the edited field keep their editors and state.
+    [Fact]
+    public void TypingInABlockKeepsTheStateOfTheComponentsBesideIt()
+    {
+        var panel = new JsonObject
+        {
+            ["type"] = "panel",
+            ["id"] = "panel0000001",
+            ["heading"] = "Links",
+            ["links"] = new JsonArray(new JsonObject { ["label"] = "One" }, new JsonObject { ["label"] = "Two" }),
+        };
+        var id = Page(panel);
+        var app = Load($"content/page/{id:D}");
+        var links = FieldOf(app, "sections").QuerySelector(".nested-body .nested-items")!;
+        links.Children[0].QuerySelector(".nested-toggle")!.Click();
+        app.WaitForAssertion(() => FieldOf(app, "sections").QuerySelector(".nested-body .nested-items")!.Children[0].QuerySelector(".nested-preview")!.TextContent.ShouldBe("One"));
+        var two = app.FindComponents<TextFieldEditor>().Single(editor => editor.Instance.Field.Name == "label").Instance;
+
+        Items(app)[0].QuerySelector("input")!.Input("Links and more");
+
+        app.WaitForAssertion(() => Sections(app).Value![0]!["heading"]!.GetValue<string>().ShouldBe("Links and more"));
+        var after = FieldOf(app, "sections").QuerySelector(".nested-body .nested-items")!.Children;
+        after[0].QuerySelector(".nested-toggle")!.GetAttribute("aria-expanded").ShouldBe("false");
+        app.FindComponents<TextFieldEditor>().Single(editor => editor.Instance.Field.Name == "label").Instance.ShouldBeSameAs(two);
+    }
+
+    // Errors name items by their position when the save was refused; they stay on their item when it moves, and go with it.
+    [Fact]
+    public void AnErrorStaysOnItsBlockWhenTheBlocksMoveAndGoesWhenItIsRemoved()
+    {
+        var id = Page(Hero("aaaaaaaaaaaa", "A"), Hero("bbbbbbbbbbbb", "B"));
+        var app = Load($"content/page/{id:D}");
+        _content.NextWrite = _ => FakeContent.Invalid(("sections[1].heading", "Too plain."));
+        Save(app);
+        app.WaitForAssertion(() => Items(app)[1].TextContent.ShouldContain("Too plain."));
+
+        IconButton(app, "Move Hero 2 up").Click();
+
+        app.WaitForAssertion(() => Headings(app).ShouldBe(["B", "A"]));
+        Items(app)[0].TextContent.ShouldContain("Too plain.");
+        Items(app)[1].TextContent.ShouldNotContain("Too plain.");
+        IconButton(app, "Remove Hero 1").Click();
+        app.WaitForAssertion(() => Headings(app).ShouldBe(["A"]));
+        Items(app)[0].TextContent.ShouldNotContain("Too plain.");
+    }
+
+    [Fact]
+    public void ABlockOfATypeTheSchemaDoesNotHaveShowsItsJsonAndIsSavedUnchanged()
+    {
+        var gone = new JsonObject { ["type"] = "gone", ["id"] = "gone00000001", ["text"] = "Kept" };
+        var id = Page(gone, Hero("aaaaaaaaaaaa", "A"));
+        var app = Load($"content/page/{id:D}");
+
+        JsonNode.Parse(Items(app)[0].QuerySelector("pre[role='textbox']")!.TextContent)!["text"]!.GetValue<string>().ShouldBe("Kept");
+        Save(app);
+
+        app.WaitForAssertion(() => _content.Writes.ShouldHaveSingleItem());
+        _content.Writes[0].Body["sections"]![0]!.ToJsonString().ShouldBe(gone.ToJsonString());
+    }
+
+    // A list read as null is written as null once what was added is removed, and focus goes to the add button.
+    [Fact]
+    public void AListReadWithoutAValueIsWrittenAsNullOnceEmptiedAgain()
+    {
+        var id = _content.Add("page", new JsonObject { ["title"] = "Empty" });
+        var app = Load($"content/page/{id:D}");
+
+        Click(Actions(app), "Add Hero");
+        app.WaitForAssertion(() => Titles(app).ShouldBe(["Hero 1"]));
+        IconButton(app, "Remove Hero 1").Click();
+        app.WaitForAssertion(() => FieldOf(app, "sections").QuerySelector("ul.nested-items").ShouldBeNull());
+        app.WaitForAssertion(() => Focused().ShouldBe(AddButton(app)));
+        Save(app);
+
+        app.WaitForAssertion(() => _content.Writes.ShouldHaveSingleItem());
+        _content.Writes[0].Body["sections"].ShouldBeNull();
+    }
+
+    [Fact]
+    public void DiscardShowsThePublishedBlocks()
+    {
+        var id = _content.Add(
+            "page",
+            new JsonObject { ["title"] = "Home", ["sections"] = new JsonArray(Hero("aaaaaaaaaaaa", "Draft")) },
+            status: "modified",
+            published: new JsonObject { ["title"] = "Home", ["sections"] = new JsonArray(Hero("bbbbbbbbbbbb", "Published"), Quote("cccccccccccc", "Q")) });
+        var app = Load($"content/page/{id:D}");
+        Items(app)[0].QuerySelector("input")!.Input("Unsaved");
+
+        app.FindAll(".content-form-toolbar fluent-button").First(button => button.TextContent.Trim() == "Discard changes").Click();
+        var dialog = app.FindComponents<CmsDialog>().Single(found => found.Instance.Title == "Discard the changes?");
+        app.WaitForAssertion(() => dialog.Instance.Open.ShouldBeTrue());
+        dialog.FindAll("fluent-button").Single(button => button.TextContent.Trim() == "Discard changes").Click();
+
+        app.WaitForAssertion(() => Titles(app).ShouldBe(["Hero 1", "Quote 2"]));
+        Headings(app)[0].ShouldBe("Published");
+    }
+
+    [Fact]
+    public void AnotherLocaleShowsItsOwnBlocks()
+    {
+        Management.AddLocale(MainSite, "fr", 1);
+        var page = Page();
+        page["localized"] = true;
+        foreach (var field in page["fields"]!.AsArray())
+        {
+            field!["localizable"] = true;
+        }
+
+        Management.SetTypes(MainSite, page, Type("author", fields: [Field("name")]));
+        var id = Page(Hero("aaaaaaaaaaaa", "Hello"));
+        _content.Add("page", new JsonObject { ["title"] = "Accueil", ["sections"] = new JsonArray(Quote("bbbbbbbbbbbb", "Bonjour"), Hero("cccccccccccc", "Salut")) }, id: id, locale: "fr");
+        var app = Load($"content/page/{id:D}");
+        app.WaitForAssertion(() => Titles(app).ShouldBe(["Hero 1"]));
+
+        Navigation.NavigateTo($"content/page/{id:D}?locale=fr");
+
+        app.WaitForAssertion(() => Titles(app).ShouldBe(["Quote 1", "Hero 2"]));
+        Items(app)[1].QuerySelector("input")!.Input("Salut !");
+        Save(app);
+        app.WaitForAssertion(() => _content.Writes.ShouldHaveSingleItem());
+        Ids(_content.Writes[0].Body["sections"]).ShouldBe(["bbbbbbbbbbbb", "cccccccccccc"]);
+        _content.Writes[0].Locale.ShouldBe("fr");
+    }
+
+    // The error opens a collapsed block whose plugin editor loads only then; focus goes to that editor once it has loaded.
+    [Fact]
+    public void FocusReachesAPluginEditorThatLoadsAsTheBlockWithTheErrorOpens()
+    {
+        var gate = new TaskCompletionSource<Type>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var id = Page(Hero("aaaaaaaaaaaa", "A"));
+        Start();
+        Services.GetRequiredService<FieldEditorRegistry>().AddLazy("rating", () => true, _ => gate.Task);
+        var app = Load($"content/page/{id:D}", started: true);
+        Items(app)[0].QuerySelector(".nested-toggle")!.Click();
+        app.WaitForAssertion(() => Items(app)[0].QuerySelector(".nested-body").ShouldBeNull());
+        _content.NextWrite = _ => FakeContent.Invalid(("sections[0].score", "Out of range."));
+
+        Save(app);
+        app.WaitForAssertion(() => Items(app)[0].QuerySelector(".nested-body").ShouldNotBeNull());
+        app.FindComponents<RatingStub>().ShouldBeEmpty();
+        gate.SetResult(typeof(RatingStub));
+
+        app.WaitForAssertion(() => Focused().ShouldBe(app.FindComponent<RatingStub>().Instance.Element.Id));
     }
 
     [Fact]
@@ -180,7 +330,7 @@ public sealed partial class NestedFieldTests : AdminTestContext
     {
         var app = Load("content/page/new");
 
-        Options(app).ShouldBe(["hero", "quote", "section"]);
+        Options(app).ShouldBe(["hero", "quote", "section", "panel"]);
         ChooseType(app, "section");
         Click(Actions(app), "Add Section");
         app.WaitForAssertion(() => Titles(app).ShouldBe(["Section 1"]));
@@ -293,7 +443,7 @@ public sealed partial class NestedFieldTests : AdminTestContext
 
     private static JsonObject Page() => Type(
         "page",
-        fields: [Field("title"), Blocks("sections", "hero", "quote", "section", "tower"), Component("seo", "seo"), Component("links", "link", multiple: true)]);
+        fields: [Field("title"), Blocks("sections", "hero", "quote", "section", "tower", "panel"), Component("seo", "seo"), Component("links", "link", multiple: true)]);
 
     private static JsonObject Blocks(string name, params string[] types) =>
         Field(name, "blocks", settings: new JsonObject { ["blocks"] = new JsonArray([.. types.Select(type => (JsonNode)type)]) });
@@ -360,12 +510,20 @@ public sealed partial class NestedFieldTests : AdminTestContext
 
     // The elements the page's blocks editor holds by position, read from the editor, since bUnit's markup does not name an
     // element once it has rendered again.
-    private static string Toggle(IRenderedComponent<AdminApp> app, int position) =>
-        ((Dictionary<int, ElementReference>)Private(Sections(app), "toggles"))[position].Id;
+    private static string KeyAt(IRenderedComponent<AdminApp> app, int position) => ((List<string>)Private(Sections(app), "keys"))[position];
 
-    private static string ButtonAt(IRenderedComponent<AdminApp> app, string buttons, int position)
+    private static string Toggle(IRenderedComponent<AdminApp> app, int position) =>
+        ((Dictionary<string, ElementReference>)Private(Sections(app), "toggles"))[KeyAt(app, position)].Id;
+
+    private static Dictionary<string, BlockForm> Forms(IRenderedComponent<AdminApp> app) => (Dictionary<string, BlockForm>)Private(Sections(app), "forms");
+
+    private static string AddButton(IRenderedComponent<AdminApp> app) => ElementOf((CmsButton)Private(Sections(app), "addButton"));
+
+    private static string ButtonAt(IRenderedComponent<AdminApp> app, string buttons, int position) =>
+        ElementOf(((Dictionary<string, CmsButton>)Private(Sections(app), buttons))[KeyAt(app, position)]);
+
+    private static string ElementOf(CmsButton button)
     {
-        var button = ((Dictionary<int, CmsButton>)Private(Sections(app), buttons))[position];
         var library = Private(button, "_button");
         return ((ElementReference)library.GetType().GetProperty("Element")!.GetValue(library)!).Id;
     }
@@ -382,12 +540,17 @@ public sealed partial class NestedFieldTests : AdminTestContext
     // A plugin's field type, whose editor loads with its admin half.
     private sealed class RatingStub : FieldEditorBase
     {
+        public ElementReference Element { get; private set; }
+
+        public override ValueTask FocusAsync() => Element.FocusAsync();
+
         protected override void BuildRenderTree(RenderTreeBuilder builder)
         {
             builder.OpenElement(0, "input");
             builder.AddAttribute(1, "class", "rating-stub");
             builder.AddAttribute(2, "value", Value?.ToJsonString());
             builder.AddAttribute(3, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => ChangeAsync(JsonValue.Create(int.Parse((string)e.Value!, System.Globalization.CultureInfo.InvariantCulture)))));
+            builder.AddElementReferenceCapture(4, element => Element = element);
             builder.CloseElement();
         }
     }

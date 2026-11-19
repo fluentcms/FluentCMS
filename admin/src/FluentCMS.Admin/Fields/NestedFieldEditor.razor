@@ -3,8 +3,9 @@
    changed by drag, or by the buttons and Alt with the up and down arrows on an item's title (WCAG 2.5.7). A blocks field adds
    by type from its union, leaving out a type that would nest deeper than the schema allows, and duplicates; a new or
    duplicated block takes a fresh id, and a block keeps the id it was read with (ADR 0002). A collapsed block shows its first
-   text. A block with an error is open. Each item's fields are a BlockForm, whose errors are those at the item's path. A
-   component whose type the schema does not have shows its JSON read-only. *@
+   text. A block with an error is open. Each item's fields are a BlockForm, whose errors are those at the item's path when
+   the errors came, so an error stays on its item after a move. A component or block whose type the schema does not have
+   shows its JSON read-only. *@
 @inherits FieldEditorBase
 @inject SiteMetadata Metadata
 @inject IAnnouncer Announcer
@@ -28,7 +29,7 @@
     @if (!IsList)
     {
         <legend class="cms-field-label">
-            <button @ref="toggles[0]" type="button" class="nested-toggle" aria-expanded="@(IsOpen(0) ? "true" : "false")" @onclick="@(() => Toggle(0))">@Label</button>
+            <button @ref="toggles[KeyOf(0)]" type="button" class="nested-toggle" aria-expanded="@(IsOpen(0) ? "true" : "false")" @onclick="@(() => Toggle(0))">@Label</button>
         </legend>
         @if (IsOpen(0))
         {
@@ -54,10 +55,11 @@
                 @for (var index = 0; index < Items.Count; index++)
                 {
                     var position = index;
+                    var key = KeyOf(position);
                     var name = NameOf(position);
-                    @* Keyed by position, as the relation editor's items: a move changes what each item shows, so focus stays in the
-                       item. Its fields are keyed by the item's key, so that no state of one item's editors passes to another. *@
-                    <li @key="position"
+                    @* Keyed by the item's key, so that its editors and their state go with it when it moves; focus, which a moved
+                       element loses, is given back after the render. *@
+                    <li @key="key"
                         class="@(position == over && over != dragging ? "nested-item nested-drop" : "nested-item")"
                         @ondragover="@(() => DragOver(position))"
                         @ondragover:preventDefault="@CanOrder"
@@ -68,7 +70,7 @@
                              @ondragstart="@(() => dragging = position)"
                              @ondragend="@(() => (dragging, over) = (null, null))"
                              @onkeydown="@(e => OnKeyDownAsync(e, position))">
-                            <button @ref="toggles[position]" type="button" class="nested-toggle" aria-expanded="@(IsOpen(position) ? "true" : "false")" aria-describedby="@(CanOrder ? orderHintId : null)" @onclick="@(() => Toggle(position))">
+                            <button @ref="toggles[key]" type="button" class="nested-toggle" aria-expanded="@(IsOpen(position) ? "true" : "false")" aria-describedby="@(CanOrder ? orderHintId : null)" @onclick="@(() => Toggle(position))">
                                 <span>@name</span>
                                 @if (!IsOpen(position) && Preview(position) is { } preview)
                                 {
@@ -79,8 +81,8 @@
                             {
                                 @if (CanOrder)
                                 {
-                                    <CmsButton @ref="upButtons[position]" Icon="CmsIconName.Up" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.Nested.MoveUp", name]" Disabled="@(position == 0)" OnClick="@(() => MoveAsync(position, -1, false))" />
-                                    <CmsButton @ref="downButtons[position]" Icon="CmsIconName.Down" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.Nested.MoveDown", name]" Disabled="@(position == Items.Count - 1)" OnClick="@(() => MoveAsync(position, 1, false))" />
+                                    <CmsButton @ref="upButtons[key]" Icon="CmsIconName.Up" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.Nested.MoveUp", name]" Disabled="@(position == 0)" OnClick="@(() => MoveAsync(position, -1, false))" />
+                                    <CmsButton @ref="downButtons[key]" Icon="CmsIconName.Down" Appearance="CmsButtonAppearance.Subtle" Label="@L["Content.Nested.MoveDown", name]" Disabled="@(position == Items.Count - 1)" OnClick="@(() => MoveAsync(position, 1, false))" />
                                 }
                                 @if (IsBlocks && TypeAt(position) is not null)
                                 {
@@ -129,13 +131,14 @@
 
 @code {
     private static readonly IList<JsonNode?> Empty = Array.Empty<JsonNode?>();
+    private static readonly IReadOnlyList<ApiProblemError> NoErrors = [];
     private readonly string messageId = ElementIds.Next("field-message");
     private readonly string orderHintId = ElementIds.Next("field-order");
     private readonly GroupFocus focus = new();
-    private readonly Dictionary<int, ElementReference> toggles = [];
-    private readonly Dictionary<int, CmsButton> upButtons = [];
-    private readonly Dictionary<int, CmsButton> downButtons = [];
-    private readonly Dictionary<int, BlockForm> forms = [];
+    private readonly Dictionary<string, ElementReference> toggles = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, CmsButton> upButtons = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, CmsButton> downButtons = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, BlockForm> forms = new(StringComparer.Ordinal);
     private readonly HashSet<string> collapsed = new(StringComparer.Ordinal);
     private ElementReference group;
     private CmsButton? addButton;
@@ -149,9 +152,15 @@
     private int nextKey;
 
     // The key of each item, in order: a block's id, or a key of the editor's own, never sent, for a block read without one
-    // and for a component. They follow the items through the editor's own changes and are made again for any other value.
+    // and for a component. They follow the items through the editor's own changes, and through the copies the forms around
+    // the field make of its value on every change; another number of items, or other ids, is a value of its own.
     private List<string> keys = [];
     private JsonNode? keyedFor;
+    private bool readAsArray;
+
+    // The keys of the items when the errors came, whose paths name the items by those positions.
+    private List<string> errorKeys = [];
+    private IReadOnlyList<ApiProblemError> errorsSeen = [];
     private Func<ValueTask>? focusAfterRender;
 
     [CascadingParameter(Name = NestedValues.Nesting)]
@@ -180,8 +189,17 @@
     {
         if (!ReferenceEquals(keyedFor, Value))
         {
+            if (!SameItems())
+            {
+                (keys, readAsArray) = (Keys(), Value is JsonArray);
+            }
+
             keyedFor = Value;
-            keys = [.. Items.Select(item => (IsBlocks ? NestedValues.IdOf(item) : null) ?? $"~{nextKey++}")];
+        }
+
+        if (!Errors.SequenceEqual(errorsSeen))
+        {
+            (errorsSeen, errorKeys) = (Errors, [.. keys]);
         }
 
         if (schema is not null)
@@ -227,7 +245,7 @@
         }
 
         var count = IsList ? Items.Count : 1;
-        if (Enumerable.Range(0, count).FirstOrDefault(position => HasErrors(position), -1) is var first and >= 0 && forms.GetValueOrDefault(first) is { } form)
+        if (Enumerable.Range(0, count).FirstOrDefault(position => HasErrors(position), -1) is var first and >= 0 && forms.GetValueOrDefault(KeyOf(first)) is { } form)
         {
             await form.FocusAsync();
         }
@@ -237,12 +255,29 @@
         }
     }
 
+    // The same items as the keys hold: as many, and for blocks the same ids, as a copy of the field's value has.
+    private bool SameItems() =>
+        Items.Count == keys.Count
+        && (!IsBlocks || Enumerable.Range(0, keys.Count).All(position => (NestedValues.IdOf(Items[position]) ?? keys[position]) == keys[position]));
+
+    // A block's id, unless another block of the field has it already, or a key of the editor's own.
+    private List<string> Keys()
+    {
+        HashSet<string> used = new(StringComparer.Ordinal);
+        return [.. Items.Select(item => IsBlocks && NestedValues.IdOf(item) is { } id && used.Add(id) ? id : $"~{nextKey++}")];
+    }
+
     private string PathOf(int position) => IsList ? $"{Field.Name}[{position}]" : Field.Name;
 
-    // The field's own errors, at its name, are not in an item.
-    private bool HasErrors(int position) => Errors.Any(error => error.Path != Field.Name && NestedValues.Under(error.Path, PathOf(position)));
+    // Where the item's errors are: at its position when they came, or nowhere for an item added since.
+    private string? ErrorPathOf(int position) =>
+        !IsList ? Field.Name : errorKeys.IndexOf(KeyOf(position)) is var at and >= 0 ? PathOf(at) : null;
 
-    private string KeyOf(int position) => position < keys.Count ? keys[position] : "";
+    // The field's own errors, at its name, are not in an item.
+    private bool HasErrors(int position) =>
+        ErrorPathOf(position) is { } path && Errors.Any(error => error.Path != Field.Name && NestedValues.Under(error.Path, path));
+
+    private string KeyOf(int position) => IsList && position < keys.Count ? keys[position] : "";
 
     private bool IsOpen(int position) => !collapsed.Contains(KeyOf(position)) || HasErrors(position);
 
@@ -258,22 +293,23 @@
             .Select(field => NestedValues.Text(Items[position], field.Name))
             .FirstOrDefault(text => !string.IsNullOrWhiteSpace(text));
 
-    private RenderFragment Body(int position, JsonObject? item) => @<div class="nested-body" @key="KeyOf(position)">
+    private RenderFragment Body(int position, JsonObject? item) => @<div class="nested-body">
         @if (TypeAt(position) is { } type)
         {
-            <BlockForm @ref="forms[position]"
+            var path = ErrorPathOf(position);
+            <BlockForm @ref="forms[KeyOf(position)]"
                        BlockType="@type"
                        Value="@item"
                        ValueChanged="@(value => ChangeItemAsync(position, value))"
-                       Path="@PathOf(position)"
-                       Errors="@Errors"
+                       Path="@(path ?? PathOf(position))"
+                       Errors="@(path is null ? NoErrors : Errors)"
                        ReadOnly="@ReadOnly"
                        ContentLocale="@ContentLocale"
                        TextDirection="@TextDirection" />
         }
         else
         {
-            <p class="cms-field-message">@L["Content.Form.NoEditor"]</p>
+            <JsonFieldView Field="@(Field with { Display = (Field.Display ?? new FieldDisplayDescription()) with { Label = NameOf(position) } })" Value="@item" />
         }
     </div>;
 
@@ -310,10 +346,11 @@
 
     private JsonArray Copy() => new([.. Items.Select(item => item?.DeepClone())]);
 
+    // A list emptied of what was added is written as it was read: null, or absent, as null.
     private Task WriteAsync(JsonArray items, List<string> order)
     {
         (keys, keyedFor) = (order, items);
-        return ChangeAsync(items);
+        return ChangeAsync(items.Count == 0 && !readAsArray ? null : items);
     }
 
     private async Task AddAsync()
@@ -322,10 +359,10 @@
         var item = IsBlocks ? NestedValues.NewBlock(type) : NestedValues.NewComponent(type);
         var items = Copy();
         items.Add((JsonNode)item);
-        var position = items.Count - 1;
-        await WriteAsync(items, [.. keys, NestedValues.IdOf(item) ?? $"~{nextKey++}"]);
-        FocusToggle(position);
-        Announcer.Announce(L["Content.Nested.Added", NameOf(position)]);
+        var key = NestedValues.IdOf(item) ?? $"~{nextKey++}";
+        await WriteAsync(items, [.. keys, key]);
+        FocusToggle(key);
+        Announcer.Announce(L["Content.Nested.Added", NameOf(items.Count - 1)]);
     }
 
     private async Task DuplicateAsync(int position)
@@ -339,14 +376,15 @@
         var items = Copy();
         items.Insert(position + 1, copy);
         List<string> order = [.. keys];
-        order.Insert(position + 1, NestedValues.IdOf(copy)!);
+        var key = NestedValues.IdOf(copy)!;
+        order.Insert(position + 1, key);
         var name = NameOf(position);
         await WriteAsync(items, order);
-        FocusToggle(position + 1);
+        FocusToggle(key);
         Announcer.Announce(L["Content.Nested.Duplicated", name]);
     }
 
-    // Focus goes to the item that took the removed one's place, or to the add button when none is left.
+    // Focus goes to the item that took the removed one's place, or to the add button when none is left, or to the field.
     private async Task RemoveAsync(int position)
     {
         var name = NameOf(position);
@@ -355,19 +393,20 @@
         List<string> order = [.. keys];
         order.RemoveAt(position);
         await WriteAsync(items, order);
-        if (items.Count > 0)
+        if (order.Count > 0)
         {
-            FocusToggle(Math.Min(position, items.Count - 1));
+            FocusToggle(order[Math.Min(position, order.Count - 1)]);
         }
         else
         {
-            focusAfterRender = () => addButton?.FocusAsync() ?? ValueTask.CompletedTask;
+            focusAfterRender = () => addButton is not null ? addButton.FocusAsync() : group.Context is null ? ValueTask.CompletedTask : group.FocusAsync();
         }
 
         Announcer.Announce(L["Content.Nested.Removed", name]);
     }
 
-    private void FocusToggle(int position) => focusAfterRender = () => toggles.TryGetValue(position, out var toggle) && toggle.Context is not null ? toggle.FocusAsync() : ValueTask.CompletedTask;
+    private void FocusToggle(string key) =>
+        focusAfterRender = () => toggles.TryGetValue(key, out var toggle) && toggle.Context is not null ? toggle.FocusAsync() : ValueTask.CompletedTask;
 
     private Task OnKeyDownAsync(KeyboardEventArgs e, int position) =>
         CanOrder && e.AltKey && e.Key is "ArrowUp" or "ArrowDown" ? MoveAsync(position, e.Key == "ArrowUp" ? -1 : 1, true) : Task.CompletedTask;
@@ -399,16 +438,17 @@
             return;
         }
 
+        var key = KeyOf(position);
         await MoveToAsync(position, to);
         var atEnd = by < 0 ? to == 0 : to == Items.Count - 1;
         if (byKey)
         {
-            FocusToggle(to);
+            FocusToggle(key);
         }
         else
         {
             var buttons = (by < 0) != atEnd ? upButtons : downButtons;
-            focusAfterRender = () => buttons.GetValueOrDefault(to)?.FocusAsync() ?? ValueTask.CompletedTask;
+            focusAfterRender = () => buttons.GetValueOrDefault(key)?.FocusAsync() ?? ValueTask.CompletedTask;
         }
     }
 
