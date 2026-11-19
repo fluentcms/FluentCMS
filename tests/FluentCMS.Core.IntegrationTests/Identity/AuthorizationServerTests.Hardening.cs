@@ -69,8 +69,9 @@ public sealed partial class AuthorizationServerTests
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
+    // Lockout bounds the guessing of passwords; anyone who knows the user name can raise it, so it ends no session (#3271).
     [Fact]
-    public async Task ALockedOutUserGetsNoTokenAndIsSentBackToSignIn()
+    public async Task ALockedOutUserKeepsItsRefreshTokenAndItsCookie()
     {
         var editor = await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
         var tokens = await _host.SignInAsync(editor);
@@ -84,14 +85,13 @@ public sealed partial class AuthorizationServerTests
 
         using var client = _host.CreateSecureClient();
         using var refreshed = await PostTokenAsync(client, Refresh(tokens.RefreshToken!));
-        refreshed.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        (await ErrorAsync(refreshed)).ShouldBe("invalid_grant");
+        refreshed.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         using var authorize = new HttpRequestMessage(HttpMethod.Get, AuthorizePath());
         authorize.Headers.Add("Cookie", cookie);
         using var response = await client.SendAsync(authorize, Token);
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
-        response.Headers.Location!.AbsolutePath.ShouldBe("/account/login");
+        response.Headers.Location!.AbsolutePath.ShouldNotBe("/account/login");
     }
 
     [Fact]
