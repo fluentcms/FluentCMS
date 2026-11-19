@@ -12,9 +12,7 @@ public sealed class TwoTabsTests(EndToEndHost host) : BrowserTest(host)
     public async Task TwoTabsEachRefreshTheirOwnTokenAtOnceAndBothStaySignedIn()
     {
         var browser = await OpenBrowserAsync();
-        var first = await browser.NewTabAsync();
-        await first.Page.GotoAsync(Host.Admin.AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(first, Host.Editor);
+        var first = await SignedInTabAsync(browser, "");
         await Expect(first.Sidebar).ToBeVisibleAsync();
 
         // The second tab signs in through the authorize redirect, which the server's session answers with no login page.
@@ -50,9 +48,7 @@ public sealed class TwoTabsTests(EndToEndHost host) : BrowserTest(host)
     public async Task ADuplicatedTabSignsInForItselfAndBothStaySignedIn()
     {
         var browser = await OpenBrowserAsync();
-        var first = await browser.NewTabAsync();
-        await first.Page.GotoAsync(Host.Admin.AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(first, Host.Editor);
+        var first = await SignedInTabAsync(browser, "");
         await Expect(first.Sidebar).ToBeVisibleAsync();
         var (loginPages, firstAuthorizations) = (first.LoginPagesShown, first.AuthorizeRequests.Count);
 

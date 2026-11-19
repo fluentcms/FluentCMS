@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
 using System.Net.Sockets;
@@ -39,6 +40,7 @@ public sealed class EndToEndHost : IAsyncLifetime
 
     private readonly DirectoryInfo _root = Directory.CreateTempSubdirectory(RootPrefix);
     private readonly Dictionary<string, string?> _environment = [];
+    private readonly ConcurrentDictionary<Type, Lazy<Task<Editor>>> _classEditors = new();
     private ChildProcess? _host;
     private TestCertificates? _certificates;
     private IPlaywright? _playwright;
@@ -173,6 +175,10 @@ public sealed class EndToEndHost : IAsyncLifetime
         await CommandAsync(editor.Password, "user", "create", "--email", editor.Email, "--role", role, "--password-stdin");
         return editor;
     }
+
+    // The editor of one test class, made once for it.
+    internal Task<Editor> EditorOfAsync(Type testClass) =>
+        _classEditors.GetOrAdd(testClass, _ => new Lazy<Task<Editor>>(() => CreateEditorAsync())).Value;
 
     // Sets a new password as an operator does with the host's command, which ends the user's sessions.
     public async Task<Editor> ResetPasswordAsync(Editor editor)

@@ -16,35 +16,29 @@ public sealed class FormTests(EndToEndHost host) : BrowserTest(host)
     public async Task TheEditorCreatesAnArticleLandsOnItsRouteChangesItAndSavesWithIfMatch()
     {
         var browser = await OpenBrowserAsync();
-        var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article/new").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        var tab = await SignedInTabAsync(browser, "content/article/new");
         await Expect(tab.Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = Text("Content.Form.NewHeading", "Article"), Exact = true })).ToBeVisibleAsync();
 
         var title = tab.Page.Locator("[data-field='title'] input");
-        await title.FillAsync("Written in the browser");
+        await title.FillAsync($"Written in the browser {Mark}");
         var create = await SaveAsync(tab, "POST", tab.ManagementUrl("content/article"));
 
-        create.Status.ShouldBe(201);
         (await create.Request.HeaderValueAsync("idempotency-key")).ShouldNotBeNullOrEmpty();
-        // The answers are read by their headers and by the page: the admin reads a body as a stream, and Chromium does not
-        // always keep such a body for the test to read again.
-        var location = await create.HeaderValueAsync("location");
-        var id = Guid.Parse(location.ShouldNotBeNull()[(location.LastIndexOf('/') + 1)..]);
+        var id = await Ui.CreatedIdAsync(create);
         // The admin moves to the entry's route within the page. The address is polled: a wait for a navigation can start after
         // Playwright has taken that move in and then waits for one that does not come.
         await Expect(tab.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}\\?locale=en$"), new PageAssertionsToHaveURLOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
-        await Expect(tab.Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = "Written in the browser", Exact = true })).ToBeVisibleAsync();
+        await Expect(tab.Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = $"Written in the browser {Mark}", Exact = true })).ToBeVisibleAsync();
         await Expect(tab.Announced(Repository.AdminText("Content.Form.Saved"))).ToBeAttachedAsync();
-        (await tab.Page.EvaluateAsync<string>("() => document.activeElement?.closest('fluent-button')?.textContent?.trim() ?? ''")).ShouldBe(Repository.AdminText("Content.Form.Save"));
+        await Ui.FocusReturnedAsync(tab.Button("Content.Form.Save"));
 
-        await title.FillAsync("Changed in the browser");
+        await title.FillAsync($"Changed in the browser {Mark}");
         var save = await SaveAsync(tab, "PUT", tab.ManagementUrl($"content/article/{id:D}"));
 
         save.Status.ShouldBe(200);
         (await save.Request.HeaderValueAsync("if-match")).ShouldBe("\"1\"");
         (await save.HeaderValueAsync("etag")).ShouldBe("\"2\"");
-        await Expect(tab.Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = "Changed in the browser", Exact = true })).ToBeVisibleAsync();
+        await Expect(tab.Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = $"Changed in the browser {Mark}", Exact = true })).ToBeVisibleAsync();
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
@@ -54,16 +48,14 @@ public sealed class FormTests(EndToEndHost host) : BrowserTest(host)
     public async Task TheEditorWritesAnArticleWithTheCoreFieldEditors()
     {
         var browser = await OpenBrowserAsync();
-        var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article/new").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        var tab = await SignedInTabAsync(browser, "content/article/new");
         await Expect(tab.Page.Locator("[data-field='title'] input")).ToBeVisibleAsync();
 
         var withJson = await tab.Page.Locator("[data-field]:has(.content-json)").EvaluateAllAsync<string[]>("fields => fields.map(field => field.dataset.field)");
         withJson.ShouldBeSubsetOf(["body", "author", "tags", "hero", "sections", "seo"]);
 
-        await tab.Page.Locator("[data-field='title'] input").FillAsync("Crème brûlée, again!");
-        await Expect(tab.Page.Locator("[data-field='slug'] input")).ToHaveValueAsync("creme-brulee-again");
+        await tab.Page.Locator("[data-field='title'] input").FillAsync($"Crème brûlée, again! {Mark}");
+        await Expect(tab.Page.Locator("[data-field='slug'] input")).ToHaveValueAsync($"creme-brulee-again-{Mark}");
         await tab.Page.Locator("[data-field='category'] select").SelectOptionAsync("video");
         await tab.Page.Locator("[data-field='videoUrl'] input").FillAsync("https://example.com/watch");
 
@@ -81,7 +73,7 @@ public sealed class FormTests(EndToEndHost host) : BrowserTest(host)
 
         create.Status.ShouldBe(201);
         var sent = JsonNode.Parse(create.Request.PostData!)!;
-        sent["slug"]!.GetValue<string>().ShouldBe("creme-brulee-again");
+        sent["slug"]!.GetValue<string>().ShouldBe($"creme-brulee-again-{Mark}");
         sent["category"]!.GetValue<string>().ShouldBe("video");
         sent["videoUrl"]!.GetValue<string>().ShouldBe("https://example.com/watch");
         var utc = TimeZoneInfo.ConvertTimeToUtc(new DateTime(2026, 11, 15, 9, 30, 0, DateTimeKind.Unspecified), zone);
@@ -91,9 +83,5 @@ public sealed class FormTests(EndToEndHost host) : BrowserTest(host)
 
     private static string Text(string key, string argument) => Repository.AdminText(key).Replace("{0}", argument, StringComparison.Ordinal);
 
-    private static Task<IResponse> SaveAsync(AdminTab tab, string method, string url) =>
-        tab.Page.RunAndWaitForResponseAsync(
-            () => tab.Button("Content.Form.Save").ClickAsync(),
-            response => response.Request.Method == method && response.Url == url,
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+    private static Task<IResponse> SaveAsync(AdminTab tab, string method, string url) => tab.AnswerAsync(() => tab.Button("Content.Form.Save").ClickAsync(), method, url);
 }

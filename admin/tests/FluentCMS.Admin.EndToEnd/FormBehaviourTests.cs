@@ -22,39 +22,36 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
     public async Task ASaveThatASecondTabMadeStaleOpensTheDialogAndKeepMineAndTakeTheirsEndInTheirStates()
     {
         var browser = await OpenBrowserAsync();
-        var first = await browser.NewTabAsync();
-        await first.Page.GotoAsync(new Uri(Host.Admin, "content/article/new").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(first, Host.Editor);
-        await Title(first).FillAsync("Read by two tabs");
+        var first = await SignedInTabAsync(browser, "content/article/new");
+        await Title(first).FillAsync($"Read by two tabs {Mark}");
         var create = await SaveAsync(first, () => first.Button("Content.Form.Save").ClickAsync(), "POST", first.ManagementUrl("content/article"));
-        var location = (await create.HeaderValueAsync("location")).ShouldNotBeNull();
-        var id = Guid.Parse(location[(location.LastIndexOf('/') + 1)..]);
+        var id = await Ui.CreatedIdAsync(create);
         var entry = first.ManagementUrl($"content/article/{id:D}");
         await Expect(first.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}\\?locale=en$"), UrlWait);
 
         // The second tab of the browser signs in through the server's session and saves first.
         var second = await browser.NewTabAsync();
         await second.Page.GotoAsync(new Uri(Host.Admin, $"content/article/{id:D}").AbsoluteUri);
-        await Expect(Title(second)).ToHaveValueAsync("Read by two tabs");
-        await Title(second).FillAsync("Saved by the second");
+        await Expect(Title(second)).ToHaveValueAsync($"Read by two tabs {Mark}");
+        await Title(second).FillAsync($"Saved by the second {Mark}");
         (await SaveAsync(second, () => second.Button("Content.Form.Save").ClickAsync(), "PUT", entry)).Status.ShouldBe(200);
 
-        await Title(first).FillAsync("Saved by the first");
+        await Title(first).FillAsync($"Saved by the first {Mark}");
         (await SaveAsync(first, () => first.Button("Content.Form.Save").ClickAsync(), "PUT", entry)).Status.ShouldBe(412);
         await Expect(Shown(first, ConflictTitle)).ToBeVisibleAsync();
-        await Expect(Dialog(first, ConflictTitle).GetByText("Saved by the second", new LocatorGetByTextOptions { Exact = true })).ToBeVisibleAsync();
+        await Expect(Dialog(first, ConflictTitle).GetByText($"Saved by the second {Mark}", new LocatorGetByTextOptions { Exact = true })).ToBeVisibleAsync();
 
         var kept = await SaveAsync(first, () => DialogButton(first, ConflictTitle, "Content.Form.Conflict.KeepMine").ClickAsync(), "PUT", entry);
         kept.Status.ShouldBe(200);
         (await kept.Request.HeaderValueAsync("if-match")).ShouldBe("\"2\"");
-        await Expect(first.Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = "Saved by the first", Exact = true })).ToBeVisibleAsync();
+        await Expect(first.Page.GetByRole(AriaRole.Heading, new PageGetByRoleOptions { Name = $"Saved by the first {Mark}", Exact = true })).ToBeVisibleAsync();
         await Expect(Shown(first, ConflictTitle)).ToBeHiddenAsync();
 
         // Now the second tab is stale: take theirs shows what the first saved, with nothing left to save.
-        await Title(second).FillAsync("Saved by the second again");
+        await Title(second).FillAsync($"Saved by the second again {Mark}");
         (await SaveAsync(second, () => second.Button("Content.Form.Save").ClickAsync(), "PUT", entry)).Status.ShouldBe(412);
         await DialogButton(second, ConflictTitle, "Content.Form.Conflict.TakeTheirs").ClickAsync();
-        await Expect(Title(second)).ToHaveValueAsync("Saved by the first");
+        await Expect(Title(second)).ToHaveValueAsync($"Saved by the first {Mark}");
         await Expect(Shown(second, ConflictTitle)).ToBeHiddenAsync();
         await Home(second).ClickAsync();
         await Expect(second.Page).ToHaveURLAsync(new Uri(Host.Admin, "").AbsoluteUri, UrlWait);
@@ -103,7 +100,7 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
 
         // The browser asks before the tab closes; dismissed, the tab stays.
         await tab.Page.CloseAsync(new PageCloseOptions { RunBeforeUnload = true });
-        await UntilAsync(() => unloadQuestions == 1);
+        await Ui.UntilAsync(() => unloadQuestions == 1, "the browser did not ask before the tab closed");
         tab.Page.IsClosed.ShouldBeFalse();
 
         // Sign-out asks too; signing out then leaves the page without the browser's question.
@@ -127,9 +124,7 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
     public async Task BackWithUnsavedChangesAsksAndALeaveGoesBackWithoutANewHistoryEntry()
     {
         var browser = await OpenBrowserAsync();
-        var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        var tab = await SignedInTabAsync(browser, "");
         await Expect(tab.Sidebar).ToBeVisibleAsync();
         var start = tab.Page.Url;
         await tab.Page.EvaluateAsync("() => Blazor.navigateTo('content/article/new')");
@@ -158,16 +153,14 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
     public async Task ASiteSwitchWithUnsavedChangesAsksAndKeepWorkingShowsTheSiteBefore()
     {
         var browser = await OpenBrowserAsync();
-        var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article/new").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        var tab = await SignedInTabAsync(browser, "content/article/new");
         await Expect(Title(tab)).ToBeVisibleAsync();
         var site = await tab.SiteSwitcher.InputValueAsync();
         var other = Host.Sites.First(candidate => !string.Equals(candidate.Id, site, StringComparison.OrdinalIgnoreCase)).Id;
         await Title(tab).ClickAsync();
         await Title(tab).PressSequentiallyAsync(" changed");
 
-        await tab.SiteSwitcher.FocusAsync();
+        await Ui.FocusAsync(tab.SiteSwitcher);
         await tab.SiteSwitcher.SelectOptionAsync(other);
         await Expect(Shown(tab, SwitchTitle)).ToBeVisibleAsync();
         await DialogButton(tab, SwitchTitle, "Shell.SiteSwitcher.UnsavedCancel").ClickAsync();
@@ -198,15 +191,15 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
             await dialog.DismissAsync();
         };
         await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article/new").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        await browser.SignInOnTheHostedPageAsync(tab, await EditorAsync());
         await Title(tab).ClickAsync();
-        await Title(tab).PressSequentiallyAsync(" saved");
+        await Title(tab).PressSequentiallyAsync($"{Mark} saved");
         await SaveAsync(tab, () => tab.Button("Content.Form.Save").ClickAsync(), "POST", tab.ManagementUrl("content/article"));
         await Expect(tab.Page).ToHaveURLAsync(new Regex("/admin/content/article/[0-9a-f-]{36}\\?locale=en$"), UrlWait);
 
         await tab.Page.CloseAsync(new PageCloseOptions { RunBeforeUnload = true });
 
-        await UntilAsync(() => tab.Page.IsClosed);
+        await Ui.UntilAsync(() => tab.Page.IsClosed, "the tab did not close");
         unloadQuestions.ShouldBe(0);
         browser.PolicyViolations.ShouldBeEmpty();
     }
@@ -219,30 +212,12 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
         tab.Page.GetByRole(AriaRole.Menuitem, new PageGetByRoleOptions { Name = Repository.AdminText("Shell.UserMenu.SignOut"), Exact = true });
 
     // The dialog as the accessibility tree has it: its host element has no box of its own, the library shows it in the top layer.
-    private static ILocator Shown(AdminTab tab, string titleKey) =>
-        tab.Page.GetByRole(AriaRole.Dialog, new PageGetByRoleOptions { Name = Repository.AdminText(titleKey), Exact = true });
+    private static ILocator Shown(AdminTab tab, string titleKey) => tab.ShownDialog(Repository.AdminText(titleKey));
 
     // The library's dialog is named by the title the wrapper sets on its host element, whose buttons are its light children.
-    private static ILocator Dialog(AdminTab tab, string titleKey) =>
-        tab.Page.Locator($"fluent-dialog[aria-label=\"{Repository.AdminText(titleKey)}\"]");
+    private static ILocator Dialog(AdminTab tab, string titleKey) => tab.Dialog(Repository.AdminText(titleKey));
 
-    private static ILocator DialogButton(AdminTab tab, string titleKey, string buttonKey) =>
-        Dialog(tab, titleKey).Locator("fluent-button").Filter(new LocatorFilterOptions { HasTextRegex = new Regex($@"^\s*{Regex.Escape(Repository.AdminText(buttonKey))}\s*$") });
+    private static ILocator DialogButton(AdminTab tab, string titleKey, string buttonKey) => Ui.ButtonIn(Dialog(tab, titleKey), Repository.AdminText(buttonKey));
 
-    private static Task<IResponse> SaveAsync(AdminTab tab, Func<Task> action, string method, string url) =>
-        tab.Page.RunAndWaitForResponseAsync(
-            action,
-            response => response.Request.Method == method && response.Url == url,
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
-
-    // A state that a browser event sets, polled within the harness's wait.
-    private static async Task UntilAsync(Func<bool> condition)
-    {
-        var deadline = DateTimeOffset.UtcNow + AdminBrowser.Wait;
-        while (!condition())
-        {
-            DateTimeOffset.UtcNow.ShouldBeLessThan(deadline);
-            await Task.Delay(50, TestContext.Current.CancellationToken);
-        }
-    }
+    private static Task<IResponse> SaveAsync(AdminTab tab, Func<Task> action, string method, string url) => tab.AnswerAsync(action, method, url);
 }

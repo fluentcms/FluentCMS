@@ -1,5 +1,4 @@
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using Shouldly;
 using Xunit;
@@ -19,45 +18,39 @@ public sealed class RelationTests(EndToEndHost host) : BrowserTest(host)
     public async Task TheEditorSetsTheAuthorAndTheOrderedTagsOfAnArticle()
     {
         var browser = await OpenBrowserAsync();
-        var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article/new").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        var tab = await SignedInTabAsync(browser, "content/article/new");
+        var article = $"Related in the browser {Mark}";
+        var author = $"Hedy Lamarr {Mark}";
         var title = tab.Page.Locator("[data-field='title'] input");
-        await title.FillAsync("Related in the browser");
+        await title.FillAsync(article);
 
-        // The author, by search: the index may still be filling, so the search is sent again until it finds her.
-        await FieldButton(tab, "author", "Content.Relation.ChooseEntry").ClickAsync();
-        var picker = Dialog(tab, AuthorPicker);
-        await Expect(tab.Page.GetByRole(AriaRole.Dialog, new PageGetByRoleOptions { Name = AuthorPicker, Exact = true })).ToBeVisibleAsync();
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
-        do
-        {
-            var search = await AnswerAsync(tab, () => SearchAsync(picker, "Grace"), response => response.Url.Contains("/content/author?", StringComparison.Ordinal));
-            search.Url.ShouldContain("q=Grace");
-        }
-        while (await Row(picker, "Grace Hopper").CountAsync() == 0 && DateTimeOffset.UtcNow < deadline && await Delay());
+        // The author, by search: the index may still be filling, so the search is sent again until it finds her. The picker's
+        // own first read may still be under way, so the answer waited for is the one that names the search.
+        var picker = await tab.OpenDialogAsync(() => FieldButton(tab, "author", "Content.Relation.ChooseEntry").ClickAsync(), AuthorPicker);
+        await Ui.UntilAsync(
+            async () =>
+            {
+                var search = await tab.AnswerAsync(() => SearchAsync(picker, "Grace"), response => response.Url.Contains("/content/author?", StringComparison.Ordinal) && response.Url.Contains("q=Grace", StringComparison.Ordinal));
+                search.Status.ShouldBe(200);
+                return await Row(picker, "Grace Hopper").CountAsync() > 0;
+            },
+            "the search index never found Grace Hopper");
         await Row(picker, "Grace Hopper").Locator("input[type=checkbox]").CheckAsync();
         await DialogButton(picker, "Content.Relation.Choose").ClickAsync();
         await Expect(Labels(tab, "author")).ToHaveTextAsync(["Grace Hopper"]);
 
         // Two tags, then their order by Alt with an arrow, by drag and by a button.
-        await FieldButton(tab, "tags", "Content.Relation.ChooseEntries").ClickAsync();
-        var tags = Dialog(tab, TagPicker);
+        var tags = await tab.OpenDialogAsync(() => FieldButton(tab, "tags", "Content.Relation.ChooseEntries").ClickAsync(), TagPicker);
         await Expect(Row(tags, "release notes")).ToBeVisibleAsync();
         await Row(tags, "dotnet").Locator("input[type=checkbox]").CheckAsync();
         await Row(tags, "release notes").Locator("input[type=checkbox]").CheckAsync();
         await DialogButton(tags, "Content.Relation.Choose").ClickAsync();
         await Expect(Labels(tab, "tags")).ToHaveTextAsync(["dotnet", "release notes"]);
 
-        // The closed picker gives focus back to the button that opened it twice: the dialog's close does at once, and the
-        // library again on a 25 ms timer (FocusOnPreviousActiveElement in its script). Focus moved to an entry before that
-        // timer is taken back, so a key lands on that button or focus leaves the moved entry. A timer of the page set now
-        // runs after the library's, since timers run in the order they expire.
-        await Expect(FieldButton(tab, "tags", "Content.Relation.ChooseEntries")).ToBeFocusedAsync();
-        await tab.Page.EvaluateAsync("() => new Promise(resolve => setTimeout(resolve, 100))");
-        await Expect(FieldButton(tab, "tags", "Content.Relation.ChooseEntries")).ToBeFocusedAsync();
-        await Entry(tab, "tags", "release notes").FocusAsync();
-        await tab.Page.Keyboard.PressAsync("Alt+ArrowUp");
+        // The closed picker gives focus back to the button that opened it twice; focus moved to an entry before the second
+        // would be taken back.
+        await Ui.FocusReturnedAsync(FieldButton(tab, "tags", "Content.Relation.ChooseEntries"));
+        await Ui.PressAsync(Entry(tab, "tags", "release notes"), "Alt+ArrowUp");
         await Expect(Labels(tab, "tags")).ToHaveTextAsync(["release notes", "dotnet"]);
         await Expect(Entry(tab, "tags", "release notes")).ToBeFocusedAsync();
         await Item(tab, "tags", "release notes").DragToAsync(Item(tab, "tags", "dotnet"));
@@ -70,37 +63,34 @@ public sealed class RelationTests(EndToEndHost host) : BrowserTest(host)
         await create.ClickAsync();
         var panel = tab.Page.Locator("fluent-drawer[aria-label=\"Author\"]");
         await Expect(panel.Locator("h2")).ToHaveTextAsync(Text("Content.Form.NewHeading", "Author"));
-        await panel.Locator("[data-field='name'] input").FillAsync("Hedy Lamarr");
-        var created = await AnswerAsync(tab, () => PanelButton(panel, "Content.Form.Save").ClickAsync(), response => response.Request.Method == "POST" && response.Url == tab.ManagementUrl("content/author"));
-        created.Status.ShouldBe(201);
-        var location = (await created.HeaderValueAsync("location")).ShouldNotBeNull();
-        var hedy = Guid.Parse(location[(location.LastIndexOf('/') + 1)..].Split('?')[0]);
-        await Expect(Labels(tab, "author")).ToHaveTextAsync(["Hedy Lamarr"]);
+        await panel.Locator("[data-field='name'] input").FillAsync(author);
+        var hedy = await Ui.CreatedIdAsync(await tab.AnswerAsync(() => PanelButton(panel, "Content.Form.Save").ClickAsync(), "POST", tab.ManagementUrl("content/author")));
+        await Expect(Labels(tab, "author")).ToHaveTextAsync([author]);
         await PanelButton(panel, "Content.Panel.Close").ClickAsync();
         await Expect(tab.Page.GetByRole(AriaRole.Dialog, new PageGetByRoleOptions { Name = "Author", Exact = true })).ToBeHiddenAsync();
-        (await FocusedButtonAsync(tab)).ShouldBe(Text("Content.Relation.Create", "Author"));
-        await Expect(title).ToHaveValueAsync("Related in the browser");
+        await Ui.FocusReturnedAsync(create);
+        await Expect(title).ToHaveValueAsync(article);
 
-        var saved = await AnswerAsync(tab, () => tab.Page.Locator(".content-form-toolbar fluent-button").Filter(Exactly("Content.Form.Save")).First.ClickAsync(), response => response.Request.Method == "POST" && response.Url == tab.ManagementUrl("content/article"));
+        var saved = await tab.AnswerAsync(() => tab.Page.Locator(".content-form-toolbar fluent-button").Filter(Exactly("Content.Form.Save")).First.ClickAsync(), "POST", tab.ManagementUrl("content/article"));
         saved.Status.ShouldBe(201);
         var sent = JsonNode.Parse(saved.Request.PostData!)!;
-        sent["title"]!.GetValue<string>().ShouldBe("Related in the browser");
+        sent["title"]!.GetValue<string>().ShouldBe(article);
         sent["author"]!.GetValue<string>().ShouldBe(hedy.ToString("D"));
         sent["tags"]!.AsArray().Count.ShouldBe(2);
 
         // The related entry opens in a side panel and closes back to the control that opened it.
-        await Entry(tab, "author", "Hedy Lamarr").ClickAsync();
-        await Expect(panel.Locator("h2")).ToHaveTextAsync("Hedy Lamarr");
+        await Entry(tab, "author", author).ClickAsync();
+        await Expect(panel.Locator("h2")).ToHaveTextAsync(author);
         await tab.Page.Keyboard.PressAsync("Escape");
         await Expect(tab.Page.GetByRole(AriaRole.Dialog, new PageGetByRoleOptions { Name = "Author", Exact = true })).ToBeHiddenAsync();
-        (await FocusedButtonAsync(tab)).ShouldStartWith("Hedy Lamarr");
+        await Ui.FocusReturnedAsync(Entry(tab, "author", author));
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
     private static string Text(string key, string argument) => Repository.AdminText(key).Replace("{0}", argument, StringComparison.Ordinal);
 
     private static LocatorFilterOptions Exactly(string key, string? argument = null) =>
-        new() { HasTextRegex = new Regex($@"^\s*{Regex.Escape(argument is null ? Repository.AdminText(key) : Text(key, argument))}\s*$") };
+        Ui.Exactly(argument is null ? Repository.AdminText(key) : Text(key, argument));
 
     private static ILocator FieldButton(AdminTab tab, string field, string key, string? argument = null) =>
         tab.Page.Locator($"[data-field='{field}'] .relation-field-actions fluent-button").Filter(Exactly(key, argument));
@@ -111,9 +101,6 @@ public sealed class RelationTests(EndToEndHost host) : BrowserTest(host)
         tab.Page.Locator($"[data-field='{field}'] .relation-field-item").Filter(new LocatorFilterOptions { Has = tab.Page.Locator(".relation-field-name").GetByText(label, new LocatorGetByTextOptions { Exact = true }) });
 
     private static ILocator Entry(AdminTab tab, string field, string label) => Item(tab, field, label).Locator(".relation-field-entry fluent-button");
-
-    // The library's dialog host has no box; its content is found through the host, as in FormBehaviourTests.
-    private static ILocator Dialog(AdminTab tab, string title) => tab.Page.Locator($"fluent-dialog[aria-label=\"{title}\"]");
 
     private static ILocator DialogButton(ILocator dialog, string key) => dialog.Locator("fluent-button").Filter(Exactly(key));
 
@@ -128,21 +115,4 @@ public sealed class RelationTests(EndToEndHost host) : BrowserTest(host)
         await box.FillAsync(text);
         await box.PressAsync("Enter");
     }
-
-    private static async Task<bool> Delay()
-    {
-        await Task.Delay(500);
-        return true;
-    }
-
-    // The library moves focus back on its own timer, and the panel after it, so the check waits for a button to have it.
-    private static async Task<string> FocusedButtonAsync(AdminTab tab)
-    {
-        await tab.Page.WaitForFunctionAsync("() => document.activeElement?.closest('fluent-button') != null", null, new PageWaitForFunctionOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
-        await Task.Delay(300);
-        return await tab.Page.EvaluateAsync<string>("() => document.activeElement?.closest('fluent-button')?.textContent?.trim().replace(/\\s+/g, ' ') ?? ''");
-    }
-
-    private static Task<IResponse> AnswerAsync(AdminTab tab, Func<Task> action, Func<IResponse, bool> match) =>
-        tab.Page.RunAndWaitForResponseAsync(action, match, new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
 }
