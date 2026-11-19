@@ -113,11 +113,19 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
         var trip = await CreateFolderAsync(tab, $"{mark}-trip");
         await OpenFolderAsync(tab, trip);
 
+        // The create dialog's input is the same element, still holding the name, so its value says nothing until this is shown.
         await MediaButton(tab, "Media.Folder.Rename").ClickAsync();
+        await Expect(tab.Page.GetByRole(AriaRole.Dialog, new PageGetByRoleOptions { Name = Text("Media.Folder.RenameTitle"), Exact = true })).ToBeVisibleAsync();
         var name = tab.Page.GetByLabel(Text("Media.Folder.Name"));
         await Expect(name).ToHaveValueAsync($"{mark}-trip");
         await name.FillAsync($"{mark}-renamed");
-        await MediaButton(tab, "Media.Folder.RenameSave").ClickAsync();
+        // A 401 of an expired token is sent again by the admin after a refresh; the answer that counts is the one after it.
+        var renamed = await tab.Page.RunAndWaitForResponseAsync(
+            () => MediaButton(tab, "Media.Folder.RenameSave").ClickAsync(),
+            response => response.Url == tab.ManagementUrl($"media/folders/{trip:D}") && response.Request.Method == "PATCH" && response.Status != 401,
+            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        JsonNode.Parse(renamed.Request.PostData!)!["name"]!.GetValue<string>().ShouldBe($"{mark}-renamed");
+        renamed.Status.ShouldBe(200);
         await Expect(TreeItem(tab, trip)).ToContainTextAsync($"{mark}-renamed");
 
         await MediaButton(tab, "Media.Folder.Move").ClickAsync();
