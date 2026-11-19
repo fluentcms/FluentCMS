@@ -104,12 +104,16 @@ public sealed class WebhookClaimTests(WebhookFixture hosts) : IClassFixture<Webh
 
         await PumpAsync(host);
         (await DeliveriesAsync(host, webhook)).Single(delivery => delivery.Id != crashed.Id).State.ShouldBe(DeliveryStates.Queued);
+        var scheduler = host.Services.GetRequiredService<IJobScheduler>();
         host.Time.Set(crashed.CreatedAt + Abandoned - TimeSpan.FromSeconds(1));
-        (await RunDueJobsAsync(host)).ShouldBe(0, "the delivery heads the queue and waits for the claim to be abandoned, since no job of the claim wakes it");
+        await scheduler.EnqueueAsync<WebhookQueueJob, WebhookQueuePayload>(new WebhookQueuePayload(), cancellationToken: Token);
+        (await RunDueJobsAsync(host)).ShouldBe(1, "the queue job leaves a queue alone while its claim is in flight");
         receiver.Requests.ShouldBeEmpty("the claim of another attempt is in flight until it is abandoned");
 
+        // No job of the claim wakes the delivery, so the queue job does once the claim is abandoned.
         host.Time.Set(crashed.CreatedAt + Abandoned);
-        (await RunDueJobsAsync(host)).ShouldBe(1);
+        await scheduler.EnqueueAsync<WebhookQueueJob, WebhookQueuePayload>(new WebhookQueuePayload(), cancellationToken: Token);
+        (await RunDueJobsAsync(host)).ShouldBe(2);
         var request = receiver.Requests.ShouldHaveSingleItem();
         request.Headers[WebhookSender.DeliveryHeader].ShouldNotBe(crashed.DeliveryId.ToString("D"));
         var taken = (await DeliveriesAsync(host, webhook)).Single(delivery => delivery.Id == crashed.Id);

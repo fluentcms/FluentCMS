@@ -68,6 +68,12 @@ namespace FluentCMS.Plugins.Webhooks.Migrations.SqlServer
                 column: "created_at");
 
             migrationBuilder.CreateIndex(
+                name: "ix_cms_webhooks_delivery_queued",
+                table: "cms_webhooks_delivery",
+                columns: new[] { "webhook_id", "created_at" },
+                filter: "state = 'queued'");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_cms_webhooks_delivery_webhook",
                 table: "cms_webhooks_delivery",
                 columns: new[] { "webhook_id", "created_at" });

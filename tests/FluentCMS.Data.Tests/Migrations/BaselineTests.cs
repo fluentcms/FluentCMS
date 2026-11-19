@@ -49,7 +49,7 @@ public sealed partial class BaselineTests : IDisposable
     private static readonly (string Table, string Column)[] ColumnsAddedToTheBaseline = [("cms_version", "author_kind"), ("cms_version", "author_name"), ("cms_media_asset", "owns_file"), ("cms_media_asset", "version")];
 
     // Indexes added the same way, by the prefix of their catalog lines.
-    private static readonly string[] IndexesAddedToTheBaseline = ["index:cms_media_asset.ix_cms_media_asset_site_owns_file:"];
+    private static readonly string[] IndexesAddedToTheBaseline = ["index:cms_media_asset.ix_cms_media_asset_site_owns_file:", "index:cms_webhooks_delivery.ix_cms_webhooks_delivery_queued:"];
 
     // The chain raised the stamp of the Author role when it changed that role's seeded grants, so that a cached grant was
     // read again; the baseline seeds every role at its first stamp.

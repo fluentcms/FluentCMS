@@ -179,6 +179,7 @@ public sealed class WebhookQueueTests(WebhookFixture hosts) : IClassFixture<Webh
             var entry = (await articles.CreateAsync(new Article { Title = $"Burst {index}" }, Token)).Id;
             await articles.PublishAsync(entry, cancellationToken: Token);
             published.Add(entry);
+            host.Time.Advance(TimeSpan.FromMilliseconds(1));
         }
 
         await DrainOutboxAsync(host);
@@ -187,7 +188,6 @@ public sealed class WebhookQueueTests(WebhookFixture hosts) : IClassFixture<Webh
         for (var index = 1; index < Burst; index++)
         {
             (await RunNextAsync(host, WebhookDeliveryJob.Queue)).ShouldBeTrue();
-            host.Time.Advance(TimeSpan.FromMilliseconds(1));
         }
 
         (await DeliveriesAsync(host, webhook)).Count(delivery => delivery.State == DeliveryStates.Queued).ShouldBe(Burst - 1);
@@ -200,10 +200,9 @@ public sealed class WebhookQueueTests(WebhookFixture hosts) : IClassFixture<Webh
         receiver.MostOpen.ShouldBe(1);
         (await DeliveriesAsync(host, webhook)).ShouldAllBe(delivery => delivery.State == DeliveryStates.Succeeded);
 
-        // The head of the queue also came back for when the claim it waited behind would be abandoned, in case that
-        // claim's job was gone; by then it is sent.
-        host.Time.Advance(new WebhooksOptions().Timeout + WebhookDeliveryJob.AbandonMargin);
-        (await RunDueJobsAsync(host)).ShouldBe(1);
+        // No job of the burst is left to run later.
+        host.Time.Advance(TimeSpan.FromDays(2));
+        (await RunDueJobsAsync(host)).ShouldBe(0);
         receiver.Requests.Count.ShouldBe(Burst);
     }
 

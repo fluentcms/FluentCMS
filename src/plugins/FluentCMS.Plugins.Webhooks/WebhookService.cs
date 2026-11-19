@@ -139,6 +139,10 @@ internal sealed partial class WebhookService(
         var valid = await ValidateAsync(request, signing.TryUnprotectHeaders(webhook.Headers) ?? new Dictionary<string, string>(), cancellationToken, webhook.Url);
         valid.ApplyTo(webhook, signing);
 
+        // Written even when unchanged: the headers were checked against this URL, so a PUT that changed the URL since the
+        // read must not keep its URL beside these headers.
+        database.Entry(webhook).Property(item => item.Url).IsModified = true;
+
         var now = time.GetUtcNow();
         if (webhook.PreviousSecretExpiresAt <= now)
         {

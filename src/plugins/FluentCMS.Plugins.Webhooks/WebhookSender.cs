@@ -76,7 +76,7 @@ internal sealed class WebhookSender : IDisposable
         }
         catch (IOException exception)
         {
-            return new WebhookResult(false, null, Elapsed(started), null, Cut($"The answer could not be read: {exception.Message}", WebhookModel.ErrorMaxLength));
+            return new WebhookResult(false, null, Elapsed(started), null, Storable($"The answer could not be read: {exception.Message}", WebhookModel.ErrorMaxLength));
         }
     }
 
@@ -94,7 +94,7 @@ internal sealed class WebhookSender : IDisposable
             }
         }
 
-        return Cut($"The request failed: {exception.Message}", WebhookModel.ErrorMaxLength);
+        return Storable($"The request failed: {exception.Message}", WebhookModel.ErrorMaxLength);
     }
 
     private static async Task<string?> ExcerptAsync(HttpResponseMessage response, CancellationToken cancellationToken)
@@ -107,15 +107,15 @@ internal sealed class WebhookSender : IDisposable
             read += count;
         }
 
-        return read == 0 ? null : Cut(Printable(Encoding.UTF8.GetString(buffer, 0, read)), WebhookModel.ResponseExcerptMaxLength);
+        return read == 0 ? null : Storable(Encoding.UTF8.GetString(buffer, 0, read), WebhookModel.ResponseExcerptMaxLength);
     }
 
-    // Without control characters other than tab and line breaks: PostgreSQL refuses a NUL in text, and a write that fails
-    // after a 2xx would send the attempt again.
-    private static string Printable(string text) =>
-        text.AsSpan().ContainsAny(Controls) ? string.Concat(text.Where(character => !Controls.Contains(character))) : text;
-
-    // Never between the halves of a surrogate pair, which a strict UTF-8 encoder refuses as a lone surrogate.
-    private static string Cut(string text, int length) =>
-        text.Length <= length ? text : text[..(char.IsHighSurrogate(text[length - 1]) ? length - 1 : length)];
+    // What the log stores of a text a receiver can shape: without control characters other than tab and line breaks, and
+    // at most length characters, never cut between the halves of a surrogate pair. PostgreSQL refuses a NUL in text and a
+    // strict UTF-8 encoder a lone surrogate, and a write that fails after a 2xx would send the attempt again.
+    internal static string Storable(string text, int length)
+    {
+        var printable = text.AsSpan().ContainsAny(Controls) ? string.Concat(text.Where(character => !Controls.Contains(character))) : text;
+        return printable.Length <= length ? printable : printable[..(char.IsHighSurrogate(printable[length - 1]) ? length - 1 : length)];
+    }
 }

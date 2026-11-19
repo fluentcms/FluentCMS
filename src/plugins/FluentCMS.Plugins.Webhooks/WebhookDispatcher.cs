@@ -67,7 +67,7 @@ internal sealed class WebhookDispatcher(PluginDbContext<WebhooksPlugin> database
                 continue;
             }
 
-            var attempt = new WebhookAttempt(webhook.Id, DeliveryIdOf(delivery.Key, webhook.Id), message.EventId, name, 1, Manual: false, body);
+            var attempt = new WebhookAttempt(webhook.Id, DeliveryIdOf(delivery.Key, webhook.Id), message.EventId, name, 1, Manual: false, body, message.Source.OccurredAt);
             await scheduler.EnqueueAsync<WebhookDeliveryJob, WebhookAttempt>(attempt, WebhookDeliveryJob.Options(site), cancellationToken);
         }
     }
