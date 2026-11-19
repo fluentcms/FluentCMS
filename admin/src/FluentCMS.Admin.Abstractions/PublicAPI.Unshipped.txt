@@ -1127,3 +1127,25 @@ FluentCMS.Admin.Lists.ListFilterRegistry.FindAsync(FluentCMS.Admin.Api.SchemaFie
 FluentCMS.Admin.Plugins.AdminManifestMenuItem.LabelFor(System.Globalization.CultureInfo! culture) -> string!
 FluentCMS.Admin.Plugins.AdminManifestMenuItem.Labels.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 FluentCMS.Admin.Plugins.AdminManifestMenuItem.Labels.init -> void
+FluentCMS.Admin.Fields.BlockFormBase
+FluentCMS.Admin.Fields.BlockFormBase.BlockFormBase() -> void
+FluentCMS.Admin.Fields.BlockFormBase.BlockType.get -> FluentCMS.Admin.Api.SchemaTypeDescription!
+FluentCMS.Admin.Fields.BlockFormBase.BlockType.set -> void
+FluentCMS.Admin.Fields.BlockFormBase.ContentLocale.get -> string?
+FluentCMS.Admin.Fields.BlockFormBase.ContentLocale.set -> void
+FluentCMS.Admin.Fields.BlockFormBase.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.ApiProblemError!>!
+FluentCMS.Admin.Fields.BlockFormBase.Errors.set -> void
+FluentCMS.Admin.Fields.BlockFormBase.Path.get -> string!
+FluentCMS.Admin.Fields.BlockFormBase.Path.set -> void
+FluentCMS.Admin.Fields.BlockFormBase.ReadOnly.get -> bool
+FluentCMS.Admin.Fields.BlockFormBase.ReadOnly.set -> void
+FluentCMS.Admin.Fields.BlockFormBase.TextDirection.get -> string!
+FluentCMS.Admin.Fields.BlockFormBase.TextDirection.set -> void
+FluentCMS.Admin.Fields.BlockFormBase.Value.get -> System.Text.Json.Nodes.JsonObject?
+FluentCMS.Admin.Fields.BlockFormBase.Value.set -> void
+FluentCMS.Admin.Fields.BlockFormBase.ValueChanged.get -> Microsoft.AspNetCore.Components.EventCallback<System.Text.Json.Nodes.JsonObject!>
+FluentCMS.Admin.Fields.BlockFormBase.ValueChanged.set -> void
+FluentCMS.Admin.Fields.BlockFormRegistration
+FluentCMS.Admin.Fields.BlockFormRegistration.BlockFormRegistration(System.Type! form) -> void
+FluentCMS.Admin.Fields.BlockFormRegistration.Form.get -> System.Type!
+virtual FluentCMS.Admin.Fields.BlockFormBase.FocusAsync() -> System.Threading.Tasks.ValueTask

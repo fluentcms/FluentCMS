@@ -470,6 +470,8 @@ Rows 3.8, 1.5, 1.6; ADR 0002; nesting depth 3 (decision 20).
 
 The endpoints are those of the form (4.5); a block's fields are part of the entry.
 
+**As built (A-26, [#3346]).** `NestedFieldEditor` is the editor of `component` and `blocks`. A single component is a group whose title button collapses it (`aria-expanded`); a repeatable component and a blocks field are lists of such groups, each with its title (the type and its position, and for a collapsed item the first text of its `text` or `longText` fields on one line), up and down, remove, and for a block duplicate; "collapse all" and "expand all" follow a list of more than one. The order changes by drag of an item's title, by its buttons and by Alt with the up and down arrows on its title; each move, add, duplicate and remove is announced, and focus goes to the moved item's title after a key, to the pressed button after a button (or the other one at an end), to the new item's title after an add or a duplicate, and to the title of the item that took a removed one's place, or to the add button. The add picker of a blocks field is a select of the union's types and a button, or the button alone for one type; a type is offered when the blocks and components around the field, counted by a cascading value, and the type's own depth stay within 3, as the server counts them. The items are keyed by position, as the relation editor's after [#3256], so a move never moves an element that has focus; each item's fields are keyed by the item's key, a block's id or a key of the editor's own that is never sent, so that no state of one item's editors passes to another, and the collapsed state goes with the key. A new block is `{ "type", "id", ...defaults }` with a fresh id of 12 URL-safe characters from `RandomNumberGenerator`; a duplicate is a deep copy whose id, and the id of every block, component's block and inline block it holds, is fresh; a block read keeps its id, and one read without an id is sent without one. Each item's fields are `BlockForm`, the generated form of one block: each field not hidden that its condition, evaluated on the item's values, shows, with the registered editor of its type (a plugin's loaded first, the read-only JSON otherwise), the errors at `{path}.{field}` with their path made relative to the field, so that an editor inside sees paths from its own name as one at the top does, and its lengths, range and pattern checked as it is left; errors at the item itself, such as a repeated id (`FCMS1407`), show above its fields. An item with an error at or under its path is open, so a 422's error at any depth is shown on its field, and the form's focus on the first field with an error goes through each editor's `FocusAsync` to that field. The form of one block is public for a field editor that holds blocks, such as rich text's inline blocks: `BlockFormBase` in `FluentCMS.Admin.Abstractions` with `BlockType`, `Value` and `ValueChanged` (a new object), `Path`, `Errors`, `ReadOnly`, `ContentLocale` and `TextDirection`, and the admin's form is the `Form` of the `BlockFormRegistration` service. The end-to-end host loads `landing.schema.json` beside the Blog sample: a landing whose bands hold cards with a link, three deep.
+
 ### 4.9 Relation picker
 
 Row 3.9; row 1.4.
@@ -1123,6 +1125,7 @@ The draft asked sixteen questions, each with a recommendation. All were decided 
 [#3237]: https://github.com/fluentcms/FluentCMS/issues/3237
 [#3238]: https://github.com/fluentcms/FluentCMS/issues/3238
 [#3239]: https://github.com/fluentcms/FluentCMS/issues/3239
+[#3256]: https://github.com/fluentcms/FluentCMS/issues/3256
 [#3280]: https://github.com/fluentcms/FluentCMS/issues/3280
 [#3287]: https://github.com/fluentcms/FluentCMS/issues/3287
 [#3288]: https://github.com/fluentcms/FluentCMS/issues/3288
@@ -1136,3 +1139,4 @@ The draft asked sixteen questions, each with a recommendation. All were decided 
 [#3326]: https://github.com/fluentcms/FluentCMS/issues/3326
 [#3331]: https://github.com/fluentcms/FluentCMS/issues/3331
 [#3333]: https://github.com/fluentcms/FluentCMS/issues/3333
+[#3346]: https://github.com/fluentcms/FluentCMS/issues/3346
