@@ -184,7 +184,7 @@ namespace FluentCMS.Plugins.Webhooks.Migrations.PostgreSql
                         .IsUnique()
                         .HasDatabaseName("ux_cms_webhooks_delivery_attempt");
 
-                    b.HasIndex(new[] { "WebhookId", "CreatedAt" }, "ix_cms_webhooks_delivery_queued")
+                    b.HasIndex(new[] { "WebhookId", "CreatedAt", "Id" }, "ix_cms_webhooks_delivery_queued")
                         .HasFilter("state = 'queued'");
 
                     b.HasIndex("WebhookId", "CreatedAt")

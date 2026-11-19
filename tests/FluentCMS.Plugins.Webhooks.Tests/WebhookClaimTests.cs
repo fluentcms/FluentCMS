@@ -110,8 +110,11 @@ public sealed class WebhookClaimTests(WebhookFixture hosts) : IClassFixture<Webh
         (await RunDueJobsAsync(host)).ShouldBe(1, "the queue job leaves a queue alone while its claim is in flight");
         receiver.Requests.ShouldBeEmpty("the claim of another attempt is in flight until it is abandoned");
 
-        // No job of the claim wakes the delivery, so the queue job does once the claim is abandoned.
+        // No job of the claim wakes the delivery, so the queue job does once the queue has stalled.
         host.Time.Set(crashed.CreatedAt + Abandoned);
+        await scheduler.EnqueueAsync<WebhookQueueJob, WebhookQueuePayload>(new WebhookQueuePayload(), cancellationToken: Token);
+        (await RunDueJobsAsync(host)).ShouldBe(1, "an abandoned claim alone is not a stalled queue");
+        host.Time.Set(crashed.CreatedAt + WebhookQueueJob.StalledAfter + TimeSpan.FromSeconds(1));
         await scheduler.EnqueueAsync<WebhookQueueJob, WebhookQueuePayload>(new WebhookQueuePayload(), cancellationToken: Token);
         (await RunDueJobsAsync(host)).ShouldBe(2);
         var request = receiver.Requests.ShouldHaveSingleItem();

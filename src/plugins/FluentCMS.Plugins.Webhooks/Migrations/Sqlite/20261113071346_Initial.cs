@@ -70,7 +70,7 @@ namespace FluentCMS.Plugins.Webhooks.Migrations.Sqlite
             migrationBuilder.CreateIndex(
                 name: "ix_cms_webhooks_delivery_queued",
                 table: "cms_webhooks_delivery",
-                columns: new[] { "webhook_id", "created_at" },
+                columns: new[] { "webhook_id", "created_at", "id" },
                 filter: "state = 'queued'");
 
             migrationBuilder.CreateIndex(

@@ -43,7 +43,7 @@ public sealed class WebhookRecoveryTests(WebhookFixture hosts) : IClassFixture<W
         using var client = await AdminAsync(host);
         var webhook = Id(await CreateAsync(client, new { name = "off", url = receiver.Url().ToString(), events = new List<string> { "content.published" }, enabled = false }));
         var now = host.Time.GetUtcNow();
-        var retry = Queued(webhook, now, """{"n":1}""", attempt: 2);
+        var retry = Queued(webhook, now - TimeSpan.FromMinutes(20), """{"n":1}""", attempt: 2);
         var failed = new WebhookDelivery
         {
             Id = Guid.CreateVersion7(),
@@ -54,8 +54,8 @@ public sealed class WebhookRecoveryTests(WebhookFixture hosts) : IClassFixture<W
             Attempt = 1,
             State = DeliveryStates.Failed,
             RequestBody = retry.RequestBody,
-            NextRetryAt = now,
-            CreatedAt = now - TimeSpan.FromMinutes(1),
+            NextRetryAt = now - TimeSpan.FromMinutes(20),
+            CreatedAt = now - TimeSpan.FromMinutes(21),
         };
         await AddAsync(host, failed, retry);
 
@@ -65,6 +65,69 @@ public sealed class WebhookRecoveryTests(WebhookFixture hosts) : IClassFixture<W
         receiver.Requests.ShouldBeEmpty();
         var left = (await DeliveriesAsync(host, webhook)).ShouldHaveSingleItem();
         (left.Attempt, left.State, left.NextRetryAt).ShouldBe((1, DeliveryStates.Dead, (DateTimeOffset?)null));
+    }
+
+    // The gap between an attempt that ended and its head's job claiming the next is not a stall, however busy the
+    // webhooks queue is.
+    [Fact]
+    public async Task AQueueWithARecentClaimIsLeftAloneUntilItHasStalled()
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        var host = await hosts.HostAsync();
+        using var client = await AdminAsync(host);
+        var webhook = Id(await CreateAsync(client, new { name = "busy", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
+        var now = host.Time.GetUtcNow();
+        var ended = Queued(webhook, now - TimeSpan.FromMinutes(1), """{"n":0}""");
+        ended.State = DeliveryStates.Succeeded;
+        var head = Queued(webhook, now - TimeSpan.FromMinutes(20), """{"n":1}""");
+        await AddAsync(host, ended, head);
+
+        await WakeAsync(host);
+        (await RunDueJobsAsync(host)).ShouldBe(1, "the last claim is a minute old");
+        receiver.Requests.ShouldBeEmpty();
+
+        host.Time.Advance(WebhookQueueJob.StalledAfter);
+        await WakeAsync(host);
+        (await RunDueJobsAsync(host)).ShouldBe(2);
+        receiver.Requests.ShouldHaveSingleItem().Body.ShouldBe(head.RequestBody);
+    }
+
+    [Fact]
+    public async Task RetentionRemovesAnOldQueuedAttemptWhoseWebhookIsGone()
+    {
+        var host = await hosts.HostAsync();
+        var now = host.Time.GetUtcNow();
+        var orphan = Queued(Guid.CreateVersion7(), now - TimeSpan.FromDays(31), "{}");
+        await AddAsync(host, orphan);
+
+        await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<WebhookRetentionJob, WebhookRetentionPayload>(new WebhookRetentionPayload(), cancellationToken: Token);
+        (await RunDueJobsAsync(host)).ShouldBe(1);
+
+        (await DeliveriesAsync(host, orphan.WebhookId)).ShouldBeEmpty();
+    }
+
+    // Without statistics, SQLite picks an index only when it holds the whole order of the query; the plain index of the
+    // webhook's log would make it read the log and sort.
+    [Fact]
+    public async Task OnSqliteTheHeadQueryReadsThePartialIndexAndSortsNothing()
+    {
+        var host = await hosts.HostAsync();
+        await using var scope = host.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<WebhooksPlugin>>();
+        database.Database.ProviderName.ShouldBe("Microsoft.EntityFrameworkCore.Sqlite");
+        await using var command = WebhookDeliveryJob.Head(database.Set<WebhookDelivery>().AsNoTracking(), Guid.CreateVersion7()).Take(1).CreateDbCommand();
+        command.CommandText = "EXPLAIN QUERY PLAN " + command.CommandText;
+        await database.Database.OpenConnectionAsync(Token);
+        List<string> plan = [];
+        await using (var reader = await command.ExecuteReaderAsync(Token))
+        {
+            while (await reader.ReadAsync(Token))
+            {
+                plan.Add(reader.GetString(reader.GetOrdinal("detail")));
+            }
+        }
+
+        plan.ShouldHaveSingleItem().ShouldContain("USING INDEX ix_cms_webhooks_delivery_queued");
     }
 
     [Fact]

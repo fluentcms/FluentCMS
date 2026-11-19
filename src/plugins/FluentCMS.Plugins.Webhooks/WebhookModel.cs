@@ -148,7 +148,8 @@ internal sealed class WebhookModel : IPluginModelContributor
             delivery.HasIndex(item => new { item.DeliveryId, item.Attempt }).IsUnique().HasDatabaseName("ux_cms_webhooks_delivery_attempt");
             delivery.HasIndex(item => item.WebhookId).IsUnique().HasFilter($"state = '{DeliveryStates.Pending}'").HasDatabaseName("ux_cms_webhooks_delivery_in_flight");
             delivery.HasIndex(item => new { item.WebhookId, item.CreatedAt }).HasDatabaseName("ix_cms_webhooks_delivery_webhook");
-            delivery.HasIndex(item => new { item.WebhookId, item.CreatedAt }, "ix_cms_webhooks_delivery_queued").HasFilter($"state = '{DeliveryStates.Queued}'");
+            // Holds the order of NextAsync's head query, id included, so that SQLite picks it without statistics and sorts nothing.
+            delivery.HasIndex(item => new { item.WebhookId, item.CreatedAt, item.Id }, "ix_cms_webhooks_delivery_queued").HasFilter($"state = '{DeliveryStates.Queued}'");
             delivery.HasIndex(item => item.CreatedAt).HasDatabaseName("ix_cms_webhooks_delivery_created_at");
         });
     }

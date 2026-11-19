@@ -11,9 +11,11 @@ using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Plugins.Webhooks;
 
-[FluentCmsPlugin("webhooks", SdkRange = "[1.0.0,2.0.0)")]
+[FluentCmsPlugin(Name, SdkRange = "[1.0.0,2.0.0)")]
 public sealed class WebhooksPlugin : IPlugin
 {
+    internal const string Name = "webhooks";
+
     public void ConfigureServices(IPluginServiceBuilder plugin)
     {
         ArgumentNullException.ThrowIfNull(plugin);

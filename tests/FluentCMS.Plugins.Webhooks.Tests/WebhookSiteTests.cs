@@ -52,11 +52,36 @@ public sealed class WebhookSiteTests
                 .ShouldBe([JobStatus.Succeeded]);
         }
 
+        // The queue job leaves the queues of the site alone while the plugin is off there.
+        var stalled = new WebhookDelivery
+        {
+            Id = Guid.CreateVersion7(),
+            DeliveryId = Guid.CreateVersion7(),
+            WebhookId = Id(webhook),
+            EventId = Guid.CreateVersion7(),
+            Event = "content.published",
+            Attempt = 1,
+            State = DeliveryStates.Queued,
+            RequestBody = """{"stalled":true}""",
+            CreatedAt = host.Time.GetUtcNow() - TimeSpan.FromDays(1),
+        };
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<WebhooksPlugin>>();
+            database.Add(stalled);
+            await database.SaveChangesAsync(Token);
+        }
+
+        await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<WebhookQueueJob, WebhookQueuePayload>(new WebhookQueuePayload(), cancellationToken: Token);
+        (await RunDueJobsAsync(host)).ShouldBe(1, "the queue job enqueues no delivery of the site");
+
+        // Back on, the next delivery wakes the stalled head first.
         (await SetAsync(client, enabled: true)).ShouldBe(HttpStatusCode.OK);
         await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "Back on" }, Token)).Id, cancellationToken: Token);
         await PumpAsync(host);
 
-        receiver.Requests.ShouldHaveSingleItem();
+        receiver.Requests.Count.ShouldBe(2);
+        receiver.Requests[0].Body.ShouldBe(stalled.RequestBody);
     }
 
     // A deleted site takes its webhooks and their attempts with it, and another site keeps its own. The handler may run

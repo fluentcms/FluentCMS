@@ -96,7 +96,7 @@ internal sealed class WebhookDeliveryJob(
             await DiedAsync(webhook, attempt.DeliveryId, attempt.Event, attempt.Attempt, CancellationToken.None);
         }
 
-        await NextAsync(webhook, claim, cancellationToken);
+        await NextAsync(webhook, claim, wake: true, cancellationToken);
     }
 
     // The webhook and the id of the claimed row, or null when this job sends nothing: the attempt is recorded, in flight or
@@ -165,17 +165,19 @@ internal sealed class WebhookDeliveryJob(
                 }
 
                 await TakeOverAsync(own, webhook, cancellationToken);
+                return await NextAsync(webhook, own.Id, wake: true, cancellationToken);
             }
 
-            return await NextAsync(webhook, own.Id, cancellationToken);
+            return await NextAsync(webhook, own.Id, wake: false, cancellationToken);
         }
     }
 
-    // Claims the row own when it heads the webhook's queue and no attempt of the webhook is in flight. When another row heads
-    // it, that attempt's job is enqueued, because only the job of an attempt sends it: the runner retries that job after a
-    // crash, and it then finds its claim. Behind an attempt in flight, the rows wait to be woken by that attempt's job, or by
-    // WebhookQueueJob when that job is lost. A job that recorded its attempt calls this too, to wake the next.
-    private async Task<(Webhook Webhook, Guid Claim)?> NextAsync(Webhook webhook, Guid own, CancellationToken cancellationToken)
+    // Claims the row own when it heads the webhook's queue and no attempt of the webhook is in flight. A job that ended an
+    // attempt wakes the next: it enqueues the head's job, because only the job of an attempt sends it, so that the runner's
+    // retry of that job after a crash finds its claim. A job that queued its attempt behind another row wakes nobody: the
+    // head was queued before it, so the head's own job or the job that ended the last attempt saw it. A head that has
+    // stalled is woken by the next attempt queued behind it, or by WebhookQueueJob.
+    private async Task<(Webhook Webhook, Guid Claim)?> NextAsync(Webhook webhook, Guid own, bool wake, CancellationToken cancellationToken)
     {
         var deliveries = database.Set<WebhookDelivery>();
         while (true)
@@ -187,10 +189,7 @@ internal sealed class WebhookDeliveryJob(
                 continue;
             }
 
-            var head = await deliveries.AsNoTracking()
-                .Where(item => item.WebhookId == webhook.Id && item.State == DeliveryStates.Queued)
-                .OrderBy(item => item.CreatedAt).ThenBy(item => item.Id)
-                .FirstOrDefaultAsync(cancellationToken);
+            var head = await Head(deliveries.AsNoTracking(), webhook.Id).FirstOrDefaultAsync(cancellationToken);
             if (busy is not null)
             {
                 if (busy.Id == own)
@@ -219,6 +218,11 @@ internal sealed class WebhookDeliveryJob(
 
             if (head.Id != own)
             {
+                if (!wake && head.CreatedAt > time.GetUtcNow() - WebhookQueueJob.StalledAfter)
+                {
+                    return null;
+                }
+
                 await scheduler.EnqueueAsync<WebhookDeliveryJob, WebhookAttempt>(AttemptOf(head), Options(webhook.SiteId), cancellationToken);
                 return null;
             }
@@ -253,6 +257,10 @@ internal sealed class WebhookDeliveryJob(
             .ExecuteUpdateAsync(item => item.SetProperty(row => row.State, DeliveryStates.Dead).SetProperty(row => row.NextRetryAt, (DateTimeOffset?)null), cancellationToken);
         WebhookLog.Skipped(logger, attempt.WebhookId, attempt.DeliveryId, attempt.Attempt);
     }
+
+    // The queued attempts of the webhook, head first, in the order of ix_cms_webhooks_delivery_queued.
+    internal static IQueryable<WebhookDelivery> Head(IQueryable<WebhookDelivery> deliveries, Guid webhook) =>
+        deliveries.Where(item => item.WebhookId == webhook && item.State == DeliveryStates.Queued).OrderBy(item => item.CreatedAt).ThenBy(item => item.Id);
 
     internal static WebhookAttempt AttemptOf(WebhookDelivery row) =>
         new(row.WebhookId, row.DeliveryId, row.EventId, row.Event, row.Attempt, row.Manual, row.RequestBody, row.State == DeliveryStates.Queued ? row.CreatedAt : null);
