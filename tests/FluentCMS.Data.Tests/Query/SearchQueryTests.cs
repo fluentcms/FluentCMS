@@ -48,6 +48,38 @@ public sealed class SearchQueryTests : IDisposable
         index.Requests.ShouldHaveSingleItem().Site.ShouldBe(new SiteId(QueryDatabase.SiteA));
     }
 
+    // A match on a field the caller may not read would tell what it holds, so the index is asked for the readable ones,
+    // and with none of them nothing matches, though the index is still asked so that it can refuse.
+    [Fact]
+    public async Task TheIndexIsAskedForTheSearchableFieldsTheCallerMayReadOnly()
+    {
+        var article = _database.AddArticle("First");
+        var index = new FakeSearchIndex(article);
+
+        await _database.RunAsync("locale=en&q=x", new QueryAccess(), search: index);
+        await _database.RunAsync("locale=en&q=x", new QueryAccess { DeniedFields = { "article.subtitle", "article.body" } }, search: index);
+        var none = await _database.RunAsync("locale=en&q=x&withTotal=true", new QueryAccess { DeniedFields = { "article.title", "article.subtitle" } }, search: index);
+
+        index.Requests.Select(request => request.Fields).ShouldBe([null, ["title"], []]);
+        none.Items.ShouldBeEmpty();
+        none.Total.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AnIndexThatCannotMatchByFieldIsRefusedToAFieldLimitedCallerOnly()
+    {
+        var article = _database.AddArticle("First");
+        var index = new FakeSearchIndex(article) { ByField = false };
+
+        Ids(await _database.RunAsync("locale=en&q=x", new QueryAccess(), search: index)).ShouldBe([article]);
+        var exception = await Should.ThrowAsync<ValidationException>(() => _database.RunAsync("locale=en&q=x", new QueryAccess { DeniedFields = { "article.subtitle" } }, search: index));
+
+        var error = exception.Errors.ShouldHaveSingleItem();
+        error.Code.ShouldBe(QueryErrorCodes.NoSearchIndex);
+        error.Path.ShouldBe("q");
+        index.Requests.ShouldHaveSingleItem().Fields.ShouldBeNull();
+    }
+
     [Fact]
     public async Task TheIndexIsAskedForTheStateTheQueryReads()
     {
@@ -144,6 +176,10 @@ public sealed class SearchQueryTests : IDisposable
     private sealed class FakeSearchIndex(params Guid[] ids) : ISearchIndex
     {
         public List<SearchRequest> Requests { get; } = [];
+
+        public bool ByField { get; init; } = true;
+
+        public bool MatchesByField => ByField;
 
         public Task<IReadOnlyList<Guid>> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default)
         {

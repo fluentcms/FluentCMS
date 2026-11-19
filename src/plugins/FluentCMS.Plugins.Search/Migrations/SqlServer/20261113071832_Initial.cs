@@ -23,6 +23,7 @@ namespace FluentCMS.Plugins.Search.Migrations.SqlServer
                     state = table.Column<int>(type: "int", nullable: false),
                     type = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     site_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    field = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     text = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     updated_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
                 },
@@ -44,7 +45,7 @@ namespace FluentCMS.Plugins.Search.Migrations.SqlServer
             migrationBuilder.CreateIndex(
                 name: "ux_cms_search_entry_document",
                 table: "cms_search_entry",
-                columns: new[] { "document_id", "locale", "state" },
+                columns: new[] { "document_id", "locale", "state", "field" },
                 unique: true);
         }
 

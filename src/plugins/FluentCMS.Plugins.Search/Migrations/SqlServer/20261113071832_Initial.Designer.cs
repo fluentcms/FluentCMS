@@ -38,6 +38,12 @@ namespace FluentCMS.Plugins.Search.Migrations.SqlServer
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("document_id");
 
+                    b.Property<string>("Field")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("field");
+
                     b.Property<string>("Locale")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -72,7 +78,7 @@ namespace FluentCMS.Plugins.Search.Migrations.SqlServer
                     b.HasIndex("SiteId")
                         .HasDatabaseName("ix_cms_search_entry_site");
 
-                    b.HasIndex("DocumentId", "Locale", "State")
+                    b.HasIndex("DocumentId", "Locale", "State", "Field")
                         .IsUnique()
                         .HasDatabaseName("ux_cms_search_entry_document");
 

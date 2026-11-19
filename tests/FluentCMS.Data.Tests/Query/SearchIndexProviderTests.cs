@@ -1,4 +1,6 @@
 using FluentCMS.Content;
+using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
@@ -7,6 +9,7 @@ using FluentCMS.Data.Tests.Migrations;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.Search;
+using FluentCMS.Providers;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
@@ -96,6 +99,62 @@ public sealed class SearchIndexProviderTests : IDisposable
         }
     }
 
+    // The words of a search may be in different fields, but only in the fields the request names when it names them.
+    [Fact]
+    public async Task OnlyTheFieldsTheRequestNamesMatch()
+    {
+        await MigrateAsync();
+        var article = await CreateAsync("Quarterly report", "Merger talks", publish: true);
+        await DrainAsync();
+
+        (await MatchAsync("quarterly merg", fields: null)).ShouldBe([article]);
+        (await MatchAsync("quarterly merg", ["title", "body"])).ShouldBe([article]);
+        (await MatchAsync("quarterly merg", ["title"])).ShouldBeEmpty();
+        (await MatchAsync("merger", ["title"])).ShouldBeEmpty();
+        (await MatchAsync("quart", ["title"])).ShouldBe([article]);
+        (await MatchAsync("quarterly", [])).ShouldBeEmpty();
+    }
+
+    // Through the engine, as a caller limited to the title by its role, or by the role of its client: no entry and no count
+    // for a word of the body, and the title still found.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AFieldLimitedCallerMatchesOnlyTheFieldsItMayRead(bool byClientRole)
+    {
+        await MigrateAsync();
+        var article = await CreateAsync("Quarterly report", "Merger talks", publish: true);
+        await DrainAsync();
+        var titleOnly = await RoleAsync(new PermissionConstraints { Fields = ["title"] });
+        var principal = byClientRole ? Caller(await RoleAsync(null), titleOnly) : Caller(titleOnly);
+
+        (await FindAsAsync(principal, "quarterly")).Items.Select(item => (Guid)item["id"]!).ShouldBe([article]);
+        var hidden = await FindAsAsync(principal, "merger");
+        hidden.Items.ShouldBeEmpty();
+        hidden.Total.ShouldBe(0);
+        (await FindAsAsync(principal, "quarterly merg")).Items.ShouldBeEmpty();
+        (await FindAsync("quarterly merg")).ShouldBe([article]);
+    }
+
+    // The rows of a field that is no longer searchable, or is now hidden, stay until the entry is written again; they never
+    // match, not even for a caller who may read every field.
+    [Fact]
+    public async Task TheRowsOfAFieldNoLongerSearchableNeverMatch()
+    {
+        await MigrateAsync();
+        var article = await CreateAsync("Quarterly report", "Merger talks", publish: true);
+        await DrainAsync();
+        await using (var scope = _host.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<SearchPlugin>>();
+            database.Add(new SearchEntry { DocumentId = article, Locale = "en", State = SearchStates.Published, Type = "article", SiteId = DefaultSite.Id, Field = "notes", Text = "stale", UpdatedAt = DateTimeOffset.UnixEpoch });
+            await database.SaveChangesAsync(Token);
+        }
+
+        (await FindAsync("stale")).ShouldBeEmpty();
+        (await FindAsync("quarterly")).ShouldBe([article]);
+    }
+
     [Fact]
     public async Task TheRebuildWritesTheIndexAgainAndASecondRunChangesNothing()
     {
@@ -103,7 +162,7 @@ public sealed class SearchIndexProviderTests : IDisposable
         var article = await CreateAsync("Rebuilt words", "Body", publish: true);
         await DrainAsync();
         var indexed = await RowsAsync();
-        indexed.Count.ShouldBe(2);
+        indexed.Count.ShouldBe(4);
 
         await using (var scope = _host.Services.CreateAsyncScope())
         {
@@ -114,8 +173,8 @@ public sealed class SearchIndexProviderTests : IDisposable
             await database.SaveChangesAsync(Token);
         }
 
-        (await RebuildAsync()).ShouldBe((2, 2));
-        (await RowsAsync()).Select(row => (row.DocumentId, row.Locale, row.State, row.Text)).ShouldBe(indexed.Select(row => (row.DocumentId, row.Locale, row.State, row.Text)), ignoreOrder: true);
+        (await RebuildAsync()).ShouldBe((4, 2));
+        (await RowsAsync()).Select(row => (row.DocumentId, row.Locale, row.State, row.Field, row.Text)).ShouldBe(indexed.Select(row => (row.DocumentId, row.Locale, row.State, row.Field, row.Text)), ignoreOrder: true);
         (await FindAsync("rebuilt")).ShouldBe([article]);
 
         (await RebuildAsync()).ShouldBe((0, 0));
@@ -140,6 +199,52 @@ public sealed class SearchIndexProviderTests : IDisposable
         var page = await content.QueryAsync("article", new ContentQuery { Search = text, Status = status, Locale = "en" }, Token);
         return page.Items.Select(item => (Guid)item["id"]!).ToList();
     });
+
+    private async Task<Guid> RoleAsync(PermissionConstraints? constraints)
+    {
+        await using var scope = _host.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        var role = new Role { Name = $"reader-{Guid.NewGuid():N}" };
+        context.Add(role);
+        await context.SaveChangesAsync(Token);
+        context.Add(new RoleGrant { RoleId = role.Id, Permission = "content.article.read", Constraints = constraints?.ToJson() });
+        await context.SaveChangesAsync(Token);
+        return role.Id;
+    }
+
+    // A service account with the role in its claim, held to the role of its client when it has one.
+    private static Principal Caller(Guid role, Guid? clientRole = null)
+    {
+        var claims = new Dictionary<string, string> { [ClaimPrincipalRoles.Claim] = role.ToString(), [TokenScopes.Claim] = TokenScopes.Management };
+        if (clientRole is { } client)
+        {
+            claims[CmsClaimTypes.ClientRole] = client.ToString();
+        }
+
+        return new Principal(PrincipalKind.ServiceAccount, Guid.CreateVersion7(), "Reader", claims);
+    }
+
+    private async Task<PagedResult<ContentDocument>> FindAsAsync(Principal principal, string text)
+    {
+        await using var scope = _host.Services.CreateAsyncScope();
+        var accessor = scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>();
+        accessor.Current = new OperationContext(principal, Origin.Api, new SiteId(DefaultSite.Id), "en", null, "search", DateTimeOffset.UtcNow);
+        try
+        {
+            return await scope.ServiceProvider.GetRequiredService<IContentService>().QueryAsync("article", new ContentQuery { Search = text, Locale = "en", Page = new PageRequest { WithTotal = true } }, Token);
+        }
+        finally
+        {
+            accessor.Current = null;
+        }
+    }
+
+    private async Task<IReadOnlyList<Guid>> MatchAsync(string text, IReadOnlyList<string>? fields)
+    {
+        using var system = SystemOperation.Begin(_host.Services.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+        var request = new SearchRequest("article", text, 100) { Locale = "en", Site = new SiteId(DefaultSite.Id), Status = QueryStatus.Published, Fields = fields };
+        return await _host.Services.GetRequiredService<ISearchIndex>().SearchAsync(request, Token);
+    }
 
     private async Task<T> AsSystemAsync<T>(Func<IContentService, Task<T>> work)
     {
