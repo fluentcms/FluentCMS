@@ -17,9 +17,11 @@ on:
 permissions:
   contents: read
 
+# A pull request's newer run cancels its older one. Every other run has a group of its own, since a run that waits in a
+# group is cancelled by the next one even without cancel-in-progress, and pushes to main and the nightly run must finish.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # The diagnostic log of each test app, written as it goes so that it survives a cancelled job, holds xUnit.net's report
 # of a test that runs too long and the stack of a test that --timeout cancelled.
@@ -87,32 +89,11 @@ jobs:
     # A shard outside the scope of the run passes without steps, so that its required check still reports.
     env:
       RUN_SHARD: ${{ !contains(needs.plan.outputs.skipped-tests, format(' {0} ', matrix.group)) }}
+    # The shards come from the test projects of the solution (eng/test-shards.sh), so a new project runs without a change here.
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - group: units
-            timeout: 5m
-            projects: tests/FluentCMS.Sdk.Tests tests/FluentCMS.Core.Tests tests/FluentCMS.Architecture.Tests tests/FluentCMS.Generators.Tests tests/FluentCMS.Cli.Tests tests/FluentCMS.Client.Tests
-          # The two integration shards carry the same namespaces: the first runs them and the second every other, so a new
-          # namespace runs without a change here. A minimum keeps a filter that matches nothing from passing.
-          - group: integration-1
-            timeout: 8m
-            projects: tests/FluentCMS.Core.IntegrationTests
-            args: --filter-namespace "FluentCMS.Core.IntegrationTests.Identity*" "FluentCMS.Core.IntegrationTests.Api*" "FluentCMS.Core.IntegrationTests.Caching*" "FluentCMS.Core.IntegrationTests.Blog*" --minimum-expected-tests 250
-          - group: integration-2
-            timeout: 8m
-            projects: tests/FluentCMS.Core.IntegrationTests
-            args: --filter-not-namespace "FluentCMS.Core.IntegrationTests.Identity*" "FluentCMS.Core.IntegrationTests.Api*" "FluentCMS.Core.IntegrationTests.Caching*" "FluentCMS.Core.IntegrationTests.Blog*" --minimum-expected-tests 550
-          - group: plugins-1
-            timeout: 5m
-            projects: tests/FluentCMS.Plugins.Tests tests/FluentCMS.Plugins.Media.Tests tests/FluentCMS.Plugins.Webhooks.Tests tests/FluentCMS.Host.Tests
-          - group: plugins-2
-            timeout: 5m
-            projects: tests/FluentCMS.Plugins.Mcp.Tests tests/FluentCMS.Plugins.GraphQL.Tests tests/FluentCMS.Plugins.MultiSite.Tests tests/FluentCMS.Plugins.AiAssist.Tests tests/FluentCMS.Plugins.Search.Tests
-          - group: admin
-            timeout: 5m
-            projects: admin/tests/FluentCMS.Admin.Tests admin/tests/FluentCMS.Admin.ApiTests admin/tests/FluentCMS.Plugins.Media.Admin.Tests
+        include: ${{ fromJSON(needs.plan.outputs.test-shards) }}
     steps:
       - name: Checkout
         if: env.RUN_SHARD == 'true'
@@ -289,7 +270,7 @@ jobs:
         if: env.FULL_TESTS != 'true'
         run: dotnet test --project tests/FluentCMS.Cli.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 10m
 
-      # The test projects ignore exit code 8, zero tests, so a filter that matched nothing would pass without a minimum.
+      # A minimum keeps a filter that matches too little from passing.
       - name: Test the commands
         if: env.FULL_TESTS != 'true'
         run: dotnet test --project tests/FluentCMS.Core.IntegrationTests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --filter-namespace "FluentCMS.Core.IntegrationTests.Commands*" --minimum-expected-tests 40 --timeout 10m
@@ -319,6 +300,7 @@ jobs:
     outputs:
       scope: ${{ steps.scope.outputs.scope }}
       skipped-tests: ${{ steps.scope.outputs.skipped-tests }}
+      test-shards: ${{ steps.test-shards.outputs.matrix }}
       data-tests: ${{ steps.data-tests.outputs.matrix }}
     steps:
       - name: Checkout
@@ -363,6 +345,14 @@ jobs:
           esac
           echo "scope=$scope" | tee -a "$GITHUB_OUTPUT"
           echo "skipped-tests=$skipped" | tee -a "$GITHUB_OUTPUT"
+
+      # Fails when a test project of the solution is in no shard, or an npm project is tested by no job.
+      - name: Choose the shards of the tests
+        id: test-shards
+        shell: bash
+        run: |
+          matrix=$(bash eng/test-shards.sh)
+          echo "matrix=$matrix" | tee -a "$GITHUB_OUTPUT"
 
       # Outside the `all` scope the SQLite shard alone is listed, without steps, so that its required check still reports.
       - name: Choose the shards of the data tests
@@ -666,11 +656,12 @@ jobs:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'feature/')
     uses: ./.github/workflows/fresh-machine.yml
 
-  # Nobody watches the nightly run, which is the only one that runs the full Windows suite, so a failure opens an issue.
+  # Nobody watches the nightly run, which is the only one that runs the full Windows suite, so a failure or a cancellation
+  # opens an issue.
   nightly-report:
     name: Report nightly failure
     needs: [markdown, build, test, end-to-end, typescript, build-test-windows, plan, data-tests, pack, templates]
-    if: failure() && github.event_name == 'schedule'
+    if: (failure() || cancelled()) && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -684,7 +675,7 @@ jobs:
         shell: bash
         run: |
           title="Nightly CI failed"
-          body="The scheduled CI run failed: $RUN_URL"
+          body="The scheduled CI run failed or was cancelled: $RUN_URL"
           number=$(gh issue list --state open --search "\"$title\" in:title" --json number,title --jq "[.[] | select(.title == \"$title\")][0].number // empty")
           if [ -n "$number" ]; then
             gh issue comment "$number" --body "$body"
