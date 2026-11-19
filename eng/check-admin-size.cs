@@ -1,9 +1,11 @@
 // The size budget of the Pack job (admin spec 7): the compressed first download of the published admin app, which is the Brotli
 // size of every file of its wwwroot folder but the lazy assemblies and the satellite resources, which the boot configuration in
-// _framework/dotnet.js names and a first visit in the default culture does not fetch. A file without its .br is compressed here.
-// The total is an upper bound: every other file counts, those of _content that a page fetches only when it needs them too (the
-// library's lazy modules, reboot.css, the dark logo, and the _content of a lazy package such as the rich text editor's bundle).
-// It prints the total, the files left out and the largest files, and exits with 1 above the budget.
+// _framework/dotnet.js names and a first visit in the default culture does not fetch, and the scripts and stylesheets of a lazy
+// assembly's own package, _content/{assembly}/, which only its code loads, such as the rich text editor's bundle; the scoped
+// styles of such a package count, since the app's stylesheet imports them. A file without its .br is compressed here. The
+// total is an upper bound: every other file counts, those of _content that a page fetches only when it needs them too (the
+// library's lazy modules, reboot.css, the dark logo). It prints the total, the files left out and the largest files, and exits
+// with 1 above the budget.
 //
 //   dotnet run eng/check-admin-size.cs -- <publish folder of FluentCMS.Admin.App> <budget in bytes>
 
@@ -46,7 +48,7 @@ var files = published[false]
 
 var total = files.Sum(file => file.Size);
 Console.WriteLine($"The first download of the admin is at most {total:N0} B in Brotli, {files.Count} files; the budget is {budget:N0} B.");
-Console.WriteLine($"Left out, as lazy assemblies or satellite resources of the boot configuration: {skipped.Count} files.");
+Console.WriteLine($"Left out, as lazy assemblies, satellite resources or the scripts and stylesheets of a lazy assembly's package: {skipped.Count} files.");
 foreach (var name in skipped)
 {
     Console.WriteLine($"  {name}");
@@ -74,7 +76,8 @@ var message = $"The first download of the admin is {total:N0} B in Brotli, {tota
 Console.WriteLine(Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true" ? $"::error::{message}" : $"FAIL  {message}");
 return 1;
 
-// The lazy assemblies, under _framework, and the satellite resources, under _framework/{culture}, of the boot configuration.
+// The lazy assemblies, under _framework, with the scripts and stylesheets of their packages, and the satellite resources, under
+// _framework/{culture}, of the boot configuration.
 static HashSet<string>? NotFetched(string script, string framework)
 {
     const string Start = "/*json-start*/";
@@ -97,7 +100,19 @@ static HashSet<string>? NotFetched(string script, string framework)
     {
         foreach (var assembly in lazy.EnumerateArray())
         {
-            paths.Add(Path.GetFullPath(Path.Combine(framework, assembly.GetProperty("name").GetString()!)));
+            var name = assembly.GetProperty("name").GetString()!;
+            paths.Add(Path.GetFullPath(Path.Combine(framework, name)));
+
+            // The name is fingerprinted; the virtual path is the assembly's own name, which is its package's.
+            var assemblyName = assembly.TryGetProperty("virtualPath", out var virtualPath) ? virtualPath.GetString()! : name;
+            var package = Path.Combine(Path.GetDirectoryName(framework)!, "_content", Path.GetFileNameWithoutExtension(assemblyName));
+            if (Directory.Exists(package))
+            {
+                paths.UnionWith(Directory.EnumerateFiles(package, "*", SearchOption.AllDirectories)
+                    .Where(file => file.EndsWith(".js", StringComparison.OrdinalIgnoreCase)
+                        || (file.EndsWith(".css", StringComparison.OrdinalIgnoreCase) && !file.EndsWith(".bundle.scp.css", StringComparison.OrdinalIgnoreCase)))
+                    .Select(Path.GetFullPath));
+            }
         }
     }
 

@@ -63,6 +63,7 @@
     <Project Path="admin/tests/FluentCMS.Admin.GatherFixture/FluentCMS.Admin.GatherFixture.csproj" />
     <Project Path="admin/tests/FluentCMS.Admin.Plugins.Careless/FluentCMS.Admin.Plugins.Careless.csproj" />
     <Project Path="admin/tests/FluentCMS.Admin.Plugins.Sample/FluentCMS.Admin.Plugins.Sample.csproj" />
+    <Project Path="admin/tests/FluentCMS.Admin.RichText.Tests/FluentCMS.Admin.RichText.Tests.csproj" />
     <Project Path="admin/tests/FluentCMS.Plugins.Media.Admin.Tests/FluentCMS.Plugins.Media.Admin.Tests.csproj" />
   </Folder>
   <Folder Name="/samples/">
