@@ -1,3 +1,4 @@
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Jobs;
 using FluentCMS.Testing;
@@ -90,6 +91,33 @@ public sealed class WebhookRecoveryTests(WebhookFixture hosts) : IClassFixture<W
         await WakeAsync(host);
         (await RunDueJobsAsync(host)).ShouldBe(2);
         receiver.Requests.ShouldHaveSingleItem().Body.ShouldBe(head.RequestBody);
+    }
+
+    // A queued head with an old event, such as a late retry, behind a recent claim is a queue that drains, so a delivery
+    // queued behind it wakes nobody; once the last claim is old too, the queue has stalled and the next delivery wakes it.
+    [Fact]
+    public async Task ADeliveryQueuedBehindAHeadWakesItOnlyOnceTheQueueHasStalled()
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        var host = await hosts.HostAsync();
+        using var client = await AdminAsync(host);
+        var webhook = Id(await CreateAsync(client, new { name = "late retry", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
+        var now = host.Time.GetUtcNow();
+        var ended = Queued(webhook, now - TimeSpan.FromMinutes(1), """{"n":0}""");
+        ended.State = DeliveryStates.Succeeded;
+        var head = Queued(webhook, now - TimeSpan.FromMinutes(30), """{"n":1}""", attempt: 3);
+        await AddAsync(host, ended, head);
+        var articles = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).Content<Article>();
+
+        await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "Behind" }, Token)).Id, cancellationToken: Token);
+        (await PumpAsync(host)).ShouldBe(1, "the delivery queues behind the head and enqueues nothing");
+        receiver.Requests.ShouldBeEmpty();
+
+        host.Time.Advance(WebhookQueueJob.StalledAfter);
+        await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "Wakes it" }, Token)).Id, cancellationToken: Token);
+        (await PumpAsync(host)).ShouldBe(4, "the new delivery, then the head's job and each delivery's");
+        receiver.Requests.Count.ShouldBe(3);
+        receiver.Requests[0].Body.ShouldBe(head.RequestBody);
     }
 
     [Fact]

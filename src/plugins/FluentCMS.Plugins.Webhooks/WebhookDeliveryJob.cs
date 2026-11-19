@@ -218,7 +218,7 @@ internal sealed class WebhookDeliveryJob(
 
             if (head.Id != own)
             {
-                if (!wake && head.CreatedAt > time.GetUtcNow() - WebhookQueueJob.StalledAfter)
+                if (!wake && !await WebhookQueueJob.HasStalledAsync(deliveries.AsNoTracking(), webhook.Id, head, time.GetUtcNow(), cancellationToken))
                 {
                     return null;
                 }
@@ -272,7 +272,7 @@ internal sealed class WebhookDeliveryJob(
         var retryAt = RetryAt(abandoned.Attempt, abandoned.Manual);
         if (retryAt is { } at)
         {
-            var next = new WebhookAttempt(abandoned.WebhookId, abandoned.DeliveryId, abandoned.EventId, abandoned.Event, abandoned.Attempt + 1, abandoned.Manual, abandoned.RequestBody);
+            var next = new WebhookAttempt(abandoned.WebhookId, abandoned.DeliveryId, abandoned.EventId, abandoned.Event, abandoned.Attempt + 1, abandoned.Manual, abandoned.RequestBody, abandoned.CreatedAt);
             await scheduler.ScheduleAsync<WebhookDeliveryJob, WebhookAttempt>(next, at, Options(webhook.SiteId), cancellationToken);
         }
 
