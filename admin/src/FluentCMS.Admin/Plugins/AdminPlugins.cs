@@ -45,6 +45,7 @@ internal sealed class AdminPlugins(
     private readonly Dictionary<string, Task<LoadedHalf>> _loads = new(StringComparer.Ordinal);
     private readonly Dictionary<string, LoadedHalf> _loaded = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Exception> _failed = new(StringComparer.Ordinal);
+    private readonly Dictionary<Type, string?> _problems = [];
 
     public AdminPluginCatalog Catalog => catalog;
 
@@ -185,6 +186,31 @@ internal sealed class AdminPlugins(
         return loading.WaitAsync(cancellationToken);
     }
 
+    // Why the renderer cannot create a component of a loaded half, which no error boundary would catch, checked once per class
+    // and logged; null when it can, and for a class of no loaded half.
+    public string? ProblemOf(Type component)
+    {
+        ArgumentNullException.ThrowIfNull(component);
+        if (_problems.TryGetValue(component, out var problem))
+        {
+            return problem;
+        }
+
+        if (_loaded.Values.FirstOrDefault(half => half.Assembly == component.Assembly) is not { } owner)
+        {
+            return null;
+        }
+
+        problem = PluginComponents.Problem(component, services);
+        if (problem is not null)
+        {
+            PluginLog.ComponentNotCreated(logger, owner.Manifest.Name, component.FullName ?? component.Name, problem);
+        }
+
+        _problems[component] = problem;
+        return problem;
+    }
+
     public IServiceProvider ProviderOf(Type type)
     {
         ArgumentNullException.ThrowIfNull(type);
@@ -225,7 +251,7 @@ internal sealed class AdminPlugins(
         {
             foreach (var editor in half.FieldEditors)
             {
-                editors.AddLazy(editor.FieldType, () => IsAvailable(half), cancellationToken => ComponentAsync(half, editor.Type, cancellationToken));
+                editors.AddLazy(editor.FieldType, () => IsAvailable(half), cancellationToken => CreatableAsync(half, editor.Type, cancellationToken));
             }
         }
     }
@@ -237,7 +263,7 @@ internal sealed class AdminPlugins(
         {
             foreach (var cell in half.ListCells)
             {
-                cells.AddLazy(cell.FieldType, () => IsAvailable(half), cancellationToken => ComponentAsync(half, cell.Type, cancellationToken), cell.Populate);
+                cells.AddLazy(cell.FieldType, () => IsAvailable(half), cancellationToken => CreatableAsync(half, cell.Type, cancellationToken), cell.Populate);
             }
         }
     }
@@ -254,6 +280,12 @@ internal sealed class AdminPlugins(
         }
     }
 
+    // An editor or a cell the renderer cannot create fails its load, so that the registry answers the fallback in its place.
+    private async Task<Type> CreatableAsync(AdminPluginManifest half, string typeName, CancellationToken cancellationToken)
+    {
+        var type = await ComponentAsync(half, typeName, cancellationToken);
+        return ProblemOf(type) is { } problem ? throw new InvalidOperationException(problem) : type;
+    }
 
     private async Task<LoadedHalf> RunLoadAsync(AdminPluginManifest half)
     {

@@ -1,13 +1,26 @@
 @* The page the router found, or the not-found page in its place for a page of an admin half that the site or the user may
    not see, by the half that owns the page's assembly: after a site switch, a half loaded in the site before still has its
-   routes, and the switch navigates to the route again. NotFoundPage tells a page the user lacks the permission of. *@
+   routes, and the switch navigates to the route again. NotFoundPage tells a page the user lacks the permission of. A page the
+   renderer cannot create shows an error in the layout instead, as no error boundary catches that. *@
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "NotFoundPage is kept by the DynamicDependency of AdminApp's constructor.")]
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "AdminLayout is named by typeof, which keeps it whole for the layout.")]
 @inject AdminPlugins Plugins
 @inject NavigationManager Navigation
+@inject IStringLocalizer<AdminResources> L
 
 @if (Plugins.Gate(RouteData, Navigation.ToBaseRelativePath(Navigation.Uri)) is PluginPageGate.None or PluginPageGate.Allowed)
 {
-    <RouteView RouteData="RouteData" DefaultLayout="typeof(AdminLayout)" />
+    if (Plugins.ProblemOf(RouteData.PageType) is null)
+    {
+        <RouteView RouteData="RouteData" DefaultLayout="typeof(AdminLayout)" />
+    }
+    else
+    {
+        <LayoutView Layout="typeof(AdminLayout)">
+            <h1 tabindex="-1">@L["Plugins.PageFailed.Heading"]</h1>
+            <p>@L["Plugins.PageFailed.Text"]</p>
+        </LayoutView>
+    }
 }
 else
 {
