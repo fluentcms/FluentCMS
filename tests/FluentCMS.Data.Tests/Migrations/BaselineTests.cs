@@ -46,7 +46,7 @@ public sealed partial class BaselineTests : IDisposable
     // What a preview added to the baseline after the squash, which the chain never made: a preview does not upgrade a
     // database (10.4, H5), so a change of the model goes into the baseline until 1.0.0.
     private static readonly string[] TablesAddedToTheBaseline = ["cms_default_grant", "cms_user_preference"];
-    private static readonly (string Table, string Column)[] ColumnsAddedToTheBaseline = [("cms_version", "author_kind"), ("cms_version", "author_name"), ("cms_media_asset", "owns_file")];
+    private static readonly (string Table, string Column)[] ColumnsAddedToTheBaseline = [("cms_version", "author_kind"), ("cms_version", "author_name"), ("cms_media_asset", "owns_file"), ("cms_media_asset", "version")];
 
     // Indexes added the same way, by the prefix of their catalog lines.
     private static readonly string[] IndexesAddedToTheBaseline = ["index:cms_media_asset.ix_cms_media_asset_site_owns_file:"];

@@ -183,6 +183,10 @@ The URLs are signed and carry `v` from the asset's checksum, so a replace gives 
 
 `POST /api/management/v1/media/{id}/replace` with a `multipart/form-data` body of one file replaces the file of an asset (`media.update`). The file passes the checks of an upload. The id, the metadata and the references stay, the variants of the old file are removed, and `media.replaced` is raised. The old file and the variant files are deleted when the instance wrote the old file, unless another asset of the library names one of their keys; for a key that a line of an import named, which a storage shared with another instance can hold, they stay and only the variant rows go.
 
+## Versions and If-Match
+
+`GET /api/management/v1/media/{id}` answers the asset's version as its `ETag`, `"7"`. `PATCH`, `POST .../move` and `POST .../replace` answer the new one, and those three and `DELETE` take it back as `If-Match`: when the asset changed since, the write is refused with `412` and `FCMS3105`, as a write of an entry is, and nothing changes. Without `If-Match`, or with `*`, a write applies to whatever version is stored. The version is one for every locale of the asset.
+
 ## Original files and private downloads
 
 `GET /media/{id}/original/{fileName}` sends a file as it was stored, or the `Range` of it asked for, with `X-Content-Type-Options: nosniff`, and an SVG with a `Content-Security-Policy` that runs nothing. A file whose stored type is none the plugin reads from bytes is sent as `application/octet-stream`, as an attachment. Without `exp`, it serves a public asset with a signature that the Delivery API's `urls.original` carries. A private asset is served only by a download URL:

@@ -76,6 +76,29 @@ public static class PluginAppBuilderExtensions
     }
 
     /// <summary>
+    /// Describes, in the OpenAPI document, the optional <c>If-Match</c> an endpoint reads with
+    /// <see cref="EntityVersions.IfMatch"/>, and its 412 when the record is at another version.
+    /// </summary>
+    /// <param name="builder">An endpoint of a plugin.</param>
+    /// <returns>The builder.</returns>
+    public static RouteHandlerBuilder TakesIfMatch(this RouteHandlerBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        return builder.WithMetadata(new VersionMetadata(IfMatch: true));
+    }
+
+    /// <summary>Describes, in the OpenAPI document, the <c>ETag</c> an endpoint's success gives with <see cref="EntityVersions.SetETag"/>.</summary>
+    /// <param name="builder">An endpoint of a plugin.</param>
+    /// <returns>The builder.</returns>
+    public static RouteHandlerBuilder GivesETag(this RouteHandlerBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        return builder.WithMetadata(new VersionMetadata(IfMatch: false));
+    }
+
+    /// <summary>
     /// A group under the route group of FluentCMS that is an OAuth protected resource of its own (RFC 9728), as <c>/mcp</c>
     /// is. Its endpoints run inside the operation of their request with the origin of <paramref name="resource"/>, the
     /// Management rate limit and CORS policy, and no output cache. They need a caller the FluentCMS authentication scheme

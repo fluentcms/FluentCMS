@@ -304,6 +304,11 @@ internal sealed class MediaTransfer(
         {
             database.Add(asset);
         }
+        else
+        {
+            // A write through the API after the read makes the save fail, and the item with it.
+            asset.Version++;
+        }
 
         try
         {

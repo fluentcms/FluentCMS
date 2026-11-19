@@ -4,5 +4,5 @@ namespace FluentCMS.Core.Api.Common;
 internal static class PreconditionErrorCodes
 {
     public const string IfMatchRequired = "FCMS3130";
-    public const string IfMatchInvalid = "FCMS3131";
+    public const string IfMatchInvalid = FluentCMS.Plugins.EntityVersions.IfMatchInvalid;
 }
