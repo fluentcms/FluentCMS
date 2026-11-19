@@ -77,6 +77,14 @@ internal sealed class FakeEditor : IJSObjectReference
 
     public bool RefusesContent { get; set; }
 
+    // What "kept" answers: the selected media or inline block; and what "insertMedia", "insertBlock" and "duplicateKept" answer.
+    public RichTextFieldEditor.KeptNode? Kept { get; set; }
+
+    public RichTextFieldEditor.KeptNode? Inserted { get; set; }
+
+    // What "entryLink" answers: the entry the link at the selection goes to.
+    public EntryReference? EntryLink { get; set; }
+
     public bool Disposed { get; private set; }
 
     public IEnumerable<object?[]> CallsOf(string name) => Calls.Where(call => call.Name == name).Select(call => call.Args);
@@ -89,7 +97,10 @@ internal sealed class FakeEditor : IJSObjectReference
         Calls.Enqueue((identifier, args ?? []));
         object? result = identifier switch
         {
-            "run" or "unsetLink" => true,
+            "run" or "unsetLink" or "setEntryLink" or "unsetEntryLink" or "updateKept" or "removeKept" => true,
+            "kept" => Kept,
+            "insertMedia" or "insertBlock" or "duplicateKept" => Inserted,
+            "entryLink" => EntryLink,
             "setContent" => !RefusesContent,
             "flush" => Flush(),
             "link" => Link,

@@ -2,11 +2,14 @@ using System.Reflection;
 using System.Text.Json.Nodes;
 using AngleSharp.Dom;
 using Bunit;
+using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Components;
+using FluentCMS.Admin.Pickers;
 using FluentCMS.Admin.Shell;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.FluentUI.AspNetCore.Components;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Admin.Tests.Shell.FakeManagementServer;
@@ -57,6 +60,30 @@ public sealed class RelationTests : AdminTestContext
         Input(app, "title").Input("With an author");
         Save(app);
         app.WaitForAssertion(() => _content.Writes.ShouldHaveSingleItem().Body["author"]!.GetValue<string>().ShouldBe(_grace.ToString("D")));
+    }
+
+    [Fact]
+    public async Task TheRelationPickerAsAServiceAnswersTheChosenEntryOnceItsDialogHasClosed()
+    {
+        var app = Load("content/article/new");
+        var pickers = Services.GetRequiredService<IRelationPicker>();
+        (await app.InvokeAsync(() => pickers.PickAsync(new RelationPickerRequest { Type = "secret" }))).ShouldBeNull();
+
+        Task<IReadOnlyList<ContentEntry>?> picking = null!;
+        await app.InvokeAsync(() => { picking = pickers.PickAsync(new RelationPickerRequest { Type = "author", Selected = [_ada] }); });
+        app.WaitForAssertion(() => Rows(Picker(app, "Author")).ShouldBe(["Ada Lovelace", "Grace Hopper"]));
+        var picker = Picker(app, "Author");
+        Checked(picker).ShouldBe(["Ada Lovelace"]);
+        Select(picker, "Grace Hopper");
+        Click(picker, "Choose");
+
+        picking.IsCompleted.ShouldBeFalse();
+        var host = picker.Find("fluent-dialog");
+        await host.TriggerEventAsync("ondialogtoggle", new DialogToggleEventArgs { Id = host.Id, OldState = "open", NewState = "closed" });
+
+        var chosen = await picking.WaitAsync(TimeSpan.FromSeconds(10), Xunit.TestContext.Current.CancellationToken);
+        chosen!.Single().Id.ShouldBe(_grace);
+        app.WaitForAssertion(() => app.FindComponents<FluentCMS.Admin.Content.RelationPickerOverlay>().ShouldBeEmpty());
     }
 
     [Fact]

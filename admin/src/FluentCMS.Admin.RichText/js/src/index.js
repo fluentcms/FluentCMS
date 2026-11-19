@@ -4,7 +4,12 @@
 import { Editor, getSchema } from "@tiptap/core";
 import { UndoRedo } from "@tiptap/extensions";
 import { Slice } from "@tiptap/pm/model";
-import { blockIds, extensions, fits, fromEditor, isEmpty, isSafeHref, randomId, toEditor, withFreshIds } from "./schema.js";
+import { NodeSelection } from "@tiptap/pm/state";
+import * as edits from "./edit.js";
+import {
+    ENTRY_LINK, INLINE_BLOCK, MEDIA, blockIds, entryTitles, extensions, fits, fromEditor, isEmpty, isInlineBlock, isMedia, isSafeHref, pathOf,
+    randomId, references, toEditor, withFreshIds,
+} from "./schema.js";
 
 const DELAY = 250;
 
@@ -42,7 +47,11 @@ const STATES = [
     ["blockquote", (editor) => editor.isActive("blockquote")],
     ["codeBlock", (editor) => editor.isActive("codeBlock")],
     ["link", (editor) => editor.isActive("link")],
+    ["entryLink", (editor) => editor.isActive(ENTRY_LINK)],
 ];
+
+// The actions Blazor opens a picker or a form for, by Mod+Alt and a key, as the toolbar names them.
+const ACTIONS = { KeyK: "entryLink", KeyM: "media", KeyB: "inlineBlock" };
 
 let stylesheet;
 
@@ -157,9 +166,33 @@ export function isMac() {
     return /Mac|iPhone|iPad/.test(navigator.userAgentData?.platform ?? navigator.platform ?? "");
 }
 
+// What the node views and the entry titles show, which Blazor reads and sets: a media asset's preview by its id, an entry's
+// title by its type and id, and a block type's name.
+function createViews(options) {
+    const media = new Map();
+    const titles = new Map();
+    const shown = new Set();
+    return {
+        labels: options.labels,
+        media: (id) => media.get(id),
+        entryTitle: (id, type) => titles.get(`${type}/${id}`) ?? options.labels.entryLink,
+        blockLabel: (type) => options.blockLabels?.[type],
+        attach: (view) => shown.add(view),
+        detach: (view) => shown.delete(view),
+        setMedia: (id, info) => {
+            media.set(id, info);
+            shown.forEach((view) => view.id() === id && view.render());
+        },
+        setTitle: (type, id, title) => titles.set(`${type}/${id}`, title),
+        clear: () => shown.clear(),
+    };
+}
+
 // Creates the editor in `element`, with the toolbar `toolbar` (null when read-only), and calls back `host` with
-// OnChangeAsync(json), OnStateAsync(states) and OnLinkRequestedAsync(). It answers null, and creates nothing, for a value the
-// editor cannot hold whole, which the component shows read-only instead.
+// OnChangeAsync(json), OnStateAsync(states), OnLinkRequestedAsync(), OnCommandRequestedAsync(action) for a shortcut of an
+// entry link, media or an inline block, OnKeptRequestedAsync() for Enter on a selected media or inline block, and
+// OnReferencesAsync(media, entries) when the document's references change. It answers null, and creates nothing, for a value
+// the editor cannot hold whole, which the component shows read-only instead.
 export async function create(element, toolbar, host, json, options) {
     const origin = randomId();
     const schema = getSchema(extensions(options.labels, origin));
@@ -225,6 +258,20 @@ export async function create(element, toolbar, host, json, options) {
         spellcheck: "true",
     };
 
+    const views = createViews(options);
+    let referred = "";
+    const refer = () => {
+        const found = references(editor.state.doc);
+        const next = JSON.stringify(found);
+        if (next !== referred) {
+            referred = next;
+            call("OnReferencesAsync", found.media, found.entries);
+        }
+    };
+
+    // The media or inline block the selection is on, which Enter opens.
+    const selectedKept = () => edits.selectedKept(editor.state);
+
     const initial = parse(json);
     editor = new Editor({
         element,
@@ -232,19 +279,39 @@ export async function create(element, toolbar, host, json, options) {
         enableContentCheck: true,
         editable: options.editable,
         content: initial ? toEditor(initial) : null,
-        extensions: [...extensions(options.labels, origin), UndoRedo],
+        extensions: [...extensions(options.labels, origin, views), UndoRedo],
         editorProps: {
             attributes,
+            handleKeyDown: (_, event) => {
+                if (event.key === "Enter" && !event.shiftKey && !event.altKey && !isMod(event) && editor.isEditable && selectedKept()) {
+                    call("OnKeptRequestedAsync");
+                    return true;
+                }
+
+                return false;
+            },
+            handleDoubleClickOn: (view, position, node, nodePosition, event, direct) => {
+                if (!direct || !editor.isEditable || !(isMedia(node) || isInlineBlock(node))) {
+                    return false;
+                }
+
+                view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, nodePosition)));
+                call("OnKeptRequestedAsync");
+                return true;
+            },
             // A copy of an inline block pasted beside its original takes a fresh id; one moved, by drag or cut, keeps its own.
             transformPasted: (slice, view) => {
                 if (view.dragging?.move || slice.size === 0) {
                     return slice;
                 }
 
-                return Slice.fromJSON(view.state.schema, withFreshIds(slice.toJSON(), blockIds(view.state.doc)));
+                return Slice.fromJSON(view.state.schema, withFreshIds(slice.toJSON(), blockIds(view.state.doc), randomId, options.blockFields));
             },
         },
-        onUpdate,
+        onUpdate: () => {
+            onUpdate();
+            refer();
+        },
         onTransaction: ({ editor: target }) => report(target),
         onBlur: send,
     });
@@ -280,6 +347,9 @@ export async function create(element, toolbar, host, json, options) {
         } else if (isMod(event) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "k") {
             event.preventDefault();
             call("OnLinkRequestedAsync");
+        } else if (isMod(event) && event.altKey && !event.shiftKey && !event.getModifierState?.("AltGraph") && ACTIONS[event.code] && editor.isEditable) {
+            event.preventDefault();
+            call("OnCommandRequestedAsync", ACTIONS[event.code]);
         } else if (event.altKey && event.key === "F10" && roving) {
             event.preventDefault();
             roving.focus();
@@ -287,6 +357,25 @@ export async function create(element, toolbar, host, json, options) {
     };
     editor.view.dom.addEventListener("keydown", onKeyDown);
     report(editor);
+    refer();
+
+    // The media or inline block a form or a dialog edits (edit.js): where it was when Blazor asked, so that the changes reach
+    // it while focus is in the dialog.
+    let editing = null;
+    const describeKept = ({ position, node }) => {
+        editing = edits.targetOf(position, node);
+        const { attrs } = fromEditor({ type: node.type.name, attrs: node.attrs });
+        return {
+            kind: isMedia(node) ? MEDIA : INLINE_BLOCK,
+            attrs: JSON.stringify(attrs ?? {}),
+            path: pathOf(editor.state.doc, position),
+        };
+    };
+
+    const inserted = ({ transaction, position }) => {
+        editor.view.dispatch(transaction);
+        return describeKept({ position, node: editor.state.doc.nodeAt(position) });
+    };
 
     return {
         // A value Blazor sets from outside the editor, such as the other side of a conflict, replaces the document; one the
@@ -299,8 +388,10 @@ export async function create(element, toolbar, host, json, options) {
             clearTimeout(timer);
             timer = null;
             pending = false;
+            editing = null;
             const next = parse(value);
             editor.commands.setContent(next ? toEditor(next) : null, { emitUpdate: false });
+            refer();
             return true;
         },
         setEditable: (editable) => {
@@ -320,7 +411,15 @@ export async function create(element, toolbar, host, json, options) {
             const apply = COMMANDS[command];
             return apply ? apply(editor.chain().focus()).run() : false;
         },
-        focus: () => editor.commands.focus(),
+        // After a dialog, focus waits for the component library's own return of focus to the dialog's opener, on a timer of
+        // 25 ms, so that it ends in the text; timers of the page run in the order they expire.
+        focus: (delay) => {
+            if (delay > 0) {
+                setTimeout(() => !editor.isDestroyed && editor.commands.focus(), delay);
+            } else {
+                editor.commands.focus();
+            }
+        },
         // The change not yet sent, if any, which the component gives the form before a save and as it goes.
         flush: take,
         // The href of the link at the selection, or null.
@@ -342,8 +441,79 @@ export async function create(element, toolbar, host, json, options) {
             return true;
         },
         unsetLink: () => editor.chain().focus().extendMarkRange("link").unsetLink().run(),
+        // The entry the link at the selection goes to, or null.
+        entryLink: () => {
+            if (!editor.isActive(ENTRY_LINK)) {
+                return null;
+            }
+
+            const { entryId, entryType } = editor.getAttributes(ENTRY_LINK);
+            return entryId && entryType ? { id: entryId, type: entryType } : null;
+        },
+        // Links the selection, or the whole entry link it is in, to an entry; an empty selection outside one gets the entry's
+        // title as its text.
+        setEntryLink: (id, type, text) => {
+            const attrs = { entryId: id, entryType: type };
+            const chain = editor.chain().focus();
+            if (editor.isActive(ENTRY_LINK)) {
+                chain.extendMarkRange(ENTRY_LINK).setMark(ENTRY_LINK, attrs);
+            } else if (editor.state.selection.empty) {
+                chain.insertContent({ type: "text", text: text || id, marks: [{ type: ENTRY_LINK, attrs }] });
+            } else {
+                chain.setMark(ENTRY_LINK, attrs);
+            }
+
+            return chain.run();
+        },
+        unsetEntryLink: () => editor.chain().focus().extendMarkRange(ENTRY_LINK).unsetMark(ENTRY_LINK).run(),
+        setEntryTitle: (type, id, title) => {
+            views.setTitle(type, id, title);
+            editor.view.dispatch(editor.state.tr.setMeta(entryTitles, true));
+        },
+        // What Blazor shows of an asset: { state: "ready" | "missing" | "unavailable", preview, name, alt }.
+        setMedia: (id, info) => views.setMedia(id, info),
+        // The selected media or inline block, as { kind, attrs (JSON), path }, which the next calls change; or null.
+        kept: () => {
+            const found = selectedKept();
+            editing = null;
+            return found ? describeKept(found) : null;
+        },
+        // The attributes of the media or inline block being edited, such as a block's data or a media's alt text.
+        updateKept: (attrsJson) => {
+            const transaction = edits.updateKept(editor.state, editing, JSON.parse(attrsJson));
+            if (!transaction) {
+                return false;
+            }
+
+            editor.view.dispatch(transaction);
+            editing = edits.targetOf(editing.position, editor.state.doc.nodeAt(editing.position));
+            return true;
+        },
+        removeKept: () => {
+            const transaction = edits.removeKept(editor.state, editing);
+            editing = null;
+            if (!transaction) {
+                return false;
+            }
+
+            editor.view.dispatch(transaction);
+            return true;
+        },
+        // A copy of the inline block being edited, after it, with fresh ids for it and the blocks its data holds (ADR 0002).
+        duplicateKept: () => {
+            const duplicate = edits.duplicateKept(editor.state, editing, options.blockFields);
+            return duplicate ? inserted(duplicate) : null;
+        },
+        insertMedia: (mediaId) => inserted(edits.insertMedia(editor.state, mediaId)),
+        insertBlock: (blockType, dataJson) => inserted(edits.insertBlock(editor.state, blockType, JSON.parse(dataJson))),
+        // The references are reported again, as after a change of the content locale, whose texts Blazor reads again.
+        referAgain: () => {
+            referred = "";
+            refer();
+        },
         dispose: () => {
             clearTimeout(timer);
+            views.clear();
             roving?.dispose();
             editor.view.dom.removeEventListener("keydown", onKeyDown);
             editor.destroy();

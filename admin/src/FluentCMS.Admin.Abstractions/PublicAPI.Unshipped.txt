@@ -588,6 +588,8 @@ FluentCMS.Admin.IAdminContext.ContentLocale.get -> string?
 FluentCMS.Admin.IAdminContext.Site.get -> FluentCMS.Admin.Api.MySiteInfo?
 FluentCMS.Admin.IAdminContext.User.get -> FluentCMS.Admin.Api.MeResponse?
 FluentCMS.Admin.IAdminOverlays
+FluentCMS.Admin.IAdminSchema
+FluentCMS.Admin.IAdminSchema.GetSchemaAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Admin.Api.SchemaDescription!>!
 FluentCMS.Admin.IAdminOverlays.Show(Microsoft.AspNetCore.Components.RenderFragment! content) -> System.IDisposable!
 FluentCMS.Admin.IAnnouncer
 FluentCMS.Admin.IAnnouncer.Announce(string! message, FluentCMS.Admin.AnnouncementPoliteness politeness = FluentCMS.Admin.AnnouncementPoliteness.Polite) -> void

@@ -1,4 +1,6 @@
+using FluentCMS.Admin.Content;
 using FluentCMS.Admin.Lists;
+using FluentCMS.Admin.Pickers;
 using FluentCMS.Admin.Plugins;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -38,6 +40,7 @@ internal static class FieldServiceCollectionExtensions
             return editors;
         });
         services.TryAddSingleton(new BlockFormRegistration(typeof(BlockForm)));
+        services.TryAddScoped<IRelationPicker, RelationPickerService>();
         services.TryAddScoped(provider =>
         {
             var cells = new ListCellRegistry();
