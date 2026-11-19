@@ -59,7 +59,7 @@ public sealed class RichTextFieldEditorTests : BunitContext
                 "RichText.EntryLink.Label", "RichText.EntryLink.Type", "RichText.EntryLink.Choose", "RichText.EntryLink.Remove", "RichText.EntryLink.NoTypes",
                 "RichText.EntryLink.Current", "RichText.EntryLink.Title", "RichText.EntryLink.Missing", "RichText.EntryLink.Unreadable", "RichText.EntryLink.Unknown",
                 "RichText.Media.Title", "RichText.Media.Alt", "RichText.Media.AltHelp", "RichText.Media.AltHelpOwn", "RichText.Media.Done", "RichText.Media.Replace",
-                "RichText.Media.Remove", "RichText.Media.Cancel", "RichText.Media.Missing", "RichText.Media.Unavailable", "RichText.Media.Disabled",
+                "RichText.Media.Remove", "RichText.Media.Cancel", "RichText.Media.Missing", "RichText.Media.Failed", "RichText.Media.Unavailable", "RichText.Media.Disabled",
                 "RichText.Block.Type", "RichText.Block.Insert", "RichText.Block.Cancel", "RichText.Block.Done", "RichText.Block.Duplicate", "RichText.Block.Remove",
                 "RichText.Block.InsertTitle", "RichText.Block.Title", "RichText.Block.Unknown", "RichText.Block.NoForm", "RichText.Block.NoTypes", "RichText.Block.Duplicated"]))
         {

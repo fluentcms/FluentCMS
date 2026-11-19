@@ -4,10 +4,11 @@
 import { Editor, getSchema } from "@tiptap/core";
 import { UndoRedo } from "@tiptap/extensions";
 import { Slice } from "@tiptap/pm/model";
-import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { NodeSelection } from "@tiptap/pm/state";
+import * as edits from "./edit.js";
 import {
-    ENTRY_LINK, INLINE_BLOCK, INLINE_BLOCK_INLINE, MEDIA, MEDIA_INLINE, blockIds, entryTitles, extensions, fits, fromEditor, isEmpty,
-    isInlineBlock, isMedia, isSafeHref, pathOf, randomId, references, toEditor, withFreshBlockIds, withFreshIds,
+    ENTRY_LINK, INLINE_BLOCK, MEDIA, blockIds, entryTitles, extensions, fits, fromEditor, isEmpty, isInlineBlock, isMedia, isSafeHref, pathOf,
+    randomId, references, toEditor, withFreshIds,
 } from "./schema.js";
 
 const DELAY = 250;
@@ -269,12 +270,7 @@ export async function create(element, toolbar, host, json, options) {
     };
 
     // The media or inline block the selection is on, which Enter opens.
-    const selectedKept = () => {
-        const { selection } = editor.state;
-        return selection instanceof NodeSelection && (isMedia(selection.node) || isInlineBlock(selection.node))
-            ? { position: selection.from, node: selection.node }
-            : null;
-    };
+    const selectedKept = () => edits.selectedKept(editor.state);
 
     const initial = parse(json);
     editor = new Editor({
@@ -309,7 +305,7 @@ export async function create(element, toolbar, host, json, options) {
                     return slice;
                 }
 
-                return Slice.fromJSON(view.state.schema, withFreshIds(slice.toJSON(), blockIds(view.state.doc)));
+                return Slice.fromJSON(view.state.schema, withFreshIds(slice.toJSON(), blockIds(view.state.doc), randomId, options.blockFields));
             },
         },
         onUpdate: () => {
@@ -351,7 +347,7 @@ export async function create(element, toolbar, host, json, options) {
         } else if (isMod(event) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "k") {
             event.preventDefault();
             call("OnLinkRequestedAsync");
-        } else if (isMod(event) && event.altKey && !event.shiftKey && ACTIONS[event.code] && editor.isEditable) {
+        } else if (isMod(event) && event.altKey && !event.shiftKey && !event.getModifierState?.("AltGraph") && ACTIONS[event.code] && editor.isEditable) {
             event.preventDefault();
             call("OnCommandRequestedAsync", ACTIONS[event.code]);
         } else if (event.altKey && event.key === "F10" && roving) {
@@ -363,11 +359,11 @@ export async function create(element, toolbar, host, json, options) {
     report(editor);
     refer();
 
-    // The media or inline block a form or a dialog edits: where it was when Blazor asked, so that the changes reach it while
-    // focus is in the dialog, and its type and id, so that a node that is no longer there is not taken for it.
+    // The media or inline block a form or a dialog edits (edit.js): where it was when Blazor asked, so that the changes reach
+    // it while focus is in the dialog.
     let editing = null;
     const describeKept = ({ position, node }) => {
-        editing = { position, type: node.type.name, id: node.attrs.id ?? null };
+        editing = edits.targetOf(position, node);
         const { attrs } = fromEditor({ type: node.type.name, attrs: node.attrs });
         return {
             kind: isMedia(node) ? MEDIA : INLINE_BLOCK,
@@ -376,44 +372,8 @@ export async function create(element, toolbar, host, json, options) {
         };
     };
 
-    const edited = () => {
-        const node = editing ? editor.state.doc.nodeAt(editing.position) : null;
-        return node && node.type.name === editing.type && (node.attrs.id ?? null) === editing.id ? { position: editing.position, node } : null;
-    };
-
-    const select = (transaction, position) => transaction.setSelection(NodeSelection.create(transaction.doc, position));
-
-    const freshId = () => {
-        const taken = new Set(blockIds(editor.state.doc));
-        let id = randomId();
-        while (taken.has(id)) {
-            id = randomId();
-        }
-
-        return id;
-    };
-
-    // A media or an inline block goes in place of an empty paragraph at the selection, inline into the text of a paragraph or
-    // a heading, and after any other text block, such as code; it is selected once there.
-    const insertKept = (blockName, inlineName, attrs) => {
-        const { state } = editor;
-        const { $from } = state.selection;
-        const parent = $from.parent;
-        const transaction = state.tr;
-        let position;
-        if (parent.type.name === "paragraph" && parent.content.size === 0 && $from.depth > 0) {
-            position = $from.before();
-            transaction.replaceWith(position, position + parent.nodeSize, state.schema.nodes[blockName].create(attrs));
-        } else if (parent.type.name === "paragraph" || parent.type.name === "heading") {
-            const node = state.schema.nodes[inlineName].create(attrs);
-            transaction.replaceSelectionWith(node, false);
-            position = transaction.selection.from - node.nodeSize;
-        } else {
-            position = $from.depth > 0 ? $from.after() : state.selection.to;
-            transaction.insert(position, state.schema.nodes[blockName].create(attrs));
-        }
-
-        editor.view.dispatch(select(transaction, position).scrollIntoView());
+    const inserted = ({ transaction, position }) => {
+        editor.view.dispatch(transaction);
         return describeKept({ position, node: editor.state.doc.nodeAt(position) });
     };
 
@@ -428,6 +388,7 @@ export async function create(element, toolbar, host, json, options) {
             clearTimeout(timer);
             timer = null;
             pending = false;
+            editing = null;
             const next = parse(value);
             editor.commands.setContent(next ? toEditor(next) : null, { emitUpdate: false });
             refer();
@@ -519,47 +480,37 @@ export async function create(element, toolbar, host, json, options) {
         },
         // The attributes of the media or inline block being edited, such as a block's data or a media's alt text.
         updateKept: (attrsJson) => {
-            const found = edited();
-            if (!found) {
+            const transaction = edits.updateKept(editor.state, editing, JSON.parse(attrsJson));
+            if (!transaction) {
                 return false;
             }
 
-            const attrs = { ...JSON.parse(attrsJson) };
-            if (isInlineBlock(found.node)) {
-                attrs.id = found.node.attrs.id;
-            }
-
-            editor.view.dispatch(select(editor.state.tr.setNodeMarkup(found.position, undefined, attrs), found.position));
-            editing.id = attrs.id ?? null;
+            editor.view.dispatch(transaction);
+            editing = edits.targetOf(editing.position, editor.state.doc.nodeAt(editing.position));
             return true;
         },
         removeKept: () => {
-            const found = edited();
-            if (!found) {
+            const transaction = edits.removeKept(editor.state, editing);
+            editing = null;
+            if (!transaction) {
                 return false;
             }
 
-            const transaction = editor.state.tr.delete(found.position, found.position + found.node.nodeSize);
-            transaction.setSelection(TextSelection.near(transaction.doc.resolve(Math.min(found.position, transaction.doc.content.size))));
             editor.view.dispatch(transaction);
-            editing = null;
             return true;
         },
         // A copy of the inline block being edited, after it, with fresh ids for it and the blocks its data holds (ADR 0002).
         duplicateKept: () => {
-            const found = edited();
-            if (!found || !isInlineBlock(found.node)) {
-                return null;
-            }
-
-            const { node } = found;
-            const copy = node.type.create({ ...node.attrs, id: freshId(), data: node.attrs.data ? withFreshBlockIds(node.attrs.data) : null });
-            const position = found.position + node.nodeSize;
-            editor.view.dispatch(select(editor.state.tr.insert(position, copy), position).scrollIntoView());
-            return describeKept({ position, node: editor.state.doc.nodeAt(position) });
+            const duplicate = edits.duplicateKept(editor.state, editing, options.blockFields);
+            return duplicate ? inserted(duplicate) : null;
         },
-        insertMedia: (mediaId) => insertKept(MEDIA, MEDIA_INLINE, { mediaId }),
-        insertBlock: (blockType, dataJson) => insertKept(INLINE_BLOCK, INLINE_BLOCK_INLINE, { blockType, id: freshId(), data: JSON.parse(dataJson) }),
+        insertMedia: (mediaId) => inserted(edits.insertMedia(editor.state, mediaId)),
+        insertBlock: (blockType, dataJson) => inserted(edits.insertBlock(editor.state, blockType, JSON.parse(dataJson))),
+        // The references are reported again, as after a change of the content locale, whose texts Blazor reads again.
+        referAgain: () => {
+            referred = "";
+            refer();
+        },
         dispose: () => {
             clearTimeout(timer);
             views.clear();

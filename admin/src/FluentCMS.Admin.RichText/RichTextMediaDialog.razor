@@ -42,6 +42,7 @@
 @code {
     private string? alt;
     private bool wasOpen;
+    private Guid? shownId;
 
     [Parameter]
     public bool Open { get; set; }
@@ -49,9 +50,12 @@
     [Parameter, EditorRequired]
     public MediaPreview Preview { get; set; } = null!;
 
-    // The alternative text the node holds, which the dialog starts from each time it opens.
+    // The alternative text the node holds, which the dialog starts from each time it opens or its asset is replaced.
     [Parameter]
     public string? Alt { get; set; }
+
+    [Parameter]
+    public Guid? MediaId { get; set; }
 
     [Parameter]
     public bool CanReplace { get; set; }
@@ -81,16 +85,18 @@
     {
         MediaPreview.Missing => L["RichText.Media.Missing"],
         MediaPreview.Unavailable => L["RichText.Media.Unavailable"],
+        "failed" => L["RichText.Media.Failed"],
         _ => Preview.Name ?? L["RichText.Kept.Media"],
     };
 
     protected override void OnParametersSet()
     {
-        if (Open && !wasOpen)
+        if (Open && (!wasOpen || MediaId != shownId))
         {
             alt = Alt;
         }
 
         wasOpen = Open;
+        shownId = MediaId;
     }
 }

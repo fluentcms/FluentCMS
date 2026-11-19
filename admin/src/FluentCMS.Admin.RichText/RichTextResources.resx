@@ -126,6 +126,9 @@
   <data name="RichText.Media.Done" xml:space="preserve">
     <value>Done</value>
   </data>
+  <data name="RichText.Media.Failed" xml:space="preserve">
+    <value>Media whose preview could not be read</value>
+  </data>
   <data name="RichText.Media.Missing" xml:space="preserve">
     <value>Missing media: the asset no longer exists</value>
   </data>

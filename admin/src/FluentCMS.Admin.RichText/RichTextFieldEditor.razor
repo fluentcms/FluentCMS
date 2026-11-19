@@ -123,7 +123,8 @@
     <RichTextMediaDialog Open="@mediaOpen"
                          Preview="@MediaShown"
                          Alt="@(NameOf(mediaKept?.Attrs["alt"]))"
-                         CanReplace="@(mediaPicker is { IsCompletedSuccessfully: true, Result: not null })"
+                         MediaId="@MediaIdOf(mediaKept)"
+                         CanReplace="@(MediaShown.State != MediaPreview.Unavailable)"
                          ContentLocale="@ContentLocale"
                          TextDirection="@TextDirection"
                          OnDone="SetMediaAltAsync"
@@ -240,6 +241,12 @@
     private readonly Dictionary<Guid, MediaPreview> previews = [];
     private readonly Dictionary<string, string> titles = new(StringComparer.Ordinal);
     private readonly HashSet<string> asked = new(StringComparer.Ordinal);
+
+    // The content locale the caches above were read in.
+    private string? readLocale;
+
+    // How many asset previews are read at once.
+    private const int MediaReads = 6;
     private readonly CancellationTokenSource life = new();
 
     private bool mediaOpen;
@@ -408,7 +415,7 @@
 
         if (kept.Kind == MediaKind)
         {
-            await OpenMediaAsync(kept);
+            OpenMedia(kept);
         }
         else
         {
@@ -430,12 +437,13 @@
         var reader = new RichTextReferences(api, Services.GetService<AdminConfiguration>());
         try
         {
-            if (newMedia.Count > 0)
+            // A few reads at a time, each shown as it comes: GET /media takes no list of ids.
+            foreach (var chunk in newMedia.Chunk(MediaReads))
             {
-                var picker = await FindMediaPickerAsync();
-                foreach (var id in newMedia)
+                var read = await Task.WhenAll(chunk.Select(async id => (Id: id, Preview: await ReadMediaAsync(reader, id))));
+                foreach (var (id, preview) in read)
                 {
-                    await ShowMediaAsync(id, picker is null ? MediaPreview.Disabled : await ReadMediaAsync(reader, id));
+                    await ShowMediaAsync(id, preview);
                 }
             }
 
@@ -499,13 +507,14 @@
             reference ??= DotNetObjectReference.Create(this);
             mac = await module.InvokeAsync<bool>("isMac");
             schema = await ReadSchemaAsync();
+            readLocale = ContentLocale;
             known = Value?.DeepClone();
             toldReadOnly = ReadOnly;
             toldDirection = Direction;
             toldDescribedBy = DescribedBy;
             toldInvalid = ErrorText is not null;
             toolbarRendered = !ReadOnly;
-            var options = new EditorOptions(!ReadOnly, textboxId, labelId, DescribedBy, ContentLocale, TextDirection, toldInvalid, new KeptLabels(L["RichText.Kept.Media"], L["RichText.Kept.InlineBlock"], L["RichText.Media.Missing"], L["RichText.Media.Unavailable"], L["RichText.EntryLink.Unknown"]), BlockLabels());
+            var options = new EditorOptions(!ReadOnly, textboxId, labelId, DescribedBy, ContentLocale, TextDirection, toldInvalid, new KeptLabels(L["RichText.Kept.Media"], L["RichText.Kept.InlineBlock"], L["RichText.Media.Missing"], L["RichText.Media.Unavailable"], L["RichText.Media.Failed"], L["RichText.EntryLink.Unknown"]), BlockLabels(), BlockShapes.Of(schema));
             var created = await module.InvokeAsync<IJSObjectReference?>("create", host, ReadOnly ? null : toolbar, reference, known?.ToJsonString(), options);
             if (created is null)
             {
@@ -578,6 +587,16 @@
         {
             toldDirection = Direction;
             await editor.InvokeVoidAsync("setDirection", ContentLocale, TextDirection);
+        }
+
+        // Titles and alternative texts are read in the content locale, so another locale reads them again.
+        if (readLocale != ContentLocale)
+        {
+            readLocale = ContentLocale;
+            asked.Clear();
+            titles.Clear();
+            previews.Clear();
+            await editor.InvokeVoidAsync("referAgain");
         }
 
         if (toldDescribedBy != DescribedBy || toldInvalid != (ErrorText is not null))
@@ -666,9 +685,9 @@
         }
         catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or System.Text.Json.JsonException)
         {
-            // Read again when the document next changes.
-            asked.Remove($"media:{id:D}");
-            return new MediaPreview("loading", null, null, null);
+            // Not read again until the content locale changes or the editor opens again, so that a refused read does not repeat
+            // with every change of the document.
+            return MediaPreview.Failed;
         }
     }
 
@@ -814,7 +833,7 @@
 
         if (await KeptAsync() is { Kind: MediaKind } kept)
         {
-            await OpenMediaAsync(kept);
+            OpenMedia(kept);
             return;
         }
 
@@ -844,9 +863,8 @@
         await ShowMediaAsync(item.Id, new MediaPreview(MediaPreview.Ready, source is null ? null : reader?.Resolve(source) ?? source, item.FileName, item.Alt));
     }
 
-    private async Task OpenMediaAsync(OpenKept kept)
+    private void OpenMedia(OpenKept kept)
     {
-        await FindMediaPickerAsync();
         (mediaKept, mediaOpen, notice) = (kept, true, null);
         StateHasChanged();
     }
@@ -874,8 +892,15 @@
     // Another asset in place of the node's; the alternative text and the title of the old one go with it.
     private async Task ReplaceMediaAsync()
     {
-        if (editor is null || mediaKept is null || await FindMediaPickerAsync() is not { } picker)
+        if (editor is null || mediaKept is null)
         {
+            return;
+        }
+
+        if (await FindMediaPickerAsync() is not { } picker)
+        {
+            mediaOpen = false;
+            notice = L["RichText.Media.Disabled"];
             return;
         }
 
@@ -1055,11 +1080,11 @@
         }
     }
 
-    internal sealed record EditorOptions(bool Editable, string TextboxId, string LabelledBy, string? DescribedBy, string? Lang, string Dir, bool Invalid, KeptLabels Labels, IReadOnlyDictionary<string, string> BlockLabels);
+    internal sealed record EditorOptions(bool Editable, string TextboxId, string LabelledBy, string? DescribedBy, string? Lang, string Dir, bool Invalid, KeptLabels Labels, IReadOnlyDictionary<string, string> BlockLabels, BlockShapes? BlockFields);
 
     internal sealed record PendingChange(bool Changed, string? Value);
 
-    internal sealed record KeptLabels(string Media, string InlineBlock, string MediaMissing, string MediaUnavailable, string EntryLink);
+    internal sealed record KeptLabels(string Media, string InlineBlock, string MediaMissing, string MediaUnavailable, string MediaFailed, string EntryLink);
 
     // A media or inline block as the module describes it: its kind, its attributes as JSON and its path in the document.
     internal sealed record KeptNode(string Kind, string Attrs, string Path);

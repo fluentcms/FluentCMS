@@ -85,6 +85,8 @@ public sealed class RichTextNodeTests : BunitContext
         options.BlockLabels["note"].ShouldBe("Note");
         options.Labels.MediaUnavailable.ShouldBe("Media is not enabled in this site");
         options.Labels.MediaMissing.ShouldBe("Missing media: the asset no longer exists");
+        options.BlockFields!.Blocks["card"].ShouldBe(new Dictionary<string, string> { ["links"] = "blocks", ["body"] = "richText", ["meta"] = "component:meta" });
+        options.BlockFields.Components["meta"].ShouldBe(new Dictionary<string, string> { ["more"] = "blocks" });
     }
 
     [Fact]
@@ -152,6 +154,7 @@ public sealed class RichTextNodeTests : BunitContext
     public async Task WithoutTheMediaPluginNothingIsEmbeddedAndEmbedsArePlaceholders()
     {
         plugins.Disabled = true;
+        api.PluginDisabled = true;
         var cut = Edit();
 
         await cut.InvokeAsync(() => cut.Instance.OnCommandRequestedAsync("media"));
@@ -160,7 +163,34 @@ public sealed class RichTextNodeTests : BunitContext
         cut.Find("[role=status]").TextContent.ShouldBe("Media is not enabled in this site, so nothing can be embedded.");
         Editor.CallsOf("insertMedia").ShouldBeEmpty();
         ((MediaPreview)Editor.CallsOf("setMedia").Single()[1]!).State.ShouldBe(MediaPreview.Unavailable);
-        api.Requests.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task PreviewsAreReadWithoutLoadingTheMediaHalfAndARefusedReadIsShownAndNotRepeated()
+    {
+        var cut = Edit();
+        api.Refused.Add($"media/{Asset:D}");
+
+        await cut.InvokeAsync(() => cut.Instance.OnReferencesAsync([Asset.ToString("D")], []));
+        await cut.InvokeAsync(() => cut.Instance.OnReferencesAsync([Asset.ToString("D")], []));
+
+        ((MediaPreview)Editor.CallsOf("setMedia").Single()[1]!).ShouldBe(MediaPreview.Failed);
+        api.Requests.Count.ShouldBe(1);
+        plugins.Loads.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AnotherContentLocaleReadsTheTitlesAndPreviewsAgain()
+    {
+        var cut = Edit();
+        api.Answers[$"media/{Asset:D}"] = """{"fileName":"sun.png","mimeType":"image/png","urls":{"original":"/sun.png"}}""";
+        await cut.InvokeAsync(() => cut.Instance.OnReferencesAsync([Asset.ToString("D")], []));
+
+        cut.Render(parameters => parameters.Add(editor => editor.ContentLocale, "fr"));
+        cut.WaitForAssertion(() => Editor.CallsOf("referAgain").Count().ShouldBe(1));
+        await cut.InvokeAsync(() => cut.Instance.OnReferencesAsync([Asset.ToString("D")], []));
+
+        api.Locales.ShouldBe(["en", "fr"]);
     }
 
     [Fact]
@@ -218,6 +248,11 @@ public sealed class RichTextNodeTests : BunitContext
 
         cut.WaitForAssertion(() => Editor.CallsOf("updateKept").Single()[0].ShouldBe($$"""{"mediaId":"{{other:D}}"}"""));
         media.Requests.Single().Selected.ShouldBe([Asset]);
+
+        // The old asset's alternative text is not written on the new one.
+        cut.Find(".rich-text-media-dialog input").GetAttribute("value").ShouldBeNullOrEmpty();
+        await cut.InvokeAsync(() => cut.FindAll("fluent-button").Single(button => button.TextContent.Trim() == "Done").Click());
+        Editor.CallsOf("updateKept").Last()[0].ShouldBe($$"""{"mediaId":"{{other:D}}"}""");
     }
 
     [Fact]
@@ -289,6 +324,21 @@ public sealed class RichTextNodeTests : BunitContext
     }
 
     [Fact]
+    public async Task ClosingTheBlockDialogByEscapeTakesTheChangeItsFormHoldsBack()
+    {
+        var cut = Edit(blocks: ["note"]);
+        Editor.Kept = new RichTextFieldEditor.KeptNode("inlineBlock", """{"blockType":"note","id":"first","data":{"text":"One"}}""", ".content[2]");
+        await cut.InvokeAsync(() => cut.Instance.OnKeptRequestedAsync());
+        cut.FindComponent<FakeBlockForm>().Instance.Held = new JsonObject { ["text"] = "Held back" };
+
+        // What the dialog raises when Escape or a click outside closes it.
+        var dialog = cut.FindComponents<CmsDialog>().Single(found => found.Instance.Title == "Block: Note").Instance;
+        await cut.InvokeAsync(() => dialog.OpenChanged.InvokeAsync(false));
+
+        JsonNode.Parse((string)Editor.CallsOf("updateKept").Single()[0]!)!["data"]!["text"]!.GetValue<string>().ShouldBe("Held back");
+    }
+
+    [Fact]
     public async Task AReadOnlyFieldOpensNothing()
     {
         var cut = Edit(blocks: ["note"], readOnly: true);
@@ -325,6 +375,9 @@ public sealed class RichTextNodeTests : BunitContext
         private static SchemaFieldDescription Text(string name, JsonNode? defaultValue = null) =>
             new() { Name = name, Type = "text", Validation = new FieldValidationDescription(), DefaultValue = defaultValue };
 
+        private static SchemaFieldDescription Field(string name, string type, JsonObject? settings = null) =>
+            new() { Name = name, Type = type, Validation = new FieldValidationDescription(), Settings = settings ?? [] };
+
         public Task<SchemaDescription> GetSchemaAsync(CancellationToken cancellationToken = default) => Task.FromResult(new SchemaDescription
         {
             Types =
@@ -332,11 +385,25 @@ public sealed class RichTextNodeTests : BunitContext
                 new SchemaTypeDescription { Name = "article", Kind = "collection", DisplayName = "Article", TitleField = "title", Fields = [Text("title")] },
                 new SchemaTypeDescription { Name = "author", Kind = "collection", Fields = [Text("name")] },
             ],
-            Components = [],
+            Components = [new SchemaTypeDescription { Name = "meta", Kind = "component", Fields = [Field("more", "blocks"), Text("note")] }],
             Blocks =
             [
                 new SchemaTypeDescription { Name = "note", Kind = "block", DisplayName = "Note", Fields = [Text("level", "info"), Text("text")] },
                 new SchemaTypeDescription { Name = "quote", Kind = "block", Fields = [Text("text")] },
+                new SchemaTypeDescription
+                {
+                    Name = "card",
+                    Kind = "block",
+                    Fields =
+                    [
+                        Text("title"),
+                        Field("tags", "relation"),
+                        Field("images", "media"),
+                        Field("links", "blocks"),
+                        Field("body", "richText"),
+                        Field("meta", "component", new JsonObject { ["component"] = "meta" }),
+                    ],
+                },
             ],
         });
     }
@@ -387,13 +454,33 @@ public sealed class RichTextNodeTests : BunitContext
     {
         public List<string> Requests { get; } = [];
 
+        public List<string?> Locales { get; } = [];
+
         // Answers by the path before its query; a path without an answer is not found.
         public Dictionary<string, string> Answers { get; } = new(StringComparer.Ordinal);
+
+        // Paths the caller may not read.
+        public HashSet<string> Refused { get; } = new(StringComparer.Ordinal);
+
+        // Whether the media plugin is not enabled in the site, which the server answers on its routes with 404 and FCMS1550.
+        public bool PluginDisabled { get; set; }
 
         public Task<ApiResponse<T>> SendAsync<T>(ApiRequest request, JsonTypeInfo<T> answer, CancellationToken cancellationToken)
         {
             Requests.Add(request.Path);
-            return Answers.TryGetValue(request.Path.Split('?')[0], out var json)
+            Locales.Add(request.Locale);
+            var path = request.Path.Split('?')[0];
+            if (PluginDisabled && path.StartsWith("media/", StringComparison.Ordinal))
+            {
+                return Task.FromException<ApiResponse<T>>(new ApiProblemException(new ApiProblem { Status = 404, Code = "FCMS1550", Title = "Plugin not enabled" }));
+            }
+
+            if (Refused.Contains(path))
+            {
+                return Task.FromException<ApiResponse<T>>(new ApiProblemException(new ApiProblem { Status = 403, Title = "Forbidden" }));
+            }
+
+            return Answers.TryGetValue(path, out var json)
                 ? Task.FromResult(new ApiResponse<T>(HttpStatusCode.OK, null, JsonSerializer.Deserialize(json, answer)!))
                 : Task.FromException<ApiResponse<T>>(new ApiProblemException(new ApiProblem { Status = 404, Title = "Not found" }));
         }

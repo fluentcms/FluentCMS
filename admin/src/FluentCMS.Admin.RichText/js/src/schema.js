@@ -126,6 +126,8 @@ function mediaView(inline, views) {
                 text = labels.mediaUnavailable;
             } else if (info.state === "missing") {
                 text = labels.mediaMissing;
+            } else if (info.state === "failed") {
+                text = labels.mediaFailed;
             }
 
             const source = info.state === "ready" && isPreviewUrl(info.preview) ? info.preview : null;
@@ -176,12 +178,16 @@ function inlineBlockView(inline, views) {
         dom.contentEditable = "false";
         dom.setAttribute("role", "group");
         dom.setAttribute("data-fluentcms-block", "");
+        // The group is named by its text, which is hidden from assistive technology so that it is read once.
+        const shown = document.createElement("span");
+        shown.setAttribute("aria-hidden", "true");
+        dom.append(shown);
 
         const render = () => {
             const type = views.blockLabel(current.attrs.blockType) ?? current.attrs.blockType ?? "";
             const preview = firstText(current.attrs.data);
             const text = keptLabel(views.labels, INLINE_BLOCK, preview ? `${type}: ${preview}` : type);
-            dom.textContent = text;
+            shown.textContent = text;
             dom.setAttribute("aria-label", text);
             if (current.attrs.id) {
                 dom.setAttribute("data-block-id", current.attrs.id);
@@ -295,19 +301,36 @@ function inlineBlock(name, inline, labels, origin, views) {
 
 export const entryTitles = new PluginKey("fluentcmsEntryTitles");
 
-// Each entry link names its entry by a title of the text, which a decoration gives, so the document holds the id alone.
+// Each entry link names its entry by decorations, so the document holds the id alone: a title of the text, and the same words
+// after it, visually hidden, which assistive technology reads with the link. Neither is part of the document or the clipboard.
 function entryTitlesPlugin(views) {
     const build = (doc) => {
-        const decorations = [];
+        const ranges = [];
         doc.descendants((node, position) => {
             const mark = node.isText ? node.marks.find((item) => item.type.name === ENTRY_LINK) : null;
-            if (mark) {
-                const title = views.entryTitle(mark.attrs.entryId, mark.attrs.entryType);
-                if (title) {
-                    decorations.push(Decoration.inline(position, position + node.nodeSize, { title }));
-                }
+            if (!mark) {
+                return;
+            }
+
+            const key = `${mark.attrs.entryType}/${mark.attrs.entryId}`;
+            const last = ranges.at(-1);
+            if (last && last.key === key && last.to === position) {
+                last.to = position + node.nodeSize;
+            } else {
+                ranges.push({ key, from: position, to: position + node.nodeSize, title: views.entryTitle(mark.attrs.entryId, mark.attrs.entryType) });
             }
         });
+
+        const decorations = ranges.filter((range) => range.title).flatMap((range) => [
+            Decoration.inline(range.from, range.to, { title: range.title }),
+            Decoration.widget(range.to, () => {
+                const hidden = document.createElement("span");
+                hidden.className = "cms-visually-hidden";
+                hidden.contentEditable = "false";
+                hidden.textContent = ` (${range.title})`;
+                return hidden;
+            }, { side: -1, ignoreSelection: true, marks: [], key: `entry-title:${range.title}` }),
+        ]);
         return DecorationSet.create(doc, decorations);
     };
 
@@ -465,9 +488,9 @@ export function fits(schema, document) {
 }
 
 // A slice pasted into the editor, as JSON: each inline block whose id the document or the slice already holds takes a fresh
-// one, and so do the blocks its data holds, so a copy pasted beside its original is a new block; a block moved by cut and
-// paste keeps its ids (ADR 0002).
-export function withFreshIds(slice, taken, random = randomId) {
+// one, and so do the blocks its data holds (by `fields`, see withFreshBlockIds), so a copy pasted beside its original is a new
+// block; a block moved by cut and paste keeps its ids (ADR 0002).
+export function withFreshIds(slice, taken, random = randomId, fields = undefined) {
     const seen = new Set(taken);
     const visit = (node) => {
         if (node === null || typeof node !== "object") {
@@ -482,7 +505,7 @@ export function withFreshIds(slice, taken, random = randomId) {
                     id = random();
                 }
 
-                copy.attrs = { ...copy.attrs, id, ...(copy.attrs.data ? { data: withFreshBlockIds(copy.attrs.data, random) } : {}) };
+                copy.attrs = { ...copy.attrs, id, ...(copy.attrs.data ? { data: withFreshBlockIds(copy.attrs.data, copy.attrs.blockType, fields, random) } : {}) };
             }
 
             seen.add(id);
@@ -498,31 +521,65 @@ export function withFreshIds(slice, taken, random = randomId) {
     return { ...slice, content: (slice.content ?? []).map(visit) };
 }
 
-// A copy of a block's data whose blocks take fresh ids, at any depth: an item of a blocks field (an object with a type and an
-// id in a list) and an inline block of a rich text field, as A-26 does for a duplicated block.
-export function withFreshBlockIds(data, random = randomId) {
-    const visit = (value, inList) => {
-        if (Array.isArray(value)) {
-            return value.map((item) => visit(item, true));
+// A copy of a block's data whose blocks take fresh ids, at any depth, as the admin's NestedValues.RenewIds does: the items of
+// its blocks fields, the inline blocks of its rich text fields, and those inside its components. `fields` names, for each
+// block and component type of the schema, its fields of those kinds: { blocks: { [type]: { [field]: kind } }, components:
+// { [type]: { [field]: kind } } }, a kind being "blocks", "richText" or "component:{type}". Everything else, such as the
+// { id, type } of a relation or a media list, is kept as it is; without `fields` nothing is renewed.
+export function withFreshBlockIds(data, blockType, fields, random = randomId) {
+    const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+    const renew = (values, shape) => {
+        if (!isObject(values) || !shape) {
+            return values;
         }
 
-        if (value === null || typeof value !== "object") {
-            return value;
-        }
+        const copy = { ...values };
+        for (const [name, kind] of Object.entries(shape)) {
+            const value = copy[name];
+            if (kind === "blocks" && Array.isArray(value)) {
+                copy[name] = value.map((item) => {
+                    if (!isObject(item)) {
+                        return item;
+                    }
 
-        const copy = Object.fromEntries(Object.entries(value).map(([name, item]) => [name, visit(item, false)]));
-        if (inList && typeof copy.type === "string" && typeof copy.id === "string") {
-            copy.id = random();
-        }
-
-        if (copy.type === INLINE_BLOCK && copy.attrs !== null && typeof copy.attrs === "object" && typeof copy.attrs.id === "string") {
-            copy.attrs = { ...copy.attrs, id: random() };
+                    const block = Object.hasOwn(item, "id") ? { ...item, id: random() } : { ...item };
+                    return renew(block, fields.blocks?.[item.type]);
+                });
+            } else if (kind === "richText" && isObject(value)) {
+                copy[name] = renewDocument(value);
+            } else if (typeof kind === "string" && kind.startsWith("component:")) {
+                const component = fields.components?.[kind.slice("component:".length)];
+                copy[name] = Array.isArray(value) ? value.map((item) => renew(item, component)) : renew(value, component);
+            }
         }
 
         return copy;
     };
 
-    return visit(data, false);
+    const renewDocument = (node) => {
+        if (!isObject(node)) {
+            return node;
+        }
+
+        const copy = { ...node };
+        if (copy.type === INLINE_BLOCK && isObject(copy.attrs)) {
+            const attrs = { ...copy.attrs };
+            if (Object.hasOwn(attrs, "id")) {
+                attrs.id = random();
+            }
+
+            attrs.data = renew(attrs.data, fields.blocks?.[attrs.blockType]);
+            copy.attrs = attrs;
+        }
+
+        if (Array.isArray(copy.content)) {
+            copy.content = copy.content.map(renewDocument);
+        }
+
+        return copy;
+    };
+
+    return fields ? renew(data, fields.blocks?.[blockType]) : data;
 }
 
 // What a document refers to, which Blazor reads to show: the ids of its media and its linked entries, in a stable order.

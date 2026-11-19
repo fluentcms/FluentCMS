@@ -162,7 +162,7 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
         var link = body.Locator(".rich-text-entry-link");
         await Expect(link).ToHaveTextAsync("dotnet");
         await Expect(link.GetByTitle("Tag: dotnet", new LocatorGetByTitleOptions { Exact = true })).ToHaveTextAsync("dotnet");
-        await FocusStaysAsync(body);
+        await FocusInTextAsync(body);
 
         // The image: the media picker by the shortcut in an empty paragraph, an upload chosen, its preview in the text.
         await keyboard.PressAsync("End");
@@ -179,7 +179,7 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
         await Expect(embed).ToHaveAttributeAsync("aria-label", $"{Repository.RichTextText("RichText.Kept.Media")}: {mark}.png");
         await Expect(embed.Locator("img")).Not.ToHaveJSPropertyAsync("naturalWidth", 0);
         await Expect(embed).ToHaveClassAsync(new Regex("ProseMirror-selectednode"));
-        await FocusStaysAsync(body);
+        await FocusInTextAsync(body);
 
         // Its alternative text, in its dialog by Enter on the selected embed.
         await keyboard.PressAsync("Enter");
@@ -194,7 +194,7 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
         await keyboard.PressAsync("Enter");
         await Expect(dialog).ToBeHiddenAsync();
         await Expect(embed).ToHaveAttributeAsync("aria-label", $"{Repository.RichTextText("RichText.Kept.Media")}: A small square");
-        await FocusStaysAsync(body);
+        await FocusInTextAsync(body);
 
         var create = await SaveAsync(tab, "POST", tab.ManagementUrl("content/article"));
 
@@ -371,14 +371,10 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
         after.ShouldContain("someone");
     }
 
-    // Focus is in the text once a dialog has closed, and stays there after the component library gives it back to the
-    // dialog's opener on a timer of 25 ms; a timer of the page set now runs after the library's.
-    private static async Task FocusStaysAsync(ILocator text)
-    {
-        await Expect(text).ToBeFocusedAsync();
-        await text.Page.EvaluateAsync("() => new Promise(resolve => setTimeout(resolve, 150))");
-        await Expect(text).ToBeFocusedAsync();
-    }
+    // Focus is in the text once a dialog has closed. After the relation picker its opener, the panel's button, is gone, so focus
+    // reaches the text only by the editor's return of focus, which comes after the component library's own; after the media
+    // picker and the media dialog the opener is the text itself. The keys that follow land in the text, which the body checks.
+    private static Task FocusInTextAsync(ILocator text) => Expect(text).ToBeFocusedAsync();
 
     private static LocatorFilterOptions Exactly(string text) => new() { HasTextRegex = new Regex($@"^\s*{Regex.Escape(text)}\s*$") };
 

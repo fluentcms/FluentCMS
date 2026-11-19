@@ -4,7 +4,7 @@
 @namespace FluentCMS.Admin.RichText
 @inject IStringLocalizer<RichTextResources> L
 
-<CmsDialog Title="@Title" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : OnClose.InvokeAsync())" OnClosed="@OnClosed">
+<CmsDialog Title="@Title" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : DoneAsync())" OnClosed="@OnClosed">
     <ChildContent>
         @if (Open)
         {

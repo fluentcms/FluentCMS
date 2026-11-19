@@ -18,6 +18,9 @@ public sealed record MediaPreview(string State, string? Preview, string? Name, s
     public static MediaPreview Gone { get; } = new(Missing, null, null, null);
 
     public static MediaPreview Disabled { get; } = new(Unavailable, null, null, null);
+
+    // A read refused or failed for another reason, such as a caller without media.read.
+    public static MediaPreview Failed { get; } = new("failed", null, null, null);
 }
 
 // An entry a link of the document goes to, as the module reports it.
@@ -27,6 +30,9 @@ public sealed record EntryReference(string Id, string Type);
 // for an asset's URLs (#3100) and a list of the entries of a type by their ids for their titles. Neither is part of the value.
 internal sealed class RichTextReferences(IManagementApi api, AdminConfiguration? configuration)
 {
+    // PluginErrorCodes.PluginDisabled of the server.
+    private const string PluginDisabled = "FCMS1550";
+
     public async Task<MediaPreview> ReadMediaAsync(Guid id, string? locale, CancellationToken cancellationToken)
     {
         try
@@ -41,7 +47,9 @@ internal sealed class RichTextReferences(IManagementApi api, AdminConfiguration?
         }
         catch (ApiProblemException problem) when (problem.Problem.Status == (int)HttpStatusCode.NotFound)
         {
-            return MediaPreview.Gone;
+            // The server answers a plugin that is not enabled in the site with 404 and this code, and a missing asset without it,
+            // so the Management read alone tells them apart and the media half is loaded only for its picker.
+            return problem.Problem.Code == PluginDisabled ? MediaPreview.Disabled : MediaPreview.Gone;
         }
     }
 
@@ -116,6 +124,28 @@ internal sealed class RichTextReferences(IManagementApi api, AdminConfiguration?
 
     private static string? Text(JsonObject? item, string name) =>
         item?[name] is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+}
+
+// For each block and component type of the schema, its fields that hold blocks, which the module renews the ids of in a
+// duplicate or a pasted copy (schema.js withFreshBlockIds), as the admin's NestedValues.RenewIds does: "blocks", "richText"
+// or "component:{type}". A relation or media field, whose items are { id, type } too, is not one of them.
+internal sealed record BlockShapes(IReadOnlyDictionary<string, Dictionary<string, string>> Blocks, IReadOnlyDictionary<string, Dictionary<string, string>> Components)
+{
+    public static BlockShapes? Of(SchemaDescription? schema) =>
+        schema is null ? null : new(Shapes(schema.Blocks), Shapes(schema.Components));
+
+    private static Dictionary<string, Dictionary<string, string>> Shapes(IEnumerable<SchemaTypeDescription> types) =>
+        types.ToDictionary(type => type.Name, type => type.Fields
+            .Select(field => (field.Name, Kind: KindOf(field)))
+            .Where(item => item.Kind is not null)
+            .ToDictionary(item => item.Name, item => item.Kind!, StringComparer.Ordinal), StringComparer.Ordinal);
+
+    private static string? KindOf(SchemaFieldDescription field) => field.Type switch
+    {
+        "blocks" or "richText" => field.Type,
+        "component" when field.Settings["component"] is JsonValue value && value.TryGetValue<string>(out var component) => $"component:{component}",
+        _ => null,
+    };
 }
 
 [JsonSerializable(typeof(JsonObject))]

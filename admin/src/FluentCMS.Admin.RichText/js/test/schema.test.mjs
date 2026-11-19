@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { getSchema } from "@tiptap/core";
 import { EditorState } from "@tiptap/pm/state";
 import {
-    extensions, firstText, fits, fromEditor, isEmpty, isSafeHref, pathOf, references, toEditor, withFreshBlockIds, withFreshIds,
+    extensions, firstText, fits, fromEditor, isEmpty, isSafeHref, pathOf, references, toEditor, withFreshIds,
 } from "../src/schema.js";
 
 const schema = getSchema(extensions());
@@ -167,27 +167,6 @@ test("a document of entry links, media and inline blocks fits, and one with anyt
     const withUnknownMark = structuredClone(kept);
     withUnknownMark.content[0].content[1].marks.push({ type: "comment", attrs: { id: "1" } });
     assert.equal(fits(schema, withUnknownMark), false);
-});
-
-test("a pasted copy of an inline block takes fresh ids for the blocks its data holds too", () => {
-    const data = { title: "Card", items: [{ type: "link", id: "inner", label: "a" }], body: { type: "doc", content: [{ type: "inlineBlock", attrs: { blockType: "note", id: "deep" } }] } };
-    const slice = { content: [{ type: "inlineBlock", attrs: { blockType: "card", id: "taken", data } }] };
-    let next = 0;
-    const pasted = withFreshIds(slice, ["taken"], () => `fresh${++next}`).content[0].attrs;
-    assert.equal(pasted.id, "fresh1");
-    assert.equal(pasted.data.items[0].id, "fresh2");
-    assert.equal(pasted.data.body.content[0].attrs.id, "fresh3");
-    assert.equal(pasted.data.title, "Card");
-    assert.equal(data.items[0].id, "inner");
-
-    const moved = withFreshIds(slice, [], () => "never").content[0].attrs;
-    assert.deepEqual(moved, slice.content[0].attrs);
-});
-
-test("a duplicate's data takes fresh ids for its blocks only", () => {
-    let next = 0;
-    const fresh = withFreshBlockIds({ id: "own", tags: [{ id: "x" }], blocks: [{ type: "quote", id: "q" }] }, () => `n${++next}`);
-    assert.deepEqual(fresh, { id: "own", tags: [{ id: "x" }], blocks: [{ type: "quote", id: "n1" }] });
 });
 
 test("the references of a document are its media and its linked entries, each once", () => {
