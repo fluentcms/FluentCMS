@@ -253,7 +253,7 @@ public sealed partial class BaselineTests : IDisposable
             await built.StopAsync(Token);
         }
 
-        var (table, column) = ColumnsAddedToTheBaseline[^1];
+        var (table, column) = ColumnsAddedToTheBaseline.Last(added => added.Table == "cms_media_asset");
         var index = TestProvider.Quote("ix_cms_media_asset_site_owns_file");
         _database.Execute(TestProvider.IsSqlServer ? $"drop index {index} on {TestProvider.Quote(table)}" : $"drop index {index}");
         _database.Execute($"alter table {TestProvider.Quote(table)} drop column {TestProvider.Quote(column)}");
