@@ -15,7 +15,7 @@ namespace FluentCMS.Core.Content;
 // a column field holds its CLR value, a reference a Guid or a Guid[], rich text its canonical RichText, a single
 // component a ContentDocument or null, and anything stored as JSON a JsonNode. Calling it on its own result changes nothing.
 // The placeholders of spec 4.3 go in here, so that hooks, validation and the write all see the same entry.
-internal sealed class EntryCanonicalizer(SchemaModel schema)
+internal sealed class EntryCanonicalizer(SchemaModel schema, RichTextOptions richText)
 {
     private const string Discriminator = "type";
     private const string IdKey = "id";
@@ -63,9 +63,7 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
     {
         List<ValidationError> errors = [];
         value = Top(field, raw, field.Name, flattened: false, errors, NeverDerive, null);
-
-        // A stored link that a write now refuses still reads, for the response to drop it.
-        return errors.TrueForAll(error => error.Code == ValidationErrorCodes.UnsafeUrl);
+        return errors.Count == 0;
     }
 
     private static bool NeverDerive(SchemaType owner, SchemaField source) => false;
@@ -163,8 +161,8 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
     {
         if (RichTextParser.TryParse(document, out var parsed, out var problems))
         {
-            errors.AddRange(RichTextLinks.UnsafeHrefPaths(parsed).Select(at =>
-                new ValidationError(path + at[1..], ValidationErrorCodes.UnsafeUrl, "The href is not a safe URL; use http, https, mailto, tel or a relative URL.")));
+            errors.AddRange(RichTextLinks.UnsafePaths(parsed, schema, richText.Links).Select(at =>
+                new ValidationError(path + at[1..], ValidationErrorCodes.UnsafeUrl, "The URL has a scheme rich text does not allow; use a relative URL or an allowed scheme, such as https.")));
             var canonical = RichTextSerializer.ToRichText(parsed);
             return InlineBlockJson.MayHold(canonical.Json) ? WithBlockData(canonical, path, errors) : canonical;
         }

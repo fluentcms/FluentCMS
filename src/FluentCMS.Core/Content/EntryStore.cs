@@ -18,7 +18,7 @@ namespace FluentCMS.Core.Content;
 
 // The rows behind one entry: cms_document, the content tables, cms_reference and cms_version. It knows nothing of
 // permissions; ContentService decides, and calls this inside its transaction.
-internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
+internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichTextOptions richText)
 {
     private const string MediaTarget = "media";
 
@@ -210,6 +210,8 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         }
     }
 
+    // A URL in rich text that a write would now refuse is dropped, so that a read never returns it and a write that
+    // carries the value on stores it without (RichTextLinks).
     private object? FromColumn(StoredField stored, object? value)
     {
         if (stored.Kind != FieldStorageKind.Json || value is not string json)
@@ -219,11 +221,13 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
 
         if (stored.Field.FieldType == FieldTypeNames.RichText)
         {
-            return context.ReordersJson ? StoredOrder.Of(schema, new RichText(json)) : new RichText(json);
+            return HiddenFields.DropUnsafeLinks(schema, context.ReordersJson ? StoredOrder.Of(schema, new RichText(json)) : new RichText(json), richText.Links);
         }
 
         var node = JsonDepth.Parse(json);
-        return context.ReordersJson ? StoredOrder.Of(schema, stored.Field, node) : node;
+        var read = context.ReordersJson ? StoredOrder.Of(schema, stored.Field, node) : node;
+        HiddenFields.DropUnsafeLinks(schema, read, stored.Field, richText.Links);
+        return read;
     }
 
     // The compare and swap that makes one of two concurrent writers lose. The filter on Document keeps trash out.

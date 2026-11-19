@@ -714,14 +714,14 @@ internal sealed partial class ContentService
     // Hidden fields show to no one, the system principal included.
     private JsonObject VisibleFieldsOf(WriteScope write, ContentVersion version)
     {
-        var snapshot = VersionSnapshot.Parse(schema, write.Type, version.Snapshot);
+        var snapshot = VersionSnapshot.Parse(schema, write.Type, version.Snapshot, richTextOptions.Links);
         JsonObject fields = [];
         foreach (var field in write.Type.Fields)
         {
             if (!field.Hidden && write.Permissions.CanReadField(write.Type, field.Name, write.Target) && snapshot[field.Name] is { } value)
             {
                 var visible = value.DeepClone();
-                HiddenFields.Remove(schema, visible, field, dropUnknown: true, dropUnsafeLinks: true);
+                HiddenFields.Remove(schema, visible, field, dropUnknown: true);
                 fields[field.Name] = visible;
             }
         }
@@ -733,7 +733,7 @@ internal sealed partial class ContentService
     private async Task<ContentDocument> RestorableFieldsAsync(WriteScope write, ContentVersion version, WritableFields writable, CancellationToken cancellationToken)
     {
         var isSystem = write.Permissions.IsSystem;
-        var snapshot = VersionSnapshot.Parse(schema, write.Type, version.Snapshot);
+        var snapshot = VersionSnapshot.Parse(schema, write.Type, version.Snapshot, richTextOptions.Links);
         var taken = write.Type.Fields.Where(field => isSystem || !Keeps(write, field, writable, addsLocale: false)).ToList();
         JsonObject fields = [];
         foreach (var field in taken)

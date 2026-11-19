@@ -207,13 +207,13 @@ internal sealed class EntryPlan
 
         if (stored.Field.FieldType == FieldTypeNames.RichText)
         {
-            return value => value is string json ? HiddenFields.Remove(_query.Schema, Ordered(new RichText(json))) : null;
+            return value => value is string json ? HiddenFields.Remove(_query.Schema, Ordered(new RichText(json)), links: _query.Links) : null;
         }
 
         return value =>
         {
             var node = value is string json ? Ordered(stored.Field, JsonDepth.Parse(json)) : null;
-            HiddenFields.Remove(_query.Schema, node, stored.Field);
+            HiddenFields.Remove(_query.Schema, node, stored.Field, links: _query.Links);
             return node;
         };
     }

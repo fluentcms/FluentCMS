@@ -167,11 +167,11 @@ internal sealed class FieldAccess(EffectivePermissions permissions, SchemaModel 
         {
             if (text is RichText rich)
             {
-                document[key] = HiddenFields.Remove(schema, rich, dropUnknown: true, dropUnsafeLinks: true);
+                document[key] = HiddenFields.Remove(schema, rich, dropUnknown: true);
             }
             else if (ReadDocument(text) is { } node)
             {
-                HiddenFields.Remove(schema, node, field, dropUnknown: true, dropUnsafeLinks: true);
+                HiddenFields.Remove(schema, node, field, dropUnknown: true);
                 document[key] = node;
             }
             else
@@ -197,7 +197,7 @@ internal sealed class FieldAccess(EffectivePermissions permissions, SchemaModel 
                 default:
                     if (RawValue.TryReadJson(document[key], out var node, out _))
                     {
-                        HiddenFields.Remove(schema, node, field, dropUnknown: true, dropUnsafeLinks: true);
+                        HiddenFields.Remove(schema, node, field, dropUnknown: true);
                         document[key] = node;
                     }
                     else

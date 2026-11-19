@@ -8,44 +8,60 @@ namespace FluentCMS.Core.Content.Query;
 // JSON stores a block or repeated component whole, and rich text the data of its inline blocks, and a hidden field stays
 // out of every response. With dropUnknown, a key that is not a field of its block or component goes too, which is for
 // values that did not come from storage. An inline block of a type the schema does not know has no fields to go by. With
-// dropUnsafeLinks, which is for a response, a rich text link that a write would refuse goes too, at any depth.
+// links, a URL in rich text that a write would refuse goes too, at any depth (RichTextLinks), which is how stored values
+// are read.
 internal static class HiddenFields
 {
     private const string Discriminator = "type";
 
-    public static void Remove(SchemaModel schema, JsonNode? value, SchemaField field, bool dropUnknown = false, bool dropUnsafeLinks = false) =>
-        Remove(schema, value, field, dropUnknown, dropUnsafeLinks, static inner => inner.Hidden);
+    private static readonly Func<SchemaField, bool> Nothing = static _ => false;
+
+    public static void Remove(SchemaModel schema, JsonNode? value, SchemaField field, bool dropUnknown = false, SafeUrl? links = null) =>
+        Remove(schema, value, field, dropUnknown, links, static inner => inner.Hidden);
 
     // What is restored from a version: what the system principal may hold, or what no client may write.
     public static void RemoveWhere(SchemaModel schema, JsonNode? value, SchemaField field, Func<SchemaField, bool> remove) =>
-        Remove(schema, value, field, dropUnknown: true, links: false, remove);
+        Remove(schema, value, field, dropUnknown: true, links: null, remove);
 
     // Rich text outside JSON, at the top level or in a single component.
-    public static RichText Remove(SchemaModel schema, RichText document, bool dropUnknown = false, bool dropUnsafeLinks = false)
-    {
-        if (dropUnsafeLinks)
-        {
-            document = RichTextLinks.WithoutUnsafe(document);
-        }
+    public static RichText Remove(SchemaModel schema, RichText document, bool dropUnknown = false, SafeUrl? links = null) =>
+        Remove(schema, document, dropUnknown, links, static inner => inner.Hidden);
 
-        if (!InlineBlockJson.MayHold(document.Json) || InlineBlockJson.Parse(document.Json) is not { } node)
+    public static void DropUnsafeLinks(SchemaModel schema, JsonNode? value, SchemaField field, SafeUrl links) =>
+        Remove(schema, value, field, dropUnknown: false, links, Nothing);
+
+    public static RichText DropUnsafeLinks(SchemaModel schema, RichText document, SafeUrl links) =>
+        Remove(schema, document, dropUnknown: false, links, Nothing);
+
+    // One parse for both, and none for a document with no inline block and no URL that could be unsafe.
+    private static RichText Remove(SchemaModel schema, RichText document, bool dropUnknown, SafeUrl? links, Func<SchemaField, bool> remove)
+    {
+        var inline = InlineBlockJson.MayHold(document.Json);
+        var linked = links is not null && RichTextLinks.MayHoldUnsafe(document.Json, links);
+        if ((!inline && !linked) || InlineBlockJson.Parse(document.Json) is not { } node)
         {
             return document;
         }
 
+        var dropped = linked && RichTextLinks.DropUnsafe(node, schema, links!);
+        if (!inline)
+        {
+            return dropped ? new RichText(InlineBlockJson.Text(node)) : document;
+        }
+
         var before = node.DeepClone();
-        RemoveInline(schema, node, dropUnknown, dropUnsafeLinks, static inner => inner.Hidden);
-        return JsonNode.DeepEquals(before, node) ? document : InlineBlockJson.ToRichText(node);
+        RemoveInline(schema, node, dropUnknown, links, remove);
+        return dropped || !JsonNode.DeepEquals(before, node) ? InlineBlockJson.ToRichText(node) : document;
     }
 
-    private static void Remove(SchemaModel schema, JsonNode? value, SchemaField field, bool dropUnknown, bool links, Func<SchemaField, bool> remove)
+    private static void Remove(SchemaModel schema, JsonNode? value, SchemaField field, bool dropUnknown, SafeUrl? links, Func<SchemaField, bool> remove)
     {
         switch (field.FieldType)
         {
             case FieldTypeNames.RichText when value is JsonObject:
-                if (links)
+                if (links is not null)
                 {
-                    RichTextLinks.DropUnsafe(value);
+                    RichTextLinks.DropUnsafe(value, schema, links);
                 }
 
                 RemoveInline(schema, value, dropUnknown, links, remove);
@@ -75,7 +91,7 @@ internal static class HiddenFields
         }
     }
 
-    private static void RemoveInline(SchemaModel schema, JsonNode document, bool dropUnknown, bool links, Func<SchemaField, bool> remove)
+    private static void RemoveInline(SchemaModel schema, JsonNode document, bool dropUnknown, SafeUrl? links, Func<SchemaField, bool> remove)
     {
         foreach (var block in InlineBlockJson.Find(document))
         {
@@ -86,7 +102,7 @@ internal static class HiddenFields
         }
     }
 
-    private static void Remove(SchemaModel schema, JsonObject entry, SchemaType type, bool dropUnknown, bool links, Func<SchemaField, bool> remove)
+    private static void Remove(SchemaModel schema, JsonObject entry, SchemaType type, bool dropUnknown, SafeUrl? links, Func<SchemaField, bool> remove)
     {
         foreach (var field in type.Fields)
         {
