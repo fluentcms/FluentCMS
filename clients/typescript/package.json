@@ -25,7 +25,7 @@
     "test": "tsc -p tsconfig.test.json && node --test \"dist-test/test/*.test.js\""
   },
   "devDependencies": {
-    "typescript": "6.0.3"
+    "typescript": "7.0.2"
   },
   "engines": {
     "node": ">=20"
