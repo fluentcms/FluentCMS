@@ -1,0 +1,25 @@
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "bulletList",
+      "content": [
+        {
+          "type": "listItem",
+          "content": [
+            { "type": "heading", "attrs": { "level": 3 }, "content": [{ "type": "text", "text": "A heading first in an item" }] },
+            { "type": "paragraph", "content": [{ "type": "text", "text": "then text" }] }
+          ]
+        },
+        { "type": "listItem", "content": [{ "type": "blockquote", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "a quote first" }] }] }] },
+        { "type": "listItem", "content": [{ "type": "media", "attrs": { "mediaId": "5c3a1e2f-9b8d-4c7e-a6f5-0d1b2c3e4f5a" } }] },
+        { "type": "listItem" }
+      ]
+    },
+    { "type": "bulletList" },
+    { "type": "orderedList", "attrs": { "start": 2 } },
+    { "type": "blockquote" },
+    { "type": "blockquote", "content": [{ "type": "codeBlock" }, { "type": "horizontalRule" }] },
+    { "type": "paragraph", "content": [{ "type": "hardBreak", "marks": [{ "type": "bold" }] }, { "type": "text", "text": "after a bold break" }] }
+  ]
+}

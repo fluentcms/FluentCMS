@@ -74,6 +74,8 @@ public sealed class RichTextFieldEditorTests : BunitContext
         options.Lang.ShouldBe("ar");
         options.Dir.ShouldBe("rtl");
         cut.Find($"#{options.LabelledBy}").TextContent.Trim().ShouldBe("Body");
+        cut.Find("[role=toolbar]").GetAttribute("aria-controls").ShouldBe(options.TextboxId);
+        cut.Find("button[data-command=bold]").GetAttribute("aria-keyshortcuts").ShouldBe("Control+B");
         options.DescribedBy!.Split(' ').Select(id => cut.Find($"#{id}").TextContent).ShouldContain("The article's text");
         options.Labels.Media.ShouldBe("Media");
     }
@@ -228,14 +230,97 @@ public sealed class RichTextFieldEditorTests : BunitContext
     }
 
     [Fact]
-    public void AModuleThatDoesNotLoadSaysSoAndKeepsTheValue()
+    public void AModuleThatDoesNotLoadSaysSoAndShowsTheValueAsItIs()
     {
         runtime.ImportFails = new JSException("Failed to fetch the module.");
 
         var cut = Edit(JsonNode.Parse(Document));
 
         cut.WaitForAssertion(() => cut.Find("[role=alert]").TextContent.ShouldContain("could not be loaded"));
+        JsonNode.DeepEquals(JsonNode.Parse(cut.Find("pre.rich-text-json").TextContent), JsonNode.Parse(Document)).ShouldBeTrue();
+        cut.FindAll("[role=toolbar]").ShouldBeEmpty();
         changes.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AValueTheEditorCannotHoldWholeIsShownAsItIsAndNeverWritten()
+    {
+        runtime.Module.Refuses = true;
+        const string Aligned = """{"type":"doc","content":[{"type":"paragraph","attrs":{"textAlign":"center"},"content":[{"type":"text","text":"Centred"}]}]}""";
+
+        var cut = Edit(JsonNode.Parse(Aligned));
+
+        cut.WaitForAssertion(() => cut.Find("pre.rich-text-json").TextContent.ShouldContain("textAlign"));
+        cut.Find(".cms-field-message").TextContent.ShouldContain("cannot change without losing");
+        cut.FindAll("[role=toolbar]").ShouldBeEmpty();
+        cut.Find(".rich-text-frame").HasAttribute("hidden").ShouldBeTrue();
+        changes.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AValueTheFormSetsThatTheEditorCannotHoldStopsTheEditor()
+    {
+        var cut = Edit(JsonNode.Parse(Document));
+        cut.WaitForAssertion(() => runtime.Module.Created.ShouldNotBeNull());
+        Editor.RefusesContent = true;
+
+        cut.Render(parameters => parameters.Add(editor => editor.Value, JsonNode.Parse("""{"type":"doc","content":[{"type":"table"}]}""")));
+
+        cut.WaitForAssertion(() => cut.Find("pre.rich-text-json").TextContent.ShouldContain("table"));
+        Editor.CallsOf("dispose").ShouldHaveSingleItem();
+        changes.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ADocumentWhoseMarksTheEditorReorderedIsNoChange()
+    {
+        const string Stored = """{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"bold"},{"type":"link","attrs":{"href":"/"}}],"text":"a"}]}]}""";
+        var cut = Edit(JsonNode.Parse(Stored));
+        cut.WaitForAssertion(() => runtime.Module.Created.ShouldNotBeNull());
+
+        await cut.InvokeAsync(() => cut.Instance.OnChangeAsync("""{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"/"}},{"type":"bold"}],"text":"a"}]}]}"""));
+
+        changes.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AFlushGivesTheFormTheChangeTheModuleHeldBack()
+    {
+        var cut = Edit(JsonNode.Parse(Document));
+        cut.WaitForAssertion(() => runtime.Module.Created.ShouldNotBeNull());
+        await cut.InvokeAsync(() => cut.Instance.FlushAsync().AsTask());
+        changes.ShouldBeEmpty();
+
+        Editor.HasPending = true;
+        Editor.Pending = """{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Typed"}]}]}""";
+        await cut.InvokeAsync(() => cut.Instance.FlushAsync().AsTask());
+
+        changes.Single()!.ToJsonString().ShouldContain("Typed");
+    }
+
+    [Fact]
+    public async Task AChangeHeldBackGoesToTheFormAsTheEditorGoes()
+    {
+        var cut = Edit(JsonNode.Parse(Document));
+        cut.WaitForAssertion(() => runtime.Module.Created.ShouldNotBeNull());
+        Editor.HasPending = true;
+        Editor.Pending = null;
+
+        await DisposeComponentsAsync();
+
+        changes.ShouldBe([null]);
+    }
+
+    [Fact]
+    public void OnAMacTheShortcutsNameCommand()
+    {
+        runtime.Module.Mac = true;
+
+        var cut = Edit(JsonNode.Parse(Document));
+
+        cut.WaitForAssertion(() => cut.Find("button[data-command=bold]").GetAttribute("aria-keyshortcuts").ShouldBe("Meta+B"));
+        cut.Find("button[data-command=bold]").GetAttribute("title").ShouldBe("Bold (Cmd+B)");
+        cut.Find("button[data-command=heading1]").GetAttribute("aria-keyshortcuts").ShouldBe("Meta+Alt+1");
     }
 
     [Fact]

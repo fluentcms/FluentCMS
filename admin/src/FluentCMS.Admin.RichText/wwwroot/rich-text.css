@@ -141,3 +141,14 @@ div.rich-text-kept {
     flex-wrap: wrap;
     gap: var(--cms-space-xs);
 }
+
+.rich-text-json {
+    max-block-size: 20rem;
+    margin: 0;
+    padding: var(--cms-space-s);
+    overflow: auto;
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-s);
+    white-space: pre-wrap;
+    word-break: break-word;
+}

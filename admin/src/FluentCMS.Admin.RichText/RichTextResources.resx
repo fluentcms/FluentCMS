@@ -13,7 +13,10 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="RichText.Editor.Unavailable" xml:space="preserve">
-    <value>The rich text editor could not be loaded. Reload the page to try again; the field keeps its value.</value>
+    <value>The rich text editor could not be loaded, so the text is shown as it is stored. Reload the page to try again; the field keeps its value.</value>
+  </data>
+  <data name="RichText.Editor.Unsupported" xml:space="preserve">
+    <value>This text holds content the editor cannot change without losing some of it, so it is shown as it is stored and cannot be changed here.</value>
   </data>
   <data name="RichText.Kept.InlineBlock" xml:space="preserve">
     <value>Block</value>

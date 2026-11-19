@@ -34,6 +34,11 @@ internal sealed class FakeModule(FakeEditor editor) : IJSObjectReference
 {
     public object?[]? Created { get; private set; }
 
+    // Whether create answers null, as the module does for a value the editor cannot hold whole.
+    public bool Refuses { get; set; }
+
+    public bool Mac { get; set; }
+
     public bool Disposed { get; private set; }
 
     public ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] TValue>(string identifier, object?[]? args) =>
@@ -41,9 +46,14 @@ internal sealed class FakeModule(FakeEditor editor) : IJSObjectReference
 
     public ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)] TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
     {
+        if (identifier == "isMac")
+        {
+            return ValueTask.FromResult((TValue)(object)Mac);
+        }
+
         identifier.ShouldBeCreate();
         Created = args;
-        return ValueTask.FromResult((TValue)(object)editor);
+        return ValueTask.FromResult(Refuses ? default! : (TValue)(object)editor);
     }
 
     public ValueTask DisposeAsync()
@@ -60,6 +70,13 @@ internal sealed class FakeEditor : IJSObjectReference
     // What "link" answers: the href of the link at the selection.
     public string? Link { get; set; }
 
+    // What "flush" answers once, the change the module held back, and whether "setContent" takes a value.
+    public string? Pending { get; set; }
+
+    public bool HasPending { get; set; }
+
+    public bool RefusesContent { get; set; }
+
     public bool Disposed { get; private set; }
 
     public IEnumerable<object?[]> CallsOf(string name) => Calls.Where(call => call.Name == name).Select(call => call.Args);
@@ -73,6 +90,8 @@ internal sealed class FakeEditor : IJSObjectReference
         object? result = identifier switch
         {
             "run" or "unsetLink" => true,
+            "setContent" => !RefusesContent,
+            "flush" => Flush(),
             "link" => Link,
             // The module's own rule, which its schema test covers: here only the scheme of the test's unsafe link.
             "setLink" => args?[0] is string href && !href.StartsWith("javascript:", StringComparison.OrdinalIgnoreCase),
@@ -85,6 +104,13 @@ internal sealed class FakeEditor : IJSObjectReference
     {
         Disposed = true;
         return ValueTask.CompletedTask;
+    }
+
+    private RichTextFieldEditor.PendingChange Flush()
+    {
+        var pending = new RichTextFieldEditor.PendingChange(HasPending, HasPending ? Pending : null);
+        HasPending = false;
+        return pending;
     }
 }
 

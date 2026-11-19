@@ -1,9 +1,10 @@
 // The rich text editor of the admin (spec 4.7): Tiptap on the server's rich text model, driven by RichTextFieldEditor. The
 // document goes to Blazor as JSON, debounced, and Blazor holds the form's value; the toolbar is Blazor's markup, whose
 // roving focus this module keeps. No access token or request goes through here.
-import { Editor } from "@tiptap/core";
+import { Editor, getSchema } from "@tiptap/core";
 import { UndoRedo } from "@tiptap/extensions";
-import { extensions, fromEditor, isEmpty, isSafeHref, toEditor } from "./schema.js";
+import { Slice } from "@tiptap/pm/model";
+import { blockIds, extensions, fits, fromEditor, isEmpty, isSafeHref, randomId, toEditor, withFreshIds } from "./schema.js";
 
 const DELAY = 250;
 
@@ -57,16 +58,22 @@ function loadStyles() {
     return stylesheet;
 }
 
+// The document of a value, or undefined for one that is not JSON; null is an empty field.
 function parse(json) {
     if (!json) {
         return null;
     }
 
     try {
-        return toEditor(JSON.parse(json));
+        return JSON.parse(json);
     } catch {
-        return null;
+        return undefined;
     }
+}
+
+function fitting(schema, json) {
+    const document = parse(json);
+    return document === null || (document !== undefined && fits(schema, document));
 }
 
 // The value Blazor holds: the document as the server's model, or null for an empty one, so that a required field is empty.
@@ -145,27 +152,59 @@ function rovingFocus(toolbar, editor) {
     };
 }
 
+// Whether the editor runs on a Mac, where Tiptap's Mod is Command rather than Control.
+export function isMac() {
+    return /Mac|iPhone|iPad/.test(navigator.userAgentData?.platform ?? navigator.platform ?? "");
+}
+
 // Creates the editor in `element`, with the toolbar `toolbar` (null when read-only), and calls back `host` with
-// OnChangeAsync(json), OnStateAsync(states) and OnLinkRequestedAsync().
+// OnChangeAsync(json), OnStateAsync(states) and OnLinkRequestedAsync(). It answers null, and creates nothing, for a value the
+// editor cannot hold whole, which the component shows read-only instead.
 export async function create(element, toolbar, host, json, options) {
+    const origin = randomId();
+    const schema = getSchema(extensions(options.labels, origin));
+    if (!fitting(schema, json)) {
+        return null;
+    }
+
     await loadStyles();
 
     let editor = null;
     let timer = null;
-    let sent = json ?? null;
+    // Whether a transaction changed the document since the value was last sent; nothing else is sent, so focus and blur on a
+    // document the editor normalised, such as its order of marks, are no change.
+    let pending = false;
     let state = "";
 
     // A call after Blazor let the component go has no one to answer it.
     const call = (method, ...args) => host.invokeMethodAsync(method, ...args).catch(() => {});
 
-    const send = () => {
+    const take = () => {
         clearTimeout(timer);
         timer = null;
-        const value = valueOf(editor);
-        if (value !== sent) {
-            sent = value;
+        const changed = pending;
+        pending = false;
+        return { changed, value: changed ? valueOf(editor) : null };
+    };
+
+    const send = () => {
+        const { changed, value } = take();
+        if (changed) {
             call("OnChangeAsync", value);
         }
+    };
+
+    // The first change of a burst goes at once, so the form knows it has unsaved changes; the rest follow once typing pauses.
+    const onUpdate = () => {
+        const first = timer === null;
+        pending = true;
+        if (first) {
+            send();
+        } else {
+            clearTimeout(timer);
+        }
+
+        timer = setTimeout(send, DELAY);
     };
 
     const report = (target) => {
@@ -178,6 +217,7 @@ export async function create(element, toolbar, host, json, options) {
     };
 
     const attributes = {
+        id: options.textboxId,
         role: "textbox",
         "aria-multiline": "true",
         "aria-labelledby": options.labelledBy,
@@ -185,17 +225,26 @@ export async function create(element, toolbar, host, json, options) {
         spellcheck: "true",
     };
 
+    const initial = parse(json);
     editor = new Editor({
         element,
         injectCSS: false,
+        enableContentCheck: true,
         editable: options.editable,
-        content: parse(json),
-        extensions: [...extensions(options.labels), UndoRedo],
-        editorProps: { attributes },
-        onUpdate: () => {
-            clearTimeout(timer);
-            timer = setTimeout(send, DELAY);
+        content: initial ? toEditor(initial) : null,
+        extensions: [...extensions(options.labels, origin), UndoRedo],
+        editorProps: {
+            attributes,
+            // A copy of an inline block pasted beside its original takes a fresh id; one moved, by drag or cut, keeps its own.
+            transformPasted: (slice, view) => {
+                if (view.dragging?.move || slice.size === 0) {
+                    return slice;
+                }
+
+                return Slice.fromJSON(view.state.schema, withFreshIds(slice.toJSON(), blockIds(view.state.doc)));
+            },
         },
+        onUpdate,
         onTransaction: ({ editor: target }) => report(target),
         onBlur: send,
     });
@@ -240,16 +289,19 @@ export async function create(element, toolbar, host, json, options) {
     report(editor);
 
     return {
-        // A value Blazor sets from outside the editor, such as the other save's of a conflict, replaces the document.
+        // A value Blazor sets from outside the editor, such as the other side of a conflict, replaces the document; one the
+        // editor cannot hold whole is refused, and the component shows it read-only.
         setContent: (value) => {
-            if ((value ?? null) === sent) {
-                return;
+            if (!fitting(editor.schema, value)) {
+                return false;
             }
 
             clearTimeout(timer);
             timer = null;
-            sent = value ?? null;
-            editor.commands.setContent(parse(value), { emitUpdate: false });
+            pending = false;
+            const next = parse(value);
+            editor.commands.setContent(next ? toEditor(next) : null, { emitUpdate: false });
+            return true;
         },
         setEditable: (editable) => {
             editor.setEditable(editable, false);
@@ -269,7 +321,8 @@ export async function create(element, toolbar, host, json, options) {
             return apply ? apply(editor.chain().focus()).run() : false;
         },
         focus: () => editor.commands.focus(),
-        flush: send,
+        // The change not yet sent, if any, which the component gives the form before a save and as it goes.
+        flush: take,
         // The href of the link at the selection, or null.
         link: () => (editor.isActive("link") ? editor.getAttributes("link").href ?? null : null),
         // A link the server would refuse is not set; an empty selection outside a link gets the address as its text.

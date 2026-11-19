@@ -116,6 +116,13 @@ public abstract class FieldEditorBase : ComponentBase
     /// <returns>A task that completes when focus has moved.</returns>
     public virtual ValueTask FocusAsync() => ValueTask.CompletedTask;
 
+    /// <summary>
+    /// Raises the change the editor holds back, such as one it sends after the user pauses typing; the form calls it before a
+    /// save or a publish, so that what it sends is what the editor shows.
+    /// </summary>
+    /// <returns>A task that completes when the form has taken the change, if there was one.</returns>
+    public virtual ValueTask FlushAsync() => ValueTask.CompletedTask;
+
     /// <summary>Sets <see cref="Value"/> and raises <see cref="ValueChanged"/>.</summary>
     /// <param name="value">The new value.</param>
     /// <returns>A task that completes when the form has taken the change.</returns>

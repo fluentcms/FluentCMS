@@ -59,6 +59,14 @@ export function isSafeHref(href) {
     return end < 0 || trimmed[end] !== ":" || ALLOWED_SCHEMES.includes(prefix.toLowerCase());
 }
 
+// Kept nodes and marks travel through the clipboard as elements marked with the origin of the editor that wrote them: a
+// slice of the same editor keeps them whole, and HTML from anywhere else never makes them, since an id there is unchecked.
+const ORIGIN = "data-fluentcms-origin";
+
+function fromOrigin(element, origin) {
+    return origin !== undefined && element.getAttribute(ORIGIN) === origin;
+}
+
 // An attribute kept as a data attribute of the element, so that a copy and paste inside the editor keeps it.
 function optional(name, dataName) {
     return {
@@ -74,7 +82,7 @@ function keptLabel(labels, kind, name) {
     return name ? `${text}: ${name}` : text;
 }
 
-function media(name, inline, labels) {
+function media(name, inline, labels, origin) {
     return Node.create({
         name,
         group: inline ? "inline" : "block",
@@ -88,18 +96,18 @@ function media(name, inline, labels) {
         parseHTML() {
             return [{
                 tag: `${inline ? "span" : "div"}[data-fluentcms-media]`,
-                getAttrs: (element) => (GUID.test(element.getAttribute("data-media-id") ?? "") ? null : false),
+                getAttrs: (element) => (fromOrigin(element, origin) && GUID.test(element.getAttribute("data-media-id") ?? "") ? null : false),
             }];
         },
         renderHTML({ HTMLAttributes, node }) {
-            return [inline ? "span" : "div", { ...HTMLAttributes, "data-fluentcms-media": "", class: "rich-text-kept", contenteditable: "false" },
+            return [inline ? "span" : "div", { ...HTMLAttributes, "data-fluentcms-media": "", [ORIGIN]: origin, class: "rich-text-kept", contenteditable: "false" },
                 keptLabel(labels, MEDIA, node.attrs.alt ?? node.attrs.title)];
         },
         renderText: () => "",
     });
 }
 
-function inlineBlock(name, inline, labels) {
+function inlineBlock(name, inline, labels, origin) {
     return Node.create({
         name,
         group: inline ? "inline" : "block",
@@ -110,8 +118,7 @@ function inlineBlock(name, inline, labels) {
         addAttributes() {
             return {
                 blockType: optional("blockType", "block-type"),
-                // A pasted copy of a block takes no id, so the server gives it a new one (ADR 0002).
-                id: { default: null, parseHTML: () => null, renderHTML: () => ({}) },
+                id: optional("id", "block-id"),
                 data: {
                     default: null,
                     parseHTML: (element) => {
@@ -129,43 +136,46 @@ function inlineBlock(name, inline, labels) {
         parseHTML() {
             return [{
                 tag: `${inline ? "span" : "div"}[data-fluentcms-block]`,
-                getAttrs: (element) => (/^[A-Za-z][A-Za-z0-9_-]*$/.test(element.getAttribute("data-block-type") ?? "") ? null : false),
+                getAttrs: (element) => (fromOrigin(element, origin) && /^[A-Za-z][A-Za-z0-9_-]*$/.test(element.getAttribute("data-block-type") ?? "") ? null : false),
             }];
         },
         renderHTML({ HTMLAttributes, node }) {
-            return [inline ? "span" : "div", { ...HTMLAttributes, "data-fluentcms-block": "", class: "rich-text-kept", contenteditable: "false" },
+            return [inline ? "span" : "div", { ...HTMLAttributes, "data-fluentcms-block": "", [ORIGIN]: origin, class: "rich-text-kept", contenteditable: "false" },
                 keptLabel(labels, INLINE_BLOCK, node.attrs.blockType)];
         },
         renderText: () => "",
     });
 }
 
-// A link to an entry is kept with its two attributes; it is not made from pasted HTML, since an id there cannot be checked.
-const EntryLink = Mark.create({
-    name: "entryLink",
-    inclusive: false,
-    addAttributes() {
-        return {
-            entryId: { default: null, renderHTML: (attributes) => ({ "data-entry-id": attributes.entryId }) },
-            entryType: { default: null, renderHTML: (attributes) => ({ "data-entry-type": attributes.entryType }) },
-        };
-    },
-    parseHTML() {
-        return [];
-    },
-    renderHTML({ HTMLAttributes }) {
-        return ["span", { ...HTMLAttributes, class: "rich-text-entry-link" }, 0];
-    },
-});
+function entryLink(origin) {
+    return Mark.create({
+        name: "entryLink",
+        inclusive: false,
+        addAttributes() {
+            return { entryId: optional("entryId", "entry-id"), entryType: optional("entryType", "entry-type") };
+        },
+        parseHTML() {
+            return [{
+                tag: "span[data-entry-id]",
+                getAttrs: (element) => (fromOrigin(element, origin) && GUID.test(element.getAttribute("data-entry-id") ?? "") ? null : false),
+            }];
+        },
+        renderHTML({ HTMLAttributes }) {
+            return ["span", { ...HTMLAttributes, [ORIGIN]: origin, class: "rich-text-entry-link" }, 0];
+        },
+    });
+}
 
-// Every extension of the editor; `labels` names the kept nodes in the interface's language.
-export function extensions(labels) {
+// Every extension of the editor; `labels` names the kept nodes in the interface's language, and `origin` marks what this
+// editor puts on the clipboard. The content of each node is the server's (NodeSpec.cs, test/content.json) but the document's,
+// which holds at least one block so that there is somewhere to type; toEditor gives an empty document its paragraph.
+export function extensions(labels, origin) {
     return [
         Document,
         Paragraph,
         Text,
         Heading.configure({ levels: [1, 2, 3, 4, 5, 6] }),
-        Blockquote,
+        Blockquote.extend({ content: "block*" }),
         // The server keeps a code block's language when it has one, and no attribute when it has none.
         CodeBlock.extend({
             addAttributes() {
@@ -187,9 +197,10 @@ export function extensions(labels) {
             },
         }),
         HardBreak,
-        BulletList,
+        BulletList.extend({ content: "listItem*" }),
         // A list without a start has none in the server's model, so the editor adds none either.
         OrderedList.extend({
+            content: "listItem*",
             addAttributes() {
                 return {
                     start: {
@@ -200,7 +211,7 @@ export function extensions(labels) {
                 };
             },
         }),
-        ListItem,
+        ListItem.extend({ content: "block*" }),
         ListKeymap,
         Bold,
         Italic,
@@ -225,17 +236,105 @@ export function extensions(labels) {
             shouldAutoLink: (url) => isSafeHref(url),
             HTMLAttributes: { rel: "noopener noreferrer nofollow", target: null, class: null },
         }),
-        EntryLink,
-        media(MEDIA, false, labels),
-        media(MEDIA_INLINE, true, labels),
-        inlineBlock(INLINE_BLOCK, false, labels),
-        inlineBlock(INLINE_BLOCK_INLINE, true, labels),
+        entryLink(origin),
+        media(MEDIA, false, labels, origin),
+        media(MEDIA_INLINE, true, labels, origin),
+        inlineBlock(INLINE_BLOCK, false, labels, origin),
+        inlineBlock(INLINE_BLOCK_INLINE, true, labels, origin),
     ];
 }
 
 // A document of the server's model as the editor's JSON.
 export function toEditor(document) {
-    return rename(document, false);
+    const renamed = rename(document, false);
+    return renamed?.type === "doc" && !(renamed.content?.length > 0) ? { ...renamed, content: [{ type: "paragraph" }] } : renamed;
+}
+
+// Whether the editor can hold a document of the server's model without losing anything: every node and mark is one the
+// schema declares, with no attribute it does not declare, and the document passes the schema's check. One that does not fit
+// is shown read-only, as JSON, and never written back.
+export function fits(schema, document) {
+    if (document === null || typeof document !== "object" || Array.isArray(document) || document.type !== "doc") {
+        return false;
+    }
+
+    const declared = (type, name) => Object.hasOwn(type.spec.attrs ?? {}, name);
+    const known = (node) => {
+        const type = node && schema.nodes[node.type];
+        if (!type || (node.attrs && Object.keys(node.attrs).some((name) => !declared(type, name)))) {
+            return false;
+        }
+
+        for (const mark of node.marks ?? []) {
+            const markType = mark && schema.marks[mark.type];
+            if (!markType || (mark.attrs && Object.keys(mark.attrs).some((name) => !declared(markType, name)))) {
+                return false;
+            }
+        }
+
+        return (node.content ?? []).every(known);
+    };
+
+    const converted = toEditor(document);
+    if (!known(converted)) {
+        return false;
+    }
+
+    try {
+        schema.nodeFromJSON(converted).check();
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// A slice pasted into the editor, as JSON: each inline block whose id the document or the slice already holds takes a fresh
+// one, so a copy pasted beside its original is a new block, and a block moved by cut and paste keeps its id (ADR 0002).
+export function withFreshIds(slice, taken, random = randomId) {
+    const seen = new Set(taken);
+    const visit = (node) => {
+        if (node === null || typeof node !== "object") {
+            return node;
+        }
+
+        const copy = { ...node };
+        if ((copy.type === INLINE_BLOCK || copy.type === INLINE_BLOCK_INLINE) && copy.attrs?.id) {
+            let id = copy.attrs.id;
+            while (seen.has(id)) {
+                id = random();
+            }
+
+            seen.add(id);
+            copy.attrs = { ...copy.attrs, id };
+        }
+
+        if (Array.isArray(copy.content)) {
+            copy.content = copy.content.map(visit);
+        }
+
+        return copy;
+    };
+
+    return { ...slice, content: (slice.content ?? []).map(visit) };
+}
+
+const ID_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
+
+// A 12-character block id, as the admin makes for a new block (spec 4.8).
+export function randomId() {
+    const bytes = crypto.getRandomValues(new Uint8Array(12));
+    return Array.from(bytes, (byte) => ID_ALPHABET[byte & 63]).join("");
+}
+
+// The ids of the inline blocks of the editor's document.
+export function blockIds(document) {
+    const ids = [];
+    document.descendants((node) => {
+        if ((node.type.name === INLINE_BLOCK || node.type.name === INLINE_BLOCK_INLINE) && node.attrs.id) {
+            ids.push(node.attrs.id);
+        }
+    });
+    return ids;
 }
 
 // The editor's JSON as a document of the server's model: inline media and blocks take their names back, and an attribute

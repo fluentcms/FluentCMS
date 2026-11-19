@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.Playwright;
@@ -20,8 +21,9 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
     {
         var browser = await OpenBrowserAsync();
         var tab = await browser.NewTabAsync();
-        var requested = new List<string>();
-        tab.Page.Request += (_, request) => requested.Add(request.Url);
+        // Playwright raises the event on a thread of its own.
+        var requested = new ConcurrentQueue<string>();
+        tab.Page.Request += (_, request) => requested.Enqueue(request.Url);
         await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
         await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
         await Expect(tab.Sidebar).ToBeVisibleAsync();
@@ -120,6 +122,145 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
         JsonNode.DeepEquals(JsonNode.Parse(save.Request.PostData!)!["body"], written).ShouldBeTrue();
         browser.PolicyViolations.ShouldBeEmpty();
     }
+
+    // The bundle itself on a page of the admin's origin, without the form: what the editor cannot hold whole is refused, a
+    // focus and blur on a document whose marks it reorders sends nothing, and the clipboard keeps entry links, media and
+    // inline blocks within the editor (a copy's inline block takes a fresh id, a cut one keeps its own) and never makes them
+    // from HTML pasted from elsewhere.
+    [Fact]
+    public async Task TheBundleRefusesWhatItCannotHoldAndKeepsKeptNodesThroughTheClipboard()
+    {
+        var browser = await OpenBrowserAsync();
+        var tab = await browser.NewTabAsync();
+        var page = tab.Page;
+        await page.GotoAsync(new Uri(Host.Admin, "_content/FluentCMS.Admin.RichText/rich-text.css").AbsoluteUri);
+        await page.EvaluateAsync(
+            """
+            async () => {
+                const module = await import(new URL("rich-text.js", location.href).href);
+                window.calls = [];
+                const host = { invokeMethodAsync: (method, ...args) => { window.calls.push([method, ...args]); return Promise.resolve(); } };
+                window.make = async (json, id) => {
+                    const element = document.createElement("div");
+                    document.body.appendChild(element);
+                    return await module.create(element, null, host, JSON.stringify(json), {
+                        editable: true, textboxId: id, labelledBy: "label", describedBy: null, lang: "en", dir: "ltr", invalid: false,
+                        labels: { media: "Media", inlineBlock: "Block" },
+                    });
+                };
+                window.changes = () => window.calls.filter(call => call[0] === "OnChangeAsync").length;
+            }
+            """);
+
+        var refused = await page.EvaluateAsync<bool[]>(
+            """
+            async () => (await Promise.all([
+                window.make({ type: "doc", content: [{ type: "paragraph", attrs: { textAlign: "center" } }] }, "refused-1"),
+                window.make({ type: "doc", content: [{ type: "table" }] }, "refused-2"),
+                window.make({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "a", marks: [{ type: "highlight" }] }] }] }, "refused-3"),
+            ])).map(handle => handle === null)
+            """);
+        refused.ShouldBe([true, true, true]);
+        (await page.Locator("[role=textbox]").CountAsync()).ShouldBe(0);
+
+        await page.EvaluateAsync(
+            """async () => { window.reordered = await window.make({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "a", marks: [{ type: "bold" }, { type: "link", attrs: { href: "/" } }] }] }] }, "reordered"); }""");
+        var reordered = page.Locator("#reordered");
+        await reordered.FocusAsync();
+        await Expect(reordered).ToBeFocusedAsync();
+        await reordered.BlurAsync();
+        await Expect(reordered).Not.ToBeFocusedAsync();
+        (await page.EvaluateAsync<int>("() => window.changes()")).ShouldBe(0);
+        (await page.EvaluateAsync<bool>("() => window.reordered.flush().changed")).ShouldBeFalse();
+
+        await page.EvaluateAsync(
+            """
+            async () => {
+                window.kept = await window.make({ type: "doc", content: [{ type: "paragraph", content: [
+                    { type: "text", text: "See " },
+                    { type: "text", marks: [{ type: "entryLink", attrs: { entryId: "0b9f4a52-7c1e-4d0a-9a43-5e1f6b2c8d70", entryType: "article" } }], text: "other" },
+                    { type: "media", attrs: { mediaId: "5c3a1e2f-9b8d-4c7e-a6f5-0d1b2c3e4f5a" } },
+                    { type: "inlineBlock", attrs: { blockType: "note", id: "Nq8vB2xK9pLm", data: { n: 1 } } },
+                ] }] }, "kept");
+                window.clipboard = (target, type, data) => {
+                    const transfer = new DataTransfer();
+                    for (const [format, text] of Object.entries(data ?? {})) {
+                        transfer.setData(format, text);
+                    }
+
+                    target.dispatchEvent(new ClipboardEvent(type, { clipboardData: transfer, bubbles: true, cancelable: true }));
+                    return { html: transfer.getData("text/html"), text: transfer.getData("text/plain") };
+                };
+                // The editor's document: the change it holds back, else the last one it sent.
+                window.document_ = () => {
+                    const pending = window.kept.flush();
+                    if (pending.changed) {
+                        window.calls.push(["OnChangeAsync", pending.value]);
+                    }
+
+                    return JSON.parse(window.calls.filter(call => call[0] === "OnChangeAsync").at(-1)[1]);
+                };
+                // ProseMirror takes a selection the browser moved on selectionchange; this listener, added after its own,
+                // counts the ones it has taken.
+                window.selections = 0;
+                document.addEventListener("selectionchange", () => window.selections++);
+                window.inline = document => document.content.flatMap(block => block.content ?? []);
+            }
+            """);
+        var kept = page.Locator("#kept");
+
+        // Copy and paste: everything is copied and pasted at the end, beside the original.
+        await kept.FocusAsync();
+        await page.Keyboard.PressAsync("Control+a");
+        await page.EvaluateAsync("() => { window.copied = window.clipboard(document.getElementById('kept'), 'copy'); }");
+        await MoveAsync(page, "Control+End");
+        await page.EvaluateAsync("() => window.clipboard(document.getElementById('kept'), 'paste', { 'text/html': window.copied.html, 'text/plain': window.copied.text })");
+        var copied = JsonNode.Parse(await page.EvaluateAsync<string>("() => JSON.stringify(window.inline(window.document_()))"))!.AsArray();
+        var blocks = copied.Where(node => node!["type"]!.GetValue<string>() == "inlineBlock").ToList();
+        blocks.Count.ShouldBe(2);
+        blocks[0]!["attrs"]!["id"]!.GetValue<string>().ShouldBe("Nq8vB2xK9pLm");
+        blocks[1]!["attrs"]!["id"]!.GetValue<string>().ShouldMatch("^[A-Za-z0-9_-]{12}$");
+        blocks[1]!["attrs"]!["id"]!.GetValue<string>().ShouldNotBe("Nq8vB2xK9pLm");
+        blocks[1]!["attrs"]!["data"]!.ToJsonString().ShouldBe("""{"n":1}""");
+        copied.Count(node => node!["type"]!.GetValue<string>() == "media").ShouldBe(2);
+        copied.Count(node => node!["marks"]?.AsArray().Any(mark => mark!["type"]!.GetValue<string>() == "entryLink") == true).ShouldBe(2);
+
+        // Cut and paste: the copy is cut and pasted at the start, and keeps the id it was given.
+        var moved = blocks[1]!["attrs"]!["id"]!.GetValue<string>();
+        var copy = kept.Locator($"[data-block-id='{moved}']");
+        await copy.ClickAsync();
+        await Expect(copy).ToHaveClassAsync(new Regex("ProseMirror-selectednode"));
+        await page.EvaluateAsync("() => { window.cut = window.clipboard(document.getElementById('kept'), 'cut'); }");
+        await Expect(copy).ToHaveCountAsync(0);
+        await MoveAsync(page, "Control+Home");
+        await page.EvaluateAsync("() => window.clipboard(document.getElementById('kept'), 'paste', { 'text/html': window.cut.html, 'text/plain': window.cut.text })");
+        var ids = await page.EvaluateAsync<string[]>("() => window.inline(window.document_()).filter(node => node.type === 'inlineBlock').map(node => node.attrs.id)");
+        ids.ShouldBe([moved, "Nq8vB2xK9pLm"]);
+
+        // HTML from elsewhere: the same elements without this editor's origin make plain text.
+        await MoveAsync(page, "Control+End");
+        await page.EvaluateAsync(
+            """
+            () => window.clipboard(document.getElementById('kept'), 'paste', { 'text/html':
+                '<span data-fluentcms-media data-media-id="a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d">picture</span>' +
+                '<span data-entry-id="7d2e6c11-3a5b-4f80-b9c4-2a6d1e8f0b35" data-entry-type="author">someone</span>' +
+                '<span data-fluentcms-block data-block-type="note" data-block-id="foreign">block</span>' })
+            """);
+        var after = JsonNode.Parse(await page.EvaluateAsync<string>("() => JSON.stringify(window.document_())"))!.ToJsonString();
+        after.ShouldNotContain("a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d");
+        after.ShouldNotContain("7d2e6c11-3a5b-4f80-b9c4-2a6d1e8f0b35");
+        after.ShouldNotContain("foreign");
+        after.ShouldContain("someone");
+    }
+
+    // A key that moves the caret, and the wait until ProseMirror has taken the browser's new selection.
+    private static async Task MoveAsync(IPage page, string key)
+    {
+        var before = await page.EvaluateAsync<int>("() => window.selections");
+        await page.Keyboard.PressAsync(key);
+        await page.WaitForFunctionAsync("before => window.selections > before", before);
+    }
+
 
     private static ILocator ToolbarButton(AdminTab tab, string resourceKey) =>
         tab.Page.Locator($"[role=toolbar] button[aria-label='{Repository.RichTextText(resourceKey)}']");
