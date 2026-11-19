@@ -22,7 +22,7 @@ public sealed class SchemaAttributeAnalyzer : DiagnosticAnalyzer
     [
         Rules.KindsCombined, Rules.WrongBase, Rules.PublishPolicyNotPublished, Rules.NoFieldType, Rules.FieldTypesCombined,
         Rules.NotPublic, Rules.EnumWithOptions, Rules.NoOptions, Rules.NotAReference, Rules.NotAComponent, Rules.NoBlockTypes,
-        Rules.NotABlock, Rules.TwoMaximumLengths, Rules.ListOfSingleValue, Rules.UniqueWithoutColumn, Rules.ReverseOutsideContentType,
+        Rules.NotABlock, Rules.TwoMaximumLengths, Rules.ListOfSingleValue, Rules.UniqueWithoutColumn, Rules.ReverseOutsideContentType, Rules.NotAMediaType,
         Rules.ReservedFieldName, Rules.ReservedTypeName, Rules.TypeNameTooLong, Rules.FieldNameTooLong, Rules.SlugSourceMissing,
         Rules.RelationTargetNotContentType, Rules.LocalizableOnUnlocalizedType,
     ];

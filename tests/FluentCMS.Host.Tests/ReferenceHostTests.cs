@@ -190,6 +190,40 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         Operator.InsecureDefaults(report).ShouldContain("media-local-storage");
     }
 
+    // A type of a schema file has no class, so its media values reach the validator as ids, not as MediaRef.
+    [Fact]
+    public async Task AMediaFieldOfASchemaFileTakesOnlyTheTypesOfItsAccept()
+    {
+        var settings = Operator.Settings();
+        settings[ReferenceHost.SchemaVariable] = _host.WriteFile("schema.json", """
+            { "collections": [ { "name": "poster", "fields": [ { "name": "title", "type": "text" }, { "name": "cover", "type": "media", "accept": ["image/*"] } ] } ] }
+            """);
+        await _host.StartAsync(settings);
+        using var api = await Operator.SignInAsync(_host);
+        var png = await UploadAsync(api, "cover.png", [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, .. "IHDR"u8, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, .. "IEND"u8, 0xAE, 0x42, 0x60, 0x82]);
+        var pdf = await UploadAsync(api, "terms.pdf", Encoding.ASCII.GetBytes("%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n"));
+
+        using var refused = await Operator.PostJsonAsync(api, "/api/management/v1/content/poster", new JsonObject { ["title"] = "Terms", ["cover"] = pdf.ToString("D") });
+        using var saved = await Operator.PostJsonAsync(api, "/api/management/v1/content/poster", new JsonObject { ["title"] = "Cover", ["cover"] = png.ToString("D") });
+
+        var (refusedStatus, problem) = await HostUnderTest.ReadAsync(refused);
+        refusedStatus.ShouldBe(HttpStatusCode.UnprocessableEntity, problem?.ToJsonString());
+        var error = problem!["errors"]!.AsArray().ShouldHaveSingleItem()!;
+        (error["path"]!.GetValue<string>(), error["code"]!.GetValue<string>()).ShouldBe(("cover", "FCMS1597"));
+        var (savedStatus, body) = await HostUnderTest.ReadAsync(saved);
+        savedStatus.ShouldBe(HttpStatusCode.Created, body?.ToJsonString());
+    }
+
+    private static async Task<Guid> UploadAsync(HttpClient api, string name, byte[] bytes)
+    {
+        using var form = new MultipartFormDataContent();
+        form.Add(new ByteArrayContent(bytes), "files", name);
+        using var response = await api.PostAsync(new Uri("/api/management/v1/media", UriKind.Relative), form, Token);
+        var (status, body) = await HostUnderTest.ReadAsync(response);
+        status.ShouldBe(HttpStatusCode.Created, body?.ToJsonString());
+        return body!["items"]![0]!["id"]!.GetValue<Guid>();
+    }
+
     // As the compose file sets it up against MinIO. Nothing answers at the endpoint, which only the ready check asks.
     [Fact]
     public async Task TheMediaS3SectionPutsNewUploadsInTheBucket()

@@ -19,6 +19,8 @@ internal static class MediaErrorCodes
     public const string PresetNotFound = "FCMS1593";
     public const string AssetInUse = "FCMS1594";
     public const string DownloadExpired = "FCMS1595";
+    public const string InvalidAccept = "FCMS1596";
+    public const string NotAccepted = "FCMS1597";
 
     // Core's code of a write based on a version that is no longer stored, which an entry's 412 has too.
     public const string VersionConflict = "FCMS3105";

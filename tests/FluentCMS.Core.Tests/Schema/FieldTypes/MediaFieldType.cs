@@ -20,7 +20,17 @@ public sealed class MediaFieldType : IFieldType
 
     public bool Indexable(SchemaField field) => false;
 
-    public IReadOnlyList<FieldSettingDescriptor> Settings { get; } = [];
+    // The plugin's check of accept is its own; this one stands in for a plugin's check of a value and its own code.
+    public IReadOnlyList<FieldSettingDescriptor> Settings { get; } =
+    [
+        new()
+        {
+            Key = FieldSettings.Accept,
+            Kind = FieldSettingKind.StringList,
+            Validate = value => ((IEnumerable<string>)value).All(item => item.Contains('/', StringComparison.Ordinal)) ? null : "has no slash",
+            ErrorCode = "FCMS1596",
+        },
+    ];
 
     public FieldStorageKind StorageKind(SchemaField field) => FieldStorageKind.Reference;
 

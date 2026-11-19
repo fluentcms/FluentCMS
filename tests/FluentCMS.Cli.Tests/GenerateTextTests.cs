@@ -40,6 +40,31 @@ public sealed class GenerateTextTests
     }
 
     [Fact]
+    public void TheTypesAMediaFieldAcceptsAreNamedOnlyWhenEveryOneIsATypeOrAFamily()
+    {
+        JsonObject Media(string name, params string[] accept) => new() { ["name"] = name, ["type"] = "media", ["multiple"] = true, ["accept"] = new JsonArray([.. accept.Select(type => (JsonNode)type)]) };
+        var snapshot = new JsonObject
+        {
+            ["collections"] = new JsonArray(new JsonObject
+            {
+                ["name"] = "post",
+                ["fields"] = new JsonArray(Media("files", "image/*", "Application/PDF"), Media("cover", "image/*", "x */ <b>&")),
+            }),
+        }.ToJsonString();
+        var schema = ClientSchema.Read(snapshot, "the test");
+
+        var typeScript = TypeScriptEmitter.Emit(schema).Files.Single().Text;
+        var csharp = CSharpEmitter.Emit(schema, "Client").Files.Single(file => file.Name == "Post.g.cs").Text;
+
+        typeScript.ShouldContain("/** media, multiple, accepts image/* or Application/PDF */\n    files?:");
+        typeScript.ShouldContain("/** media, multiple */\n    cover?:");
+        csharp.ShouldContain("/// <summary>The field <c>files</c> (media, multiple, accepts image/* or Application/PDF).</summary>");
+        csharp.ShouldContain("/// <summary>The field <c>cover</c> (media, multiple).</summary>");
+        typeScript.ShouldNotContain("<b>");
+        csharp.ShouldNotContain("<b>");
+    }
+
+    [Fact]
     public void ASnapshotThatIsRefusedIsNamedWithItsControlCharactersEscaped()
     {
         var snapshot = new JsonObject

@@ -30,4 +30,9 @@
     <Compile Include="../FluentCMS.Generators/Snapshot/*.cs" Link="Generate/Snapshot/%(Filename)%(Extension)" />
   </ItemGroup>
 
+  <!-- The check of a media field's accepted types, so that only types the media plugin takes reach a generated comment. -->
+  <ItemGroup>
+    <Compile Include="../plugins/FluentCMS.Plugins.Media/MediaAccept.cs" Link="Generate/MediaAccept.cs" />
+  </ItemGroup>
+
 </Project>
