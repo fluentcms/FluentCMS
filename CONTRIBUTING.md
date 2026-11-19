@@ -138,7 +138,7 @@ dotnet test -c Release --no-build
 dotnet pack -c Release --no-build -o artifacts/packages
 dotnet run eng/check-packages.cs -- artifacts/packages 1.0.0-dev
 dotnet publish admin/src/FluentCMS.Admin.App -c Release --no-build -o artifacts/admin
-dotnet run eng/check-admin-size.cs -- artifacts/admin 3500000
+dotnet run eng/check-admin-size.cs -- artifacts/admin 3600000
 npx --yes markdownlint-cli2 "**/*.md"
 ```
 

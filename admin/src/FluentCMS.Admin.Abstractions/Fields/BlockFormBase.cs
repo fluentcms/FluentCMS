@@ -49,6 +49,10 @@ public abstract class BlockFormBase : ComponentBase
     /// <summary>Moves focus to the first field with an error, or to the first field.</summary>
     /// <returns>A task that completes when focus has moved.</returns>
     public virtual ValueTask FocusAsync() => ValueTask.CompletedTask;
+
+    /// <summary>Raises the changes the editors of the block's fields hold back, as <see cref="FieldEditorBase.FlushAsync"/> does.</summary>
+    /// <returns>A task that completes when the changes have been raised.</returns>
+    public virtual ValueTask FlushAsync() => ValueTask.CompletedTask;
 }
 
 /// <summary>The component the admin renders as the form of one block, a <see cref="BlockFormBase"/>, which a field editor can inject.</summary>

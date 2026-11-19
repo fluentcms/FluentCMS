@@ -235,6 +235,16 @@
         return render;
     }
 
+    // The forms of the open items; a closed item has no editor, and an editor gives its change up as it goes.
+    public override async ValueTask FlushAsync()
+    {
+        var count = IsList ? Items.Count : 1;
+        foreach (var form in Enumerable.Range(0, count).Where(IsOpen).Select(position => forms.GetValueOrDefault(KeyOf(position))).OfType<BlockForm>().ToList())
+        {
+            await form.FlushAsync();
+        }
+    }
+
     // To the first field with an error, in the item that holds it, which is open; the group when no item has one.
     public override async ValueTask FocusAsync()
     {

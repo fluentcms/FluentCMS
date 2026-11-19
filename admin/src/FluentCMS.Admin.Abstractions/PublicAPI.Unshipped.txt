@@ -1116,6 +1116,7 @@ virtual FluentCMS.Admin.Actions.EntryActionBase.ConfirmationText(FluentCMS.Admin
 virtual FluentCMS.Admin.Actions.FieldActionBase.AppliesToAsync(FluentCMS.Admin.Actions.FieldActionContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask<bool>
 virtual FluentCMS.Admin.Actions.FieldActionBase.ConfirmationText(FluentCMS.Admin.Actions.FieldActionContext! context) -> string?
 virtual FluentCMS.Admin.Fields.FieldEditorBase.FocusAsync() -> System.Threading.Tasks.ValueTask
+virtual FluentCMS.Admin.Fields.FieldEditorBase.FlushAsync() -> System.Threading.Tasks.ValueTask
 const FluentCMS.Admin.Plugins.AdminManifestMenuItem.NeutralCulture = "en" -> string!
 FluentCMS.Admin.Fields.FieldEditorRegistry.AddLazy(string! fieldType, System.Func<bool>! isAvailable, System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<System.Type!>!>! load) -> void
 FluentCMS.Admin.Fields.FieldEditorRegistry.FindAsync(string! fieldType, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Admin.Fields.FieldEditorRegistration?>
@@ -1149,3 +1150,4 @@ FluentCMS.Admin.Fields.BlockFormRegistration
 FluentCMS.Admin.Fields.BlockFormRegistration.BlockFormRegistration(System.Type! form) -> void
 FluentCMS.Admin.Fields.BlockFormRegistration.Form.get -> System.Type!
 virtual FluentCMS.Admin.Fields.BlockFormBase.FocusAsync() -> System.Threading.Tasks.ValueTask
+virtual FluentCMS.Admin.Fields.BlockFormBase.FlushAsync() -> System.Threading.Tasks.ValueTask

@@ -1,0 +1,30 @@
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "See " },
+        { "type": "text", "marks": [{ "type": "entryLink", "attrs": { "entryId": "0b9f4a52-7c1e-4d0a-9a43-5e1f6b2c8d70", "entryType": "article" } }], "text": "the other article" },
+        { "type": "text", "text": ", " },
+        { "type": "text", "marks": [{ "type": "bold" }, { "type": "entryLink", "attrs": { "entryId": "7d2e6c11-3a5b-4f80-b9c4-2a6d1e8f0b35", "entryType": "author" } }], "text": "its author" },
+        { "type": "text", "text": " and the picture " },
+        { "type": "media", "attrs": { "alt": "A small picture", "mediaId": "5c3a1e2f-9b8d-4c7e-a6f5-0d1b2c3e4f5a" } },
+        { "type": "text", "text": " with a note " },
+        { "type": "inlineBlock", "attrs": { "blockType": "note", "data": { "text": "inline", "level": 2 }, "id": "Nq8vB2xK9pLm" } },
+        { "type": "text", "text": "." }
+      ]
+    },
+    { "type": "media", "attrs": { "alt": "A wide picture", "mediaId": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d", "title": "Wide" } },
+    { "type": "media", "attrs": { "mediaId": "0f1e2d3c-4b5a-4968-8776-655443322110" } },
+    {
+      "type": "inlineBlock",
+      "attrs": {
+        "blockType": "callout",
+        "data": { "title": "Callout", "items": [1, "two", { "three": true }], "empty": null, "nested": { "deep": { "deeper": [] } } },
+        "id": "callout_01-AB"
+      }
+    },
+    { "type": "inlineBlock", "attrs": { "blockType": "divider" } }
+  ]
+}

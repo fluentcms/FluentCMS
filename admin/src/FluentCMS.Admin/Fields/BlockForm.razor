@@ -75,6 +75,15 @@
         }
     }
 
+    // The editors of the fields shown, in their order, nested blocks included through theirs.
+    public override async ValueTask FlushAsync()
+    {
+        foreach (var editor in Shown.Select(field => editors.GetValueOrDefault(field.Name)).OfType<FieldEditorBase>().ToList())
+        {
+            await editor.FlushAsync();
+        }
+    }
+
     public override async ValueTask FocusAsync()
     {
         if (!loaded)

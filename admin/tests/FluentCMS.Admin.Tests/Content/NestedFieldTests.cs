@@ -37,7 +37,7 @@ public sealed partial class NestedFieldTests : AdminTestContext
             Type("hero", "block", fields: [Field("heading"), Relation("author"), Field("score", "rating")]),
             Type("quote", "block", fields: [Field("text", "longText")]),
             Type("section", "block", fields: [Field("title"), Blocks("cards", "card")]),
-            Type("card", "block", fields: [Field("title"), Component("link", "link")]),
+            Type("card", "block", fields: [Field("title"), Component("link", "link"), Field("note", "lagging")]),
             Type("tower", "block", fields: [Blocks("floors", "floor")]),
             Type("floor", "block", fields: [Blocks("rooms", "room")]),
             Type("room", "block", fields: [Component("door", "link")]),
@@ -414,6 +414,30 @@ public sealed partial class NestedFieldTests : AdminTestContext
         saved["author"].ShouldBeNull();
     }
 
+    // An editor that holds its change back, as rich text does, gives it up before the save at any depth.
+    [Fact]
+    public void ASaveTakesTheChangesEditorsInBlocksHoldBack()
+    {
+        var section = new JsonObject
+        {
+            ["type"] = "section",
+            ["id"] = "section00001",
+            ["cards"] = new JsonArray(new JsonObject { ["type"] = "card", ["id"] = "card00000001", ["note"] = "Before" }),
+        };
+        var id = Page(section);
+        Start();
+        Services.GetRequiredService<FieldEditorRegistry>().Add<LaggingStub>("lagging");
+        var app = Load($"content/page/{id:D}", started: true);
+        app.WaitForAssertion(() => app.Find("input.lagging-stub"));
+
+        app.Find("input.lagging-stub").Input("After");
+        Sections(app).Value![0]!["cards"]![0]!["note"]!.GetValue<string>().ShouldBe("Before");
+        Save(app);
+
+        app.WaitForAssertion(() => _content.Writes.ShouldHaveSingleItem());
+        _content.Writes[0].Body["sections"]![0]!["cards"]![0]!["note"]!.GetValue<string>().ShouldBe("After");
+    }
+
     [GeneratedRegex("^[A-Za-z0-9_-]{12}$")]
     private static partial Regex IdPattern();
 
@@ -536,6 +560,29 @@ public sealed partial class NestedFieldTests : AdminTestContext
 
     private static object Private(object instance, string name) =>
         instance.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(instance)!;
+
+    // An editor that raises its change only when the form flushes it.
+    private sealed class LaggingStub : FieldEditorBase
+    {
+        private string? held;
+
+        public override async ValueTask FlushAsync()
+        {
+            if (held is { } text)
+            {
+                held = null;
+                await ChangeAsync(JsonValue.Create(text));
+            }
+        }
+
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
+        {
+            builder.OpenElement(0, "input");
+            builder.AddAttribute(1, "class", "lagging-stub");
+            builder.AddAttribute(2, "oninput", EventCallback.Factory.Create<ChangeEventArgs>(this, e => held = (string?)e.Value));
+            builder.CloseElement();
+        }
+    }
 
     // A plugin's field type, whose editor loads with its admin half.
     private sealed class RatingStub : FieldEditorBase

@@ -1,0 +1,15 @@
+{
+  "doc": { "position": "Root", "content": "Blocks", "marks": false },
+  "paragraph": { "position": "Block", "content": "Inlines", "marks": false },
+  "heading": { "position": "Block", "content": "Inlines", "marks": false },
+  "bulletList": { "position": "Block", "content": "ListItems", "marks": false },
+  "orderedList": { "position": "Block", "content": "ListItems", "marks": false },
+  "listItem": { "position": "ListItem", "content": "Blocks", "marks": false },
+  "blockquote": { "position": "Block", "content": "Blocks", "marks": false },
+  "codeBlock": { "position": "Block", "content": "Text", "marks": false },
+  "horizontalRule": { "position": "Block", "content": "None", "marks": false },
+  "hardBreak": { "position": "Inline", "content": "None", "marks": true },
+  "text": { "position": "Inline", "content": "None", "marks": true },
+  "media": { "position": "BlockOrInline", "content": "None", "marks": true },
+  "inlineBlock": { "position": "BlockOrInline", "content": "None", "marks": true }
+}
