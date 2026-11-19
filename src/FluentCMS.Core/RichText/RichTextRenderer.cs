@@ -8,8 +8,11 @@ public sealed class RichTextRenderer : IRichTextRenderer
 
     private readonly Dictionary<string, IRichTextNodeRenderer> nodeRenderers = new(StringComparer.Ordinal);
 
-    public RichTextRenderer(IEnumerable<IRichTextNodeRenderer>? nodeRenderers = null)
+    private readonly SafeUrl links;
+
+    public RichTextRenderer(IEnumerable<IRichTextNodeRenderer>? nodeRenderers = null, RichTextOptions? options = null)
     {
+        links = options?.Links ?? SafeUrl.Default;
         foreach (var renderer in nodeRenderers ?? [])
         {
             Register(renderer);
@@ -62,8 +65,8 @@ public sealed class RichTextRenderer : IRichTextRenderer
     {
         options ??= new RichTextRenderOptions();
         return format == RichTextFormats.Html
-            ? new HtmlRenderer(nodeRenderers, options)
-            : new MarkdownRenderer(nodeRenderers, options);
+            ? new HtmlRenderer(nodeRenderers, options, links)
+            : new MarkdownRenderer(nodeRenderers, options, links);
     }
 
     private static string Normalize(string format)
