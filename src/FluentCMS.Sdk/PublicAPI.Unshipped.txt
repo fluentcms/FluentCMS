@@ -1976,6 +1976,7 @@ FluentCMS.Providers.IEmailSender.SendAsync(FluentCMS.Providers.EmailMessage! mes
 FluentCMS.Providers.IProviderSlots
 FluentCMS.Providers.IProviderSlots.Use<TSlot, TImplementation>() -> FluentCMS.Providers.IProviderSlots!
 FluentCMS.Providers.ISearchIndex
+FluentCMS.Providers.ISearchIndex.MatchesByField.get -> bool
 FluentCMS.Providers.ISearchIndex.SearchAsync(FluentCMS.Providers.SearchRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.Guid>!>!
 FluentCMS.Providers.SearchRequest
 FluentCMS.Providers.SearchRequest.<Clone>$() -> FluentCMS.Providers.SearchRequest!

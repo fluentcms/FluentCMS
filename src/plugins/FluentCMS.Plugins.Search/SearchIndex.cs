@@ -10,6 +10,8 @@ namespace FluentCMS.Plugins.Search;
 // narrows the list to the ids found, so the index decides only which entries hold the words in those fields.
 internal sealed class SearchIndex(IServiceScopeFactory scopes, SchemaModel schema, IPluginState plugins, IOperationContextAccessor operations) : ISearchIndex
 {
+    public bool MatchesByField => true;
+
     public async Task<IReadOnlyList<Guid>> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -25,14 +27,17 @@ internal sealed class SearchIndex(IServiceScopeFactory scopes, SchemaModel schem
             throw Refused(SearchErrorCodes.NotSearchable, $"{request.Type} has no field marked [Searchable], so it cannot be searched.");
         }
 
+        // The fields searchable now, so that the rows of a field no longer searchable or now hidden, which stay until the
+        // entry is written again or rebuilt, never match.
+        var fields = SearchText.Fields(type).Select(field => field.Name).Where(name => request.Fields?.Contains(name) ?? true).ToList();
         var words = SearchText.Words(request.Text);
-        if (words.Count == 0 || request.Limit < 1 || request.Fields is { Count: 0 })
+        if (words.Count == 0 || request.Limit < 1 || fields.Count == 0)
         {
             return [];
         }
 
         await using var scope = scopes.CreateAsyncScope();
-        return await scope.ServiceProvider.GetRequiredService<SearchStore>().MatchAsync(request, words, cancellationToken);
+        return await scope.ServiceProvider.GetRequiredService<SearchStore>().MatchAsync(request, words, fields, cancellationToken);
     }
 
     private static ValidationException Refused(string code, string message) => new([new ValidationError("q", code, message)]);

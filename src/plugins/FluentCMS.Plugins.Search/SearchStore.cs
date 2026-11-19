@@ -17,14 +17,14 @@ internal sealed class SearchStore(PluginDbContext<SearchPlugin> database, TimePr
     private const string PostgreSqlProvider = "Npgsql.EntityFrameworkCore.PostgreSQL";
     private const int DeleteBatch = 500;
 
-    // Every word matches a field of the request, not always the same one, the last word as the start of a word, or on SQL
-    // Server every word as a part of the text. The most recently indexed come first when more match than the limit, as the
-    // seam has no ranking; only the rows of those fields count, so a field the caller may not read decides nothing.
-    public async Task<IReadOnlyList<Guid>> MatchAsync(SearchRequest request, IReadOnlyList<string> words, CancellationToken cancellationToken)
+    // Every word matches one of the fields, not always the same one, the last word as the start of a word, or on SQL Server
+    // every word as a part of the text. The most recently indexed come first when more match than the limit, as the seam
+    // has no ranking; only the rows of those fields count, so another field decides nothing.
+    public async Task<IReadOnlyList<Guid>> MatchAsync(SearchRequest request, IReadOnlyList<string> words, IReadOnlyList<string> fields, CancellationToken cancellationToken)
     {
         var state = request.Status == QueryStatus.Draft ? SearchStates.Draft : SearchStates.Published;
         var site = request.Site?.Value;
-        var fields = request.Fields?.ToList();
+        var names = fields.ToList();
         IQueryable<SearchEntry> Of(IQueryable<SearchEntry> rows)
         {
             rows = rows.Where(entry => entry.Type == request.Type && entry.Locale == request.Locale && entry.State == state);
@@ -33,7 +33,7 @@ internal sealed class SearchStore(PluginDbContext<SearchPlugin> database, TimePr
                 rows = rows.Where(entry => entry.SiteId == site);
             }
 
-            return fields is null ? rows : rows.Where(entry => fields.Contains(entry.Field));
+            return rows.Where(entry => names.Contains(entry.Field));
         }
 
         var hits = Of(database.Set<SearchEntry>().AsNoTracking());

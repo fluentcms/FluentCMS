@@ -27,7 +27,7 @@ The text is folded the same way for every database: lower case, the accents take
 | --- | --- |
 | SQLite | an FTS5 table, `cms_search_entry_fts`, over the text of `cms_search_entry`, which triggers keep in step |
 | PostgreSQL | a GIN index over `to_tsvector('simple', text)` |
-| SQL Server | none: `LIKE '%word%'` over the text, which reads every row of the type, locale and state. A full-text catalogue is not used, so the plugin runs on every edition and on Azure SQL; with a large index, search on PostgreSQL or SQLite is faster |
+| SQL Server | none: `LIKE '%word%'` over the text, one scan per word over the rows of the searched fields, a row per entry and searchable field, which reads every row of the type, locale and state. A full-text catalogue is not used, so the plugin runs on every edition and on Azure SQL; with a large index, search on PostgreSQL or SQLite is faster |
 
 The tables are the stream `cms_search__migrations`, one migration, the baseline `Initial`, in a set per provider. The FTS5 table and the GIN index are written by hand into the SQLite and PostgreSQL migrations.
 
@@ -53,7 +53,7 @@ needs `search.manage` in the site of the request, answers `202` with `{ "jobId" 
 Run it once:
 
 - when you add the plugin to a host that already has content;
-- after a schema change that marks a field `[Searchable]`, or no longer, since the rows change only as entries change.
+- after a schema change that marks a field `[Searchable]`, since the rows change only as entries change. A field that is no longer searchable, or is now hidden, is not searched from the start that has the change, and a rebuild removes its rows.
 
 A list reads one locale, so the job lists a localized type in each locale the site allows among the site's default, the locales that the entries in it hold, and the locales the index holds. An entry that exists only in a locale that none of those has is not found by the rebuild, and is indexed at its next change. The rows of the site in a locale it no longer allows are removed. The rows of a global type in a locale the site does not allow are left alone, since another site may allow it, so a rebuild of one site never removes what another site reads.
 

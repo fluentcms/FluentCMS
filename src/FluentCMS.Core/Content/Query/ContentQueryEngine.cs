@@ -92,11 +92,12 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     // Asked once the query is known to be valid, so that a refused query costs no search.
     private async Task SearchAsync(CompiledQuery compiled, CancellationToken cancellationToken)
     {
-        // A caller who may read no searchable field matches nothing, whatever the index would find.
-        if (compiled.Hits is { } hits && hits.Request.Fields is not { Count: 0 })
+        if (compiled.Hits is { } hits)
         {
+            // Asked even when the caller may read no searchable field, so that the index refuses as it refuses others; and
+            // then nothing matches, whatever it found.
             var ids = await search.SearchAsync(hits.Request, cancellationToken);
-            hits.Ids = [.. ids.Take(hits.Request.Limit)];
+            hits.Ids = hits.Request.Fields is { Count: 0 } ? [] : [.. ids.Take(hits.Request.Limit)];
         }
     }
 
@@ -229,6 +230,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             return null;
         }
 
+        var fields = ReadableSearchFields(scope, type);
         if (search is NoSearchIndex)
         {
             scope.Report("q", QueryErrorCodes.NoSearchIndex, "Searching needs a search index, and none is registered. Add the search plugin or fill the ISearchIndex provider slot.");
@@ -241,6 +243,10 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         {
             scope.Report("q", QueryErrorCodes.LimitExceeded, $"A search text has at most {MaxSearchLength} characters.");
         }
+        else if (fields is not null && !search.MatchesByField)
+        {
+            scope.Report("q", QueryErrorCodes.NoSearchIndex, "The search index cannot limit a search to the fields the caller may read, so a caller who may not read every searchable field cannot search.");
+        }
         else
         {
             return new SearchHits(new SearchRequest(type.Name, text, options.MaxSearchResults)
@@ -248,7 +254,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
                 Locale = type.Localized ? scope.Locale : "",
                 Site = type.Scope == ContentScope.Site ? scope.Site : null,
                 Status = query.Status ?? QueryStatus.Published,
-                Fields = ReadableSearchFields(scope, type),
+                Fields = fields,
             });
         }
 

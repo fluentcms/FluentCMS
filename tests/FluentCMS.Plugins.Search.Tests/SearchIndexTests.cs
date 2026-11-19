@@ -227,6 +227,40 @@ public sealed class SearchIndexTests
         (await FindAsync(reader, "article", "visibles", "fr")).ShouldBe([article.Id]);
     }
 
+    // A grant under a row rule and one limited to the title: a field is readable only where both let it be read, so the body
+    // is searched for neither entry.
+    [Fact]
+    public async Task ARowRuleAndAFieldLimitInTwoGrantsSearchOnlyTheFieldsBothLetBeRead()
+    {
+        await using var search = new SearchHost();
+        var editor = await search.EditorAsync();
+        var articles = editor.Content<Article>();
+        var popular = await articles.CreateAsync(new Article { Title = "Union title", Body = Paragraphs("union body"), Views = 10 }, Token);
+        var quiet = await articles.CreateAsync(new Article { Title = "Union title", Body = Paragraphs("union body"), Views = 1 }, Token);
+        await articles.PublishAsync(popular.Id, cancellationToken: Token);
+        await articles.PublishAsync(quiet.Id, cancellationToken: Token);
+        await search.PumpAsync();
+        var reader = await search.ReaderAsync(new PermissionConstraints { RowRule = SearchHost.PopularRule }, new PermissionConstraints { Fields = ["title"] });
+
+        (await FindAsync(reader, "article", "title")).ShouldBe([popular.Id, quiet.Id], ignoreOrder: true);
+        (await FindAsync(reader, "article", "body")).ShouldBeEmpty();
+        (await FindAsync(editor, "article", "body")).ShouldBe([popular.Id, quiet.Id], ignoreOrder: true);
+    }
+
+    // A caller who may read no searchable field is refused where the plugin is disabled, as everyone else is there.
+    [Fact]
+    public async Task ACallerWithNoReadableSearchableFieldIsRefusedWhereThePluginIsDisabled()
+    {
+        await using var search = new SearchHost();
+        var reader = await search.ReaderAsync(new PermissionConstraints { Fields = ["views"] });
+        (await FindAsync(reader, "article", "anything")).ShouldBeEmpty();
+
+        await search.SetEnabledAsync(DefaultSite.Id, enabled: false);
+
+        var exception = await Should.ThrowAsync<ValidationException>(() => FindAsync(reader, "article", "anything"));
+        exception.Errors.ShouldHaveSingleItem().Code.ShouldBe(SearchErrorCodes.NoSearchIndex);
+    }
+
     [Fact]
     public async Task AGlobalTypeIsFoundFromEverySite()
     {
