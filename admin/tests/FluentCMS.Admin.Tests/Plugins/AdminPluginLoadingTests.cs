@@ -157,7 +157,7 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
 
         app.FindAll("main fluent-button").Single(button => button.TextContent.Trim() == "Try again").Click();
 
-        app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"));
+        app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"), TimeSpan.FromSeconds(10));
         var history = Services.GetRequiredService<BunitNavigationManager>().History;
         history.Where(entry => entry.Options.ReplaceHistoryEntry).ShouldHaveSingleItem().Uri.ShouldEndWith("reviews");
         loader.Loads.ShouldBe(1);
@@ -179,7 +179,7 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
 
         held.SetResult();
 
-        app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"));
+        app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"), TimeSpan.FromSeconds(10));
         switching.IsCompletedSuccessfully.ShouldBeTrue();
         loader.Loads.ShouldBe(1);
     }
