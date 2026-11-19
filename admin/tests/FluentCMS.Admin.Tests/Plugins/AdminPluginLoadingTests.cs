@@ -1,8 +1,10 @@
 using System.Net;
 using System.Reflection;
+using System.Text.Json.Nodes;
 using Bunit;
 using Bunit.TestDoubles;
 using FluentCMS.Admin.Api;
+using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Fields;
 using FluentCMS.Admin.Lists;
 using FluentCMS.Admin.Pickers;
@@ -12,6 +14,7 @@ using FluentCMS.Admin.Shell;
 using FluentCMS.Admin.Tests.Shell;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Shouldly;
 using Xunit;
@@ -28,6 +31,8 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
     private static readonly Guid Shop = new("0193a1b2-0000-7000-8000-00000000a002");
 
     private readonly CountingLoader loader = new();
+
+    private readonly CapturingLogger log = new();
 
     public AdminPluginLoadingTests() => UseNeutralResources();
 
@@ -342,6 +347,47 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
         app.FindAll(".shell-sidebar a.cms-nav-link").ShouldNotBeEmpty();
     }
 
+    [Fact]
+    public void APageTheRendererCannotCreateShowsAnErrorInTheLayoutAndTheRestOfTheAdminWorks()
+    {
+        var app = Load(enabled: true, route: "reviews/misinjected");
+
+        app.WaitForAssertion(() => app.Find("main h1").TextContent.ShouldBe("This page could not be shown"));
+        app.Find(".shell-sidebar a.cms-nav-link[href='reviews']");
+        NotCreated().ShouldBe([$"{typeof(MisinjectedPage).FullName}.Api"]);
+
+        Navigation.NavigateTo("reviews");
+
+        app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"));
+    }
+
+    [Fact]
+    public void AFieldEditorTheRendererCannotCreateGivesWayToTheReadOnlyValueAndTheOtherFieldsAreEdited()
+    {
+        Management.SetTypes(MainSite, Type("note", fields: [Field("title"), Field("stars", "rating")]));
+        var app = Load(enabled: true, route: "content/note/new", manifest: Sample with { FieldEditors = [new() { Type = typeof(MisinjectedEditor).FullName!, FieldType = "rating" }] });
+
+        app.WaitForAssertion(() => app.Find("[data-field='stars'] .content-json"));
+        app.FindAll("[data-field='stars'] input").ShouldBeEmpty();
+        app.Find("[data-field='title'] input").Input("Hello");
+        app.WaitForAssertion(() => app.Find("[data-field='title'] input").GetAttribute("value").ShouldBe("Hello"));
+        NotCreated().ShouldBe([$"{typeof(MisinjectedEditor).FullName}.Api"]);
+    }
+
+    [Fact]
+    public void AListCellTheRendererCannotCreateGivesWayToTheValueAsTextAndTheListWorks()
+    {
+        Management.SetTypes(MainSite, Type("note", fields: [Field("title"), Field("stars", "rating")]));
+        Management.Entries["note"] = [new JsonObject { ["id"] = "0193a1b2-0000-7000-8000-000000000001", ["status"] = "draft", ["locale"] = "en", ["version"] = 1, ["title"] = "Hello", ["stars"] = 4 }];
+        var app = Load(enabled: true, route: "content/note?columns=title,stars", manifest: Sample with { ListCells = [new() { Type = typeof(MisinjectedCell).FullName!, FieldType = "rating" }] });
+
+        app.WaitForAssertion(() => app.FindAll("main tbody .cms-list-cell-text").Select(cell => cell.TextContent).ShouldBe(["4"]));
+        app.Find("main tbody").TextContent.ShouldContain("Hello");
+        app.FindAll("fluent-button").First(button => button.TextContent.Trim() == "Add filter").Click();
+        app.WaitForAssertion(() => app.FindComponents<CmsSelect>().Single(input => input.Instance.Label == "Field").Instance.Options.Select(option => option.Value).ShouldContain("stars"));
+        NotCreated().ShouldBe([$"{typeof(MisinjectedCell).FullName}.Api"]);
+    }
+
     [Theory]
     [InlineData("reviews", "FluentCMS.Admin.Plugins.Sample.ReviewsPage")]
     [InlineData("reviews/new", "FluentCMS.Admin.Plugins.Sample.ReviewPage")]
@@ -354,13 +400,25 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
     public void TheMoreLiteralTemplateWins() =>
         AdminPluginRoutes.Match(Sample.Pages, "reviews/new")!.Permission.ShouldBe("reviews.notes.create");
 
-    private IRenderedComponent<AdminApp> Load(bool enabled, string route = "", bool catalog = true, bool permitted = true, bool ready = true)
+    // The property each logged problem of a class the renderer cannot create names, once it points to ProviderOf.
+    private List<string> NotCreated() =>
+    [
+        .. log.Entries.Where(entry => entry.Event == "PluginComponentNotCreated").Select(entry =>
+        {
+            entry.Message.ShouldContain("IAdminPluginServices.ProviderOf");
+            var start = entry.Message.IndexOf(": ", StringComparison.Ordinal) + 2;
+            return entry.Message[start..entry.Message.IndexOf(' ', start)];
+        }),
+    ];
+
+    private IRenderedComponent<AdminApp> Load(bool enabled, string route = "", bool catalog = true, bool permitted = true, bool ready = true, AdminPluginManifest? manifest = null)
     {
         if (catalog)
         {
-            Services.AddSingleton(new AdminPluginCatalog([Sample], []));
+            Services.AddSingleton(new AdminPluginCatalog([manifest ?? Sample], []));
         }
 
+        Services.AddSingleton<ILogger<AdminPlugins>>(log);
         Services.AddScoped<IAdminAssemblyLoader>(_ => loader);
         Management.Grant(MainSite, permitted ? ["schema.read", Permission] : ["schema.read"]);
         Management.Plugins[MainSite] = [Plugin("reviews", enabled)];
@@ -373,6 +431,23 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
         }
 
         return app;
+    }
+
+    private sealed class CapturingLogger : ILogger<AdminPlugins>
+    {
+        public List<(string? Event, string Message)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            lock (Entries)
+            {
+                Entries.Add((eventId.Name, formatter(state, exception)));
+            }
+        }
     }
 
     // The assembly of the sample half is in the test's process already, so a load only counts, or fails as often as asked.

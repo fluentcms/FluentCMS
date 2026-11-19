@@ -7,7 +7,6 @@
 @inject AdminPlugins Plugins
 @inject IStringLocalizer<AdminResources> L
 @inject ILogger<PluginWidgetTile> Logger
-@inject IServiceProvider Services
 
 @if (failed)
 {
@@ -56,9 +55,8 @@ else
         try
         {
             var loaded = await Plugins.ComponentAsync(Half, Widget.Type, cancellation.Token);
-            if (PluginComponents.Problem(loaded, Services) is { } problem)
+            if (Plugins.ProblemOf(loaded) is not null)
             {
-                PluginLog.WidgetNotCreated(Logger, Half.Name, Widget.Type, problem);
                 failed = true;
                 return;
             }

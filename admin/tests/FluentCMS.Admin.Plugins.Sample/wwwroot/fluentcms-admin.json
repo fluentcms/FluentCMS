@@ -7,7 +7,8 @@
   "pages": [
     { "type": "FluentCMS.Admin.Plugins.Sample.ReviewsPage", "route": "/reviews", "permission": "reviews.notes.manage" },
     { "type": "FluentCMS.Admin.Plugins.Sample.ReviewPage", "route": "/reviews/{Id:guid}", "permission": "reviews.notes.manage" },
-    { "type": "FluentCMS.Admin.Plugins.Sample.ReviewPage", "route": "/reviews/new", "permission": "reviews.notes.create" }
+    { "type": "FluentCMS.Admin.Plugins.Sample.ReviewPage", "route": "/reviews/new", "permission": "reviews.notes.create" },
+    { "type": "FluentCMS.Admin.Plugins.Sample.MisinjectedPage", "route": "/reviews/misinjected", "permission": "reviews.notes.manage" }
   ],
   "menuItems": [
     {
