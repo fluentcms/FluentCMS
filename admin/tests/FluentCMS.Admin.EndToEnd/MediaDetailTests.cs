@@ -82,6 +82,61 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
+    // The save goes with the version the panel read as If-Match, and the server's 412 is the conflict; nothing reads the
+    // asset before the save.
+    [Fact]
+    public async Task ASaveAfterAnotherTabChangedTheAssetShowsTheConflict()
+    {
+        var mark = "c" + Guid.NewGuid().ToString("N")[..8];
+        var browser = await OpenBrowserAsync();
+        var mine = await OpenLibraryAsync(browser, Host.Editor);
+        await mine.Page.Locator("[data-media-upload] input[type=file]").SetInputFilesAsync(
+            new FilePayload { Name = $"{mark}.png", MimeType = "image/png", Buffer = Convert.FromBase64String(Red) });
+        var panel = await OpenAssetAsync(mine, mark);
+
+        // The second tab signs in through the server's session, and saves a title.
+        var theirs = await browser.NewTabAsync();
+        await theirs.Page.GotoAsync(new Uri(Host.Admin, "media").AbsoluteUri);
+        await Expect(Content(theirs).GetByRole(AriaRole.Heading, new LocatorGetByRoleOptions { Name = Text("Media.Page.Heading"), Exact = true })).ToBeVisibleAsync();
+        var theirPanel = await OpenAssetAsync(theirs, mark);
+        await theirPanel.GetByLabel(Text("Media.Form.Title"), new LocatorGetByLabelOptions { Exact = true }).FillAsync($"{mark} theirs");
+        // An access token lasts five seconds on this host, so a save may be answered 401 and sent again.
+        var theirSave = await theirs.Page.RunAndWaitForResponseAsync(
+            () => MediaButton(theirs, "Media.Form.Save").ClickAsync(),
+            response => response.Request.Method == "PATCH" && response.Status != 401,
+            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        theirSave.Status.ShouldBe(200);
+
+        // The reads of the asset from here up to the save; the conflict reads it after the 412.
+        List<string> reads = [];
+        var sent = false;
+        mine.Page.Request += (_, request) =>
+        {
+            if (request.Method == "PATCH")
+            {
+                sent = true;
+            }
+            else if (!sent && request.Method == "GET" && request.Url.Contains("/api/management/v1/media/", StringComparison.Ordinal))
+            {
+                reads.Add(request.Url);
+            }
+        };
+        await panel.GetByLabel(Text("Media.Form.Caption"), new LocatorGetByLabelOptions { Exact = true }).FillAsync("Mine");
+        var refused = await mine.Page.RunAndWaitForResponseAsync(
+            () => MediaButton(mine, "Media.Form.Save").ClickAsync(),
+            response => response.Request.Method == "PATCH" && response.Status != 401,
+            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        refused.Status.ShouldBe(412);
+        (await refused.Request.HeaderValueAsync("if-match")).ShouldNotBeNullOrEmpty();
+        reads.ShouldBeEmpty();
+
+        await Expect(panel.Locator(".media-save-conflict")).ToContainTextAsync(Text("Media.Conflict.Text"));
+        await MediaButton(mine, "Media.Conflict.Theirs").ClickAsync();
+        await Expect(panel.GetByLabel(Text("Media.Form.Title"), new LocatorGetByLabelOptions { Exact = true })).ToHaveValueAsync($"{mark} theirs");
+        await Expect(panel.Locator(".media-save-conflict")).ToHaveCountAsync(0);
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task AnAdministratorAddsAndDeletesAPresetAndAnEditorIsNotOfferedThePage()
     {
@@ -134,6 +189,18 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
         await browser.SignInOnTheHostedPageAsync(tab, user);
         await Expect(Content(tab).GetByRole(AriaRole.Heading, new LocatorGetByRoleOptions { Name = Text("Media.Page.Heading"), Exact = true })).ToBeVisibleAsync();
         return tab;
+    }
+
+    // Finds the asset by its mark and opens its detail.
+    private static async Task<ILocator> OpenAssetAsync(AdminTab tab, string mark)
+    {
+        await Content(tab).GetByLabel(Text("Media.Search.Label"), new LocatorGetByLabelOptions { Exact = true }).FillAsync(mark);
+        await MediaButton(tab, "Media.Search.Submit").ClickAsync();
+        await Expect(tab.Page.Locator(".media-tile-name")).ToHaveTextAsync([$"{mark}.png"]);
+        await tab.Page.Locator(".media-tile-open").ClickAsync();
+        var panel = tab.Page.Locator(".cms-drawer");
+        await Expect(panel.GetByLabel(Text("Media.Form.Title"), new LocatorGetByLabelOptions { Exact = true })).ToBeVisibleAsync();
+        return panel;
     }
 
     private static ILocator Content(AdminTab tab) => tab.Page.Locator("main");

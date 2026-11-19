@@ -406,9 +406,9 @@
 
     private void StartDelete() => (step, actionError) = (Step.Delete, null);
 
-    // A move changes the asset's time of change, so the asset is read again: the next save is based on it. When that read
-    // fails, the move is still done; the asset is kept without its time of change, so the next save compares its metadata
-    // alone (MediaApi.UpdateAsync) instead of reporting the user's own move as a conflict.
+    // A move gives the asset a new version, so the asset is read again: the next save is based on it. When that read fails,
+    // the move is still done, and the next save is based on the ETag of the move's answer, so that it does not report the
+    // user's own move as a conflict.
     private async Task MoveAsync()
     {
         if (asset is not { } shown || target is null)
@@ -419,7 +419,7 @@
         Guid? destination = Guid.TryParse(target, out var id) ? id : null;
         await RunAsync(shown.Id, async () =>
         {
-            await Media.MoveAsync(shown.Id, destination, CancellationToken.None);
+            var saved = await Media.MoveAsync(shown.Id, destination, CancellationToken.None);
             MediaAssetInfo moved;
             try
             {
@@ -427,10 +427,10 @@
             }
             catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
             {
-                moved = shown with { FolderId = destination, UpdatedAt = null };
+                moved = shown with { FolderId = destination, UpdatedAt = saved.UpdatedAt, ETag = saved.ETag };
             }
 
-            gate.Latest = moved.UpdatedAt is null ? null : moved;
+            gate.Latest = moved;
             if (ShowsInLocale(moved))
             {
                 (asset, step) = (moved, Step.None);

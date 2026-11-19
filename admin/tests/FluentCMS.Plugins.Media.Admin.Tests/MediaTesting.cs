@@ -125,8 +125,9 @@ internal sealed class FakeAdminContext : IAdminContext, IAdminAccess
 }
 
 // The media routes, the schema and the list reads of entries, as the server answers them, over assets, folders, presets
-// and entries in memory. Every write of an asset moves its updatedAt on, as the server's does. An upload refuses a name
-// ending in .exe (FCMS1583), .svg (FCMS1584) or .txt (FCMS1581).
+// and entries in memory. Every write of an asset moves its updatedAt and its version on, as the server's does; a read and a
+// write of an asset answer the version as the ETag, and a PATCH whose If-Match names another is refused with 412. An upload
+// refuses a name ending in .exe (FCMS1583), .svg (FCMS1584) or .txt (FCMS1581).
 internal sealed class FakeMediaLibrary : IManagementApi
 {
     public List<JsonObject> Assets { get; } = [];
@@ -176,8 +177,12 @@ internal sealed class FakeMediaLibrary : IManagementApi
                 ["thumbnail"] = mimeType.StartsWith("image/", StringComparison.Ordinal) ? $"/media/{id:D}/thumbnail/{fileName}" : null,
             },
         });
+        Versions[id] = 1;
         return id;
     }
+
+    // The version of each asset, which its ETag gives.
+    public Dictionary<Guid, int> Versions { get; } = [];
 
     // The time of the last change of an asset, which moves on with each one.
     private DateTimeOffset clock = new(2026, 11, 1, 9, 0, 0, TimeSpan.Zero);
@@ -220,8 +225,23 @@ internal sealed class FakeMediaLibrary : IManagementApi
     {
         var asset = Asset(id);
         asset["title"] = title;
-        asset["updatedAt"] = clock = clock.AddMinutes(1);
+        Written(id);
     }
+
+    private void Written(Guid id)
+    {
+        Asset(id)["updatedAt"] = clock = clock.AddMinutes(1);
+        Versions[id]++;
+    }
+
+    private static string Tag(int version) => $"\"{version.ToString(System.Globalization.CultureInfo.InvariantCulture)}\"";
+
+    // The ETag of an answer about one asset: its read, a change of its metadata, a replace or a move.
+    private string? TagOf(ApiRequest request) =>
+        request.Path.Split('?', 2)[0].Split('/') is ["media", var id, ..] && Guid.TryParse(id, out var asset) && Versions.TryGetValue(asset, out var version)
+            && request.Method != HttpMethod.Delete && !request.Path.Contains("/usage", StringComparison.Ordinal) && !request.Path.Contains("/download-url", StringComparison.Ordinal)
+            ? Tag(version)
+            : null;
 
     public string? Text(Guid id, string locale, string name) => Asset(id)["texts"]![locale]?[name]?.GetValue<string>();
 
@@ -236,7 +256,7 @@ internal sealed class FakeMediaLibrary : IManagementApi
         }
 
         var node = Answer(request);
-        return new ApiResponse<T>(HttpStatusCode.OK, null, node.Deserialize(answer)!);
+        return new ApiResponse<T>(HttpStatusCode.OK, TagOf(request), node.Deserialize(answer)!);
     }
 
     public async Task<ApiResponse> SendAsync(ApiRequest request, CancellationToken cancellationToken)
@@ -397,6 +417,11 @@ internal sealed class FakeMediaLibrary : IManagementApi
             throw new ApiProblemException(problem);
         }
 
+        if (request.IfMatch is { } expected && expected != Tag(Versions[id]))
+        {
+            throw new ApiProblemException(new ApiProblem { Status = 412, Code = "FCMS3105" });
+        }
+
         var asset = Asset(id);
         var locale = request.Locale ?? "en";
         foreach (var (name, value) in request.Body!.AsObject())
@@ -417,7 +442,7 @@ internal sealed class FakeMediaLibrary : IManagementApi
             }
         }
 
-        asset["updatedAt"] = clock = clock.AddMinutes(1);
+        Written(id);
         var answer = View(id, locale);
         answer.Remove("urls");
         return answer;
@@ -426,6 +451,7 @@ internal sealed class FakeMediaLibrary : IManagementApi
     private JsonObject DeleteAsset(Guid id)
     {
         Assets.Remove(Asset(id));
+        Versions.Remove(id);
         return [];
     }
 
@@ -437,7 +463,7 @@ internal sealed class FakeMediaLibrary : IManagementApi
         var fileName = Uri.UnescapeDataString(encoded);
         asset["fileName"] = fileName;
         asset["urls"] = new JsonObject { ["original"] = $"/media/{id:D}/original/{fileName}", ["thumbnail"] = $"/media/{id:D}/thumbnail/{fileName}?v=2" };
-        asset["updatedAt"] = clock = clock.AddMinutes(1);
+        Written(id);
         var answer = View(id, null);
         answer.Remove("urls");
         return answer;
@@ -473,8 +499,8 @@ internal sealed class FakeMediaLibrary : IManagementApi
 
         var asset = Assets.Single(item => (Guid)item["id"]! == id);
         asset["folderId"] = folder;
-        asset["updatedAt"] = clock = clock.AddMinutes(1);
-        return new JsonObject { ["id"] = id, ["folderId"] = folder, ["fileName"] = asset["fileName"]!.DeepClone() };
+        Written(id);
+        return new JsonObject { ["id"] = id, ["folderId"] = folder, ["fileName"] = asset["fileName"]!.DeepClone(), ["updatedAt"] = clock };
     }
 
     private JsonObject CreateFolder(string name, Guid? parent)

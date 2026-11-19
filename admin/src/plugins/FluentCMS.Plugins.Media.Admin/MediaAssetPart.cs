@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Admin.Api;
@@ -8,11 +9,11 @@ using Microsoft.Extensions.Localization;
 namespace FluentCMS.Plugins.Media.Admin;
 
 // A part of an asset's detail that saves its own metadata with PATCH /media/{id}: the alt text and the focal point, which
-// the field editor of a media field reuses, and the panel's form. A save after the asset changed elsewhere is not sent;
-// the part shows the conflict and lets the user take the asset as it is now or save theirs over it. The saves of the parts
-// that share a MediaSaveGate, as those of the panel do, go one after another, each based on the answer of the one before;
-// changes made while a save of the part waits join it. A change is saved in the locale of the asset it was made on, even
-// when the part shows another by the time it is sent.
+// the field editor of a media field reuses, and the panel's form. A save names the version it is based on as If-Match, and
+// the server refuses it when the asset changed elsewhere; the part shows the conflict and lets the user take the asset as it
+// is now or save theirs over it. The saves of the parts that share a MediaSaveGate, as those of the panel do, go one after
+// another, each based on the ETag of the answer of the one before; changes made while a save of the part waits join it. A
+// change is saved in the locale of the asset it was made on, even when the part shows another by the time it is sent.
 public abstract class MediaAssetPart : ComponentBase
 {
     private readonly MediaSaveGate own = new();
@@ -157,7 +158,8 @@ public abstract class MediaAssetPart : ComponentBase
 }
 
 // The saves of one panel, one at a time; each is based on the newest of the asset its part shows and the last answer. A
-// component runs on the renderer's one thread, so a chain of tasks orders them, which keeps a semaphore out of the app.
+// component runs on the renderer's one thread, so a chain of tasks orders them, which keeps a semaphore out of the app. An
+// asset has one version for all its locales, so an answer in another locale gives the next save its ETag.
 internal sealed class MediaSaveGate
 {
     private Task tail = Task.CompletedTask;
@@ -176,7 +178,19 @@ internal sealed class MediaSaveGate
     public MediaAssetInfo? Latest { get; set; }
 
     public MediaAssetInfo Basis(MediaAssetInfo shown) =>
-        Latest is { } latest && latest.Id == shown.Id && latest.Locale == shown.Locale && latest.UpdatedAt > shown.UpdatedAt ? latest : shown;
+        Latest is { } latest && latest.Id == shown.Id && Newer(latest, shown)
+            ? latest.Locale == shown.Locale ? latest : shown with { ETag = latest.ETag, UpdatedAt = latest.UpdatedAt }
+            : shown;
+
+    // The server's ETag of an asset is its version, "7"; the time of change orders an asset without one.
+    private static bool Newer(MediaAssetInfo latest, MediaAssetInfo shown) =>
+        (Version(latest.ETag), Version(shown.ETag)) is ({ } later, { } earlier) ? later > earlier : latest.UpdatedAt > shown.UpdatedAt;
+
+    private static long? Version(string? tag) =>
+        tag is { Length: > 2 } && tag[0] == '"' && tag[^1] == '"'
+            && long.TryParse(tag.AsSpan(1, tag.Length - 2), NumberStyles.None, CultureInfo.InvariantCulture, out var version)
+            ? version
+            : null;
 }
 
 internal static class MediaRefusal

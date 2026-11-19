@@ -303,7 +303,7 @@ internal sealed class MediaService(
             var original = await MediaOriginals.UrlAsync(signing, asset.Id, asset.FileName, expires, cancellationToken, inline: expires is not null, version);
             var thumbnail = processor.CanDecode(asset.MimeType) ? await MediaTransforms.ThumbnailUrlAsync(signing, asset.Id, asset.FileName, expires, version, cancellationToken) + site : null;
             var urls = new MediaAssetUrls(original + site, thumbnail, expires is { } at ? DateTimeOffset.FromUnixTimeSeconds(at) : null);
-            managed.Add(new ManagedAsset(Info(asset, operation.Locale), urls));
+            managed.Add(new ManagedAsset(Info(asset, operation.Locale), urls, asset.Version));
         }
 
         return managed;
@@ -317,7 +317,11 @@ internal sealed class MediaService(
         return latest - (latest % Math.Max(1, lifetime / 2));
     }
 
-    public async Task<MediaAsset> UpdateAsync(Guid id, MediaAssetChanges changes, CancellationToken cancellationToken = default)
+    public async Task<MediaAsset> UpdateAsync(Guid id, MediaAssetChanges changes, CancellationToken cancellationToken = default) =>
+        (await UpdateAsync(id, changes, null, cancellationToken)).Asset;
+
+    // The routes of an asset's writes may name the version the write was based on, as If-Match.
+    internal async Task<VersionedAsset> UpdateAsync(Guid id, MediaAssetChanges changes, int? expectedVersion, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(changes);
 
@@ -325,9 +329,10 @@ internal sealed class MediaService(
         var (site, library) = await ScopeAsync(operation, cancellationToken);
         var reach = await ReachAsync(MediaPermissions.Update, site, library, cancellationToken);
         var asset = await FindAssetAsync(library, id, reach, tracked: true, cancellationToken);
+        Expect(asset, expectedVersion);
         if (changes == new MediaAssetChanges())
         {
-            return Info(asset, operation.Locale);
+            return Versioned(asset, operation.Locale);
         }
 
         List<ValidationError> errors = [];
@@ -404,17 +409,21 @@ internal sealed class MediaService(
 
         asset.UpdatedAt = time.GetUtcNow();
         asset.UpdatedBy = operation.AuditPrincipal.Id;
-        await database.SaveChangesAsync(cancellationToken);
+        await SaveAssetAsync(asset, expectedVersion, cancellationToken);
         await events.PublishAsync(new MediaAssetUpdatedEvent(asset.Id, asset.FolderId, asset.FileName), cancellationToken);
-        return Info(asset, operation.Locale);
+        return Versioned(asset, operation.Locale);
     }
 
-    public async Task<MediaAsset> MoveAsync(Guid id, Guid? folderId, CancellationToken cancellationToken = default)
+    public async Task<MediaAsset> MoveAsync(Guid id, Guid? folderId, CancellationToken cancellationToken = default) =>
+        (await MoveAsync(id, folderId, null, cancellationToken)).Asset;
+
+    internal async Task<VersionedAsset> MoveAsync(Guid id, Guid? folderId, int? expectedVersion, CancellationToken cancellationToken)
     {
         var operation = Operation();
         var (site, library) = await ScopeAsync(operation, cancellationToken);
         var reach = await ReachAsync(MediaPermissions.Update, site, library, cancellationToken);
         var asset = await FindAssetAsync(library, id, reach, tracked: true, cancellationToken);
+        Expect(asset, expectedVersion);
         if (folderId is { } target)
         {
             await FindFolderAsync(library, target, reach, tracked: false, cancellationToken);
@@ -427,26 +436,31 @@ internal sealed class MediaService(
         var previous = asset.FolderId;
         if (previous == folderId)
         {
-            return Info(asset, operation.Locale);
+            return Versioned(asset, operation.Locale);
         }
 
         asset.FolderId = folderId;
         asset.UpdatedAt = time.GetUtcNow();
         asset.UpdatedBy = operation.AuditPrincipal.Id;
-        await database.SaveChangesAsync(cancellationToken);
+        await SaveAssetAsync(asset, expectedVersion, cancellationToken);
         await events.PublishAsync(new MediaAssetMovedEvent(asset.Id, asset.FolderId, asset.FileName, previous), cancellationToken);
-        return Info(asset, operation.Locale);
+        return Versioned(asset, operation.Locale);
     }
 
     // The references go before the asset, so that a delete that fails between the two is tried again rather than leaving
     // references to an asset that is gone; whether an entry refers to it is asked across sites, as an id is unique.
     // A request that read the old row of a replaced asset just before the save may find its file gone and answer 404.
-    public async Task DeleteAsync(Guid id, bool force, CancellationToken cancellationToken = default)
+    // The version is compared before the references go, so that a stale delete leaves them.
+    public Task DeleteAsync(Guid id, bool force, CancellationToken cancellationToken = default) =>
+        DeleteAsync(id, force, null, cancellationToken);
+
+    internal async Task DeleteAsync(Guid id, bool force, int? expectedVersion, CancellationToken cancellationToken)
     {
         var operation = Operation();
         var (site, library) = await ScopeAsync(operation, cancellationToken);
         var reach = await ReachAsync(MediaPermissions.Delete, site, library, cancellationToken);
         var asset = await FindAssetAsync(library, id, reach, tracked: true, cancellationToken);
+        Expect(asset, expectedVersion);
 
         if (force)
         {
@@ -462,11 +476,16 @@ internal sealed class MediaService(
         asset.DeletedAt = now;
         asset.UpdatedAt = now;
         asset.UpdatedBy = operation.AuditPrincipal.Id;
-        await database.SaveChangesAsync(cancellationToken);
+        await SaveAssetAsync(asset, expectedVersion, cancellationToken);
         await events.PublishAsync(new MediaAssetDeletedEvent(asset.Id, asset.FolderId, asset.FileName), cancellationToken);
     }
 
-    public async Task<MediaAsset> ReplaceAsync(Guid id, MediaUploadFile file, CancellationToken cancellationToken = default)
+    public async Task<MediaAsset> ReplaceAsync(Guid id, MediaUploadFile file, CancellationToken cancellationToken = default) =>
+        (await ReplaceAsync(id, file, null, cancellationToken)).Asset;
+
+    // A stale version is refused before the file is written; when a write comes in between, the save refuses it and the
+    // new file is deleted again.
+    internal async Task<VersionedAsset> ReplaceAsync(Guid id, MediaUploadFile file, int? expectedVersion, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(file);
 
@@ -474,6 +493,7 @@ internal sealed class MediaService(
         var (site, library) = await ScopeAsync(operation, cancellationToken);
         var reach = await ReachAsync(MediaPermissions.Update, site, library, cancellationToken);
         var asset = await FindAssetAsync(library, id, reach, tracked: true, cancellationToken);
+        Expect(asset, expectedVersion);
         var rules = await settings.GetAsync(site, cancellationToken);
         var prepared = await PrepareAsync(file, 0, rules, Math.Min(rules.MaxRequestSize, options.Value.MaxRequestBodySize), cancellationToken);
         string? written = null;
@@ -497,12 +517,12 @@ internal sealed class MediaService(
             asset.Duration = null;
             asset.UpdatedAt = time.GetUtcNow();
             asset.UpdatedBy = operation.AuditPrincipal.Id;
-            await database.SaveChangesAsync(cancellationToken);
+            await SaveAssetAsync(asset, expectedVersion, cancellationToken);
             written = null;
 
             await replaced.DeleteAsync(asset, storages, logger);
             await events.PublishAsync(new MediaAssetReplacedEvent(asset.Id, asset.FolderId, asset.FileName, asset.MimeType, asset.Size), cancellationToken);
-            return Info(asset, operation.Locale);
+            return Versioned(asset, operation.Locale);
         }
         finally
         {
@@ -787,6 +807,54 @@ internal sealed class MediaService(
 
     private static PluginException AssetNotFound(Guid id) => new(MediaErrorCodes.AssetNotFound, $"The site has no media asset {id:D}.");
 
+    // A version named by If-Match against the row as it was read; the save compares it again (SaveAssetAsync).
+    private static void Expect(Asset asset, int? expectedVersion)
+    {
+        if (expectedVersion is { } expected && expected != asset.Version)
+        {
+            throw new VersionConflictException(expected, asset.Version, current: null);
+        }
+    }
+
+    // Saves the row at the next version. The version is the row's concurrency token, so the update changes nothing when a
+    // write came in after the read: with an expected version that is a conflict, and without one the write goes over the
+    // other at the version now stored, as the last write won before assets had a version.
+    private async Task SaveAssetAsync(Asset asset, int? expectedVersion, CancellationToken cancellationToken)
+    {
+        asset.Version++;
+        while (true)
+        {
+            try
+            {
+                await database.SaveChangesAsync(cancellationToken);
+                return;
+            }
+            catch (DbUpdateConcurrencyException exception)
+            {
+                var entry = exception.Entries.FirstOrDefault(item => ReferenceEquals(item.Entity, asset));
+                if (entry is null)
+                {
+                    throw;
+                }
+
+                var stored = await entry.GetDatabaseValuesAsync(cancellationToken);
+                if (stored is null || stored.GetValue<DateTimeOffset?>(nameof(Asset.DeletedAt)) is not null)
+                {
+                    throw AssetNotFound(asset.Id);
+                }
+
+                var current = stored.GetValue<int>(nameof(Asset.Version));
+                if (expectedVersion is { } expected)
+                {
+                    throw new VersionConflictException(expected, current, current: null);
+                }
+
+                entry.Property(nameof(Asset.Version)).OriginalValue = current;
+                asset.Version = current + 1;
+            }
+        }
+    }
+
     // The original of a public asset, signed without an expiry, and for an image the processor reads, the presets of the
     // site and, where unsigned URLs are served, a template; each carries v from the checksum, so a replace gives new URLs.
     // A caller that resolves many assets reads the preset names once.
@@ -1040,6 +1108,8 @@ internal sealed class MediaService(
         UpdatedAt = asset.UpdatedAt,
         UpdatedBy = asset.UpdatedBy,
     };
+
+    private static VersionedAsset Versioned(Asset asset, string locale) => new(Info(asset, locale), asset.Version);
 
     private static MediaFolder Info(Folder folder) => new(folder.Id, folder.SiteId, folder.ParentId, folder.Name);
 

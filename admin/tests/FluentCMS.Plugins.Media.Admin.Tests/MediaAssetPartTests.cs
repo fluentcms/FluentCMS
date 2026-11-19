@@ -12,6 +12,13 @@ public sealed class MediaAssetPartTests : MediaTestContext
 {
     private int Patches => Library.Requests.Count(request => request.Method == HttpMethod.Patch);
 
+    // The requests after the part was given the asset: a save sent with the version read, its 412, and the read after it.
+    private void RefusedWithoutAReadBefore(int readsBefore = 1)
+    {
+        Library.Requests.Select(request => request.Method.Method).ShouldBe([.. Enumerable.Repeat("GET", readsBefore), "PATCH", "GET"]);
+        Library.Requests.Single(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBe("\"1\"");
+    }
+
     [Fact]
     public void TheAltTextIsSavedInTheLocaleTheAssetWasReadInAndEachLocaleKeepsItsOwn()
     {
@@ -59,13 +66,16 @@ public sealed class MediaAssetPartTests : MediaTestContext
         Field(cut, "Alt text").Blur();
 
         cut.WaitForAssertion(() => cut.Find("[role=alert]").TextContent.ShouldContain("changed elsewhere"));
-        Patches.ShouldBe(0);
+        RefusedWithoutAReadBefore();
+        Library.Text(id, "en", "alt").ShouldBeNull();
         changed.ShouldBeNull();
 
         Button(cut, "Save mine over it").Click();
         cut.WaitForAssertion(() => changed.ShouldNotBeNull());
         changed!.Alt.ShouldBe("A cat");
         changed.Title.ShouldBe("Their title");
+        changed.ETag.ShouldBe("\"3\"");
+        Library.Requests.Last(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBeNull();
         cut.FindAll("[role=alert]").ShouldBeEmpty();
     }
 
@@ -84,13 +94,19 @@ public sealed class MediaAssetPartTests : MediaTestContext
 
         changed!.Title.ShouldBe("Their title");
         changed.Alt.ShouldBeNull();
-        Patches.ShouldBe(0);
+        changed.ETag.ShouldBe("\"2\"");
+        Patches.ShouldBe(1);
+        Library.Text(id, "en", "alt").ShouldBeNull();
 
-        // Given the asset it raised, the part shows the other change and has nothing left to save.
+        // Given the asset it raised, the part shows the other change and has nothing left to save; the next save is based on it.
         cut.Render(parameters => parameters.Add(part => part.Asset, changed));
         Field(cut, "Alt text").GetAttribute("value").ShouldBeNull();
         Field(cut, "Alt text").Blur();
-        Patches.ShouldBe(0);
+        Patches.ShouldBe(1);
+        Field(cut, "Alt text").Input("A grey cat");
+        Field(cut, "Alt text").Blur();
+        cut.WaitForAssertion(() => Library.Text(id, "en", "alt").ShouldBe("A grey cat"));
+        Library.Requests.Last(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBe("\"2\"");
     }
 
     [Fact]
@@ -187,7 +203,8 @@ public sealed class MediaAssetPartTests : MediaTestContext
         cut.Find(".media-focal-image img").Click(new MouseEventArgs { OffsetX = 0, OffsetY = 0 });
 
         cut.WaitForAssertion(() => HasButton(cut, "Save mine over it").ShouldBeTrue());
-        Patches.ShouldBe(0);
+        RefusedWithoutAReadBefore();
+        Library.Asset(id)["focalPoint"].ShouldBeNull();
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Admin.Api;
@@ -36,35 +37,43 @@ internal sealed class MediaApi(IManagementApi api)
     public async Task<MediaAssetSaved> MoveAsync(Guid asset, Guid? folder, CancellationToken cancellationToken)
     {
         var request = new ApiRequest(HttpMethod.Post, $"media/{asset:D}/move") { Body = new JsonObject { ["folderId"] = folder?.ToString("D") } };
-        return (await api.SendAsync(request, MediaJsonContext.Default.MediaAssetSaved, cancellationToken)).Value;
+        var answer = await api.SendAsync(request, MediaJsonContext.Default.MediaAssetSaved, cancellationToken);
+        return answer.Value with { ETag = answer.EntityTag };
     }
 
     // The asset with its alt text and caption in the locale named, or the view's.
     public async Task<MediaAssetInfo> GetAsync(Guid asset, string? locale, CancellationToken cancellationToken)
     {
         var request = new ApiRequest(HttpMethod.Get, $"media/{asset:D}") { Locale = locale };
-        return (await api.SendAsync(request, MediaJsonContext.Default.MediaAssetInfo, cancellationToken)).Value;
+        var answer = await api.SendAsync(request, MediaJsonContext.Default.MediaAssetInfo, cancellationToken);
+        return answer.Value with { ETag = answer.EntityTag };
     }
 
-    // Saves changes of the metadata in the locale the asset was read in, and answers the asset as it is after them. The
-    // server keeps no version of an asset and takes no If-Match on it, so the asset is read right before the save: when its
-    // time of change or its metadata differ from basis, the save is not sent and MediaConflictException holds the asset as
-    // it is now. A change made between that read and the save is not seen.
+    // Saves changes of the metadata in the locale the asset was read in, with the ETag of basis as If-Match, and answers
+    // the asset as it is after them. When the asset changed since, the server refuses the save with 412 and
+    // MediaConflictException holds the asset as a read after the refusal finds it. With overwrite the save names no
+    // version and goes over any.
     public async Task<MediaAssetInfo> UpdateAsync(MediaAssetInfo basis, JsonObject changes, bool overwrite, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(basis);
         ArgumentNullException.ThrowIfNull(changes);
-        var current = await GetAsync(basis.Id, basis.Locale, cancellationToken);
-        if (!overwrite && (!SameTime(basis.UpdatedAt, current.UpdatedAt) || !SameMetadata(basis, current)))
+        var request = new ApiRequest(HttpMethod.Patch, $"media/{basis.Id:D}") { Body = changes, Locale = basis.Locale, IfMatch = overwrite ? null : basis.ETag };
+        ApiResponse<MediaAssetChanged> answer;
+        try
         {
-            throw new MediaConflictException(current);
+            answer = await api.SendAsync(request, MediaJsonContext.Default.MediaAssetChanged, cancellationToken);
+        }
+        catch (ApiProblemException refused) when (refused.Problem.Status == (int)HttpStatusCode.PreconditionFailed)
+        {
+            throw new MediaConflictException(await GetAsync(basis.Id, basis.Locale, cancellationToken));
         }
 
-        var request = new ApiRequest(HttpMethod.Patch, $"media/{basis.Id:D}") { Body = changes, Locale = current.Locale };
-        var changed = (await api.SendAsync(request, MediaJsonContext.Default.MediaAssetChanged, cancellationToken)).Value;
-
-        // A private asset's URLs are signed for it, so a change of the flag reads them again.
-        return changed.IsPrivate == current.IsPrivate ? Merge(current, changed) : await GetAsync(basis.Id, current.Locale, cancellationToken);
+        // A private asset's URLs are signed for it, so a change of the flag reads them again, as does a save over another
+        // change, which may have replaced the file.
+        var changed = answer.Value;
+        return changed.IsPrivate == basis.IsPrivate && !overwrite
+            ? Merge(basis, changed) with { ETag = answer.EntityTag }
+            : await GetAsync(basis.Id, basis.Locale, cancellationToken);
     }
 
     public async Task<MediaAssetInfo> ReplaceAsync(Guid asset, MediaUploadBody body, string? locale, CancellationToken cancellationToken)
@@ -120,15 +129,6 @@ internal sealed class MediaApi(IManagementApi api)
         return (await api.SendAsync(request, MediaJsonContext.Default.ItemListJsonObject, cancellationToken)).Value.Items;
     }
 
-    // The server writes the time of a change at the precision of its database, which may be coarser than its answer to the
-    // change, so two times within a millisecond are the same; the metadata catches two changes within one.
-    private static bool SameTime(DateTimeOffset? basis, DateTimeOffset? current) =>
-        basis is null || current is null || (basis.Value - current.Value).Duration() < TimeSpan.FromMilliseconds(1);
-
-    private static bool SameMetadata(MediaAssetInfo basis, MediaAssetInfo current) =>
-        basis.Title == current.Title && basis.Alt == current.Alt && basis.Caption == current.Caption && basis.Credit == current.Credit
-        && basis.Tags.SequenceEqual(current.Tags) && basis.FocalPoint == current.FocalPoint && basis.IsPrivate == current.IsPrivate;
-
     private static MediaAssetInfo Merge(MediaAssetInfo current, MediaAssetChanged changed) => current with
     {
         Title = changed.Title,
@@ -167,7 +167,7 @@ internal sealed class MediaApi(IManagementApi api)
         api.SendAsync(new ApiRequest(HttpMethod.Delete, $"media/folders/{folder:D}"), cancellationToken);
 }
 
-// A save of an asset's metadata that was not sent, because the asset changed since the read it was based on.
+// A save of an asset's metadata that the server refused, because the asset changed since the read it was based on.
 internal sealed class MediaConflictException(MediaAssetInfo current) : Exception("The asset changed since it was read.")
 {
     public MediaAssetInfo Current { get; } = current;

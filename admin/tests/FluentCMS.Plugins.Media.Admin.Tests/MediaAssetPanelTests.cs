@@ -82,13 +82,19 @@ public sealed class MediaAssetPanelTests : MediaTestContext
         Admin.Grant(MediaPermissions.Update);
         var id = Library.AddAsset("cat.png");
         var cut = Open(id);
+        var opened = Library.Requests.Count;
         Library.ChangeElsewhere(id, "Their title");
 
         Field(cut, "Credit").Input("Jo");
         cut.Find("form.media-asset-form").Submit();
 
         cut.WaitForAssertion(() => cut.Find(".media-asset-form [role=alert]").TextContent.ShouldContain("changed elsewhere"));
-        Library.Requests.ShouldNotContain(request => request.Method == HttpMethod.Patch);
+
+        // The save went with the version the panel read, and nothing read the asset before it.
+        var refused = Library.Requests.Single(request => request.Method == HttpMethod.Patch);
+        refused.IfMatch.ShouldBe("\"1\"");
+        Library.Requests.Skip(opened).TakeWhile(request => request != refused).ShouldBeEmpty();
+        Library.Asset(id)["credit"].ShouldBeNull();
         Button(cut, "Use the other change").Click();
         cut.WaitForAssertion(() => Field(cut, "Title").GetAttribute("value").ShouldBe("Their title"));
 
@@ -113,6 +119,7 @@ public sealed class MediaAssetPanelTests : MediaTestContext
         Field(cut, "Alt text").Blur();
 
         cut.WaitForAssertion(() => Library.Text(id, "en", "alt").ShouldBe("A cat"));
+        Library.Requests.Single(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBe("\"2\"");
         cut.FindAll("[role=alert]").ShouldBeEmpty();
     }
 
@@ -130,6 +137,7 @@ public sealed class MediaAssetPanelTests : MediaTestContext
         cut.Find("form.media-asset-form").Submit();
 
         cut.WaitForAssertion(() => Library.Asset(id)["title"]!.GetValue<string>().ShouldBe("Our cat"));
+        Library.Requests.Where(request => request.Method == HttpMethod.Patch).Select(request => request.IfMatch).ShouldBe(["\"1\"", "\"2\""]);
         cut.FindAll("[role=alert]").ShouldBeEmpty();
     }
 
@@ -158,7 +166,7 @@ public sealed class MediaAssetPanelTests : MediaTestContext
         cut.WaitForAssertion(() => Field(cut, "Locale").GetAttribute("value").ShouldBe("fr"));
         Library.Text(id, "en", "alt").ShouldBe("A cat");
         Library.Text(id, "fr", "alt").ShouldBeNull();
-        Library.Requests.Where(request => request.Method == HttpMethod.Patch).Select(request => request.Locale).ShouldBe(["en", "en"]);
+        Library.Requests.Where(request => request.Method == HttpMethod.Patch).Select(request => (request.Locale, request.IfMatch)).ShouldBe([("en", "\"1\""), ("en", "\"2\"")]);
         Field(cut, "Alt text").GetAttribute("value").ShouldBeNull();
         cut.FindAll("[role=alert]").ShouldBeEmpty();
     }
@@ -197,6 +205,7 @@ public sealed class MediaAssetPanelTests : MediaTestContext
         Field(cut, "Alt text").Input("A cat");
         Field(cut, "Alt text").Blur();
         cut.WaitForAssertion(() => Library.Text(id, "en", "alt").ShouldBe("A cat"));
+        Library.Requests.Single(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBe("\"2\"");
         cut.FindAll("[role=alert]").ShouldBeEmpty();
     }
 
@@ -225,6 +234,7 @@ public sealed class MediaAssetPanelTests : MediaTestContext
         cut.WaitForAssertion(() => cut.Find(".media-focal-marker").GetAttribute("style").ShouldBe("left:90%;top:90%"));
         Library.Text(id, "en", "alt").ShouldBe("A cat");
         Library.Asset(id)["focalPoint"]!.ToJsonString().ShouldBe("""{"x":0.9,"y":0.9}""");
+        Library.Requests.Where(request => request.Method == HttpMethod.Patch).Select(request => request.IfMatch).ShouldBe(["\"1\"", "\"2\""]);
         cut.FindAll("[role=alert]").ShouldBeEmpty();
     }
 
