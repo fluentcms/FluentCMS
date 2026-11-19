@@ -43,6 +43,7 @@ public sealed class MediaPlugin : IPlugin
         plugin.Services.AddScoped<IMediaService>(services => services.GetRequiredService<MediaService>());
         plugin.Services.AddScoped<IMediaResolver, MediaResolver>();
         plugin.Services.AddScoped<IReferenceResolver, MediaReferenceResolver>();
+        plugin.Services.AddScoped<IFieldValidator<object>, MediaFieldValidator>();
         plugin.Services.AddScoped<MediaTransforms>();
         plugin.Services.AddScoped<MediaOriginals>();
         plugin.Services.AddScoped<MediaCache>();
@@ -86,6 +87,8 @@ public sealed class MediaPlugin : IPlugin
             .AddErrorCode(MediaErrorCodes.PresetNotFound, 404, "Media preset not found")
             .AddErrorCode(MediaErrorCodes.AssetInUse, 409, "Media asset in use")
             .AddErrorCode(MediaErrorCodes.DownloadExpired, 403, "Media download URL expired")
+            .AddErrorCode(MediaErrorCodes.InvalidAccept, 422, "Invalid accept setting of a media field")
+            .AddErrorCode(MediaErrorCodes.NotAccepted, 422, "Media asset of a type the field does not accept")
             .AddErrorCode(MediaErrorCodes.TransferFileMissing, 422, "Media file missing from the package")
             .AddErrorCode(MediaErrorCodes.TransferIdTaken, 409, "Media id taken")
             .AddTransferContributor<MediaTransfer>()

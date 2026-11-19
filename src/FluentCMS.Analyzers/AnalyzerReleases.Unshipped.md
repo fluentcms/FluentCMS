@@ -21,6 +21,7 @@ FCMS0013 | FluentCMS.Schema | Error | Rules
 FCMS0014 | FluentCMS.Schema | Error | Rules
 FCMS0015 | FluentCMS.Schema | Error | Rules
 FCMS0016 | FluentCMS.Schema | Error | Rules
+FCMS0017 | FluentCMS.Schema | Error | Rules
 FCMS0020 | FluentCMS.Schema | Error | Rules
 FCMS0021 | FluentCMS.Schema | Error | Rules
 FCMS0022 | FluentCMS.Schema | Error | Rules

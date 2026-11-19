@@ -19,6 +19,8 @@ internal static class MediaErrorCodes
     public const string PresetNotFound = "FCMS1593";
     public const string AssetInUse = "FCMS1594";
     public const string DownloadExpired = "FCMS1595";
+    public const string InvalidAccept = "FCMS1596";
+    public const string NotAccepted = "FCMS1597";
 
     // The items of a transfer package, from the range of transfer, 3200 up to 3239.
     public const string TransferFileMissing = "FCMS3220";

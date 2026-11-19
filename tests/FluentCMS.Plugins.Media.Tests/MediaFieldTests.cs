@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
 using FluentCMS.Media;
 using FluentCMS.Schema;
@@ -18,6 +19,9 @@ namespace FluentCMS.Plugins.Media.Tests;
 public sealed class MediaFieldTests(StoryHost media) : IClassFixture<StoryHost>
 {
     private const string Stories = "/api/management/v1/content/story";
+
+    private static readonly string[] Malformed = ["image/*", "image/"];
+    private static readonly string[] WellFormed = ["image/svg+xml", "application/vnd.ms-excel", "Video/*"];
 
     [Fact]
     public void WithoutThePluginAMediaFieldStopsTheHost()
@@ -34,6 +38,110 @@ public sealed class MediaFieldTests(StoryHost media) : IClassFixture<StoryHost>
 
         (story.FindField("hero")!.FieldType, story.FindField("hero")!.Multiple).ShouldBe(("media", false));
         (story.FindField("gallery")!.FieldType, story.FindField("gallery")!.Multiple).ShouldBe(("media", true));
+    }
+
+    [Fact]
+    public void TheAcceptOfAFieldIsKeptAsItsSetting()
+    {
+        var story = media.Services.GetRequiredService<SchemaModel>().FindContentType("story").ShouldNotBeNull();
+
+        ((IEnumerable<string>)story.FindField("poster")!.Settings[FieldSettings.Accept]).ShouldBe(["IMAGE/*"]);
+        ((IEnumerable<string>)story.FindField("documents")!.Settings[FieldSettings.Accept]).ShouldBe(["application/pdf", "video/mp4"]);
+        story.FindField("hero")!.Settings.ShouldNotContainKey(FieldSettings.Accept);
+    }
+
+    [Fact]
+    public void AnAcceptThatIsNoTypeOrFamilyIsRefusedWithTheCodeOfMedia()
+    {
+        static SchemaBuilder Field(object accept) => new SchemaBuilder(new FieldTypeRegistry([new MediaFieldType()]))
+            .AddCollection("page", type => type.Field("cover", "media", field => field.Setting(FieldSettings.Accept, accept)));
+
+        var errors = Should.Throw<SchemaValidationException>(() => Field(Malformed).Build()).Errors;
+        var kind = Should.Throw<SchemaValidationException>(() => Field("image/*").Build()).Errors;
+
+        errors.Select(error => (error.Code, error.Message)).ShouldBe(
+        [
+            (MediaErrorCodes.InvalidAccept, "setting 'accept' of media field page.cover has 'image/', which is not a MIME type such as image/png or a family such as image/*"),
+        ]);
+        kind.ShouldHaveSingleItem().Code.ShouldBe("FCMS1211");
+        Should.NotThrow(() => Field(Array.Empty<string>()).Build());
+        Should.NotThrow(() => Field(WellFormed).Build());
+    }
+
+    [Theory]
+    [InlineData("image/*")]
+    [InlineData("image/png")]
+    [InlineData("Image/SVG+xml")]
+    [InlineData("application/vnd.openxmlformats-officedocument.wordprocessingml.document")]
+    public void AMimeTypeOrAFamilyIsAPattern(string pattern) => MediaAccept.IsPattern(pattern).ShouldBeTrue();
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("image")]
+    [InlineData("image/")]
+    [InlineData("/png")]
+    [InlineData("*/*")]
+    [InlineData("image/*x")]
+    [InlineData("image/png; charset=utf-8")]
+    [InlineData("image/png/x")]
+    [InlineData("image/p&g")]
+    [InlineData(" image/png")]
+    public void AnythingElseIsNoPattern(string? pattern) => MediaAccept.IsPattern(pattern).ShouldBeFalse();
+
+    [Theory]
+    [InlineData("image/png", true)]
+    [InlineData("IMAGE/PNG", true)]
+    [InlineData("image/png; name=x", true)]
+    [InlineData("image/jpeg", true)]
+    [InlineData("imagex/png", false)]
+    [InlineData("application/pdf", true)]
+    [InlineData("application/pdfx", false)]
+    [InlineData("video/mp4", false)]
+    [InlineData(null, false)]
+    public void ATypeMatchesWithoutCaseOrParameters(string? mimeType, bool matches) =>
+        MediaAccept.Matches(["image/*", "Application/PDF"], mimeType).ShouldBe(matches);
+
+    [Fact]
+    public void AnEmptyAcceptTakesEveryType() => MediaAccept.Matches([], "application/zip").ShouldBeTrue();
+
+    [Fact]
+    public async Task ASaveRefusesAnAssetOfATypeTheFieldDoesNotAcceptAtEveryDepthAndNamesTheField()
+    {
+        using var admin = await media.AdminAsync();
+        var image = await AssetAsync(admin, "photo.png");
+        var pdf = await AssetAsync(admin, "terms.pdf", Files.Pdf());
+        var entry = Story(null, banner: pdf);
+        entry["poster"] = pdf.ToString("D");
+        entry["documents"] = new JsonArray(pdf.ToString("D"), image.ToString("D"));
+
+        using var response = await PostAsync(admin, entry);
+
+        var errors = (await JsonAsync(response, HttpStatusCode.UnprocessableEntity))["errors"]!.AsArray()
+            .Select(error => (error!["path"]!.GetValue<string>(), error["code"]!.GetValue<string>(), error["message"]!.GetValue<string>())).ToList();
+        errors.ShouldBe(
+        [
+            ("poster", MediaErrorCodes.NotAccepted, $"The asset {pdf:D} is of a type the field 'poster' does not accept; it accepts IMAGE/*."),
+            ("documents", MediaErrorCodes.NotAccepted, $"The asset {image:D} is of a type the field 'documents' does not accept; it accepts application/pdf, video/mp4."),
+            ("sections[0].image", MediaErrorCodes.NotAccepted, $"The asset {pdf:D} is of a type the field 'image' does not accept; it accepts image/*."),
+        ],
+        ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task ASaveKeepsAssetsOfAcceptedTypesAndAFieldWithoutAcceptTakesAny()
+    {
+        using var admin = await media.AdminAsync();
+        var image = await AssetAsync(admin, "photo.png");
+        var pdf = await AssetAsync(admin, "terms.pdf", Files.Pdf());
+        var entry = Story(pdf, [pdf, image], banner: image);
+        entry["poster"] = image.ToString("D");
+        entry["documents"] = new JsonArray(pdf.ToString("D"));
+
+        var created = await CreateAsync(admin, entry);
+
+        created["poster"]!["id"]!.GetValue<string>().ShouldBe(image.ToString("D"));
+        created["documents"]![0]!["id"]!.GetValue<string>().ShouldBe(pdf.ToString("D"));
     }
 
     [Fact]
