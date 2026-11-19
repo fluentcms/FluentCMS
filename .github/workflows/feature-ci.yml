@@ -91,7 +91,7 @@ jobs:
       - name: Test the tool
         run: dotnet test --project tests/FluentCMS.Cli.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 5m
 
-      # The test projects ignore exit code 8, zero tests, so a filter that matched nothing would pass without a minimum.
+      # A minimum keeps a filter that matches too little from passing.
       - name: Test the commands
         run: dotnet test --project tests/FluentCMS.Core.IntegrationTests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --filter-namespace "FluentCMS.Core.IntegrationTests.Commands*" --minimum-expected-tests 40 --timeout 5m
 

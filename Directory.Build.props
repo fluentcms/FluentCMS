@@ -70,11 +70,6 @@
     <PackageTags>$(PackageTags) fluentcms-plugin</PackageTags>
   </PropertyGroup>
 
-  <!-- The test project stubs have no tests yet; exit code 8 means "zero tests ran". Remove this once each project has tests. -->
-  <PropertyGroup Condition="$(RepoRelativeProjectDir.StartsWith('tests/'))">
-    <TestingPlatformCommandLineArguments>--ignore-exit-code 8</TestingPlatformCommandLineArguments>
-  </PropertyGroup>
-
   <!-- xUnit.net reports a test that runs longer than two minutes, every two minutes, in the platform's diagnostic log, so a
        hung test is named in a run with diagnostics on, as CI's are. -->
   <ItemGroup Condition="'$(IsTestProject)' == 'true'">

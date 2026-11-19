@@ -3,8 +3,8 @@ name: fluentcms
 
 services:
   postgres:
-    # postgres:15.19, the image of the data tests on PostgreSQL.
-    image: postgres@sha256:1aac5b49cefd627f02816141ca4ad012d6cc19460dfe02a9b5168a105be3fc53
+    # The image of the data tests on PostgreSQL.
+    image: postgres:15.19@sha256:1aac5b49cefd627f02816141ca4ad012d6cc19460dfe02a9b5168a105be3fc53
     environment:
       POSTGRES_DB: fluentcms
       POSTGRES_USER: fluentcms
@@ -20,8 +20,8 @@ services:
       retries: 10
 
   minio:
-    # The MinIO community build of the media storage tests, RELEASE.2026-08-04T00-00-00Z.
-    image: pgsty/minio@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
+    # The MinIO community build of the media storage tests.
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       MINIO_ROOT_USER: ${FLUENTCMS_MINIO_USER:-fluentcms}

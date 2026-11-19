@@ -14,8 +14,8 @@ x-host-environment: &host-environment
 
 services:
   postgres:
-    # postgres:15.19, the image of the data tests on PostgreSQL.
-    image: postgres@sha256:1aac5b49cefd627f02816141ca4ad012d6cc19460dfe02a9b5168a105be3fc53
+    # The image of the data tests on PostgreSQL.
+    image: postgres:15.19@sha256:1aac5b49cefd627f02816141ca4ad012d6cc19460dfe02a9b5168a105be3fc53
     restart: unless-stopped
     environment:
       POSTGRES_DB: fluentcms
@@ -32,7 +32,7 @@ services:
   minio:
     # MinIO publishes no images any more; this is the Pigsty project's continuation of the community build that the media
     # storage tests use, RELEASE.2026-08-04T00-00-00Z. It brings mc and curl.
-    image: pgsty/minio@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
     restart: unless-stopped
     command: ["server", "/data"]
     environment:
@@ -48,7 +48,7 @@ services:
 
   # The bucket, and a user that may use it alone, which the host signs its requests with. Safe to run on every up.
   minio-init:
-    image: pgsty/minio@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
     depends_on:
       minio:
         condition: service_healthy
