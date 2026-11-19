@@ -38,10 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     # At job level: a called workflow shares the caller's workflow name, so a workflow-level group would hold CI's own. A run
-    # on main has a group of its own and is never cancelled, since publish needs it.
+    # on main, which publish needs, and a manual run have a group of their own and are never cancelled.
     concurrency:
-      group: fresh-machine-linux-${{ github.event_name }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
-      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+      group: fresh-machine-linux-${{ github.event_name }}-${{ (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && github.run_id || github.ref }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.event_name != 'workflow_dispatch' }}
     services:
       # The image of the PostgreSQL data tests (postgres:15.19): one empty database for each of the two hosts.
       postgres:
@@ -133,8 +133,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 45
     concurrency:
-      group: fresh-machine-windows-${{ github.event_name }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
-      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+      group: fresh-machine-windows-${{ github.event_name }}-${{ (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && github.run_id || github.ref }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.event_name != 'workflow_dispatch' }}
     env:
       FEED: ${{ inputs.feed }}
       FEED_VERSION: ${{ inputs.version }}

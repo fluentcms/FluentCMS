@@ -32,19 +32,23 @@ updates:
         patterns: ["*"]
         update-types: [minor, patch]
 
-  # The base images of the reference host and the template, pinned by tag and digest: a new digest of the same tag is a
-  # patch. .NET stays on the major the projects target, so a new major comes with the change of the target framework.
+  # The base images of the reference host and the template, pinned by tag and digest. .NET stays on the major the projects
+  # target, so a new major comes with the change of the target framework. Dependabot names an image without its registry, as
+  # its documentation's example does; the name with it is listed too.
   - package-ecosystem: docker
     directories: ["/src/FluentCMS.Host", "/templates/fluentcms"]
     schedule:
       interval: weekly
     labels: ["type:chore", "area:build"]
     ignore:
+      - dependency-name: "dotnet/*"
+        update-types: ["version-update:semver-major"]
       - dependency-name: "mcr.microsoft.com/dotnet/*"
         update-types: ["version-update:semver-major"]
     groups:
       docker:
         patterns: ["*"]
+        update-types: [minor, patch]
 
   # PostgreSQL and MinIO of the compose files. A new major of PostgreSQL cannot read the data of the old one, so it is a
   # change of its own. The data and media tests pin the same digests, which an update must change with these.
@@ -59,3 +63,4 @@ updates:
     groups:
       docker-compose:
         patterns: ["*"]
+        update-types: [minor, patch]
