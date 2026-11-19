@@ -137,6 +137,11 @@ namespace FluentCMS.Plugins.Media.Migrations.Sqlite
                         .HasColumnType("TEXT")
                         .HasColumnName("updated_by");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("version");
+
                     b.Property<int?>("Width")
                         .HasColumnType("INTEGER")
                         .HasColumnName("width");

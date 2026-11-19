@@ -20,6 +20,9 @@ internal static class MediaErrorCodes
     public const string AssetInUse = "FCMS1594";
     public const string DownloadExpired = "FCMS1595";
 
+    // Core's code of a write based on a version that is no longer stored, which an entry's 412 has too.
+    public const string VersionConflict = "FCMS3105";
+
     // The items of a transfer package, from the range of transfer, 3200 up to 3239.
     public const string TransferFileMissing = "FCMS3220";
     public const string TransferIdTaken = "FCMS3221";

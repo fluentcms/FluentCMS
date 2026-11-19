@@ -41,7 +41,8 @@ namespace FluentCMS.Plugins.Media.Migrations.SqlServer
                     created_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     updated_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     updated_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    deleted_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
+                    deleted_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    version = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {

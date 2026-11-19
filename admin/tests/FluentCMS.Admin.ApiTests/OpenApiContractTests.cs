@@ -88,6 +88,13 @@ public sealed class OpenApiContractTests
         var replace = Resolve(paths["/api/management/v1/media/{id}/replace"]!["post"]!["requestBody"]!["content"]!["multipart/form-data"]!["schema"], document)!["properties"]!.AsObject();
         replace.ContainsKey("file").ShouldBeTrue();
 
+        // A read gives the version as the ETag and a save of the metadata sends it back as If-Match (#3333).
+        paths["/api/management/v1/media/{id}"]!["get"]!["responses"]!["200"]!["headers"]!["ETag"].ShouldNotBeNull();
+        paths["/api/management/v1/media/{id}"]!["patch"]!["responses"]!["200"]!["headers"]!["ETag"].ShouldNotBeNull();
+        paths["/api/management/v1/media/{id}"]!["patch"]!["parameters"]!.AsArray()
+            .Select(parameter => parameter!["$ref"]?.GetValue<string>())
+            .ShouldContain("#/components/parameters/if-match-optional");
+
         gaps.ShouldBeEmpty();
     }
 

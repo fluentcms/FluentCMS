@@ -41,7 +41,8 @@ namespace FluentCMS.Plugins.Media.Migrations.Sqlite
                     created_by = table.Column<Guid>(type: "TEXT", nullable: false),
                     updated_at = table.Column<long>(type: "INTEGER", nullable: false),
                     updated_by = table.Column<Guid>(type: "TEXT", nullable: false),
-                    deleted_at = table.Column<long>(type: "INTEGER", nullable: true)
+                    deleted_at = table.Column<long>(type: "INTEGER", nullable: true),
+                    version = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {

@@ -42,6 +42,10 @@ public sealed record MediaAssetInfo
 
     public DateTimeOffset? UpdatedAt { get; init; }
 
+    // The ETag of the read or the save the asset came from, which the next save sends back as If-Match.
+    [JsonIgnore]
+    public string? ETag { get; init; }
+
     public required MediaAssetUrls Urls { get; init; }
 
     [JsonIgnore]
@@ -91,6 +95,12 @@ internal sealed record MediaAssetSaved
     public Guid? FolderId { get; init; }
 
     public required string FileName { get; init; }
+
+    public DateTimeOffset? UpdatedAt { get; init; }
+
+    // The ETag of a move's answer.
+    [JsonIgnore]
+    public string? ETag { get; init; }
 }
 
 // An asset as a change of its metadata or a replace answers it: the metadata without the URLs.
@@ -125,6 +135,10 @@ internal sealed record MediaAssetChanged
     public bool IsPrivate { get; init; }
 
     public DateTimeOffset? UpdatedAt { get; init; }
+
+    // The ETag of a replace's answer.
+    [JsonIgnore]
+    public string? ETag { get; init; }
 }
 
 internal sealed record MediaUsageInfo

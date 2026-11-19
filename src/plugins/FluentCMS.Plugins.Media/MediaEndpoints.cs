@@ -61,23 +61,28 @@ internal static class MediaEndpoints
         group.MapPost("", UploadAsync)
             .Takes<MediaUploadForm>(mediaType: MultipartForm).Produces<MediaAssetList>(StatusCodes.Status201Created);
 
-        group.MapGet("/{id:guid}", async (Guid id, MediaService media, CancellationToken cancellationToken) =>
-            Results.Ok(MediaAssetResponse.From(await media.GetWithUrlsAsync(id, cancellationToken))))
-            .Produces<MediaAssetResponse>();
-
-        group.MapPatch("/{id:guid}", async (Guid id, MediaAssetChanges changes, IMediaService media, CancellationToken cancellationToken) =>
-            Results.Ok(await media.UpdateAsync(id, changes, cancellationToken))).Produces<MediaAsset>();
-
-        group.MapPost("/{id:guid}/move", async (Guid id, AssetMove move, IMediaService media, CancellationToken cancellationToken) =>
-            Results.Ok(await media.MoveAsync(id, move.FolderId, cancellationToken))).Produces<MediaAsset>();
-
-        group.MapDelete("/{id:guid}", async (Guid id, bool? force, IMediaService media, CancellationToken cancellationToken) =>
+        group.MapGet("/{id:guid}", async (Guid id, HttpResponse response, MediaService media, CancellationToken cancellationToken) =>
         {
-            await media.DeleteAsync(id, force ?? false, cancellationToken);
-            return Results.NoContent();
-        }).Produces(StatusCodes.Status204NoContent);
+            var managed = await media.GetWithUrlsAsync(id, cancellationToken);
+            EntityVersions.SetETag(response, managed.Version);
+            return Results.Ok(MediaAssetResponse.From(managed));
+        }).Produces<MediaAssetResponse>().GivesETag();
 
-        group.MapPost("/{id:guid}/replace", ReplaceAsync).Takes<MediaReplaceForm>(mediaType: MultipartForm).Produces<MediaAsset>();
+        group.MapPatch("/{id:guid}", async (Guid id, MediaAssetChanges changes, HttpContext context, MediaService media, CancellationToken cancellationToken) =>
+            Written(context, await media.UpdateAsync(id, changes, EntityVersions.IfMatch(context.Request), cancellationToken)))
+            .Produces<MediaAsset>().TakesIfMatch().GivesETag();
+
+        group.MapPost("/{id:guid}/move", async (Guid id, AssetMove move, HttpContext context, MediaService media, CancellationToken cancellationToken) =>
+            Written(context, await media.MoveAsync(id, move.FolderId, EntityVersions.IfMatch(context.Request), cancellationToken)))
+            .Produces<MediaAsset>().TakesIfMatch().GivesETag();
+
+        group.MapDelete("/{id:guid}", async (Guid id, bool? force, HttpRequest request, MediaService media, CancellationToken cancellationToken) =>
+        {
+            await media.DeleteAsync(id, force ?? false, EntityVersions.IfMatch(request), cancellationToken);
+            return Results.NoContent();
+        }).Produces(StatusCodes.Status204NoContent).TakesIfMatch();
+
+        group.MapPost("/{id:guid}/replace", ReplaceAsync).Takes<MediaReplaceForm>(mediaType: MultipartForm).Produces<MediaAsset>().TakesIfMatch().GivesETag();
 
         group.MapGet("/{id:guid}/usage", async (Guid id, IMediaService media, CancellationToken cancellationToken) =>
             Results.Ok(MediaUsageList.From(await media.GetUsageAsync(id, cancellationToken)))).Produces<MediaUsageList>();
@@ -242,11 +247,13 @@ internal static class MediaEndpoints
         }
     }
 
-    // The form's one file part, whatever its field name, is the new file.
-    private static async Task<IResult> ReplaceAsync(Guid id, HttpRequest request, IMediaService media, IOptions<MediaOptions> options, CancellationToken cancellationToken)
+    // The form's one file part, whatever its field name, is the new file. If-Match is read before the body, so that a
+    // malformed one is refused without reading the file.
+    private static async Task<IResult> ReplaceAsync(Guid id, HttpContext context, MediaService media, IOptions<MediaOptions> options, CancellationToken cancellationToken)
     {
         const string Shape = "A replace is a multipart/form-data request with one file.";
-        var form = await ReadFormAsync(request, options.Value, Shape, cancellationToken);
+        var expectedVersion = EntityVersions.IfMatch(context.Request);
+        var form = await ReadFormAsync(context.Request, options.Value, Shape, cancellationToken);
         if (form.Files.Count != 1)
         {
             throw Invalid("files", Shape);
@@ -254,7 +261,14 @@ internal static class MediaEndpoints
 
         var file = form.Files[0];
         await using var stream = file.OpenReadStream();
-        return Results.Ok(await media.ReplaceAsync(id, new MediaUploadFile(file.FileName, stream), cancellationToken));
+        return Written(context, await media.ReplaceAsync(id, new MediaUploadFile(file.FileName, stream), expectedVersion, cancellationToken));
+    }
+
+    // A write's answer is the asset with its new version as the ETag, as a write of an entry answers.
+    private static IResult Written(HttpContext context, VersionedAsset written)
+    {
+        EntityVersions.SetETag(context.Response, written.Version);
+        return Results.Ok(written.Asset);
     }
 
     private static async Task<IFormCollection> ReadFormAsync(HttpRequest request, MediaOptions options, string shape, CancellationToken cancellationToken)

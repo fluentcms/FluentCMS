@@ -30,6 +30,9 @@ public sealed partial class PluginOpenApiTests : IAsyncDisposable
     private static readonly Dictionary<string, string> ReadTheRequestOnlyForHeaders = new(StringComparer.Ordinal)
     {
         ["post /api/management/v1/ai/actions/{action}"] = "it reads Accept to choose the event stream; the body is its AiActionRequest parameter",
+        ["patch /api/management/v1/media/{id}"] = "it reads If-Match, which TakesIfMatch describes; the body is its MediaAssetChanges parameter",
+        ["post /api/management/v1/media/{id}/move"] = "it reads If-Match, which TakesIfMatch describes; the body is its AssetMove parameter",
+        ["delete /api/management/v1/media/{id}"] = "it reads If-Match, which TakesIfMatch describes, and takes no body",
     };
 
     private readonly HostUnderTest _host = new();
@@ -126,6 +129,17 @@ public sealed partial class PluginOpenApiTests : IAsyncDisposable
         ping["responses"]!["202"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/WebhookDeliveryQueued");
         schemas["WebhookDeliveryQueued"]!["properties"]!.AsObject().Select(pair => pair.Key).ShouldBe(["deliveryId"]);
 
+        // The writes of an asset take If-Match as the writes of an entry may, and its read and the writes that answer it give
+        // the version as the ETag.
+        foreach (var (path, method) in (ReadOnlySpan<(string, string)>)[("/api/management/v1/media/{id}", "patch"), ("/api/management/v1/media/{id}/move", "post"), ("/api/management/v1/media/{id}/replace", "post"), ("/api/management/v1/media/{id}", "delete")])
+        {
+            paths[path]![method]!["parameters"]!.AsArray().Select(parameter => parameter!["$ref"]?.GetValue<string>()).ShouldContain("#/components/parameters/if-match-optional", $"{method} {path}");
+            paths[path]![method]!["responses"]!.AsObject().Where(pair => pair.Key.StartsWith('2'))
+                .ShouldAllBe(pair => (pair.Value!["headers"] != null && pair.Value["headers"]!["ETag"] != null) == (method != "delete"), $"{method} {path}");
+        }
+
+        paths["/api/management/v1/media/{id}"]!["get"]!["responses"]!["200"]!["headers"]!["ETag"].ShouldNotBeNull();
+        paths["/api/management/v1/media/{id}"]!["get"]!["parameters"]!.AsArray().Select(parameter => parameter!["$ref"]?.GetValue<string>()).ShouldNotContain("#/components/parameters/if-match-optional");
         paths["/api/delivery/v1/media/{id}"]!["get"]!["responses"]!["200"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>()
             .ShouldBe("#/components/schemas/DeliveredAsset");
         paths["/api/management/v1/ai/actions/{action}"]!["post"]!["description"]!.GetValue<string>().ShouldContain("text/event-stream");
