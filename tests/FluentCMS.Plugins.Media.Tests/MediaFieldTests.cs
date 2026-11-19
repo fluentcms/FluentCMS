@@ -145,6 +145,58 @@ public sealed class MediaFieldTests(StoryHost media) : IClassFixture<StoryHost>
     }
 
     [Fact]
+    public async Task APatchRefusesAnAssetOfATypeTheFieldDoesNotAccept()
+    {
+        using var admin = await media.AdminAsync();
+        var image = await AssetAsync(admin, "photo.png");
+        var pdf = await AssetAsync(admin, "terms.pdf", Files.Pdf());
+        var entry = Story(null);
+        entry["poster"] = image.ToString("D");
+        var created = await CreateAsync(admin, entry);
+
+        using var response = await PatchWithVersionAsync(admin, Id(created), new JsonObject { ["poster"] = pdf.ToString("D") });
+
+        NotAccepted(await JsonAsync(response, HttpStatusCode.UnprocessableEntity)).ShouldBe(["poster"]);
+    }
+
+    // As an entry saved before the field took accept: its asset no longer matches, so publishing it and saving it again
+    // are refused until the asset is replaced, even by a save that does not send the field.
+    [Fact]
+    public async Task AnEntryWhoseAssetNoLongerMatchesIsRefusedOnItsNextSaveAndPublish()
+    {
+        using var admin = await media.AdminAsync();
+        var image = await AssetAsync(admin, "photo.png");
+        var entry = Story(null);
+        entry["poster"] = image.ToString("D");
+        var id = Id(await CreateAsync(admin, entry));
+        await using (var scope = media.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>()
+                .Where(asset => asset.Id == image)
+                .ExecuteUpdateAsync(set => set.SetProperty(asset => asset.MimeType, "application/pdf"), Token);
+        }
+
+        using var published = await admin.PostAsync(new Uri($"{Stories}/{id:D}/publish", UriKind.Relative), null, Token);
+        using var renamed = await PatchWithVersionAsync(admin, id, new JsonObject { ["title"] = "Renamed" });
+
+        NotAccepted(await JsonAsync(published, HttpStatusCode.UnprocessableEntity)).ShouldBe(["poster"]);
+        NotAccepted(await JsonAsync(renamed, HttpStatusCode.UnprocessableEntity)).ShouldBe(["poster"]);
+    }
+
+    private static List<string> NotAccepted(JsonNode problem) =>
+        [.. problem["errors"]!.AsArray().Where(error => error!["code"]!.GetValue<string>() == MediaErrorCodes.NotAccepted).Select(error => error!["path"]!.GetValue<string>())];
+
+    private static async Task<HttpResponseMessage> PatchWithVersionAsync(HttpClient client, Guid id, JsonObject body)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Patch, new Uri($"{Stories}/{id:D}", UriKind.Relative))
+        {
+            Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json"),
+        };
+        request.Headers.TryAddWithoutValidation("If-Match", "\"1\"");
+        return await client.SendAsync(request, Token);
+    }
+
+    [Fact]
     public async Task AWriteStoresItsMediaAsReferencesAtEveryDepth()
     {
         using var admin = await media.AdminAsync();

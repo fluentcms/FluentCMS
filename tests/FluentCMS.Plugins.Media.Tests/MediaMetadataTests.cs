@@ -76,6 +76,8 @@ public sealed class MediaMetadataTests(MediaHost media) : IClassFixture<MediaHos
         (await IdsAsync(client, $"?folder={photos:D}&subfolders=true")).ShouldBe([inSummer, inPhotos]);
         (await OwnAsync("?type=image/*")).ShouldBe([inSummer, inPhotos]);
         (await OwnAsync("?type=application/pdf")).ShouldBe([root]);
+        (await OwnAsync("?type=IMAGE/*")).ShouldBe([inSummer, inPhotos]);
+        (await OwnAsync("?type=Application/PDF")).ShouldBe([root]);
         (await OwnAsync("?tag=beach")).ShouldBe([inSummer]);
         (await OwnAsync("?tag=bea")).ShouldBeEmpty();
         (await IdsAsync(client, "?pageSize=1&page=2")).ShouldBe([inPhotos]);

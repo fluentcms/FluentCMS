@@ -84,7 +84,7 @@ Error, for `FCMS1217`. A relation of a component or block declares `Reverse`. On
 
 ### FCMS0017
 
-Error, for `FCMS1596` of the media plugin. `Accept` of `[Media]` lists a value that is not a MIME type such as `image/png` or a family such as `image/*`: an empty subtype, `*/*`, parameters after `;`, or punctuation other than `.`, `+`, `-` and `_`. List types and families only, or leave `Accept` out to take every type.
+Error, for `FCMS1596` of the media plugin. `Accept` of `[Media]` lists a value that is not a MIME type such as `image/png` or a family such as `image/*`: an empty subtype, `*/*`, parameters after `;`, or punctuation other than `.`, `+`, `-` and `_`. List types and families only, or leave `Accept` out to take every type. `fluentcms schema validate` reads plugin field types without their settings, so it does not check `accept` in a schema file; a malformed one there is refused when the host starts.
 
 ## Names
 

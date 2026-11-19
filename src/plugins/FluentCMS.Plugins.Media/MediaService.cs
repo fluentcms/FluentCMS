@@ -243,6 +243,8 @@ internal sealed class MediaService(
                 throw Invalid("type", "A type is a MIME type such as image/png, or a family such as image/*.");
             }
 
+            // Stored types are the lower-case ones of the known table, and a field's accept setting may be in any case.
+            mimeType = mimeType.ToLowerInvariant();
             var family = mimeType.EndsWith("/*", StringComparison.Ordinal) ? mimeType[..^1] : null;
             assets = family is not null ? assets.Where(asset => asset.MimeType.StartsWith(family)) : assets.Where(asset => asset.MimeType == mimeType);
         }

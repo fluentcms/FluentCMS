@@ -309,6 +309,7 @@ internal sealed class FakeMediaLibrary : IManagementApi
 
         if (query.TryGetValue("type", out var type))
         {
+            type = type.ToLowerInvariant();
             found = found.Where(asset => type.EndsWith("/*", StringComparison.Ordinal)
                 ? asset["mimeType"]!.GetValue<string>().StartsWith(type[..^1], StringComparison.Ordinal)
                 : asset["mimeType"]!.GetValue<string>() == type);
