@@ -41,4 +41,7 @@ public static class ValidationErrorCodes
 
     /// <summary>A reference names a target that does not exist in the site, such as a media asset that was never uploaded or is deleted.</summary>
     public const string UnknownReference = "FCMS2113";
+
+    /// <summary>A URL in rich text, under a key that holds one such as <c>href</c> or <c>src</c>, has a scheme the host does not allow (by default anything but http, https, mailto and tel, as with javascript:), or is not a string.</summary>
+    public const string UnsafeUrl = "FCMS2114";
 }

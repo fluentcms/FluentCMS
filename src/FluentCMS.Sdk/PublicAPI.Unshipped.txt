@@ -2730,6 +2730,7 @@ const FluentCMS.Content.ValidationErrorCodes.PatternMismatch = "FCMS2106" -> str
 const FluentCMS.Content.ValidationErrorCodes.Required = "FCMS2101" -> string!
 const FluentCMS.Content.ValidationErrorCodes.RequiredByCondition = "FCMS2110" -> string!
 const FluentCMS.Content.ValidationErrorCodes.UnknownReference = "FCMS2113" -> string!
+const FluentCMS.Content.ValidationErrorCodes.UnsafeUrl = "FCMS2114" -> string!
 const FluentCMS.Diagnostics.FluentCmsHealthCheckTags.Live = "live" -> string!
 const FluentCMS.Diagnostics.FluentCmsHealthCheckTags.Ready = "ready" -> string!
 const FluentCMS.Events.LoginFailureReasons.InvalidCredentials = "invalid_credentials" -> string!
