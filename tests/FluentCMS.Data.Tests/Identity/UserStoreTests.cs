@@ -389,6 +389,65 @@ public sealed class UserStoreTests : IDisposable
         (await _fixture.FindAsync(user.Id)).MustChangePassword.ShouldBeTrue();
     }
 
+    // A password an operator sets, as `user reset-password --password-stdin` does, keeps the forced change and gives a new
+    // stamp in the same save.
+    [Fact]
+    public async Task APasswordAnOperatorSetsKeepsTheForcedChangeAndGivesANewStamp()
+    {
+        var user = await _fixture.CreateUserAsync("ann");
+        Succeeded(await _fixture.UsersAsync(async users => await users.RequirePasswordChangeAsync((await users.FindByIdAsync(user.Id.ToString("D")))!)));
+        var before = (await _fixture.FindAsync(user.Id)).SecurityStamp;
+
+        (await _fixture.UsersAsync(async users => await users.SetPasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, "short"))).Succeeded.ShouldBeFalse();
+        (await _fixture.FindAsync(user.Id)).SecurityStamp.ShouldBe(before);
+
+        Succeeded(await _fixture.UsersAsync(async users => await users.SetPasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, "Temporary-horse-3")));
+        var stored = await _fixture.FindAsync(user.Id);
+        stored.MustChangePassword.ShouldBeTrue();
+        stored.SecurityStamp.ShouldNotBe(before);
+        (await _fixture.UsersAsync(users => users.CheckPasswordAsync(stored, "Temporary-horse-3"))).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task AWrongCurrentPasswordCountsTowardsTheLockout()
+    {
+        var user = await _fixture.CreateUserAsync("ann");
+        var attempts = new AdminUserOptions().Lockout.MaxFailedAccessAttempts;
+        for (var attempt = 0; attempt < attempts; attempt++)
+        {
+            var wrong = await _fixture.UsersAsync(async users => await users.ChangePasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, "wrong", "Another-horse-2"));
+            wrong.Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.PasswordMismatch));
+        }
+
+        (await _fixture.UsersAsync(async users => await users.IsLockedOutAsync((await users.FindByIdAsync(user.Id.ToString("D")))!))).ShouldBeTrue();
+        var locked = await _fixture.UsersAsync(async users => await users.ChangePasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, Password, "Another-horse-2"));
+        locked.Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.PasswordMismatch));
+        var kept = await _fixture.FindAsync(user.Id);
+        (await _fixture.UsersAsync(users => users.CheckPasswordAsync(kept, Password))).ShouldBeTrue();
+    }
+
+    // Sign-in takes a name or an address, so neither may be another user's other one; a user's own name may be its address.
+    [Fact]
+    public async Task ANameOrAnAddressThatIsTheOtherOneOfAnotherUserIsRefused()
+    {
+        var ann = await _fixture.CreateUserAsync("ann");
+
+        var name = await _fixture.UsersAsync(users => users.CreateAsync(new CmsUser { UserName = ann.Email!.ToUpperInvariant(), Email = "mallory@example.com" }, Password));
+        name.Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.DuplicateUserName));
+
+        Succeeded(await _fixture.UsersAsync(users => users.CreateAsync(new CmsUser { UserName = "alias@example.org", Email = "carol@example.com" }, Password)));
+        var email = await _fixture.UsersAsync(users => users.CreateAsync(new CmsUser { UserName = "mallory", Email = "Alias@example.org" }, Password));
+        email.Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.DuplicateEmail));
+
+        Succeeded(await _fixture.UsersAsync(users => users.CreateAsync(new CmsUser { UserName = "dave@example.com", Email = "dave@example.com" }, Password)));
+        Succeeded(await _fixture.UsersAsync(async users =>
+        {
+            var stored = (await users.FindByIdAsync(ann.Id.ToString("D")))!;
+            stored.UserName = ann.Email;
+            return await users.UpdateAsync(stored);
+        }));
+    }
+
     [Fact]
     public async Task AUserIsDeactivatedNotDeleted()
     {

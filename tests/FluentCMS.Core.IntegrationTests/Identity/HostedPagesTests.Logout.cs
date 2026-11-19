@@ -275,7 +275,7 @@ public sealed partial class HostedPagesTests
 
         // A sign-in with the second factor on a remembered device, then one with the password alone over it, in one session.
         using (var password = await browser.SubmitAsync("/account/login", Credentials(editor.Email, Password)))
-        using (var remembered = await browser.SubmitAsync(password.Headers.Location!.OriginalString, new Dictionary<string, string> { ["Input.Code"] = Totp(key), ["Input.RememberMachine"] = "true" }))
+        using (var remembered = await browser.SubmitAsync(password.Headers.Location!.OriginalString, new Dictionary<string, string> { ["Input.Code"] = Totp(_host, key), ["Input.RememberMachine"] = "true" }))
         {
             remembered.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         }
@@ -284,6 +284,18 @@ public sealed partial class HostedPagesTests
         await SignInAsync(browser, editor.Email);
         var withPassword = await CodeFlowAsync(_host, browser);
         Sid(withPassword).ShouldBe(Sid(withSecondFactor));
+
+        // The same in another browser, a session of its own.
+        using var other = new HostedPagesBrowser(_host, "10.1.0.16");
+        using (var password = await other.SubmitAsync("/account/login", Credentials(editor.Email, Password)))
+        using (var remembered = await other.SubmitAsync(password.Headers.Location!.OriginalString, new Dictionary<string, string> { ["Input.Code"] = Totp(_host, key), ["Input.RememberMachine"] = "true" }))
+        {
+            remembered.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        }
+
+        await SignInAsync(other, editor.Email);
+        var elsewhere = await CodeFlowAsync(_host, other);
+        Sid(elsewhere).ShouldNotBe(Sid(withPassword));
 
         // Another site sends the browser to a plain authorize request once the role requires the second factor: the cookie
         // stays, and the tokens are left to the token endpoint, which refuses only those without it.
@@ -295,14 +307,19 @@ public sealed partial class HostedPagesTests
         (await RotatedAsync(_host, Text(withSecondFactor, "refresh_token"))).ShouldNotBeNullOrEmpty();
         (await RefusedAsync(_host, Text(withPassword, "refresh_token"))).ShouldBe("invalid_grant");
 
-        // The user signs in with the second factor where the request asked, and the session goes on. The access token of
-        // the sign-in without it lives until it expires.
+        // The user signs in with the second factor where the request asked, and the session goes on. What the session was
+        // issued without it ends then, its access token too (#3228); what it was issued with it stays, and so does another
+        // session of the user without it.
+        (await MeAsync(_host, Text(withPassword, "access_token"))).ShouldBe(HttpStatusCode.OK);
         _host.Time.Advance(TimeSpan.FromMinutes(1));
         using var passwordStep = await browser.SubmitAsync(login.PathAndQuery, Credentials(editor.Email, Password));
-        using var codeStep = await browser.SubmitAsync(passwordStep.Headers.Location!.OriginalString, new Dictionary<string, string> { ["Input.Code"] = Totp(key) });
+        using var codeStep = await browser.SubmitAsync(passwordStep.Headers.Location!.OriginalString, new Dictionary<string, string> { ["Input.Code"] = Totp(_host, key) });
         var again = await request.ExchangeAsync(_host, await browser.FollowAsync(codeStep));
         Sid(again).ShouldBe(Sid(withSecondFactor));
-        (await MeAsync(_host, Text(withPassword, "access_token"))).ShouldBe(HttpStatusCode.OK);
+        (await MeAsync(_host, Text(withPassword, "access_token"))).ShouldBe(HttpStatusCode.Unauthorized);
+        (await MeAsync(_host, Text(withSecondFactor, "access_token"))).ShouldBe(HttpStatusCode.OK);
+        (await MeAsync(_host, Text(again, "access_token"))).ShouldBe(HttpStatusCode.OK);
+        (await MeAsync(_host, Text(elsewhere, "access_token"))).ShouldBe(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -362,7 +379,7 @@ public sealed partial class HostedPagesTests
         var (key, _) = await EnableTwoFactorAsync(_host, editor);
         using var browser = new HostedPagesBrowser(_host, "10.1.0.12");
         using (var password = await browser.SubmitAsync("/account/login", Credentials(editor.Email, Password)))
-        using (var challenged = await browser.SubmitAsync(password.Headers.Location!.OriginalString, new Dictionary<string, string> { ["Input.Code"] = Totp(key) }))
+        using (var challenged = await browser.SubmitAsync(password.Headers.Location!.OriginalString, new Dictionary<string, string> { ["Input.Code"] = Totp(_host, key) }))
         {
             challenged.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         }

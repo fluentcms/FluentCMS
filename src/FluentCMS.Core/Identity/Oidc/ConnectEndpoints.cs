@@ -94,7 +94,7 @@ internal static class ConnectEndpoints
         var returnUrl = context.Request.PathBase + context.Request.Path + QueryString.Create(parameters);
         var afterSignIn = context.Request.PathBase + context.Request.Path + QueryString.Create(WithoutReauthentication(parameters));
 
-        if (user is null || !await MaySignInAsync(signIn, user))
+        if (user is null || !await signIn.CanSignInAsync(user))
         {
             if (request.HasPromptValue(PromptValues.None))
             {
@@ -184,7 +184,8 @@ internal static class ConnectEndpoints
         if (request.IsAuthorizationCodeGrantType() || request.IsRefreshTokenGrantType())
         {
             // The code or refresh token keeps its scopes and session; the user is read again, so one who can no longer
-            // sign in, or whose password changed since, gets no new token.
+            // sign in, or whose password changed since, gets no new token. Lockout is no reason: it bounds the guessing of
+            // passwords, and anyone who knows a user name could raise it to end the user's sessions (#3271).
             var result = await context.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
             if (MemberConnect.IsMemberToken(result.Principal))
             {
@@ -194,9 +195,14 @@ internal static class ConnectEndpoints
             var signIn = context.RequestServices.GetRequiredService<SignInManager<CmsUser>>();
             var users = signIn.UserManager;
             var user = result.Principal?.GetClaim(Claims.Subject) is { } subject ? await users.FindByIdAsync(subject) : null;
-            if (user is null || !await MaySignInAsync(signIn, user))
+            if (user is null || !await signIn.CanSignInAsync(user))
             {
                 return Refuse(Errors.InvalidGrant, "The user can no longer sign in.");
+            }
+
+            if (user.MustChangePassword)
+            {
+                return Refuse(Errors.InvalidGrant, "The user must choose a new password.");
             }
 
             var stamp = await users.GetSecurityStampAsync(user);
@@ -496,10 +502,6 @@ internal static class ConnectEndpoints
             }
         }
     }
-
-    // Active and not locked out; CanSignInAsync does not look at lockout, which the password check alone applies.
-    private static async Task<bool> MaySignInAsync(SignInManager<CmsUser> signIn, CmsUser user) =>
-        await signIn.CanSignInAsync(user) && !await signIn.UserManager.IsLockedOutAsync(user);
 
     private static OpenIddictRequest ServerRequest(HttpContext context) =>
         context.GetOpenIddictServerRequest() ?? throw new InvalidOperationException("The request did not pass through the authorization server.");

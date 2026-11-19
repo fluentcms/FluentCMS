@@ -56,16 +56,18 @@ internal sealed class MemberSignInManager : SignInManager<CmsMember>
         return user.DeactivatedAt is null && await base.CanSignInAsync(user);
     }
 
-    // Active, verified and not locked out; CanSignInAsync does not look at lockout, which the password check alone applies.
+    // Active, verified and not locked out, for a new sign-in; CanSignInAsync does not look at lockout, which the password
+    // check alone applies.
     public async Task<bool> MaySignInAsync(CmsMember user) =>
         await CanSignInAsync(user) && !await _members.IsLockedOutAsync(user);
 
-    // The member of the sign-in cookie, if the cookie is still good: its security stamp holds and the member may sign in.
+    // The member of the sign-in cookie, if the cookie is still good: its security stamp holds and the member is active and
+    // verified. Lockout ends no session that exists, since anyone who knows an address could raise it (#3271).
     public async Task<(CmsMember? Member, AuthenticateResult Cookie)> SignedInAsync()
     {
         var cookie = await Context.AuthenticateAsync(MemberAuthentication.CookieScheme);
         var member = cookie.Succeeded ? await ValidateSecurityStampAsync(cookie.Principal) : null;
-        return (member is not null && await MaySignInAsync(member) ? member : null, cookie);
+        return (member is not null && await CanSignInAsync(member) ? member : null, cookie);
     }
 
     // The hosted login page: the name is the member's address.

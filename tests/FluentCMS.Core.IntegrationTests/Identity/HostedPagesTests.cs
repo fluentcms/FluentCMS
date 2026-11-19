@@ -481,12 +481,12 @@ public sealed partial class HostedPagesTests : IClassFixture<HostedPagesFixture>
             browser.HasCookie(".AspNetCore.Identity.Application").ShouldBeFalse();
 
             var page = await browser.PageAsync(twoFactor);
-            using (var wrong = await browser.PostAsync(twoFactor, page, new Dictionary<string, string> { ["Input.Code"] = "000000" == Totp(key) ? "111111" : "000000" }))
+            using (var wrong = await browser.PostAsync(twoFactor, page, new Dictionary<string, string> { ["Input.Code"] = WrongCode(_host, key) }))
             {
                 wrong.StatusCode.ShouldBe(HttpStatusCode.OK);
             }
 
-            using var right = await browser.PostAsync(twoFactor, page, new Dictionary<string, string> { ["Input.Code"] = Totp(key) });
+            using var right = await browser.PostAsync(twoFactor, page, new Dictionary<string, string> { ["Input.Code"] = Totp(_host, key) });
             right.StatusCode.ShouldBe(HttpStatusCode.Redirect);
             using var done = await browser.FollowAsync(right);
             (await request.ExchangeAsync(_host, done)).GetProperty("access_token").GetString().ShouldNotBeNullOrEmpty();
@@ -704,12 +704,19 @@ public sealed partial class HostedPagesTests : IClassFixture<HostedPagesFixture>
         return rows;
     }
 
+    // A code of the host's clock, moved on a step first, since the server takes a code of each step once.
+    private static string Totp(FluentCmsTestHost host, string base32Key)
+    {
+        host.Time.Advance(TimeSpan.FromSeconds(30));
+        return TotpAt(base32Key, host.Time.GetUtcNow().ToUnixTimeSeconds() / 30);
+    }
+
     // RFC 6238 with Identity's parameters: SHA-1, 30 second steps, six digits.
-    private static string Totp(string base32Key)
+    private static string TotpAt(string base32Key, long step)
     {
         var key = Base32(base32Key);
         Span<byte> counter = stackalloc byte[8];
-        System.Buffers.Binary.BinaryPrimitives.WriteInt64BigEndian(counter, DateTimeOffset.UtcNow.ToUnixTimeSeconds() / 30);
+        System.Buffers.Binary.BinaryPrimitives.WriteInt64BigEndian(counter, step);
 #pragma warning disable CA5350 // TOTP is defined on HMAC-SHA1.
         var hash = HMACSHA1.HashData(key, counter);
 #pragma warning restore CA5350

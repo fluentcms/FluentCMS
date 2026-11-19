@@ -124,7 +124,7 @@ public sealed partial class HostedPagesTests
         using (var browser = new HostedPagesBrowser(host, address))
         {
             using var password = await browser.SubmitAsync("/account/login?ReturnUrl=" + Uri.EscapeDataString(request.Url), Credentials(user.Email, Password));
-            using var challenged = await browser.SubmitAsync(password.Headers.Location!.OriginalString, new Dictionary<string, string> { ["Input.Code"] = Totp(key) });
+            using var challenged = await browser.SubmitAsync(password.Headers.Location!.OriginalString, new Dictionary<string, string> { ["Input.Code"] = Totp(host, key) });
             using var done = await browser.FollowAsync(challenged);
             tokens = await request.ExchangeAsync(host, done);
         }

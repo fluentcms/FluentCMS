@@ -78,8 +78,13 @@ public sealed class EnableTwoFactorModel : AccountPageModel
             return Page();
         }
 
+        // The sign-in keeps how it was made, pwd or the provider, beside the mfa it now has.
         var cookie = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
-        await SignInManager.SignInWithClaimsAsync(user, cookie.Properties, [new Claim(Claims.AuthenticationMethodReference, TokenClaims.MultiFactor)]);
+        List<Claim> methods = [.. (cookie.Principal?.FindAll(claim => claim.Type is Claims.AuthenticationMethodReference or ClaimTypes.AuthenticationMethod) ?? [])
+            .Where(claim => claim.Value != TokenClaims.MultiFactor)
+            .Select(claim => new Claim(claim.Type, claim.Value))];
+        methods.Add(new Claim(Claims.AuthenticationMethodReference, TokenClaims.MultiFactor));
+        await SignInManager.SignInWithClaimsAsync(user, cookie.Properties, methods);
         return Page();
     }
 

@@ -32,11 +32,12 @@ internal static class IdentityRegistration
         services.AddOptions<IdentityOptions>().Configure<AdminUserOptions>((identity, users) => users.Apply(identity));
         // The authenticator provider checks the codes of the two-factor page and of /me/two-factor.
         services.AddIdentityCore<CmsUser>()
+            .AddUserValidator<CrossNameValidator>()
             .AddUserStore<CmsUserStore>()
             .AddUserManager<CmsUserManager>()
             .AddSignInManager<CmsSignInManager>()
             .AddTokenProvider<PasswordResetTokenProvider>(PasswordResetTokenProvider.ProviderName)
-            .AddTokenProvider<AuthenticatorTokenProvider<CmsUser>>(TokenOptions.DefaultAuthenticatorProvider);
+            .AddTokenProvider<OneTimeAuthenticatorTokenProvider>(TokenOptions.DefaultAuthenticatorProvider);
         services.AddOptions<PasswordResetTokenProviderOptions>().Configure<AdminUserOptions>((reset, users) =>
         {
             reset.Name = PasswordResetTokenProvider.ProviderName;

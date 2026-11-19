@@ -216,8 +216,38 @@ public sealed class CmsUserManager : UserManager<CmsUser>
         return await UpdateUserAsync(user);
     }
 
-    public override Task<IdentityResult> ChangePasswordAsync(CmsUser user, string currentPassword, string newPassword) =>
-        ClearingPasswordChangeAsync(user, () => base.ChangePasswordAsync(user, currentPassword, newPassword));
+    // A wrong current password counts towards the lockout, as at sign-in, so that a session that leaked is no way to guess
+    // it; while the user is locked out the current password is refused unchecked.
+    public override async Task<IdentityResult> ChangePasswordAsync(CmsUser user, string currentPassword, string newPassword)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(user);
+
+        if (SupportsUserLockout && await IsLockedOutAsync(user))
+        {
+            return IdentityResult.Failed(ErrorDescriber.PasswordMismatch());
+        }
+
+        var result = await ClearingPasswordChangeAsync(user, () => base.ChangePasswordAsync(user, currentPassword, newPassword));
+        if (SupportsUserLockout && result.Errors.Any(error => error.Code == nameof(IdentityErrorDescriber.PasswordMismatch)))
+        {
+            await AccessFailedAsync(user);
+        }
+
+        return result;
+    }
+
+    // A password an operator sets, with a new security stamp in the same save; the forced change is left as it was, since
+    // the user did not choose the password.
+    public async Task<IdentityResult> SetPasswordAsync(CmsUser user, string newPassword)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(user);
+        ArgumentNullException.ThrowIfNull(newPassword);
+
+        var result = await UpdatePasswordHash(user, newPassword, validatePassword: true);
+        return result.Succeeded ? await UpdateUserAsync(user) : result;
+    }
 
     public override Task<IdentityResult> ResetPasswordAsync(CmsUser user, string token, string newPassword) =>
         ClearingPasswordChangeAsync(user, () => base.ResetPasswordAsync(user, token, newPassword));
