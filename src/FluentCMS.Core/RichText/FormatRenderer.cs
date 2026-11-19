@@ -6,7 +6,8 @@ namespace FluentCMS.Core.ProseMirror;
 internal abstract class FormatRenderer(
     string format,
     IReadOnlyDictionary<string, IRichTextNodeRenderer> nodeRenderers,
-    RichTextRenderOptions options)
+    RichTextRenderOptions options,
+    SafeUrl links)
 {
     public abstract string Render(DocumentNode document);
 
@@ -23,11 +24,13 @@ internal abstract class FormatRenderer(
         return renderer.Render(new NodeContext(format, key, node is InlineBlockNode b ? b.Data : node.Attributes, inline, () => RenderChildren(node)));
     }
 
+    protected SafeUrl Links => links;
+
     protected string? ResolveEntryUrl(EntryLinkMark mark) =>
-        SafeUrl.OrNull(options.EntryUrlResolver?.Invoke(mark.EntryType, mark.EntryId));
+        links.OrNull(options.EntryUrlResolver?.Invoke(mark.EntryType, mark.EntryId));
 
     protected string? ResolveMediaUrl(MediaNode media) =>
-        SafeUrl.OrNull(options.MediaUrlResolver?.Invoke(media.MediaId));
+        links.OrNull(options.MediaUrlResolver?.Invoke(media.MediaId));
 
     // The node's own text wins; the asset's is for a node that has none.
     protected string MediaAlt(MediaNode media) =>
@@ -77,58 +80,5 @@ internal abstract class FormatRenderer(
         public bool IsInline { get; } = isInline;
 
         public string RenderChildren() => renderChildren();
-    }
-}
-
-internal static class SafeUrl
-{
-    private static readonly string[] allowedSchemes = ["http", "https", "mailto", "tel"];
-
-    public static string? OrNull(string? url) => url is not null && IsSafe(url) ? url : null;
-
-    public static bool IsSafe(string url)
-    {
-        var trimmed = url.Trim();
-        if (trimmed.Any(char.IsControl))
-        {
-            return false;
-        }
-
-        var end = SchemeEnd(trimmed);
-        var prefix = end < 0 ? trimmed : trimmed[..end];
-
-        // A character reference such as &#58; can spell the colon once a consumer decodes the URL.
-        if (HasCharacterReference(prefix))
-        {
-            return false;
-        }
-
-        return end < 0 || trimmed[end] != ':' || allowedSchemes.Contains(prefix, StringComparer.OrdinalIgnoreCase);
-    }
-
-    private static int SchemeEnd(string url)
-    {
-        for (var index = 0; index < url.Length; index++)
-        {
-            if (url[index] is '/' or '?' or ':' || (url[index] == '#' && (index == 0 || url[index - 1] != '&')))
-            {
-                return index;
-            }
-        }
-
-        return -1;
-    }
-
-    private static bool HasCharacterReference(string text)
-    {
-        for (var index = text.IndexOf('&', StringComparison.Ordinal); index >= 0; index = text.IndexOf('&', index + 1))
-        {
-            if (index + 1 < text.Length && (text[index + 1] == '#' || char.IsAsciiLetter(text[index + 1])))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 }
