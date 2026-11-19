@@ -58,7 +58,8 @@ internal sealed class SettingsProtection(IDataProtectionProvider provider, ILogg
     public string Unprotect(SettingsDescriptor descriptor, string json, Guid? site) => Unprotect(descriptor, json, site, out _);
 
     // The document as the class reads it. A value that the key ring cannot unprotect, because its key is gone or the value was
-    // changed or moved, is left out of the document and returned in unreadable as it is stored, and the log names the key.
+    // changed or moved, is left out of the document, or holds its code default when the class cannot read the document
+    // without it, and is returned in unreadable as it is stored; the log names the key.
     public string Unprotect(SettingsDescriptor descriptor, string json, Guid? site, out IReadOnlyDictionary<string, string> unreadable)
     {
         unreadable = None;
@@ -90,7 +91,17 @@ internal sealed class SettingsProtection(IDataProtectionProvider provider, ILogg
         }
 
         unreadable = lost ?? None;
-        return changed ? document.ToJsonString() : json;
+        if (!changed)
+        {
+            return json;
+        }
+
+        // A class that requires the key would read the row without it as damaged, so the key holds its code default, which is
+        // what a read gives for it anyway.
+        var result = document.ToJsonString();
+        return lost is not null && !descriptor.CanRead(result) && descriptor.WithCodeDefaults(result, lost.Keys) is var filled && descriptor.CanRead(filled)
+            ? filled
+            : result;
     }
 
     // What a stored document holds under its secret keys, worst first: a value the key ring cannot unprotect, then one written

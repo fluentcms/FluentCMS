@@ -1,6 +1,6 @@
 using System.Text.Json.Nodes;
-using FluentCMS.Core.Settings;
 using FluentCMS.Content;
+using FluentCMS.Core.Settings;
 using FluentCMS.Diagnostics;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
@@ -259,17 +259,68 @@ public sealed class SettingsProtectionTests
         (read.MaxUploadMb, read.ApiKey).ShouldBe((30, "instance-key"));
     }
 
-    private static string Foreign(string json, Guid? site) =>
-        new SettingsProtection(new EphemeralDataProtectionProvider(), NullLogger<SettingsProtection>.Instance).Protect(new SettingsDescriptor("media", typeof(MediaSettings)), json, site);
+    [Fact]
+    public async Task AnInstanceRowTheClassCannotReadKeepsItsUnreadableSecret()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(null, "media", Foreign($$"""{"maxUploadMb":"not a number","apiKey":"{{Secret}}"}""", null));
+        var payload = StoredApiKey(database, null);
 
-    private static string StoredApiKey(SettingsDatabase database, Guid? site) =>
-        JsonNode.Parse(database.Rows().Single(row => row.Key == "media" && row.SiteId == site).Json)!["apiKey"]!.GetValue<string>();
+        await WriteAsync(database, null, """{"maxUploadMb":30}""");
 
-    private static Task<bool> WriteAsync(SettingsDatabase database, SiteId? site, string json) =>
+        StoredApiKey(database, null).ShouldBe(payload);
+        database.Logs.All.ShouldNotContain("can no longer be read by the class and was not kept");
+        var read = await database.GetDefaultAsync();
+        (read.MaxUploadMb, read.ApiKey).ShouldBe((30, null));
+    }
+
+    [Fact]
+    public async Task AWriteOverASiteRowTheClassCannotReadThatNamesTheSecretStoresIt()
+    {
+        using var database = new SettingsDatabase();
+        await database.SetDefaultAsync(new MediaSettings { ApiKey = "instance-key" });
+        database.AddRow(SiteA.Value, "media", Foreign($$"""{"maxUploadMb":"not a number","apiKey":"{{Secret}}"}""", SiteA.Value));
+
+        await WriteAsync(database, SiteA, """{"maxUploadMb":30,"apiKey":"set-again"}""");
+
+        StoredApiKey(database, SiteA.Value).ShouldStartWith(SettingsProtection.Prefix);
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBe("set-again");
+        (await ReportAsync(database)).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ARequiredSecretTheKeyRingCannotReadKeepsItsRowReadableAndAWriteCannotLeaveItOut()
+    {
+        using var database = new SettingsDatabase(cms => cms.Settings.Add<RequiredSecret>());
+        database.AddRow(SiteA.Value, "required-secret", Foreign($$"""{"token":"{{Secret}}","name":"a"}""", SiteA.Value, "required-secret", typeof(RequiredSecret)));
+        var payload = Stored(database, "required-secret", SiteA.Value, "token");
+
+        var read = await database.AsAsync(Admin, async (IServiceProvider services) => await services.GetRequiredService<ISettings<RequiredSecret>>().GetAsync(SiteA, Token));
+        (read.Name, read.Token).ShouldBe(("a", "code-token"));
+        database.Logs.All.ShouldNotContain("cannot be read by the class as it is now");
+
+        // A document without a required key is refused before the row is read, so no write can drop the stored value.
+        (await Should.ThrowAsync<ValidationException>(() => WriteAsync(database, SiteA, """{"name":"b"}""", "required-secret"))).Errors.ShouldHaveSingleItem().Code.ShouldBe("FCMS2805");
+        Stored(database, "required-secret", SiteA.Value, "token").ShouldBe(payload);
+
+        await WriteAsync(database, SiteA, """{"name":"b","token":"set-again"}""", "required-secret");
+        var written = await database.AsAsync(Admin, async (IServiceProvider services) => await services.GetRequiredService<ISettings<RequiredSecret>>().GetAsync(SiteA, Token));
+        (written.Name, written.Token).ShouldBe(("b", "set-again"));
+    }
+
+    private static string Foreign(string json, Guid? site, string area = "media", Type? type = null) =>
+        new SettingsProtection(new EphemeralDataProtectionProvider(), NullLogger<SettingsProtection>.Instance).Protect(new SettingsDescriptor(area, type ?? typeof(MediaSettings)), json, site);
+
+    private static string StoredApiKey(SettingsDatabase database, Guid? site) => Stored(database, "media", site, "apiKey");
+
+    private static string Stored(SettingsDatabase database, string area, Guid? site, string key) =>
+        JsonNode.Parse(database.Rows().Single(row => row.Key == area && row.SiteId == site).Json)![key]!.GetValue<string>();
+
+    private static Task<bool> WriteAsync(SettingsDatabase database, SiteId? site, string json, string area = "media") =>
         database.AsAsync(Admin, async (IServiceProvider services) =>
         {
             var service = services.GetRequiredService<SettingsService>();
-            await service.WriteAsync(service.Require("media"), site, json, null, Token);
+            await service.WriteAsync(service.Require(area), site, json, null, Token);
             return true;
         });
 

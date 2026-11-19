@@ -343,13 +343,18 @@ internal sealed class SettingsService(
             // A secret of a site that neither the document nor the site's row holds stays out of the row, so that the site goes on
             // reading it from the instance default; it is filled in only for the checks, which see the document a read will give.
             var stored = current is not null && descriptor.CanRead(current.Json) ? current.Json : null;
-            // The secrets of a skipped row that the key ring cannot unprotect go with the row, and are reported like the others.
+            // The secrets of a site's skipped row that the key ring cannot unprotect go with the row, as its other secrets do, since
+            // the site inherits them again; the instance row keeps them, which changes nothing a read gives.
             IReadOnlyList<string> skipped = [];
             if (current is not null && stored is null)
             {
-                var named = JsonNode.Parse(json, documentOptions: new JsonDocumentOptions { MaxDepth = SettingsJson.MaxDepth })!.AsObject();
-                skipped = [.. descriptor.SecretsLeftOut(json, current.Json).Union(unreadable.Keys.Where(key => !named.ContainsKey(key))).Order(StringComparer.Ordinal)];
-                unreadable = new Dictionary<string, string>();
+                skipped = descriptor.SecretsLeftOut(json, current.Json);
+                if (site is not null)
+                {
+                    var named = JsonNode.Parse(json, documentOptions: new JsonDocumentOptions { MaxDepth = SettingsJson.MaxDepth })!.AsObject();
+                    skipped = [.. skipped.Union(unreadable.Keys.Where(key => !named.ContainsKey(key))).Order(StringComparer.Ordinal)];
+                    unreadable = new Dictionary<string, string>();
+                }
             }
 
             IReadOnlyList<string> inherited = [];
