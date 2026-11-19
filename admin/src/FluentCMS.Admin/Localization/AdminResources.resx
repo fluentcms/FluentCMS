@@ -1547,6 +1547,12 @@
   <data name="Plugins.LoadFailed.TryAgain" xml:space="preserve">
     <value>Try again</value>
   </data>
+  <data name="Plugins.PageFailed.Heading" xml:space="preserve">
+    <value>This page could not be shown</value>
+  </data>
+  <data name="Plugins.PageFailed.Text" xml:space="preserve">
+    <value>The plugin admin part that shows this page has a fault. The browser's console names it.</value>
+  </data>
   <data name="Plugins.Problems.Heading" xml:space="preserve">
     <value>Plugin admin parts not loaded</value>
   </data>

@@ -1,0 +1,5 @@
+@* A cell that injects a service only the half's provider gives. The tests name it in a manifest of their own; it declares none. *@
+@inherits ListCellBase
+@inject ReviewsApi Api
+
+<span>@Api.Approved</span>

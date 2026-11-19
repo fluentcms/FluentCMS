@@ -42,6 +42,7 @@ public sealed class AdminPluginManifestTests
             (Sample + "ReviewPage", "/reviews/{Id:guid}", "reviews.notes.manage"),
             (Sample + "ReviewPage", "/reviews/new", "reviews.notes.create"),
             (Sample + "ReviewsPage", "/reviews", "reviews.notes.manage"),
+            (Sample + "MisinjectedPage", "/reviews/misinjected", "reviews.notes.manage"),
         ], ignoreOrder: true);
         manifest.MenuItems.ShouldHaveSingleItem().ShouldBe(new AdminManifestMenuItem
         {

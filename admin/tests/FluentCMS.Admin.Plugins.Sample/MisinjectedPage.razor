@@ -1,0 +1,6 @@
+@* A page that injects a service the half registers in Configure, so the renderer cannot create it. *@
+@page "/reviews/misinjected"
+@attribute [AdminPage("/reviews/misinjected", Permission = "reviews.notes.manage")]
+@inject ReviewsApi Api
+
+<p>@Api.Approved</p>
