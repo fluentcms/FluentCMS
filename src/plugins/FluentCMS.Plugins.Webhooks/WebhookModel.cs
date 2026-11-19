@@ -70,12 +70,15 @@ internal sealed class WebhookDelivery
     // A ping or a redelivery, which is tried once.
     public bool Manual { get; set; }
 
-    // When the attempt was claimed.
+    // When the attempt was claimed, or queued while it is queued.
     public DateTimeOffset CreatedAt { get; set; }
 }
 
 internal static class DeliveryStates
 {
+    // Waiting in its webhook's queue, ordered by CreatedAt, until no attempt of the webhook is in flight.
+    public const string Queued = "queued";
+
     // Claimed and being sent. At most one attempt of a webhook is pending, which ux_cms_webhooks_delivery_in_flight holds.
     public const string Pending = "pending";
 

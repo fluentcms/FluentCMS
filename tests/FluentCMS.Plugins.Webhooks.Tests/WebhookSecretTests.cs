@@ -228,6 +228,53 @@ public sealed class WebhookSecretTests
         Verifies(request.Headers[WebhookSender.SignatureHeader], New, request.Body, host.Time.GetUtcNow()).ShouldBeTrue();
     }
 
+    // A redacted value used to keep the stored one whatever the URL, so a caller who may manage the webhook but does not know
+    // its headers could point it at a host of their own and receive them.
+    [Fact]
+    public async Task ARedactedHeaderIsKeptOnlyWhileTheUrlKeepsItsSchemeHostAndPort()
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        await using var other = await TestReceiver.StartAsync();
+        await using var host = Host();
+        using var client = await AdminAsync(host);
+        var url = receiver.Url();
+        var webhook = $"{Root}/{Id(await CreateAsync(client, new { name = "builds", url = url.ToString(), events = new List<string> { "content.published" }, headers = new Dictionary<string, string> { ["Authorization"] = Token1 } })):D}";
+
+        object Replaced(string to, string value) => new { name = "builds", url = to, events = new List<string> { "content.published" }, headers = new Dictionary<string, string> { ["Authorization"] = value } };
+        foreach (var moved in (string[])[$"http://localhost:{url.Port}/hook", other.Url().ToString()])
+        {
+            using var refused = await client.PutAsJsonAsync(new Uri(webhook, UriKind.Relative), Replaced(moved, WebhookService.RedactedValue), Token);
+            var text = await TextAsync(refused);
+            refused.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity, text);
+            var error = JsonNode.Parse(text)!["errors"]!.AsArray().ShouldHaveSingleItem()!;
+            (error["path"]!.GetValue<string>(), error["code"]!.GetValue<string>()).ShouldBe(("headers.Authorization", WebhookErrorCodes.InvalidField));
+            error["message"]!.GetValue<string>().ShouldContain("host");
+        }
+
+        // Another path, query or case of the host keeps it.
+        using (var kept = await client.PutAsJsonAsync(new Uri(webhook, UriKind.Relative), Replaced($"HTTP://127.0.0.1:{url.Port}/other?build=1", WebhookService.RedactedValue), Token))
+        {
+            kept.StatusCode.ShouldBe(HttpStatusCode.OK, await TextAsync(kept));
+        }
+
+        var articles = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).Content<Article>();
+        await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "Kept" }, Token)).Id, cancellationToken: Token);
+        await PumpAsync(host);
+        var request = receiver.Requests.ShouldHaveSingleItem();
+        (request.Path, request.Headers["Authorization"]).ShouldBe(("/other", Token1));
+
+        // Sent again, the value goes with the new host.
+        using (var moved = await client.PutAsJsonAsync(new Uri(webhook, UriKind.Relative), Replaced(other.Url().ToString(), Token2), Token))
+        {
+            moved.StatusCode.ShouldBe(HttpStatusCode.OK, await TextAsync(moved));
+        }
+
+        await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "Moved" }, Token)).Id, cancellationToken: Token);
+        await PumpAsync(host);
+        other.Requests.ShouldHaveSingleItem().Headers["Authorization"].ShouldBe(Token2);
+        receiver.Requests.Count.ShouldBe(1);
+    }
+
     // The column as the database holds it, of the only webhook or of the one named.
     private static async Task<string?> RawAsync(FluentCmsTestHost host, string column, Guid? id = null)
     {

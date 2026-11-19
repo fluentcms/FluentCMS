@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -16,6 +17,9 @@ internal sealed class WebhookSender : IDisposable
     public const string SignatureHeader = "X-FluentCMS-Signature";
 
     private const int ResponseBytes = 4096;
+
+    private static readonly SearchValues<char> Controls = SearchValues.Create(
+        [.. Enumerable.Range(0, 0x20).Where(code => code is not ('\t' or '\n' or '\r')).Select(code => (char)code), (char)0x7F]);
 
     private readonly HttpClient _client;
     private readonly WebhooksOptions _options;
@@ -103,8 +107,15 @@ internal sealed class WebhookSender : IDisposable
             read += count;
         }
 
-        return read == 0 ? null : Cut(Encoding.UTF8.GetString(buffer, 0, read), WebhookModel.ResponseExcerptMaxLength);
+        return read == 0 ? null : Cut(Printable(Encoding.UTF8.GetString(buffer, 0, read)), WebhookModel.ResponseExcerptMaxLength);
     }
 
-    private static string Cut(string text, int length) => text.Length <= length ? text : text[..length];
+    // Without control characters other than tab and line breaks: PostgreSQL refuses a NUL in text, and a write that fails
+    // after a 2xx would send the attempt again.
+    private static string Printable(string text) =>
+        text.AsSpan().ContainsAny(Controls) ? string.Concat(text.Where(character => !Controls.Contains(character))) : text;
+
+    // Never between the halves of a surrogate pair, which a strict UTF-8 encoder refuses as a lone surrogate.
+    private static string Cut(string text, int length) =>
+        text.Length <= length ? text : text[..(char.IsHighSurrogate(text[length - 1]) ? length - 1 : length)];
 }

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Events;
@@ -145,25 +146,65 @@ public sealed class WebhookQueueTests(WebhookFixture hosts) : IClassFixture<Webh
         waited.ShouldBeTrue();
         await receiver.Entered.WaitAsync(Patience, Token);
         receiver.Requests.Count.ShouldBe(1);
-        var pending = (await DeliveriesAsync(host, webhook)).ShouldHaveSingleItem();
-        pending.State.ShouldBe(DeliveryStates.Pending);
+        (await DeliveriesAsync(host, webhook)).Count(delivery => delivery.State == DeliveryStates.Pending).ShouldBe(1);
 
         receiver.Release();
         (await Task.WhenAll(workers).WaitAsync(Patience, Token)).ShouldAllBe(ran => ran);
 
-        // The second delivery waits until the first one's send must have ended, at its claim plus the timeout.
-        var sent = pending.CreatedAt + new WebhooksOptions().Timeout;
-        host.Time.Set(sent - TimeSpan.FromSeconds(1));
-        (await RunDueJobsAsync(host)).ShouldBe(0, "the send in flight may still be running");
-        host.Time.Set(sent + WebhookDeliveryJob.Busy + TimeSpan.FromSeconds(1));
+        // The second delivery waited in the webhook's queue, and the first one's job woke it as it finished.
         (await RunDueJobsAsync(host)).ShouldBe(1);
-
         receiver.Requests.Count.ShouldBe(2);
         receiver.MostOpen.ShouldBe(1);
         var deliveries = await DeliveriesAsync(host, webhook);
         deliveries.Count.ShouldBe(2);
         deliveries.ShouldAllBe(delivery => delivery.State == DeliveryStates.Succeeded);
         deliveries.Select(delivery => delivery.DeliveryId).Distinct().Count().ShouldBe(2);
+    }
+
+    // A burst used to wait for the worst-case end of each send, its claim plus the timeout, and every waiting job ran again
+    // each round. Now the attempts wait in the webhook's queue without running and go in order, each as the one before ends.
+    [Fact]
+    public async Task ABurstToOneWebhookGoesInOrderAsEachAttemptEndsWithoutRunningTheWaitingJobs()
+    {
+        const int Burst = 8;
+        await using var receiver = await TestReceiver.StartAsync();
+        receiver.Hold();
+        var host = await hosts.HostAsync();
+        using var client = await AdminAsync(host);
+        var webhook = Id(await CreateAsync(client, new { name = "burst", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
+        var articles = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).Content<Article>();
+        List<Guid> published = [];
+        for (var index = 0; index < Burst; index++)
+        {
+            var entry = (await articles.CreateAsync(new Article { Title = $"Burst {index}" }, Token)).Id;
+            await articles.PublishAsync(entry, cancellationToken: Token);
+            published.Add(entry);
+        }
+
+        await DrainOutboxAsync(host);
+        var first = RunNextAsync(host, WebhookDeliveryJob.Queue);
+        await receiver.Entered.WaitAsync(Patience, Token);
+        for (var index = 1; index < Burst; index++)
+        {
+            (await RunNextAsync(host, WebhookDeliveryJob.Queue)).ShouldBeTrue();
+            host.Time.Advance(TimeSpan.FromMilliseconds(1));
+        }
+
+        (await DeliveriesAsync(host, webhook)).Count(delivery => delivery.State == DeliveryStates.Queued).ShouldBe(Burst - 1);
+        (await RunDueJobsAsync(host)).ShouldBe(0, "a waiting attempt does not run while another is in flight");
+
+        receiver.Release();
+        (await first.WaitAsync(Patience, Token)).ShouldBeTrue();
+        (await RunDueJobsAsync(host)).ShouldBe(Burst - 1, "each attempt's job wakes the next once");
+        receiver.Requests.Select(request => Guid.Parse(JsonNode.Parse(request.Body)!["data"]!["documentId"]!.GetValue<string>())).ShouldBe(published);
+        receiver.MostOpen.ShouldBe(1);
+        (await DeliveriesAsync(host, webhook)).ShouldAllBe(delivery => delivery.State == DeliveryStates.Succeeded);
+
+        // The head of the queue also came back for when the claim it waited behind would be abandoned, in case that
+        // claim's job was gone; by then it is sent.
+        host.Time.Advance(new WebhooksOptions().Timeout + WebhookDeliveryJob.AbandonMargin);
+        (await RunDueJobsAsync(host)).ShouldBe(1);
+        receiver.Requests.Count.ShouldBe(Burst);
     }
 
     [Fact]

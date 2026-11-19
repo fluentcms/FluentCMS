@@ -103,13 +103,12 @@ public sealed class WebhookClaimTests(WebhookFixture hosts) : IClassFixture<Webh
         await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "After a crash" }, Token)).Id, cancellationToken: Token);
 
         await PumpAsync(host);
-        host.Time.Set(crashed.CreatedAt + SendTimeout + WebhookDeliveryJob.Busy);
-        (await RunDueJobsAsync(host)).ShouldBe(1, "the delivery waits until the claim's send must have ended");
-        host.Time.Advance(WebhookDeliveryJob.Busy - TimeSpan.FromSeconds(1));
-        (await RunDueJobsAsync(host)).ShouldBe(0, "and then at least a little longer each time");
+        (await DeliveriesAsync(host, webhook)).Single(delivery => delivery.Id != crashed.Id).State.ShouldBe(DeliveryStates.Queued);
+        host.Time.Set(crashed.CreatedAt + Abandoned - TimeSpan.FromSeconds(1));
+        (await RunDueJobsAsync(host)).ShouldBe(0, "the delivery heads the queue and waits for the claim to be abandoned, since no job of the claim wakes it");
         receiver.Requests.ShouldBeEmpty("the claim of another attempt is in flight until it is abandoned");
 
-        host.Time.Advance(Abandoned);
+        host.Time.Set(crashed.CreatedAt + Abandoned);
         (await RunDueJobsAsync(host)).ShouldBe(1);
         var request = receiver.Requests.ShouldHaveSingleItem();
         request.Headers[WebhookSender.DeliveryHeader].ShouldNotBe(crashed.DeliveryId.ToString("D"));
