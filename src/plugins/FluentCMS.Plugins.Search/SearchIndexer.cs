@@ -36,7 +36,7 @@ internal sealed class SearchIndexer(
         var rows = new List<SearchRow>();
         foreach (var code in codes)
         {
-            var read = (Read: true, Draft: (string?)null, Published: (string?)null);
+            var read = (Read: true, Draft: (IReadOnlyDictionary<string, string>?)null, Published: (IReadOnlyDictionary<string, string>?)null);
             if (type.Localized && await AllowedAsync(new SiteId(site), code, cancellationToken) is null)
             {
                 read.Read = false;
@@ -140,7 +140,7 @@ internal sealed class SearchIndexer(
         }
     }
 
-    private async Task<(bool Read, string? Draft, string? Published)> ReadAsync(SchemaType type, IReadOnlyList<SchemaField> fields, Guid id, string locale, CancellationToken cancellationToken)
+    private async Task<(bool Read, IReadOnlyDictionary<string, string>? Draft, IReadOnlyDictionary<string, string>? Published)> ReadAsync(SchemaType type, IReadOnlyList<SchemaField> fields, Guid id, string locale, CancellationToken cancellationToken)
     {
         var options = new GetOptions { Locale = type.Localized ? locale : null, Fallback = LocaleFallback.None, Select = [.. fields.Select(field => field.Name)] };
         try

@@ -2,8 +2,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Plugins.Search;
 
-// The searchable text of one document in one locale and one state. Text is folded and split by SearchText, so every
-// provider matches the same words. The key is an integer because SQLite's FTS5 table reads it as the rowid.
+// The searchable text of one field of a document in one locale and one state: a row per field, so that a search matches
+// only the fields its caller may read. Text is folded and split by SearchText, so every provider matches the same words.
+// The key is an integer because SQLite's FTS5 table reads it as the rowid.
 internal sealed class SearchEntry
 {
     public long Id { get; set; }
@@ -19,6 +20,8 @@ internal sealed class SearchEntry
 
     // Null for a global type.
     public Guid? SiteId { get; set; }
+
+    public string Field { get; set; } = "";
 
     public string Text { get; set; } = "";
 
@@ -42,6 +45,7 @@ internal sealed class SearchModel : IPluginModelContributor
 
     public const int TypeMaxLength = 64;
     public const int LocaleMaxLength = 16;
+    public const int FieldMaxLength = 64;
 
     public void Configure(ModelBuilder modelBuilder)
     {
@@ -55,9 +59,10 @@ internal sealed class SearchModel : IPluginModelContributor
             entry.Property(item => item.State).HasColumnName("state");
             entry.Property(item => item.Type).HasColumnName("type").HasMaxLength(TypeMaxLength).IsRequired();
             entry.Property(item => item.SiteId).HasColumnName("site_id");
+            entry.Property(item => item.Field).HasColumnName("field").HasMaxLength(FieldMaxLength).IsRequired();
             entry.Property(item => item.Text).HasColumnName("text").IsRequired();
             entry.Property(item => item.UpdatedAt).HasColumnName("updated_at");
-            entry.HasIndex(item => new { item.DocumentId, item.Locale, item.State }).IsUnique().HasDatabaseName("ux_cms_search_entry_document");
+            entry.HasIndex(item => new { item.DocumentId, item.Locale, item.State, item.Field }).IsUnique().HasDatabaseName("ux_cms_search_entry_document");
             entry.HasIndex(item => new { item.Type, item.Locale, item.State, item.SiteId }).HasDatabaseName("ix_cms_search_entry_type");
             entry.HasIndex(item => item.SiteId).HasDatabaseName("ix_cms_search_entry_site");
         });

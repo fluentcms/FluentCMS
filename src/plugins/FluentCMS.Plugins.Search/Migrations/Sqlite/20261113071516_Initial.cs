@@ -23,6 +23,7 @@ namespace FluentCMS.Plugins.Search.Migrations.Sqlite
                     state = table.Column<int>(type: "INTEGER", nullable: false),
                     type = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
                     site_id = table.Column<Guid>(type: "TEXT", nullable: true),
+                    field = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
                     text = table.Column<string>(type: "TEXT", nullable: false),
                     updated_at = table.Column<long>(type: "INTEGER", nullable: false)
                 },
@@ -44,7 +45,7 @@ namespace FluentCMS.Plugins.Search.Migrations.Sqlite
             migrationBuilder.CreateIndex(
                 name: "ux_cms_search_entry_document",
                 table: "cms_search_entry",
-                columns: new[] { "document_id", "locale", "state" },
+                columns: new[] { "document_id", "locale", "state", "field" },
                 unique: true);
 
             // Written by hand: the FTS5 table that matches the text, an external-content table that reads the text of

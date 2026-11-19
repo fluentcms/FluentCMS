@@ -24,6 +24,7 @@ namespace FluentCMS.Plugins.Search.Migrations.PostgreSql
                     state = table.Column<int>(type: "integer", nullable: false),
                     type = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     site_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    field = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     text = table.Column<string>(type: "text", nullable: false),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
@@ -45,7 +46,7 @@ namespace FluentCMS.Plugins.Search.Migrations.PostgreSql
             migrationBuilder.CreateIndex(
                 name: "ux_cms_search_entry_document",
                 table: "cms_search_entry",
-                columns: new[] { "document_id", "locale", "state" },
+                columns: new[] { "document_id", "locale", "state", "field" },
                 unique: true);
 
             // Written by hand: the GIN index over the tsvector of the text in the simple configuration, whose expression

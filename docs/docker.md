@@ -20,7 +20,7 @@ Build the image from the repository root:
 docker build -f src/FluentCMS.Host/Dockerfile -t fluentcms .
 ```
 
-The Dockerfile builds for the platform it runs on, and for both `linux/amd64` and `linux/arm64` with `docker buildx build --platform linux/amd64,linux/arm64`. The SDK compiles for the target on the build machine, so no emulation is needed. A local build is version `1.0.0-dev`; `--build-arg VERSION=1.0.0-preview.1` gives another, as the `Publish` workflow does. The image is `mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra`: no shell and no package manager, ICU and time zone data for localized content and schedules, and the non-root user `app` (uid 1654).
+The Dockerfile builds for the platform it runs on, and for both `linux/amd64` and `linux/arm64` with `docker buildx build --platform linux/amd64,linux/arm64`. The SDK compiles for the target on the build machine, so no emulation is needed. A local build is version `1.0.0-dev`; `--build-arg VERSION=1.0.0-preview.1` gives another, as the `Publish` workflow does. The image is `mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra`, pinned with the SDK image by digest, which Dependabot moves on: no shell and no package manager, ICU and time zone data for localized content and schedules, and the non-root user `app` (uid 1654).
 
 The image runs in the Production environment, which refuses to start on the defaults that are only safe for a trial. Run with nothing set, it stops before it touches the database, exits with code 1 and prints one line per refusal, each naming the setting and the key that lifts it:
 

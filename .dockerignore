@@ -1,6 +1,7 @@
 # Only what src/FluentCMS.Host/Dockerfile copies.
 *
 !global.json
+!nuget.config
 !Directory.Build.props
 !Directory.Packages.props
 !docs/resources/icon.png
