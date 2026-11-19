@@ -57,10 +57,10 @@ public sealed class Kitchen : ContentItem
     [Relation]
     public RefList<Kitchen> Neighbours { get; set; } = [];
 
-    [Media]
+    [Media(Accept = ["image/*"])]
     public MediaRef? Photo { get; set; }
 
-    [Media]
+    [Media(Accept = ["image/png", "application/pdf"])]
     public MediaRefList Photos { get; set; } = [];
 
     [Media]

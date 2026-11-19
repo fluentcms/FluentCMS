@@ -6,7 +6,10 @@ using Microsoft.AspNetCore.Http;
 namespace FluentCMS.Plugins.Media;
 
 // An asset as the Management API reads it: its metadata and the URLs of the media library and the picker.
-internal sealed record ManagedAsset(MediaAsset Asset, MediaAssetUrls Urls);
+internal sealed record ManagedAsset(MediaAsset Asset, MediaAssetUrls Urls, int Version);
+
+// An asset after a write, with the version the routes give as its ETag.
+internal sealed record VersionedAsset(MediaAsset Asset, int Version);
 
 internal sealed record MediaAssetUrls(
     [property: Description("The original file, /media/{id}/original/{fileName}, signed. A private asset's URL serves it inline until expiresAt.")]

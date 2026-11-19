@@ -232,7 +232,7 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
         ValidateConditions(type, field, location);
     }
 
-    // Returns the keys whose value has the wrong kind, so the type-specific checks do not report them a second time.
+    // Returns the keys whose value has the wrong kind or fails the type's own check, so the type-specific checks do not report them a second time.
     private HashSet<string> ValidateSettingKeys(IFieldType fieldType, FieldDraft field, string location)
     {
         HashSet<string> wrongKind = [];
@@ -252,6 +252,11 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
             {
                 wrongKind.Add(key);
                 Report(SchemaErrorCodes.InvalidField, $"setting '{key}' of {fieldType.Name} field {location} must be {Describe(descriptor.Kind)}");
+            }
+            else if (descriptor.Validate?.Invoke(value) is { } problem)
+            {
+                wrongKind.Add(key);
+                Report(descriptor.ErrorCode ?? SchemaErrorCodes.InvalidField, $"setting '{key}' of {fieldType.Name} field {location} {problem}");
             }
         }
 

@@ -41,12 +41,12 @@ public sealed class MediaDetailTests
         var media = new MediaApi(editor.Api);
         var english = await UploadAsync(media, "cat.png", Red);
 
-        english = await media.UpdateAsync(english, new JsonObject { ["alt"] = "A cat", ["caption"] = "On a mat" }, false, Token);
-        // The answer of a save is the base of the next, whatever the precision the database keeps of its time.
-        english = await media.UpdateAsync(english, new JsonObject { ["title"] = "Cat" }, false, Token);
+        english = await media.UpdateAsync(english, new JsonObject { ["alt"] = "A cat", ["caption"] = "On a mat" }, Token);
+        // The ETag of a save's answer is the base of the next.
+        english = await media.UpdateAsync(english, new JsonObject { ["title"] = "Cat" }, Token);
         var french = await media.GetAsync(english.Id, "fr", Token);
         french.Alt.ShouldBeNull();
-        french = await media.UpdateAsync(french, new JsonObject { ["alt"] = "Un chat", ["caption"] = "Sur un tapis" }, false, Token);
+        french = await media.UpdateAsync(french, new JsonObject { ["alt"] = "Un chat", ["caption"] = "Sur un tapis" }, Token);
 
         var en = await media.GetAsync(english.Id, "en", Token);
         var fr = await media.GetAsync(english.Id, "fr", Token);
@@ -55,11 +55,13 @@ public sealed class MediaDetailTests
 
         // Another tab saves after this one read the asset.
         using var other = await admin.SignInAsync(BuiltInRoles.EditorName);
-        await new MediaApi(other.Api).UpdateAsync(await new MediaApi(other.Api).GetAsync(en.Id, "en", Token), new JsonObject { ["credit"] = "Jo" }, false, Token);
-        var conflict = await Should.ThrowAsync<MediaConflictException>(() => media.UpdateAsync(en, new JsonObject { ["credit"] = "Sam" }, false, Token));
+        await new MediaApi(other.Api).UpdateAsync(await new MediaApi(other.Api).GetAsync(en.Id, "en", Token), new JsonObject { ["credit"] = "Jo" }, Token);
+        var conflict = await Should.ThrowAsync<MediaConflictException>(() => media.UpdateAsync(en, new JsonObject { ["credit"] = "Sam" }, Token));
         conflict.Current.Credit.ShouldBe("Jo");
         (await media.GetAsync(en.Id, "en", Token)).Credit.ShouldBe("Jo");
-        (await media.UpdateAsync(en, new JsonObject { ["credit"] = "Sam" }, true, Token)).Credit.ShouldBe("Sam");
+
+        // Saving over it is based on the asset the conflict holds.
+        (await media.UpdateAsync(conflict.Current, new JsonObject { ["credit"] = "Sam" }, Token)).Credit.ShouldBe("Sam");
     }
 
     [Fact]
@@ -79,9 +81,9 @@ public sealed class MediaDetailTests
             return await anonymous.GetByteArrayAsync(url.TrimStart('/'), Token);
         }
 
-        asset = await media.UpdateAsync(asset, new JsonObject { ["focalPoint"] = new JsonObject { ["x"] = 0.0, ["y"] = 0.5 } }, false, Token);
+        asset = await media.UpdateAsync(asset, new JsonObject { ["focalPoint"] = new JsonObject { ["x"] = 0.0, ["y"] = 0.5 } }, Token);
         var left = await SquareAsync();
-        asset = await media.UpdateAsync(asset, new JsonObject { ["focalPoint"] = new JsonObject { ["x"] = 1.0, ["y"] = 0.5 } }, false, Token);
+        asset = await media.UpdateAsync(asset, new JsonObject { ["focalPoint"] = new JsonObject { ["x"] = 1.0, ["y"] = 0.5 } }, Token);
         var right = await SquareAsync();
 
         asset.FocalPoint.ShouldBe(new MediaPoint { X = 1, Y = 0.5 });
@@ -117,7 +119,11 @@ public sealed class MediaDetailTests
         var media = new MediaApi(editor.Api);
         var asset = await UploadAsync(media, "pixel.png", Red);
 
-        var replaced = await media.ReplaceAsync(asset.Id, Body(null, "halves.png", Halves), "en", Token);
+        var answer = await media.ReplaceAsync(asset.Id, Body(null, "halves.png", Halves), Token);
+        var replaced = await media.GetAsync(asset.Id, "en", Token);
+
+        answer.ETag.ShouldBe(replaced.ETag);
+        answer.ETag.ShouldNotBe(asset.ETag);
 
         replaced.Id.ShouldBe(asset.Id);
         replaced.Width.ShouldBe(4);
@@ -133,7 +139,7 @@ public sealed class MediaDetailTests
         var asset = await UploadAsync(media, "contract.png", Red);
         var publicOriginal = asset.Urls.Original;
 
-        asset = await media.UpdateAsync(asset, new JsonObject { ["isPrivate"] = true }, false, Token);
+        asset = await media.UpdateAsync(asset, new JsonObject { ["isPrivate"] = true }, Token);
         var download = await media.DownloadUrlAsync(asset.Id, Token);
         using var anonymous = new HttpClient(admin.ServerHandler()) { BaseAddress = new Uri("http://localhost/") };
 

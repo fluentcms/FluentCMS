@@ -115,7 +115,11 @@
             "required": false,
             "unique": false
           },
-          "settings": {}
+          "settings": {
+            "accept": [
+              "image/*"
+            ]
+          }
         },
         {
           "name": "sections",

@@ -259,12 +259,12 @@ public class SettingsValidationTests
     }
 
     [Fact]
-    public void AMediaTypeThatDeclaresNoSettingsRejectsOne()
+    public void AMediaTypeRejectsASettingItDoesNotDeclare()
     {
         var builder = new SchemaBuilder(new FieldTypeRegistry([new MediaFieldType()]))
             .AddCollection("article", type => type.Field("hero", "media", field => field.Setting("folder", "heroes")));
 
-        Errors(builder).ShouldHaveSingleItem().Message.ShouldBe("media field article.hero has an unknown setting 'folder'; it accepts none");
+        Errors(builder).ShouldHaveSingleItem().Message.ShouldBe("media field article.hero has an unknown setting 'folder'; it accepts accept");
     }
 
     [Fact]

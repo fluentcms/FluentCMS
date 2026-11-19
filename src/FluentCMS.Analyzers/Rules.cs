@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 namespace FluentCMS.Analyzers;
 
 // FCMS0001 to FCMS0099 belong to the analyzers, FCMS0100 to FCMS0119 to the generator. A rule reports what schema
-// validation refuses at start and names the FCMS12xx code it stands for; FCMS0060 is advice and stands for none.
+// validation refuses at start and names the FCMS12xx code it stands for, or the media plugin's FCMS1596; FCMS0060 is advice and stands for none.
 // 0001-0019 attribute combinations, 0020-0029 names, 0030 slugs, 0040 relations, 0050 localization, 0060 queries.
 internal static class Rules
 {
@@ -155,6 +155,15 @@ internal static class Rules
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         helpLinkUri: HelpLinkBase + "fcms0016");
+
+    public static readonly DiagnosticDescriptor NotAMediaType = new(
+        "FCMS0017",
+        "A media field accepts a type that is not a MIME type or a family",
+        "The media field '{0}' accepts '{1}', which is not a MIME type such as image/png or a family such as image/*; the host refuses it with FCMS1596",
+        Schema,
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri: HelpLinkBase + "fcms0017");
 
     public static readonly DiagnosticDescriptor ReservedFieldName = new(
         "FCMS0020",

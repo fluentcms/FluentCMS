@@ -53,6 +53,20 @@ public class AttributeReaderTests
     }
 
     [Fact]
+    public void TheAcceptOfAMediaFieldIsItsSettingAndNoAcceptSetsNone()
+    {
+        var shapes = Shapes();
+
+        Strings(shapes.FindField("gallery")!.Settings[FieldSettings.Accept]).ShouldBe(["image/*", "application/pdf"]);
+        shapes.FindField("gallery")!.Multiple.ShouldBeTrue();
+        shapes.FindField("logo")!.Settings.ShouldNotContainKey(FieldSettings.Accept);
+    }
+
+    [Fact]
+    public void AnAcceptTheMediaTypeRefusesStopsTheSchemaWithItsCode() =>
+        ShouldReport(typeof(BadAccept), "FCMS1596", "setting 'accept' of media field bad-accept.cover has no slash");
+
+    [Fact]
     public void PropertyTypeDecidesWhetherAFieldHoldsAList()
     {
         var shapes = Shapes();
@@ -331,6 +345,13 @@ public class AttributeReaderTests
         public Ref<Tag> Tag { get; set; }
     }
 
+    [Collection("bad-accept")]
+    private sealed class BadAccept : ContentItem
+    {
+        [Media(Accept = ["image"])]
+        public MediaRef? Cover { get; set; }
+    }
+
     [Collection("shapes")]
     private sealed class ShapesClass : ContentItem
     {
@@ -340,7 +361,7 @@ public class AttributeReaderTests
         [Select("red", "green")]
         public string Choice { get; set; } = "";
 
-        [Media]
+        [Media(Accept = ["image/*", "application/pdf"])]
         public MediaRefList Gallery { get; set; } = [];
 
         [Media]

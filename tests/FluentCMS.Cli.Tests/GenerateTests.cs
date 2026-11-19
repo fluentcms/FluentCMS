@@ -99,7 +99,7 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
         typeScript.ShouldContain("type: \"hero\";");
         typeScript.ShouldContain("author?: fluentcms.Relation<Author, \"author\"> | null;");
         typeScript.ShouldContain("tags?: (fluentcms.Relation<Tag, \"tag\">)[] | null;");
-        typeScript.ShouldContain("hero?: fluentcms.MediaReference | null;");
+        typeScript.ShouldContain("/** media, accepts image/* */\n    hero?: fluentcms.MediaReference | null;");
         typeScript.ShouldContain("images?: (fluentcms.MediaReference)[] | null;");
         typeScript.ShouldContain("fallbacks?: { title?: string; slug?: string; body?: string; };");
         typeScript.ShouldContain("category?: \"news\" | \"opinion\" | \"video\" | null;");
@@ -112,6 +112,7 @@ public sealed class GenerateTests(BlogInstance blog) : IClassFixture<BlogInstanc
         csharp["HeroBlock.g.cs"].ShouldContain("public sealed class HeroBlock : Block");
         csharp["Article.g.cs"].ShouldContain("public global::System.Collections.Generic.List<Block>? Sections { get; set; }");
         csharp["Article.g.cs"].ShouldContain("public global::FluentCMS.Client.Relation<Author>? Author { get; set; }");
+        csharp["Article.g.cs"].ShouldContain("/// <summary>The field <c>hero</c> (media, accepts image/*).</summary>");
         csharp["Article.g.cs"].ShouldContain("public global::FluentCMS.Client.MediaReference? Hero { get; set; }");
         csharp["Article.g.cs"].ShouldContain("public ArticleFallbacks? Fallbacks { get; set; }");
         csharp["Article.g.cs"].ShouldContain("[global::FluentCMS.Client.ContentType(\"article\")]");

@@ -16,6 +16,12 @@ public sealed class Story : ContentItem
     [Media]
     public MediaRefList Gallery { get; set; } = [];
 
+    [Media(Accept = ["IMAGE/*"])]
+    public MediaRef? Poster { get; set; }
+
+    [Media(Accept = ["application/pdf", "video/mp4"])]
+    public MediaRefList Documents { get; set; } = [];
+
     [RichText]
     public RichText Body { get; set; } = RichText.Empty;
 
@@ -29,6 +35,6 @@ public sealed class BannerBlock
     [Text]
     public string? Heading { get; set; }
 
-    [Media]
+    [Media(Accept = ["image/*"])]
     public MediaRef? Image { get; set; }
 }

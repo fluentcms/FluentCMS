@@ -12,6 +12,13 @@ public sealed class MediaAssetPartTests : MediaTestContext
 {
     private int Patches => Library.Requests.Count(request => request.Method == HttpMethod.Patch);
 
+    // The requests after the part was given the asset: a save sent with the version read, its 412, and the read after it.
+    private void RefusedWithoutAReadBefore(int readsBefore = 1)
+    {
+        Library.Requests.Select(request => request.Method.Method).ShouldBe([.. Enumerable.Repeat("GET", readsBefore), "PATCH", "GET"]);
+        Library.Requests.Single(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBe("\"1\"");
+    }
+
     [Fact]
     public void TheAltTextIsSavedInTheLocaleTheAssetWasReadInAndEachLocaleKeepsItsOwn()
     {
@@ -59,14 +66,84 @@ public sealed class MediaAssetPartTests : MediaTestContext
         Field(cut, "Alt text").Blur();
 
         cut.WaitForAssertion(() => cut.Find("[role=alert]").TextContent.ShouldContain("changed elsewhere"));
-        Patches.ShouldBe(0);
+        RefusedWithoutAReadBefore();
+        Library.Text(id, "en", "alt").ShouldBeNull();
         changed.ShouldBeNull();
 
         Button(cut, "Save mine over it").Click();
         cut.WaitForAssertion(() => changed.ShouldNotBeNull());
         changed!.Alt.ShouldBe("A cat");
         changed.Title.ShouldBe("Their title");
+        changed.ETag.ShouldBe("\"3\"");
+        Library.Requests.Last(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBe("\"2\"");
         cut.FindAll("[role=alert]").ShouldBeEmpty();
+    }
+
+    // Saving over the other change is based on the asset the conflict showed, so a third change made since is a conflict too.
+    [Fact]
+    public void AChangeMadeAfterTheConflictWasShownIsNotOverwrittenBySavingMineOverIt()
+    {
+        var id = Library.AddAsset("cat.png");
+        MediaAssetInfo? changed = null;
+        var cut = Render<MediaAltText>(parameters => parameters.Add(part => part.Asset, Read(id)).Add(part => part.OnChanged, asset => changed = asset));
+        Library.ChangeElsewhere(id, "Their title");
+        Field(cut, "Alt text").Input("A cat");
+        Field(cut, "Alt text").Blur();
+        cut.WaitForAssertion(() => HasButton(cut, "Save mine over it").ShouldBeTrue());
+        Library.ChangeElsewhere(id, "A third title");
+
+        Button(cut, "Save mine over it").Click();
+
+        cut.WaitForAssertion(() => Patches.ShouldBe(2));
+        cut.WaitForAssertion(() => HasButton(cut, "Save mine over it").ShouldBeTrue());
+        Library.Requests.Last(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBe("\"2\"");
+        Library.Text(id, "en", "alt").ShouldBeNull();
+        changed.ShouldBeNull();
+
+        Button(cut, "Save mine over it").Click();
+        cut.WaitForAssertion(() => changed.ShouldNotBeNull());
+        (changed!.Alt, changed.Title, changed.ETag).ShouldBe(("A cat", "A third title", "\"4\""));
+        Library.Requests.Last(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBe("\"3\"");
+    }
+
+    // A change of the private flag reads the asset's URLs again; when that read fails, the save is still done and the asset
+    // keeps the answer's ETag.
+    [Fact]
+    public async Task APrivateFlagSavedWhoseReadAfterFailsKeepsTheAnswersETag()
+    {
+        var id = Library.AddAsset("cat.png");
+        var basis = Read(id);
+        var saved = false;
+        Library.BeforeAnswer = request =>
+        {
+            if (request.Method == HttpMethod.Patch)
+            {
+                saved = true;
+            }
+            else if (saved && request.Method == HttpMethod.Get)
+            {
+                throw new HttpRequestException("The network is down.");
+            }
+
+            return Task.CompletedTask;
+        };
+
+        var changed = await new MediaApi(Library).UpdateAsync(basis, new System.Text.Json.Nodes.JsonObject { ["isPrivate"] = true }, CancellationToken.None);
+
+        (changed.IsPrivate, changed.ETag).ShouldBe((true, "\"2\""));
+        Library.Asset(id)["isPrivate"]!.GetValue<bool>().ShouldBeTrue();
+    }
+
+    // A proxy that compresses answers makes the ETag weak; the gate still orders by the version it holds.
+    [Fact]
+    public void TheGateOrdersByTheVersionOfAWeakTag()
+    {
+        var id = Library.AddAsset("cat.png");
+        var shown = Read(id) with { ETag = "W/\"2\"", UpdatedAt = DateTimeOffset.UnixEpoch.AddDays(2) };
+        var gate = new MediaSaveGate { Latest = shown with { ETag = "W/\"3\"", UpdatedAt = DateTimeOffset.UnixEpoch.AddDays(1), Title = "Latest" } };
+
+        gate.Basis(shown).Title.ShouldBe("Latest");
+        gate.Basis(shown with { ETag = "W/\"4\"" }).Title.ShouldNotBe("Latest");
     }
 
     [Fact]
@@ -84,13 +161,19 @@ public sealed class MediaAssetPartTests : MediaTestContext
 
         changed!.Title.ShouldBe("Their title");
         changed.Alt.ShouldBeNull();
-        Patches.ShouldBe(0);
+        changed.ETag.ShouldBe("\"2\"");
+        Patches.ShouldBe(1);
+        Library.Text(id, "en", "alt").ShouldBeNull();
 
-        // Given the asset it raised, the part shows the other change and has nothing left to save.
+        // Given the asset it raised, the part shows the other change and has nothing left to save; the next save is based on it.
         cut.Render(parameters => parameters.Add(part => part.Asset, changed));
         Field(cut, "Alt text").GetAttribute("value").ShouldBeNull();
         Field(cut, "Alt text").Blur();
-        Patches.ShouldBe(0);
+        Patches.ShouldBe(1);
+        Field(cut, "Alt text").Input("A grey cat");
+        Field(cut, "Alt text").Blur();
+        cut.WaitForAssertion(() => Library.Text(id, "en", "alt").ShouldBe("A grey cat"));
+        Library.Requests.Last(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBe("\"2\"");
     }
 
     [Fact]
@@ -187,7 +270,8 @@ public sealed class MediaAssetPartTests : MediaTestContext
         cut.Find(".media-focal-image img").Click(new MouseEventArgs { OffsetX = 0, OffsetY = 0 });
 
         cut.WaitForAssertion(() => HasButton(cut, "Save mine over it").ShouldBeTrue());
-        Patches.ShouldBe(0);
+        RefusedWithoutAReadBefore();
+        Library.Asset(id)["focalPoint"].ShouldBeNull();
     }
 
     [Fact]

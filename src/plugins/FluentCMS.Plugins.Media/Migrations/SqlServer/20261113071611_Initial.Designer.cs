@@ -142,6 +142,11 @@ namespace FluentCMS.Plugins.Media.Migrations.SqlServer
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("updated_by");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int")
+                        .HasColumnName("version");
+
                     b.Property<int?>("Width")
                         .HasColumnType("int")
                         .HasColumnName("width");

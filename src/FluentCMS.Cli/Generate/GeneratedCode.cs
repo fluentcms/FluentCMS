@@ -1,5 +1,6 @@
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Generators.Emit;
+using FluentCMS.Plugins.Media;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Cli.Generate;
@@ -17,13 +18,24 @@ internal sealed record GeneratedCode(IReadOnlyList<GeneratedFile> Files, IReadOn
 // of ClientSchema.Read, so that no other text of a snapshot reaches either.
 internal static class FieldTypeText
 {
-    // "text, multiple, localizable".
+    // "text, multiple, localizable", or "media, accepts image/* or application/pdf".
     public static string Traits(SchemaField field) => string.Join(", ", new[]
     {
         FieldTypeNames.IsValid(field.FieldType) ? field.FieldType : null,
         field.Multiple ? "multiple" : null,
         field.Localizable ? "localizable" : null,
+        Accepts(field),
     }.OfType<string>());
+
+    // Only when every type passes the media plugin's check, which leaves nothing a comment would have to escape.
+    private static string? Accepts(SchemaField field) =>
+        field.FieldType == "media"
+        && field.Settings.TryGetValue(FieldSettings.Accept, out var value)
+        && value is IEnumerable<string> list
+        && list.ToList() is { Count: > 0 } types
+        && types.All(MediaAccept.IsPattern)
+            ? "accepts " + string.Join(" or ", types)
+            : null;
 
     // "the field type 'geo'".
     public static string Of(SchemaField field) => FieldTypeNames.IsValid(field.FieldType) ? $"the field type '{field.FieldType}'" : "its field type";

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Admin.Api;
@@ -8,17 +9,17 @@ using Microsoft.Extensions.Localization;
 namespace FluentCMS.Plugins.Media.Admin;
 
 // A part of an asset's detail that saves its own metadata with PATCH /media/{id}: the alt text and the focal point, which
-// the field editor of a media field reuses, and the panel's form. A save after the asset changed elsewhere is not sent;
-// the part shows the conflict and lets the user take the asset as it is now or save theirs over it. The saves of the parts
-// that share a MediaSaveGate, as those of the panel do, go one after another, each based on the answer of the one before;
-// changes made while a save of the part waits join it. A change is saved in the locale of the asset it was made on, even
-// when the part shows another by the time it is sent.
+// the field editor of a media field reuses, and the panel's form. A save names the version it is based on as If-Match, and
+// the server refuses it when the asset changed elsewhere; the part shows the conflict and lets the user take the asset as it
+// is now or save theirs over it. The saves of the parts that share a MediaSaveGate, as those of the panel do, go one after
+// another, each based on the ETag of the answer of the one before; changes made while a save of the part waits join it. A
+// change is saved in the locale of the asset it was made on, even when the part shows another by the time it is sent.
 public abstract class MediaAssetPart : ComponentBase
 {
     private readonly MediaSaveGate own = new();
     private JsonObject? queued;
     private MediaAssetInfo? queuedFor;
-    private bool queuedOverwrite;
+    private MediaAssetInfo? queuedOver;
     private Task queuedSave = Task.CompletedTask;
     private int sending;
     private JsonObject? pending;
@@ -71,7 +72,8 @@ public abstract class MediaAssetPart : ComponentBase
         return taken;
     }
 
-    protected Task SaveAsync(JsonObject changes, bool overwrite = false)
+    // A save over another change names the asset as the conflict showed it, so that a change made after that is a conflict too.
+    protected Task SaveAsync(JsonObject changes, MediaAssetInfo? over = null)
     {
         ArgumentNullException.ThrowIfNull(changes);
         if (ReadOnly)
@@ -81,7 +83,7 @@ public abstract class MediaAssetPart : ComponentBase
 
         if (queued is not null && (queuedFor!.Id != Asset.Id || queuedFor.Locale != Asset.Locale))
         {
-            return queuedSave = AfterAsync(queuedSave, changes, overwrite);
+            return queuedSave = AfterAsync(queuedSave, changes, over);
         }
 
         if (queued is not null)
@@ -91,32 +93,32 @@ public abstract class MediaAssetPart : ComponentBase
                 queued[name] = value?.DeepClone();
             }
 
-            queuedOverwrite |= overwrite;
+            queuedOver = over ?? queuedOver;
             return queuedSave;
         }
 
-        (queued, queuedFor, queuedOverwrite) = ((JsonObject)changes.DeepClone(), Asset, overwrite);
+        (queued, queuedFor, queuedOver) = ((JsonObject)changes.DeepClone(), Asset, over);
         return queuedSave = SendAsync();
     }
 
-    private async Task AfterAsync(Task before, JsonObject changes, bool overwrite)
+    private async Task AfterAsync(Task before, JsonObject changes, MediaAssetInfo? over)
     {
         await before;
-        await SaveAsync(changes, overwrite);
+        await SaveAsync(changes, over);
     }
 
     private async Task SendAsync()
     {
         var gate = Gate ?? own;
         var leave = await gate.EnterAsync();
-        var (changes, overwrite, made) = (queued!, queuedOverwrite, queuedFor!);
+        var (changes, over, made) = (queued!, queuedOver, queuedFor!);
         (queued, queuedFor) = (null, null);
         sending++;
-        var basis = gate.Basis(made);
+        var basis = gate.Basis(over ?? made);
         (Error, conflict, pending) = (null, null, null);
         try
         {
-            var saved = await new MediaApi(Api).UpdateAsync(basis, changes, overwrite, CancellationToken.None);
+            var saved = await new MediaApi(Api).UpdateAsync(basis, changes, CancellationToken.None);
             gate.Latest = saved;
             await OnChanged.InvokeAsync(saved);
         }
@@ -152,12 +154,13 @@ public abstract class MediaAssetPart : ComponentBase
         }
     }
 
-    // Saves the user's change over the other.
-    protected Task KeepMineAsync() => pending is { } changes ? SaveAsync(changes, overwrite: true) : Task.CompletedTask;
+    // Saves the user's change over the other, based on the asset as the conflict showed it.
+    protected Task KeepMineAsync() => pending is { } changes && conflict is { } shown ? SaveAsync(changes, shown) : Task.CompletedTask;
 }
 
 // The saves of one panel, one at a time; each is based on the newest of the asset its part shows and the last answer. A
-// component runs on the renderer's one thread, so a chain of tasks orders them, which keeps a semaphore out of the app.
+// component runs on the renderer's one thread, so a chain of tasks orders them, which keeps a semaphore out of the app. An
+// asset has one version for all its locales, so an answer in another locale gives the next save its ETag.
 internal sealed class MediaSaveGate
 {
     private Task tail = Task.CompletedTask;
@@ -176,7 +179,20 @@ internal sealed class MediaSaveGate
     public MediaAssetInfo? Latest { get; set; }
 
     public MediaAssetInfo Basis(MediaAssetInfo shown) =>
-        Latest is { } latest && latest.Id == shown.Id && latest.Locale == shown.Locale && latest.UpdatedAt > shown.UpdatedAt ? latest : shown;
+        Latest is { } latest && latest.Id == shown.Id && Newer(latest, shown)
+            ? latest.Locale == shown.Locale ? latest : shown with { ETag = latest.ETag, UpdatedAt = latest.UpdatedAt }
+            : shown;
+
+    // The server's ETag of an asset is its version, "7"; the time of change orders an asset without one.
+    private static bool Newer(MediaAssetInfo latest, MediaAssetInfo shown) =>
+        (Version(latest.ETag), Version(shown.ETag)) is ({ } later, { } earlier) ? later > earlier : latest.UpdatedAt > shown.UpdatedAt;
+
+    // A proxy that compresses answers makes the tag weak, W/"7".
+    private static long? Version(string? tag) =>
+        (tag is not null && tag.StartsWith("W/", StringComparison.OrdinalIgnoreCase) ? tag[2..] : tag) is { Length: > 2 } value && value[0] == '"' && value[^1] == '"'
+            && long.TryParse(value.AsSpan(1, value.Length - 2), NumberStyles.None, CultureInfo.InvariantCulture, out var version)
+            ? version
+            : null;
 }
 
 internal static class MediaRefusal

@@ -66,6 +66,21 @@ public sealed class MediaFieldEditorTests : MediaTestContext
     }
 
     [Fact]
+    public void ThePickerOfAnUpperCasedAcceptStillOffersTheAssetsOfItsTypes()
+    {
+        Library.AddAsset("logo.png");
+        Library.AddAsset("guide.pdf", mimeType: "application/pdf");
+        var field = Field() with { Settings = new JsonObject { ["accept"] = new JsonArray("IMAGE/*") } };
+        var cut = Edit(field, null);
+
+        _ = cut.InvokeAsync(() => Button(cut, "Choose an asset").Click());
+        cut.WaitForAssertion(() => Overlays.Shown.ShouldHaveSingleItem());
+        var host = Render(Overlays.Host);
+
+        host.WaitForAssertion(() => host.FindAll(".media-tile-name").Select(name => name.TextContent).ShouldBe(["logo.png"]));
+    }
+
+    [Fact]
     public async Task SeveralAssetsAreRemovedAndOrderedByButtonsAndByAltWithTheArrows()
     {
         var first = Library.AddAsset("a.png");

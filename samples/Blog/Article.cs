@@ -22,7 +22,7 @@ public sealed class Article : ContentItem
     [Relation(Ordered = true)]
     public RefList<Tag> Tags { get; set; } = [];
 
-    [Media]
+    [Media(Accept = ["image/*"])]
     public MediaRef? Hero { get; set; }
 
     [Blocks(typeof(HeroBlock), typeof(QuoteBlock), typeof(GalleryBlock))]
