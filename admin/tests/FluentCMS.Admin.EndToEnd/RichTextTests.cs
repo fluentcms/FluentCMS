@@ -316,10 +316,6 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
 
                     return JSON.parse(window.calls.filter(call => call[0] === "OnChangeAsync").at(-1)[1]);
                 };
-                // ProseMirror takes a selection the browser moved on selectionchange; this listener, added after its own,
-                // counts the ones it has taken.
-                window.selections = 0;
-                document.addEventListener("selectionchange", () => window.selections++);
                 window.inline = document => document.content.flatMap(block => block.content ?? []);
             }
             """);
@@ -327,9 +323,12 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
 
         // Copy and paste: everything is copied and pasted at the end, beside the original.
         await kept.FocusAsync();
-        await page.Keyboard.PressAsync("Control+a");
-        await page.EvaluateAsync("() => { window.copied = window.clipboard(document.getElementById('kept'), 'copy'); }");
-        await MoveAsync(page, "Control+End");
+        await SelectAsync(page, "Control+a", "selection.from === 0 && selection.to === size");
+        var copiedHtml = await page.EvaluateAsync<string>("() => { window.copied = window.clipboard(document.getElementById('kept'), 'copy'); return window.copied.html; }");
+        copiedHtml.ShouldContain("data-block-id=\"Nq8vB2xK9pLm\"");
+        copiedHtml.ShouldContain("data-media-id=\"5c3a1e2f-9b8d-4c7e-a6f5-0d1b2c3e4f5a\"");
+        copiedHtml.ShouldContain("data-entry-id=\"0b9f4a52-7c1e-4d0a-9a43-5e1f6b2c8d70\"");
+        await SelectAsync(page, "Control+End", "selection.empty && selection.from === size - 1");
         await page.EvaluateAsync("() => window.clipboard(document.getElementById('kept'), 'paste', { 'text/html': window.copied.html, 'text/plain': window.copied.text })");
         var copied = JsonNode.Parse(await page.EvaluateAsync<string>("() => JSON.stringify(window.inline(window.document_()))"))!.AsArray();
         var blocks = copied.Where(node => node!["type"]!.GetValue<string>() == "inlineBlock").ToList();
@@ -346,15 +345,18 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
         var copy = kept.Locator($"[data-block-id='{moved}']");
         await copy.ClickAsync();
         await Expect(copy).ToHaveClassAsync(new Regex("ProseMirror-selectednode"));
-        await page.EvaluateAsync("() => { window.cut = window.clipboard(document.getElementById('kept'), 'cut'); }");
+        await page.WaitForFunctionAsync("id => document.getElementById('kept').editor.state.selection.node?.attrs.id === id", moved);
+        var cutHtml = await page.EvaluateAsync<string>("() => { window.cut = window.clipboard(document.getElementById('kept'), 'cut'); return window.cut.html; }");
+        cutHtml.ShouldContain($"data-block-id=\"{moved}\"");
+        cutHtml.ShouldNotContain("Nq8vB2xK9pLm");
         await Expect(copy).ToHaveCountAsync(0);
-        await MoveAsync(page, "Control+Home");
+        await SelectAsync(page, "Control+Home", "selection.empty && selection.from === 1");
         await page.EvaluateAsync("() => window.clipboard(document.getElementById('kept'), 'paste', { 'text/html': window.cut.html, 'text/plain': window.cut.text })");
         var ids = await page.EvaluateAsync<string[]>("() => window.inline(window.document_()).filter(node => node.type === 'inlineBlock').map(node => node.attrs.id)");
         ids.ShouldBe([moved, "Nq8vB2xK9pLm"]);
 
         // HTML from elsewhere: the same elements without this editor's origin make plain text.
-        await MoveAsync(page, "Control+End");
+        await SelectAsync(page, "Control+End", "selection.empty && selection.from === size - 1");
         await page.EvaluateAsync(
             """
             () => window.clipboard(document.getElementById('kept'), 'paste', { 'text/html':
@@ -380,12 +382,14 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
 
     private static LocatorFilterOptions Exactly(string text) => new() { HasTextRegex = new Regex($@"^\s*{Regex.Escape(text)}\s*$") };
 
-    // A key that moves the caret, and the wait until ProseMirror has taken the browser's new selection.
-    private static async Task MoveAsync(IPage page, string key)
+    // A key that changes the selection of the editor #kept, and the wait until the editor's own state has the selection that
+    // `taken` describes, of `selection` in a document of `size`; Tiptap keeps the editor on its element. The browser's
+    // selectionchange can come before ProseMirror has read it, so it is no sign that the editor has.
+    private static async Task SelectAsync(IPage page, string key, string taken)
     {
-        var before = await page.EvaluateAsync<int>("() => window.selections");
         await page.Keyboard.PressAsync(key);
-        await page.WaitForFunctionAsync("before => window.selections > before", before);
+        await page.WaitForFunctionAsync(
+            $"() => {{ const state = document.getElementById('kept').editor.state; const selection = state.selection; const size = state.doc.content.size; return {taken}; }}");
     }
 
 
