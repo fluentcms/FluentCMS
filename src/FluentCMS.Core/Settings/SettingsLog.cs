@@ -13,4 +13,10 @@ internal static partial class SettingsLog
 
     [LoggerMessage(EventId = 9803, Level = LogLevel.Information, Message = "The settings of area '{Area}' for {Scope} were {Change} by {Actor}.")]
     public static partial void Changed(ILogger logger, string area, string scope, string change, Guid actor);
+
+    [LoggerMessage(EventId = 9804, Level = LogLevel.Warning, Message = "The stored value of the secret key {Key} of area '{Area}' for {Scope} cannot be unprotected with the Data Protection key ring and is read as if it were not stored.")]
+    public static partial void SecretNotUnprotected(ILogger logger, string area, string key, string scope);
+
+    [LoggerMessage(EventId = 9805, Level = LogLevel.Warning, Message = "The stored settings could not be checked for secrets written before they were protected ({ExceptionType}).")]
+    public static partial void PlaintextNotChecked(ILogger logger, string exceptionType);
 }

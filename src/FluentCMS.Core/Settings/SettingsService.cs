@@ -32,12 +32,15 @@ internal sealed record SettingsAreaInfo(
 // tracked and drops nothing the caller has tracked. It replaces the row with one statement that names the version it read, and
 // starts again when another writer got there first, so two writers never see half of each other's document and the later one
 // stands; a caller that names the version it read is refused instead when the row has moved on.
+// The secrets of a row are protected at rest (SettingsProtection): every read of a row unprotects them first, and every write
+// protects them last.
 internal sealed class SettingsService(
     SystemDbContext context,
     IServiceScopeFactory scopes,
     SettingsRegistry registry,
     PluginRegistry plugins,
     SettingsCache cache,
+    SettingsProtection protection,
     IAuthorizationEvaluator authorization,
     IOperationContextAccessor accessor,
     IEventBus bus,
@@ -106,6 +109,10 @@ internal sealed class SettingsService(
         var rows = await context.Set<SettingRow>().AsNoTracking()
             .Where(row => row.Key == area && (row.SiteId == null || row.SiteId == siteId))
             .ToListAsync(cancellationToken);
+        foreach (var row in rows)
+        {
+            row.Json = protection.Unprotect(descriptor, row.Json, ScopeName(row.SiteId ?? SettingsCache.InstanceScope));
+        }
 
         if (site is not null && rows.All(row => row.SiteId is null) && !await context.Set<Site>().AnyAsync(item => item.Id == scope, cancellationToken))
         {
@@ -182,9 +189,9 @@ internal sealed class SettingsService(
         List<(string Area, string Json)> documents = [];
         foreach (var row in rows.OrderBy(row => row.Key, StringComparer.Ordinal))
         {
-            if (registry.Find(row.Key) is { } descriptor && descriptor.CanRead(row.Json))
+            if (registry.Find(row.Key) is { } descriptor && protection.Unprotect(descriptor, row.Json, ScopeName(site.Value)) is var json && descriptor.CanRead(json))
             {
-                documents.Add((row.Key, descriptor.Redact(row.Json).Json));
+                documents.Add((row.Key, descriptor.Redact(json).Json));
             }
         }
 
@@ -211,7 +218,7 @@ internal sealed class SettingsService(
         var stored = await context.Set<SettingRow>().AsNoTracking()
             .Where(row => row.Key == area && row.SiteId == siteId)
             .Select(row => row.Json)
-            .FirstOrDefaultAsync(cancellationToken);
+            .FirstOrDefaultAsync(cancellationToken) is { } found ? protection.Unprotect(descriptor, found, ScopeName(site.Value)) : null;
         if (stored is not null
             && descriptor.CanRead(stored)
             && JsonNode.DeepEquals(JsonNode.Parse(descriptor.Redact(stored).Json), JsonNode.Parse(descriptor.Redact(canonical).Json)))
@@ -311,7 +318,7 @@ internal sealed class SettingsService(
         {
             var current = await Rows(db, descriptor.Area, site).AsNoTracking()
                 .Select(row => new { row.Json, row.Version })
-                .FirstOrDefaultAsync(cancellationToken);
+                .FirstOrDefaultAsync(cancellationToken) is { } read ? new { Json = protection.Unprotect(descriptor, read.Json, ScopeName(site ?? SettingsCache.InstanceScope)), read.Version } : null;
 
             var version = current?.Version ?? 0;
             if (expectedVersion is { } expected && expected != version)
@@ -329,7 +336,9 @@ internal sealed class SettingsService(
             if (site is not null)
             {
                 inherited = descriptor.SecretsLeftToDefault(json, stored);
-                var instance = await Rows(db, descriptor.Area, null).AsNoTracking().Select(row => row.Json).FirstOrDefaultAsync(cancellationToken);
+                var instance = await Rows(db, descriptor.Area, null).AsNoTracking().Select(row => row.Json).FirstOrDefaultAsync(cancellationToken) is { } found
+                    ? protection.Unprotect(descriptor, found, ScopeName(SettingsCache.InstanceScope))
+                    : null;
                 if (instance is not null && descriptor.CanRead(instance))
                 {
                     stored = stored is null ? instance : SettingsDescriptor.ReadThrough(stored, instance, descriptor.SecretsInherited(stored));
@@ -342,12 +351,13 @@ internal sealed class SettingsService(
                 SettingsLog.SecretDropped(logger, descriptor.Area, key, ScopeName(site ?? SettingsCache.InstanceScope));
             }
 
+            var protectedJson = protection.Protect(descriptor, canonical);
             var now = time.GetUtcNow();
             if (current is not null)
             {
                 var updated = await Rows(db, descriptor.Area, site).Where(row => row.Version == version).ExecuteUpdateAsync(
                     set => set
-                        .SetProperty(row => row.Json, canonical)
+                        .SetProperty(row => row.Json, protectedJson)
                         .SetProperty(row => row.Version, version + 1)
                         .SetProperty(row => row.UpdatedAt, now)
                         .SetProperty(row => row.UpdatedBy, actor),
@@ -360,7 +370,7 @@ internal sealed class SettingsService(
             }
             else
             {
-                db.Add(new SettingRow { Id = Guid.CreateVersion7(), SiteId = site, Key = descriptor.Area, Json = canonical, Version = 1, UpdatedAt = now, UpdatedBy = actor });
+                db.Add(new SettingRow { Id = Guid.CreateVersion7(), SiteId = site, Key = descriptor.Area, Json = protectedJson, Version = 1, UpdatedAt = now, UpdatedBy = actor });
                 try
                 {
                     await db.SaveChangesAsync(cancellationToken);
