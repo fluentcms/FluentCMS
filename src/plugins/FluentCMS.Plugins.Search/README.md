@@ -19,21 +19,21 @@ builder.Services.AddFluentCms(cms =>
 - The index finds ids, and the list keeps its filter, row rule, site, locale, status, sort and page, so a search never shows an entry the caller could not list. A draft is found with `status=draft` and on Delivery only once it is published.
 - The index gives at most `FluentCms:Query:MaxSearchResults` ids (1,000): those of the type, locale, state and site of the query that match, the most recently indexed first. The filter and the row rule of the query apply after that cap. So when more entries match than the cap, a reader can miss entries it may read, because entries it may not read, or that the filter leaves out, took their places among the 1,000. A longer search narrows the matches. There is no ranking by relevance and no stemming or stop words for a language.
 - A type without such a field refuses `q=` with `FCMS1700` (400), and a site where the plugin is disabled with `FCMS2211` (400), as a host without an index does.
-- Any caller who may list the type can learn whether an entry holds a word of a searchable field, even a caller who may not read that field. Mark only fields whose text every reader of the type may know.
+- A search matches only the searchable fields the caller may read in the locale of the list. A word in a field the caller may not read finds nothing, so a role whose grant is limited to some fields cannot learn what the others hold, and one that may read none of them finds nothing. The words of a search may be in different fields.
 
-The text is folded the same way for every database: lower case, the accents taken off, and words of letters and digits, so punctuation separates words. One entry keeps at most 100,000 characters of it.
+The text is folded the same way for every database: lower case, the accents taken off, and words of letters and digits, so punctuation separates words. Each field of an entry keeps at most 100,000 characters of it.
 
 | Database | Index |
 | --- | --- |
 | SQLite | an FTS5 table, `cms_search_entry_fts`, over the text of `cms_search_entry`, which triggers keep in step |
 | PostgreSQL | a GIN index over `to_tsvector('simple', text)` |
-| SQL Server | none: `LIKE '%word%'` over the text, which reads every row of the type, locale and state. A full-text catalogue is not used, so the plugin runs on every edition and on Azure SQL; with a large index, search on PostgreSQL or SQLite is faster |
+| SQL Server | none: `LIKE '%word%'` over the text, one scan per word over the rows of the searched fields, a row per entry and searchable field, which reads every row of the type, locale and state. A full-text catalogue is not used, so the plugin runs on every edition and on Azure SQL; with a large index, search on PostgreSQL or SQLite is faster |
 
 The tables are the stream `cms_search__migrations`, one migration, the baseline `Initial`, in a set per provider. The FTS5 table and the GIN index are written by hand into the SQLite and PostgreSQL migrations.
 
 ## Keeping the index current
 
-The outbox handlers of the entry events (a draft saved, published, unpublished, a draft discarded, a version restored, trashed, restored and purged) read the entry again through the content service and write its rows, one for each locale and state. So a change is found once its events are delivered, a moment after the write, and a delivery that fails is tried again by the outbox. An import and a seed raise the same events. A delete or a purge removes every row of the entry, in every locale, whatever the site allows, so `q=` on the trash list finds nothing. A restore writes the rows again in the locales the restoring site allows; the other locales of a global entry come back when a site that allows them rebuilds, or when the entry changes there. The rows of a site go with the site.
+The outbox handlers of the entry events (a draft saved, published, unpublished, a draft discarded, a version restored, trashed, restored and purged) read the entry again through the content service and write its rows, one for each locale, state and searchable field. So a change is found once its events are delivered, a moment after the write, and a delivery that fails is tried again by the outbox. An import and a seed raise the same events. A delete or a purge removes every row of the entry, in every locale, whatever the site allows, so `q=` on the trash list finds nothing. A restore writes the rows again in the locales the restoring site allows; the other locales of a global entry come back when a site that allows them rebuilds, or when the entry changes there. The rows of a site go with the site.
 
 A delete or a purge made while the plugin is disabled in the site reaches no handler of the plugin, so the entry's rows stay until the plugin is enabled there again, whose rebuild removes them, or the site is deleted. They are never served: the site refuses `q=` meanwhile, and in another site the list keeps out an entry that is deleted or gone. The plugin hears nothing when it is disabled in a site, since core gives none of the site's events to a plugin disabled there, so it cannot remove the rows at that moment.
 
@@ -53,7 +53,7 @@ needs `search.manage` in the site of the request, answers `202` with `{ "jobId" 
 Run it once:
 
 - when you add the plugin to a host that already has content;
-- after a schema change that marks a field `[Searchable]`, or no longer, since the rows change only as entries change.
+- after a schema change that marks a field `[Searchable]`, since the rows change only as entries change. A field that is no longer searchable, or is now hidden, is not searched from the start that has the change, and a rebuild removes its rows.
 
 A list reads one locale, so the job lists a localized type in each locale the site allows among the site's default, the locales that the entries in it hold, and the locales the index holds. An entry that exists only in a locale that none of those has is not found by the rebuild, and is indexed at its next change. The rows of the site in a locale it no longer allows are removed. The rows of a global type in a locale the site does not allow are left alone, since another site may allow it, so a rebuild of one site never removes what another site reads.
 

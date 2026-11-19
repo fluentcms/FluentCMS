@@ -46,10 +46,13 @@ public sealed partial class BaselineTests : IDisposable
     // What a preview added to the baseline after the squash, which the chain never made: a preview does not upgrade a
     // database (10.4, H5), so a change of the model goes into the baseline until 1.0.0.
     private static readonly string[] TablesAddedToTheBaseline = ["cms_default_grant", "cms_user_preference"];
-    private static readonly (string Table, string Column)[] ColumnsAddedToTheBaseline = [("cms_version", "author_kind"), ("cms_version", "author_name"), ("cms_media_asset", "owns_file"), ("cms_media_asset", "version")];
+    private static readonly (string Table, string Column)[] ColumnsAddedToTheBaseline = [("cms_version", "author_kind"), ("cms_version", "author_name"), ("cms_media_asset", "owns_file"), ("cms_media_asset", "version"), ("cms_search_entry", "field")];
 
     // Indexes added the same way, by the prefix of their catalog lines.
     private static readonly string[] IndexesAddedToTheBaseline = ["index:cms_media_asset.ix_cms_media_asset_site_owns_file:"];
+
+    // Indexes whose columns the baseline changed, each with a column the baseline's has and the chain's does not.
+    private static readonly (string Index, string Column)[] IndexesChangedInTheBaseline = [("index:cms_search_entry.ux_cms_search_entry_document:", "field")];
 
     // The chain raised the stamp of the Author role when it changed that role's seeded grants, so that a cached grant was
     // read again; the baseline seeds every role at its first stamp.
@@ -250,7 +253,7 @@ public sealed partial class BaselineTests : IDisposable
             await built.StopAsync(Token);
         }
 
-        var (table, column) = ColumnsAddedToTheBaseline[^1];
+        var (table, column) = ColumnsAddedToTheBaseline.Last(added => added.Table == "cms_media_asset");
         var index = TestProvider.Quote("ix_cms_media_asset_site_owns_file");
         _database.Execute(TestProvider.IsSqlServer ? $"drop index {index} on {TestProvider.Quote(table)}" : $"drop index {index}");
         _database.Execute($"alter table {TestProvider.Quote(table)} drop column {TestProvider.Quote(column)}");
@@ -326,6 +329,12 @@ public sealed partial class BaselineTests : IDisposable
             result[at] = DefaultValue().Replace(result[at], "");
         }
 
+        foreach (var (index, column) in IndexesChangedInTheBaseline)
+        {
+            result.ShouldContain(line => line.StartsWith(index, StringComparison.Ordinal) && !line.Contains(column, StringComparison.Ordinal), index);
+            result.RemoveAll(line => line.StartsWith(index, StringComparison.Ordinal));
+        }
+
         var author = result.FindIndex(line => line.StartsWith("row:cms_role:", StringComparison.Ordinal) && line.Contains($"|id={AuthorRole}|", StringComparison.OrdinalIgnoreCase));
         author.ShouldBeGreaterThanOrEqualTo(0, "the Author role");
         result[author].ShouldContain("|permissions_version=2|");
@@ -352,7 +361,12 @@ public sealed partial class BaselineTests : IDisposable
             catalog.Any(line => line.StartsWith(added, StringComparison.Ordinal)).ShouldBeTrue(added);
         }
 
-        return [.. catalog.Where(line => !TablesAddedToTheBaseline.Any(table => OfTable(line, table)) && !ColumnsAddedToTheBaseline.Any(added => OfColumn(line, added.Table, added.Column)) && !IndexesAddedToTheBaseline.Any(added => line.StartsWith(added, StringComparison.Ordinal)))];
+        foreach (var (index, column) in IndexesChangedInTheBaseline)
+        {
+            catalog.ShouldContain(line => line.StartsWith(index, StringComparison.Ordinal) && line.Contains(column, StringComparison.Ordinal), index);
+        }
+
+        return [.. catalog.Where(line => !TablesAddedToTheBaseline.Any(table => OfTable(line, table)) && !ColumnsAddedToTheBaseline.Any(added => OfColumn(line, added.Table, added.Column)) && !IndexesAddedToTheBaseline.Any(added => line.StartsWith(added, StringComparison.Ordinal)) && !IndexesChangedInTheBaseline.Any(changed => line.StartsWith(changed.Index, StringComparison.Ordinal)))];
 
         static bool OfTable(string line, string table)
         {

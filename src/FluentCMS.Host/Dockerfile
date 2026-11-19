@@ -34,6 +34,7 @@ COPY admin/src/FluentCMS.Admin.Components/FluentCMS.Admin.Components.csproj admi
 COPY admin/src/FluentCMS.Admin/FluentCMS.Admin.csproj admin/src/FluentCMS.Admin/
 COPY admin/src/FluentCMS.Admin.App/FluentCMS.Admin.App.csproj admin/src/FluentCMS.Admin.App/
 COPY admin/src/FluentCMS.Admin.Hosting/FluentCMS.Admin.Hosting.csproj admin/src/FluentCMS.Admin.Hosting/
+COPY admin/src/FluentCMS.Admin.RichText/FluentCMS.Admin.RichText.csproj admin/src/FluentCMS.Admin.RichText/
 # Every admin half the app references, under admin/src/plugins/, by its own folder, so that a new half needs no line here.
 COPY --parents admin/src/plugins/*/*.csproj ./
 COPY src/FluentCMS.Host/FluentCMS.Host.csproj src/FluentCMS.Host/

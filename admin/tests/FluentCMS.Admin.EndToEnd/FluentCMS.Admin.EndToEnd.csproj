@@ -13,6 +13,10 @@
     <PackageReference Include="Shouldly" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="landing.schema.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- The tests publish the reference host with no build and run it in a process of its own, as the image does, so the host is
        built first in the same configuration; nothing of it is copied or compiled against. -->
   <ItemGroup>

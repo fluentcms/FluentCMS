@@ -31,7 +31,7 @@ public sealed class SearchTextTests
     }
 
     [Fact]
-    public void AnEntryGivesTheTextOfItsFieldsWithRichTextAsPlainText()
+    public void AnEntryGivesTheTextOfEachFieldWithRichTextAsPlainText()
     {
         var entry = new ContentDocument
         {
@@ -41,7 +41,14 @@ public sealed class SearchTextTests
             ["views"] = 12L,
         };
 
-        SearchText.Of(entry, [Field("title"), Field("body"), Field("tags"), Field("views"), Field("missing")]).ShouldBe("hello kubernetes rocks one two");
+        SearchText.Of(entry, [Field("title"), Field("body"), Field("tags"), Field("views"), Field("missing")]).ShouldBe(new Dictionary<string, string>
+        {
+            ["title"] = "hello",
+            ["body"] = "kubernetes rocks",
+            ["tags"] = "one two",
+            ["views"] = "",
+            ["missing"] = "",
+        });
     }
 
     [Fact]
@@ -49,7 +56,7 @@ public sealed class SearchTextTests
     {
         var entry = new ContentDocument { ["body"] = string.Join(' ', Enumerable.Repeat("abcdefghi", 20_000)) };
 
-        var text = SearchText.Of(entry, [Field("body")]);
+        var text = SearchText.Of(entry, [Field("body")])["body"];
 
         text.Length.ShouldBeLessThanOrEqualTo(SearchText.MaxLength);
         text.Split(' ').ShouldAllBe(word => word == "abcdefghi");

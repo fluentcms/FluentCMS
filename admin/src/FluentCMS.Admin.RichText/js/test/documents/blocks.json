@@ -1,0 +1,23 @@
+{
+  "type": "doc",
+  "content": [
+    { "type": "heading", "attrs": { "level": 1 }, "content": [{ "type": "text", "text": "Heading one" }] },
+    { "type": "heading", "attrs": { "level": 2 }, "content": [{ "type": "text", "text": "Heading two" }] },
+    { "type": "heading", "attrs": { "level": 3 }, "content": [{ "type": "text", "marks": [{ "type": "italic" }], "text": "Heading three" }] },
+    { "type": "heading", "attrs": { "level": 4 }, "content": [{ "type": "text", "text": "Heading four" }] },
+    { "type": "heading", "attrs": { "level": 5 }, "content": [{ "type": "text", "text": "Heading five" }] },
+    { "type": "heading", "attrs": { "level": 6 } },
+    { "type": "paragraph" },
+    {
+      "type": "blockquote",
+      "content": [
+        { "type": "paragraph", "content": [{ "type": "text", "text": "A quote" }] },
+        { "type": "paragraph", "content": [{ "type": "text", "text": "of two paragraphs" }] }
+      ]
+    },
+    { "type": "codeBlock", "attrs": { "language": "csharp" }, "content": [{ "type": "text", "text": "var x = 1;\nConsole.WriteLine(x);" }] },
+    { "type": "codeBlock", "content": [{ "type": "text", "text": "no language" }] },
+    { "type": "horizontalRule" },
+    { "type": "paragraph", "content": [{ "type": "text", "text": "After the rule" }] }
+  ]
+}

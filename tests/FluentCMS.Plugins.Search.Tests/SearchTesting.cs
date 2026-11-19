@@ -93,14 +93,21 @@ public sealed class SearchHost : IAsyncDisposable
     }
 
     // A reader through a Delivery key whose one grant reads articles under the row rule.
-    public async Task<TestActor> RuledReaderAsync()
+    public Task<TestActor> RuledReaderAsync() => ReaderAsync(new PermissionConstraints { RowRule = PopularRule });
+
+    // A reader through a Delivery key whose grants read articles, each with its constraints.
+    public async Task<TestActor> ReaderAsync(params PermissionConstraints[] grants)
     {
-        var role = new Role { Id = Guid.CreateVersion7(), Name = $"ruled-{Guid.NewGuid():N}" };
+        var role = new Role { Id = Guid.CreateVersion7(), Name = $"reader-{Guid.NewGuid():N}" };
         await using (var scope = Services.CreateAsyncScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
             context.Set<Role>().Add(role);
-            context.Set<RoleGrant>().Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = role.Id, Permission = "content.article.read", Constraints = new PermissionConstraints { RowRule = PopularRule }.ToJson() });
+            foreach (var constraints in grants)
+            {
+                context.Set<RoleGrant>().Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = role.Id, Permission = "content.article.read", Constraints = constraints.ToJson() });
+            }
+
             await context.SaveChangesAsync(Token);
         }
 
