@@ -1,6 +1,8 @@
+using System.Net;
 using System.Reflection;
 using System.Text.Json.Nodes;
 using Bunit;
+using Bunit.TestDoubles;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Fields;
@@ -145,6 +147,63 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
         app.Find(".site-switcher select").Change(Shop.ToString("D"));
 
         app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"));
+        loader.Loads.ShouldBe(1);
+    }
+
+    [Fact]
+    public void ADeepLinkWhoseFirstReadOfThePluginsFailedShowsThePageOnceARetryReadsThemWithoutANavigation()
+    {
+        var failing = true;
+        Management.Answer = (method, path) => failing && path == "plugins" ? new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) : null;
+        var app = Load(enabled: true, route: "reviews", ready: false);
+        app.WaitForAssertion(() => Context.Status.ShouldBe(ShellStatus.Failed));
+        loader.Loads.ShouldBe(0);
+        failing = false;
+
+        app.FindAll("main fluent-button").Single(button => button.TextContent.Trim() == "Try again").Click();
+
+        app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"), TimeSpan.FromSeconds(10));
+        var history = Services.GetRequiredService<BunitNavigationManager>().History;
+        history.Where(entry => entry.Options.ReplaceHistoryEntry).ShouldHaveSingleItem().Uri.ShouldEndWith("reviews");
+        Document.Invocations.Count(call => call.Identifier == "focusHeading").ShouldBe(0);
+        loader.Loads.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task APageAnsweredNoAccessIsShownWhenALocaleWhoseAccessGrantsItIsChosenWhileTheShellStaysReady()
+    {
+        Management.AddLocale(MainSite, "fr", 1);
+        Management.Grant(MainSite, ["schema.read", Permission]);
+        Management.LocaleAccess[(MainSite, "fr")] = Management.Access[MainSite];
+        var app = Load(enabled: true, route: "reviews", permitted: false);
+        app.WaitForAssertion(() => app.Find("main h1").TextContent.ShouldBe("No access"));
+
+        await app.InvokeAsync(() => Context.UseLocaleAsync("fr"));
+
+        app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"), TimeSpan.FromSeconds(10));
+        Context.Status.ShouldBe(ShellStatus.Ready);
+        Document.Invocations.Count(call => call.Identifier == "focusHeading").ShouldBe(0);
+        loader.Loads.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ADeepLinkAnsweredDuringASiteSwitchMadeOutsideTheSwitcherShowsThePageOnceTheSwitchHasRead()
+    {
+        Management.AddSite(Shop, "Shop", "shop");
+        Management.Grant(Shop, ["schema.read", Permission]);
+        Management.Plugins[Shop] = [Plugin("reviews", enabled: true)];
+        var app = Load(enabled: false);
+        var held = Management.HoldSite[Shop] = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task switching = null!;
+        await app.InvokeAsync(() => { switching = Context.SwitchSiteAsync(Shop); });
+        await app.InvokeAsync(() => Navigation.NavigateTo("reviews"));
+        Plugins.Gate("reviews").ShouldBe(PluginPageGate.NotFound);
+        loader.Loads.ShouldBe(0);
+
+        held.SetResult();
+
+        app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"), TimeSpan.FromSeconds(10));
+        switching.IsCompletedSuccessfully.ShouldBeTrue();
         loader.Loads.ShouldBe(1);
     }
 
@@ -352,7 +411,7 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
         }),
     ];
 
-    private IRenderedComponent<AdminApp> Load(bool enabled, string route = "", bool catalog = true, bool permitted = true, AdminPluginManifest? manifest = null)
+    private IRenderedComponent<AdminApp> Load(bool enabled, string route = "", bool catalog = true, bool permitted = true, bool ready = true, AdminPluginManifest? manifest = null)
     {
         if (catalog)
         {
@@ -366,7 +425,11 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
         Start();
         Navigation.NavigateTo(route);
         var app = Render<AdminApp>();
-        app.WaitForAssertion(() => Context.Status.ShouldBe(ShellStatus.Ready));
+        if (ready)
+        {
+            app.WaitForAssertion(() => Context.Status.ShouldBe(ShellStatus.Ready));
+        }
+
         return app;
     }
 

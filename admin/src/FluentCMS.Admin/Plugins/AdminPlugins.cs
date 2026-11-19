@@ -47,6 +47,9 @@ internal sealed class AdminPlugins(
     private readonly Dictionary<string, Exception> _failed = new(StringComparer.Ordinal);
     private readonly Dictionary<Type, string?> _problems = [];
 
+    // The half's route the router last navigated to and the gate it answered then.
+    private (string Route, PluginPageGate Gate)? _navigated;
+
     public AdminPluginCatalog Catalog => catalog;
 
     // The loaded halves' assemblies, which the router searches for pages besides the admin's own.
@@ -123,17 +126,31 @@ internal sealed class AdminPlugins(
     public async Task NavigateAsync(string route, CancellationToken cancellationToken)
     {
         _failed.Clear();
-        if (catalog.HalfOfRoute(route) is not { } half || IsLoaded(half))
+        _navigated = null;
+        if (catalog.HalfOfRoute(route) is not { } half)
         {
             return;
         }
 
-        await context.StartAsync();
-        if (Gate(route) == PluginPageGate.Allowed)
+        if (!IsLoaded(half))
+        {
+            await context.StartAsync();
+        }
+
+        var gate = Gate(route);
+        _navigated = (route, gate);
+        if (gate == PluginPageGate.Allowed && !IsLoaded(half))
         {
             await TryLoadAsync(half, cancellationToken);
         }
     }
+
+    // Whether a half's route that the last navigation answered as not found or no access is allowed now, as when the shell's
+    // first reads failed or a site switch was in flight then, so that the not-found page navigates to it again. The new
+    // navigation records the route as allowed, so it is navigated to again once.
+    public bool AllowedSinceNavigation(string route) =>
+        _navigated is { } navigated && navigated.Gate != PluginPageGate.Allowed && string.Equals(navigated.Route, route, StringComparison.Ordinal)
+            && Gate(route) == PluginPageGate.Allowed;
 
     // A failure is logged and kept for the page to show; a cancelled wait is not a failure.
     public async Task<bool> TryLoadAsync(AdminPluginManifest half, CancellationToken cancellationToken)

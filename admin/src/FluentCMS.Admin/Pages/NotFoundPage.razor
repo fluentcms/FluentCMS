@@ -1,5 +1,6 @@
 @page "/not-found"
 @layout AdminLayout
+@implements IDisposable
 @using FluentCMS.Admin.Plugins
 @using Microsoft.Extensions.DependencyInjection
 @inject IStringLocalizer<AdminResources> L
@@ -49,6 +50,49 @@
                 PluginPageGate.Allowed when plugins.Catalog.HalfOfRoute(route) is { } half && plugins.LoadFailed(half) => PageState.LoadFailed,
                 _ => PageState.NotFound,
             };
+        }
+    }
+
+    private AdminContext? context;
+    private bool navigatingAgain;
+
+    protected override void OnInitialized()
+    {
+        if (Services.GetService<AdminPlugins>() is not null)
+        {
+            context = Services.GetRequiredService<AdminContext>();
+            context.Changed += OnContextChanged;
+        }
+    }
+
+    protected override void OnParametersSet() => NavigateAgainIfAllowed();
+
+    public void Dispose()
+    {
+        if (context is not null)
+        {
+            context.Changed -= OnContextChanged;
+        }
+    }
+
+    private void OnContextChanged() => _ = InvokeAsync(NavigateAgainIfAllowed);
+
+    // A half's page the router answered before the site allowed it is navigated to again, which loads the half (spec 2.6): on
+    // render, as when the layout shows the page again after failed first reads or a site switch, and on a change of the
+    // context while the shell stays ready, as a locale whose access grants the page. Once per change, as both can come before
+    // the router's navigation has run. The path does not change, so focus stays where it is (HeadingFocus).
+    private void NavigateAgainIfAllowed()
+    {
+        if (Services.GetService<AdminPlugins>() is not { } plugins || !plugins.AllowedSinceNavigation(Navigation.ToBaseRelativePath(Navigation.Uri)))
+        {
+            navigatingAgain = false;
+            return;
+        }
+
+        if (!navigatingAgain)
+        {
+            navigatingAgain = true;
+            Navigation.NavigateTo(Navigation.Uri, replace: true);
         }
     }
 
