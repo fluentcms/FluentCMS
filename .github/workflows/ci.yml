@@ -112,7 +112,7 @@ jobs:
             projects: tests/FluentCMS.Plugins.Mcp.Tests tests/FluentCMS.Plugins.GraphQL.Tests tests/FluentCMS.Plugins.MultiSite.Tests tests/FluentCMS.Plugins.AiAssist.Tests tests/FluentCMS.Plugins.Search.Tests
           - group: admin
             timeout: 5m
-            projects: admin/tests/FluentCMS.Admin.Tests admin/tests/FluentCMS.Admin.ApiTests admin/tests/FluentCMS.Plugins.Media.Admin.Tests
+            projects: admin/tests/FluentCMS.Admin.Tests admin/tests/FluentCMS.Admin.ApiTests admin/tests/FluentCMS.Plugins.Media.Admin.Tests admin/tests/FluentCMS.Admin.RichText.Tests
     steps:
       - name: Checkout
         if: env.RUN_SHARD == 'true'
@@ -228,6 +228,46 @@ jobs:
 
       - name: Test
         run: npm test
+
+  # The rich text editor's bundle (admin spec AQ7): the schema's round trip test, and a rebuild from the lockfile that must
+  # give the committed rich-text.js byte for byte, so that dotnet build and the image never need Node.
+  rich-text:
+    name: Rich text bundle
+    needs: plan
+    if: needs.plan.outputs.scope != 'docs'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: admin/src/FluentCMS.Admin.RichText/js
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: admin/src/FluentCMS.Admin.RichText/js/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Test the schema
+        run: npm test
+
+      - name: Rebuild the bundle
+        run: npm run build
+
+      - name: Check that the committed bundle is the rebuild
+        shell: bash
+        run: |
+          if ! git diff --exit-code --stat -- ../wwwroot || [ -n "$(git status --porcelain -- ../wwwroot)" ]; then
+            git status --porcelain -- ../wwwroot
+            echo "::error::The committed rich text bundle differs from a rebuild. Run npm ci and npm run build in admin/src/FluentCMS.Admin.RichText/js and commit wwwroot/rich-text.js."
+            exit 1
+          fi
 
   # The full suite of the nightly and manual runs takes more than 20 minutes with the client and generate tests, and 26 to 28
   # minutes with the admin's end-to-end tests.
@@ -669,7 +709,7 @@ jobs:
   # Nobody watches the nightly run, which is the only one that runs the full Windows suite, so a failure opens an issue.
   nightly-report:
     name: Report nightly failure
-    needs: [markdown, build, test, end-to-end, typescript, build-test-windows, plan, data-tests, pack, templates]
+    needs: [markdown, build, test, end-to-end, typescript, rich-text, build-test-windows, plan, data-tests, pack, templates]
     if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 5

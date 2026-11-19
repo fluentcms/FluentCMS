@@ -1,0 +1,390 @@
+@* The editor of a rich text field (spec 4.7), and the allow-listed user of IJSRuntime of this assembly (spec 3.1): Tiptap in
+   the module rich-text.js, on the server's rich text model. The module sends the document as JSON, debounced, and this
+   component holds it as the field's value; a value the form sets from outside, as after a conflict, replaces the document.
+   The toolbar is this markup, whose buttons the module gives roving focus. The JavaScript references stay inside this
+   component. *@
+@namespace FluentCMS.Admin.RichText
+@inherits FieldEditorBase
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject IStringLocalizer<RichTextResources> L
+
+<div class="cms-field rich-text-field">
+    <span id="@labelId" class="cms-field-label">
+        @Label
+        @if (Required)
+        {
+            <span class="cms-field-required" aria-hidden="true"> *</span>
+        }
+    </span>
+    <div class="@(ErrorText is null ? "rich-text-frame" : "rich-text-frame rich-text-frame-invalid")">
+        @if (!ReadOnly)
+        {
+            <div @ref="toolbar" class="rich-text-toolbar" role="toolbar" aria-label="@L["RichText.Toolbar.Label", Label]" aria-controls="@editorId">
+                @foreach (var button in Buttons)
+                {
+                    var name = L[button.Resource].Value;
+                    <button type="button"
+                            class="rich-text-button"
+                            data-command="@button.Command"
+                            aria-label="@name"
+                            title="@L["RichText.Toolbar.Shortcut", name, button.Shortcut]"
+                            aria-keyshortcuts="@button.Keys"
+                            aria-pressed="@(button.Toggle ? (active.Contains(button.Command) ? "true" : "false") : null)"
+                            @onclick="@(() => ToolbarAsync(button.Command))">
+                        <span aria-hidden="true">@button.Glyph</span>
+                    </button>
+                }
+            </div>
+        }
+        <div @ref="host" id="@editorId" class="rich-text-host"></div>
+    </div>
+    @if (linkOpen)
+    {
+        <div class="rich-text-link" @onkeydown="OnLinkKeyDownAsync">
+            <div @onkeydown="OnAddressKeyDownAsync">
+                <CmsTextInput @ref="linkInput"
+                              Label="@L["RichText.Link.Address"]"
+                              Help="@L["RichText.Link.Help"]"
+                              Error="@linkError"
+                              Dir="ltr"
+                              Value="@linkHref"
+                              ValueChanged="@(value => { linkHref = value; linkError = null; })" />
+            </div>
+            <div class="rich-text-link-actions">
+                <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="ApplyLinkAsync">@L["RichText.Link.Apply"]</CmsButton>
+                @if (linkExisted)
+                {
+                    <CmsButton OnClick="RemoveLinkAsync">@L["RichText.Link.Remove"]</CmsButton>
+                }
+                <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="CloseLinkAsync">@L["RichText.Link.Cancel"]</CmsButton>
+            </div>
+        </div>
+    }
+    @if (unavailable)
+    {
+        <span class="cms-field-message cms-field-message-error" role="alert">@L["RichText.Editor.Unavailable"]</span>
+    }
+    @if (ErrorText is not null)
+    {
+        <span id="@messageId" class="cms-field-message cms-field-message-error">@ErrorText</span>
+    }
+    else if (Help is not null)
+    {
+        <span id="@messageId" class="cms-field-message">@Help</span>
+    }
+    @if (!ReadOnly)
+    {
+        <span id="@hintId" class="cms-visually-hidden">@L["RichText.Toolbar.Hint"]</span>
+    }
+</div>
+
+@code {
+    public const string ModulePath = "./_content/FluentCMS.Admin.RichText/rich-text.js";
+
+    internal sealed record ToolbarButton(string Command, string Resource, string Glyph, string Keys, string Shortcut, bool Toggle);
+
+    // Each button has the shortcut the module binds, so the toolbar is never the only way to a command.
+    internal static readonly ToolbarButton[] Buttons =
+    [
+        new("bold", "RichText.Toolbar.Bold", "B", "Control+B", "Ctrl+B", true),
+        new("italic", "RichText.Toolbar.Italic", "I", "Control+I", "Ctrl+I", true),
+        new("underline", "RichText.Toolbar.Underline", "U", "Control+U", "Ctrl+U", true),
+        new("strike", "RichText.Toolbar.Strike", "S", "Control+Shift+S", "Ctrl+Shift+S", true),
+        new("code", "RichText.Toolbar.Code", "</>", "Control+E", "Ctrl+E", true),
+        new("paragraph", "RichText.Toolbar.Paragraph", "¶", "Control+Alt+0", "Ctrl+Alt+0", true),
+        new("heading1", "RichText.Toolbar.Heading1", "H1", "Control+Alt+1", "Ctrl+Alt+1", true),
+        new("heading2", "RichText.Toolbar.Heading2", "H2", "Control+Alt+2", "Ctrl+Alt+2", true),
+        new("heading3", "RichText.Toolbar.Heading3", "H3", "Control+Alt+3", "Ctrl+Alt+3", true),
+        new("bulletList", "RichText.Toolbar.BulletList", "•", "Control+Shift+8", "Ctrl+Shift+8", true),
+        new("orderedList", "RichText.Toolbar.OrderedList", "1.", "Control+Shift+7", "Ctrl+Shift+7", true),
+        new("blockquote", "RichText.Toolbar.Blockquote", "❝", "Control+Shift+B", "Ctrl+Shift+B", true),
+        new("codeBlock", "RichText.Toolbar.CodeBlock", "{ }", "Control+Alt+C", "Ctrl+Alt+C", true),
+        new("horizontalRule", "RichText.Toolbar.HorizontalRule", "―", "Control+Alt+R", "Ctrl+Alt+R", false),
+        new("link", "RichText.Toolbar.Link", "🔗", "Control+K", "Ctrl+K", true),
+        new("undo", "RichText.Toolbar.Undo", "↶", "Control+Z", "Ctrl+Z", false),
+        new("redo", "RichText.Toolbar.Redo", "↷", "Control+Shift+Z", "Ctrl+Shift+Z", false),
+    ];
+
+    private readonly string labelId = "rich-text-label-" + Guid.NewGuid().ToString("N");
+    private readonly string editorId = "rich-text-editor-" + Guid.NewGuid().ToString("N");
+    private readonly string messageId = "rich-text-message-" + Guid.NewGuid().ToString("N");
+    private readonly string hintId = "rich-text-hint-" + Guid.NewGuid().ToString("N");
+
+    private ElementReference host;
+    private ElementReference toolbar;
+    private IJSObjectReference? module;
+    private IJSObjectReference? editor;
+    private DotNetObjectReference<RichTextFieldEditor>? reference;
+    private HashSet<string> active = new(StringComparer.Ordinal);
+
+    // The value as this component last gave or took it, compared with what the form sets, so that the editor's own change, or
+    // the same document read back with its attributes in the server's order, does not come back as a new document.
+    private JsonNode? known;
+
+    // What the editor was last told, so that it is told only of a change.
+    private bool? toldReadOnly;
+    private string? toldDirection;
+    private string? toldDescribedBy;
+    private bool toldInvalid;
+    private bool toolbarRendered;
+
+    private bool starting;
+    private bool disposed;
+    private bool unavailable;
+
+    private bool linkOpen;
+    private bool linkExisted;
+    private bool focusLink;
+    private string? linkHref;
+    private string? linkError;
+    private CmsTextInput? linkInput;
+
+    private string? DescribedBy =>
+        string.Join(' ', new[] { ErrorText is null && Help is null ? null : messageId, ReadOnly ? null : hintId }.OfType<string>()) is { Length: > 0 } ids ? ids : null;
+
+    public override async ValueTask FocusAsync()
+    {
+        if (editor is not null)
+        {
+            await editor.InvokeVoidAsync("focus");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (editor is null)
+        {
+            if (!starting && !unavailable)
+            {
+                await StartAsync();
+            }
+
+            return;
+        }
+
+        await TellAsync();
+        if (focusLink && linkInput is not null)
+        {
+            focusLink = false;
+            await linkInput.FocusAsync();
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnChangeAsync(string? json)
+    {
+        var value = json is null ? null : JsonNode.Parse(json);
+        known = value?.DeepClone();
+        if (!JsonNode.DeepEquals(value, Value))
+        {
+            await ChangeAsync(value);
+        }
+    }
+
+    [JSInvokable]
+    public Task OnStateAsync(string[] states)
+    {
+        active = new HashSet<string>(states, StringComparer.Ordinal);
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task OnLinkRequestedAsync() => OpenLinkAsync();
+
+    public async ValueTask DisposeAsync()
+    {
+        disposed = true;
+        try
+        {
+            if (editor is { } created)
+            {
+                editor = null;
+                await created.InvokeVoidAsync("dispose");
+                await created.DisposeAsync();
+            }
+
+            if (module is { } loaded)
+            {
+                module = null;
+                await loaded.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+
+        reference?.Dispose();
+    }
+
+    private async Task StartAsync()
+    {
+        starting = true;
+        try
+        {
+            module ??= await JS.InvokeAsync<IJSObjectReference>("import", ModulePath);
+            if (disposed)
+            {
+                return;
+            }
+
+            reference ??= DotNetObjectReference.Create(this);
+            known = Value?.DeepClone();
+            toldReadOnly = ReadOnly;
+            toldDirection = Direction;
+            toldDescribedBy = DescribedBy;
+            toldInvalid = ErrorText is not null;
+            toolbarRendered = !ReadOnly;
+            var options = new EditorOptions(!ReadOnly, labelId, DescribedBy, ContentLocale, TextDirection, toldInvalid, new KeptLabels(L["RichText.Kept.Media"], L["RichText.Kept.InlineBlock"]));
+            var created = await module.InvokeAsync<IJSObjectReference>("create", host, ReadOnly ? null : toolbar, reference, known?.ToJsonString(), options);
+            if (disposed)
+            {
+                await created.InvokeVoidAsync("dispose");
+                await created.DisposeAsync();
+                return;
+            }
+
+            editor = created;
+            await TellAsync();
+        }
+        catch (JSException)
+        {
+            unavailable = true;
+            StateHasChanged();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        finally
+        {
+            starting = false;
+        }
+    }
+
+    private string Direction => $"{ContentLocale}|{TextDirection}";
+
+    // The form's parameters that changed since the editor was told: the value, read-only, direction and the messages.
+    private async Task TellAsync()
+    {
+        if (editor is null)
+        {
+            return;
+        }
+
+        if (!JsonNode.DeepEquals(Value, known))
+        {
+            known = Value?.DeepClone();
+            await editor.InvokeVoidAsync("setContent", known?.ToJsonString());
+        }
+
+        if (toldReadOnly != ReadOnly)
+        {
+            toldReadOnly = ReadOnly;
+            await editor.InvokeVoidAsync("setEditable", !ReadOnly);
+        }
+
+        // The toolbar is drawn again when the field stops being read-only, and the module keeps roving focus on what it finds.
+        if (toolbarRendered != !ReadOnly)
+        {
+            toolbarRendered = !ReadOnly;
+            await editor.InvokeVoidAsync("setToolbar", ReadOnly ? null : toolbar);
+        }
+
+        if (toldDirection != Direction)
+        {
+            toldDirection = Direction;
+            await editor.InvokeVoidAsync("setDirection", ContentLocale, TextDirection);
+        }
+
+        if (toldDescribedBy != DescribedBy || toldInvalid != (ErrorText is not null))
+        {
+            toldDescribedBy = DescribedBy;
+            toldInvalid = ErrorText is not null;
+            await editor.InvokeVoidAsync("describe", DescribedBy, toldInvalid);
+        }
+    }
+
+    private async Task ToolbarAsync(string command)
+    {
+        if (editor is null)
+        {
+            return;
+        }
+
+        if (command == "link")
+        {
+            await OpenLinkAsync();
+            return;
+        }
+
+        await editor.InvokeAsync<bool>("run", command);
+    }
+
+    private async Task OpenLinkAsync()
+    {
+        if (editor is null || ReadOnly)
+        {
+            return;
+        }
+
+        linkHref = await editor.InvokeAsync<string?>("link");
+        linkExisted = linkHref is not null;
+        linkError = null;
+        linkOpen = true;
+        focusLink = true;
+        StateHasChanged();
+    }
+
+    private async Task ApplyLinkAsync()
+    {
+        if (editor is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(linkHref) || !await editor.InvokeAsync<bool>("setLink", linkHref))
+        {
+            linkError = L["RichText.Link.Unsafe"];
+            return;
+        }
+
+        linkOpen = false;
+    }
+
+    private async Task RemoveLinkAsync()
+    {
+        if (editor is not null)
+        {
+            await editor.InvokeAsync<bool>("unsetLink");
+        }
+
+        linkOpen = false;
+    }
+
+    private async Task CloseLinkAsync()
+    {
+        linkOpen = false;
+        await FocusAsync();
+    }
+
+    private async Task OnLinkKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            await CloseLinkAsync();
+        }
+    }
+
+    private async Task OnAddressKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+        {
+            await ApplyLinkAsync();
+        }
+    }
+
+    internal sealed record EditorOptions(bool Editable, string LabelledBy, string? DescribedBy, string? Lang, string Dir, bool Invalid, KeptLabels Labels);
+
+    internal sealed record KeptLabels(string Media, string InlineBlock);
+}

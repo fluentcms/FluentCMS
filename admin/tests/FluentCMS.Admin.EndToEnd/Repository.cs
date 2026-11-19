@@ -30,6 +30,11 @@ internal static class Repository
     public static string MediaText(string key) =>
         MediaTexts.TryGetValue(key, out var text) ? text : throw new KeyNotFoundException($"MediaResources.resx has no key {key}.");
 
+    public static IReadOnlyDictionary<string, string> RichTextTexts { get; } = ReadTexts(Path.Combine(Root, "admin", "src", "FluentCMS.Admin.RichText", "RichTextResources.resx"));
+
+    public static string RichTextText(string key) =>
+        RichTextTexts.TryGetValue(key, out var text) ? text : throw new KeyNotFoundException($"RichTextResources.resx has no key {key}.");
+
     private static string FindRoot()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)

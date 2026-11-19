@@ -8,8 +8,8 @@ namespace FluentCMS.Admin.Fields;
 internal static class FieldServiceCollectionExtensions
 {
     // The editors and list cells of the core field types (spec 4.6), and those of the app's admin halves, which load on first
-    // use. Rich text, component and blocks wait for their issues and show their JSON read-only in a form. Scoped, as the
-    // halves' are gated by the shell's site.
+    // use, and rich text, whose editor loads on first use too (A-24). Component and blocks wait for their issues and show their
+    // JSON read-only in a form. Scoped, as the halves' are gated by the shell's site.
     public static IServiceCollection AddFieldEditors(this IServiceCollection services)
     {
         services.TryAddScoped(provider =>
@@ -28,6 +28,11 @@ internal static class FieldServiceCollectionExtensions
             editors.Add<SlugFieldEditor>("slug");
             editors.Add<JsonFieldEditor>("json");
             editors.Add<RelationFieldEditor>("relation");
+            if (provider.GetService<IAdminAssemblyLoader>() is { } loader)
+            {
+                editors.AddLazy(RichTextEditorLoader.FieldType, () => true, cancellationToken => RichTextEditorLoader.LoadAsync(loader, cancellationToken));
+            }
+
             provider.GetService<AdminPlugins>()?.Declare(editors);
             return editors;
         });

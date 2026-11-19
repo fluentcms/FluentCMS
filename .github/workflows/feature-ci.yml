@@ -87,6 +87,9 @@ jobs:
       - name: Test admin components
         run: dotnet test --project admin/tests/FluentCMS.Admin.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 5m
 
+      - name: Test the rich text editor
+        run: dotnet test --project admin/tests/FluentCMS.Admin.RichText.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 5m
+
       # The tool, and the host's commands with export and import on SQLite, so that a crash of either shows before full CI.
       - name: Test the tool
         run: dotnet test --project tests/FluentCMS.Cli.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 5m
