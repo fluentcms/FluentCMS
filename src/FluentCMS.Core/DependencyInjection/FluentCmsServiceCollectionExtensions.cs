@@ -221,7 +221,7 @@ public static class FluentCmsServiceCollectionExtensions
 
         services.AddSingleton<SettingsCache>();
         services.AddSingleton<SettingsProtection>();
-        services.AddSingleton<FluentCMS.Diagnostics.IInsecureDefaultSource, PlaintextSecretsReport>();
+        services.AddSingleton<FluentCMS.Diagnostics.IInsecureDefaultSource, SecretSettingsReport>();
         services.AddScoped<SettingsService>();
         services.TryAddScoped(typeof(ISettings<>), typeof(Settings<>));
 

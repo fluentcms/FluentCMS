@@ -3,7 +3,10 @@ using FluentCMS.Core.Settings;
 using FluentCMS.Diagnostics;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Data.Tests.Settings.SettingsDatabase;
@@ -93,18 +96,13 @@ public sealed class SettingsProtectionTests
 
         (await database.GetAsync(SiteA)).ApiKey.ShouldBe(Secret);
         var found = (await ReportAsync(database)).ShouldHaveSingleItem();
-        found.Id.ShouldBe(PlaintextSecretsReport.Id);
+        found.Id.ShouldBe(SecretSettingsReport.Unprotected);
         found.Message.ShouldContain("1 stored settings documents");
         found.Message.ShouldContain("areas media.");
         found.Message.ShouldNotContain(Secret);
 
         // The form of the admin sends the document back without its secrets, which keep what is stored.
-        await database.AsAsync(Admin, async services =>
-        {
-            var service = services.GetRequiredService<SettingsService>();
-            await service.WriteAsync(service.Require("media"), SiteA, """{"maxUploadMb":30}""", null, Token);
-            return true;
-        });
+        await WriteAsync(database, SiteA, """{"maxUploadMb":30}""");
 
         database.Rows().ShouldAllBe(row => !row.Json.Contains(Secret));
         var read = await database.GetAsync(SiteA);
@@ -124,6 +122,109 @@ public sealed class SettingsProtectionTests
         database.Logs.All.ShouldNotContain("cannot be unprotected");
     }
 
+    [Fact]
+    public async Task ASiteSecretAnotherKeyRingProtectedReadsAsItsCodeDefaultAndOutlivesAWriteThatLeavesItOut()
+    {
+        using var database = new SettingsDatabase();
+        await database.SetDefaultAsync(new MediaSettings { ApiKey = "instance-key" });
+        database.AddRow(SiteA.Value, "media", Foreign($$"""{"provider":"s3","apiKey":"{{Secret}}"}""", SiteA.Value));
+        var payload = StoredApiKey(database, SiteA.Value);
+
+        var read = await database.GetAsync(SiteA);
+        (read.ApiKey, read.Provider).ShouldBe((null, "s3"));
+        var redacted = await database.ServiceAsync((service, descriptor) => service.ResolveRedactedAsync(descriptor, SiteA, Token));
+        redacted.SecretsInherited.ShouldNotContain("apiKey");
+        database.Logs.All.ShouldContain($"The stored value of the secret key apiKey of area 'media' for site {SiteA.Value}");
+        var found = (await ReportAsync(database)).ShouldHaveSingleItem();
+        found.Id.ShouldBe(SecretSettingsReport.Unreadable);
+        found.Message.ShouldContain("areas media.");
+
+        await WriteAsync(database, SiteA, """{"maxUploadMb":30}""");
+        StoredApiKey(database, SiteA.Value).ShouldBe(payload);
+        (await database.GetAsync(SiteA)).MaxUploadMb.ShouldBe(30);
+
+        await WriteAsync(database, SiteA, """{"apiKey":"set-again"}""");
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBe("set-again");
+        (await ReportAsync(database)).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AnInstanceSecretAnotherKeyRingProtectedOutlivesAWriteThatLeavesItOut()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(null, "media", Foreign($$"""{"apiKey":"{{Secret}}"}""", null));
+        var payload = StoredApiKey(database, null);
+
+        (await database.GetDefaultAsync()).ApiKey.ShouldBeNull();
+        await WriteAsync(database, null, """{"maxUploadMb":30}""");
+        StoredApiKey(database, null).ShouldBe(payload);
+
+        await database.SetDefaultAsync(new MediaSettings { ApiKey = "set-again" });
+        (await database.GetDefaultAsync()).ApiKey.ShouldBe("set-again");
+    }
+
+    [Fact]
+    public async Task AnInstanceSecretCopiedIntoASiteRowIsNotRead()
+    {
+        using var database = new SettingsDatabase();
+        await database.SetDefaultAsync(new MediaSettings { ApiKey = Secret });
+        database.AddRow(SiteA.Value, "media", new JsonObject { ["apiKey"] = StoredApiKey(database, null) }.ToJsonString());
+
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBeNull();
+        (await database.GetDefaultAsync()).ApiKey.ShouldBe(Secret);
+    }
+
+    [Fact]
+    public async Task APlaintextSecretOfTheInstanceDefaultsIsReadReportedAndProtectedByTheNextWrite()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(null, "media", $$"""{"apiKey":"{{Secret}}"}""");
+
+        (await database.GetDefaultAsync()).ApiKey.ShouldBe(Secret);
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBe(Secret);
+        (await ReportAsync(database)).ShouldHaveSingleItem().Id.ShouldBe(SecretSettingsReport.Unprotected);
+
+        await WriteAsync(database, null, """{"maxUploadMb":30}""");
+        database.Rows().ShouldAllBe(row => !row.Json.Contains(Secret));
+        (await database.GetDefaultAsync()).ApiKey.ShouldBe(Secret);
+        (await ReportAsync(database)).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AReportThatCannotReadTheTableLogsAndListsNothing()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(SiteA.Value, "media", $$"""{"apiKey":"{{Secret}}"}""");
+
+        var found = await database.AsAsync(Admin, (IServiceProvider services) => Task.FromResult(new SecretSettingsReport(
+            new FailingScopes(),
+            services.GetRequiredService<SettingsRegistry>(),
+            services.GetRequiredService<SettingsProtection>(),
+            services.GetRequiredService<ILogger<SecretSettingsReport>>()).GetInsecureDefaults().ToList()));
+
+        found.ShouldBeEmpty();
+        database.Logs.All.ShouldContain("could not be checked for secrets that are not protected or that the key ring cannot unprotect (InvalidOperationException)");
+    }
+
+    private static string Foreign(string json, Guid? site) =>
+        new SettingsProtection(new EphemeralDataProtectionProvider(), NullLogger<SettingsProtection>.Instance).Protect(new SettingsDescriptor("media", typeof(MediaSettings)), json, site);
+
+    private static string StoredApiKey(SettingsDatabase database, Guid? site) =>
+        JsonNode.Parse(database.Rows().Single(row => row.Key == "media" && row.SiteId == site).Json)!["apiKey"]!.GetValue<string>();
+
+    private static Task<bool> WriteAsync(SettingsDatabase database, SiteId? site, string json) =>
+        database.AsAsync(Admin, async (IServiceProvider services) =>
+        {
+            var service = services.GetRequiredService<SettingsService>();
+            await service.WriteAsync(service.Require("media"), site, json, null, Token);
+            return true;
+        });
+
+    private sealed class FailingScopes : IServiceScopeFactory
+    {
+        public IServiceScope CreateScope() => throw new InvalidOperationException("No scope.");
+    }
+
     private static Task<List<InsecureDefault>> ReportAsync(SettingsDatabase database) =>
-        database.AsAsync(Admin, (IServiceProvider services) => Task.FromResult(services.GetServices<IInsecureDefaultSource>().OfType<PlaintextSecretsReport>().Single().GetInsecureDefaults().ToList()));
+        database.AsAsync(Admin, (IServiceProvider services) => Task.FromResult(services.GetServices<IInsecureDefaultSource>().OfType<SecretSettingsReport>().Single().GetInsecureDefaults().ToList()));
 }
