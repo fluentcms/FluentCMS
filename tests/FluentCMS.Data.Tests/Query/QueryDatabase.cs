@@ -126,7 +126,8 @@ internal sealed class QueryDatabase : IDisposable
         search ?? Services.GetRequiredService<ISearchIndex>(),
         Services.GetRequiredService<ReferenceResolvers>(),
         Services.GetRequiredService<ManagementShape>(),
-        Services.GetRequiredService<TargetTypes>());
+        Services.GetRequiredService<TargetTypes>(),
+        Services.GetRequiredService<FluentCMS.Core.ProseMirror.RichTextOptions>());
 
     public Guid AddArticle(string title, Dictionary<string, object?>? values = null, string locale = "en", short state = ContentState.Published, Guid? id = null, Guid? site = null, Guid? createdBy = null)
     {

@@ -17,4 +17,7 @@ internal static partial class ContentLog
 
     [LoggerMessage(EventId = 9404, Level = LogLevel.Error, Message = "Item {Index} of a bulk {Operation} of {Type} committed, but reading it back failed; it is reported as done.")]
     public static partial void BulkReadBackFailed(ILogger logger, Exception exception, int index, BulkOperation operation, string type);
+
+    [LoggerMessage(EventId = 9405, Level = LogLevel.Warning, Message = "A write of {Type} {Id} in locale '{Locale}' stored {Field} without a URL with the scheme '{Scheme}', which rich text does not allow; it was stored before that rule.")]
+    public static partial void UnsafeUrlStripped(ILogger logger, string type, Guid id, string locale, string field, string scheme);
 }

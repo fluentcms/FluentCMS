@@ -6,8 +6,9 @@ namespace FluentCMS.Core.ProseMirror;
 
 internal sealed partial class MarkdownRenderer(
     IReadOnlyDictionary<string, IRichTextNodeRenderer> nodeRenderers,
-    RichTextRenderOptions options)
-    : FormatRenderer(RichTextFormats.Markdown, nodeRenderers, options)
+    RichTextRenderOptions options,
+    SafeUrl links)
+    : FormatRenderer(RichTextFormats.Markdown, nodeRenderers, options, links)
 {
     public override string Render(DocumentNode document) => Blocks(document.Content);
 
@@ -285,14 +286,14 @@ internal sealed partial class MarkdownRenderer(
         }
     }
 
-    private static string Open(RichTextMark mark) =>
+    private string Open(RichTextMark mark) =>
         mark switch
         {
             BoldMark => "**",
             ItalicMark => "*",
             UnderlineMark => "<u>",
             StrikeMark => "~~",
-            LinkMark link => SafeUrl.IsSafe(link.Href) ? "[" : string.Empty,
+            LinkMark link => Links.IsSafe(link.Href) ? "[" : string.Empty,
             EntryLinkMark => "[",
             _ => string.Empty,
         };
@@ -304,7 +305,7 @@ internal sealed partial class MarkdownRenderer(
             ItalicMark => "*",
             UnderlineMark => "</u>",
             StrikeMark => "~~",
-            LinkMark link => SafeUrl.IsSafe(link.Href) ? $"]({Destination(link.Href.Trim())}{Title(link.Title)})" : string.Empty,
+            LinkMark link => Links.IsSafe(link.Href) ? $"]({Destination(link.Href.Trim())}{Title(link.Title)})" : string.Empty,
             EntryLinkMark entry => $"]({Destination(ResolveEntryUrl(entry)?.Trim() ?? $"fcms:entry/{entry.EntryType}/{entry.EntryId}")})",
             _ => string.Empty,
         };
