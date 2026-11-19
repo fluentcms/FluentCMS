@@ -32,16 +32,17 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
         var title = panel.GetByLabel(Text("Media.Form.Title"), new LocatorGetByLabelOptions { Exact = true });
         await Expect(title).ToBeVisibleAsync();
 
-        // The metadata is saved together, and the tile shows the new title.
+        // The metadata is saved together, and the tile shows the new title, which the admin takes from the server's answer.
         await title.FillAsync($"{mark} title");
         await panel.GetByLabel(Text("Media.Form.Caption"), new LocatorGetByLabelOptions { Exact = true }).FillAsync("A red square");
         await panel.GetByLabel(Text("Media.Form.Tags"), new LocatorGetByLabelOptions { Exact = true }).FillAsync("red, square");
         var saved = await tab.Page.RunAndWaitForResponseAsync(
             () => MediaButton(tab, "Media.Form.Save").ClickAsync(),
-            response => response.Request.Method == "PATCH",
+            response => response.Request.Method == "PATCH" && response.Status != 401,
             new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
-        var body = JsonNode.Parse(await saved.TextAsync())!;
-        (body["title"]!.GetValue<string>(), body["caption"]!.GetValue<string>()).ShouldBe(($"{mark} title", "A red square"));
+        saved.Status.ShouldBe(200);
+        var sent = JsonNode.Parse(saved.Request.PostData!)!;
+        (sent["title"]!.GetValue<string>(), sent["caption"]!.GetValue<string>()).ShouldBe(($"{mark} title", "A red square"));
         await Expect(tab.Page.Locator(".media-tile-name")).ToHaveTextAsync([$"{mark} title"]);
 
         // The alt text is saved as the field is left by Tab.
