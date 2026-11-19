@@ -1,8 +1,10 @@
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Settings;
+using FluentCMS.Content;
 using FluentCMS.Diagnostics;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
+using FluentCMS.Transfer;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -204,6 +206,57 @@ public sealed class SettingsProtectionTests
 
         found.ShouldBeEmpty();
         database.Logs.All.ShouldContain("could not be checked for secrets that are not protected or that the key ring cannot unprotect (InvalidOperationException)");
+    }
+
+    [Fact]
+    public async Task ANullSentOverAnUnreadableSecretClearsItForASiteAndTheInstance()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(SiteA.Value, "media", Foreign($$"""{"apiKey":"{{Secret}}"}""", SiteA.Value));
+        database.AddRow(null, "media", Foreign($$"""{"apiKey":"{{Secret}}"}""", null));
+
+        await WriteAsync(database, SiteA, """{"apiKey":null}""");
+        await WriteAsync(database, null, """{"apiKey":null}""");
+
+        database.Rows().ShouldAllBe(row => JsonNode.Parse(row.Json)!["apiKey"] == null);
+        (await ReportAsync(database)).ShouldBeEmpty();
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task AnImportKeepsAnUnreadableSecretOfTheSiteAndAnExportShowsNothingOfIt()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(SiteA.Value, "media", Foreign($$"""{"provider":"s3","apiKey":"{{Secret}}"}""", SiteA.Value));
+        var payload = StoredApiKey(database, SiteA.Value);
+
+        var export = await database.ServiceAsync((service, _) => service.SiteDocumentsAsync(SiteA, Token));
+        export.ShouldHaveSingleItem().Json.ShouldNotContain("apiKey");
+        export.ShouldAllBe(document => !document.Json.Contains(SettingsProtection.Prefix) && !document.Json.Contains(payload));
+
+        var outcome = await database.AsAsync(Admin, async (IServiceProvider services) =>
+            await services.GetRequiredService<SettingsService>().ImportAsync("media", SiteA, """{"provider":"gcs"}""", dryRun: false, services.GetRequiredService<IOperationContextAccessor>().Current!, Token));
+
+        outcome.ShouldBe(TransferOutcome.Updated);
+        StoredApiKey(database, SiteA.Value).ShouldBe(payload);
+        var read = await database.GetAsync(SiteA);
+        (read.Provider, read.ApiKey).ShouldBe(("gcs", null));
+    }
+
+    [Fact]
+    public async Task AWriteOverASiteRowTheClassCannotReadDropsItsUnreadableSecretWithAWarningAndInheritsAgain()
+    {
+        using var database = new SettingsDatabase();
+        await database.SetDefaultAsync(new MediaSettings { ApiKey = "instance-key" });
+        database.AddRow(SiteA.Value, "media", Foreign($$"""{"maxUploadMb":"not a number","apiKey":"{{Secret}}"}""", SiteA.Value));
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBe("instance-key");
+
+        await WriteAsync(database, SiteA, """{"maxUploadMb":30}""");
+
+        JsonNode.Parse(database.Rows().Single(row => row.SiteId == SiteA.Value).Json)!.AsObject().ContainsKey("apiKey").ShouldBeFalse();
+        database.Logs.All.ShouldContain($"The stored value of the secret key apiKey of area 'media' for site {SiteA.Value} can no longer be read by the class and was not kept");
+        var read = await database.GetAsync(SiteA);
+        (read.MaxUploadMb, read.ApiKey).ShouldBe((30, "instance-key"));
     }
 
     private static string Foreign(string json, Guid? site) =>
