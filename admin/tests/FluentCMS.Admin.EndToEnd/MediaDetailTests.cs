@@ -109,8 +109,12 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
             new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         theirSave.Status.ShouldBe(200);
 
-        // The reads of the asset from here up to the save; the conflict reads it after the 412.
-        List<string> reads = [];
+        // The reads of the asset itself, GET /media/{id} with nothing after the id, from here up to the save; the conflict
+        // reads it after the 412. A read answered 401, which a token five seconds old gets and the admin sends again, is not
+        // counted. The panel's usage has loaded first, so that no read of the panel's opening is still under way.
+        await Expect(panel.Locator(".media-panel-usage")).Not.ToContainTextAsync(Text("Media.Usage.Loading"));
+        var assetRead = new Regex(@"/api/management/v1/media/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\?|$)");
+        List<IRequest> reads = [];
         var sent = false;
         mine.Page.Request += (_, request) =>
         {
@@ -118,9 +122,9 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
             {
                 sent = true;
             }
-            else if (!sent && request.Method == "GET" && request.Url.Contains("/api/management/v1/media/", StringComparison.Ordinal))
+            else if (!sent && request.Method == "GET" && assetRead.IsMatch(request.Url))
             {
-                reads.Add(request.Url);
+                reads.Add(request);
             }
         };
         // The caption is checked as filled right before the save, so that a render between the two cannot drop it unseen.
@@ -134,7 +138,10 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
         refused.Status.ShouldBe(412);
         (await refused.Request.HeaderValueAsync("if-match")).ShouldNotBeNullOrEmpty();
         (refused.Request.PostData ?? "").ShouldContain("Mine");
-        reads.ShouldBeEmpty();
+        foreach (var read in reads)
+        {
+            ((await read.ResponseAsync())?.Status).ShouldBe(401, read.Url);
+        }
 
         await Expect(panel.Locator(".media-save-conflict")).ToContainTextAsync(Text("Media.Conflict.Text"));
         await MediaButton(mine, "Media.Conflict.Theirs").ClickAsync();

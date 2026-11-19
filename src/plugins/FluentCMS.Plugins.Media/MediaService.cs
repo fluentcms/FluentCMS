@@ -328,13 +328,65 @@ internal sealed class MediaService(
         var operation = Operation();
         var (site, library) = await ScopeAsync(operation, cancellationToken);
         var reach = await ReachAsync(MediaPermissions.Update, site, library, cancellationToken);
-        var asset = await FindAssetAsync(library, id, reach, tracked: true, cancellationToken);
-        Expect(asset, expectedVersion);
-        if (changes == new MediaAssetChanges())
+        var asset = await WriteAssetAsync(library, id, reach, expectedVersion, asset =>
         {
-            return Versioned(asset, operation.Locale);
+            if (changes == new MediaAssetChanges())
+            {
+                return Task.FromResult(false);
+            }
+
+            var tags = ValidChanges(changes);
+            if (changes.Title is { } title)
+            {
+                asset.Title = Clear(title);
+            }
+
+            if (changes.Credit is { } credit)
+            {
+                asset.Credit = Clear(credit);
+            }
+
+            if (changes.Alt is { } alt)
+            {
+                asset.Alt = MediaJson.Set(asset.Alt, operation.Locale, Clear(alt));
+            }
+
+            if (changes.Caption is { } caption)
+            {
+                asset.Caption = MediaJson.Set(asset.Caption, operation.Locale, Clear(caption));
+            }
+
+            if (tags is not null)
+            {
+                asset.Tags = MediaJson.OfTags([.. tags.Distinct(StringComparer.Ordinal)]);
+            }
+
+            if (changes.FocalPoint is { } point)
+            {
+                (asset.FocalX, asset.FocalY) = (point.X, point.Y);
+            }
+
+            if (changes.IsPrivate is { } isPrivate)
+            {
+                asset.IsPrivate = isPrivate;
+            }
+
+            asset.UpdatedAt = time.GetUtcNow();
+            asset.UpdatedBy = operation.AuditPrincipal.Id;
+            return Task.FromResult(true);
+        }, cancellationToken);
+
+        if (changes != new MediaAssetChanges())
+        {
+            await events.PublishAsync(new MediaAssetUpdatedEvent(asset.Id, asset.FolderId, asset.FileName), cancellationToken);
         }
 
+        return Versioned(asset, operation.Locale);
+    }
+
+    // The tags as given when every change is valid.
+    private static List<string>? ValidChanges(MediaAssetChanges changes)
+    {
         List<ValidationError> errors = [];
         Check(errors, "title", changes.Title, MediaModel.TitleMaxLength);
         Check(errors, "alt", changes.Alt, AltMaxLength);
@@ -367,51 +419,7 @@ internal sealed class MediaService(
             errors.Add(new ValidationError("focalPoint", MediaErrorCodes.InvalidField, "A focal point has x and y from 0 to 1."));
         }
 
-        if (errors.Count > 0)
-        {
-            throw new ValidationException(errors);
-        }
-
-        if (changes.Title is { } title)
-        {
-            asset.Title = Clear(title);
-        }
-
-        if (changes.Credit is { } credit)
-        {
-            asset.Credit = Clear(credit);
-        }
-
-        if (changes.Alt is { } alt)
-        {
-            asset.Alt = MediaJson.Set(asset.Alt, operation.Locale, Clear(alt));
-        }
-
-        if (changes.Caption is { } caption)
-        {
-            asset.Caption = MediaJson.Set(asset.Caption, operation.Locale, Clear(caption));
-        }
-
-        if (tags is not null)
-        {
-            asset.Tags = MediaJson.OfTags([.. tags.Distinct(StringComparer.Ordinal)]);
-        }
-
-        if (changes.FocalPoint is { } point)
-        {
-            (asset.FocalX, asset.FocalY) = (point.X, point.Y);
-        }
-
-        if (changes.IsPrivate is { } isPrivate)
-        {
-            asset.IsPrivate = isPrivate;
-        }
-
-        asset.UpdatedAt = time.GetUtcNow();
-        asset.UpdatedBy = operation.AuditPrincipal.Id;
-        await SaveAssetAsync(asset, expectedVersion, cancellationToken);
-        await events.PublishAsync(new MediaAssetUpdatedEvent(asset.Id, asset.FolderId, asset.FileName), cancellationToken);
-        return Versioned(asset, operation.Locale);
+        return errors.Count > 0 ? throw new ValidationException(errors) : tags;
     }
 
     public async Task<MediaAsset> MoveAsync(Guid id, Guid? folderId, CancellationToken cancellationToken = default) =>
@@ -422,36 +430,41 @@ internal sealed class MediaService(
         var operation = Operation();
         var (site, library) = await ScopeAsync(operation, cancellationToken);
         var reach = await ReachAsync(MediaPermissions.Update, site, library, cancellationToken);
-        var asset = await FindAssetAsync(library, id, reach, tracked: true, cancellationToken);
-        Expect(asset, expectedVersion);
-        if (folderId is { } target)
+        Guid? previous = null;
+        var moved = false;
+        var asset = await WriteAssetAsync(library, id, reach, expectedVersion, async asset =>
         {
-            await FindFolderAsync(library, target, reach, tracked: false, cancellationToken);
-        }
-        else if (!reach.IsAll)
+            if (folderId is { } target)
+            {
+                await FindFolderAsync(library, target, reach, tracked: false, cancellationToken);
+            }
+            else if (!reach.IsAll)
+            {
+                throw new PermissionDeniedException(MediaPermissions.Update, site);
+            }
+
+            previous = asset.FolderId;
+            moved = previous != folderId;
+            asset.FolderId = folderId;
+            asset.UpdatedAt = time.GetUtcNow();
+            asset.UpdatedBy = operation.AuditPrincipal.Id;
+            return moved;
+        }, cancellationToken);
+
+        if (moved)
         {
-            throw new PermissionDeniedException(MediaPermissions.Update, site);
+            await events.PublishAsync(new MediaAssetMovedEvent(asset.Id, asset.FolderId, asset.FileName, previous), cancellationToken);
         }
 
-        var previous = asset.FolderId;
-        if (previous == folderId)
-        {
-            return Versioned(asset, operation.Locale);
-        }
-
-        asset.FolderId = folderId;
-        asset.UpdatedAt = time.GetUtcNow();
-        asset.UpdatedBy = operation.AuditPrincipal.Id;
-        await SaveAssetAsync(asset, expectedVersion, cancellationToken);
-        await events.PublishAsync(new MediaAssetMovedEvent(asset.Id, asset.FolderId, asset.FileName, previous), cancellationToken);
         return Versioned(asset, operation.Locale);
     }
 
     // The references go before the asset, so that a delete that fails between the two is tried again rather than leaving
     // references to an asset that is gone; whether an entry refers to it is asked across sites, as an id is unique.
     // A request that read the old row of a replaced asset just before the save may find its file gone and answer 404.
-    // With force and an expected version, the version is claimed before the references go, so that a delete refused for
-    // its version leaves them; the claim moves the version on, and the delete is then saved over any later write.
+    // A forced delete with an expected version claims the version in one conditional update before the references go, so
+    // that a delete refused for its version leaves them. After they go, the asset is marked deleted in one update that no
+    // other write can make miss, so that a delete never ends with the references gone and the asset still there.
     public Task DeleteAsync(Guid id, bool force, CancellationToken cancellationToken = default) =>
         DeleteAsync(id, force, null, cancellationToken);
 
@@ -460,38 +473,38 @@ internal sealed class MediaService(
         var operation = Operation();
         var (site, library) = await ScopeAsync(operation, cancellationToken);
         var reach = await ReachAsync(MediaPermissions.Delete, site, library, cancellationToken);
-        var asset = await FindAssetAsync(library, id, reach, tracked: true, cancellationToken);
+        var asset = await FindAssetAsync(library, id, reach, tracked: false, cancellationToken);
         Expect(asset, expectedVersion);
-
-        if (force && expectedVersion is { } claimed)
-        {
-            await ClaimAsync(asset, claimed, cancellationToken);
-            expectedVersion = null;
-        }
 
         if (force)
         {
+            if (expectedVersion is { } expected)
+            {
+                await ClaimAsync(id, expected, cancellationToken);
+            }
+
             await references.RemoveAsync(ReferenceTarget, id, cancellationToken);
+            await MarkDeletedAsync(id, null, operation.AuditPrincipal.Id, cancellationToken);
         }
         else if (await references.CountAsync(ReferenceTarget, id, cancellationToken) > 0)
         {
             // No count: it takes in entries the caller may not read.
             throw new PluginException(MediaErrorCodes.AssetInUse, $"Entries refer to the asset {id:D}; take it out of them, or delete it with force=true, which removes it from them.");
         }
+        else
+        {
+            await MarkDeletedAsync(id, expectedVersion, operation.AuditPrincipal.Id, cancellationToken);
+        }
 
-        var now = time.GetUtcNow();
-        asset.DeletedAt = now;
-        asset.UpdatedAt = now;
-        asset.UpdatedBy = operation.AuditPrincipal.Id;
-        await SaveAssetAsync(asset, expectedVersion, cancellationToken);
         await events.PublishAsync(new MediaAssetDeletedEvent(asset.Id, asset.FolderId, asset.FileName), cancellationToken);
     }
 
     public async Task<MediaAsset> ReplaceAsync(Guid id, MediaUploadFile file, CancellationToken cancellationToken = default) =>
         (await ReplaceAsync(id, file, null, cancellationToken)).Asset;
 
-    // A stale version is refused before the file is written; when a write comes in between, the save refuses it and the
-    // new file is deleted again.
+    // A stale version is refused before the file is written. The file is written once under a key of its own, and taken by
+    // the row as it is when the save succeeds, so the variants and the old file removed are those of that row; a replace
+    // that is refused deletes its file again.
     internal async Task<VersionedAsset> ReplaceAsync(Guid id, MediaUploadFile file, int? expectedVersion, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(file);
@@ -499,8 +512,7 @@ internal sealed class MediaService(
         var operation = Operation();
         var (site, library) = await ScopeAsync(operation, cancellationToken);
         var reach = await ReachAsync(MediaPermissions.Update, site, library, cancellationToken);
-        var asset = await FindAssetAsync(library, id, reach, tracked: true, cancellationToken);
-        Expect(asset, expectedVersion);
+        Expect(await FindAssetAsync(library, id, reach, tracked: false, cancellationToken), expectedVersion);
         var rules = await settings.GetAsync(site, cancellationToken);
         var prepared = await PrepareAsync(file, 0, rules, Math.Min(rules.MaxRequestSize, options.Value.MaxRequestBodySize), cancellationToken);
         string? written = null;
@@ -511,23 +523,27 @@ internal sealed class MediaService(
             await storages.Current.WriteAsync(key, prepared.Content, cancellationToken);
             written = key;
 
-            var replaced = await ReplacedFiles.TakeAsync(database, asset, asset.OwnsFile, cancellationToken);
-            asset.FileName = prepared.FileName;
-            asset.StorageProvider = storages.Current.Name;
-            asset.StorageKey = key;
-            asset.OwnsFile = true;
-            asset.MimeType = prepared.Type.MimeType;
-            asset.Size = prepared.Size;
-            asset.Checksum = prepared.Checksum;
-            asset.Width = prepared.Dimensions?.Width;
-            asset.Height = prepared.Dimensions?.Height;
-            asset.Duration = null;
-            asset.UpdatedAt = time.GetUtcNow();
-            asset.UpdatedBy = operation.AuditPrincipal.Id;
-            await SaveAssetAsync(asset, expectedVersion, cancellationToken);
+            ReplacedFiles? replaced = null;
+            var asset = await WriteAssetAsync(library, id, reach, expectedVersion, async asset =>
+            {
+                replaced = await ReplacedFiles.TakeAsync(database, asset, asset.OwnsFile, cancellationToken);
+                asset.FileName = prepared.FileName;
+                asset.StorageProvider = storages.Current.Name;
+                asset.StorageKey = key;
+                asset.OwnsFile = true;
+                asset.MimeType = prepared.Type.MimeType;
+                asset.Size = prepared.Size;
+                asset.Checksum = prepared.Checksum;
+                asset.Width = prepared.Dimensions?.Width;
+                asset.Height = prepared.Dimensions?.Height;
+                asset.Duration = null;
+                asset.UpdatedAt = time.GetUtcNow();
+                asset.UpdatedBy = operation.AuditPrincipal.Id;
+                return true;
+            }, cancellationToken);
             written = null;
 
-            await replaced.DeleteAsync(asset, storages, logger);
+            await replaced!.DeleteAsync(asset, storages, logger);
             await events.PublishAsync(new MediaAssetReplacedEvent(asset.Id, asset.FolderId, asset.FileName, asset.MimeType, asset.Size), cancellationToken);
             return Versioned(asset, operation.Locale);
         }
@@ -814,7 +830,7 @@ internal sealed class MediaService(
 
     private static PluginException AssetNotFound(Guid id) => new(MediaErrorCodes.AssetNotFound, $"The site has no media asset {id:D}.");
 
-    // A version named by If-Match against the row as it was read; the save compares it again (SaveAssetAsync).
+    // A version named by If-Match against the row as it was read; the save compares it again (WriteAssetAsync).
     private static void Expect(Asset asset, int? expectedVersion)
     {
         if (expectedVersion is { } expected && expected != asset.Version)
@@ -827,63 +843,78 @@ internal sealed class MediaService(
     private static PluginException Conflict(int expected, int current) =>
         new(MediaErrorCodes.VersionConflict, $"The write was based on version {expected}, but the asset is at version {current}.");
 
-    // Moves the version on from the one expected in one conditional update, or refuses as a stale save would.
-    private async Task ClaimAsync(Asset asset, int expected, CancellationToken cancellationToken)
-    {
-        var claimed = await database.Set<Asset>()
-            .Where(row => row.Id == asset.Id && row.Version == expected && row.DeletedAt == null)
-            .ExecuteUpdateAsync(set => set.SetProperty(row => row.Version, expected + 1), cancellationToken);
-        if (claimed == 0)
-        {
-            var current = await database.Set<Asset>().AsNoTracking()
-                .Where(row => row.Id == asset.Id && row.DeletedAt == null)
-                .Select(row => (int?)row.Version)
-                .FirstOrDefaultAsync(cancellationToken);
-            throw current is { } version ? Conflict(expected, version) : AssetNotFound(asset.Id);
-        }
-
-        database.Entry(asset).Property(row => row.Version).OriginalValue = expected + 1;
-        asset.Version = expected + 1;
-    }
-
-    // Saves the row at the next version. The version is the row's concurrency token, so the update changes nothing when a
-    // write came in after the read: with an expected version that is a conflict, and without one the write goes over the
-    // other at the version now stored, as the last write won before assets had a version, a few times at most.
-    private async Task SaveAssetAsync(Asset asset, int? expectedVersion, CancellationToken cancellationToken)
+    // Applies a write to the row as stored and saves it at the next version. The version is the row's concurrency token, so
+    // the save changes nothing when another write came in after the read. The write is then applied again to the row as it
+    // is now, where an expected version that moved on is a conflict; one that keeps losing is refused as a conflict too. The
+    // write runs on a fresh row each time, so it never puts back what it read before the other write.
+    private async Task<Asset> WriteAssetAsync(SiteId library, Guid id, FolderReach reach, int? expectedVersion, Func<Asset, Task<bool>> apply, CancellationToken cancellationToken)
     {
         const int Attempts = 5;
-        asset.Version++;
         for (var attempt = 1; ; attempt++)
         {
+            var asset = await FindAssetAsync(library, id, reach, tracked: true, cancellationToken);
+            Expect(asset, expectedVersion);
+            if (!await apply(asset))
+            {
+                return asset;
+            }
+
+            asset.Version++;
             try
             {
                 await database.SaveChangesAsync(cancellationToken);
-                return;
+                return asset;
             }
-            catch (DbUpdateConcurrencyException exception)
+            catch (DbUpdateConcurrencyException)
             {
-                var entry = exception.Entries.FirstOrDefault(item => ReferenceEquals(item.Entity, asset));
-                if (entry is null || (expectedVersion is null && attempt == Attempts))
+                database.ChangeTracker.Clear();
+                if (attempt == Attempts)
                 {
-                    throw;
+                    throw new PluginException(MediaErrorCodes.VersionConflict, $"The asset {id:D} kept changing while it was saved; read it again and retry.");
                 }
-
-                var stored = await entry.GetDatabaseValuesAsync(cancellationToken);
-                if (stored is null || stored.GetValue<DateTimeOffset?>(nameof(Asset.DeletedAt)) is not null)
-                {
-                    throw AssetNotFound(asset.Id);
-                }
-
-                var current = stored.GetValue<int>(nameof(Asset.Version));
-                if (expectedVersion is { } expected)
-                {
-                    throw Conflict(expected, current);
-                }
-
-                entry.Property(nameof(Asset.Version)).OriginalValue = current;
-                asset.Version = current + 1;
             }
         }
+    }
+
+    // Moves the version on from the one expected in one conditional update, or refuses as a stale save would.
+    private async Task ClaimAsync(Guid id, int expected, CancellationToken cancellationToken)
+    {
+        var claimed = await database.Set<Asset>()
+            .Where(row => row.Id == id && row.Version == expected && row.DeletedAt == null)
+            .ExecuteUpdateAsync(set => set.SetProperty(row => row.Version, expected + 1), cancellationToken);
+        if (claimed == 0)
+        {
+            throw await RefusalAsync(id, expected, cancellationToken);
+        }
+    }
+
+    // Marks the asset deleted at the next version in one update, which only an expected version that moved on, or a delete
+    // that came first, makes miss.
+    private async Task MarkDeletedAsync(Guid id, int? expected, Guid principal, CancellationToken cancellationToken)
+    {
+        var now = time.GetUtcNow();
+        var rows = database.Set<Asset>().Where(row => row.Id == id && row.DeletedAt == null);
+        if (expected is { } version)
+        {
+            rows = rows.Where(row => row.Version == version);
+        }
+
+        var deleted = await rows.ExecuteUpdateAsync(
+            set => set.SetProperty(row => row.DeletedAt, now).SetProperty(row => row.UpdatedAt, now).SetProperty(row => row.UpdatedBy, principal).SetProperty(row => row.Version, row => row.Version + 1),
+            cancellationToken);
+        if (deleted == 0)
+        {
+            throw expected is { } stale ? await RefusalAsync(id, stale, cancellationToken) : AssetNotFound(id);
+        }
+    }
+
+    private async Task<PluginException> RefusalAsync(Guid id, int expected, CancellationToken cancellationToken)
+    {
+        var current = await database.Set<Asset>().AsNoTracking()
+            .Where(row => row.Id == id && row.DeletedAt == null)
+            .Select(row => (int?)row.Version)
+            .FirstOrDefaultAsync(cancellationToken);
+        return current is { } version ? Conflict(expected, version) : AssetNotFound(id);
     }
 
     // The original of a public asset, signed without an expiry, and for an image the processor reads, the presets of the

@@ -67,11 +67,22 @@ internal sealed class MediaApi(IManagementApi api)
             throw new MediaConflictException(await GetAsync(basis.Id, basis.Locale, cancellationToken));
         }
 
-        // A private asset's URLs are signed for it, so a change of the flag reads them again.
-        var changed = answer.Value;
-        return changed.IsPrivate == basis.IsPrivate
-            ? Merge(basis, changed) with { ETag = answer.EntityTag }
-            : await GetAsync(basis.Id, basis.Locale, cancellationToken);
+        // A private asset's URLs are signed for it, so a change of the flag reads them again. When that read fails the save
+        // is still done, and the asset keeps the answer's ETag, so that the next save is not a conflict with this one.
+        var saved = Merge(basis, answer.Value) with { ETag = answer.EntityTag };
+        if (answer.Value.IsPrivate == basis.IsPrivate)
+        {
+            return saved;
+        }
+
+        try
+        {
+            return await GetAsync(basis.Id, basis.Locale, cancellationToken);
+        }
+        catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or JsonException)
+        {
+            return saved;
+        }
     }
 
     // The answer has no URLs, so the caller reads the asset after it; the answer's ETag is what a save is based on when that

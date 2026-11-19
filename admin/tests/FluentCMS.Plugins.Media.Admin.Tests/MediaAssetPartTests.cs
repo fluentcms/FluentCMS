@@ -106,6 +106,34 @@ public sealed class MediaAssetPartTests : MediaTestContext
         Library.Requests.Last(request => request.Method == HttpMethod.Patch).IfMatch.ShouldBe("\"3\"");
     }
 
+    // A change of the private flag reads the asset's URLs again; when that read fails, the save is still done and the asset
+    // keeps the answer's ETag.
+    [Fact]
+    public async Task APrivateFlagSavedWhoseReadAfterFailsKeepsTheAnswersETag()
+    {
+        var id = Library.AddAsset("cat.png");
+        var basis = Read(id);
+        var saved = false;
+        Library.BeforeAnswer = request =>
+        {
+            if (request.Method == HttpMethod.Patch)
+            {
+                saved = true;
+            }
+            else if (saved && request.Method == HttpMethod.Get)
+            {
+                throw new HttpRequestException("The network is down.");
+            }
+
+            return Task.CompletedTask;
+        };
+
+        var changed = await new MediaApi(Library).UpdateAsync(basis, new System.Text.Json.Nodes.JsonObject { ["isPrivate"] = true }, CancellationToken.None);
+
+        (changed.IsPrivate, changed.ETag).ShouldBe((true, "\"2\""));
+        Library.Asset(id)["isPrivate"]!.GetValue<bool>().ShouldBeTrue();
+    }
+
     // A proxy that compresses answers makes the ETag weak; the gate still orders by the version it holds.
     [Fact]
     public void TheGateOrdersByTheVersionOfAWeakTag()

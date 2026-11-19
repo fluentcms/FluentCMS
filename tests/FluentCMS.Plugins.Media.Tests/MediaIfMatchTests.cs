@@ -235,6 +235,31 @@ public sealed class MediaIfMatchTests(MediaHost media) : IClassFixture<MediaHost
         }
     }
 
+    // A write that lost the race is applied again to the row the other saved, so the alt text of one locale saved at the same
+    // time as another's keeps both, though both are in one column.
+    [Fact]
+    public async Task ConcurrentSavesOfTwoLocalesWithoutIfMatchBothSurvive()
+    {
+        await media.AddLocaleAsync("fr");
+        using var client = await media.AdminAsync();
+        var id = await AssetAsync(client);
+
+        for (var round = 0; round < 5; round++)
+        {
+            var saves = await Task.WhenAll(
+                client.PatchAsJsonAsync(new Uri($"{Root}/{id:D}?locale=en", UriKind.Relative), new { alt = $"Boats {round}" }, Token),
+                client.PatchAsJsonAsync(new Uri($"{Root}/{id:D}?locale=fr", UriKind.Relative), new { alt = $"Bateaux {round}" }, Token));
+            foreach (var save in saves)
+            {
+                await JsonAsync(save);
+                save.Dispose();
+            }
+
+            (await GetAsync(client, $"{Root}/{id:D}?locale=en"))["alt"]!.GetValue<string>().ShouldBe($"Boats {round}");
+            (await GetAsync(client, $"{Root}/{id:D}?locale=fr"))["alt"]!.GetValue<string>().ShouldBe($"Bateaux {round}");
+        }
+    }
+
     private static async Task<Guid> AssetAsync(HttpClient client) =>
         Id((await UploadedAsync(client, null, ("photo.png", Files.Png(4, 4)))).Single()!);
 
