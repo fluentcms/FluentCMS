@@ -1,5 +1,6 @@
 @page "/not-found"
 @layout AdminLayout
+@implements IDisposable
 @using FluentCMS.Admin.Plugins
 @using Microsoft.Extensions.DependencyInjection
 @inject IStringLocalizer<AdminResources> L
@@ -49,6 +50,39 @@
                 PluginPageGate.Allowed when plugins.Catalog.HalfOfRoute(route) is { } half && plugins.LoadFailed(half) => PageState.LoadFailed,
                 _ => PageState.NotFound,
             };
+        }
+    }
+
+    private AdminContext? context;
+
+    protected override void OnInitialized()
+    {
+        if (Services.GetService<AdminPlugins>() is not null)
+        {
+            context = Services.GetRequiredService<AdminContext>();
+            context.Changed += OnContextChanged;
+        }
+    }
+
+    protected override void OnParametersSet() => NavigateAgainIfAllowed();
+
+    public void Dispose()
+    {
+        if (context is not null)
+        {
+            context.Changed -= OnContextChanged;
+        }
+    }
+
+    private void OnContextChanged() => _ = InvokeAsync(NavigateAgainIfAllowed);
+
+    // A half's page the router answered before the shell knew the site, as when its first reads failed or a site switch was
+    // in flight, is navigated to again once the site allows it, which loads the half (spec 2.6).
+    private void NavigateAgainIfAllowed()
+    {
+        if (Services.GetService<AdminPlugins>() is { } plugins && plugins.AllowedSinceNavigation(Navigation.ToBaseRelativePath(Navigation.Uri)))
+        {
+            Navigation.NavigateTo(Navigation.Uri, replace: true);
         }
     }
 

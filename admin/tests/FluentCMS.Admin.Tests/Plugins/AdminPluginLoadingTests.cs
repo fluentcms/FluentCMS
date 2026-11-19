@@ -1,5 +1,7 @@
+using System.Net;
 using System.Reflection;
 using Bunit;
+using Bunit.TestDoubles;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Fields;
 using FluentCMS.Admin.Lists;
@@ -140,6 +142,45 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
         app.Find(".site-switcher select").Change(Shop.ToString("D"));
 
         app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"));
+        loader.Loads.ShouldBe(1);
+    }
+
+    [Fact]
+    public void ADeepLinkWhoseFirstReadOfThePluginsFailedShowsThePageOnceARetryReadsThemWithoutANavigation()
+    {
+        var failing = true;
+        Management.Answer = (method, path) => failing && path == "plugins" ? new HttpResponseMessage(HttpStatusCode.ServiceUnavailable) : null;
+        var app = Load(enabled: true, route: "reviews", ready: false);
+        app.WaitForAssertion(() => Context.Status.ShouldBe(ShellStatus.Failed));
+        loader.Loads.ShouldBe(0);
+        failing = false;
+
+        app.FindAll("main fluent-button").Single(button => button.TextContent.Trim() == "Try again").Click();
+
+        app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"));
+        var history = Services.GetRequiredService<BunitNavigationManager>().History;
+        history.Where(entry => entry.Options.ReplaceHistoryEntry).ShouldHaveSingleItem().Uri.ShouldEndWith("reviews");
+        loader.Loads.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ADeepLinkAnsweredDuringASiteSwitchMadeOutsideTheSwitcherShowsThePageOnceTheSwitchHasRead()
+    {
+        Management.AddSite(Shop, "Shop", "shop");
+        Management.Grant(Shop, ["schema.read", Permission]);
+        Management.Plugins[Shop] = [Plugin("reviews", enabled: true)];
+        var app = Load(enabled: false);
+        var held = Management.HoldSite[Shop] = new TaskCompletionSource();
+        Task switching = null!;
+        await app.InvokeAsync(() => { switching = Context.SwitchSiteAsync(Shop); });
+        await app.InvokeAsync(() => Navigation.NavigateTo("reviews"));
+        Plugins.Gate("reviews").ShouldBe(PluginPageGate.NotFound);
+        loader.Loads.ShouldBe(0);
+
+        held.SetResult();
+
+        app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"));
+        switching.IsCompletedSuccessfully.ShouldBeTrue();
         loader.Loads.ShouldBe(1);
     }
 
@@ -295,7 +336,7 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
     public void TheMoreLiteralTemplateWins() =>
         AdminPluginRoutes.Match(Sample.Pages, "reviews/new")!.Permission.ShouldBe("reviews.notes.create");
 
-    private IRenderedComponent<AdminApp> Load(bool enabled, string route = "", bool catalog = true, bool permitted = true)
+    private IRenderedComponent<AdminApp> Load(bool enabled, string route = "", bool catalog = true, bool permitted = true, bool ready = true)
     {
         if (catalog)
         {
@@ -308,7 +349,11 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
         Start();
         Navigation.NavigateTo(route);
         var app = Render<AdminApp>();
-        app.WaitForAssertion(() => Context.Status.ShouldBe(ShellStatus.Ready));
+        if (ready)
+        {
+            app.WaitForAssertion(() => Context.Status.ShouldBe(ShellStatus.Ready));
+        }
+
         return app;
     }
 
