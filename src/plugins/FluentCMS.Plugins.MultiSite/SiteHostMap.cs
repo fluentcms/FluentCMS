@@ -53,9 +53,10 @@ internal sealed class SiteHostMap(IServiceScopeFactory scopes, TimeProvider time
     private sealed record Snapshot(FrozenDictionary<string, Guid> Sites, long Generation, DateTimeOffset Expires);
 }
 
-// The hosts of a site go with it. The site's own rows are core's, which deletes them; these are the plugin's.
-internal sealed class DeletedSiteHosts(SiteHostService hosts) : IEventHandler<SiteDeletedEvent>
+// The hosts of a site go with it. The site's own rows are core's, which deletes them; these are the plugin's. An outbox
+// delivery, as the other plugins' cleanups are, so that a removal that fails or is cut off is tried again rather than left.
+internal sealed class DeletedSiteHosts(SiteHostService hosts) : IOutboxEventHandler<SiteDeletedEvent>
 {
-    public async ValueTask HandleAsync(SiteDeletedEvent message, CancellationToken cancellationToken) =>
+    public async ValueTask HandleAsync(SiteDeletedEvent message, EventDelivery delivery, CancellationToken cancellationToken) =>
         await hosts.RemoveAllAsync(message.SiteId, cancellationToken);
 }

@@ -22,7 +22,7 @@ public sealed class MultiSitePlugin : IPlugin
         plugin
             .AddModel<MultiSiteModel>()
             .AddMigrations(typeof(MultiSitePlugin).Assembly)
-            .AddEventHandler<SiteDeletedEvent, DeletedSiteHosts>()
+            .AddOutboxHandler<SiteDeletedEvent, DeletedSiteHosts>("multi-site.cleanup.site.deleted")
             .AddErrorCode(MultiSiteErrorCodes.InvalidHostName, 422, "Invalid host name")
             .AddErrorCode(MultiSiteErrorCodes.WildcardHostName, 422, "Wildcard host name")
             .AddErrorCode(MultiSiteErrorCodes.HostNameWithPort, 422, "Host name with a port")

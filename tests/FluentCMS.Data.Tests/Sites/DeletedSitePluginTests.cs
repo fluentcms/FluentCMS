@@ -38,6 +38,8 @@ public sealed class DeletedSitePluginTests : IDisposable
             new Dictionary<string, string?> { ["FluentCms:Media:Local:Root"] = _media.FullName },
             configure: cms =>
             {
+                // An in-process handler is cut off at once here and never tried again, so a cleanup left to one fails.
+                cms.Events.Handlers.Timeout = TimeSpan.FromTicks(1);
                 cms.AddPlugin<WebhooksPlugin>();
                 cms.AddPlugin<McpPlugin>();
                 cms.AddPlugin<MediaPlugin>();
