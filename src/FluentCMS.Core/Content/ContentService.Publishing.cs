@@ -721,7 +721,7 @@ internal sealed partial class ContentService
             if (!field.Hidden && write.Permissions.CanReadField(write.Type, field.Name, write.Target) && snapshot[field.Name] is { } value)
             {
                 var visible = value.DeepClone();
-                HiddenFields.Remove(schema, visible, field, dropUnknown: true);
+                HiddenFields.Remove(schema, visible, field, dropUnknown: true, dropUnsafeLinks: true);
                 fields[field.Name] = visible;
             }
         }

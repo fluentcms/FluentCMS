@@ -127,6 +127,7 @@ public static class ErrorCodeRegistry
         Invalid(ValidationErrorCodes.NotUnique, "Value not unique"),
         Invalid(ValidationErrorCodes.EmptySlug, "No slug from the source"),
         Invalid(ValidationErrorCodes.UnknownReference, "Reference not found"),
+        Invalid(ValidationErrorCodes.UnsafeUrl, "Unsafe URL"),
 
         // 22xx query
         BadQuery(QueryErrorCodes.InvalidParameter, "Invalid query parameter"),
