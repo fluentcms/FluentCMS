@@ -9,7 +9,7 @@
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<AdminResources> L
 
-<CmsDialog Title="@L[Multiple ? "Content.Relation.PickerTitle" : "Content.Relation.PickerTitleOne", TypeLabel]" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : OnClose.InvokeAsync())">
+<CmsDialog Title="@L[Multiple ? "Content.Relation.PickerTitle" : "Content.Relation.PickerTitleOne", TypeLabel]" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : OnClose.InvokeAsync())" OnClosed="@OnClosed">
     <ChildContent>
         @if (Open)
         {
@@ -100,6 +100,10 @@
     // Raised with the chosen entries in their order; one that no page read shows has its id only.
     [Parameter]
     public EventCallback<IReadOnlyList<ContentEntry>> OnPicked { get; set; }
+
+    // Raised once the dialog has closed and given focus back to the control that opened it.
+    [Parameter]
+    public EventCallback OnClosed { get; set; }
 
     private string TypeLabel => AdminLabels.Type(Target, L);
 

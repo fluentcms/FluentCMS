@@ -37,10 +37,10 @@ public class AdminRulesTests
     private static readonly string[] CompilerPackages = ["FluentCMS.Analyzers", "FluentCMS.Generators"];
 
     // Spec 3.1: the types that may use JavaScript interop, the document module, the tab's sessionStorage of the sign-in,
-    // localStorage for the theme's one key and for the column names of the lists, and the drop and paste of the media
-    // library, in the media half (A-21). The component library's script is loaded by the library's own types, so no type of
-    // FluentCMS.Admin.Components is listed. The rich text bundle and the clipboard and BroadcastChannel modules join the list
-    // by name, in FluentCMS.Admin or FluentCMS.Admin.RichText, with the issues that write them.
+    // localStorage for the theme's one key and for the column names of the lists, the drop and paste of the media library,
+    // in the media half (A-21), and the rich text editor's bundle (A-24). The component library's script is loaded by the
+    // library's own types, so no type of FluentCMS.Admin.Components is listed. The clipboard module joins the list by name,
+    // in FluentCMS.Admin or FluentCMS.Admin.RichText, with the issue that writes it.
     private static readonly string[] InteropTypes =
     [
         "FluentCMS.Admin.Interop.ColumnStorageInterop",
@@ -49,6 +49,7 @@ public class AdminRulesTests
         "FluentCMS.Admin.Interop.TabChannelInterop",
         "FluentCMS.Admin.Interop.ThemeStorageInterop",
         "FluentCMS.Plugins.Media.Admin.MediaDropZone",
+        "FluentCMS.Admin.RichText.RichTextFieldEditor",
     ];
 
     private const string MediaHalfAssembly = "FluentCMS.Plugins.Media.Admin";
