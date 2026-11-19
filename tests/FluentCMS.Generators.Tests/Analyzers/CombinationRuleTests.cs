@@ -1,5 +1,6 @@
 extern alias Analyzers;
 
+using Shouldly;
 using Xunit;
 
 namespace FluentCMS.Generators.Tests.Analyzers;
@@ -244,6 +245,47 @@ public sealed class LeftToTheHostTests
         public sealed class Page : ContentItem
         {
             [Media, Unique] public FluentCMS.Media.MediaRef? Hero { get; set; }
+        }
+        """);
+}
+
+// The types a media field accepts are checked by the media plugin at start, which the analyzer mirrors.
+public sealed class NotAMediaTypeTests
+{
+    [Fact]
+    public Task AnAcceptThatIsNoTypeOrFamilyIsReported() => Analysis.Verify<Analyzers::FluentCMS.Analyzers.SchemaAttributeAnalyzer>(Analysis.Usings + """
+        [Collection("page")]
+        public sealed class Page : ContentItem
+        {
+            [Media({|FCMS0017:Accept = ["image/*", "image"]|})] public FluentCMS.Media.MediaRef? Hero { get; set; }
+
+            [Media({|FCMS0017:{|FCMS0017:Accept = ["*/*", null]|}|})] public FluentCMS.Media.MediaRefList Files { get; set; } = [];
+        }
+        """);
+
+    [Fact]
+    public async Task TheMessageNamesTheTypeAndTheCodeOfTheHost()
+    {
+        var diagnostics = await Analysis.Diagnostics(Analysis.Usings + """
+            [Collection("page")]
+            public sealed class Page : ContentItem
+            {
+                [Media(Accept = ["image/"])] public FluentCMS.Media.MediaRef? Hero { get; set; }
+            }
+            """);
+
+        diagnostics.ShouldHaveSingleItem().GetMessage(System.Globalization.CultureInfo.InvariantCulture)
+            .ShouldBe("The media field 'Page.Hero' accepts 'image/', which is not a MIME type such as image/png or a family such as image/*; the host refuses it with FCMS1596");
+    }
+
+    [Fact]
+    public Task TypesAndFamiliesAreAccepted() => Analysis.Verify<Analyzers::FluentCMS.Analyzers.SchemaAttributeAnalyzer>(Analysis.Usings + """
+        [Collection("page")]
+        public sealed class Page : ContentItem
+        {
+            [Media(Accept = ["image/*", "Application/PDF", "image/svg+xml"])] public FluentCMS.Media.MediaRef? Hero { get; set; }
+
+            [Media(Accept = [])] public FluentCMS.Media.MediaRefList Files { get; set; } = [];
         }
         """);
 }

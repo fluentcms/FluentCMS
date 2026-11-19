@@ -60,6 +60,10 @@ internal sealed class Asset
     public Guid UpdatedBy { get; set; }
 
     public DateTimeOffset? DeletedAt { get; set; }
+
+    // Goes up by one with every write of the row, and is the ETag of the asset. It is a concurrency token, so a save that
+    // was based on another version changes nothing.
+    public int Version { get; set; } = 1;
 }
 
 // A folder of a site. Path is the ids from the root down to the folder itself, each followed by a slash and the whole
@@ -165,6 +169,7 @@ internal sealed class MediaModel : IPluginModelContributor
             asset.Property(item => item.UpdatedAt).HasColumnName("updated_at");
             asset.Property(item => item.UpdatedBy).HasColumnName("updated_by");
             asset.Property(item => item.DeletedAt).HasColumnName("deleted_at");
+            asset.Property(item => item.Version).HasColumnName("version").IsConcurrencyToken();
             asset.HasIndex(item => new { item.SiteId, item.FolderId }).HasDatabaseName("ix_cms_media_asset_site_folder");
             asset.HasIndex(item => new { item.SiteId, item.CreatedAt }).HasDatabaseName("ix_cms_media_asset_site_created_at");
 

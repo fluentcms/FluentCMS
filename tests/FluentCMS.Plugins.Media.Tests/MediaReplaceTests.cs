@@ -76,6 +76,46 @@ public sealed class MediaReplaceTests(PostHost media) : IClassFixture<PostHost>
         (await FilesOfAsync(media, asset)).Count.ShouldBe(1);
     }
 
+    // Concurrent replaces without If-Match of an asset with variants (#3343): the one that loses the race is applied again to
+    // the row the other saved, so both answer, and the folder of the asset holds the file the row names and the files of its
+    // variants, nothing else.
+    [Fact]
+    public async Task ConcurrentReplacesOfAnAssetWithVariantsAreAllAppliedAndLeaveNoFileBehind()
+    {
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var asset = await UploadAsync(admin, Bands(40, 20), "bands.png");
+
+        for (var round = 0; round < 3; round++)
+        {
+            var url = await UrlAsync(media, System.Text.Json.JsonSerializer.Deserialize<MediaAsset>(await GetAsync(admin, $"{Root}/{asset.Id:D}"), System.Text.Json.JsonSerializerOptions.Web)!, new MediaImageOptions { Width = 10 });
+            using (var variant = await FetchAsync(anonymous, url))
+            {
+                variant.StatusCode.ShouldBe(HttpStatusCode.OK);
+            }
+
+            var replaces = await Task.WhenAll(Enumerable.Range(0, 3).Select(index => ReplaceAsync(admin, asset.Id, ($"r{round}-{index}.png", Solid(8 + index, 8, Blue)))));
+            try
+            {
+                replaces.ShouldAllBe(replace => replace.StatusCode == HttpStatusCode.OK);
+            }
+            finally
+            {
+                foreach (var replace in replaces)
+                {
+                    replace.Dispose();
+                }
+            }
+
+            await using var scope = media.Services.CreateAsyncScope();
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+            var row = await database.Set<Asset>().AsNoTracking().SingleAsync(item => item.Id == asset.Id, Token);
+            var variants = await database.Set<Variant>().AsNoTracking().Where(item => item.AssetId == asset.Id).Select(item => item.StorageKey).ToListAsync(Token);
+            var named = variants.Append(row.StorageKey).Select(key => Path.GetFileName(key)).ToHashSet();
+            (await FilesOfAsync(media, asset)).Select(Path.GetFileName).ShouldBe(named, ignoreOrder: true);
+        }
+    }
+
     private static async Task<HttpResponseMessage> ReplaceAsync(HttpClient client, Guid id, params (string Name, byte[] Bytes)[] files)
     {
         using var form = new MultipartFormDataContent();

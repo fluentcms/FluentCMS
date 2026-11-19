@@ -1,4 +1,5 @@
 using FluentCMS.Core.Content;
+using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Schema;
 using Shouldly;
@@ -22,7 +23,7 @@ public class VersionSnapshotTests
         .Build();
 
     private static string Read(string snapshot) =>
-        VersionSnapshot.Parse(Schema, Schema.FindContentType("article")!, snapshot).ToJsonString();
+        VersionSnapshot.Parse(Schema, Schema.FindContentType("article")!, snapshot, SafeUrl.Default).ToJsonString();
 
     [Fact]
     public void AFieldIsReadUnderItsFormerNameInItsPlace()

@@ -37,6 +37,11 @@
     <Compile Include="../FluentCMS.Generators/IsExternalInit.cs" Link="Shared/IsExternalInit.cs" />
   </ItemGroup>
 
+  <!-- The check of a media field's accepted types, which the media plugin applies at start. -->
+  <ItemGroup>
+    <Compile Include="../plugins/FluentCMS.Plugins.Media/MediaAccept.cs" Link="Shared/MediaAccept.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>

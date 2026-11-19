@@ -2269,6 +2269,8 @@ FluentCMS.Schema.FieldRelationDescription.Target.init -> void
 FluentCMS.Schema.FieldSettingDescriptor
 FluentCMS.Schema.FieldSettingDescriptor.<Clone>$() -> FluentCMS.Schema.FieldSettingDescriptor!
 FluentCMS.Schema.FieldSettingDescriptor.Equals(FluentCMS.Schema.FieldSettingDescriptor? other) -> bool
+FluentCMS.Schema.FieldSettingDescriptor.ErrorCode.get -> string?
+FluentCMS.Schema.FieldSettingDescriptor.ErrorCode.init -> void
 FluentCMS.Schema.FieldSettingDescriptor.FieldSettingDescriptor() -> void
 FluentCMS.Schema.FieldSettingDescriptor.Key.get -> string!
 FluentCMS.Schema.FieldSettingDescriptor.Key.init -> void
@@ -2276,6 +2278,8 @@ FluentCMS.Schema.FieldSettingDescriptor.Kind.get -> FluentCMS.Schema.FieldSettin
 FluentCMS.Schema.FieldSettingDescriptor.Kind.init -> void
 FluentCMS.Schema.FieldSettingDescriptor.Required.get -> bool
 FluentCMS.Schema.FieldSettingDescriptor.Required.init -> void
+FluentCMS.Schema.FieldSettingDescriptor.Validate.get -> System.Func<object!, string?>?
+FluentCMS.Schema.FieldSettingDescriptor.Validate.init -> void
 FluentCMS.Schema.FieldSettingKind
 FluentCMS.Schema.FieldSettingKind.Boolean = 1 -> FluentCMS.Schema.FieldSettingKind
 FluentCMS.Schema.FieldSettingKind.Decimal = 3 -> FluentCMS.Schema.FieldSettingKind
@@ -2405,6 +2409,8 @@ FluentCMS.Schema.LocalizableAttribute.LocalizableAttribute() -> void
 FluentCMS.Schema.LongTextAttribute
 FluentCMS.Schema.LongTextAttribute.LongTextAttribute() -> void
 FluentCMS.Schema.MediaAttribute
+FluentCMS.Schema.MediaAttribute.Accept.get -> string![]?
+FluentCMS.Schema.MediaAttribute.Accept.set -> void
 FluentCMS.Schema.MediaAttribute.MediaAttribute() -> void
 FluentCMS.Schema.RangeAttribute
 FluentCMS.Schema.RangeAttribute.Max.get -> double
@@ -2724,6 +2730,7 @@ const FluentCMS.Content.ValidationErrorCodes.PatternMismatch = "FCMS2106" -> str
 const FluentCMS.Content.ValidationErrorCodes.Required = "FCMS2101" -> string!
 const FluentCMS.Content.ValidationErrorCodes.RequiredByCondition = "FCMS2110" -> string!
 const FluentCMS.Content.ValidationErrorCodes.UnknownReference = "FCMS2113" -> string!
+const FluentCMS.Content.ValidationErrorCodes.UnsafeUrl = "FCMS2114" -> string!
 const FluentCMS.Diagnostics.FluentCmsHealthCheckTags.Live = "live" -> string!
 const FluentCMS.Diagnostics.FluentCmsHealthCheckTags.Ready = "ready" -> string!
 const FluentCMS.Events.LoginFailureReasons.InvalidCredentials = "invalid_credentials" -> string!
@@ -2747,6 +2754,7 @@ const FluentCMS.Localization.ILocaleResolver.All = "all" -> string!
 const FluentCMS.Publishing.PublishPolicyAttribute.MaxTrashRetentionDays = 36500 -> int
 const FluentCMS.Publishing.PublishWarningCodes.UnavailableReference = "FCMS2404" -> string!
 const FluentCMS.Publishing.PublishWarningCodes.UnpublishedReference = "FCMS2403" -> string!
+const FluentCMS.Schema.FieldSettings.Accept = "accept" -> string!
 const FluentCMS.Schema.FieldSettings.Blocks = "blocks" -> string!
 const FluentCMS.Schema.FieldSettings.Component = "component" -> string!
 const FluentCMS.Schema.FieldSettings.Options = "options" -> string!

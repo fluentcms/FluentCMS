@@ -150,7 +150,8 @@ public sealed partial class AnalyzerPackageTests
     [GeneratedRegex(@"^FCMS00(0[1-9]|[1-9]\d)$")]
     private static partial Regex RuleCode();
 
-    [GeneratedRegex(@"FCMS12\d{2}")]
+    // A schema code of core, or the media plugin's refusal of a type its field accepts.
+    [GeneratedRegex(@"FCMS12\d{2}|FCMS1596")]
     private static partial Regex SchemaCode();
 
     [GeneratedRegex(@"^### (?<code>FCMS\d{4})$", RegexOptions.Multiline)]

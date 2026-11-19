@@ -1,6 +1,6 @@
 namespace FluentCMS.Schema;
 
-/// <summary>The keys of <see cref="SchemaField.Settings"/> that the built-in field types use.</summary>
+/// <summary>The keys of <see cref="SchemaField.Settings"/> that the built-in field types and the media field use.</summary>
 public static class FieldSettings
 {
     /// <summary>For a slug field, the name of the field the slug is generated from. A string.</summary>
@@ -20,4 +20,7 @@ public static class FieldSettings
 
     /// <summary>For a decimal field, the number of digits after the decimal point. A whole number.</summary>
     public const string Scale = "scale";
+
+    /// <summary>For a media field, the types of asset it takes: MIME types such as <c>image/png</c> or families such as <c>image/*</c>. A list of strings.</summary>
+    public const string Accept = "accept";
 }

@@ -46,7 +46,29 @@ internal sealed class FluentCmsOperationTransformer : IOpenApiOperationTransform
             operation.Parameters.Add(new OpenApiParameterReference(shared.Component, document));
         }
 
+        var versions = description.ActionDescriptor.EndpointMetadata.OfType<VersionMetadata>().ToList();
+        if (versions.Any(version => version.IfMatch))
+        {
+            operation.Parameters.Add(new OpenApiParameterReference("if-match-optional", document));
+        }
+
         operation.Responses ??= [];
+        if (versions.Any(version => !version.IfMatch))
+        {
+            foreach (var (status, response) in operation.Responses)
+            {
+                if (status.StartsWith('2') && response is OpenApiResponse success)
+                {
+                    success.Headers ??= new Dictionary<string, IOpenApiHeader>();
+                    success.Headers["ETag"] = new OpenApiHeader
+                    {
+                        Description = "The version, to send back as If-Match.",
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.String },
+                    };
+                }
+            }
+        }
+
         operation.Responses["default"] = new OpenApiResponseReference(SharedComponents.ProblemResponse, document);
         if (operation.RequestBody is OpenApiRequestBody requestBody && description.ActionDescriptor.EndpointMetadata.OfType<RequestBodyMetadata>().LastOrDefault() is { } body)
         {

@@ -2,7 +2,7 @@
 
 `FluentCMS.Analyzers` reports in the editor and the build what schema validation would refuse when the host starts. Each rule below is the error reference of its code, and the help link of the diagnostic points here. A rule reports a schema declared with the attributes; a schema from the fluent builder or a schema file is checked by `fluentcms schema validate` and at start.
 
-The codes `FCMS0001` to `FCMS0099` belong to the analyzers, and `FCMS0100` to `FCMS0119` to the source generator. Every rule but `FCMS0060` stands for a code of schema validation (`FCMS12xx`), which its message names: fixing what the rule reports removes that error at start.
+The codes `FCMS0001` to `FCMS0099` belong to the analyzers, and `FCMS0100` to `FCMS0119` to the source generator. Every rule but `FCMS0060` stands for a code of schema validation (`FCMS12xx`, or `FCMS1596` of the media plugin), which its message names: fixing what the rule reports removes that error at start.
 
 ## Referencing the analyzers
 
@@ -81,6 +81,10 @@ Error, for `FCMS1211`. `[Unique]` is on a field that has no column to index: a r
 ### FCMS0016
 
 Error, for `FCMS1217`. A relation of a component or block declares `Reverse`. Only a field of a collection or singleton may; declare it there.
+
+### FCMS0017
+
+Error, for `FCMS1596` of the media plugin. `Accept` of `[Media]` lists a value that is not a MIME type such as `image/png` or a family such as `image/*`: an empty subtype, `*/*`, parameters after `;`, or punctuation other than `.`, `+`, `-` and `_`. List types and families only, or leave `Accept` out to take every type. `fluentcms schema validate` reads plugin field types without their settings, so it does not check `accept` in a schema file; a malformed one there is refused when the host starts.
 
 ## Names
 

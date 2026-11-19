@@ -139,6 +139,11 @@ namespace FluentCMS.Plugins.Media.Migrations.PostgreSql
                         .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
                     b.Property<int?>("Width")
                         .HasColumnType("integer")
                         .HasColumnName("width");

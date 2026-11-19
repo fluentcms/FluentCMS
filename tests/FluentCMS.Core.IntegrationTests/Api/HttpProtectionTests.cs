@@ -594,18 +594,23 @@ public sealed class HttpProtectionTests(CmsWebHosts hosts) : IClassFixture<CmsWe
     private async Task<HttpClient> Start(Dictionary<string, string?>? settings = null, bool content = false)
     {
         _app = settings?.Keys.Any(key => key.StartsWith("FluentCms:RateLimits:", StringComparison.Ordinal)) == true
-            ? await StartAsync(_host, settings, content)
+            ? await StartAsync(_host, settings, content, frozen: true)
             : await hosts.StartAsync(CmsWebHosts.SetUp(Environments.Development, settings, content), host => StartAsync(host, settings, content));
         return _app.GetTestClient();
     }
 
-    private static async Task<WebApplication> StartAsync(CmsWebHost host, Dictionary<string, string?>? settings, bool content)
+    private static async Task<WebApplication> StartAsync(CmsWebHost host, Dictionary<string, string?>? settings, bool content, bool frozen = false)
     {
         var app = host.Build(
             Environments.Development,
             settings,
             builder =>
             {
+                if (frozen)
+                {
+                    builder.Services.AddSingleton<TimeProvider>(new FrozenTime());
+                }
+
                 builder.Services.AddTestAuthentication();
                 foreach (var group in Enum.GetValues<FluentCmsEndpointGroup>())
                 {

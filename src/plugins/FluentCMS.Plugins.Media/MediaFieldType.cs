@@ -22,7 +22,10 @@ internal sealed class MediaFieldType : IFieldType
 
     public IReadOnlySet<FilterOperator> FilterOperators { get; } = new HashSet<FilterOperator> { FilterOperator.Equal, FilterOperator.In };
 
-    public IReadOnlyList<FieldSettingDescriptor> Settings { get; } = [];
+    public IReadOnlyList<FieldSettingDescriptor> Settings { get; } =
+    [
+        new() { Key = FieldSettings.Accept, Kind = FieldSettingKind.StringList, Validate = MediaAccept.Problem, ErrorCode = MediaErrorCodes.InvalidAccept },
+    ];
 
     public bool SupportsMultiple => true;
 

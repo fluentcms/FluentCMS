@@ -4,7 +4,7 @@
 #   docker buildx build --platform linux/amd64,linux/arm64 -t fluentcms-app .
 
 # The SDK runs on the build machine and compiles for the target, so no emulation is needed for the other architecture.
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0@sha256:bef136a371963aaa46ec97882845ef6f54dec15728bb4b128b1c2a400ffbc9b4 AS build
 ARG TARGETARCH
 WORKDIR /src
 
@@ -17,7 +17,7 @@ RUN dotnet publish -c Release -a $TARGETARCH --no-restore -o /app -p:UseAppHost=
 
 # Chiseled: no shell, no package manager, a non-root user. The extra variant adds ICU and time zone data, which
 # localized content and schedules in a time zone need.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra@sha256:cae5b962bfb786606def03d250c6a645cc98839095c89e806e4bd8978a68115b
 WORKDIR /app
 COPY --from=build /app .
 COPY --from=build --chown=$APP_UID:$APP_UID /data /data

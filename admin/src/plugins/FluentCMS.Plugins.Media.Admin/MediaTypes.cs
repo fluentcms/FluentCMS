@@ -19,7 +19,7 @@ internal static class MediaTypes
 
         var type = mimeType.Split(';', 2)[0].Trim();
         return accept.Any(item => item.EndsWith("/*", StringComparison.Ordinal)
-            ? type.StartsWith(item[..^1], StringComparison.OrdinalIgnoreCase)
+            ? type.Length > item.Length - 1 && type.StartsWith(item[..^1], StringComparison.OrdinalIgnoreCase)
             : string.Equals(item, type, StringComparison.OrdinalIgnoreCase));
     }
 

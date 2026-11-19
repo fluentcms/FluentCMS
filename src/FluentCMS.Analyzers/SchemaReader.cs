@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using FluentCMS.Generators;
+using FluentCMS.Plugins.Media;
 using Microsoft.CodeAnalysis;
 
 namespace FluentCMS.Analyzers;
@@ -332,9 +333,19 @@ internal static class SchemaReader
 
                 return accepted;
 
-            case "media" when FullName(property.Type as INamedTypeSymbol) == "FluentCMS.Media.MediaRefList":
-                field.Multiple = true;
-                return true;
+            case "media":
+                var accepts = true;
+                foreach (var type in NamedArray(attribute, "Accept"))
+                {
+                    if (!MediaAccept.IsPattern(type.Value as string))
+                    {
+                        findings?.Add(new Finding(Rules.NotAMediaType, ArgumentLocation(attribute, "Accept"), [location, type.Value as string ?? "null"]));
+                        accepts = false;
+                    }
+                }
+
+                field.Multiple = multiple || FullName(property.Type as INamedTypeSymbol) == "FluentCMS.Media.MediaRefList";
+                return accepts;
 
             // A collection stands for a list, which schema validation refuses on a type that holds a single value. Json
             // keeps its own shape.
@@ -406,6 +417,19 @@ internal static class SchemaReader
 
     private static ITypeSymbol NotNullable(ITypeSymbol type) =>
         type is INamedTypeSymbol { OriginalDefinition.SpecialType: SpecialType.System_Nullable_T } nullable ? nullable.TypeArguments[0] : type;
+
+    private static ImmutableArray<TypedConstant> NamedArray(AttributeData attribute, string name)
+    {
+        foreach (var argument in attribute.NamedArguments)
+        {
+            if (argument.Key == name && argument.Value is { Kind: TypedConstantKind.Array, IsNull: false } array)
+            {
+                return array.Values;
+            }
+        }
+
+        return ImmutableArray<TypedConstant>.Empty;
+    }
 
     public static object? Named(AttributeData attribute, string name)
     {

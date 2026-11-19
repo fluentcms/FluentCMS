@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.Playwright;
@@ -122,6 +123,53 @@ public sealed class MediaFieldTests(EndToEndHost host) : BrowserTest(host)
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task ThePickerOfAnImagesOnlyFieldOffersNoPdfAndItsUploadRefusesOne()
+    {
+        var mark = Mark();
+        var browser = await OpenBrowserAsync();
+        var tab = await browser.NewTabAsync();
+
+        // A PDF and an image in the library, uploaded where no field limits the types.
+        await tab.Page.GotoAsync(new Uri(Host.Admin, "media").AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        var library = tab.Page.Locator("[data-media-upload] input[type=file]");
+        await Expect(library).ToBeEnabledAsync();
+        await library.SetInputFilesAsync([PdfFile($"{mark}-terms.pdf"), PngFile($"{mark}-photo.png")]);
+        await Expect(tab.Page.Locator(".media-upload-done")).ToHaveCountAsync(2);
+
+        // Article.Hero takes image/*, so the picker reads images only and finds the image alone.
+        await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article/new").AbsoluteUri);
+        await Expect(FieldButton(tab, "Media.Field.Choose")).ToBeVisibleAsync();
+        var picker = Picker(tab);
+        var read = await AnswerAsync(
+            tab,
+            () => FieldButton(tab, "Media.Field.Choose").ClickAsync(),
+            response => response.Request.Method == "GET" && response.Url.StartsWith(tab.ManagementUrl("media") + "?", StringComparison.Ordinal));
+        read.Url.ShouldContain("type=image");
+        await SearchAsync(picker, mark);
+        await Expect(picker.Locator(".media-tile-name")).ToHaveTextAsync([$"{mark}-photo.png"]);
+
+        // The file chooser offers images, and a PDF given anyway is refused before it is sent.
+        var upload = picker.Locator("[data-media-upload] input[type=file]");
+        await Expect(upload).ToHaveAttributeAsync("accept", "image/*");
+        var sent = 0;
+        tab.Page.Request += (_, request) =>
+        {
+            if (request.Method == "POST" && request.Url == tab.ManagementUrl("media"))
+            {
+                Interlocked.Increment(ref sent);
+            }
+        };
+        await upload.SetInputFilesAsync(PdfFile($"{mark}-other.pdf"));
+        var refused = picker.Locator(".media-upload-refused").Filter(new LocatorFilterOptions { HasText = $"{mark}-other.pdf" });
+        await Expect(refused.Locator(".media-upload-reason")).ToHaveTextAsync(Text("Media.Upload.Refused.NotAccepted"));
+        await SearchAsync(picker, mark);
+        await Expect(picker.Locator(".media-tile-name")).ToHaveTextAsync([$"{mark}-photo.png"]);
+        Volatile.Read(ref sent).ShouldBe(0);
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
     private async Task<AdminTab> NewArticleAsync(AdminBrowser browser, Editor user, string mark)
     {
         var tab = await browser.NewTabAsync();
@@ -134,6 +182,10 @@ public sealed class MediaFieldTests(EndToEndHost host) : BrowserTest(host)
 
     private static async Task<IResponse> AnswerAsync(AdminTab tab, Func<Task> action, Func<IResponse, bool> answer) =>
         await tab.Page.RunAndWaitForResponseAsync(action, answer, new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+
+    private static FilePayload PngFile(string name) => new() { Name = name, MimeType = "image/png", Buffer = Convert.FromBase64String(Png) };
+
+    private static FilePayload PdfFile(string name) => new() { Name = name, MimeType = "application/pdf", Buffer = Encoding.ASCII.GetBytes("%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n") };
 
     // Uploads one image from the picker's upload, into the open folder.
     private static async Task UploadAsync(ILocator picker, string name)
@@ -161,10 +213,22 @@ public sealed class MediaFieldTests(EndToEndHost host) : BrowserTest(host)
         await Expect(opener).ToBeFocusedAsync();
     }
 
-    // Focus as Tab would give it, then a key: no pointer is used.
+    // Focus as Tab would give it, then a key: no pointer is used. A control in a dialog that is not shown yet cannot take
+    // focus, and the dialog does not give it to the control as it opens, so focus is asked for until the control has it.
     private static async Task PressAsync(ILocator target, string key)
     {
-        await target.FocusAsync();
+        var deadline = DateTime.UtcNow + AdminBrowser.Wait;
+        while (true)
+        {
+            await target.FocusAsync();
+            if (await target.EvaluateAsync<bool>("element => element === document.activeElement") || DateTime.UtcNow > deadline)
+            {
+                break;
+            }
+
+            await target.Page.EvaluateAsync("() => new Promise(resolve => setTimeout(resolve, 50))");
+        }
+
         await Expect(target).ToBeFocusedAsync();
         await target.Page.Keyboard.PressAsync(key);
     }

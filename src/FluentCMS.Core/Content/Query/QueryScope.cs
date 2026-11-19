@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using FluentCMS.Content;
+using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
@@ -16,8 +17,11 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
     // or for a preview token one of published rows as its minter reads them, which has the errors and the count of
     // populated entries of this one, so that the caps hold for the whole read.
     public QueryScope Targets => _targets ??= access.PublishedTargets is { } published
-        ? new QueryScope(context, schema, dialect, published, options, ContentState.Published, locale, site, reachesTrash) { _tally = _tally }
+        ? new QueryScope(context, schema, dialect, published, options, ContentState.Published, locale, site, reachesTrash) { _tally = _tally, Links = Links }
         : this;
+
+    // What a read drops from stored rich text (RichTextLinks).
+    public SafeUrl Links { get; init; } = SafeUrl.Default;
 
     public CmsDbContext Context => context;
 
