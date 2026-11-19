@@ -14,4 +14,9 @@ public interface IAiClientFactory
 }
 
 // Provider and Model are what the usage log and the answers name.
-public sealed record AiClient(IChatClient Client, string Provider, string Model);
+public sealed record AiClient(IChatClient Client, string Provider, string Model)
+{
+    // True when the client calls with a credential of the site's own, which the site pays for. False, the default, counts
+    // the calls as the operator's, which the budget of FluentCms:Ai:DailyTokenBudget holds.
+    public bool SiteCredential { get; init; }
+}

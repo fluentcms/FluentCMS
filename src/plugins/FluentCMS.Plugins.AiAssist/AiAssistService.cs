@@ -43,15 +43,17 @@ internal sealed record AiCall(
     AiClient Client,
     IReadOnlyList<ChatMessage> Messages,
     ChatOptions Options,
-    TimeSpan Timeout);
+    TimeSpan Timeout,
+    long PromptEstimate,
+    AiReservation? Reservation);
 
 // The actions of spec 5.5, in the site of the current operation. PrepareAsync checks, in this order: ai.use in the site,
 // that the site's settings opt the field in, and that the caller may update that field, since a suggestion is for a field
-// the caller edits. It then checks the body, takes the call from the call limit and checks the site's daily budget, so
-// that a caller who is over either is refused before any work is done for it, reads what the action works on as the
-// caller, through the content and media services, and asks the slot for the site's client. A call refused on the way
-// is given back to the limit. RunAsync sends it and writes its usage row: one for every call
-// that is sent, whether it succeeds, fails, times out or is cancelled. The plugin writes nothing to content, and the text
+// the caller edits. It then checks the body, takes the call from the call limit, asks the slot for the site's client and
+// reserves the call's estimate against the site's daily budget, so that a caller who is over either is refused before
+// any work is done for it, and reads what the action works on as the caller, through the content and media services. A
+// call refused on the way is given back to the limit and the budget. RunAsync sends it and writes its usage row: one for
+// every call that is sent, whether it succeeds, fails, times out or is cancelled. The plugin writes nothing to content, and the text
 // and the suggestion go to the provider and the caller only: never to a row, a log line or a span.
 internal sealed class AiAssistService(
     IOperationContextAccessor operations,
@@ -65,6 +67,7 @@ internal sealed class AiAssistService(
     IServiceProvider services,
     IAiClientFactory clients,
     AiCallLimits limits,
+    AiBudgets budgets,
     AiUsageService usage,
     IOptions<AiOptions> options,
     TimeProvider time,
@@ -132,8 +135,7 @@ internal sealed class AiAssistService(
             throw new ValidationException([Invalid(string.IsNullOrWhiteSpace(request.Type) ? "type" : "field", "An action names the content type and the field its suggestion is for.")]);
         }
 
-        var read = await settings.ResolveAsync(site, cancellationToken);
-        var current = read.Value;
+        var current = await settings.GetAsync(site, cancellationToken);
         var type = schema.FindContentType(request.Type.Trim());
         var field = type?.FindField(request.Field.Trim());
         if (type is null || field is null || !IsOptedIn(current, type, field))
@@ -187,14 +189,28 @@ internal sealed class AiAssistService(
 
         // Taken before any work is done for the call, so that calls sent together cannot all pass, and given back when the
         // call is refused before it is sent.
-        if (limits.Take(site, operation.Principal, current.CallsPerMinute) is { } refusal)
+        if (limits.Take(site, operation.Principal, current.CallsPerMinute, out var ticket) is { } refusal)
         {
             throw OverLimit(site, operation.Principal, refusal);
         }
 
+        AiReservation? reservation = null;
         try
         {
-            await CheckBudgetAsync(site, read, cancellationToken);
+            // Whichever factory fills the slot: a host's own may not look at the provider, and none is off as FieldsAsync
+            // says. The client comes before the budget, since the budget follows whose credential it calls with.
+            if (AiProviders.IsRemoved(current.Provider))
+            {
+                throw AiProviders.Refuse(logger, site, current.Provider);
+            }
+
+            var client = (current.Provider == AiProvider.None ? null : await clients.CreateAsync(site, current, cancellationToken))
+                ?? throw new PluginException(AiErrorCodes.NoProvider, "The site has no AI provider. An administrator names one in the AI settings of the site.");
+
+            // Before the draft is read, a call is reckoned at the most text it may send.
+            var image = action == AiActions.AltText;
+            var reckoned = AiBudgets.InstructionTokens + AiBudgets.Tokens(request.Text?.Length ?? options.Value.MaxInputLength) + (image ? AiBudgets.ImageTokens : 0);
+            reservation = await ReserveAsync(site, current, client, reckoned + current.MaxOutputTokens, cancellationToken);
 
             var richText = field.FieldType == RichTextFieldType;
             var text = request.DocumentId is { } id ? await ReadFieldAsync(type, field, id, locale, richText, cancellationToken) : request.Text;
@@ -209,7 +225,7 @@ internal sealed class AiAssistService(
             }
 
             List<AIContent> message = [];
-            if (action == AiActions.AltText)
+            if (image)
             {
                 message.Add(await ReadImageAsync(site, request.Options!.MediaId!.Value, cancellationToken));
             }
@@ -219,16 +235,9 @@ internal sealed class AiAssistService(
                 message.Add(new TextContent(text));
             }
 
-            // Whichever factory fills the slot: a host's own may not look at the provider, and none is off as FieldsAsync
-            // says.
-            if (AiProviders.IsRemoved(current.Provider))
-            {
-                throw AiProviders.Refuse(logger, site, current.Provider);
-            }
-
-            var client = (current.Provider == AiProvider.None ? null : await clients.CreateAsync(site, current, cancellationToken))
-                ?? throw new PluginException(AiErrorCodes.NoProvider, "The site has no AI provider. An administrator names one in the AI settings of the site.");
-
+            var instructions = AiActions.Instructions(action, type.Name, field.Name, richText, field.MaxLength, locale, targetLocale);
+            var prompt = AiBudgets.Tokens(instructions.Length + (text?.Length ?? 0)) + (image ? AiBudgets.ImageTokens : 0);
+            reservation?.Change(prompt + current.MaxOutputTokens);
             return new AiCall(
                 action,
                 site,
@@ -237,15 +246,18 @@ internal sealed class AiAssistService(
                 field.Name,
                 client,
                 [
-                    new ChatMessage(ChatRole.System, AiActions.Instructions(action, type.Name, field.Name, richText, field.MaxLength, locale, targetLocale)),
+                    new ChatMessage(ChatRole.System, instructions),
                     new ChatMessage(ChatRole.User, message),
                 ],
                 new ChatOptions { MaxOutputTokens = current.MaxOutputTokens },
-                TimeSpan.FromSeconds(current.RequestTimeout));
+                TimeSpan.FromSeconds(current.RequestTimeout),
+                prompt,
+                reservation);
         }
         catch
         {
-            limits.GiveBack(site, operation.Principal, current.CallsPerMinute);
+            reservation?.Release();
+            AiCallLimits.GiveBack(ticket, current.CallsPerMinute);
             throw;
         }
     }
@@ -338,7 +350,26 @@ internal sealed class AiAssistService(
             used.InputTokenCount ?? 0,
             used.OutputTokenCount ?? 0,
             (long)time.GetElapsedTime(started).TotalMilliseconds);
-        await RecordAsync(call, info, outcome, code);
+
+        // A call with the operator's credential that ends before its provider reports what it used, or with a provider
+        // that reports nothing, is counted at its estimate, so that a budget over that credential cannot be passed by
+        // leaving before the usage arrives. The answer still says what the provider reported.
+        var counted = call.Client.SiteCredential
+            ? info
+            : info with
+            {
+                PromptTokens = used.InputTokenCount ?? call.PromptEstimate,
+                CompletionTokens = used.OutputTokenCount ?? call.Options.MaxOutputTokens ?? 0,
+            };
+        try
+        {
+            await RecordAsync(call, counted, outcome, code);
+        }
+        finally
+        {
+            call.Reservation?.Release();
+        }
+
         AiTelemetry.End(span, call.Action, call.Client.Provider, outcome, code);
         return refused is null ? new AiActionResult(suggestion!, info) : throw refused;
     }
@@ -353,31 +384,44 @@ internal sealed class AiAssistService(
         return new PluginException(AiErrorCodes.CallLimitExceeded, $"The site allows {refusal.Limit} AI calls a minute for each caller. Try again in {refusal.RetryAfterSeconds} seconds.");
     }
 
-    // The tokens of the calls the site sent since midnight UTC, against the lower of the site's budget and, for a site that
-    // holds no key of its own and so calls with the operator's, the ceiling of the configuration. Calls that are in flight
-    // are not counted yet, so calls sent together may pass the budget by what they use; the next is refused.
-    private async Task CheckBudgetAsync(SiteId site, ResolvedSettings<AiSettings> read, CancellationToken cancellationToken)
+    // The budget of the site is the lower of its own and, for a call with the operator's credential, the ceiling of the
+    // configuration. A call is refused when the tokens of the site's rows since midnight UTC and the estimates of its other
+    // calls in flight on this instance reach it; otherwise it reserves its own estimate until its row is written.
+    private async Task<AiReservation?> ReserveAsync(SiteId site, AiSettings current, AiClient client, long estimate, CancellationToken cancellationToken)
     {
-        var ownKey = !read.InheritedSecrets.Contains(nameof(AiSettings.ApiKey)) && !string.IsNullOrWhiteSpace(read.Value.ApiKey);
-        var budget = Lower(read.Value.DailyTokenBudget, ownKey ? 0 : options.Value.DailyTokenBudget);
+        var budget = Lower(current.DailyTokenBudget, client.SiteCredential ? 0 : options.Value.DailyTokenBudget);
         if (budget <= 0)
         {
-            return;
+            return null;
         }
 
+        var reservation = budgets.Reserve(site, estimate);
         var now = time.GetUtcNow();
         var today = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero);
-        var used = await usage.TokensSinceAsync(site.Value, today, cancellationToken);
+        long used;
+        try
+        {
+            used = await usage.TokensSinceAsync(site.Value, today, cancellationToken) + reservation.Before;
+        }
+        catch
+        {
+            reservation.Release();
+            throw;
+        }
+
         if (used >= budget)
         {
+            reservation.Release();
             var resets = today.AddDays(1).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
-            if (limits.ReportOverBudget(site, DateOnly.FromDateTime(now.UtcDateTime)))
+            if (budgets.ReportOverBudget(site, DateOnly.FromDateTime(now.UtcDateTime)))
             {
                 AiLog.BudgetExceeded(logger, site.Value, budget, used, resets);
             }
 
             throw new PluginException(AiErrorCodes.BudgetExceeded, $"The site has used its daily budget of {budget} AI tokens. It resets at {resets}.");
         }
+
+        return reservation;
 
         // 0 is no budget, so it is the lower of two only when both are 0.
         static int Lower(int first, int second) => first <= 0 ? second : second <= 0 ? first : Math.Min(first, second);

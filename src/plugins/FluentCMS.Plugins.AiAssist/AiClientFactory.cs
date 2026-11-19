@@ -57,6 +57,7 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
 
         var endpoint = EndpointOf(site, settings);
         var key = settings.ApiKey;
+        var siteCredential = false;
         if (string.IsNullOrWhiteSpace(key))
         {
             // The configuration's key of a provider is the operator's account at one endpoint, so it goes to that endpoint
@@ -72,7 +73,7 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
                     : $"hold an API key, and the key of {AiOptions.Section}:{provider}:ApiKey is sent to {AiOptions.Section}:{provider}:Endpoint only");
             }
         }
-        else if (!await IsTheSitesOwnAsync(site, key, cancellationToken) && !await IsForTheDefaultsAsync(settings, endpoint, cancellationToken))
+        else if (!(siteCredential = await IsTheSitesOwnAsync(site, key, cancellationToken)) && !await IsForTheDefaultsAsync(settings, endpoint, cancellationToken))
         {
             throw NotConfigured("hold an API key of the site's own: the key it inherits from the instance defaults is used with the provider and the endpoint of the defaults only");
         }
@@ -83,7 +84,7 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
             client = WithLegacyMaxTokens(client);
         }
 
-        return new AiClient(client, NameOf(provider), model);
+        return new AiClient(client, NameOf(provider), model) { SiteCredential = siteCredential };
     }
 
     public void Dispose() => _handler.Dispose();

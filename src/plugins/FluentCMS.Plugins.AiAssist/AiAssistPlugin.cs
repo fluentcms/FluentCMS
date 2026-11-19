@@ -23,6 +23,7 @@ public sealed class AiAssistPlugin : IPlugin
         plugin.Services.AddScoped<AiAssistService>();
         plugin.Services.AddScoped<AiUsageService>();
         plugin.Services.AddSingleton<AiCallLimits>();
+        plugin.Services.AddSingleton<AiBudgets>();
         plugin.Services.AddHostedService<AiUsageRetentionSchedule>();
 
         plugin

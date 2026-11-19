@@ -18,7 +18,7 @@ The settings area `ai` (`GET` and `PUT /api/management/v1/settings/ai`, permissi
 | `legacyMaxTokens` | `false` | Sends `maxOutputTokens` as the older `max_tokens` instead of `max_completion_tokens`, for an endpoint that reads only that one, such as Ollama's. |
 | `requestTimeout` | `60` | How long a call may take, in seconds, from 1 to 600. |
 | `callsPerMinute` | `20` | The calls a principal may make in a minute in the site, counted on each instance. |
-| `dailyTokenBudget` | `0` | The prompt and completion tokens the site may use in a day, from midnight UTC. 0 sets no budget. A site with no key of its own is also held by `FluentCms:Ai:DailyTokenBudget`, which this may lower and not raise. |
+| `dailyTokenBudget` | `0` | The prompt and completion tokens the site may use in a day, from midnight UTC. 0 sets no budget. A call that does not go with a credential of the site's own is also held by `FluentCms:Ai:DailyTokenBudget`, which this may lower and not raise. |
 | `fields` | empty | The opt-in: a map of content type to the fields that take actions, such as `{ "article": ["title", "summary", "body"] }`. |
 
 A field that takes actions is a text, long text or rich text field of a content type. A rich text field is sent and answered as Markdown.
@@ -73,7 +73,7 @@ The options are in `FluentCms:Ai`:
 | `AllowedEndpoints` | empty | The endpoints a site may name in its settings, each an absolute `http` or `https` URL with no user, query or fragment. Empty leaves a site OpenAI at its own endpoint. |
 | `{Provider}:ApiKey` | unset | The key of a provider for the sites whose settings hold none, such as `FluentCms:Ai:OpenAi:ApiKey`. Keep it in a secret store, not in a file of the repository. |
 | `{Provider}:Endpoint` | OpenAI's own for `OpenAi` | The endpoint the key of the provider is sent to, and to no other. `AzureOpenAi` and `OpenAiCompatible` need it beside a key, or the host does not start. |
-| `DailyTokenBudget` | `0` | The tokens a day of each site that holds no key of its own, and so calls with the operator's key. A site's `dailyTokenBudget` may lower it and cannot raise it or turn it off. 0 sets none. |
+| `DailyTokenBudget` | `0` | The tokens a day of each site for its calls with the operator's credential: every call the factory does not say goes with the site's own. A site's `dailyTokenBudget` may lower it and cannot raise it or turn it off. 0 sets none. |
 | `MaxInputLength` | `20000` | The most characters of text an action takes. |
 | `UsageRetention` | `90.00:00:00` | How long the usage log keeps a row. |
 
@@ -167,8 +167,8 @@ The answer holds nothing of the provider's configuration: not the provider, the 
 - The answer has at most `maxOutputTokens` tokens, sent as `max_completion_tokens`, or with `legacyMaxTokens` as `max_tokens` alone. Ollama reads only `max_tokens`, so an Ollama site turns it on; it stays off elsewhere, since OpenAI's reasoning models refuse `max_tokens`, also through a gateway.
 - A call ends at `requestTimeout` (`FCMS1688`) or when the caller goes away.
 - A principal makes at most `callsPerMinute` calls in a site (`FCMS1687`). The count is kept in memory on each instance. A call is counted before its draft is read or its image decoded, so calls sent together pass only as often as the limit allows, and a call refused before it is sent is not counted.
-- A site's daily token budget is the lower of its `dailyTokenBudget` and, when the site holds no key of its own, `FluentCms:Ai:DailyTokenBudget`. It is counted from the site's usage rows since midnight UTC (`FCMS1693`, whose detail says when it resets, logged once a day as event 9369). The `dailyTokenBudget` of the instance defaults holds the sites that follow the defaults, not a site that saved settings of its own.
-- The budget counts what providers reported, so it is a floor of what was spent: calls in flight are not counted yet, a call that fails, times out or is cancelled before the provider reports its usage counts 0 tokens, and so does every call of a provider that reports no usage, which a budget then never stops. The Management rate limit holds beside it.
+- A site's daily token budget is the lower of its `dailyTokenBudget` and, for a call with the operator's credential, `FluentCms:Ai:DailyTokenBudget`. The default factory says a call goes with the site's own credential only for a key the site set itself; a factory of the host's own counts as the operator's unless it sets `SiteCredential`. It is counted from the site's usage rows since midnight UTC and the calls in flight (`FCMS1693`, whose detail says when it resets, logged as event 9369 once a day for the site on each instance). The `dailyTokenBudget` of the instance defaults holds the sites that follow the defaults, not a site that saved settings of its own.
+- A budgeted call reserves an estimate while it is in flight: its text at about four characters a token, 1,000 for an image and `maxOutputTokens`. A call with the operator's credential that ends before the provider reports its usage, or whose provider reports none, is written to the usage log at that estimate; the answer gives what the provider reported. So a site passes its budget by at most one call on each instance, of at most its prompt and `maxOutputTokens`. A call with the site's own credential is written as its provider reported it. The Management rate limit holds beside it.
 - A call is one request to the provider: the retries of the client package are off.
 
 ### The text is content
@@ -217,13 +217,13 @@ builder.Services.AddFluentCms(cms =>
 });
 ```
 
-The factory is a singleton and owns its clients: the plugin calls a client and does not dispose it. Returning `null` leaves AI assist off for that site (`FCMS1682`). The plugin does not ask the factory for a site whose `provider` is `none`, or a removed one, and refuses the call itself, so such a site is off whatever the factory would give. The allow-list is the default factory's, so a factory of the host's own decides itself which endpoints it calls. The permission, the opt-in, the limits and the usage log stay the plugin's.
+The factory is a singleton and owns its clients: the plugin calls a client and does not dispose it. Returning `null` leaves AI assist off for that site (`FCMS1682`). The plugin does not ask the factory for a site whose `provider` is `none`, or a removed one, and refuses the call itself, so such a site is off whatever the factory would give. The allow-list is the default factory's, so a factory of the host's own decides itself which endpoints it calls. The permission, the opt-in, the limits and the usage log stay the plugin's. A client the factory gives is counted as the operator's for the budget of `FluentCms:Ai:DailyTokenBudget` unless the factory sets `SiteCredential = true` on the `AiClient`, which it does only when the client calls with a credential the site holds and pays for.
 
 The plugin ends a call at the site's `requestTimeout`, and when the caller goes away, through the cancellation token it passes to the client, so the host's client must honour that token: one that ignores it can run past `requestTimeout`. The client must also have no network timeout of its own that is shorter than `requestTimeout`, which goes up to 600 seconds. The clients built on `System.ClientModel`, such as OpenAI's, stop a request after 100 seconds unless told otherwise, and a call that such a timeout ends is answered as a failure of the provider (`FCMS1689`), not as a timeout (`FCMS1688`). The default factory gives its client no timeout of its own.
 
 ## Telemetry
 
-A call is a span of the `FluentCMS` activity source named `ai {action}`, with `fluentcms.operation`, `fluentcms.site`, `fluentcms.type`, `fluentcms.provider` and `fluentcms.outcome` (`succeeded`, `failed`, `timeout` or `cancelled`), and for a failure the Error status and `fluentcms.code`. The counter `fluentcms.ai.calls` of the `FluentCMS` meter counts the calls by `fluentcms.operation`, `fluentcms.provider` and `fluentcms.outcome`. Log event ids 9360 to 9368.
+A call is a span of the `FluentCMS` activity source named `ai {action}`, with `fluentcms.operation`, `fluentcms.site`, `fluentcms.type`, `fluentcms.provider` and `fluentcms.outcome` (`succeeded`, `failed`, `timeout` or `cancelled`), and for a failure the Error status and `fluentcms.code`. The counter `fluentcms.ai.calls` of the `FluentCMS` meter counts the calls by `fluentcms.operation`, `fluentcms.provider` and `fluentcms.outcome`. Log event ids 9360 to 9369; 9369, a site over its daily budget, is written once a day for the site on each instance.
 
 ## Verification
 

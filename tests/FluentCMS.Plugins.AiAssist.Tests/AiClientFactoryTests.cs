@@ -45,6 +45,8 @@ public sealed class AiClientFactoryTests
         await fromSettings!.Client.GetResponseAsync(messages, cancellationToken: Token);
 
         (fromConfiguration.Provider, fromConfiguration.Model).ShouldBe(("openAiCompatible", "a-model"));
+        fromConfiguration.SiteCredential.ShouldBeFalse();
+        fromSettings.SiteCredential.ShouldBeTrue();
         stub.Requests.Select(request => request.Headers["Authorization"]).ShouldBe(["Bearer key-of-the-configuration", "Bearer key-of-the-site"]);
     }
 
@@ -425,6 +427,9 @@ public sealed class AiClientFactoryTests
         var own = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = other.Url("v1"), ApiKey = "key-of-the-site" }, Token);
         await own!.Client.GetResponseAsync(messages, cancellationToken: Token);
 
+        // The key of the defaults is the operator's, and only a key the site set itself is its own credential.
+        inherited.SiteCredential.ShouldBeFalse();
+        own.SiteCredential.ShouldBeTrue();
         otherEndpoint.Code.ShouldBe("FCMS1685");
         otherProvider.Code.ShouldBe("FCMS1685");
         sameEndpointOtherProvider.Code.ShouldBe("FCMS1685");

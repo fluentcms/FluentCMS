@@ -1,4 +1,7 @@
 using System.Net;
+using FluentCMS.Content;
+using FluentCMS.Sites;
+using FluentCMS.Testing;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Plugins.AiAssist.Tests.AiTesting;
@@ -171,6 +174,28 @@ public sealed class AiLimitTests : IClassFixture<AiHost>
         missing.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await RefusedAsync(tooLong, HttpStatusCode.RequestEntityTooLarge)).ShouldBe("FCMS1686");
         (await RefusedAsync(over, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1687");
+    }
+
+    // A call given back after its bucket has been full again, which ended its charge, does not take the charge of a later
+    // call off the bucket.
+    [Fact]
+    public void ACallGivenBackAfterItsBucketWasFullAgainLeavesTheLaterCallsCharged()
+    {
+        var time = new ControllableTimeProvider();
+        var limits = new AiCallLimits(time);
+        var site = new SiteId(Guid.CreateVersion7());
+        var principal = new Principal(PrincipalKind.ApiKey, Guid.CreateVersion7(), "key");
+
+        limits.Take(site, principal, 1, out var slow).ShouldBeNull();
+        time.Advance(TimeSpan.FromSeconds(61));
+        limits.Take(site, principal, 1, out var later).ShouldBeNull();
+        AiCallLimits.GiveBack(slow, 1);
+        var refused = limits.Take(site, principal, 1, out _);
+        AiCallLimits.GiveBack(later, 1);
+        var afterTheLaterIsGivenBack = limits.Take(site, principal, 1, out _);
+
+        refused.ShouldNotBeNull();
+        afterTheLaterIsGivenBack.ShouldBeNull();
     }
 
     [Fact]

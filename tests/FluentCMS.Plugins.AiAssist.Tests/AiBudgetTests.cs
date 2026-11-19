@@ -49,24 +49,105 @@ public sealed class AiBudgetTests
         await SuggestAsync(colleague, "rewrite", Body);
     }
 
-    // FluentCms:Ai:DailyTokenBudget is the operator's: it holds every site that calls with the operator's key, which is a
-    // site with no key of its own. Such a site may set a lower budget, and a higher one or none leaves the ceiling. A site
-    // with a key of its own pays its own calls and keeps its own budget alone.
+    // FluentCms:Ai:DailyTokenBudget is the operator's: it holds every call that is not known to go with a credential of the
+    // site's own, which only the factory can tell. A key in the site's settings does not tell it, since a host's own
+    // factory, such as one that signs in with an identity, may not send it. A site may set a lower budget, and a higher one
+    // or none leaves the ceiling. A call the factory says goes with the site's own credential keeps the site's budget alone.
     [Fact]
-    public async Task TheCeilingOfTheConfigurationHoldsEverySiteWithoutAKeyOfItsOwn()
+    public async Task TheCeilingOfTheConfigurationHoldsEveryCallThatIsNotKnownToBeTheSites()
     {
         await using var ai = new AiHost(scripted: true, options => options.DailyTokenBudget = 30);
         var none = await ai.SiteAsync();
         var higher = await ai.SiteAsync(settings => settings.DailyTokenBudget = 1000);
         var lower = await ai.SiteAsync(settings => settings.DailyTokenBudget = 10);
-        var ownKey = await ai.SiteAsync(settings => settings.ApiKey = "key-of-the-site");
-        var ownKeyAndBudget = await ai.SiteAsync(settings => (settings.ApiKey, settings.DailyTokenBudget) = ("key-of-the-site", 10));
+        var keyInTheSettings = await ai.SiteAsync(settings => settings.ApiKey = "key-of-the-site");
+        var own = await ai.SiteAsync();
+        var ownAndBudget = await ai.SiteAsync(settings => settings.DailyTokenBudget = 10);
 
         (await CallsUntilRefusedAsync(ai, none)).ShouldBe((2, "30 AI tokens"));
         (await CallsUntilRefusedAsync(ai, higher)).ShouldBe((2, "30 AI tokens"));
         (await CallsUntilRefusedAsync(ai, lower)).ShouldBe((1, "10 AI tokens"));
-        (await CallsUntilRefusedAsync(ai, ownKey, most: 4)).ShouldBe((4, null));
-        (await CallsUntilRefusedAsync(ai, ownKeyAndBudget)).ShouldBe((1, "10 AI tokens"));
+        (await CallsUntilRefusedAsync(ai, keyInTheSettings)).ShouldBe((2, "30 AI tokens"));
+        ai.Chat.SiteCredential = true;
+        (await CallsUntilRefusedAsync(ai, own, most: 4)).ShouldBe((4, null));
+        (await CallsUntilRefusedAsync(ai, ownAndBudget)).ShouldBe((1, "10 AI tokens"));
+    }
+
+    // Calls sent together each reserve their estimate, the text they send at about four characters a token and the
+    // maxOutputTokens of the site, so the budget holds them before any has a row: here the first holds more than the
+    // budget, and every other is refused while it is in flight. A call with the operator's credential that is cancelled
+    // before the provider reports its usage is counted at that estimate.
+    [Fact]
+    public async Task CallsInFlightAreCountedAgainstTheBudgetAndACancelledOneAtItsEstimate()
+    {
+        await using var ai = new AiHost(scripted: true, options => options.DailyTokenBudget = 300);
+        var site = await ai.SiteAsync(settings => settings.MaxOutputTokens = 200);
+        using var admin = await ai.AdminAsync(site);
+        ai.Chat.Hang = true;
+        using var caller = CancellationTokenSource.CreateLinkedTokenSource(Token);
+
+        var first = ActAsync(admin, "rewrite", Body, cancellationToken: caller.Token);
+        await ai.Chat.Entered.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        var others = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => ActAsync(admin, "rewrite", Body)));
+        foreach (var refused in others)
+        {
+            (await RefusedAsync(refused, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1693");
+            refused.Dispose();
+        }
+
+        var written = ai.Logs.NextAsync(9360);
+        await caller.CancelAsync();
+        await Should.ThrowAsync<Exception>(() => first);
+        await written.WaitAsync(TimeSpan.FromSeconds(30), Token);
+
+        var row = (await ai.UsageAsync(site)).ShouldHaveSingleItem();
+        row.Succeeded.ShouldBeFalse();
+        row.PromptTokens.ShouldBeGreaterThan(0);
+        row.CompletionTokens.ShouldBe(200);
+        ai.Chat.Calls.Count.ShouldBe(1);
+        ai.Chat.Hang = false;
+        using var after = await ActAsync(admin, "rewrite", Body);
+        (await RefusedAsync(after, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1693");
+    }
+
+    // A stream whose provider reports the prompt first and the completion last, and that ends before the last part, at
+    // the site's requestTimeout: the caller got the text, and the row counts the completion at maxOutputTokens.
+    [Fact]
+    public async Task AStreamThatEndsBeforeItsUsageIsCountedAtItsEstimate()
+    {
+        await using var ai = new AiHost(scripted: true, options => options.DailyTokenBudget = 260);
+        var site = await ai.SiteAsync(settings => (settings.MaxOutputTokens, settings.RequestTimeout) = (250, 1));
+        using var admin = await ai.AdminAsync(site);
+        ai.Chat.Pieces = ["The whole suggestion."];
+        ai.Chat.Hang = true;
+
+        using var response = await ActAsync(admin, "expand", Body, stream: true);
+        var events = StreamEvents(await response.Content.ReadAsStringAsync(Token));
+        ai.Chat.Hang = false;
+        using var after = await ActAsync(admin, "rewrite", Body);
+
+        events.Select(sent => sent.Event).ShouldBe(["delta", "error"]);
+        var row = (await ai.UsageAsync(site)).ShouldHaveSingleItem();
+        (row.PromptTokens, row.CompletionTokens).ShouldBe((12, 250));
+        (await RefusedAsync(after, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1693");
+    }
+
+    // A call with the site's own credential keeps what its provider reported, 0 when it reported nothing.
+    [Fact]
+    public async Task ACallWithTheSitesOwnCredentialIsCountedAsReported()
+    {
+        await using var ai = new AiHost(scripted: true, options => options.DailyTokenBudget = 300);
+        var site = await ai.SiteAsync(settings => (settings.MaxOutputTokens, settings.RequestTimeout) = (250, 1));
+        using var admin = await ai.AdminAsync(site);
+        ai.Chat.SiteCredential = true;
+        ai.Chat.Pieces = ["The whole suggestion."];
+        ai.Chat.Hang = true;
+
+        using var response = await ActAsync(admin, "expand", Body, stream: true);
+        await response.Content.ReadAsStringAsync(Token);
+
+        var row = (await ai.UsageAsync(site)).ShouldHaveSingleItem();
+        (row.PromptTokens, row.CompletionTokens).ShouldBe((12, 0));
     }
 
     // Settings are a site's whole, its secrets apart (4.13): a site with no settings of its own follows the budget of the

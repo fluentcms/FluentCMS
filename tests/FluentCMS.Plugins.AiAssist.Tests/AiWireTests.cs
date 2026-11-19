@@ -138,7 +138,9 @@ public sealed class AiWireTests : IAsyncLifetime
         (copy.Width, copy.Height).ShouldBe((1024, 512));
     }
 
-    // Nothing to count is not a failure: the suggestion is answered, and the row and the answer count no tokens.
+    // Nothing to count is not a failure: the suggestion is answered, and the answer counts no tokens. The keyless endpoint
+    // is no credential of the site's own, so the row counts the call at its estimate: the prompt at about four characters
+    // a token and the completion at maxOutputTokens.
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -153,7 +155,8 @@ public sealed class AiWireTests : IAsyncLifetime
         answer["suggestion"]!.GetValue<string>().ShouldBe(_stub.Answer);
         Tokens(answer["usage"]!).ShouldBe((0, 0));
         var row = (await _ai.UsageAsync(site)).ShouldHaveSingleItem();
-        (row.Succeeded, row.PromptTokens, row.CompletionTokens).ShouldBe((true, 0, 0));
+        (row.Succeeded, row.CompletionTokens).ShouldBe((true, 1024));
+        row.PromptTokens.ShouldBeGreaterThan(0);
         _ai.Logs.Of(CalledEvent).ShouldHaveSingleItem().ShouldContain("succeeded");
     }
 
@@ -182,7 +185,8 @@ public sealed class AiWireTests : IAsyncLifetime
 
         _stub.Requests.ShouldHaveSingleItem();
         var row = (await _ai.UsageAsync(site)).ShouldHaveSingleItem();
-        (row.Succeeded, row.PromptTokens, row.CompletionTokens).ShouldBe((false, 0, 0));
+        (row.Succeeded, row.CompletionTokens).ShouldBe((false, 1024));
+        row.PromptTokens.ShouldBeGreaterThan(0);
         row.DurationMs.ShouldBeInRange(900, 10_000);
         _ai.Logs.Of(CalledEvent).ShouldHaveSingleItem().ShouldContain("timeout FCMS1688");
         _ai.Logs.Of(9361).ShouldBeEmpty();
@@ -222,7 +226,8 @@ public sealed class AiWireTests : IAsyncLifetime
 
         _stub.Requests.ShouldHaveSingleItem();
         var row = (await _ai.UsageAsync(site)).ShouldHaveSingleItem();
-        (row.Succeeded, row.PromptTokens, row.CompletionTokens).ShouldBe((false, 0, 0));
+        (row.Succeeded, row.CompletionTokens).ShouldBe((false, 1024));
+        row.PromptTokens.ShouldBeGreaterThan(0);
         row.DurationMs.ShouldBeLessThan(10_000);
         _ai.Logs.Of(CalledEvent).ShouldHaveSingleItem().ShouldContain("cancelled");
         _ai.Logs.Of(9361).ShouldBeEmpty();
