@@ -551,7 +551,7 @@ public sealed class HttpProtectionHardeningTests(CmsWebHosts hosts) : IClassFixt
         var shared = authentication is null && pipeline is null && settings?.Keys.Any(key => key.StartsWith("FluentCms:RateLimits:", StringComparison.Ordinal)) != true;
         _app = shared
             ? await hosts.StartAsync(CmsWebHosts.SetUp(Environments.Development, settings), host => StartAsync(host, settings, null, null))
-            : await StartAsync(_host, settings, authentication, pipeline);
+            : await StartAsync(_host, settings, authentication, pipeline, frozen: true);
         return _app.GetTestClient();
     }
 
@@ -559,13 +559,19 @@ public sealed class HttpProtectionHardeningTests(CmsWebHosts hosts) : IClassFixt
         CmsWebHost host,
         Dictionary<string, string?>? settings,
         Action<IServiceCollection>? authentication,
-        Action<WebApplication>? pipeline)
+        Action<WebApplication>? pipeline,
+        bool frozen = false)
     {
         var app = host.Build(
             Environments.Development,
             settings,
             builder =>
             {
+                if (frozen)
+                {
+                    builder.Services.AddSingleton<TimeProvider>(new FrozenTime());
+                }
+
                 (authentication ?? (services => services.AddTestAuthentication()))(builder.Services);
                 foreach (var group in Enum.GetValues<FluentCmsEndpointGroup>())
                 {

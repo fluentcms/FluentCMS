@@ -15,4 +15,10 @@ public interface ISearchIndex
     /// keeps its own filter, row rule, site, locale, status and sort, so an id the caller may not read is never returned.
     /// </returns>
     Task<IReadOnlyList<Guid>> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Whether the index matches only the fields of <see cref="SearchRequest.Fields"/> when a request names them. The engine
+    /// refuses a search to a caller who may not read every searchable field unless the index says it does.
+    /// </summary>
+    bool MatchesByField => false;
 }

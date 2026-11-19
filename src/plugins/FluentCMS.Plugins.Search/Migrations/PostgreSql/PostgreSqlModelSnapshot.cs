@@ -35,6 +35,12 @@ namespace FluentCMS.Plugins.Search.Migrations.PostgreSql
                         .HasColumnType("uuid")
                         .HasColumnName("document_id");
 
+                    b.Property<string>("Field")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("field");
+
                     b.Property<string>("Locale")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -69,7 +75,7 @@ namespace FluentCMS.Plugins.Search.Migrations.PostgreSql
                     b.HasIndex("SiteId")
                         .HasDatabaseName("ix_cms_search_entry_site");
 
-                    b.HasIndex("DocumentId", "Locale", "State")
+                    b.HasIndex("DocumentId", "Locale", "State", "Field")
                         .IsUnique()
                         .HasDatabaseName("ux_cms_search_entry_document");
 
