@@ -1,4 +1,6 @@
 using System.Text.Json.Nodes;
+using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Schema;
 
@@ -9,8 +11,30 @@ namespace FluentCMS.Core.Content;
 // migration renames their columns. A field kept in JSON inside another field keeps its former name, as the stored entry does.
 internal static class VersionSnapshot
 {
-    public static JsonObject Parse(SchemaModel schema, SchemaType type, string snapshot) =>
-        JsonDepth.Parse(snapshot) is JsonObject fields ? UnderCurrentNames(schema, type, fields) : [];
+    // A URL in rich text that a write would now refuse is dropped, as from a stored entry (RichTextLinks).
+    public static JsonObject Parse(SchemaModel schema, SchemaType type, string snapshot, SafeUrl links)
+    {
+        if (JsonDepth.Parse(snapshot) is not JsonObject stored)
+        {
+            return [];
+        }
+
+        var fields = UnderCurrentNames(schema, type, stored);
+        if (!RichTextLinks.MayHoldUnsafe(snapshot, links))
+        {
+            return fields;
+        }
+
+        foreach (var field in type.Fields)
+        {
+            if (fields[field.Name] is { } value)
+            {
+                HiddenFields.DropUnsafeLinks(schema, value, field, links);
+            }
+        }
+
+        return fields;
+    }
 
     // Keeps the order of the keys, and the keys no field takes.
     private static JsonObject UnderCurrentNames(SchemaModel schema, SchemaType owner, JsonObject stored)
