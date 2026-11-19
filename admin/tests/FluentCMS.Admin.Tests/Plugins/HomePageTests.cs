@@ -121,6 +121,17 @@ public sealed class HomePageTests : AdminTestContext
         app.Find("main .home-types a[href='content/article']");
     }
 
+    [Fact]
+    public void AWidgetTakesTheAdminsServicesThroughItsConstructorAndOneThatCannotBeCreatedShowsAnErrorInItsTile()
+    {
+        var reviews = Half("reviews", Widget("ConstructedWidget", WidgetSize.Small), Widget("MisconstructedWidget", WidgetSize.Small), Widget("SetterlessWidget", WidgetSize.Small));
+
+        var app = Load([reviews], enabled: ["reviews"]);
+
+        app.WaitForAssertion(() => Headings(app).ShouldBe(["Content", "Constructed", "Widget of reviews unavailable", "Widget of reviews unavailable"]));
+        app.Find("main .home-types a[href='content/article']");
+    }
+
     // The page's own texts, the error tile's among them, come from the resources in either direction; the type's label and the
     // sample widget's texts are data, so they are not checked.
     [Theory]

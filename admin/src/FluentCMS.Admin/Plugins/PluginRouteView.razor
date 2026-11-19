@@ -3,23 +3,20 @@
    routes, and the switch navigates to the route again. NotFoundPage tells a page the user lacks the permission of. A page the
    renderer cannot create shows an error in the layout instead, as no error boundary catches that. *@
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "NotFoundPage is kept by the DynamicDependency of AdminApp's constructor.")]
-@attribute [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "AdminLayout is named by typeof, which keeps it whole for the layout.")]
+@using System.Reflection
 @inject AdminPlugins Plugins
 @inject NavigationManager Navigation
 @inject IStringLocalizer<AdminResources> L
 
 @if (Plugins.Gate(RouteData, Navigation.ToBaseRelativePath(Navigation.Uri)) is PluginPageGate.None or PluginPageGate.Allowed)
 {
-    if (Plugins.ProblemOf(RouteData.PageType) is null)
+    if (Creatable)
     {
         <RouteView RouteData="RouteData" DefaultLayout="typeof(AdminLayout)" />
     }
     else
     {
-        <LayoutView Layout="typeof(AdminLayout)">
-            <h1 tabindex="-1">@L["Plugins.PageFailed.Heading"]</h1>
-            <p>@L["Plugins.PageFailed.Text"]</p>
-        </LayoutView>
+        @Failure
     }
 }
 else
@@ -32,4 +29,29 @@ else
 
     [Parameter, EditorRequired]
     public RouteData RouteData { get; set; } = null!;
+
+    // The page and the layout it names, either of which may be a class of the half.
+    private bool Creatable => Plugins.ProblemOf(RouteData.PageType) is null
+        && (RouteData.PageType.GetCustomAttribute<LayoutAttribute>() is not { } layout || Plugins.ProblemOf(layout.LayoutType) is null);
+
+    private RenderFragment Failure => Failed;
+
+    // LayoutView is the framework's: the analyzer counts a closure field of its own, which the layout does not need.
+    [UnconditionalSuppressMessage("Trimming", "IL2110", Justification = "AdminLayout is named by typeof, which keeps it for the layout.")]
+    private void Failed(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+    {
+        builder.OpenComponent<LayoutView>(0);
+        builder.AddComponentParameter(1, nameof(LayoutView.Layout), typeof(AdminLayout));
+        builder.AddComponentParameter(2, nameof(LayoutView.ChildContent), (RenderFragment)(content =>
+        {
+            content.OpenElement(0, "h1");
+            content.AddAttribute(1, "tabindex", "-1");
+            content.AddContent(2, L["Plugins.PageFailed.Heading"]);
+            content.CloseElement();
+            content.OpenElement(3, "p");
+            content.AddContent(4, L["Plugins.PageFailed.Text"]);
+            content.CloseElement();
+        }));
+        builder.CloseComponent();
+    }
 }

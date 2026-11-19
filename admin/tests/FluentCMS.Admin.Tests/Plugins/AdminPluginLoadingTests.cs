@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json.Nodes;
 using Bunit;
 using FluentCMS.Admin.Api;
+using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Fields;
 using FluentCMS.Admin.Lists;
 using FluentCMS.Admin.Pickers;
@@ -323,6 +324,8 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
 
         app.WaitForAssertion(() => app.FindAll("main tbody .cms-list-cell-text").Select(cell => cell.TextContent).ShouldBe(["4"]));
         app.Find("main tbody").TextContent.ShouldContain("Hello");
+        app.FindAll("fluent-button").First(button => button.TextContent.Trim() == "Add filter").Click();
+        app.WaitForAssertion(() => app.FindComponents<CmsSelect>().Single(input => input.Instance.Label == "Field").Instance.Options.Select(option => option.Value).ShouldContain("stars"));
         NotCreated().ShouldBe([$"{typeof(MisinjectedCell).FullName}.Api"]);
     }
 
