@@ -445,10 +445,15 @@ internal sealed class MediaService(
 
             previous = asset.FolderId;
             moved = previous != folderId;
+            if (!moved)
+            {
+                return false;
+            }
+
             asset.FolderId = folderId;
             asset.UpdatedAt = time.GetUtcNow();
             asset.UpdatedBy = operation.AuditPrincipal.Id;
-            return moved;
+            return true;
         }, cancellationToken);
 
         if (moved)
@@ -484,7 +489,7 @@ internal sealed class MediaService(
             }
 
             await references.RemoveAsync(ReferenceTarget, id, cancellationToken);
-            await MarkDeletedAsync(id, null, operation.AuditPrincipal.Id, cancellationToken);
+            asset = await MarkDeletedAsync(id, null, operation.AuditPrincipal.Id, cancellationToken);
         }
         else if (await references.CountAsync(ReferenceTarget, id, cancellationToken) > 0)
         {
@@ -493,7 +498,7 @@ internal sealed class MediaService(
         }
         else
         {
-            await MarkDeletedAsync(id, expectedVersion, operation.AuditPrincipal.Id, cancellationToken);
+            asset = await MarkDeletedAsync(id, expectedVersion, operation.AuditPrincipal.Id, cancellationToken);
         }
 
         await events.PublishAsync(new MediaAssetDeletedEvent(asset.Id, asset.FolderId, asset.FileName), cancellationToken);
@@ -889,8 +894,8 @@ internal sealed class MediaService(
     }
 
     // Marks the asset deleted at the next version in one update, which only an expected version that moved on, or a delete
-    // that came first, makes miss.
-    private async Task MarkDeletedAsync(Guid id, int? expected, Guid principal, CancellationToken cancellationToken)
+    // that came first, makes miss, and answers the row as deleted, for the event to name its folder and file as they were.
+    private async Task<Asset> MarkDeletedAsync(Guid id, int? expected, Guid principal, CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
         var rows = database.Set<Asset>().Where(row => row.Id == id && row.DeletedAt == null);
@@ -906,6 +911,8 @@ internal sealed class MediaService(
         {
             throw expected is { } stale ? await RefusalAsync(id, stale, cancellationToken) : AssetNotFound(id);
         }
+
+        return await database.Set<Asset>().AsNoTracking().SingleAsync(row => row.Id == id, cancellationToken);
     }
 
     private async Task<PluginException> RefusalAsync(Guid id, int expected, CancellationToken cancellationToken)

@@ -260,6 +260,24 @@ public sealed class MediaIfMatchTests(MediaHost media) : IClassFixture<MediaHost
         }
     }
 
+    // A move to the folder the asset is in writes nothing, so it answers the asset and version as stored.
+    [Fact]
+    public async Task AMoveToTheFolderTheAssetIsInAnswersTheAssetAsStored()
+    {
+        using var client = await media.AdminAsync();
+        var id = await AssetAsync(client);
+        var before = await GetAsync(client, $"{Root}/{id:D}");
+
+        using var moved = await client.PostAsJsonAsync(new Uri($"{Root}/{id:D}/move", UriKind.Relative), new { folderId = (Guid?)null }, Token);
+        var answer = await JsonAsync(moved);
+
+        moved.Headers.ETag!.Tag.ShouldBe("\"1\"");
+        answer["updatedAt"]!.GetValue<DateTimeOffset>().ShouldBe(before["updatedAt"]!.GetValue<DateTimeOffset>());
+        var after = await GetAsync(client, $"{Root}/{id:D}");
+        after["updatedAt"]!.GetValue<DateTimeOffset>().ShouldBe(before["updatedAt"]!.GetValue<DateTimeOffset>());
+        (await ReadAsync(client, id)).ShouldBe("\"1\"");
+    }
+
     private static async Task<Guid> AssetAsync(HttpClient client) =>
         Id((await UploadedAsync(client, null, ("photo.png", Files.Png(4, 4)))).Single()!);
 

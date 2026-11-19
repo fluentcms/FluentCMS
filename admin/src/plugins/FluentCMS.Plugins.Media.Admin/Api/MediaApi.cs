@@ -79,7 +79,7 @@ internal sealed class MediaApi(IManagementApi api)
         {
             return await GetAsync(basis.Id, basis.Locale, cancellationToken);
         }
-        catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or JsonException)
+        catch (Exception failure) when (!cancellationToken.IsCancellationRequested && failure is ApiProblemException or HttpRequestException or TaskCanceledException or JsonException)
         {
             return saved;
         }
