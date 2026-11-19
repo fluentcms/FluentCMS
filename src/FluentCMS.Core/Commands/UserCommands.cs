@@ -87,7 +87,7 @@ internal sealed class UserResetPasswordCommand : HostCommand
         if (context.Arguments.Has(PasswordStdin))
         {
             await users.SetPasswordAsync(user.Id, await PasswordAsync(context, cancellationToken), cancellationToken);
-            await context.Output.WriteLineAsync($"Set the password of {user.UserName}; its sessions are ended.");
+            await context.Output.WriteLineAsync($"Set the password of {user.UserName}; its sessions are ended, and it must choose a new password at its next sign-in.");
             return CommandExitCodes.Success;
         }
 

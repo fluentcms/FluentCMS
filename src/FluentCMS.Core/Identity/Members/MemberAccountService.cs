@@ -177,7 +177,9 @@ internal sealed class MemberAccountService(
     }
 
     // A wrong current password counts towards the lockout, as a wrong one at sign-in does, so that a token that leaked
-    // is no way to guess it.
+    // is no way to guess it, and a right one starts the count again in the save of the new password. A member without a
+    // password, one of a provider only, has nothing to guess, so nothing is counted, and its provider's sign-in is not
+    // locked out by calls of its own. A locked-out member gets the answer a wrong password gets.
     public async Task ChangePasswordAsync(string currentPassword, string newPassword, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(currentPassword);
@@ -189,10 +191,21 @@ internal sealed class MemberAccountService(
             throw WrongPassword();
         }
 
+        var failures = member.AccessFailedCount;
+        member.AccessFailedCount = 0;
         var changed = await members.ChangePasswordAsync(member, currentPassword, newPassword);
+        if (!changed.Succeeded)
+        {
+            member.AccessFailedCount = failures;
+        }
+
         if (changed.Errors.Any(error => error.Code == nameof(IdentityErrorDescriber.PasswordMismatch)))
         {
-            await members.AccessFailedAsync(member);
+            if (await members.HasPasswordAsync(member))
+            {
+                await members.AccessFailedAsync(member);
+            }
+
             throw WrongPassword();
         }
 

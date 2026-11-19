@@ -9,7 +9,8 @@ namespace FluentCMS.Core.Identity;
 // Identity's authenticator codes (RFC 6238: SHA-1, 30 second steps, six digits, two steps either way), on the host's clock,
 // each taken once: the step of the last code taken is kept with the user, in the save that takes it, and a code of that
 // step or an earlier one is refused, so a code seen over a shoulder or in a log is spent once the user has used it. Of two
-// requests that bring one code at once, the second save fails on the user's concurrency stamp.
+// requests that bring one code at once, the second save fails on the user's concurrency stamp, which EF writes before the
+// token row, so even for the first code a user gives it never reaches the row's unique key.
 internal sealed class OneTimeAuthenticatorTokenProvider(TimeProvider time) : IUserTwoFactorTokenProvider<CmsUser>
 {
     // UserStoreBase keeps the authenticator key under this provider name too.

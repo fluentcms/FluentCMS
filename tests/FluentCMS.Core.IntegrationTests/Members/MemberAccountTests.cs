@@ -662,6 +662,38 @@ public sealed class MemberAccountTests(MemberFixture fixture) : IClassFixture<Me
         (await fixture.DirectLoginAsync(address, MemberFixture.NewPassword)).Status.ShouldBe(HttpStatusCode.BadRequest);
     }
 
+    // A member of a provider only has no password to guess, so its calls count nothing and cannot lock its provider's
+    // sign-in out; a right password starts the count again (#3296).
+    [Fact]
+    public async Task AChangeOfAPasswordlessMemberCountsNothingAndARightOneStartsTheCountAgain()
+    {
+        var passwordless = await fixture.Host.CreateMemberAsync(password: null, cancellationToken: Token);
+        using (var client = fixture.Bearer((await fixture.Host.SignInAsync(passwordless)).AccessToken))
+        {
+            for (var attempt = 0; attempt < 6; attempt++)
+            {
+                var refused = await fixture.MembersAsync(HttpMethod.Post, "me/change-password", $$"""{ "currentPassword": "anything {{attempt}}", "newPassword": "{{MemberFixture.NewPassword}}" }""", client);
+                refused.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
+            }
+        }
+
+        (await StoredAsync(passwordless.Id)).ShouldSatisfyAllConditions(member => member.AccessFailedCount.ShouldBe(0), member => member.LockoutEnd.ShouldBeNull());
+
+        var address = await fixture.RegisterVerifiedAsync();
+        using var own = fixture.Bearer((await fixture.DirectLoginAsync(address, Password)).Json["access_token"]!.GetValue<string>());
+        (await fixture.MembersAsync(HttpMethod.Post, "me/change-password", $$"""{ "currentPassword": "not it", "newPassword": "{{MemberFixture.NewPassword}}" }""", own)).Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        var id = await fixture.MemberIdAsync(address);
+        (await StoredAsync(id)).AccessFailedCount.ShouldBe(1);
+        (await fixture.MembersAsync(HttpMethod.Post, "me/change-password", $$"""{ "currentPassword": "{{Password}}", "newPassword": "{{MemberFixture.NewPassword}}" }""", own)).Status.ShouldBe(HttpStatusCode.NoContent);
+        (await StoredAsync(id)).AccessFailedCount.ShouldBe(0);
+    }
+
+    private async Task<CmsMember> StoredAsync(Guid id)
+    {
+        await using var scope = fixture.Host.Services.CreateAsyncScope();
+        return (await scope.ServiceProvider.GetRequiredService<MemberManager>().FindByIdAsync(id.ToString("D"))).ShouldNotBeNull();
+    }
+
     [Fact]
     public async Task RegistrationAnswers404WhileItIsOffAndTheOtherRoutesGoOn()
     {

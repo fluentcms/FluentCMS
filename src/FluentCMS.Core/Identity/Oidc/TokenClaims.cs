@@ -25,8 +25,8 @@ internal static class TokenClaims
     // carries the sid of the cookie's session needs no confirmation.
     public const string ServerSession = "sid";
 
-    // The server session a token of a consent was issued in. A consent is no session's, so its identity token names none
-    // (sid); its access and refresh tokens carry this for SingleFactorTokenHandler.
+    // The server session a token of a consent was issued in, with no destination: a consent is no session's, so no token a
+    // client reads names it, and its codes and refresh tokens keep it for SingleFactorTokenHandler.
     public const string ConsentSession = "fcms_session";
 
     // The authentication method reference Identity gives a sign-in with a second factor.
@@ -140,7 +140,7 @@ internal static class TokenClaims
         Claims.Email when claim.Subject?.HasScope(Scopes.Email) == true => [OpenIddictConstants.Destinations.IdentityToken],
         Claims.AuthenticationMethodReference => [OpenIddictConstants.Destinations.AccessToken, OpenIddictConstants.Destinations.IdentityToken],
         Claims.AuthenticationTime or ServerSession => [OpenIddictConstants.Destinations.IdentityToken],
-        Claims.Name or CmsClaimTypes.Kind or CmsClaimTypes.Roles or CmsClaimTypes.ClientRole or ConsentSession => [OpenIddictConstants.Destinations.AccessToken],
+        Claims.Name or CmsClaimTypes.Kind or CmsClaimTypes.Roles or CmsClaimTypes.ClientRole => [OpenIddictConstants.Destinations.AccessToken],
         _ => [],
     };
 

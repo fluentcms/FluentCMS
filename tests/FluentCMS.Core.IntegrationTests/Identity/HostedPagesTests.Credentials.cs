@@ -78,7 +78,9 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task TwoSignInsWithOneFirstCodeAtOncePassOnce()
     {
-        await using var host = NewHost(new CapturedEmails());
+        var race = new FirstStepRace();
+        await using var host = NewHost(new CapturedEmails())
+            .Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(race.Reads, race.Saves)));
         var editor = await CreateUserAsync(host);
         string key;
         await using (var scope = host.Services.CreateAsyncScope())
@@ -96,6 +98,8 @@ public sealed partial class HostedPagesTests
         var secondStep = await PasswordStepAsync(second, editor.Email);
         var code = Totp(host, key);
 
+        // The first save of the step waits until both requests have read that there is none yet.
+        race.Arm();
         var answers = await Task.WhenAll(
             first.SubmitAsync(firstStep, new Dictionary<string, string> { ["Input.Code"] = code }),
             second.SubmitAsync(secondStep, new Dictionary<string, string> { ["Input.Code"] = code }));
@@ -294,6 +298,60 @@ public sealed partial class HostedPagesTests
         await using var scope = host.Services.CreateAsyncScope();
         var users = scope.ServiceProvider.GetRequiredService<CmsUserManager>();
         return await users.IsLockedOutAsync((await users.FindByIdAsync(user.Id.ToString()))!);
+    }
+
+    // Holds the first save of an authenticator step until two requests have read the step, so that both read before either
+    // writes, as two requests that cross on a real server may.
+    private sealed class FirstStepRace
+    {
+        private readonly TaskCompletionSource _bothRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _armed;
+        private int _reads;
+        private int _saves;
+
+        public FirstStepRace()
+        {
+            Reads = new ReadCounter(this);
+            Saves = new SaveHolder(this);
+        }
+
+        public Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor Reads { get; }
+
+        public Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor Saves { get; }
+
+        public void Arm() => Volatile.Write(ref _armed, 1);
+
+        private static bool IsStep(System.Data.Common.DbCommand command) =>
+            command.Parameters.Cast<System.Data.Common.DbParameter>().Any(parameter => Equals(parameter.Value, "AuthenticatorLastStep"));
+
+        private sealed class ReadCounter(FirstStepRace race) : DbCommandInterceptor
+        {
+            public override ValueTask<InterceptionResult<System.Data.Common.DbDataReader>> ReaderExecutingAsync(System.Data.Common.DbCommand command, CommandEventData eventData, InterceptionResult<System.Data.Common.DbDataReader> result, CancellationToken cancellationToken = default)
+            {
+                if (Volatile.Read(ref race._armed) == 1 && command.CommandText.TrimStart().StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) && IsStep(command)
+                    && Interlocked.Increment(ref race._reads) == 2)
+                {
+                    race._bothRead.TrySetResult();
+                }
+
+                return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+            }
+        }
+
+        private sealed class SaveHolder(FirstStepRace race) : SaveChangesInterceptor
+        {
+            public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+            {
+                if (Volatile.Read(ref race._armed) == 1
+                    && eventData.Context!.ChangeTracker.Entries<Microsoft.AspNetCore.Identity.IdentityUserToken<Guid>>().Any(entry => entry.State == EntityState.Added && entry.Entity.Name == "AuthenticatorLastStep")
+                    && Interlocked.Increment(ref race._saves) == 1)
+                {
+                    await race._bothRead.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
+                }
+
+                return await base.SavingChangesAsync(eventData, result, cancellationToken);
+            }
+        }
     }
 
     // Fails a save that gives the user a new security stamp.
