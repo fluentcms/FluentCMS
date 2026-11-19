@@ -255,7 +255,16 @@ internal static class RichTextLinks
         }
 
         var colon = value.IndexOf(':', StringComparison.Ordinal);
-        return colon < 0 ? "(no scheme)" : value[..Math.Min(colon, 32)].Trim();
+        if (colon < 0)
+        {
+            return "(no scheme)";
+        }
+
+        // The scheme is stored text: only a well-formed one is logged, so that line breaks or bidi marks never reach a log.
+        var scheme = value[..colon].Trim();
+        return scheme.Length is > 0 and <= 32 && char.IsAsciiLetter(scheme[0]) && scheme.All(c => char.IsAsciiLetterOrDigit(c) || c is '+' or '.' or '-')
+            ? scheme
+            : "(invalid)";
     }
 
     private static int SkipWhitespace(string json, int index)

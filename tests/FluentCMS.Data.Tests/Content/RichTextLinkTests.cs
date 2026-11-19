@@ -1,10 +1,10 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Tests.Schema;
-using FluentCMS.Data.Tests.Jobs;
 using FluentCMS.Hooks;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
@@ -391,22 +391,59 @@ public sealed class RichTextLinkTests : IDisposable
         ((string)_database.Row("cms_article", id)["body"]).ShouldNotContain("javascript");
     }
 
-    [Fact]
-    public async Task AWriteThatStripsAStoredUnsafeHrefLogsIt()
+    // The scheme is logged only when it is a well-formed one, so that stored text cannot split or spoof a log line.
+    [Theory]
+    [InlineData(Script, "javascript")]
+    [InlineData("java\u2028script:alert(1)", "(invalid)")]
+    [InlineData("java\u202Escript:alert(1)", "(invalid)")]
+    public async Task AWriteThatStripsAStoredUnsafeHrefLogsItsScheme(string href, string scheme)
     {
-        var logs = new RecordingLogs();
+        var logs = new FieldLogs();
         using var database = new ServiceDatabase(cms => cms.Services.AddSingleton<ILoggerProvider>(logs), Model());
         var created = await database.CreateAsync(Editor, Placed("text", Safe));
-        database.Read(context =>
-        {
-            var row = context.Rows("cms_article").Single();
-            row["body"] = Paragraph(Linked(Script)).Json;
-            return context.SaveChanges();
-        });
+        StoreUnsafe(Paragraph(Linked(href)).Json, database: database);
 
         await database.PatchAsync(Editor, IdOf(created), new() { ["title"] = "Again" }, VersionOf(created));
 
-        logs.Count("UnsafeUrlStripped").ShouldBe(1);
+        var entry = logs.Entries.Where(item => item.Id.Id == 9405).ShouldHaveSingleItem();
+        entry.Id.Name.ShouldBe("UnsafeUrlStripped");
+        entry.Fields["Type"].ShouldBe("article");
+        entry.Fields["Id"].ShouldBe(IdOf(created));
+        entry.Fields["Locale"].ShouldBe(string.Empty);
+        entry.Fields["Field"].ShouldBe("body");
+        entry.Fields["Scheme"].ShouldBe(scheme);
+        entry.Message.ShouldNotContain("alert");
+    }
+
+    [Fact]
+    public async Task ABulkPublishIsNotRefusedByAStoredUnsafeHref()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, Placed("text", Safe)));
+        StoreUnsafe();
+
+        var result = await _database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().BulkAsync(
+            "article",
+            new BulkRequest { Operation = BulkOperation.Publish, Items = [new BulkItem(id)] },
+            Token));
+
+        result.Items.ShouldHaveSingleItem().Status.ShouldBe(BulkItemStatus.Succeeded);
+        Json(await _database.GetAsync(Editor, id, new GetOptions { Status = QueryStatus.Published })).ShouldNotContain("javascript");
+    }
+
+    [Fact]
+    public async Task AScheduledPublishIsNotRefusedByAStoredUnsafeHref()
+    {
+        using var fixture = new SchedulingFixture(Model());
+        var id = IdOf(await fixture.Database.CreateAsync(Editor, Placed("text", Safe)));
+        StoreUnsafe(database: fixture.Database);
+        await fixture.ScheduleAsync(Editor, id, SchedulingFixture.At(SchedulingFixture.Start.AddHours(1)));
+        fixture.AdvanceTo(SchedulingFixture.Start.AddHours(2));
+
+        (await fixture.RunDueAsync()).ShouldBeTrue();
+
+        var published = await fixture.Database.GetAsync(Editor, id, new GetOptions { Status = QueryStatus.Published });
+        published.ShouldNotBeNull();
+        Json(published).ShouldNotContain("javascript");
     }
 
     // A read-only value sent back as stored, not as a read gave it, is a change the write refuses.
@@ -426,7 +463,7 @@ public sealed class RichTextLinkTests : IDisposable
 
     // Puts javascript: in place of the safe URL in every row and version, as data stored before the rule would have it, or
     // stores the body given in every row.
-    private void StoreUnsafe(string? body = null, string column = "body") => _database.Read(context =>
+    private void StoreUnsafe(string? body = null, string column = "body", ServiceDatabase? database = null) => (database ?? _database).Read(context =>
     {
         foreach (var row in context.Rows("cms_article").ToList())
         {
@@ -456,6 +493,29 @@ public sealed class RichTextLinkTests : IDisposable
     private static string? LinkOf(ContentDocument? entry) =>
         JsonNode.Parse(((RichText)entry!["body"]!).Json)!["content"]![0]!["content"]![0]!["marks"]!.AsArray()
             .Single(mark => (string?)mark!["type"] == "link")!["attrs"]!["href"]!.GetValue<string>();
+
+    // Each log entry with its event id, its message and its structured fields.
+    private sealed class FieldLogs : ILoggerProvider
+    {
+        public ConcurrentQueue<(EventId Id, string Message, Dictionary<string, object?> Fields)> Entries { get; } = new();
+
+        public ILogger CreateLogger(string categoryName) => new Logger(Entries);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class Logger(ConcurrentQueue<(EventId Id, string Message, Dictionary<string, object?> Fields)> entries) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state)
+                where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+                entries.Enqueue((eventId, formatter(state, exception), state is IEnumerable<KeyValuePair<string, object?>> fields ? fields.ToDictionary() : []));
+        }
+    }
 
     private sealed class LinkingHook : IBeforeCreateHook<ContentDocument>
     {

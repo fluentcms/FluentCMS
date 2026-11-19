@@ -209,13 +209,13 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
             var row = leaf.Localized ? localized : shared;
             object? value = null;
             row?.TryGetValue(leaf.Column, out value);
-            into[field.Name] = FromColumn(leaf, value, stripped);
+            into[field.Name] = FromColumn(leaf, value, stripped, path);
         }
     }
 
     // A URL in rich text that a write would now refuse is dropped, so that a read never returns it and a write that
     // carries the value on stores it without (RichTextLinks). What was dropped goes to stripped, for that write to log.
-    private object? FromColumn(StoredField stored, object? value, List<(string Field, string Scheme)>? stripped)
+    private object? FromColumn(StoredField stored, object? value, List<(string Field, string Scheme)>? stripped, string path)
     {
         if (stored.Kind != FieldStorageKind.Json || value is not string json)
         {
@@ -234,7 +234,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
             var clean = HiddenFields.DropUnsafeLinks(schema, document, richText.Links);
             if (!ReferenceEquals(clean, document))
             {
-                stripped?.Add((stored.Location, scheme));
+                stripped?.Add((path, scheme));
             }
 
             return clean;
@@ -248,7 +248,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
             HiddenFields.DropUnsafeLinks(schema, read, stored.Field, richText.Links);
             if (!JsonNode.DeepEquals(before, read))
             {
-                stripped?.Add((stored.Location, scheme));
+                stripped?.Add((path, scheme));
             }
         }
 
