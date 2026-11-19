@@ -170,9 +170,9 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
         await keyboard.TypeAsync($"{mark}-keys");
         var created = await tab.Page.RunAndWaitForResponseAsync(
             () => keyboard.PressAsync("Enter"),
-            response => response.Url == tab.ManagementUrl("media/folders") && response.Request.Method == "POST",
+            response => response.Url == tab.ManagementUrl("media/folders") && response.Request.Method == "POST" && response.Status != 401,
             new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
-        var folder = Guid.Parse(JsonNode.Parse(await created.TextAsync())!["id"]!.GetValue<string>());
+        var folder = await CreatedFolderAsync(created);
         await Expect(TreeItem(tab, folder)).ToHaveCountAsync(1);
         await FocusReturnedAsync(MediaButton(tab, "Media.Folder.New"));
 
@@ -287,12 +287,23 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
         await tab.Page.GetByLabel(Text("Media.Folder.Name")).FillAsync(name);
         var created = await tab.Page.RunAndWaitForResponseAsync(
             () => MediaButton(tab, "Media.Folder.Create").ClickAsync(),
-            response => response.Url == tab.ManagementUrl("media/folders") && response.Request.Method == "POST",
+            response => response.Url == tab.ManagementUrl("media/folders") && response.Request.Method == "POST" && response.Status != 401,
             new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
-        created.Status.ShouldBe(201);
-        var id = Guid.Parse(JsonNode.Parse(await created.TextAsync())!["id"]!.GetValue<string>());
+        var id = await CreatedFolderAsync(created);
         await Expect(TreeItem(tab, id)).ToHaveCountAsync(1);
         return id;
+    }
+
+    // The id of a created folder from the Location of the 201, since the browser may no longer hold the answer's body when a
+    // test asks for it.
+    private static async Task<Guid> CreatedFolderAsync(IResponse created)
+    {
+        created.Status.ShouldBe(201);
+        var location = await created.HeaderValueAsync("location");
+        location.ShouldNotBeNull();
+        var match = Regex.Match(location, "(?:^|/)media/folders/(?<id>[0-9a-f-]{36})$");
+        match.Success.ShouldBeTrue($"the Location of a created folder was '{location}'");
+        return Guid.Parse(match.Groups["id"].Value);
     }
 
     // Opens a folder from the tree, as a user does.

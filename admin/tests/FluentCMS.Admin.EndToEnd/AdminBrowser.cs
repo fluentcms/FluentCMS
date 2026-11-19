@@ -182,6 +182,11 @@ public sealed class AdminBrowser
         {
             KeepFields(HttpUtility.ParseQueryString(form));
         }
+
+        if (request.Headers.TryGetValue("authorization", out var authorization) && authorization.StartsWith("Bearer ", StringComparison.Ordinal))
+        {
+            Keep(authorization["Bearer ".Length..]);
+        }
     }
 
     private void OnResponse(IResponse response)
@@ -202,7 +207,7 @@ public sealed class AdminBrowser
     }
 
     // The cookies a response sets and the tokens of the token endpoint's answer. A body that can no longer be read, as a
-    // redirect's, holds none of them.
+    // redirect's or one Chromium has dropped, is skipped; the access token is also kept from the requests that carry it.
     private async Task ReadAsync(IResponse response, AdminTab? tab)
     {
         try
