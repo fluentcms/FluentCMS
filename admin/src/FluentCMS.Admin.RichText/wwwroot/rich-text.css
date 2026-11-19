@@ -125,6 +125,71 @@ div.rich-text-kept {
 
 .rich-text-entry-link {
     text-decoration: underline dotted;
+    color: var(--cms-color-accent);
+}
+
+.rich-text-media {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--cms-space-xs);
+    margin-block: var(--cms-space-xs);
+    padding: var(--cms-space-xs);
+    border: 1px dashed var(--cms-color-border);
+    border-radius: var(--cms-radius-s);
+    color: var(--cms-color-text-muted);
+    user-select: none;
+}
+
+.rich-text-media-inline {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    margin-block: 0;
+    vertical-align: middle;
+}
+
+.rich-text-media img {
+    max-inline-size: min(100%, 24rem);
+    max-block-size: 16rem;
+    object-fit: contain;
+}
+
+.rich-text-media-inline img {
+    max-block-size: 2.5rem;
+}
+
+.rich-text-media-placeholder {
+    font-style: italic;
+}
+
+.rich-text-block {
+    border-style: solid;
+    color: var(--cms-color-text);
+}
+
+.rich-text-entry-current {
+    margin: 0;
+}
+
+.rich-text-media-dialog,
+.rich-text-block-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-s);
+    min-inline-size: min(32rem, 80vw);
+}
+
+.rich-text-media-dialog-image {
+    max-inline-size: 100%;
+    max-block-size: 16rem;
+    object-fit: contain;
+    align-self: flex-start;
+}
+
+.rich-text-media-dialog-name {
+    margin: 0;
+    overflow-wrap: anywhere;
 }
 
 .rich-text-link {

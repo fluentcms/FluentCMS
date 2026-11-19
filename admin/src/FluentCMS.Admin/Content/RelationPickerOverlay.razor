@@ -1,0 +1,37 @@
+@* The relation picker as RelationPickerService shows it over the page: open until a choice or a close, answered once the
+   dialog has closed and given focus back to the control that opened it. *@
+@using FluentCMS.Admin.Pickers
+
+<RelationPicker Target="@Target"
+                Multiple="@Request.Multiple"
+                Selected="@Request.Selected"
+                Locale="@Request.Locale"
+                Open="@open"
+                OnClose="@(() => open = false)"
+                OnPicked="@(entries => (answer, open) = (entries, false))"
+                OnClosed="Closed" />
+
+@code {
+    private bool open = true;
+    private bool done;
+    private IReadOnlyList<ContentEntry>? answer;
+
+    [Parameter, EditorRequired]
+    public SchemaTypeDescription Target { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public RelationPickerRequest Request { get; set; } = null!;
+
+    // Raised once, with the chosen entries or null for none, after the dialog has closed.
+    [Parameter, EditorRequired]
+    public Action<IReadOnlyList<ContentEntry>?> OnDone { get; set; } = null!;
+
+    private void Closed()
+    {
+        if (!done)
+        {
+            done = true;
+            OnDone(answer);
+        }
+    }
+}

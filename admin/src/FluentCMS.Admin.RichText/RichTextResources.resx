@@ -12,11 +12,77 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="RichText.Block.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="RichText.Block.Done" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="RichText.Block.Duplicate" xml:space="preserve">
+    <value>Duplicate</value>
+  </data>
+  <data name="RichText.Block.Duplicated" xml:space="preserve">
+    <value>The block was duplicated, and the copy is open.</value>
+  </data>
+  <data name="RichText.Block.Insert" xml:space="preserve">
+    <value>Insert</value>
+  </data>
+  <data name="RichText.Block.InsertTitle" xml:space="preserve">
+    <value>Insert a block</value>
+  </data>
+  <data name="RichText.Block.NoForm" xml:space="preserve">
+    <value>The block's form is not available here.</value>
+  </data>
+  <data name="RichText.Block.NoTypes" xml:space="preserve">
+    <value>None of the field's block types is in the schema.</value>
+  </data>
+  <data name="RichText.Block.Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="RichText.Block.Title" xml:space="preserve">
+    <value>Block: {0}</value>
+  </data>
+  <data name="RichText.Block.Type" xml:space="preserve">
+    <value>Block type</value>
+  </data>
+  <data name="RichText.Block.Unknown" xml:space="preserve">
+    <value>The block type {0} is not in the schema, so the block is kept as it is.</value>
+  </data>
   <data name="RichText.Editor.Unavailable" xml:space="preserve">
     <value>The rich text editor could not be loaded, so the text is shown as it is stored. Reload the page to try again; the field keeps its value.</value>
   </data>
   <data name="RichText.Editor.Unsupported" xml:space="preserve">
     <value>This text holds content the editor cannot change without losing some of it, so it is shown as it is stored and cannot be changed here.</value>
+  </data>
+  <data name="RichText.EntryLink.Choose" xml:space="preserve">
+    <value>Choose an entry</value>
+  </data>
+  <data name="RichText.EntryLink.Current" xml:space="preserve">
+    <value>Links to {0}</value>
+  </data>
+  <data name="RichText.EntryLink.Label" xml:space="preserve">
+    <value>Link to an entry</value>
+  </data>
+  <data name="RichText.EntryLink.Missing" xml:space="preserve">
+    <value>{0}: an entry that cannot be read or no longer exists</value>
+  </data>
+  <data name="RichText.EntryLink.NoTypes" xml:space="preserve">
+    <value>There is no content type to link to.</value>
+  </data>
+  <data name="RichText.EntryLink.Remove" xml:space="preserve">
+    <value>Remove entry link</value>
+  </data>
+  <data name="RichText.EntryLink.Title" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="RichText.EntryLink.Type" xml:space="preserve">
+    <value>Content type</value>
+  </data>
+  <data name="RichText.EntryLink.Unknown" xml:space="preserve">
+    <value>Link to an entry</value>
+  </data>
+  <data name="RichText.EntryLink.Unreadable" xml:space="preserve">
+    <value>An entry of {0}, a type you may not read</value>
   </data>
   <data name="RichText.Kept.InlineBlock" xml:space="preserve">
     <value>Block</value>
@@ -42,6 +108,39 @@
   <data name="RichText.Link.Unsafe" xml:space="preserve">
     <value>Use an http, https, mailto or tel address, or a relative link.</value>
   </data>
+  <data name="RichText.Media.Alt" xml:space="preserve">
+    <value>Alternative text</value>
+  </data>
+  <data name="RichText.Media.AltHelp" xml:space="preserve">
+    <value>Describes the media for those who cannot see it. Leave it empty to use the asset's own.</value>
+  </data>
+  <data name="RichText.Media.AltHelpOwn" xml:space="preserve">
+    <value>Leave it empty to use the asset's own: {0}</value>
+  </data>
+  <data name="RichText.Media.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="RichText.Media.Disabled" xml:space="preserve">
+    <value>Media is not enabled in this site, so nothing can be embedded.</value>
+  </data>
+  <data name="RichText.Media.Done" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="RichText.Media.Missing" xml:space="preserve">
+    <value>Missing media: the asset no longer exists</value>
+  </data>
+  <data name="RichText.Media.Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="RichText.Media.Replace" xml:space="preserve">
+    <value>Replace</value>
+  </data>
+  <data name="RichText.Media.Title" xml:space="preserve">
+    <value>Media</value>
+  </data>
+  <data name="RichText.Media.Unavailable" xml:space="preserve">
+    <value>Media is not enabled in this site</value>
+  </data>
   <data name="RichText.Toolbar.Blockquote" xml:space="preserve">
     <value>Quote</value>
   </data>
@@ -56,6 +155,9 @@
   </data>
   <data name="RichText.Toolbar.CodeBlock" xml:space="preserve">
     <value>Code block</value>
+  </data>
+  <data name="RichText.Toolbar.EntryLink" xml:space="preserve">
+    <value>Link to an entry</value>
   </data>
   <data name="RichText.Toolbar.Heading1" xml:space="preserve">
     <value>Heading 1</value>
@@ -72,6 +174,9 @@
   <data name="RichText.Toolbar.HorizontalRule" xml:space="preserve">
     <value>Horizontal line</value>
   </data>
+  <data name="RichText.Toolbar.InlineBlock" xml:space="preserve">
+    <value>Insert a block</value>
+  </data>
   <data name="RichText.Toolbar.Italic" xml:space="preserve">
     <value>Italic</value>
   </data>
@@ -80,6 +185,9 @@
   </data>
   <data name="RichText.Toolbar.Link" xml:space="preserve">
     <value>Link</value>
+  </data>
+  <data name="RichText.Toolbar.Media" xml:space="preserve">
+    <value>Embed media</value>
   </data>
   <data name="RichText.Toolbar.OrderedList" xml:space="preserve">
     <value>Numbered list</value>

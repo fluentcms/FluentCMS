@@ -5,7 +5,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { getSchema } from "@tiptap/core";
 import { EditorState } from "@tiptap/pm/state";
-import { extensions, fits, fromEditor, isEmpty, isSafeHref, toEditor, withFreshIds } from "../src/schema.js";
+import {
+    extensions, firstText, fits, fromEditor, isEmpty, isSafeHref, pathOf, references, toEditor, withFreshBlockIds, withFreshIds,
+} from "../src/schema.js";
 
 const schema = getSchema(extensions());
 const folder = new URL("./documents/", import.meta.url);
@@ -153,4 +155,65 @@ test("a fresh id has 12 URL-safe characters", async () => {
     const { randomId } = await import("../src/schema.js");
     const id = randomId();
     assert.match(id, /^[A-Za-z0-9_-]{12}$/);
+});
+
+test("a document of entry links, media and inline blocks fits, and one with anything else beside them does not", () => {
+    const kept = read("kept.json");
+    assert.equal(fits(schema, kept), true);
+    assert.equal(fits(schema, { ...kept, content: [...kept.content, { type: "video", attrs: { src: "a.mp4" } }] }), false);
+    const withUnknownAttribute = structuredClone(kept);
+    withUnknownAttribute.content[1].attrs.url = "https://example.com/a.png";
+    assert.equal(fits(schema, withUnknownAttribute), false);
+    const withUnknownMark = structuredClone(kept);
+    withUnknownMark.content[0].content[1].marks.push({ type: "comment", attrs: { id: "1" } });
+    assert.equal(fits(schema, withUnknownMark), false);
+});
+
+test("a pasted copy of an inline block takes fresh ids for the blocks its data holds too", () => {
+    const data = { title: "Card", items: [{ type: "link", id: "inner", label: "a" }], body: { type: "doc", content: [{ type: "inlineBlock", attrs: { blockType: "note", id: "deep" } }] } };
+    const slice = { content: [{ type: "inlineBlock", attrs: { blockType: "card", id: "taken", data } }] };
+    let next = 0;
+    const pasted = withFreshIds(slice, ["taken"], () => `fresh${++next}`).content[0].attrs;
+    assert.equal(pasted.id, "fresh1");
+    assert.equal(pasted.data.items[0].id, "fresh2");
+    assert.equal(pasted.data.body.content[0].attrs.id, "fresh3");
+    assert.equal(pasted.data.title, "Card");
+    assert.equal(data.items[0].id, "inner");
+
+    const moved = withFreshIds(slice, [], () => "never").content[0].attrs;
+    assert.deepEqual(moved, slice.content[0].attrs);
+});
+
+test("a duplicate's data takes fresh ids for its blocks only", () => {
+    let next = 0;
+    const fresh = withFreshBlockIds({ id: "own", tags: [{ id: "x" }], blocks: [{ type: "quote", id: "q" }] }, () => `n${++next}`);
+    assert.deepEqual(fresh, { id: "own", tags: [{ id: "x" }], blocks: [{ type: "quote", id: "n1" }] });
+});
+
+test("the references of a document are its media and its linked entries, each once", () => {
+    const document = load(read("kept.json"));
+    const found = references(document);
+    assert.deepEqual(found.media, ["0f1e2d3c-4b5a-4968-8776-655443322110", "5c3a1e2f-9b8d-4c7e-a6f5-0d1b2c3e4f5a", "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"]);
+    assert.deepEqual(found.entries, [
+        { id: "0b9f4a52-7c1e-4d0a-9a43-5e1f6b2c8d70", type: "article" },
+        { id: "7d2e6c11-3a5b-4f80-b9c4-2a6d1e8f0b35", type: "author" },
+    ]);
+});
+
+test("a node's path is the one the server's errors name", () => {
+    const document = load(read("kept.json"));
+    const positions = [];
+    document.descendants((node, position) => {
+        if (node.type.name.startsWith("inlineBlock")) {
+            positions.push(position);
+        }
+    });
+    assert.deepEqual(positions.map((position) => pathOf(document, position)), [".content[0].content[7]", ".content[3]", ".content[4]"]);
+});
+
+test("a block's preview is the first text of its data on one line", () => {
+    assert.equal(firstText({ level: 2, title: "  Two\n lines " }), "Two lines");
+    assert.equal(firstText({ level: 2 }), "");
+    assert.equal(firstText(null), "");
+    assert.equal(firstText({ text: "x".repeat(80) }).length, 60);
 });

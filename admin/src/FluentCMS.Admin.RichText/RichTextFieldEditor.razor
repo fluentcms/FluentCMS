@@ -2,12 +2,14 @@
    the module rich-text.js, on the server's rich text model. The module sends the document as JSON, debounced, and this
    component holds it as the field's value; a value the form sets from outside, as after a conflict, replaces the document.
    The toolbar is this markup, whose buttons the module gives roving focus. The JavaScript references stay inside this
-   component. *@
+   component. Links to entries, media and inline blocks (A-25) are chosen with the relation picker, the media half's picker
+   and A-26's block form, each found when first used: the media half is loaded by IAdminPluginServices, never referenced. *@
 @namespace FluentCMS.Admin.RichText
 @inherits FieldEditorBase
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject IStringLocalizer<RichTextResources> L
+@inject IServiceProvider Services
 
 <div class="cms-field rich-text-field">
     <span id="@labelId" class="cms-field-label">
@@ -27,7 +29,7 @@
         @if (!ReadOnly && !unavailable && !unsupported)
         {
             <div @ref="toolbar" class="rich-text-toolbar" role="toolbar" aria-label="@L["RichText.Toolbar.Label", Label]" aria-controls="@textboxId">
-                @foreach (var button in Buttons)
+                @foreach (var button in Buttons.Where(Shows))
                 {
                     var name = L[button.Resource].Value;
                     <button type="button"
@@ -67,6 +69,42 @@
             </div>
         </div>
     }
+    @if (entryOpen)
+    {
+        <div class="rich-text-link" role="group" aria-label="@L["RichText.EntryLink.Label"]" @onkeydown="OnEntryKeyDownAsync">
+            @if (entryCurrent is not null)
+            {
+                <p class="rich-text-entry-current">@EntryTitle(entryCurrent)</p>
+            }
+            @if (linkTypes.Count == 0)
+            {
+                <p>@L["RichText.EntryLink.NoTypes"]</p>
+            }
+            else if (linkTypes.Count > 1)
+            {
+                <CmsSelect @ref="entryTypeSelect"
+                           Label="@L["RichText.EntryLink.Type"]"
+                           Options="@([.. linkTypes.Select(type => new CmsOption(type.Name, RichTextReferences.TypeLabel(type)))])"
+                           Value="@entryType"
+                           ValueChanged="@(value => entryType = value)" />
+            }
+            <div class="rich-text-link-actions">
+                @if (linkTypes.Count > 0)
+                {
+                    <CmsButton @ref="entryChooseButton" Appearance="CmsButtonAppearance.Primary" OnClick="ChooseEntryAsync">@L["RichText.EntryLink.Choose"]</CmsButton>
+                }
+                @if (entryCurrent is not null)
+                {
+                    <CmsButton OnClick="RemoveEntryLinkAsync">@L["RichText.EntryLink.Remove"]</CmsButton>
+                }
+                <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="CloseEntryLinkAsync">@L["RichText.Link.Cancel"]</CmsButton>
+            </div>
+        </div>
+    }
+    @if (notice is not null)
+    {
+        <span class="cms-field-message" role="status">@notice</span>
+    }
     @if (ErrorText is not null)
     {
         <span id="@messageId" class="cms-field-message cms-field-message-error">@ErrorText</span>
@@ -80,6 +118,38 @@
         <span id="@hintId" class="cms-visually-hidden">@L["RichText.Toolbar.Hint"]</span>
     }
 </div>
+@if (editor is not null && !ReadOnly)
+{
+    <RichTextMediaDialog Open="@mediaOpen"
+                         Preview="@MediaShown"
+                         Alt="@(NameOf(mediaKept?.Attrs["alt"]))"
+                         CanReplace="@(mediaPicker is { IsCompletedSuccessfully: true, Result: not null })"
+                         ContentLocale="@ContentLocale"
+                         TextDirection="@TextDirection"
+                         OnDone="SetMediaAltAsync"
+                         OnReplace="ReplaceMediaAsync"
+                         OnRemove="RemoveKeptAsync"
+                         OnCancel="@(() => mediaOpen = false)"
+                         OnClosed="FocusAfterDialogAsync" />
+    <RichTextBlockDialog @ref="blockDialog"
+                         Open="@blockOpen"
+                         Types="@BlockTypes"
+                         Editing="@(blockKept is not null)"
+                         BlockType="@BlockTypeOf(blockKept)"
+                         BlockName="@(NameOf(blockKept?.Attrs["blockType"]))"
+                         Form="@(Services.GetService<BlockFormRegistration>())"
+                         Value="@(blockKept?.Attrs["data"] as JsonObject)"
+                         ValueChanged="SetBlockDataAsync"
+                         Path="@($"{Field.Name}{blockKept?.Path}.attrs.data")"
+                         Errors="@Errors"
+                         ContentLocale="@ContentLocale"
+                         TextDirection="@TextDirection"
+                         OnChoose="InsertBlockAsync"
+                         OnDuplicate="DuplicateBlockAsync"
+                         OnRemove="RemoveKeptAsync"
+                         OnClose="@(() => blockOpen = false)"
+                         OnClosed="FocusAfterDialogAsync" />
+}
 
 @code {
     public const string ModulePath = "./_content/FluentCMS.Admin.RichText/rich-text.js";
@@ -105,6 +175,9 @@
         new("codeBlock", "RichText.Toolbar.CodeBlock", "{ }", "Mod+Alt+C", true),
         new("horizontalRule", "RichText.Toolbar.HorizontalRule", "―", "Mod+Alt+R", false),
         new("link", "RichText.Toolbar.Link", "🔗", "Mod+K", true),
+        new("entryLink", "RichText.Toolbar.EntryLink", "⇢", "Mod+Alt+K", true),
+        new("media", "RichText.Toolbar.Media", "▧", "Mod+Alt+M", false),
+        new("inlineBlock", "RichText.Toolbar.InlineBlock", "▣", "Mod+Alt+B", false),
         new("undo", "RichText.Toolbar.Undo", "↶", "Mod+Z", false),
         new("redo", "RichText.Toolbar.Redo", "↷", "Mod+Shift+Z", false),
     ];
@@ -155,7 +228,57 @@
     private string? linkError;
     private CmsTextInput? linkInput;
 
+    // The kinds of node the module reports as selected.
+    private const string MediaKind = "media";
+    private const string BlockKind = "inlineBlock";
+
+    // The schema of the site, read for the field's block types and the types a link may go to; null when it cannot be read.
+    private SchemaDescription? schema;
+
+    // The media half's picker, looked for once when first needed: null while the media plugin is not enabled in the site.
+    private Task<IMediaPicker?>? mediaPicker;
+    private readonly Dictionary<Guid, MediaPreview> previews = [];
+    private readonly Dictionary<string, string> titles = new(StringComparer.Ordinal);
+    private readonly HashSet<string> asked = new(StringComparer.Ordinal);
+    private readonly CancellationTokenSource life = new();
+
+    private bool mediaOpen;
+    private OpenKept? mediaKept;
+    private bool blockOpen;
+    private OpenKept? blockKept;
+    private RichTextBlockDialog? blockDialog;
+
+    private bool entryOpen;
+    private bool focusEntry;
+    private EntryReference? entryCurrent;
+    private string? entryType;
+    private List<SchemaTypeDescription> linkTypes = [];
+    private CmsSelect? entryTypeSelect;
+    private CmsButton? entryChooseButton;
+
+    // A short status under the editor, such as media not being enabled in the site.
+    private string? notice;
+
     private bool HasToolbar => !ReadOnly && !unavailable && !unsupported;
+
+    private bool HasBlocks => Field.Settings["blocks"] is JsonArray { Count: > 0 };
+
+    private bool Shows(ToolbarButton button) => button.Command != BlockKind || HasBlocks;
+
+    private IReadOnlyList<SchemaTypeDescription> BlockTypes =>
+        schema is null || Field.Settings["blocks"] is not JsonArray names
+            ? []
+            : [.. names.Select(NameOf).Select(name => schema.Blocks.FirstOrDefault(type => type.Name == name)).OfType<SchemaTypeDescription>()];
+
+    private Guid? MediaIdOf(OpenKept? kept) => Guid.TryParse(NameOf(kept?.Attrs["mediaId"]), out var id) ? id : null;
+
+    private MediaPreview MediaShown =>
+        MediaIdOf(mediaKept) is { } id && previews.TryGetValue(id, out var preview) ? preview : new MediaPreview("loading", null, null, null);
+
+    private SchemaTypeDescription? BlockTypeOf(OpenKept? kept) =>
+        NameOf(kept?.Attrs["blockType"]) is { } name ? schema?.Blocks.FirstOrDefault(type => type.Name == name) : null;
+
+    private static string? NameOf(JsonNode? node) => node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
 
     private string FrameClass => ErrorText is null ? "rich-text-frame" : "rich-text-frame rich-text-frame-invalid";
 
@@ -172,6 +295,12 @@
         if (editor is null)
         {
             return;
+        }
+
+        // An open inline block's form holds back what its editors hold back; it reaches the node through its value first.
+        if (blockOpen && blockDialog is not null)
+        {
+            await blockDialog.FlushAsync();
         }
 
         try
@@ -195,6 +324,19 @@
         }
     }
 
+    // As the admin's DocumentInterop.DialogFocusDelay: longer than the component library's timer that gives focus back to a
+    // dialog's opener.
+    private const int DialogFocusDelay = 100;
+
+    // Focus back in the text, at the node a dialog or a picker inserted or edited, once the dialog has closed.
+    private async Task FocusAfterDialogAsync()
+    {
+        if (editor is not null)
+        {
+            await editor.InvokeVoidAsync("focus", DialogFocusDelay);
+        }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (editor is null)
@@ -212,6 +354,19 @@
         {
             focusLink = false;
             await linkInput.FocusAsync();
+        }
+
+        if (focusEntry && entryOpen)
+        {
+            focusEntry = false;
+            if (entryTypeSelect is not null)
+            {
+                await entryTypeSelect.FocusAsync();
+            }
+            else if (entryChooseButton is not null)
+            {
+                await entryChooseButton.FocusAsync();
+            }
         }
     }
 
@@ -237,6 +392,63 @@
     [JSInvokable]
     public Task OnLinkRequestedAsync() => OpenLinkAsync();
 
+    // A shortcut of the editor for an entry link, media or an inline block, which the toolbar's button does too.
+    [JSInvokable]
+    public Task OnCommandRequestedAsync(string action) =>
+        action is "entryLink" or MediaKind or BlockKind && Buttons.Any(button => button.Command == action && Shows(button)) ? ToolbarAsync(action) : Task.CompletedTask;
+
+    // Enter, or a double click, on a selected media or inline block.
+    [JSInvokable]
+    public async Task OnKeptRequestedAsync()
+    {
+        if (editor is null || ReadOnly || await KeptAsync() is not { } kept)
+        {
+            return;
+        }
+
+        if (kept.Kind == MediaKind)
+        {
+            await OpenMediaAsync(kept);
+        }
+        else
+        {
+            OpenBlock(kept);
+        }
+    }
+
+    // The media and entries the document refers to, whenever they change: those not yet read are read for what the editor shows.
+    [JSInvokable]
+    public async Task OnReferencesAsync(string[] media, EntryReference[] entries)
+    {
+        var newMedia = media.Select(id => Guid.TryParse(id, out var parsed) ? parsed : (Guid?)null).OfType<Guid>().Where(id => asked.Add($"media:{id:D}")).ToList();
+        var newEntries = entries.Where(entry => asked.Add($"entry:{entry.Type}/{entry.Id}")).ToList();
+        if ((newMedia.Count == 0 && newEntries.Count == 0) || Services.GetService<IManagementApi>() is not { } api)
+        {
+            return;
+        }
+
+        var reader = new RichTextReferences(api, Services.GetService<AdminConfiguration>());
+        try
+        {
+            if (newMedia.Count > 0)
+            {
+                var picker = await FindMediaPickerAsync();
+                foreach (var id in newMedia)
+                {
+                    await ShowMediaAsync(id, picker is null ? MediaPreview.Disabled : await ReadMediaAsync(reader, id));
+                }
+            }
+
+            foreach (var group in newEntries.GroupBy(entry => entry.Type, StringComparer.Ordinal))
+            {
+                await ShowTitlesAsync(reader, group.Key, group.ToList());
+            }
+        }
+        catch (Exception exception) when (exception is JSException or JSDisconnectedException or ObjectDisposedException or OperationCanceledException)
+        {
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         // The change the module held back goes to the form as the field leaves it, such as for another tab of the form.
@@ -249,6 +461,8 @@
         }
 
         disposed = true;
+        await life.CancelAsync();
+        life.Dispose();
         try
         {
             if (editor is { } created)
@@ -284,13 +498,14 @@
 
             reference ??= DotNetObjectReference.Create(this);
             mac = await module.InvokeAsync<bool>("isMac");
+            schema = await ReadSchemaAsync();
             known = Value?.DeepClone();
             toldReadOnly = ReadOnly;
             toldDirection = Direction;
             toldDescribedBy = DescribedBy;
             toldInvalid = ErrorText is not null;
             toolbarRendered = !ReadOnly;
-            var options = new EditorOptions(!ReadOnly, textboxId, labelId, DescribedBy, ContentLocale, TextDirection, toldInvalid, new KeptLabels(L["RichText.Kept.Media"], L["RichText.Kept.InlineBlock"]));
+            var options = new EditorOptions(!ReadOnly, textboxId, labelId, DescribedBy, ContentLocale, TextDirection, toldInvalid, new KeptLabels(L["RichText.Kept.Media"], L["RichText.Kept.InlineBlock"], L["RichText.Media.Missing"], L["RichText.Media.Unavailable"], L["RichText.EntryLink.Unknown"]), BlockLabels());
             var created = await module.InvokeAsync<IJSObjectReference?>("create", host, ReadOnly ? null : toolbar, reference, known?.ToJsonString(), options);
             if (created is null)
             {
@@ -380,13 +595,390 @@
             return;
         }
 
-        if (command == "link")
+        switch (command)
         {
-            await OpenLinkAsync();
+            case "link":
+                await OpenLinkAsync();
+                break;
+            case "entryLink":
+                await OpenEntryLinkAsync();
+                break;
+            case MediaKind:
+                await MediaAsync();
+                break;
+            case BlockKind:
+                await BlockAsync();
+                break;
+            default:
+                await editor.InvokeAsync<bool>("run", command);
+                break;
+        }
+    }
+
+    private async Task<SchemaDescription?> ReadSchemaAsync()
+    {
+        if (Services.GetService<IAdminSchema>() is not { } source)
+        {
+            return null;
+        }
+
+        try
+        {
+            return await source.GetSchemaAsync(life.Token);
+        }
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or OperationCanceledException or System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
+    private Dictionary<string, string> BlockLabels() =>
+        schema?.Blocks.ToDictionary(type => type.Name, RichTextReferences.TypeLabel, StringComparer.Ordinal) ?? [];
+
+    private async Task<OpenKept?> KeptAsync() => OpenKept.From(editor is null ? null : await editor.InvokeAsync<KeptNode?>("kept"));
+
+    // The media half's picker, found once: IAdminPluginServices loads the half the first time, and finds none while the
+    // media plugin is not enabled in the site.
+    private Task<IMediaPicker?> FindMediaPickerAsync() => mediaPicker ??= FindAsync();
+
+    private async Task<IMediaPicker?> FindAsync()
+    {
+        if (Services.GetService<IAdminPluginServices>() is not { } plugins)
+        {
+            return null;
+        }
+
+        try
+        {
+            return await plugins.FindAsync<IMediaPicker>(life.Token);
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
+    private async Task<MediaPreview> ReadMediaAsync(RichTextReferences reader, Guid id)
+    {
+        try
+        {
+            return await reader.ReadMediaAsync(id, ContentLocale, life.Token);
+        }
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or System.Text.Json.JsonException)
+        {
+            // Read again when the document next changes.
+            asked.Remove($"media:{id:D}");
+            return new MediaPreview("loading", null, null, null);
+        }
+    }
+
+    private async Task ShowMediaAsync(Guid id, MediaPreview preview)
+    {
+        previews[id] = preview;
+        if (editor is not null)
+        {
+            await editor.InvokeVoidAsync("setMedia", id.ToString("D"), preview);
+        }
+
+        if (MediaIdOf(mediaKept) == id)
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task ShowTitlesAsync(RichTextReferences reader, string typeName, List<EntryReference> entries)
+    {
+        var type = schema?.Types.FirstOrDefault(item => item.Name == typeName);
+        IReadOnlyDictionary<Guid, string> found = new Dictionary<Guid, string>();
+        if (type is not null)
+        {
+            try
+            {
+                var ids = entries.Select(entry => Guid.TryParse(entry.Id, out var id) ? id : (Guid?)null).OfType<Guid>().ToList();
+                found = await reader.ReadTitlesAsync(type, ids, ContentLocale, life.Token);
+            }
+            catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or System.Text.Json.JsonException)
+            {
+                entries.ForEach(entry => asked.Remove($"entry:{entry.Type}/{entry.Id}"));
+                return;
+            }
+        }
+
+        foreach (var entry in entries)
+        {
+            var text = type is null
+                ? L["RichText.EntryLink.Unreadable", typeName].Value
+                : Guid.TryParse(entry.Id, out var id) && found.TryGetValue(id, out var title)
+                    ? L["RichText.EntryLink.Title", RichTextReferences.TypeLabel(type), title].Value
+                    : L["RichText.EntryLink.Missing", RichTextReferences.TypeLabel(type)].Value;
+            await ShowTitleAsync(entry, text);
+        }
+    }
+
+    private async Task ShowTitleAsync(EntryReference entry, string text)
+    {
+        titles[$"{entry.Type}/{entry.Id}"] = text;
+        if (editor is not null)
+        {
+            await editor.InvokeVoidAsync("setEntryTitle", entry.Type, entry.Id, text);
+        }
+
+        if (entryOpen && entryCurrent == entry)
+        {
+            StateHasChanged();
+        }
+    }
+
+    private string EntryTitle(EntryReference entry) =>
+        L["RichText.EntryLink.Current", titles.GetValueOrDefault($"{entry.Type}/{entry.Id}") ?? L["RichText.EntryLink.Unknown"].Value];
+
+    private async Task OpenEntryLinkAsync()
+    {
+        if (editor is null || ReadOnly)
+        {
             return;
         }
 
-        await editor.InvokeAsync<bool>("run", command);
+        schema ??= await ReadSchemaAsync();
+        linkTypes = [.. schema?.Types ?? []];
+        entryCurrent = await editor.InvokeAsync<EntryReference?>("entryLink");
+        entryType = entryCurrent is not null && linkTypes.Any(type => type.Name == entryCurrent.Type) ? entryCurrent.Type : linkTypes.FirstOrDefault()?.Name;
+        (linkOpen, entryOpen, focusEntry, notice) = (false, true, true, null);
+        StateHasChanged();
+    }
+
+    private async Task ChooseEntryAsync()
+    {
+        var type = linkTypes.FirstOrDefault(item => item.Name == entryType);
+        if (editor is null || type is null || Services.GetService<IRelationPicker>() is not { } picker)
+        {
+            return;
+        }
+
+        var request = new RelationPickerRequest
+        {
+            Type = type.Name,
+            Locale = ContentLocale,
+            Selected = entryCurrent?.Type == type.Name && Guid.TryParse(entryCurrent.Id, out var current) ? [current] : [],
+        };
+
+        // The picker answers once its dialog has closed and given focus back to the button.
+        var chosen = await picker.PickAsync(request, life.Token);
+        if (chosen is not [var entry, ..] || editor is null)
+        {
+            return;
+        }
+
+        var id = entry.Id.ToString("D");
+        var title = RichTextReferences.Title(type, entry);
+        var reference = new EntryReference(id, type.Name);
+        asked.Add($"entry:{type.Name}/{id}");
+        await ShowTitleAsync(reference, L["RichText.EntryLink.Title", RichTextReferences.TypeLabel(type), title ?? id]);
+        entryOpen = false;
+        StateHasChanged();
+        await editor.InvokeAsync<bool>("setEntryLink", id, type.Name, title ?? id);
+        await FocusAfterDialogAsync();
+    }
+
+    private async Task RemoveEntryLinkAsync()
+    {
+        if (editor is not null)
+        {
+            await editor.InvokeAsync<bool>("unsetEntryLink");
+        }
+
+        entryOpen = false;
+    }
+
+    private async Task CloseEntryLinkAsync()
+    {
+        entryOpen = false;
+        await FocusAsync();
+    }
+
+    private async Task OnEntryKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            await CloseEntryLinkAsync();
+        }
+    }
+
+    // The media button opens the selected media, or the media half's picker for a new one at the selection.
+    private async Task MediaAsync()
+    {
+        if (editor is null || ReadOnly)
+        {
+            return;
+        }
+
+        if (await KeptAsync() is { Kind: MediaKind } kept)
+        {
+            await OpenMediaAsync(kept);
+            return;
+        }
+
+        if (await FindMediaPickerAsync() is not { } picker)
+        {
+            notice = L["RichText.Media.Disabled"];
+            StateHasChanged();
+            return;
+        }
+
+        notice = null;
+        var chosen = await picker.PickAsync(new MediaPickerRequest { Locale = ContentLocale }, life.Token);
+        if (chosen is [var item, ..] && editor is not null)
+        {
+            await RememberAsync(item);
+            await editor.InvokeAsync<KeptNode?>("insertMedia", item.Id.ToString("D"));
+        }
+
+        await FocusAfterDialogAsync();
+    }
+
+    private async Task RememberAsync(MediaPickerItem item)
+    {
+        asked.Add($"media:{item.Id:D}");
+        var source = item.ThumbnailUrl ?? (item.MimeType.StartsWith("image/", StringComparison.Ordinal) ? item.Url : null);
+        var reader = Services.GetService<IManagementApi>() is { } api ? new RichTextReferences(api, Services.GetService<AdminConfiguration>()) : null;
+        await ShowMediaAsync(item.Id, new MediaPreview(MediaPreview.Ready, source is null ? null : reader?.Resolve(source) ?? source, item.FileName, item.Alt));
+    }
+
+    private async Task OpenMediaAsync(OpenKept kept)
+    {
+        await FindMediaPickerAsync();
+        (mediaKept, mediaOpen, notice) = (kept, true, null);
+        StateHasChanged();
+    }
+
+    private async Task SetMediaAltAsync(string? alt)
+    {
+        if (editor is not null && mediaKept is not null)
+        {
+            var attrs = (JsonObject)mediaKept.Attrs.DeepClone();
+            if (alt is null)
+            {
+                attrs.Remove("alt");
+            }
+            else
+            {
+                attrs["alt"] = alt;
+            }
+
+            await editor.InvokeAsync<bool>("updateKept", attrs.ToJsonString());
+        }
+
+        mediaOpen = false;
+    }
+
+    // Another asset in place of the node's; the alternative text and the title of the old one go with it.
+    private async Task ReplaceMediaAsync()
+    {
+        if (editor is null || mediaKept is null || await FindMediaPickerAsync() is not { } picker)
+        {
+            return;
+        }
+
+        var selected = MediaIdOf(mediaKept) is { } current ? new[] { current } : [];
+        var chosen = await picker.PickAsync(new MediaPickerRequest { Locale = ContentLocale, Selected = selected }, life.Token);
+        if (chosen is not [var item, ..] || editor is null)
+        {
+            return;
+        }
+
+        await RememberAsync(item);
+        var attrs = new JsonObject { ["mediaId"] = item.Id.ToString("D") };
+        if (await editor.InvokeAsync<bool>("updateKept", attrs.ToJsonString()))
+        {
+            mediaKept = mediaKept with { Attrs = attrs };
+        }
+    }
+
+    private async Task RemoveKeptAsync()
+    {
+        if (editor is not null)
+        {
+            await editor.InvokeAsync<bool>("removeKept");
+        }
+
+        (mediaOpen, blockOpen) = (false, false);
+    }
+
+    // The block button opens the selected inline block, or a new one: of the field's one type at once, or of a type chosen first.
+    private async Task BlockAsync()
+    {
+        if (editor is null || ReadOnly || !HasBlocks)
+        {
+            return;
+        }
+
+        if (await KeptAsync() is { Kind: BlockKind } kept)
+        {
+            OpenBlock(kept);
+            return;
+        }
+
+        schema ??= await ReadSchemaAsync();
+        blockKept = null;
+        notice = null;
+        if (BlockTypes.Count == 1)
+        {
+            await InsertBlockAsync(BlockTypes[0]);
+            return;
+        }
+
+        blockOpen = BlockTypes.Count > 0;
+        notice = blockOpen ? null : L["RichText.Block.NoTypes"].Value;
+        StateHasChanged();
+    }
+
+    private void OpenBlock(OpenKept kept)
+    {
+        (blockKept, blockOpen, notice) = (kept, true, null);
+        StateHasChanged();
+    }
+
+    // A new block has a fresh id, which the module makes, and the defaults of its fields, as A-26 makes a block of a blocks field.
+    private async Task InsertBlockAsync(SchemaTypeDescription type)
+    {
+        if (editor is null)
+        {
+            return;
+        }
+
+        var data = new JsonObject();
+        foreach (var field in type.Fields.Where(field => !field.Hidden && !field.ReadOnly && field.DefaultValue is not null))
+        {
+            data[field.Name] = field.DefaultValue!.DeepClone();
+        }
+
+        blockKept = OpenKept.From(await editor.InvokeAsync<KeptNode?>("insertBlock", type.Name, data.ToJsonString()));
+        blockOpen = blockKept is not null;
+        StateHasChanged();
+    }
+
+    private async Task SetBlockDataAsync(JsonObject data)
+    {
+        if (editor is null || blockKept is null)
+        {
+            return;
+        }
+
+        var attrs = (JsonObject)blockKept.Attrs.DeepClone();
+        attrs["data"] = data.DeepClone();
+        if (await editor.InvokeAsync<bool>("updateKept", attrs.ToJsonString()))
+        {
+            blockKept = blockKept with { Attrs = attrs };
+        }
+    }
+
+    private async Task DuplicateBlockAsync()
+    {
+        if (editor is not null && OpenKept.From(await editor.InvokeAsync<KeptNode?>("duplicateKept")) is { } copy)
+        {
+            blockKept = copy;
+            notice = L["RichText.Block.Duplicated"];
+        }
     }
 
     private async Task OpenLinkAsync()
@@ -463,9 +1055,18 @@
         }
     }
 
-    internal sealed record EditorOptions(bool Editable, string TextboxId, string LabelledBy, string? DescribedBy, string? Lang, string Dir, bool Invalid, KeptLabels Labels);
+    internal sealed record EditorOptions(bool Editable, string TextboxId, string LabelledBy, string? DescribedBy, string? Lang, string Dir, bool Invalid, KeptLabels Labels, IReadOnlyDictionary<string, string> BlockLabels);
 
     internal sealed record PendingChange(bool Changed, string? Value);
 
-    internal sealed record KeptLabels(string Media, string InlineBlock);
+    internal sealed record KeptLabels(string Media, string InlineBlock, string MediaMissing, string MediaUnavailable, string EntryLink);
+
+    // A media or inline block as the module describes it: its kind, its attributes as JSON and its path in the document.
+    internal sealed record KeptNode(string Kind, string Attrs, string Path);
+
+    internal sealed record OpenKept(string Kind, JsonObject Attrs, string Path)
+    {
+        public static OpenKept? From(KeptNode? node) =>
+            node is null ? null : new OpenKept(node.Kind, JsonNode.Parse(node.Attrs) as JsonObject ?? [], node.Path);
+    }
 }

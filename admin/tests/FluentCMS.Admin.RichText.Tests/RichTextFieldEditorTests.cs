@@ -38,10 +38,10 @@ public sealed class RichTextFieldEditorTests : BunitContext
         var toolbar = cut.Find("[role=toolbar]");
         toolbar.GetAttribute("aria-label").ShouldBe("Formatting of Body");
         var buttons = toolbar.QuerySelectorAll("button");
-        buttons.Length.ShouldBe(RichTextFieldEditor.Buttons.Length);
+        buttons.Length.ShouldBe(RichTextFieldEditor.Buttons.Length - 1);
         buttons.Select(button => button.GetAttribute("aria-label")).ShouldBe(
             ["Bold", "Italic", "Underline", "Strikethrough", "Code", "Paragraph", "Heading 1", "Heading 2", "Heading 3", "Bulleted list",
-                "Numbered list", "Quote", "Code block", "Horizontal line", "Link", "Undo", "Redo"]);
+                "Numbered list", "Quote", "Code block", "Horizontal line", "Link", "Link to an entry", "Embed media", "Undo", "Redo"]);
         buttons.ShouldAllBe(button => !string.IsNullOrEmpty(button.GetAttribute("aria-keyshortcuts")));
         buttons[0].GetAttribute("title").ShouldBe("Bold (Ctrl+B)");
         buttons[0].GetAttribute("aria-pressed").ShouldBe("false");
@@ -55,7 +55,13 @@ public sealed class RichTextFieldEditorTests : BunitContext
 
         foreach (var name in RichTextFieldEditor.Buttons.Select(button => button.Resource).Concat(
             ["RichText.Toolbar.Label", "RichText.Toolbar.Shortcut", "RichText.Toolbar.Hint", "RichText.Link.Address", "RichText.Link.Help", "RichText.Link.Apply",
-                "RichText.Link.Remove", "RichText.Link.Cancel", "RichText.Link.Unsafe", "RichText.Kept.Media", "RichText.Kept.InlineBlock", "RichText.Editor.Unavailable"]))
+                "RichText.Link.Remove", "RichText.Link.Cancel", "RichText.Link.Unsafe", "RichText.Kept.Media", "RichText.Kept.InlineBlock", "RichText.Editor.Unavailable",
+                "RichText.EntryLink.Label", "RichText.EntryLink.Type", "RichText.EntryLink.Choose", "RichText.EntryLink.Remove", "RichText.EntryLink.NoTypes",
+                "RichText.EntryLink.Current", "RichText.EntryLink.Title", "RichText.EntryLink.Missing", "RichText.EntryLink.Unreadable", "RichText.EntryLink.Unknown",
+                "RichText.Media.Title", "RichText.Media.Alt", "RichText.Media.AltHelp", "RichText.Media.AltHelpOwn", "RichText.Media.Done", "RichText.Media.Replace",
+                "RichText.Media.Remove", "RichText.Media.Cancel", "RichText.Media.Missing", "RichText.Media.Unavailable", "RichText.Media.Disabled",
+                "RichText.Block.Type", "RichText.Block.Insert", "RichText.Block.Cancel", "RichText.Block.Done", "RichText.Block.Duplicate", "RichText.Block.Remove",
+                "RichText.Block.InsertTitle", "RichText.Block.Title", "RichText.Block.Unknown", "RichText.Block.NoForm", "RichText.Block.NoTypes", "RichText.Block.Duplicated"]))
         {
             localizer[name].ResourceNotFound.ShouldBeFalse(name);
         }

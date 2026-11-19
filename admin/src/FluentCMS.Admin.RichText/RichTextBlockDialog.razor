@@ -1,0 +1,188 @@
+@* The dialog of an inline block of rich text (A-25): the choice of a type for a new block, then the block's form, A-26's
+   generated form of one block (BlockFormRegistration), whose changes reach the node as they are made, as a block of a blocks
+   field changes. Duplicate copies the block with fresh ids; Remove takes it out. *@
+@namespace FluentCMS.Admin.RichText
+@inject IStringLocalizer<RichTextResources> L
+
+<CmsDialog Title="@Title" Open="@Open" OpenChanged="@(open => open ? Task.CompletedTask : OnClose.InvokeAsync())" OnClosed="@OnClosed">
+    <ChildContent>
+        @if (Open)
+        {
+            <div class="rich-text-block-dialog">
+                @if (Choosing)
+                {
+                    <CmsSelect Label="@L["RichText.Block.Type"]"
+                               Options="@([.. Types.Select(type => new CmsOption(type.Name, RichTextReferences.TypeLabel(type)))])"
+                               Value="@chosen"
+                               ValueChanged="@(value => chosen = value)" />
+                }
+                else if (BlockType is null)
+                {
+                    <p>@L["RichText.Block.Unknown", BlockName ?? ""]</p>
+                }
+                else if (Form is null)
+                {
+                    <p>@L["RichText.Block.NoForm"]</p>
+                }
+                else
+                {
+                    @FormFragment
+                }
+            </div>
+        }
+    </ChildContent>
+    <Actions>
+        @if (Open)
+        {
+            @if (Choosing)
+            {
+                <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(chosen is null)" OnClick="ChooseAsync">@L["RichText.Block.Insert"]</CmsButton>
+                <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="@OnClose">@L["RichText.Block.Cancel"]</CmsButton>
+            }
+            else
+            {
+                <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="DoneAsync">@L["RichText.Block.Done"]</CmsButton>
+                @if (BlockType is not null && !ReadOnly)
+                {
+                    <CmsButton OnClick="DuplicateAsync">@L["RichText.Block.Duplicate"]</CmsButton>
+                }
+                @if (!ReadOnly)
+                {
+                    <CmsButton OnClick="@OnRemove">@L["RichText.Block.Remove"]</CmsButton>
+                }
+            }
+        }
+    </Actions>
+</CmsDialog>
+
+@code {
+    private BlockFormBase? form;
+    private string? chosen;
+    private bool wasOpen;
+    private bool wasEditing;
+    private bool focusForm;
+
+    [Parameter]
+    public bool Open { get; set; }
+
+    // The types a new block may take, from the field's blocks; the dialog asks for one while no block is open in it.
+    [Parameter]
+    public IReadOnlyList<SchemaTypeDescription> Types { get; set; } = [];
+
+    // The open block's type, or null for a type the schema does not have.
+    [Parameter]
+    public SchemaTypeDescription? BlockType { get; set; }
+
+    [Parameter]
+    public string? BlockName { get; set; }
+
+    // Whether a block is open in the dialog, rather than a type to choose for a new one.
+    [Parameter]
+    public bool Editing { get; set; }
+
+    [Parameter]
+    public BlockFormRegistration? Form { get; set; }
+
+    [Parameter]
+    public JsonObject? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<JsonObject> ValueChanged { get; set; }
+
+    [Parameter]
+    public string Path { get; set; } = "";
+
+    [Parameter]
+    public IReadOnlyList<ApiProblemError> Errors { get; set; } = [];
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    [Parameter]
+    public string? ContentLocale { get; set; }
+
+    [Parameter]
+    public string TextDirection { get; set; } = FieldEditorBase.LeftToRight;
+
+    [Parameter]
+    public EventCallback<SchemaTypeDescription> OnChoose { get; set; }
+
+    [Parameter]
+    public EventCallback OnDuplicate { get; set; }
+
+    [Parameter]
+    public EventCallback OnRemove { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback OnClosed { get; set; }
+
+    private bool Choosing => !Editing;
+
+    private string Title => Choosing
+        ? L["RichText.Block.InsertTitle"]
+        : L["RichText.Block.Title", BlockType is null ? BlockName ?? "" : RichTextReferences.TypeLabel(BlockType)];
+
+    // The admin's form of one block, by the type BlockFormRegistration names, which is annotated for the trimmer.
+    private RenderFragment FormFragment => builder =>
+    {
+        builder.OpenComponent(0, Form!.Form);
+        builder.AddComponentParameter(1, nameof(BlockFormBase.BlockType), BlockType);
+        builder.AddComponentParameter(2, nameof(BlockFormBase.Value), Value);
+        builder.AddComponentParameter(3, nameof(BlockFormBase.ValueChanged), ValueChanged);
+        builder.AddComponentParameter(4, nameof(BlockFormBase.Path), Path);
+        builder.AddComponentParameter(5, nameof(BlockFormBase.Errors), Errors);
+        builder.AddComponentParameter(6, nameof(BlockFormBase.ReadOnly), ReadOnly);
+        builder.AddComponentParameter(7, nameof(BlockFormBase.ContentLocale), ContentLocale);
+        builder.AddComponentParameter(8, nameof(BlockFormBase.TextDirection), TextDirection);
+        builder.AddComponentReferenceCapture(9, instance => form = instance as BlockFormBase);
+        builder.CloseComponent();
+    };
+
+    // The changes the block's field editors hold back, which reach the node through ValueChanged.
+    public ValueTask FlushAsync() => form?.FlushAsync() ?? ValueTask.CompletedTask;
+
+    protected override void OnParametersSet()
+    {
+        if (Open && !wasOpen)
+        {
+            chosen = Types.Count > 0 ? Types[0].Name : null;
+        }
+
+        // The type's select is gone once a new block is in, so focus goes to the block's form.
+        focusForm |= Open && wasOpen && Editing && !wasEditing;
+        wasOpen = Open;
+        wasEditing = Editing;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusForm && form is { } open)
+        {
+            focusForm = false;
+            await open.FocusAsync();
+        }
+    }
+
+    private async Task ChooseAsync()
+    {
+        if (Types.FirstOrDefault(type => type.Name == chosen) is { } type)
+        {
+            await OnChoose.InvokeAsync(type);
+        }
+    }
+
+    private async Task DoneAsync()
+    {
+        await FlushAsync();
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task DuplicateAsync()
+    {
+        await FlushAsync();
+        await OnDuplicate.InvokeAsync();
+    }
+}

@@ -13,6 +13,8 @@ namespace FluentCMS.Admin.EndToEnd;
 // The editor's module is fetched with the first form that has a rich text field, not with the start page.
 public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
 {
+    private const string Png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
     private const string Pasted =
         """<p>Pasted <span style="color:red">red</span> <a href="javascript:alert(1)">bad</a><img src="x.png"> <a href="https://example.org/">good</a></p><table><tr><td>cell</td></tr></table>""";
 
@@ -120,6 +122,120 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
 
         save.Status.ShouldBe(200);
         JsonNode.DeepEquals(JsonNode.Parse(save.Request.PostData!)!["body"], written).ShouldBeTrue();
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    // A-25: an entry link chosen with the relation picker and an image embedded with the media picker, by the keyboard, with
+    // the image's alternative text set in its dialog; the server takes the body, reads it back unchanged, and lists the article
+    // as a use of the image, which it extracted from the body.
+    [Fact]
+    public async Task TheEditorLinksAnEntryAndEmbedsAnImageAndTheServerKeepsAndExtractsThem()
+    {
+        var mark = "r" + Guid.NewGuid().ToString("N")[..8];
+        var browser = await OpenBrowserAsync();
+        var tab = await browser.NewTabAsync();
+        await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article/new").AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        var title = $"{mark} links and embeds";
+        await tab.Page.Locator("[data-field='title'] input").FillAsync(title);
+        var body = tab.Page.Locator("[data-field='body'] [role=textbox]");
+        await Expect(body).ToBeVisibleAsync();
+        var keyboard = tab.Page.Keyboard;
+        await body.ClickAsync();
+        await keyboard.TypeAsync("Read ");
+
+        // The entry link: its panel by the shortcut, the type, and the relation picker in a dialog.
+        await keyboard.PressAsync("Control+Alt+k");
+        var types = tab.Page.GetByLabel(Repository.RichTextText("RichText.EntryLink.Type"), new PageGetByLabelOptions { Exact = true });
+        await Expect(types).ToBeFocusedAsync();
+        await types.SelectOptionAsync("tag");
+        await keyboard.PressAsync("Tab");
+        var choose = tab.Page.Locator(".rich-text-link fluent-button").Filter(Exactly(Repository.RichTextText("RichText.EntryLink.Choose")));
+        await Expect(choose).ToBeFocusedAsync();
+        await keyboard.PressAsync("Enter");
+        var relations = tab.Page.Locator("fluent-dialog[aria-label=\"Choose an entry: Tag\"]");
+        var dotnet = relations.Locator(".cms-data-grid tbody tr").Filter(new LocatorFilterOptions { HasText = "dotnet" });
+        await Expect(dotnet).ToBeVisibleAsync();
+        await dotnet.Locator("input[type=checkbox]").CheckAsync();
+        await relations.Locator("fluent-button").Filter(Exactly(Repository.AdminText("Content.Relation.Choose"))).ClickAsync();
+        await Expect(relations).ToBeHiddenAsync();
+        var link = body.Locator(".rich-text-entry-link");
+        await Expect(link).ToHaveTextAsync("dotnet");
+        await Expect(link.GetByTitle("Tag: dotnet", new LocatorGetByTitleOptions { Exact = true })).ToHaveTextAsync("dotnet");
+        await FocusStaysAsync(body);
+
+        // The image: the media picker by the shortcut in an empty paragraph, an upload chosen, its preview in the text.
+        await keyboard.PressAsync("End");
+        await keyboard.PressAsync("Enter");
+        await keyboard.PressAsync("Control+Alt+m");
+        var media = tab.Page.Locator($"fluent-dialog[aria-label=\"{Repository.MediaText("Media.Picker.TitleOne")}\"]");
+        await media.GetByLabel(Repository.MediaText("Media.Search.Label"), new LocatorGetByLabelOptions { Exact = true }).FillAsync(mark);
+        await media.Locator("fluent-button").Filter(Exactly(Repository.MediaText("Media.Search.Submit"))).ClickAsync();
+        await media.Locator("[data-media-upload] input[type=file]").SetInputFilesAsync(new FilePayload { Name = $"{mark}.png", MimeType = "image/png", Buffer = Convert.FromBase64String(Png) });
+        await Expect(media.Locator(".media-upload-done")).ToHaveCountAsync(1);
+        await media.Locator(".media-tile-open").Filter(new LocatorFilterOptions { Has = tab.Page.Locator(".media-tile-name", new PageLocatorOptions { HasTextString = $"{mark}.png" }) }).ClickAsync();
+        await Expect(media).ToBeHiddenAsync();
+        var embed = body.Locator(".rich-text-media");
+        await Expect(embed).ToHaveAttributeAsync("aria-label", $"{Repository.RichTextText("RichText.Kept.Media")}: {mark}.png");
+        await Expect(embed.Locator("img")).Not.ToHaveJSPropertyAsync("naturalWidth", 0);
+        await Expect(embed).ToHaveClassAsync(new Regex("ProseMirror-selectednode"));
+        await FocusStaysAsync(body);
+
+        // Its alternative text, in its dialog by Enter on the selected embed.
+        await keyboard.PressAsync("Enter");
+        var dialog = tab.Page.Locator($"fluent-dialog[aria-label=\"{Repository.RichTextText("RichText.Media.Title")}\"]");
+        var alt = dialog.GetByLabel(Repository.RichTextText("RichText.Media.Alt"), new LocatorGetByLabelOptions { Exact = true });
+        await Expect(alt).ToBeVisibleAsync();
+        await alt.FocusAsync();
+        await Expect(alt).ToBeFocusedAsync();
+        await keyboard.TypeAsync("A small square");
+        await keyboard.PressAsync("Tab");
+        await Expect(dialog.Locator("fluent-button").Filter(Exactly(Repository.RichTextText("RichText.Media.Done")))).ToBeFocusedAsync();
+        await keyboard.PressAsync("Enter");
+        await Expect(dialog).ToBeHiddenAsync();
+        await Expect(embed).ToHaveAttributeAsync("aria-label", $"{Repository.RichTextText("RichText.Kept.Media")}: A small square");
+        await FocusStaysAsync(body);
+
+        var create = await SaveAsync(tab, "POST", tab.ManagementUrl("content/article"));
+
+        create.Status.ShouldBe(201);
+        var written = JsonNode.Parse(create.Request.PostData!)!["body"]!;
+        var blocks = written["content"]!.AsArray();
+        blocks.Count.ShouldBe(2);
+        var linked = blocks[0]!["content"]!.AsArray();
+        linked[0]!.ToJsonString().ShouldBe("""{"type":"text","text":"Read "}""");
+        linked[1]!["text"]!.GetValue<string>().ShouldBe("dotnet");
+        var entryLink = linked[1]!["marks"]!.AsArray().Single()!;
+        entryLink["type"]!.GetValue<string>().ShouldBe("entryLink");
+        entryLink["attrs"]!["entryType"]!.GetValue<string>().ShouldBe("tag");
+        Guid.TryParse(entryLink["attrs"]!["entryId"]!.GetValue<string>(), out _).ShouldBeTrue();
+        entryLink["attrs"]!.AsObject().Count.ShouldBe(2);
+        blocks[1]!["type"]!.GetValue<string>().ShouldBe("media");
+        blocks[1]!["attrs"]!["alt"]!.GetValue<string>().ShouldBe("A small square");
+        Guid.TryParse(blocks[1]!["attrs"]!["mediaId"]!.GetValue<string>(), out _).ShouldBeTrue();
+        blocks[1]!["attrs"]!.AsObject().Count.ShouldBe(2);
+
+        // Read back: the reloaded form shows both and the next save sends the body unchanged.
+        var location = await create.HeaderValueAsync("location");
+        var id = Guid.Parse(location.ShouldNotBeNull()[(location.LastIndexOf('/') + 1)..].Split('?')[0]);
+        await Expect(tab.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}\\?locale=en$"), new PageAssertionsToHaveURLOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        await tab.Page.ReloadAsync();
+        await Expect(body.Locator(".rich-text-entry-link").GetByTitle("Tag: dotnet", new LocatorGetByTitleOptions { Exact = true })).ToHaveTextAsync("dotnet");
+        await Expect(body.Locator(".rich-text-media img")).Not.ToHaveJSPropertyAsync("naturalWidth", 0);
+        await tab.Page.Locator("[data-field='title'] input").FillAsync($"{title} again");
+
+        var save = await SaveAsync(tab, "PUT", tab.ManagementUrl($"content/article/{id:D}"));
+
+        save.Status.ShouldBe(200);
+        JsonNode.DeepEquals(JsonNode.Parse(save.Request.PostData!)!["body"], written).ShouldBeTrue();
+
+        // The server extracted the image from the body: the library lists the article as a use of it.
+        await tab.Page.GotoAsync(new Uri(Host.Admin, "media").AbsoluteUri);
+        await tab.Page.GetByLabel(Repository.MediaText("Media.Search.Label"), new PageGetByLabelOptions { Exact = true }).FillAsync(mark);
+        await tab.Page.Locator("fluent-button").Filter(Exactly(Repository.MediaText("Media.Search.Submit"))).First.ClickAsync();
+        await Expect(tab.Page.Locator(".media-tile-name")).ToHaveTextAsync([$"{mark}.png"]);
+        await tab.Page.Locator(".media-tile-open").ClickAsync();
+        await Expect(tab.Page.Locator(".cms-drawer .media-panel-usage a")).ToHaveTextAsync([$"{title} again"]);
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
@@ -252,6 +368,17 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
         after.ShouldNotContain("foreign");
         after.ShouldContain("someone");
     }
+
+    // Focus is in the text once a dialog has closed, and stays there after the component library gives it back to the
+    // dialog's opener on a timer of 25 ms; a timer of the page set now runs after the library's.
+    private static async Task FocusStaysAsync(ILocator text)
+    {
+        await Expect(text).ToBeFocusedAsync();
+        await text.Page.EvaluateAsync("() => new Promise(resolve => setTimeout(resolve, 150))");
+        await Expect(text).ToBeFocusedAsync();
+    }
+
+    private static LocatorFilterOptions Exactly(string text) => new() { HasTextRegex = new Regex($@"^\s*{Regex.Escape(text)}\s*$") };
 
     // A key that moves the caret, and the wait until ProseMirror has taken the browser's new selection.
     private static async Task MoveAsync(IPage page, string key)
