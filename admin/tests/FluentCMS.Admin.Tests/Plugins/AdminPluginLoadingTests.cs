@@ -160,6 +160,24 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
         app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"), TimeSpan.FromSeconds(10));
         var history = Services.GetRequiredService<BunitNavigationManager>().History;
         history.Where(entry => entry.Options.ReplaceHistoryEntry).ShouldHaveSingleItem().Uri.ShouldEndWith("reviews");
+        Document.Invocations.Count(call => call.Identifier == "focusHeading").ShouldBe(0);
+        loader.Loads.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task APageAnsweredNoAccessIsShownWhenALocaleWhoseAccessGrantsItIsChosenWhileTheShellStaysReady()
+    {
+        Management.AddLocale(MainSite, "fr", 1);
+        Management.Grant(MainSite, ["schema.read", Permission]);
+        Management.LocaleAccess[(MainSite, "fr")] = Management.Access[MainSite];
+        var app = Load(enabled: true, route: "reviews", permitted: false);
+        app.WaitForAssertion(() => app.Find("main h1").TextContent.ShouldBe("No access"));
+
+        await app.InvokeAsync(() => Context.UseLocaleAsync("fr"));
+
+        app.WaitForAssertion(() => app.Find("main .cms-card p").TextContent.ShouldBe("0"), TimeSpan.FromSeconds(10));
+        Context.Status.ShouldBe(ShellStatus.Ready);
+        Document.Invocations.Count(call => call.Identifier == "focusHeading").ShouldBe(0);
         loader.Loads.ShouldBe(1);
     }
 
@@ -170,7 +188,7 @@ public sealed class AdminPluginLoadingTests : AdminTestContext
         Management.Grant(Shop, ["schema.read", Permission]);
         Management.Plugins[Shop] = [Plugin("reviews", enabled: true)];
         var app = Load(enabled: false);
-        var held = Management.HoldSite[Shop] = new TaskCompletionSource();
+        var held = Management.HoldSite[Shop] = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         Task switching = null!;
         await app.InvokeAsync(() => { switching = Context.SwitchSiteAsync(Shop); });
         await app.InvokeAsync(() => Navigation.NavigateTo("reviews"));
