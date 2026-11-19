@@ -13,6 +13,8 @@ internal readonly record struct AiCallRefusal(int Limit, TimeSpan RetryAfter, bo
 // The calls of each principal in each site, counted on this instance, as core counts its rate limits (spec 4.10): a
 // bucket holds the limit and fills again over a minute, kept as the time it is next full, so a quiet principal may send
 // the limit at once and then one call per minute divided by the limit. A call that is refused takes nothing from a bucket.
+// Check asks without taking, so that a caller over the limit is refused before any work is done for it, and Take takes
+// the call when it is about to be sent.
 internal sealed class AiCallLimits(TimeProvider time)
 {
     public static readonly TimeSpan Window = TimeSpan.FromMinutes(1);
@@ -23,11 +25,15 @@ internal sealed class AiCallLimits(TimeProvider time)
     private readonly ConcurrentDictionary<(Guid Site, Principal Principal), Bucket> _calls = new();
     private long _swept;
 
-    public AiCallRefusal? Take(SiteId site, Principal principal, int limit)
+    public AiCallRefusal? Check(SiteId site, Principal principal, int limit) => Take(site, principal, limit, take: false);
+
+    public AiCallRefusal? Take(SiteId site, Principal principal, int limit) => Take(site, principal, limit, take: true);
+
+    private AiCallRefusal? Take(SiteId site, Principal principal, int limit, bool take)
     {
         var now = time.GetUtcNow().UtcTicks;
         Sweep(now);
-        var wait = _calls.GetOrAdd((site.Value, principal), static (_, start) => new Bucket(start), now).Take(now, Math.Max(1, Window.Ticks / limit), out var report);
+        var wait = _calls.GetOrAdd((site.Value, principal), static (_, start) => new Bucket(start), now).Take(now, Math.Max(1, Window.Ticks / limit), take, out var report);
         return wait > 0 ? new AiCallRefusal(limit, TimeSpan.FromTicks(wait), report) : null;
     }
 
@@ -59,7 +65,7 @@ internal sealed class AiCallLimits(TimeProvider time)
 
         // Zero when the call is let through, and otherwise the ticks until the next one is. Report is true for the first
         // refusal of a window, so that a caller in a loop is logged once a minute and not on every call.
-        public long Take(long now, long interval, out bool report)
+        public long Take(long now, long interval, bool take, out bool report)
         {
             lock (_gate)
             {
@@ -69,7 +75,11 @@ internal sealed class AiCallLimits(TimeProvider time)
                 var wait = start + interval - now - Window.Ticks;
                 if (wait <= 0)
                 {
-                    _full = start + interval;
+                    if (take)
+                    {
+                        _full = start + interval;
+                    }
+
                     return 0;
                 }
 

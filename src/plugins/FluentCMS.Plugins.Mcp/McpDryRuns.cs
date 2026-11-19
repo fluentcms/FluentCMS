@@ -20,7 +20,7 @@ internal sealed record McpReach(ContentAccess Access, IReadOnlyList<SchemaType> 
     public string Whole(string type) => Own.Contains(type) ? McpContentTools.Name(type, McpContentTools.Get) : McpContentTools.Query;
 }
 
-// The dry runs of spec 5.4, in front of {type}_delete and bulk. A call is a dry run unless it says dryRun false: it
+// The dry runs of spec 5.4, in front of {type}_delete, unpublish and bulk. A call is a dry run unless it says dryRun false: it
 // changes nothing and answers the plan, which is the entries the call would touch, the references that would break and
 // a confirmation token. The run needs that token, and the plan is read again before it: a token that is missing,
 // expired, of another call, principal, client or site, or of a plan that has changed since is refused and nothing runs.
@@ -73,6 +73,38 @@ internal sealed class McpDryRuns(
 
         await content.DeleteAsync(type.Name, id, cancellationToken);
         return McpArguments.Result(new JsonObject { ["type"] = type.Name, ["id"] = id, ["deleted"] = true });
+    }
+
+    // An unpublish is of one locale, so the entry counts when it has that locale, as in a bulk unpublish.
+    public async Task<McpToolResult> UnpublishAsync(McpToolCall call, SchemaType type, McpReach reach, CancellationToken cancellationToken)
+    {
+        var arguments = call.Arguments;
+        var id = McpArguments.Id(arguments);
+        var locale = McpArguments.Text(arguments, "locale");
+        var (dryRun, token) = Run(arguments);
+        if (!dryRun && token is null)
+        {
+            return Refusal(call, McpConfirmation.Missing)!;
+        }
+
+        var entries = await EntriesAsync(type, reach, new FieldFilter("id", FilterOperator.Equal, id), locale, LocaleFallback.None, max: 1, cancellationToken);
+        if (entries.Count == 0)
+        {
+            throw new EntryNotFoundException(type.Name, id);
+        }
+
+        var plan = PlanOf(call, entries);
+        if (dryRun)
+        {
+            return await DescribeAsync(plan, type, McpContentTools.Unpublish, entries, notFound: [], reach, cancellationToken);
+        }
+
+        if (Refusal(call, confirmations.Check(token, plan)) is { } refused)
+        {
+            return refused;
+        }
+
+        return McpArguments.Result(surface.ToJson(await content.UnpublishAsync(type.Name, id, new LocaleOptions { Locale = locale }, cancellationToken)));
     }
 
     // The entries are named by ids or by a filter, and never more than the limit the call sets, which the server caps. A

@@ -44,7 +44,8 @@ public sealed class AiAssistPlugin : IPlugin
             .AddErrorCode(AiErrorCodes.ProviderFailed, 502, "AI provider failed")
             .AddErrorCode(AiErrorCodes.AnswerUnusable, 502, "AI answer not usable")
             .AddErrorCode(AiErrorCodes.ImageNotAvailable, 422, "Image not available")
-            .AddErrorCode(AiErrorCodes.ProviderRemoved, 409, "AI provider removed");
+            .AddErrorCode(AiErrorCodes.ProviderRemoved, 409, "AI provider removed")
+            .AddErrorCode(AiErrorCodes.BudgetExceeded, 429, "AI token budget used");
     }
 
     public void Configure(IPluginAppBuilder app)
@@ -54,8 +55,8 @@ public sealed class AiAssistPlugin : IPlugin
         app.MapManagement(Prefix).MapAiEndpoints();
     }
 
-    // A value that cannot be used stops the host, and so does a section of a provider the plugin no longer has, such as
-    // FluentCms:Ai:Anthropic, so that its key is not left there unread.
+    // A value that cannot be used stops the host, as does a key in the configuration that names no endpoint, and so does a
+    // section of a provider the plugin no longer has, such as FluentCms:Ai:Anthropic, so that its key is not left there unread.
     internal static void AddOptions(IServiceCollection services) =>
         services.AddOptions<AiOptions>()
             .BindConfiguration(AiOptions.Section)
@@ -65,6 +66,9 @@ public sealed class AiAssistPlugin : IPlugin
             .Validate<IConfiguration>(
                 (_, configuration) => !AiProviders.AreNamedIn(configuration),
                 $"{AiOptions.Section}: Anthropic and Ollama are no longer providers of the plugin ({AiErrorCodes.ProviderRemoved}), so their sections are refused. {AiProviders.Instead}")
+            .Validate<IConfiguration>(
+                (_, configuration) => AiProviderEndpoints.AreConfigured(configuration),
+                $"{AiOptions.Section}: the ApiKey of AzureOpenAi or OpenAiCompatible goes with the Endpoint it is sent to, and an Endpoint is an absolute http or https URL with no user, query or fragment.")
             .ValidateOnStart();
 }
 

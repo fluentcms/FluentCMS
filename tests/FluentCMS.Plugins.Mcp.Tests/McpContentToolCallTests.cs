@@ -235,7 +235,8 @@ public sealed class McpContentToolCallTests(McpToolsFixture fixture) : IClassFix
         var discarded = await OkAsync(client, "post_discard_draft", new { id });
         var scheduled = await OkAsync(client, McpContentTools.Schedule, new { type = "post", id, action = "unpublish", at = "2999-03-01T09:00:00Z" });
         var badTime = await CallAsync(client, McpContentTools.Schedule, new { type = "post", id, action = "unpublish", at = "tomorrow" });
-        var unpublished = await OkAsync(client, McpContentTools.Unpublish, new { type = "post", id });
+        var unpublishPlan = await OkAsync(client, McpContentTools.Unpublish, new { type = "post", id });
+        var unpublished = await OkAsync(client, McpContentTools.Unpublish, Confirmed(new { type = "post", id }, TokenOf(unpublishPlan)));
 
         published.GetProperty("entry").GetProperty("status").GetString().ShouldBe("published");
         published.GetProperty("warnings").GetArrayLength().ShouldBe(0);

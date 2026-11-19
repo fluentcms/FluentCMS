@@ -57,6 +57,12 @@ internal sealed partial class AiUsageService(
         }
     }
 
+    // The tokens of the site's calls since a time, by the index of site and time.
+    public async Task<long> TokensSinceAsync(Guid site, DateTimeOffset since, CancellationToken cancellationToken) =>
+        await database.Set<AiUsage>().AsNoTracking()
+            .Where(usage => usage.SiteId == site && usage.CreatedAt >= since)
+            .SumAsync(usage => usage.PromptTokens + usage.CompletionTokens, cancellationToken);
+
     public async Task<AiUsagePage> QueryAsync(AiUsageQuery query, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);

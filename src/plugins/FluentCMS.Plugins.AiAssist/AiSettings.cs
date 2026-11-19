@@ -44,6 +44,11 @@ public sealed class AiSettings : IValidatableObject
     [Range(1, 600)]
     public int CallsPerMinute { get; set; } = 20;
 
+    // The prompt and completion tokens the site may use in a day, from midnight UTC, as its usage rows count them. 0, the
+    // default, sets no budget.
+    [Range(0, int.MaxValue)]
+    public int DailyTokenBudget { get; set; }
+
     // The opt-in: the fields that take actions, by content type.
     public Dictionary<string, List<string>> Fields { get; set; } = [];
 

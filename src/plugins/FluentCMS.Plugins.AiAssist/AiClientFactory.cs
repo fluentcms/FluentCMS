@@ -59,16 +59,17 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
         var key = settings.ApiKey;
         if (string.IsNullOrWhiteSpace(key))
         {
-            // The configuration's key for OpenAI is the operator's account there, so it goes to OpenAI's own endpoint and to
-            // no other that a site names.
-            var ownEndpointOnly = provider == AiProvider.OpenAi && endpoint is not null;
-            key = ownEndpointOnly ? null : configuration[$"{AiOptions.Section}:{provider}:ApiKey"];
+            // The configuration's key of a provider is the operator's account at one endpoint, so it goes to that endpoint
+            // and to no other that a site names, even an allowed one.
+            var configured = AiProviderEndpoints.Configured(configuration, provider);
+            var ownEndpoint = configured is not null && AiProviderEndpoints.Canonical(configured) == AiProviderEndpoints.Canonical(endpoint ?? OpenAiEndpoint);
+            key = ownEndpoint ? configuration[$"{AiOptions.Section}:{provider}:ApiKey"] : null;
             if (string.IsNullOrWhiteSpace(key))
             {
                 // An OpenAI-compatible endpoint may take no key, as Ollama's does.
-                key = provider == AiProvider.OpenAiCompatible ? null : throw NotConfigured(ownEndpointOnly
-                    ? $"hold an API key, and the key of {AiOptions.Section}:{provider}:ApiKey is sent to the provider's own endpoint only"
-                    : $"hold an API key, and {AiOptions.Section}:{provider}:ApiKey holds none");
+                key = provider == AiProvider.OpenAiCompatible ? null : throw NotConfigured(ownEndpoint || configured is null
+                    ? $"hold an API key, and {AiOptions.Section}:{provider}:ApiKey holds none"
+                    : $"hold an API key, and the key of {AiOptions.Section}:{provider}:ApiKey is sent to {AiOptions.Section}:{provider}:Endpoint only");
             }
         }
         else if (!await IsTheSitesOwnAsync(site, key, cancellationToken) && !await IsForTheDefaultsAsync(settings, endpoint, cancellationToken))

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using FluentCMS.Authorization;
@@ -46,8 +47,9 @@ internal sealed record AiCall(
 
 // The actions of spec 5.5, in the site of the current operation. PrepareAsync checks, in this order: ai.use in the site,
 // that the site's settings opt the field in, and that the caller may update that field, since a suggestion is for a field
-// the caller edits. It then reads what the action works on as the caller, through the content and media services, asks
-// the slot for the site's client and counts the call. RunAsync sends it and writes its usage row: one for every call
+// the caller edits. It then checks the body, the call limit and the site's daily budget, so that a caller who is over
+// either is refused before any work is done for it, reads what the action works on as the caller, through the content
+// and media services, asks the slot for the site's client and counts the call. RunAsync sends it and writes its usage row: one for every call
 // that is sent, whether it succeeds, fails, times out or is cancelled. The plugin writes nothing to content, and the text
 // and the suggestion go to the provider and the caller only: never to a row, a log line or a span.
 internal sealed class AiAssistService(
@@ -181,6 +183,13 @@ internal sealed class AiAssistService(
             throw new ValidationException(errors);
         }
 
+        if (limits.Check(site, operation.Principal, current.CallsPerMinute) is { } early)
+        {
+            throw OverLimit(site, operation.Principal, early);
+        }
+
+        await CheckBudgetAsync(site, current, cancellationToken);
+
         var richText = field.FieldType == RichTextFieldType;
         var text = request.DocumentId is { } id ? await ReadFieldAsync(type, field, id, locale, richText, cancellationToken) : request.Text;
         if (action != AiActions.AltText && string.IsNullOrWhiteSpace(text))
@@ -213,14 +222,11 @@ internal sealed class AiAssistService(
         var client = (current.Provider == AiProvider.None ? null : await clients.CreateAsync(site, current, cancellationToken))
             ?? throw new PluginException(AiErrorCodes.NoProvider, "The site has no AI provider. An administrator names one in the AI settings of the site.");
 
+        // Taken last, so that a call refused on the way takes nothing; a call let through by Check may still be refused
+        // here when the caller's other calls took the bucket meanwhile.
         if (limits.Take(site, operation.Principal, current.CallsPerMinute) is { } refusal)
         {
-            if (refusal.Report)
-            {
-                AiLog.CallLimitExceeded(logger, operation.Principal.Kind, operation.Principal.Id, refusal.Limit, site.Value, refusal.RetryAfterSeconds);
-            }
-
-            throw new PluginException(AiErrorCodes.CallLimitExceeded, $"The site allows {refusal.Limit} AI calls a minute for each caller. Try again in {refusal.RetryAfterSeconds} seconds.");
+            throw OverLimit(site, operation.Principal, refusal);
         }
 
         return new AiCall(
@@ -329,6 +335,33 @@ internal sealed class AiAssistService(
         await RecordAsync(call, info, outcome, code);
         AiTelemetry.End(span, call.Action, call.Client.Provider, outcome, code);
         return refused is null ? new AiActionResult(suggestion!, info) : throw refused;
+    }
+
+    private PluginException OverLimit(SiteId site, Principal principal, AiCallRefusal refusal)
+    {
+        if (refusal.Report)
+        {
+            AiLog.CallLimitExceeded(logger, principal.Kind, principal.Id, refusal.Limit, site.Value, refusal.RetryAfterSeconds);
+        }
+
+        return new PluginException(AiErrorCodes.CallLimitExceeded, $"The site allows {refusal.Limit} AI calls a minute for each caller. Try again in {refusal.RetryAfterSeconds} seconds.");
+    }
+
+    // The tokens of the calls the site sent since midnight UTC. Calls that are in flight are not counted yet, so calls sent
+    // together may pass the budget by what they use; the next is refused.
+    private async Task CheckBudgetAsync(SiteId site, AiSettings current, CancellationToken cancellationToken)
+    {
+        if (current.DailyTokenBudget <= 0)
+        {
+            return;
+        }
+
+        var today = new DateTimeOffset(time.GetUtcNow().UtcDateTime.Date, TimeSpan.Zero);
+        if (await usage.TokensSinceAsync(site.Value, today, cancellationToken) >= current.DailyTokenBudget)
+        {
+            var resets = today.AddDays(1).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+            throw new PluginException(AiErrorCodes.BudgetExceeded, $"The site has used its daily budget of {current.DailyTokenBudget} AI tokens. It resets at {resets}.");
+        }
     }
 
     private static bool TakesActions(SchemaField field) =>

@@ -1,7 +1,10 @@
+using Microsoft.Extensions.Configuration;
+
 namespace FluentCMS.Plugins.AiAssist;
 
 // Bound from FluentCms:Ai. The key of a provider that a site's settings do not hold is FluentCms:Ai:{Provider}:ApiKey,
-// such as FluentCms:Ai:OpenAi:ApiKey.
+// such as FluentCms:Ai:OpenAi:ApiKey, and it is sent only to FluentCms:Ai:{Provider}:Endpoint, OpenAI's own for OpenAi
+// when unset and needed for the other providers.
 public sealed class AiOptions
 {
     public const string Section = "FluentCms:Ai";
@@ -38,6 +41,26 @@ internal static class AiProviderEndpoints
             : null;
 
     public static string Canonical(Uri endpoint) => $"{endpoint.Scheme}://{endpoint.IdnHost}:{endpoint.Port}{endpoint.AbsolutePath.TrimEnd('/')}";
+
+    // The endpoint the configuration's key of a provider is for. Null for a provider with neither.
+    public static Uri? Configured(IConfiguration configuration, AiProvider provider)
+    {
+        var named = configuration[$"{AiOptions.Section}:{provider}:Endpoint"];
+        return string.IsNullOrWhiteSpace(named)
+            ? provider == AiProvider.OpenAi ? AiClientFactory.OpenAiEndpoint : null
+            : Parse(named);
+    }
+
+    // A key in the configuration names the endpoint it is for, OpenAI's excepted, and an endpoint there has the shape of one.
+    public static bool AreConfigured(IConfiguration configuration) =>
+        Enum.GetValues<AiProvider>().Where(provider => provider != AiProvider.None).All(provider =>
+        {
+            var endpoint = configuration[$"{AiOptions.Section}:{provider}:Endpoint"];
+            var key = configuration[$"{AiOptions.Section}:{provider}:ApiKey"];
+            return string.IsNullOrWhiteSpace(endpoint)
+                ? provider == AiProvider.OpenAi || string.IsNullOrWhiteSpace(key)
+                : Parse(endpoint) is not null;
+        });
 
     public static bool IsAllowed(Uri endpoint, IEnumerable<string> allowed)
     {
