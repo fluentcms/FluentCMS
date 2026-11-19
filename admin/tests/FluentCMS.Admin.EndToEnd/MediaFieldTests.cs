@@ -213,10 +213,22 @@ public sealed class MediaFieldTests(EndToEndHost host) : BrowserTest(host)
         await Expect(opener).ToBeFocusedAsync();
     }
 
-    // Focus as Tab would give it, then a key: no pointer is used.
+    // Focus as Tab would give it, then a key: no pointer is used. A control in a dialog that is not shown yet cannot take
+    // focus, and the dialog does not give it to the control as it opens, so focus is asked for until the control has it.
     private static async Task PressAsync(ILocator target, string key)
     {
-        await target.FocusAsync();
+        var deadline = DateTime.UtcNow + AdminBrowser.Wait;
+        while (true)
+        {
+            await target.FocusAsync();
+            if (await target.EvaluateAsync<bool>("element => element === document.activeElement") || DateTime.UtcNow > deadline)
+            {
+                break;
+            }
+
+            await target.Page.EvaluateAsync("() => new Promise(resolve => setTimeout(resolve, 50))");
+        }
+
         await Expect(target).ToBeFocusedAsync();
         await target.Page.Keyboard.PressAsync(key);
     }
