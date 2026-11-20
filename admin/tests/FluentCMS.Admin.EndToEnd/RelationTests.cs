@@ -54,7 +54,7 @@ public sealed class RelationTests(EndToEndHost host) : BrowserTest(host)
         await Ui.PressAsync(Entry(tab, "tags", "release notes"), "Alt+ArrowUp");
         await Expect(Labels(tab, "tags")).ToHaveTextAsync(["release notes", "dotnet"]);
         await Expect(Entry(tab, "tags", "release notes")).ToBeFocusedAsync();
-        await Ui.DragAsync(Item(tab, "tags", "release notes"), Item(tab, "tags", "dotnet"), "relation-field-drop");
+        await Ui.DragAsync(Item(tab, "tags", "release notes"), Item(tab, "tags", "dotnet"), "relation-field-drop", byEdge: true);
         await Expect(Labels(tab, "tags")).ToHaveTextAsync(["dotnet", "release notes"]);
         await tab.Page.Locator($"[data-field='tags'] fluent-button[aria-label=\"{Text("Content.Relation.MoveDown", "dotnet")}\"]").ClickAsync();
         await Expect(Labels(tab, "tags")).ToHaveTextAsync(["release notes", "dotnet"]);

@@ -67,15 +67,40 @@ public static class Ui
     }
 
     // Drags the source onto the target with the pointer and lets go only once the target shows, by its class, that the editor
-    // would drop there: a drag let go before the editor has seen it over the target drops nothing on a slow machine.
-    public static async Task DragAsync(ILocator source, ILocator target, string dropClass)
+    // would drop there: a drag let go before the editor has seen it over the target drops nothing on a slow machine. The
+    // browser raises dragover only as the pointer moves, so the pointer moves a pixel over the target until the editor has it.
+    // A source whose middle is a control, such as a button, which starts no drag, is held by its edge instead.
+    public static async Task DragAsync(ILocator source, ILocator target, string dropClass, bool byEdge = false)
     {
         var page = source.Page;
-        await source.HoverAsync();
+        var drop = new Regex($@"(^|\s){Regex.Escape(dropClass)}(\s|$)");
+        if (byEdge)
+        {
+            var held = (await source.BoundingBoxAsync()).ShouldNotBeNull();
+            await source.HoverAsync(new LocatorHoverOptions { Position = new Position { X = 2, Y = held.Height / 2 } });
+        }
+        else
+        {
+            await source.HoverAsync();
+        }
+
         await page.Mouse.DownAsync();
         var box = (await target.BoundingBoxAsync()).ShouldNotBeNull();
-        await page.Mouse.MoveAsync(box.X + (box.Width / 2), box.Y + (box.Height / 2), new MouseMoveOptions { Steps = 10 });
-        await Expect(target).ToHaveClassAsync(new Regex($@"(^|\s){Regex.Escape(dropClass)}(\s|$)"));
+        var (x, y) = (box.X + (box.Width / 2), box.Y + (box.Height / 2));
+        await page.Mouse.MoveAsync(x, y, new MouseMoveOptions { Steps = 10 });
+        var nudge = 0;
+        await UntilAsync(
+            async () =>
+            {
+                if (drop.IsMatch(await target.GetAttributeAsync("class") ?? ""))
+                {
+                    return true;
+                }
+
+                await page.Mouse.MoveAsync(x + (++nudge % 2), y);
+                return false;
+            },
+            $"{target} never showed that the editor would take the drop");
         await page.Mouse.UpAsync();
     }
 
