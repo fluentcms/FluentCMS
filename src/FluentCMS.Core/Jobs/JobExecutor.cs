@@ -2,13 +2,10 @@ using System.Diagnostics;
 using FluentCMS.Content;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Sites;
-using FluentCMS.Core.Storage;
-using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Telemetry;
 using FluentCMS.Jobs;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -399,10 +396,7 @@ internal sealed class JobExecutor(
     private async Task<OperationContext> OperationOfAsync(ClaimedJob job, object payload, IServiceProvider services)
     {
         var site = job.SiteId ?? DefaultSite.Id;
-        var locale = await services.GetRequiredService<SystemDbContext>().Set<Site>()
-            .Where(row => row.Id == site)
-            .Select(row => row.DefaultLocale)
-            .FirstOrDefaultAsync();
+        var locale = await SiteDefaultLocale.ReadAsync(services, site);
 
         return new OperationContext(Principal.System, Origin.Job, new SiteId(site), locale ?? DefaultSite.Locale, ClientId: null, job.Id.ToString(), time.GetUtcNow())
         {

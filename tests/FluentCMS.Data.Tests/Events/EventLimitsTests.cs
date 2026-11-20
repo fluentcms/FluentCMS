@@ -183,18 +183,16 @@ public sealed class EventLimitsTests
         public TaskCompletionSource ReadDone { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
-    // Each delivery of the first instance takes 20 seconds on the clock, so the lease of its batch runs out while it delivers
-    // the fourth row. The second instance claims the four rows left then, and the first, finding them taken when their turn
-    // comes, moves on without using an attempt.
+    // Each delivery of the first instance takes 20 seconds on the clock, eight of them far longer than the lease of the batch.
+    // The first renews the lease of the rows left before a delivery it would not cover, so the second instance, draining
+    // midway, finds nothing to take, and every row is delivered once with one attempt.
     [Fact]
-    public async Task HealthyEventsAreNeverFailedBecauseWorkersClaimedThemAndRanOutOfLeaseBeforeTheirTurn()
+    public async Task AWorkerKeepsTheLeaseOfItsBatchSoHealthyEventsAreNeitherTakenOverNorFailed()
     {
         const int entries = 8;
         var clock = new ManualTimeProvider(JobFixture.Start);
         var first = new Seen();
         var second = new Seen();
-        var secondHolds = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         void Tight(FluentCmsBuilder cms)
         {
             cms.Services.AddSingleton<TimeProvider>(clock);
@@ -211,29 +209,22 @@ public sealed class EventLimitsTests
         }
 
         using var other = database.Database.NewInstance(Registrations(second, Tight));
-        Task<int>? otherDrain = null;
+        var otherDrained = -1;
         first.Behavior = async (_, _) =>
         {
             clock.Advance(TimeSpan.FromSeconds(20));
             if (first.Deliveries.Count == 4)
             {
-                otherDrain = Task.Run(() => DrainAsync(other), Token);
-                await secondHolds.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+                otherDrained = await DrainAsync(other);
             }
         };
-        second.Behavior = async (_, _) =>
-        {
-            secondHolds.TrySetResult();
-            await release.Task;
-        };
 
-        (await DrainAsync(database.Database.Services)).ShouldBe(4);
-        release.SetResult();
-        (await otherDrain.ShouldNotBeNull()).ShouldBe(4);
+        (await DrainAsync(database.Database.Services)).ShouldBe(entries);
 
+        otherDrained.ShouldBe(0);
+        second.Deliveries.ShouldBeEmpty();
         database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Delivered && row.Attempts == 1);
-        first.Deliveries.Concat(second.Deliveries).Select(delivery => delivery.Key).Distinct().Count().ShouldBe(entries);
-        first.Of<EntryDraftSavedEvent>().Concat(second.Of<EntryDraftSavedEvent>()).Select(heard => heard.EventId).Distinct().Count().ShouldBe(entries);
+        first.Deliveries.Select(delivery => delivery.Key).Distinct().Count().ShouldBe(entries);
     }
 
     [Fact]

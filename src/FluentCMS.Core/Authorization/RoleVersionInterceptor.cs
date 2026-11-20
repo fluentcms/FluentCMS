@@ -72,7 +72,7 @@ internal sealed class RoleVersionInterceptor(IServiceProvider services, IOperati
     }
 
     // The rows are committed when there is no transaction left open, so the drain is asked for now; inside one, the
-    // recurring drain finds them once it commits. Waiting here would block on SQLite's write lock that the transaction holds.
+    // sweep of the outbox finds them once it commits. Waiting here would block on SQLite's write lock that the transaction holds.
     public override async ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
     {
         if (Saved(eventData.Context) && eventData.Context!.Database.CurrentTransaction is null)

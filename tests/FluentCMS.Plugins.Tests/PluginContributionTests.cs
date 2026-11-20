@@ -325,6 +325,18 @@ public sealed class PluginContributionTests(PluginContributionFixture fixture) :
         items.Single(item => item!["area"]!.GetValue<string>() == "branding")!["plugin"].ShouldBeNull();
     }
 
+    // The drain gives each plugin a lane, and core's handlers one together, from the plugin that added each handler.
+    [Fact]
+    public void TheDrainTakesTheOwnerOfAnOutboxHandlerFromThePluginThatAddedIt()
+    {
+        var drainer = fixture.Host.Services.GetRequiredService<OutboxDrainer>();
+        var names = fixture.Host.Services.GetRequiredService<OutboxRegistry>().Names.ToList();
+
+        drainer.OwnerOf("sample.note-added").ShouldBe("sample");
+        names.ShouldContain(name => !name.StartsWith("sample.", StringComparison.Ordinal));
+        names.Where(name => !name.StartsWith("sample.", StringComparison.Ordinal)).ShouldAllBe(name => drainer.OwnerOf(name) == null);
+    }
+
     [Fact]
     public async Task ThePluginsJobRunsAndItsEventReachesItsOutboxHandlerAndTheActivityLog()
     {

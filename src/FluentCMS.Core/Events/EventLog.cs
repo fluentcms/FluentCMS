@@ -16,11 +16,12 @@ internal static partial class EventLog
     [LoggerMessage(EventId = 9603, Level = LogLevel.Warning, Message = "Could not write the outcome of outbox delivery {Id}; it is delivered again when its lease ends.")]
     public static partial void SettleFailed(ILogger logger, Exception exception, Guid id);
 
-    [LoggerMessage(EventId = 9604, Level = LogLevel.Warning, Message = "Could not ask for the outbox to be drained; the next scheduled drain delivers what was recorded.")]
+    [LoggerMessage(EventId = 9604, Level = LogLevel.Warning, Message = "Could not ask for the outbox to be drained; the next sweep of the outbox delivers what was recorded.")]
     public static partial void KickFailed(ILogger logger, Exception exception);
 
-    [LoggerMessage(EventId = 9605, Level = LogLevel.Error, Message = "Could not register the recurring drain of the outbox; events are delivered only after a write asks for it.")]
-    public static partial void RecurringFailed(ILogger logger, Exception exception);
+    // 9605 and 9610 were the recurring drain's registration and errors, which are gone; they are not given again.
+    [LoggerMessage(EventId = 9624, Level = LogLevel.Error, Message = "Could not store the schedule of the outbox prune; it is tried again.")]
+    public static partial void PruneScheduleFailed(ILogger logger, Exception exception);
 
     [LoggerMessage(EventId = 9612, Level = LogLevel.Error, Message = "The handlers of {EventType} {EventId} could not be built, so none of them ran; the write stands.")]
     public static partial void HandlersUnavailable(ILogger logger, Exception exception, string eventType, Guid eventId);
@@ -55,8 +56,8 @@ internal static partial class EventLog
     [LoggerMessage(EventId = 9618, Level = LogLevel.Warning, Message = "The scope of the handlers of {EventType} {EventId} failed while it was disposed; the write stands.")]
     public static partial void HandlerScopeFailed(ILogger logger, Exception exception, string eventType, Guid eventId);
 
-    [LoggerMessage(EventId = 9610, Level = LogLevel.Error, Message = "The drain of the outbox hit an error.")]
-    public static partial void DrainFailed(ILogger logger, Exception exception);
+    [LoggerMessage(EventId = 9625, Level = LogLevel.Error, Message = "The sweep of the outbox hit an error; it runs again at its next interval.")]
+    public static partial void SweepFailed(ILogger logger, Exception exception);
 
     [LoggerMessage(EventId = 9619, Level = LogLevel.Error, Message = "Outbox delivery {Id} to {Handler} waited longer than {OrphanAfter} for its handler or the handler's plugin, so it is left as failed.")]
     public static partial void Orphaned(ILogger logger, Guid id, string handler, TimeSpan orphanAfter);
@@ -69,4 +70,13 @@ internal static partial class EventLog
 
     [LoggerMessage(EventId = 9622, Level = LogLevel.Information, Message = "The prune of the outbox removed {Delivered} delivered and {Failed} failed rows.")]
     public static partial void Pruned(ILogger logger, int delivered, int failed);
+
+    [LoggerMessage(EventId = 9623, Level = LogLevel.Error, Message = "The outbox lane of {Owner} hit an error; it is tried again on the next signal or sweep, and the other lanes go on.")]
+    public static partial void LaneFailed(ILogger logger, Exception exception, string owner);
+
+    [LoggerMessage(EventId = 9626, Level = LogLevel.Warning, Message = "Could not renew the lease of an outbox batch of {Handler}; its {Count} deliveries not yet tried were given back without using an attempt, and its lane waits for the next signal or sweep.")]
+    public static partial void RenewFailed(ILogger logger, Exception exception, string handler, int count);
+
+    [LoggerMessage(EventId = 9627, Level = LogLevel.Warning, Message = "The outbox lane of {Owner} found the database busy after its retries; it is tried again on the next signal or sweep, and the other lanes go on.")]
+    public static partial void LaneBusy(ILogger logger, Exception exception, string owner);
 }
