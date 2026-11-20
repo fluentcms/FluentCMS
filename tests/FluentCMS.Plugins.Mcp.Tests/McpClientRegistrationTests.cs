@@ -387,6 +387,29 @@ public sealed class McpClientRegistrationTests(McpClientFixture fixture) : IClas
         page.ShouldNotContain("\u0430pple");
     }
 
+    // A host is named once however many redirect URIs it has, without the default port of its scheme, and an IPv6
+    // address in its brackets.
+    [Fact]
+    public async Task TheConsentPageNamesAHostOnceWithoutItsDefaultPortAndAnIpv6AddressInBrackets()
+    {
+        var host = fixture.Host;
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
+        using var agent = new McpAgent(host, "10.2.0.15");
+        const string Loopback = "http://[::1]:33418/callback";
+        using var registered = await agent.RegisterAsync($$"""{ "client_name": "Four URIs", "redirect_uris": ["{{Loopback}}", "https://app.example/cb", "https://app.example:443/other", "https://app.example:8443/cb"], "grant_types": ["authorization_code"], "response_types": ["code"], "token_endpoint_auth_method": "none" }""");
+        registered.StatusCode.ShouldBe(HttpStatusCode.Created, await registered.Content.ReadAsStringAsync(Token));
+        var clientId = (await JsonAsync(registered))["client_id"]!.GetValue<string>();
+        await agent.SignInAsync(await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token));
+
+        var page = await PageAsync(agent, $"/account/consent?client_id={clientId}&scope=openid%20mcp&redirect_uri={Uri.EscapeDataString(Loopback)}");
+
+        page.ShouldContain("Access goes to <strong>[::1]:33418</strong>");
+        page.Split("<li><strong>app.example</strong></li>").Length.ShouldBe(2);
+        page.ShouldContain("<li><strong>app.example:8443</strong></li>");
+        page.ShouldNotContain("app.example:443");
+        page.Split("<li><strong>").Length.ShouldBe(3);
+    }
+
     private static async Task<string> PageAsync(McpAgent agent, string url)
     {
         using var response = await agent.Http.GetAsync(new Uri(url, UriKind.Relative), Token);
@@ -518,6 +541,8 @@ public sealed class McpClientRegistrationTests(McpClientFixture fixture) : IClas
         settings.RegistrationsPerHour.ShouldBe(10);
         settings.MaxClients.ShouldBe(1000);
         settings.UnusedClientDays.ShouldBe(30);
+        settings.NeverUsedClientHours.ShouldBe(24);
+        settings.MaxConsentsPerUser.ShouldBe(20);
     }
 
     private static IEnumerable<string> UpdatableFields(ModelContextProtocol.Protocol.Tool tool) =>

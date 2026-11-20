@@ -2,6 +2,7 @@ using System.Net;
 using FluentCMS.Agents;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Plugins.Sample;
+using OpenIddict.Abstractions;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Plugins.Mcp.Tests.McpClientTesting;
@@ -84,5 +85,71 @@ public sealed class McpClientConcurrencyTests(McpClientHookFixture fixture) : IC
         // Without a consent page: refusing on it would end with access_denied instead of a code.
         (await agent.AuthorizeAsync(clientId, allow: false)).Code.ShouldNotBeNull();
         (await RowsAsync(host, administrator, id)).Select(row => row.Action).ShouldNotContain("mcp.client_role_changed");
+    }
+
+    // The write of a client's first use is not tried again when it crosses another write of the client. The consent
+    // stands, so the next cleanup writes it, and the client is not taken for one never used.
+    [Fact]
+    public async Task AFirstUseWhoseWriteCrossedAnotherIsRecordedByTheCleanup()
+    {
+        var host = fixture.Host;
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
+        using var agent = new McpAgent(host, "10.5.0.3");
+        using var admin = await KeyAsync(host);
+        var clientId = await agent.RegisteredAsync();
+        var id = await IdOfAsync(admin, clientId);
+        await agent.SignInAsync(await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token));
+
+        fixture.Hooks.FailNextUpdate();
+        var authorized = await agent.AuthorizeAsync(clientId);
+        var crossed = (await StateAsync(host, id)).UsedAt;
+        await RunCleanupAsync(host);
+
+        authorized.Code.ShouldNotBeNull();
+        crossed.ShouldBeNull();
+        (await StateAsync(host, id)).UsedAt.ShouldNotBeNull();
+    }
+
+    // A consent that arrives while the cleanup deletes its client makes the database refuse the delete. The run goes on
+    // to the other clients, and the one it could not delete is left for the next run.
+    [Fact]
+    public async Task ADeleteTheDatabaseRefusesDoesNotEndTheCleanup()
+    {
+        var host = fixture.Host;
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
+        using var agent = new McpAgent(host, "10.5.0.4");
+        using var admin = await KeyAsync(host);
+        string[] fillers = [await agent.RegisteredAsync(), await agent.RegisteredAsync()];
+        host.Time.Advance(TimeSpan.FromHours(new McpSettings().NeverUsedClientHours) + TimeSpan.FromMinutes(1));
+
+        fixture.Hooks.FailNextDelete();
+        await RunCleanupAsync(host);
+        var afterTheRefusal = (await ListAsync(admin)).Select(item => item!["clientId"]!.GetValue<string>()).Where(fillers.Contains).ToList();
+        await RunCleanupAsync(host);
+        var afterTheNextRun = (await ListAsync(admin)).Select(item => item!["clientId"]!.GetValue<string>()).Where(fillers.Contains).ToList();
+
+        afterTheRefusal.Count.ShouldBe(1);
+        afterTheNextRun.ShouldBeEmpty();
+    }
+
+    // The consents go before the client is written, so a start that fails on the write leaves the old redirect URIs with
+    // no consent, never the new ones with the old consents, and the next start writes the client.
+    [Fact]
+    public async Task AStartThatFailsWhileTheRedirectUrisChangeLeavesNoConsentBehind()
+    {
+        var host = fixture.Host;
+        var user = Guid.CreateVersion7();
+        await RegisterConfiguredAsync(host, "https://app.example/cb", "Desk");
+        await GrantAsync(host, user);
+
+        fixture.Hooks.FailNextUpdate();
+        await Should.ThrowAsync<OpenIddictExceptions.ConcurrencyException>(() => RegisterConfiguredAsync(host, "https://other.example/cb", "Desk"));
+        var consent = await ConsentAsync(host, user);
+        var failed = await ConfiguredRedirectUrisAsync(host);
+        await RegisterConfiguredAsync(host, "https://other.example/cb", "Desk");
+
+        consent.ShouldBeNull();
+        failed.ShouldBe(["https://app.example/cb"]);
+        (await ConfiguredRedirectUrisAsync(host)).ShouldBe(["https://other.example/cb"]);
     }
 }

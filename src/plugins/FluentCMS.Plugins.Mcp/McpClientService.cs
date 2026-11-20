@@ -9,6 +9,10 @@ public sealed record McpClientRegistrationRequest(string? Name, IReadOnlyList<st
 
 public sealed record McpClientRoleChange(string? Role);
 
+public sealed record McpClientRemoval(DateTimeOffset? RegisteredFrom, DateTimeOffset? RegisteredBefore);
+
+public sealed record McpClientRemovalResult(int Removed);
+
 public sealed record McpClientInfo(
     Guid Id,
     string ClientId,
@@ -68,6 +72,25 @@ internal sealed class McpClientService(IMcpClients clients, IPermissionChecker p
     {
         await RequireAsync(cancellationToken);
         Changed(id, await clients.RevokeAsync(id, cancellationToken), role: null);
+    }
+
+    // The clients the open policy approved that registered in the span the request names, removed as RevokeAsync removes
+    // one and under the same permission. A request that names no time would remove every such client, so it is refused.
+    public async Task<McpClientRemovalResult> RemoveOpenApprovedAsync(McpClientRemoval? removal, CancellationToken cancellationToken)
+    {
+        await RequireAsync(cancellationToken);
+        var (from, before) = (removal?.RegisteredFrom, removal?.RegisteredBefore);
+        if (from is null && before is null)
+        {
+            throw new PluginException(McpErrorCodes.ClientRemovalInvalid, "Removing clients names when they registered: 'registeredFrom', 'registeredBefore' or both.");
+        }
+
+        if (from >= before)
+        {
+            throw new PluginException(McpErrorCodes.ClientRemovalInvalid, "'registeredFrom' is earlier than 'registeredBefore'.");
+        }
+
+        return new McpClientRemovalResult(await clients.RemoveOpenApprovedAsync(from, before, cancellationToken));
     }
 
     private ValueTask RequireAsync(CancellationToken cancellationToken) => permissions.RequireAsync(McpPermissions.Manage, site: null, cancellationToken);

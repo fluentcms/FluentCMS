@@ -15,6 +15,7 @@ internal static class McpErrorCodes
     public const string ClientNotApproved = "FCMS1607";
     public const string ClientRegistrationInvalid = "FCMS1608";
     public const string ClientChangedMeanwhile = "FCMS1609";
+    public const string ClientRemovalInvalid = "FCMS1610";
 
     // FCMS1612 to 1619: the content and media tools.
     public const string TypeNotAvailable = "FCMS1612";

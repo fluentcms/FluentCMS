@@ -3952,3 +3952,6 @@ static FluentCMS.Events.MemberLoginUnlinkedEvent.operator ==(FluentCMS.Events.Me
 FluentCMS.Agents.McpClientRegistrationPolicy.MaxClients.get -> int
 FluentCMS.Agents.McpClientRegistrationPolicy.MaxClients.init -> void
 FluentCMS.Agents.IMcpClients.RemoveUnusedAsync(System.DateTimeOffset neverUsedBefore, System.DateTimeOffset unusedBefore, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+FluentCMS.Agents.IMcpClients.RemoveOpenApprovedAsync(System.DateTimeOffset? registeredFrom, System.DateTimeOffset? registeredBefore, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+FluentCMS.Agents.McpClientRegistrationPolicy.MaxConsentsPerUser.get -> int
+FluentCMS.Agents.McpClientRegistrationPolicy.MaxConsentsPerUser.init -> void
