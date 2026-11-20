@@ -1,6 +1,6 @@
 @* The status of an entry in a list (spec 4.4): one badge, or under locale=all one per locale of the site, in its order, with an
    empty badge for a locale the entry has no translation in; and a badge with the time of each pending schedule, in the
-   user's time zone. Each badge says its status in words, so its colour is never the only sign. *@
+   user's time zone, which it names. Each badge says its status in words, so its colour is never the only sign. *@
 @inject FormatService Format
 @inject IStringLocalizer<AdminResources> L
 
@@ -75,7 +75,7 @@
         }
 
         <span class="content-badge content-badge-schedule">
-            <span class="content-badge-locale">@locale</span> @L[key] <time datetime="@moment.ToString("O", System.Globalization.CultureInfo.InvariantCulture)">@Format.DateTime(moment)</time>
+            <span class="content-badge-locale">@locale</span> @L[key] <time datetime="@moment.ToString("O", System.Globalization.CultureInfo.InvariantCulture)">@Format.DateTime(moment)</time> <span class="content-badge-zone">@EntrySchedule.ZoneId(Format.TimeZone)</span>
         </span>
     };
 }

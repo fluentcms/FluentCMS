@@ -1124,6 +1124,78 @@
   <data name="Content.Badge.UnpublishAt" xml:space="preserve">
     <value>Unpublishes</value>
   </data>
+  <data name="Content.Schedule.Open" xml:space="preserve">
+    <value>Schedule</value>
+  </data>
+  <data name="Content.Schedule.Title" xml:space="preserve">
+    <value>Schedule a publish or an unpublish</value>
+  </data>
+  <data name="Content.Schedule.MoveTitle.publish" xml:space="preserve">
+    <value>Move the scheduled publish</value>
+  </data>
+  <data name="Content.Schedule.MoveTitle.unpublish" xml:space="preserve">
+    <value>Move the scheduled unpublish</value>
+  </data>
+  <data name="Content.Schedule.Move.publish" xml:space="preserve">
+    <value>Move the publish</value>
+  </data>
+  <data name="Content.Schedule.Move.unpublish" xml:space="preserve">
+    <value>Move the unpublish</value>
+  </data>
+  <data name="Content.Schedule.Cancel.publish" xml:space="preserve">
+    <value>Cancel the publish</value>
+  </data>
+  <data name="Content.Schedule.Cancel.unpublish" xml:space="preserve">
+    <value>Cancel the unpublish</value>
+  </data>
+  <data name="Content.Schedule.Action" xml:space="preserve">
+    <value>Action</value>
+  </data>
+  <data name="Content.Schedule.Action.publish" xml:space="preserve">
+    <value>Publish</value>
+  </data>
+  <data name="Content.Schedule.Action.unpublish" xml:space="preserve">
+    <value>Unpublish</value>
+  </data>
+  <data name="Content.Schedule.Locale" xml:space="preserve">
+    <value>In the locale {0}.</value>
+  </data>
+  <data name="Content.Schedule.SavedDraft" xml:space="preserve">
+    <value>The draft is published as it is saved now; a later save of this locale cancels the publish.</value>
+  </data>
+  <data name="Content.Schedule.SavedDraftUnsaved" xml:space="preserve">
+    <value>The draft is published as it is saved now, without the unsaved changes of the form; a later save of this locale cancels the publish.</value>
+  </data>
+  <data name="Content.Schedule.Missing" xml:space="preserve">
+    <value>Enter a date and a time.</value>
+  </data>
+  <data name="Content.Schedule.Submit" xml:space="preserve">
+    <value>Schedule</value>
+  </data>
+  <data name="Content.Schedule.MoveSubmit" xml:space="preserve">
+    <value>Move</value>
+  </data>
+  <data name="Content.Schedule.Close" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Content.Schedule.Failed" xml:space="preserve">
+    <value>The schedule was not set. Try again.</value>
+  </data>
+  <data name="Content.Schedule.Done.publish" xml:space="preserve">
+    <value>Publish scheduled for {0}, {1}.</value>
+  </data>
+  <data name="Content.Schedule.Done.unpublish" xml:space="preserve">
+    <value>Unpublish scheduled for {0}, {1}.</value>
+  </data>
+  <data name="Content.Schedule.Cancelled.publish" xml:space="preserve">
+    <value>The scheduled publish was cancelled.</value>
+  </data>
+  <data name="Content.Schedule.Cancelled.unpublish" xml:space="preserve">
+    <value>The scheduled unpublish was cancelled.</value>
+  </data>
+  <data name="Content.Schedule.NotCancelled" xml:space="preserve">
+    <value>The schedule was not cancelled. Try again.</value>
+  </data>
   <data name="Content.Form.Heading" xml:space="preserve">
     <value>Entry</value>
   </data>

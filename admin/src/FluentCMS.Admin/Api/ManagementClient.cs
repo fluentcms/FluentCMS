@@ -170,6 +170,24 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
         return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), basedOn.Site, basedOn.Locale);
     }
 
+    // A wall-clock time in a time zone, which the server turns into an instant by the zone's rules on that day, in the site
+    // and locale named. A second schedule of the same action replaces the first, which is how one is moved.
+    public async Task<ScheduleAnswer> ScheduleEntryAsync(string type, Guid id, string action, DateTime at, string timeZone, string? site, string? locale, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(timeZone);
+        var body = new JsonObject
+        {
+            ["action"] = action,
+            ["at"] = at.ToString("yyyy-MM-dd'T'HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),
+            ["timeZone"] = timeZone,
+        };
+        var request = Pinned(HttpMethod.Post, $"{Entry(type, id)}/schedule", site, locale, body);
+        return (await api.SendAsync(request, Json.ScheduleAnswer, cancellationToken)).Value;
+    }
+
+    public async Task CancelScheduleAsync(string type, Guid id, string action, string? site, string? locale, CancellationToken cancellationToken) =>
+        await api.SendAsync(Pinned(HttpMethod.Delete, $"{Entry(type, id)}/schedule/{Uri.EscapeDataString(action)}", site, locale), cancellationToken);
+
     // The entry as it is now, which a 412 of a save holds, as a read in the site and locale of the save; its version is the
     // tag a save on it sends. Null when the answer holds none that reads.
     public static EntryRead? CurrentOf(ApiProblem problem, EntryRead basedOn)
