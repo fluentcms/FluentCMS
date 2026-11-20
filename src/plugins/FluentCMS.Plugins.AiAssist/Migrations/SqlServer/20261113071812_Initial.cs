@@ -20,6 +20,7 @@ namespace FluentCMS.Plugins.AiAssist.Migrations.SqlServer
                     site_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     principal_kind = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
                     principal_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    principal_name = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
                     action = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
                     type = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     field = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),

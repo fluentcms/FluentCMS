@@ -42,6 +42,20 @@ public interface IMediaService
     /// <returns>The asset as it is now.</returns>
     Task<MediaAsset> UpdateAsync(Guid id, MediaAssetChanges changes, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Checks that the caller may change the metadata of an asset, as <see cref="UpdateAsync"/> checks it, and writes nothing:
+    /// for code that suggests a change, such as an alternative text, that the caller saves itself. It refuses as
+    /// <see cref="UpdateAsync"/> refuses: without <c>media.update</c> in the site, and for an asset that is not found, which
+    /// includes one in the bin and one outside the folders of a limited grant. The default refuses every call, so that an
+    /// implementation that does not make the check answers no caller as allowed.
+    /// </summary>
+    /// <param name="id">The id of the asset.</param>
+    /// <param name="cancellationToken">Cancels the work.</param>
+    /// <returns>A task that completes when the caller may update the asset.</returns>
+    /// <exception cref="NotSupportedException">The implementation does not make the check.</exception>
+    Task RequireUpdateAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromException(new NotSupportedException("This media service does not check an update apart from making it."));
+
     /// <summary>Moves an asset to another folder. It needs <c>media.update</c> in both folders.</summary>
     /// <param name="id">The id of the asset.</param>
     /// <param name="folderId">The folder, or <see langword="null"/> for the root.</param>
