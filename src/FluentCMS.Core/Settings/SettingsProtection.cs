@@ -104,6 +104,49 @@ internal sealed class SettingsProtection(IDataProtectionProvider provider, ILogg
             : result;
     }
 
+    // The stored document with every secret key that holds a value protected again, under the current default key of the ring,
+    // or null when it holds none. A value the ring cannot unprotect leaves the document as it is: its keys are returned, and
+    // the result is null. Nothing is logged.
+    public string? Reprotect(SettingsDescriptor descriptor, string json, Guid? site, out IReadOnlyList<string> unreadable)
+    {
+        unreadable = [];
+        if (descriptor.SecretKeys.Count == 0 || Parse(json) is not JsonObject document)
+        {
+            return null;
+        }
+
+        var changed = false;
+        List<string>? lost = null;
+        foreach (var key in descriptor.SecretKeys.Order(StringComparer.Ordinal))
+        {
+            var value = document[key];
+            if (IsProtected(value, out var stored))
+            {
+                value = TryUnprotect(descriptor, key, site, stored);
+                if (value is null)
+                {
+                    (lost ??= []).Add(key);
+                    continue;
+                }
+            }
+            else if (value is null)
+            {
+                continue;
+            }
+
+            document[key] = Prefix + Protector(descriptor, key, site).Protect(value.ToJsonString());
+            changed = true;
+        }
+
+        if (lost is not null)
+        {
+            unreadable = lost;
+            return null;
+        }
+
+        return changed ? document.ToJsonString() : null;
+    }
+
     // What a stored document holds under its secret keys, worst first: a value the key ring cannot unprotect, then one written
     // before secrets were protected. Nothing is logged.
     public StoredSecrets Inspect(SettingsDescriptor descriptor, string json, Guid? site)

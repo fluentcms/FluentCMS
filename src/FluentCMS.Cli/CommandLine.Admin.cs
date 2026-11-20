@@ -7,7 +7,8 @@ namespace FluentCMS.Cli;
 
 // The commands that administer an instance (B-91). In project mode they run inside the host as the system with the Cli
 // origin; with --url they call the Management API with the key of --token, as that key's principal. `user create`,
-// `user reset-password`, `jobs run` and `seed` run in the host only, and `mcp` reaches a running instance only.
+// `user reset-password`, `jobs run`, `seed` and `settings reprotect` run in the host only, and `mcp` reaches a running
+// instance only.
 internal sealed partial class CommandLine
 {
     private static readonly string[] KeyClasses = ["delivery", "preview", "management"];
@@ -201,6 +202,19 @@ internal sealed partial class CommandLine
         var command = new Command("seed", "Runs the host's seeders that are not applied at their version; a second run does nothing. In the host project only.") { name };
         var project = ProjectOptions.AddTo(command);
         command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["seed", .. Value(result, name)], cancellationToken));
+        return command;
+    }
+
+    private Command Settings() => new("settings", "Settings: protect the stored secrets again under the current key ring key, in the host project.")
+    {
+        SettingsReprotect(),
+    };
+
+    private Command SettingsReprotect()
+    {
+        var command = new Command("reprotect", "Protects every stored secret setting again under the current key of the Data Protection key ring; run it before retiring a ring key or certificate. In the host project only.");
+        var project = ProjectOptions.AddTo(command);
+        command.SetAction((result, cancellationToken) => HandOverAsync(result, project, ["settings", "reprotect"], cancellationToken));
         return command;
     }
 

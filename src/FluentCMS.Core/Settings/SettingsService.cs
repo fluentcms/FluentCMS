@@ -111,12 +111,17 @@ internal sealed class SettingsService(
             .Where(row => row.Key == area && (row.SiteId == null || row.SiteId == siteId))
             .ToListAsync(cancellationToken);
         IReadOnlyDictionary<string, string> unreadable = new Dictionary<string, string>();
+        IReadOnlyDictionary<string, string> instanceUnreadable = new Dictionary<string, string>();
         foreach (var row in rows)
         {
             row.Json = protection.Unprotect(descriptor, row.Json, row.SiteId, out var lost);
             if (row.SiteId is not null)
             {
                 unreadable = lost;
+            }
+            else
+            {
+                instanceUnreadable = lost;
             }
         }
 
@@ -136,23 +141,33 @@ internal sealed class SettingsService(
             : (Pick(descriptor, instance, SettingsSource.Default, version, SettingsCache.InstanceScope)
                 ?? new ResolvedSetting(descriptor.Write(descriptor.CreateDefault()), SettingsSource.Code, version, []))
                 with { InheritedSecrets = site is null ? [] : descriptor.SecretsInherited(null) };
+        resolved = resolved with
+        {
+            UnreadableSecrets = resolved.Source switch
+            {
+                SettingsSource.Site => [.. unreadable.Keys.Order(StringComparer.Ordinal)],
+                SettingsSource.Default => [.. instanceUnreadable.Keys.Order(StringComparer.Ordinal)],
+                _ => [],
+            },
+        };
 
         cache.Set(scope, area, resolved, generation);
         return resolved;
     }
 
     // What the Management endpoint shows: the resolved document without its secret keys, the secret keys that hold a value in
-    // it, and those the site takes from the instance default. The version is that of the row a write to this site (or to the
-    // instance defaults) would replace, so that it can go back as the version a write names: 0 when that row does not exist,
-    // even if the document came from a level below it, and the version of the row that is there even if it was skipped
-    // because the class cannot read it.
+    // it, and those the site takes from the instance default. A secret the key ring cannot unprotect holds no value, even where
+    // the document holds its code default because the class requires the key. The version is that of the row a write to this
+    // site (or to the instance defaults) would replace, so that it can go back as the version a write names: 0 when that row
+    // does not exist, even if the document came from a level below it, and the version of the row that is there even if it
+    // was skipped because the class cannot read it.
     // It is what an admin edits, so it needs the permission a write needs.
     public async Task<RedactedSetting> ResolveRedactedAsync(SettingsDescriptor descriptor, SiteId? site, CancellationToken cancellationToken)
     {
         await RequirePermissionAsync(descriptor, site, cancellationToken);
         var resolved = await ResolveAsync(descriptor, site, cancellationToken);
         var (json, secretsSet) = descriptor.Redact(resolved.Json);
-        return new RedactedSetting(json, resolved.Source, resolved.Version, resolved.Source == SettingsSource.Code ? [] : secretsSet, resolved.InheritedSecrets);
+        return new RedactedSetting(json, resolved.Source, resolved.Version, resolved.Source == SettingsSource.Code ? [] : [.. secretsSet.Except(resolved.UnreadableSecrets)], resolved.InheritedSecrets);
     }
 
     // Replaces a document. A null site is the instance defaults. The version is the one the caller read (0 for no row), or
@@ -204,9 +219,12 @@ internal sealed class SettingsService(
         return documents;
     }
 
-    // For an import: a document without secrets, which keep what the site has, as a write that leaves them out does. The
-    // same document as the site's is no write. A dry run checks the document and writes nothing. The caller who started the
-    // import needs settings.{area}.manage in the site, as a write of its own would; the write itself is the import's.
+    // For an import: a document without secrets, which keep what the site has, as a write that leaves them out does; a secret
+    // that a package names anyway is left out, so a package never sets one. A secret the class requires is checked with the
+    // value of the site's own row, and an area whose site's row does not hold it is refused, since a package never carries it
+    // and no value is made up for it. The same document as the site's is no write. A dry run checks the document and writes
+    // nothing. The caller who started the import needs settings.{area}.manage in the site, as a write of its own would; the
+    // write itself is the import's.
     public async Task<TransferOutcome> ImportAsync(string area, SiteId site, string json, bool dryRun, OperationContext caller, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(caller);
@@ -218,13 +236,14 @@ internal sealed class SettingsService(
             throw new SettingsAccessDeniedException(descriptor.Area, site);
         }
 
-        var canonical = Checked(descriptor, json);
-
+        var document = descriptor.WithoutSecrets(json);
         Guid? siteId = site.Value;
         var stored = await context.Set<SettingRow>().AsNoTracking()
             .Where(row => row.Key == area && row.SiteId == siteId)
             .Select(row => row.Json)
             .FirstOrDefaultAsync(cancellationToken) is { } found ? protection.Unprotect(descriptor, found, site.Value) : null;
+        var canonical = Checked(descriptor, WithRequiredSecrets(descriptor, document, stored is not null && descriptor.CanRead(stored) ? stored : null));
+
         if (stored is not null
             && descriptor.CanRead(stored)
             && JsonNode.DeepEquals(JsonNode.Parse(descriptor.Redact(stored).Json), JsonNode.Parse(descriptor.Redact(canonical).Json)))
@@ -234,10 +253,49 @@ internal sealed class SettingsService(
 
         if (!dryRun)
         {
-            await WriteAsync(descriptor, site, json, expectedVersion: null, cancellationToken);
+            var operation = await AuthorizeAsync(descriptor, site, cancellationToken);
+            await StoreAsync(descriptor, site, document, expectedVersion: null, operation.AuditPrincipal.Id, cancellationToken);
+            await ChangedAsync(descriptor, site, operation, "changed", cancellationToken);
         }
 
         return stored is null ? TransferOutcome.Created : TransferOutcome.Updated;
+    }
+
+    // The document with each secret the class requires as the site's own row holds it, which the write keeps; refused when the
+    // row does not hold one, naming the key and never a value.
+    private static string WithRequiredSecrets(SettingsDescriptor descriptor, string document, string? own)
+    {
+        if (descriptor.RequiredSecretKeys.Count == 0)
+        {
+            return document;
+        }
+
+        var filled = descriptor.KeepSecrets(document, own, out _);
+        JsonObject? probe;
+        try
+        {
+            probe = JsonNode.Parse(filled, documentOptions: new JsonDocumentOptions { MaxDepth = SettingsJson.MaxDepth }) as JsonObject;
+        }
+        catch (Exception exception) when (exception is JsonException or ArgumentException)
+        {
+            return document;
+        }
+
+        if (probe is null)
+        {
+            return document;
+        }
+
+        var missing = descriptor.RequiredSecretKeys.Order(StringComparer.Ordinal).Where(key => !probe.ContainsKey(key)).ToList();
+        if (missing.Count > 0)
+        {
+            throw new ValidationException([.. missing.Select(key => new ValidationError(
+                key,
+                SettingsErrorCodes.InvalidValue,
+                $"The settings area '{descriptor.Area}' requires the secret '{key}', which a package never carries and the site does not hold; set it in the site, then import again."))]);
+        }
+
+        return filled;
     }
 
     // The document in canonical form, once its class and the checks of its area have found nothing wrong with it.

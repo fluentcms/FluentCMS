@@ -260,7 +260,7 @@ builder.Services.AddDataProtection()
     .ProtectKeysWithAzureKeyVault(new Uri("https://my-vault.vault.azure.net/keys/fluentcms-ring"), new DefaultAzureCredential());
 ```
 
-Any other `IXmlEncryptor`, such as DPAPI on Windows, counts the same. Keys written before the encryptor was added stay readable. When the certificate is replaced, pass the old one to `UnprotectKeysWithAnyCertificate` until the keys it protected have expired. The [Docker image](docker.md#before-production) reads a certificate from `FluentCms:DataProtection:Certificate:Path` and `Password` instead. Keep `cms_data_protection_key`, `cms_signing_key` and the `cms_oidc_*` tables out of exports, and treat a database backup as holding secrets.
+Any other `IXmlEncryptor`, such as DPAPI on Windows, counts the same. Keys written before the encryptor was added stay readable. When the certificate is replaced, pass the old one to `UnprotectKeysWithAnyCertificate` until the keys it protected have expired. A secret setting stays bound to the ring key that protected it, so before a ring key, or the certificate that protects it, is retired, run `fluentcms settings reprotect` once the key you keep is the default: it protects every stored secret setting again under that key, leaves a row whose secret the ring cannot unprotect as it is, and names it by area and scope, ending with `FCMS3308`. The [Docker image](docker.md#before-production) reads a certificate from `FluentCms:DataProtection:Certificate:Path` and `Password` instead. Keep `cms_data_protection_key`, `cms_signing_key` and the `cms_oidc_*` tables out of exports, and treat a database backup as holding secrets.
 
 OpenIddict logs whole tokens at the `Trace` level. Do not set the `OpenIddict` log category to `Trace` in production.
 
