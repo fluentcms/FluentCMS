@@ -178,8 +178,9 @@ public sealed class AdministrationGateTests : AdministrationTestContext
     }
 
     // While the shell reads the new site its access and plugins are empty, which the gate of the page must not answer from,
-    // and a change of the gate replaces the page in the layout and not the layout: the header, the site switcher, the
-    // sidebar and the focus in them stay. The reads of the new site are held, as a server that does not answer at once.
+    // and a change of the gate replaces the page in the layout and not the layout: the header, the site switcher and the
+    // focus on it stay, and the sidebar, which the layout draws only while the shell is ready, is drawn again. The reads of
+    // the new site are held, as a server that does not answer at once.
     [Theory]
     [InlineData("roles", true)]
     [InlineData("roles", false)]
@@ -218,7 +219,8 @@ public sealed class AdministrationGateTests : AdministrationTestContext
     }
 
     // The access of a content locale is read when the address names it; the gate of an area's route waits for it, and the
-    // page before stays meanwhile, so that the page is neither shown nor read with what the locale before allowed.
+    // page before stays meanwhile, with nothing that says the next one is on its way (#3446), so that the page is neither
+    // shown nor read with what the locale before allowed.
     [Fact]
     public void AnAreasRouteThatNamesAnotherContentLocaleWaitsForItsAccess()
     {
@@ -244,6 +246,78 @@ public sealed class AdministrationGateTests : AdministrationTestContext
         app.WaitForAssertion(() => Heading(app).ShouldBe("No access"));
         Loader.Loads.ShouldBe(0);
         Context.ContentLocale.ShouldBe("fr");
+    }
+
+    // While the router holds a navigation, the address is the new one and the page is still the one before. The gate is
+    // asked about the route the page was matched for, so the users page, which the caller may not open, is not shown at the
+    // address of the roles page when the access of the new address's locale is read: no frame of the main region shows its
+    // heading, and it sends nothing.
+    [Fact]
+    public void ThePageBeforeIsNeverShownAtTheAddressOfANavigationTheRouterStillHolds()
+    {
+        Management.AddLocale(MainSite, "fr", 1);
+        Grant(["roles.manage", "users.manage"]);
+        Management.LocaleAccess[(MainSite, "fr")] = Management.Access[MainSite].DeepClone().AsObject();
+        var app = Load("roles");
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/roles"));
+        Navigation.NavigateTo("users");
+        app.WaitForAssertion(() => Heading(app).ShouldBe("No access"));
+        app.FindComponent<PluginRouteView>().Instance.RouteData.PageType.ShouldBe(typeof(UsersPage));
+        var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Management.HoldPath = path => path.EndsWith("/me/access", StringComparison.Ordinal) ? held.Task : null;
+        var reads = Management.Count("me/access");
+        var headings = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        app.OnMarkupUpdated += (_, _) => headings.Enqueue(string.Join("|", app.FindAll("main h1").Select(heading => heading.TextContent)));
+
+        Navigation.NavigateTo("roles?locale=fr");
+        app.WaitForAssertion(() => Management.Count("me/access").ShouldBeGreaterThan(reads));
+        held.SetResult();
+
+        app.WaitForAssertion(() => headings.ShouldContain("Roles"));
+        Shown(app).ShouldBe("/roles");
+        headings.ShouldNotContain("Users");
+        Management.Count("users").ShouldBe(0);
+    }
+
+    // The router cancels a navigation that a later one overtakes. One that waits for the access of its locale does nothing
+    // once that wait ends, even when it ends after the later navigation's: the gate the later one recorded, which the
+    // not-found page asks to navigate again once the access allows the page, is the one that counts.
+    [Fact]
+    public async Task ANavigationThatAnotherOvertookDoesNothingWhenItsLocalesAccessIsReadLast()
+    {
+        Management.AddLocale(MainSite, "fr", 1);
+        Management.AddLocale(MainSite, "de", 2);
+        Grant(["roles.manage"]);
+        Management.LocaleAccess[(MainSite, "fr")] = Management.Access[MainSite].DeepClone().AsObject();
+        var german = Management.Access[MainSite].DeepClone().AsObject();
+        german["permissions"] = new System.Text.Json.Nodes.JsonArray("schema.read");
+        Management.LocaleAccess[(MainSite, "de")] = german;
+        var app = Load();
+        var plugins = Services.GetRequiredService<AdminPlugins>();
+        var frenchRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var germanRead = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var holds = new System.Collections.Concurrent.ConcurrentQueue<TaskCompletionSource>([frenchRead, germanRead]);
+        Management.HoldPath = path => path.EndsWith("/me/access", StringComparison.Ordinal) && holds.TryDequeue(out var hold) ? hold.Task : null;
+        var reads = Management.Count("me/access");
+        using var overtaken = new CancellationTokenSource();
+        Task earlier = null!;
+        Task later = null!;
+
+        await app.InvokeAsync(() => { earlier = plugins.NavigateAsync("roles?locale=fr", overtaken.Token); });
+        app.WaitForAssertion(() => Management.Count("me/access").ShouldBe(reads + 1));
+        await overtaken.CancelAsync();
+        await app.InvokeAsync(() => { later = plugins.NavigateAsync("roles?locale=de", CancellationToken.None); });
+        app.WaitForAssertion(() => Management.Count("me/access").ShouldBe(reads + 2));
+
+        germanRead.SetResult();
+        await later;
+        frenchRead.SetResult();
+        await earlier;
+
+        plugins.AllowedSinceNavigation("roles?locale=de").ShouldBeFalse();
+        await app.InvokeAsync(() => Context.UseLocaleAsync("en"));
+        plugins.AllowedSinceNavigation("roles?locale=de").ShouldBeTrue();
+        Loader.Loads.ShouldBe(0);
     }
 
     [Fact]

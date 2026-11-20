@@ -2,8 +2,12 @@
    that the site or the user may not see, by the half that owns the page's assembly: after a site switch, a half loaded in
    the site before still has its routes, and the switch navigates to the route again. NotFoundPage tells a page the user
    lacks the permission of. Both are drawn by one RouteView, so that a change of the gate replaces the page and keeps the
-   layout, with its header, its site switcher, its sidebar and the focus in them. A page the renderer cannot create shows an
-   error in the layout instead, as no error boundary catches that. *@
+   layout, with its header, its site switcher and the focus on the switcher; the sidebar, which the layout draws only while
+   the shell is ready, is drawn again after a site switch. The gate is asked about the route the router matched the page for,
+   and never about the address: while the router holds a navigation, the address is already the next one, and the router
+   renders its last page again whenever an ancestor renders, as SignInGate does on every change of the address, so the page
+   before and the address after would let a page show at an address of an area the user may open. A page the renderer
+   cannot create shows an error in the layout instead, as no error boundary catches that. *@
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "NotFoundPage is kept by the DynamicDependency of AdminApp's constructor.")]
 @implements IDisposable
 @using System.Reflection
@@ -30,7 +34,12 @@ else
     [Parameter, EditorRequired]
     public RouteData RouteData { get; set; } = null!;
 
-    private PluginPageGate Gate => Plugins.Gate(RouteData, Navigation.ToBaseRelativePath(Navigation.Uri));
+    // The route, relative to the app's base, that the router matched RouteData for: that of the last navigation it ended.
+    private string Matched => Plugins.Settled ?? Address;
+
+    private string Address => Navigation.ToBaseRelativePath(Navigation.Uri);
+
+    private PluginPageGate Gate => Plugins.Gate(RouteData, Matched);
 
     protected override void OnInitialized() => Context.Changed += OnContextChanged;
 
@@ -39,13 +48,20 @@ else
     // What the user may do changes without a navigation too, as with a content locale whose access lacks the page: the gate
     // is asked again, and the page drawn again only when its answer changed. Not while the shell reads a site, whose access
     // and plugins are then empty: the layout shows its loading state meanwhile, and the switch navigates to the route again.
+    // Not while the address is at another path either: the router holds a navigation to it, and draws its page once it ends.
     private void OnContextChanged() => _ = InvokeAsync(() =>
     {
-        if (Context.Status == ShellStatus.Ready && Gate != shown)
+        if (Context.Status == ShellStatus.Ready && string.Equals(PathOf(Matched), PathOf(Address), StringComparison.OrdinalIgnoreCase) && Gate != shown)
         {
             StateHasChanged();
         }
     });
+
+    private static string PathOf(string route)
+    {
+        var end = route.IndexOfAny(['?', '#']);
+        return (end < 0 ? route : route[..end]).Trim('/');
+    }
 
     // The page and the layout it names, either of which may be a class of the half.
     private bool Creatable => Plugins.ProblemOf(RouteData.PageType) is null

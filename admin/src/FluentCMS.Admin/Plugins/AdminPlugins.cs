@@ -164,9 +164,25 @@ internal sealed class AdminPlugins(
     public bool LoadFailed(string route) =>
         AdministrationAreas.OfRoute(route) is not null ? administration.Failed : catalog.HalfOfRoute(route) is { } half && LoadFailed(half);
 
+    // The route of the last navigation the router ended, relative to the app's base, which is the route of the page it
+    // renders: it renders a route only once its OnNavigateAsync has ended, and not for a navigation it cancelled. While it
+    // holds a later navigation the address is already that one's, and it renders this route's page again whenever an ancestor
+    // renders, so a page's gate asks about this route and not about the address. Null before the first navigation.
+    public string? Settled { get; private set; }
+
     // The router's OnNavigateAsync: a page of a half loads the half, and a page of an area of administration its assembly,
     // once the shell knows the site, if the user may see it. A navigation tries a failed load again.
     public async Task NavigateAsync(string route, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(route);
+        await PrepareAsync(route, cancellationToken);
+        if (!cancellationToken.IsCancellationRequested)
+        {
+            Settled = route;
+        }
+    }
+
+    private async Task PrepareAsync(string route, CancellationToken cancellationToken)
     {
         _failed.Clear();
         administration.TryAgain();
@@ -178,7 +194,11 @@ internal sealed class AdminPlugins(
                 await context.StartAsync();
             }
 
-            await UseLocaleOfAsync(route);
+            if (!await UseLocaleOfAsync(route, cancellationToken))
+            {
+                return;
+            }
+
             var allowed = Gate(route);
             _navigated = (route, allowed);
             if (allowed == PluginPageGate.Allowed && administration.Loaded is null)
@@ -205,7 +225,11 @@ internal sealed class AdminPlugins(
             await context.StartAsync();
         }
 
-        await UseLocaleOfAsync(route);
+        if (!await UseLocaleOfAsync(route, cancellationToken))
+        {
+            return;
+        }
+
         var gate = Gate(route);
         _navigated = (route, gate);
         if (gate == PluginPageGate.Allowed && !IsLoaded(half))
@@ -216,8 +240,22 @@ internal sealed class AdminPlugins(
 
     // The server narrows the access by the content locale, so the gate of a route that names another locale waits for the
     // access of that locale, and the router keeps the page before meanwhile: the page of the route would otherwise be shown,
-    // and read, with what the locale before allowed. A content page sets its locale itself before it reads.
-    private Task UseLocaleOfAsync(string route) => context.UseLocaleAsync(ContentRoutes.LocaleOf(new Uri(RouteBase, route)));
+    // and read, with what the locale before allowed. A content page sets its locale itself before it reads. False for a
+    // navigation the router cancelled, as by a later one, which then does nothing more: its wait may end after the later
+    // navigation's, whose gate and load are the ones that count.
+    private async Task<bool> UseLocaleOfAsync(string route, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await context.UseLocaleAsync(ContentRoutes.LocaleOf(new Uri(RouteBase, route))).WaitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        return !cancellationToken.IsCancellationRequested;
+    }
 
     // Whether a half's route that the last navigation answered as not found or no access is allowed now, as when the shell's
     // first reads failed or a site switch was in flight then, so that the not-found page navigates to it again. The new
