@@ -503,6 +503,22 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         disable["requestBody"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/TwoFactorCodeRequest");
     }
 
+    // The row rules a grant may name, beside the catalogue (#3417): names and types, nothing of what a rule compares.
+    [Fact]
+    public void TheRowRulesHaveTheirSchema()
+    {
+        var operation = Paths[$"{Management}/permissions/row-rules"]!["get"]!;
+        operation["operationId"]!.GetValue<string>().ShouldBe("getPermissionsRowRules");
+
+        var rule = Resolve(Response(operation, "200")["properties"]!["items"]!["items"]!);
+        rule["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["name", "typeNames"]);
+        rule["properties"]!["name"]!["type"]!.GetValue<string>().ShouldBe("string");
+        var types = rule["properties"]!["typeNames"]!;
+        types["type"]!.ToJsonString().ShouldBe("""["null","array"]""");
+        types["items"]!["type"]!.GetValue<string>().ShouldBe("string");
+        types["description"]!.GetValue<string>().ShouldContain("every type");
+    }
+
     // What the admin draws itself from (#3096): the caller's access, the locales of its sites and its preferences.
     [Fact]
     public void TheAccessLocalesAndPreferencesOfTheCallerHaveTheirSchemas()

@@ -230,6 +230,7 @@ public sealed class OperationsEndpointsTests(AdminFixture fixture) : IClassFixtu
     [InlineData("invitations")]
     [InlineData("roles")]
     [InlineData("permissions")]
+    [InlineData("permissions/row-rules")]
     [InlineData("api-keys")]
     [InlineData("sites")]
     [InlineData("sites/00000000-0000-7000-8002-000000000001/locales")]

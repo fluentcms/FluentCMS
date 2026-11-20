@@ -58,6 +58,9 @@ public sealed class AdminFixture : IAsyncLifetime
 {
     public const string Root = "/api/management/v1/";
 
+    // A row rule the host registers, beside core's own-entries.
+    public const string NewsRule = "news";
+
     public RecordingEmailSender Email { get; } = new();
 
     public FluentCmsTestHost Host { get; }
@@ -91,6 +94,7 @@ public sealed class AdminFixture : IAsyncLifetime
                 cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
                 cms.Settings.Add<MailSettings>();
                 cms.Jobs.AddJob<FailingJob, FailingPayload>(FailingJob.Type);
+                cms.Authorization.AddRowRule<Page>(NewsRule, _ => page => page.Section == "news");
             });
     }
 
