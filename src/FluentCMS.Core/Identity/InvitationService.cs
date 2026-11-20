@@ -1,14 +1,21 @@
+using System.Collections.Immutable;
 using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Identity.ApiKeys;
+using FluentCMS.Core.Identity.Members;
+using FluentCMS.Core.Identity.Oidc;
+using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Providers;
+using FluentCMS.Sites;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using OpenIddict.EntityFrameworkCore.Models;
 
 namespace FluentCMS.Core.Identity;
 
@@ -31,6 +38,7 @@ internal sealed class InvitationService(
     IOperationContextAccessor accessor,
     ManagementAuthority authority,
     RoleService roleService,
+    ApiKeyPrincipals keys,
     AdminUserOptions options,
     SsoOptions sso,
     TimeProvider time)
@@ -126,10 +134,20 @@ internal sealed class InvitationService(
             .Select(row => new InvitationInfo(row.Id, row.Email, JsonSerializer.Deserialize<List<Guid>>(row.RoleIds) ?? [], row.CreatedAt, row.CreatedBy, row.ExpiresAt))];
     }
 
-    // False when no invitation with this id could still be accepted.
+    // False when no invitation with this id could still be accepted. Revoking one needs what sending it would, so a caller
+    // below its roles does not cancel it.
     public async Task<bool> RevokeAsync(Guid id, CancellationToken cancellationToken = default)
     {
         await authority.RequireAsync(CorePermissions.UsersManage, site: null, cancellationToken);
+
+        var pending = await context.Set<Invitation>().AsNoTracking()
+            .FirstOrDefaultAsync(row => row.Id == id && row.AcceptedAt == null && row.RevokedAt == null, cancellationToken);
+        if (pending is null)
+        {
+            return false;
+        }
+
+        await roleService.RequireAssignableAsync(JsonSerializer.Deserialize<List<Guid>>(pending.RoleIds) ?? [], cancellationToken);
 
         var now = time.GetUtcNow();
         var revoked = await context.Set<Invitation>()
@@ -146,8 +164,9 @@ internal sealed class InvitationService(
         var hash = Hash(token);
         var invitation = await context.Set<Invitation>().AsNoTracking().FirstOrDefaultAsync(row => row.TokenHash == hash, cancellationToken);
         return invitation is { AcceptedAt: null, RevokedAt: null } && invitation.ExpiresAt > time.GetUtcNow()
-            ? new PendingInvitation(invitation.Id, invitation.Email, invitation.ExpiresAt)
-            : null;
+            && await InviterStandsAsync(invitation, JsonSerializer.Deserialize<List<Guid>>(invitation.RoleIds) ?? [], cancellationToken)
+                ? new PendingInvitation(invitation.Id, invitation.Email, invitation.ExpiresAt)
+                : null;
     }
 
     public async Task<IdentityResult> AcceptAsync(string token, string userName, string password, CancellationToken cancellationToken = default)
@@ -200,9 +219,8 @@ internal sealed class InvitationService(
                     return Failed(IdentityErrorCodes.InvitationExpired, "The invitation has expired. Ask for a new one.");
                 }
 
-                // Deactivation revokes what the user sent; this holds if a revocation was missed.
-                if (invitation.CreatedByKind == PrincipalKind.AdminUser
-                    && !await context.Set<CmsUser>().AnyAsync(user => user.Id == invitation.CreatedBy && user.DeactivatedAt == null, cancellationToken))
+                List<Guid> named = JsonSerializer.Deserialize<List<Guid>>(invitation.RoleIds) ?? [];
+                if (!await InviterStandsAsync(invitation, named, cancellationToken))
                 {
                     return Failed(IdentityErrorCodes.InvalidInvitation, "The invitation is not valid, or has been used.");
                 }
@@ -220,7 +238,6 @@ internal sealed class InvitationService(
                 }
 
                 // A role deleted since the invitation is not given.
-                List<Guid> named = JsonSerializer.Deserialize<List<Guid>>(invitation.RoleIds) ?? [];
                 List<Guid> roles = await context.Set<Role>().AsNoTracking().Where(role => named.Contains(role.Id)).Select(role => role.Id).ToListAsync(cancellationToken);
                 if (roles.Count > 0 && await users.AddToRolesAsync(user, roles) is { Succeeded: false } assigned)
                 {
@@ -235,6 +252,91 @@ internal sealed class InvitationService(
                 return claimed == 1 ? IdentityResult.Success : Failed(IdentityErrorCodes.InvalidInvitation, "The invitation is not valid, or has been used.");
             },
             cancellationToken);
+    }
+
+    // An invitation is only as good as the credential that sent it: the user still active, the key not revoked or expired,
+    // the service account's client still configured, and each of them still holding every grant of the roles it names, as
+    // its roles are now. Deactivating a user or revoking a key also revokes what it sent; this holds when that was missed and
+    // when the inviter was only demoted. Only the system, the command line tool, is not checked again; any other kind fails.
+    private async Task<bool> InviterStandsAsync(Invitation invitation, IReadOnlyCollection<Guid> roleIds, CancellationToken cancellationToken)
+    {
+        if (invitation.CreatedByKind == PrincipalKind.System && invitation.CreatedBy == Principal.System.Id)
+        {
+            return true;
+        }
+
+        var inviter = await InviterAsync(invitation, cancellationToken);
+        if (inviter is null)
+        {
+            return false;
+        }
+
+        var previous = accessor.Current;
+        accessor.Current = new OperationContext(inviter, Origin.Api, previous?.Site ?? new SiteId(DefaultSite.Id), previous?.Locale ?? DefaultSite.Locale, null, previous?.CorrelationId ?? Guid.CreateVersion7().ToString(), time.GetUtcNow());
+        try
+        {
+            await roleService.RequireAssignableAsync(roleIds, cancellationToken);
+            return true;
+        }
+        catch (ManagementAccessDeniedException)
+        {
+            return false;
+        }
+        finally
+        {
+            accessor.Current = previous;
+        }
+    }
+
+    // The inviter as a principal of the management scope, whose roles the evaluator reads as they are now; null when it is gone.
+    private async Task<Principal?> InviterAsync(Invitation invitation, CancellationToken cancellationToken)
+    {
+        Dictionary<string, string> management = new() { [TokenScopes.Claim] = TokenScopes.Management };
+        switch (invitation.CreatedByKind)
+        {
+            case PrincipalKind.AdminUser:
+                return await context.Set<CmsUser>().AsNoTracking().FirstOrDefaultAsync(user => user.Id == invitation.CreatedBy && user.DeactivatedAt == null, cancellationToken) is { } user
+                    ? new Principal(PrincipalKind.AdminUser, user.Id, user.UserName ?? "", management)
+                    : null;
+            case PrincipalKind.ApiKey:
+                return await keys.ActiveAsync(invitation.CreatedBy, cancellationToken) is { } key ? ApiKeyClaims.PrincipalOf(key) : null;
+            case PrincipalKind.ServiceAccount:
+                if (await ServiceAccountRolesAsync(invitation.CreatedBy, cancellationToken) is not { } roles)
+                {
+                    return null;
+                }
+
+                management[CmsClaimTypes.Roles] = string.Join(' ', roles.Select(role => role.ToString("D")));
+                return new Principal(PrincipalKind.ServiceAccount, invitation.CreatedBy, "", management);
+            default:
+                return null;
+        }
+    }
+
+    // The roles the token endpoint would give the client now: the instance roles its configuration names.
+    private async Task<IReadOnlyList<Guid>?> ServiceAccountRolesAsync(Guid applicationId, CancellationToken cancellationToken)
+    {
+        var application = await context.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>().AsNoTracking()
+            .Where(row => row.Id == applicationId)
+            .Select(row => new { row.Properties })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (application is null)
+        {
+            return null;
+        }
+
+        var properties = string.IsNullOrEmpty(application.Properties)
+            ? ImmutableDictionary<string, JsonElement>.Empty
+            : JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(application.Properties)?.ToImmutableDictionary() ?? ImmutableDictionary<string, JsonElement>.Empty;
+        if (MemberConnect.IsMemberClient(properties)
+            || !properties.TryGetValue(AuthorizationServer.RolesProperty, out var element)
+            || element.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        List<string> names = [.. element.EnumerateArray().Where(item => item.ValueKind == JsonValueKind.String).Select(item => item.GetString()!)];
+        return await context.Set<Role>().AsNoTracking().Where(role => role.SiteId == null && names.Contains(role.Name)).Select(role => role.Id).ToListAsync(cancellationToken);
     }
 
     private IQueryable<Invitation> Pending(string normalizedEmail) =>
