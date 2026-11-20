@@ -160,6 +160,7 @@ public sealed class AiFieldsTests : IClassFixture<AiHost>
         var answer = document["paths"]![Fields]!["get"]!["responses"]!["200"]!["content"]!["application/json"]!["schema"]!;
         answer["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/AiFields");
         document["components"]!["schemas"]!["AiFields"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["enabled", "locale", "fields", "assets"]);
+        document["components"]!["schemas"]!["AiUsageRow"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["id", "principalKind", "principalId", "principalName", "action", "type", "field", "provider", "model", "promptTokens", "completionTokens", "durationMs", "succeeded", "createdAt"]);
         document["components"]!["schemas"]!["AiUsageTotals"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["calls", "promptTokens", "completionTokens", "groups"]);
         document["components"]!["schemas"]!["AiUsageGroup"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["principalKind", "principalId", "action", "calls", "promptTokens", "completionTokens"]);
     }

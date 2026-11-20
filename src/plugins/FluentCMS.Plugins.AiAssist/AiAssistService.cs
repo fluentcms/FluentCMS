@@ -666,6 +666,7 @@ internal sealed class AiAssistService(
                 SiteId = call.Site.Value,
                 PrincipalKind = AiUsageService.KindOf(call.Principal.Kind),
                 PrincipalId = call.Principal.Id,
+                PrincipalName = Limit(call.Principal.Name, AiUsageModel.PrincipalNameMaxLength),
                 Action = call.Action,
                 Type = call.Type,
                 Field = call.Field,

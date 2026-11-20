@@ -1,5 +1,12 @@
 using System.Net;
 using System.Text.Json.Nodes;
+using FluentCMS.Content;
+using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Identity;
+using FluentCMS.Sites;
+using FluentCMS.Testing;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Plugins.AiAssist.Tests.AiTesting;
@@ -174,6 +181,62 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
             using var invalid = await auditor.GetAsync(new Uri(Usage + query, UriKind.Relative), Token);
             (await RefusedAsync(invalid, HttpStatusCode.UnprocessableEntity)).ShouldBe("FCMS1680", query);
         }
+    }
+
+    // #3418: a row names its principal by the name it had at the call, as a version names its author, which a later rename
+    // leaves as it was, and a caller who may only read the log reads it.
+    [Fact]
+    public async Task ARowNamesItsPrincipalAsItWasAtTheCall()
+    {
+        var site = await _ai.SiteAsync();
+        var body = new { type = "article", field = "summary", text = "Ships are big boats." };
+        var user = await _ai.Host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token);
+        var key = await _ai.Host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, "Build key", Token);
+        using var auditor = await _ai.CallerAsync(site, (AiPermissions.ReadUsage, null));
+        var renamed = $"ada{Guid.NewGuid():N}";
+        string name;
+
+        using (var before = InSite(await _ai.Host.AsUserAsync(user), site))
+        {
+            await SuggestAsync(before, "rewrite", body);
+        }
+
+        using (var client = InSite(_ai.Host.AsKey(key), site))
+        {
+            await SuggestAsync(client, "shorten", body);
+        }
+
+        await using (var scope = _ai.Services.CreateAsyncScope())
+        {
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(site));
+            var ai = scope.ServiceProvider.GetRequiredService<AiAssistService>();
+            await ai.RunAsync(await ai.PrepareAsync("title", new AiActionRequest("article", "summary", null, "Ships are big boats.", null, null), Token), null, Token);
+        }
+
+        await using (var scope = _ai.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<CmsUser>>();
+            var stored = (await users.FindByIdAsync(user.Id.ToString()))!;
+            name = stored.UserName!;
+            (await users.SetUserNameAsync(stored, renamed)).Succeeded.ShouldBeTrue();
+        }
+
+        using (var after = InSite(await _ai.Host.AsUserAsync(user), site))
+        {
+            await SuggestAsync(after, "expand", body);
+        }
+
+        var items = (await UsageAsync(auditor, ""))["items"]!.AsArray();
+        items.Select(item => (item!["action"]!.GetValue<string>(), item["principalKind"]!.GetValue<string>(), item["principalId"]!.GetValue<Guid>(), item["principalName"]!.GetValue<string>()))
+            .ShouldBe(
+                [("expand", "adminUser", user.Id, renamed), ("title", "system", Guid.Empty, "System"), ("shorten", "apiKey", key.Id, "Build key"), ("rewrite", "adminUser", user.Id, name)],
+                ignoreOrder: true);
+    }
+
+    private static HttpClient InSite(HttpClient client, Guid site)
+    {
+        client.DefaultRequestHeaders.Add("X-Cms-Site", site.ToString());
+        return client;
     }
 
     private static async Task<JsonNode> UsageAsync(HttpClient client, string query)

@@ -183,7 +183,7 @@ The instructions of an action are the system message, and the text is the user m
 
 ## Usage
 
-Every call that is sent to a provider writes one row to `cms_ai_usage`: the site, the principal by kind and id, the action, the type and field, the provider and model, the prompt and completion tokens, the duration and whether it succeeded. A call that failed, timed out or was cancelled writes its row too. A request that was refused before the provider was asked writes none. A provider that reports no usage leaves 0 prompt and 0 completion tokens in the row and in the answer, and the call still succeeds.
+Every call that is sent to a provider writes one row to `cms_ai_usage`: the site, the principal by kind and id with the name it had at the call (a later rename leaves the row as it was), the action, the type and field, the provider and model, the prompt and completion tokens, the duration and whether it succeeded. A call that failed, timed out or was cancelled writes its row too. A request that was refused before the provider was asked writes none. A provider that reports no usage leaves 0 prompt and 0 completion tokens in the row and in the answer, and the call still succeeds.
 
 `GET /api/management/v1/ai/usage` pages the rows of the site, the newest first, with the permission `ai.usage.read`:
 
@@ -194,7 +194,7 @@ Every call that is sent to a provider writes one row to `cms_ai_usage`: the site
 | `from`, `to` | The rows from a time and before a time, each with an offset, such as `2026-11-01T00:00:00Z`. |
 | `page`, `pageSize` | The page, from 1, and its size, 50 and at most 100. |
 
-It answers `{ "items", "total", "page", "pageSize", "totals" }`, where `totals` is `{ "calls", "promptTokens", "completionTokens", "groups" }` over every row the filter matches, and `groups` gives the same three for each principal and action, with `principalKind`, `principalId` and `action`. A row of `altText` for an asset alone has an empty `type` and `field`. There are no budgets and no billing.
+It answers `{ "items", "total", "page", "pageSize", "totals" }`, where `totals` is `{ "calls", "promptTokens", "completionTokens", "groups" }` over every row the filter matches, and `groups` gives the same three for each principal and action, with `principalKind`, `principalId` and `action`. Each row names its principal with `principalKind`, `principalId` and `principalName`, so a caller with `ai.usage.read` alone, who cannot read users or keys, sees who made each call. A row of `altText` for an asset alone has an empty `type` and `field`. The rows also count against the daily token budget (see "Limits"); there is no billing.
 
 The recurring job `ai.usage-retention` (daily at 04:30 UTC) removes the rows older than `UsageRetention`.
 
