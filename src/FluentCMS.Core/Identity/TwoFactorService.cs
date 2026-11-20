@@ -115,22 +115,23 @@ internal sealed class TwoFactorService(CmsUserManager users, SystemDbContext con
         }
     }
 
-    // A wrong code counts as a failed sign-in, so the lockout of cms.Users bounds guessing as it does on the hosted pages.
+    // The caller is signed in, so the lockout, which anyone who knows the user name raises, does not refuse it: a wrong code
+    // counts as a failed sign-in and towards the count of the user's sessions, which bounds their guessing (#3371).
     private async Task RequireCodeAsync(CmsUser user, string? code, bool recoveryCode)
     {
         // Identity's recovery codes are upper case.
         var compact = (code ?? "").Replace(" ", "", StringComparison.Ordinal).ToUpperInvariant();
-        if (compact.Length > 0 && !await users.IsLockedOutAsync(user))
+        if (compact.Length > 0 && !await users.IsSignedInLockedOutAsync(user))
         {
             var authenticator = compact.Replace("-", "", StringComparison.Ordinal);
             if (await users.VerifyTwoFactorTokenAsync(user, users.Options.Tokens.AuthenticatorTokenProvider, authenticator)
                 || (recoveryCode && (await users.RedeemTwoFactorRecoveryCodeAsync(user, compact)).Succeeded))
             {
-                UserViews.Check(await users.ResetAccessFailedCountAsync(user));
+                UserViews.Check(await users.ResetSignedInFailuresAsync(user));
                 return;
             }
 
-            UserViews.Check(await users.AccessFailedAsync(user));
+            UserViews.Check(await users.SignedInAccessFailedAsync(user));
         }
 
         throw new ValidationException([new ValidationError("code", IdentityErrorCodes.InvalidTwoFactorCode, "The code is not right, or the account is locked out for now.")]);

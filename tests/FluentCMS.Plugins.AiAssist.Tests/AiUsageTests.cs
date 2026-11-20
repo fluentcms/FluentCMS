@@ -1,5 +1,12 @@
 using System.Net;
 using System.Text.Json.Nodes;
+using FluentCMS.Content;
+using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Identity;
+using FluentCMS.Sites;
+using FluentCMS.Testing;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Plugins.AiAssist.Tests.AiTesting;
@@ -151,9 +158,12 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
         (newest["provider"]!.GetValue<string>(), newest["model"]!.GetValue<string>()).ShouldBe((ScriptedFactory.Provider, "test-model"));
         newest["createdAt"]!.GetValue<DateTimeOffset>().ShouldBe(later);
         Totals(all).ShouldBe((4, 30, 9));
+        var (adminId, editorId) = (_ai.PrincipalOf(admin), _ai.PrincipalOf(editor));
+        Groups(all).ShouldBe(InOrder([("apiKey", editorId, "shorten", 2, 10, 3), ("apiKey", adminId, "rewrite", 1, 10, 3), ("apiKey", editorId, "rewrite", 1, 10, 3)]));
 
         ofEditor["total"]!.GetValue<long>().ShouldBe(3);
         Totals(ofEditor).ShouldBe((3, 20, 6));
+        Groups(ofEditor).ShouldBe([("apiKey", editorId, "rewrite", 1, 10, 3), ("apiKey", editorId, "shorten", 2, 10, 3)]);
         shortened["total"]!.GetValue<long>().ShouldBe(2);
         Totals(shortened).ShouldBe((2, 10, 3));
         since["items"]!.AsArray().Select(item => item!["action"]!.GetValue<string>()).ShouldBe(["shorten", "shorten"]);
@@ -161,6 +171,7 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
         before["items"]!.AsArray().Select(item => item!["action"]!.GetValue<string>()).ShouldBe(["rewrite", "rewrite"]);
         paged["items"]!.AsArray().ShouldHaveSingleItem()!["action"]!.GetValue<string>().ShouldBe("rewrite");
         Totals(paged).ShouldBe((4, 30, 9));
+        Groups(paged).Count.ShouldBe(3);
 
         // The caller who may run actions may not read the log, and a parameter that cannot be read is refused.
         using var refused = await editor.GetAsync(new Uri(Usage, UriKind.Relative), Token);
@@ -172,6 +183,79 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
         }
     }
 
+    // #3418: a row names its principal by the name it had at the call, as a version names its author, which a later rename
+    // leaves as it was, and a caller who may only read the log reads it.
+    [Fact]
+    public async Task ARowNamesItsPrincipalAsItWasAtTheCall()
+    {
+        var site = await _ai.SiteAsync();
+        var body = new { type = "article", field = "summary", text = "Ships are big boats." };
+        var user = await _ai.Host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token);
+        var key = await _ai.Host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, "Build key", Token);
+        using var auditor = await _ai.CallerAsync(site, (AiPermissions.ReadUsage, null));
+        var renamed = $"ada{Guid.NewGuid():N}";
+        string name;
+
+        using (var before = InSite(await _ai.Host.AsUserAsync(user), site))
+        {
+            await SuggestAsync(before, "rewrite", body);
+        }
+
+        using (var client = InSite(_ai.Host.AsKey(key), site))
+        {
+            await SuggestAsync(client, "shorten", body);
+        }
+
+        await using (var scope = _ai.Services.CreateAsyncScope())
+        {
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(site));
+            var ai = scope.ServiceProvider.GetRequiredService<AiAssistService>();
+            await ai.RunAsync(await ai.PrepareAsync("title", new AiActionRequest("article", "summary", null, "Ships are big boats.", null, null), Token), null, Token);
+        }
+
+        await using (var scope = _ai.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<CmsUser>>();
+            var stored = (await users.FindByIdAsync(user.Id.ToString()))!;
+            name = stored.UserName!;
+            (await users.SetUserNameAsync(stored, renamed)).Succeeded.ShouldBeTrue();
+        }
+
+        using (var after = InSite(await _ai.Host.AsUserAsync(user), site))
+        {
+            await SuggestAsync(after, "expand", body);
+        }
+
+        var items = (await UsageAsync(auditor, ""))["items"]!.AsArray();
+        items.Select(item => (item!["action"]!.GetValue<string>(), item["principalKind"]!.GetValue<string>(), item["principalId"]!.GetValue<Guid>(), item["principalName"]!.GetValue<string>()))
+            .ShouldBe(
+                [("expand", "adminUser", user.Id, renamed), ("title", "system", Guid.Empty, "System"), ("shorten", "apiKey", key.Id, "Build key"), ("rewrite", "adminUser", user.Id, name)],
+                ignoreOrder: true);
+    }
+
+    // A name past the column is cut, and never between the two halves of a surrogate pair, which PostgreSQL would refuse.
+    [Fact]
+    public async Task ANameLongerThanTheColumnIsCutOutsideASurrogatePair()
+    {
+        var site = await _ai.SiteAsync();
+        var user = await _ai.Host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token);
+        var kept = new string('a', AiUsageModel.PrincipalNameMaxLength - 1);
+        var named = user with { Principal = new Principal(PrincipalKind.AdminUser, user.Id, kept + "\U0001F6A2 and more", user.Principal.Claims) };
+
+        await _ai.Host.As(named).In(new SiteId(site)).RunAsync<AiAssistService, AiActionResult>(async ai =>
+            await ai.RunAsync(await ai.PrepareAsync("title", new AiActionRequest("article", "summary", null, "Ships are big boats.", null, null), Token), null, Token));
+
+        (await _ai.UsageAsync(site)).ShouldHaveSingleItem().PrincipalName.ShouldBe(kept);
+        AiAssistService.Limit(kept + "\U0001F6A2", AiUsageModel.PrincipalNameMaxLength).ShouldBe(kept);
+        AiAssistService.Limit(kept + "b\U0001F6A2", AiUsageModel.PrincipalNameMaxLength).ShouldBe(kept + "b");
+    }
+
+    private static HttpClient InSite(HttpClient client, Guid site)
+    {
+        client.DefaultRequestHeaders.Add("X-Cms-Site", site.ToString());
+        return client;
+    }
+
     private static async Task<JsonNode> UsageAsync(HttpClient client, string query)
     {
         using var response = await client.GetAsync(new Uri(Usage + query, UriKind.Relative), Token);
@@ -180,4 +264,17 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
 
     private static (long Calls, long PromptTokens, long CompletionTokens) Totals(JsonNode page) =>
         (page["totals"]!["calls"]!.GetValue<long>(), page["totals"]!["promptTokens"]!.GetValue<long>(), page["totals"]!["completionTokens"]!.GetValue<long>());
+
+    // By kind, id and action, as the answer orders them.
+    private static List<(string Kind, Guid Principal, string Action, long Calls, long PromptTokens, long CompletionTokens)> InOrder(List<(string Kind, Guid Principal, string Action, long Calls, long PromptTokens, long CompletionTokens)> groups) =>
+        [.. groups.OrderBy(group => group.Kind, StringComparer.Ordinal).ThenBy(group => group.Principal).ThenBy(group => group.Action, StringComparer.Ordinal)];
+
+    private static List<(string Kind, Guid Principal, string Action, long Calls, long PromptTokens, long CompletionTokens)> Groups(JsonNode page) =>
+        [.. page["totals"]!["groups"]!.AsArray().Select(group => (
+            group!["principalKind"]!.GetValue<string>(),
+            group["principalId"]!.GetValue<Guid>(),
+            group["action"]!.GetValue<string>(),
+            group["calls"]!.GetValue<long>(),
+            group["promptTokens"]!.GetValue<long>(),
+            group["completionTokens"]!.GetValue<long>()))];
 }

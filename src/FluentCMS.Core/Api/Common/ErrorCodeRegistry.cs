@@ -247,6 +247,7 @@ public static class ErrorCodeRegistry
         new(IdentityErrorCodes.NoAuthenticator, StatusCodes.Status409Conflict, "No authenticator enrolled"),
         Invalid(IdentityErrorCodes.InvalidTwoFactorCode, "Invalid two-factor code"),
         new(IdentityErrorCodes.SecondFactorRequired, StatusCodes.Status403Forbidden, "Second factor required"),
+        new(IdentityErrorCodes.RecentSignInRequired, StatusCodes.Status403Forbidden, "Recent sign-in required"),
 
         // Admin SSO: options found when the host starts, and refusals of a sign-in that the hosted pages log
         Startup(IdentityErrorCodes.InvalidSsoOptions, "Invalid single sign-on options"),
