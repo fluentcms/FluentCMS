@@ -51,7 +51,7 @@ internal static class CommandRunner
         await using (var scope = services.CreateAsyncScope())
         {
             var accessor = scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>();
-            using var operation = SystemOperation.Begin(accessor, Origin.Cli, new SiteId(DefaultSite.Id));
+            using var operation = SystemOperation.Begin(accessor, scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Cli, new SiteId(DefaultSite.Id));
             try
             {
                 exitCode = await command.RunAsync(new CommandContext(scope.ServiceProvider, arguments, output, error, input), cancellationToken);

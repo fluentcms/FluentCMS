@@ -9,6 +9,7 @@ using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using FluentCMS.Providers;
 using FluentCMS.Schema;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.DataProtection.XmlEncryption;
 using Microsoft.Data.Sqlite;
@@ -576,6 +577,26 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         ring.ShouldAllBe(xml => xml.Contains("encryptedSecret", StringComparison.Ordinal));
     }
 
+    // The ring is written with one provider and read back by another, which needs the certificate's private key.
+    [Fact]
+    public void TheKeyRingCertificateDecryptsTheRingAndOnWindowsKeepsItsKeyOutOfTheProfile()
+    {
+        var path = WriteCertificate("ring.pfx", "ring-password");
+        var keys = Directory.CreateDirectory(Path.Combine(_host.Root, "keys"));
+
+        using var writer = ReferenceHost.LoadKeyRingCertificate(path, "ring-password");
+        using var reader = ReferenceHost.LoadKeyRingCertificate(path, "ring-password");
+        var protectedText = Ring(keys, writer).CreateProtector("test").Protect("secret");
+
+        Ring(keys, reader).CreateProtector("test").Unprotect(protectedText).ShouldBe("secret");
+        File.ReadAllText(keys.GetFiles("key-*.xml").ShouldHaveSingleItem().FullName).ShouldContain("encryptedSecret");
+        if (OperatingSystem.IsWindows())
+        {
+            using var rsa = reader.GetRSAPrivateKey();
+            (rsa is RSACng { Key.IsEphemeral: true }).ShouldBeTrue();
+        }
+    }
+
     [Theory]
     [InlineData("missing.pfx", null)]
     [InlineData("ring.pfx", "wrong-password")]
@@ -646,6 +667,15 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         request.Headers.Accept.ParseAdd("text/event-stream");
         return request;
     }
+
+    private static IDataProtectionProvider Ring(DirectoryInfo keys, X509Certificate2 certificate) =>
+        new ServiceCollection()
+            .AddDataProtection()
+            .SetApplicationName("FluentCMS")
+            .PersistKeysToFileSystem(keys)
+            .ProtectKeysWithCertificate(certificate)
+            .Services.BuildServiceProvider()
+            .GetRequiredService<IDataProtectionProvider>();
 
     private string WriteCertificate(string name, string password)
     {

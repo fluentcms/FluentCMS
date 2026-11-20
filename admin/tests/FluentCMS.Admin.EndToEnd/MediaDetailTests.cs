@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using Shouldly;
 using Xunit;
+using static FluentCMS.Admin.EndToEnd.MediaUi;
 using static Microsoft.Playwright.Assertions;
 
 namespace FluentCMS.Admin.EndToEnd;
@@ -18,28 +19,18 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
     [Fact]
     public async Task TheEditorEditsTheMetadataSetsTheFocalPointByKeyboardAndReplacesTheFile()
     {
-        var mark = "d" + Guid.NewGuid().ToString("N")[..8];
+        var mark = Mark;
         var browser = await OpenBrowserAsync();
-        var tab = await OpenLibraryAsync(browser, Host.Editor);
-        await tab.Page.Locator("[data-media-upload] input[type=file]").SetInputFilesAsync(
-            new FilePayload { Name = $"{mark}.png", MimeType = "image/png", Buffer = Convert.FromBase64String(Red) });
-        await Content(tab).GetByLabel(Text("Media.Search.Label"), new LocatorGetByLabelOptions { Exact = true }).FillAsync(mark);
-        await MediaButton(tab, "Media.Search.Submit").ClickAsync();
-        await Expect(tab.Page.Locator(".media-tile-name")).ToHaveTextAsync([$"{mark}.png"]);
-
-        await tab.Page.Locator(".media-tile-open").ClickAsync();
-        var panel = tab.Page.Locator(".cms-drawer");
+        var tab = await OpenLibraryAsync(browser);
+        await UploadAsync(Content(tab), PngFile($"{mark}.png", Red));
+        var panel = await OpenAssetAsync(tab, mark);
         var title = panel.GetByLabel(Text("Media.Form.Title"), new LocatorGetByLabelOptions { Exact = true });
-        await Expect(title).ToBeVisibleAsync();
 
         // The metadata is saved together, and the tile shows the new title, which the admin takes from the server's answer.
         await title.FillAsync($"{mark} title");
         await panel.GetByLabel(Text("Media.Form.Caption"), new LocatorGetByLabelOptions { Exact = true }).FillAsync("A red square");
         await panel.GetByLabel(Text("Media.Form.Tags"), new LocatorGetByLabelOptions { Exact = true }).FillAsync("red, square");
-        var saved = await tab.Page.RunAndWaitForResponseAsync(
-            () => MediaButton(tab, "Media.Form.Save").ClickAsync(),
-            response => response.Request.Method == "PATCH" && response.Status != 401,
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        var saved = await tab.AnswerAsync(() => Button(tab, "Media.Form.Save").ClickAsync(), response => response.Request.Method == "PATCH");
         saved.Status.ShouldBe(200);
         var sent = JsonNode.Parse(saved.Request.PostData!)!;
         (sent["title"]!.GetValue<string>(), sent["caption"]!.GetValue<string>()).ShouldBe(($"{mark} title", "A red square"));
@@ -48,19 +39,15 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
         // The alt text is saved as the field is left by Tab.
         var alt = panel.GetByLabel(Text("Media.Alt.Label"), new LocatorGetByLabelOptions { Exact = true });
         await alt.FillAsync("A red square");
-        var altSaved = await tab.Page.RunAndWaitForResponseAsync(
-            () => tab.Page.Keyboard.PressAsync("Tab"),
-            response => response.Request.Method == "PATCH",
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
-        // The body of an answer may be gone from the browser by the time it is read, so the request and the status are read.
+        var altSaved = await tab.AnswerAsync(() => tab.Page.Keyboard.PressAsync("Tab"), response => response.Request.Method == "PATCH");
         altSaved.Ok.ShouldBeTrue();
         (altSaved.Request.PostData ?? "").ShouldContain("A red square");
 
         // The focal point moves with the arrow keys on its slider; a slow runner may save between keys, so the save waited for
         // is the one of the last key.
         var across = panel.GetByLabel(Text("Media.Focal.X"), new LocatorGetByLabelOptions { Exact = true });
-        await across.FocusAsync();
-        var focal = await tab.Page.RunAndWaitForResponseAsync(
+        await Ui.FocusAsync(across);
+        var focal = await tab.AnswerAsync(
             async () =>
             {
                 for (var step = 0; step < 5; step++)
@@ -68,17 +55,15 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
                     await tab.Page.Keyboard.PressAsync("ArrowRight");
                 }
             },
-            response => response.Request.Method == "PATCH" && (response.Request.PostData ?? "").Contains("\"x\":0.55", StringComparison.Ordinal),
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+            response => response.Request.Method == "PATCH" && (response.Request.PostData ?? "").Contains("\"x\":0.55", StringComparison.Ordinal));
         focal.Ok.ShouldBeTrue();
         await Expect(panel.Locator(".media-focal-marker")).ToHaveAttributeAsync("style", new Regex("left:55%"));
 
         // A replaced file shows its new thumbnail in the open panel.
         var before = await panel.Locator(".media-focal-image img").GetAttributeAsync("src");
-        await panel.Locator("input[type=file]").SetInputFilesAsync(
-            new FilePayload { Name = $"{mark}-wide.png", MimeType = "image/png", Buffer = Convert.FromBase64String(Halves) });
+        await panel.Locator("input[type=file]").SetInputFilesAsync(PngFile($"{mark}-wide.png", Halves));
         await Expect(panel.Locator(".media-panel-facts")).ToContainTextAsync($"{mark}-wide.png");
-        (await panel.Locator(".media-focal-image img").GetAttributeAsync("src")).ShouldNotBe(before);
+        await Expect(panel.Locator(".media-focal-image img")).Not.ToHaveAttributeAsync("src", before ?? "");
         await Expect(panel.Locator(".media-panel-facts")).ToContainTextAsync("4 × 2");
         browser.PolicyViolations.ShouldBeEmpty();
     }
@@ -88,11 +73,10 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
     [Fact]
     public async Task ASaveAfterAnotherTabChangedTheAssetShowsTheConflict()
     {
-        var mark = "c" + Guid.NewGuid().ToString("N")[..8];
+        var mark = Mark;
         var browser = await OpenBrowserAsync();
-        var mine = await OpenLibraryAsync(browser, Host.Editor);
-        await mine.Page.Locator("[data-media-upload] input[type=file]").SetInputFilesAsync(
-            new FilePayload { Name = $"{mark}.png", MimeType = "image/png", Buffer = Convert.FromBase64String(Red) });
+        var mine = await OpenLibraryAsync(browser);
+        await UploadAsync(Content(mine), PngFile($"{mark}.png", Red));
         var panel = await OpenAssetAsync(mine, mark);
 
         // The second tab signs in through the server's session, and saves a title.
@@ -103,11 +87,7 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
         var theirTitle = theirPanel.GetByLabel(Text("Media.Form.Title"), new LocatorGetByLabelOptions { Exact = true });
         await theirTitle.FillAsync($"{mark} theirs");
         await Expect(theirTitle).ToHaveValueAsync($"{mark} theirs");
-        // An access token lasts five seconds on this host, so a save may be answered 401 and sent again.
-        var theirSave = await theirs.Page.RunAndWaitForResponseAsync(
-            () => MediaButton(theirs, "Media.Form.Save").ClickAsync(),
-            response => response.Request.Method == "PATCH" && response.Status != 401,
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        var theirSave = await theirs.AnswerAsync(() => Button(theirs, "Media.Form.Save").ClickAsync(), response => response.Request.Method == "PATCH");
         theirSave.Status.ShouldBe(200);
 
         // The reads of the asset itself, GET /media/{id} with nothing after the id, from here up to the save; the conflict
@@ -132,10 +112,7 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
         var caption = panel.GetByLabel(Text("Media.Form.Caption"), new LocatorGetByLabelOptions { Exact = true });
         await caption.FillAsync("Mine");
         await Expect(caption).ToHaveValueAsync("Mine");
-        var refused = await mine.Page.RunAndWaitForResponseAsync(
-            () => MediaButton(mine, "Media.Form.Save").ClickAsync(),
-            response => response.Request.Method == "PATCH" && response.Status != 401,
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        var refused = await mine.AnswerAsync(() => Button(mine, "Media.Form.Save").ClickAsync(), response => response.Request.Method == "PATCH");
         refused.Status.ShouldBe(412);
         (await refused.Request.HeaderValueAsync("if-match")).ShouldNotBeNullOrEmpty();
         (refused.Request.PostData ?? "").ShouldContain("Mine");
@@ -145,7 +122,7 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
         }
 
         await Expect(panel.Locator(".media-save-conflict")).ToContainTextAsync(Text("Media.Conflict.Text"));
-        await MediaButton(mine, "Media.Conflict.Theirs").ClickAsync();
+        await Button(mine, "Media.Conflict.Theirs").ClickAsync();
         await Expect(panel.GetByLabel(Text("Media.Form.Title"), new LocatorGetByLabelOptions { Exact = true })).ToHaveValueAsync($"{mark} theirs");
         await Expect(panel.Locator(".media-save-conflict")).ToHaveCountAsync(0);
         browser.PolicyViolations.ShouldBeEmpty();
@@ -154,12 +131,10 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
     [Fact]
     public async Task AnAdministratorAddsAndDeletesAPresetAndAnEditorIsNotOfferedThePage()
     {
-        var name = "p" + Guid.NewGuid().ToString("N")[..8];
+        var name = Mark;
         var browser = await OpenBrowserAsync();
         var admin = await Host.CreateEditorAsync("Super Admin");
-        var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(new Uri(Host.Admin, "media/presets").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, admin);
+        var tab = await SignedInTabAsync(browser, "media/presets", admin);
         var page = Content(tab);
         await Expect(page.GetByRole(AriaRole.Heading, new LocatorGetByRoleOptions { Name = Text("Media.Presets.Heading"), Exact = true, Level = 1 })).ToBeVisibleAsync();
 
@@ -167,40 +142,25 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
         await page.GetByLabel(new Regex($"^{Text("Media.Presets.Name")}")).FillAsync(name);
         await page.GetByLabel(Text("Media.Presets.Width"), new LocatorGetByLabelOptions { Exact = true }).FillAsync("400");
         await page.GetByLabel(Text("Media.Presets.Fit"), new LocatorGetByLabelOptions { Exact = true }).SelectOptionAsync("cover");
-        await MediaButton(tab, "Media.Presets.Add").ClickAsync();
+        await Button(tab, "Media.Presets.Add").ClickAsync();
         var row = page.Locator(".media-presets-table tbody tr").Filter(new LocatorFilterOptions { HasText = name });
         await Expect(row).ToContainTextAsync(Text("Media.Presets.Fit.cover"));
 
-        await row.Locator($"fluent-button[aria-label='{Text("Media.Presets.Delete", name)}']").ClickAsync();
-        await MediaButton(tab, "Media.Presets.DeleteConfirm").ClickAsync();
+        await tab.OpenDialogAsync(() => row.Locator($"fluent-button[aria-label='{Text("Media.Presets.Delete", name)}']").ClickAsync(), Text("Media.Presets.DeleteTitle"));
+        await Button(tab, "Media.Presets.DeleteConfirm").ClickAsync();
         await Expect(row).ToHaveCountAsync(0);
 
         var editorBrowser = await OpenBrowserAsync();
-        var editorTab = await editorBrowser.NewTabAsync();
-        await editorTab.Page.GotoAsync(new Uri(Host.Admin, "media").AbsoluteUri);
-        await editorBrowser.SignInOnTheHostedPageAsync(editorTab, Host.Editor);
+        var editorTab = await SignedInTabAsync(editorBrowser, "media");
         await Expect(Content(editorTab).GetByRole(AriaRole.Heading, new LocatorGetByRoleOptions { Name = Text("Media.Page.Heading"), Exact = true })).ToBeVisibleAsync();
         await Expect(editorTab.Page.GetByRole(AriaRole.Link, new PageGetByRoleOptions { Name = Text("Media.Presets.Menu"), Exact = true })).ToHaveCountAsync(0);
         browser.PolicyViolations.ShouldBeEmpty();
         editorBrowser.PolicyViolations.ShouldBeEmpty();
     }
 
-    private static string Text(string key, params string[] arguments)
+    private async Task<AdminTab> OpenLibraryAsync(AdminBrowser browser)
     {
-        var text = Repository.MediaText(key);
-        for (var index = 0; index < arguments.Length; index++)
-        {
-            text = text.Replace($"{{{index}}}", arguments[index], StringComparison.Ordinal);
-        }
-
-        return text;
-    }
-
-    private async Task<AdminTab> OpenLibraryAsync(AdminBrowser browser, Editor user)
-    {
-        var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(new Uri(Host.Admin, "media").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, user);
+        var tab = await SignedInTabAsync(browser, "media");
         await Expect(Content(tab).GetByRole(AriaRole.Heading, new LocatorGetByRoleOptions { Name = Text("Media.Page.Heading"), Exact = true })).ToBeVisibleAsync();
         return tab;
     }
@@ -208,8 +168,7 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
     // Finds the asset by its mark and opens its detail.
     private static async Task<ILocator> OpenAssetAsync(AdminTab tab, string mark)
     {
-        await Content(tab).GetByLabel(Text("Media.Search.Label"), new LocatorGetByLabelOptions { Exact = true }).FillAsync(mark);
-        await MediaButton(tab, "Media.Search.Submit").ClickAsync();
+        await SearchAsync(Content(tab), mark);
         await Expect(tab.Page.Locator(".media-tile-name")).ToHaveTextAsync([$"{mark}.png"]);
         await tab.Page.Locator(".media-tile-open").ClickAsync();
         var panel = tab.Page.Locator(".cms-drawer");
@@ -219,6 +178,4 @@ public sealed class MediaDetailTests(EndToEndHost host) : BrowserTest(host)
 
     private static ILocator Content(AdminTab tab) => tab.Page.Locator("main");
 
-    private static ILocator MediaButton(AdminTab tab, string key, params string[] arguments) =>
-        tab.Page.Locator("fluent-button").Filter(new LocatorFilterOptions { HasTextRegex = new Regex($@"^\s*{Regex.Escape(Text(key, arguments))}\s*$"), Visible = true });
 }

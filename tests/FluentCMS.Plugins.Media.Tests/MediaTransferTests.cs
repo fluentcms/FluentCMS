@@ -920,7 +920,7 @@ public sealed class MediaTransferTests(MediaHost media) : IClassFixture<MediaHos
     private async Task<MediaSettings> SettingsAsync()
     {
         await using var scope = media.Services.CreateAsyncScope();
-        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id)))
+        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id)))
         {
             return await scope.ServiceProvider.GetRequiredService<ISettings<MediaSettings>>().GetAsync(new SiteId(DefaultSite.Id), Token);
         }

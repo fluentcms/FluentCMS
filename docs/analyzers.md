@@ -2,7 +2,7 @@
 
 `FluentCMS.Analyzers` reports in the editor and the build what schema validation would refuse when the host starts. Each rule below is the error reference of its code, and the help link of the diagnostic points here. A rule reports a schema declared with the attributes; a schema from the fluent builder or a schema file is checked by `fluentcms schema validate` and at start.
 
-The codes `FCMS0001` to `FCMS0099` belong to the analyzers, and `FCMS0100` to `FCMS0119` to the source generator. Every rule but `FCMS0060` stands for a code of schema validation (`FCMS12xx`, or `FCMS1596` of the media plugin), which its message names: fixing what the rule reports removes that error at start.
+The codes `FCMS0001` to `FCMS0099` belong to the analyzers, and `FCMS0100` to `FCMS0119` to the source generator, whose diagnostics are at the end of this page. Every analyzer rule but `FCMS0060` stands for a code of schema validation (`FCMS12xx`, or `FCMS1596` of the media plugin), which its message names: fixing what the rule reports removes that error at start.
 
 ## Referencing the analyzers
 
@@ -127,3 +127,27 @@ Warning, for `FCMS1208`. A field is `[Localizable]` in a collection or singleton
 ### FCMS0060
 
 Information. A filter or sort of the generated builders, such as `ArticleFields.Title.Contains("x")`, is on a field that has no index, so the query reads every row of the type. Mark the field `[Indexed]` if the query is frequent; a `[Unique]` field has an index already. The rule reports the fields that have a column of their own: text, slug, email, URL, integer, decimal, boolean, date, date and time, and single select fields, of a collection, a singleton or a single component. Schema validation accepts such a field, so the rule stands for no code.
+
+## Source generator
+
+`FluentCMS.Generators` writes a field builder, such as `ArticleFields`, for each content type, component and block type of the project, and `fluentcms generate csharp` writes the same builders from a snapshot. Its diagnostics are warnings or information that say what got no builder or no member, and why: the type or field reported is still read and written, only not filtered or sorted through a generated builder.
+
+### FCMS0100
+
+Warning. A content type, component or block type gets no field builder, because its name gives no C# class name, or because another type takes that class name, in this case or another (`foo-bar` and `foobar`, `FooBar` and `Foobar`). The first type keeps the builder. Rename one of the types.
+
+### FCMS0101
+
+Information. A field gets no builder, because its field type has none, such as a field type of a plugin other than `media`.
+
+### FCMS0102
+
+Warning. A field, or a block type of a blocks field, gets no member, because the name of its member is taken in the builder, by another field or by a member of the builder itself, such as `ToString`. Rename the field.
+
+### FCMS0103
+
+Information. A field of a component, or a block type of a blocks field, gets no member, because the component or block type is declared in another project, which gives it no builder here; a blocks field still has `Has{Name}()`. Declare the type in the same project as the type that holds it.
+
+### FCMS0104
+
+Information. A block type gets no field builder, because its name has a hyphen, and a segment of a filter path holds only letters, digits and underscores. Its block lists still have `Has{Name}()`. Rename the block type without a hyphen to filter on its fields.

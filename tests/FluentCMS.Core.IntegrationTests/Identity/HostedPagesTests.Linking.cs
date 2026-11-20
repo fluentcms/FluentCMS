@@ -371,7 +371,7 @@ public sealed partial class HostedPagesTests
     {
         await using (var scope = host.Services.CreateAsyncScope())
         {
-            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id));
             await scope.ServiceProvider.GetRequiredService<InvitationService>().InviteAsync(address, [BuiltInRoles.Editor], new Uri("https://localhost/account/accept-invitation"), Token);
         }
 
