@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
@@ -6,6 +7,11 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Authorization;
+
+// A registered row rule as a grant names it, without what it compares.
+internal sealed record RowRuleEntry(
+    string Name,
+    [property: Description("The content types the rule is registered for, by name; null when it is registered for every type.")] IReadOnlyList<string>? TypeNames);
 
 // The row rules by name. A rule for a type wins over one on ContentItem of the same name. Building this checks every
 // rule against the schema, and RowRuleStartupCheck builds it when the host starts.
@@ -30,7 +36,18 @@ internal sealed class RowRuleRegistry
                     $"Row rule '{rule.Name}' is registered twice for {rule.TypeName ?? "every content type"}.");
             }
         }
+
+        // A rule on ContentItem holds for every type, whatever types it is also registered for.
+        Entries = [.. _rules.Keys
+            .GroupBy(key => key.Name, StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .Select(group => new RowRuleEntry(
+                group.Key,
+                group.Any(key => key.Type is null) ? null : [.. group.Select(key => key.Type!).Order(StringComparer.Ordinal)]))];
     }
+
+    // By name, and each rule's types by name, so that the list is the same on every instance and start.
+    public IReadOnlyList<RowRuleEntry> Entries { get; }
 
     public RowRule? Find(string name, string typeName) =>
         _rules.GetValueOrDefault((name, typeName)) ?? _rules.GetValueOrDefault((name, null));
