@@ -42,8 +42,12 @@ public sealed class JobRunnerOptions
 
     internal static readonly TimeSpan LongestRetention = TimeSpan.FromDays(36500);
 
-    // How long a succeeded job and its attempts stay. Pending, running and dead-lettered jobs are never removed.
+    // How long a succeeded job and its attempts stay. Pending and running jobs are never removed.
     public TimeSpan SucceededRetention { get; set; } = TimeSpan.FromDays(7);
+
+    // How long a dead-lettered job and its attempts stay, counted from when it was dead-lettered. Null keeps them until they
+    // are retried.
+    public TimeSpan? DeadLetteredRetention { get; set; } = TimeSpan.FromDays(30);
 
     // The most jobs one delete of the retention job takes. The ids of a batch go into one statement as parameters, which
     // is why it is capped.
@@ -71,6 +75,7 @@ public sealed class JobRunnerOptions
         Require(ShutdownGracePeriod >= TimeSpan.Zero && ReleaseTimeout >= TimeSpan.Zero, $"{nameof(ShutdownGracePeriod)} and {nameof(ReleaseTimeout)} must not be negative.");
 
         Require(SucceededRetention > TimeSpan.Zero && SucceededRetention <= LongestRetention, $"{nameof(SucceededRetention)} must be positive and no longer than {LongestRetention.TotalDays} days.");
+        Require(DeadLetteredRetention is null || (DeadLetteredRetention > TimeSpan.Zero && DeadLetteredRetention <= LongestRetention), $"{nameof(DeadLetteredRetention)} must be positive and no longer than {LongestRetention.TotalDays} days, or null.");
         Require(RetentionBatchSize is >= 1 and <= MaxRetentionBatchSize, $"{nameof(RetentionBatchSize)} is {RetentionBatchSize}; it must be from 1 to {MaxRetentionBatchSize}.");
         Require(IsCron(RetentionSchedule), $"{nameof(RetentionSchedule)} '{RetentionSchedule}' is not a cron expression that ever occurs.");
 

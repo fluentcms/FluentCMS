@@ -108,20 +108,45 @@ public sealed class JobRetentionTests : IDisposable
     }
 
     [Fact]
-    public async Task PendingRunningAndDeadLetteredJobsAreNeverRemovedHoweverOldTheyAre()
+    public async Task PendingAndRunningJobsAreNeverRemovedHoweverOldTheyAre()
     {
         var ancient = TimeSpan.FromDays(400);
         var pending = Add(JobStatus.Pending, Now - ancient);
         var running = Add(JobStatus.Running, Now - ancient);
-        var dead = Add(JobStatus.DeadLettered, Now - ancient);
         var pendingWithoutDate = Add(JobStatus.Pending, null);
         var gone = Succeeded(ancient);
 
         await RunAsync();
 
-        Remaining().ShouldBe([pending, running, dead, pendingWithoutDate], ignoreOrder: true);
+        Remaining().ShouldBe([pending, running, pendingWithoutDate], ignoreOrder: true);
         Remaining().ShouldNotContain(gone);
-        AttemptOwners().Distinct().ShouldBe([pending, running, dead, pendingWithoutDate], ignoreOrder: true);
+        AttemptOwners().Distinct().ShouldBe([pending, running, pendingWithoutDate], ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task DeadLetteredJobsGoWithTheirAttemptsThirtyDaysAfterTheyWereDeadLettered()
+    {
+        var month = TimeSpan.FromDays(30);
+        Add(JobStatus.DeadLettered, Now - month - TimeSpan.FromMinutes(1));
+        var edge = Add(JobStatus.DeadLettered, Now - month);
+        var recent = Add(JobStatus.DeadLettered, Now - TimeSpan.FromDays(3));
+
+        await RunAsync();
+
+        Remaining().ShouldBe([edge, recent], ignoreOrder: true);
+        AttemptOwners().Distinct().ShouldBe([edge, recent], ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task DeadLetteredJobsStayWhenTheirRetentionIsTurnedOff()
+    {
+        using var keeping = _fixture.NewInstance(configure: options => options.DeadLetteredRetention = null);
+        var dead = Add(JobStatus.DeadLettered, Now - TimeSpan.FromDays(400));
+        Succeeded(TimeSpan.FromDays(400));
+
+        await RunAsync(keeping, Token);
+
+        Remaining().ShouldBe([dead]);
     }
 
     [Fact]
@@ -161,7 +186,7 @@ public sealed class JobRetentionTests : IDisposable
         using var small = _fixture.NewInstance(configure: options => options.RetentionBatchSize = 3);
         var old = Enumerable.Range(0, 11).Select(index => Succeeded(TimeSpan.FromDays(10 + index), attempts: 1)).ToList();
         var recent = Succeeded(TimeSpan.FromMinutes(5));
-        var dead = Add(JobStatus.DeadLettered, Now - TimeSpan.FromDays(50));
+        var dead = Add(JobStatus.DeadLettered, Now - TimeSpan.FromDays(10));
 
         await RunAsync(small, Token);
 
@@ -277,7 +302,7 @@ public sealed class JobRetentionTests : IDisposable
         Remaining().ShouldBeEmpty();
         plans.Count.ShouldBeGreaterThanOrEqualTo(2);
         plans.ShouldAllBe(plan => !plan.Contains("TEMP B-TREE", StringComparison.Ordinal));
-        plans.ShouldAllBe(plan => plan.Contains("ix_cms_job_status_lease", StringComparison.Ordinal));
+        plans.ShouldAllBe(plan => plan.Contains("ix_cms_job_status_completed (status=? AND completed_at<?)", StringComparison.Ordinal));
         plans.ShouldAllBe(plan => !plan.Contains("SCAN cms_job\n", StringComparison.Ordinal) || plan.Contains("USING", StringComparison.Ordinal));
     }
 
@@ -340,17 +365,24 @@ public sealed class JobRetentionTests : IDisposable
     {
         Should.NotThrow(() => new JobRunnerOptions().Validate());
         new JobRunnerOptions().SucceededRetention.ShouldBe(TimeSpan.FromDays(7));
+        new JobRunnerOptions().DeadLetteredRetention.ShouldBe(TimeSpan.FromDays(30));
     }
 
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    public void ARetentionThatIsNotPositiveIsRefused(int days) =>
+    public void ARetentionThatIsNotPositiveIsRefused(int days)
+    {
         Refused(options => options.SucceededRetention = TimeSpan.FromDays(days));
+        Refused(options => options.DeadLetteredRetention = TimeSpan.FromDays(days));
+    }
 
     [Fact]
-    public void ARetentionBeyondAHundredYearsIsRefused() =>
+    public void ARetentionBeyondAHundredYearsIsRefused()
+    {
         Refused(options => options.SucceededRetention = TimeSpan.MaxValue);
+        Refused(options => options.DeadLetteredRetention = TimeSpan.MaxValue);
+    }
 
     [Theory]
     [InlineData(0)]

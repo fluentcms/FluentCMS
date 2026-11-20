@@ -988,6 +988,11 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                 filter: "status IN ('pending', 'running')");
 
             migrationBuilder.CreateIndex(
+                name: "ix_cms_job_status_completed",
+                table: "cms_job",
+                columns: new[] { "status", "completed_at" });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_cms_job_status_lease",
                 table: "cms_job",
                 columns: new[] { "status", "lease_until" });
@@ -1062,6 +1067,12 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                 table: "cms_outbox",
                 column: "delivered_at",
                 filter: "status = 'delivered'");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_cms_outbox_failed",
+                table: "cms_outbox",
+                column: "sequence",
+                filter: "status = 'failed'");
 
             migrationBuilder.CreateIndex(
                 name: "ix_cms_outbox_pending",

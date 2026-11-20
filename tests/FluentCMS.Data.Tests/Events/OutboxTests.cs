@@ -371,7 +371,7 @@ public sealed class OutboxTests
 
     // Counted from when the row failed, not from when its event happened, so that a delivery that failed late stays as long.
     [Fact]
-    public async Task FailedRowsStayUnlessAFailedRetentionIsSetAndThenGoThatLongAfterTheyFailed()
+    public async Task FailedRowsGoTheFailedRetentionAfterTheyFailedAndStayWhenItIsTurnedOff()
     {
         var seen = new Seen();
         seen.Behavior = (_, _) => throw new InvalidOperationException("The endpoint is down.");
@@ -388,22 +388,26 @@ public sealed class OutboxTests
         failed.Status.ShouldBe(OutboxStatus.Failed);
         failed.AvailableAt.ShouldBe(clock.GetUtcNow());
 
-        using var keeping = database.Database.NewInstance(EventRegistrations.Outbox(seen, cms =>
+        using var forever = database.Database.NewInstance(EventRegistrations.Outbox(seen, cms =>
         {
             cms.Services.AddSingleton<TimeProvider>(clock);
-            cms.Events.Outbox.FailedRetention = TimeSpan.FromDays(1);
+            cms.Events.Outbox.FailedRetention = null;
         }));
-        clock.Advance(TimeSpan.FromHours(23));
-        await PruneAsync(keeping);
-        database.Rows().ShouldHaveSingleItem();
-
-        clock.Advance(TimeSpan.FromDays(400));
+        clock.Advance(TimeSpan.FromDays(30) - TimeSpan.FromHours(1));
         await PruneAsync(database.Database.Services);
         database.Rows().ShouldHaveSingleItem();
 
-        await PruneAsync(keeping);
+        clock.Advance(TimeSpan.FromDays(400));
+        await PruneAsync(forever);
+        database.Rows().ShouldHaveSingleItem();
+
+        await PruneAsync(database.Database.Services);
         database.Rows().ShouldBeEmpty();
     }
+
+    [Fact]
+    public void FailedRowsAreKeptThirtyDaysByDefault() =>
+        new OutboxOptions().FailedRetention.ShouldBe(TimeSpan.FromDays(30));
 
     [Fact]
     public async Task ThePruneRemovesInBatchesAndLeavesPendingRows()
