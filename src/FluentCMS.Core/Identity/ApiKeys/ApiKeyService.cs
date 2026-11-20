@@ -99,8 +99,13 @@ internal sealed class ApiKeyService(
             errors.Add(new ValidationError("name", ApiKeyErrorCodes.InvalidName, $"A key has a name of 1 to {NameLength} characters."));
         }
 
-        // Before any check of what exists, so that a caller who may not make the key learns nothing of the ids it names.
-        if (sites is not { Count: 0 })
+        // Before any check of what exists, so that a caller who may not make the key learns nothing of the ids it names. An
+        // empty list of sites is refused below, and needs the permission where the caller is to be told so.
+        if (sites is { Count: 0 })
+        {
+            await RequireAnyAsync(cancellationToken);
+        }
+        else
         {
             await RequireManageAsync(sites, cancellationToken);
         }
@@ -228,9 +233,7 @@ internal sealed class ApiKeyService(
                     return false;
                 }
 
-                await context.Set<Invitation>()
-                    .Where(row => row.CreatedBy == id && row.CreatedByKind == PrincipalKind.ApiKey && row.AcceptedAt == null && row.RevokedAt == null)
-                    .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.RevokedAt, time.GetUtcNow()), cancellationToken);
+                await RevokeInvitationsAsync(id, cancellationToken);
                 await changes.RaiseAsync(new ApiKeyRevokedEvent(key.Id, key.Name), cancellationToken);
                 return true;
             },
@@ -238,7 +241,8 @@ internal sealed class ApiKeyService(
     }
 
     // Brings the expiry forward, to now when no time is given. A key's life is never made longer, since that would need the
-    // same decision as a new key. The rule is in the update, so two changes at once cannot extend it between them.
+    // same decision as a new key. The rule is in the update, so two changes at once cannot extend it between them. A key
+    // that ends now ends its pending invitations, as revoking it does; one that ends later leaves them to the check at accept.
     public async Task ExpireAsync(Guid id, DateTimeOffset? at = null, CancellationToken cancellationToken = default)
     {
         var expires = at ?? time.GetUtcNow();
@@ -253,6 +257,11 @@ internal sealed class ApiKeyService(
                 if (changed == 0)
                 {
                     throw new ValidationException([new ValidationError("expiresAt", ApiKeyErrorCodes.InvalidExpiry, "A key's expiry is only brought forward.")]);
+                }
+
+                if (expires <= time.GetUtcNow())
+                {
+                    await RevokeInvitationsAsync(id, cancellationToken);
                 }
 
                 await changes.RaiseAsync(new ApiKeyExpiryChangedEvent(key.Id, key.Name, expires), cancellationToken);
@@ -445,6 +454,11 @@ internal sealed class ApiKeyService(
             .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.LastUsedAt, now), cancellationToken);
         key.LastUsedAt = now;
     }
+
+    private Task<int> RevokeInvitationsAsync(Guid id, CancellationToken cancellationToken) =>
+        context.Set<Invitation>()
+            .Where(row => row.CreatedBy == id && row.CreatedByKind == PrincipalKind.ApiKey && row.AcceptedAt == null && row.RevokedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.RevokedAt, time.GetUtcNow()), cancellationToken);
 
     private async Task<ApiKey> StoredAsync(Guid id, CancellationToken cancellationToken) =>
         await context.Set<ApiKey>().AsNoTracking().FirstOrDefaultAsync(key => key.Id == id, cancellationToken) ?? throw NotFound(id);

@@ -98,6 +98,36 @@ public sealed class KeyAndInvitationCeilingTests : IDisposable
     }
 
     [Fact]
+    public async Task ANewInvitationDoesNotEndOneAboveTheCallersRoles()
+    {
+        var caller = await OperatorAsync("people", CorePermissions.UsersManage);
+        var callerRole = _fixture.Read(context => context.Set<CmsUserRole>().AsNoTracking().Single()).RoleId;
+        await _fixture.WithAsync(services => services.GetRequiredService<InvitationService>().InviteAsync("bob@example.com", [BuiltInRoles.SuperAdmin], AcceptUrl, Token));
+
+        await Should.ThrowAsync<ManagementAccessDeniedException>(() => InvitationsAsync(caller, invitations => invitations.InviteAsync("bob@example.com", [], AcceptUrl, Token)));
+        await Should.ThrowAsync<ManagementAccessDeniedException>(() => InvitationsAsync(caller, invitations => invitations.InviteAsync("bob@example.com", [callerRole], AcceptUrl, Token)));
+        _fixture.Invitations().ShouldHaveSingleItem().RevokedAt.ShouldBeNull();
+
+        await _fixture.WithAsync(services => services.GetRequiredService<InvitationService>().InviteAsync("carl@example.com", [callerRole], AcceptUrl, Token));
+        await InvitationsAsync(caller, invitations => invitations.InviteAsync("carl@example.com", [], AcceptUrl, Token));
+        _fixture.Invitations().Single(row => row.Email == "carl@example.com" && row.RoleIds != "[]").RevokedAt.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task AnInvitationWhoseInviterNoLongerManagesUsersIsRefusedAtAccept()
+    {
+        var people = await RoleAsync("People", CorePermissions.UsersManage);
+        var readers = await RoleAsync("Readers", "content.article.read");
+        var admin = await _fixture.CreateUserAsync("admin", Password, people.Id, readers.Id);
+        var token = await InviteAsync(PrincipalOf(admin), readers.Id);
+
+        await _fixture.UsersAsync(async users => (await users.RemoveFromRoleAsync((await users.FindByIdAsync(admin.Id.ToString("D")))!, people.Id)).Succeeded);
+
+        (await AcceptAsync(token)).Errors.ShouldHaveSingleItem().Code.ShouldBe(IdentityErrorCodes.InvalidInvitation);
+        (await AcceptedAsync()).ShouldBeFalse();
+    }
+
+    [Fact]
     public async Task ACallerWithoutThePermissionIsToldNothingOfTheIdsAKeyNames()
     {
         var caller = await OperatorAsync("reader", "content.article.read");
@@ -107,6 +137,8 @@ public sealed class KeyAndInvitationCeilingTests : IDisposable
             new("Made-up role", ApiKeyClass.Management, Guid.CreateVersion7()),
             new("Real site", ApiKeyClass.Management, BuiltInRoles.Editor) { SiteIds = [FluentCMS.Data.Tests.Content.ServiceDatabase.SiteA.Value] },
             new("Made-up site", ApiKeyClass.Management, BuiltInRoles.Editor) { SiteIds = [Guid.CreateVersion7()] },
+            new("Real role, no site", ApiKeyClass.Management, BuiltInRoles.Editor) { SiteIds = [] },
+            new("Made-up role, no site", ApiKeyClass.Management, Guid.CreateVersion7()) { SiteIds = [] },
         ];
 
         foreach (var request in requests)
@@ -133,12 +165,21 @@ public sealed class KeyAndInvitationCeilingTests : IDisposable
     {
         var expiring = await CreateKeyAsync(BuiltInRoles.SuperAdmin);
         var token = await InviteAsync(KeyPrincipal(expiring.Key.Id), BuiltInRoles.Editor);
+        var later = await CreateKeyAsync(BuiltInRoles.SuperAdmin);
+        var laterToken = await InviteToAsync(KeyPrincipal(later.Key.Id), "carl@example.com", BuiltInRoles.Editor);
         await _fixture.WithAsync(async services =>
         {
             await services.GetRequiredService<ApiKeyService>().ExpireAsync(expiring.Key.Id, cancellationToken: Token);
+            await services.GetRequiredService<ApiKeyService>().ExpireAsync(later.Key.Id, _fixture.Clock.GetUtcNow().AddHours(1), Token);
             return true;
         });
-        _fixture.Clock.Advance(TimeSpan.FromSeconds(1));
+
+        // Ending now ends its invitations; ending later leaves them to the check at accept.
+        _fixture.Invitations().Single(row => row.Email == "bob@example.com").RevokedAt.ShouldNotBeNull();
+        _fixture.Invitations().Single(row => row.Email == "carl@example.com").RevokedAt.ShouldBeNull();
+        _fixture.Clock.Advance(TimeSpan.FromHours(2));
+        (await _fixture.WithAsync(services => services.GetRequiredService<InvitationService>().AcceptAsync(laterToken, "carl", Password, Token)))
+            .Errors.ShouldHaveSingleItem().Code.ShouldBe(IdentityErrorCodes.InvalidInvitation);
 
         (await AcceptAsync(token)).Errors.ShouldHaveSingleItem().Code.ShouldBe(IdentityErrorCodes.InvalidInvitation);
         (await AcceptedAsync()).ShouldBeFalse();

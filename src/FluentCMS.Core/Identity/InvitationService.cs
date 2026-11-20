@@ -29,7 +29,8 @@ internal sealed record InvitationInfo(Guid Id, string Email, IReadOnlyList<Guid>
 // it names and uses it up, in one transaction, with a password or, through a provider whose address for the person is the
 // invitation's, with that external login; with cms.Sso.DisableLocalLogin only the latter. A new invitation to the same
 // address ends the one before. Sending, listing and revoking need users.manage for the instance, since the user it becomes
-// belongs to no site, and the sender must hold every grant of the roles it names.
+// belongs to no site, and the sender must hold every grant of the roles it names; a new invitation that ends pending ones
+// needs every grant of their roles too, as revoking them would.
 internal sealed class InvitationService(
     SystemDbContext context,
     CmsUserManager users,
@@ -98,6 +99,9 @@ internal sealed class InvitationService(
         await changes.RunAsync(
             async () =>
             {
+                // Read in the transaction, so that the invitations checked are the ones ended.
+                var superseded = await Pending(normalized).AsNoTracking().Select(row => row.RoleIds).ToListAsync(cancellationToken);
+                await roleService.RequireAssignableAsync([.. superseded.SelectMany(ids => JsonSerializer.Deserialize<List<Guid>>(ids) ?? [])], cancellationToken);
                 await Pending(normalized).ExecuteUpdateAsync(setters => setters.SetProperty(row => row.RevokedAt, now), cancellationToken);
                 context.Add(invitation);
                 await context.SaveChangesAsync(cancellationToken);
@@ -255,8 +259,8 @@ internal sealed class InvitationService(
     }
 
     // An invitation is only as good as the credential that sent it: the user still active, the key not revoked or expired,
-    // the service account's client still configured, and each of them still holding every grant of the roles it names, as
-    // its roles are now. Deactivating a user or revoking a key also revokes what it sent; this holds when that was missed and
+    // the service account's client still configured, and each of them still holding users.manage for the instance and every
+    // grant of the roles it names, as its roles are now. Deactivating a user or revoking a key also revokes what it sent; this holds when that was missed and
     // when the inviter was only demoted. Only the system, the command line tool, is not checked again; any other kind fails.
     private async Task<bool> InviterStandsAsync(Invitation invitation, IReadOnlyCollection<Guid> roleIds, CancellationToken cancellationToken)
     {
@@ -275,6 +279,11 @@ internal sealed class InvitationService(
         accessor.Current = new OperationContext(inviter, Origin.Api, previous?.Site ?? new SiteId(DefaultSite.Id), previous?.Locale ?? DefaultSite.Locale, null, previous?.CorrelationId ?? Guid.CreateVersion7().ToString(), time.GetUtcNow());
         try
         {
+            if (!await authority.AllowsAsync(CorePermissions.UsersManage, site: null, cancellationToken))
+            {
+                return false;
+            }
+
             await roleService.RequireAssignableAsync(roleIds, cancellationToken);
             return true;
         }
