@@ -1,7 +1,7 @@
 @* The generated list of a collection (spec 4.4): the columns the user chose, sort by several keys, filters, search, paging
-   with a total, status badges, and selection for the bulk actions of A-32. Sort, page, columns, filters and the search are
-   in the query string, so a reload and Back keep them; the column choice is also kept in the browser per user, site and
-   type. So is the content locale of a localized type, with a switcher (A-17), and the entries link to their form in it. The
+   with a total, status badges, and selection for the bulk actions of 4.13, kept across pages until the filters change.
+   Sort, page, columns, filters and the search are in the query string, so a reload and Back keep them; the column choice
+   is also kept in the browser per user, site and type. So is the content locale of a localized type, with a switcher (A-17), and the entries link to their form in it. The
    server decides what the user may read: a 403 or 404 of the list is shown as the answer. *@
 @page "/content/{Type}"
 @implements IDisposable
@@ -46,7 +46,7 @@ else if (view is { } shownView)
         </div>
     </div>
 
-    <ListToolbar Type="@type" Searchable="@Searchable(shownView)" />
+    <ListToolbar @ref="toolbar" Type="@type" Searchable="@Searchable(shownView)" />
 
     @if (problem is { } failed)
     {
@@ -75,23 +75,30 @@ else if (view is { } shownView)
     }
     else
     {
-        @if (selected.Count > 0 || allMatching)
+        @if (picked.Count > 0 || allMatching)
         {
             <div class="content-list-selection">
                 @if (allMatching)
                 {
                     <span>@L["Content.List.AllMatchingSelected", Number(total)]</span>
-                    <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="ClearSelection">@L["Content.List.ClearSelection"]</CmsButton>
                 }
                 else
                 {
-                    <span>@L["Content.List.PageSelected", Number(selected.Count)]</span>
-                    @if (selected.Count == entries.Count && total > entries.Count)
+                    <span>@L[PageSelected.Count == picked.Count ? "Content.List.PageSelected" : "Content.List.Selected", Number(picked.Count)]</span>
+                    @if (entries.Count > 0 && PageSelected.Count == entries.Count && total > picked.Count)
                     {
                         <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="SelectAllMatching">@L["Content.List.SelectAllMatching", Number(total)]</CmsButton>
                     }
-                    <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="ClearSelection">@L["Content.List.ClearSelection"]</CmsButton>
                 }
+                <CmsButton Appearance="CmsButtonAppearance.Subtle" OnClick="ClearSelection">@L["Content.List.ClearSelection"]</CmsButton>
+                <ListBulkActions Type="@type"
+                                 Selected="@picked"
+                                 AllMatching="@allMatching"
+                                 Total="@total"
+                                 FilterSummaries="@(allMatching ? toolbar?.Summaries() ?? [] : [])"
+                                 Search="@search"
+                                 ReadMatching="ReadMatchingAsync"
+                                 OnRan="RanAsync" />
             </div>
         }
 
@@ -99,7 +106,7 @@ else if (view is { } shownView)
                      Label="@AdminLabels.Type(type, L)"
                      Items="@entries"
                      SelectionMode="CmsSelectionMode.Many"
-                     SelectedItems="@selected"
+                     SelectedItems="@PageSelected"
                      SelectedItemsChanged="@OnSelected"
                      Sort="@GridSort"
                      SortChanged="@OnSortChanged"
@@ -195,8 +202,12 @@ else if (view is { } shownView)
     private long total;
     private bool loading;
     private ApiFailure? problem;
-    private IReadOnlyList<ContentEntry> selected = [];
+    // The selected entries by id with their labels, in the order selected, on this page and on the others the user went to.
+    private List<(Guid Id, string Label)> picked = [];
     private bool allMatching;
+    private string? selectionScope;
+    private ContentQuery? shownQuery;
+    private ListToolbar? toolbar;
     private bool choosing;
     private List<(string Name, bool Visible)> draft = [];
     private readonly Dictionary<string, CmsButton> upButtons = new(StringComparer.Ordinal);
@@ -336,10 +347,14 @@ else if (view is { } shownView)
             return;
         }
 
-        if (key != readKey)
+        // Paging keeps the selection; another site, locale, type, filter or search clears it.
+        var scope = $"{Context.Site?.Id}/{Context.ContentLocale}/{Type}?{new ContentQuery { Filter = query.Filter, Search = query.Search }.ToQueryString()}";
+        if (scope != selectionScope)
         {
-            (selected, allMatching) = ([], false);
+            (picked, allMatching, selectionScope) = ([], false, scope);
         }
+
+        shownQuery = query;
 
         readKey = key;
         reading?.Cancel();
@@ -570,7 +585,64 @@ else if (view is { } shownView)
         }
     }
 
-    private void OnSelected(IReadOnlyList<ContentEntry> items) => (selected, allMatching) = (items, false);
+    private IReadOnlyList<ContentEntry> PageSelected => [.. entries.Where(entry => picked.Exists(row => row.Id == entry.Id))];
+
+    // The grid tells the selection of this page; what is selected on other pages stays.
+    private void OnSelected(IReadOnlyList<ContentEntry> items)
+    {
+        var onPage = entries.Select(entry => entry.Id).ToHashSet();
+        var chosen = items.Select(entry => entry.Id).ToHashSet();
+        picked.RemoveAll(row => onPage.Contains(row.Id) && !chosen.Contains(row.Id));
+        foreach (var entry in items.Where(entry => !picked.Exists(row => row.Id == entry.Id)))
+        {
+            picked.Add((entry.Id, Described is { } type ? AdminLabels.Entry(type, entry) : entry.Id.ToString("D")));
+        }
+
+        allMatching = false;
+    }
+
+    // The list is read again with its filters and sort, and the selection holds the entries that failed, did not run or are
+    // not confirmed.
+    private async Task RanAsync(IReadOnlyList<(Guid Id, string Label)> kept)
+    {
+        picked = [.. kept];
+        allMatching = false;
+        await TryAgainAsync();
+    }
+
+    // All that match as ids with their labels, in the list's order, one more than a bulk run takes, so that the confirmation
+    // can tell a set the limit cut. It pages by the engine's cursor, which goes on after the last row read, so an edit between
+    // two pages neither skips nor repeats an entry. Under locale=all the engine matches in the site's default locale, which is
+    // then the content locale, so the read of that locale alone matches the same entries.
+    private async Task<IReadOnlyList<(Guid Id, string Label)>> ReadMatchingAsync(CancellationToken cancellationToken)
+    {
+        if (shownQuery is not { } query || Described is not { } type || view is not { } list)
+        {
+            return [];
+        }
+
+        List<(Guid, string)> found = [];
+        string? cursor = null;
+        do
+        {
+            var read = query with
+            {
+                Page = null,
+                Cursor = cursor,
+                PageSize = ListView.MaxPageSize,
+                Fields = [.. new[] { "id", list.Label.Name }.Distinct(StringComparer.Ordinal)],
+                Populate = [],
+                WithTotal = false,
+                Locale = query.Locale == ListView.EveryLocale ? null : query.Locale,
+            };
+            var answer = await Client.ListEntriesAsync(Type, read, cancellationToken);
+            found.AddRange(answer.Items.Take(BulkRunner.MaxEntries + 1 - found.Count).Select(entry => (entry.Id, AdminLabels.Entry(type, entry))));
+            cursor = answer.NextCursor;
+        }
+        while (cursor is not null && found.Count <= BulkRunner.MaxEntries);
+
+        return found;
+    }
 
     private void SelectAllMatching()
     {
@@ -580,7 +652,7 @@ else if (view is { } shownView)
 
     private void ClearSelection()
     {
-        (selected, allMatching) = ([], false);
+        (picked, allMatching) = ([], false);
         Announcer.Announce(L["Content.List.SelectionCleared"]);
     }
 

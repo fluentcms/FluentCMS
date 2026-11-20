@@ -1,0 +1,548 @@
+@* The version history of an entry in the form's locale (spec 4.11, A-28), a side panel of the form: the versions newest first,
+   with author, time and origin, shown a page at a time; two versions compared side by side, field by field; and a version
+   restored as a new draft after a question that names it, which the form runs. It takes focus as it opens and gives it back
+   to the control that opened it as it closes; Escape or a click outside close it. The question is asked with the panel
+   closed, so that two dialogs are never open at once, and No opens the panel again. *@
+@implements IAsyncDisposable
+@inject ManagementClient Client
+@inject SiteMetadata Metadata
+@inject FormatService Format
+@inject IFocusService Focus
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<AdminResources> L
+
+<CmsDrawer Side="CmsDrawerSide.End" Title="@L["Content.Versions.Title"]" Open="@shown" OpenChanged="OnDismissedAsync">
+    <ChildContent>
+        @if (Open)
+        {
+            <div class="version-panel">
+                @if (versions is null)
+                {
+                    @if (failed)
+                    {
+                        <p>@L["Content.Versions.ReadFailed"]</p>
+                        <CmsButton OnClick="LoadAsync">@L["Shell.Start.TryAgain"]</CmsButton>
+                    }
+                    else
+                    {
+                        <p role="status">@L["Content.Versions.Loading"]</p>
+                    }
+                }
+                else if (versions.Count == 0)
+                {
+                    <p>@L["Content.Versions.None"]</p>
+                }
+                else
+                {
+                    <table class="version-list">
+                        <caption>@Caption</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">@L["Content.Versions.Number"]</th>
+                                <th scope="col">@L["Content.Versions.Author"]</th>
+                                <th scope="col">@L["Content.Versions.Saved"]</th>
+                                <th scope="col">@L["Content.Versions.Origin"]</th>
+                                @if (MayRestore)
+                                {
+                                    <th scope="col"><span class="cms-visually-hidden">@L["Content.Versions.Actions"]</span></th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var version in versions.Take(showing))
+                            {
+                                <tr @key="version.Number" data-version="@version.Number">
+                                    <th scope="row">@Number(version)</th>
+                                    <td>@Author(version)</td>
+                                    <td><time datetime="@version.CreatedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture)">@Format.DateTime(version.CreatedAt)</time></td>
+                                    <td>@Origin(version)</td>
+                                    @if (MayRestore)
+                                    {
+                                        <td>
+                                            @if (version.Number != DraftVersion)
+                                            {
+                                                <CmsButton Label="@L["Content.Versions.RestoreOf", Number(version)]" OnClick="@(() => AskRestore(version))">@L["Content.Versions.Restore"]</CmsButton>
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @if (versions.Count > showing)
+                    {
+                        <CmsButton OnClick="ShowMore">@L["Content.Versions.More", Math.Min(PageSize, versions.Count - showing)]</CmsButton>
+                    }
+                    @if (versions.Count > 1)
+                    {
+                        <div class="version-compare">
+                            <CmsSelect Label="@L["Content.Versions.From"]" Options="@Choices" Value="@from" ValueChanged="@(value => from = value)" />
+                            <CmsSelect Label="@L["Content.Versions.To"]" Options="@Choices" Value="@to" ValueChanged="@(value => to = value)" />
+                            <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="CompareAsync">@L["Content.Versions.Compare"]</CmsButton>
+                        </div>
+                    }
+                    @Diff()
+                }
+            </div>
+        }
+    </ChildContent>
+    <Actions>
+        <CmsButton Icon="CmsIconName.Dismiss" OnClick="CloseAsync">@L["Content.Panel.Close"]</CmsButton>
+    </Actions>
+</CmsDrawer>
+<CmsDialog Title="@(named is { } title ? L["Content.Versions.Ask.Title", Number(title)].Value : L["Content.Versions.Restore"].Value)" Open="@(asking is not null)" OpenChanged="@(open => { if (!open) Stay(); })">
+    <ChildContent>
+        @if (asking is { } version)
+        {
+            <p>@L["Content.Versions.Ask.Text", Number(version), Author(version), Format.DateTime(version.CreatedAt)]</p>
+            @if (Unsaved)
+            {
+                <p><strong>@L["Content.Versions.Ask.Unsaved"]</strong></p>
+            }
+        }
+    </ChildContent>
+    <Actions>
+        <CmsButton @ref="stayButton" OnClick="Stay">@L["Content.Versions.Ask.Cancel"]</CmsButton>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="ConfirmAsync">@(named is { } confirm ? L["Content.Versions.Ask.Confirm", Number(confirm)].Value : L["Content.Versions.Restore"].Value)</CmsButton>
+    </Actions>
+</CmsDialog>
+
+@code {
+    private const int PageSize = 20;
+
+    private bool shown;
+    private bool wasOpen;
+    private IAsyncDisposable? opener;
+    private IReadOnlyList<EntryVersionInfo>? versions;
+    private bool failed;
+    private int showing = PageSize;
+    private int generation;
+    private string? from;
+    private string? to;
+    private EntryVersionInfo? asking;
+    // The version asked about last, which the dialog keeps naming as it closes.
+    private EntryVersionInfo? named;
+    private CmsButton? stayButton;
+    private bool focusStay;
+    private bool focusDiff;
+    private ElementReference diffHeading;
+
+    // The comparison shown: the two versions, and the fields that changed, or null while it is read or when it failed.
+    private (int From, int To)? compared;
+    private IReadOnlyList<DiffField>? diff;
+    private DiffValueText? values;
+    private bool comparing;
+    private bool compareFailed;
+
+    // The reads of the panel while it is open on one entry and locale, cancelled as it closes or moves on; a compare has its
+    // own, cancelled by the next.
+    private CancellationTokenSource? session;
+    private CancellationTokenSource? comparison;
+    private int comparisons;
+    private (Guid Id, string? Site, string? Locale) openedFor;
+
+    [Parameter, EditorRequired]
+    public SchemaTypeDescription Type { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public Guid EntryId { get; set; }
+
+    // The site and locale of the form's read, which the panel reads in; a null locale is the site's default.
+    [Parameter]
+    public string? Site { get; set; }
+
+    [Parameter]
+    public string? Locale { get; set; }
+
+    // The version the draft is now, which there is nothing to restore from.
+    [Parameter]
+    public int DraftVersion { get; set; }
+
+    // The language tag of the form's locale, which the read leaves out when it is the site's default.
+    [Parameter]
+    public string? ContentLocale { get; set; }
+
+    [Parameter]
+    public bool Open { get; set; }
+
+    // Whether the form has unsaved changes, which a restore replaces.
+    [Parameter]
+    public bool Unsaved { get; set; }
+
+    [Parameter]
+    public bool MayRestore { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    // Raised with the number of the version to restore once the user confirmed it and the panel has closed.
+    [Parameter]
+    public EventCallback<int> OnRestore { get; set; }
+
+    private string Caption => ContentLocale is { Length: > 0 } code && Type.Localized ? L["Content.Versions.CaptionLocale", code] : L["Content.Versions.Caption"];
+
+    private IReadOnlyList<CmsOption> Choices =>
+        versions is null ? [] : [.. versions.Select(version => new CmsOption(Key(version.Number), L["Content.Versions.Choice", Number(version), Format.DateTime(version.CreatedAt)]))];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var key = (EntryId, Site, Locale);
+        if (Open && wasOpen && key != openedFor)
+        {
+            openedFor = key;
+            await LoadAsync();
+            return;
+        }
+
+        if (Open == wasOpen)
+        {
+            return;
+        }
+
+        wasOpen = Open;
+        if (!Open)
+        {
+            (shown, asking) = (false, null);
+            Stop();
+            return;
+        }
+
+        openedFor = key;
+        opener = await RememberOpenerAsync();
+        shown = true;
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // The library's dialog focuses itself as it opens; the safe choice takes focus once it has.
+        if (focusStay && asking is { } asked && stayButton is { } stay)
+        {
+            focusStay = false;
+            await Task.Delay(DocumentInterop.DialogFocusDelay);
+            if (asking == asked)
+            {
+                await stay.FocusAsync();
+            }
+        }
+
+        if (focusDiff)
+        {
+            focusDiff = false;
+            await diffHeading.FocusAsync();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Stop();
+        if (opener is not null)
+        {
+            await opener.DisposeAsync();
+        }
+    }
+
+    private static string Key(int number) => number.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    private string Number(EntryVersionInfo version) => L["Content.Versions.Version", Key(version.Number)];
+
+    // By kind and name, as the server kept them for the save.
+    private string Author(EntryVersionInfo version)
+    {
+        var kind = Named("Content.Versions.Kind", version.AuthorKind);
+        return string.IsNullOrWhiteSpace(version.AuthorName) ? kind : L["Content.Versions.AuthorOf", version.AuthorName, kind].Value;
+    }
+
+    private string Origin(EntryVersionInfo version) => Named("Content.Versions.Origin", version.Origin);
+
+    private string Named(string prefix, string? name)
+    {
+        if (string.IsNullOrEmpty(name))
+        {
+            return "";
+        }
+
+        var text = L[$"{prefix}.{name}"];
+        return text.ResourceNotFound ? name : text.Value;
+    }
+
+    private async Task<IAsyncDisposable?> RememberOpenerAsync()
+    {
+        try
+        {
+            return await Focus.RememberOpenerAsync();
+        }
+        catch (Microsoft.JSInterop.JSException)
+        {
+            return null;
+        }
+    }
+
+    // Whatever the panel still reads is no longer wanted, and its answer or failure is dropped.
+    private void Stop()
+    {
+        generation++;
+        comparisons++;
+        (comparing, comparison) = (false, null);
+        session?.Cancel();
+        session?.Dispose();
+        session = null;
+    }
+
+    // Each opening reads the versions again, since a save of the form adds one.
+    private async Task LoadAsync()
+    {
+        Stop();
+        var current = generation;
+        session = new CancellationTokenSource();
+        var token = session.Token;
+        (versions, failed, showing, compared, diff, compareFailed) = (null, false, PageSize, null, null, false);
+        try
+        {
+            var read = await Client.GetVersionsAsync(Type.Name, EntryId, Site, Locale, token);
+            if (current != generation)
+            {
+                return;
+            }
+
+            versions = read;
+            (from, to) = read.Count > 1 ? (Key(read[1].Number), Key(read[0].Number)) : (null, null);
+        }
+        catch (Exception exception) when (IsFailure(exception) && current == generation)
+        {
+            failed = true;
+        }
+        catch (Exception exception) when (IsFailure(exception))
+        {
+            // A read the panel no longer waits for, which closing it cancelled.
+        }
+    }
+
+    private void ShowMore() => showing += PageSize;
+
+    // The diff, and both versions as read for the names of blocks and the text of rich text; the earlier of the two first.
+    // A compare started while another runs takes its place, and the earlier one's answer is dropped.
+    private async Task CompareAsync()
+    {
+        if (session is null || !int.TryParse(from, out var left) || !int.TryParse(to, out var right))
+        {
+            return;
+        }
+
+        if (left > right)
+        {
+            (left, right) = (right, left);
+        }
+
+        comparison?.Cancel();
+        comparison = CancellationTokenSource.CreateLinkedTokenSource(session.Token);
+        var token = comparison.Token;
+        var mine = ++comparisons;
+        (comparing, compareFailed, compared, diff) = (true, false, (left, right), null);
+        try
+        {
+            var reading = Client.DiffVersionsAsync(Type.Name, EntryId, left, right, Site, Locale, token);
+            var before = Client.GetVersionAsync(Type.Name, EntryId, left, Site, Locale, token);
+            var after = Client.GetVersionAsync(Type.Name, EntryId, right, Site, Locale, token);
+            var changes = await reading;
+            var schema = await Metadata.GetSchemaAsync(token);
+            var rows = VersionDiffRows.Build(schema, Type, changes.Changes, (await before).Fields, (await after).Fields);
+            var text = await NamesAsync(schema, rows, token);
+            if (mine != comparisons)
+            {
+                return;
+            }
+
+            (diff, values, comparing) = (rows, text, false);
+            Announcer.Announce(rows.Count == 0 ? L["Content.Versions.NoChanges"] : L["Content.Versions.Changed", rows.Count]);
+            focusDiff = true;
+        }
+        catch (Exception exception) when (IsFailure(exception) && mine == comparisons)
+        {
+            (compareFailed, comparing) = (true, false);
+            Announcer.Announce(L["Content.Versions.CompareFailed"], AnnouncementPoliteness.Assertive);
+        }
+        catch (Exception exception) when (IsFailure(exception))
+        {
+            // A compare another one, or closing the panel, took the place of.
+        }
+    }
+
+    // The labels of the entries the shown values relate to, one read per target for the ids of this diff only; an id whose
+    // read failed stays an id, and one the read did not answer is named as an entry the caller may not read.
+    private async Task<DiffValueText> NamesAsync(SchemaDescription schema, IReadOnlyList<DiffField> rows, CancellationToken token)
+    {
+        var text = new DiffValueText(
+            schema,
+            L["Content.Versions.ValueSeparator"],
+            L["Content.Versions.ListSeparator"],
+            (label, value) => L["Content.Versions.FieldValue", label, value],
+            id => L["Content.Versions.Unreadable", id.ToString("D")]);
+        foreach (var row in rows.SelectMany(field => field.Rows))
+        {
+            text.Describe(row.Before, row.Field, row.Holder);
+            text.Describe(row.After, row.Field, row.Holder);
+        }
+
+        foreach (var (target, ids) in text.Wanted)
+        {
+            var type = schema.Types.First(item => item.Name == target);
+            try
+            {
+                foreach (var (id, entry) in await RelationReads.LabelsAsync(Client, type, ids, ContentLocale, token))
+                {
+                    text.Names[id] = AdminLabels.Entry(type, entry);
+                }
+
+                text.Read.Add(target);
+            }
+            catch (Exception exception) when (IsFailure(exception) && !token.IsCancellationRequested)
+            {
+                // The ids stay as they are.
+            }
+        }
+
+        return text;
+    }
+
+    private static bool IsFailure(Exception exception) =>
+        exception is ApiProblemException or HttpRequestException or OperationCanceledException or System.Text.Json.JsonException;
+
+    private void AskRestore(EntryVersionInfo version) => (asking, named, shown, focusStay) = (version, version, false, true);
+
+    private void Stay() => (asking, shown) = (null, true);
+
+    private async Task ConfirmAsync()
+    {
+        if (asking is not { } version)
+        {
+            return;
+        }
+
+        asking = null;
+        await FinishAsync();
+        await OnRestore.InvokeAsync(version.Number);
+    }
+
+    private Task CloseAsync() => FinishAsync();
+
+    private Task OnDismissedAsync(bool open) => open || asking is not null ? Task.CompletedTask : FinishAsync();
+
+    private async Task FinishAsync()
+    {
+        shown = false;
+        Stop();
+
+        // The opener hears of the close before focus is back on its button, so that the button opens the panel again at once.
+        await OnClose.InvokeAsync();
+        if (opener is { } handle)
+        {
+            opener = null;
+            StateHasChanged();
+            await Task.Delay(DocumentInterop.DialogFocusDelay);
+            await handle.DisposeAsync();
+        }
+    }
+
+    private string Where(IReadOnlyList<DiffStep> steps) => string.Join(L["Content.Versions.PathSeparator"], steps.Select(step => step.Kind switch
+    {
+        DiffStepKind.Block => L["Content.Versions.Block", AdminLabels.Type(step.Block!, L), step.Position].Value,
+        DiffStepKind.Item => L["Content.Versions.Item", step.Position].Value,
+        DiffStepKind.Paragraph => L["Content.Versions.Paragraph", step.Position].Value,
+        _ => step.Field is { } field ? AdminLabels.Field(field) : step.Name,
+    }));
+
+    private string Change(DiffRow row) => row switch
+    {
+        { Formatting: true } => L["Content.Versions.Formatting"],
+        { Kind: DiffKind.Moved } => L["Content.Versions.Moved", row.FromPosition, row.ToPosition],
+        { Kind: DiffKind.Added } => L["Content.Versions.Added"],
+        { Kind: DiffKind.Removed } => L["Content.Versions.Removed"],
+        _ => L["Content.Versions.ChangedValue"],
+    };
+
+    private RenderFragment Diff() => @<div class="version-diff">
+        @if (comparing)
+        {
+            <p role="status">@L["Content.Versions.Comparing"]</p>
+        }
+        else if (compareFailed)
+        {
+            <p>@L["Content.Versions.CompareFailed"]</p>
+        }
+        else if (compared is { } pair && diff is not null)
+        {
+            <h3 @ref="diffHeading" tabindex="-1">@L["Content.Versions.DiffHeading", Key(pair.From), Key(pair.To)]</h3>
+            @if (diff.Count == 0)
+            {
+                <p>@L["Content.Versions.NoChanges"]</p>
+            }
+            @foreach (var field in diff)
+            {
+                <table @key="field.Field.Name" class="version-diff-table" data-field="@field.Field.Name">
+                    <caption>@AdminLabels.Field(field.Field)</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">@L["Content.Versions.Where"]</th>
+                            <th scope="col">@L["Content.Versions.Change"]</th>
+                            <th scope="col">@L["Content.Versions.Version", Key(pair.From)]</th>
+                            <th scope="col">@L["Content.Versions.Version", Key(pair.To)]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in field.Rows)
+                        {
+                            <tr class="version-diff-@row.Kind.ToString().ToLowerInvariant()">
+                                <th scope="row">@(row.Where.Count == 0 ? AdminLabels.Field(field.Field) : Where(row.Where))</th>
+                                <td>@Change(row)</td>
+                                <td lang="@ContentLocale" dir="@Direction">@Value(row, before: true)</td>
+                                <td lang="@ContentLocale" dir="@Direction">@Value(row, before: false)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+    </div>;
+
+    private string Direction => ContentLocale is { } code ? TextDirection.Of(code) : FieldEditorBase.LeftToRight;
+
+    // Changed words are marked by del and ins with their kind named for a screen reader, so that colour is not the only sign.
+    private RenderFragment Value(DiffRow row, bool before) => __builder =>
+    {
+        if (row.Words is { } words)
+        {
+            foreach (var piece in words.Where(piece => piece.Kind is null || piece.Kind == (before ? DiffKind.Removed : DiffKind.Added)))
+            {
+                if (piece.Kind == DiffKind.Removed)
+                {
+                    <del><span class="cms-visually-hidden">@L["Content.Versions.RemovedWords"]</span>@piece.Text</del>
+                }
+                else if (piece.Kind == DiffKind.Added)
+                {
+                    <ins><span class="cms-visually-hidden">@L["Content.Versions.AddedWords"]</span>@piece.Text</ins>
+                }
+                else
+                {
+                    @piece.Text
+                }
+            }
+
+            return;
+        }
+
+        var value = before ? row.Before : row.After;
+        if (row.Kind == DiffKind.Moved || row.Formatting)
+        {
+            return;
+        }
+
+        if (value is null)
+        {
+            <span class="version-diff-none">@L["Content.Form.NoValue"]</span>
+            return;
+        }
+
+        @values?.Describe(value, row.Field, row.Holder)
+    };
+}

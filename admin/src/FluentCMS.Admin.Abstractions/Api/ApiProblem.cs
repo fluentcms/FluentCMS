@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace FluentCMS.Admin.Api;
 
@@ -28,6 +29,10 @@ public sealed record ApiProblem
 
     /// <summary>The entry as it is now, on a 412.</summary>
     public JsonObject? Current { get; init; }
+
+    /// <summary>How long the answer's <c>Retry-After</c> asks to wait, such as on a 429 or a 503, or <see langword="null"/> when it names none.</summary>
+    [JsonIgnore]
+    public TimeSpan? RetryAfter { get; init; }
 
     /// <summary>The trace id of the request, which a view offers to copy.</summary>
     public string? TraceId { get; init; }

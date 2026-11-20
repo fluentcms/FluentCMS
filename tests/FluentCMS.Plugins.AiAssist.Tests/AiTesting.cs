@@ -276,6 +276,7 @@ public sealed record ScriptedCall(IReadOnlyList<ChatMessage> Messages, ChatOptio
 public sealed class ScriptedChat : IChatClient
 {
     private readonly ConcurrentQueue<ScriptedCall> _calls = new();
+    private int _factoryCalls;
     private TaskCompletionSource _entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     // What the host's factory names as the provider of this client.
@@ -298,6 +299,14 @@ public sealed class ScriptedChat : IChatClient
     // Keeps the call open until it is cancelled, for a streamed answer after its first piece.
     public bool Hang { get; set; }
 
+    // Holds the host's factory, which a call reaches before its draft and its image are read, until it completes.
+    public TaskCompletionSource? FactoryGate { get; set; }
+
+    // Whether the host's factory says the client calls with a credential of the site's own.
+    public bool SiteCredential { get; set; }
+
+    public int FactoryCalls => _factoryCalls;
+
     public IReadOnlyList<ScriptedCall> Calls => [.. _calls];
 
     // Completes when a call has arrived.
@@ -307,7 +316,8 @@ public sealed class ScriptedChat : IChatClient
     {
         _calls.Clear();
         _entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        (Answer, Pieces, PromptTokens, CompletionTokens, Failure, Hang, ForEverySite) = ("A suggestion.", null, 12, 5, null, false, false);
+        (Answer, Pieces, PromptTokens, CompletionTokens, Failure, Hang, ForEverySite, FactoryGate, SiteCredential) = ("A suggestion.", null, 12, 5, null, false, false, null, false);
+        _factoryCalls = 0;
     }
 
     public async Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
@@ -335,6 +345,15 @@ public sealed class ScriptedChat : IChatClient
     }
 
     public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+    internal async ValueTask EnterFactoryAsync(CancellationToken cancellationToken)
+    {
+        Interlocked.Increment(ref _factoryCalls);
+        if (FactoryGate is { } gate)
+        {
+            await gate.Task.WaitAsync(cancellationToken);
+        }
+    }
 
     public void Dispose()
     {
@@ -367,8 +386,11 @@ internal sealed class ScriptedFactory(ScriptedChat chat) : IAiClientFactory
 {
     public const string Provider = "scripted";
 
-    public ValueTask<AiClient?> CreateAsync(SiteId site, AiSettings settings, CancellationToken cancellationToken = default) =>
-        ValueTask.FromResult(settings.Provider == AiProvider.None && !chat.ForEverySite ? null : new AiClient(chat, chat.Provider, settings.Model ?? "scripted-model"));
+    public async ValueTask<AiClient?> CreateAsync(SiteId site, AiSettings settings, CancellationToken cancellationToken = default)
+    {
+        await chat.EnterFactoryAsync(cancellationToken);
+        return settings.Provider == AiProvider.None && !chat.ForEverySite ? null : new AiClient(chat, chat.Provider, settings.Model ?? "scripted-model") { SiteCredential = chat.SiteCredential };
+    }
 }
 
 public sealed class LogCapture : ILoggerProvider

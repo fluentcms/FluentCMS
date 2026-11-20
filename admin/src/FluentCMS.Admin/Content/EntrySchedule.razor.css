@@ -1,0 +1,22 @@
+.content-schedule {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cms-space-m);
+    margin-block-end: var(--cms-space-l);
+}
+
+.content-schedule-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-m);
+}
+
+.content-schedule-zone,
+.content-schedule-note {
+    color: var(--cms-color-text-muted);
+}
+
+.content-schedule-problem {
+    color: var(--cms-color-error);
+}
