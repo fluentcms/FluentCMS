@@ -194,6 +194,16 @@ public sealed class EndToEndHost : IAsyncLifetime
         return new HttpClient(handler) { BaseAddress = Origin, Timeout = TimeSpan.FromSeconds(30) };
     }
 
+    // A client of the Management API with a management key of its own, for a case that makes its data before the browser
+    // acts on it. The key goes with the host's database at the end of the run.
+    public async Task<HttpClient> ManagementClientAsync()
+    {
+        var key = (await CommandAsync(null, secretOutput: true, "apikey", "create", "--name", $"end-to-end-{Guid.NewGuid():N}", "--class", "management", "--role", "Super Admin")).Trim();
+        var client = Client();
+        client.DefaultRequestHeaders.Add("X-Api-Key", key);
+        return client;
+    }
+
     // The fingerprint the browser context accepts, which is this certificate's alone.
     public string ServerCertificateHash => Convert.ToBase64String(SHA256.HashData(_certificates!.Server.PublicKey.ExportSubjectPublicKeyInfo()));
 

@@ -170,6 +170,21 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
         return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), basedOn.Site, basedOn.Locale);
     }
 
+    // One chunk of POST /content/{type}/bulk by ids, in the site and locale the run started in. The key is the chunk's, so
+    // that a resent chunk is the same request and is answered once.
+    public async Task<BulkAnswer> BulkAsync(string type, BulkOperation operation, IReadOnlyList<Guid> ids, UserAction action, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        ArgumentNullException.ThrowIfNull(action);
+        var body = new JsonObject
+        {
+            ["operation"] = JsonNamingPolicy.CamelCase.ConvertName(operation.ToString()),
+            ["items"] = new JsonArray([.. ids.Select(id => (JsonNode)new JsonObject { ["id"] = id.ToString("D") })]),
+        };
+        var request = Pinned(HttpMethod.Post, $"{Content(type)}/bulk", action.Site, action.Locale, body, idempotencyKey: action.IdempotencyKey);
+        return (await api.SendAsync(request, Json.BulkAnswer, cancellationToken)).Value;
+    }
+
     // The versions of the entry in the locale of the read, newest first (spec 4.11); the server answers them all at once.
     public async Task<IReadOnlyList<EntryVersionInfo>> GetVersionsAsync(string type, Guid id, string? site, string? locale, CancellationToken cancellationToken) =>
         (await api.SendAsync(Pinned(HttpMethod.Get, $"{Entry(type, id)}/versions", site, locale), Json.ItemListEntryVersionInfo, cancellationToken)).Value.Items;

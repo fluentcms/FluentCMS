@@ -497,6 +497,9 @@
         return L[$"Content.Filter.Operator.{filterOperator}{(dated ? ".Date" : "")}"];
     }
 
+    // The applied filters in words, for the confirmation of an action on all that match them.
+    public IReadOnlyList<string> Summaries() => [.. filters.Select(Describe)];
+
     // What a filter says in words, such as "Title contains news" or "Published on is after 1/1/2026 12:00 AM".
     private string Describe(FieldFilter filter)
     {

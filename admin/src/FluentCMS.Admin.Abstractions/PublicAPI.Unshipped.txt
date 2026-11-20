@@ -72,6 +72,8 @@ FluentCMS.Admin.Api.ApiProblem.Detail.init -> void
 FluentCMS.Admin.Api.ApiProblem.Equals(FluentCMS.Admin.Api.ApiProblem? other) -> bool
 FluentCMS.Admin.Api.ApiProblem.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.ApiProblemError!>!
 FluentCMS.Admin.Api.ApiProblem.Errors.init -> void
+FluentCMS.Admin.Api.ApiProblem.RetryAfter.get -> System.TimeSpan?
+FluentCMS.Admin.Api.ApiProblem.RetryAfter.init -> void
 FluentCMS.Admin.Api.ApiProblem.Status.get -> int
 FluentCMS.Admin.Api.ApiProblem.Status.init -> void
 FluentCMS.Admin.Api.ApiProblem.Title.get -> string?

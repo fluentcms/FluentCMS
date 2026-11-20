@@ -1,3 +1,4 @@
+using FluentCMS.Admin.Actions;
 using FluentCMS.Admin.Content;
 using FluentCMS.Admin.Lists;
 using FluentCMS.Admin.Pickers;
@@ -41,6 +42,9 @@ internal static class FieldServiceCollectionExtensions
         });
         services.TryAddSingleton(new BlockFormRegistration(typeof(BlockForm)));
         services.TryAddScoped<IRelationPicker, RelationPickerService>();
+        services.TryAddScoped<BulkProgressService>();
+        services.TryAddScoped<IBulkProgressService>(provider => provider.GetRequiredService<BulkProgressService>());
+        services.TryAddScoped<BulkRunner>();
         services.TryAddScoped(provider =>
         {
             var cells = new ListCellRegistry();

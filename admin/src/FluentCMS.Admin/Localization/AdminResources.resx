@@ -1730,6 +1730,177 @@
   <data name="Home.Widget.Failed" xml:space="preserve">
     <value>A widget of the plugin {0} could not be shown.</value>
   </data>
+  <data name="Content.List.Selected" xml:space="preserve">
+    <value>{0} selected.</value>
+  </data>
+  <data name="Content.Bulk.Menu" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Content.Bulk.Publish" xml:space="preserve">
+    <value>Publish</value>
+  </data>
+  <data name="Content.Bulk.Unpublish" xml:space="preserve">
+    <value>Unpublish</value>
+  </data>
+  <data name="Content.Bulk.Delete" xml:space="preserve">
+    <value>Move to trash</value>
+  </data>
+  <data name="Content.Bulk.Confirm.Publish" xml:space="preserve">
+    <value>Publish the selected entries of {1} ({0})?</value>
+  </data>
+  <data name="Content.Bulk.Confirm.Unpublish" xml:space="preserve">
+    <value>Unpublish the selected entries of {1} ({0})?</value>
+  </data>
+  <data name="Content.Bulk.Confirm.Delete" xml:space="preserve">
+    <value>Move the selected entries of {1} ({0}) to the trash?</value>
+  </data>
+  <data name="Content.Bulk.Confirm.Plugin" xml:space="preserve">
+    <value>{2}: the selected entries of {1} ({0})?</value>
+  </data>
+  <data name="Content.Bulk.ConfirmFilter.Publish" xml:space="preserve">
+    <value>Publish the entries of {1} that match ({0})?</value>
+  </data>
+  <data name="Content.Bulk.ConfirmFilter.Unpublish" xml:space="preserve">
+    <value>Unpublish the entries of {1} that match ({0})?</value>
+  </data>
+  <data name="Content.Bulk.ConfirmFilter.Delete" xml:space="preserve">
+    <value>Move the entries of {1} that match ({0}) to the trash?</value>
+  </data>
+  <data name="Content.Bulk.NoFilter" xml:space="preserve">
+    <value>No filter: every entry of the type.</value>
+  </data>
+  <data name="Content.Bulk.ConfirmCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Content.Bulk.Title" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="Content.Bulk.Bar" xml:space="preserve">
+    <value>Progress</value>
+  </data>
+  <data name="Content.Bulk.Count" xml:space="preserve">
+    <value>{0} of {1}</value>
+  </data>
+  <data name="Content.Bulk.Stopping" xml:space="preserve">
+    <value>Stopping after the entries being sent now.</value>
+  </data>
+  <data name="Content.Bulk.Progress" xml:space="preserve">
+    <value>{0} of {1} done, {2} failed.</value>
+  </data>
+  <data name="Content.Bulk.Stopped" xml:space="preserve">
+    <value>Stopped: {0} of {1} done, {2} failed.</value>
+  </data>
+  <data name="Content.Bulk.Ended" xml:space="preserve">
+    <value>Done: {0} succeeded, {1} failed.</value>
+  </data>
+  <data name="Content.Bulk.Unreachable" xml:space="preserve">
+    <value>The server could not be reached.</value>
+  </data>
+  <data name="Content.Bulk.ChunkOfIds" xml:space="preserve">
+    <value>Entries {0} to {1}</value>
+  </data>
+  <data name="Content.Bulk.ChunkFailed" xml:space="preserve">
+    <value>{0} could not be sent: {1} Try again, or stop here?</value>
+  </data>
+  <data name="Content.Bulk.RunStopped" xml:space="preserve">
+    <value>The run stopped. {0} could not be sent: {1}</value>
+  </data>
+  <data name="Content.Bulk.PluginFailed" xml:space="preserve">
+    <value>The action failed. The browser's console has the cause.</value>
+  </data>
+  <data name="Content.Bulk.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Content.Bulk.Stop" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="Content.Bulk.StopQuestion" xml:space="preserve">
+    <value>Stop the run? The entries being sent now are still done.</value>
+  </data>
+  <data name="Content.Bulk.KeepRunning" xml:space="preserve">
+    <value>Keep running</value>
+  </data>
+  <data name="Content.Bulk.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Content.Bulk.Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Content.Bulk.FailuresOnly" xml:space="preserve">
+    <value>Show failures only</value>
+  </data>
+  <data name="Content.Bulk.Results" xml:space="preserve">
+    <value>Results</value>
+  </data>
+  <data name="Content.Bulk.Column.Entry" xml:space="preserve">
+    <value>Entry</value>
+  </data>
+  <data name="Content.Bulk.Column.Result" xml:space="preserve">
+    <value>Result</value>
+  </data>
+  <data name="Content.Bulk.Column.Warnings" xml:space="preserve">
+    <value>Warnings</value>
+  </data>
+  <data name="Content.Bulk.Column.Problem" xml:space="preserve">
+    <value>Problem</value>
+  </data>
+  <data name="Content.Bulk.Status.published" xml:space="preserve">
+    <value>Published</value>
+  </data>
+  <data name="Content.Bulk.Status.unpublished" xml:space="preserve">
+    <value>Unpublished</value>
+  </data>
+  <data name="Content.Bulk.Status.deleted" xml:space="preserve">
+    <value>Moved to trash</value>
+  </data>
+  <data name="Content.Bulk.Status.failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Content.Bulk.Status.refused" xml:space="preserve">
+    <value>Refused</value>
+  </data>
+  <data name="Content.Bulk.Status.duplicate" xml:space="preserve">
+    <value>Named twice</value>
+  </data>
+  <data name="Content.Bulk.Status.notRun" xml:space="preserve">
+    <value>Not run</value>
+  </data>
+  <data name="Content.Bulk.Status.done" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="Content.Bulk.ConfirmFilter.Plugin" xml:space="preserve">
+    <value>{2}: the entries of {1} that match ({0})?</value>
+  </data>
+  <data name="Content.Bulk.Reading" xml:space="preserve">
+    <value>Reading the entries that match.</value>
+  </data>
+  <data name="Content.Bulk.ReadFailed" xml:space="preserve">
+    <value>The entries that match could not be read. Close this and try again.</value>
+  </data>
+  <data name="Content.Bulk.FirstOnly" xml:space="preserve">
+    <value>More than {0} entries match. Only the first {0}, in the list's order, are acted on: an action takes at most {0}.</value>
+  </data>
+  <data name="Content.Bulk.Search" xml:space="preserve">
+    <value>Search: {0}</value>
+  </data>
+  <data name="Content.Bulk.OneLocale" xml:space="preserve">
+    <value>In {0} only. The other locales stay as they are.</value>
+  </data>
+  <data name="Content.Bulk.EveryLocale" xml:space="preserve">
+    <value>In every locale: each entry goes to the trash with all its translations.</value>
+  </data>
+  <data name="Content.Bulk.Unconfirmed" xml:space="preserve">
+    <value>{0} were sent without an answer and may have been done; check them before acting on them again.</value>
+  </data>
+  <data name="Content.Bulk.DidNotStop" xml:space="preserve">
+    <value>The action did not stop within {0} seconds of the cancel. What it does from now on is not shown here.</value>
+  </data>
+  <data name="Content.Bulk.Status.notConfirmed" xml:space="preserve">
+    <value>Not confirmed</value>
+  </data>
+  <data name="Content.Bulk.FixedSet" xml:space="preserve">
+    <value>These are the entries that match now: one that stops matching before its turn is still acted on.</value>
+  </data>
   <data name="Content.Versions.Open" xml:space="preserve">
     <value>Version history</value>
   </data>

@@ -1,6 +1,14 @@
 {
-  // Beside the Blog sample: the smallest type with blocks and components to depth 3 (decision 20), for BlockTests.
+  // Beside the Blog sample: the smallest type with blocks and components to depth 3 (decision 20), for BlockTests, and memo,
+  // whose entries BulkTests makes by the hundred, so that they crowd no list another case reads.
   "collections": [
+    {
+      "name": "memo",
+      "fields": [
+        { "name": "title", "type": "text" },
+        { "name": "summary", "type": "text", "required": true }
+      ]
+    },
     {
       "name": "landing",
       "fields": [
