@@ -19,6 +19,10 @@ public sealed class ConsentModel : AccountPageModel
 
     public string? UserName { get; private set; }
 
+    public IReadOnlyList<string> RedirectHosts { get; private set; } = [];
+
+    public bool McpClient { get; private set; }
+
     public static string Describe(string scope) => scope switch
     {
         OpenIddict.Abstractions.OpenIddictConstants.Scopes.OpenId => "Know who you are",
@@ -46,6 +50,8 @@ public sealed class ConsentModel : AccountPageModel
         UserName = user.UserName;
         ClientName = request.ClientName;
         Scopes = request.Scopes;
+        RedirectHosts = request.RedirectHosts;
+        McpClient = request.McpClient;
         return Page();
     }
 
@@ -87,7 +93,7 @@ public sealed class ConsentModel : AccountPageModel
     }
 
     private Task<ConsentRequest?> DescribeAsync() =>
-        Service<ClientConsents>().DescribeAsync(Request.Query[Parameters.ClientId].ToString(), RequestedScopes(), HttpContext.RequestAborted);
+        Service<ClientConsents>().DescribeAsync(Request.Query[Parameters.ClientId].ToString(), RequestedScopes(), Request.Query[Parameters.RedirectUri].ToString(), HttpContext.RequestAborted);
 
     private string[] RequestedScopes() =>
         Request.Query[Parameters.Scope].ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries);

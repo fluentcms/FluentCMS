@@ -9,6 +9,7 @@ internal static partial class OidcLog
     public const int ClientDeletedId = 9002;
     public const int ClientsKeptId = 9003;
     public const int ClientRegistrationCappedId = 9005;
+    public const int ClientLimitReachedId = 9006;
 
     [LoggerMessage(EventId = PruneScheduleFailedId, EventName = "OidcPruneScheduleFailed", Level = LogLevel.Error, Message = "Could not register the recurring prune job of the authorization server; used tokens stay until it is registered.")]
     public static partial void PruneScheduleFailed(ILogger logger, Exception exception);
@@ -21,4 +22,7 @@ internal static partial class OidcLog
 
     [LoggerMessage(EventId = ClientRegistrationCappedId, EventName = "OidcClientRegistrationCapped", Level = LogLevel.Warning, Message = "Refused the registration of an MCP client: {MaxPendingClients} clients wait for approval already. Approve, reject or delete them.")]
     public static partial void ClientRegistrationCapped(ILogger logger, int maxPendingClients);
+
+    [LoggerMessage(EventId = ClientLimitReachedId, EventName = "OidcClientLimitReached", Level = LogLevel.Warning, Message = "Refused the registration of an MCP client: there are {MaxClients} MCP clients already. Delete the ones not in use, or raise MaxClients.")]
+    public static partial void ClientLimitReached(ILogger logger, int maxClients);
 }
