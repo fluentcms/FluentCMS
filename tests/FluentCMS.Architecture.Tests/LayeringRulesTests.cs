@@ -266,8 +266,8 @@ public class LayeringRulesTests
     // Spec 5.5: the AI assist plugin reads content and media through their services, as the caller, and writes nothing to
     // content. The one thing it keeps is its usage log: the model and the migrations of that table, the service that writes
     // and pages it and the job that prunes it. The rest of the plugin holds no database context, and of the content and
-    // media services it calls the reads alone. The MCP plugin, whose tools write through the same services, shows that the
-    // scan of the calls sees a write.
+    // media services it calls the reads alone and the check of an update of an asset, which writes nothing. The MCP
+    // plugin, whose tools write through the same services, shows that the scan of the calls sees a write.
     [Fact]
     public void TheAiAssistPluginReadsThroughTheServicesAndWritesNothingToContent()
     {
@@ -285,7 +285,7 @@ public class LayeringRulesTests
             .HasNoViolations(everything.Value).ShouldBeFalse();
 
         ServiceCalls.In(AiAssistPlugin).ShouldBe(
-            ["FluentCMS.Content.IContentService.GetAsync", "FluentCMS.Media.IMediaService.GetAsync", "FluentCMS.Media.IMediaService.OpenImageAsync"],
+            ["FluentCMS.Content.IContentService.GetAsync", "FluentCMS.Media.IMediaService.GetAsync", "FluentCMS.Media.IMediaService.OpenImageAsync", "FluentCMS.Media.IMediaService.RequireUpdateAsync"],
             ignoreOrder: true);
         ServiceCalls.In(McpPlugin).ShouldContain("FluentCMS.Content.IContentService.CreateAsync");
     }

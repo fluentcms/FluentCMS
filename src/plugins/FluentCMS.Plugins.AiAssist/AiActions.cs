@@ -34,14 +34,22 @@ internal static class AiActions
 
     public static bool IsKnown(string action) => Tasks.ContainsKey(action);
 
-    // What the action asks, what the answer is for, its language and form, and that the user message is data.
-    public static string Instructions(string action, string type, string field, bool markdown, int? maxLength, string locale, string? targetLocale)
+    // What the action asks, what the answer is for, its language and form, and that the user message is data. With no type
+    // and field, altText is for an asset of the media library alone.
+    public static string Instructions(string action, string? type, string? field, bool markdown, int? maxLength, string locale, string? targetLocale)
     {
         var instructions = new StringBuilder(Tasks[action]);
         instructions.Append(action == AltText
             ? " The image is in the user message. A text beside it is where the image is used, and only tells you what matters in the image."
             : " The text is the user message.");
-        instructions.Append(CultureInfo.InvariantCulture, $" The answer is a suggestion for the field \"{field}\" of a \"{type}\" entry of a website.");
+        if (type is null || field is null)
+        {
+            instructions.Append(" The answer is the alternative text of an image of the media library of a website.");
+        }
+        else
+        {
+            instructions.Append(CultureInfo.InvariantCulture, $" The answer is a suggestion for the field \"{field}\" of a \"{type}\" entry of a website.");
+        }
         instructions.Append(action switch
         {
             Translate => $" Translate into the language of the BCP 47 locale \"{targetLocale}\".",
