@@ -71,6 +71,12 @@ namespace FluentCMS.Plugins.AiAssist.Migrations.SqlServer
                         .HasColumnType("nvarchar(32)")
                         .HasColumnName("principal_kind");
 
+                    b.Property<string>("PrincipalName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("principal_name");
+
                     b.Property<long>("PromptTokens")
                         .HasColumnType("bigint")
                         .HasColumnName("prompt_tokens");

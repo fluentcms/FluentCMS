@@ -169,8 +169,9 @@ public sealed partial class AuthorizationServerTests
         fresh.Headers.Location!.AbsoluteUri.ShouldStartWith(FluentCmsTestHost.OAuthRedirectUri + "?code=");
     }
 
+    // The access token says it too, so that /me/two-factor can ask for a recent sign-in (#3372).
     [Fact]
-    public async Task TheIdentityTokenSaysWhenTheUserSignedIn()
+    public async Task TheIdentityTokenAndTheAccessTokenSayWhenTheUserSignedIn()
     {
         var editor = await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
         var signedIn = _host.Time.GetUtcNow().ToUnixTimeSeconds();
@@ -178,8 +179,9 @@ public sealed partial class AuthorizationServerTests
 
         var tokens = await _host.SignInAsync(editor, "openid", "offline_access", "management");
 
-        Payload(tokens.IdentityToken!).GetProperty(OpenIddictConstants.Claims.AuthenticationTime).GetInt64().ShouldBeInRange(signedIn, signedIn + 61);
-        Payload(tokens.AccessToken).TryGetProperty(OpenIddictConstants.Claims.AuthenticationTime, out _).ShouldBeFalse();
+        var saidByIdentityToken = Payload(tokens.IdentityToken!).GetProperty(OpenIddictConstants.Claims.AuthenticationTime).GetInt64();
+        saidByIdentityToken.ShouldBeInRange(signedIn, signedIn + 61);
+        Payload(tokens.AccessToken).GetProperty(OpenIddictConstants.Claims.AuthenticationTime).GetInt64().ShouldBe(saidByIdentityToken);
     }
 
     [Fact]
