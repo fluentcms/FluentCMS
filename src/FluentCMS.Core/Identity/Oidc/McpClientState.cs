@@ -27,6 +27,10 @@ internal sealed record McpClientState(McpClientStatus Status, DateTimeOffset Reg
     // When a user first consented to the client; null while it was never used.
     public DateTimeOffset? UsedAt { get; init; }
 
+    // The user whose consent that was. A consent that is revoked and then pruned leaves no row, and the place it took
+    // among the clients a user may keep stays that user's for as long as the client lives (ClientConsents).
+    public Guid? UsedBy { get; init; }
+
     [JsonIgnore]
     public bool IsApproved => Status == McpClientStatus.Approved && RoleId is not null;
 
@@ -55,4 +59,7 @@ internal sealed record McpClientState(McpClientStatus Status, DateTimeOffset Reg
     }
 
     public JsonElement ToProperty() => JsonSerializer.SerializeToElement(this, Json);
+
+    // What the stored state of a client first used by the user holds, for a query over the stored properties.
+    public static string UsedByMarker(Guid user) => $"\"usedBy\":\"{user:D}\"";
 }

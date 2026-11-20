@@ -20,6 +20,9 @@ internal static class McpClientEndpoints
             return Results.Created($"mcp/clients/{client.Id:D}", client);
         }).Produces<McpClientInfo>(StatusCodes.Status201Created);
 
+        group.MapPost("/remove", async (McpClientRemoval? removal, McpClientService clients, CancellationToken cancellationToken) =>
+            Results.Ok(await clients.RemoveOpenApprovedAsync(removal, cancellationToken))).Produces<McpClientRemovalResult>();
+
         group.MapPost("/{id:guid}/approve", async (Guid id, McpClientApproval? approval, McpClientService clients, CancellationToken cancellationToken) =>
             Results.Ok(await clients.ApproveAsync(id, approval, cancellationToken))).Produces<McpClientInfo>();
 
