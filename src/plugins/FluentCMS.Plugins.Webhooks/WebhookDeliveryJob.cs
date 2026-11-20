@@ -1,3 +1,4 @@
+using System.Data.Common;
 using FluentCMS.Content;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
@@ -9,13 +10,15 @@ using Microsoft.Extensions.Options;
 namespace FluentCMS.Plugins.Webhooks;
 
 // One attempt of a delivery. Body is the exact JSON every attempt sends. A manual one, a ping or a redelivery, is tried
-// once and is sent even when the webhook is disabled.
-internal sealed record WebhookAttempt(Guid WebhookId, Guid DeliveryId, Guid EventId, string Event, int Attempt, bool Manual, string Body);
+// once and is sent even when the webhook is disabled. OccurredAt, the time of the event, orders the webhook's queue; a job
+// enqueued without it queues at the time it runs.
+internal sealed record WebhookAttempt(Guid WebhookId, Guid DeliveryId, Guid EventId, string Event, int Attempt, bool Manual, string Body, DateTimeOffset? OccurredAt = null);
 
-// Claims an attempt with a pending row before sending it, so that a repeat of the job or a second job for the attempt sends
-// nothing, and so that one attempt of a webhook is sent at a time. Then it records the result and schedules the next attempt
-// itself, on the plugin's schedule rather than the runner's backoff, so the job fails only when the database does. A
-// delivery that dies raises WebhookDeadEvent, and may disable its webhook (DisableAfter).
+// Queues an attempt in its webhook's queue and claims it with a pending row before sending it, so that a repeat of the job or
+// a second job for the attempt sends nothing, and so that one attempt of a webhook is sent at a time, in the order they were
+// queued. Then it records the result, schedules the next attempt itself, on the plugin's schedule rather than the runner's
+// backoff, so the job fails only when the database does, and wakes the job of the attempt that heads the queue. A delivery
+// that dies raises WebhookDeadEvent, and may disable its webhook (DisableAfter).
 internal sealed class WebhookDeliveryJob(
     PluginDbContext<WebhooksPlugin> database,
     WebhookSender sender,
@@ -35,10 +38,6 @@ internal sealed class WebhookDeliveryJob(
 
     public static readonly IReadOnlyList<TimeSpan> Retries =
         [TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(30), TimeSpan.FromHours(2), TimeSpan.FromHours(24)];
-
-    // While another attempt to its webhook is in flight, a job waits until that attempt's send must have ended, and at least
-    // this long, plus up to as much again so that the waiting jobs do not all return together.
-    public static readonly TimeSpan Busy = TimeSpan.FromSeconds(2);
 
     // A pending attempt is abandoned once the send timeout and this have passed since its claim. It covers the writes around
     // the send and the clocks of the other instances.
@@ -96,10 +95,12 @@ internal sealed class WebhookDeliveryJob(
         {
             await DiedAsync(webhook, attempt.DeliveryId, attempt.Event, attempt.Attempt, CancellationToken.None);
         }
+
+        await NextAsync(webhook, claim, wake: true, cancellationToken);
     }
 
-    // The webhook and the id of the claimed row, or null when this job sends nothing: the attempt is recorded or in flight,
-    // the webhook is gone or disabled, or another attempt to the webhook is in flight and this job has deferred itself.
+    // The webhook and the id of the claimed row, or null when this job sends nothing: the attempt is recorded, in flight or
+    // waiting in the webhook's queue, or the webhook is gone or disabled.
     private async Task<(Webhook Webhook, Guid Claim)?> ClaimAsync(WebhookAttempt attempt, CancellationToken cancellationToken)
     {
         var deliveries = database.Set<WebhookDelivery>();
@@ -112,74 +113,157 @@ internal sealed class WebhookDeliveryJob(
                 return null;
             }
 
-            var rows = await deliveries.AsNoTracking()
-                .Where(item => (item.DeliveryId == attempt.DeliveryId && item.Attempt == attempt.Attempt) || (item.WebhookId == webhook.Id && item.State == DeliveryStates.Pending))
-                .ToListAsync(cancellationToken);
-            var now = time.GetUtcNow();
-
-            // A repeat of a job whose attempt is claimed, or a second job for the attempt. A claim that is still pending may be
-            // this job's own, left by a crash or a failed write, which nothing else finishes.
-            if (rows.Find(item => item.DeliveryId == attempt.DeliveryId && item.Attempt == attempt.Attempt) is { } own)
+            var own = await deliveries.AsNoTracking().FirstOrDefaultAsync(item => item.DeliveryId == attempt.DeliveryId && item.Attempt == attempt.Attempt, cancellationToken);
+            if (own is null)
             {
-                if (own.State == DeliveryStates.Pending)
+                if (!webhook.Enabled && !attempt.Manual)
                 {
-                    await (IsAbandoned(own, now) ? TakeOverAsync(own, webhook, cancellationToken) : DeferAsync(attempt, webhook, AbandonedAt(own), cancellationToken));
-                }
-
-                return null;
-            }
-
-            if (!webhook.Enabled && !attempt.Manual)
-            {
-                // The attempt before this one said another would follow; now none does.
-                await deliveries
-                    .Where(item => item.DeliveryId == attempt.DeliveryId && item.Attempt == attempt.Attempt - 1 && item.State == DeliveryStates.Failed)
-                    .ExecuteUpdateAsync(item => item.SetProperty(row => row.State, DeliveryStates.Dead).SetProperty(row => row.NextRetryAt, (DateTimeOffset?)null), cancellationToken);
-                WebhookLog.Skipped(logger, attempt.WebhookId, attempt.DeliveryId, attempt.Attempt);
-                return null;
-            }
-
-            if (rows.Find(item => item.State == DeliveryStates.Pending) is { } busy)
-            {
-                if (!IsAbandoned(busy, now))
-                {
-                    // A burst to a receiver that hangs then wakes once per send instead of every few seconds.
-                    var sent = busy.CreatedAt + options.Value.Timeout;
-                    var at = sent > now + Busy ? sent : now + Busy;
-                    await DeferAsync(attempt, webhook, at + (Busy * Random.Shared.NextDouble()), cancellationToken);
+                    await EndAsync(attempt, cancellationToken);
                     return null;
                 }
 
-                await TakeOverAsync(busy, webhook, cancellationToken);
+                // Every attempt joins its webhook's queue first, ordered by the time of its event.
+                own = new WebhookDelivery
+                {
+                    Id = Guid.CreateVersion7(),
+                    DeliveryId = attempt.DeliveryId,
+                    WebhookId = webhook.Id,
+                    EventId = attempt.EventId,
+                    Event = attempt.Event,
+                    Attempt = attempt.Attempt,
+                    State = DeliveryStates.Queued,
+                    RequestBody = attempt.Body,
+                    Manual = attempt.Manual,
+                    CreatedAt = attempt.OccurredAt is { } occurred && occurred < time.GetUtcNow() ? occurred : time.GetUtcNow(),
+                };
+                deliveries.Add(own);
+                try
+                {
+                    await database.SaveChangesAsync(cancellationToken);
+                    database.ChangeTracker.Clear();
+                }
+                catch (DbUpdateException) when (round < 3)
+                {
+                    // A second job for the attempt queued it since the read; the next round finds it.
+                    database.ChangeTracker.Clear();
+                    continue;
+                }
+            }
+            else if (own.State is not (DeliveryStates.Pending or DeliveryStates.Queued))
+            {
+                // Recorded. The job that recorded it woke the next, or the queue job does.
+                return null;
+            }
+            else if (own.State == DeliveryStates.Pending)
+            {
+                // A repeat of a job whose attempt is claimed, or a second job for the attempt. A claim that is still pending
+                // may be this job's own, left by a crash or a failed write, which nothing else finishes.
+                if (!IsAbandoned(own, time.GetUtcNow()))
+                {
+                    await DeferAsync(attempt, webhook, AbandonedAt(own), cancellationToken);
+                    return null;
+                }
+
+                await TakeOverAsync(own, webhook, cancellationToken);
+                return await NextAsync(webhook, own.Id, wake: true, cancellationToken);
             }
 
-            var claim = new WebhookDelivery
+            return await NextAsync(webhook, own.Id, wake: false, cancellationToken);
+        }
+    }
+
+    // Claims the row own when it heads the webhook's queue and no attempt of the webhook is in flight. A job that ended an
+    // attempt wakes the next: it enqueues the head's job, because only the job of an attempt sends it, so that the runner's
+    // retry of that job after a crash finds its claim. A job that queued its attempt behind another row wakes nobody: the
+    // head was queued before it, so the head's own job or the job that ended the last attempt saw it. A head that has
+    // stalled is woken by the next attempt queued behind it, or by WebhookQueueJob.
+    private async Task<(Webhook Webhook, Guid Claim)?> NextAsync(Webhook webhook, Guid own, bool wake, CancellationToken cancellationToken)
+    {
+        var deliveries = database.Set<WebhookDelivery>();
+        while (true)
+        {
+            var busy = await deliveries.AsNoTracking().FirstOrDefaultAsync(item => item.WebhookId == webhook.Id && item.State == DeliveryStates.Pending, cancellationToken);
+            if (busy is not null && IsAbandoned(busy, time.GetUtcNow()))
             {
-                Id = Guid.CreateVersion7(),
-                DeliveryId = attempt.DeliveryId,
-                WebhookId = webhook.Id,
-                EventId = attempt.EventId,
-                Event = attempt.Event,
-                Attempt = attempt.Attempt,
-                State = DeliveryStates.Pending,
-                RequestBody = attempt.Body,
-                Manual = attempt.Manual,
-                CreatedAt = now,
-            };
-            deliveries.Add(claim);
+                await TakeOverAsync(busy, webhook, cancellationToken);
+                continue;
+            }
+
+            var head = await Head(deliveries.AsNoTracking(), webhook.Id).FirstOrDefaultAsync(cancellationToken);
+            if (busy is not null)
+            {
+                if (busy.Id == own)
+                {
+                    // Another job for this attempt claimed it since the read.
+                    await DeferAsync(AttemptOf(busy), webhook, AbandonedAt(busy), cancellationToken);
+                }
+
+                return null;
+            }
+
+            if (head is null)
+            {
+                return null;
+            }
+
+            if (!webhook.Enabled && !head.Manual)
+            {
+                if (await deliveries.Where(item => item.Id == head.Id && item.State == DeliveryStates.Queued).ExecuteDeleteAsync(cancellationToken) == 1)
+                {
+                    await EndAsync(AttemptOf(head), cancellationToken);
+                }
+
+                continue;
+            }
+
+            if (head.Id != own)
+            {
+                if (!wake && !await WebhookQueueJob.HasStalledAsync(deliveries.AsNoTracking(), webhook.Id, head, time.GetUtcNow(), cancellationToken))
+                {
+                    return null;
+                }
+
+                await scheduler.EnqueueAsync<WebhookDeliveryJob, WebhookAttempt>(AttemptOf(head), Options(webhook.SiteId), cancellationToken);
+                return null;
+            }
+
             try
             {
-                await database.SaveChangesAsync(cancellationToken);
-                return (webhook, claim.Id);
+                var claimed = await deliveries
+                    .Where(item => item.Id == own && item.State == DeliveryStates.Queued)
+                    .ExecuteUpdateAsync(item => item.SetProperty(row => row.State, DeliveryStates.Pending).SetProperty(row => row.CreatedAt, time.GetUtcNow()), cancellationToken);
+                if (claimed == 1)
+                {
+                    return (webhook, own);
+                }
             }
-            catch (DbUpdateException) when (round < 3)
+            catch (DbException)
             {
-                // Another job claimed this attempt or another of the webhook since the read, and the unique indexes refused
-                // this one; the next round finds which.
-                database.ChangeTracker.Clear();
+                // Another attempt of the webhook was claimed since the read, and ux_cms_webhooks_delivery_in_flight refused
+                // this one. The next round finds it.
+                if (!await deliveries.AnyAsync(item => item.WebhookId == webhook.Id && item.State == DeliveryStates.Pending, CancellationToken.None))
+                {
+                    throw;
+                }
             }
         }
     }
+
+    // The attempt before this one said another would follow; now none does, since the webhook is disabled.
+    private async Task EndAsync(WebhookAttempt attempt, CancellationToken cancellationToken)
+    {
+        await database.Set<WebhookDelivery>()
+            .Where(item => item.DeliveryId == attempt.DeliveryId && item.Attempt == attempt.Attempt - 1 && item.State == DeliveryStates.Failed)
+            .ExecuteUpdateAsync(item => item.SetProperty(row => row.State, DeliveryStates.Dead).SetProperty(row => row.NextRetryAt, (DateTimeOffset?)null), cancellationToken);
+        WebhookLog.Skipped(logger, attempt.WebhookId, attempt.DeliveryId, attempt.Attempt);
+    }
+
+    // The queued attempts of the webhook, head first, in the order of ix_cms_webhooks_delivery_queued.
+    internal static IQueryable<WebhookDelivery> Head(IQueryable<WebhookDelivery> deliveries, Guid webhook) =>
+        deliveries.Where(item => item.WebhookId == webhook && item.State == DeliveryStates.Queued).OrderBy(item => item.CreatedAt).ThenBy(item => item.Id);
+
+    internal static WebhookAttempt AttemptOf(WebhookDelivery row) =>
+        new(row.WebhookId, row.DeliveryId, row.EventId, row.Event, row.Attempt, row.Manual, row.RequestBody, row.State == DeliveryStates.Queued ? row.CreatedAt : null);
 
     // The worker that claimed the attempt stopped before it recorded the result, so whether the receiver got it is not
     // known. It counts as failed and the next attempt follows, scheduled first as in ExecuteAsync; it is not sent again.
@@ -188,7 +272,7 @@ internal sealed class WebhookDeliveryJob(
         var retryAt = RetryAt(abandoned.Attempt, abandoned.Manual);
         if (retryAt is { } at)
         {
-            var next = new WebhookAttempt(abandoned.WebhookId, abandoned.DeliveryId, abandoned.EventId, abandoned.Event, abandoned.Attempt + 1, abandoned.Manual, abandoned.RequestBody);
+            var next = new WebhookAttempt(abandoned.WebhookId, abandoned.DeliveryId, abandoned.EventId, abandoned.Event, abandoned.Attempt + 1, abandoned.Manual, abandoned.RequestBody, abandoned.CreatedAt);
             await scheduler.ScheduleAsync<WebhookDeliveryJob, WebhookAttempt>(next, at, Options(webhook.SiteId), cancellationToken);
         }
 

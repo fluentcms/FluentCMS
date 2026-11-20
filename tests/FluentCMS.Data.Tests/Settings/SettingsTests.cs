@@ -551,7 +551,7 @@ public sealed class SettingsTests
     }
 
     [Fact]
-    public async Task AWrittenSecretIsInTheTableAndInNoEventActivityRowOrLogLine()
+    public async Task AWrittenSecretIsInNoRowEventActivityRowOrLogLine()
     {
         using var database = new SettingsDatabase();
 
@@ -564,7 +564,8 @@ public sealed class SettingsTests
             return true;
         }));
 
-        database.Rows().Select(row => row.Json).ShouldContain(json => json.Contains(Secret + "-key", StringComparison.Ordinal));
+        database.Rows().ShouldAllBe(row => !row.Json.Contains(Secret, StringComparison.Ordinal));
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBe(Secret + "-key");
         database.Seen.Events.Count.ShouldBe(2);
 
         var traces = await database.TracesAsync();

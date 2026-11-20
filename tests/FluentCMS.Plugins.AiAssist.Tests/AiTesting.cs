@@ -108,7 +108,7 @@ public sealed class AiHost : IAsyncDisposable
     public async Task SetDefaultsAsync(AiSettings settings)
     {
         await using var scope = Services.CreateAsyncScope();
-        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id));
         await scope.ServiceProvider.GetRequiredService<ISettings<AiSettings>>().SetDefaultAsync(settings, Token);
     }
 
@@ -116,7 +116,7 @@ public sealed class AiHost : IAsyncDisposable
     public async Task SetSettingsAsync(Guid site, AiSettings settings)
     {
         await using var scope = Services.CreateAsyncScope();
-        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(site));
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(site));
         await scope.ServiceProvider.GetRequiredService<ISettings<AiSettings>>().SetAsync(new SiteId(site), settings, Token);
     }
 
@@ -133,7 +133,7 @@ public sealed class AiHost : IAsyncDisposable
     public async Task SetEnabledAsync(string plugin, Guid site, bool enabled)
     {
         await using var scope = Services.CreateAsyncScope();
-        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id));
         await scope.ServiceProvider.GetRequiredService<PluginAdministration>().SetEnabledAsync(plugin, site, enabled, Token);
     }
 

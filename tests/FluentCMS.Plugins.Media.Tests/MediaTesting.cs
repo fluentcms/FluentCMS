@@ -194,7 +194,7 @@ public class MediaHost : IAsyncDisposable
     {
         await using var scope = Services.CreateAsyncScope();
         var services = scope.ServiceProvider;
-        using (SystemOperation.Begin(services.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id)))
+        using (SystemOperation.Begin(services.GetRequiredService<IOperationContextAccessor>(), services.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id)))
         {
             var media = services.GetRequiredService<ISettings<MediaSettings>>();
             var before = await media.GetAsync(new SiteId(DefaultSite.Id), Token);

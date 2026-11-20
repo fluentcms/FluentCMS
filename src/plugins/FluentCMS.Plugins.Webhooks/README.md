@@ -19,7 +19,7 @@ The options are in `FluentCms:Webhooks`:
 
 Every attempt runs on the job queue `webhooks`: the first attempt of a delivery, its retries at 1m, 5m, 30m, 2h and 24h, a redelivery and a ping. A receiver that hangs holds the workers of this queue for its timeout, and scheduled publishing and the other jobs of the `default` queue keep running. `FluentCms:Jobs:Queues:webhooks` sets the workers too, and wins over `Workers`.
 
-One attempt of a webhook is in flight at a time, on every instance together. A job claims its attempt by writing the attempt's row as `pending` before it sends, and a job that finds another attempt of its webhook pending waits until that attempt's send must have ended, at least a few seconds, and tries again. So a slow receiver delays its own deliveries and nobody else's.
+One attempt of a webhook is in flight at a time, on every instance together. An attempt waits in its webhook's queue as a `queued` row, and its job claims it by turning the row `pending` before it sends. When an attempt ends, its job wakes the one that heads the queue, so the attempts to a webhook go one after another in the order of their events, each as soon as the one before ends, and a waiting attempt holds no worker. A job that runs every minute wakes a queue whose wake-up was lost. So a slow receiver delays its own deliveries and nobody else's.
 
 A claim that is still pending a minute after the timeout has passed is abandoned, because its worker stopped before it recorded the result. The next job to find it marks the attempt `failed` and schedules the next attempt, without sending this one again. Since the receiver may have got the abandoned attempt, it can get a delivery more than once, and ignores a repeat by its `X-FluentCMS-Delivery` header.
 
@@ -29,7 +29,7 @@ A delivery whose sixth attempt fails is dead, and its activity row is `webhook.d
 
 ## Secrets and headers
 
-The secret is the caller's, or generated and returned by that create call only. The values of a webhook's headers are secrets too, since a receiver's credentials, such as `Authorization`, are what they are for. Both are stored protected with Data Protection. No answer holds a header's value, the one to a create included: each header is listed by name with the value `***`. Sending `***` back in a `PUT` keeps the value stored under that name, so a webhook read and sent back keeps its headers. Deliveries send the real values.
+The secret is the caller's, or generated and returned by that create call only. The values of a webhook's headers are secrets too, since a receiver's credentials, such as `Authorization`, are what they are for. Both are stored protected with Data Protection. No answer holds a header's value, the one to a create included: each header is listed by name with the value `***`. Sending `***` back in a `PUT` keeps the value stored under that name, so a webhook read and sent back keeps its headers, as long as the URL keeps its scheme, host and port; a `PUT` that moves the webhook to another host has to send the values again. Only the origin is checked, so on a host that routes its tenants by path a new path keeps the values. Deliveries send the real values.
 
 Webhooks saved before the headers were protected hold them in plain JSON. They are still delivered, and the plugin protects them once the host has started, or when the webhook is next saved.
 

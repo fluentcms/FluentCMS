@@ -20,8 +20,8 @@ internal static partial class WebhookLog
     [LoggerMessage(EventId = 9244, Level = LogLevel.Information, Message = "Webhook retention removed {Removed} attempts from the delivery log.")]
     public static partial void Pruned(ILogger logger, int removed);
 
-    [LoggerMessage(EventId = 9245, Level = LogLevel.Error, Message = "Could not register the recurring retention of the webhook delivery log; old attempts stay until it is registered.")]
-    public static partial void RetentionNotScheduled(ILogger logger, Exception exception);
+    [LoggerMessage(EventId = 9245, Level = LogLevel.Error, Message = "Could not register the recurring jobs of the webhooks plugin; until they are registered, old attempts stay in the delivery log and a queue whose wake-up was lost waits for its next delivery.")]
+    public static partial void RecurringNotScheduled(ILogger logger, Exception exception);
 
     [LoggerMessage(EventId = 9246, Level = LogLevel.Debug, Message = "Webhook {WebhookId} delivery {DeliveryId} attempt {Attempt} waits until {RunAt:u}: an attempt to the webhook is in flight.")]
     public static partial void Deferred(ILogger logger, Guid webhookId, Guid deliveryId, int attempt, DateTimeOffset runAt);
@@ -40,4 +40,7 @@ internal static partial class WebhookLog
 
     [LoggerMessage(EventId = 9251, Level = LogLevel.Information, Message = "Removed {Webhooks} webhooks and {Attempts} delivery attempts of the deleted site {SiteId}.")]
     public static partial void SiteRemoved(ILogger logger, int webhooks, int attempts, Guid siteId);
+
+    [LoggerMessage(EventId = 9252, Level = LogLevel.Warning, Message = "Woke the queues of {Count} webhooks whose attempts waited with none in flight.")]
+    public static partial void QueuesWoken(ILogger logger, int count);
 }

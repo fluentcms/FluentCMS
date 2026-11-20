@@ -167,7 +167,7 @@ public sealed class ClientRegistrationTests
     private static async Task ApproveAsync(FluentCmsTestHost host, string clientId, string role)
     {
         await using var scope = host.Services.CreateAsyncScope();
-        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id));
         var clients = scope.ServiceProvider.GetRequiredService<IMcpClients>();
         var id = (await clients.ListAsync(Token)).Single(client => client.ClientId == clientId).Id;
         (await clients.ApproveAsync(id, role, Token)).Outcome.ShouldBe(McpClientChangeOutcome.Done);
