@@ -16,6 +16,10 @@
     margin-block-end: var(--cms-space-l);
 }
 
+.content-form-history {
+    margin-block: calc(-1 * var(--cms-space-m)) var(--cms-space-l);
+}
+
 .content-form-saved,
 .content-form-notice {
     color: var(--cms-color-text-muted);

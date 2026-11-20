@@ -1730,4 +1730,193 @@
   <data name="Home.Widget.Failed" xml:space="preserve">
     <value>A widget of the plugin {0} could not be shown.</value>
   </data>
+  <data name="Content.Versions.Open" xml:space="preserve">
+    <value>Version history</value>
+  </data>
+  <data name="Content.Versions.Title" xml:space="preserve">
+    <value>Version history</value>
+  </data>
+  <data name="Content.Versions.Loading" xml:space="preserve">
+    <value>Loading the versions…</value>
+  </data>
+  <data name="Content.Versions.ReadFailed" xml:space="preserve">
+    <value>The versions could not be read.</value>
+  </data>
+  <data name="Content.Versions.None" xml:space="preserve">
+    <value>This entry has no versions yet.</value>
+  </data>
+  <data name="Content.Versions.Caption" xml:space="preserve">
+    <value>Versions, newest first</value>
+  </data>
+  <data name="Content.Versions.CaptionLocale" xml:space="preserve">
+    <value>Versions in {0}, newest first</value>
+  </data>
+  <data name="Content.Versions.Number" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Content.Versions.Author" xml:space="preserve">
+    <value>Author</value>
+  </data>
+  <data name="Content.Versions.Saved" xml:space="preserve">
+    <value>Saved</value>
+  </data>
+  <data name="Content.Versions.Origin" xml:space="preserve">
+    <value>Origin</value>
+  </data>
+  <data name="Content.Versions.Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Content.Versions.Version" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
+  <data name="Content.Versions.AuthorOf" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="Content.Versions.Kind.adminUser" xml:space="preserve">
+    <value>user</value>
+  </data>
+  <data name="Content.Versions.Kind.member" xml:space="preserve">
+    <value>member</value>
+  </data>
+  <data name="Content.Versions.Kind.apiKey" xml:space="preserve">
+    <value>API key</value>
+  </data>
+  <data name="Content.Versions.Kind.serviceAccount" xml:space="preserve">
+    <value>service account</value>
+  </data>
+  <data name="Content.Versions.Kind.system" xml:space="preserve">
+    <value>system</value>
+  </data>
+  <data name="Content.Versions.Kind.anonymous" xml:space="preserve">
+    <value>anonymous</value>
+  </data>
+  <data name="Content.Versions.Origin.admin" xml:space="preserve">
+    <value>Admin</value>
+  </data>
+  <data name="Content.Versions.Origin.api" xml:space="preserve">
+    <value>API</value>
+  </data>
+  <data name="Content.Versions.Origin.mcp" xml:space="preserve">
+    <value>MCP</value>
+  </data>
+  <data name="Content.Versions.Origin.job" xml:space="preserve">
+    <value>Job</value>
+  </data>
+  <data name="Content.Versions.Origin.cli" xml:space="preserve">
+    <value>Command line</value>
+  </data>
+  <data name="Content.Versions.Origin.seed" xml:space="preserve">
+    <value>Seed</value>
+  </data>
+  <data name="Content.Versions.Origin.import" xml:space="preserve">
+    <value>Import</value>
+  </data>
+  <data name="Content.Versions.Restore" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="Content.Versions.RestoreOf" xml:space="preserve">
+    <value>Restore {0}</value>
+  </data>
+  <data name="Content.Versions.More" xml:space="preserve">
+    <value>Show {0} more</value>
+  </data>
+  <data name="Content.Versions.From" xml:space="preserve">
+    <value>Compare from</value>
+  </data>
+  <data name="Content.Versions.To" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="Content.Versions.Choice" xml:space="preserve">
+    <value>{0}, {1}</value>
+  </data>
+  <data name="Content.Versions.Compare" xml:space="preserve">
+    <value>Compare</value>
+  </data>
+  <data name="Content.Versions.Comparing" xml:space="preserve">
+    <value>Comparing the versions…</value>
+  </data>
+  <data name="Content.Versions.CompareFailed" xml:space="preserve">
+    <value>The versions could not be compared.</value>
+  </data>
+  <data name="Content.Versions.DiffHeading" xml:space="preserve">
+    <value>Changes from version {0} to version {1}</value>
+  </data>
+  <data name="Content.Versions.NoChanges" xml:space="preserve">
+    <value>No field you may read changed.</value>
+  </data>
+  <data name="Content.Versions.Changed" xml:space="preserve">
+    <value>Fields changed: {0}.</value>
+  </data>
+  <data name="Content.Versions.Where" xml:space="preserve">
+    <value>Where</value>
+  </data>
+  <data name="Content.Versions.Change" xml:space="preserve">
+    <value>Change</value>
+  </data>
+  <data name="Content.Versions.Added" xml:space="preserve">
+    <value>Added</value>
+  </data>
+  <data name="Content.Versions.Removed" xml:space="preserve">
+    <value>Removed</value>
+  </data>
+  <data name="Content.Versions.ChangedValue" xml:space="preserve">
+    <value>Changed</value>
+  </data>
+  <data name="Content.Versions.Moved" xml:space="preserve">
+    <value>Moved from position {0} to {1}</value>
+  </data>
+  <data name="Content.Versions.Formatting" xml:space="preserve">
+    <value>Formatting changed</value>
+  </data>
+  <data name="Content.Versions.Block" xml:space="preserve">
+    <value>{0} {1}</value>
+  </data>
+  <data name="Content.Versions.Item" xml:space="preserve">
+    <value>Item {0}</value>
+  </data>
+  <data name="Content.Versions.Paragraph" xml:space="preserve">
+    <value>Paragraph {0}</value>
+  </data>
+  <data name="Content.Versions.RemovedWords" xml:space="preserve">
+    <value>removed: </value>
+  </data>
+  <data name="Content.Versions.AddedWords" xml:space="preserve">
+    <value>added: </value>
+  </data>
+  <data name="Content.Versions.Ask.Title" xml:space="preserve">
+    <value>Restore {0}?</value>
+  </data>
+  <data name="Content.Versions.Ask.Text" xml:space="preserve">
+    <value>A new draft is made from {0}, saved by {1} on {2}. The published version does not change.</value>
+  </data>
+  <data name="Content.Versions.Ask.Unsaved" xml:space="preserve">
+    <value>Your unsaved changes in the form are replaced.</value>
+  </data>
+  <data name="Content.Versions.Ask.Cancel" xml:space="preserve">
+    <value>Keep the draft</value>
+  </data>
+  <data name="Content.Versions.Ask.Confirm" xml:space="preserve">
+    <value>Restore {0}</value>
+  </data>
+  <data name="Content.Form.RestoredVersion" xml:space="preserve">
+    <value>Restored version {0} as the draft.</value>
+  </data>
+  <data name="Content.Form.NotRestored" xml:space="preserve">
+    <value>The version was not restored.</value>
+  </data>
+  <data name="Content.Versions.PathSeparator" xml:space="preserve">
+    <value> › </value>
+  </data>
+  <data name="Content.Versions.ValueSeparator" xml:space="preserve">
+    <value> · </value>
+  </data>
+  <data name="Content.Versions.ListSeparator" xml:space="preserve">
+    <value>, </value>
+  </data>
+  <data name="Content.Versions.FieldValue" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="Content.Versions.Unreadable" xml:space="preserve">
+    <value>an entry you may not read ({0})</value>
+  </data>
 </root>

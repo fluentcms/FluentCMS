@@ -28,6 +28,10 @@ public sealed class OpenApiContractTests
         Check(ManagementJsonContext.Default.ContentPage, Answer(paths, "/api/management/v1/content/article", "get"), "content/article", document, gaps);
         Check(ManagementJsonContext.Default.ContentEntry, Answer(paths, "/api/management/v1/content/article/{id}", "get"), "content/article/{id}", document, gaps);
         Check(ManagementJsonContext.Default.ContentEntry, Answer(paths, "/api/management/v1/content/article", "post", "201"), "content/article post", document, gaps);
+        Check(ManagementJsonContext.Default.ItemListEntryVersionInfo, Answer(paths, "/api/management/v1/content/article/{id}/versions", "get"), "content/article/{id}/versions", document, gaps);
+        Check(ManagementJsonContext.Default.ContentEntry, Answer(paths, "/api/management/v1/content/article/{id}/versions/{number}", "get"), "content/article/{id}/versions/{number}", document, gaps);
+        Check(ManagementJsonContext.Default.VersionDiffInfo, Answer(paths, "/api/management/v1/content/article/{id}/versions/{from}/diff/{to}", "get"), "content/article/{id}/versions/{from}/diff/{to}", document, gaps);
+        Check(ManagementJsonContext.Default.ContentEntry, Answer(paths, "/api/management/v1/content/article/{id}/versions/{number}/restore", "post"), "content/article/{id}/versions/{number}/restore", document, gaps);
         Check(ManagementJsonContext.Default.ItemListMySession, Answer(paths, "/api/management/v1/me/sessions", "get"), "me/sessions", document, gaps);
         Check(ManagementJsonContext.Default.MyTwoFactor, Answer(paths, "/api/management/v1/me/two-factor", "get"), "me/two-factor", document, gaps);
         Check(ManagementJsonContext.Default.AuthenticatorSetup, Answer(paths, "/api/management/v1/me/two-factor/enrol", "post"), "me/two-factor/enrol", document, gaps);
