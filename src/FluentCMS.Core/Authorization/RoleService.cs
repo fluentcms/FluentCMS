@@ -74,6 +74,17 @@ internal sealed class RoleService(
         return catalogue.Entries;
     }
 
+    // What a grant's rowRule may name, for whoever may read the catalogue.
+    public async Task<IReadOnlyList<RowRuleEntry>> RowRulesAsync(CancellationToken cancellationToken)
+    {
+        if (!await AnyAsync(Readers, authority.CurrentSite?.Value, cancellationToken))
+        {
+            throw new ManagementAccessDeniedException($"The row rules need {string.Join(", ", Readers[..^1])} or {Readers[^1]}.");
+        }
+
+        return rules.Entries;
+    }
+
     // The roles the caller manages or hands out: those of its site and the instance-wide ones, which every site uses.
     public async Task<IReadOnlyList<RoleInfo>> ListAsync(CancellationToken cancellationToken)
     {

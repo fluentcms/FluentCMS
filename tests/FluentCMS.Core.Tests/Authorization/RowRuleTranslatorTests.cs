@@ -243,6 +243,28 @@ public class RowRuleTranslatorTests
         registry.Find("nothing", "article").ShouldBeNull();
     }
 
+    // #3417: what the grant editor offers, by name and with each rule's types by name, and null for a rule on ContentItem.
+    [Fact]
+    public void TheEntriesNameEachRuleWithItsTypesInOrder()
+    {
+        var registry = Registry(new AuthorizationBuilder()
+            .AddRowRule<Tag>("tagged", ctx => tag => tag.CreatedBy == ctx.Principal.Id)
+            .AddRowRule<Author>("by-me", ctx => author => author.CreatedBy == ctx.Principal.Id)
+            .AddRowRule<Article>("by-me", ctx => article => article.CreatedBy == ctx.Principal.Id)
+            .AddRowRule<Article>(BuiltInRoles.OwnEntriesRule, ctx => article => article.UpdatedBy == ctx.Principal.Id));
+
+        registry.Entries.Select(entry => (entry.Name, entry.TypeNames is null ? null : string.Join(' ', entry.TypeNames))).ShouldBe(
+            [
+                ("by-me", "article author"),
+                (BuiltInRoles.OwnEntriesRule, null),
+                ("tagged", "tag"),
+            ]);
+    }
+
+    [Fact]
+    public void ARegistryWithNoRuleHasNoEntry() =>
+        new RowRuleRegistry(SampleSchema.FromClasses().Build(), new ContentQueryOptions(), []).Entries.ShouldBeEmpty();
+
     [Fact]
     public void AFieldThatIsNotInTheSchemaStopsTheHost() =>
         Should.Throw<FluentCmsConfigurationException>(() => Registry(new AuthorizationBuilder().AddRowRule<NotQuiteArticle>("bad", ctx => article => article.Missing == "x")))

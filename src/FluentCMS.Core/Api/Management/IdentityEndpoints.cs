@@ -17,8 +17,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FluentCMS.Core.Api.Management;
 
 // The identity group of spec 4.10: users with their sessions, external logins and two-factor reset, invitations, roles,
-// the permission catalogue and API keys. The routes read the request and the services decide who may do what
-// (users.manage, roles.manage, apikeys.manage, and no grant above the caller's own reach).
+// the permission catalogue with the row rules a grant may name, and API keys. The routes read the request and the
+// services decide who may do what (users.manage, roles.manage, apikeys.manage, and no grant above the caller's own reach).
 internal static class IdentityEndpoints
 {
     private static readonly string Prefix = FluentCmsEndpointGroups.Prefixes.Single(item => item.Group == FluentCmsEndpointGroup.Management).Prefix;
@@ -56,7 +56,9 @@ internal static class IdentityEndpoints
         roles.MapPut("/{id}", UpdateRoleAsync).Takes<RoleUpdateRequest>().Produces<RoleResponse>();
         roles.MapDelete("/{id}", DeleteRoleAsync).Produces(StatusCodes.Status204NoContent);
 
-        management.MapGroup("/permissions").WithFluentCmsOperation(Origin.Api).RequireManagementScope().MapGet("", PermissionsAsync).Produces<ItemList<PermissionEntry>>();
+        var permissions = management.MapGroup("/permissions").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
+        permissions.MapGet("", PermissionsAsync).Produces<ItemList<PermissionEntry>>();
+        permissions.MapGet("/row-rules", RowRulesAsync).Produces<ItemList<RowRuleEntry>>();
 
         var keys = management.MapGroup("/api-keys").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
         keys.MapGet("", ListKeysAsync).Produces<ItemList<ApiKeyInfo>>();
@@ -227,6 +229,12 @@ internal static class IdentityEndpoints
     {
         ManagementQuery.Only(httpContext.Request);
         return AdminJson.Items(await roles.CatalogueAsync(httpContext.RequestAborted));
+    }
+
+    private static async Task<IResult> RowRulesAsync(HttpContext httpContext, [FromServices] RoleService roles)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        return AdminJson.Items(await roles.RowRulesAsync(httpContext.RequestAborted));
     }
 
     private static async Task<IResult> ListKeysAsync(HttpContext httpContext, [FromServices] ApiKeyService keys)
