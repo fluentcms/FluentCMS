@@ -185,6 +185,7 @@ FluentCMS.Admin.Components.CmsInputBase<TValue>.Element.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Error.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Error.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.FocusAsync() -> System.Threading.Tasks.ValueTask
+FluentCMS.Admin.Components.CmsInputBase<TValue>.HasInputError.get -> bool
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Help.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Help.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Id.get -> string?

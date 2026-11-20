@@ -23,3 +23,15 @@ internal sealed record PublishWarningInfo
 }
 
 internal sealed record PublishedRead(EntryRead Read, IReadOnlyList<PublishWarningInfo> Warnings);
+
+// The answer of POST .../schedule: when the action runs, as an instant.
+internal sealed record ScheduleAnswer
+{
+    public string Action { get; init; } = "";
+
+    public string? Locale { get; init; }
+
+    public DateTimeOffset RunAt { get; init; }
+
+    public string? TimeZone { get; init; }
+}

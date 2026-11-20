@@ -21,6 +21,9 @@ internal sealed class FakeContent
     private readonly Dictionary<(Guid Id, string Locale), (string Type, int Version, JsonObject Fields)> _entries = [];
     private readonly Dictionary<(Guid Id, string Locale), (string Status, JsonObject? Published)> _states = [];
 
+    // The pending schedules, by entry, locale and action, as instants.
+    private readonly Dictionary<(Guid Id, string Locale, string Action), DateTimeOffset> _schedules = [];
+
     private readonly FakeManagementServer _server;
 
     public FakeContent(FakeManagementServer server)
@@ -50,6 +53,14 @@ internal sealed class FakeContent
         _states[(key, locale)] = (status, status switch { "published" => fields.DeepClone().AsObject(), "modified" => published, _ => null });
         return key;
     }
+
+    // The clock a schedule must be after.
+    public DateTimeOffset Now { get; set; } = new(2026, 11, 19, 12, 20, 0, TimeSpan.Zero);
+
+    public DateTimeOffset? Scheduled(Guid id, string action, string locale = DefaultLocale) =>
+        _schedules.TryGetValue((id, locale, action), out var at) ? at : null;
+
+    public void Schedule(Guid id, string action, DateTimeOffset at, string locale = DefaultLocale) => _schedules[(id, locale, action)] = at;
 
     public bool Has(Guid id, string locale) => _entries.ContainsKey((id, locale));
 
@@ -164,6 +175,11 @@ internal sealed class FakeContent
             return Entry(savedId, locale, HttpStatusCode.OK);
         }
 
+        if (rest is [var scheduled, "schedule", ..] && Guid.TryParse(scheduled, out var scheduledId))
+        {
+            return ScheduleWrite(scheduledId, locale, rest[2..], write);
+        }
+
         if (request.Method == HttpMethod.Post && rest is [var acted, var action] && Guid.TryParse(acted, out var actedId))
         {
             return Act(actedId, locale, action, write);
@@ -250,6 +266,41 @@ internal sealed class FakeContent
         }
     }
 
+    // As the server: a wall-clock time in an IANA zone, refused in the past or in an hour the clocks skip; a second schedule
+    // of an action replaces the first, and a cancel of none is a 422.
+    private HttpResponseMessage ScheduleWrite(Guid id, string locale, string[] action, ContentWrite write)
+    {
+        if (!_entries.ContainsKey((id, locale)))
+        {
+            return FakeManagementServer.Problem(HttpStatusCode.NotFound, "FCMS3104");
+        }
+
+        if (write.Method == HttpMethod.Delete && action is [var cancelled])
+        {
+            return _schedules.Remove((id, locale, cancelled))
+                ? new HttpResponseMessage(HttpStatusCode.NoContent)
+                : Invalid(("", "Nothing is scheduled."));
+        }
+
+        var name = write.Body["action"]!.GetValue<string>();
+        var zoneId = write.Body["timeZone"]!.GetValue<string>();
+        var local = DateTime.Parse(write.Body["at"]!.GetValue<string>(), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None);
+        var zone = TimeZoneInfo.FindSystemTimeZoneById(zoneId);
+        if (zone.IsInvalidTime(local))
+        {
+            return Invalid(("at", $"That time does not exist in {zoneId}: the clocks skip it."));
+        }
+
+        var runAt = new DateTimeOffset(local, zone.IsAmbiguousTime(local) ? zone.GetAmbiguousTimeOffsets(local).Max() : zone.GetUtcOffset(local));
+        if (runAt <= Now)
+        {
+            return Invalid(("at", "The time is not in the future."));
+        }
+
+        _schedules[(id, locale, name)] = runAt;
+        return FakeManagementServer.Json(new JsonObject { ["action"] = name, ["locale"] = locale, ["runAt"] = runAt.ToUniversalTime().ToString("O", System.Globalization.CultureInfo.InvariantCulture), ["timeZone"] = zoneId, ["version"] = _entries[(id, locale)].Version });
+    }
+
     private List<string> Locales(Guid id) => [.. _entries.Keys.Where(key => key.Id == id).Select(key => key.Locale)];
 
     private JsonObject Document(Guid id, string locale)
@@ -260,6 +311,14 @@ internal sealed class FakeContent
         document["status"] = _states[(id, locale)].Status;
         document["locale"] = locale;
         document["version"] = version;
+        foreach (var (action, member) in new[] { ("publish", "scheduledPublishAt"), ("unpublish", "scheduledUnpublishAt") })
+        {
+            if (_schedules.TryGetValue((id, locale, action), out var at))
+            {
+                document[member] = at.ToUniversalTime().ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+
         return document;
     }
 
