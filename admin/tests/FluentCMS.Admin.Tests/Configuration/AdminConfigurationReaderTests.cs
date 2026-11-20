@@ -199,6 +199,19 @@ public sealed class AdminConfigurationReaderTests
         problem.Rule.ShouldBe(ConfigurationRule.Origin);
     }
 
+    // A frame of the admin's own origin with scripts and the same origin allowed would reach its sessionStorage.
+    [Fact]
+    public void ThePreviewOriginIsNotTheAdminsOwn()
+    {
+        var startup = AdminConfigurationReader.Read(
+            """{ "apiBaseUrl": "https://cms.example.com", "previewOrigins": ["https://www.example.com", "https://Admin.Example.com/"] }""",
+            "https://admin.example.com");
+
+        var problem = startup.Problems.ShouldHaveSingleItem();
+        problem.Member.ShouldBe("previewOrigins[1]");
+        problem.Rule.ShouldBe(ConfigurationRule.NotAdminOrigin);
+    }
+
     [Fact]
     public void PreviewOriginsAreNormalizedAndDistinct()
     {

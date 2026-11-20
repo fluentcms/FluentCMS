@@ -13,13 +13,19 @@ internal sealed record ContentWrite(HttpMethod Method, string Path, JsonObject B
 // else its X-Cms-Locale, else en; a read of a locale the entry lacks is a 404, locale=all answers every locale it has, and a
 // save with If-Match "0" adds a locale. A test can answer the next write itself. A list reads every field of its entries in
 // its locale, in the order they were added, and takes filter[id][in], filter[field][contains], q on every text, pageSize
-// and a cursor, which is the number of entries before the page.
+// and a cursor, which is the number of entries before the page. Versions are what a test adds, listed newest first and read
+// one by one, each in its locale; a diff answers the changes a test set for its locale and pair, and a restore with a current
+// tag makes the version's fields the draft as a new version. A preview token's answer has the URLs a test gives for the entry
+// and locale, each draft URL with a token of its own, and none by default, as for a type without a template.
 internal sealed class FakeContent
 {
     public const string DefaultLocale = "en";
 
     private readonly Dictionary<(Guid Id, string Locale), (string Type, int Version, JsonObject Fields)> _entries = [];
     private readonly Dictionary<(Guid Id, string Locale), (string Status, JsonObject? Published)> _states = [];
+
+    // The pending schedules, by entry, locale and action, as instants.
+    private readonly Dictionary<(Guid Id, string Locale, string Action), DateTimeOffset> _schedules = [];
 
     private readonly FakeManagementServer _server;
 
@@ -39,6 +45,36 @@ internal sealed class FakeContent
     // Answers the next write instead of the store, when it returns an answer, or fails it by throwing.
     public Func<ContentWrite, HttpResponseMessage?>? NextWrite { get; set; }
 
+    public Dictionary<(Guid Id, string Locale), List<(JsonObject Item, JsonObject Fields)>> Versions { get; } = [];
+
+    public Dictionary<(string Locale, int From, int To), JsonArray> Diffs { get; } = [];
+
+    public void AddVersion(Guid id, int number, JsonObject fields, string authorName = "Ada", string authorKind = "adminUser", string origin = "admin", string locale = DefaultLocale)
+    {
+        var item = new JsonObject
+        {
+            ["number"] = number,
+            ["locale"] = locale,
+            ["status"] = "draft",
+            ["authorId"] = Guid.Empty,
+            ["authorKind"] = authorKind,
+            ["authorName"] = authorName,
+            ["origin"] = origin,
+            ["createdAt"] = new DateTimeOffset(2026, 11, 1, 9, 0, 0, TimeSpan.Zero).AddMinutes(number),
+        };
+        (Versions.TryGetValue((id, locale), out var list) ? list : Versions[(id, locale)] = []).Add((item, fields));
+    }
+
+    // The draft and published URLs of a preview, by entry and the token's locale; {token} is filled in.
+    public Func<Guid, string?, (string? Url, string? PublishedUrl)>? Preview { get; set; }
+
+    public TimeSpan PreviewLifetime { get; set; } = TimeSpan.FromMinutes(10);
+
+    public int PreviewMints { get; private set; }
+
+    // A mint is refused while set.
+    public bool PreviewUnavailable { get; set; }
+
     // What the next publish warns about, as the server writes its warnings.
     public JsonArray Warnings { get; set; } = [];
 
@@ -50,6 +86,14 @@ internal sealed class FakeContent
         _states[(key, locale)] = (status, status switch { "published" => fields.DeepClone().AsObject(), "modified" => published, _ => null });
         return key;
     }
+
+    // The clock a schedule must be after.
+    public DateTimeOffset Now { get; set; } = new(2026, 11, 19, 12, 20, 0, TimeSpan.Zero);
+
+    public DateTimeOffset? Scheduled(Guid id, string action, string locale = DefaultLocale) =>
+        _schedules.TryGetValue((id, locale, action), out var at) ? at : null;
+
+    public void Schedule(Guid id, string action, DateTimeOffset at, string locale = DefaultLocale) => _schedules[(id, locale, action)] = at;
 
     public bool Has(Guid id, string locale) => _entries.ContainsKey((id, locale));
 
@@ -98,6 +142,18 @@ internal sealed class FakeContent
                     ["locales"] = new JsonObject(Locales(key).Select(code => KeyValuePair.Create<string, JsonNode?>(code, Document(key, code)))),
                 }),
                 [var id] when Guid.TryParse(id, out var key) && _entries.ContainsKey((key, locale)) => Entry(key, locale, HttpStatusCode.OK),
+                [var id, "versions"] when Guid.TryParse(id, out var key) && _entries.ContainsKey((key, locale)) => FakeManagementServer.Json(new JsonObject
+                {
+                    ["items"] = new JsonArray([.. VersionsOf(key, locale).AsEnumerable().Reverse().Select(version => (JsonNode)version.Item.DeepClone())]),
+                }),
+                [var id, "versions", var number] when Guid.TryParse(id, out var key) && VersionsOf(key, locale).FirstOrDefault(version => version.Item["number"]!.ToString() == number) is { Fields: not null } version =>
+                    FakeManagementServer.Json(VersionDocument(key, locale, version.Item, version.Fields)),
+                [_, "versions", var left, "diff", var right] => FakeManagementServer.Json(new JsonObject
+                {
+                    ["from"] = int.Parse(left, System.Globalization.CultureInfo.InvariantCulture),
+                    ["to"] = int.Parse(right, System.Globalization.CultureInfo.InvariantCulture),
+                    ["changes"] = Diffs.GetValueOrDefault((locale, int.Parse(left, System.Globalization.CultureInfo.InvariantCulture), int.Parse(right, System.Globalization.CultureInfo.InvariantCulture)))?.DeepClone() ?? new JsonArray(),
+                }),
                 _ => FakeManagementServer.Problem(HttpStatusCode.NotFound, "FCMS3104"),
             };
         }
@@ -115,6 +171,24 @@ internal sealed class FakeContent
         if (next?.Invoke(write) is { } answer)
         {
             return answer;
+        }
+
+        if (request.Method == HttpMethod.Post && rest is [var previewed, "preview-token"] && Guid.TryParse(previewed, out var previewedId))
+        {
+            var minted = ++PreviewMints;
+            if (PreviewUnavailable)
+            {
+                return FakeManagementServer.Problem(HttpStatusCode.Forbidden, "FCMS1000");
+            }
+
+            var (url, publishedUrl) = Preview?.Invoke(previewedId, write.Body["locale"]?.GetValue<string>()) ?? (null, null);
+            return FakeManagementServer.Json(new JsonObject
+            {
+                ["token"] = $"token-{minted}",
+                ["expiresAt"] = DateTimeOffset.UtcNow + PreviewLifetime,
+                ["url"] = url?.Replace("{token}", $"token-{minted}", StringComparison.Ordinal),
+                ["publishedUrl"] = publishedUrl,
+            });
         }
 
         if (request.Method == HttpMethod.Post && rest is [])
@@ -162,6 +236,16 @@ internal sealed class FakeContent
             }
 
             return Entry(savedId, locale, HttpStatusCode.OK);
+        }
+
+        if (rest is [var scheduled, "schedule", ..] && Guid.TryParse(scheduled, out var scheduledId))
+        {
+            return ScheduleWrite(scheduledId, locale, rest[2..], write);
+        }
+
+        if (request.Method == HttpMethod.Post && rest is [var restoredId, "versions", var restoredNumber, "restore"] && Guid.TryParse(restoredId, out var restoredKey))
+        {
+            return Restore(restoredKey, locale, restoredNumber, write);
         }
 
         if (request.Method == HttpMethod.Post && rest is [var acted, var action] && Guid.TryParse(acted, out var actedId))
@@ -250,6 +334,72 @@ internal sealed class FakeContent
         }
     }
 
+    // As the server: a wall-clock time in an IANA zone, refused in the past or in an hour the clocks skip; a second schedule
+    // of an action replaces the first, and a cancel of none is a 422.
+    private HttpResponseMessage ScheduleWrite(Guid id, string locale, string[] action, ContentWrite write)
+    {
+        if (!_entries.ContainsKey((id, locale)))
+        {
+            return FakeManagementServer.Problem(HttpStatusCode.NotFound, "FCMS3104");
+        }
+
+        if (write.Method == HttpMethod.Delete && action is [var cancelled])
+        {
+            return _schedules.Remove((id, locale, cancelled))
+                ? new HttpResponseMessage(HttpStatusCode.NoContent)
+                : Invalid(("", "Nothing is scheduled."));
+        }
+
+        var name = write.Body["action"]!.GetValue<string>();
+        var zoneId = write.Body["timeZone"]!.GetValue<string>();
+        var local = DateTime.Parse(write.Body["at"]!.GetValue<string>(), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None);
+        var zone = TimeZoneInfo.FindSystemTimeZoneById(zoneId);
+        if (zone.IsInvalidTime(local))
+        {
+            return Invalid(("at", $"That time does not exist in {zoneId}: the clocks skip it."));
+        }
+
+        var runAt = new DateTimeOffset(local, zone.IsAmbiguousTime(local) ? zone.GetAmbiguousTimeOffsets(local).Max() : zone.GetUtcOffset(local));
+        if (runAt <= Now)
+        {
+            return Invalid(("at", "The time is not in the future."));
+        }
+
+        _schedules[(id, locale, name)] = runAt;
+        return FakeManagementServer.Json(new JsonObject { ["action"] = name, ["locale"] = locale, ["runAt"] = runAt.ToUniversalTime().ToString("O", System.Globalization.CultureInfo.InvariantCulture), ["timeZone"] = zoneId, ["version"] = _entries[(id, locale)].Version });
+    }
+
+    private List<(JsonObject Item, JsonObject Fields)> VersionsOf(Guid id, string locale) => Versions.GetValueOrDefault((id, locale)) ?? [];
+
+    private static JsonObject VersionDocument(Guid id, string locale, JsonObject item, JsonObject fields)
+    {
+        var document = fields.DeepClone().AsObject();
+        document["id"] = id;
+        document["status"] = item["status"]!.DeepClone();
+        document["locale"] = locale;
+        document["version"] = item["number"]!.DeepClone();
+        return document;
+    }
+
+    private HttpResponseMessage Restore(Guid id, string locale, string number, ContentWrite write)
+    {
+        if (!_entries.TryGetValue((id, locale), out var stored)
+            || VersionsOf(id, locale).FirstOrDefault(version => version.Item["number"]!.ToString() == number) is not { Fields: not null } version)
+        {
+            return FakeManagementServer.Problem(HttpStatusCode.NotFound, "FCMS3104");
+        }
+
+        var (type, current, _) = stored;
+        if (write.IfMatch is { } tag && tag != $"\"{current}\"")
+        {
+            return Problem(HttpStatusCode.PreconditionFailed, new JsonObject { ["status"] = 412, ["code"] = "FCMS3105", ["title"] = "The entry was changed", ["current"] = Document(id, locale) });
+        }
+
+        _entries[(id, locale)] = (type, current + 1, version.Fields.DeepClone().AsObject());
+        AddVersion(id, current + 1, version.Fields.DeepClone().AsObject(), locale: locale);
+        return Entry(id, locale, HttpStatusCode.OK);
+    }
+
     private List<string> Locales(Guid id) => [.. _entries.Keys.Where(key => key.Id == id).Select(key => key.Locale)];
 
     private JsonObject Document(Guid id, string locale)
@@ -260,6 +410,14 @@ internal sealed class FakeContent
         document["status"] = _states[(id, locale)].Status;
         document["locale"] = locale;
         document["version"] = version;
+        foreach (var (action, member) in new[] { ("publish", "scheduledPublishAt"), ("unpublish", "scheduledUnpublishAt") })
+        {
+            if (_schedules.TryGetValue((id, locale, action), out var at))
+            {
+                document[member] = at.ToUniversalTime().ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+            }
+        }
+
         return document;
     }
 

@@ -23,6 +23,9 @@ public sealed class EndToEndHost : IAsyncLifetime
 
     public const string AccessTokenLifetime = "00:00:05";
 
+    // The front end of PreviewTests, which no server holds: the case's browser answers its requests itself.
+    public const string PreviewOrigin = "https://preview.test";
+
     // Under the load of the Windows full run, beside every other test app, the publish has taken from 6 to more than 10
     // minutes. It is bounded below the job's --timeout of 25 minutes, which counts from the start of this test app, with the
     // few minutes the host's start and the tests take on Windows, where the browser tests are skipped.
@@ -209,6 +212,16 @@ public sealed class EndToEndHost : IAsyncLifetime
         return new HttpClient(handler) { BaseAddress = Origin, Timeout = TimeSpan.FromSeconds(30) };
     }
 
+    // A client of the Management API with a management key of its own, for a case that makes its data before the browser
+    // acts on it. The key goes with the host's database at the end of the run.
+    public async Task<HttpClient> ManagementClientAsync()
+    {
+        var key = (await CommandAsync(null, secretOutput: true, "apikey", "create", "--name", $"end-to-end-{Guid.NewGuid():N}", "--class", "management", "--role", "Super Admin")).Trim();
+        var client = Client();
+        client.DefaultRequestHeaders.Add("X-Api-Key", key);
+        return client;
+    }
+
     // The fingerprint the browser context accepts, which is this certificate's alone.
     public string ServerCertificateHash => Convert.ToBase64String(SHA256.HashData(_certificates!.Server.PublicKey.ExportSubjectPublicKeyInfo()));
 
@@ -250,12 +263,12 @@ public sealed class EndToEndHost : IAsyncLifetime
         await File.WriteAllTextAsync(mark, Repository.Configuration, Token);
     }
 
-    // The settings of a production deployment, as few as the image needs, with four that only a test host has: its address
+    // The settings of a production deployment, as few as the image needs, with five that only a test host has: its address
     // is a port of the loopback address; its certificates are the run's own; every browser of the tests calls from that one
     // address, one case after another for minutes, so the request limits per address and per user are raised to what such a
     // suite cannot reach (no case is about the limiter, whose tests are the host's own); and an access token lasts five
     // seconds, so that the admin refreshes it on demand, two and a half seconds after it was issued, at the next call of a
-    // test's action.
+    // test's action; and the preview origin of PreviewTests, which no server holds.
     private void Configure()
     {
         var certificates = _certificates!;
@@ -273,6 +286,7 @@ public sealed class EndToEndHost : IAsyncLifetime
             ["FluentCms__PublicOrigin"] = origin,
             ["AllowedHosts"] = IPAddress.Loopback.ToString(),
             ["FluentCms__Admin__Enabled"] = "true",
+            ["FluentCms__Admin__PreviewOrigins__0"] = PreviewOrigin,
             ["FluentCms__Security__SigningCertificate__Path"] = certificates.SigningPath,
             ["FluentCms__Security__SigningCertificate__Password"] = certificates.Password,
             ["FluentCms__DataProtection__Certificate__Path"] = certificates.SigningPath,

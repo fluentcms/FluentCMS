@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using FluentCMS.Admin.Actions;
 using FluentCMS.Admin.Fields;
 using FluentCMS.Admin.Lists;
 using FluentCMS.Admin.Shell;
@@ -23,6 +24,9 @@ internal enum PluginPageGate
     // The user lacks the page's permission.
     NoAccess,
 }
+
+// A bulk action of an admin half, as its manifest declares it.
+internal sealed record PluginBulkAction(AdminPluginManifest Half, AdminManifestAction Declared);
 
 // A dashboard widget of an admin half, as its manifest declares it, at its position in the manifest's list.
 internal sealed record PluginWidget(AdminPluginManifest Half, AdminManifestWidget Widget, int Position);
@@ -80,6 +84,23 @@ internal sealed class AdminPlugins(
             .Select((widget, position) => new PluginWidget(half, widget, position))
             .Where(item => Shows(half, item.Widget.Permission) && (item.Widget.Role is null || context.HasRole(item.Widget.Role)))),
     ];
+
+    // The bulk actions of a content type the user may see, by the plugin's name and then in the order of its manifest.
+    public IReadOnlyList<PluginBulkAction> BulkActions(string contentType) =>
+    [
+        .. catalog.Halves.OrderBy(half => half.Name, StringComparer.Ordinal).SelectMany(half => half.BulkActions
+            .Where(action => Shows(half, action.Permission) && (action.ContentTypes.Count == 0 || action.ContentTypes.Contains(contentType, StringComparer.Ordinal)))
+            .Select(action => new PluginBulkAction(half, action))),
+    ];
+
+    // A new instance of the action, made by the provider of its half, which loads first. Call it only for what BulkActions answers.
+    public async Task<BulkActionBase> BulkActionAsync(PluginBulkAction action, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        var loaded = await LoadAsync(action.Half, cancellationToken);
+        return loaded.Create(action.Declared.Type) as BulkActionBase
+            ?? throw new InvalidOperationException($"{action.Declared.Type} does not derive from BulkActionBase.");
+    }
 
     // The class of a contribution, by the full name its manifest gives, once its half is loaded. Call it only for what Shows
     // allows; it throws for a half whose plugin is disabled or that failed to load. The app's partial trimming keeps the
@@ -359,6 +380,10 @@ internal sealed class AdminPlugins(
         [UnconditionalSuppressMessage("Trimming", "IL2073", Justification = KeptWhole)]
         [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         public Type Type(string name) => assembly.GetType(name, throwOnError: true)!;
+
+        [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = KeptWhole)]
+        [UnconditionalSuppressMessage("Trimming", "IL2072", Justification = KeptWhole)]
+        public object Create(string implementation) => ActivatorUtilities.CreateInstance(provider, assembly.GetType(implementation, throwOnError: true)!);
 
         // The half's own registration of the service when it has one, else one instance of the class its manifest names,
         // made by the half's provider.

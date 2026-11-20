@@ -84,6 +84,9 @@
   <data name="Configuration.Error.RuleOriginList" xml:space="preserve">
     <value>{0} must be a list of origins.</value>
   </data>
+  <data name="Configuration.Error.RuleNotAdminOrigin" xml:space="preserve">
+    <value>{0} must not be the admin's own origin, which a preview frame could reach into.</value>
+  </data>
   <data name="Configuration.Error.RuleObject" xml:space="preserve">
     <value>{0} must be an object.</value>
   </data>
@@ -1124,6 +1127,87 @@
   <data name="Content.Badge.UnpublishAt" xml:space="preserve">
     <value>Unpublishes</value>
   </data>
+  <data name="Content.Schedule.Open" xml:space="preserve">
+    <value>Schedule</value>
+  </data>
+  <data name="Content.Schedule.Title" xml:space="preserve">
+    <value>Schedule a publish or an unpublish</value>
+  </data>
+  <data name="Content.Schedule.MoveTitle.publish" xml:space="preserve">
+    <value>Move the scheduled publish</value>
+  </data>
+  <data name="Content.Schedule.MoveTitle.unpublish" xml:space="preserve">
+    <value>Move the scheduled unpublish</value>
+  </data>
+  <data name="Content.Schedule.Move.publish" xml:space="preserve">
+    <value>Move the publish</value>
+  </data>
+  <data name="Content.Schedule.Move.unpublish" xml:space="preserve">
+    <value>Move the unpublish</value>
+  </data>
+  <data name="Content.Schedule.Cancel.publish" xml:space="preserve">
+    <value>Cancel the publish</value>
+  </data>
+  <data name="Content.Schedule.Cancel.unpublish" xml:space="preserve">
+    <value>Cancel the unpublish</value>
+  </data>
+  <data name="Content.Schedule.Action" xml:space="preserve">
+    <value>Action</value>
+  </data>
+  <data name="Content.Schedule.Action.publish" xml:space="preserve">
+    <value>Publish</value>
+  </data>
+  <data name="Content.Schedule.Action.unpublish" xml:space="preserve">
+    <value>Unpublish</value>
+  </data>
+  <data name="Content.Schedule.Locale" xml:space="preserve">
+    <value>In the locale {0}.</value>
+  </data>
+  <data name="Content.Schedule.SavedDraft" xml:space="preserve">
+    <value>The draft is published as it is saved now; a later save of this locale cancels the publish.</value>
+  </data>
+  <data name="Content.Schedule.SavedDraftUnsaved" xml:space="preserve">
+    <value>The draft is published as it is saved now, without the unsaved changes of the form; a later save of this locale cancels the publish.</value>
+  </data>
+  <data name="Content.Schedule.MissingDate" xml:space="preserve">
+    <value>Enter a date.</value>
+  </data>
+  <data name="Content.Schedule.MissingTime" xml:space="preserve">
+    <value>Enter a time.</value>
+  </data>
+  <data name="Content.Schedule.Unreadable" xml:space="preserve">
+    <value>The date or the time could not be read. Correct it to schedule.</value>
+  </data>
+  <data name="Content.Schedule.Twice" xml:space="preserve">
+    <value>This time happens twice in {0}, as the clocks go back; the schedule runs at the first, at UTC{1}.</value>
+  </data>
+  <data name="Content.Schedule.Submit" xml:space="preserve">
+    <value>Schedule</value>
+  </data>
+  <data name="Content.Schedule.MoveSubmit" xml:space="preserve">
+    <value>Move</value>
+  </data>
+  <data name="Content.Schedule.Close" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Content.Schedule.Failed" xml:space="preserve">
+    <value>The schedule was not set. Try again.</value>
+  </data>
+  <data name="Content.Schedule.Done.publish" xml:space="preserve">
+    <value>Publish scheduled for {0}, {1}.</value>
+  </data>
+  <data name="Content.Schedule.Done.unpublish" xml:space="preserve">
+    <value>Unpublish scheduled for {0}, {1}.</value>
+  </data>
+  <data name="Content.Schedule.Cancelled.publish" xml:space="preserve">
+    <value>The scheduled publish was cancelled.</value>
+  </data>
+  <data name="Content.Schedule.Cancelled.unpublish" xml:space="preserve">
+    <value>The scheduled unpublish was cancelled.</value>
+  </data>
+  <data name="Content.Schedule.NotCancelled" xml:space="preserve">
+    <value>The schedule was not cancelled. Try again.</value>
+  </data>
   <data name="Content.Form.Heading" xml:space="preserve">
     <value>Entry</value>
   </data>
@@ -1648,5 +1732,413 @@
   </data>
   <data name="Home.Widget.Failed" xml:space="preserve">
     <value>A widget of the plugin {0} could not be shown.</value>
+  </data>
+  <data name="Content.List.Selected" xml:space="preserve">
+    <value>{0} selected.</value>
+  </data>
+  <data name="Content.Bulk.Menu" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Content.Bulk.Publish" xml:space="preserve">
+    <value>Publish</value>
+  </data>
+  <data name="Content.Bulk.Unpublish" xml:space="preserve">
+    <value>Unpublish</value>
+  </data>
+  <data name="Content.Bulk.Delete" xml:space="preserve">
+    <value>Move to trash</value>
+  </data>
+  <data name="Content.Bulk.Confirm.Publish" xml:space="preserve">
+    <value>Publish the selected entries of {1} ({0})?</value>
+  </data>
+  <data name="Content.Bulk.Confirm.Unpublish" xml:space="preserve">
+    <value>Unpublish the selected entries of {1} ({0})?</value>
+  </data>
+  <data name="Content.Bulk.Confirm.Delete" xml:space="preserve">
+    <value>Move the selected entries of {1} ({0}) to the trash?</value>
+  </data>
+  <data name="Content.Bulk.Confirm.Plugin" xml:space="preserve">
+    <value>{2}: the selected entries of {1} ({0})?</value>
+  </data>
+  <data name="Content.Bulk.ConfirmFilter.Publish" xml:space="preserve">
+    <value>Publish the entries of {1} that match ({0})?</value>
+  </data>
+  <data name="Content.Bulk.ConfirmFilter.Unpublish" xml:space="preserve">
+    <value>Unpublish the entries of {1} that match ({0})?</value>
+  </data>
+  <data name="Content.Bulk.ConfirmFilter.Delete" xml:space="preserve">
+    <value>Move the entries of {1} that match ({0}) to the trash?</value>
+  </data>
+  <data name="Content.Bulk.NoFilter" xml:space="preserve">
+    <value>No filter: every entry of the type.</value>
+  </data>
+  <data name="Content.Bulk.ConfirmCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Content.Bulk.Title" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="Content.Bulk.Bar" xml:space="preserve">
+    <value>Progress</value>
+  </data>
+  <data name="Content.Bulk.Count" xml:space="preserve">
+    <value>{0} of {1}</value>
+  </data>
+  <data name="Content.Bulk.Stopping" xml:space="preserve">
+    <value>Stopping after the entries being sent now.</value>
+  </data>
+  <data name="Content.Bulk.Progress" xml:space="preserve">
+    <value>{0} of {1} done, {2} failed.</value>
+  </data>
+  <data name="Content.Bulk.Stopped" xml:space="preserve">
+    <value>Stopped: {0} of {1} done, {2} failed.</value>
+  </data>
+  <data name="Content.Bulk.Ended" xml:space="preserve">
+    <value>Done: {0} succeeded, {1} failed.</value>
+  </data>
+  <data name="Content.Bulk.Unreachable" xml:space="preserve">
+    <value>The server could not be reached.</value>
+  </data>
+  <data name="Content.Bulk.ChunkOfIds" xml:space="preserve">
+    <value>Entries {0} to {1}</value>
+  </data>
+  <data name="Content.Bulk.ChunkFailed" xml:space="preserve">
+    <value>{0} could not be sent: {1} Try again, or stop here?</value>
+  </data>
+  <data name="Content.Bulk.RunStopped" xml:space="preserve">
+    <value>The run stopped. {0} could not be sent: {1}</value>
+  </data>
+  <data name="Content.Bulk.PluginFailed" xml:space="preserve">
+    <value>The action failed. The browser's console has the cause.</value>
+  </data>
+  <data name="Content.Bulk.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Content.Bulk.Stop" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="Content.Bulk.StopQuestion" xml:space="preserve">
+    <value>Stop the run? The entries being sent now are still done.</value>
+  </data>
+  <data name="Content.Bulk.KeepRunning" xml:space="preserve">
+    <value>Keep running</value>
+  </data>
+  <data name="Content.Bulk.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Content.Bulk.Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Content.Bulk.FailuresOnly" xml:space="preserve">
+    <value>Show failures only</value>
+  </data>
+  <data name="Content.Bulk.Results" xml:space="preserve">
+    <value>Results</value>
+  </data>
+  <data name="Content.Bulk.Column.Entry" xml:space="preserve">
+    <value>Entry</value>
+  </data>
+  <data name="Content.Bulk.Column.Result" xml:space="preserve">
+    <value>Result</value>
+  </data>
+  <data name="Content.Bulk.Column.Warnings" xml:space="preserve">
+    <value>Warnings</value>
+  </data>
+  <data name="Content.Bulk.Column.Problem" xml:space="preserve">
+    <value>Problem</value>
+  </data>
+  <data name="Content.Bulk.Status.published" xml:space="preserve">
+    <value>Published</value>
+  </data>
+  <data name="Content.Bulk.Status.unpublished" xml:space="preserve">
+    <value>Unpublished</value>
+  </data>
+  <data name="Content.Bulk.Status.deleted" xml:space="preserve">
+    <value>Moved to trash</value>
+  </data>
+  <data name="Content.Bulk.Status.failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Content.Bulk.Status.refused" xml:space="preserve">
+    <value>Refused</value>
+  </data>
+  <data name="Content.Bulk.Status.duplicate" xml:space="preserve">
+    <value>Named twice</value>
+  </data>
+  <data name="Content.Bulk.Status.notRun" xml:space="preserve">
+    <value>Not run</value>
+  </data>
+  <data name="Content.Bulk.Status.done" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="Content.Bulk.ConfirmFilter.Plugin" xml:space="preserve">
+    <value>{2}: the entries of {1} that match ({0})?</value>
+  </data>
+  <data name="Content.Bulk.Reading" xml:space="preserve">
+    <value>Reading the entries that match.</value>
+  </data>
+  <data name="Content.Bulk.ReadFailed" xml:space="preserve">
+    <value>The entries that match could not be read. Close this and try again.</value>
+  </data>
+  <data name="Content.Bulk.FirstOnly" xml:space="preserve">
+    <value>More than {0} entries match. Only the first {0}, in the list's order, are acted on: an action takes at most {0}.</value>
+  </data>
+  <data name="Content.Bulk.Search" xml:space="preserve">
+    <value>Search: {0}</value>
+  </data>
+  <data name="Content.Bulk.OneLocale" xml:space="preserve">
+    <value>In {0} only. The other locales stay as they are.</value>
+  </data>
+  <data name="Content.Bulk.EveryLocale" xml:space="preserve">
+    <value>In every locale: each entry goes to the trash with all its translations.</value>
+  </data>
+  <data name="Content.Bulk.Unconfirmed" xml:space="preserve">
+    <value>{0} were sent without an answer and may have been done; check them before acting on them again.</value>
+  </data>
+  <data name="Content.Bulk.DidNotStop" xml:space="preserve">
+    <value>The action did not stop within {0} seconds of the cancel. What it does from now on is not shown here.</value>
+  </data>
+  <data name="Content.Bulk.Status.notConfirmed" xml:space="preserve">
+    <value>Not confirmed</value>
+  </data>
+  <data name="Content.Bulk.FixedSet" xml:space="preserve">
+    <value>These are the entries that match now: one that stops matching before its turn is still acted on.</value>
+  </data>
+  <data name="Content.Versions.Open" xml:space="preserve">
+    <value>Version history</value>
+  </data>
+  <data name="Content.Versions.Title" xml:space="preserve">
+    <value>Version history</value>
+  </data>
+  <data name="Content.Versions.Loading" xml:space="preserve">
+    <value>Loading the versions…</value>
+  </data>
+  <data name="Content.Versions.ReadFailed" xml:space="preserve">
+    <value>The versions could not be read.</value>
+  </data>
+  <data name="Content.Versions.None" xml:space="preserve">
+    <value>This entry has no versions yet.</value>
+  </data>
+  <data name="Content.Versions.Caption" xml:space="preserve">
+    <value>Versions, newest first</value>
+  </data>
+  <data name="Content.Versions.CaptionLocale" xml:space="preserve">
+    <value>Versions in {0}, newest first</value>
+  </data>
+  <data name="Content.Versions.Number" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Content.Versions.Author" xml:space="preserve">
+    <value>Author</value>
+  </data>
+  <data name="Content.Versions.Saved" xml:space="preserve">
+    <value>Saved</value>
+  </data>
+  <data name="Content.Versions.Origin" xml:space="preserve">
+    <value>Origin</value>
+  </data>
+  <data name="Content.Versions.Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Content.Versions.Version" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
+  <data name="Content.Versions.AuthorOf" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="Content.Versions.Kind.adminUser" xml:space="preserve">
+    <value>user</value>
+  </data>
+  <data name="Content.Versions.Kind.member" xml:space="preserve">
+    <value>member</value>
+  </data>
+  <data name="Content.Versions.Kind.apiKey" xml:space="preserve">
+    <value>API key</value>
+  </data>
+  <data name="Content.Versions.Kind.serviceAccount" xml:space="preserve">
+    <value>service account</value>
+  </data>
+  <data name="Content.Versions.Kind.system" xml:space="preserve">
+    <value>system</value>
+  </data>
+  <data name="Content.Versions.Kind.anonymous" xml:space="preserve">
+    <value>anonymous</value>
+  </data>
+  <data name="Content.Versions.Origin.admin" xml:space="preserve">
+    <value>Admin</value>
+  </data>
+  <data name="Content.Versions.Origin.api" xml:space="preserve">
+    <value>API</value>
+  </data>
+  <data name="Content.Versions.Origin.mcp" xml:space="preserve">
+    <value>MCP</value>
+  </data>
+  <data name="Content.Versions.Origin.job" xml:space="preserve">
+    <value>Job</value>
+  </data>
+  <data name="Content.Versions.Origin.cli" xml:space="preserve">
+    <value>Command line</value>
+  </data>
+  <data name="Content.Versions.Origin.seed" xml:space="preserve">
+    <value>Seed</value>
+  </data>
+  <data name="Content.Versions.Origin.import" xml:space="preserve">
+    <value>Import</value>
+  </data>
+  <data name="Content.Versions.Restore" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="Content.Versions.RestoreOf" xml:space="preserve">
+    <value>Restore {0}</value>
+  </data>
+  <data name="Content.Versions.More" xml:space="preserve">
+    <value>Show {0} more</value>
+  </data>
+  <data name="Content.Versions.From" xml:space="preserve">
+    <value>Compare from</value>
+  </data>
+  <data name="Content.Versions.To" xml:space="preserve">
+    <value>To</value>
+  </data>
+  <data name="Content.Versions.Choice" xml:space="preserve">
+    <value>{0}, {1}</value>
+  </data>
+  <data name="Content.Versions.Compare" xml:space="preserve">
+    <value>Compare</value>
+  </data>
+  <data name="Content.Versions.Comparing" xml:space="preserve">
+    <value>Comparing the versions…</value>
+  </data>
+  <data name="Content.Versions.CompareFailed" xml:space="preserve">
+    <value>The versions could not be compared.</value>
+  </data>
+  <data name="Content.Versions.DiffHeading" xml:space="preserve">
+    <value>Changes from version {0} to version {1}</value>
+  </data>
+  <data name="Content.Versions.NoChanges" xml:space="preserve">
+    <value>No field you may read changed.</value>
+  </data>
+  <data name="Content.Versions.Changed" xml:space="preserve">
+    <value>Fields changed: {0}.</value>
+  </data>
+  <data name="Content.Versions.Where" xml:space="preserve">
+    <value>Where</value>
+  </data>
+  <data name="Content.Versions.Change" xml:space="preserve">
+    <value>Change</value>
+  </data>
+  <data name="Content.Versions.Added" xml:space="preserve">
+    <value>Added</value>
+  </data>
+  <data name="Content.Versions.Removed" xml:space="preserve">
+    <value>Removed</value>
+  </data>
+  <data name="Content.Versions.ChangedValue" xml:space="preserve">
+    <value>Changed</value>
+  </data>
+  <data name="Content.Versions.Moved" xml:space="preserve">
+    <value>Moved from position {0} to {1}</value>
+  </data>
+  <data name="Content.Versions.Formatting" xml:space="preserve">
+    <value>Formatting changed</value>
+  </data>
+  <data name="Content.Versions.Block" xml:space="preserve">
+    <value>{0} {1}</value>
+  </data>
+  <data name="Content.Versions.Item" xml:space="preserve">
+    <value>Item {0}</value>
+  </data>
+  <data name="Content.Versions.Paragraph" xml:space="preserve">
+    <value>Paragraph {0}</value>
+  </data>
+  <data name="Content.Versions.RemovedWords" xml:space="preserve">
+    <value>removed: </value>
+  </data>
+  <data name="Content.Versions.AddedWords" xml:space="preserve">
+    <value>added: </value>
+  </data>
+  <data name="Content.Versions.Ask.Title" xml:space="preserve">
+    <value>Restore {0}?</value>
+  </data>
+  <data name="Content.Versions.Ask.Text" xml:space="preserve">
+    <value>A new draft is made from {0}, saved by {1} on {2}. The published version does not change.</value>
+  </data>
+  <data name="Content.Versions.Ask.Unsaved" xml:space="preserve">
+    <value>Your unsaved changes in the form are replaced.</value>
+  </data>
+  <data name="Content.Versions.Ask.Cancel" xml:space="preserve">
+    <value>Keep the draft</value>
+  </data>
+  <data name="Content.Versions.Ask.Confirm" xml:space="preserve">
+    <value>Restore {0}</value>
+  </data>
+  <data name="Content.Form.RestoredVersion" xml:space="preserve">
+    <value>Restored version {0} as the draft.</value>
+  </data>
+  <data name="Content.Form.NotRestored" xml:space="preserve">
+    <value>The version was not restored.</value>
+  </data>
+  <data name="Content.Versions.PathSeparator" xml:space="preserve">
+    <value> › </value>
+  </data>
+  <data name="Content.Versions.ValueSeparator" xml:space="preserve">
+    <value> · </value>
+  </data>
+  <data name="Content.Versions.ListSeparator" xml:space="preserve">
+    <value>, </value>
+  </data>
+  <data name="Content.Versions.FieldValue" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="Content.Versions.Unreadable" xml:space="preserve">
+    <value>an entry you may not read ({0})</value>
+  </data>
+  <data name="Content.Preview.Open" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="Content.Preview.Title" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="Content.Preview.Width" xml:space="preserve">
+    <value>Width</value>
+  </data>
+  <data name="Content.Preview.Phone" xml:space="preserve">
+    <value>Phone (390 pixels)</value>
+  </data>
+  <data name="Content.Preview.Tablet" xml:space="preserve">
+    <value>Tablet (820 pixels)</value>
+  </data>
+  <data name="Content.Preview.Full" xml:space="preserve">
+    <value>Full width</value>
+  </data>
+  <data name="Content.Preview.Published" xml:space="preserve">
+    <value>Published page</value>
+  </data>
+  <data name="Content.Preview.Reload" xml:space="preserve">
+    <value>Reload</value>
+  </data>
+  <data name="Content.Preview.Close" xml:space="preserve">
+    <value>Close preview</value>
+  </data>
+  <data name="Content.Preview.FrameTitle" xml:space="preserve">
+    <value>Preview of the page</value>
+  </data>
+  <data name="Content.Preview.Loading" xml:space="preserve">
+    <value>Loading the preview…</value>
+  </data>
+  <data name="Content.Preview.Failed" xml:space="preserve">
+    <value>The preview could not be loaded.</value>
+  </data>
+  <data name="Content.Preview.Refused" xml:space="preserve">
+    <value>The preview page is not on an origin the admin may show.</value>
+  </data>
+  <data name="Content.Preview.Silent" xml:space="preserve">
+    <value>This page does not answer the preview, so each save loads it again.</value>
+  </data>
+  <data name="Content.Preview.NotRefreshed" xml:space="preserve">
+    <value>The preview could not be refreshed; Reload tries again.</value>
+  </data>
+  <data name="Content.Preview.Showing" xml:space="preserve">
+    <value>Showing {0}</value>
   </data>
 </root>

@@ -1,0 +1,351 @@
+@* The actions on the selection of a list (spec 4.13): publish, unpublish and delete to the trash for what the caller may do
+   with the type in the content locale, and the bulk actions of the admin halves for the type and the caller. A selection of
+   all that match is read as ids first, at most 1000 in the list's order, so that the confirmation names exactly what is
+   acted on and every run goes in chunks. Each action is confirmed with its name, the type, the count and the locales it
+   acts in, the safe choice first and focused, then runs in the dialog of the bulk progress service. *@
+@using FluentCMS.Admin.Actions
+@using Microsoft.Extensions.Logging
+@implements IDisposable
+@inject AdminContext Context
+@inject AdminPlugins Plugins
+@inject ManagementClient Client
+@inject BulkProgressService Bulk
+@inject BulkRunner Runner
+@inject DocumentInterop Document
+@inject ILogger<ListBulkActions> Logger
+@inject IStringLocalizer<AdminResources> L
+
+@if (Offered.Count > 0)
+{
+    <CmsMenu Label="@L["Content.Bulk.Menu"]">
+        @foreach (var item in Offered)
+        {
+            <CmsMenuItem @key="item.Key" OnClick="@(() => AskAsync(item))">@item.Label</CmsMenuItem>
+        }
+    </CmsMenu>
+}
+
+<CmsDialog Title="@(asked?.Label ?? L["Content.Bulk.Menu"])" Open="@(asked is not null)" OpenChanged="@(open => { if (!open) CloseAsk(); })">
+    <ChildContent>
+        @if (asked is { } item)
+        {
+            @if (matching is null && AllMatching)
+            {
+                <p role="status">@(readFailed ? L["Content.Bulk.ReadFailed"] : L["Content.Bulk.Reading"])</p>
+            }
+            else
+            {
+                <p>@Confirmation(item)</p>
+                @if (LocaleText(item) is { } locale)
+                {
+                    <p>@locale</p>
+                }
+
+                @if (AllMatching)
+                {
+                    <p>@L["Content.Bulk.FixedSet"]</p>
+                    @if (more)
+                    {
+                        <p>@L["Content.Bulk.FirstOnly", Number(BulkRunner.MaxEntries)]</p>
+                    }
+
+                    @if (FilterSummaries.Count > 0 || Search is not null)
+                    {
+                        <ul aria-label="@L["Content.Filter.Applied"]">
+                            @foreach (var summary in FilterSummaries)
+                            {
+                                <li>@summary</li>
+                            }
+                            @if (Search is { } search)
+                            {
+                                <li>@L["Content.Bulk.Search", search]</li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p>@L["Content.Bulk.NoFilter"]</p>
+                    }
+                }
+            }
+        }
+    </ChildContent>
+    <Actions>
+        @if (asked is { } item)
+        {
+            <CmsButton @ref="cancelButton" OnClick="CloseAsk">@L["Content.Bulk.ConfirmCancel"]</CmsButton>
+            <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(Targets.Count == 0)" OnClick="@(() => RunAsync(item))">@item.Label</CmsButton>
+        }
+    </Actions>
+</CmsDialog>
+
+@code {
+    private string? pluginsOf;
+    private IReadOnlyList<(PluginBulkAction Declared, BulkActionBase Action)> pluginActions = [];
+    private BulkItem? asked;
+    private CmsButton? cancelButton;
+    private bool focusCancel;
+
+    // The ids of all that match, read when an action on them is asked for.
+    private IReadOnlyList<(Guid Id, string Label)>? matching;
+    private bool more;
+    private bool readFailed;
+
+    // The read of the ask shown; closing the ask cancels it, and a read of an earlier ask is dropped.
+    private CancellationTokenSource? reading;
+
+    // The run's dialog outlives a page the user left, which is then not read again.
+    private bool disposed;
+
+    private sealed record BulkItem(string Key, string Label, BulkOperation? Operation, PluginBulkAction? Declared = null, BulkActionBase? Action = null);
+
+    [Parameter, EditorRequired]
+    public SchemaTypeDescription Type { get; set; } = null!;
+
+    // The selected rows, in the order selected, with their labels.
+    [Parameter]
+    public IReadOnlyList<(Guid Id, string Label)> Selected { get; set; } = [];
+
+    // All that match the list's filters and search, which ReadMatching reads as ids.
+    [Parameter]
+    public bool AllMatching { get; set; }
+
+    [Parameter]
+    public long Total { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<string> FilterSummaries { get; set; } = [];
+
+    [Parameter]
+    public string? Search { get; set; }
+
+    // The ids and labels of all that match, in the list's order, at most BulkRunner.MaxEntries.
+    [Parameter]
+    public Func<CancellationToken, Task<IReadOnlyList<(Guid Id, string Label)>>>? ReadMatching { get; set; }
+
+    // Once the run's dialog is closed: the entries to keep selected, those that failed, did not run or are not confirmed.
+    [Parameter]
+    public EventCallback<IReadOnlyList<(Guid Id, string Label)>> OnRan { get; set; }
+
+    private IReadOnlyList<(Guid Id, string Label)> Targets => AllMatching ? matching ?? [] : [.. Selected.DistinctBy(row => row.Id)];
+
+    private IReadOnlyList<BulkItem> Offered
+    {
+        get
+        {
+            List<BulkItem> items = [];
+            if (Context.ForType(Type.Name) is { } access)
+            {
+                if (access.Publish)
+                {
+                    items.Add(new("publish", L["Content.Bulk.Publish"], BulkOperation.Publish));
+                }
+
+                if (access.Unpublish)
+                {
+                    items.Add(new("unpublish", L["Content.Bulk.Unpublish"], BulkOperation.Unpublish));
+                }
+
+                if (access.Delete)
+                {
+                    items.Add(new("delete", L["Content.Bulk.Delete"], BulkOperation.Delete));
+                }
+            }
+
+            items.AddRange(pluginActions.Select(plugin => new BulkItem($"{plugin.Declared.Half.Name}/{plugin.Declared.Declared.Name}", plugin.Action.Label, null, plugin.Declared, plugin.Action)));
+            return items;
+        }
+    }
+
+    // A half's actions are made once the type has a selection, which loads their halves; one that cannot be made is left out.
+    protected override async Task OnParametersSetAsync()
+    {
+        var scope = $"{Context.Site?.Id}/{Context.ContentLocale}/{Type.Name}";
+        if (pluginsOf == scope || (Selected.Count == 0 && !AllMatching))
+        {
+            return;
+        }
+
+        pluginsOf = scope;
+        pluginActions = [];
+        List<(PluginBulkAction, BulkActionBase)> made = [];
+        foreach (var declared in Plugins.BulkActions(Type.Name))
+        {
+            try
+            {
+                made.Add((declared, await Plugins.BulkActionAsync(declared, CancellationToken.None)));
+            }
+#pragma warning disable CA1031 // A half's action that cannot be made leaves the others and the list's own.
+            catch (Exception exception)
+#pragma warning restore CA1031
+            {
+                PluginLog.BulkActionNotCreated(Logger, declared.Half.Name, declared.Declared.Type, exception);
+            }
+        }
+
+        if (pluginsOf == scope)
+        {
+            pluginActions = made;
+        }
+    }
+
+    // The library's dialog focuses itself as it opens; the safe choice takes focus once it has, as in the form.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusCancel && asked is { } shown && cancelButton is { } cancel)
+        {
+            focusCancel = false;
+            await Task.Delay(DocumentInterop.DialogFocusDelay);
+            if (asked == shown)
+            {
+                await cancel.FocusAsync();
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+        CancelRead();
+    }
+
+    private void CloseAsk()
+    {
+        asked = null;
+        CancelRead();
+    }
+
+    private void CancelRead()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+        reading = null;
+    }
+
+    private async Task AskAsync(BulkItem item)
+    {
+        CancelRead();
+        (asked, focusCancel, matching, more, readFailed) = (item, true, null, false, false);
+        if (!AllMatching || ReadMatching is null)
+        {
+            return;
+        }
+
+        var current = reading = new CancellationTokenSource();
+        StateHasChanged();
+        try
+        {
+            var read = await ReadMatching(current.Token);
+            if (reading == current)
+            {
+                more = read.Count > BulkRunner.MaxEntries;
+                matching = [.. read.Take(BulkRunner.MaxEntries).DistinctBy(row => row.Id)];
+            }
+        }
+        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        {
+        }
+        catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            if (reading == current)
+            {
+                readFailed = true;
+            }
+        }
+    }
+
+    private string Confirmation(BulkItem item)
+    {
+        var type = AdminLabels.Type(Type, L);
+        if (item.Action is { } action && action.ConfirmationText(ActionContext()) is { Length: > 0 } own)
+        {
+            return own;
+        }
+
+        var name = item.Operation?.ToString() ?? "Plugin";
+        return AllMatching
+            ? L[$"Content.Bulk.ConfirmFilter.{name}", Number(Targets.Count), type, item.Label]
+            : L[$"Content.Bulk.Confirm.{name}", Number(Targets.Count), type, item.Label];
+    }
+
+    private static string Number(long value) => value.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+
+    // Publish and unpublish act in the content locale, a delete in every locale of the entries.
+    private string? LocaleText(BulkItem item) => (Type.Localized, item.Operation) switch
+    {
+        (true, BulkOperation.Delete) => L["Content.Bulk.EveryLocale"].Value,
+        (true, BulkOperation.Publish or BulkOperation.Unpublish) when Context.ContentLocale is { Length: > 0 } locale => L["Content.Bulk.OneLocale", locale].Value,
+        _ => null,
+    };
+
+    private BulkActionContext ActionContext() => new()
+    {
+        Type = Type,
+        Ids = [.. Targets.Select(row => row.Id).Distinct()],
+        ContentLocale = Type.Localized ? Context.ContentLocale : null,
+    };
+
+    private async Task RunAsync(BulkItem item)
+    {
+        CloseAsk();
+        var targets = Targets.DistinctBy(row => row.Id).ToList();
+        var labels = targets.ToDictionary(row => row.Id, row => row.Label);
+        var ids = targets.Select(row => row.Id).ToList();
+        var title = L["Content.Bulk.Title", item.Label, AdminLabels.Type(Type, L)];
+        var progress = Bulk.Begin(title, ids.Count, labels, chunked: item.Action is null);
+        try
+        {
+            if (item.Action is { } action)
+            {
+                // An action that ignores its cancel is ended by the progress after its grace, and the list goes on without it.
+                await Task.WhenAny(RunPluginAsync(item, action, ActionContext(), progress), progress.Closed);
+            }
+            else
+            {
+                // The site and the locale are fixed as the run starts, so a switch meanwhile does not move its later chunks.
+                var start = Client.StartAction();
+                await Runner.RunAsync(Type.Name, item.Operation!.Value, ids, start.Site, start.Locale, progress);
+            }
+        }
+        finally
+        {
+            progress.Dispose();
+        }
+
+        await progress.Closed;
+        if (disposed)
+        {
+            return;
+        }
+
+        var left = progress.Results
+            .Where(result => result.Problem is not null || result.Status is BulkStatuses.NotRun or BulkStatuses.NotConfirmed)
+            .Select(result => result.Id)
+            .ToHashSet();
+        foreach (var id in ids.Where(id => !progress.Results.Any(result => result.Id == id)))
+        {
+            left.Add(id);
+        }
+
+        await OnRan.InvokeAsync([.. targets.Where(row => left.Contains(row.Id))]);
+        await Document.FocusHeadingAsync(afterDialog: true);
+    }
+
+    private async Task RunPluginAsync(BulkItem item, BulkActionBase action, BulkActionContext context, BulkProgress progress)
+    {
+        try
+        {
+            await action.RunAsync(context, progress, progress.Cancelled);
+        }
+        catch (OperationCanceledException) when (progress.Stopping)
+        {
+        }
+#pragma warning disable CA1031 // What a half's action throws is shown in its dialog, and the list goes on.
+        catch (Exception exception)
+#pragma warning restore CA1031
+        {
+            PluginLog.BulkActionFailed(Logger, item.Declared!.Half.Name, item.Declared.Declared.Type, exception);
+            progress.Fail(exception is ApiProblemException problem && problem.Problem.Detail is { Length: > 0 } detail ? detail : L["Content.Bulk.PluginFailed"]);
+        }
+    }
+}
