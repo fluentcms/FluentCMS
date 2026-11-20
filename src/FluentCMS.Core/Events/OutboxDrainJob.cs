@@ -28,8 +28,9 @@ internal sealed class OutboxDrainJob(OutboxDrainer drainer) : IJob<OutboxDrainPa
 
 internal sealed record OutboxPrunePayload;
 
-// Removes the delivered rows older than Retention and, when FailedRetention is set, the failed rows that failed longer ago
-// than it. It runs hourly on the default queue, so that a large prune holds up no delivery, and in batches like the
+// Removes the delivered rows older than Retention and, when FailedRetention is set, the failed rows that ran out of attempts
+// longer ago than it. A row moved to the dead-letter list for a missing handler or a disabled plugin never used up its
+// attempts, so it stays until it is retried or removed; a lower MaxAttempts can count such a row in. It runs hourly on the default queue, so that a large prune holds up no delivery, and in batches like the
 // retention of jobs: each batch is taken without an order and its delete checks the conditions again, so that a row
 // retried in between stays and two instances running at once remove a row once.
 internal sealed class OutboxPruneJob(SystemDbContext context, OutboxOptions options, TimeProvider time, ILogger<OutboxPruneJob> logger) : IJob<OutboxPrunePayload>
@@ -54,12 +55,19 @@ internal sealed class OutboxPruneJob(SystemDbContext context, OutboxOptions opti
         var failed = 0;
         if (options.FailedRetention is { } retention)
         {
-            var failedBefore = now - retention;
-            failed = await DeleteAsync(context, row => row.Status == OutboxStatus.Failed && row.AvailableAt < failedBefore, options.PruneBatchSize, cancellationToken);
+            failed = await DeleteAsync(context, FailedBefore(now - retention, options.MaxAttempts), options.PruneBatchSize, cancellationToken);
         }
 
         EventLog.Pruned(logger, delivered, failed);
     }
+
+    // The failed rows that ran out of attempts before a time; a row left for a missing handler or a disabled plugin did not.
+    internal static Expression<Func<OutboxMessage, bool>> FailedBefore(DateTimeOffset before, int maxAttempts) =>
+        row => row.Status == OutboxStatus.Failed && row.AvailableAt < before && row.Attempts >= maxAttempts;
+
+    // The ids of one batch of the prune, taken without an order.
+    internal static IQueryable<Guid> Batch(SystemDbContext context, Expression<Func<OutboxMessage, bool>> matches, int batchSize) =>
+        context.Set<OutboxMessage>().AsNoTracking().Where(matches).Select(row => row.Id).Take(batchSize);
 
     public static async Task<int> DeleteAsync(SystemDbContext context, Expression<Func<OutboxMessage, bool>> matches, int batchSize, CancellationToken cancellationToken)
     {
@@ -68,7 +76,7 @@ internal sealed class OutboxPruneJob(SystemDbContext context, OutboxOptions opti
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var ids = await context.Set<OutboxMessage>().AsNoTracking().Where(matches).Select(row => row.Id).Take(batchSize).ToListAsync(cancellationToken);
+            var ids = await Batch(context, matches, batchSize).ToListAsync(cancellationToken);
             if (ids.Count == 0)
             {
                 return removed;

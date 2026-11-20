@@ -9,12 +9,12 @@ namespace FluentCMS.Core.Jobs;
 
 internal sealed record JobRetentionPayload;
 
-// Removes the jobs that succeeded longer ago than SucceededRetention, with their attempts. Only succeeded jobs are
-// touched, so pending, running and dead-lettered jobs and the recurring definitions stay. The jobs go in batches, each
-// taken from the status index without an order, since an order would sort every succeeded job. A removed job does not
-// come back, so the next batch is the next jobs due. Each batch removes the attempts and the jobs in one transaction, and
-// checks the conditions again in the delete, so that two instances running at once remove a job once and a run after a
-// failed one takes up where it stopped.
+// Removes the jobs that succeeded longer ago than SucceededRetention and, when DeadLetteredRetention is set, the jobs that
+// were dead-lettered longer ago than it, with their attempts. Pending and running jobs and the recurring definitions stay.
+// The jobs go in batches, each taken from the index on status and completed_at without an order, since an order would sort
+// every finished job. A removed job does not come back, so the next batch is the next jobs due. Each batch removes the
+// attempts and the jobs in one transaction, and checks the conditions again in the delete, so that two instances running
+// at once remove a job once and a run after a failed one takes up where it stopped.
 internal sealed class JobRetentionJob(SystemDbContext context, JobRunnerOptions options, TimeProvider time, ILogger<JobRetentionJob> logger) : IJob<JobRetentionPayload>, IResumableJob
 {
     public const string Type = "jobs.retention";
@@ -27,44 +27,53 @@ internal sealed class JobRetentionJob(SystemDbContext context, JobRunnerOptions 
     public async Task ExecuteAsync(JobRetentionPayload payload, JobContext jobContext)
     {
         var cancellationToken = jobContext.CancellationToken;
-        var before = time.GetUtcNow() - options.SucceededRetention;
-        var removed = 0;
+        var now = time.GetUtcNow();
+        var succeeded = await RemoveAsync(JobStatus.Succeeded, now - options.SucceededRetention, cancellationToken);
+        var deadLettered = 0;
+        if (options.DeadLetteredRetention is { } retention)
+        {
+            deadLettered = await RemoveAsync(JobStatus.DeadLettered, now - retention, cancellationToken);
+        }
 
+        JobLog.Retention(logger, succeeded, deadLettered);
+    }
+
+    private async Task<int> RemoveAsync(string status, DateTimeOffset before, CancellationToken cancellationToken)
+    {
+        var removed = 0;
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var ids = await Expired(before).Select(job => job.Id).Take(options.RetentionBatchSize).ToListAsync(cancellationToken);
+            var ids = await Expired(status, before).Select(job => job.Id).Take(options.RetentionBatchSize).ToListAsync(cancellationToken);
             if (ids.Count == 0)
             {
-                break;
+                return removed;
             }
 
-            removed += await DeleteAsync(ids, before, cancellationToken);
+            removed += await DeleteAsync(ids, status, before, cancellationToken);
 
             if (ids.Count < options.RetentionBatchSize)
             {
-                break;
+                return removed;
             }
         }
-
-        JobLog.Retention(logger, removed);
     }
 
-    private IQueryable<Job> Expired(DateTimeOffset before) =>
-        context.Set<Job>().AsNoTracking().Where(job => job.Status == JobStatus.Succeeded && job.CompletedAt < before);
+    private IQueryable<Job> Expired(string status, DateTimeOffset before) =>
+        context.Set<Job>().AsNoTracking().Where(job => job.Status == status && job.CompletedAt < before);
 
-    private async Task<int> DeleteAsync(List<Guid> ids, DateTimeOffset before, CancellationToken cancellationToken)
+    private async Task<int> DeleteAsync(List<Guid> ids, string status, DateTimeOffset before, CancellationToken cancellationToken)
     {
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
         await context.Set<JobAttempt>()
             .Where(attempt => ids.Contains(attempt.JobId)
-                && context.Set<Job>().Any(job => job.Id == attempt.JobId && job.Status == JobStatus.Succeeded && job.CompletedAt < before))
+                && context.Set<Job>().Any(job => job.Id == attempt.JobId && job.Status == status && job.CompletedAt < before))
             .ExecuteDeleteAsync(cancellationToken);
 
         var removed = await context.Set<Job>()
-            .Where(job => ids.Contains(job.Id) && job.Status == JobStatus.Succeeded && job.CompletedAt < before)
+            .Where(job => ids.Contains(job.Id) && job.Status == status && job.CompletedAt < before)
             .ExecuteDeleteAsync(cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);

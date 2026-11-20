@@ -38,9 +38,10 @@ public sealed class OutboxOptions
     // How long a delivered row stays for diagnosis.
     public TimeSpan Retention { get; set; } = TimeSpan.FromDays(7);
 
-    // How long a failed row stays in the dead-letter list, counted from when it failed. Null keeps it until it is retried or
-    // removed, as a dead-lettered job is kept.
-    public TimeSpan? FailedRetention { get; set; }
+    // How long a failed row that ran out of attempts stays in the dead-letter list, counted from when it failed, as
+    // JobRunnerOptions.DeadLetteredRetention keeps a dead-lettered job. Null keeps it until it is retried or removed. A row
+    // moved there because its handler was missing or its plugin disabled is owed to that plugin, and is never removed unseen.
+    public TimeSpan? FailedRetention { get; set; } = TimeSpan.FromDays(30);
 
     public const int MaxPruneBatchSize = 1000;
 

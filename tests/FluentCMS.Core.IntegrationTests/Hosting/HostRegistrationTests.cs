@@ -1,5 +1,6 @@
 using System.Net;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
 using Microsoft.AspNetCore.Antiforgery;
@@ -181,6 +182,17 @@ public sealed class HostRegistrationTests : IAsyncDisposable
         jobs.PollInterval.ShouldBe(TimeSpan.FromSeconds(2));
         jobs.Queues["reports"].ShouldBe(3);
         jobs.Queues[JobRunnerOptions.DefaultQueue].ShouldBe(2);
+    }
+
+    [Fact]
+    public void AnEmptyValueTurnsTheRetentionOfFailuresOff()
+    {
+        var app = _host.Build(
+            Environments.Development,
+            new Dictionary<string, string?> { ["FluentCms:Jobs:DeadLetteredRetention"] = "", ["FluentCms:Events:Outbox:FailedRetention"] = "" });
+
+        app.Services.GetRequiredService<JobRunnerOptions>().DeadLetteredRetention.ShouldBeNull();
+        app.Services.GetRequiredService<OutboxOptions>().FailedRetention.ShouldBeNull();
     }
 
     [Fact]

@@ -60,9 +60,9 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | `FluentCms:OpenApi` | `Enabled` (see [OpenAPI and the Scalar UI](#openapi-and-the-scalar-ui)) |
 | `FluentCms:Query` | `DefaultPageSize`, `MaxPageSize`, `MaxOffset` (10,000 entries a page or offset may skip; read further by cursor), `MaxPopulateDepth`, `MaxFilterNodes`, `MaxPopulatedEntries` |
 | `FluentCms:RichText` | `LinkSchemes`, the URL schemes a rich text URL may have, in place of `http`, `https`, `mailto` and `tel`. `javascript`, `data`, `vbscript`, `blob`, `file` and `about` stop the host. A stored URL with any other scheme is left out of reads (spec 4.2, "Link URLs as built") |
-| `FluentCms:Jobs` | the job runner: `Queues`, `PollInterval`, `LeaseDuration`, retries, retention, `AttemptTimeout`, and `MaxAbandonedJobs` (default 4), the jobs past their timeout an instance leaves running before a further one keeps its worker |
+| `FluentCms:Jobs` | the job runner: `Queues`, `PollInterval`, `LeaseDuration`, retries, retention: `SucceededRetention` (7 days), `DeadLetteredRetention` (30 days), `AttemptTimeout`, and `MaxAbandonedJobs` (default 4), the jobs past their timeout an instance leaves running before a further one keeps its worker |
 | `FluentCms:Events:Handlers` | the in-process event handlers: `Timeout` (5 seconds), `SlowThreshold` (1 second) (see [event handlers](#event-handlers)) |
-| `FluentCms:Events:Outbox` | the outbox: `BatchSize`, `MaxAttempts`, `LeaseDuration`, retries, `OrphanAfter`, `Retention`, `FailedRetention` (off by default), `PruneBatchSize` |
+| `FluentCms:Events:Outbox` | the outbox: `BatchSize`, `MaxAttempts`, `LeaseDuration`, retries, `OrphanAfter`, `Retention`, `FailedRetention` (30 days, for deliveries that ran out of attempts; a delivery left for a missing handler or a disabled plugin is kept until it is retried or removed), `PruneBatchSize` |
 | `FluentCms:Activity` | the activity log: `Enabled`, `Retention`, `SiteRetention`, `PruneSchedule` |
 | `FluentCms:Idempotency` | `Window` (24 hours), `InProgressTimeout` (5 minutes) (see [idempotency keys](#idempotency-keys)) |
 | `FluentCms:Health` | `JobRunnerHeartbeatTimeout`, `PendingJobAgeLimit` |
@@ -71,6 +71,8 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 A key the configuration sets wins over what the host set in code inside `AddFluentCms`; a key it leaves out keeps the code's value. The options are checked when the host starts, and an invalid value stops it with an `FCMS` code and the key, for example `FCMS1101: FluentCms:Query:MaxPageSize: The field MaxPageSize must be between 1 and 2147483647.`
 
 A CORS origin is an `http` or `https` origin with no path, such as `https://app.example.com`. The lists are empty by default, which allows no browser origin, and a wildcard is refused.
+
+To keep dead-lettered jobs or failed outbox deliveries until they are retried, set `FluentCms:Jobs:DeadLetteredRetention` or `FluentCms:Events:Outbox:FailedRetention` to an empty value: `""` in `appsettings.json`, or an empty environment variable such as `FluentCms__Jobs__DeadLetteredRetention=` where the platform keeps one. Windows drops an environment variable set to an empty value, so there use `appsettings.json`, or set `cms.Jobs.Options.DeadLetteredRetention = null` and `cms.Events.Outbox.FailedRetention = null` in code, which the configuration overrides only when it names the key. Each run of `jobs.retention` logs how many succeeded and dead-lettered jobs it removed (event id 9512, Information); a retention schedule that cannot be stored is event id 9513 (Error).
 
 ## Health and telemetry
 

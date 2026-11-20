@@ -332,7 +332,7 @@ internal sealed class OutboxDrainer(
         {
             foreach (var handler in lanesOf.HandlersOf(key))
             {
-                candidates.AddRange(await Candidates(Claimable(context, now).Where(message => message.Handler == handler), skipped).ToListAsync(cancellationToken));
+                candidates.AddRange(await CandidatesOf(context, handler, now, skipped).ToListAsync(cancellationToken));
             }
         }
 
@@ -370,6 +370,10 @@ internal sealed class OutboxDrainer(
 
         return new Claim(owner, leaseUntil, rows);
     }
+
+    // The first rows of one handler that a claim may take, in event order; ix_cms_outbox_handler_pending serves it.
+    internal IQueryable<Candidate> CandidatesOf(SystemDbContext context, string handler, DateTimeOffset now, List<Guid> skipped) =>
+        Candidates(Claimable(context, now).Where(message => message.Handler == handler), skipped);
 
     private IQueryable<Candidate> Candidates(IQueryable<OutboxMessage> rows, List<Guid> skipped) =>
         rows.Where(message => !skipped.Contains(message.Id))
@@ -726,7 +730,7 @@ internal sealed class OutboxDrainer(
         }
     }
 
-    private sealed record Candidate(Guid Id, long Sequence, string? LeaseOwner);
+    internal sealed record Candidate(Guid Id, long Sequence, string? LeaseOwner);
 
     // The lanes of this instance: one for each owner of the handlers it has, and one for the rows of handlers it does not.
     private sealed class Lanes
