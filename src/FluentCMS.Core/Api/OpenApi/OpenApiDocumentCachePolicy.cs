@@ -9,8 +9,10 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FluentCMS.Core.Api.OpenApi;
 
 // The document walks every type, route, component and block of the schema, so it is built once and kept. It is the same
-// for every caller; what changes it is the schema, which is built once per process, and the server it names, which follows
-// the request's scheme, host and path base unless a public origin is set. The key carries the schema hash, so a store
+// for every caller; what changes it is the schema, which is built once per process, and the server it names, which is the
+// public origin or else the request's path base alone. The key never varies by host, so forged Host headers cannot each
+// cost a build and push other copies out of the shared cache; a path base is set by the pipeline, so its values are few.
+// The key carries the schema hash, so a store
 // that outlives the process never serves a copy made for another schema. UseFluentCms runs authorization before the output
 // cache, so a policy the host puts on the route holds for a kept copy as for a fresh one. A copy that a middleware inside
 // the cache encoded is not kept, since the key does not vary on Accept-Encoding.
@@ -32,7 +34,12 @@ internal sealed class OpenApiDocumentCachePolicy : IOutputCachePolicy
         context.ResponseExpirationTimeSpan = Duration;
 
         var services = http.RequestServices;
-        context.CacheVaryByRules.VaryByHost = services.GetRequiredService<PublicOrigin>().Base is null;
+        context.CacheVaryByRules.VaryByHost = false;
+        if (services.GetRequiredService<PublicOrigin>().Base is null)
+        {
+            context.CacheVaryByRules.VaryByValues["pathBase"] = http.Request.PathBase.Value ?? "";
+        }
+
         context.CacheVaryByRules.VaryByValues["schema"] = SchemaSnapshot.Of(services.GetRequiredService<SchemaModel>()).Hash;
         return ValueTask.CompletedTask;
     }

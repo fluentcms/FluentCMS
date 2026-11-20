@@ -26,7 +26,7 @@ public sealed class ScheduledApiKeyTests : IDisposable
     {
         using var scope = _fixture.Database.Database.NewScope();
         CreatedApiKey created;
-        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, SiteA))
+        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, SiteA))
         {
             created = await scope.ServiceProvider.GetRequiredService<ApiKeyService>().CreateAsync(new ApiKeyRequest("scheduler", ApiKeyClass.Management, role), Token);
         }
@@ -77,7 +77,7 @@ public sealed class ScheduledApiKeyTests : IDisposable
         var (keyId, key) = await KeyAsync(Role());
         var id = await ScheduledAsync(key);
         using (var scope = _fixture.Database.Database.NewScope())
-        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, SiteA))
+        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, SiteA))
         {
             (await scope.ServiceProvider.GetRequiredService<ApiKeyService>().RevokeAsync(keyId, Token)).ShouldBeTrue();
         }

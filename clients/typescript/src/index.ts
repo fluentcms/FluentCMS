@@ -1,5 +1,5 @@
 export { FluentCmsClient, CollectionClient, SingletonClient } from "./client.js";
-export type { ClientOptions, WriteOptions } from "./client.js";
+export type { ClientOptions, RequestOptions, WriteOptions } from "./client.js";
 export {
   QueryField,
   TextField,

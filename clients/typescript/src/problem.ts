@@ -12,8 +12,10 @@ export class FluentCmsProblem extends Error {
   readonly detail: string | undefined;
   readonly errors: readonly ProblemError[];
   readonly traceId: string | undefined;
+  // How long, in seconds, the server asks to wait before the next request, from Retry-After, as a 429 or a 503 sends it.
+  readonly retryAfter: number | undefined;
 
-  constructor(status: number, body: unknown) {
+  constructor(status: number, body: unknown, retryAfter?: number) {
     const problem = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
     const code = text(problem["code"]);
     const title = text(problem["title"]);
@@ -25,6 +27,7 @@ export class FluentCmsProblem extends Error {
     this.title = title;
     this.detail = detail;
     this.traceId = text(problem["traceId"]);
+    this.retryAfter = retryAfter;
     this.errors = Array.isArray(problem["errors"])
       ? problem["errors"].filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null).map((item) => error(item))
       : [];

@@ -163,7 +163,7 @@ public sealed class McpMediaToolTests(McpToolsFixture fixture) : IClassFixture<M
         var site = await CreateSiteAsync(host);
         await using (var scope = host.Services.CreateAsyncScope())
         {
-            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(site));
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(site));
             await scope.ServiceProvider.GetRequiredService<ISettings<MediaSettings>>().SetAsync(new SiteId(site), new MediaSettings { MaxFileSize = 40, AllowedTypes = ["image/png"] }, Token);
         }
 
