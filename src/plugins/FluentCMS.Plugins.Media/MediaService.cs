@@ -322,14 +322,19 @@ internal sealed class MediaService(
     public async Task<MediaAsset> UpdateAsync(Guid id, MediaAssetChanges changes, CancellationToken cancellationToken = default) =>
         (await UpdateAsync(id, changes, null, cancellationToken)).Asset;
 
+    public async Task RequireUpdateAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var (library, reach) = await UpdateReachAsync(Operation(), cancellationToken);
+        await FindAssetAsync(library, id, reach, tracked: false, cancellationToken);
+    }
+
     // The routes of an asset's writes may name the version the write was based on, as If-Match.
     internal async Task<VersionedAsset> UpdateAsync(Guid id, MediaAssetChanges changes, int? expectedVersion, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(changes);
 
         var operation = Operation();
-        var (site, library) = await ScopeAsync(operation, cancellationToken);
-        var reach = await ReachAsync(MediaPermissions.Update, site, library, cancellationToken);
+        var (library, reach) = await UpdateReachAsync(operation, cancellationToken);
         var asset = await WriteAssetAsync(library, id, reach, expectedVersion, asset =>
         {
             if (changes == new MediaAssetChanges())
@@ -820,6 +825,13 @@ internal sealed class MediaService(
         {
             throw new PermissionDeniedException(MediaPermissions.ManagePresets, site);
         }
+    }
+
+    // What an update of an asset's metadata needs before it finds the asset, which RequireUpdateAsync shares with it.
+    private async Task<(SiteId Library, FolderReach Reach)> UpdateReachAsync(OperationContext operation, CancellationToken cancellationToken)
+    {
+        var (site, library) = await ScopeAsync(operation, cancellationToken);
+        return (library, await ReachAsync(MediaPermissions.Update, site, library, cancellationToken));
     }
 
     private Task<FolderReach> ReachAsync(string permission, SiteId site, SiteId library, CancellationToken cancellationToken) =>
