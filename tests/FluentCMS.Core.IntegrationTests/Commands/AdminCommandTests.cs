@@ -144,6 +144,18 @@ public sealed class AdminCommandTests(AdminCommandFixture fixture) : IClassFixtu
         (await RolesOfAsync("first@example.com")).ShouldBe([BuiltInRoles.SuperAdmin]);
     }
 
+    // Whoever makes a user with `user create` is usually that user, as for the first administrator of an instance, so the
+    // password counts as the user's own: no forced change, unlike a password set over an existing user's (#3378).
+    [Fact]
+    public async Task UserCreateDoesNotMakeTheUserChangeThePassword()
+    {
+        var created = await RunAsync(new TextCommandInput(new StringReader(Password + "\n"), terminal: false), "user", "create", "--email", "owner@example.com", "--role", BuiltInRoles.EditorName, "--password-stdin");
+
+        created.ExitCode.ShouldBe(0, created.Error);
+        await using var scope = Host.Services.CreateAsyncScope();
+        (await scope.ServiceProvider.GetRequiredService<CmsUserManager>().FindByEmailAsync("owner@example.com"))!.MustChangePassword.ShouldBeFalse();
+    }
+
     [Fact]
     public async Task AtATerminalThePasswordIsAskedForTwiceOnStandardError()
     {

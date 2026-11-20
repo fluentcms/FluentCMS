@@ -60,6 +60,26 @@ public sealed class AccountTests
         (await signedInOnceMore.Client.GetTwoFactorAsync(Token)).Enabled.ShouldBeFalse();
     }
 
+    // The server sets two-factor up only for a token whose sign-in is a few minutes old (#3372): the page's call is refused
+    // with the code it tells apart, and after a fresh sign-in it enrols and turns two-factor on as before.
+    [Fact]
+    public async Task ASignInTooOldEnrolsNothingAndAFreshOneEnrols()
+    {
+        await using var admin = new AdminHost();
+        var editor = await admin.Host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        using var old = await admin.SignInAsync(editor);
+        admin.Host.Time.Advance(TimeSpan.FromMinutes(11));
+
+        var refused = await Should.ThrowAsync<ApiProblemException>(() => old.Client.EnrolAuthenticatorAsync(Token));
+        AccountProblems.Has(refused, AccountProblems.RecentSignInRequired).ShouldBeTrue();
+        AccountProblems.IsSignedOut(refused).ShouldBeFalse();
+        (await old.Client.GetTwoFactorAsync(Token)).Pending.ShouldBeFalse();
+
+        using var fresh = await admin.SignInAsync(editor);
+        var setup = await fresh.Client.EnrolAuthenticatorAsync(Token);
+        (await fresh.Client.VerifyAuthenticatorAsync(NextCode(admin, setup.SharedKey), Token)).Count.ShouldBe(10);
+    }
+
     [Fact]
     public async Task TheEditorReadsItsLoginsAndPreferencesAndEndsItsSession()
     {

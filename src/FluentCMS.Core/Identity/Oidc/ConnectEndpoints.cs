@@ -133,7 +133,8 @@ internal static class ConnectEndpoints
                 : Results.Redirect(context.Request.PathBase + HostedPagePaths.EnableTwoFactor + QueryString.Create("ReturnUrl", returnUrl));
         }
 
-        if (user.MustChangePassword)
+        // A user without a password, one of a provider only, has none to change, and the page would ask for the current one.
+        if (user.MustChangePassword && await signIn.UserManager.HasPasswordAsync(user))
         {
             return request.HasPromptValue(PromptValues.None)
                 ? Refuse(Errors.InteractionRequired, "The user must choose a new password.")
@@ -206,7 +207,7 @@ internal static class ConnectEndpoints
                 return Refuse(Errors.InvalidGrant, "The user can no longer sign in.");
             }
 
-            if (user.MustChangePassword)
+            if (user.MustChangePassword && await users.HasPasswordAsync(user))
             {
                 return Refuse(Errors.InvalidGrant, "The user must choose a new password.");
             }

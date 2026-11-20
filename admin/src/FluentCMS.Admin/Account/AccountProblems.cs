@@ -44,6 +44,7 @@ internal static class AccountProblems
     public const string TwoFactorNotEnabled = "FCMS3061";
     public const string NoAuthenticator = "FCMS3062";
     public const string InvalidTwoFactorCode = "FCMS3063";
+    public const string RecentSignInRequired = "FCMS3065";
     public const string LastWayIn = "FCMS3090";
     public const string LoginNotFound = "FCMS3091";
 
