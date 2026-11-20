@@ -64,4 +64,7 @@ internal static partial class JobLog
 
     [LoggerMessage(EventId = 9520, Level = LogLevel.Information, Message = "Job {JobId} ({Type}) stopped at its attempt timeout of {Limit}; what is left waits for its next run.")]
     public static partial void StoppedAtLimit(ILogger logger, Guid jobId, string type, TimeSpan limit);
+
+    [LoggerMessage(EventId = 9521, Level = LogLevel.Warning, Message = "Could not read how long job {JobId} of the unknown type {Type} has waited; it is put back without using an attempt.")]
+    public static partial void UnknownTypeDeferred(ILogger logger, Exception exception, Guid jobId, string type);
 }

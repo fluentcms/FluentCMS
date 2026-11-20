@@ -219,6 +219,50 @@ public sealed class JobTimeoutTests : IDisposable
     }
 
     [Fact]
+    public async Task TheGaugeOfAbandonedJobsCountsTheOnesStillRunning()
+    {
+        using var running = new AbandonedRunning();
+        var gate = Hold();
+        await _fixture.EnqueueAsync();
+        var executor = Worker(Limit);
+
+        // The gauge is the process's, so it is read against what other tests left running.
+        var before = running.Read();
+        var stuck = StartAsync(executor);
+        await WaitForRunsAsync(1);
+        _fixture.Clock.Advance(Limit + JobExecutor.AbandonGrace);
+        await stuck;
+        await Eventually.HoldsAsync(() => running.Read() == before + 1);
+
+        gate.SetResult();
+        await Eventually.HoldsAsync(() => executor.Abandoned == 0 && running.Read() == before);
+    }
+
+    [Fact]
+    public async Task AJobThatEndsAtTheInstantOfItsCutOffKeepsItsOwnOutcome()
+    {
+        using var abandoned = new AbandonedCount(TimedJob.Type);
+        var instance = _fixture.NewInstance(cms: cms => cms.Jobs.AddJob<TimedJob, ProbePayload>(TimedJob.Type, Limit));
+        var executor = instance.GetRequiredService<JobExecutor>();
+        var id = await instance.GetRequiredService<IJobScheduler>().EnqueueAsync<TimedJob, ProbePayload>(new ProbePayload("late"), new JobOptions { MaxAttempts = 1 }, Token);
+
+        // A timer made before the claim fires first of those due at the same instant, so the job returns as the cut-off fires.
+        var gate = new TaskCompletionSource();
+        _fixture.Probe.Behavior = (_, _) => gate.Task;
+        using var end = _fixture.Clock.CreateTimer(_ => gate.TrySetResult(), null, Limit + JobExecutor.AbandonGrace, Timeout.InfiniteTimeSpan);
+
+        var run = StartAsync(executor);
+        await WaitForRunsAsync(1);
+        _fixture.Clock.Advance(Limit + JobExecutor.AbandonGrace);
+        (await run).ShouldBeTrue();
+
+        _fixture.Job(id).Status.ShouldBe(JobStatus.Succeeded);
+        _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Succeeded));
+        abandoned.Count.ShouldBe(0);
+        executor.Abandoned.ShouldBe(0);
+    }
+
+    [Fact]
     public async Task WhatAnAbandonedJobThrowsWhenItEndsIsLogged()
     {
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -505,6 +549,34 @@ internal sealed class AbandonedCount : IDisposable
     }
 
     public long Count => _measurements.Sum();
+
+    public void Dispose() => _listener.Dispose();
+}
+
+// Reads fluentcms.job.abandoned_running, which counts the abandoned invocations of the whole process.
+internal sealed class AbandonedRunning : IDisposable
+{
+    private readonly MeterListener _listener = new();
+    private long _value;
+
+    public AbandonedRunning()
+    {
+        _listener.InstrumentPublished = (instrument, listener) =>
+        {
+            if (instrument.Meter.Name == FluentCmsTelemetry.Name && instrument.Name == FluentCmsTelemetry.Instruments.JobsAbandonedRunning)
+            {
+                listener.EnableMeasurementEvents(instrument);
+            }
+        };
+        _listener.SetMeasurementEventCallback<long>((_, value, _, _) => Interlocked.Exchange(ref _value, value));
+        _listener.Start();
+    }
+
+    public long Read()
+    {
+        _listener.RecordObservableInstruments();
+        return Interlocked.Read(ref _value);
+    }
 
     public void Dispose() => _listener.Dispose();
 }

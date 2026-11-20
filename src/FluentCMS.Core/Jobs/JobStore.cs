@@ -208,19 +208,24 @@ internal sealed class JobStore(
 
     // The first release for an unknown type is kept as an attempt, given back like any release, with the error that marks
     // it. Later ones remove their attempt and take back the claim's count, so that the job's attempts and the attempt
-    // table do not grow while it waits for an instance that knows the type.
-    public async Task<bool> ReleaseUnknownAsync(ClaimedJob job, DateTimeOffset runAt, string error)
+    // table do not grow while it waits for an instance that knows the type. The wait grows with the time it has waited,
+    // up to longestWait, so that a backlog of such jobs is claimed a few times an hour and not every poll.
+    public async Task<bool> ReleaseUnknownAsync(ClaimedJob job, TimeSpan firstWait, TimeSpan longestWait, string error)
     {
-        if (await UnknownSinceAsync(job, CancellationToken.None) is null)
+        var now = time.GetUtcNow();
+        if (await UnknownSinceAsync(job, CancellationToken.None) is not { } since)
         {
-            return await SettleAsync(job, JobAttemptOutcome.Released, error, time.GetUtcNow(), [], row => row
+            var first = now + firstWait;
+            return await SettleAsync(job, JobAttemptOutcome.Released, error, now, [], row => row
                 .SetProperty(column => column.Status, JobStatus.Pending)
                 .SetProperty(column => column.MaxAttempts, column => column.MaxAttempts + 1)
                 .SetProperty(column => column.LeaseOwner, (string?)null)
                 .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null)
-                .SetProperty(column => column.RunAt, runAt));
+                .SetProperty(column => column.RunAt, first));
         }
 
+        var waited = now - since;
+        var runAt = now + (waited < firstWait ? firstWait : waited > longestWait ? longestWait : waited);
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
         await using var transaction = await context.Database.BeginTransactionAsync();

@@ -38,6 +38,8 @@ internal sealed class JobExecutor(
 
     internal static readonly TimeSpan OrphanAge = TimeSpan.FromHours(1);
 
+    internal static readonly TimeSpan LongestOrphanWait = TimeSpan.FromMinutes(5);
+
     private readonly IReadOnlySet<string> _schemaNames = JobErrorText.NamesOf(schema);
 
     private int _abandoned;
@@ -78,6 +80,7 @@ internal sealed class JobExecutor(
         using var stopHeartbeat = CancellationTokenSource.CreateLinkedTokenSource(abandon);
 
         var heartbeat = HeartbeatAsync(job, attempt, stopHeartbeat.Token);
+        var heartbeatEnded = heartbeat.ContinueWith(_ => { }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         try
         {
             var limit = AttemptTimeoutOf(job);
@@ -93,7 +96,7 @@ internal sealed class JobExecutor(
                 attempt.Cancel();
             });
 
-            leftRunning = await ExecuteAndSettleAsync(job, () => timedOut ? limit : null, attempt, shutdown, cutOff?.Token ?? CancellationToken.None, abandon);
+            leftRunning = await ExecuteAndSettleAsync(job, () => timedOut ? limit : null, attempt, heartbeatEnded, shutdown, cutOff?.Token ?? CancellationToken.None, abandon);
         }
         finally
         {
@@ -113,7 +116,7 @@ internal sealed class JobExecutor(
     }
 
     // True when the invocation was abandoned and still runs.
-    private async Task<bool> ExecuteAndSettleAsync(ClaimedJob job, Func<TimeSpan?> timedOut, CancellationTokenSource attemptSource, CancellationToken shutdown, CancellationToken cutOff, CancellationToken abandon)
+    private async Task<bool> ExecuteAndSettleAsync(ClaimedJob job, Func<TimeSpan?> timedOut, CancellationTokenSource attemptSource, Task heartbeatEnded, CancellationToken shutdown, CancellationToken cutOff, CancellationToken abandon)
     {
         var attempt = attemptSource.Token;
         var started = Stopwatch.GetTimestamp();
@@ -121,7 +124,7 @@ internal sealed class JobExecutor(
         Func<Task<bool>> settle;
         try
         {
-            var invocation = await InvokeAsync(job, attemptSource, cutOff);
+            var invocation = await InvokeAsync(job, attemptSource, heartbeatEnded, cutOff);
             if (invocation == Invocation.Deferred)
             {
                 Record(job, started, "released");
@@ -131,8 +134,7 @@ internal sealed class JobExecutor(
             else if (invocation == Invocation.Unknown)
             {
                 Record(job, started, "released");
-                var runAt = time.GetUtcNow() + options.PollInterval;
-                settle = () => store.ReleaseUnknownAsync(job, runAt, UnknownTypeError(job));
+                settle = () => store.ReleaseUnknownAsync(job, options.PollInterval, LongestOrphanWait, UnknownTypeError(job));
             }
             else
             {
@@ -223,12 +225,20 @@ internal sealed class JobExecutor(
         }
     }
 
-    private async Task<Invocation> InvokeAsync(ClaimedJob job, CancellationTokenSource attemptSource, CancellationToken cutOff)
+    private async Task<Invocation> InvokeAsync(ClaimedJob job, CancellationTokenSource attemptSource, Task heartbeatEnded, CancellationToken cutOff)
     {
         var attempt = attemptSource.Token;
         if (registry.Find(job.Type) is not { } registration)
         {
-            return await UnknownAsync(job, attempt);
+            try
+            {
+                return await UnknownAsync(job, attempt);
+            }
+            catch (Exception exception) when (exception is not JobInvocationException && !attempt.IsCancellationRequested)
+            {
+                JobLog.UnknownTypeDeferred(logger, exception, job.Id, job.Type);
+                return Invocation.Deferred;
+            }
         }
 
         string? disabled;
@@ -286,7 +296,7 @@ internal sealed class JobExecutor(
                     }
 
                     abandoned = true;
-                    LeaveRunning(job, run, scope, attemptSource);
+                    LeaveRunning(job, run, scope, attemptSource, heartbeatEnded);
                     throw new JobAbandonedException();
                 }
 
@@ -312,7 +322,8 @@ internal sealed class JobExecutor(
     }
 
     // The job keeps its scope and its token until it ends, and what it throws then is logged and never reaches the worker.
-    private void LeaveRunning(ClaimedJob job, Task run, AsyncServiceScope scope, CancellationTokenSource attemptSource)
+    // The token's source is disposed only once the heartbeat, which can still cancel it, has ended too.
+    private void LeaveRunning(ClaimedJob job, Task run, AsyncServiceScope scope, CancellationTokenSource attemptSource, Task heartbeatEnded)
     {
         FluentCmsTelemetry.AbandonedJobsRunning(1);
         _ = Task.Run(
@@ -340,6 +351,7 @@ internal sealed class JobExecutor(
                 }
                 finally
                 {
+                    await heartbeatEnded;
                     attemptSource.Dispose();
                     Interlocked.Decrement(ref _abandoned);
                     FluentCmsTelemetry.AbandonedJobsRunning(-1);
