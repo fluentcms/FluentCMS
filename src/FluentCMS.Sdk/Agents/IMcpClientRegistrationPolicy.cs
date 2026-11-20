@@ -27,8 +27,8 @@ public sealed record McpClientRegistrationPolicy(McpClientRegistrationMode Mode)
     public int MaxPendingClients { get; init; } = 100;
 
     /// <summary>
-    /// How many MCP clients there may be at once, pending, approved, rejected and registered by an administrator alike; a
-    /// registration beyond it is refused in every mode.
+    /// How many MCP clients there may be at once, counting pending, approved, rejected and those an administrator
+    /// registered alike. A client's own registration beyond it is refused in every mode; an administrator's is not.
     /// </summary>
     public int MaxClients { get; init; } = 1000;
 

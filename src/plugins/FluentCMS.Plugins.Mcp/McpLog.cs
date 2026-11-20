@@ -25,8 +25,8 @@ internal static partial class McpLog
     [LoggerMessage(EventId = 9285, Level = LogLevel.Error, Message = "Could not register the recurring cleanup of MCP clients that were not approved; they stay until it is registered.")]
     public static partial void ClientCleanupNotScheduled(ILogger logger, Exception exception);
 
-    [LoggerMessage(EventId = 9286, Level = LogLevel.Information, Message = "Removed {Count} MCP clients that the open policy approved and that had no token or authorization {Days} days after they registered.")]
-    public static partial void UnusedClientsRemoved(ILogger logger, int count, int days);
+    [LoggerMessage(EventId = 9286, Level = LogLevel.Information, Message = "Removed {Count} MCP clients that the open policy approved and that no user consented to within {Hours} hours, or that had no token or authorization left {Days} days after they registered.")]
+    public static partial void UnusedClientsRemoved(ILogger logger, int count, int hours, int days);
 
     [LoggerMessage(EventId = 9288, Level = LogLevel.Warning, Message = "The content type {Type} gets no MCP tools of its own, since more types are exposed than FluentCms:Mcp:MaxExposedTypes ({Max}) allows; it is reached through the query tool.")]
     public static partial void TypeOverCap(ILogger logger, string type, int max);

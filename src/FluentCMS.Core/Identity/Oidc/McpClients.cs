@@ -224,7 +224,8 @@ internal sealed class McpClients(
                         return new McpClientChange(McpClientChangeOutcome.Done, client with { RoleName = found.Name });
                     }
 
-                    var changed = state with { RoleId = found.Id };
+                    // An administrator acted on the client, so the cleanup of clients nobody looked at leaves it alone.
+                    var changed = state with { RoleId = found.Id, ApprovedBy = state.ApprovedBy ?? accessor.Current?.AuditPrincipal.Id };
                     await StoreAsync(application, changed, cancellationToken);
                     await authorizations.RevokeByApplicationIdAsync(id.ToString("D"), cancellationToken);
                     await tokens.RevokeByApplicationIdAsync(id.ToString("D"), cancellationToken);
@@ -258,9 +259,11 @@ internal sealed class McpClients(
             },
             cancellationToken);
 
-    // A client the open policy approved has no administrator who would remove it, so one that never got a token, or has
-    // none left after the prune of the authorization server, goes once it is old enough. The candidates are found in SQL.
-    public async Task<int> RemoveUnusedAsync(DateTimeOffset registeredBefore, CancellationToken cancellationToken = default)
+    // A client the open policy approved has no administrator who would remove it. One no user ever consented to goes after
+    // the short period, so that clients registered only to fill MaxClients do not hold it; one whose tokens and
+    // authorizations are all gone goes after the long one. The candidates are found in SQL, and each is read again just
+    // before it is deleted, so that a client that got its first token in between stays.
+    public async Task<int> RemoveUnusedAsync(DateTimeOffset neverUsedBefore, DateTimeOffset unusedBefore, CancellationToken cancellationToken = default)
     {
         var unused = await McpApplications()
             .Where(application => !context.Set<OpenIddictEntityFrameworkCoreToken<Guid>>().Any(token => token.Application != null && token.Application.Id == application.Id)
@@ -271,17 +274,31 @@ internal sealed class McpClients(
         var removed = 0;
         foreach (var id in unused)
         {
-            if (await applications.FindByIdAsync(id.ToString("D"), cancellationToken) is { } application
-                && McpClientState.Of(await applications.GetPropertiesAsync(application, cancellationToken)) is { IsApproved: true, ApprovedBy: null } state
-                && state.RegisteredAt < registeredBefore)
+            if (await applications.FindByIdAsync(id.ToString("D"), cancellationToken) is not { } application
+                || McpClientState.Of(await applications.GetPropertiesAsync(application, cancellationToken)) is not { IsApproved: true, ApprovedBy: null } state
+                || !(state.UsedAt is null ? state.RegisteredAt < neverUsedBefore : state.RegisteredAt < unusedBefore)
+                || await HasGrantsAsync(id, cancellationToken))
+            {
+                continue;
+            }
+
+            try
             {
                 await applications.DeleteAsync(application, cancellationToken);
                 removed++;
+            }
+            catch (OpenIddictExceptions.ConcurrencyException)
+            {
+                // Changed since it was read, by an approval or a first use; the next run looks at it again.
             }
         }
 
         return removed;
     }
+
+    private async Task<bool> HasGrantsAsync(Guid id, CancellationToken cancellationToken) =>
+        await context.Set<OpenIddictEntityFrameworkCoreToken<Guid>>().AnyAsync(token => token.Application != null && token.Application.Id == id, cancellationToken)
+        || await context.Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>().AnyAsync(authorization => authorization.Application != null && authorization.Application.Id == id, cancellationToken);
 
     public async Task<int> RemoveUnapprovedAsync(DateTimeOffset registeredBefore, CancellationToken cancellationToken = default)
     {

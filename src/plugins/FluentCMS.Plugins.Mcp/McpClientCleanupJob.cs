@@ -10,12 +10,13 @@ internal sealed record McpClientCleanupPayload;
 
 // Removes the clients that registered themselves and were not approved within PendingLifetime, the rejected ones
 // included, so that a registration nobody answers does not hold a place of the pending cap for good; and the clients the
-// open policy approved that have no token or authorization once UnusedClientDays have passed, so that they do not fill
-// MaxClients.
+// open policy approved that no user consented to within NeverUsedClientHours, or that have no token or authorization left
+// once UnusedClientDays have passed, so that they do not fill MaxClients. It runs every hour, so that the short period
+// holds to within an hour.
 internal sealed class McpClientCleanupJob(IMcpClients clients, ISettings<McpSettings> settings, TimeProvider time, ILogger<McpClientCleanupJob> logger) : IJob<McpClientCleanupPayload>
 {
     public const string Type = "mcp.client-cleanup";
-    public const string Schedule = "45 4 * * *";
+    public const string Schedule = "45 * * * *";
 
     public static readonly TimeSpan PendingLifetime = TimeSpan.FromDays(7);
 
@@ -30,11 +31,11 @@ internal sealed class McpClientCleanupJob(IMcpClients clients, ISettings<McpSett
             McpLog.UnapprovedClientsRemoved(logger, removed, PendingLifetime.TotalDays);
         }
 
-        var days = (await settings.GetDefaultAsync(context.CancellationToken)).UnusedClientDays;
-        var unused = await clients.RemoveUnusedAsync(now - TimeSpan.FromDays(days), context.CancellationToken);
+        var current = await settings.GetDefaultAsync(context.CancellationToken);
+        var unused = await clients.RemoveUnusedAsync(now - TimeSpan.FromHours(current.NeverUsedClientHours), now - TimeSpan.FromDays(current.UnusedClientDays), context.CancellationToken);
         if (unused > 0)
         {
-            McpLog.UnusedClientsRemoved(logger, unused, days);
+            McpLog.UnusedClientsRemoved(logger, unused, current.NeverUsedClientHours, current.UnusedClientDays);
         }
     }
 }

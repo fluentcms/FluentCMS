@@ -66,13 +66,15 @@ public interface IMcpClients
     Task<int> RemoveUnapprovedAsync(DateTimeOffset registeredBefore, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Removes the clients the open policy approved, which no administrator looked at, that registered before a time and
-    /// have no token or authorization left. It raises no event.
+    /// Removes the clients the open policy approved, which no administrator looked at or changed, that have no token or
+    /// authorization left: one no user ever consented to when it registered before one time, and any other when it
+    /// registered before another. It raises no event.
     /// </summary>
-    /// <param name="registeredBefore">The time before which such a client is removed.</param>
+    /// <param name="neverUsedBefore">The time before which a client no user ever consented to is removed.</param>
+    /// <param name="unusedBefore">The time before which a client whose tokens and authorizations are all gone is removed.</param>
     /// <param name="cancellationToken">Cancels the work.</param>
     /// <returns>The number of clients removed.</returns>
-    Task<int> RemoveUnusedAsync(DateTimeOffset registeredBefore, CancellationToken cancellationToken = default);
+    Task<int> RemoveUnusedAsync(DateTimeOffset neverUsedBefore, DateTimeOffset unusedBefore, CancellationToken cancellationToken = default);
 }
 
 /// <summary>A client an administrator registers.</summary>

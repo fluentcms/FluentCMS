@@ -53,11 +53,12 @@ public enum SsoPreset
 public sealed class SsoProvider
 {
     // Entra ID's endpoints that take any tenant: their issuer names the user's own tenant, which the handler cannot check.
-    private static readonly string[] SharedTenants = ["common", "organizations", "consumers"];
+    // The id of the consumers tenant, which takes any personal Microsoft account, is shared too.
+    private static readonly string[] SharedTenants = ["common", "organizations", "consumers", "9188040d-6c67-4c5b-b112-36a304b66dad"];
 
     // The sign-in hosts of Microsoft's clouds, where the first segment of an authority's path is the tenant.
     private static readonly string[] MicrosoftHosts =
-        ["login.microsoftonline.com", "login.microsoft.com", "login.windows.net", "sts.windows.net", "login.microsoftonline.us", "login.chinacloudapi.cn", "login.partner.microsoftonline.cn"];
+        ["login.microsoftonline.com", "login.microsoft.com", "login.windows.net", "sts.windows.net", "login.microsoftonline.us", "login-us.microsoftonline.com", "login.microsoftonline.de", "login.chinacloudapi.cn", "login.partner.microsoftonline.cn"];
 
     public SsoPreset Preset { get; set; } = SsoPreset.Oidc;
 
@@ -184,7 +185,7 @@ public sealed class SsoProvider
     }
 
     private static bool IsSharedTenant(Uri authority) =>
-        MicrosoftHosts.Contains(authority.Host, StringComparer.OrdinalIgnoreCase)
+        MicrosoftHosts.Contains(authority.IdnHost.TrimEnd('.'), StringComparer.OrdinalIgnoreCase)
         && authority.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() is { } tenant
         && SharedTenants.Contains(Uri.UnescapeDataString(tenant), StringComparer.OrdinalIgnoreCase);
 

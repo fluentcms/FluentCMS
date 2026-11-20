@@ -19,7 +19,7 @@ public sealed class ConsentModel : AccountPageModel
 
     public string? UserName { get; private set; }
 
-    public string? RedirectHost { get; private set; }
+    public IReadOnlyList<string> RedirectHosts { get; private set; } = [];
 
     public bool McpClient { get; private set; }
 
@@ -50,7 +50,7 @@ public sealed class ConsentModel : AccountPageModel
         UserName = user.UserName;
         ClientName = request.ClientName;
         Scopes = request.Scopes;
-        RedirectHost = request.RedirectHost;
+        RedirectHosts = request.RedirectHosts;
         McpClient = request.McpClient;
         return Page();
     }
