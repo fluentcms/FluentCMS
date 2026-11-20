@@ -27,12 +27,12 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
         var requested = new ConcurrentQueue<string>();
         tab.Page.Request += (_, request) => requested.Enqueue(request.Url);
         await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        await browser.SignInOnTheHostedPageAsync(tab, await EditorAsync());
         await Expect(tab.Sidebar).ToBeVisibleAsync();
         requested.ShouldNotContain(url => url.Contains("FluentCMS.Admin.RichText", StringComparison.Ordinal));
 
         await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article/new").AbsoluteUri);
-        await tab.Page.Locator("[data-field='title'] input").FillAsync("Written with rich text");
+        await tab.Page.Locator("[data-field='title'] input").FillAsync($"Written with rich text {Mark}");
         var body = tab.Page.Locator("[data-field='body'] [role=textbox]");
         await Expect(body).ToBeVisibleAsync();
         requested.ShouldContain(url => url.EndsWith("/_content/FluentCMS.Admin.RichText/rich-text.js", StringComparison.Ordinal));
@@ -109,14 +109,13 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
         pasted.ShouldNotContain("table");
 
         // Read back: the reloaded form holds the body the server read, which the next save sends as it is.
-        var location = await create.HeaderValueAsync("location");
-        var id = Guid.Parse(location.ShouldNotBeNull()[(location.LastIndexOf('/') + 1)..]);
+        var id = await Ui.CreatedIdAsync(create);
         await Expect(tab.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}\\?locale=en$"), new PageAssertionsToHaveURLOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         await tab.Page.ReloadAsync();
         await Expect(body).ToContainTextAsync("slanted");
         await Expect(body.Locator("h1")).ToHaveTextAsync("Rich text");
         await Expect(body.Locator("a[href='https://example.com/']")).ToHaveTextAsync("a link");
-        await tab.Page.Locator("[data-field='title'] input").FillAsync("Read back with rich text");
+        await tab.Page.Locator("[data-field='title'] input").FillAsync($"Read back with rich text {Mark}");
 
         var save = await SaveAsync(tab, "PUT", tab.ManagementUrl($"content/article/{id:D}"));
 
@@ -131,11 +130,11 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
     [Fact]
     public async Task TheEditorLinksAnEntryAndEmbedsAnImageAndTheServerKeepsAndExtractsThem()
     {
-        var mark = "r" + Guid.NewGuid().ToString("N")[..8];
+        var mark = Mark;
         var browser = await OpenBrowserAsync();
         var tab = await browser.NewTabAsync();
         await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article/new").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        await browser.SignInOnTheHostedPageAsync(tab, await EditorAsync());
         var title = $"{mark} links and embeds";
         await tab.Page.Locator("[data-field='title'] input").FillAsync(title);
         var body = tab.Page.Locator("[data-field='body'] [role=textbox]");
@@ -186,8 +185,7 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
         var dialog = tab.Page.Locator($"fluent-dialog[aria-label=\"{Repository.RichTextText("RichText.Media.Title")}\"]");
         var alt = dialog.GetByLabel(Repository.RichTextText("RichText.Media.Alt"), new LocatorGetByLabelOptions { Exact = true });
         await Expect(alt).ToBeVisibleAsync();
-        await alt.FocusAsync();
-        await Expect(alt).ToBeFocusedAsync();
+        await Ui.FocusAsync(alt);
         await keyboard.TypeAsync("A small square");
         await keyboard.PressAsync("Tab");
         await Expect(dialog.Locator("fluent-button").Filter(Exactly(Repository.RichTextText("RichText.Media.Done")))).ToBeFocusedAsync();
@@ -376,7 +374,7 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
     // picker and the media dialog the opener is the text itself. The keys that follow land in the text, which the body checks.
     private static Task FocusInTextAsync(ILocator text) => Expect(text).ToBeFocusedAsync();
 
-    private static LocatorFilterOptions Exactly(string text) => new() { HasTextRegex = new Regex($@"^\s*{Regex.Escape(text)}\s*$") };
+    private static LocatorFilterOptions Exactly(string text) => Ui.Exactly(text);
 
     // A key that changes the selection of the editor #kept, and the wait until the editor's own state has the selection that
     // `taken` describes, of `selection` in a document of `size`; Tiptap keeps the editor on its element. The browser's
@@ -388,13 +386,8 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
             $"() => {{ const state = document.getElementById('kept').editor.state; const selection = state.selection; const size = state.doc.content.size; return {taken}; }}");
     }
 
-
     private static ILocator ToolbarButton(AdminTab tab, string resourceKey) =>
         tab.Page.Locator($"[role=toolbar] button[aria-label='{Repository.RichTextText(resourceKey)}']");
 
-    private static Task<IResponse> SaveAsync(AdminTab tab, string method, string url) =>
-        tab.Page.RunAndWaitForResponseAsync(
-            () => tab.Button("Content.Form.Save").ClickAsync(),
-            response => response.Request.Method == method && response.Url == url,
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+    private static Task<IResponse> SaveAsync(AdminTab tab, string method, string url) => tab.AnswerAsync(() => tab.Button("Content.Form.Save").ClickAsync(), method, url);
 }
