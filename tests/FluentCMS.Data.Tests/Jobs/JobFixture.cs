@@ -246,6 +246,10 @@ internal sealed class JobFixture : IDisposable
         return job.Id;
     }
 
+    // A row of a built-in type whose payload cannot be read, which fails on any instance. A row of an unknown type would be
+    // put back for an instance that knows it.
+    public Guid AddFailingRow(int maxAttempts = 1) => AddRow(JobRetentionJob.Type, "[]", maxAttempts);
+
     public void Dispose()
     {
         foreach (var instance in _instances)

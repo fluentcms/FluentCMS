@@ -1,3 +1,4 @@
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Jobs;
@@ -11,13 +12,16 @@ internal sealed record IdempotencyRetentionPayload;
 
 // Removes the keys whose window has passed, held ones included, in batches. A request that finds an expired key removes
 // it on its own, so this only keeps the keys that are never sent again from piling up.
-internal sealed class IdempotencyRetentionJob(SystemDbContext context, TimeProvider time) : IJob<IdempotencyRetentionPayload>
+internal sealed class IdempotencyRetentionJob(SystemDbContext context, TimeProvider time) : IJob<IdempotencyRetentionPayload>, IResumableJob
 {
     public const string Type = "idempotency.retention";
 
     public const string RecurringName = "idempotency.retention";
 
     public const string Schedule = "41 * * * *";
+
+    // Stops a large prune from holding a worker for good; what is left waits for the next run.
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromMinutes(10);
 
     public const int BatchSize = 1000;
 

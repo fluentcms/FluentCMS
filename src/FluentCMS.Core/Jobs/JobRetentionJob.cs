@@ -15,7 +15,7 @@ internal sealed record JobRetentionPayload;
 // come back, so the next batch is the next jobs due. Each batch removes the attempts and the jobs in one transaction, and
 // checks the conditions again in the delete, so that two instances running at once remove a job once and a run after a
 // failed one takes up where it stopped.
-internal sealed class JobRetentionJob(SystemDbContext context, JobRunnerOptions options, TimeProvider time, ILogger<JobRetentionJob> logger) : IJob<JobRetentionPayload>
+internal sealed class JobRetentionJob(SystemDbContext context, JobRunnerOptions options, TimeProvider time, ILogger<JobRetentionJob> logger) : IJob<JobRetentionPayload>, IResumableJob
 {
     public const string Type = "jobs.retention";
 

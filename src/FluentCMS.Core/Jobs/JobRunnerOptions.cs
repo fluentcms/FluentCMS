@@ -21,6 +21,10 @@ public sealed class JobRunnerOptions
     // on an attempt; a job registration can set its own, or Timeout.InfiniteTimeSpan for none.
     public TimeSpan? AttemptTimeout { get; set; }
 
+    // How many invocations that ignored their token past their attempt timeout an instance leaves running beside its
+    // workers. At the limit, a further one keeps its worker until it returns.
+    public int MaxAbandonedJobs { get; set; } = 4;
+
     public TimeSpan LeaseDuration { get; set; } = TimeSpan.FromMinutes(5);
 
     public TimeSpan HeartbeatInterval { get; set; } = TimeSpan.FromMinutes(1);
@@ -60,6 +64,7 @@ public sealed class JobRunnerOptions
             Require(workers >= 0, $"{nameof(Queues)}:{queue} is {workers}; it must not be negative.");
         }
 
+        Require(MaxAbandonedJobs >= 0, $"{nameof(MaxAbandonedJobs)} is {MaxAbandonedJobs}; it must not be negative.");
         Require(DefaultMaxAttempts >= 1, $"{nameof(DefaultMaxAttempts)} is {DefaultMaxAttempts}; it must be at least 1.");
         Require(PollInterval > TimeSpan.Zero, $"{nameof(PollInterval)} must be positive.");
         Require(MaintenanceInterval > TimeSpan.Zero, $"{nameof(MaintenanceInterval)} must be positive.");
