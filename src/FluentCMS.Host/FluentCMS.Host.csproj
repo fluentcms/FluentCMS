@@ -26,6 +26,10 @@
     <GenerateJSModuleManifest>false</GenerateJSModuleManifest>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="FluentCMS.Host.Tests" />
+  </ItemGroup>
+
   <!-- For the local loop of dotnet run and dotnet watch (docs/host-configuration.md#admin); the image runs in Production. -->
   <ItemGroup>
     <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />

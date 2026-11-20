@@ -3394,7 +3394,7 @@ static FluentCMS.Content.ResolvedReference.operator ==(FluentCMS.Content.Resolve
 static FluentCMS.Content.SortField.operator !=(FluentCMS.Content.SortField? left, FluentCMS.Content.SortField? right) -> bool
 static FluentCMS.Content.SortField.operator ==(FluentCMS.Content.SortField? left, FluentCMS.Content.SortField? right) -> bool
 static FluentCMS.Content.SystemOperation.Allows(FluentCMS.Content.Origin origin) -> bool
-static FluentCMS.Content.SystemOperation.Begin(FluentCMS.Content.IOperationContextAccessor! accessor, FluentCMS.Content.Origin origin, FluentCMS.Sites.SiteId site, string! locale = "", string? correlationId = null) -> System.IDisposable!
+static FluentCMS.Content.SystemOperation.Begin(FluentCMS.Content.IOperationContextAccessor! accessor, System.TimeProvider! time, FluentCMS.Content.Origin origin, FluentCMS.Sites.SiteId site, string! locale = "", string? correlationId = null) -> System.IDisposable!
 static FluentCMS.Content.ValidationError.operator !=(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationError.operator ==(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationResult.Success.get -> FluentCMS.Content.ValidationResult!

@@ -188,7 +188,7 @@ public sealed class ContentServiceAccessTests : IDisposable
         using var scope = _database.Database.NewScope();
         var accessor = scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>();
 
-        using (SystemOperation.Begin(accessor, origin, SiteA))
+        using (SystemOperation.Begin(accessor, TimeProvider.System, origin, SiteA))
         {
             accessor.Current!.Principal.ShouldBe(Principal.System);
 
@@ -209,7 +209,7 @@ public sealed class ContentServiceAccessTests : IDisposable
         using var scope = _database.Database.NewScope();
         var accessor = scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>();
 
-        Should.Throw<ArgumentOutOfRangeException>(() => SystemOperation.Begin(accessor, Origin.Api, SiteA));
+        Should.Throw<ArgumentOutOfRangeException>(() => SystemOperation.Begin(accessor, TimeProvider.System, Origin.Api, SiteA));
         accessor.Current.ShouldBeNull();
     }
 

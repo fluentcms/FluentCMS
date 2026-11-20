@@ -55,7 +55,7 @@ public sealed class BlogSeedingTests
     private static async Task ChangeSeedingStateAsync(FluentCmsTestHost host, Func<ISettings<SeedingState>, Task> change)
     {
         await using var scope = host.Services.CreateAsyncScope();
-        using var operation = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Cli, Site);
+        using var operation = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Cli, Site);
         await change(scope.ServiceProvider.GetRequiredService<ISettings<SeedingState>>());
     }
 
@@ -153,7 +153,7 @@ public sealed class BlogSeedingTests
         await using var host = BlogFixture.NewHost();
         await using (var scope = host.Services.CreateAsyncScope())
         {
-            using var operation = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Cli, Site);
+            using var operation = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Cli, Site);
             await scope.ServiceProvider.GetRequiredService<ISettings<BlogSettings>>()
                 .SetAsync(Site, new BlogSettings { SiteName = "My blog", Description = "Mine", ArticlesPerPage = 5 }, Token);
         }
@@ -523,7 +523,7 @@ public sealed class BlogSeedingTests
     private static async Task MutateStateAsync(FluentCmsTestHost host, Action<SeedingState> change)
     {
         await using var scope = host.Services.CreateAsyncScope();
-        using var operation = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Cli, Site);
+        using var operation = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Cli, Site);
         await scope.ServiceProvider.GetRequiredService<SeedStateStore>().MutateAsync(state =>
         {
             change(state);

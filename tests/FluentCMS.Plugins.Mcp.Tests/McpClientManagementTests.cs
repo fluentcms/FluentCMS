@@ -395,7 +395,7 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
     {
         await using var scope = fixture.Host.Services.CreateAsyncScope();
         var accessor = scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>();
-        using var system = SystemOperation.Begin(accessor, Origin.Job, new SiteId(DefaultSite.Id));
+        using var system = SystemOperation.Begin(accessor, scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Job, new SiteId(DefaultSite.Id));
         var job = ActivatorUtilities.CreateInstance<McpClientCleanupJob>(scope.ServiceProvider);
         await job.ExecuteAsync(new McpClientCleanupPayload(), new JobContext(Guid.CreateVersion7(), McpClientCleanupJob.Type, "default", 1, 1, accessor.Current!, Token));
     }

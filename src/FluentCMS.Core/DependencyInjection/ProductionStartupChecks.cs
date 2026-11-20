@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace FluentCMS.Core.DependencyInjection;
 
-// A setting that is safe in development and not in Production. Null lets the host start.
+// A setting that is safe in Development and not in any other environment. Null lets the host start.
 internal interface IProductionStartupCheck
 {
     StartupRefusal? Check();
@@ -16,7 +16,8 @@ internal sealed class ProductionStartupChecks(IEnumerable<IProductionStartupChec
 {
     public Task StartingAsync(CancellationToken cancellationToken)
     {
-        if (environment?.IsProduction() != true)
+        // Staging and environments of any other name are reached from outside too, so only Development is let off.
+        if (environment?.IsDevelopment() != false)
         {
             return Task.CompletedTask;
         }
@@ -30,7 +31,7 @@ internal sealed class ProductionStartupChecks(IEnumerable<IProductionStartupChec
         {
             0 => Task.CompletedTask,
             1 => throw refusals[0],
-            _ => throw new AggregateException("FluentCMS refuses to start in Production.", refusals),
+            _ => throw new AggregateException("FluentCMS refuses to start outside Development.", refusals),
         };
     }
 

@@ -78,7 +78,7 @@ public sealed class MediaVersionTests : IDisposable
     private async Task<VersionedAsset> AsSystemAsync(Func<MediaService, Task<VersionedAsset>> work)
     {
         await using var scope = _host.Services.CreateAsyncScope();
-        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Job, new SiteId(DefaultSite.Id));
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Job, new SiteId(DefaultSite.Id));
         return await work(scope.ServiceProvider.GetRequiredService<MediaService>());
     }
 }

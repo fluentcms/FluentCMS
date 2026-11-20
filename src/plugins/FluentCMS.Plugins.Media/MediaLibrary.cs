@@ -75,7 +75,7 @@ internal sealed class SharedLibraryReport(IServiceScopeFactory scopes, IOptions<
             // Reading a site needs sites.manage, so the names are read as the system, as an outbox handler would read them.
             var sites = services.GetRequiredService<ISiteAdministration>();
             List<SiteInfo> named = [];
-            using (SystemOperation.Begin(services.GetRequiredService<IOperationContextAccessor>(), Origin.Job, library))
+            using (SystemOperation.Begin(services.GetRequiredService<IOperationContextAccessor>(), services.GetRequiredService<TimeProvider>(), Origin.Job, library))
             {
                 foreach (var site in others.Take(MaxNamed))
                 {

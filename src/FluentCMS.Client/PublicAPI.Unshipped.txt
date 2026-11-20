@@ -1,0 +1,465 @@
+#nullable enable
+FluentCMS.Client.And
+FluentCMS.Client.And.And(params System.Collections.Generic.IReadOnlyList<FluentCMS.Client.ContentFilter!>! Filters) -> void
+FluentCMS.Client.And.Deconstruct(out System.Collections.Generic.IReadOnlyList<FluentCMS.Client.ContentFilter!>! Filters) -> void
+FluentCMS.Client.And.Equals(FluentCMS.Client.And? other) -> bool
+FluentCMS.Client.And.Filters.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Client.ContentFilter!>!
+FluentCMS.Client.And.Filters.init -> void
+FluentCMS.Client.BlockContainsField
+FluentCMS.Client.BlockContainsField.BlockContainsField(string! path) -> void
+FluentCMS.Client.BlockContainsField.Contains(string! value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.BlockTextField
+FluentCMS.Client.BlockTextField.BlockTextField(string! path) -> void
+FluentCMS.Client.BlockTextField.Contains(string! value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.BlockTextField.Eq(string! value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.BlockTextField.Ne(string! value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.BlockValueField<T>
+FluentCMS.Client.BlockValueField<T>.BlockValueField(string! path) -> void
+FluentCMS.Client.BlockValueField<T>.Eq(T value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.BlockValueField<T>.Ne(T value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.BlocksField
+FluentCMS.Client.BlocksField.BlocksField(string! path) -> void
+FluentCMS.Client.BlocksField.HasBlock(string! blockType) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.BlocksField.IsNotNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.BlocksField.IsNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.BooleanField
+FluentCMS.Client.BooleanField.Ascending() -> FluentCMS.Client.SortField!
+FluentCMS.Client.BooleanField.BooleanField(string! path) -> void
+FluentCMS.Client.BooleanField.Descending() -> FluentCMS.Client.SortField!
+FluentCMS.Client.BooleanField.Eq(bool value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.BooleanField.IsNotNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.BooleanField.IsNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.BooleanField.Ne(bool value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.ContentFilter
+FluentCMS.Client.ContentFilter.ContentFilter(FluentCMS.Client.ContentFilter! original) -> void
+FluentCMS.Client.ContentQuery
+FluentCMS.Client.ContentQuery.<Clone>$() -> FluentCMS.Client.ContentQuery!
+FluentCMS.Client.ContentQuery.ContentQuery() -> void
+FluentCMS.Client.ContentQuery.Cursor.get -> string?
+FluentCMS.Client.ContentQuery.Cursor.init -> void
+FluentCMS.Client.ContentQuery.Depth.get -> int?
+FluentCMS.Client.ContentQuery.Depth.init -> void
+FluentCMS.Client.ContentQuery.Equals(FluentCMS.Client.ContentQuery? other) -> bool
+FluentCMS.Client.ContentQuery.Fields.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Client.ContentQuery.Fields.init -> void
+FluentCMS.Client.ContentQuery.Filter.get -> FluentCMS.Client.ContentFilter?
+FluentCMS.Client.ContentQuery.Filter.init -> void
+FluentCMS.Client.ContentQuery.Locale.get -> string?
+FluentCMS.Client.ContentQuery.Locale.init -> void
+FluentCMS.Client.ContentQuery.Page.get -> int?
+FluentCMS.Client.ContentQuery.Page.init -> void
+FluentCMS.Client.ContentQuery.PageSize.get -> int?
+FluentCMS.Client.ContentQuery.PageSize.init -> void
+FluentCMS.Client.ContentQuery.Populate.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Client.ContentQuery.Populate.init -> void
+FluentCMS.Client.ContentQuery.Sort.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Client.SortField!>!
+FluentCMS.Client.ContentQuery.Sort.init -> void
+FluentCMS.Client.ContentQuery.Status.get -> FluentCMS.Client.QueryStatus?
+FluentCMS.Client.ContentQuery.Status.init -> void
+FluentCMS.Client.ContentQuery.ToQueryString() -> string!
+FluentCMS.Client.ContentTypeAttribute
+FluentCMS.Client.ContentTypeAttribute.ContentTypeAttribute(string! name) -> void
+FluentCMS.Client.ContentTypeAttribute.DisplayName.get -> string?
+FluentCMS.Client.ContentTypeAttribute.DisplayName.set -> void
+FluentCMS.Client.ContentTypeAttribute.Name.get -> string!
+FluentCMS.Client.ContentTypeAttribute.TitleField.get -> string?
+FluentCMS.Client.ContentTypeAttribute.TitleField.set -> void
+FluentCMS.Client.DateField<T>
+FluentCMS.Client.DateField<T>.Ascending() -> FluentCMS.Client.SortField!
+FluentCMS.Client.DateField<T>.Between(T from, T to) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.DateField<T>.DateField(string! path) -> void
+FluentCMS.Client.DateField<T>.Descending() -> FluentCMS.Client.SortField!
+FluentCMS.Client.DateField<T>.Eq(T value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.DateField<T>.Gt(T value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.DateField<T>.Gte(T value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.DateField<T>.In(params System.Collections.Generic.IReadOnlyList<T>! values) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.DateField<T>.IsNotNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.DateField<T>.IsNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.DateField<T>.Lt(T value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.DateField<T>.Lte(T value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.DateField<T>.Ne(T value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.DateField<T>.NotIn(params System.Collections.Generic.IReadOnlyList<T>! values) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.Entry
+FluentCMS.Client.Entry.CreatedAt.get -> System.DateTimeOffset?
+FluentCMS.Client.Entry.CreatedAt.set -> void
+FluentCMS.Client.Entry.CreatedBy.get -> string?
+FluentCMS.Client.Entry.CreatedBy.set -> void
+FluentCMS.Client.Entry.Entry() -> void
+FluentCMS.Client.Entry.Id.get -> System.Guid
+FluentCMS.Client.Entry.Id.set -> void
+FluentCMS.Client.Entry.Locale.get -> string?
+FluentCMS.Client.Entry.Locale.set -> void
+FluentCMS.Client.Entry.PublishedAt.get -> System.DateTimeOffset?
+FluentCMS.Client.Entry.PublishedAt.set -> void
+FluentCMS.Client.Entry.ScheduledPublishAt.get -> System.DateTimeOffset?
+FluentCMS.Client.Entry.ScheduledPublishAt.set -> void
+FluentCMS.Client.Entry.ScheduledUnpublishAt.get -> System.DateTimeOffset?
+FluentCMS.Client.Entry.ScheduledUnpublishAt.set -> void
+FluentCMS.Client.Entry.Status.get -> string?
+FluentCMS.Client.Entry.Status.set -> void
+FluentCMS.Client.Entry.UpdatedAt.get -> System.DateTimeOffset?
+FluentCMS.Client.Entry.UpdatedAt.set -> void
+FluentCMS.Client.Entry.UpdatedBy.get -> string?
+FluentCMS.Client.Entry.UpdatedBy.set -> void
+FluentCMS.Client.Entry.Version.get -> int?
+FluentCMS.Client.Entry.Version.set -> void
+FluentCMS.Client.EntryPage<T>
+FluentCMS.Client.EntryPage<T>.<Clone>$() -> FluentCMS.Client.EntryPage<T>!
+FluentCMS.Client.EntryPage<T>.Deconstruct(out System.Collections.Generic.IReadOnlyList<T>! Items, out int? Total, out int? Page, out int? PageSize, out string? NextCursor) -> void
+FluentCMS.Client.EntryPage<T>.EntryPage(System.Collections.Generic.IReadOnlyList<T>! Items, int? Total, int? Page, int? PageSize, string? NextCursor) -> void
+FluentCMS.Client.EntryPage<T>.Equals(FluentCMS.Client.EntryPage<T>? other) -> bool
+FluentCMS.Client.EntryPage<T>.Items.get -> System.Collections.Generic.IReadOnlyList<T>!
+FluentCMS.Client.EntryPage<T>.Items.init -> void
+FluentCMS.Client.EntryPage<T>.NextCursor.get -> string?
+FluentCMS.Client.EntryPage<T>.NextCursor.init -> void
+FluentCMS.Client.EntryPage<T>.Page.get -> int?
+FluentCMS.Client.EntryPage<T>.Page.init -> void
+FluentCMS.Client.EntryPage<T>.PageSize.get -> int?
+FluentCMS.Client.EntryPage<T>.PageSize.init -> void
+FluentCMS.Client.EntryPage<T>.Total.get -> int?
+FluentCMS.Client.EntryPage<T>.Total.init -> void
+FluentCMS.Client.FieldFilter
+FluentCMS.Client.FieldFilter.Deconstruct(out string! Path, out FluentCMS.Client.FilterOperator Operator, out object? Value) -> void
+FluentCMS.Client.FieldFilter.Equals(FluentCMS.Client.FieldFilter? other) -> bool
+FluentCMS.Client.FieldFilter.FieldFilter(string! Path, FluentCMS.Client.FilterOperator Operator, object? Value = null) -> void
+FluentCMS.Client.FieldFilter.Operator.get -> FluentCMS.Client.FilterOperator
+FluentCMS.Client.FieldFilter.Operator.init -> void
+FluentCMS.Client.FieldFilter.Path.get -> string!
+FluentCMS.Client.FieldFilter.Path.init -> void
+FluentCMS.Client.FieldFilter.Value.get -> object?
+FluentCMS.Client.FieldFilter.Value.init -> void
+FluentCMS.Client.FilterOperator
+FluentCMS.Client.FilterOperator.Between = 8 -> FluentCMS.Client.FilterOperator
+FluentCMS.Client.FilterOperator.Contains = 9 -> FluentCMS.Client.FilterOperator
+FluentCMS.Client.FilterOperator.Equal = 0 -> FluentCMS.Client.FilterOperator
+FluentCMS.Client.FilterOperator.GreaterThan = 6 -> FluentCMS.Client.FilterOperator
+FluentCMS.Client.FilterOperator.GreaterThanOrEqual = 7 -> FluentCMS.Client.FilterOperator
+FluentCMS.Client.FilterOperator.HasBlock = 13 -> FluentCMS.Client.FilterOperator
+FluentCMS.Client.FilterOperator.In = 2 -> FluentCMS.Client.FilterOperator
+FluentCMS.Client.FilterOperator.IsNotNull = 12 -> FluentCMS.Client.FilterOperator
+FluentCMS.Client.FilterOperator.IsNull = 11 -> FluentCMS.Client.FilterOperator
+FluentCMS.Client.FilterOperator.LessThan = 4 -> FluentCMS.Client.FilterOperator
+FluentCMS.Client.FilterOperator.LessThanOrEqual = 5 -> FluentCMS.Client.FilterOperator
+FluentCMS.Client.FilterOperator.NotEqual = 1 -> FluentCMS.Client.FilterOperator
+FluentCMS.Client.FilterOperator.NotIn = 3 -> FluentCMS.Client.FilterOperator
+FluentCMS.Client.FilterOperator.StartsWith = 10 -> FluentCMS.Client.FilterOperator
+FluentCMS.Client.FluentCmsClient
+FluentCMS.Client.FluentCmsClient.CreateAsync<T>(T! entry, FluentCMS.Client.WriteOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Client.FluentCmsClient.CreateAsync<T>(string! type, T! entry, FluentCMS.Client.WriteOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Client.FluentCmsClient.DeleteAsync(string! type, System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Client.FluentCmsClient.DeleteAsync<T>(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Client.FluentCmsClient.FluentCmsClient(System.Net.Http.HttpClient! http) -> void
+FluentCMS.Client.FluentCmsClient.GetAsync<T>(System.Guid id, FluentCMS.Client.ContentQuery? query = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Client.FluentCmsClient.GetAsync<T>(string! type, System.Guid id, FluentCMS.Client.ContentQuery? query = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Client.FluentCmsClient.GetByAsync<T>(string! field, string! value, FluentCMS.Client.ContentQuery? query = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Client.FluentCmsClient.GetByAsync<T>(string! type, string! field, string! value, FluentCMS.Client.ContentQuery? query = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Client.FluentCmsClient.GetSingletonAsync<T>(FluentCMS.Client.ContentQuery? query = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Client.FluentCmsClient.GetSingletonAsync<T>(string! type, FluentCMS.Client.ContentQuery? query = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Client.FluentCmsClient.ListAsync<T>(FluentCMS.Client.ContentQuery? query = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Client.EntryPage<T!>!>!
+FluentCMS.Client.FluentCmsClient.ListAsync<T>(string! type, FluentCMS.Client.ContentQuery? query = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Client.EntryPage<T!>!>!
+FluentCMS.Client.FluentCmsClient.PublishAsync<T>(System.Guid id, FluentCMS.Client.WriteOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Client.PublishResult<T!>!>!
+FluentCMS.Client.FluentCmsClient.PublishAsync<T>(string! type, System.Guid id, FluentCMS.Client.WriteOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Client.PublishResult<T!>!>!
+FluentCMS.Client.FluentCmsClient.UnpublishAsync<T>(System.Guid id, FluentCMS.Client.WriteOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Client.FluentCmsClient.UnpublishAsync<T>(string! type, System.Guid id, FluentCMS.Client.WriteOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Client.FluentCmsClient.UpdateAsync<T>(System.Guid id, T! entry, int version, FluentCMS.Client.WriteOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Client.FluentCmsClient.UpdateAsync<T>(string! type, System.Guid id, T! entry, int version, FluentCMS.Client.WriteOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Client.FluentCmsProblemException
+FluentCMS.Client.FluentCmsProblemException.Code.get -> string?
+FluentCMS.Client.FluentCmsProblemException.Detail.get -> string?
+FluentCMS.Client.FluentCmsProblemException.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Client.ProblemError!>!
+FluentCMS.Client.FluentCmsProblemException.FluentCmsProblemException() -> void
+FluentCMS.Client.FluentCmsProblemException.FluentCmsProblemException(System.Net.HttpStatusCode status, string? code, string? title, string? detail, System.Collections.Generic.IReadOnlyList<FluentCMS.Client.ProblemError!>! errors, string? traceId) -> void
+FluentCMS.Client.FluentCmsProblemException.FluentCmsProblemException(System.Net.HttpStatusCode status, string? code, string? title, string? detail, System.Collections.Generic.IReadOnlyList<FluentCMS.Client.ProblemError!>! errors, string? traceId, System.TimeSpan? retryAfter) -> void
+FluentCMS.Client.FluentCmsProblemException.FluentCmsProblemException(string! message) -> void
+FluentCMS.Client.FluentCmsProblemException.FluentCmsProblemException(string! message, System.Exception! innerException) -> void
+FluentCMS.Client.FluentCmsProblemException.RetryAfter.get -> System.TimeSpan?
+FluentCMS.Client.FluentCmsProblemException.Status.get -> System.Net.HttpStatusCode
+FluentCMS.Client.FluentCmsProblemException.Title.get -> string?
+FluentCMS.Client.FluentCmsProblemException.TraceId.get -> string?
+FluentCMS.Client.JsonField
+FluentCMS.Client.JsonField.IsNotNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.JsonField.IsNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.JsonField.JsonField(string! path) -> void
+FluentCMS.Client.JsonField.Key(string! name) -> FluentCMS.Client.JsonKeyField!
+FluentCMS.Client.JsonKeyField
+FluentCMS.Client.JsonKeyField.Contains(string! value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.JsonKeyField.Eq(bool value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.JsonKeyField.Eq(decimal value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.JsonKeyField.Eq(long value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.JsonKeyField.Eq(string! value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.JsonKeyField.JsonKeyField(string! path) -> void
+FluentCMS.Client.JsonKeyField.Ne(bool value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.JsonKeyField.Ne(decimal value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.JsonKeyField.Ne(long value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.JsonKeyField.Ne(string! value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.LongTextField
+FluentCMS.Client.LongTextField.Contains(string! value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.LongTextField.IsNotNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.LongTextField.IsNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.LongTextField.LongTextField(string! path) -> void
+FluentCMS.Client.LongTextField.StartsWith(string! value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.MediaField
+FluentCMS.Client.MediaField.Eq(System.Guid assetId) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.MediaField.In(params System.Collections.Generic.IReadOnlyList<System.Guid>! assetIds) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.MediaField.MediaField(string! path) -> void
+FluentCMS.Client.MediaFocalPoint
+FluentCMS.Client.MediaFocalPoint.<Clone>$() -> FluentCMS.Client.MediaFocalPoint!
+FluentCMS.Client.MediaFocalPoint.Deconstruct(out double X, out double Y) -> void
+FluentCMS.Client.MediaFocalPoint.Equals(FluentCMS.Client.MediaFocalPoint? other) -> bool
+FluentCMS.Client.MediaFocalPoint.MediaFocalPoint(double X, double Y) -> void
+FluentCMS.Client.MediaFocalPoint.X.get -> double
+FluentCMS.Client.MediaFocalPoint.X.init -> void
+FluentCMS.Client.MediaFocalPoint.Y.get -> double
+FluentCMS.Client.MediaFocalPoint.Y.init -> void
+FluentCMS.Client.MediaReference
+FluentCMS.Client.MediaReference.Alt.get -> string?
+FluentCMS.Client.MediaReference.Alt.init -> void
+FluentCMS.Client.MediaReference.Caption.get -> string?
+FluentCMS.Client.MediaReference.Caption.init -> void
+FluentCMS.Client.MediaReference.Credit.get -> string?
+FluentCMS.Client.MediaReference.Credit.init -> void
+FluentCMS.Client.MediaReference.FileName.get -> string?
+FluentCMS.Client.MediaReference.FileName.init -> void
+FluentCMS.Client.MediaReference.FocalPoint.get -> FluentCMS.Client.MediaFocalPoint?
+FluentCMS.Client.MediaReference.FocalPoint.init -> void
+FluentCMS.Client.MediaReference.Height.get -> int?
+FluentCMS.Client.MediaReference.Height.init -> void
+FluentCMS.Client.MediaReference.Id.get -> System.Guid
+FluentCMS.Client.MediaReference.MediaReference(System.Guid id) -> void
+FluentCMS.Client.MediaReference.MimeType.get -> string?
+FluentCMS.Client.MediaReference.MimeType.init -> void
+FluentCMS.Client.MediaReference.Size.get -> long?
+FluentCMS.Client.MediaReference.Size.init -> void
+FluentCMS.Client.MediaReference.Title.get -> string?
+FluentCMS.Client.MediaReference.Title.init -> void
+FluentCMS.Client.MediaReference.Type.get -> string?
+FluentCMS.Client.MediaReference.Type.init -> void
+FluentCMS.Client.MediaReference.Urls.get -> FluentCMS.Client.MediaUrls?
+FluentCMS.Client.MediaReference.Urls.init -> void
+FluentCMS.Client.MediaReference.Width.get -> int?
+FluentCMS.Client.MediaReference.Width.init -> void
+FluentCMS.Client.MediaUrls
+FluentCMS.Client.MediaUrls.<Clone>$() -> FluentCMS.Client.MediaUrls!
+FluentCMS.Client.MediaUrls.Deconstruct(out string? Original, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Presets, out string? Template) -> void
+FluentCMS.Client.MediaUrls.Equals(FluentCMS.Client.MediaUrls? other) -> bool
+FluentCMS.Client.MediaUrls.MediaUrls(string? Original, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? Presets, string? Template) -> void
+FluentCMS.Client.MediaUrls.Original.get -> string?
+FluentCMS.Client.MediaUrls.Original.init -> void
+FluentCMS.Client.MediaUrls.Presets.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>?
+FluentCMS.Client.MediaUrls.Presets.init -> void
+FluentCMS.Client.MediaUrls.Template.get -> string?
+FluentCMS.Client.MediaUrls.Template.init -> void
+FluentCMS.Client.Not
+FluentCMS.Client.Not.Deconstruct(out FluentCMS.Client.ContentFilter! Filter) -> void
+FluentCMS.Client.Not.Equals(FluentCMS.Client.Not? other) -> bool
+FluentCMS.Client.Not.Filter.get -> FluentCMS.Client.ContentFilter!
+FluentCMS.Client.Not.Filter.init -> void
+FluentCMS.Client.Not.Not(FluentCMS.Client.ContentFilter! Filter) -> void
+FluentCMS.Client.NumberField<T>
+FluentCMS.Client.NumberField<T>.Ascending() -> FluentCMS.Client.SortField!
+FluentCMS.Client.NumberField<T>.Between(T from, T to) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.NumberField<T>.Descending() -> FluentCMS.Client.SortField!
+FluentCMS.Client.NumberField<T>.Eq(T value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.NumberField<T>.Gt(T value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.NumberField<T>.Gte(T value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.NumberField<T>.In(params System.Collections.Generic.IReadOnlyList<T>! values) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.NumberField<T>.IsNotNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.NumberField<T>.IsNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.NumberField<T>.Lt(T value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.NumberField<T>.Lte(T value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.NumberField<T>.Ne(T value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.NumberField<T>.NotIn(params System.Collections.Generic.IReadOnlyList<T>! values) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.NumberField<T>.NumberField(string! path) -> void
+FluentCMS.Client.Or
+FluentCMS.Client.Or.Deconstruct(out System.Collections.Generic.IReadOnlyList<FluentCMS.Client.ContentFilter!>! Filters) -> void
+FluentCMS.Client.Or.Equals(FluentCMS.Client.Or? other) -> bool
+FluentCMS.Client.Or.Filters.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Client.ContentFilter!>!
+FluentCMS.Client.Or.Filters.init -> void
+FluentCMS.Client.Or.Or(params System.Collections.Generic.IReadOnlyList<FluentCMS.Client.ContentFilter!>! Filters) -> void
+FluentCMS.Client.ProblemError
+FluentCMS.Client.ProblemError.<Clone>$() -> FluentCMS.Client.ProblemError!
+FluentCMS.Client.ProblemError.Code.get -> string?
+FluentCMS.Client.ProblemError.Code.init -> void
+FluentCMS.Client.ProblemError.Deconstruct(out string? Path, out string? Code, out string? Message) -> void
+FluentCMS.Client.ProblemError.Equals(FluentCMS.Client.ProblemError? other) -> bool
+FluentCMS.Client.ProblemError.Message.get -> string?
+FluentCMS.Client.ProblemError.Message.init -> void
+FluentCMS.Client.ProblemError.Path.get -> string?
+FluentCMS.Client.ProblemError.Path.init -> void
+FluentCMS.Client.ProblemError.ProblemError(string? Path, string? Code, string? Message) -> void
+FluentCMS.Client.PublishResult<T>
+FluentCMS.Client.PublishResult<T>.<Clone>$() -> FluentCMS.Client.PublishResult<T>!
+FluentCMS.Client.PublishResult<T>.Deconstruct(out T Entry, out System.Collections.Generic.IReadOnlyList<FluentCMS.Client.PublishWarning!>! Warnings) -> void
+FluentCMS.Client.PublishResult<T>.Entry.get -> T
+FluentCMS.Client.PublishResult<T>.Entry.init -> void
+FluentCMS.Client.PublishResult<T>.Equals(FluentCMS.Client.PublishResult<T>? other) -> bool
+FluentCMS.Client.PublishResult<T>.PublishResult(T Entry, System.Collections.Generic.IReadOnlyList<FluentCMS.Client.PublishWarning!>! Warnings) -> void
+FluentCMS.Client.PublishResult<T>.Warnings.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Client.PublishWarning!>!
+FluentCMS.Client.PublishResult<T>.Warnings.init -> void
+FluentCMS.Client.PublishWarning
+FluentCMS.Client.PublishWarning.<Clone>$() -> FluentCMS.Client.PublishWarning!
+FluentCMS.Client.PublishWarning.Code.get -> string!
+FluentCMS.Client.PublishWarning.Code.init -> void
+FluentCMS.Client.PublishWarning.Deconstruct(out string! Path, out string! Code, out string! Message, out string? TargetType, out System.Guid? TargetId) -> void
+FluentCMS.Client.PublishWarning.Equals(FluentCMS.Client.PublishWarning? other) -> bool
+FluentCMS.Client.PublishWarning.Message.get -> string!
+FluentCMS.Client.PublishWarning.Message.init -> void
+FluentCMS.Client.PublishWarning.Path.get -> string!
+FluentCMS.Client.PublishWarning.Path.init -> void
+FluentCMS.Client.PublishWarning.PublishWarning(string! Path, string! Code, string! Message, string? TargetType = null, System.Guid? TargetId = null) -> void
+FluentCMS.Client.PublishWarning.TargetId.get -> System.Guid?
+FluentCMS.Client.PublishWarning.TargetId.init -> void
+FluentCMS.Client.PublishWarning.TargetType.get -> string?
+FluentCMS.Client.PublishWarning.TargetType.init -> void
+FluentCMS.Client.QueryField
+FluentCMS.Client.QueryField.Path.get -> string!
+FluentCMS.Client.QueryField.QueryField(string! path) -> void
+FluentCMS.Client.QueryStatus
+FluentCMS.Client.QueryStatus.Draft = 1 -> FluentCMS.Client.QueryStatus
+FluentCMS.Client.QueryStatus.Published = 0 -> FluentCMS.Client.QueryStatus
+FluentCMS.Client.Relation<T>
+FluentCMS.Client.Relation<T>.Entry.get -> T?
+FluentCMS.Client.Relation<T>.Entry.init -> void
+FluentCMS.Client.Relation<T>.Id.get -> System.Guid
+FluentCMS.Client.Relation<T>.Relation(System.Guid id) -> void
+FluentCMS.Client.Relation<T>.Type.get -> string?
+FluentCMS.Client.Relation<T>.Type.init -> void
+FluentCMS.Client.RelationField
+FluentCMS.Client.RelationField.Eq(System.Guid id) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.RelationField.In(params System.Collections.Generic.IReadOnlyList<System.Guid>! ids) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.RelationField.IsNotNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.RelationField.IsNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.RelationField.RelationField(string! path) -> void
+FluentCMS.Client.RichTextField
+FluentCMS.Client.RichTextField.IsNotNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.RichTextField.IsNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.RichTextField.RichTextField(string! path) -> void
+FluentCMS.Client.SelectField
+FluentCMS.Client.SelectField.Ascending() -> FluentCMS.Client.SortField!
+FluentCMS.Client.SelectField.Contains(string! value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.SelectField.Descending() -> FluentCMS.Client.SortField!
+FluentCMS.Client.SelectField.Eq(string! option) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.SelectField.In(params System.Collections.Generic.IReadOnlyList<string!>! options) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.SelectField.IsNotNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.SelectField.IsNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.SelectField.Ne(string! option) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.SelectField.NotIn(params System.Collections.Generic.IReadOnlyList<string!>! options) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.SelectField.SelectField(string! path) -> void
+FluentCMS.Client.SelectListField
+FluentCMS.Client.SelectListField.Contains(string! option) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.SelectListField.In(params System.Collections.Generic.IReadOnlyList<string!>! options) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.SelectListField.IsNotNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.SelectListField.IsNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.SelectListField.NotIn(params System.Collections.Generic.IReadOnlyList<string!>! options) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.SelectListField.SelectListField(string! path) -> void
+FluentCMS.Client.SortField
+FluentCMS.Client.SortField.<Clone>$() -> FluentCMS.Client.SortField!
+FluentCMS.Client.SortField.Deconstruct(out string! Path, out bool Descending) -> void
+FluentCMS.Client.SortField.Descending.get -> bool
+FluentCMS.Client.SortField.Descending.init -> void
+FluentCMS.Client.SortField.Equals(FluentCMS.Client.SortField? other) -> bool
+FluentCMS.Client.SortField.Path.get -> string!
+FluentCMS.Client.SortField.Path.init -> void
+FluentCMS.Client.SortField.SortField(string! Path, bool Descending = false) -> void
+FluentCMS.Client.TextField
+FluentCMS.Client.TextField.Ascending() -> FluentCMS.Client.SortField!
+FluentCMS.Client.TextField.Contains(string! value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.TextField.Descending() -> FluentCMS.Client.SortField!
+FluentCMS.Client.TextField.Eq(string! value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.TextField.In(params System.Collections.Generic.IReadOnlyList<string!>! values) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.TextField.IsNotNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.TextField.IsNull() -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.TextField.Ne(string! value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.TextField.NotIn(params System.Collections.Generic.IReadOnlyList<string!>! values) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.TextField.StartsWith(string! value) -> FluentCMS.Client.FieldFilter!
+FluentCMS.Client.TextField.TextField(string! path) -> void
+FluentCMS.Client.WriteOptions
+FluentCMS.Client.WriteOptions.<Clone>$() -> FluentCMS.Client.WriteOptions!
+FluentCMS.Client.WriteOptions.Deconstruct(out string? Locale) -> void
+FluentCMS.Client.WriteOptions.Equals(FluentCMS.Client.WriteOptions? other) -> bool
+FluentCMS.Client.WriteOptions.Locale.get -> string?
+FluentCMS.Client.WriteOptions.Locale.init -> void
+FluentCMS.Client.WriteOptions.WriteOptions(string? Locale = null) -> void
+abstract FluentCMS.Client.ContentFilter.<Clone>$() -> FluentCMS.Client.ContentFilter!
+override FluentCMS.Client.And.<Clone>$() -> FluentCMS.Client.And!
+override FluentCMS.Client.And.Equals(object? obj) -> bool
+override FluentCMS.Client.And.GetHashCode() -> int
+override FluentCMS.Client.And.ToString() -> string!
+override FluentCMS.Client.ContentFilter.Equals(object? obj) -> bool
+override FluentCMS.Client.ContentFilter.GetHashCode() -> int
+override FluentCMS.Client.ContentFilter.ToString() -> string!
+override FluentCMS.Client.ContentQuery.Equals(object? obj) -> bool
+override FluentCMS.Client.ContentQuery.GetHashCode() -> int
+override FluentCMS.Client.ContentQuery.ToString() -> string!
+override FluentCMS.Client.EntryPage<T>.Equals(object? obj) -> bool
+override FluentCMS.Client.EntryPage<T>.GetHashCode() -> int
+override FluentCMS.Client.EntryPage<T>.ToString() -> string!
+override FluentCMS.Client.FieldFilter.<Clone>$() -> FluentCMS.Client.FieldFilter!
+override FluentCMS.Client.FieldFilter.Equals(object? obj) -> bool
+override FluentCMS.Client.FieldFilter.GetHashCode() -> int
+override FluentCMS.Client.FieldFilter.ToString() -> string!
+override FluentCMS.Client.MediaFocalPoint.Equals(object? obj) -> bool
+override FluentCMS.Client.MediaFocalPoint.GetHashCode() -> int
+override FluentCMS.Client.MediaFocalPoint.ToString() -> string!
+override FluentCMS.Client.MediaUrls.Equals(object? obj) -> bool
+override FluentCMS.Client.MediaUrls.GetHashCode() -> int
+override FluentCMS.Client.MediaUrls.ToString() -> string!
+override FluentCMS.Client.Not.<Clone>$() -> FluentCMS.Client.Not!
+override FluentCMS.Client.Not.Equals(object? obj) -> bool
+override FluentCMS.Client.Not.GetHashCode() -> int
+override FluentCMS.Client.Not.ToString() -> string!
+override FluentCMS.Client.Or.<Clone>$() -> FluentCMS.Client.Or!
+override FluentCMS.Client.Or.Equals(object? obj) -> bool
+override FluentCMS.Client.Or.GetHashCode() -> int
+override FluentCMS.Client.Or.ToString() -> string!
+override FluentCMS.Client.ProblemError.Equals(object? obj) -> bool
+override FluentCMS.Client.ProblemError.GetHashCode() -> int
+override FluentCMS.Client.ProblemError.ToString() -> string!
+override FluentCMS.Client.PublishResult<T>.Equals(object? obj) -> bool
+override FluentCMS.Client.PublishResult<T>.GetHashCode() -> int
+override FluentCMS.Client.PublishResult<T>.ToString() -> string!
+override FluentCMS.Client.PublishWarning.Equals(object? obj) -> bool
+override FluentCMS.Client.PublishWarning.GetHashCode() -> int
+override FluentCMS.Client.PublishWarning.ToString() -> string!
+override FluentCMS.Client.QueryField.ToString() -> string!
+override FluentCMS.Client.SortField.Equals(object? obj) -> bool
+override FluentCMS.Client.SortField.GetHashCode() -> int
+override FluentCMS.Client.SortField.ToString() -> string!
+override FluentCMS.Client.WriteOptions.Equals(object? obj) -> bool
+override FluentCMS.Client.WriteOptions.GetHashCode() -> int
+override FluentCMS.Client.WriteOptions.ToString() -> string!
+override sealed FluentCMS.Client.And.Equals(FluentCMS.Client.ContentFilter? other) -> bool
+override sealed FluentCMS.Client.FieldFilter.Equals(FluentCMS.Client.ContentFilter? other) -> bool
+override sealed FluentCMS.Client.Not.Equals(FluentCMS.Client.ContentFilter? other) -> bool
+override sealed FluentCMS.Client.Or.Equals(FluentCMS.Client.ContentFilter? other) -> bool
+static FluentCMS.Client.And.operator !=(FluentCMS.Client.And? left, FluentCMS.Client.And? right) -> bool
+static FluentCMS.Client.And.operator ==(FluentCMS.Client.And? left, FluentCMS.Client.And? right) -> bool
+static FluentCMS.Client.ContentFilter.operator !=(FluentCMS.Client.ContentFilter? left, FluentCMS.Client.ContentFilter? right) -> bool
+static FluentCMS.Client.ContentFilter.operator ==(FluentCMS.Client.ContentFilter? left, FluentCMS.Client.ContentFilter? right) -> bool
+static FluentCMS.Client.ContentQuery.operator !=(FluentCMS.Client.ContentQuery? left, FluentCMS.Client.ContentQuery? right) -> bool
+static FluentCMS.Client.ContentQuery.operator ==(FluentCMS.Client.ContentQuery? left, FluentCMS.Client.ContentQuery? right) -> bool
+static FluentCMS.Client.EntryPage<T>.operator !=(FluentCMS.Client.EntryPage<T>? left, FluentCMS.Client.EntryPage<T>? right) -> bool
+static FluentCMS.Client.EntryPage<T>.operator ==(FluentCMS.Client.EntryPage<T>? left, FluentCMS.Client.EntryPage<T>? right) -> bool
+static FluentCMS.Client.FieldFilter.operator !=(FluentCMS.Client.FieldFilter? left, FluentCMS.Client.FieldFilter? right) -> bool
+static FluentCMS.Client.FieldFilter.operator ==(FluentCMS.Client.FieldFilter? left, FluentCMS.Client.FieldFilter? right) -> bool
+static FluentCMS.Client.MediaFocalPoint.operator !=(FluentCMS.Client.MediaFocalPoint? left, FluentCMS.Client.MediaFocalPoint? right) -> bool
+static FluentCMS.Client.MediaFocalPoint.operator ==(FluentCMS.Client.MediaFocalPoint? left, FluentCMS.Client.MediaFocalPoint? right) -> bool
+static FluentCMS.Client.MediaUrls.operator !=(FluentCMS.Client.MediaUrls? left, FluentCMS.Client.MediaUrls? right) -> bool
+static FluentCMS.Client.MediaUrls.operator ==(FluentCMS.Client.MediaUrls? left, FluentCMS.Client.MediaUrls? right) -> bool
+static FluentCMS.Client.Not.operator !=(FluentCMS.Client.Not? left, FluentCMS.Client.Not? right) -> bool
+static FluentCMS.Client.Not.operator ==(FluentCMS.Client.Not? left, FluentCMS.Client.Not? right) -> bool
+static FluentCMS.Client.Or.operator !=(FluentCMS.Client.Or? left, FluentCMS.Client.Or? right) -> bool
+static FluentCMS.Client.Or.operator ==(FluentCMS.Client.Or? left, FluentCMS.Client.Or? right) -> bool
+static FluentCMS.Client.ProblemError.operator !=(FluentCMS.Client.ProblemError? left, FluentCMS.Client.ProblemError? right) -> bool
+static FluentCMS.Client.ProblemError.operator ==(FluentCMS.Client.ProblemError? left, FluentCMS.Client.ProblemError? right) -> bool
+static FluentCMS.Client.PublishResult<T>.operator !=(FluentCMS.Client.PublishResult<T>? left, FluentCMS.Client.PublishResult<T>? right) -> bool
+static FluentCMS.Client.PublishResult<T>.operator ==(FluentCMS.Client.PublishResult<T>? left, FluentCMS.Client.PublishResult<T>? right) -> bool
+static FluentCMS.Client.PublishWarning.operator !=(FluentCMS.Client.PublishWarning? left, FluentCMS.Client.PublishWarning? right) -> bool
+static FluentCMS.Client.PublishWarning.operator ==(FluentCMS.Client.PublishWarning? left, FluentCMS.Client.PublishWarning? right) -> bool
+static FluentCMS.Client.SortField.operator !=(FluentCMS.Client.SortField? left, FluentCMS.Client.SortField? right) -> bool
+static FluentCMS.Client.SortField.operator ==(FluentCMS.Client.SortField? left, FluentCMS.Client.SortField? right) -> bool
+static FluentCMS.Client.WriteOptions.operator !=(FluentCMS.Client.WriteOptions? left, FluentCMS.Client.WriteOptions? right) -> bool
+static FluentCMS.Client.WriteOptions.operator ==(FluentCMS.Client.WriteOptions? left, FluentCMS.Client.WriteOptions? right) -> bool
+virtual FluentCMS.Client.ContentFilter.EqualityContract.get -> System.Type!
+virtual FluentCMS.Client.ContentFilter.Equals(FluentCMS.Client.ContentFilter? other) -> bool
+virtual FluentCMS.Client.ContentFilter.PrintMembers(System.Text.StringBuilder! builder) -> bool
