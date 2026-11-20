@@ -6,6 +6,8 @@ namespace FluentCMS.Generators;
 // FCMS0100 to FCMS0119 belong to the generator; a rule about the schema itself is an analyzer's (FCMS0001 to FCMS0099).
 internal static class Descriptors
 {
+    public const string HelpLinkBase = "https://github.com/fluentcms/FluentCMS/blob/main/docs/analyzers.md#";
+
     private const string Category = "FluentCMS.Generators";
 
     public static readonly DiagnosticDescriptor TypeSkipped = new(
@@ -14,7 +16,8 @@ internal static class Descriptors
         "{0}",
         Category,
         DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true,
+        helpLinkUri: HelpLinkBase + "fcms0100");
 
     public static readonly DiagnosticDescriptor UnknownFieldType = new(
         EmitCodes.UnknownFieldType,
@@ -22,7 +25,8 @@ internal static class Descriptors
         "{0}",
         Category,
         DiagnosticSeverity.Info,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true,
+        helpLinkUri: HelpLinkBase + "fcms0101");
 
     public static readonly DiagnosticDescriptor MemberNameTaken = new(
         EmitCodes.MemberNameTaken,
@@ -30,7 +34,8 @@ internal static class Descriptors
         "{0}",
         Category,
         DiagnosticSeverity.Warning,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true,
+        helpLinkUri: HelpLinkBase + "fcms0102");
 
     public static readonly DiagnosticDescriptor MissingBuilder = new(
         EmitCodes.MissingBuilder,
@@ -38,7 +43,8 @@ internal static class Descriptors
         "{0}",
         Category,
         DiagnosticSeverity.Info,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true,
+        helpLinkUri: HelpLinkBase + "fcms0103");
 
     public static readonly DiagnosticDescriptor BlockNotReachable = new(
         EmitCodes.BlockNotReachable,
@@ -46,7 +52,8 @@ internal static class Descriptors
         "{0}",
         Category,
         DiagnosticSeverity.Info,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true,
+        helpLinkUri: HelpLinkBase + "fcms0104");
 
     public static DiagnosticDescriptor For(string code) => code switch
     {

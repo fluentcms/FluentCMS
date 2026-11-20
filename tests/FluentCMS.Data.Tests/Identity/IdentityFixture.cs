@@ -107,7 +107,7 @@ internal sealed class IdentityFixture : IDisposable
     public async Task<T> WithAsync<T>(Func<IServiceProvider, Task<T>> work)
     {
         using var scope = Database.Database.NewScope();
-        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, ServiceDatabase.SiteA);
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, ServiceDatabase.SiteA);
         return await work(scope.ServiceProvider);
     }
 

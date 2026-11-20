@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
@@ -29,14 +30,14 @@ public sealed class FluentCmsClient(HttpClient http)
 
     public async Task<EntryPage<T>> ListAsync<T>(string type, ContentQuery? query = null, CancellationToken cancellationToken = default)
         where T : Entry =>
-        (await SendAsync<EntryPage<T>>(HttpMethod.Get, Delivery + Segment(type), query, null, null, cancellationToken))!;
+        await SendAsync<EntryPage<T>>(HttpMethod.Get, Delivery + Segment(type), query, null, null, cancellationToken);
 
     public Task<T> GetAsync<T>(Guid id, ContentQuery? query = null, CancellationToken cancellationToken = default)
         where T : Entry => GetAsync<T>(TypeOf<T>(), id, query, cancellationToken);
 
     public async Task<T> GetAsync<T>(string type, Guid id, ContentQuery? query = null, CancellationToken cancellationToken = default)
         where T : Entry =>
-        (await SendAsync<T>(HttpMethod.Get, $"{Delivery}{Segment(type)}/{id}", query, null, null, cancellationToken))!;
+        await SendAsync<T>(HttpMethod.Get, $"{Delivery}{Segment(type)}/{id}", query, null, null, cancellationToken);
 
     // By a unique field, such as a slug.
     public Task<T> GetByAsync<T>(string field, string value, ContentQuery? query = null, CancellationToken cancellationToken = default)
@@ -44,7 +45,7 @@ public sealed class FluentCmsClient(HttpClient http)
 
     public async Task<T> GetByAsync<T>(string type, string field, string value, ContentQuery? query = null, CancellationToken cancellationToken = default)
         where T : Entry =>
-        (await SendAsync<T>(HttpMethod.Get, $"{Delivery}{Segment(type)}/by/{Segment(field)}/{Segment(value)}", query, null, null, cancellationToken))!;
+        await SendAsync<T>(HttpMethod.Get, $"{Delivery}{Segment(type)}/by/{Segment(field)}/{Segment(value)}", query, null, null, cancellationToken);
 
     // A singleton's list route answers its one entry.
     public Task<T> GetSingletonAsync<T>(ContentQuery? query = null, CancellationToken cancellationToken = default)
@@ -52,14 +53,14 @@ public sealed class FluentCmsClient(HttpClient http)
 
     public async Task<T> GetSingletonAsync<T>(string type, ContentQuery? query = null, CancellationToken cancellationToken = default)
         where T : Entry =>
-        (await SendAsync<T>(HttpMethod.Get, Delivery + Segment(type), query, null, null, cancellationToken))!;
+        await SendAsync<T>(HttpMethod.Get, Delivery + Segment(type), query, null, null, cancellationToken);
 
     public Task<T> CreateAsync<T>(T entry, WriteOptions? options = null, CancellationToken cancellationToken = default)
         where T : Entry => CreateAsync(TypeOf<T>(), entry, options, cancellationToken);
 
     public async Task<T> CreateAsync<T>(string type, T entry, WriteOptions? options = null, CancellationToken cancellationToken = default)
         where T : Entry =>
-        (await SendAsync<T>(HttpMethod.Post, Management + Segment(type), Locale(options), Body(entry), null, cancellationToken))!;
+        await SendAsync<T>(HttpMethod.Post, Management + Segment(type), Locale(options), Body(entry), null, cancellationToken);
 
     // Replaces the draft at the version read: a field left out is cleared, and another version is a conflict (412). A class
     // generated from an older schema leaves out the fields it does not know, so it clears them; generate it again first.
@@ -68,30 +69,62 @@ public sealed class FluentCmsClient(HttpClient http)
 
     public async Task<T> UpdateAsync<T>(string type, Guid id, T entry, int version, WriteOptions? options = null, CancellationToken cancellationToken = default)
         where T : Entry =>
-        (await SendAsync<T>(HttpMethod.Put, $"{Management}{Segment(type)}/{id}", Locale(options), Body(entry), version, cancellationToken))!;
+        await SendAsync<T>(HttpMethod.Put, $"{Management}{Segment(type)}/{id}", Locale(options), Body(entry), version, cancellationToken);
 
     // Moves the entry to the trash, in every locale.
     public Task DeleteAsync<T>(Guid id, CancellationToken cancellationToken = default)
         where T : Entry => DeleteAsync(TypeOf<T>(), id, cancellationToken);
 
-    public Task DeleteAsync(string type, Guid id, CancellationToken cancellationToken = default) =>
-        SendAsync<JsonElement?>(HttpMethod.Delete, $"{Management}{Segment(type)}/{id}", null, null, null, cancellationToken);
+    public async Task DeleteAsync(string type, Guid id, CancellationToken cancellationToken = default)
+    {
+        var (status, answer) = await ExchangeAsync(HttpMethod.Delete, $"{Management}{Segment(type)}/{id}", null, null, null, cancellationToken);
+        if (answer.Length > 0 && status != HttpStatusCode.NoContent)
+        {
+            _ = Read<JsonElement>(status, answer);
+        }
+    }
 
     public Task<PublishResult<T>> PublishAsync<T>(Guid id, WriteOptions? options = null, CancellationToken cancellationToken = default)
         where T : Entry => PublishAsync<T>(TypeOf<T>(), id, options, cancellationToken);
 
     public async Task<PublishResult<T>> PublishAsync<T>(string type, Guid id, WriteOptions? options = null, CancellationToken cancellationToken = default)
         where T : Entry =>
-        (await SendAsync<PublishResult<T>>(HttpMethod.Post, $"{Management}{Segment(type)}/{id}/publish", Locale(options), null, null, cancellationToken))!;
+        await SendAsync<PublishResult<T>>(HttpMethod.Post, $"{Management}{Segment(type)}/{id}/publish", Locale(options), null, null, cancellationToken);
 
     public Task<T> UnpublishAsync<T>(Guid id, WriteOptions? options = null, CancellationToken cancellationToken = default)
         where T : Entry => UnpublishAsync<T>(TypeOf<T>(), id, options, cancellationToken);
 
     public async Task<T> UnpublishAsync<T>(string type, Guid id, WriteOptions? options = null, CancellationToken cancellationToken = default)
         where T : Entry =>
-        (await SendAsync<T>(HttpMethod.Post, $"{Management}{Segment(type)}/{id}/unpublish", Locale(options), null, null, cancellationToken))!;
+        await SendAsync<T>(HttpMethod.Post, $"{Management}{Segment(type)}/{id}/unpublish", Locale(options), null, null, cancellationToken);
 
-    private async Task<TResult?> SendAsync<TResult>(HttpMethod method, string path, ContentQuery? query, JsonObject? body, int? version, CancellationToken cancellationToken)
+    // An answer that names a result: an empty one, a 204 or a literal null is a problem, as a body that is not JSON is.
+    private async Task<TResult> SendAsync<TResult>(HttpMethod method, string path, ContentQuery? query, JsonObject? body, int? version, CancellationToken cancellationToken)
+        where TResult : class
+    {
+        var (status, answer) = await ExchangeAsync(method, path, query, body, version, cancellationToken);
+        if (answer.Length == 0 || status == HttpStatusCode.NoContent)
+        {
+            throw FluentCmsProblemException.NoResult(status, "The answer is empty.");
+        }
+
+        return Read<TResult?>(status, answer) ?? throw FluentCmsProblemException.NoResult(status, "The answer is null.");
+    }
+
+    // A body this client cannot read, such as a page of a proxy, is a problem with no code, as an answer that is not one is.
+    private static TResult Read<TResult>(HttpStatusCode status, byte[] answer)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<TResult>(answer, Json)!;
+        }
+        catch (JsonException exception)
+        {
+            throw FluentCmsProblemException.NotJson(status, exception);
+        }
+    }
+
+    private async Task<(HttpStatusCode Status, byte[] Answer)> ExchangeAsync(HttpMethod method, string path, ContentQuery? query, JsonObject? body, int? version, CancellationToken cancellationToken)
     {
         var queryString = query?.ToQueryString() ?? "";
         var relative = new Uri(queryString.Length == 0 ? path : $"{path}?{queryString}", UriKind.Relative);
@@ -111,26 +144,21 @@ public sealed class FluentCmsClient(HttpClient http)
         using var response = await _http.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            throw FluentCmsProblemException.From(response.StatusCode, await response.Content.ReadAsStringAsync(cancellationToken));
+            throw FluentCmsProblemException.From(response.StatusCode, await response.Content.ReadAsStringAsync(cancellationToken), RetryAfter(response));
         }
 
-        // An empty body answers nothing, whether it says so by its length or ends at once, as a delete does. A body this
-        // client cannot read, such as a page of a proxy, is a problem with no code, as an answer that is not one is.
-        var answer = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-        if (answer.Length == 0 || response.StatusCode == System.Net.HttpStatusCode.NoContent)
-        {
-            return default;
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize<TResult>(answer, Json);
-        }
-        catch (JsonException exception)
-        {
-            throw FluentCmsProblemException.NotJson(response.StatusCode, exception);
-        }
+        return (response.StatusCode, await response.Content.ReadAsByteArrayAsync(cancellationToken));
     }
+
+    // Seconds as the API sends them, or a date, which is read against the Date of the same answer so that no clock of
+    // this process is involved; a date with no Date header gives nothing.
+    private static TimeSpan? RetryAfter(HttpResponseMessage response) =>
+        response.Headers.RetryAfter switch
+        {
+            { Delta: { } delta } => delta,
+            { Date: { } date } when response.Headers.Date is { } now => date > now ? date - now : TimeSpan.Zero,
+            _ => null,
+        };
 
     // The fields of the entry; the system fields are the server's.
     private static JsonObject Body<T>(T entry)
@@ -152,9 +180,15 @@ public sealed class FluentCmsClient(HttpClient http)
 
     private static ContentQuery? Locale(WriteOptions? options) => options?.Locale is { } locale ? new ContentQuery { Locale = locale } : null;
 
+    // . and .. would be removed when the address is resolved and reach another route; every other value is escaped, % too.
     private static string Segment(string value)
     {
         ArgumentException.ThrowIfNullOrEmpty(value);
+        if (value is "." or "..")
+        {
+            throw new ArgumentException($"'{value}' cannot be a path segment.", nameof(value));
+        }
+
         return Uri.EscapeDataString(value);
     }
 
