@@ -547,10 +547,10 @@ internal sealed class AiAssistService(
         return media;
     }
 
-    // The check of PATCH /media/{id}, by its own code: a change that changes nothing writes nothing, and is refused as any
-    // update is, so that an asset outside the caller's folders answers as one that is not there.
+    // The check of PATCH /media/{id}, by the media service's own code, which writes nothing: an asset outside the caller's
+    // folders answers as one that is not there.
     private async Task RequireUpdatableAsync(SiteId site, Guid id, CancellationToken cancellationToken) =>
-        await (await MediaAsync(site, cancellationToken)).UpdateAsync(id, new MediaAssetChanges(), cancellationToken);
+        await (await MediaAsync(site, cancellationToken)).RequireUpdateAsync(id, cancellationToken);
 
     // What an editor needs to offer altText for an asset alone: the media library, and media.read and media.update in some
     // folder. Whether a given asset is one of them is learnt at the call.
@@ -689,7 +689,9 @@ internal sealed class AiAssistService(
         return written;
     }
 
-    private static string Limit(string value, int length) => value.Length <= length ? value : value[..length];
+    // Not through the middle of a surrogate pair, whose lone half a database may refuse to store, as core's activity text cuts.
+    internal static string Limit(string value, int length) =>
+        value.Length <= length ? value : value[..(char.IsHighSurrogate(value[length - 1]) ? length - 1 : length)];
 
     // The caller's connection failed while a piece of the answer was written to it.
     private sealed class CallerGoneException(Exception inner) : Exception("The caller went away.", inner);

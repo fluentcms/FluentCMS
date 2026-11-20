@@ -1,8 +1,16 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
+using FluentCMS.Authorization;
+using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Storage;
+using FluentCMS.Media;
+using FluentCMS.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
+using Role = FluentCMS.Core.Storage.Entities.Role;
+using RoleGrant = FluentCMS.Core.Storage.Entities.RoleGrant;
 using static FluentCMS.Plugins.Media.Tests.MediaHost;
 
 namespace FluentCMS.Plugins.Media.Tests;
@@ -12,6 +20,52 @@ public sealed class MediaMetadataTests(MediaHost media) : IClassFixture<MediaHos
     private static readonly string[] SeaTags = ["sea", "boats", "sea"];
     private static readonly string[] QuotedTags = ["a\"b"];
     private static readonly string[] BeachTags = ["beach"];
+
+    // IMediaService.RequireUpdateAsync makes the check of UpdateAsync and writes nothing (#3418): for each caller and asset
+    // the two refuse alike, and an asset the caller may update is left at its version.
+    [Fact]
+    public async Task RequireUpdateRefusesAsAnUpdateRefusesAndWritesNothing()
+    {
+        using var client = await media.AdminAsync();
+        var open = await FolderAsync(client, Unique("open"));
+        var closed = await FolderAsync(client, Unique("closed"));
+        var reachable = Id((await UploadedAsync(client, open, ("a.jpg", Files.Jpeg(10, 10)))).Single()!);
+        var hidden = Id((await UploadedAsync(client, closed, ("b.jpg", Files.Jpeg(10, 10)))).Single()!);
+        var binned = Id((await UploadedAsync(client, open, ("c.jpg", Files.Jpeg(10, 10)))).Single()!);
+        using (var deleted = await client.DeleteAsync(new Uri($"{Root}/{binned:D}", UriKind.Relative), Token))
+        {
+            deleted.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        }
+
+        var reader = await ActorAsync(("media.read", null));
+        var limited = await ActorAsync(("media.read", null), ("media.update", new PermissionConstraints { Resources = [open.ToString("D")] }));
+        var before = await VersionAsync(client, reachable);
+
+        foreach (var (caller, asset, refusal) in new (TestActor, Guid, string)[]
+        {
+            (reader, reachable, "media.update"),
+            (limited, hidden, MediaErrorCodes.AssetNotFound),
+            (limited, binned, MediaErrorCodes.AssetNotFound),
+            (limited, Guid.CreateVersion7(), MediaErrorCodes.AssetNotFound),
+        })
+        {
+            var checking = await RefusalAsync(() => caller.RunAsync<IMediaService, bool>(async service =>
+            {
+                await service.RequireUpdateAsync(asset, Token);
+                return true;
+            }));
+            var updating = await RefusalAsync(() => caller.RunAsync<IMediaService, MediaAsset>(service => service.UpdateAsync(asset, new MediaAssetChanges { Title = "Changed" }, Token)));
+            checking.ShouldBe(updating);
+            checking.ShouldStartWith(refusal);
+        }
+
+        await limited.RunAsync<IMediaService, bool>(async service =>
+        {
+            await service.RequireUpdateAsync(reachable, Token);
+            return true;
+        });
+        (await VersionAsync(client, reachable)).ShouldBe(before);
+    }
 
     [Fact]
     public async Task MetadataIsChangedAndReadBackWithAltAndCaptionInTheRequestedLocale()
@@ -122,5 +176,46 @@ public sealed class MediaMetadataTests(MediaHost media) : IClassFixture<MediaHos
     {
         using var response = await client.PatchAsJsonAsync(new Uri(path, UriKind.Relative), changes, Token);
         return await JsonAsync(response);
+    }
+
+    // A caller in this process whose role holds these grants alone.
+    private async Task<TestActor> ActorAsync(params (string Permission, PermissionConstraints? Constraints)[] grants)
+    {
+        var role = new Role { Id = Guid.CreateVersion7(), Name = Unique("role") };
+        await using (var scope = media.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            context.Set<Role>().Add(role);
+            context.Set<RoleGrant>().AddRange(grants.Select(grant => new RoleGrant { Id = Guid.CreateVersion7(), RoleId = role.Id, Permission = grant.Permission, Constraints = grant.Constraints?.ToJson() }));
+            await context.SaveChangesAsync(Token);
+        }
+
+        return media.Host.As(await media.Host.CreateApiKeyAsync(ApiKeyClass.Management, role.Name, cancellationToken: Token));
+    }
+
+    private static async Task<string> VersionAsync(HttpClient client, Guid id)
+    {
+        using var response = await client.GetAsync(new Uri($"{Root}/{id:D}", UriKind.Relative), Token);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        return response.Headers.ETag!.Tag;
+    }
+
+    // The refusal of a call, by the permission it needs or the code and message of the plugin.
+    private static async Task<string> RefusalAsync(Func<Task> call)
+    {
+        try
+        {
+            await call();
+        }
+        catch (PermissionDeniedException denied)
+        {
+            return $"{denied.Permission} {denied.Message}";
+        }
+        catch (PluginException refused)
+        {
+            return $"{refused.Code} {refused.Message}";
+        }
+
+        throw new ShouldAssertException("The call was not refused.");
     }
 }

@@ -281,8 +281,8 @@ public sealed class AiActionTests : IClassFixture<AiHost>
     {
         var site = await _ai.SiteAsync();
         using var admin = await _ai.AdminAsync(site);
-        var harbour = await FolderAsync(admin, "harbour");
-        var fields = await FolderAsync(admin, "fields");
+        var harbour = await FolderAsync(admin, $"harbour-{Guid.NewGuid():N}");
+        var fields = await FolderAsync(admin, $"fields-{Guid.NewGuid():N}");
         var image = await UploadAsync(admin, "harbour.png", Picture(40, 20), harbour);
         var missing = Guid.CreateVersion7();
         using var noAi = await _ai.CallerAsync(site, ("media.read", null), ("media.update", null));
@@ -304,6 +304,51 @@ public sealed class AiActionTests : IClassFixture<AiHost>
         _ai.Chat.Calls.ShouldBeEmpty();
         (await _ai.UsageAsync(site)).ShouldBeEmpty();
         (await SuggestAsync(inTheFolder, "altText", new { options = new { mediaId = image } }))["suggestion"]!.GetValue<string>().ShouldBe("A suggestion.");
+    }
+
+    // The check of the asset comes before the call limit: a refused call takes nothing from it, and a caller over the limit
+    // is still refused for an asset it may not update as before, and only then for the limit.
+    [Fact]
+    public async Task AltTextForAnAssetAloneIsCheckedBeforeTheCallLimit()
+    {
+        var site = await _ai.SiteAsync(settings => settings.CallsPerMinute = 1);
+        using var admin = await _ai.AdminAsync(site);
+        var harbour = await FolderAsync(admin, $"harbour-{Guid.NewGuid():N}");
+        var fields = await FolderAsync(admin, $"fields-{Guid.NewGuid():N}");
+        var reachable = await UploadAsync(admin, "harbour.png", Picture(40, 20), harbour);
+        var unreachable = await UploadAsync(admin, "fields.png", Picture(40, 20), fields);
+        using var editor = await _ai.CallerAsync(site, (AiPermissions.Use, null), ("media.read", null), ("media.update", new PermissionConstraints { Resources = [harbour.ToString("D")] }));
+
+        for (var refused = 0; refused < 3; refused++)
+        {
+            using var outside = await ActAsync(editor, "altText", new { options = new { mediaId = unreachable } });
+            (await RefusedAsync(outside, HttpStatusCode.NotFound)).ShouldBe("FCMS1585");
+        }
+
+        await SuggestAsync(editor, "altText", new { options = new { mediaId = reachable } });
+        using var stillOutside = await ActAsync(editor, "altText", new { options = new { mediaId = unreachable } });
+        using var over = await ActAsync(editor, "altText", new { options = new { mediaId = reachable } });
+
+        (await RefusedAsync(stillOutside, HttpStatusCode.NotFound)).ShouldBe("FCMS1585");
+        (await RefusedAsync(over, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1687");
+        _ai.Chat.Calls.ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task AltTextForAnAssetAloneNeedsTheMediaLibraryAndAnImage()
+    {
+        var site = await _ai.SiteAsync();
+        using var admin = await _ai.AdminAsync(site);
+        var image = await UploadAsync(admin, "harbour.png", Picture(40, 20));
+        var document = await UploadAsync(admin, "notes.pdf", "%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n"u8.ToArray());
+
+        using var notAnImage = await ActAsync(admin, "altText", new { options = new { mediaId = document } });
+        await _ai.SetEnabledAsync("media", site, false);
+        using var noLibrary = await ActAsync(admin, "altText", new { options = new { mediaId = image } });
+
+        (await RefusedAsync(notAnImage, HttpStatusCode.UnprocessableEntity)).ShouldBe("FCMS1691");
+        (await RefusedAsync(noLibrary, HttpStatusCode.UnprocessableEntity)).ShouldBe("FCMS1691");
+        _ai.Chat.Calls.ShouldBeEmpty();
     }
 
     [Fact]

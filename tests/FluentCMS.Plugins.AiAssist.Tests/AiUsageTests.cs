@@ -159,11 +159,11 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
         newest["createdAt"]!.GetValue<DateTimeOffset>().ShouldBe(later);
         Totals(all).ShouldBe((4, 30, 9));
         var (adminId, editorId) = (_ai.PrincipalOf(admin), _ai.PrincipalOf(editor));
-        Groups(all).ShouldBe([("apiKey", adminId, "rewrite", 1, 10, 3), ("apiKey", editorId, "rewrite", 1, 10, 3), ("apiKey", editorId, "shorten", 2, 10, 3)], ignoreOrder: true);
+        Groups(all).ShouldBe(InOrder([("apiKey", editorId, "shorten", 2, 10, 3), ("apiKey", adminId, "rewrite", 1, 10, 3), ("apiKey", editorId, "rewrite", 1, 10, 3)]));
 
         ofEditor["total"]!.GetValue<long>().ShouldBe(3);
         Totals(ofEditor).ShouldBe((3, 20, 6));
-        Groups(ofEditor).ShouldBe([("apiKey", editorId, "rewrite", 1, 10, 3), ("apiKey", editorId, "shorten", 2, 10, 3)], ignoreOrder: true);
+        Groups(ofEditor).ShouldBe([("apiKey", editorId, "rewrite", 1, 10, 3), ("apiKey", editorId, "shorten", 2, 10, 3)]);
         shortened["total"]!.GetValue<long>().ShouldBe(2);
         Totals(shortened).ShouldBe((2, 10, 3));
         since["items"]!.AsArray().Select(item => item!["action"]!.GetValue<string>()).ShouldBe(["shorten", "shorten"]);
@@ -233,6 +233,23 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
                 ignoreOrder: true);
     }
 
+    // A name past the column is cut, and never between the two halves of a surrogate pair, which PostgreSQL would refuse.
+    [Fact]
+    public async Task ANameLongerThanTheColumnIsCutOutsideASurrogatePair()
+    {
+        var site = await _ai.SiteAsync();
+        var user = await _ai.Host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token);
+        var kept = new string('a', AiUsageModel.PrincipalNameMaxLength - 1);
+        var named = user with { Principal = new Principal(PrincipalKind.AdminUser, user.Id, kept + "\U0001F6A2 and more", user.Principal.Claims) };
+
+        await _ai.Host.As(named).In(new SiteId(site)).RunAsync<AiAssistService, AiActionResult>(async ai =>
+            await ai.RunAsync(await ai.PrepareAsync("title", new AiActionRequest("article", "summary", null, "Ships are big boats.", null, null), Token), null, Token));
+
+        (await _ai.UsageAsync(site)).ShouldHaveSingleItem().PrincipalName.ShouldBe(kept);
+        AiAssistService.Limit(kept + "\U0001F6A2", AiUsageModel.PrincipalNameMaxLength).ShouldBe(kept);
+        AiAssistService.Limit(kept + "b\U0001F6A2", AiUsageModel.PrincipalNameMaxLength).ShouldBe(kept + "b");
+    }
+
     private static HttpClient InSite(HttpClient client, Guid site)
     {
         client.DefaultRequestHeaders.Add("X-Cms-Site", site.ToString());
@@ -247,6 +264,10 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
 
     private static (long Calls, long PromptTokens, long CompletionTokens) Totals(JsonNode page) =>
         (page["totals"]!["calls"]!.GetValue<long>(), page["totals"]!["promptTokens"]!.GetValue<long>(), page["totals"]!["completionTokens"]!.GetValue<long>());
+
+    // By kind, id and action, as the answer orders them.
+    private static List<(string Kind, Guid Principal, string Action, long Calls, long PromptTokens, long CompletionTokens)> InOrder(List<(string Kind, Guid Principal, string Action, long Calls, long PromptTokens, long CompletionTokens)> groups) =>
+        [.. groups.OrderBy(group => group.Kind, StringComparer.Ordinal).ThenBy(group => group.Principal).ThenBy(group => group.Action, StringComparer.Ordinal)];
 
     private static List<(string Kind, Guid Principal, string Action, long Calls, long PromptTokens, long CompletionTokens)> Groups(JsonNode page) =>
         [.. page["totals"]!["groups"]!.AsArray().Select(group => (

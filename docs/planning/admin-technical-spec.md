@@ -769,9 +769,9 @@ Service accounts are clients from configuration and are neither listed nor chang
 | Contribution | What | Endpoints | Status |
 | --- | --- | --- | --- |
 | Field action on text, long text and rich text fields | a menu of the actions (rewrite, shorten, expand, fix grammar, title, summary, SEO, translate) on the fields the site opted in; the suggestion streams into a panel and is inserted into the draft only when the user accepts it, never saved or published by the action | `POST /ai/actions/{action}` (JSON or `text/event-stream`) | exists |
-| Field action on media fields and in the library | alt text for an image, a suggestion for the asset's own alt text in the locale shown, saved with `PATCH /media/{id}` only when the user accepts it; offered where the caller may update the asset | `POST /ai/actions/altText` with `options.mediaId` and no `type` and `field` | [#3418] |
-| Which fields take actions, and whether AI assist is on | so that the actions appear only where they work; `assets` says whether alt text may be asked for an asset alone | `GET /ai/fields` | [#3101], [#3418] |
-| Page `/ai/usage` | usage per user and action: each row names its principal by kind and the name it had at the call (`principalName`), and the totals of the filter come in all and per principal and action (`totals.groups`, by kind and id) | `GET /ai/usage` (`ai.usage.read`) | exists, [#3418] |
+| Field action on media fields and in the library | alt text for an image, a suggestion for the asset's own alt text in the locale shown, saved with `PATCH /media/{id}` only when the user accepts it; offered where the caller may update the asset | `POST /ai/actions/altText` with `options.mediaId` and no `type` and `field` | exists |
+| Which fields take actions, and whether AI assist is on | so that the actions appear only where they work; `assets` says whether alt text may be asked for an asset alone | `GET /ai/fields` | [#3101] |
+| Page `/ai/usage` | usage per user and action: each row names its principal by kind and the name it had at the call (`principalName`), and the totals of the filter come in all and per principal and action (`totals.groups`, by kind and id) | `GET /ai/usage` (`ai.usage.read`) | exists |
 | Settings page for `ai` | provider, model, endpoint, key as a secret, opted-in fields | `/settings/ai` | exists |
 
 Waits for #3101 and #3103 (`ai.use` for the built-in roles); its contract tests need #3104.
@@ -1171,4 +1171,3 @@ The draft asked sixteen questions, each with a recommendation. All were decided 
 [#3367]: https://github.com/fluentcms/FluentCMS/issues/3367
 [#3368]: https://github.com/fluentcms/FluentCMS/issues/3368
 [#3369]: https://github.com/fluentcms/FluentCMS/issues/3369
-[#3418]: https://github.com/fluentcms/FluentCMS/issues/3418
