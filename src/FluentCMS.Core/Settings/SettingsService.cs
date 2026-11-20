@@ -220,9 +220,9 @@ internal sealed class SettingsService(
     }
 
     // For an import: a document without secrets, which keep what the site has, as a write that leaves them out does; a secret
-    // that a package names anyway is left out, so a package never sets one. A secret the class requires is checked with the
-    // value of the site's own row, and an area whose site's row does not hold it is refused, since a package never carries it
-    // and no value is made up for it. The same document as the site's is no write. A dry run checks the document and writes
+    // that a package names anyway is left out, so a package never sets one. The document is checked with the secrets of the
+    // site's own row, and an area whose class requires a secret that row does not hold is refused, since a package never
+    // carries it and no value is made up for it. The same document as the site's is no write. A dry run checks the document and writes
     // nothing. The caller who started the import needs settings.{area}.manage in the site, as a write of its own would; the
     // write itself is the import's.
     public async Task<TransferOutcome> ImportAsync(string area, SiteId site, string json, bool dryRun, OperationContext caller, CancellationToken cancellationToken)
@@ -261,16 +261,16 @@ internal sealed class SettingsService(
         return stored is null ? TransferOutcome.Created : TransferOutcome.Updated;
     }
 
-    // The document with each secret the class requires as the site's own row holds it, which the write keeps; refused when the
-    // row does not hold one, naming the key and never a value.
+    // The document with the secrets of the site's own row, as the write keeps them, and never those of the instance; refused
+    // when the class requires a secret that the row holds no value for, naming the key and never a value.
     private static string WithRequiredSecrets(SettingsDescriptor descriptor, string document, string? own)
     {
+        var filled = descriptor.KeepSecrets(document, own, out _);
         if (descriptor.RequiredSecretKeys.Count == 0)
         {
-            return document;
+            return filled;
         }
 
-        var filled = descriptor.KeepSecrets(document, own, out _);
         JsonObject? probe;
         try
         {
@@ -286,7 +286,7 @@ internal sealed class SettingsService(
             return document;
         }
 
-        var missing = descriptor.RequiredSecretKeys.Order(StringComparer.Ordinal).Where(key => !probe.ContainsKey(key)).ToList();
+        var missing = descriptor.RequiredSecretKeys.Order(StringComparer.Ordinal).Where(key => probe[key] is null).ToList();
         if (missing.Count > 0)
         {
             throw new ValidationException([.. missing.Select(key => new ValidationError(

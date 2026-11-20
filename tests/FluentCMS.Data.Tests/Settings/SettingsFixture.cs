@@ -65,6 +65,16 @@ internal sealed class RequiredSecret
     public string Name { get; set; } = "n";
 }
 
+[Settings("required-attribute-secret")]
+internal sealed class RequiredAttributeSecret
+{
+    [Required]
+    [SettingsSecret]
+    public string? ApiKey { get; set; }
+
+    public string Name { get; set; } = "n";
+}
+
 [Settings("required-and-account")]
 internal sealed class RequiredSecretAndAccount
 {

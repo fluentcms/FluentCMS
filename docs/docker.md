@@ -235,7 +235,7 @@ The same image runs the commands that administer the instance, as the system, wi
 | `fluentcms jobs list [--queue <name>] [--status <status>]`, `fluentcms jobs retry <id>` | lists the newest jobs, queues a dead-lettered one again |
 | `fluentcms jobs run <name> [--inline]` | queues a run of a recurring job, or runs it in the command's process with one attempt |
 | `fluentcms seed [--name <seeder>]` | runs the seeders that are not applied at their version |
-| `fluentcms settings reprotect` | protects every stored secret setting again under the current key ring key, before a ring key or certificate is retired; a row it cannot unprotect is left as it is and named (`FCMS3308`) |
+| `fluentcms settings reprotect` | protects every stored secret setting again under the current key ring key, before an older ring key is revoked or deleted (replacing the key ring certificate needs a host that reads the ring with both certificates, see [before production](#before-production)); a row it cannot unprotect is left as it is and named (`FCMS3308`) |
 
 List commands print a table, and one line of JSON in the shape of the Management API with `--json`. The invitation and reset emails link to `FluentCms__PublicOrigin`, which these commands need (`FCMS3354` otherwise). Set `Logging__Console__LogToStandardErrorThreshold=Trace` so that standard output holds only what the command prints, such as the key of `apikey create`. What a command writes to the activity log reaches it through the outbox, which a running instance delivers.
 

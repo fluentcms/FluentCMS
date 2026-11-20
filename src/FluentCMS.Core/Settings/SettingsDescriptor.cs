@@ -28,7 +28,8 @@ internal sealed class SettingsDescriptor
         var properties = SettingsJson.Strict.GetTypeInfo(type).Properties.Where(property => property.Get is not null && property.Set is not null).ToList();
         KnownKeys = properties.Select(property => property.Name).ToFrozenSet(StringComparer.Ordinal);
         SecretKeys = properties.Where(IsSecret).Select(property => property.Name).ToFrozenSet(StringComparer.Ordinal);
-        RequiredSecretKeys = properties.Where(property => property.IsRequired && IsSecret(property)).Select(property => property.Name).ToFrozenSet(StringComparer.Ordinal);
+        RequiredSecretKeys = properties.Where(property => IsSecret(property) && (property.IsRequired || (property.AttributeProvider?.IsDefined(typeof(System.ComponentModel.DataAnnotations.RequiredAttribute), inherit: true) ?? false)))
+            .Select(property => property.Name).ToFrozenSet(StringComparer.Ordinal);
         _secretProperties = properties.Where(IsSecret).ToFrozenDictionary(
             property => property.Name,
             property => (property.AttributeProvider as MemberInfo)?.Name ?? property.Name,
@@ -56,7 +57,7 @@ internal sealed class SettingsDescriptor
     // The keys whose values are never put in an event, an activity row, a log line or a schema.
     public IReadOnlySet<string> SecretKeys { get; }
 
-    // The secret keys that the class cannot read a document without, such as one marked [JsonRequired].
+    // The secret keys that a document must hold a value for, marked [JsonRequired] or [Required].
     public IReadOnlySet<string> RequiredSecretKeys { get; }
 
     // The name in C# of a secret key, which is how ISettings<T> names it.

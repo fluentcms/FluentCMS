@@ -375,6 +375,24 @@ public sealed class SettingsProtectionTests
         database.Rows().ShouldHaveSingleItem().SiteId.ShouldBeNull();
     }
 
+    [Fact]
+    public async Task AnImportOfAnAreaWithASecretRequiredByAnAttributeUsesTheSitesOwnValueOrIsRefused()
+    {
+        using var database = new SettingsDatabase(cms => cms.Settings.Add<RequiredAttributeSecret>());
+        await WriteAsync(database, null, """{"name":"i","apiKey":"instance-key"}""", "required-attribute-secret");
+        await WriteAsync(database, SiteA, """{"name":"a","apiKey":"site-key"}""", "required-attribute-secret");
+
+        (await ImportAsync(database, "required-attribute-secret", SiteA, """{"name":"imported"}""")).ShouldBe(TransferOutcome.Updated);
+        var read = await database.AsAsync(Admin, async (IServiceProvider services) => await services.GetRequiredService<ISettings<RequiredAttributeSecret>>().GetAsync(SiteA, Token));
+        (read.Name, read.ApiKey).ShouldBe(("imported", "site-key"));
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(database, "required-attribute-secret", SiteB, $$"""{"name":"imported","apiKey":"{{Secret}}"}"""));
+        var error = refused.Errors.ShouldHaveSingleItem();
+        (error.Path, error.Code).ShouldBe(("apiKey", "FCMS2805"));
+        error.Message.ShouldNotContain(Secret);
+        database.Rows().ShouldNotContain(row => row.SiteId == SiteB.Value);
+    }
+
     // A reset of the site's area lands after the import has checked the site's row and before it writes.
     [Fact]
     public async Task AnImportOfAnAreaThatRequiresASecretChecksTheRowItWritesOver()
