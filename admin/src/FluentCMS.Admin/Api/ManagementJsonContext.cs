@@ -19,6 +19,7 @@ namespace FluentCMS.Admin.Api;
 [JsonSerializable(typeof(ItemList<EntryVersionInfo>))]
 [JsonSerializable(typeof(VersionDiffInfo))]
 [JsonSerializable(typeof(ScheduleAnswer))]
+[JsonSerializable(typeof(PreviewTokenAnswer))]
 [JsonSerializable(typeof(ItemList<MySession>))]
 [JsonSerializable(typeof(MyTwoFactor))]
 [JsonSerializable(typeof(AuthenticatorSetup))]

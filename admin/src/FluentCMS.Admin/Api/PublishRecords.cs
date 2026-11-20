@@ -35,3 +35,14 @@ internal sealed record ScheduleAnswer
 
     public string? TimeZone { get; init; }
 }
+
+// The answer of POST .../preview-token (#3099): the front end's page of the draft with the token in it, the published page,
+// null while the locale was never published, and when the token ends. The token is read only as part of the URL.
+internal sealed record PreviewTokenAnswer
+{
+    public string? Url { get; init; }
+
+    public string? PublishedUrl { get; init; }
+
+    public DateTimeOffset ExpiresAt { get; init; }
+}

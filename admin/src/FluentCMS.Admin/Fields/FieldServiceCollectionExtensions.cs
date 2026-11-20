@@ -1,5 +1,6 @@
 using FluentCMS.Admin.Actions;
 using FluentCMS.Admin.Content;
+using FluentCMS.Admin.Interop;
 using FluentCMS.Admin.Lists;
 using FluentCMS.Admin.Pickers;
 using FluentCMS.Admin.Plugins;
@@ -44,6 +45,7 @@ internal static class FieldServiceCollectionExtensions
         services.TryAddScoped<IRelationPicker, RelationPickerService>();
         services.TryAddScoped<BulkProgressService>();
         services.TryAddScoped<IBulkProgressService>(provider => provider.GetRequiredService<BulkProgressService>());
+        services.TryAddScoped<PreviewInterop>();
         services.TryAddScoped<BulkRunner>();
         services.TryAddScoped(provider =>
         {

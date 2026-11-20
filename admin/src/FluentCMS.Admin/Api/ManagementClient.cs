@@ -222,6 +222,20 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
     public async Task CancelScheduleAsync(string type, Guid id, string action, string? site, string? locale, CancellationToken cancellationToken) =>
         await api.SendAsync(Pinned(HttpMethod.Delete, $"{Entry(type, id)}/schedule/{Uri.EscapeDataString(action)}", site, locale), cancellationToken);
 
+    // A token of the default lifetime for the draft of the entry in the site and locale of the read; tokenLocale binds it to
+    // one locale, and is null for a type that is not localized.
+    public async Task<PreviewTokenAnswer> MintPreviewTokenAsync(string type, Guid id, string? site, string? locale, string? tokenLocale, CancellationToken cancellationToken)
+    {
+        var body = new JsonObject();
+        if (tokenLocale is not null)
+        {
+            body["locale"] = tokenLocale;
+        }
+
+        var request = Pinned(HttpMethod.Post, $"{Entry(type, id)}/preview-token", site, locale, body);
+        return (await api.SendAsync(request, Json.PreviewTokenAnswer, cancellationToken)).Value;
+    }
+
     // The entry as it is now, which a 412 of a save holds, as a read in the site and locale of the save; its version is the
     // tag a save on it sends. Null when the answer holds none that reads.
     public static EntryRead? CurrentOf(ApiProblem problem, EntryRead basedOn)

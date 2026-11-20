@@ -44,7 +44,7 @@ internal static class AdminConfigurationLoader
             return Unreadable(null);
         }
 
-        return AdminConfigurationReader.Read(json);
+        return AdminConfigurationReader.Read(json, http.BaseAddress?.GetLeftPart(UriPartial.Authority));
     }
 
     private static AdminStartup Unreadable(int? statusCode) =>

@@ -23,7 +23,7 @@ internal static class ConfigurationTexts
         ConfigurationRule.HttpUrl or ConfigurationRule.UrlOrPath or ConfigurationRule.Origin or ConfigurationRule.HexColor
             or ConfigurationRule.Text or ConfigurationRule.ClientId or ConfigurationRule.ScopeList or ConfigurationRule.CultureName
             or ConfigurationRule.CultureList or ConfigurationRule.DefaultCultureOffered or ConfigurationRule.OriginList
-            or ConfigurationRule.Object => $"Configuration.Error.Rule{rule}",
+            or ConfigurationRule.NotAdminOrigin or ConfigurationRule.Object => $"Configuration.Error.Rule{rule}",
         _ => "Configuration.Error.RuleInvalid",
     };
 }
