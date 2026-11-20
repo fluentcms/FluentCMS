@@ -37,8 +37,9 @@ internal sealed record ScheduleAnswer
 }
 
 // The answer of POST .../preview-token (#3099): the front end's page of the draft with the token in it, the published page,
-// null while the locale was never published, and when the token ends. The token itself is read only to keep it out of an
-// address the pane shows.
+// null while the locale was never published, and when the token ends by the server's clock, with the server's clock when it
+// answered (its Date header, when the browser exposes it). The token itself is read only to keep it out of an address the
+// pane shows.
 internal sealed record PreviewTokenAnswer
 {
     public string? Token { get; init; }
@@ -48,4 +49,7 @@ internal sealed record PreviewTokenAnswer
     public string? PublishedUrl { get; init; }
 
     public DateTimeOffset ExpiresAt { get; init; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public DateTimeOffset? AnsweredAt { get; init; }
 }

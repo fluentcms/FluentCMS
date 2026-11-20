@@ -70,6 +70,9 @@ internal sealed class FakeContent
 
     public TimeSpan PreviewLifetime { get; set; } = TimeSpan.FromMinutes(10);
 
+    // The server's clock for a preview token, sent as the answer's Date while set; the browser's clock while not, with no Date.
+    public DateTimeOffset? PreviewClock { get; set; }
+
     public int PreviewMints { get; private set; }
 
     // A mint is refused while set.
@@ -182,13 +185,15 @@ internal sealed class FakeContent
             }
 
             var (url, publishedUrl) = Preview?.Invoke(previewedId, write.Body["locale"]?.GetValue<string>()) ?? (null, null);
-            return FakeManagementServer.Json(new JsonObject
+            var token = FakeManagementServer.Json(new JsonObject
             {
                 ["token"] = $"token-{minted}",
-                ["expiresAt"] = DateTimeOffset.UtcNow + PreviewLifetime,
+                ["expiresAt"] = (PreviewClock ?? DateTimeOffset.UtcNow) + PreviewLifetime,
                 ["url"] = url?.Replace("{token}", $"token-{minted}", StringComparison.Ordinal),
                 ["publishedUrl"] = publishedUrl,
             });
+            token.Headers.Date = PreviewClock;
+            return token;
         }
 
         if (request.Method == HttpMethod.Post && rest is [])

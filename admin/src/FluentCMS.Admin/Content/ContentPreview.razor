@@ -75,12 +75,17 @@
 
     private static readonly TimeSpan ReadyWait = TimeSpan.FromSeconds(5);
 
+    // The lifetime the mint asks for by asking for none, which the token's end is taken from when the answer has no Date.
+    private static readonly TimeSpan DefaultLifetime = TimeSpan.FromMinutes(10);
+
     private ElementReference pane;
     private IAsyncDisposable? listening;
     // The frame is drawn once the pane listens, so that the page's ready is not posted before.
     private bool listened;
     private bool disposed;
     private PreviewTokenAnswer? answer;
+    // When the answer's token ends by the browser's clock.
+    private DateTimeOffset? answerDeadline;
     // A mint failed after the answer was taken, so the published page it offers may have come or gone.
     private bool stale;
     // Each mint takes the next number, and only the answer of the last one started is used.
@@ -92,8 +97,10 @@
     private bool refreshFailed;
     private string? frameUrl;
     private string? frameOrigin;
-    // When the token of the page in the frame ends, and the token; null for the published page, which needs none.
-    private DateTimeOffset? frameExpires;
+    // The frame holds the draft; when its token ends by the browser's clock, and the token; null for the published page,
+    // which needs none.
+    private bool frameDraft;
+    private DateTimeOffset? frameDeadline;
     private string? frameToken;
     private int frameLoad;
     private int readyWaits;
@@ -156,10 +163,10 @@
 
     private bool Framed => frameUrl is not null && listened;
 
-    private bool Expired(DateTimeOffset? at) => at is { } end && end - ReuseMargin <= Time.GetUtcNow();
+    private bool Expired(DateTimeOffset? deadline) => deadline is { } end && end - ReuseMargin <= Time.GetUtcNow();
 
     // The answer has the page to show, and the token in it still lasts.
-    private bool Loadable => answer is not null && (showingPublished ? answer.PublishedUrl is not null : !Expired(answer.ExpiresAt));
+    private bool Loadable => answer is not null && (showingPublished ? answer.PublishedUrl is not null : !Expired(answerDeadline));
 
     // The pane takes focus as it opens, so that it is where the reading goes on.
     public ValueTask FocusAsync() => pane.FocusAsync();
@@ -169,7 +176,7 @@
     {
         disposed = true;
         frameLoad++;
-        (answer, frameUrl, frameToken) = (null, null, null);
+        (answer, answerDeadline, frameUrl, frameToken) = (null, null, null, null);
         if (listening is not null)
         {
             await listening.DisposeAsync();
@@ -180,7 +187,10 @@
     {
         if (shown != (Type, EntryId, Site, Locale))
         {
-            (shown, saved, showingPublished, answer, stale) = ((Type, EntryId, Site, Locale), (Version, Status), false, null, false);
+            // The page of the earlier entry or locale goes at once, with its token.
+            (shown, saved, showingPublished, answer, answerDeadline, stale) = ((Type, EntryId, Site, Locale), (Version, Status), false, null, null, false);
+            (frameUrl, frameOrigin, frameToken, frameDeadline, frameDraft) = (null, null, null, null, false);
+            (ready, readySinceLoad, silent, navigated) = (false, false, false, null);
             await ShowAsync(mint: true);
         }
         else if (saved != (Version, Status))
@@ -241,7 +251,8 @@
             return;
         }
 
-        if (!showingPublished && ready && !Expired(frameExpires) && frameOrigin is not null)
+        // A frame that holds the published page is loaded again, the draft after an unpublish.
+        if (frameDraft && !showingPublished && ready && !Expired(frameDeadline) && frameOrigin is not null)
         {
             try
             {
@@ -302,6 +313,7 @@
     private async Task<Mint> MintAsync()
     {
         var mint = ++mints;
+        var sent = Time.GetUtcNow();
         try
         {
             var minted = await Client.MintPreviewTokenAsync(Type, EntryId, Site, Locale, TokenLocale, CancellationToken.None);
@@ -310,7 +322,7 @@
                 return Mint.Dropped;
             }
 
-            (answer, stale) = (minted, false);
+            (answer, answerDeadline, stale) = (minted, DeadlineOf(minted, sent), false);
             showingPublished &= minted.PublishedUrl is not null;
             return Mint.Applied;
         }
@@ -326,6 +338,15 @@
         }
     }
 
+    // The server checks a token's end by its own clock, which the browser's may be behind or ahead of; so the end is counted
+    // on the browser's clock from when the mint was sent, by the time the token had left by the server's clock when it
+    // answered, or, when the browser does not expose the answer's Date, by what is left of the lifetime asked for at most.
+    private static DateTimeOffset DeadlineOf(PreviewTokenAnswer minted, DateTimeOffset sent)
+    {
+        var left = minted.AnsweredAt is { } answered ? minted.ExpiresAt - answered : minted.ExpiresAt - sent;
+        return sent + (minted.AnsweredAt is null && left > DefaultLifetime ? DefaultLifetime : left);
+    }
+
     private void Load()
     {
         var url = showingPublished ? answer?.PublishedUrl : answer?.Url;
@@ -336,7 +357,7 @@
             || !Configuration.PreviewOrigins.Any(allowed => PreviewMessages.OriginOf(allowed) == origin)
             || origin == PreviewMessages.OriginOf(Navigation.BaseUri));
         (frameUrl, frameOrigin) = missing || refused ? (null, null) : (uri!.AbsoluteUri, origin);
-        (frameExpires, frameToken) = showingPublished ? (null, null) : (answer?.ExpiresAt, answer?.Token);
+        (frameDraft, frameDeadline, frameToken) = showingPublished ? (false, null, null) : (true, answerDeadline, answer?.Token);
         (ready, readySinceLoad, silent, navigated, failed, refreshFailed) = (false, false, false, null, false, false);
         ++frameLoad;
         RestartReadyWait();

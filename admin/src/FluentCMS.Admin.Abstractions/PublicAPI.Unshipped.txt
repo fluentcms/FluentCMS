@@ -125,6 +125,8 @@ FluentCMS.Admin.Api.ApiRequest.Site.init -> void
 FluentCMS.Admin.Api.ApiResponse
 FluentCMS.Admin.Api.ApiResponse.ApiResponse(System.Net.HttpStatusCode status, string? entityTag) -> void
 FluentCMS.Admin.Api.ApiResponse.EntityTag.get -> string?
+FluentCMS.Admin.Api.ApiResponse.Date.get -> System.DateTimeOffset?
+FluentCMS.Admin.Api.ApiResponse.Date.init -> void
 FluentCMS.Admin.Api.ApiResponse.Location.get -> System.Uri?
 FluentCMS.Admin.Api.ApiResponse.Location.init -> void
 FluentCMS.Admin.Api.ApiResponse.Status.get -> System.Net.HttpStatusCode

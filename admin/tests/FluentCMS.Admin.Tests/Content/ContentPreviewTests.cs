@@ -319,6 +319,64 @@ public sealed class ContentPreviewTests : AdminTestContext
         _preview.Invocations.Count(call => call.Identifier == "post").ShouldBe(1);
     }
 
+    // An unpublish while the pane shows the published page leaves no published page: the draft is loaded, with a new token,
+    // and the page that said ready is not told to refresh.
+    [Fact]
+    public void AnUnpublishWhileThePublishedPageIsShownLoadsTheDraft()
+    {
+        _content.Preview = (id, _) => ($"{FrontEnd}/posts/{id:D}?preview={{token}}", _content.Status(id) == "published" ? $"{FrontEnd}/posts/{id:D}" : null);
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" }, status: "published");
+        var app = Open(Load($"content/post/{id:D}"));
+        app.InvokeAsync(() => Published(app).Instance.ValueChanged.InvokeAsync(true));
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}"));
+        Post(app, FrontEnd, Message("ready"));
+        app.WaitForAssertion(() => Pane(app).GetAttribute("data-ready").ShouldBe("true"));
+
+        ToolbarButton(app, "Unpublish").Click();
+        var dialog = app.FindComponents<CmsDialog>().Single(found => found.Instance.Title == "Unpublish this entry?");
+        dialog.FindAll("fluent-button").Single(button => button.TextContent.Trim() == "Unpublish").Click();
+
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
+        Published(app).Instance.Value.ShouldBeFalse();
+        _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
+    }
+
+    // The server checks a token's end by its own clock. With the browser's five minutes behind, the token is ending after
+    // nine and a half minutes by the browser's clock too, so a save mints again instead of refreshing a page whose token the
+    // server would refuse.
+    [Fact]
+    public void ATokenEndsByTheServersClockWhenTheBrowsersIsBehind()
+    {
+        var server = _time.Now;
+        (_content.PreviewClock, _time.Now) = (server, server - TimeSpan.FromMinutes(5));
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Post(app, FrontEnd, Message("ready"));
+        _time.Advance(TimeSpan.FromSeconds(570));
+
+        SaveChanged(app);
+
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
+        _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
+    }
+
+    // With the browser's clock nine and a half minutes ahead, a fresh token is not taken for an ending one, so a save
+    // refreshes the page with no mint.
+    [Fact]
+    public void ATokenEndsByTheServersClockWhenTheBrowsersIsAhead()
+    {
+        var server = _time.Now;
+        (_content.PreviewClock, _time.Now) = (server, server + TimeSpan.FromSeconds(570));
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Post(app, FrontEnd, Message("ready"));
+
+        SaveChanged(app);
+
+        app.WaitForAssertion(() => _preview.Invocations.Count(call => call.Identifier == "post").ShouldBe(1));
+        _content.PreviewMints.ShouldBe(1);
+    }
+
     // The toggle keeps its name and says by aria-expanded whether the pane is open; the pane's own Close has a name of its
     // own. Opening moves focus to the pane, which comes after the form in the page as on the screen, and closing the pane by
     // its Close puts it back on the toggle.
@@ -453,6 +511,27 @@ public sealed class ContentPreviewTests : AdminTestContext
         _content.PreviewUnavailable = false;
         Button(app, "Reload").Click();
         app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-4"));
+    }
+
+    // The published switch mints after a failed mint, as Reload does, and keeps the frame when that mint fails too, showing the
+    // published page of the answer it has.
+    [Fact]
+    public void AFailedMintKeepsTheFrameOnASwitchToThePublishedPage()
+    {
+        _content.Preview = (id, _) => ($"{FrontEnd}/posts/{id:D}?preview={{token}}", $"{FrontEnd}/posts/{id:D}");
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" }, status: "published");
+        var app = Open(Load($"content/post/{id:D}"));
+        _content.PreviewUnavailable = true;
+
+        // The save makes the published locale modified: a change of status, so it mints, and that fails.
+        SaveChanged(app);
+        app.WaitForAssertion(() => _content.PreviewMints.ShouldBe(2));
+        app.InvokeAsync(() => Published(app).Instance.ValueChanged.InvokeAsync(true));
+
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}"));
+        _content.PreviewMints.ShouldBe(3);
+        app.FindAll(".content-preview > .content-preview-notice").ShouldBeEmpty();
+        Assertive(app).ShouldBeEmpty();
     }
 
     // The mint of a save is answered after the mint of a later Reload; the Reload's answer stays.
@@ -608,6 +687,43 @@ public sealed class ContentPreviewTests : AdminTestContext
         Post(app, FrontEnd, Message("navigated", url: $"{FrontEnd}/preview/token-1/about"));
 
         app.WaitForAssertion(() => Notices(app).ShouldBe([$"Showing {FrontEnd}/preview/…/about"]));
+    }
+
+    // Another entry on the same pane drops the page shown at once, before its own mint answers.
+    [Fact]
+    public async Task AnotherEntryDropsThePageShownAtOnce()
+    {
+        Start(Previewing);
+        var (first, second) = (_content.Add("post", new JsonObject { ["title"] = "Hello" }), _content.Add("post", new JsonObject { ["title"] = "World" }));
+        var pane = Render<ContentPreview>(parameters => parameters.Add(p => p.Type, "post").Add(p => p.EntryId, first).Add(p => p.Version, 1));
+        pane.WaitForAssertion(() => pane.Find("iframe").GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{first:D}?preview=token-1"));
+        var held = new TaskCompletionSource();
+        Management.HoldPath = path => path.Contains("/preview-token", StringComparison.Ordinal) ? held.Task : null;
+
+        pane.Render(parameters => parameters.Add(p => p.EntryId, second));
+
+        pane.WaitForAssertion(() => pane.FindAll("iframe").ShouldBeEmpty());
+        pane.Find(".content-preview-notices").TextContent.Trim().ShouldBe("Loading the preview\u2026");
+        await pane.InvokeAsync(held.SetResult);
+        pane.WaitForAssertion(() => pane.Find("iframe").GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{second:D}?preview=token-2"));
+    }
+
+    // The form keeps a reference to a closed pane, which holds no token or address of it then.
+    [Fact]
+    public async Task AClosedPaneLetsGoOfItsTokenAndAddress()
+    {
+        Start(Previewing);
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var pane = Render<ContentPreview>(parameters => parameters.Add(p => p.Type, "post").Add(p => p.EntryId, id).Add(p => p.Version, 1));
+        pane.WaitForAssertion(() => pane.Find("iframe"));
+        var instance = pane.Instance;
+
+        await DisposeComponentsAsync();
+
+        foreach (var name in (string[])["answer", "frameUrl", "frameToken"])
+        {
+            typeof(ContentPreview).GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(instance).ShouldBeNull(name);
+        }
     }
 
     // Each load starts the five seconds again, and the wait of an earlier load counts for nothing.

@@ -145,7 +145,10 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
         await Expect(pane.Locator(".content-preview-notice")).ToHaveTextAsync(Repository.AdminText("Content.Preview.Silent"));
         Volatile.Read(ref loads).ShouldBe(2);
 
-        await SaveAsync(tab, id);
+        // The save is waited for by what it does to the page, the frame loaded again: after the frame's own navigation the
+        // browser did not always report the answer to the save, which the form had shown as saved.
+        await tab.Page.Locator("[data-field='title'] input").FillAsync($"Changed {Mark}");
+        await Ui.PressAsync(Ui.ButtonIn(tab.Page.Locator(".content-form-toolbar"), Repository.AdminText("Content.Form.Save")), "Enter");
 
         await Expect(page.Locator("#state")).ToHaveTextAsync("ready");
         Volatile.Read(ref loads).ShouldBe(3);
