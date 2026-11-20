@@ -27,6 +27,7 @@ public class McpClientContractTests
         policy.MaxPendingClients.ShouldBe(100);
         policy.RegistrationsPerHour.ShouldBe(10);
         policy.MaxClients.ShouldBe(1000);
+        policy.MaxConsentsPerUser.ShouldBe(20);
     }
 
     [Fact]

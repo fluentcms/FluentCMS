@@ -42,6 +42,11 @@ public sealed class McpSettings
     // After how many hours a client the open policy approved is removed when no user ever consented to it.
     [Range(1, 8760)]
     public int NeverUsedClientHours { get; set; } = 24;
+
+    // How many clients the open policy approved one user may consent to at once. A consent keeps such a client from the
+    // cleanup, so without it one user could fill MaxClients for good.
+    [Range(1, 10000)]
+    public int MaxConsentsPerUser { get; set; } = 20;
 }
 
 // The policy core asks on a registration and for the discovery document: the instance defaults of the settings.
@@ -56,6 +61,7 @@ internal sealed class McpClientRegistrationPolicySource(ISettings<McpSettings> s
             MaxPendingClients = current.MaxPendingClients,
             RegistrationsPerHour = current.RegistrationsPerHour,
             MaxClients = current.MaxClients,
+            MaxConsentsPerUser = current.MaxConsentsPerUser,
         };
     }
 }
