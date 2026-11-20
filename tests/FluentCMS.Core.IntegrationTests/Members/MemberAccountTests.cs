@@ -766,6 +766,35 @@ public sealed class MemberAccountTests(MemberFixture fixture) : IClassFixture<Me
         left.ShouldBe([verified.Email, recent, contested], ignoreOrder: true);
     }
 
+    [Fact]
+    public async Task TheJobRemovesMoreUnverifiedMembersThanOneBatch()
+    {
+        await using var host = MemberFixture.NewHost(new HostedPagesTests.CapturedEmails());
+        var old = host.Time.GetUtcNow() - TimeSpan.FromDays(30);
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+            for (var member = 0; member <= UnverifiedMembersJob.BatchSize; member++)
+            {
+                var address = MemberFixture.NewAddress();
+                context.Add(new CmsMember { Email = address, NormalizedEmail = address.ToUpperInvariant(), SecurityStamp = Guid.NewGuid().ToString(), CreatedAt = old });
+            }
+
+            await context.SaveChangesAsync(Token);
+        }
+
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var operation = new OperationContext(Principal.System, Origin.Job, new SiteId(DefaultSite.Id), DefaultSite.Locale, null, "cleanup", host.Time.GetUtcNow());
+            await scope.ServiceProvider.GetRequiredService<UnverifiedMembersJob>().ExecuteAsync(
+                new UnverifiedMembersPayload(),
+                new JobContext(Guid.CreateVersion7(), UnverifiedMembersJob.Type, "default", 1, 3, operation, Token));
+        }
+
+        await using var check = host.Services.CreateAsyncScope();
+        (await check.ServiceProvider.GetRequiredService<SystemDbContext>().Set<CmsMember>().CountAsync(member => !member.EmailConfirmed, Token)).ShouldBe(0);
+    }
+
     private async Task<CmsMember> MemberAsync(string address)
     {
         await using var scope = fixture.Host.Services.CreateAsyncScope();

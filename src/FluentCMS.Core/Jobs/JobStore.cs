@@ -189,17 +189,56 @@ internal sealed class JobStore(
         });
     }
 
-    // When the job was first claimed, from its attempts; null when it has none.
-    public async Task<DateTimeOffset?> FirstClaimedAtAsync(Guid id, CancellationToken cancellationToken)
+    // When the job was first put back for an unknown type since anything else happened to it: the start of the attempt
+    // before this one, when that one was such a release. Null otherwise.
+    public async Task<DateTimeOffset?> UnknownSinceAsync(ClaimedJob job, CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
         return await context.Set<JobAttempt>().AsNoTracking()
-            .Where(attempt => attempt.JobId == id)
-            .OrderBy(attempt => attempt.Attempt)
+            .Where(attempt => attempt.JobId == job.Id
+                && attempt.Attempt == job.Attempt - 1
+                && attempt.Outcome == JobAttemptOutcome.Released
+                && attempt.Error != null
+                && attempt.Error.StartsWith(JobErrorCodes.UnknownJobType))
             .Select(attempt => (DateTimeOffset?)attempt.StartedAt)
             .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    // The first release for an unknown type is kept as an attempt, given back like any release, with the error that marks
+    // it. Later ones remove their attempt and take back the claim's count, so that the job's attempts and the attempt
+    // table do not grow while it waits for an instance that knows the type.
+    public async Task<bool> ReleaseUnknownAsync(ClaimedJob job, DateTimeOffset runAt, string error)
+    {
+        if (await UnknownSinceAsync(job, CancellationToken.None) is null)
+        {
+            return await SettleAsync(job, JobAttemptOutcome.Released, error, time.GetUtcNow(), [], row => row
+                .SetProperty(column => column.Status, JobStatus.Pending)
+                .SetProperty(column => column.MaxAttempts, column => column.MaxAttempts + 1)
+                .SetProperty(column => column.LeaseOwner, (string?)null)
+                .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null)
+                .SetProperty(column => column.RunAt, runAt));
+        }
+
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        await using var transaction = await context.Database.BeginTransactionAsync();
+
+        var held = await Held(context, job).ExecuteUpdateAsync(row => row
+            .SetProperty(column => column.Status, JobStatus.Pending)
+            .SetProperty(column => column.Attempts, column => column.Attempts - 1)
+            .SetProperty(column => column.LeaseOwner, (string?)null)
+            .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null)
+            .SetProperty(column => column.RunAt, runAt));
+        if (held == 0)
+        {
+            return false;
+        }
+
+        await context.Set<JobAttempt>().Where(attempt => attempt.JobId == job.Id && attempt.Attempt == job.Attempt).ExecuteDeleteAsync();
+        await transaction.CommitAsync();
+        return true;
     }
 
     // A claim requires attempts < max_attempts, so a job whose worker died on its last attempt never comes back and

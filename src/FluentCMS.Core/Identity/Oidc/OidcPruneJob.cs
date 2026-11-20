@@ -1,3 +1,4 @@
+using FluentCMS.Core.Jobs;
 using FluentCMS.Jobs;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,7 +11,7 @@ internal sealed record OidcPrunePayload;
 // Removes the tokens and authorizations that can no longer be used: expired, redeemed or revoked tokens, and authorizations
 // that are revoked or were made for one sign-in and have no valid token left. OpenIddict prunes only rows created before the
 // threshold, so an ended session stays a while for whoever looks into it.
-internal sealed class OidcPruneJob(IOpenIddictTokenManager tokens, IOpenIddictAuthorizationManager authorizations, TimeProvider time) : IJob<OidcPrunePayload>
+internal sealed class OidcPruneJob(IOpenIddictTokenManager tokens, IOpenIddictAuthorizationManager authorizations, TimeProvider time) : IJob<OidcPrunePayload>, IResumableJob
 {
     public const string Type = "oidc.prune";
 

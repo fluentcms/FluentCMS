@@ -45,6 +45,7 @@ public static class FluentCmsTelemetry
         public const string EventHandlerDuration = "fluentcms.event.handler.duration";
         public const string JobOldestPendingAge = "fluentcms.job.oldest_pending_age";
         public const string JobsAbandoned = "fluentcms.job.abandoned";
+        public const string JobsAbandonedRunning = "fluentcms.job.abandoned_running";
     }
 
     internal static readonly Counter<long> Requests = Meter.CreateCounter<long>(
@@ -73,6 +74,8 @@ public static class FluentCmsTelemetry
         Instruments.CacheHitRatio, CacheTotals.Ratios, "1", "The share of lookups in a cache that found their entry.");
 
     internal static void RecordJobQueueAges(IReadOnlyDictionary<string, TimeSpan> ages) => JobQueueAges.Record(ages);
+
+    internal static void AbandonedJobsRunning(int change) => AbandonedJobs.Add(change);
 
     // A span for an operation, with no value of content. Null when nothing listens, which every caller tolerates.
     internal static System.Diagnostics.Activity? Start(string kind, string operation, string? type, OperationContext? context)
@@ -110,6 +113,21 @@ public static class FluentCmsTelemetry
     {
         CacheTotals.Record(cache, hit);
         CacheRequests.Add(1, new KeyValuePair<string, object?>(Tags.Cache, cache), new KeyValuePair<string, object?>(Tags.Result, hit ? "hit" : "miss"));
+    }
+
+    // The invocations abandoned in this process that still run. The gauge is made here for the same reason as the queue ages'.
+    private static class AbandonedJobs
+    {
+        private static long _running;
+
+        public static ObservableGauge<long> Gauge { get; } = Meter.CreateObservableGauge(
+            Instruments.JobsAbandonedRunning, () => Volatile.Read(ref _running), "{invocation}", "Invocations of jobs abandoned past their attempt timeout that are still running in this process.");
+
+        public static void Add(int change)
+        {
+            _ = Gauge;
+            Interlocked.Add(ref _running, change);
+        }
     }
 
     // Reports what the job runner last measured: every queue of this instance's options, at zero when nothing waits, and

@@ -1,4 +1,5 @@
 using FluentCMS.Content;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using FluentCMS.Jobs;
 using FluentCMS.Schema;
@@ -18,7 +19,7 @@ internal sealed record TrashPurgePayload(int Limit = 500, int PageSize = 100);
 // run, and the others are not held up: the due entries are read oldest first in pages, so those that fail do not use up
 // the limit or hide the ones behind them. One type that fails is logged and the others still run. Running again finds
 // only what is still due.
-internal sealed class TrashPurgeJob(CmsDbContext database, SchemaModel schema, ContentService content, IOperationContextAccessor accessor, TimeProvider time, ILogger<TrashPurgeJob> logger) : IJob<TrashPurgePayload>
+internal sealed class TrashPurgeJob(CmsDbContext database, SchemaModel schema, ContentService content, IOperationContextAccessor accessor, TimeProvider time, ILogger<TrashPurgeJob> logger) : IJob<TrashPurgePayload>, IResumableJob
 {
     public const string Type = "content.trash.purge";
 

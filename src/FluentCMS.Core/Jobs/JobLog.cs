@@ -58,4 +58,10 @@ internal static partial class JobLog
 
     [LoggerMessage(EventId = 9518, Level = LogLevel.Warning, Message = "{Code}: recurring job {Name} has the type {Type}, which this instance does not know, so this instance does not fire it.")]
     public static partial void RecurringTypeUnknown(ILogger logger, string code, string name, string type);
+
+    [LoggerMessage(EventId = 9519, Level = LogLevel.Warning, Message = "Job {JobId} ({Type}) ignored its token past its attempt timeout, but {Limit} abandoned jobs are already running, so it keeps its worker until it returns.")]
+    public static partial void AbandonRefused(ILogger logger, Guid jobId, string type, int limit);
+
+    [LoggerMessage(EventId = 9520, Level = LogLevel.Information, Message = "Job {JobId} ({Type}) stopped at its attempt timeout of {Limit}; what is left waits for its next run.")]
+    public static partial void StoppedAtLimit(ILogger logger, Guid jobId, string type, TimeSpan limit);
 }

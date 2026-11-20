@@ -74,6 +74,8 @@ internal sealed class RecurringJobs(IServiceScopeFactory scopes, JobRegistry reg
                 continue;
             }
 
+            _unknown.TryRemove(job.Name, out _);
+
             if (Next(job, now) is not { } next)
             {
                 continue;

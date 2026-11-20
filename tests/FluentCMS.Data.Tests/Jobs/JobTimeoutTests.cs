@@ -1,10 +1,13 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
+using FluentCMS.Core.ActivityLog;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Idempotency;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Members;
+using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Telemetry;
 using FluentCMS.Jobs;
@@ -17,6 +20,17 @@ namespace FluentCMS.Data.Tests.Jobs;
 internal sealed class TimedJob(JobProbe probe) : IJob<ProbePayload>
 {
     public const string Type = "timed";
+
+    public Task ExecuteAsync(ProbePayload payload, JobContext context)
+    {
+        probe.Runs.Enqueue(new JobRun(payload, context, null));
+        return probe.Behavior(payload, context);
+    }
+}
+
+internal sealed class ResumableJob(JobProbe probe) : IJob<ProbePayload>, IResumableJob
+{
+    public const string Type = "resumable";
 
     public Task ExecuteAsync(ProbePayload payload, JobContext context)
     {
@@ -169,16 +183,18 @@ public sealed class JobTimeoutTests : IDisposable
         using var abandoned = new AbandonedCount(TimedJob.Type);
         var gate = Hold();
         var instance = _fixture.NewInstance(cms: cms => cms.Jobs.AddJob<TimedJob, ProbePayload>(TimedJob.Type, Limit));
+        var executor = instance.GetRequiredService<JobExecutor>();
         var id = await instance.GetRequiredService<IJobScheduler>().EnqueueAsync<TimedJob, ProbePayload>(new ProbePayload("stuck"), new JobOptions { MaxAttempts = 3 }, Token);
 
-        var stuck = StartAsync(instance.GetRequiredService<JobExecutor>());
+        var stuck = StartAsync(executor);
         await WaitForRunsAsync(1);
+        var token = _fixture.Probe.Runs.Single().Context.CancellationToken;
 
-        _fixture.Clock.Advance(Limit);
-        _fixture.Probe.Runs.Single().Context.CancellationToken.IsCancellationRequested.ShouldBeTrue();
-        _fixture.Clock.Advance(JobExecutor.AbandonGrace - TimeSpan.FromTicks(1));
-        await Task.Delay(50, Token);
-        stuck.IsCompleted.ShouldBeFalse("the grace has not passed yet");
+        _fixture.Clock.Advance(Limit + JobExecutor.AbandonGrace - TimeSpan.FromTicks(1));
+        token.IsCancellationRequested.ShouldBeTrue();
+        _fixture.Job(id).Status.ShouldBe(JobStatus.Running, "the grace has not passed yet");
+        _fixture.ShouldHaveRecorded(id, (1, null));
+        executor.Abandoned.ShouldBe(0);
 
         _fixture.Clock.Advance(TimeSpan.FromTicks(1));
         (await stuck).ShouldBeTrue("the worker is free while the job still runs");
@@ -190,11 +206,75 @@ public sealed class JobTimeoutTests : IDisposable
         _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Failed));
         _fixture.Logs.Count(nameof(JobLog.Abandoned)).ShouldBe(1);
         abandoned.Count.ShouldBe(1);
+        executor.Abandoned.ShouldBe(1);
+
+        // The abandoned job still holds a token that can be read, and its end writes nothing to the job.
+        token.IsCancellationRequested.ShouldBeTrue();
+        gate.SetResult();
+        await Eventually.HoldsAsync(() => executor.Abandoned == 0);
+
+        _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Failed));
+        _fixture.Job(id).Status.ShouldBe(JobStatus.Pending);
+        _fixture.Logs.Count(nameof(JobLog.LeaseLost)).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task WhatAnAbandonedJobThrowsWhenItEndsIsLogged()
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _fixture.Probe.Behavior = async (_, _) =>
+        {
+            await gate.Task;
+            throw new InvalidOperationException("It broke late.");
+        };
+        await _fixture.EnqueueAsync();
+        var executor = Worker(Limit);
+
+        var stuck = StartAsync(executor);
+        await WaitForRunsAsync(1);
+        _fixture.Clock.Advance(Limit + JobExecutor.AbandonGrace);
+        await stuck;
 
         gate.SetResult();
-        await Task.Delay(50, Token);
-        _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Failed));
-        _fixture.Logs.Count(nameof(JobLog.LeaseLost)).ShouldBe(0, "the abandoned run writes nothing when it ends");
+        await Eventually.HoldsAsync(() => executor.Abandoned == 0);
+        _fixture.Logs.Count(nameof(JobLog.AbandonedJobFailed)).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task PastTheLimitOfAbandonedJobsAJobThatIgnoresItsTokenKeepsItsWorker()
+    {
+        var gates = new ConcurrentDictionary<string, TaskCompletionSource>();
+        _fixture.Probe.Behavior = (payload, _) => gates.GetOrAdd(payload.Key, _ => new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).Task;
+        var first = await _fixture.EnqueueAsync("first");
+        _fixture.Clock.Advance(TimeSpan.FromSeconds(1));
+        var second = await _fixture.EnqueueAsync("second");
+        var executor = _fixture.NewInstance(configure: options =>
+        {
+            options.AttemptTimeout = Limit;
+            options.MaxAbandonedJobs = 1;
+        }).GetRequiredService<JobExecutor>();
+
+        var one = StartAsync(executor);
+        await WaitForRunsAsync(1);
+        _fixture.Clock.Advance(Limit + JobExecutor.AbandonGrace);
+        await one;
+        executor.Abandoned.ShouldBe(1);
+
+        var two = StartAsync(executor, "B");
+        await WaitForRunsAsync(2);
+        _fixture.Clock.Advance(Limit + JobExecutor.AbandonGrace);
+        await Eventually.HoldsAsync(() => _fixture.Logs.Count(nameof(JobLog.AbandonRefused)) == 1);
+
+        _fixture.Job(second).Status.ShouldBe(JobStatus.Running, "the worker keeps it");
+        executor.Abandoned.ShouldBe(1);
+
+        gates["second"].SetResult();
+        (await two).ShouldBeTrue();
+        _fixture.Job(second).Status.ShouldBe(JobStatus.Succeeded, "it returned normally, late");
+
+        gates["first"].SetResult();
+        await Eventually.HoldsAsync(() => executor.Abandoned == 0);
+        _fixture.Job(first).LastError.ShouldNotBeNull().ShouldStartWith("FCMS2508");
     }
 
     [Fact]
@@ -219,6 +299,45 @@ public sealed class JobTimeoutTests : IDisposable
         job.Status.ShouldBe(JobStatus.DeadLettered, "it was the last attempt");
         job.LastError.ShouldNotBeNull().ShouldStartWith("FCMS2508");
         _fixture.Events.DeadLettered.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task AResumableJobStoppedAtItsLimitHasSucceededAndIsNeverDeadLettered()
+    {
+        var instance = _fixture.NewInstance(cms: cms => cms.Jobs.AddJob<ResumableJob, ProbePayload>(ResumableJob.Type, Limit));
+        var scheduler = instance.GetRequiredService<IJobScheduler>();
+        var executor = instance.GetRequiredService<JobExecutor>();
+        RunUntilCancelled();
+
+        for (var run = 1; run <= 3; run++)
+        {
+            var id = await scheduler.EnqueueAsync<ResumableJob, ProbePayload>(new ProbePayload($"run-{run}"), new JobOptions { MaxAttempts = 1 }, Token);
+            var running = StartAsync(executor);
+            await WaitForRunsAsync(run);
+            _fixture.Clock.Advance(Limit);
+            await running;
+
+            var job = _fixture.Job(id);
+            job.Status.ShouldBe(JobStatus.Succeeded, "what is left waits for the next run");
+            job.LastError.ShouldBeNull();
+            _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Succeeded));
+        }
+
+        _fixture.Events.DeadLettered.ShouldBeEmpty();
+        _fixture.Events.Failed.ShouldBeEmpty();
+        _fixture.Logs.Count(nameof(JobLog.StoppedAtLimit)).ShouldBe(3);
+    }
+
+    [Fact]
+    public void TheBuiltInJobsThatDeleteInBatchesAreResumable()
+    {
+        var resumable = _fixture.Services.GetServices<JobRegistration>()
+            .Where(registration => registration.Resumable)
+            .Select(registration => registration.Type)
+            .Order(StringComparer.Ordinal);
+
+        string[] expected = [ActivityRetentionJob.Type, TrashPurgeJob.Type, IdempotencyRetentionJob.Type, UnverifiedMembersJob.Type, OidcPruneJob.Type, JobRetentionJob.Type];
+        resumable.ShouldBe(expected.Order(StringComparer.Ordinal));
     }
 
     [Fact]

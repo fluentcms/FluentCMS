@@ -14,6 +14,7 @@ internal sealed class JobRegistration
     {
         Type = type;
         Job = job;
+        Resumable = typeof(IResumableJob).IsAssignableFrom(job);
         Payload = payload;
         AttemptTimeout = attemptTimeout;
         Read = read;
@@ -27,6 +28,8 @@ internal sealed class JobRegistration
     public Type Payload { get; }
 
     public TimeSpan? AttemptTimeout { get; }
+
+    public bool Resumable { get; }
 
     public Func<string, object?> Read { get; }
 
@@ -42,6 +45,10 @@ internal sealed class JobRegistration
             JobJson.Deserialize<TPayload>,
             (services, payload, context) => services.GetRequiredService<TJob>().ExecuteAsync((TPayload)payload, context));
 }
+
+// A job that stops at its token wherever it is and leaves what is left for its next run, such as a batched delete. Stopped
+// at its attempt timeout, it has succeeded rather than failed, so that a long backlog is never dead-lettered for its size.
+internal interface IResumableJob;
 
 internal static class JobJson
 {
