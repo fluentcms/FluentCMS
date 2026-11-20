@@ -403,6 +403,8 @@
     private int restoring;
     private EntrySchedule? schedule;
     private bool previewOpen;
+    // The entry the pane was opened for: it stays open through a switch of locale and closes when the form loads another entry.
+    private Guid? previewEntry;
     private CmsButton? previewButton;
     private ContentPreview? preview;
     // The pane's own Close goes with the pane, so focus goes back to the form's toggle; the toggle's open moves it to the pane.
@@ -691,6 +693,7 @@
             }
 
             (type, access, tabs, read, entryId) = (found, Access.ForType(found.Name), ContentFormLayout.Build(found), entry, id);
+            previewOpen &= id is not null && id == previewEntry;
             (locales, readableLocales) = (everyLocale, readableNow);
             tabbed = [.. tabs.Where(tab => tab.Name is not null)];
             (site, locale) = entry is not null ? (entry.Site, entry.Locale) : (CurrentSite.Site, Locale ?? ContentLocaleSource.Locale);
@@ -901,7 +904,7 @@
 
     private void ClosePreview() => (previewOpen, focusPreviewButton) = (false, true);
 
-    private void TogglePreview() => (previewOpen, focusPreview) = (!previewOpen, !previewOpen);
+    private void TogglePreview() => (previewOpen, focusPreview, previewEntry) = (!previewOpen, !previewOpen, entryId);
 
     private Task ReloadAsync()
     {

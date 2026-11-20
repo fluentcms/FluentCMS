@@ -14,7 +14,7 @@ namespace FluentCMS.Admin.ApiTests;
 public sealed class OpenApiContractTests
 {
     // Members the admin reads before the backend sends them, each with the issue that adds them; one that is in the document
-    // is a gap, so that its entry goes when the issue merges.
+    // is a gap, so the pull request of that issue removes its entry.
     private static readonly Dictionary<string, string> Awaited = new(StringComparer.Ordinal)
     {
         ["schema.types[].previewable"] = "#3432",

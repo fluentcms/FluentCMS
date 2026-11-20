@@ -101,6 +101,8 @@ public sealed class ContentPreviewTests : AdminTestContext
 
         app.WaitForAssertion(() => Notices(app).ShouldBe(["The site has no preview page for this type."]));
         app.FindAll(".content-preview iframe").ShouldBeEmpty();
+        SaveChanged(app);
+        _content.PreviewMints.ShouldBe(1);
     }
 
     [Fact]
@@ -158,6 +160,8 @@ public sealed class ContentPreviewTests : AdminTestContext
 
         app.WaitForAssertion(() => Notices(app).ShouldBe(["The preview page is not on an origin the admin may show."]));
         app.FindAll(".content-preview iframe").ShouldBeEmpty();
+        SaveChanged(app);
+        _content.PreviewMints.ShouldBe(1);
     }
 
     [Fact]
@@ -192,6 +196,7 @@ public sealed class ContentPreviewTests : AdminTestContext
             ["entry"] = new JsonObject { ["type"] = "post", ["id"] = id.ToString("D"), ["locale"] = null, ["version"] = 2 },
         }.ToJsonString());
         Frame(app).GetAttribute("src").ShouldBe(loaded);
+        _content.PreviewMints.ShouldBe(1);
 
         // The page that said ready is leaving, so the next save loads the frame unless the next page says it again.
         Post(app, FrontEnd, Message("navigated", url: $"{FrontEnd}/about"));
@@ -199,7 +204,8 @@ public sealed class ContentPreviewTests : AdminTestContext
         Pane(app).HasAttribute("data-ready").ShouldBeFalse();
     }
 
-    // A ready comes before the load of the page that sent it; a load with none since the one before is of another page.
+    // A ready comes before the load of the page that sent it; a load with none since the one before is of another page,
+    // which gets the five seconds again and is loaded again by a save.
     [Fact]
     public void ReadyIsForgottenWhenTheFrameLoadsAPageThatDoesNotSayIt()
     {
@@ -211,21 +217,41 @@ public sealed class ContentPreviewTests : AdminTestContext
 
         Loaded(app);
         app.WaitForAssertion(() => Pane(app).HasAttribute("data-ready").ShouldBeFalse());
-        app.Find("[data-field='title'] input").Input("Changed");
-        Save(app);
+        _time.Advance(TimeSpan.FromSeconds(5));
+        app.WaitForAssertion(() => Notices(app).ShouldBe([Silent]));
+        SaveChanged(app);
 
-        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
+        app.WaitForAssertion(() => Notices(app).ShouldBeEmpty());
         _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
     }
 
+    // The load starts the five seconds again, so the note of a silent page goes; the token still lasts, so none is minted.
     [Fact]
-    public void ASaveReloadsAPageThatSaidNothing()
+    public void ASaveReloadsAPageThatSaidNothingWithTheTokenItHas()
     {
         var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
         var app = Open(Load($"content/post/{id:D}"));
+        _time.Advance(TimeSpan.FromSeconds(5));
+        app.WaitForAssertion(() => Notices(app).ShouldBe([Silent]));
 
-        app.Find("[data-field='title'] input").Input("Changed");
-        Save(app);
+        SaveChanged(app);
+
+        app.WaitForAssertion(() => Notices(app).ShouldBeEmpty());
+        Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-1");
+        _content.PreviewMints.ShouldBe(1);
+        _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
+    }
+
+    // A ready page is told to refresh only while its token lasts; an ending one is minted again and the page loaded with it.
+    [Fact]
+    public void ASaveLoadsAReadyPageWhoseTokenIsEndingWithANewOne()
+    {
+        _content.PreviewLifetime = TimeSpan.FromSeconds(30);
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Post(app, FrontEnd, Message("ready"));
+
+        SaveChanged(app);
 
         app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
         _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
@@ -284,11 +310,13 @@ public sealed class ContentPreviewTests : AdminTestContext
         var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
         var app = Open(Load($"content/post/{id:D}"));
         Published(app).Instance.Disabled.ShouldBeTrue();
+        Post(app, FrontEnd, Message("ready"));
 
         ToolbarButton(app, "Publish").Click();
 
         app.WaitForAssertion(() => Published(app).Instance.Disabled.ShouldBeFalse());
         _content.PreviewMints.ShouldBe(2);
+        _preview.Invocations.Count(call => call.Identifier == "post").ShouldBe(1);
     }
 
     // The toggle keeps its name and says by aria-expanded whether the pane is open; the pane's own Close has a name of its
@@ -347,8 +375,8 @@ public sealed class ContentPreviewTests : AdminTestContext
         app.FindAll(".content-preview iframe").ShouldBeEmpty();
     }
 
-    // config.json takes ASCII alone, so a preview origin names an internationalized host in punycode, as the browser writes the
-    // origin of a message; a template may write the name in Unicode.
+    // config.json and the server's templates take ASCII alone, so an internationalized host comes in punycode, as the browser
+    // writes the origin of a message; an address in Unicode, which this server does not hand out, is compared in that form too.
     [Fact]
     public void AnInternationalizedHostIsMatchedInItsAsciiForm()
     {
@@ -364,7 +392,7 @@ public sealed class ContentPreviewTests : AdminTestContext
     }
 
     [Fact]
-    public void AFailedMintAfterASaveLoadsASilentPageAgainWithTheTokenItHas()
+    public void AFailedMintAfterAPublishLoadsASilentPageAgainWithTheTokenItHas()
     {
         var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
         var app = Open(Load($"content/post/{id:D}"));
@@ -372,8 +400,8 @@ public sealed class ContentPreviewTests : AdminTestContext
         app.WaitForAssertion(() => Notices(app).ShouldBe([Silent]));
         _content.PreviewUnavailable = true;
 
-        app.Find("[data-field='title'] input").Input("Changed");
-        Save(app);
+        // A publish may bring the published page, so it mints.
+        ToolbarButton(app, "Publish").Click();
 
         // The load starts the five seconds again, so the note of a silent page is gone until they pass.
         app.WaitForAssertion(() => Notices(app).ShouldBeEmpty());
@@ -398,9 +426,10 @@ public sealed class ContentPreviewTests : AdminTestContext
         Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-1");
     }
 
-    // The page is refreshed, so nothing failed that the editor sees; the answer is old, so Reload mints again.
+    // The page is refreshed, so nothing failed that the editor sees; the answer is old, so Reload mints again, and keeps the
+    // page while its token lasts when that mint fails too.
     [Fact]
-    public void AFailedMintAfterASaveStillRefreshesAReadyPageWithoutANote()
+    public void AFailedMintAfterAPublishStillRefreshesAReadyPageWithoutANote()
     {
         var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
         var app = Open(Load($"content/post/{id:D}"));
@@ -408,22 +437,27 @@ public sealed class ContentPreviewTests : AdminTestContext
         app.WaitForAssertion(() => Pane(app).GetAttribute("data-ready").ShouldBe("true"));
         _content.PreviewUnavailable = true;
 
-        app.Find("[data-field='title'] input").Input("Changed");
-        Save(app);
+        ToolbarButton(app, "Publish").Click();
 
         app.WaitForAssertion(() => _preview.Invocations.Count(call => call.Identifier == "post").ShouldBe(1));
         _content.PreviewMints.ShouldBe(2);
         app.FindAll(".content-preview > .content-preview-notice").ShouldBeEmpty();
         Assertive(app).ShouldBeEmpty();
 
+        Button(app, "Reload").Click();
+        app.WaitForAssertion(() => _content.PreviewMints.ShouldBe(3));
+        app.WaitForAssertion(() => Pane(app).HasAttribute("data-ready").ShouldBeFalse());
+        Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-1");
+        app.FindAll(".content-preview > .content-preview-notice").ShouldBeEmpty();
+
         _content.PreviewUnavailable = false;
         Button(app, "Reload").Click();
-        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-3"));
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-4"));
     }
 
     // The mint of a save is answered after the mint of a later Reload; the Reload's answer stays.
     [Fact]
-    public void TheNewestMintWins()
+    public async Task TheNewestMintWins()
     {
         _content.PreviewLifetime = TimeSpan.FromMinutes(-1);
         var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
@@ -438,14 +472,40 @@ public sealed class ContentPreviewTests : AdminTestContext
         Button(app, "Reload").Click();
         app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
 
-        held.SetResult();
+        await Release(app, held);
 
         app.WaitForAssertion(() => _content.PreviewMints.ShouldBe(3));
-        Stays(app, () => Frame(app).GetAttribute("src") == $"{FrontEnd}/posts/{id:D}?preview=token-2");
+        Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2");
+    }
+
+    // The pane opens and a save follows while its mint runs; the open's answer is dropped and the save's mint fails, so the
+    // pane says it failed instead of loading for good.
+    [Fact]
+    public async Task ANewerMintThatFailsIsShownAfterAnOlderAnswerIsDropped()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/post/{id:D}");
+        var (first, second) = (new TaskCompletionSource(), new TaskCompletionSource());
+        var mints = 0;
+        Management.HoldPath = path => path.Contains("/preview-token", StringComparison.Ordinal) ? (++mints == 1 ? first.Task : second.Task) : null;
+        Button(app, "Preview").Click();
+        app.WaitForAssertion(() => mints.ShouldBe(1));
+
+        SaveChanged(app);
+        app.WaitForAssertion(() => mints.ShouldBe(2));
+        await Release(app, first);
+        app.WaitForAssertion(() => _content.PreviewMints.ShouldBe(1));
+        _content.PreviewUnavailable = true;
+        await Release(app, second);
+
+        app.WaitForAssertion(() => app.FindAll(".content-preview > .content-preview-notice").Select(notice => notice.TextContent.Trim()).ShouldBe(["The preview could not be loaded."]));
+        app.WaitForAssertion(() => Assertive(app).ShouldBe(["The preview could not be loaded."]));
+        app.FindAll(".content-preview iframe").ShouldBeEmpty();
+        Notices(app).ShouldBeEmpty();
     }
 
     [Fact]
-    public void ClosingThePaneWhileItsMintRunsDropsTheAnswer()
+    public async Task ClosingThePaneWhileItsMintRunsDropsTheAnswer()
     {
         var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
         var app = Load($"content/post/{id:D}");
@@ -457,15 +517,16 @@ public sealed class ContentPreviewTests : AdminTestContext
 
         Button(app, "Preview").Click();
         app.WaitForAssertion(() => app.FindAll(".content-preview").ShouldBeEmpty());
-        held.SetResult();
+        await Release(app, held);
 
         app.WaitForAssertion(() => _content.PreviewMints.ShouldBe(1));
-        Stays(app, () => Assertive(app).Length == 0);
+        Assertive(app).ShouldBeEmpty();
         _listener.Invocations.ShouldContain(call => call.Identifier == "dispose");
     }
 
+    // A switch of locale keeps the pane, with a token of the locale; another entry closes it.
     [Fact]
-    public void AnotherEntryOrLocaleWithThePaneOpenIsShownWithATokenOfItsOwn()
+    public void AnotherLocaleKeepsThePaneAndAnotherEntryClosesIt()
     {
         Management.AddLocale(MainSite, "fr", 1);
         var post = Type("post", fields: [Field("title")]);
@@ -475,15 +536,36 @@ public sealed class ContentPreviewTests : AdminTestContext
         var first = _content.Add("post", new JsonObject { ["title"] = "Hello" });
         var second = _content.Add("post", new JsonObject { ["title"] = "World" });
         _content.Add("post", new JsonObject { ["title"] = "Monde" }, id: second, locale: "fr");
-        var app = Open(Load($"content/post/{first:D}"));
-        Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/en/posts/{first:D}?preview=token-1");
-
-        Navigation.NavigateTo($"content/post/{second:D}");
-        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/en/posts/{second:D}?preview=token-2"));
+        var app = Open(Load($"content/post/{second:D}"));
+        Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/en/posts/{second:D}?preview=token-1");
 
         Navigation.NavigateTo($"content/post/{second:D}?locale=fr");
-        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/fr/posts/{second:D}?preview=token-3"));
-        _content.PreviewMints.ShouldBe(3);
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/fr/posts/{second:D}?preview=token-2"));
+
+        Navigation.NavigateTo($"content/post/{first:D}?locale=en");
+        app.WaitForAssertion(() => app.Find("[data-field='title'] input").GetAttribute("value").ShouldBe("Hello"));
+        app.FindAll(".content-preview").ShouldBeEmpty();
+        Button(app, "Preview").GetAttribute("aria-expanded").ShouldBe("false");
+        _content.PreviewMints.ShouldBe(2);
+    }
+
+    // The page reuses the form for a new entry: its first save moves to the entry's route without opening the pane.
+    [Fact]
+    public void ANewEntryAfterAnOpenPaneDoesNotOpenIt()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+
+        Navigation.NavigateTo("content/post/new");
+        app.WaitForAssertion(() => app.FindAll(".content-preview").ShouldBeEmpty());
+        app.WaitForAssertion(() => app.Find("[data-field='title'] input").GetAttribute("value").ShouldBeNull());
+        app.Find("[data-field='title'] input").Input("New");
+        Save(app);
+
+        app.WaitForAssertion(() => Navigation.Uri.ShouldNotEndWith("/new"));
+        app.WaitForAssertion(() => Buttons(app).ShouldContain("Preview"));
+        app.FindAll(".content-preview").ShouldBeEmpty();
+        _content.PreviewMints.ShouldBe(1);
     }
 
     [Fact]
@@ -499,6 +581,19 @@ public sealed class ContentPreviewTests : AdminTestContext
         Notices(app).ShouldBeEmpty();
 
         Post(app, FrontEnd, Message("navigated", url: $"{FrontEnd}/about?preview=secret#top"));
+
+        app.WaitForAssertion(() => Notices(app).ShouldBe([$"Showing {FrontEnd}/about"]));
+    }
+
+    // Uri takes a host with a joiner, which IDN refuses: it has no origin, so its address is not shown.
+    [Fact]
+    public void AnAddressWhoseHostIdnRefusesIsNotShown()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+
+        Post(app, FrontEnd, Message("navigated", url: "https://a\u200Db.example/about"));
+        Post(app, FrontEnd, Message("navigated", url: $"{FrontEnd}/about"));
 
         app.WaitForAssertion(() => Notices(app).ShouldBe([$"Showing {FrontEnd}/about"]));
     }
@@ -569,14 +664,22 @@ public sealed class ContentPreviewTests : AdminTestContext
     private string? Focused() =>
         JSInterop.Invocations.Where(call => call.Identifier == "Blazor._internal.domWrapper.focus").Select(call => ((ElementReference)call.Arguments[0]!).Id).LastOrDefault();
 
-    // A change that a late answer would make renders within this time; none does.
-    private static void Stays(IRenderedComponent<AdminApp> app, Func<bool> holds) =>
-        Should.Throw<Bunit.Extensions.WaitForHelpers.WaitForFailedException>(() => app.WaitForState(() => !holds(), TimeSpan.FromMilliseconds(500)));
+    // A held answer is let go on the renderer, so that what it is handed on to runs there in turn.
+    private static Task Release(IRenderedComponent<AdminApp> app, TaskCompletionSource held) => app.InvokeAsync(held.SetResult);
 
     private static string Message(string type, string protocol = "fluentcms-preview", int version = 1, string? url = null) =>
         new JsonObject { ["protocol"] = protocol, ["version"] = version, ["type"] = type, ["url"] = url }.ToJsonString();
 
     private static void Save(IRenderedComponent<AdminApp> app) => ToolbarButton(app, "Save").Click();
+
+    // A change of the title saved, which changes the draft's version and not the locale's status.
+    private static void SaveChanged(IRenderedComponent<AdminApp> app)
+    {
+        var title = app.Find("[data-field='title'] input").GetAttribute("value");
+        app.Find("[data-field='title'] input").Input(title + " changed");
+        Save(app);
+        app.WaitForAssertion(() => app.FindAll(".content-form-saved").ShouldNotBeEmpty());
+    }
 
     private static IElement ToolbarButton(IRenderedComponent<AdminApp> app, string text) =>
         app.FindAll(".content-form-toolbar fluent-button").Single(button => button.TextContent.Trim() == text);

@@ -164,10 +164,12 @@
     // The pane takes focus as it opens, so that it is where the reading goes on.
     public ValueTask FocusAsync() => pane.FocusAsync();
 
+    // The form may keep its reference to a closed pane, so the pane lets go of its token and address.
     public async ValueTask DisposeAsync()
     {
         disposed = true;
         frameLoad++;
+        (answer, frameUrl, frameToken) = (null, null, null);
         if (listening is not null)
         {
             await listening.DisposeAsync();
@@ -183,8 +185,9 @@
         }
         else if (saved != (Version, Status))
         {
+            var statusChanged = saved?.Status != Status;
             saved = (Version, Status);
-            await SavedAsync();
+            await SavedAsync(statusChanged);
         }
     }
 
@@ -220,12 +223,19 @@
         }
     }
 
-    // A ready page reads the draft again when told to, while the token it was loaded with lasts; any other is loaded again,
-    // with the token just minted or, when that failed, with the last one while it lasts. The token is minted either way, so
-    // that the published page of a first publish is offered.
-    private async Task SavedAsync()
+    // A ready page reads the draft again when told to, while the token it was loaded with lasts; any other is loaded again.
+    // A token cannot be revoked, so one is minted only when the answer cannot serve: a status changed, which may bring or take
+    // the published page, the answer is old or its token is ending, or no page is shown yet. When that mint fails, a shown page
+    // is loaded with the last token while it lasts, and a pane that shows none says it failed. A save changes neither a page
+    // of another origin nor a type without a template.
+    private async Task SavedAsync(bool statusChanged)
     {
-        var minted = await MintAsync();
+        if (missing || refused)
+        {
+            return;
+        }
+
+        Mint? minted = statusChanged || stale || !Loadable || frameUrl is null ? await MintAsync() : null;
         if (minted == Mint.Dropped)
         {
             return;
@@ -245,7 +255,7 @@
             }
         }
 
-        if (minted == Mint.Applied || (frameUrl is not null && Loadable))
+        if (minted is null or Mint.Applied || (frameUrl is not null && Loadable))
         {
             Load();
         }
@@ -254,20 +264,31 @@
             refreshFailed = true;
             Announcer.Announce(L["Content.Preview.NotRefreshed"], AnnouncementPoliteness.Assertive);
         }
+        else
+        {
+            Fail();
+        }
     }
 
+    // A failed mint keeps a shown page whose token lasts, as a save does.
     private async Task ShowAsync(bool mint)
     {
         switch (mint ? await MintAsync() : Mint.Applied)
         {
             case Mint.Applied:
+            case Mint.Failed when frameUrl is not null && Loadable:
                 Load();
                 break;
             case Mint.Failed:
-                (failed, frameUrl, frameOrigin) = (true, null, null);
-                Announcer.Announce(L["Content.Preview.Failed"], AnnouncementPoliteness.Assertive);
+                Fail();
                 break;
         }
+    }
+
+    private void Fail()
+    {
+        (failed, frameUrl, frameOrigin) = (true, null, null);
+        Announcer.Announce(L["Content.Preview.Failed"], AnnouncementPoliteness.Assertive);
     }
 
     private Task ReloadAsync() => ShowAsync(mint: stale || !Loadable);

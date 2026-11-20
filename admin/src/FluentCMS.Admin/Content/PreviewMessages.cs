@@ -28,9 +28,24 @@ internal static class PreviewMessages
     // ASCII (punycode) form, so that an internationalized name matches; null for any other.
     public static string? OriginOf(string? url) => OriginOf(HttpUri(url));
 
-    public static string? OriginOf(Uri? uri) => uri is null
-        ? null
-        : string.Create(CultureInfo.InvariantCulture, $"{uri.Scheme}://{(uri.HostNameType == UriHostNameType.IPv6 ? uri.Host : uri.IdnHost)}{(uri.IsDefaultPort ? "" : $":{uri.Port}")}");
+    // A host that Uri takes and IDN refuses, such as one with a joiner, has no origin.
+    public static string? OriginOf(Uri? uri)
+    {
+        if (uri is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var host = uri.HostNameType == UriHostNameType.IPv6 ? uri.Host : uri.IdnHost;
+            return string.Create(CultureInfo.InvariantCulture, $"{uri.Scheme}://{host}{(uri.IsDefaultPort ? "" : $":{uri.Port}")}");
+        }
+        catch (UriFormatException)
+        {
+            return null;
+        }
+    }
 
     public static PreviewMessage? Read(string origin, string json, string expectedOrigin)
     {
