@@ -25,4 +25,7 @@ internal static class CmsClaimTypes
 
     // How a user's bearer token was signed in to, such as "mfa"; a key or a service account has none.
     public const string AuthenticationMethods = "amr";
+
+    // When the user signed in on the hosted pages, in Unix seconds, on a user's bearer token.
+    public const string AuthenticationTime = "auth_time";
 }

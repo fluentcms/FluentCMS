@@ -33,6 +33,8 @@ public sealed class DatabaseServer : IAsyncLifetime
 
     private static string? _adminConnectionString;
 
+    private static PostgreSqlTemplate? _template;
+
     private IDatabaseContainer? _container;
 
     public async ValueTask InitializeAsync()
@@ -65,11 +67,22 @@ public sealed class DatabaseServer : IAsyncLifetime
             Run(new SqlConnection(_adminConnectionString), "ALTER DATABASE model SET READ_COMMITTED_SNAPSHOT ON");
             SqlServerPool.Start(_adminConnectionString);
         }
+        else
+        {
+            _template = new PostgreSqlTemplate(_adminConnectionString, "fluentcms_template");
+        }
     }
+
+    internal static string AdminConnectionString =>
+        _adminConnectionString ?? throw new InvalidOperationException($"{TestProvider.Variable} is {TestProvider.Name}, and its container has not started.");
+
+    // The run's template of the system migrations on PostgreSQL.
+    internal static PostgreSqlTemplate Template => _template ?? throw new InvalidOperationException($"{TestProvider.Variable} is {TestProvider.Name}, which has no template.");
 
     public async ValueTask DisposeAsync()
     {
         _adminConnectionString = null;
+        _template = null;
         if (_container is not null)
         {
             await _container.DisposeAsync();
@@ -79,15 +92,23 @@ public sealed class DatabaseServer : IAsyncLifetime
     // forSystemTables: see TestDatabase.Create.
     internal static TestDatabase NewDatabase(bool forSystemTables)
     {
-        var admin = _adminConnectionString ?? throw new InvalidOperationException($"{TestProvider.Variable} is {TestProvider.Name}, and its container has not started.");
+        var admin = AdminConnectionString;
         if (TestProvider.IsSqlServer)
         {
             var taken = SqlServerPool.Take(admin, forSystemTables);
             return new ServerDatabase(taken, new SqlConnectionStringBuilder(admin) { InitialCatalog = taken }.ToString());
         }
 
-        var name = $"t_{Guid.NewGuid():N}";
-        Run(new NpgsqlConnection(admin), $"CREATE DATABASE \"{name}\"");
+        string name;
+        if (forSystemTables)
+        {
+            name = Template.Copy();
+        }
+        else
+        {
+            name = $"t_{Guid.NewGuid():N}";
+            Run(new NpgsqlConnection(admin), $"CREATE DATABASE \"{name}\"");
+        }
 
         // Error details name the values of a failed statement, which a failure list needs.
         return new ServerDatabase(name, new NpgsqlConnectionStringBuilder(admin) { Database = name, IncludeErrorDetail = true }.ToString());
@@ -105,7 +126,7 @@ public sealed class DatabaseServer : IAsyncLifetime
         Run(new NpgsqlConnection(admin), $"DROP DATABASE IF EXISTS \"{name}\" WITH (FORCE)");
     }
 
-    private static void Run(DbConnection connection, string sql)
+    internal static void Run(DbConnection connection, string sql)
     {
         using (connection)
         {

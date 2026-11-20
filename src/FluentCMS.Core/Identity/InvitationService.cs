@@ -211,7 +211,7 @@ internal sealed class InvitationService(
     private async Task<IdentityResult> AcceptAsync(string token, string? userName, string? address, Func<CmsUser, Task<IdentityResult>> create, CancellationToken cancellationToken)
     {
         var hash = Hash(token);
-        return await changes.RunAsync(
+        return await changes.RunNamingAsync(
             async () =>
             {
                 var now = time.GetUtcNow();
@@ -235,6 +235,13 @@ internal sealed class InvitationService(
                 if (address is not null && users.NormalizeEmail(address.Trim()) != invitation.NormalizedEmail)
                 {
                     return Failed(IdentityErrorCodes.InvitationLoginRefused, "The address the provider gave for you is not the one this invitation was sent to.");
+                }
+
+                // A name that is an address is the invitation's own: any other gets one answer, whether or not it is a user's,
+                // so that the page tells no invitee whose addresses the users have (#3373).
+                if (userName is not null && userName.Contains('@', StringComparison.Ordinal) && users.NormalizeEmail(userName) != invitation.NormalizedEmail)
+                {
+                    return Failed(nameof(IdentityErrorDescriber.InvalidUserName), "A user name that is an email address must be the address this invitation was sent to.");
                 }
 
                 var user = new CmsUser { UserName = userName ?? invitation.Email, Email = invitation.Email, EmailConfirmed = true, CreatedAt = now };

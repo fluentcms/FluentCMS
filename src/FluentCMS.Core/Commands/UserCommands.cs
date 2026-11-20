@@ -5,7 +5,9 @@ using static FluentCMS.Core.Commands.AdminCommandSupport;
 namespace FluentCMS.Core.Commands;
 
 // `user create` makes an active administrator with a password, which is how a new instance gets its first one. It runs in
-// the host only: over HTTP a user is invited, so that a key alone never sets a password.
+// the host only: over HTTP a user is invited, so that a key alone never sets a password. The password counts as the user's
+// own, typed or read from standard input, so no forced change is set: whoever runs the command is usually that user, and
+// a user made for someone else is invited, or flagged afterwards.
 internal sealed class UserCreateCommand : HostCommand
 {
     public override string Name => "user create";
