@@ -29,6 +29,14 @@ public sealed class McpSettings
     // How many clients one client address may register in an hour, on each instance.
     [Range(1, 1000)]
     public int RegistrationsPerHour { get; set; } = 10;
+
+    // How many MCP clients there may be at once, in every mode: the bound the address limit alone does not give.
+    [Range(1, 100000)]
+    public int MaxClients { get; set; } = 1000;
+
+    // After how many days a client the open policy approved is removed when it has no token or authorization.
+    [Range(1, 3650)]
+    public int UnusedClientDays { get; set; } = 30;
 }
 
 // The policy core asks on a registration and for the discovery document: the instance defaults of the settings.
@@ -42,6 +50,7 @@ internal sealed class McpClientRegistrationPolicySource(ISettings<McpSettings> s
             DefaultRole = current.DefaultClientRole,
             MaxPendingClients = current.MaxPendingClients,
             RegistrationsPerHour = current.RegistrationsPerHour,
+            MaxClients = current.MaxClients,
         };
     }
 }

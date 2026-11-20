@@ -313,6 +313,63 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         open.StatusCode.ShouldBe(HttpStatusCode.Created);
     }
 
+    [Fact]
+    public async Task TheNumberOfAllClientsIsCappedInEveryMode()
+    {
+        var host = fixture.Host;
+        using var agent = new McpAgent(host, "10.3.0.7");
+        using var admin = await KeyAsync(host);
+        var clients = (await ListAsync(admin)).Count;
+
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName, maxClients: clients + 1);
+        await agent.RegisteredAsync();
+        using var open = await agent.RegisterAsync(McpAgent.Registration());
+        await SetPolicyAsync(host, McpClientRegistrationMode.Approval, maxClients: clients + 1);
+        using var approval = await agent.RegisterAsync(McpAgent.Registration());
+
+        foreach (var capped in new[] { open, approval })
+        {
+            capped.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+            (await JsonAsync(capped))["error"]!.GetValue<string>().ShouldBe("temporarily_unavailable");
+            capped.Headers.RetryAfter.ShouldNotBeNull();
+        }
+
+        (await ListAsync(admin)).Count.ShouldBe(clients + 1);
+        await SetPolicyAsync(host, McpClientRegistrationMode.Approval, maxClients: clients + 2);
+        using var room = await agent.RegisterAsync(McpAgent.Registration());
+        room.StatusCode.ShouldBe(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task AClientTheOpenPolicyApprovedIsRemovedWhenItHasNoTokenOnceUnusedClientDaysHavePassed()
+    {
+        var host = fixture.Host;
+        using var agent = new McpAgent(host, "10.3.0.8");
+        using var admin = await KeyAsync(host);
+        var user = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        await SetPolicyAsync(host, McpClientRegistrationMode.Approval);
+        var vetted = await agent.RegisteredAsync();
+        using var approved = await ApproveAsync(admin, await IdOfAsync(admin, vetted), BuiltInRoles.EditorName);
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
+        var unused = await agent.RegisteredAsync();
+        var used = await agent.RegisteredAsync();
+        await agent.TokensAsync(used, user);
+
+        host.Time.Advance(TimeSpan.FromDays(new McpSettings().UnusedClientDays) - TimeSpan.FromMinutes(1));
+        await RunCleanupAsync();
+        (await FindAsync(admin, unused)).ShouldNotBeNull();
+
+        host.Time.Advance(TimeSpan.FromMinutes(2));
+        var young = await agent.RegisteredAsync();
+        await RunCleanupAsync();
+
+        var left = (await ListAsync(admin)).Select(item => item!["clientId"]!.GetValue<string>()).ToList();
+        left.ShouldNotContain(unused);
+        left.ShouldContain(used);
+        left.ShouldContain(vetted);
+        left.ShouldContain(young);
+    }
+
     private async Task<IReadOnlyList<UserSession>> SessionsAsync(Guid user)
     {
         await using var scope = fixture.Host.Services.CreateAsyncScope();

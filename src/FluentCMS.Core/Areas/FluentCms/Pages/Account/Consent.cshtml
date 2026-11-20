@@ -10,6 +10,14 @@
         <li>@ConsentModel.Describe(scope)</li>
     }
 </ul>
+@if (Model.RedirectHost is not null)
+{
+    <p>Access goes to <strong>@Model.RedirectHost</strong>.</p>
+}
+@if (Model.McpClient)
+{
+    <p class="error">This is an MCP client. Its name is the one given when it was registered and is not verified, so allow it only if you know <strong>@(Model.RedirectHost ?? "where it sends you back")</strong> is the application you are using.</p>
+}
 <p class="muted">Allow only applications you trust. You can end its access later by ending its session.</p>
 @* No action, so that the form posts to this URL with the request of the client in its query. *@
 <form method="post">

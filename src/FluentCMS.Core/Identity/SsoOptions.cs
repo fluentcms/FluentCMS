@@ -55,6 +55,10 @@ public sealed class SsoProvider
     // Entra ID's endpoints that take any tenant: their issuer names the user's own tenant, which the handler cannot check.
     private static readonly string[] SharedTenants = ["common", "organizations", "consumers"];
 
+    // The sign-in hosts of Microsoft's clouds, where the first segment of an authority's path is the tenant.
+    private static readonly string[] MicrosoftHosts =
+        ["login.microsoftonline.com", "login.microsoft.com", "login.windows.net", "sts.windows.net", "login.microsoftonline.us", "login.chinacloudapi.cn", "login.partner.microsoftonline.cn"];
+
     public SsoPreset Preset { get; set; } = SsoPreset.Oidc;
 
     // The text of the button, "Sign in with {DisplayName}"; the preset's name, or the provider's for generic OIDC.
@@ -167,12 +171,22 @@ public sealed class SsoProvider
             authority is not null && (authority.Scheme == Uri.UriSchemeHttps || (!RequireHttpsMetadata && authority.Scheme == Uri.UriSchemeHttp)) && string.IsNullOrEmpty(authority.Query) && string.IsNullOrEmpty(authority.Fragment),
             $"{key}: the authority '{ResolveAuthority()}' is not an https URL with no query; http needs {nameof(RequireHttpsMetadata)} off.");
 
+        // Checked on the authority the handler will use, so that one set by hand is held to it as the preset's is.
+        SsoOptions.Require(
+            authority is null || !IsSharedTenant(authority),
+            $"{key}: the authority '{ResolveAuthority()}' is a shared Microsoft endpoint; name one tenant, since a shared endpoint signs in users of any tenant.");
+
         for (var index = 0; index < RoleMappings.Count; index++)
         {
             var mapping = RoleMappings[index];
             SsoOptions.Require(!string.IsNullOrWhiteSpace(mapping.Group) && !string.IsNullOrWhiteSpace(mapping.Role), $"{key}:{nameof(RoleMappings)}:{index} needs a {nameof(SsoRoleMapping.Group)} and a {nameof(SsoRoleMapping.Role)}.");
         }
     }
+
+    private static bool IsSharedTenant(Uri authority) =>
+        MicrosoftHosts.Contains(authority.Host, StringComparer.OrdinalIgnoreCase)
+        && authority.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() is { } tenant
+        && SharedTenants.Contains(Uri.UnescapeDataString(tenant), StringComparer.OrdinalIgnoreCase);
 
     private static string Origin(string domain)
     {

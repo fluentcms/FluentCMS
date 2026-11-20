@@ -4,8 +4,15 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace FluentCMS.Core.Identity.Oidc;
 
-// What the consent page shows: the client and the scopes of the request that it may ask for.
-internal sealed record ConsentRequest(string ClientId, string ClientName, IReadOnlyList<string> Scopes);
+// What the consent page shows: the client, the scopes of the request that it may ask for, the host the code goes to when the
+// request names one of the client's redirect URIs, and whether it is an MCP client, whose name was given at its registration,
+// by the client itself or by an administrator, and is not checked against anything.
+internal sealed record ConsentRequest(string ClientId, string ClientName, IReadOnlyList<string> Scopes)
+{
+    public string? RedirectHost { get; init; }
+
+    public bool McpClient { get; init; }
+}
 
 // A user's consent to a third-party client (ClientRegistration.RequireConsent) is a permanent OpenIddict authorization of
 // the user for the client and the scopes allowed, which the authorize endpoint then issues the client's codes under. Revoking
@@ -18,15 +25,20 @@ internal sealed class ClientConsents(IOpenIddictApplicationManager applications,
 
     // Null for a client that does not ask for consent, or does not exist, or registered itself and is not approved, so
     // that no consent is recorded for a client before an administrator has let it in.
-    public async Task<ConsentRequest?> DescribeAsync(string clientId, IEnumerable<string> scopes, CancellationToken cancellationToken = default)
+    public async Task<ConsentRequest?> DescribeAsync(string clientId, IEnumerable<string> scopes, string? redirectUri = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(clientId);
         ArgumentNullException.ThrowIfNull(scopes);
 
         var application = await applications.FindByClientIdAsync(clientId, cancellationToken);
         if (application is null
-            || !await applications.HasConsentTypeAsync(application, ConsentTypes.Explicit, cancellationToken)
-            || McpClientState.Of(await applications.GetPropertiesAsync(application, cancellationToken)) is { IsApproved: false })
+            || !await applications.HasConsentTypeAsync(application, ConsentTypes.Explicit, cancellationToken))
+        {
+            return null;
+        }
+
+        var state = McpClientState.Of(await applications.GetPropertiesAsync(application, cancellationToken));
+        if (state is { IsApproved: false })
         {
             return null;
         }
@@ -40,7 +52,18 @@ internal sealed class ClientConsents(IOpenIddictApplicationManager applications,
             }
         }
 
-        return new ConsentRequest(clientId, await applications.GetDisplayNameAsync(application, cancellationToken) ?? clientId, allowed);
+        // A redirect URI the client does not have is refused by the authorize endpoint, so the page names no host for it.
+        var host = !string.IsNullOrEmpty(redirectUri)
+            && Uri.TryCreate(redirectUri, UriKind.Absolute, out var target)
+            && await applications.ValidateRedirectUriAsync(application, redirectUri, cancellationToken)
+                ? target.Authority
+                : null;
+
+        return new ConsentRequest(clientId, await applications.GetDisplayNameAsync(application, cancellationToken) ?? clientId, allowed)
+        {
+            RedirectHost = host,
+            McpClient = state is not null,
+        };
     }
 
     // The user's valid consent to the client that covers every scope, or null.
@@ -57,7 +80,7 @@ internal sealed class ClientConsents(IOpenIddictApplicationManager applications,
     // Records that the user allows the client the scopes it may ask for among these; false for a client that asks no consent.
     public async Task<bool> GrantAsync(Guid userId, string clientId, IEnumerable<string> scopes, CancellationToken cancellationToken = default)
     {
-        var request = await DescribeAsync(clientId, scopes, cancellationToken);
+        var request = await DescribeAsync(clientId, scopes, cancellationToken: cancellationToken);
         if (request is null || await applications.FindByClientIdAsync(clientId, cancellationToken) is not { } application)
         {
             return false;

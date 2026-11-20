@@ -303,12 +303,12 @@ internal static class McpClientTesting
     public const string ClientsPath = "/api/management/v1/mcp/clients";
 
     // The instance defaults of the settings area, written as the host's own code.
-    public static async Task SetPolicyAsync(FluentCmsTestHost host, McpClientRegistrationMode mode, string? defaultRole = null, int maxPending = 100, int perHour = 100)
+    public static async Task SetPolicyAsync(FluentCmsTestHost host, McpClientRegistrationMode mode, string? defaultRole = null, int maxPending = 100, int perHour = 100, int maxClients = 1000)
     {
         await using var scope = host.Services.CreateAsyncScope();
         using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
         await scope.ServiceProvider.GetRequiredService<ISettings<McpSettings>>().SetDefaultAsync(
-            new McpSettings { ClientRegistration = mode, DefaultClientRole = defaultRole, MaxPendingClients = maxPending, RegistrationsPerHour = perHour },
+            new McpSettings { ClientRegistration = mode, DefaultClientRole = defaultRole, MaxPendingClients = maxPending, RegistrationsPerHour = perHour, MaxClients = maxClients },
             Token);
     }
 
