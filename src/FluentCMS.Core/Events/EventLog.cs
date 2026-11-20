@@ -69,4 +69,7 @@ internal static partial class EventLog
 
     [LoggerMessage(EventId = 9622, Level = LogLevel.Information, Message = "The prune of the outbox removed {Delivered} delivered and {Failed} failed rows.")]
     public static partial void Pruned(ILogger logger, int delivered, int failed);
+
+    [LoggerMessage(EventId = 9623, Level = LogLevel.Error, Message = "The outbox lane of {Owner} hit an error; it is tried again on the next signal or sweep, and the other lanes go on.")]
+    public static partial void LaneFailed(ILogger logger, Exception exception, string owner);
 }

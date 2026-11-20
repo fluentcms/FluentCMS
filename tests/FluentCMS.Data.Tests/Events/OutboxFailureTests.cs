@@ -802,6 +802,43 @@ public sealed class OutboxFailureTests
         OutboxErrorText.Of(new InvalidOperationException(new string('x', 5000)), "{}").Length.ShouldBe(Job.LastErrorMaxLength);
     }
 
+    // Each delivery takes 20 seconds on the clock, so the lease of the batch is renewed before the second; that renewal fails.
+    [Fact]
+    public async Task ARenewalThatFailsEndsTheBatchAndGivesTheRowsNotTriedBackWithTheirAttempts()
+    {
+        var seen = new Seen();
+        var faults = new JobFaults();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        seen.Behavior = (_, _) =>
+        {
+            clock.Advance(TimeSpan.FromSeconds(20));
+            return Task.CompletedTask;
+        };
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
+        {
+            cms.Services.AddSingleton<TimeProvider>(clock);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(faults));
+            cms.Events.Outbox.LeaseDuration = TimeSpan.FromMinutes(1);
+            cms.Events.Outbox.DeliveryTimeout = TimeSpan.FromSeconds(30);
+        })));
+        for (var index = 0; index < 3; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        faults.Fail(command => command.CommandText.StartsWith("UPDATE", StringComparison.Ordinal)
+            && command.CommandText.Contains(TestProvider.Quote("lease_until"), StringComparison.Ordinal)
+            && !command.CommandText.Contains(TestProvider.Quote("attempts"), StringComparison.Ordinal)
+            && !command.CommandText.Contains(TestProvider.Quote("delivered_at"), StringComparison.Ordinal));
+        (await DrainAsync(database.Database.Services)).ShouldBe(1);
+        faults.Recover();
+
+        seen.Deliveries.Count.ShouldBe(1);
+        var rows = database.Rows();
+        rows[0].Status.ShouldBe(OutboxStatus.Delivered);
+        rows.Skip(1).ShouldAllBe(row => row.Status == OutboxStatus.Pending && row.Attempts == 0 && row.LeaseOwner == null);
+    }
+
     // The prune is a job of its own, run hourly, so that the table is not walked for old rows on every drain.
     [Fact]
     public async Task TheDrainLeavesOldDeliveredRowsToThePrune()

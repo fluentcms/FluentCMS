@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Runtime.ExceptionServices;
 using FluentCMS.Content;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
@@ -12,23 +11,29 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Events;
 
-// Delivers the rows of cms_outbox at least once. Each handler has a lane of its own, which takes the rows of that handler in
-// the order of their events, so a handler that is slow or hangs holds back its own deliveries and no other handler's; the
-// order between the handlers of one event is not kept. The drain starts a lane for every handler with rows due, and looks
-// again whenever a lane ends or a kick of this instance signals it, so that a new event for an idle handler does not wait
-// for a slow one. A lane claims a batch with one conditional update over its ids, which only one of any number of instances
-// wins for each row, and holds a lease under an owner of that claim alone, so that two drains of one instance never take
-// each other's rows when they read back what they won.
+// Delivers the rows of cms_outbox at least once. Each owner of handlers, a plugin or core, has a lane of its own, which takes
+// the rows of its handlers in the order of their events, so one owner gets its events in sequence on this instance whatever
+// their types, and an owner whose handler is slow or hangs holds back only its own deliveries. That order holds per instance:
+// another instance's drain may claim the owner's next batch at the same time, and a row that fails waits for its retry while
+// later rows go on. Rows of a handler that this instance does not have share one lane more. The drain starts a lane for each
+// owner with rows due, and looks again, at the owners with no lane only, whenever a lane ends or a kick of this instance
+// signals it, so that a new event for an idle owner does not wait for a slow one. There are as many lanes as owners, a few.
+// A lane that fails, as on a locked database, is logged and looked at again on the next signal, while the others go on.
+// A lane claims a batch with one conditional update over its ids, which only one of any number of instances wins for each
+// row, and holds a lease under an owner of that claim alone, so that two drains of one instance never take each other's rows
+// when they read back what they won. The candidates are read handler by handler, each from its own place in the pending rows,
+// and merged in the order of their events, so that the claim of one owner never walks the backlog of another.
 // The claim counts an attempt for each row it takes, so that a delivery that kills its process uses up its attempts with no
 // write of its own; a row that is not run to an end gives its attempt back. A row taken over from a worker whose lease lapsed
 // is claimed alone, so that a delivery that kills its process costs the rows after it one attempt at most. The lease of a
 // batch is renewed only when what is left of it would not cover one more delivery, and the rows delivered are settled
-// together then and at the end of the batch, so a batch whose handler answers in time costs one write to claim it and one
-// to settle it. A delivery is cut off before its lease can end, so that a worker never delivers on a lease it has lost, and
+// together then and at the end of the batch, so a batch whose handlers answer in time costs one write to claim it and one
+// to settle it; a renewal that fails ends the batch and gives back the rows not tried. A crash before the settle delivers the
+// batch again. A delivery is cut off before its lease can end, so that a worker never delivers on a lease it has lost, and
 // every write of an outcome is conditional on the claim.
 // A cut-off that comes before the handler starts, as when the thread pool is starved, gives the attempt back and leaves the
-// row for a later drain. A handler that has to be abandoned once it has started may still be running, on a thread of its
-// own; nothing here can stop it.
+// row out of this drain for one MissingHandlerDelay. A handler that has to be abandoned once it has started may still be running,
+// on a thread of its own; nothing here can stop it.
 // A row of a plugin that is now disabled in the row's site was recorded while it was enabled, so it is owed to the plugin: it
 // waits, as a row with no handler does, without using an attempt, and is delivered once the plugin is enabled there again.
 // Either waits OrphanAfter at most, from when its event happened; then it is left as failed, so that a plugin that is gone
@@ -44,6 +49,8 @@ internal sealed class OutboxDrainer(
 {
     private const string ExhaustedError = "The worker of the last attempt stopped without finishing it, and no attempts are left.";
 
+    private const string Unregistered = Lanes.Unregistered;
+
     private readonly string _instance = $"{Environment.MachineName}/{Guid.NewGuid():N}";
 
     private long _claims;
@@ -54,71 +61,93 @@ internal sealed class OutboxDrainer(
     // cut-off. A test replaces it to hold a handler back past its cut-off.
     internal Func<Func<Task>, Task> HandOff { get; set; } = work => Task.Run(work);
 
-    // Asks the drains running on this instance to look again for handlers with rows due that have no lane yet.
+    // The owner of a handler: its plugin, or null for core's and the host's. A test replaces it to give handlers owners.
+    internal Func<string, string?> OwnerOf { get; set; } = plugins.OutboxHandlerOwner;
+
+    // Asks the drains running on this instance to look again for owners with rows due that have no lane yet.
     public void Signal() =>
         Interlocked.Exchange(ref _wake, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)).TrySetResult();
 
     // The number of deliveries that succeeded.
     public async Task<int> DrainAsync(CancellationToken cancellationToken = default)
     {
+        var lanesOf = new Lanes(registry.Names, OwnerOf);
         var delivered = 0;
-        // A row whose handler never started waits for a later drain, so a starved thread pool cannot keep one drain going.
-        var deferred = new ConcurrentDictionary<Guid, byte>();
-        var lanes = new Dictionary<string, Task<int>>(StringComparer.Ordinal);
-        ExceptionDispatchInfo? failure = null;
+        var deferred = new Deferrals(time, options.MissingHandlerDelay);
+        var running = new Dictionary<string, Task<(int Delivered, bool Stopped)>>(StringComparer.Ordinal);
+
+        // A lane that failed is left out until the next signal, so that a database that refuses it is not asked again at once.
+        var failed = new Dictionary<string, Task>(StringComparer.Ordinal);
+        var first = true;
 
         while (true)
         {
             var wake = Volatile.Read(ref _wake).Task;
-            var looking = failure is null && !cancellationToken.IsCancellationRequested;
-            if (looking)
+            if (!cancellationToken.IsCancellationRequested)
             {
+                var idle = lanesOf.Keys.Where(key => !running.ContainsKey(key) && !(failed.TryGetValue(key, out var since) && since == wake)).ToList();
                 try
                 {
-                    foreach (var handler in await DueHandlersAsync(deferred, cancellationToken))
+                    // The rows of handlers this instance does not have are looked for once a drain, since that walks the
+                    // pending rows of every other handler.
+                    foreach (var key in await DueLanesAsync(lanesOf, idle, first, deferred, failed, wake, cancellationToken))
                     {
-                        if (!lanes.ContainsKey(handler))
-                        {
-                            lanes[handler] = Task.Run(() => LaneAsync(handler, deferred, cancellationToken), CancellationToken.None);
-                        }
+                        failed.Remove(key);
+                        running[key] = Task.Run(() => LaneAsync(lanesOf, key, deferred, cancellationToken), CancellationToken.None);
                     }
+
+                    first = false;
                 }
                 catch (Exception exception)
                 {
-                    // The lanes already running end first, so that none outlives the drain.
-                    failure = ExceptionDispatchInfo.Capture(exception);
-                    looking = false;
+                    if (!cancellationToken.IsCancellationRequested)
+                    {
+                        EventLog.LaneFailed(logger, exception, "(looking for owners)");
+                    }
+
+                    if (running.Count == 0)
+                    {
+                        break;
+                    }
                 }
             }
 
-            if (lanes.Count == 0)
+            if (running.Count == 0)
             {
                 break;
             }
 
-            List<Task> waits = [.. lanes.Values];
-            if (looking)
+            List<Task> waits = [.. running.Values];
+            if (!cancellationToken.IsCancellationRequested)
             {
                 waits.Add(wake);
             }
 
             await Task.WhenAny(waits);
 
-            foreach (var (handler, lane) in lanes.Where(lane => lane.Value.IsCompleted).ToList())
+            foreach (var (key, lane) in running.Where(lane => lane.Value.IsCompleted).ToList())
             {
-                lanes.Remove(handler);
+                running.Remove(key);
                 try
                 {
-                    delivered += await lane;
+                    var (count, stopped) = await lane;
+                    delivered += count;
+                    if (stopped)
+                    {
+                        failed[key] = Volatile.Read(ref _wake).Task;
+                    }
                 }
-                catch (Exception exception)
+                catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
                 {
-                    failure ??= ExceptionDispatchInfo.Capture(exception);
+                    EventLog.LaneFailed(logger, exception, Lanes.Display(key));
+                    failed[key] = Volatile.Read(ref _wake).Task;
+                }
+                catch (OperationCanceledException)
+                {
                 }
             }
         }
 
-        failure?.Throw();
         return delivered;
     }
 
@@ -150,37 +179,83 @@ internal sealed class OutboxDrainer(
         return await Claimable(context, now).AnyAsync(cancellationToken);
     }
 
-    private async Task<List<string>> DueHandlersAsync(ConcurrentDictionary<Guid, byte> deferred, CancellationToken cancellationToken)
+    // Only the lanes that are idle are looked at, each with a seek per handler, so that a burst of signals while a slow lane
+    // runs costs a few reads each and never a walk of its backlog. A lane whose read fails is left out until the next signal.
+    private async Task<List<string>> DueLanesAsync(Lanes lanesOf, List<string> idle, bool unregistered, Deferrals deferred, Dictionary<string, Task> failed, Task wake, CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
-        var skipped = deferred.Keys.ToList();
+        var now = time.GetUtcNow();
+        var skipped = deferred.Current();
+        List<string> due = [];
 
-        return await Claimable(context, time.GetUtcNow())
-            .Where(message => !skipped.Contains(message.Id))
-            .Select(message => message.Handler)
-            .Distinct()
-            .ToListAsync(cancellationToken);
+        foreach (var key in idle)
+        {
+            try
+            {
+                if (await IsDueAsync(context, lanesOf, key, unregistered, now, skipped, cancellationToken))
+                {
+                    due.Add(key);
+                }
+            }
+            catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                EventLog.LaneFailed(logger, exception, Lanes.Display(key));
+                failed[key] = wake;
+            }
+        }
+
+        return due;
     }
 
-    private async Task<int> LaneAsync(string handler, ConcurrentDictionary<Guid, byte> deferred, CancellationToken cancellationToken)
+    private async Task<bool> IsDueAsync(SystemDbContext context, Lanes lanesOf, string key, bool unregistered, DateTimeOffset now, List<Guid> skipped, CancellationToken cancellationToken)
+    {
+        if (key == Unregistered)
+        {
+            return unregistered && await OfUnregistered(context, lanesOf, now).Where(message => !skipped.Contains(message.Id)).AnyAsync(cancellationToken);
+        }
+
+        foreach (var handler in lanesOf.HandlersOf(key))
+        {
+            if (await Claimable(context, now).Where(message => message.Handler == handler && !skipped.Contains(message.Id)).AnyAsync(cancellationToken))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private IQueryable<OutboxMessage> OfUnregistered(SystemDbContext context, Lanes lanesOf, DateTimeOffset now)
+    {
+        var known = lanesOf.Known;
+        return Claimable(context, now).Where(message => !known.Contains(message.Handler));
+    }
+
+    // Stopped when a renewal failed, so that the lane waits for the next signal rather than claim what it just gave back.
+    private async Task<(int Delivered, bool Stopped)> LaneAsync(Lanes lanesOf, string key, Deferrals deferred, CancellationToken cancellationToken)
     {
         var delivered = 0;
         while (!cancellationToken.IsCancellationRequested)
         {
-            var claim = await ClaimAsync(handler, deferred, cancellationToken);
+            var claim = await ClaimAsync(lanesOf, key, deferred, cancellationToken);
             if (claim.Rows.Count == 0)
             {
                 break;
             }
 
-            delivered += await DeliverBatchAsync(claim, deferred, cancellationToken);
+            var (count, stopped) = await DeliverBatchAsync(claim, deferred, cancellationToken);
+            delivered += count;
+            if (stopped)
+            {
+                return (delivered, true);
+            }
         }
 
-        return delivered;
+        return (delivered, false);
     }
 
-    private async Task<Claim> ClaimAsync(string handler, ConcurrentDictionary<Guid, byte> deferred, CancellationToken cancellationToken)
+    private async Task<Claim> ClaimAsync(Lanes lanesOf, string key, Deferrals deferred, CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
@@ -188,25 +263,33 @@ internal sealed class OutboxDrainer(
         var now = time.GetUtcNow();
         var leaseUntil = now + options.LeaseDuration;
         var owner = $"{_instance}/{Interlocked.Increment(ref _claims)}";
-        var skipped = deferred.Keys.ToList();
+        var skipped = deferred.Current();
 
-        var candidates = await Claimable(context, now)
-            .Where(message => message.Handler == handler && !skipped.Contains(message.Id))
-            .OrderBy(message => message.Sequence).ThenBy(message => message.Id)
-            .Select(message => new { message.Id, message.LeaseOwner })
-            .Take(options.BatchSize)
-            .ToListAsync(cancellationToken);
+        List<Candidate> candidates = [];
+        if (key == Unregistered)
+        {
+            candidates.AddRange(await Candidates(OfUnregistered(context, lanesOf, now), skipped).ToListAsync(cancellationToken));
+        }
+        else
+        {
+            foreach (var handler in lanesOf.HandlersOf(key))
+            {
+                candidates.AddRange(await Candidates(Claimable(context, now).Where(message => message.Handler == handler), skipped).ToListAsync(cancellationToken));
+            }
+        }
 
         if (candidates.Count == 0)
         {
             return new Claim(owner, leaseUntil, []);
         }
 
+        var ordered = candidates.OrderBy(candidate => candidate.Sequence).ThenBy(candidate => candidate.Id).Take(options.BatchSize).ToList();
+
         // A row that still names an owner was held by a worker whose lease lapsed, which its delivery may have killed.
-        var ids = candidates.TakeWhile(candidate => candidate.LeaseOwner is null).Select(candidate => candidate.Id).ToList();
+        var ids = ordered.TakeWhile(candidate => candidate.LeaseOwner is null).Select(candidate => candidate.Id).ToList();
         if (ids.Count == 0)
         {
-            ids = [candidates[0].Id];
+            ids = [ordered[0].Id];
         }
 
         // The update checks every condition of the read again, so a row another drain took in between is left to it.
@@ -230,7 +313,13 @@ internal sealed class OutboxDrainer(
         return new Claim(owner, leaseUntil, rows);
     }
 
-    private async Task<int> DeliverBatchAsync(Claim claim, ConcurrentDictionary<Guid, byte> deferred, CancellationToken cancellationToken)
+    private IQueryable<Candidate> Candidates(IQueryable<OutboxMessage> rows, List<Guid> skipped) =>
+        rows.Where(message => !skipped.Contains(message.Id))
+            .OrderBy(message => message.Sequence).ThenBy(message => message.Id)
+            .Take(options.BatchSize)
+            .Select(message => new Candidate(message.Id, message.Sequence, message.LeaseOwner));
+
+    private async Task<(int Delivered, bool Stopped)> DeliverBatchAsync(Claim claim, Deferrals deferred, CancellationToken cancellationToken)
     {
         var delivered = 0;
         List<OutboxMessage> done = [];
@@ -249,7 +338,19 @@ internal sealed class OutboxDrainer(
             if (claim.LeaseUntil - time.GetUtcNow() < options.DeliveryTimeout + margin)
             {
                 await SettleDeliveredAsync(claim, done);
-                lost.UnionWith(await RenewAsync(claim, claim.Rows.Skip(index).Select(row => row.Id).ToList()));
+                var left = claim.Rows.Skip(index).ToList();
+                if (await RenewAsync(claim, left) is not { } gone)
+                {
+                    // Nothing more is delivered on a lease that may not be held; the rows not tried go back for their attempt.
+                    foreach (var untried in left)
+                    {
+                        await ReleaseAsync(untried, delay: null);
+                    }
+
+                    return (delivered, true);
+                }
+
+                lost.UnionWith(gone);
             }
 
             if (lost.Contains(message.Id))
@@ -266,12 +367,14 @@ internal sealed class OutboxDrainer(
         }
 
         await SettleDeliveredAsync(claim, done);
-        return delivered;
+        return (delivered, false);
     }
 
-    // Renews the lease of the rows left in a batch, and gives back the ids of those this worker no longer holds.
-    private async Task<List<Guid>> RenewAsync(Claim claim, List<Guid> ids)
+    // Renews the lease of the rows left in a batch, and gives back the ids of those this worker no longer holds, or null when
+    // the renewal failed.
+    private async Task<List<Guid>?> RenewAsync(Claim claim, List<OutboxMessage> left)
     {
+        var ids = left.Select(row => row.Id).ToList();
         try
         {
             await using var scope = scopes.CreateAsyncScope();
@@ -289,9 +392,8 @@ internal sealed class OutboxDrainer(
         }
         catch (Exception exception)
         {
-            // Nothing is delivered on a lease that may have run out; the rows go to a later drain when it does.
             EventLog.SettleFailed(logger, exception, ids[0]);
-            return ids;
+            return null;
         }
     }
 
@@ -353,7 +455,7 @@ internal sealed class OutboxDrainer(
         context.Set<OutboxMessage>().Where(row => ids.Contains(row.Id) && row.Status == OutboxStatus.Pending && row.LeaseOwner == claim.Owner);
 
     // True when the handler succeeded; the delivery is then settled with the rest of its batch.
-    private async Task<bool> DeliverAsync(OutboxMessage message, ConcurrentDictionary<Guid, byte> deferred, CancellationToken cancellationToken)
+    private async Task<bool> DeliverAsync(OutboxMessage message, Deferrals deferred, CancellationToken cancellationToken)
     {
         var registration = registry.Find(message.Handler);
         if (registration is null)
@@ -380,7 +482,7 @@ internal sealed class OutboxDrainer(
         {
             // Given back for a later drain, so that the rest of the batch is not left leased.
             PluginLog.StateUnavailable(logger, exception);
-            deferred.TryAdd(message.Id, 0);
+            deferred.Add(message.Id);
             await ReleaseAsync(message, delay: null);
             return false;
         }
@@ -437,7 +539,7 @@ internal sealed class OutboxDrainer(
             if (state.WasAbandoned)
             {
                 EventLog.HandOffAbandoned(logger, message.Id, message.Handler, options.DeliveryTimeout);
-                deferred.TryAdd(message.Id, 0);
+                deferred.Add(message.Id);
                 await ReleaseAsync(message, delay: null);
                 return false;
             }
@@ -563,6 +665,72 @@ internal sealed class OutboxDrainer(
         catch (Exception exception)
         {
             EventLog.DeliveryScopeFailed(logger, exception, message.Id, message.Handler);
+        }
+    }
+
+    private sealed record Candidate(Guid Id, long Sequence, string? LeaseOwner);
+
+    // The lanes of this instance: one for each owner of the handlers it has, and one for the rows of handlers it does not.
+    private sealed class Lanes
+    {
+        // A plugin's name never has a star, so neither key is one.
+        public const string Unregistered = "*unregistered";
+
+        private const string Core = "*core";
+
+        private readonly Dictionary<string, List<string>> _handlers = new(StringComparer.Ordinal);
+
+        public Lanes(IEnumerable<string> names, Func<string, string?> ownerOf)
+        {
+            Known = [.. names];
+            foreach (var name in Known.Order(StringComparer.Ordinal))
+            {
+                var key = ownerOf(name) ?? Core;
+                if (!_handlers.TryGetValue(key, out var handlers))
+                {
+                    _handlers[key] = handlers = [];
+                }
+
+                handlers.Add(name);
+            }
+
+            Keys = [.. _handlers.Keys, Unregistered];
+        }
+
+        public List<string> Known { get; }
+
+        public IReadOnlyList<string> Keys { get; }
+
+        public static string Display(string key) => key switch
+        {
+            Unregistered => "(unregistered handlers)",
+            Core => "(core)",
+            _ => key,
+        };
+
+        public List<string> HandlersOf(string key) => _handlers.GetValueOrDefault(key) ?? [];
+    }
+
+    // The rows whose handler did not start in time, left out of this drain for a while so that a starved thread pool does not
+    // keep one drain going, and tried again after it.
+    private sealed class Deferrals(TimeProvider time, TimeSpan span)
+    {
+        private readonly ConcurrentDictionary<Guid, DateTimeOffset> _until = new();
+
+        public void Add(Guid id) => _until[id] = time.GetUtcNow() + span;
+
+        public List<Guid> Current()
+        {
+            var now = time.GetUtcNow();
+            foreach (var entry in _until)
+            {
+                if (entry.Value <= now)
+                {
+                    _until.TryRemove(entry);
+                }
+            }
+
+            return [.. _until.Keys];
         }
     }
 

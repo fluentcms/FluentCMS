@@ -29,6 +29,10 @@ public sealed class OutboxTests
     private static Task<int> DrainAsync(IServiceProvider instance) =>
         instance.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
 
+    // Each handler its own owner, as handlers of different plugins are.
+    private static void OwnedApart(ServiceDatabase database) =>
+        database.Database.Services.GetRequiredService<OutboxDrainer>().OwnerOf = name => name;
+
     // Each drain claims a batch while the drains before it hold theirs, then all of them carry on at once and share out the
     // rows that are left.
     private static async Task<int[]> DrainTogetherAsync(Seen seen, params IServiceProvider[] instances)
@@ -81,6 +85,24 @@ public sealed class OutboxTests
                 {
                     Interlocked.Increment(ref _claims);
                 }
+            }
+
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    // Counts the reads of cms_outbox, which on an instance with nothing else running are the sweep's.
+    private sealed class SweepReads : DbCommandInterceptor
+    {
+        private int _count;
+
+        public int Count => Volatile.Read(ref _count);
+
+        public override ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command, CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("cms_outbox", StringComparison.Ordinal))
+            {
+                Interlocked.Increment(ref _count);
             }
 
             return ValueTask.FromResult(result);
@@ -272,7 +294,7 @@ public sealed class OutboxTests
     }
 
     [Fact]
-    public async Task AHandlerThatBlocksDoesNotHoldBackTheDeliveriesOfAnother()
+    public async Task AHandlerThatBlocksDoesNotHoldBackTheDeliveriesOfAnotherOwner()
     {
         var seen = new Seen();
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -288,6 +310,7 @@ public sealed class OutboxTests
             await database.CreateAsync(Editor, Titled($"T{index}"));
         }
 
+        OwnedApart(database);
         var drain = DrainAsync(database.Database.Services);
         try
         {
@@ -304,7 +327,7 @@ public sealed class OutboxTests
     }
 
     [Fact]
-    public async Task AKickStartsALaneForANewHandlerWhileAnotherHandlerHangs()
+    public async Task AKickStartsALaneForAnIdleOwnerWhileAnotherOwnerHangs()
     {
         var seen = new Seen();
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -316,6 +339,7 @@ public sealed class OutboxTests
         }));
         var entry = await database.CreateAsync(Editor, Titled("T"));
 
+        OwnedApart(database);
         var drain = DrainAsync(database.Database.Services);
         try
         {
@@ -331,6 +355,59 @@ public sealed class OutboxTests
         }
 
         (await drain).ShouldBe(2);
+    }
+
+    // Core's handlers are one owner, so the draft saved, then the trash of an entry reach it in that order though the first
+    // handler is slow.
+    [Fact]
+    public async Task OneOwnerGetsTheEventsOfDifferentTypesInTheOrderTheyHappened()
+    {
+        var seen = new Seen();
+        seen.Behavior = (heard, _) => heard is EntryDraftSavedEvent ? Task.Delay(200, Token) : Task.CompletedTask;
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
+        {
+            cms.Events.AddOutboxHandler<EntryDraftSavedEvent, SavedOutbox>("saved");
+            cms.Events.AddOutboxHandler<EntryTrashedEvent, TrashedOutbox>("trashed");
+        }));
+        var entry = await database.CreateAsync(Editor, Titled("T"));
+        await database.DeleteAsync(Editor, IdOf(entry));
+
+        (await DrainAsync(database.Database.Services)).ShouldBe(2);
+
+        seen.Calls.ShouldBe(["outbox", "trashed-outbox"]);
+    }
+
+    [Fact]
+    public async Task AnOwnerWhoseLaneFailsDoesNotHoldBackAnotherAndIsDeliveredOnALaterDrain()
+    {
+        var seen = new Seen();
+        var faults = new JobFaults();
+        var logs = new RecordingLogs();
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
+        {
+            cms.Events.AddOutboxHandler<EntryDraftSavedEvent, OutboxFirst>("first");
+            cms.Events.AddOutboxHandler<EntryDraftSavedEvent, OutboxSecond>("second");
+            cms.Services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(logs);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(faults));
+        }));
+        await database.CreateAsync(Editor, Titled("T"));
+        OwnedApart(database);
+
+        // As a locked database would, for every read of the first owner's rows.
+        faults.Fail(command => command.CommandText.Contains("cms_outbox", StringComparison.Ordinal)
+            && command.Parameters.Cast<DbParameter>().Any(parameter => Equals(parameter.Value, "first")));
+        (await DrainAsync(database.Database.Services)).ShouldBe(1);
+        faults.Recover();
+
+        logs.Count("LaneFailed").ShouldBeGreaterThanOrEqualTo(1);
+        database.Rows().ToDictionary(row => row.Handler, row => row.Status).ShouldBe(new Dictionary<string, string>
+        {
+            ["first"] = OutboxStatus.Pending,
+            ["second"] = OutboxStatus.Delivered,
+        });
+
+        (await DrainAsync(database.Database.Services)).ShouldBe(1);
+        database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Delivered);
     }
 
     [Fact]
@@ -688,16 +765,20 @@ public sealed class OutboxTests
     public async Task AnIdleInstanceAddsNoJobForTheOutboxAndTheSweepCatchesWhatNothingAskedFor()
     {
         var clock = new ManualTimeProvider(JobFixture.Start);
-        using var database = new ServiceDatabase(EventRegistrations.Outbox(new Seen(), cms => cms.Services.AddSingleton<TimeProvider>(clock)));
+        var sweeps = new SweepReads();
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(new Seen(), cms =>
+        {
+            cms.Services.AddSingleton<TimeProvider>(clock);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(sweeps));
+        }));
         var schedule = database.Database.Services.GetServices<IHostedService>().OfType<OutboxScheduleService>().Single();
         await schedule.StartAsync(Token);
         try
         {
             await Eventually.HoldsAsync(() => database.Read(context => context.Set<RecurringJob>().AsNoTracking().Count()) == 1);
-            for (var minute = 0; minute < 5; minute++)
-            {
-                clock.Advance(OutboxScheduleService.SweepInterval);
-            }
+
+            // Each sweep reads cms_outbox twice, for exhausted rows and for due ones; five sweeps, and still no job.
+            await Eventually.HoldsAsync(() => sweeps.Count >= 10, () => clock.Advance(OutboxScheduleService.SweepInterval));
 
             database.Read(context => context.Set<Job>().AsNoTracking().Count()).ShouldBe(0);
 
