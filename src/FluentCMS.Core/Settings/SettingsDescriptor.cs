@@ -279,6 +279,19 @@ internal sealed class SettingsDescriptor
         return document.ToJsonString();
     }
 
+    // The document with the keys set to their code defaults.
+    public string WithCodeDefaults(string json, IEnumerable<string> keys)
+    {
+        var document = JsonNode.Parse(json)!.AsObject();
+        var defaults = JsonNode.Parse(Write(CreateDefault()))!.AsObject();
+        foreach (var key in keys)
+        {
+            document[key] = defaults[key]?.DeepClone();
+        }
+
+        return document.ToJsonString();
+    }
+
     public static string Without(string json, IReadOnlyList<string> keys)
     {
         if (keys.Count == 0)
