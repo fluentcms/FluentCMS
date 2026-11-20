@@ -18,7 +18,8 @@ internal abstract class TestDatabase : IDisposable
 {
     public abstract string ConnectionString { get; }
 
-    // forSystemTables: the test applies the system migrations first, which on SQL Server the database then already holds.
+    // forSystemTables: the test applies the system migrations first, which on a server the database then already holds.
+    // Without it the database is empty, for a test that migrates it itself or starts a host that does.
     public static TestDatabase Create(bool forSystemTables = false) =>
         TestProvider.IsSqlite ? new SqliteFileDatabase() : DatabaseServer.NewDatabase(forSystemTables);
 
