@@ -205,6 +205,10 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
         }
     }
 
+    // Whether the caller's next save adds a token row of the user, which may meet another's on its key.
+    public bool StagesTokenRow(CmsUser user) =>
+        Context.ChangeTracker.Entries<IdentityUserToken<Guid>>().Any(entry => entry.State == EntityState.Added && entry.Entity.UserId == user.Id);
+
     // A failed save of IdentityChanges clears the context, which leaves the caller's user detached, so that the next save of
     // it, such as the failed attempt Identity counts after a refused code, would meet the copy a validator loads. The user is
     // tracked again with what is stored.

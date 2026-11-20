@@ -645,7 +645,7 @@ public sealed partial class HostedPagesTests : IClassFixture<HostedPagesFixture>
                 DisplayName = "Agent Tool",
                 RedirectUris = { ThirdPartyRedirectUri },
                 PostLogoutRedirectUris = { ThirdPartySignedOutUri },
-                Scopes = { "openid", "profile", "management" },
+                Scopes = { "openid", "profile", "offline_access", "management" },
                 RequireConsent = true,
             };
         });

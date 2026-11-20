@@ -168,7 +168,7 @@ internal static class ConnectEndpoints
 
             identity.SetAuthorizationId(await context.RequestServices.GetRequiredService<IOpenIddictAuthorizationManager>().GetIdAsync(consent, context.RequestAborted));
 
-            // The consent is no session's, so its tokens carry the session for SingleFactorTokenHandler.
+            // The consent is no session's, so its codes and refresh tokens carry the session for SingleFactorTokenHandler.
             if (CmsSignInManager.ServerSession(cookie.Properties!) is { } consentSession)
             {
                 TokenClaims.ForConsentSession(identity, consentSession);

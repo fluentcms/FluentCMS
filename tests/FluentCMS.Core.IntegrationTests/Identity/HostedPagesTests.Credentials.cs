@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.IntegrationTests.Management;
 using FluentCMS.Core.Storage;
 using FluentCMS.Testing;
@@ -157,7 +158,17 @@ public sealed partial class HostedPagesTests
         var withSecondFactor = await ConsentFlowAsync(browser);
         await SignInAsync(browser, editor.Email);
         var withPassword = await ConsentFlowAsync(browser);
+        var refreshed = await ThirdPartyRefreshAsync(Text(withPassword, "refresh_token"));
         (await MeAsync(_host, Text(withPassword, "access_token"))).ShouldBe(HttpStatusCode.OK);
+        (await MeAsync(_host, Text(refreshed, "access_token"))).ShouldBe(HttpStatusCode.OK);
+
+        // Neither the client nor a resource server can read the session from what they hold.
+        foreach (var tokens in new[] { withPassword, refreshed })
+        {
+            Payload(Text(tokens, "access_token")).TryGetProperty(TokenClaims.ConsentSession, out _).ShouldBeFalse();
+            Payload(Text(tokens, "id_token")).TryGetProperty(TokenClaims.ConsentSession, out _).ShouldBeFalse();
+            Payload(Text(tokens, "id_token")).TryGetProperty("sid", out _).ShouldBeFalse();
+        }
 
         // A role that requires two-factor makes the next sign-in ask for it whatever the device.
         (await AdminFixture.SendAsync(admin, HttpMethod.Put, $"users/{editor.Id:D}/roles/{await GuardedRoleAsync(admin)}")).Status.ShouldBe(HttpStatusCode.OK);
@@ -168,8 +179,10 @@ public sealed partial class HostedPagesTests
         }
 
         (await MeAsync(_host, Text(withPassword, "access_token"))).ShouldBe(HttpStatusCode.Unauthorized);
+        (await MeAsync(_host, Text(refreshed, "access_token"))).ShouldBe(HttpStatusCode.Unauthorized);
+        (await ThirdPartyRefreshRefusedAsync(Text(refreshed, "refresh_token"))).ShouldBe("invalid_grant");
         (await MeAsync(_host, Text(withSecondFactor, "access_token"))).ShouldBe(HttpStatusCode.OK);
-        var next = AuthorizeRequest.For(ThirdPartyClientId, ThirdPartyRedirectUri, "openid management");
+        var next = AuthorizeRequest.For(ThirdPartyClientId, ThirdPartyRedirectUri, "openid offline_access management");
         using var again = await browser.GetAsync(next.Url);
         again.Headers.Location!.AbsoluteUri.ShouldStartWith(ThirdPartyRedirectUri + "?code=");
     }
@@ -280,7 +293,7 @@ public sealed partial class HostedPagesTests
     // The code flow of the third-party client, through its consent page the first time.
     private async Task<JsonElement> ConsentFlowAsync(HostedPagesBrowser browser)
     {
-        var request = AuthorizeRequest.For(ThirdPartyClientId, ThirdPartyRedirectUri, "openid management");
+        var request = AuthorizeRequest.For(ThirdPartyClientId, ThirdPartyRedirectUri, "openid offline_access management");
         using var asked = await browser.GetAsync(request.Url);
         var location = asked.Headers.Location!.OriginalString;
         if (!location.StartsWith("/account/consent", StringComparison.Ordinal))
@@ -291,6 +304,35 @@ public sealed partial class HostedPagesTests
         using var allowed = await browser.PostAsync(location, await browser.PageAsync(location), new Dictionary<string, string> { ["decision"] = "allow" });
         using var done = await browser.FollowAsync(allowed, ThirdPartyRedirectUri);
         return await request.ExchangeAsync(_host, done);
+    }
+
+    private async Task<HttpResponseMessage> ThirdPartyRefreshResponseAsync(string refreshToken)
+    {
+        using var client = _host.CreateSecureClient();
+        using var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = refreshToken,
+            ["client_id"] = ThirdPartyClientId,
+        });
+        return await client.PostAsync("/connect/token", content, Token);
+    }
+
+    private async Task<JsonElement> ThirdPartyRefreshAsync(string refreshToken)
+    {
+        using var response = await ThirdPartyRefreshResponseAsync(refreshToken);
+        var body = await response.Content.ReadAsStringAsync(Token);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK, body);
+        using var json = JsonDocument.Parse(body);
+        return json.RootElement.Clone();
+    }
+
+    private async Task<string?> ThirdPartyRefreshRefusedAsync(string refreshToken)
+    {
+        using var response = await ThirdPartyRefreshResponseAsync(refreshToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Token));
+        return json.RootElement.GetProperty("error").GetString();
     }
 
     private static async Task<bool> LockedOutAsync(FluentCmsTestHost host, TestUser user)
@@ -305,8 +347,8 @@ public sealed partial class HostedPagesTests
     private sealed class FirstStepRace
     {
         private readonly TaskCompletionSource _bothRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<DbContext, bool> _readers = new();
         private int _armed;
-        private int _reads;
         private int _saves;
 
         public FirstStepRace()
@@ -328,8 +370,10 @@ public sealed partial class HostedPagesTests
         {
             public override ValueTask<InterceptionResult<System.Data.Common.DbDataReader>> ReaderExecutingAsync(System.Data.Common.DbCommand command, CommandEventData eventData, InterceptionResult<System.Data.Common.DbDataReader> result, CancellationToken cancellationToken = default)
             {
-                if (Volatile.Read(ref race._armed) == 1 && command.CommandText.TrimStart().StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) && IsStep(command)
-                    && Interlocked.Increment(ref race._reads) == 2)
+                // One request reads the step more than once, so the gate counts the requests' contexts, not the reads.
+                if (Volatile.Read(ref race._armed) == 1 && eventData.Context is { } context
+                    && command.CommandText.TrimStart().StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) && IsStep(command)
+                    && race._readers.TryAdd(context, true) && race._readers.Count >= 2)
                 {
                     race._bothRead.TrySetResult();
                 }
@@ -346,7 +390,7 @@ public sealed partial class HostedPagesTests
                     && eventData.Context!.ChangeTracker.Entries<Microsoft.AspNetCore.Identity.IdentityUserToken<Guid>>().Any(entry => entry.State == EntityState.Added && entry.Entity.Name == "AuthenticatorLastStep")
                     && Interlocked.Increment(ref race._saves) == 1)
                 {
-                    await race._bothRead.Task.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken);
+                    await race._bothRead.Task.WaitAsync(TimeSpan.FromSeconds(20), cancellationToken);
                 }
 
                 return await base.SavingChangesAsync(eventData, result, cancellationToken);

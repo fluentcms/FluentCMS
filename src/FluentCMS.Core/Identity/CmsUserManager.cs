@@ -1,4 +1,7 @@
+using FluentCMS.Core.Storage;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -12,6 +15,7 @@ public sealed class CmsUserManager : UserManager<CmsUser>
     internal const string LockedOutCode = "UserLockedOut";
 
     private readonly TimeProvider _time;
+    private readonly IServiceProvider _services;
 
     public CmsUserManager(
         IUserStore<CmsUser> store,
@@ -27,6 +31,7 @@ public sealed class CmsUserManager : UserManager<CmsUser>
         : base(store, optionsAccessor, passwordHasher, userValidators, passwordValidators, keyNormalizer, errors, services, logger)
     {
         _time = time;
+        _services = services;
     }
 
     private CmsUserStore RoleStore => Store as CmsUserStore
@@ -232,7 +237,8 @@ public sealed class CmsUserManager : UserManager<CmsUser>
             return IdentityResult.Failed(new IdentityError { Code = LockedOutCode, Description = "The account is locked out for now; try again later." });
         }
 
-        // The count starts again in the save of the new password, and comes back if that fails.
+        // The count starts again in the save of the new password, and comes back if that fails, unless a failed save
+        // reloaded the user with what another request stored since.
         var failures = user.AccessFailedCount;
         user.AccessFailedCount = 0;
         var result = await ClearingPasswordChangeAsync(user, () => base.ChangePasswordAsync(user, currentPassword, newPassword));
@@ -241,7 +247,11 @@ public sealed class CmsUserManager : UserManager<CmsUser>
             return result;
         }
 
-        user.AccessFailedCount = failures;
+        if (user.AccessFailedCount == 0)
+        {
+            user.AccessFailedCount = failures;
+        }
+
         if (SupportsUserLockout && result.Errors.Any(error => error.Code == nameof(IdentityErrorDescriber.PasswordMismatch)) && await HasPasswordAsync(user))
         {
             await AccessFailedAsync(user);
@@ -273,11 +283,25 @@ public sealed class CmsUserManager : UserManager<CmsUser>
     public override Task<IdentityResult> ResetPasswordAsync(CmsUser user, string token, string newPassword) =>
         ClearingPasswordChangeAsync(user, () => base.ResetPasswordAsync(user, token, newPassword));
 
-    // Every Identity call that stages rows of the user saves them here, so a failure here is where they are dropped.
+    // Every Identity call that stages rows of the user saves them here, so a failure here is where they are dropped. Two
+    // saves that add the same token row of the user at once, as two requests taking the first authenticator code a user
+    // gives do, meet on its key unless the user's concurrency stamp stops the second first: either way it is a concurrency
+    // failure, whatever order the commands run in.
     protected override async Task<IdentityResult> UpdateUserAsync(CmsUser user)
     {
-        var result = await base.UpdateUserAsync(user);
-        if (!result.Succeeded && Store is CmsUserStore store)
+        var store = Store as CmsUserStore;
+        var addsToken = store?.StagesTokenRow(user) == true;
+        IdentityResult result;
+        try
+        {
+            result = await base.UpdateUserAsync(user);
+        }
+        catch (DbUpdateException exception) when (addsToken && _services.GetService<IDataProvider>()?.IsUniqueViolation(exception) == true)
+        {
+            result = IdentityResult.Failed(ErrorDescriber.ConcurrencyFailure());
+        }
+
+        if (!result.Succeeded && store is not null)
         {
             store.DiscardStaged(user);
             await store.ReattachAsync(user, CancellationToken);

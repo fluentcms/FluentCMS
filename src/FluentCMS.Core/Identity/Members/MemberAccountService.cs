@@ -194,7 +194,7 @@ internal sealed class MemberAccountService(
         var failures = member.AccessFailedCount;
         member.AccessFailedCount = 0;
         var changed = await members.ChangePasswordAsync(member, currentPassword, newPassword);
-        if (!changed.Succeeded)
+        if (!changed.Succeeded && member.AccessFailedCount == 0)
         {
             member.AccessFailedCount = failures;
         }
