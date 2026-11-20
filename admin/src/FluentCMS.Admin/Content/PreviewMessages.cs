@@ -24,8 +24,13 @@ internal static class PreviewMessages
     public static Uri? HttpUri(string? url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps) ? uri : null;
 
-    // The origin of an absolute http or https URL, as a browser writes it in a message's origin; null for any other.
-    public static string? OriginOf(string? url) => HttpUri(url)?.GetLeftPart(UriPartial.Authority);
+    // The origin of an absolute http or https URL, as a browser serializes it in a message's origin: a host name in its
+    // ASCII (punycode) form, so that an internationalized name matches; null for any other.
+    public static string? OriginOf(string? url) => OriginOf(HttpUri(url));
+
+    public static string? OriginOf(Uri? uri) => uri is null
+        ? null
+        : string.Create(CultureInfo.InvariantCulture, $"{uri.Scheme}://{(uri.HostNameType == UriHostNameType.IPv6 ? uri.Host : uri.IdnHost)}{(uri.IsDefaultPort ? "" : $":{uri.Port}")}");
 
     public static PreviewMessage? Read(string origin, string json, string expectedOrigin)
     {

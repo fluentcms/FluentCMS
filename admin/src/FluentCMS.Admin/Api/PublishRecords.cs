@@ -37,9 +37,12 @@ internal sealed record ScheduleAnswer
 }
 
 // The answer of POST .../preview-token (#3099): the front end's page of the draft with the token in it, the published page,
-// null while the locale was never published, and when the token ends. The token is read only as part of the URL.
+// null while the locale was never published, and when the token ends. The token itself is read only to keep it out of an
+// address the pane shows.
 internal sealed record PreviewTokenAnswer
 {
+    public string? Token { get; init; }
+
     public string? Url { get; init; }
 
     public string? PublishedUrl { get; init; }

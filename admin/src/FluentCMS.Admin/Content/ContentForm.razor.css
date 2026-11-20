@@ -194,15 +194,25 @@
     gap: var(--cms-space-xl);
 }
 
+/* Full width, and a window too narrow for the sidebar, 20rem of form and the frame, puts the pane after the form, as it is
+   in the document, so that the order of the page and the order of the keyboard agree: under 68rem for the phone's 390
+   pixels and under 95rem for the tablet's 820. */
 .content-form-layout[data-preview="full"] {
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column;
     gap: var(--cms-space-xl);
 }
 
-@media (max-width: 64rem) {
+@media (max-width: 68rem) {
     .content-form-layout[data-preview="beside"] {
         display: flex;
-        flex-direction: column-reverse;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 95rem) {
+    .content-form-layout[data-preview="beside"][data-width="tablet"] {
+        display: flex;
+        flex-direction: column;
     }
 }
