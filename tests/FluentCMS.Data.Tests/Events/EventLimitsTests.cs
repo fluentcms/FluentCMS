@@ -354,7 +354,7 @@ public sealed class EventLimitsTests
             // The bound under test is the job worker's; the handler's own one is longer.
             cms.Events.Handlers.Timeout = TimeSpan.FromMinutes(1);
         });
-        var id = fixture.AddRow("no-such-job", "{}", maxAttempts: 1);
+        var id = fixture.AddFailingRow();
 
         try
         {
@@ -593,7 +593,7 @@ public sealed class EventLimitsTests
             context.SaveChanges();
         }
 
-        var id = fixture.AddRow("no-such-job", "{}", maxAttempts: 1);
+        var id = fixture.AddFailingRow();
         using (var scope = fixture.Services.CreateScope())
         {
             scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<Job>().Where(job => job.Id == id).ExecuteUpdate(job => job.SetProperty(column => column.SiteId, site));

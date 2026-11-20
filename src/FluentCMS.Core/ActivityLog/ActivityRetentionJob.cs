@@ -1,3 +1,4 @@
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Jobs;
@@ -12,11 +13,14 @@ internal sealed record ActivityRetentionPayload;
 // Removes the rows that are older than the retention of their site. A site named in SiteRetention has its own age; every
 // other row, the rows of no site included, has the default. The delete goes in batches, since a log that was never pruned
 // can hold more rows than one statement should take.
-internal sealed class ActivityRetentionJob(SystemDbContext context, ActivityOptions options, TimeProvider time) : IJob<ActivityRetentionPayload>
+internal sealed class ActivityRetentionJob(SystemDbContext context, ActivityOptions options, TimeProvider time) : IJob<ActivityRetentionPayload>, IResumableJob
 {
     public const string Type = "activity.retention";
 
     public const string RecurringName = "activity.retention";
+
+    // Stops a large prune from holding a worker for good; what is left waits for the next run.
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromMinutes(10);
 
     public async Task ExecuteAsync(ActivityRetentionPayload payload, JobContext jobContext)
     {

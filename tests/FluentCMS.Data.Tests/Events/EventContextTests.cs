@@ -327,7 +327,7 @@ public sealed class EventContextTests
             cms.Events.AddOutboxHandler<JobDeadLetteredEvent, DeadOutbox>("dead");
             cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(faults));
         });
-        var id = fixture.AddRow("no-such-job", "{}", maxAttempts: 1);
+        var id = fixture.AddFailingRow();
 
         faults.Fail(command =>
         {
@@ -374,7 +374,7 @@ public sealed class EventContextTests
             seenOperation = instance.GetRequiredService<IOperationContextAccessor>().Current;
             return Task.CompletedTask;
         };
-        fixture.AddRow("no-such-job", "{}", maxAttempts: 1);
+        fixture.AddFailingRow();
 
         await instance.GetRequiredService<Core.Jobs.JobExecutor>().RunNextAsync("default", "worker", TestContext.Current.CancellationToken);
 
