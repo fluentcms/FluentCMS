@@ -2,8 +2,10 @@ name: Compose
 
 # The compose file of the reference host, src/FluentCMS.Host/compose.yaml, with a smoke test: the image, PostgreSQL, MinIO
 # and the CLI together. It runs on pushes to feature branches and when dispatched; CI calls it on pushes to main and when
-# dispatched there. Pull requests do not run it. A manual run with an image runs the published one instead of building it, such
-# as ghcr.io/fluentcms/fluentcms:1.0.0-preview.1 after a release (docs/releasing.md); the image must be public.
+# dispatched there. Pull requests do not run it, but Publish calls it, on a pull request too, with the archive of the image it
+# built and that image's digest, which the job loads instead of building one; Publish pushes that image only. A manual run with
+# an image runs the published one instead of building it, such as ghcr.io/fluentcms/fluentcms:1.0.0-preview.1 after a release
+# (docs/releasing.md); the image must be public.
 on:
   push:
     branches: ["feature/**"]
@@ -18,6 +20,14 @@ on:
       image:
         type: string
         default: ""
+      # The artifact of the calling run that holds image.tar, the OCI archive of the image; image names it by its digest.
+      archive:
+        type: string
+        default: ""
+    outputs:
+      digest:
+        description: The ID of the image the smoke test ran, which with an archive is the digest of its index.
+        value: ${{ jobs.smoke.outputs.digest }}
 
 permissions:
   contents: read
@@ -28,10 +38,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # At job level: a called workflow shares the caller's workflow name, so a workflow-level group would hold CI's own. A run
-    # on main, which publish needs, and a manual run have a group of their own and are never cancelled.
+    # on main, which publish needs, a release of a tag and a manual run have a group of their own and are never cancelled.
     concurrency:
-      group: compose-${{ github.event_name }}-${{ (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && github.run_id || github.ref }}
-      cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.event_name != 'workflow_dispatch' }}
+      group: compose-${{ github.event_name }}-${{ (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch') && github.run_id || github.ref }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' }}
+    outputs:
+      digest: ${{ steps.ran.outputs.digest }}
     defaults:
       run:
         shell: bash
@@ -97,8 +109,19 @@ jobs:
         run: docker compose build cms
 
       - name: Pull the published image
-        if: ${{ inputs.image }}
+        if: ${{ inputs.image && !inputs.archive }}
         run: docker compose pull cms
+
+      - name: Download the image archive
+        if: ${{ inputs.archive }}
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ inputs.archive }}
+          path: ${{ runner.temp }}/image
+
+      - name: Load the image archive
+        if: ${{ inputs.archive }}
+        run: ../../eng/load-image.sh "$RUNNER_TEMP/image/image.tar" "$FLUENTCMS_IMAGE"
 
       - name: Start
         run: docker compose up -d --no-build
@@ -124,6 +147,18 @@ jobs:
           started=$(docker inspect -f '{{.State.StartedAt}}' "$(docker compose ps -q cms)")
           echo "schema apply finished at $finished, the host started at $started"
           [ "$(date -d "$finished" +%s%N)" -lt "$(date -d "$started" +%s%N)" ]
+
+      # The image the three services ran, which Publish compares with the one it pushes.
+      - name: Record the image that ran
+        id: ran
+        run: |
+          digest=$(docker inspect -f '{{.Image}}' "$(docker compose ps -q cms)")
+          for step in migrate schema-apply; do
+            ran=$(docker inspect -f '{{.Image}}' "$(docker compose ps -aq "$step")")
+            [ "$ran" = "$digest" ] || { echo "::error::$step ran $ran, and the host $digest"; exit 1; }
+          done
+          echo "The services ran $FLUENTCMS_IMAGE, whose ID is $digest." | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
       - name: Make the administrator and a management key with the CLI
         run: |

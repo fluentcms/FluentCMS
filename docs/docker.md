@@ -10,7 +10,7 @@ Each release pushes the image to `ghcr.io/fluentcms/fluentcms`, for `linux/amd64
 docker pull ghcr.io/fluentcms/fluentcms:1.0.0-preview.1
 ```
 
-The `Publish` workflow builds it from the tag, with the version of the packages in the host ([releasing](releasing.md)).
+The `Publish` workflow builds it once from the tag, with the version of the packages in the host, runs the compose smoke test below on that build, and pushes the digest the smoke test ran: the version and its channel tag name that one digest ([releasing](releasing.md)). A version is never pushed again with another image.
 
 ## Build and run
 
@@ -322,7 +322,7 @@ docker compose run --rm -T --no-deps cms fluentcms user create --email ada@examp
 docker compose run --rm -T --no-deps cms fluentcms apikey create --name deploy --class management --role "Super Admin"
 ```
 
-The key works over plain http at once. Signing in on the hosted pages needs https, so it waits for the proxy below. The `Compose` workflow in CI starts this file with throwaway values on every push to `main` and to a `feature/*` branch, signs an administrator in through the hosted pages with a proxy's forwarded headers, publishes an article through the Management API, reads it through the Delivery API, uploads an image that it reads back from MinIO, and with the admin turned on reads `/admin/` and `/admin/config.json` and signs the administrator in with the admin's client and PKCE. **Actions → Compose → Run workflow** with an image, such as `ghcr.io/fluentcms/fluentcms:1.0.0-preview.1`, runs the same test on the published image instead of a build.
+The key works over plain http at once. Signing in on the hosted pages needs https, so it waits for the proxy below. The `Compose` workflow in CI starts this file with throwaway values on every push to `main` and to a `feature/*` branch, signs an administrator in through the hosted pages with a proxy's forwarded headers, publishes an article through the Management API, reads it through the Delivery API, uploads an image that it reads back from MinIO, and with the admin turned on reads `/admin/` and `/admin/config.json` and signs the administrator in with the admin's client and PKCE. **Actions → Compose → Run workflow** with an image, such as `ghcr.io/fluentcms/fluentcms:1.0.0-preview.1`, runs the same test on the published image instead of a build. The `Publish` workflow runs it too, before a release and on the pull requests that change the packaging, on the image it built, loaded from the run's archive.
 
 What to change for production:
 
