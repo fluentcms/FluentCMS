@@ -222,9 +222,9 @@ internal sealed class SettingsService(
     // For an import: a document without secrets, which keep what the site has, as a write that leaves them out does; a secret
     // that a package names anyway is left out, so a package never sets one. The document is checked with the secrets of the
     // site's own row, and an area whose class requires a secret that row does not hold is refused, since a package never
-    // carries it and no value is made up for it. The same document as the site's is no write. A dry run checks the document and writes
-    // nothing. The caller who started the import needs settings.{area}.manage in the site, as a write of its own would; the
-    // write itself is the import's.
+    // carries it and no value is made up for it. The same document as the site's is no write. A dry run checks the document
+    // and writes nothing. The caller who started the import needs settings.{area}.manage in the site, as a write of its own
+    // would; the write itself is the import's.
     public async Task<TransferOutcome> ImportAsync(string area, SiteId site, string json, bool dryRun, OperationContext caller, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(caller);
@@ -242,7 +242,7 @@ internal sealed class SettingsService(
             .Where(row => row.Key == area && row.SiteId == siteId)
             .Select(row => row.Json)
             .FirstOrDefaultAsync(cancellationToken) is { } found ? protection.Unprotect(descriptor, found, site.Value) : null;
-        var canonical = Checked(descriptor, WithRequiredSecrets(descriptor, document, stored is not null && descriptor.CanRead(stored) ? stored : null));
+        var canonical = Checked(descriptor, WithOwnSecrets(descriptor, document, stored is not null && descriptor.CanRead(stored) ? stored : null));
 
         if (stored is not null
             && descriptor.CanRead(stored)
@@ -263,7 +263,7 @@ internal sealed class SettingsService(
 
     // The document with the secrets of the site's own row, as the write keeps them, and never those of the instance; refused
     // when the class requires a secret that the row holds no value for, naming the key and never a value.
-    private static string WithRequiredSecrets(SettingsDescriptor descriptor, string document, string? own)
+    private static string WithOwnSecrets(SettingsDescriptor descriptor, string document, string? own)
     {
         var filled = descriptor.KeepSecrets(document, own, out _);
         if (descriptor.RequiredSecretKeys.Count == 0)
@@ -405,7 +405,7 @@ internal sealed class SettingsService(
             var stored = current is not null && descriptor.CanRead(current.Json) ? current.Json : null;
             if (requireOwnSecrets)
             {
-                WithRequiredSecrets(descriptor, json, stored);
+                WithOwnSecrets(descriptor, json, stored);
             }
 
             // The secrets of a site's skipped row that the key ring cannot unprotect go with the row, as its other secrets do, since
