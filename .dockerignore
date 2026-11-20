@@ -1,6 +1,7 @@
 # Only what src/FluentCMS.Host/Dockerfile copies.
 *
 !global.json
+!nuget.config
 !Directory.Build.props
 !Directory.Packages.props
 !docs/resources/icon.png
@@ -10,6 +11,8 @@
 
 **/bin/
 **/obj/
+# The rich text editor's npm packages; its bundle is committed in wwwroot, and the image needs no Node (AQ7).
+**/node_modules/
 **/*.db
 **/*.db-shm
 **/*.db-wal

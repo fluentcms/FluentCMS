@@ -1,4 +1,5 @@
 using FluentCMS.Content;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Sites;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -123,7 +124,7 @@ public sealed class SearchIndexTests
         (await FindAsync(editor, "article", "kubernetes", status: QueryStatus.Draft)).ShouldBe([article.Id]);
         (await FindAsync(editor, "article", "invisible", status: QueryStatus.Draft)).ShouldBeEmpty();
         (await FindAsync(editor, "article", "classified", status: QueryStatus.Draft)).ShouldBeEmpty();
-        (await search.RowsAsync()).ShouldHaveSingleItem().Text.ShouldBe("title the body speaks of kubernetes");
+        (await search.RowsAsync()).Select(row => (row.Field, row.Text)).ShouldBe([("title", "title"), ("body", "the body speaks of kubernetes"), ("tagline", "")], ignoreOrder: true);
     }
 
     [Fact]
@@ -182,6 +183,82 @@ public sealed class SearchIndexTests
 
         (await FindAsync(editor, "article", "ruled")).ShouldBe([popular.Id, quiet.Id], ignoreOrder: true);
         (await FindAsync(await search.RuledReaderAsync(), "article", "ruled")).ShouldBe([popular.Id]);
+    }
+
+    // A field the reader may not read decides nothing: no entry, no count, and not a word of a search of several.
+    [Fact]
+    public async Task AFieldLimitedReaderMatchesOnlyTheFieldsItMayRead()
+    {
+        await using var search = new SearchHost();
+        var editor = await search.EditorAsync();
+        var articles = editor.Content<Article>();
+        var article = await articles.CreateAsync(new Article { Title = "Quarterly report", Body = Paragraphs("merger talks"), Tagline = "confidential" }, Token);
+        await articles.PublishAsync(article.Id, cancellationToken: Token);
+        await search.PumpAsync();
+        var reader = await search.ReaderAsync(new PermissionConstraints { Fields = ["title"] });
+
+        (await FindAsync(reader, "article", "quarterly")).ShouldBe([article.Id]);
+        (await FindAsync(reader, "article", "merger")).ShouldBeEmpty();
+        (await FindAsync(reader, "article", "confidential")).ShouldBeEmpty();
+        (await FindAsync(reader, "article", "quarterly confid")).ShouldBeEmpty();
+        var counted = await reader.Content().QueryAsync("article", new ContentQuery { Search = "merger", Locale = "en", Page = new PageRequest { WithTotal = true } }, Token);
+        counted.Items.ShouldBeEmpty();
+        counted.Total.ShouldBe(0);
+
+        (await FindAsync(editor, "article", "merger")).ShouldBe([article.Id]);
+        (await FindAsync(editor, "article", "quarterly confid")).ShouldBe([article.Id]);
+    }
+
+    [Fact]
+    public async Task AFieldLimitedInOneLocaleIsSearchedInTheLocalesThatLetItBeRead()
+    {
+        await using var search = new SearchHost();
+        await search.AddLocaleAsync(DefaultSite.Id, "fr");
+        var editor = await search.EditorAsync();
+        var article = await editor.Content<Article>().CreateAsync(new Article { Title = "Hello", Body = Paragraphs("hidden words") }, Token);
+        await editor.In("fr").Content<Article>().UpdateAsync(article.Id, new Article { Title = "Bonjour", Body = Paragraphs("mots visibles") }, 0, Token);
+        await editor.Content<Article>().PublishAsync(article.Id, cancellationToken: Token);
+        await editor.In("fr").Content<Article>().PublishAsync(article.Id, cancellationToken: Token);
+        await search.PumpAsync();
+        var reader = await search.ReaderAsync(new PermissionConstraints { Locales = ["en"], Fields = ["title"] }, new PermissionConstraints { Locales = ["fr"] });
+
+        (await FindAsync(reader, "article", "hidden")).ShouldBeEmpty();
+        (await FindAsync(reader, "article", "hello")).ShouldBe([article.Id]);
+        (await FindAsync(reader, "article", "visibles", "fr")).ShouldBe([article.Id]);
+    }
+
+    // A grant under a row rule and one limited to the title: a field is readable only where both let it be read, so the body
+    // is searched for neither entry.
+    [Fact]
+    public async Task ARowRuleAndAFieldLimitInTwoGrantsSearchOnlyTheFieldsBothLetBeRead()
+    {
+        await using var search = new SearchHost();
+        var editor = await search.EditorAsync();
+        var articles = editor.Content<Article>();
+        var popular = await articles.CreateAsync(new Article { Title = "Union title", Body = Paragraphs("union body"), Views = 10 }, Token);
+        var quiet = await articles.CreateAsync(new Article { Title = "Union title", Body = Paragraphs("union body"), Views = 1 }, Token);
+        await articles.PublishAsync(popular.Id, cancellationToken: Token);
+        await articles.PublishAsync(quiet.Id, cancellationToken: Token);
+        await search.PumpAsync();
+        var reader = await search.ReaderAsync(new PermissionConstraints { RowRule = SearchHost.PopularRule }, new PermissionConstraints { Fields = ["title"] });
+
+        (await FindAsync(reader, "article", "title")).ShouldBe([popular.Id, quiet.Id], ignoreOrder: true);
+        (await FindAsync(reader, "article", "body")).ShouldBeEmpty();
+        (await FindAsync(editor, "article", "body")).ShouldBe([popular.Id, quiet.Id], ignoreOrder: true);
+    }
+
+    // A caller who may read no searchable field is refused where the plugin is disabled, as everyone else is there.
+    [Fact]
+    public async Task ACallerWithNoReadableSearchableFieldIsRefusedWhereThePluginIsDisabled()
+    {
+        await using var search = new SearchHost();
+        var reader = await search.ReaderAsync(new PermissionConstraints { Fields = ["views"] });
+        (await FindAsync(reader, "article", "anything")).ShouldBeEmpty();
+
+        await search.SetEnabledAsync(DefaultSite.Id, enabled: false);
+
+        var exception = await Should.ThrowAsync<ValidationException>(() => FindAsync(reader, "article", "anything"));
+        exception.Errors.ShouldHaveSingleItem().Code.ShouldBe(SearchErrorCodes.NoSearchIndex);
     }
 
     [Fact]

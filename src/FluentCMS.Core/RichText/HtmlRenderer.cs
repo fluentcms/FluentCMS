@@ -6,8 +6,9 @@ namespace FluentCMS.Core.ProseMirror;
 
 internal sealed partial class HtmlRenderer(
     IReadOnlyDictionary<string, IRichTextNodeRenderer> nodeRenderers,
-    RichTextRenderOptions options)
-    : FormatRenderer(RichTextFormats.Html, nodeRenderers, options)
+    RichTextRenderOptions options,
+    SafeUrl links)
+    : FormatRenderer(RichTextFormats.Html, nodeRenderers, options, links)
 {
     public override string Render(DocumentNode document) => Blocks(document.Content);
 
@@ -122,7 +123,7 @@ internal sealed partial class HtmlRenderer(
             _ => string.Empty,
         };
 
-    private static string Close(RichTextMark mark) =>
+    private string Close(RichTextMark mark) =>
         mark switch
         {
             BoldMark => "</strong>",
@@ -130,14 +131,14 @@ internal sealed partial class HtmlRenderer(
             UnderlineMark => "</u>",
             StrikeMark => "</s>",
             CodeMark => "</code>",
-            LinkMark link => SafeUrl.IsSafe(link.Href) ? "</a>" : string.Empty,
+            LinkMark link => Links.IsSafe(link.Href) ? "</a>" : string.Empty,
             EntryLinkMark => "</a>",
             _ => string.Empty,
         };
 
-    private static string OpenLink(LinkMark link)
+    private string OpenLink(LinkMark link)
     {
-        if (!SafeUrl.IsSafe(link.Href))
+        if (!Links.IsSafe(link.Href))
         {
             return string.Empty;
         }

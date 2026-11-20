@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Telemetry;
@@ -14,7 +15,7 @@ namespace FluentCMS.Core.Content.Query;
 // Runs a ContentQuery. IContentService (#2693) is its caller, and resolves the locale and site first. Bad input is a
 // ValidationException, before anything runs. RichTextFormat and Fallback are carried, not applied: this returns the
 // stored rich text and the requested locale's values. LocaleFallbackReader fills the fields that fall back.
-internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, ISearchIndex search, ReferenceResolvers resolvers, ManagementShape shape, TargetTypes targetTypes)
+internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, ISearchIndex search, ReferenceResolvers resolvers, ManagementShape shape, TargetTypes targetTypes, RichTextOptions richText)
 {
     private const string All = "*";
     private const string EveryLocale = "all";
@@ -93,8 +94,10 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     {
         if (compiled.Hits is { } hits)
         {
+            // Asked even when the caller may read no searchable field, so that the index refuses as it refuses others; and
+            // then nothing matches, whatever it found.
             var ids = await search.SearchAsync(hits.Request, cancellationToken);
-            hits.Ids = [.. ids.Take(hits.Request.Limit)];
+            hits.Ids = hits.Request.Fields is { Count: 0 } ? [] : [.. ids.Take(hits.Request.Limit)];
         }
     }
 
@@ -152,7 +155,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         ArgumentNullException.ThrowIfNull(query);
 
         var state = query.Status == QueryStatus.Draft ? ContentState.Draft : ContentState.Published;
-        var scope = new QueryScope(context, schema, dialect, access, options, state, query.Locale ?? "", query.Site, trashed, shape.Applies);
+        var scope = new QueryScope(context, schema, dialect, access, options, state, query.Locale ?? "", query.Site, trashed, shape.Applies) { Links = richText.Links };
 
         if (schema.FindContentType(typeName) is not { } type || !access.CanReadType(type))
         {
@@ -227,6 +230,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             return null;
         }
 
+        var fields = ReadableSearchFields(scope, type);
         if (search is NoSearchIndex)
         {
             scope.Report("q", QueryErrorCodes.NoSearchIndex, "Searching needs a search index, and none is registered. Add the search plugin or fill the ISearchIndex provider slot.");
@@ -239,6 +243,10 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         {
             scope.Report("q", QueryErrorCodes.LimitExceeded, $"A search text has at most {MaxSearchLength} characters.");
         }
+        else if (fields is not null && !search.MatchesByField)
+        {
+            scope.Report("q", QueryErrorCodes.NoSearchIndex, "The search index cannot limit a search to the fields the caller may read, so a caller who may not read every searchable field cannot search.");
+        }
         else
         {
             return new SearchHits(new SearchRequest(type.Name, text, options.MaxSearchResults)
@@ -246,10 +254,20 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
                 Locale = type.Localized ? scope.Locale : "",
                 Site = type.Scope == ContentScope.Site ? scope.Site : null,
                 Status = query.Status ?? QueryStatus.Published,
+                Fields = fields,
             });
         }
 
         return null;
+    }
+
+    // Like a filter, a search may only look at the fields the caller may read in the locale, or a match would tell what a
+    // field it may not read holds.
+    private static List<string>? ReadableSearchFields(QueryScope scope, SchemaType type)
+    {
+        var searchable = type.Fields.Where(field => field.Searchable && !field.Hidden).ToList();
+        var readable = searchable.Where(field => scope.Access.CanReadField(type, field.Name)).Select(field => field.Name).ToList();
+        return readable.Count == searchable.Count ? null : readable;
     }
 
     private static Expression<Func<QueryRow, bool>> Lambda(Expression body, ParameterExpression row) => Expression.Lambda<Func<QueryRow, bool>>(body, row);

@@ -88,7 +88,8 @@ public sealed class SearchApiTests
         var tag = await editor.Content<Tag>().CreateAsync(new Tag { Name = "Global tag" }, Token);
         await search.PumpAsync();
         var indexed = await search.RowsAsync();
-        indexed.Count.ShouldBe(106);
+        indexed.Select(row => row.DocumentId).Distinct().Count().ShouldBe(106);
+        indexed.Count.ShouldBe((105 * 3) + 1);
 
         // What a host has before it adds the plugin, and a row of an entry that is gone.
         await search.ClearIndexAsync();
@@ -104,10 +105,10 @@ public sealed class SearchApiTests
         await search.PumpAsync();
 
         var rebuilt = await search.RowsAsync();
-        rebuilt.Select(row => (row.DocumentId, row.Locale, row.State, row.Text)).ShouldBe(indexed.Select(row => (row.DocumentId, row.Locale, row.State, row.Text)), ignoreOrder: true);
+        rebuilt.Select(row => (row.DocumentId, row.Locale, row.State, row.Field, row.Text)).ShouldBe(indexed.Select(row => (row.DocumentId, row.Locale, row.State, row.Field, row.Text)), ignoreOrder: true);
         (await FindAsync(editor, "article", "number104", status: QueryStatus.Draft)).ShouldHaveSingleItem();
         (await FindAsync(editor, "tag", "global", status: QueryStatus.Draft)).ShouldBe([tag.Id]);
-        search.Logs.Of(9380).ShouldHaveSingleItem().ShouldContain("wrote 106 rows and removed 2");
+        search.Logs.Of(9380).ShouldHaveSingleItem().ShouldContain("wrote 316 rows and removed 2");
 
         using (var again = await PostAsync(management, Rebuild, new { type = "article" }))
         {
@@ -146,10 +147,10 @@ public sealed class SearchApiTests
 
         await search.PumpAsync();
 
-        (await search.RowsAsync()).Select(row => (row.DocumentId, row.Locale, row.State, row.Text)).ShouldBe(indexed.Select(row => (row.DocumentId, row.Locale, row.State, row.Text)), ignoreOrder: true);
+        (await search.RowsAsync()).Select(row => (row.DocumentId, row.Locale, row.State, row.Field, row.Text)).ShouldBe(indexed.Select(row => (row.DocumentId, row.Locale, row.State, row.Field, row.Text)), ignoreOrder: true);
         (await FindAsync(editor, "article", "seulement", "fr", QueryStatus.Draft)).ShouldBe([onlyFrench.Id]);
         indexed.ShouldNotContain(row => row.DocumentId == trashed.Id);
-        indexed.Count.ShouldBe(3);
+        indexed.Select(row => (row.DocumentId, row.Locale, row.State)).Distinct().Count().ShouldBe(3);
     }
 
     // The index holds a locale that the site then stops allowing, which a list of the site refuses: the rebuild leaves it
@@ -163,7 +164,7 @@ public sealed class SearchApiTests
         var article = await editor.Content<Article>().CreateAsync(new Article { Title = "Hello" }, Token);
         await editor.In("fr").Content<Article>().UpdateAsync(article.Id, new Article { Title = "Bonjour" }, 0, Token);
         await search.PumpAsync();
-        (await search.RowsAsync()).Select(row => row.Locale).ShouldBe(["en", "fr"], ignoreOrder: true);
+        (await search.RowsAsync()).Select(row => row.Locale).Distinct().ShouldBe(["en", "fr"], ignoreOrder: true);
 
         // A row written at the moment a rebuild starts is kept as one an event may have written meanwhile.
         search.Host.Time.Advance(TimeSpan.FromMinutes(1));
@@ -176,8 +177,8 @@ public sealed class SearchApiTests
 
         await search.PumpAsync();
 
-        search.Logs.Of(9380).ShouldHaveSingleItem().ShouldContain("wrote 0 rows and removed 1");
-        (await search.RowsAsync()).ShouldHaveSingleItem().Locale.ShouldBe("en");
+        search.Logs.Of(9380).ShouldHaveSingleItem().ShouldContain("wrote 0 rows and removed 3");
+        (await search.RowsAsync()).Select(row => row.Locale).Distinct().ShouldBe(["en"]);
     }
 
     // A global entry is read from every site, each in the locales it allows. Neither a rebuild of a site without French nor

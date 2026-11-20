@@ -55,9 +55,9 @@ internal sealed class QueryDatabase : IDisposable
             .Field("name", "text"))
         .AddCollection("article", type => type
             .Localized()
-            .Field("title", "text", field => field.Required().Localizable())
+            .Field("title", "text", field => field.Required().Localizable().Searchable())
             .Field("slug", "slug", field => field.Localizable())
-            .Field("subtitle", "text", field => field.Localizable())
+            .Field("subtitle", "text", field => field.Localizable().Searchable())
             .Field("body", "richText", field => field.Localizable())
             .Field("views", "integer")
             .Field("price", "decimal")
@@ -126,7 +126,8 @@ internal sealed class QueryDatabase : IDisposable
         search ?? Services.GetRequiredService<ISearchIndex>(),
         Services.GetRequiredService<ReferenceResolvers>(),
         Services.GetRequiredService<ManagementShape>(),
-        Services.GetRequiredService<TargetTypes>());
+        Services.GetRequiredService<TargetTypes>(),
+        Services.GetRequiredService<FluentCMS.Core.ProseMirror.RichTextOptions>());
 
     public Guid AddArticle(string title, Dictionary<string, object?>? values = null, string locale = "en", short state = ContentState.Published, Guid? id = null, Guid? site = null, Guid? createdBy = null)
     {

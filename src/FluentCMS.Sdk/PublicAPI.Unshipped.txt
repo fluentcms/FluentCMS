@@ -1976,11 +1976,14 @@ FluentCMS.Providers.IEmailSender.SendAsync(FluentCMS.Providers.EmailMessage! mes
 FluentCMS.Providers.IProviderSlots
 FluentCMS.Providers.IProviderSlots.Use<TSlot, TImplementation>() -> FluentCMS.Providers.IProviderSlots!
 FluentCMS.Providers.ISearchIndex
+FluentCMS.Providers.ISearchIndex.MatchesByField.get -> bool
 FluentCMS.Providers.ISearchIndex.SearchAsync(FluentCMS.Providers.SearchRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.Guid>!>!
 FluentCMS.Providers.SearchRequest
 FluentCMS.Providers.SearchRequest.<Clone>$() -> FluentCMS.Providers.SearchRequest!
 FluentCMS.Providers.SearchRequest.Deconstruct(out string! Type, out string! Text, out int Limit) -> void
 FluentCMS.Providers.SearchRequest.Equals(FluentCMS.Providers.SearchRequest? other) -> bool
+FluentCMS.Providers.SearchRequest.Fields.get -> System.Collections.Generic.IReadOnlyList<string!>?
+FluentCMS.Providers.SearchRequest.Fields.init -> void
 FluentCMS.Providers.SearchRequest.Limit.get -> int
 FluentCMS.Providers.SearchRequest.Limit.init -> void
 FluentCMS.Providers.SearchRequest.Locale.get -> string!
@@ -2730,6 +2733,7 @@ const FluentCMS.Content.ValidationErrorCodes.PatternMismatch = "FCMS2106" -> str
 const FluentCMS.Content.ValidationErrorCodes.Required = "FCMS2101" -> string!
 const FluentCMS.Content.ValidationErrorCodes.RequiredByCondition = "FCMS2110" -> string!
 const FluentCMS.Content.ValidationErrorCodes.UnknownReference = "FCMS2113" -> string!
+const FluentCMS.Content.ValidationErrorCodes.UnsafeUrl = "FCMS2114" -> string!
 const FluentCMS.Diagnostics.FluentCmsHealthCheckTags.Live = "live" -> string!
 const FluentCMS.Diagnostics.FluentCmsHealthCheckTags.Ready = "ready" -> string!
 const FluentCMS.Events.LoginFailureReasons.InvalidCredentials = "invalid_credentials" -> string!

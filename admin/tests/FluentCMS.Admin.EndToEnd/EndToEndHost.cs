@@ -14,9 +14,9 @@ namespace FluentCMS.Admin.EndToEnd;
 
 // The reference host as the image runs it, once for the run: published with no build, as the Dockerfile publishes it, and
 // run as "dotnet FluentCMS.Host.dll" in a process of its own, in Production, on SQLite in a temporary directory with the
-// Blog sample and the admin at /admin. It is migrated and its editor made with the host's own commands before it starts,
-// and it listens on https on a free port of the loopback address with a certificate the run makes. Everything is deleted
-// at the end, and the process tree is killed whatever ends the run.
+// Blog sample, the type of landing.schema.json beside it, and the admin at /admin. It is migrated and its editor made with
+// the host's own commands before it starts, and it listens on https on a free port of the loopback address with a
+// certificate the run makes. Everything is deleted at the end, and the process tree is killed whatever ends the run.
 public sealed class EndToEndHost : IAsyncLifetime
 {
     public const string AdminPath = "/admin/";
@@ -249,6 +249,7 @@ public sealed class EndToEndHost : IAsyncLifetime
             ["ASPNETCORE_HTTPS_PORTS"] = null,
             ["ConnectionStrings__FluentCms"] = $"Data Source={Path.Combine(DataDirectory, "fluentcms.db")}",
             ["FLUENTCMS_SAMPLE"] = "blog",
+            ["FLUENTCMS_SCHEMA"] = Path.Combine(AppContext.BaseDirectory, "landing.schema.json"),
             ["FluentCms__PublicOrigin"] = origin,
             ["AllowedHosts"] = IPAddress.Loopback.ToString(),
             ["FluentCms__Admin__Enabled"] = "true",

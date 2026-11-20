@@ -223,6 +223,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<SettingsService>();
         services.TryAddScoped(typeof(ISettings<>), typeof(Settings<>));
 
+        services.AddFluentCmsOptions(RichTextOptions.Section, HostErrorCodes.InvalidOption, new RichTextOptions(), richText => richText.Validate());
         services.TryAddSingleton<IRichTextRenderer, RichTextRenderer>();
         services.TryAddSingleton<ContentEntryMapper>();
         services.TryAddSingleton<IHookEntryMapper>(serviceProvider => serviceProvider.GetRequiredService<ContentEntryMapper>());

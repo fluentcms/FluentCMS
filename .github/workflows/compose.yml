@@ -27,10 +27,11 @@ jobs:
     name: Compose smoke test (PostgreSQL and MinIO)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # At job level: a called workflow shares the caller's workflow name, so a workflow-level group would hold CI's own.
+    # At job level: a called workflow shares the caller's workflow name, so a workflow-level group would hold CI's own. A run
+    # on main, which publish needs, and a manual run have a group of their own and are never cancelled.
     concurrency:
-      group: compose-${{ github.event_name }}-${{ github.ref }}
-      cancel-in-progress: true
+      group: compose-${{ github.event_name }}-${{ (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') && github.run_id || github.ref }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.event_name != 'workflow_dispatch' }}
     defaults:
       run:
         shell: bash

@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
@@ -207,13 +208,13 @@ internal sealed class EntryPlan
 
         if (stored.Field.FieldType == FieldTypeNames.RichText)
         {
-            return value => value is string json ? HiddenFields.Remove(_query.Schema, Ordered(new RichText(json))) : null;
+            return value => value is string json ? HiddenFields.Remove(_query.Schema, Ordered(new RichText(json)), links: _query.Links) : null;
         }
 
         return value =>
         {
             var node = value is string json ? Ordered(stored.Field, JsonDepth.Parse(json)) : null;
-            HiddenFields.Remove(_query.Schema, node, stored.Field);
+            HiddenFields.Remove(_query.Schema, node, stored.Field, links: value is string text && RichTextLinks.MayHoldUnsafe(text, _query.Links) ? _query.Links : null);
             return node;
         };
     }

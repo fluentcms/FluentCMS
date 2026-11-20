@@ -33,6 +33,44 @@ jobs:
         with:
           globs: "**/*.md"
 
+  # The rich text editor's bundle (admin spec AQ7): the schema's round trip test, and a rebuild from the lockfile that must
+  # give the committed rich-text.js byte for byte, so that dotnet build and the image never need Node.
+  rich-text:
+    name: Feature rich text bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: admin/src/FluentCMS.Admin.RichText/js
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: admin/src/FluentCMS.Admin.RichText/js/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Test the schema
+        run: npm test
+
+      - name: Rebuild the bundle
+        run: npm run build
+
+      - name: Check that the committed bundle is the rebuild
+        shell: bash
+        run: |
+          if ! git diff --exit-code --stat -- ../wwwroot || [ -n "$(git status --porcelain -- ../wwwroot)" ]; then
+            git status --porcelain -- ../wwwroot
+            echo "::error::The committed rich text bundle differs from a rebuild. Run npm ci and npm run build in admin/src/FluentCMS.Admin.RichText/js and commit wwwroot/rich-text.js."
+            exit 1
+          fi
+
   fast-checks:
     # Separate names keep these checks from satisfying main's full-suite requirements.
     name: Fast checks (${{ matrix.os }})
@@ -87,11 +125,14 @@ jobs:
       - name: Test admin components
         run: dotnet test --project admin/tests/FluentCMS.Admin.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 5m
 
+      - name: Test the rich text editor
+        run: dotnet test --project admin/tests/FluentCMS.Admin.RichText.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 5m
+
       # The tool, and the host's commands with export and import on SQLite, so that a crash of either shows before full CI.
       - name: Test the tool
         run: dotnet test --project tests/FluentCMS.Cli.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --timeout 5m
 
-      # The test projects ignore exit code 8, zero tests, so a filter that matched nothing would pass without a minimum.
+      # A minimum keeps a filter that matches too little from passing.
       - name: Test the commands
         run: dotnet test --project tests/FluentCMS.Core.IntegrationTests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --filter-namespace "FluentCMS.Core.IntegrationTests.Commands*" --minimum-expected-tests 40 --timeout 5m
 
