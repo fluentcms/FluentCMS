@@ -32,7 +32,7 @@ dotnet run
 
 The host runs on SQLite with the Blog sample, at `https://localhost:5443`. The [template's README](templates/fluentcms/README.md) covers PostgreSQL and SQL Server, migrations, the first administrator and an API key.
 
-With Docker, the compose file of the reference host runs the published image `ghcr.io/fluentcms/fluentcms:1.0.0-preview.1` on PostgreSQL, with its media in MinIO. In `src/FluentCMS.Host` of a clone of this repository, copy `.env.example` to `.env`, fill in every empty value, set `FLUENTCMS_IMAGE=ghcr.io/fluentcms/fluentcms:1.0.0-preview.1`, and start:
+With Docker, the compose file of the reference host runs the published image `ghcr.io/fluentcms/fluentcms:1.0.0-preview.1` on PostgreSQL, with its media in MinIO. In `src/FluentCMS.Host` of a clone of this repository, copy `.env.example` to `.env`, fill in every empty value, uncomment the two evaluation opt-ins (or mount the certificates, see [docs/docker.md](docs/docker.md#before-production)), set `FLUENTCMS_IMAGE=ghcr.io/fluentcms/fluentcms:1.0.0-preview.1`, and start:
 
 ```bash
 docker compose pull
