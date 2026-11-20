@@ -32,6 +32,7 @@ public sealed class RelationTests(EndToEndHost host) : BrowserTest(host)
             {
                 var search = await tab.AnswerAsync(() => SearchAsync(picker, "Grace"), response => response.Url.Contains("/content/author?", StringComparison.Ordinal) && response.Url.Contains("q=Grace", StringComparison.Ordinal));
                 search.Status.ShouldBe(200);
+                await Expect(picker.Locator(".cms-data-grid[aria-busy], .cms-data-grid [aria-busy]")).ToHaveCountAsync(0);
                 return await Row(picker, "Grace Hopper").CountAsync() > 0;
             },
             "the search index never found Grace Hopper");

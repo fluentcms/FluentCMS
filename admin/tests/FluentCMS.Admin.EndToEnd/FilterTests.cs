@@ -73,9 +73,13 @@ public sealed class FilterTests(EndToEndHost host) : BrowserTest(host)
         await ExpectSeedAsync(grid, "Welcome to FluentCMS");
         await Expect(tab.Page.Locator(".content-filter")).ToHaveCountAsync(1);
 
-        // Back goes through the addresses before: no filter, then the select filter alone.
+        // Back goes through the addresses before: no filter, then the select filter alone. The entry before the reload is a page
+        // load of its own, so the next Back waits until that page has started and read its list.
         await tab.Page.GoBackAsync();
         await Expect(tab.Page).ToHaveURLAsync(new Regex(@"content/article\?locale=en$"));
+        await Expect(grid.Locator("tbody tr").First).ToBeVisibleAsync();
+        await Expect(grid.Locator("[aria-busy]")).ToHaveCountAsync(0);
+        await Expect(tab.Page.Locator(".content-filter")).ToHaveCountAsync(0);
         await tab.Page.GoBackAsync();
         await Expect(tab.Page).ToHaveURLAsync(new Regex(@"\?locale=en&filter\[category\]\[eq\]=opinion$"));
         await ExpectSeedAsync(grid, "Typed content, no magic");
