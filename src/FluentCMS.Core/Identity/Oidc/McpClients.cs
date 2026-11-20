@@ -17,6 +17,15 @@ internal sealed record ClientMetadata(string Name, IReadOnlyList<Uri> RedirectUr
 // The client a registration made, or nothing when too many clients wait for approval.
 internal sealed record RegisteredClient(string ClientId, DateTimeOffset IssuedAt, McpClientStatus Status);
 
+// Which cap refused a registration.
+internal enum RegistrationCap
+{
+    Pending,
+    Clients,
+}
+
+internal sealed record RegistrationResult(RegisteredClient? Client, RegistrationCap? Cap);
+
 // The MCP clients that registered themselves (RFC 7591), over OpenIddict's application manager: the SDK's IMcpClients for
 // the MCP plugin, and the registration itself for the endpoint. Such a client is public, uses the code flow with PKCE and
 // refresh tokens, asks the user's consent, and may ask for the scopes of AuthorizationServer.RegisteredClientScopes only.
@@ -215,7 +224,8 @@ internal sealed class McpClients(
                         return new McpClientChange(McpClientChangeOutcome.Done, client with { RoleName = found.Name });
                     }
 
-                    var changed = state with { RoleId = found.Id };
+                    // An administrator acted on the client, so the cleanup of clients nobody looked at leaves it alone.
+                    var changed = state with { RoleId = found.Id, ApprovedBy = state.ApprovedBy ?? accessor.Current?.AuditPrincipal.Id };
                     await StoreAsync(application, changed, cancellationToken);
                     await authorizations.RevokeByApplicationIdAsync(id.ToString("D"), cancellationToken);
                     await tokens.RevokeByApplicationIdAsync(id.ToString("D"), cancellationToken);
@@ -249,6 +259,47 @@ internal sealed class McpClients(
             },
             cancellationToken);
 
+    // A client the open policy approved has no administrator who would remove it. One no user ever consented to goes after
+    // the short period, so that clients registered only to fill MaxClients do not hold it; one whose tokens and
+    // authorizations are all gone goes after the long one. The candidates are found in SQL, and each is read again just
+    // before it is deleted, so that a client that got its first token in between stays.
+    public async Task<int> RemoveUnusedAsync(DateTimeOffset neverUsedBefore, DateTimeOffset unusedBefore, CancellationToken cancellationToken = default)
+    {
+        var unused = await McpApplications()
+            .Where(application => !context.Set<OpenIddictEntityFrameworkCoreToken<Guid>>().Any(token => token.Application != null && token.Application.Id == application.Id)
+                && !context.Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>().Any(authorization => authorization.Application != null && authorization.Application.Id == application.Id))
+            .Select(application => application.Id)
+            .ToListAsync(cancellationToken);
+
+        var removed = 0;
+        foreach (var id in unused)
+        {
+            if (await applications.FindByIdAsync(id.ToString("D"), cancellationToken) is not { } application
+                || McpClientState.Of(await applications.GetPropertiesAsync(application, cancellationToken)) is not { IsApproved: true, ApprovedBy: null } state
+                || !(state.UsedAt is null ? state.RegisteredAt < neverUsedBefore : state.RegisteredAt < unusedBefore)
+                || await HasGrantsAsync(id, cancellationToken))
+            {
+                continue;
+            }
+
+            try
+            {
+                await applications.DeleteAsync(application, cancellationToken);
+                removed++;
+            }
+            catch (OpenIddictExceptions.ConcurrencyException)
+            {
+                // Changed since it was read, by an approval or a first use; the next run looks at it again.
+            }
+        }
+
+        return removed;
+    }
+
+    private async Task<bool> HasGrantsAsync(Guid id, CancellationToken cancellationToken) =>
+        await context.Set<OpenIddictEntityFrameworkCoreToken<Guid>>().AnyAsync(token => token.Application != null && token.Application.Id == id, cancellationToken)
+        || await context.Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>().AnyAsync(authorization => authorization.Application != null && authorization.Application.Id == id, cancellationToken);
+
     public async Task<int> RemoveUnapprovedAsync(DateTimeOffset registeredBefore, CancellationToken cancellationToken = default)
     {
         List<object> stale = [];
@@ -270,20 +321,26 @@ internal sealed class McpClients(
     }
 
     // Registers a client: approved at once with the default role under the open policy when that role exists, and pending
-    // otherwise. Null when as many clients wait for approval as the policy allows. The count comes before the insert, so
-    // registrations that cross may pass the cap by the few in flight.
-    public async Task<RegisteredClient?> RegisterAsync(ClientMetadata metadata, McpClientRegistrationPolicy policy, EventSource source, string? ip, CancellationToken cancellationToken)
+    // otherwise. Refused, in every mode, when there are as many MCP clients as the policy allows, and, for a client that
+    // would wait, when as many wait for approval. The counts come before the insert, so registrations that cross may pass a
+    // cap by the few in flight.
+    public async Task<RegistrationResult> RegisterAsync(ClientMetadata metadata, McpClientRegistrationPolicy policy, EventSource source, string? ip, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(policy);
         ArgumentNullException.ThrowIfNull(source);
 
+        if (await McpApplications().CountAsync(cancellationToken) >= policy.MaxClients)
+        {
+            return new RegistrationResult(null, RegistrationCap.Clients);
+        }
+
         var role = policy.Mode == McpClientRegistrationMode.Open && policy.DefaultRole is { Length: > 0 } named
             ? await FindRoleAsync(named, cancellationToken)
             : null;
-        if (role is null && await CountPendingAsync(cancellationToken) >= policy.MaxPendingClients)
+        if (role is null && await McpApplications().CountAsync(application => application.Properties!.Contains(PendingMarker), cancellationToken) >= policy.MaxPendingClients)
         {
-            return null;
+            return new RegistrationResult(null, RegistrationCap.Pending);
         }
 
         var now = time.GetUtcNow();
@@ -305,7 +362,7 @@ internal sealed class McpClients(
                     Source = source with { ClientId = clientId },
                 };
                 await events.PublishAsync(registered, cancellationToken);
-                return new RegisteredClient(clientId, now, state.Status);
+                return new RegistrationResult(new RegisteredClient(clientId, now, state.Status), null);
             },
             cancellationToken);
     }
@@ -352,21 +409,16 @@ internal sealed class McpClients(
         return descriptor;
     }
 
+    private static readonly string StateMarker = "\"" + AuthorizationServer.McpClientProperty + "\":{";
+
+    private static readonly string PendingMarker = "\"status\":\"pending\"";
+
     private static string NewClientId() => "mcp-" + RandomNumberGenerator.GetHexString(32, lowercase: true);
 
-    private async Task<int> CountPendingAsync(CancellationToken cancellationToken)
-    {
-        var pending = 0;
-        await foreach (var application in applications.ListAsync(count: null, offset: null, cancellationToken))
-        {
-            if (McpClientState.Of(await applications.GetPropertiesAsync(application, cancellationToken)) is { Status: McpClientStatus.Pending })
-            {
-                pending++;
-            }
-        }
-
-        return pending;
-    }
+    // The applications that carry the state of an MCP client, found in the stored JSON of their properties, so that a count
+    // is one query. OpenIddict writes the properties without whitespace, and McpClientState is the only object with a status.
+    private IQueryable<OpenIddictEntityFrameworkCoreApplication<Guid>> McpApplications() =>
+        context.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>().Where(application => application.Properties != null && application.Properties.Contains(StateMarker));
 
     // Another change got there first, so the client is no longer what this one read.
     private async Task<McpClientChange> ChangedMeanwhileAsync(Guid id, CancellationToken cancellationToken) =>

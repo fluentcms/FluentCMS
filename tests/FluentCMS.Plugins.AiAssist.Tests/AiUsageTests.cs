@@ -31,6 +31,9 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
         _ai.Chat.Answer = $"Ships are large vessels, {Marker}.";
         (_ai.Chat.PromptTokens, _ai.Chat.CompletionTokens) = (40, 9);
 
+        // With the site's own credential a row holds what the provider reported, 0 for a call that failed before it did.
+        _ai.Chat.SiteCredential = true;
+
         var answered = await SuggestAsync(admin, "rewrite", body);
         _ai.Chat.Failure = new InvalidOperationException($"The provider could not read: {Marker}.");
         using var failed = await ActAsync(admin, "shorten", body);
@@ -115,6 +118,7 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
         using var other = await _ai.AdminAsync(elsewhere);
         var body = new { type = "article", field = "summary", text = "Ships are big boats." };
         (_ai.Chat.PromptTokens, _ai.Chat.CompletionTokens) = (10, 3);
+        _ai.Chat.SiteCredential = true;
 
         await SuggestAsync(admin, "rewrite", body);
         await SuggestAsync(editor, "rewrite", body);

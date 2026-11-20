@@ -3949,3 +3949,6 @@ override FluentCMS.Events.MemberLoginUnlinkedEvent.ToString() -> string!
 override sealed FluentCMS.Events.MemberLoginUnlinkedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 static FluentCMS.Events.MemberLoginUnlinkedEvent.operator !=(FluentCMS.Events.MemberLoginUnlinkedEvent? left, FluentCMS.Events.MemberLoginUnlinkedEvent? right) -> bool
 static FluentCMS.Events.MemberLoginUnlinkedEvent.operator ==(FluentCMS.Events.MemberLoginUnlinkedEvent? left, FluentCMS.Events.MemberLoginUnlinkedEvent? right) -> bool
+FluentCMS.Agents.McpClientRegistrationPolicy.MaxClients.get -> int
+FluentCMS.Agents.McpClientRegistrationPolicy.MaxClients.init -> void
+FluentCMS.Agents.IMcpClients.RemoveUnusedAsync(System.DateTimeOffset neverUsedBefore, System.DateTimeOffset unusedBefore, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!

@@ -16,4 +16,5 @@ internal static class AiErrorCodes
     public const string AnswerUnusable = "FCMS1690";
     public const string ImageNotAvailable = "FCMS1691";
     public const string ProviderRemoved = "FCMS1692";
+    public const string BudgetExceeded = "FCMS1693";
 }

@@ -344,6 +344,56 @@ public sealed class McpClientRegistrationTests(McpClientFixture fixture) : IClas
         credentials.IsSuccessStatusCode.ShouldBeFalse();
     }
 
+    // A client that registered itself chose its own name, so the page says it is not verified and names the host the code goes to.
+    [Fact]
+    public async Task TheConsentPageNamesTheRedirectHostAndMarksAnMcpClient()
+    {
+        var host = fixture.Host;
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
+        using var agent = new McpAgent(host, "10.2.0.13");
+        var clientId = await agent.RegisteredAsync("FluentCMS Admin");
+        await agent.SignInAsync(await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token));
+
+        var shown = await PageAsync(agent, $"/account/consent?client_id={clientId}&scope=openid%20mcp&redirect_uri={Uri.EscapeDataString(McpAgent.RedirectUri)}");
+        var other = await PageAsync(agent, $"/account/consent?client_id={clientId}&scope=openid%20mcp&redirect_uri={Uri.EscapeDataString("https://elsewhere.example/cb")}");
+
+        shown.ShouldContain("Access goes to <strong>127.0.0.1:33418</strong>");
+        shown.ShouldContain("Its name is the one given when it was registered and is not verified");
+        other.ShouldNotContain("elsewhere.example");
+        other.ShouldContain("Access goes to <strong>127.0.0.1:33418</strong>");
+        other.ShouldContain("Its name is the one given when it was registered and is not verified");
+    }
+
+    // A consent covers every redirect URI of the client, so the page names them all, the request's first, and a host in
+    // another script in its ASCII form, where a look-alike letter shows.
+    [Fact]
+    public async Task TheConsentPageNamesEveryRedirectHostOfTheClientInItsAsciiForm()
+    {
+        var host = fixture.Host;
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
+        using var agent = new McpAgent(host, "10.2.0.14");
+        const string LookAlike = "https://\u0430pple.example/cb";
+        using var registered = await agent.RegisterAsync($$"""{ "client_name": "Two hosts", "redirect_uris": ["{{McpAgent.RedirectUri}}", "{{LookAlike}}"], "grant_types": ["authorization_code"], "response_types": ["code"], "token_endpoint_auth_method": "none" }""");
+        registered.StatusCode.ShouldBe(HttpStatusCode.Created, await registered.Content.ReadAsStringAsync(Token));
+        var clientId = (await JsonAsync(registered))["client_id"]!.GetValue<string>();
+        await agent.SignInAsync(await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token));
+
+        var page = await PageAsync(agent, $"/account/consent?client_id={clientId}&scope=openid%20mcp&redirect_uri={Uri.EscapeDataString(McpAgent.RedirectUri)}");
+
+        var ascii = new Uri("https://\u0430pple.example/cb").IdnHost;
+        ascii.ShouldStartWith("xn--");
+        page.ShouldContain("Access goes to <strong>127.0.0.1:33418</strong>");
+        page.ShouldContain($"<li><strong>{ascii}</strong></li>");
+        page.ShouldNotContain("\u0430pple");
+    }
+
+    private static async Task<string> PageAsync(McpAgent agent, string url)
+    {
+        using var response = await agent.Http.GetAsync(new Uri(url, UriKind.Relative), Token);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        return System.Net.WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync(Token));
+    }
+
     [Fact]
     public async Task WithOpenARegistrationIsApprovedAtOnceWithTheDefaultRoleAndTheLimitPerAddressHolds()
     {
@@ -466,6 +516,8 @@ public sealed class McpClientRegistrationTests(McpClientFixture fixture) : IClas
         settings.DefaultClientRole.ShouldBeNull();
         settings.MaxPendingClients.ShouldBe(100);
         settings.RegistrationsPerHour.ShouldBe(10);
+        settings.MaxClients.ShouldBe(1000);
+        settings.UnusedClientDays.ShouldBe(30);
     }
 
     private static IEnumerable<string> UpdatableFields(ModelContextProtocol.Protocol.Tool tool) =>

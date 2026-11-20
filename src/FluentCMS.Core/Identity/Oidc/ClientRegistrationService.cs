@@ -19,6 +19,7 @@ internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, Cli
     {
         await using var scope = scopes.CreateAsyncScope();
         var applications = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        var authorizations = scope.ServiceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
         await RemoveUnlistedAsync(applications, cancellationToken);
 
         foreach (var (clientId, client) in clients.Applications)
@@ -28,7 +29,7 @@ internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, Cli
                 var wanted = Describe(clientId, client);
                 if (!await IsCurrentAsync(applications, existing, wanted, cancellationToken))
                 {
-                    await applications.UpdateAsync(existing, wanted, cancellationToken);
+                    await UpdateAsync(applications, authorizations, existing, wanted, cancellationToken);
                 }
 
                 continue;
@@ -47,12 +48,40 @@ internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, Cli
                     throw;
                 }
 
-                await applications.UpdateAsync(registered, Describe(clientId, client), cancellationToken);
+                await UpdateAsync(applications, authorizations, registered, Describe(clientId, client), cancellationToken);
             }
         }
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    // A consent is of the user, the client and the scopes, and covers every redirect URI the client has, so a client whose
+    // redirect URIs change loses its consents, and each user is asked again. Its sessions, which a consent is not, stay.
+    private static async Task UpdateAsync(IOpenIddictApplicationManager applications, IOpenIddictAuthorizationManager authorizations, object application, OpenIddictApplicationDescriptor wanted, CancellationToken cancellationToken)
+    {
+        var before = (await applications.GetRedirectUrisAsync(application, cancellationToken)).ToHashSet(StringComparer.Ordinal);
+        await applications.UpdateAsync(application, wanted, cancellationToken);
+        if (before.SetEquals(wanted.RedirectUris.Select(uri => uri.OriginalString)))
+        {
+            return;
+        }
+
+        var id = await applications.GetIdAsync(application, cancellationToken) ?? "";
+        List<object> consents = [];
+        await foreach (var authorization in authorizations.FindByApplicationIdAsync(id, cancellationToken))
+        {
+            if (await authorizations.HasTypeAsync(authorization, AuthorizationTypes.Permanent, cancellationToken)
+                && await authorizations.HasStatusAsync(authorization, Statuses.Valid, cancellationToken))
+            {
+                consents.Add(authorization);
+            }
+        }
+
+        foreach (var consent in consents)
+        {
+            await authorizations.TryRevokeAsync(consent, cancellationToken);
+        }
+    }
 
     private async Task RemoveUnlistedAsync(IOpenIddictApplicationManager applications, CancellationToken cancellationToken)
     {

@@ -24,6 +24,9 @@ internal sealed record McpClientState(McpClientStatus Status, DateTimeOffset Reg
 
     public DateTimeOffset? ApprovedAt { get; init; }
 
+    // When a user first consented to the client; null while it was never used.
+    public DateTimeOffset? UsedAt { get; init; }
+
     [JsonIgnore]
     public bool IsApproved => Status == McpClientStatus.Approved && RoleId is not null;
 
