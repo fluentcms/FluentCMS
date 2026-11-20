@@ -71,7 +71,6 @@ public sealed class MediaPlugin : IPlugin
             .AddModel<MediaModel>()
             .AddMigrations(typeof(MediaPlugin).Assembly)
             .AddJob<MediaVariantCleanupJob, MediaVariantCleanupPayload>(MediaVariantCleanupJob.Type)
-            .AddJob<MediaDimensionsJob, MediaDimensionsPayload>(MediaDimensionsJob.Type)
             .AddErrorCode(MediaErrorCodes.InvalidField, 422, "Invalid media request")
             .AddErrorCode(MediaErrorCodes.TypeNotAllowed, 415, "File type not allowed")
             .AddErrorCode(MediaErrorCodes.TooLarge, 413, "Upload too large")

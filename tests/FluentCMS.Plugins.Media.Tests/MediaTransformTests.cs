@@ -312,9 +312,7 @@ public sealed class MediaTransformTests(TransformHosts hosts) : IClassFixture<Tr
         }
 
         within.StatusCode.ShouldBe(HttpStatusCode.OK);
-
-        // The upload reads the size through the processor too.
-        calls().ShouldBe((2, 1));
+        calls().ShouldBe((1, 1));
     }
 
     [Fact]
@@ -365,9 +363,7 @@ public sealed class MediaTransformTests(TransformHosts hosts) : IClassFixture<Tr
         recorded.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         declared.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         (await CodeAsync(declared)).ShouldBe(MediaErrorCodes.TransformLimit);
-
-        // The upload reads the size through the processor too.
-        calls().ShouldBe((2, 0));
+        calls().ShouldBe((1, 0));
     }
 
     [Fact]

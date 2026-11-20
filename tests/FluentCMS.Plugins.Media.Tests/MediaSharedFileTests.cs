@@ -117,6 +117,44 @@ public sealed class MediaSharedFileTests(PerSiteMediaHost media) : IClassFixture
         FilesOf(site, shared.Owner).ShouldBeEmpty();
     }
 
+    // An asset imported with the key of another instance that shares the storage: no row of this instance owns its file, so
+    // the deletion of its site takes its rows and leaves the file and the variant file beside it.
+    [Fact]
+    public async Task DeletingTheSiteLeavesTheFilesOfAnAssetThatOwnsNone()
+    {
+        var site = await MediaLibraryTesting.CreateSiteAsync(media);
+        using var admin = await MediaLibraryTesting.InSiteAsync(media, site);
+        var uploaded = await UploadAsync(admin, Bands(8, 8));
+        var foreign = Guid.CreateVersion7();
+        var key = $"{site:N}/{foreign:N}/original.png";
+        var variant = $"{site:N}/{foreign:N}/{new string('c', 64)}.png";
+        Directory.CreateDirectory(Path.Combine(media.StorageRoot, site.ToString("N"), foreign.ToString("N")));
+        await File.WriteAllBytesAsync(Path.Combine(media.StorageRoot, key), Bands(8, 8), Token);
+        await File.WriteAllBytesAsync(Path.Combine(media.StorageRoot, variant), Bands(2, 2), Token);
+        await using (var scope = media.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+            var row = await database.Set<Asset>().AsNoTracking().SingleAsync(asset => asset.Id == uploaded.Id, Token);
+            row.Id = foreign;
+            row.StorageKey = key;
+            row.OwnsFile = false;
+            database.Add(row);
+            database.Add(new Variant { AssetId = foreign, ParamsHash = new string('c', 64), StorageKey = variant, Size = 1, CreatedAt = media.Host.Time.GetUtcNow() });
+            await database.SaveChangesAsync(Token);
+        }
+
+        await using (var scope = media.Services.CreateAsyncScope())
+        {
+            await ActivatorUtilities.CreateInstance<DeletedSiteMedia>(scope.ServiceProvider).HandleAsync(new SiteDeletedEvent(site, "gone"), new EventDelivery(Guid.CreateVersion7(), 1), Token);
+        }
+
+        (await RowAsync(foreign)).ShouldBeNull();
+        (await VariantKeysAsync(foreign)).ShouldBeEmpty();
+        (await RowAsync(uploaded.Id)).ShouldBeNull();
+        Exists(key, variant).ShouldBe([true, true]);
+        FilesOf(site, uploaded.Id).ShouldBeEmpty();
+    }
+
     // The row of a variant whose asset is gone names no owner, so its file goes only when no other asset names it.
     [Fact]
     public async Task AVariantOfAnAssetThatIsGoneKeepsAFileAnotherAssetNames()

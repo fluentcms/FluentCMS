@@ -35,7 +35,7 @@ The rules of uploads are each site's, in the settings area `media` (`settings.me
 | `maxRequestSize` | 200 MB | The largest total of the files of one request, in bytes. |
 | `maxFilesPerRequest` | 20 | The most files in one request. |
 | `allowedTypes` | every type below | The types a site accepts: `image/jpeg`, `image/png`, `image/gif`, `image/webp`, `image/avif`, `application/pdf`, `video/mp4`, `video/webm`, `audio/mpeg` and `audio/wav`. |
-| `svg` | `refuse` | `refuse` refuses every SVG; `sanitize` stores it without its scripts, event handlers, `foreignObject`, `javascript:` URLs and references outside the document. |
+| `svg` | `refuse` | `refuse` refuses every SVG; `sanitize` stores it without its scripts, event handlers, `foreignObject` and `javascript:` URLs. |
 | `maxTransformWidth` | 4096 | The largest width a transform asks for, in pixels. |
 | `maxTransformHeight` | 4096 | The largest height a transform asks for, in pixels. |
 | `maxTransformOperations` | 6 | The most parameters a transform has, its preset's included; `fx` and `fy` count as one. |

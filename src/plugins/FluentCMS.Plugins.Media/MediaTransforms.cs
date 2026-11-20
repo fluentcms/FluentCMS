@@ -181,8 +181,7 @@ internal sealed class MediaTransforms(
     // Run by MediaDecodes for every caller that waits, so it outlives the scope of the request that started it and records
     // the variant in a scope of its own. The original is read once: from the local disk as it is, and from any other storage
     // copied to a temporary file first, where the header and then the pixels are read. The header is read even when the
-    // asset recorded its size, since that size counts no frames, and one recorded before it was read through the processor
-    // is before the orientation.
+    // asset recorded its size, since that size is before the orientation and counts no frames.
     private async Task CreateAsync(IFileStorage assetStorage, Asset asset, ImageTransform transform, string hash, MediaSettings rules, bool limited, CancellationToken cancellationToken)
     {
         var id = asset.Id;
