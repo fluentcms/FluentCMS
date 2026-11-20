@@ -50,7 +50,8 @@ internal sealed record PreviewTokenAnswer
 
     public DateTimeOffset ExpiresAt { get; init; }
 
-    public int? ExpiresIn { get; init; }
+    // A number, so that one with a fraction still reads; the pane takes its whole seconds.
+    public double? ExpiresIn { get; init; }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public DateTimeOffset? AnsweredAt { get; init; }

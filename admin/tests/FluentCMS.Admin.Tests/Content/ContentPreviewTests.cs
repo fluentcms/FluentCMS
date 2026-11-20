@@ -379,22 +379,29 @@ public sealed class ContentPreviewTests : AdminTestContext
         _content.PreviewMints.ShouldBe(1);
     }
 
-    // An admin on another origin sees no Date, and the answer gives no lifetime yet (#3473): there is no end it can trust, so
-    // every save and every Reload mints, and a ready page is loaded with the new token rather than told to refresh.
+    // An admin on another origin sees no Date, and the answer gives no lifetime yet (#3473): only the minute the server issues
+    // at least is trusted, so within fifteen seconds of a mint a save refreshes a ready page, and after them every save and
+    // every Reload mints, and a ready page is loaded with the new token rather than told to refresh.
     [Fact]
-    public void WithNoDateAndNoLifetimeEverySaveAndReloadMints()
+    public void WithNoDateAndNoLifetimeOnlyTheShortestLifetimeIsTrusted()
     {
         _content.PreviewClock = null;
         var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
         var app = Open(Load($"content/post/{id:D}"));
         Post(app, FrontEnd, Message("ready"));
+        _time.Advance(TimeSpan.FromSeconds(10));
+        SaveChanged(app);
+        app.WaitForAssertion(() => _preview.Invocations.Count(call => call.Identifier == "post").ShouldBe(1));
+        _content.PreviewMints.ShouldBe(1);
 
+        _time.Advance(TimeSpan.FromSeconds(6));
         SaveChanged(app);
         app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
+        _time.Advance(TimeSpan.FromSeconds(16));
         Button(app, "Reload").Click();
 
         app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-3"));
-        _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
+        _preview.Invocations.Count(call => call.Identifier == "post").ShouldBe(1);
     }
 
     // The lifetime the answer gives counts from when the mint was sent, with no Date and the browser's clock behind.
@@ -428,6 +435,62 @@ public sealed class ContentPreviewTests : AdminTestContext
 
         app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
         _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
+    }
+
+    // A lifetime with a fraction reads, and only its whole seconds count: 60.9 seconds end, less the 45 of the margin, after 15.
+    [Fact]
+    public void ALifetimeWithAFractionCountsItsWholeSeconds()
+    {
+        _content.PreviewExpiresIn = 60.9;
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Post(app, FrontEnd, Message("ready"));
+        _time.Advance(TimeSpan.FromSeconds(15.5));
+
+        SaveChanged(app);
+
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
+        _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
+    }
+
+    // The end is on the monotonic clock: the computer's clock set back five minutes while the pane is open does not give the
+    // token more time, so nine and a half minutes after its mint a save mints again.
+    [Fact]
+    public void AClockSetBackDoesNotMoveTheEnd()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Post(app, FrontEnd, Message("ready"));
+        _time.Now -= TimeSpan.FromMinutes(5);
+        _time.Advance(TimeSpan.FromSeconds(570));
+
+        SaveChanged(app);
+
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
+        _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
+    }
+
+    // A Reload of a ready draft whose token ended mints, and that fails: the pane says so and keeps nothing of the page it
+    // showed, ready included.
+    [Fact]
+    public void AFailedMintOfAReloadKeepsNothingOfThePage()
+    {
+        _content.PreviewLifetime = TimeSpan.FromMinutes(-1);
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Post(app, FrontEnd, Message("ready"));
+        app.WaitForAssertion(() => Pane(app).GetAttribute("data-ready").ShouldBe("true"));
+        _content.PreviewUnavailable = true;
+
+        Button(app, "Reload").Click();
+
+        app.WaitForAssertion(() => app.FindAll(".content-preview > .content-preview-notice").Select(notice => notice.TextContent.Trim()).ShouldBe(["The preview could not be loaded."]));
+        Pane(app).HasAttribute("data-ready").ShouldBeFalse();
+        app.FindAll(".content-preview iframe").ShouldBeEmpty();
+        var pane = app.FindComponent<ContentPreview>().Instance;
+        Member(pane, "frameToken").ShouldBeNull();
+        Member(pane, "frameDeadline").ShouldBeNull();
+        Member(pane, "frameDraft").ShouldBe(false);
     }
 
     // A Date later than the token's end leaves no time: the end has passed, so a save mints and loads the page with the new token.
@@ -841,7 +904,7 @@ public sealed class ContentPreviewTests : AdminTestContext
 
         foreach (var name in (string[])["answer", "answerDeadline", "frameUrl", "frameToken", "frameDeadline"])
         {
-            typeof(ContentPreview).GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(instance).ShouldBeNull(name);
+            Member(instance, name).ShouldBeNull(name);
         }
     }
 
@@ -898,6 +961,9 @@ public sealed class ContentPreviewTests : AdminTestContext
     // The id of the element last focused.
     private string? Focused() =>
         JSInterop.Invocations.Where(call => call.Identifier == "Blazor._internal.domWrapper.focus").Select(call => ((ElementReference)call.Arguments[0]!).Id).LastOrDefault();
+
+    private static object? Member(ContentPreview pane, string name) =>
+        typeof(ContentPreview).GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(pane);
 
     // A held answer is let go on the renderer, so that what it is handed on to runs there in turn.
     private static Task Release(IRenderedComponent<AdminApp> app, TaskCompletionSource held) => app.InvokeAsync(held.SetResult);

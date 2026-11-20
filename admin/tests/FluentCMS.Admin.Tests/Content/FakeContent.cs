@@ -74,7 +74,7 @@ internal sealed class FakeContent
     public DateTimeOffset? PreviewClock { get; set; }
 
     // The token's lifetime in seconds the answer gives as expiresIn (#3473), while set.
-    public int? PreviewExpiresIn { get; set; }
+    public double? PreviewExpiresIn { get; set; }
 
     public int PreviewMints { get; private set; }
 
