@@ -17,8 +17,11 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
     // or for a preview token one of published rows as its minter reads them, which has the errors and the count of
     // populated entries of this one, so that the caps hold for the whole read.
     public QueryScope Targets => _targets ??= access.PublishedTargets is { } published
-        ? new QueryScope(context, schema, dialect, published, options, ContentState.Published, locale, site, reachesTrash) { _tally = _tally, Links = Links }
+        ? new QueryScope(context, schema, dialect, published, options, ContentState.Published, locale, site, reachesTrash) { _tally = _tally, Links = Links, Budget = Budget }
         : this;
+
+    // What the request has populated, in this read and in the other locales it reads.
+    public PopulateBudget Budget { get; init; } = new();
 
     // What a read drops from stored rich text (RichTextLinks).
     public SafeUrl Links { get; init; } = SafeUrl.Default;
@@ -48,10 +51,18 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
 
     public QueryPaths Paths { get; } = new(schema, access, management);
 
+    // The same read of another locale, as the principal reads that one, with the errors and the populate count of this one.
+    public QueryScope InLocale(string other, IContentQueryAccess otherAccess) =>
+        new(context, schema, dialect, otherAccess, options, state, other, site, reachesTrash, management) { _tally = _tally, Links = Links, Budget = Budget };
+
+    public IQueryable<QueryRow> Rows(SchemaType type, bool trashedRoot = false) => Rows(type, QueryRows.Of(context, type, state, locale), trashedRoot);
+
+    // The rows of a localized type in any of these locales, an entry once for each locale it has.
+    public IQueryable<QueryRow> Rows(SchemaType type, IReadOnlyList<string> locales) => Rows(type, QueryRows.Of(context, type, state, locales), trashedRoot: false);
+
     // A site's query reads that site's entries on every level. Global entries belong to no site, and any site may read them.
-    public IQueryable<QueryRow> Rows(SchemaType type, bool trashedRoot = false)
+    private IQueryable<QueryRow> Rows(SchemaType type, IQueryable<QueryRow> rows, bool trashedRoot)
     {
-        var rows = QueryRows.Of(context, type, state, locale);
         if (trashedRoot)
         {
             rows = rows.Where(row => row.Document.DeletedAt != null);
@@ -108,8 +119,8 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
 
     public void CountPopulated(int entries)
     {
-        _tally.Populated += entries;
-        if (_tally.Populated > options.MaxPopulatedEntries)
+        Budget.Populated += entries;
+        if (Budget.Populated > options.MaxPopulatedEntries)
         {
             Report("populate", QueryErrorCodes.LimitExceeded, $"The query inlines more than the {options.MaxPopulatedEntries} related entries allowed.");
             ThrowIfInvalid();
@@ -127,7 +138,5 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
     private sealed class Tally
     {
         public List<ValidationError> Errors { get; } = [];
-
-        public int Populated { get; set; }
     }
 }

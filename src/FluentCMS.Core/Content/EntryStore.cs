@@ -351,21 +351,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
 
                 written.AddRange(await ReplaceReferencesAsync(type, row, stored, entry, cancellationToken));
 
-                context.Versions.Add(new ContentVersion
-                {
-                    DocumentId = row.DocumentId,
-                    Locale = row.Locale,
-                    Number = row.DraftVersion,
-                    Snapshot = EntryJson.Text(fields),
-                    StatusAfter = row.Status == EntryStatus.Published ? EntryStatus.Modified : row.Status,
-                    AuthorId = author.ActorId,
-                    AuthorKind = author.ActorKind,
-                    AuthorName = ActivityText.Required(author.ActorName, ActivityText.ActorNameMaxLength),
-                    Origin = author.Origin,
-                    ClientId = author.ClientId,
-                    Message = message,
-                    CreatedAt = row.UpdatedAt,
-                });
+                context.Versions.Add(NewVersion(row, fields, author, message));
             },
             () => PruneVersionsAsync(type, row, cancellationToken),
             cancellationToken);
@@ -376,6 +362,33 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema, RichT
 
         return written;
     }
+
+    // The version of a locale whose draft moved with the shared row, which a write in another locale changed.
+    public Task AddVersionAsync(SchemaType type, Document row, JsonObject fields, OperationContext operation, string message, CancellationToken cancellationToken) =>
+        SaveOwnRowsAsync(
+            () =>
+            {
+                context.Versions.Add(NewVersion(row, fields, EventSource.From(operation), message));
+                return Task.CompletedTask;
+            },
+            () => PruneVersionsAsync(type, row, cancellationToken),
+            cancellationToken);
+
+    private static ContentVersion NewVersion(Document row, JsonObject fields, EventSource author, string? message) => new()
+    {
+        DocumentId = row.DocumentId,
+        Locale = row.Locale,
+        Number = row.DraftVersion,
+        Snapshot = EntryJson.Text(fields),
+        StatusAfter = row.Status == EntryStatus.Published ? EntryStatus.Modified : row.Status,
+        AuthorId = author.ActorId,
+        AuthorKind = author.ActorKind,
+        AuthorName = ActivityText.Required(author.ActorName, ActivityText.ActorNameMaxLength),
+        Origin = author.Origin,
+        ClientId = author.ClientId,
+        Message = message,
+        CreatedAt = row.UpdatedAt,
+    };
 
     // Copies the draft rows of one locale, and the shared row they sit on, over the published ones.
     public Task CopyDraftToPublishedAsync(SchemaType type, Document row, CancellationToken cancellationToken) =>

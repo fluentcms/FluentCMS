@@ -765,6 +765,62 @@ public sealed class ContentServiceWriteTests : IDisposable
         StatusOf(id, "fr").ShouldBe(EntryStatus.Modified);
     }
 
+    // #3265: the other locales take the shared change as a version of their own, so a version read before it is stale.
+    [Fact]
+    public async Task AChangeToASharedFieldAdvancesTheOtherLocalesSoAnOlderVersionConflicts()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, Titled("Hello")));
+        await _database.UpdateAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
+
+        await _database.PatchAsync(Editor, id, new() { ["title"] = "Bonjour !" }, 1, locale: "fr");
+        _database.Versions(id).Count(version => version.Locale == "en").ShouldBe(1);
+
+        await _database.PatchAsync(Editor, id, new() { ["views"] = 4 }, 1);
+        var french = _database.Versions(id).Where(version => version.Locale == "fr").ToList();
+        french.Select(version => version.Number).ShouldBe([1, 2, 3]);
+        french[^1].Message.ShouldBe("Shared fields changed in en.");
+        french[^1].AuthorId.ShouldBe(Editor.Id);
+        JsonNode.Parse(french[^1].Snapshot)!["views"]!.GetValue<long>().ShouldBe(4);
+        JsonNode.Parse(french[^1].Snapshot)!["title"]!.GetValue<string>().ShouldBe("Bonjour !");
+
+        var conflict = await Should.ThrowAsync<VersionConflictException>(() => _database.PatchAsync(Editor, id, new() { ["views"] = 3 }, 2, locale: "fr"));
+        (conflict.ExpectedVersion, conflict.CurrentVersion).ShouldBe((2, 3));
+        (await _database.GetAsync(Editor, id, locale: "fr"))!["views"].ShouldBe(4L);
+
+        await Should.ThrowAsync<VersionConflictException>(() => _database.PublishAsync(Editor, id, "fr", expected: 2));
+        _database.Read(context => context.Rows("cms_article").Count(row => EF.Property<Guid>(row, StorageNames.DocumentId) == id && EF.Property<short>(row, StorageNames.State) == ContentState.Published)).ShouldBe(0);
+
+        await _database.PatchAsync(Editor, id, new() { ["views"] = 3 }, 3, locale: "fr");
+        (await _database.GetAsync(Editor, id))!["version"].ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task AChangeToLocalizedFieldsLeavesTheOtherLocalesVersions()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, Titled("Hello")));
+        await _database.UpdateAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
+
+        await _database.PatchAsync(Editor, id, Titled("Hello again"), 1);
+        await _database.PatchAsync(Editor, id, Titled("Bonjour encore"), 1, locale: "fr");
+
+        _database.Versions(id).Select(version => (version.Locale, version.Number)).ShouldBe([("en", 1), ("en", 2), ("fr", 1), ("fr", 2)]);
+    }
+
+    // Discarding a draft puts the published shared fields back under every locale, which is a change to them too.
+    [Fact]
+    public async Task DiscardingADraftThatMovesTheSharedFieldsAdvancesTheOtherLocales()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, Titled("Hello")));
+        await _database.UpdateAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
+        await _database.PublishAsync(Editor, id);
+        await _database.PatchAsync(Editor, id, new() { ["views"] = 8 }, 1);
+
+        await _database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().DiscardDraftAsync("article", id, new LocaleWriteOptions { ExpectedVersion = 2 }, Token));
+
+        _database.Versions(id).Where(version => version.Locale == "fr").Select(version => version.Number).ShouldBe([1, 2, 3]);
+        await Should.ThrowAsync<VersionConflictException>(() => _database.PatchAsync(Editor, id, new() { ["views"] = 1 }, 2, locale: "fr"));
+    }
+
     private EntryStatus StatusOf(Guid id, string locale) =>
         _database.Read(context => context.Documents.AsNoTracking().Single(document => document.DocumentId == id && document.Locale == locale).Status);
 

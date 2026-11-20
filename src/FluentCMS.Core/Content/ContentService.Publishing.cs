@@ -65,10 +65,11 @@ internal sealed partial class ContentService
                     throw new HookRejectedException(ContentErrorCodes.DraftMovedByHook, "A hook changed the draft being published.");
                 }
 
+                var advanced = false;
                 if (!JsonNode.DeepEquals(original, settled))
                 {
                     var status = document.Status == EntryStatus.Published ? EntryStatus.Modified : document.Status;
-                    await WriteOverDraftAsync(write, id, document, rows, working, settled, status, null, cancellationToken);
+                    advanced = await WriteOverDraftAsync(write, id, documents, document, rows, draft, working, settled, status, null, cancellationToken);
                     await ThrowIfOutOfReachAsync(write, ContentOperation.Publish, id, cancellationToken);
                 }
 
@@ -78,7 +79,7 @@ internal sealed partial class ContentService
                     throw await ConflictAsync(write, id, document.DraftVersion, await store.DraftVersionAsync(id, document.Locale, cancellationToken), cancellationToken);
                 }
 
-                await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken);
+                await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken, advanced);
 
                 EntryStore.ApplySystem(working, document);
                 await hooks.RunAsync(HookKind.AfterPublish, write.Type, write.Operation, working, CopyOf(previous), cancellationToken);
@@ -170,8 +171,8 @@ internal sealed partial class ContentService
 
                 (working, var fields) = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, [], writable, document), cancellationToken);
 
-                await WriteOverDraftAsync(write, id, document, rows, working, fields, JsonNode.DeepEquals(fields, publishedFields) ? EntryStatus.Published : EntryStatus.Modified, "Discarded the draft.", cancellationToken);
-                await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken);
+                var advanced = await WriteOverDraftAsync(write, id, documents, document, rows, stored, working, fields, JsonNode.DeepEquals(fields, publishedFields) ? EntryStatus.Published : EntryStatus.Modified, "Discarded the draft.", cancellationToken);
+                await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken, advanced);
                 var skipped = await SkipStalePublishesAsync(write, documents, document, cancellationToken);
                 await ThrowIfOutOfReachAsync(write, ContentOperation.Update, id, cancellationToken);
 
@@ -302,8 +303,8 @@ internal sealed partial class ContentService
                 }
 
                 var message = string.Create(CultureInfo.InvariantCulture, $"Restored version {number}.");
-                await WriteOverDraftAsync(write, id, document, rows, working, fields, status, message, cancellationToken);
-                await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken);
+                var advanced = await WriteOverDraftAsync(write, id, documents, document, rows, stored, working, fields, status, message, cancellationToken);
+                await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken, advanced);
                 var skipped = await SkipStalePublishesAsync(write, documents, document, cancellationToken);
                 await ThrowIfOutOfReachAsync(write, ContentOperation.Update, id, cancellationToken);
 
@@ -652,10 +653,17 @@ internal sealed partial class ContentService
             .Where(group => group.Target is not null)
             .Select(group => (group.Target!, group.Ids));
 
-    // rows are the draft rows this transaction read, and fields EntryJson.Fields of working.
-    private async Task WriteOverDraftAsync(WriteScope write, Guid id, Document document, StoredRows rows, ContentDocument working, JsonObject fields, EntryStatus status, string? message, CancellationToken cancellationToken)
+    // rows are the draft rows this transaction read, stored the draft they hold, and fields EntryJson.Fields of working.
+    // Answers whether the shared fields moved, and the other locales' versions with them.
+    private async Task<bool> WriteOverDraftAsync(WriteScope write, Guid id, List<Document> documents, Document document, StoredRows rows, ContentDocument stored, ContentDocument working, JsonObject fields, EntryStatus status, string? message, CancellationToken cancellationToken)
     {
         var expected = document.DraftVersion;
+        var sharedChanged = SharedChanged(write.Type, fields, stored);
+        if (sharedChanged && !await AdvanceOtherLocalesAsync(write, documents, document, cancellationToken))
+        {
+            throw await ConflictAsync(write, id, expected, expected, cancellationToken);
+        }
+
         if (!await store.AdvanceVersionAsync(id, document.Locale, expected, status, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken))
         {
             throw await ConflictAsync(write, id, expected, await store.DraftVersionAsync(id, document.Locale, cancellationToken), cancellationToken);
@@ -666,6 +674,7 @@ internal sealed partial class ContentService
         document.UpdatedAt = write.Operation.Timestamp;
         document.UpdatedBy = write.Operation.AuditPrincipal.Id;
         await store.WriteDraftAsync(write.Type, document, isNewDocument: false, rows, working, fields, write.Operation, cancellationToken, message);
+        return sharedChanged;
     }
 
     // Asked after the entry's draft was written over, so it is known to be in its site.
@@ -678,24 +687,61 @@ internal sealed partial class ContentService
     }
 
     // The shared row moved under the other locales, and each is Published only while its draft equals what is published.
-    private async Task RecomputeOtherLocalesAsync(WriteScope write, List<Document> documents, Document document, CancellationToken cancellationToken)
+    // advanced is that the shared draft moved and AdvanceOtherLocalesAsync gave each other locale a new version, whose
+    // snapshot is its draft as it now is.
+    private async Task RecomputeOtherLocalesAsync(WriteScope write, List<Document> documents, Document document, CancellationToken cancellationToken, bool advanced = false)
     {
         if (!write.Type.Localized)
         {
             return;
         }
 
-        foreach (var other in documents.Where(other => other.Id != document.Id && other.PublishedVersion is not null))
+        foreach (var other in documents.Where(other => other.Id != document.Id && (advanced || other.PublishedVersion is not null)))
         {
             var draft = await store.ReadAsync(write.Type, other, ContentState.Draft, cancellationToken);
-            var published = await store.ReadAsync(write.Type, other, ContentState.Published, cancellationToken);
-            var status = SameFields(write.Type, draft, published) ? EntryStatus.Published : EntryStatus.Modified;
+            var status = other.Status;
+            if (other.PublishedVersion is not null)
+            {
+                var published = await store.ReadAsync(write.Type, other, ContentState.Published, cancellationToken);
+                status = SameFields(write.Type, draft, published) ? EntryStatus.Published : EntryStatus.Modified;
+            }
+
             if (status != other.Status)
             {
                 await store.SetStatusAsync(other.DocumentId, other.Locale, status, cancellationToken);
+                other.Status = status;
+            }
+
+            if (advanced)
+            {
+                var message = string.Create(CultureInfo.InvariantCulture, $"Shared fields changed in {document.Locale}.");
+                await store.AddVersionAsync(write.Type, other, EntryJson.Fields(write.Type, draft), write.Operation, message, cancellationToken);
             }
         }
     }
+
+    // Shared fields are part of every locale's draft, so a write that changes them advances each other locale's version
+    // too, from the one this transaction read: a client that read another locale before the change is refused on its next
+    // write or publish of it, and of two writes that cross, one is (#3265). False when another locale moved since the read.
+    private async Task<bool> AdvanceOtherLocalesAsync(WriteScope write, List<Document> documents, Document document, CancellationToken cancellationToken)
+    {
+        foreach (var other in documents.Where(other => other.Locale != document.Locale))
+        {
+            if (!await store.AdvanceVersionAsync(other.DocumentId, other.Locale, other.DraftVersion, other.Status, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken))
+            {
+                return false;
+            }
+
+            other.DraftVersion++;
+            other.UpdatedAt = write.Operation.Timestamp;
+            other.UpdatedBy = write.Operation.AuditPrincipal.Id;
+        }
+
+        return true;
+    }
+
+    private static bool SharedChanged(SchemaType type, JsonObject fields, ContentDocument stored) =>
+        type.Localized && type.Fields.Any(field => !field.Localizable && !JsonNode.DeepEquals(fields[field.Name], EntryJson.ToNode(stored.GetValueOrDefault(field.Name))));
 
     private static bool SameFields(SchemaType type, ContentDocument left, ContentDocument right) =>
         JsonNode.DeepEquals(EntryJson.Fields(type, left), EntryJson.Fields(type, right));

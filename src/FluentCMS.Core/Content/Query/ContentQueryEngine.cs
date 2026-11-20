@@ -45,19 +45,56 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     public Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, CancellationToken cancellationToken = default) =>
         ExecuteAsync(typeName, query, everySystemField: false, cancellationToken);
 
+    // One of the reads of a request, which counts what it populates with the others.
+    public Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, PopulateBudget budget, CancellationToken cancellationToken) =>
+        ExecuteAsync(typeName, query, everySystemField: false, trashed: false, cancellationToken, budget: budget);
+
     // everySystemField is for a content class, which has a property for each of them; a document leaves out the two that
     // are not in the response shape. Field permissions still decide.
     public Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, CancellationToken cancellationToken) =>
         ExecuteAsync(typeName, query, everySystemField, trashed: false, cancellationToken);
 
     // A read by id of an entry the caller has already read or written some of. The query is compiled and checked as any other.
-    public Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, KnownEntry? known, CancellationToken cancellationToken) =>
-        ExecuteAsync(typeName, query, everySystemField, trashed: false, cancellationToken, known: known);
+    public Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, KnownEntry? known, PopulateBudget budget, CancellationToken cancellationToken) =>
+        ExecuteAsync(typeName, query, everySystemField, trashed: false, cancellationToken, known: known, budget: budget);
+
+    // A list of every locale (#3277): each entry once, matched, sorted and paged by its anchor, its row in the first of the
+    // locales, in the order given, that has one the principal may read. The page answers ids alone, since the caller reads
+    // each locale's rows itself; the query is compiled whole all the same, so what is not valid in it is refused here. A
+    // search still runs in the first locale the principal may read.
+    public async Task<ContentQueryResult> ExecuteEveryLocaleAsync(string typeName, ContentQuery query, IReadOnlyList<string> locales, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(locales);
+
+        List<(string Locale, IContentQueryAccess Access)> anchors = [];
+        if (schema.FindContentType(typeName) is { Localized: true } type)
+        {
+            foreach (var locale in locales)
+            {
+                var inLocale = await access.ForQueryAsync(query.Site, locale, cancellationToken);
+                if (inLocale.CanReadType(type) && (query.Status != QueryStatus.Draft || inLocale.CanReadDraft(type)))
+                {
+                    anchors.Add((locale, inLocale));
+                }
+            }
+        }
+
+        // A type that is not localized has one row an entry, and with no locale to read, the query refuses as it would.
+        var compiled = anchors.Count == 0
+            ? Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query)
+            : Compile(anchors[0].Access, typeName, query with { Locale = anchors[0].Locale }, anchors: anchors);
+        return await TimedAsync(compiled, async () =>
+        {
+            await SearchAsync(compiled, cancellationToken);
+            return await RunAsync(compiled, cancellationToken, idsOnly: true);
+        });
+    }
 
     // Reads the entries in the trash as drafts. Whoever calls this has decided that the principal may look at the trash;
     // what a draft read is limited by still holds.
-    public Task<ContentQueryResult> ExecuteTrashAsync(string typeName, ContentQuery query, bool everySystemField, CancellationToken cancellationToken) =>
-        ExecuteAsync(typeName, query with { Status = QueryStatus.Draft }, everySystemField, trashed: true, cancellationToken);
+    public Task<ContentQueryResult> ExecuteTrashAsync(string typeName, ContentQuery query, bool everySystemField, PopulateBudget budget, CancellationToken cancellationToken) =>
+        ExecuteAsync(typeName, query with { Status = QueryStatus.Draft }, everySystemField, trashed: true, cancellationToken, budget: budget);
 
     // Reads the entries the principal may read that another row rule also lets through, such as that of a write about to
     // be made to them. The rule is trusted like the read rule, and holds for the entries read, not for relation targets.
@@ -77,11 +114,11 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         });
     }
 
-    private async Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, bool trashed, CancellationToken cancellationToken, ContentFilter? rule = null, KnownEntry? known = null)
+    private async Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, bool trashed, CancellationToken cancellationToken, ContentFilter? rule = null, KnownEntry? known = null, PopulateBudget? budget = null)
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query, everySystemField, trashed, rule);
+        var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query, everySystemField, trashed, rule, budget: budget);
         return await TimedAsync(compiled, async () =>
         {
             await SearchAsync(compiled, cancellationToken);
@@ -117,7 +154,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         }
     }
 
-    private async Task<ContentQueryResult> RunAsync(CompiledQuery compiled, CancellationToken cancellationToken, KnownEntry? known = null)
+    private async Task<ContentQueryResult> RunAsync(CompiledQuery compiled, CancellationToken cancellationToken, KnownEntry? known = null, bool idsOnly = false)
     {
         long? total = compiled.WithTotal ? await compiled.Filtered.LongCountAsync(cancellationToken) : null;
         var rows = KnownRow(compiled, known) is { } row ? [row] : await compiled.Rows.ToListAsync(cancellationToken);
@@ -128,15 +165,18 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             rows.RemoveAt(rows.Count - 1);
         }
 
+        var nextCursor = hasMore ? SortKeys.Encode(compiled.Keys, compiled.KeyColumns.Select(column => rows[^1][column]).ToList()) : null;
+        if (idsOnly)
+        {
+            return new(rows.Select(values => new ContentDocument { ["id"] = values[compiled.Plan.IdColumn] }).ToList(), total, compiled.PageNumber, compiled.PageSize, nextCursor);
+        }
+
         var entries = rows.Select(row => Materialize(compiled.Plan, row, new ContentDocument(), parent: null)).ToList();
         var readable = known?.Readable ?? new ReadableTargets();
         var resolvable = new ResolvableReferences(schema, resolvers);
         await FillReferencesAsync(compiled.Scope, compiled.Plan, entries, readable, resolvable, cancellationToken, known?.References);
         await FilterNestedTargetsAsync(compiled.Scope, compiled.Type, entries, readable, cancellationToken);
         await resolvable.ResolveAsync(compiled.Scope.Locale, cancellationToken);
-
-        var last = hasMore ? rows[^1] : null;
-        var nextCursor = last is null ? null : SortKeys.Encode(compiled.Keys, compiled.KeyColumns.Select(column => last[column]).ToList());
 
         return new(entries.Select(entry => entry.Document).ToList(), total, compiled.PageNumber, compiled.PageSize, nextCursor);
     }
@@ -150,12 +190,12 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     // Separate from running it, so that a test can read the SQL.
     internal CompiledQuery Compile(string typeName, ContentQuery query) => Compile(access, typeName, query);
 
-    private CompiledQuery Compile(IContentQueryAccess access, string typeName, ContentQuery query, bool everySystemField = false, bool trashed = false, ContentFilter? rule = null)
+    private CompiledQuery Compile(IContentQueryAccess access, string typeName, ContentQuery query, bool everySystemField = false, bool trashed = false, ContentFilter? rule = null, IReadOnlyList<(string Locale, IContentQueryAccess Access)>? anchors = null, PopulateBudget? budget = null)
     {
         ArgumentNullException.ThrowIfNull(query);
 
         var state = query.Status == QueryStatus.Draft ? ContentState.Draft : ContentState.Published;
-        var scope = new QueryScope(context, schema, dialect, access, options, state, query.Locale ?? "", query.Site, trashed, shape.Applies) { Links = richText.Links };
+        var scope = new QueryScope(context, schema, dialect, access, options, state, query.Locale ?? "", query.Site, trashed, shape.Applies) { Links = richText.Links, Budget = budget ?? new() };
 
         if (schema.FindContentType(typeName) is not { } type || !access.CanReadType(type))
         {
@@ -173,13 +213,13 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         }
 
         var row = Expression.Parameter(typeof(QueryRow), "row");
-        var rows = scope.Rows(type, trashedRoot: trashed);
+        var rows = anchors is null ? scope.Rows(type, trashedRoot: trashed) : scope.Rows(type, [.. anchors.Select(anchor => anchor.Locale)]);
         if (trashed)
         {
             rows = rows.IgnoreQueryFilters();
         }
 
-        if (new FilterCompiler(scope).Where(type, query.Filter, row) is { } filter)
+        if ((anchors is null ? new FilterCompiler(scope).Where(type, query.Filter, row) : Anchored(scope, type, query.Filter, anchors, row)) is { } filter)
         {
             rows = rows.Where(Lambda(filter, row));
         }
@@ -199,6 +239,12 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         var select = everySystemField && query.Select.Count == 0 ? SelectNode.EverythingWithSystem : Selection(scope, type, query.Select);
         var plan = new EntryPlan(scope, type, select, Population(scope, type, query), level: 0, isRoot: true, row);
         var keys = SortKeys.Build(scope, type, query.Sort, row);
+        foreach (var (locale, inLocale) in anchors?.Skip(1) ?? [])
+        {
+            // The anchors sort by their own rows, so a key must be one the principal may sort by in each locale.
+            SortKeys.Build(scope.InLocale(locale, inLocale), type, query.Sort, row);
+        }
+
         var keyColumns = keys.Select(key => plan.AddColumn(key.Value)).ToArray();
         var (skip, size, number, withTotal) = Page(scope, query);
 
@@ -220,6 +266,40 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         // One row more than the page tells whether another page follows, without a count.
         var page = skip > 0 ? ordered.Skip(skip).Take(size + 1) : ordered.Take(size + 1);
         return new(scope, type, rows, page.Select(plan.Projection()), plan, keys, keyColumns, size, number, withTotal, hits);
+    }
+
+    // A row is an entry's anchor in its locale when no earlier locale has a row of the entry that its row rule lets the
+    // principal read. Each locale's part is compiled as the principal reads that locale, its row rule and the fields its
+    // filter may name, and the filter is asked of the anchor alone.
+    private static Expression Anchored(QueryScope scope, SchemaType type, ContentFilter? filter, IReadOnlyList<(string Locale, IContentQueryAccess Access)> anchors, ParameterExpression row)
+    {
+        var rowLocale = Expression.Property(Expression.Property(row, nameof(QueryRow.Document)), nameof(Document.Locale));
+        Expression anchored = Expression.Constant(false);
+        Expression noEarlier = Expression.Constant(true);
+        for (var index = 0; index < anchors.Count; index++)
+        {
+            var inLocale = scope.InLocale(anchors[index].Locale, anchors[index].Access);
+            Expression here = Expression.AndAlso(Expression.Equal(rowLocale, QueryExpressions.Bind(anchors[index].Locale)), noEarlier);
+            if (new FilterCompiler(inLocale).Where(type, filter, row) is { } where)
+            {
+                here = Expression.AndAlso(here, where);
+            }
+
+            anchored = Expression.OrElse(anchored, here);
+            if (index < anchors.Count - 1)
+            {
+                var earlier = Expression.Parameter(typeof(QueryRow), "earlier");
+                Expression readable = Expression.Equal(QueryExpressions.DocumentId(earlier), QueryExpressions.DocumentId(row));
+                if (new FilterCompiler(inLocale).Where(type, null, earlier) is { } rule)
+                {
+                    readable = Expression.AndAlso(readable, rule);
+                }
+
+                noEarlier = Expression.AndAlso(noEarlier, Expression.Not(QueryExpressions.Any(inLocale.Rows(type), earlier, readable)));
+            }
+        }
+
+        return anchored;
     }
 
     // The index finds the entries; the query keeps its filter, row rule, site, locale, status and sort.

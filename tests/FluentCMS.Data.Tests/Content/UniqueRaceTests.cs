@@ -128,6 +128,27 @@ public sealed class UniqueRaceTests : IDisposable
         ShouldBeRefusedAs(await Should.ThrowAsync<ValidationException>(() => _database.CreateAsync(Editor, new() { ["name"] = "Two" }, "settings")), "", ContentErrorCodes.SingletonExists);
     }
 
+    // #3265: two locales of one entry that change a shared field at once. Each write advances the other locale from the
+    // version it read, so one of them conflicts and the shared value is the winner's, in every locale.
+    [Fact]
+    public async Task WritesOfTwoLocalesThatRaceOnASharedFieldKeepOneAndTheOtherConflicts()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "Hello" }));
+        await _database.UpdateAsync(Editor, id, new() { ["title"] = "Bonjour" }, 0, locale: "fr");
+        string[] locales = ["en", "fr"];
+
+        var outcomes = await RaceAsync(index => _database.PatchAsync(Editor, id, new() { ["views"] = 10 + index }, 1, locale: locales[index]), writers: 2);
+
+        ShouldHaveOneWinner(outcomes, outcome => outcome.ShouldBeOfType<VersionConflictException>());
+        var winner = outcomes.FindIndex(outcome => outcome is null);
+        foreach (var locale in locales)
+        {
+            var entry = (await _database.GetAsync(Editor, id, locale: locale)).ShouldNotBeNull();
+            entry["views"].ShouldBe(10L + winner);
+            entry["version"].ShouldBe(2);
+        }
+    }
+
     [Fact]
     public async Task LocaleAddsThatRaceKeepOneLocaleAndTheRestConflict()
     {
