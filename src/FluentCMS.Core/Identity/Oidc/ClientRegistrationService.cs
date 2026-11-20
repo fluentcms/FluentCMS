@@ -56,16 +56,27 @@ internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, Cli
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     // A consent is of the user, the client and the scopes, and covers every redirect URI the client has, so a client whose
-    // redirect URIs change loses its consents, and each user is asked again. Its sessions, which a consent is not, stay.
+    // redirect URIs change loses its consents, and each user is asked again. A client with explicit consent has its codes
+    // issued under the consent itself (ConnectEndpoints), so the refresh and access tokens issued under a consent end
+    // with it; the sessions of a client without explicit consent, which has no consent to lose, stay. The consents go
+    // before the client is written: a start that fails between the two leaves the old URIs without consents, which the
+    // next start still sees as a client to update, where the other order would leave the new URIs with the old consents
+    // and a client that looks current. The URIs are compared as IsCurrentAsync compares them, so that a host written in
+    // another case is no change here either.
     private static async Task UpdateAsync(IOpenIddictApplicationManager applications, IOpenIddictAuthorizationManager authorizations, object application, OpenIddictApplicationDescriptor wanted, CancellationToken cancellationToken)
     {
-        var before = (await applications.GetRedirectUrisAsync(application, cancellationToken)).ToHashSet(StringComparer.Ordinal);
-        await applications.UpdateAsync(application, wanted, cancellationToken);
-        if (before.SetEquals(wanted.RedirectUris.Select(uri => uri.OriginalString)))
+        var stored = new OpenIddictApplicationDescriptor();
+        await applications.PopulateAsync(stored, application, cancellationToken);
+        if (!stored.RedirectUris.SetEquals(wanted.RedirectUris))
         {
-            return;
+            await RevokeConsentsAsync(applications, authorizations, application, cancellationToken);
         }
 
+        await applications.UpdateAsync(application, wanted, cancellationToken);
+    }
+
+    private static async Task RevokeConsentsAsync(IOpenIddictApplicationManager applications, IOpenIddictAuthorizationManager authorizations, object application, CancellationToken cancellationToken)
+    {
         var id = await applications.GetIdAsync(application, cancellationToken) ?? "";
         List<object> consents = [];
         await foreach (var authorization in authorizations.FindByApplicationIdAsync(id, cancellationToken))
