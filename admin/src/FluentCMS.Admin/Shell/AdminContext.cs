@@ -197,8 +197,9 @@ internal sealed class AdminContext(
     }
 
     // Whether the user holds the permission of a page of an admin half, for the instance when the page is instance-only.
+    // A page that names none is open to everyone, but an instance-only one, which has nothing to hold for the instance.
     public bool Allows(string? permission, bool instanceOnly) =>
-        permission is null || (instanceOnly ? AllowsForInstance(permission) : Allows(permission));
+        permission is null ? !instanceOnly : instanceOnly ? AllowsForInstance(permission) : Allows(permission);
 
     public TypeAccessInfo? ForType(string type) => AccessInfo is { } access && access.Types.TryGetValue(type, out var found) ? found : null;
 

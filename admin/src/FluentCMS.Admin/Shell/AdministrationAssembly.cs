@@ -17,7 +17,8 @@ internal sealed class AdministrationAssembly(IAdminAssemblyLoader loader, ILogge
 
     public void TryAgain() => Failed = false;
 
-    // One load: the callers of a load in progress wait for the same one.
+    // One load: the callers of a load in progress wait for the same one, each for as long as it waits. A caller that stops
+    // waiting, as a navigation that another overtook, leaves the load running, and finds it in Loaded later.
     public async Task<Assembly?> TryLoadAsync(CancellationToken cancellationToken)
     {
         if (Loaded is not null || Failed)
@@ -25,9 +26,21 @@ internal sealed class AdministrationAssembly(IAdminAssemblyLoader loader, ILogge
             return Loaded;
         }
 
+        var loading = _loading;
+        if (loading is null)
+        {
+            // A load that ended at once has cleared the field already, and is not kept: a failed one would answer every
+            // later try.
+            loading = LoadAsync();
+            if (!loading.IsCompleted)
+            {
+                _loading = loading;
+            }
+        }
+
         try
         {
-            return await (_loading ??= LoadAsync()).WaitAsync(cancellationToken);
+            return await loading.WaitAsync(cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

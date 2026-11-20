@@ -1,7 +1,9 @@
 @* A select of the roles the caller may hand out, read once from GET /roles when it first shows. A page that has read the
-   roles gives them, and none is read. *@
+   roles gives them, and none is read. A role of a site is named with its site, since a name is unique in a site only:
+   two sites may each have an Author, and a site may name a role as a role of every site is named. *@
 @implements IDisposable
 @inject IManagementApi Api
+@inject AdminContext Context
 @inject IStringLocalizer<CommonResources> L
 
 @if (failed)
@@ -60,7 +62,12 @@ else
     public string? Help { get; set; }
 
     private IReadOnlyList<CmsOption> Options =>
-        [.. (roles ?? []).Where(role => Offers?.Invoke(role) != false).Select(role => new CmsOption(role.Id.ToString("D"), role.Name))];
+        [.. (roles ?? []).Where(role => Offers?.Invoke(role) != false).Select(role => new CmsOption(role.Id.ToString("D"), Name(role)))];
+
+    // The site's name as GET /me/sites gives it, or its id for a site the caller has no role in.
+    private string Name(RoleSummary role) => role.SiteId is not { } site
+        ? role.Name
+        : L["Common.Roles.OfSite", role.Name, Context.Sites.FirstOrDefault(item => item.Id == site)?.Name ?? site.ToString("D")];
 
     protected override async Task OnParametersSetAsync()
     {

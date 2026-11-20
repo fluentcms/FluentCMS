@@ -13,7 +13,7 @@ public sealed class CarelessRoute;
 public sealed class CarelessPlugin;
 
 [AdminPage("/system/careless")]
-[AdminPage("/system/careless/other")]
+[AdminPage("/system/careless/other", InstanceOnly = true)]
 [AdminMenuItem("Careless.Pages")]
 [SettingsPage("careless")]
 [DashboardWidget("Careless.Widget")]

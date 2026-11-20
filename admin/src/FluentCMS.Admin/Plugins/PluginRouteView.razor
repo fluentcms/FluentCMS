@@ -1,14 +1,16 @@
-@* The page the router found, or the not-found page in its place for a page of an admin half that the site or the user may
-   not see, by the half that owns the page's assembly: after a site switch, a half loaded in the site before still has its
-   routes, and the switch navigates to the route again. NotFoundPage tells a page the user lacks the permission of. A page the
+@* The page the router found, or the not-found page in its place for a page of an admin half or of an area of administration
+   that the site or the user may not see, by the half that owns the page's assembly: after a site switch, a half loaded in
+   the site before still has its routes, and the switch navigates to the route again. NotFoundPage tells a page the user lacks the permission of. A page the
    renderer cannot create shows an error in the layout instead, as no error boundary catches that. *@
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "NotFoundPage is kept by the DynamicDependency of AdminApp's constructor.")]
+@implements IDisposable
 @using System.Reflection
 @inject AdminPlugins Plugins
+@inject AdminContext Context
 @inject NavigationManager Navigation
 @inject IStringLocalizer<AdminResources> L
 
-@if (Plugins.Gate(RouteData, Navigation.ToBaseRelativePath(Navigation.Uri)) is PluginPageGate.None or PluginPageGate.Allowed)
+@if ((shown = Gate) is PluginPageGate.None or PluginPageGate.Allowed)
 {
     if (Creatable)
     {
@@ -27,8 +29,27 @@ else
 @code {
     private static readonly RouteData NotFound = new(typeof(NotFoundPage), new Dictionary<string, object?>());
 
+    // The gate the last render answered.
+    private PluginPageGate shown;
+
     [Parameter, EditorRequired]
     public RouteData RouteData { get; set; } = null!;
+
+    private PluginPageGate Gate => Plugins.Gate(RouteData, Navigation.ToBaseRelativePath(Navigation.Uri));
+
+    protected override void OnInitialized() => Context.Changed += OnContextChanged;
+
+    public void Dispose() => Context.Changed -= OnContextChanged;
+
+    // What the user may do changes without a navigation too, as with a content locale whose access lacks the page: the gate
+    // is asked again, and the page drawn again only when its answer changed.
+    private void OnContextChanged() => _ = InvokeAsync(() =>
+    {
+        if (Gate != shown)
+        {
+            StateHasChanged();
+        }
+    });
 
     // The page and the layout it names, either of which may be a class of the half.
     private bool Creatable => Plugins.ProblemOf(RouteData.PageType) is null

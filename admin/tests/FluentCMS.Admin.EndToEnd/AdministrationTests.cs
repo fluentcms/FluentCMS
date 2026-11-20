@@ -110,7 +110,7 @@ public sealed class AdministrationTests(EndToEndHost host) : BrowserTest(host)
         tab.Sidebar.GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = Repository.AdminText($"Administration.Menu.{area}"), Exact = true });
 
     private static ILocator Heading(AdminTab tab, string area) =>
-        tab.Page.Locator("main").GetByRole(AriaRole.Heading, new LocatorGetByRoleOptions { Name = Repository.AdministrationText(area, $"{area}.Page.Heading"), Exact = true });
+        tab.Page.Locator("main").GetByRole(AriaRole.Heading, new LocatorGetByRoleOptions { Name = Repository.AdministrationHeading(area), Exact = true });
 
     private static ConcurrentQueue<string> Requests(AdminTab tab, Regex file)
     {

@@ -57,7 +57,8 @@ public sealed class AdminPageAttribute : Attribute
 
     /// <summary>
     /// Gets or sets whether the user needs <see cref="Permission"/> for the instance, as for a page whose calls answer 403
-    /// to a user who holds it in a site only; in the site or for the instance when <see langword="false"/>.
+    /// to a user who holds it in a site only; in the site or for the instance when <see langword="false"/>. It needs a
+    /// <see cref="Permission"/>: an instance-only page that names none is shown to no one.
     /// </summary>
     public bool InstanceOnly { get; set; }
 }

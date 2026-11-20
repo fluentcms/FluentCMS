@@ -97,7 +97,7 @@ public sealed class RecordListTests : AdminTestContext
 
         Navigation.NavigateTo("users?q=nobody");
 
-        list.WaitForAssertion(() => list.Find(".cms-data-grid-message").TextContent.Trim().ShouldBe("Nothing matches the search."));
+        list.WaitForAssertion(() => list.Find(".cms-data-grid-message").TextContent.Trim().ShouldBe("Nothing matches the search and filters."));
     }
 
     [Fact]
@@ -150,6 +150,92 @@ public sealed class RecordListTests : AdminTestContext
     }
 
     [Fact]
+    public void AProblemWithoutACodeShowsTheListsOwnTextAndOneWithACodeTheServersTitle()
+    {
+        var problem = new ApiProblem { Status = 502, Title = "Bad Gateway" };
+        var list = RenderList(read: (_, _) => throw new ApiProblemException(problem));
+        list.WaitForAssertion(() => list.Find("[role=alert] strong").TextContent.ShouldBe("The list could not be read."));
+
+        problem = new ApiProblem { Status = 422, Code = "FCMS1712", Title = "The filter is too long" };
+        Button(list, "Try again").Click();
+
+        list.WaitForAssertion(() => list.Find("[role=alert] strong").TextContent.ShouldBe("The filter is too long"));
+    }
+
+    // The first read ignores its cancellation and fails after the second has answered: its failure is not shown.
+    [Fact]
+    public void AnOvertakenReadThatFailsLateDoesNotReplaceTheNewerReadsRows()
+    {
+        var first = new TaskCompletionSource<RecordPage<Row>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var list = RenderList(read: (query, _) => query.Search is null ? first.Task : Task.FromResult(new RecordPage<Row>([new("Grace")], 1)));
+
+        Navigation.NavigateTo("users?q=grace");
+        list.WaitForAssertion(() => Names(list).ShouldBe(["Grace"]));
+        first.SetException(new HttpRequestException("offline"));
+
+        list.WaitForAssertion(() => first.Task.IsFaulted.ShouldBeTrue());
+        list.Render();
+        list.FindAll("[role=alert]").ShouldBeEmpty();
+        Names(list).ShouldBe(["Grace"]);
+    }
+
+    [Fact]
+    public void WhileThePagePastTheLastGivesWayToTheLastTheListStaysLoading()
+    {
+        Navigation.NavigateTo("users?page=9");
+        var last = new TaskCompletionSource<RecordPage<Row>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var list = RenderList(read: (query, _) => query.Page > 2 ? Task.FromResult(new RecordPage<Row>([], 30)) : last.Task);
+
+        list.WaitForAssertion(() => Navigation.Uri.ShouldEndWith("/users?page=2"));
+        list.Find("table").GetAttribute("aria-busy").ShouldBe("true");
+        list.Find("nav[aria-label='Pages']").TextContent.ShouldNotContain("Page 9");
+
+        last.SetResult(new([new("Page 2")], 30));
+        list.WaitForAssertion(() => Names(list).ShouldBe(["Page 2"]));
+        list.Find("table").HasAttribute("aria-busy").ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ThePagesOwnFiltersAreReadFromTheAddressAndAChangeReadsTheFirstPageAgain()
+    {
+        Navigation.NavigateTo("users?status=failed&page=3&other=x");
+        answer = query => new([new($"{query.Filter("status")}/{query.Filter("queue")} page {query.Page}")], 80);
+        var announced = new List<string>();
+        Services.GetRequiredService<FluentCMS.Admin.Accessibility.Announcer>().Announced += (message, _) => announced.Add(message);
+
+        var list = RenderList(filters: ["status", "queue"]);
+
+        list.WaitForAssertion(() => Names(list).ShouldBe(["failed/ page 3"]));
+        reads.ShouldHaveSingleItem().Filters.ShouldBe(new Dictionary<string, string> { ["status"] = "failed" });
+
+        await list.InvokeAsync(() => list.Instance.SetFilter("queue", "mail out"));
+
+        list.WaitForAssertion(() => Names(list).ShouldBe(["failed/mail out page 1"]));
+        Navigation.Uri.ShouldEndWith("/users?status=failed&other=x&queue=mail%20out");
+        announced.ShouldBe(["80 found."]);
+
+        await list.InvokeAsync(() => list.Instance.SetFilter("status", null));
+
+        list.WaitForAssertion(() => Names(list).ShouldBe(["/mail out page 1"]));
+        reads.Count.ShouldBe(3);
+        Should.Throw<ArgumentException>(() => list.Instance.SetFilter("other", "y"));
+    }
+
+    [Fact]
+    public void AFilterThatFindsNothingSaysNothingMatchesAndAParameterThatIsNoFilterReadsNothingAgain()
+    {
+        Navigation.NavigateTo("users?status=failed");
+        var list = RenderList(filters: ["status"]);
+        list.WaitForAssertion(() => list.Find(".cms-data-grid-message").TextContent.Trim().ShouldBe("Nothing matches the search and filters."));
+
+        Navigation.NavigateTo("users?status=failed&tab=2");
+
+        list.WaitForAssertion(() => Navigation.Uri.ShouldEndWith("tab=2"));
+        list.Render();
+        reads.Count.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task AReloadReadsTheSamePageAgain()
     {
         answer = _ => new([new($"Read {reads.Count}")], 1);
@@ -172,11 +258,12 @@ public sealed class RecordListTests : AdminTestContext
         list.FindAll("form").ShouldBeEmpty();
     }
 
-    private IRenderedComponent<RecordList<Row>> RenderList(Func<RecordQuery, CancellationToken, Task<RecordPage<Row>>>? read = null, bool searchable = true) =>
+    private IRenderedComponent<RecordList<Row>> RenderList(Func<RecordQuery, CancellationToken, Task<RecordPage<Row>>>? read = null, bool searchable = true, string[]? filters = null) =>
         Render<RecordList<Row>>(parameters => parameters
             .Add(list => list.Label, "Users")
             .Add(list => list.EmptyText, "No users yet.")
             .Add(list => list.Searchable, searchable)
+            .Add(list => list.Filters, filters ?? [])
             .Add(list => list.Read, read ?? ((query, _) =>
             {
                 reads.Add(query);

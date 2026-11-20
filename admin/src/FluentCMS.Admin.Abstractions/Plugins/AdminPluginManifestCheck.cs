@@ -192,6 +192,11 @@ public static class AdminPluginManifestCheck
                     problems.Add($"page '{page.Route}' of {name}: the route is not {root} or below it");
                 }
 
+                if (page.InstanceOnly && page.Permission is null)
+                {
+                    problems.Add($"page '{page.Route}' of {name}: InstanceOnly needs a Permission for the user to hold for the instance, and without one the shell shows the page to no one");
+                }
+
                 pages.Add(new AdminManifestPage { Type = name, Route = page.Route, Permission = page.Permission, InstanceOnly = page.InstanceOnly });
             }
 

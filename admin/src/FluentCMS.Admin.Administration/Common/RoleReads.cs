@@ -19,8 +19,10 @@ public sealed record RoleSummary
     public bool BuiltIn { get; init; }
 }
 
-// GET /roles: the roles the caller manages or hands out, those of the site and those of every site, which the users, keys
-// and members pages offer. A caller who may read none is answered 403.
+// GET /roles: the roles the caller manages or hands out, which the users, keys and members pages offer: the roles of every
+// site first, then those of each site where the caller may read roles, which for a caller with the grant for the instance
+// is every site. A name is unique among the roles of one site, and among those of every site, and not across them. A
+// caller who may read none is answered 403.
 internal static class RoleReads
 {
     public static async Task<IReadOnlyList<RoleSummary>> GetRolesAsync(this IManagementApi api, CancellationToken cancellationToken)

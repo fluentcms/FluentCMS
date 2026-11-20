@@ -22,7 +22,7 @@
     <value>Nothing here yet.</value>
   </data>
   <data name="Common.List.NoMatch" xml:space="preserve">
-    <value>Nothing matches the search.</value>
+    <value>Nothing matches the search and filters.</value>
   </data>
   <data name="Common.List.Found" xml:space="preserve">
     <value>{0} found.</value>
@@ -62,6 +62,9 @@
   </data>
   <data name="Common.List.FirstPage" xml:space="preserve">
     <value>Go to the first page</value>
+  </data>
+  <data name="Common.Roles.OfSite" xml:space="preserve">
+    <value>{0} ({1})</value>
   </data>
   <data name="Common.Roles.Placeholder" xml:space="preserve">
     <value>Choose a role</value>

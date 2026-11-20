@@ -1,0 +1,48 @@
+@* Names the last item of the breadcrumbs of the page it is on, as PageTitle names the document: a page below an area of
+   administration, such as a user's, shows its segment there until it places this with what it read. Without a text, and
+   once the page is gone, the segment shows again. *@
+@implements IDisposable
+@inject PageCrumbs Crumbs
+@inject NavigationManager Navigation
+
+@code {
+    private string? path;
+
+    [Parameter, EditorRequired]
+    public string? Text { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        var current = Path();
+        if (path is not null && path != current)
+        {
+            Crumbs.Clear(path);
+        }
+
+        path = current;
+        if (string.IsNullOrWhiteSpace(Text))
+        {
+            Crumbs.Clear(path);
+        }
+        else
+        {
+            Crumbs.Name(path, Text);
+        }
+    }
+
+    public void Dispose()
+    {
+        if (path is not null)
+        {
+            Crumbs.Clear(path);
+        }
+    }
+
+    // The segments of the address as the breadcrumbs read them.
+    private string Path()
+    {
+        var route = Navigation.Uri.StartsWith(Navigation.BaseUri, StringComparison.Ordinal) ? Navigation.ToBaseRelativePath(Navigation.Uri) : string.Empty;
+        var end = route.IndexOfAny(['?', '#']);
+        return string.Join('/', (end < 0 ? route : route[..end]).Split('/', StringSplitOptions.RemoveEmptyEntries));
+    }
+}

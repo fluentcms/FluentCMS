@@ -18,9 +18,11 @@ This preview holds each page with its heading only, the read of the roles with a
 
 Each area is a folder of its own: `Users/`, `Roles/`, `ApiKeys/`, `Members/`, `Sites/`, `Settings/`, `Plugins/`, `Jobs/` and `Diagnostics/`. Everything of an area stays in its folder, so that two areas share no file:
 
-- its pages, each at the area's route or below it, such as `/users/{Id:guid}`: the shell gates a route by its area, and a page outside every area is not shown;
+- its pages, each at the area's route or below it, such as `/users/{Id:guid}`: the shell gates a route by its area, and a page outside every area is not shown. The `h1` of the area's first page is `{Area}.Page.Heading` of its resources, which the end-to-end tests know the page by; a page below it names the last item of its breadcrumbs by placing `<PageCrumb Text="..." />` with what it read;
 - its typed calls over `IManagementApi`, its records and their source-generated `JsonSerializerContext`;
 - its resource file, `{Area}Resources.resx`, read through `IStringLocalizer<{Area}Resources>`, with keys `{Area}.{View}.{Text}`;
 - a `_Imports.razor` of its own for the namespaces only it needs.
 
-`Common/` holds what several areas use: `RoleReads` and `RoleSelect`, and `RecordList`. The area's sidebar entry, its permission and its breadcrumb are declared once, in `AdministrationAreas` of `FluentCMS.Admin`, and its component tests go in a folder of its own under `admin/tests/FluentCMS.Admin.Tests/Administration/`.
+`Common/` holds what several areas use: `RoleReads` and `RoleSelect`, and `RecordList`, the frame of a list of records. A list with filters of its own names their query parameters in `Filters`, draws their controls itself, sets one with `SetFilter` and reads them from the `RecordQuery` its `Read` is given.
+
+The area's sidebar entry, its permission and its breadcrumb are declared once, in `AdministrationAreas` of `FluentCMS.Admin`. Its component tests go in a folder of its own under `admin/tests/FluentCMS.Admin.Tests/Administration/`, on `AdministrationTestContext`; `{Area}LocalizationTests` there is the area's own check that no text of its pages is hard-coded, to which its issue adds each route with the answers the page reads (`LoadLocalized`).

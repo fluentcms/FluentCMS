@@ -19,9 +19,6 @@ public sealed class AdministrationGateTests : AdministrationTestContext
 {
     private static readonly Guid Shop = new("0193a1b2-0000-7000-8000-00000000a002");
 
-    private static readonly string[] Everything =
-        ["users.manage", "roles.manage", "apikeys.manage", "members.manage", "plugins.manage", "jobs.manage", "system.read", "settings.media.manage", "sites.manage"];
-
     public AdministrationGateTests() => UseNeutralResources();
 
     // Each area with a permission that opens it, and whether it needs it for the instance.
@@ -210,6 +207,91 @@ public sealed class AdministrationGateTests : AdministrationTestContext
         Loader.Loads.ShouldBe(2);
     }
 
+    // The load goes on when another navigation overtakes the one that started it, and the router must still get the
+    // assembly: without it every route of the areas would be not found until a reload.
+    [Fact]
+    public void ANavigationAwayDuringTheFirstLoadLeavesTheAreasReachable()
+    {
+        Grant([], Everything);
+        var app = Load();
+        var hold = Loader.Hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        Navigation.NavigateTo("users");
+        app.WaitForAssertion(() => Loader.Loads.ShouldBe(1));
+        Navigation.NavigateTo("account");
+        app.WaitForAssertion(() => app.FindComponent<RouteView>().Instance.RouteData.PageType.Name.ShouldBe("AccountPage"));
+        hold.SetResult();
+
+        // Nothing renders when the load ends, so the wait is on the load itself and not on a render.
+        var administration = Services.GetRequiredService<AdministrationAssembly>();
+        SpinWait.SpinUntil(() => administration.Loaded is not null, TimeSpan.FromSeconds(10)).ShouldBeTrue();
+        Services.GetRequiredService<AdminPlugins>().Assemblies.ShouldBeEmpty();
+
+        Navigation.NavigateTo("users");
+
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/users"));
+        Navigation.NavigateTo("roles");
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/roles"));
+        Loader.Loads.ShouldBe(1);
+    }
+
+    // A loader that fails before it first waits answers a faulted task at once, which must not be kept as the load in
+    // progress: the retry would get the same failure for ever.
+    [Fact]
+    public void ALoadThatFailsAtOnceIsTriedAgainByTheRetry()
+    {
+        GrantArea("jobs.manage", instanceOnly: true);
+        (Loader.FailsAtOnce, Loader.Failures) = (true, 1);
+        var app = Load("jobs");
+        app.WaitForAssertion(() => Heading(app).ShouldBe("This page could not load"));
+
+        app.FindAll("main fluent-button").Single(button => button.TextContent.Trim() == "Try again").Click();
+
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/jobs"));
+        Loader.Loads.ShouldBe(2);
+    }
+
+    // The server narrows what the caller holds by the content locale, so the gate answers again when the locale changes
+    // without a navigation.
+    [Fact]
+    public async Task AContentLocaleWhoseAccessLacksThePermissionAnswersNoAccessOnTheAreasRoute()
+    {
+        Management.AddLocale(MainSite, "fr", 1);
+        Grant(["roles.manage"]);
+        var french = Management.Access[MainSite].DeepClone().AsObject();
+        french["permissions"] = new System.Text.Json.Nodes.JsonArray("schema.read");
+        Management.LocaleAccess[(MainSite, "fr")] = french;
+        var app = Load("roles");
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/roles"));
+
+        await app.InvokeAsync(() => Context.UseLocaleAsync("fr"));
+
+        app.WaitForAssertion(() => Heading(app).ShouldBe("No access"));
+        Links(app).ShouldBe([""]);
+
+        await app.InvokeAsync(() => Context.UseLocaleAsync("en"));
+
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/roles"));
+    }
+
+    [Fact]
+    public async Task AContentLocaleWhoseAccessGrantsThePermissionShowsThePageOfARouteAnsweredNoAccess()
+    {
+        Management.AddLocale(MainSite, "fr", 1);
+        Grant([]);
+        var french = Management.Access[MainSite].DeepClone().AsObject();
+        french["permissions"] = new System.Text.Json.Nodes.JsonArray("schema.read", "roles.manage");
+        Management.LocaleAccess[(MainSite, "fr")] = french;
+        var app = Load("roles");
+        app.WaitForAssertion(() => Heading(app).ShouldBe("No access"));
+        Loader.Loads.ShouldBe(0);
+
+        await app.InvokeAsync(() => Context.UseLocaleAsync("fr"));
+
+        app.WaitForAssertion(() => Shown(app).ShouldBe("/roles"), TimeSpan.FromSeconds(10));
+        Loader.Loads.ShouldBe(1);
+    }
+
     [Fact]
     public void ARouteBelowAnAreaThatHasNoPageIsNotFound()
     {
@@ -284,6 +366,49 @@ public sealed class AdministrationGateTests : AdministrationTestContext
         link.TextContent.ShouldBe("Users");
     }
 
+    // A page below an area's route names itself with PageCrumb once it has read what it shows, and the segment shows
+    // again once the page is gone.
+    [Fact]
+    public void APageNamesTheLastItemOfItsBreadcrumbs()
+    {
+        Grant([], Everything);
+        var app = Load("users/0193a1b2?tab=roles");
+        app.WaitForAssertion(() => Trail(app).ShouldBe(["Administration", "Users", "0193a1b2"]));
+
+        var crumb = Render<PageCrumb>(parameters => parameters.Add(item => item.Text, "Ada Lovelace"));
+
+        app.WaitForAssertion(() => Trail(app).ShouldBe(["Administration", "Users", "Ada Lovelace"]));
+        app.Find("main .cms-breadcrumb [aria-current=page]").TextContent.ShouldBe("Ada Lovelace");
+
+        crumb.Render(parameters => parameters.Add(item => item.Text, "Ada Byron"));
+        app.WaitForAssertion(() => Trail(app).ShouldBe(["Administration", "Users", "Ada Byron"]));
+
+        // The name is of the address it was given at, so another page does not show it.
+        Navigation.NavigateTo("users/0193a1b3");
+        app.WaitForAssertion(() => Trail(app).ShouldBe(["Administration", "Users", "0193a1b3"]));
+
+        Navigation.NavigateTo("users/0193a1b2");
+        app.WaitForAssertion(() => Trail(app).ShouldBe(["Administration", "Users", "Ada Byron"]));
+        crumb.Render(parameters => parameters.Add(item => item.Text, null));
+        app.WaitForAssertion(() => Trail(app).ShouldBe(["Administration", "Users", "0193a1b2"]));
+    }
+
+    // Each area checks the texts of its own pages, with the answers they read, in a file of its own folder, so that no
+    // area's issue changes a test that another area's does.
+    [Fact]
+    public void EveryAreaHasTheLocalizationCheckOfItsPagesInItsOwnFolder()
+    {
+        var folders = typeof(UsersPage).Assembly.GetTypes()
+            .Where(type => type.GetCustomAttributes<RouteAttribute>().Any(route => AdministrationAreas.All.Any(area => "/" + area.Route == route.Template)))
+            .Select(type => type.Namespace!.Split('.')[^1])
+            .ToList();
+
+        folders.Count.ShouldBe(AdministrationAreas.All.Count);
+        folders.Where(folder => typeof(AdministrationGateTests).Assembly.GetType($"{typeof(AdministrationGateTests).Namespace}.{folder}.{folder}LocalizationTests") is not { } check
+                || !check.IsSubclassOf(typeof(AdministrationTestContext)))
+            .ShouldBeEmpty();
+    }
+
     [Theory]
     [InlineData("users", "users")]
     [InlineData("Users/0193a1b2-0000-7000-8000-00000000a001?tab=roles", "users")]
@@ -328,6 +453,23 @@ public sealed class AdministrationGateTests : AdministrationTestContext
         Loader.Loads.ShouldBe(0);
     }
 
+    // An instance-only page that names no permission has nothing for the caller to hold for the instance, so it is open to
+    // no one, and not to everyone as a page without a permission is.
+    [Fact]
+    public void AHalfsInstanceOnlyPageWithoutAPermissionIsOpenToNoOne()
+    {
+        UseTheSampleHalfWithItsPageInstanceOnly(permission: null);
+        Grant(["reviews.notes.manage"], "reviews.notes.manage");
+
+        var app = Load("reviews");
+
+        app.WaitForAssertion(() => Heading(app).ShouldBe("No access"));
+        Links(app).ShouldBe([""]);
+        Loader.Loads.ShouldBe(0);
+        Context.Allows(null, instanceOnly: true).ShouldBeFalse();
+        Context.Allows(null, instanceOnly: false).ShouldBeTrue();
+    }
+
     [Fact]
     public void AHalfsInstanceOnlyPageShowsToACallerWhoHoldsItsPermissionForTheInstance()
     {
@@ -360,22 +502,18 @@ public sealed class AdministrationGateTests : AdministrationTestContext
         AdminPluginManifestJson.Read(AdminPluginManifestJson.Write(manifest)).Pages.Single(page => page.Route == "/reviews").InstanceOnly.ShouldBeTrue();
     }
 
-    // The first route of the page the router shows, or none for the page of an address that has none.
-    private static string? Shown(IRenderedComponent<AdminApp> app)
-    {
-        var page = app.FindComponent<RouteView>().Instance.RouteData.PageType;
-        return page.Assembly == typeof(UsersPage).Assembly ? page.GetCustomAttributes<RouteAttribute>().First().Template : null;
-    }
+    private static string[] Trail(IRenderedComponent<AdminApp> app) =>
+        [.. app.Find("main .cms-breadcrumb").QuerySelectorAll("li").Select(item => item.TextContent.Trim())];
 
-    private void UseTheSampleHalfWithItsPageInstanceOnly()
+    private void UseTheSampleHalfWithItsPageInstanceOnly(string? permission = "reviews.notes.manage")
     {
         var sample = AdminPluginManifestJson.Read(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, AdminPluginManifest.FileName)));
         Services.AddSingleton(new AdminPluginCatalog(
         [
             sample with
             {
-                Pages = [.. sample.Pages.Select(page => page with { InstanceOnly = true })],
-                MenuItems = [.. sample.MenuItems.Select(item => item with { InstanceOnly = true })],
+                Pages = [.. sample.Pages.Select(page => page with { InstanceOnly = true, Permission = permission })],
+                MenuItems = [.. sample.MenuItems.Select(item => item with { InstanceOnly = true, Permission = permission })],
                 Widgets = [],
             },
         ],

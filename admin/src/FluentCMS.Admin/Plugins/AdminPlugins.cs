@@ -176,8 +176,13 @@ internal sealed class AdminPlugins(
 
             var allowed = Gate(route);
             _navigated = (route, allowed);
-            if (allowed == PluginPageGate.Allowed && administration.Loaded is null
-                && await administration.TryLoadAsync(cancellationToken) is { } assembly && !Assemblies.Contains(assembly))
+            if (allowed == PluginPageGate.Allowed && administration.Loaded is null)
+            {
+                await administration.TryLoadAsync(cancellationToken);
+            }
+
+            // Also the assembly of a load that ended after the navigation that started it was overtaken.
+            if (administration.Loaded is { } assembly && !Assemblies.Contains(assembly))
             {
                 Assemblies.Add(assembly);
             }

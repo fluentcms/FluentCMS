@@ -37,6 +37,10 @@ internal static class Repository
         AdministrationTexts.GetOrAdd(area, name => ReadTexts(Path.Combine(Root, "admin", "src", "FluentCMS.Admin.Administration", name, $"{name}Resources.resx")))
             .TryGetValue(key, out var text) ? text : throw new KeyNotFoundException($"{area}Resources.resx has no key {key}.");
 
+    // The heading of an area's first page, which is {Area}.Page.Heading of its resources (spec 4.15): what a case knows the
+    // page by, beside its address.
+    public static string AdministrationHeading(string area) => AdministrationText(area, $"{area}.Page.Heading");
+
     public static IReadOnlyDictionary<string, string> RichTextTexts { get; } = ReadTexts(Path.Combine(Root, "admin", "src", "FluentCMS.Admin.RichText", "RichTextResources.resx"));
 
     public static string RichTextText(string key) =>

@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json.Nodes;
 using Bunit;
 using FluentCMS.Admin.Administration.Common;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Admin.Tests.Shell.FakeManagementServer;
@@ -22,6 +23,9 @@ public sealed class RoleSelectTests : AdminTestContext
 
     private bool refused;
 
+    private static JsonObject Role(string id, Guid? site, string name) =>
+        new() { ["id"] = id, ["siteId"] = site, ["name"] = name, ["description"] = null, ["builtIn"] = false, ["requireTwoFactor"] = false, ["grants"] = new JsonArray() };
+
     public RoleSelectTests()
     {
         UseNeutralResources();
@@ -36,7 +40,7 @@ public sealed class RoleSelectTests : AdminTestContext
     {
         var select = Render<RoleSelect>(parameters => parameters.Add(item => item.Label, "Role"));
 
-        select.WaitForAssertion(() => select.FindAll("option").Select(option => option.TextContent).ShouldBe(["Choose a role", "Editor", "Author"]));
+        select.WaitForAssertion(() => select.FindAll("option").Select(option => option.TextContent).ShouldBe(["Choose a role", "Editor", $"Author ({MainSite:D})"]));
         select.Find("label").TextContent.ShouldContain("Role");
         select.Render();
         Management.Count("roles").ShouldBe(1);
@@ -67,6 +71,29 @@ public sealed class RoleSelectTests : AdminTestContext
 
         select.WaitForAssertion(() => select.FindAll("option").Select(option => option.TextContent).ShouldBe(["Choose a role", "Editor"]));
         select.Find("select").GetAttribute("value").ShouldBe(Editor.ToString("D"));
+    }
+
+    // A name is unique among the roles of one site only, and GET /roles gives a caller with the grant for the instance
+    // the roles of every site.
+    [Fact]
+    public async Task RolesOfOneNameAreToldApartByTheirSite()
+    {
+        var shop = new Guid("0193a1b2-0000-7000-8000-00000000a002");
+        var elsewhere = new Guid("0193a1b2-0000-7000-8000-00000000a003");
+        Management.AddSite(shop, "Shop", "shop");
+        roles =
+        [
+            Role("0193a1b2-0000-7000-8000-0000000000b1", null, "Author"),
+            Role("0193a1b2-0000-7000-8000-0000000000b2", MainSite, "Author"),
+            Role("0193a1b2-0000-7000-8000-0000000000b3", shop, "Author"),
+            Role("0193a1b2-0000-7000-8000-0000000000b4", elsewhere, "Author"),
+        ];
+        await Services.GetRequiredService<FluentCMS.Admin.Shell.AdminContext>().StartAsync();
+
+        var select = Render<RoleSelect>(parameters => parameters.Add(item => item.Label, "Role"));
+
+        select.WaitForAssertion(() => select.FindAll("option").Select(option => option.TextContent)
+            .ShouldBe(["Choose a role", "Author", "Author (Main)", "Author (Shop)", $"Author ({elsewhere:D})"]));
     }
 
     [Fact]
