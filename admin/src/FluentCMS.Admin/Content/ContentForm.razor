@@ -82,6 +82,19 @@
                     <span class="content-form-saved">@done</span>
                 }
             </div>
+            @if (entryId is not null && read is { IsNewLocale: false, Entry: { } current } && access is not null)
+            {
+                <EntrySchedule @ref="schedule"
+                               Type="@Type"
+                               Entry="@current"
+                               Site="@read.Site"
+                               Locale="@read.Locale"
+                               MayPublish="@(access.Publish && (Status != EntryStatuses.Published || current.ScheduledPublishAt is not null))"
+                               MayUnpublish="@access.Unpublish"
+                               Unsaved="@IsDirty"
+                               LocaleName="@(type?.Localized == true ? ContentCode : null)"
+                               OnChanged="@ScheduleChanged" />
+            }
             @if (MayShowHistory)
             {
                 <div class="content-form-history">
@@ -373,6 +386,7 @@
     private bool historyOpen;
     // The version a restore makes the draft from, while it runs.
     private int restoring;
+    private EntrySchedule? schedule;
 
     // The name of the content type, as the route has it.
     [Parameter, EditorRequired]
@@ -456,7 +470,8 @@
     // The form's own tracking may have been given up by a confirmed site switch or sign-out.
     private bool IsDirty => tracking is not null && Drafts.HasUnsavedForms;
 
-    private bool DialogOpen => leaveAnswer is not null || conflictOpen || showingShortcuts || confirming is not null || copyAsked is not null || historyOpen;
+    private bool DialogOpen =>
+        leaveAnswer is not null || conflictOpen || showingShortcuts || confirming is not null || copyAsked is not null || schedule?.IsOpen == true || historyOpen;
 
     private string Heading => state switch
     {
@@ -1065,6 +1080,15 @@
         }
 
         await RunAsync(EntryAction.Publish, fromButton ? FocusAfter.Button : FocusAfter.Shortcut);
+    }
+
+    // A schedule changes no version, so the read keeps its tag; one that ended after the form left its entry changes nothing.
+    private void ScheduleChanged(ContentEntry entry)
+    {
+        if (read?.Entry?.Id == entry.Id && read.Entry.Locale == entry.Locale)
+        {
+            read = read with { Entry = entry };
+        }
     }
 
     // Discard drops the draft and unpublish withdraws the locale, so both ask first.
