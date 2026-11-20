@@ -99,7 +99,7 @@ internal sealed class UserAdministration(
         }
 
         var user = new CmsUser { UserName = trimmed, Email = trimmed, EmailConfirmed = true };
-        UserViews.Check(await changes.RunAsync(
+        UserViews.Check(await changes.RunNamingAsync(
             async () => await users.CreateAsync(user, password) is { Succeeded: false } created ? created : await users.AddToRolesAsync(user, roleIds),
             cancellationToken));
         return await InfoAsync(user, cancellationToken);
@@ -123,12 +123,18 @@ internal sealed class UserAdministration(
     }
 
     // An address an admin sets counts as confirmed, as an invitation's does. A new name or address ends the user's sessions
-    // with a new security stamp, as a new password does, in the same save, so the change never stands without it.
+    // with a new security stamp, as a new password does, in the same save, so the change never stands without it. The forced
+    // password change is refused for a user without a password, whom the page that asks for the current one would keep out.
     public async Task<UserInfo> UpdateAsync(Guid id, UserChange change, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(change);
 
         var user = await TargetAsync(id, cancellationToken);
+        if (change.MustChangePassword == true && !await users.HasPasswordAsync(user))
+        {
+            throw new ValidationException([new ValidationError("mustChangePassword", IdentityErrorCodes.InvalidUser, "The user has no password to change: it signs in through a provider only.")]);
+        }
+
         var (oldName, oldEmail) = (user.UserName, user.Email);
         if (change.UserName is { } userName)
         {

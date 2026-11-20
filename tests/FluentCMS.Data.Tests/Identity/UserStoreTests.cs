@@ -508,6 +508,220 @@ public sealed class UserStoreTests : IDisposable
         }));
     }
 
+    // Wrong passwords at sign-in, which anyone who knows the name can send, lock out new sign-ins only: a user who is signed
+    // in still changes the password. What its own sessions get wrong is counted apart and keeps them out for the lockout's
+    // time (#3371).
+    [Fact]
+    public async Task ALockoutDoesNotRefuseAPasswordChangeAndTheSessionsOwnWrongPasswordsDo()
+    {
+        var user = await _fixture.CreateUserAsync("ann");
+        var lockout = new AdminUserOptions().Lockout;
+        Task<T> AsAnnAsync<T>(Func<CmsUserManager, CmsUser, Task<T>> work) =>
+            _fixture.UsersAsync(async users => await work(users, (await users.FindByIdAsync(user.Id.ToString("D")))!));
+
+        for (var attempt = 0; attempt < lockout.MaxFailedAccessAttempts; attempt++)
+        {
+            Succeeded(await AsAnnAsync((users, ann) => users.AccessFailedAsync(ann)));
+        }
+
+        (await AsAnnAsync((users, ann) => users.IsLockedOutAsync(ann))).ShouldBeTrue();
+        (await AsAnnAsync((users, ann) => users.IsSignedInLockedOutAsync(ann))).ShouldBeFalse();
+        Succeeded(await AsAnnAsync((users, ann) => users.ChangePasswordAsync(ann, Password, "Another-horse-2")));
+        (await AsAnnAsync((users, ann) => users.IsLockedOutAsync(ann))).ShouldBeTrue();
+
+        for (var attempt = 0; attempt < lockout.MaxFailedAccessAttempts; attempt++)
+        {
+            (await AsAnnAsync((users, ann) => users.ChangePasswordAsync(ann, "wrong", "Third-horse-3"))).Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.PasswordMismatch));
+        }
+
+        (await AsAnnAsync((users, ann) => users.IsSignedInLockedOutAsync(ann))).ShouldBeTrue();
+        (await AsAnnAsync((users, ann) => users.ChangePasswordAsync(ann, "Another-horse-2", "Third-horse-3"))).Errors.ShouldHaveSingleItem().Code.ShouldBe(CmsUserManager.LockedOutCode);
+
+        _fixture.Clock.Advance(lockout.DefaultLockoutTimeSpan + TimeSpan.FromSeconds(1));
+        Succeeded(await AsAnnAsync((users, ann) => users.ChangePasswordAsync(ann, "Another-horse-2", "Third-horse-3")));
+        (await AsAnnAsync((users, ann) => users.GetAuthenticationTokenAsync(ann, "[AspNetUserStore]", "SignedInFailures"))).ShouldBeNull();
+    }
+
+    // The first token row of a name, added by two saves at once: the second's INSERT meets the first's on the key of the
+    // token table while the user's stamp is as the save read it, and that is a concurrency failure like the stamp's. The
+    // user is tracked again afterwards, so the next save of the scope goes through (#3381).
+    [Fact]
+    public async Task ASaveThatMeetsAnotherOnTheKeyOfATokenRowIsAConcurrencyFailure()
+    {
+        var user = await _fixture.CreateUserAsync("ann");
+
+        var saved = await _fixture.WithAsync(async services =>
+        {
+            var users = services.GetRequiredService<CmsUserManager>();
+            var tokens = (IUserAuthenticationTokenStore<CmsUser>)services.GetRequiredService<IUserStore<CmsUser>>();
+            var ann = (await users.FindByIdAsync(user.Id.ToString("D")))!;
+            await tokens.SetTokenAsync(ann, "entra", "refresh", "mine", Token);
+            _fixture.Read(context =>
+            {
+                context.Add(new IdentityUserToken<Guid> { UserId = user.Id, LoginProvider = "entra", Name = "refresh", Value = "theirs" });
+                return context.SaveChanges();
+            });
+
+            var result = await users.UpdateAsync(ann);
+            Succeeded(await users.AccessFailedAsync(ann));
+            return result;
+        });
+
+        saved.Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.ConcurrencyFailure));
+        var stored = await _fixture.FindAsync(user.Id);
+        stored.AccessFailedCount.ShouldBe(1);
+        (await _fixture.UsersAsync(users => users.GetAuthenticationTokenAsync(stored, "entra", "refresh"))).ShouldBe("theirs");
+    }
+
+    // Another unique key the same save breaks is not that race, so it is thrown and not answered as one (#3381).
+    [Fact]
+    public async Task AnotherKeyBrokenByASaveThatAddsATokenRowIsThrown()
+    {
+        var ann = await _fixture.CreateUserAsync("ann");
+        var bob = await _fixture.CreateUserAsync("bob");
+
+        await Should.ThrowAsync<DbUpdateException>(() => _fixture.WithAsync(async services =>
+        {
+            var users = services.GetRequiredService<CmsUserManager>();
+            var store = services.GetRequiredService<IUserStore<CmsUser>>();
+            var stored = (await users.FindByIdAsync(ann.Id.ToString("D")))!;
+            await ((IUserAuthenticationTokenStore<CmsUser>)store).SetTokenAsync(stored, "entra", "refresh", "mine", Token);
+            await ((IUserLoginStore<CmsUser>)store).AddLoginAsync(stored, new UserLoginInfo("entra", "one-key", "Entra ID"), Token);
+            _fixture.Read(context =>
+            {
+                context.Add(new IdentityUserLogin<Guid> { UserId = bob.Id, LoginProvider = "entra", ProviderKey = "one-key", ProviderDisplayName = "Entra ID" });
+                return context.SaveChanges();
+            });
+
+            return await users.UpdateAsync(stored);
+        }));
+
+        (await _fixture.UsersAsync(async users => await users.GetAuthenticationTokenAsync((await users.FindByIdAsync(ann.Id.ToString("D")))!, "entra", "refresh"))).ShouldBeNull();
+    }
+
+    // A password change whose save fails reloads the user. The count the change remembered is then not put back over what
+    // another request stored meanwhile, so a later save of the scope does not store it either (#3381).
+    [Fact]
+    public async Task AFailedSaveOfAPasswordChangeKeepsTheCountAnotherRequestStored()
+    {
+        var user = await _fixture.CreateUserAsync("ann");
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            Succeeded(await _fixture.UsersAsync(async users => await users.AccessFailedAsync((await users.FindByIdAsync(user.Id.ToString("D")))!)));
+        }
+
+        await _fixture.UsersAsync(async users =>
+        {
+            var ann = (await users.FindByIdAsync(user.Id.ToString("D")))!;
+            ann.AccessFailedCount.ShouldBe(2);
+            _fixture.Read(context => context.Set<CmsUser>().Where(row => row.Id == user.Id)
+                .ExecuteUpdate(setters => setters.SetProperty(row => row.AccessFailedCount, 0).SetProperty(row => row.ConcurrencyStamp, "another-request")));
+
+            (await users.ChangePasswordAsync(ann, Password, "Another-horse-2")).Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.ConcurrencyFailure));
+            ann.AccessFailedCount.ShouldBe(0);
+            Succeeded(await users.UpdateAsync(ann));
+            return true;
+        });
+
+        var stored = await _fixture.FindAsync(user.Id);
+        stored.AccessFailedCount.ShouldBe(0);
+        (await _fixture.UsersAsync(users => users.CheckPasswordAsync(stored, Password))).ShouldBeTrue();
+    }
+
+    // Two saves at once, one that names a user by an address and one that gives another user that address, each pass the
+    // check a validator makes before the save. They run one after the other under the lock of the names, and the second
+    // checks again inside its transaction, so it is refused whatever the provider's isolation (#3373).
+    [Fact]
+    public async Task TwoSavesAtOnceCannotLeaveANameThatIsAnotherUsersAddress()
+    {
+        var race = new NameRace();
+        using var fixture = new IdentityFixture(cms =>
+        {
+            // The second save waits for the lock, which the fixture's clock would never let it poll.
+            cms.Services.AddSingleton(TimeProvider.System);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(race.Saves, race.Locks));
+        });
+        var ann = await fixture.CreateUserAsync("ann");
+        var bob = await fixture.CreateUserAsync("bob");
+
+        race.Arm();
+        var named = fixture.UsersAsync(async users => await users.SetUserNameAsync((await users.FindByIdAsync(ann.Id.ToString("D")))!, "carol@example.com"));
+        await race.FirstSaveHeld.WaitAsync(TimeSpan.FromSeconds(20), Token);
+        var addressed = fixture.UsersAsync(async users => await users.SetEmailAsync((await users.FindByIdAsync(bob.Id.ToString("D")))!, "Carol@Example.com"));
+
+        Succeeded(await named);
+        (await addressed).Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.DuplicateEmail));
+        race.SecondWaited.ShouldBeTrue();
+        (await fixture.FindAsync(ann.Id)).UserName.ShouldBe("carol@example.com");
+        (await fixture.FindAsync(bob.Id)).Email.ShouldBe("bob@example.com");
+    }
+
+    // Holds the first save of a user until another context asks for the lock of the names, which is after its validators
+    // passed on what was stored before that save.
+    private sealed class NameRace
+    {
+        private readonly TaskCompletionSource _held = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _waiting = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _armed;
+        private int _saves;
+
+        public NameRace()
+        {
+            Saves = new SaveHolder(this);
+            Locks = new LockWatcher(this);
+        }
+
+        public Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor Saves { get; }
+
+        public Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor Locks { get; }
+
+        public Task FirstSaveHeld => _held.Task;
+
+        public bool SecondWaited => _waiting.Task.IsCompletedSuccessfully;
+
+        public void Arm() => Volatile.Write(ref _armed, 1);
+
+        private void Asked(System.Data.Common.DbCommand command)
+        {
+            if (_held.Task.IsCompleted && command.Parameters.Cast<System.Data.Common.DbParameter>().Any(parameter => Equals(parameter.Value, IdentityChanges.NamesLock)))
+            {
+                _waiting.TrySetResult();
+            }
+        }
+
+        private sealed class SaveHolder(NameRace race) : Microsoft.EntityFrameworkCore.Diagnostics.SaveChangesInterceptor
+        {
+            public override async ValueTask<Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int>> SavingChangesAsync(
+                Microsoft.EntityFrameworkCore.Diagnostics.DbContextEventData eventData,
+                Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int> result,
+                CancellationToken cancellationToken = default)
+            {
+                if (Volatile.Read(ref race._armed) == 1
+                    && eventData.Context!.ChangeTracker.Entries<CmsUser>().Any(entry => entry.State == EntityState.Modified)
+                    && Interlocked.Increment(ref race._saves) == 1)
+                {
+                    race._held.TrySetResult();
+                    await race._waiting.Task.WaitAsync(TimeSpan.FromSeconds(20), cancellationToken);
+                }
+
+                return await base.SavingChangesAsync(eventData, result, cancellationToken);
+            }
+        }
+
+        private sealed class LockWatcher(NameRace race) : Microsoft.EntityFrameworkCore.Diagnostics.DbCommandInterceptor
+        {
+            public override ValueTask<Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<System.Data.Common.DbDataReader>> ReaderExecutingAsync(
+                System.Data.Common.DbCommand command,
+                Microsoft.EntityFrameworkCore.Diagnostics.CommandEventData eventData,
+                Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<System.Data.Common.DbDataReader> result,
+                CancellationToken cancellationToken = default)
+            {
+                race.Asked(command);
+                return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+            }
+        }
+    }
+
     [Fact]
     public async Task AUserIsDeactivatedNotDeleted()
     {
