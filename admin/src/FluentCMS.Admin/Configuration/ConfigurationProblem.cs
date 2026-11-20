@@ -25,6 +25,7 @@ internal enum ConfigurationRule
     CultureList,
     DefaultCultureOffered,
     OriginList,
+    NotAdminOrigin,
     Object,
 }
 

@@ -1,0 +1,64 @@
+.version-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-l);
+    min-inline-size: min(48rem, 90vw);
+}
+
+.version-list,
+.version-diff-table {
+    inline-size: 100%;
+    border-collapse: collapse;
+}
+
+.version-list caption,
+.version-diff-table caption {
+    text-align: start;
+    font-weight: 600;
+    padding-block-end: var(--cms-space-s);
+}
+
+.version-list th,
+.version-list td,
+.version-diff-table th,
+.version-diff-table td {
+    padding: var(--cms-space-s);
+    border-block-end: 1px solid var(--cms-color-border);
+    text-align: start;
+    vertical-align: top;
+}
+
+.version-diff-table td {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.version-compare {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--cms-space-m);
+}
+
+.version-diff {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-l);
+}
+
+.version-diff h3 {
+    margin: 0;
+    font-size: var(--cms-font-size-m);
+}
+
+.version-diff del {
+    text-decoration: line-through;
+}
+
+.version-diff ins {
+    text-decoration: underline;
+}
+
+.version-diff-none {
+    color: var(--cms-color-text-muted);
+}

@@ -1,0 +1,330 @@
+@* The preview pane of the form (spec 4.12, A-29): the front end's page of the entry in a frame, at phone, tablet or full
+   width, with a switch between the draft and the published page. The draft's URL comes with a preview token of the form's
+   locale, minted again when the frame loads after the token ended; a URL of an origin config.json does not list, or of the
+   admin's own origin, is refused.
+   A page that speaks version 1 of the postMessage contract says ready and is told to refresh after a save; a page that says
+   nothing within five seconds is shown as it is, and a save loads it again. *@
+@implements IAsyncDisposable
+@using FluentCMS.Admin.Configuration
+@inject ManagementClient Client
+@inject AdminConfiguration Configuration
+@inject PreviewInterop Interop
+@inject TimeProvider Time
+@inject NavigationManager Navigation
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<AdminResources> L
+
+<section @ref="pane" id="@PaneId" class="content-preview" data-width="@Width" data-ready="@(ready ? "true" : null)" aria-label="@L["Content.Preview.Title"]">
+    <div class="content-preview-toolbar">
+        <CmsSelect Label="@L["Content.Preview.Width"]" Options="@Widths" Value="@Width" ValueChanged="@(value => WidthChanged.InvokeAsync(value ?? Phone))" />
+        <CmsSwitch Label="@L["Content.Preview.Published"]" Value="@showingPublished" ValueChanged="ShowPublishedAsync" Disabled="@(answer?.PublishedUrl is null)" />
+        <CmsButton OnClick="ReloadAsync">@L["Content.Preview.Reload"]</CmsButton>
+        <CmsButton Icon="CmsIconName.Dismiss" OnClick="OnClose">@L["Content.Preview.Close"]</CmsButton>
+    </div>
+    @if (failed)
+    {
+        <p class="content-preview-notice">@L["Content.Preview.Failed"]</p>
+    }
+    else if (refused)
+    {
+        <p class="content-preview-notice">@L["Content.Preview.Refused"]</p>
+    }
+    else if (frameUrl is not null && listened)
+    {
+        @if (refreshFailed)
+        {
+            <p class="content-preview-notice">@L["Content.Preview.NotRefreshed"]</p>
+        }
+        @if (silent)
+        {
+            <p class="content-preview-notice"><CmsIcon Name="CmsIconName.Info" />@L["Content.Preview.Silent"]</p>
+        }
+        @if (navigated is not null)
+        {
+            <p class="content-preview-notice">@L["Content.Preview.Showing", navigated]</p>
+        }
+        <iframe @key="frameLoad" src="@frameUrl" title="@L["Content.Preview.FrameTitle"]" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+    }
+    else
+    {
+        <p role="status">@L["Content.Preview.Loading"]</p>
+    }
+</section>
+
+@code {
+    public const string Phone = "phone";
+
+    public const string Tablet = "tablet";
+
+    public const string Full = "full";
+
+    public const string PaneId = "content-preview";
+
+    // A token is not reused this close to its end, so that a page loaded with it can still read the draft.
+    private static readonly TimeSpan ReuseMargin = TimeSpan.FromSeconds(45);
+
+    private ElementReference pane;
+    private IAsyncDisposable? listening;
+    // The frame is drawn once the pane listens, so that the page's ready is not posted before.
+    private bool listened;
+    private bool disposed;
+    private PreviewTokenAnswer? answer;
+    private bool showingPublished;
+    private bool failed;
+    private bool refused;
+    private bool refreshFailed;
+    private string? frameUrl;
+    private string? frameOrigin;
+    // When the token of the page in the frame ends; null for the published page, which needs none.
+    private DateTimeOffset? frameExpires;
+    private int frameLoad;
+    private bool ready;
+    private bool silent;
+    private string? navigated;
+    private (string Type, Guid Id, string? Site, string? Locale)? shown;
+    private (int Version, string? Status)? saved;
+
+    [Parameter, EditorRequired]
+    public string Type { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public Guid EntryId { get; set; }
+
+    [Parameter]
+    public string? Site { get; set; }
+
+    // The locale of the form's read, which the request is sent in.
+    [Parameter]
+    public string? Locale { get; set; }
+
+    // The locale the token is bound to; null for a type that is not localized.
+    [Parameter]
+    public string? TokenLocale { get; set; }
+
+    // The draft's version and the locale's status: a change of either is a save, a publish or a restore.
+    [Parameter]
+    public int Version { get; set; }
+
+    [Parameter]
+    public string? Status { get; set; }
+
+    // The answer the form minted to learn that the type has a preview page, used while its token lasts.
+    [Parameter]
+    public string? FirstUrl { get; set; }
+
+    [Parameter]
+    public string? FirstPublishedUrl { get; set; }
+
+    [Parameter]
+    public DateTimeOffset FirstExpiresAt { get; set; }
+
+    // Phone, Tablet or Full; the form lays itself out by it.
+    [Parameter]
+    public string Width { get; set; } = Phone;
+
+    [Parameter]
+    public EventCallback<string> WidthChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    // How long a page has to say ready; a test shortens it.
+    [Parameter]
+    public TimeSpan ReadyWait { get; set; } = TimeSpan.FromSeconds(5);
+
+    private IReadOnlyList<CmsOption> Widths =>
+    [
+        new(Phone, L["Content.Preview.Phone"]),
+        new(Tablet, L["Content.Preview.Tablet"]),
+        new(Full, L["Content.Preview.Full"]),
+    ];
+
+    private bool Expired(DateTimeOffset? at) => at is { } end && end - ReuseMargin <= Time.GetUtcNow();
+
+    public async ValueTask DisposeAsync()
+    {
+        disposed = true;
+        frameLoad++;
+        if (listening is not null)
+        {
+            await listening.DisposeAsync();
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (shown != (Type, EntryId, Site, Locale))
+        {
+            (shown, saved, showingPublished) = ((Type, EntryId, Site, Locale), (Version, Status), false);
+            answer = FirstUrl is not null && !Expired(FirstExpiresAt) ? new PreviewTokenAnswer { Url = FirstUrl, PublishedUrl = FirstPublishedUrl, ExpiresAt = FirstExpiresAt } : null;
+            await ShowAsync(mint: answer is null);
+        }
+        else if (saved != (Version, Status))
+        {
+            saved = (Version, Status);
+            await SavedAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            var handle = await Interop.ListenAsync(pane, ReceiveAsync);
+            if (disposed)
+            {
+                await handle.DisposeAsync();
+            }
+            else
+            {
+                listening = handle;
+            }
+        }
+        catch (Microsoft.JSInterop.JSException)
+        {
+            // Without the module no page says ready, so each save loads the frame again.
+        }
+
+        if (!disposed)
+        {
+            listened = true;
+            RestartReadyWait();
+            StateHasChanged();
+        }
+    }
+
+    // A ready page reads the draft again when told to, while the token it was loaded with lasts; any other is loaded again.
+    // The token is minted again either way, so that the published page of a first publish is offered.
+    private async Task SavedAsync()
+    {
+        var refresh = !showingPublished && ready && !Expired(frameExpires) && frameOrigin is not null;
+        var minted = await MintAsync(keepFrame: true);
+        if (!minted && !refresh)
+        {
+            return;
+        }
+
+        if (refresh)
+        {
+            try
+            {
+                await Interop.PostAsync(pane, frameOrigin!, PreviewMessages.Refresh(Type, EntryId, TokenLocale, Version));
+                refreshFailed = false;
+                return;
+            }
+            catch (Microsoft.JSInterop.JSException)
+            {
+                // Loaded again below.
+            }
+        }
+
+        Load();
+    }
+
+    private async Task ShowAsync(bool mint)
+    {
+        if (!mint || await MintAsync())
+        {
+            Load();
+        }
+    }
+
+    private Task ReloadAsync() => ShowAsync(mint: answer is null || (!showingPublished && Expired(answer.ExpiresAt)));
+
+    private async Task ShowPublishedAsync(bool published)
+    {
+        showingPublished = published && answer?.PublishedUrl is not null;
+        await ShowAsync(mint: !showingPublished && (answer is null || Expired(answer.ExpiresAt)));
+    }
+
+    // A failed mint that may keep the frame leaves a usable page shown, with a note.
+    private async Task<bool> MintAsync(bool keepFrame = false)
+    {
+        var current = shown;
+        try
+        {
+            var minted = await Client.MintPreviewTokenAsync(Type, EntryId, Site, Locale, TokenLocale, CancellationToken.None);
+            if (current != shown || disposed)
+            {
+                return false;
+            }
+
+            (answer, failed, refreshFailed) = (minted, false, false);
+            showingPublished &= minted.PublishedUrl is not null;
+            return true;
+        }
+        catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            if (current == shown && !disposed && keepFrame && frameUrl is not null)
+            {
+                refreshFailed = true;
+                Announcer.Announce(L["Content.Preview.NotRefreshed"], AnnouncementPoliteness.Assertive);
+            }
+            else if (current == shown && !disposed)
+            {
+                (failed, frameUrl) = (true, null);
+                Announcer.Announce(L["Content.Preview.Failed"], AnnouncementPoliteness.Assertive);
+            }
+
+            return false;
+        }
+    }
+
+    private void Load()
+    {
+        var uri = PreviewMessages.HttpUri(showingPublished ? answer?.PublishedUrl : answer?.Url);
+        var origin = uri?.GetLeftPart(UriPartial.Authority);
+        refused = origin is null
+            || !Configuration.PreviewOrigins.Contains(origin, StringComparer.Ordinal)
+            || string.Equals(origin, PreviewMessages.OriginOf(Navigation.BaseUri), StringComparison.OrdinalIgnoreCase);
+        (frameUrl, frameOrigin) = refused ? (null, null) : (uri!.AbsoluteUri, origin);
+        frameExpires = showingPublished ? null : answer?.ExpiresAt;
+        (ready, silent, navigated, failed, refreshFailed) = (false, false, null, false, false);
+        ++frameLoad;
+        RestartReadyWait();
+    }
+
+    // The wait starts as the frame is drawn, which is once the pane listens.
+    private void RestartReadyWait()
+    {
+        if (listened && frameUrl is not null)
+        {
+            _ = WaitForReadyAsync(frameLoad);
+        }
+    }
+
+    private async Task WaitForReadyAsync(int load)
+    {
+        await Task.Delay(ReadyWait, Time);
+        if (load == frameLoad && !ready)
+        {
+            silent = true;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private Task ReceiveAsync(string origin, string json)
+    {
+        if (frameOrigin is null || PreviewMessages.Read(origin, json, frameOrigin) is not { } message)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (message.Type == PreviewMessageType.Ready)
+        {
+            (ready, silent) = (true, false);
+        }
+        else if (PreviewMessages.HttpUri(message.Url) is { } address && address.GetLeftPart(UriPartial.Authority) == frameOrigin)
+        {
+            // Without its query and fragment, where a token may be.
+            navigated = address.GetLeftPart(UriPartial.Path);
+        }
+
+        return InvokeAsync(StateHasChanged);
+    }
+}

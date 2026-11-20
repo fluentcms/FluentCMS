@@ -1,0 +1,52 @@
+.bulk-progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-s);
+    min-inline-size: min(40rem, 80vw);
+}
+
+.bulk-progress progress {
+    inline-size: 100%;
+}
+
+.bulk-progress p {
+    margin: 0;
+}
+
+.bulk-progress-problem {
+    color: var(--cms-color-error);
+}
+
+.bulk-progress-question {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cms-space-s);
+    padding: var(--cms-space-s);
+    border: 1px solid var(--cms-color-border);
+    border-radius: var(--cms-radius-s);
+}
+
+.bulk-progress-results {
+    display: block;
+    max-block-size: 40vh;
+    overflow: auto;
+    border-collapse: collapse;
+}
+
+.bulk-progress-results caption {
+    text-align: start;
+    font-weight: 600;
+}
+
+.bulk-progress-results th,
+.bulk-progress-results td {
+    padding: var(--cms-space-xs) var(--cms-space-s);
+    border-block-end: 1px solid var(--cms-color-border);
+    text-align: start;
+    vertical-align: top;
+}
+
+.bulk-progress-failed td:nth-child(2) {
+    color: var(--cms-color-error);
+}

@@ -16,4 +16,10 @@ internal static partial class PluginLog
 
     [LoggerMessage(EventId = 33, EventName = "PluginComponentNotCreated", Level = LogLevel.Error, Message = "The component {Type} of the admin half {Name} cannot be created: {Problem}")]
     public static partial void ComponentNotCreated(ILogger logger, string name, string type, string problem);
+
+    [LoggerMessage(EventId = 34, EventName = "PluginBulkActionNotCreated", Level = LogLevel.Error, Message = "The bulk action {Type} of the admin half {Name} could not be created.")]
+    public static partial void BulkActionNotCreated(ILogger logger, string name, string type, Exception exception);
+
+    [LoggerMessage(EventId = 35, EventName = "PluginBulkActionFailed", Level = LogLevel.Error, Message = "The bulk action {Type} of the admin half {Name} failed.")]
+    public static partial void BulkActionFailed(ILogger logger, string name, string type, Exception exception);
 }

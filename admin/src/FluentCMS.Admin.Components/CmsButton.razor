@@ -8,6 +8,8 @@
               IconOnly="@IconOnly"
               Title="@(IconOnly ? Label : null)"
               aria-label="@(IconOnly ? Label : null)"
+              aria-expanded="@(Expanded is { } expanded ? (expanded ? "true" : "false") : null)"
+              aria-controls="@Controls"
               Class="cms-button"
               OnClick="@OnClick">
     @if (IconOnly)
@@ -42,6 +44,13 @@
 
     [Parameter]
     public EventCallback OnClick { get; set; }
+
+    // For a button that shows and hides a region: whether it is shown, and the id of the region.
+    [Parameter]
+    public bool? Expanded { get; set; }
+
+    [Parameter]
+    public string? Controls { get; set; }
 
     private FluentButton? _button;
 
