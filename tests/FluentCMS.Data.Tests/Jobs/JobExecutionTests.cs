@@ -285,16 +285,51 @@ public sealed class JobExecutionTests : IDisposable
     }
 
     [Fact]
-    public async Task AnUnknownTypeFailsTheAttemptWithAClearError()
+    public async Task AnUnknownTypeIsPutBackWithoutUsingAnAttemptForAnInstanceThatKnowsIt()
     {
-        var id = _fixture.AddRow("gone-with-a-plugin", "{}", maxAttempts: 1);
+        var id = _fixture.AddRow("added-by-a-new-version", """{"key":"new"}""", maxAttempts: 1);
 
         (await RunNextAsync()).ShouldBeTrue();
 
         var job = _fixture.Job(id);
-        job.Status.ShouldBe(JobStatus.DeadLettered);
+        var now = _fixture.Clock.GetUtcNow();
+        job.Status.ShouldBe(JobStatus.Pending);
+        job.MaxAttempts.ShouldBe(2, "the attempt is given back");
+        job.LastError.ShouldBeNull();
+        job.RunAt.ShouldBeInRange(now.AddSeconds(30), now.AddSeconds(36));
+        _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Released));
+        _fixture.Events.Failed.ShouldBeEmpty();
+        _fixture.Logs.Count(nameof(JobLog.UnknownTypeReleased)).ShouldBe(1);
+
+        _fixture.Clock.Advance(job.RunAt - now);
+        var newer = _fixture.NewInstance(cms: cms => cms.Jobs.AddJob<TimedJob, ProbePayload>("added-by-a-new-version"));
+        (await newer.GetRequiredService<JobExecutor>().RunNextAsync(Queue, OtherOwner, TestContext.Current.CancellationToken)).ShouldBeTrue();
+
+        _fixture.Job(id).Status.ShouldBe(JobStatus.Succeeded);
+        _fixture.Probe.RunsOf("new").ShouldBe(1);
+        _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Released), (2, JobAttemptOutcome.Succeeded));
+    }
+
+    [Fact]
+    public async Task AnUnknownTypeIsDeadLetteredWithAClearErrorOnceNoInstanceHasKnownItForTheOrphanAge()
+    {
+        var id = _fixture.AddRow("gone-with-a-plugin", "{}", maxAttempts: 5);
+
+        (await RunNextAsync()).ShouldBeTrue();
+        _fixture.Job(id).Status.ShouldBe(JobStatus.Pending);
+
+        _fixture.Clock.Advance(JobExecutor.OrphanAge - TimeSpan.FromSeconds(1));
+        (await RunNextAsync()).ShouldBeTrue();
+        _fixture.Job(id).Status.ShouldBe(JobStatus.Pending, "it is put back until the orphan age has passed since the first claim");
+
+        _fixture.Clock.Advance(TimeSpan.FromHours(2));
+        (await RunNextAsync()).ShouldBeTrue();
+
+        var job = _fixture.Job(id);
+        job.Status.ShouldBe(JobStatus.DeadLettered, "another attempt would fail the same way");
         job.LastError.ShouldBe("FCMS2501: no job is registered for the type 'gone-with-a-plugin'.");
-        _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Failed));
+        _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Released), (2, JobAttemptOutcome.Released), (3, JobAttemptOutcome.Failed));
+        _fixture.Events.DeadLettered.ShouldHaveSingleItem().Attempts.ShouldBe(3);
     }
 
     [Theory]

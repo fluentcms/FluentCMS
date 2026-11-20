@@ -26,6 +26,9 @@ internal sealed class TrashPurgeJob(CmsDbContext database, SchemaModel schema, C
 
     public const string Cron = "17 3 * * *";
 
+    // Stops a large prune from holding a worker for good; what is left waits for the next run.
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromMinutes(10);
+
     public async Task ExecuteAsync(TrashPurgePayload payload, JobContext context)
     {
         ArgumentNullException.ThrowIfNull(payload);

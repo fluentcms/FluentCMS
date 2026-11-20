@@ -262,7 +262,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<JobAdministration>();
         services.AddHostedService<JobRunnerHostedService>();
 
-        builder.Jobs.AddJob<TrashPurgeJob, TrashPurgePayload>(TrashPurgeJob.Type);
+        builder.Jobs.AddJob<TrashPurgeJob, TrashPurgePayload>(TrashPurgeJob.Type, TrashPurgeJob.AttemptTimeout);
         builder.Jobs.AddJob<ScheduledPublishJob, ScheduledPayload>(ScheduledPublishJob.Type);
         builder.Jobs.AddJob<ScheduledUnpublishJob, ScheduledPayload>(ScheduledUnpublishJob.Type);
         builder.Events.AddHandler<JobDeadLetteredEvent, ScheduleDeadLetterHandler>();
@@ -272,16 +272,16 @@ public static class FluentCmsServiceCollectionExtensions
         builder.Jobs.AddJob<JobRetentionJob, JobRetentionPayload>(JobRetentionJob.Type, JobRetentionJob.AttemptTimeout);
         services.AddHostedService<JobRetentionScheduleService>();
 
-        builder.Jobs.AddJob<OidcPruneJob, OidcPrunePayload>(OidcPruneJob.Type);
+        builder.Jobs.AddJob<OidcPruneJob, OidcPrunePayload>(OidcPruneJob.Type, OidcPruneJob.AttemptTimeout);
         services.AddHostedService<OidcPruneScheduleService>();
-        builder.Jobs.AddJob<UnverifiedMembersJob, UnverifiedMembersPayload>(UnverifiedMembersJob.Type);
+        builder.Jobs.AddJob<UnverifiedMembersJob, UnverifiedMembersPayload>(UnverifiedMembersJob.Type, UnverifiedMembersJob.AttemptTimeout);
         builder.Jobs.Options.Queues.TryAdd(AccountMail.Queue, AccountMail.Workers);
         builder.Jobs.AddJob<MemberMailJob, MemberMailRequest>(MemberMailJob.Type);
         builder.Jobs.AddJob<PasswordResetMailJob, PasswordResetMailRequest>(PasswordResetMailJob.Type);
 
         services.AddFluentCmsOptions(IdempotencyOptions.Section, HostErrorCodes.InvalidOption, builder.Idempotency, idempotency => idempotency.Validate());
         services.AddSingleton<IdempotencyStore>();
-        builder.Jobs.AddJob<IdempotencyRetentionJob, IdempotencyRetentionPayload>(IdempotencyRetentionJob.Type);
+        builder.Jobs.AddJob<IdempotencyRetentionJob, IdempotencyRetentionPayload>(IdempotencyRetentionJob.Type, IdempotencyRetentionJob.AttemptTimeout);
         services.AddHostedService<IdempotencyRetentionScheduleService>();
 
         builder.Events.Outbox.Validate();
@@ -309,7 +309,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<IEntryChangeStager>(serviceProvider => serviceProvider.GetRequiredService<EntryChangeSink>());
 
         builder.Activity.Validate();
-        builder.Jobs.AddJob<ActivityRetentionJob, ActivityRetentionPayload>(ActivityRetentionJob.Type);
+        builder.Jobs.AddJob<ActivityRetentionJob, ActivityRetentionPayload>(ActivityRetentionJob.Type, ActivityRetentionJob.AttemptTimeout);
         services.AddFluentCmsOptions(ActivitySection, ActivityErrorCodes.InvalidOptions, builder.Activity, activity => activity.Validate());
         services.AddScoped<ActivityLogWriter>();
         services.TryAddScoped<IActivityLog>(serviceProvider => serviceProvider.GetRequiredService<ActivityLogWriter>());

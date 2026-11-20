@@ -127,10 +127,11 @@ internal sealed class JobStore(
             .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null));
     }
 
-    public async Task<bool> FailAsync(ClaimedJob job, string error)
+    // A final failure dead-letters the job whatever attempts it has left.
+    public async Task<bool> FailAsync(ClaimedJob job, string error, bool final = false)
     {
         var now = time.GetUtcNow();
-        var deadLetter = job.Attempt >= job.MaxAttempts;
+        var deadLetter = final || job.Attempt >= job.MaxAttempts;
         var runAt = now + RetryBackoff.After(job.Attempt, options);
 
         var failedEvent = Failed(job.Id, job.SiteId, job.Type, job.Queue, job.Attempt, job.MaxAttempts, error);
@@ -186,6 +187,19 @@ internal sealed class JobStore(
                 row.SetProperty(column => column.RunAt, at);
             }
         });
+    }
+
+    // When the job was first claimed, from its attempts; null when it has none.
+    public async Task<DateTimeOffset?> FirstClaimedAtAsync(Guid id, CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+
+        return await context.Set<JobAttempt>().AsNoTracking()
+            .Where(attempt => attempt.JobId == id)
+            .OrderBy(attempt => attempt.Attempt)
+            .Select(attempt => (DateTimeOffset?)attempt.StartedAt)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     // A claim requires attempts < max_attempts, so a job whose worker died on its last attempt never comes back and

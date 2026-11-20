@@ -19,6 +19,9 @@ internal sealed class UnverifiedMembersJob(SystemDbContext context, MemberOption
 
     public const string Schedule = "45 3 * * *";
 
+    // Stops a large prune from holding a worker for good; what is left waits for the next run.
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromMinutes(10);
+
     // From when the job may remove a member, which is when a link sent to it stops working; null for a verified member.
     public static DateTimeOffset? RemovableAt(CmsMember member, MemberOptions options) =>
         member.EmailConfirmed ? null : member.CreatedAt + options.UnverifiedMemberLifetime;

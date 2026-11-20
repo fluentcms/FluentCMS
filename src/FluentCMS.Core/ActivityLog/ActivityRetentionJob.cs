@@ -18,6 +18,9 @@ internal sealed class ActivityRetentionJob(SystemDbContext context, ActivityOpti
 
     public const string RecurringName = "activity.retention";
 
+    // Stops a large prune from holding a worker for good; what is left waits for the next run.
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromMinutes(10);
+
     public async Task ExecuteAsync(ActivityRetentionPayload payload, JobContext jobContext)
     {
         if (!options.Enabled)

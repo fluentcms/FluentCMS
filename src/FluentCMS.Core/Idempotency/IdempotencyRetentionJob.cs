@@ -19,6 +19,9 @@ internal sealed class IdempotencyRetentionJob(SystemDbContext context, TimeProvi
 
     public const string Schedule = "41 * * * *";
 
+    // Stops a large prune from holding a worker for good; what is left waits for the next run.
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromMinutes(10);
+
     public const int BatchSize = 1000;
 
     public async Task ExecuteAsync(IdempotencyRetentionPayload payload, JobContext jobContext)

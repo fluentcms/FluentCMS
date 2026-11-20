@@ -44,6 +44,7 @@ public static class FluentCmsTelemetry
         public const string ApiKeysRefused = "fluentcms.api_keys.refused";
         public const string EventHandlerDuration = "fluentcms.event.handler.duration";
         public const string JobOldestPendingAge = "fluentcms.job.oldest_pending_age";
+        public const string JobsAbandoned = "fluentcms.job.abandoned";
     }
 
     internal static readonly Counter<long> Requests = Meter.CreateCounter<long>(
@@ -54,6 +55,9 @@ public static class FluentCmsTelemetry
 
     internal static readonly Histogram<double> JobLatency = Meter.CreateHistogram<double>(
         Instruments.JobLatency, "s", "How long one attempt of a job takes from the claim to the end, by job type and outcome.");
+
+    internal static readonly Counter<long> JobsAbandoned = Meter.CreateCounter<long>(
+        Instruments.JobsAbandoned, "{attempt}", "Attempts of a job that ignored its token past its attempt timeout and were left running, by job type.");
 
     internal static readonly Histogram<double> EventHandlerDuration = Meter.CreateHistogram<double>(
         Instruments.EventHandlerDuration, "s", "How long an in-process event handler takes after the commit, by event type, handler and outcome (succeeded, failed or timed-out).");

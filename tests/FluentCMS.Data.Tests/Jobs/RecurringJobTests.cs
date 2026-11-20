@@ -173,6 +173,37 @@ public sealed class RecurringJobTests : IDisposable
     }
 
     [Fact]
+    public async Task ARowOfATypeThisInstanceDoesNotKnowMakesNoJobsAndStaysDueForOneThatDoes()
+    {
+        await AddAsync(name: "of-a-removed-plugin");
+        await AddAsync(name: "fine");
+        using (var scope = _fixture.Services.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<RecurringJob>()
+                .Where(job => job.Name == "of-a-removed-plugin")
+                .ExecuteUpdateAsync(job => job.SetProperty(row => row.Type, "removed"), Token);
+        }
+
+        var due = _fixture.Recurring("of-a-removed-plugin").NextRunAt;
+        for (var turn = 0; turn < 3; turn++)
+        {
+            _fixture.Clock.Advance(TimeSpan.FromMinutes(5));
+            await FireAsync();
+        }
+
+        _fixture.Jobs().ShouldAllBe(job => job.Type == JobFixture.ProbeType);
+        _fixture.Jobs().Count.ShouldBe(3, "the other row still fires");
+        _fixture.Recurring("of-a-removed-plugin").NextRunAt.ShouldBe(due);
+        _fixture.Logs.Count(nameof(JobLog.RecurringTypeUnknown)).ShouldBe(1);
+
+        var knowing = _fixture.NewInstance(cms: cms => cms.Jobs.AddJob<TimedJob, ProbePayload>("removed"));
+        await knowing.GetRequiredService<RecurringJobs>().FireDueAsync(Token);
+
+        _fixture.Jobs().Count(job => job.Type == "removed").ShouldBe(1);
+        _fixture.Recurring("of-a-removed-plugin").NextRunAt.ShouldBeGreaterThan(_fixture.Clock.GetUtcNow());
+    }
+
+    [Fact]
     public async Task ARowEditedToABadCronDoesNotStopTheOthers()
     {
         await AddAsync(name: "broken");

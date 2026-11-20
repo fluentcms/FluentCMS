@@ -16,7 +16,9 @@ namespace FluentCMS.Core.Jobs;
 
 // A job of a plugin disabled in the job's site completes without running; one of no site is the instance's and always runs.
 // When which plugins are disabled cannot be read, the job is put back without using an attempt, as the outbox does with a
-// delivery, and waits one poll so that the worker does not claim it again at once.
+// delivery, and waits one poll so that the worker does not claim it again at once. A job of a type this instance does not
+// know, as during a rolling deploy or after a plugin is removed, is put back the same way for an instance that knows it,
+// with backoff, and is dead-lettered once no such instance has taken it for OrphanAge since its first claim.
 internal sealed class JobExecutor(
     JobStore store,
     JobRegistry registry,
@@ -31,6 +33,11 @@ internal sealed class JobExecutor(
     private static readonly TimeSpan FirstSettleRetry = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan LastSettleRetry = TimeSpan.FromSeconds(30);
 
+    // How long past its attempt timeout a job that ignores its token keeps its worker before it is abandoned.
+    internal static readonly TimeSpan AbandonGrace = TimeSpan.FromSeconds(30);
+
+    internal static readonly TimeSpan OrphanAge = TimeSpan.FromHours(1);
+
     private readonly IReadOnlySet<string> _schemaNames = JobErrorText.NamesOf(schema);
 
     private enum Invocation
@@ -38,6 +45,7 @@ internal sealed class JobExecutor(
         Ran,
         Skipped,
         Deferred,
+        Unknown,
     }
 
     // False when the queue has nothing due.
@@ -67,6 +75,7 @@ internal sealed class JobExecutor(
         {
             var limit = AttemptTimeoutOf(job);
             using var deadline = limit is { } span ? new CancellationTokenSource(span, time) : null;
+            using var cutOff = limit is { } total ? new CancellationTokenSource(total + AbandonGrace, time) : null;
             var timedOut = false;
 
             // Renewal stops first, so that a job that ignores its token also loses its lease and is taken over.
@@ -77,7 +86,7 @@ internal sealed class JobExecutor(
                 attempt.Cancel();
             });
 
-            await ExecuteAndSettleAsync(job, () => timedOut ? limit : null, shutdown, attempt.Token, abandon);
+            await ExecuteAndSettleAsync(job, () => timedOut ? limit : null, shutdown, attempt.Token, cutOff?.Token ?? CancellationToken.None, abandon);
         }
         finally
         {
@@ -92,17 +101,18 @@ internal sealed class JobExecutor(
         return limit == Timeout.InfiniteTimeSpan ? null : limit;
     }
 
-    private async Task ExecuteAndSettleAsync(ClaimedJob job, Func<TimeSpan?> timedOut, CancellationToken shutdown, CancellationToken attempt, CancellationToken abandon)
+    private async Task ExecuteAndSettleAsync(ClaimedJob job, Func<TimeSpan?> timedOut, CancellationToken shutdown, CancellationToken attempt, CancellationToken cutOff, CancellationToken abandon)
     {
         var started = Stopwatch.GetTimestamp();
         Func<Task<bool>> settle;
         try
         {
-            var invocation = await InvokeAsync(job, attempt);
-            if (invocation == Invocation.Deferred)
+            var invocation = await InvokeAsync(job, attempt, cutOff);
+            if (invocation is Invocation.Deferred or Invocation.Unknown)
             {
                 Record(job, started, "released");
-                var runAt = time.GetUtcNow() + options.PollInterval;
+                var wait = invocation == Invocation.Deferred ? options.PollInterval : RetryBackoff.After(job.Attempt, options);
+                var runAt = time.GetUtcNow() + wait;
                 settle = () => store.ReleaseAsync(job, runAt);
             }
             else
@@ -124,6 +134,14 @@ internal sealed class JobExecutor(
             JobLog.AttemptFailed(logger, job.Id, job.Type, job.Attempt, error);
             settle = () => store.FailAsync(job, error);
         }
+        catch (JobAbandonedException) when (timedOut() is { } limit)
+        {
+            Record(job, started, "abandoned");
+            FluentCmsTelemetry.JobsAbandoned.Add(1, new KeyValuePair<string, object?>(FluentCmsTelemetry.Tags.Operation, job.Type));
+            JobLog.Abandoned(logger, job.Id, job.Type, job.Attempt, limit + AbandonGrace);
+            var error = JobErrorText.ForStorage(TimedOut(limit), job.Payload, _schemaNames);
+            settle = () => store.FailAsync(job, error);
+        }
         catch (OperationCanceledException) when (attempt.IsCancellationRequested)
         {
             Record(job, started, "lease-lost");
@@ -135,7 +153,8 @@ internal sealed class JobExecutor(
             Record(job, started, "failed");
             JobLog.AttemptFailed(logger, job.Id, job.Type, job.Attempt, JobErrorText.ForLog(exception, job.Payload, _schemaNames));
             var error = JobErrorText.ForStorage(exception, job.Payload, _schemaNames);
-            settle = () => store.FailAsync(job, error);
+            var final = exception is JobInvocationException { Final: true };
+            settle = () => store.FailAsync(job, error, final);
         }
 
         await SettleWithRetriesAsync(job, settle, abandon);
@@ -177,10 +196,12 @@ internal sealed class JobExecutor(
         }
     }
 
-    private async Task<Invocation> InvokeAsync(ClaimedJob job, CancellationToken attempt)
+    private async Task<Invocation> InvokeAsync(ClaimedJob job, CancellationToken attempt, CancellationToken cutOff)
     {
-        var registration = registry.Find(job.Type)
-            ?? throw new JobInvocationException($"{JobErrorCodes.UnknownJobType}: no job is registered for the type '{job.Type}'.");
+        if (registry.Find(job.Type) is not { } registration)
+        {
+            return await UnknownAsync(job, attempt);
+        }
 
         string? disabled;
         try
@@ -201,27 +222,92 @@ internal sealed class JobExecutor(
 
         var payload = ReadPayload(registration, job);
 
-        await using var scope = scopes.CreateAsyncScope();
-        var context = new JobContext(job.Id, job.Type, job.Queue, job.Attempt, job.MaxAttempts, await OperationOfAsync(job, payload, scope.ServiceProvider), attempt);
-
-        var previous = operation.Current;
-        operation.Current = context.Operation;
-        using var span = FluentCmsTelemetry.Start("job", job.Type, null, context.Operation);
-        span?.SetTag(FluentCmsTelemetry.Tags.Queue, job.Queue);
+        var scope = scopes.CreateAsyncScope();
+        var abandoned = false;
         try
         {
-            await registration.Invoke(scope.ServiceProvider, payload, context);
-            return Invocation.Ran;
-        }
-        catch (Exception)
-        {
-            span?.SetStatus(ActivityStatusCode.Error);
-            throw;
+            var context = new JobContext(job.Id, job.Type, job.Queue, job.Attempt, job.MaxAttempts, await OperationOfAsync(job, payload, scope.ServiceProvider), attempt);
+
+            var previous = operation.Current;
+            operation.Current = context.Operation;
+            using var span = FluentCmsTelemetry.Start("job", job.Type, null, context.Operation);
+            span?.SetTag(FluentCmsTelemetry.Tags.Queue, job.Queue);
+            try
+            {
+                // Off the worker's thread, so that a job that blocks before its first await is cut off too.
+                var run = Task.Run(() => registration.Invoke(scope.ServiceProvider, payload, context), CancellationToken.None);
+                try
+                {
+                    await run.WaitAsync(cutOff);
+                }
+                catch (OperationCanceledException) when (cutOff.IsCancellationRequested && !run.IsCompleted)
+                {
+                    abandoned = true;
+                    LeaveRunning(job, run, scope);
+                    throw new JobAbandonedException();
+                }
+
+                return Invocation.Ran;
+            }
+            catch (Exception)
+            {
+                span?.SetStatus(ActivityStatusCode.Error);
+                throw;
+            }
+            finally
+            {
+                operation.Current = previous;
+            }
         }
         finally
         {
-            operation.Current = previous;
+            if (!abandoned)
+            {
+                await scope.DisposeAsync();
+            }
         }
+    }
+
+    // The job keeps its scope until it ends, and what it throws then is logged and never reaches the worker.
+    private void LeaveRunning(ClaimedJob job, Task run, AsyncServiceScope scope) =>
+        _ = Task.Run(
+            async () =>
+            {
+                try
+                {
+                    await run;
+                }
+                catch (OperationCanceledException)
+                {
+                }
+                catch (Exception exception)
+                {
+                    JobLog.AbandonedJobFailed(logger, exception, job.Id, job.Type);
+                }
+
+                try
+                {
+                    await scope.DisposeAsync();
+                }
+                catch (Exception exception)
+                {
+                    JobLog.AbandonedJobFailed(logger, exception, job.Id, job.Type);
+                }
+            },
+            CancellationToken.None);
+
+    // An instance that does not know the type leaves it to one that does, until it has waited OrphanAge since its first claim.
+    private async Task<Invocation> UnknownAsync(ClaimedJob job, CancellationToken attempt)
+    {
+        var now = time.GetUtcNow();
+        var firstClaimed = await store.FirstClaimedAtAsync(job.Id, attempt) ?? now;
+        if (now - firstClaimed < OrphanAge)
+        {
+            JobLog.UnknownTypeReleased(logger, job.Id, job.Type);
+            return Invocation.Unknown;
+        }
+
+        throw new JobInvocationException($"{JobErrorCodes.UnknownJobType}: no job is registered for the type '{job.Type}'.", final: true);
     }
 
     private static JobInvocationException TimedOut(TimeSpan limit) =>
@@ -316,5 +402,12 @@ internal sealed class JobExecutor(
     }
 }
 
-// The job could not start. The message is what last_error stores, and never holds a value of the payload.
-internal sealed class JobInvocationException(string message) : Exception(message);
+// The job could not start. The message is what last_error stores, and never holds a value of the payload. A final one
+// dead-letters the job at once, since another attempt would fail the same way.
+internal sealed class JobInvocationException(string message, bool final = false) : Exception(message)
+{
+    public bool Final { get; } = final;
+}
+
+// The job ignored its token past its attempt timeout plus AbandonGrace and was left running.
+internal sealed class JobAbandonedException() : Exception("The attempt was abandoned.");

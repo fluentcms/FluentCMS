@@ -1,5 +1,12 @@
+using System.Collections.Concurrent;
+using System.Diagnostics.Metrics;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Events;
+using FluentCMS.Core.Identity;
+using FluentCMS.Core.Identity.Members;
 using FluentCMS.Core.Jobs;
+using FluentCMS.Core.Telemetry;
 using FluentCMS.Jobs;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -157,69 +164,89 @@ public sealed class JobTimeoutTests : IDisposable
     }
 
     [Fact]
-    public async Task AJobThatIgnoresItsTokenStopsBeingRenewedAndIsTakenOverWhenItsLeaseLapses()
+    public async Task AJobThatIgnoresItsTokenIsAbandonedAfterItsLimitAndTheGraceAndFreesItsWorker()
     {
-        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        _fixture.Probe.Behavior = async (_, context) =>
-        {
-            if (context.Attempt == 1)
-            {
-                await gate.Task;
-            }
-        };
-        var id = await _fixture.EnqueueAsync();
+        using var abandoned = new AbandonedCount(TimedJob.Type);
+        var gate = Hold();
+        var instance = _fixture.NewInstance(cms: cms => cms.Jobs.AddJob<TimedJob, ProbePayload>(TimedJob.Type, Limit));
+        var id = await instance.GetRequiredService<IJobScheduler>().EnqueueAsync<TimedJob, ProbePayload>(new ProbePayload("stuck"), new JobOptions { MaxAttempts = 3 }, Token);
 
-        var stuck = StartAsync(Worker(Beat + Limit));
+        var stuck = StartAsync(instance.GetRequiredService<JobExecutor>());
         await WaitForRunsAsync(1);
-
-        _fixture.Clock.Advance(Beat);
-        var renewed = _fixture.Clock.GetUtcNow() + Lease;
-        await Eventually.HoldsAsync(() => _fixture.Job(id).LeaseUntil == renewed);
 
         _fixture.Clock.Advance(Limit);
         _fixture.Probe.Runs.Single().Context.CancellationToken.IsCancellationRequested.ShouldBeTrue();
-        (await _fixture.Executor.RunNextAsync(Queue, "B", Token)).ShouldBeFalse("the lease has not lapsed yet");
+        _fixture.Clock.Advance(JobExecutor.AbandonGrace - TimeSpan.FromTicks(1));
+        await Task.Delay(50, Token);
+        stuck.IsCompleted.ShouldBeFalse("the grace has not passed yet");
 
-        while (_fixture.Clock.GetUtcNow() <= renewed)
-        {
-            _fixture.Clock.Advance(Beat);
-        }
-
-        _fixture.Job(id).LeaseUntil.ShouldBe(renewed, "nothing renewed it after the timeout");
-
-        (await _fixture.Executor.RunNextAsync(Queue, "B", Token)).ShouldBeTrue();
-        _fixture.Job(id).Status.ShouldBe(JobStatus.Succeeded);
-
-        gate.SetResult();
-        (await stuck).ShouldBeTrue();
+        _fixture.Clock.Advance(TimeSpan.FromTicks(1));
+        (await stuck).ShouldBeTrue("the worker is free while the job still runs");
 
         var job = _fixture.Job(id);
-        job.Status.ShouldBe(JobStatus.Succeeded);
-        job.Attempts.ShouldBe(2);
-        _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.LeaseExpired), (2, JobAttemptOutcome.Succeeded));
-        _fixture.Logs.Count(nameof(JobLog.LeaseLost)).ShouldBe(1);
+        job.Status.ShouldBe(JobStatus.Pending);
+        job.LastError.ShouldNotBeNull().ShouldStartWith("FCMS2508");
+        job.LeaseOwner.ShouldBeNull();
+        _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Failed));
+        _fixture.Logs.Count(nameof(JobLog.Abandoned)).ShouldBe(1);
+        abandoned.Count.ShouldBe(1);
+
+        gate.SetResult();
+        await Task.Delay(50, Token);
+        _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Failed));
+        _fixture.Logs.Count(nameof(JobLog.LeaseLost)).ShouldBe(0, "the abandoned run writes nothing when it ends");
     }
 
     [Fact]
-    public async Task AJobThatIgnoresItsTokenOnItsLastAttemptIsDeadLetteredBySweeping()
+    public async Task AJobThatBlocksItsThreadIsAbandonedToo()
     {
-        var gate = Hold();
+        using var gate = new ManualResetEventSlim();
+        _fixture.Probe.Behavior = (_, _) =>
+        {
+            gate.Wait(Token);
+            return Task.CompletedTask;
+        };
         var id = await _fixture.EnqueueAsync(options: new JobOptions { MaxAttempts = 1 });
 
         var stuck = StartAsync(Worker(Limit));
         await WaitForRunsAsync(1);
+        _fixture.Clock.Advance(Limit + JobExecutor.AbandonGrace);
+
+        (await stuck).ShouldBeTrue();
+        gate.Set();
+
+        var job = _fixture.Job(id);
+        job.Status.ShouldBe(JobStatus.DeadLettered, "it was the last attempt");
+        job.LastError.ShouldNotBeNull().ShouldStartWith("FCMS2508");
+        _fixture.Events.DeadLettered.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task AJobThatEndsOnItsTokenWithinTheGraceIsNotAbandoned()
+    {
+        using var abandoned = new AbandonedCount(JobFixture.ProbeType);
+        _fixture.Probe.Behavior = async (_, context) =>
+        {
+            try
+            {
+                await Task.Delay(Timeout.Infinite, context.CancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                await Task.Yield();
+                throw;
+            }
+        };
+        var id = await _fixture.EnqueueAsync();
+
+        var running = StartAsync(Worker(Limit));
+        await WaitForRunsAsync(1);
         _fixture.Clock.Advance(Limit);
+        await running;
 
-        (await _fixture.Store.SweepAsync()).ShouldBe(0);
-        _fixture.Clock.Advance(Lease);
-        (await _fixture.Store.SweepAsync()).ShouldBe(1);
-        _fixture.Job(id).Status.ShouldBe(JobStatus.DeadLettered);
-
-        gate.SetResult();
-        await stuck;
-
-        _fixture.Job(id).Status.ShouldBe(JobStatus.DeadLettered);
-        _fixture.Logs.Count(nameof(JobLog.LeaseLost)).ShouldBe(1);
+        _fixture.Job(id).LastError.ShouldNotBeNull().ShouldStartWith("FCMS2508");
+        _fixture.Logs.Count(nameof(JobLog.Abandoned)).ShouldBe(0);
+        abandoned.Count.ShouldBe(0);
     }
 
     [Fact]
@@ -299,6 +326,20 @@ public sealed class JobTimeoutTests : IDisposable
         await running;
     }
 
+    // The built-in jobs that run without a limit, each for a reason: a mail send and the outbox drain have limits of their
+    // own, and a scheduled publish is one entry. Any other job a host registers by default must set an attempt timeout.
+    [Fact]
+    public void EveryBuiltInJobButTheseHasAnAttemptTimeout()
+    {
+        var untimed = _fixture.Services.GetServices<JobRegistration>()
+            .Where(registration => registration.AttemptTimeout is null && registration.Type != JobFixture.ProbeType)
+            .Select(registration => registration.Type)
+            .Order(StringComparer.Ordinal);
+
+        string[] expected = [ScheduledPublishJob.Type, ScheduledUnpublishJob.Type, OutboxDrainJob.Type, MemberMailJob.Type, PasswordResetMailJob.Type];
+        untimed.ShouldBe(expected.Order(StringComparer.Ordinal));
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-5)]
@@ -313,4 +354,38 @@ public sealed class JobTimeoutTests : IDisposable
         var services = _fixture.NewInstance(configure: options => options.AttemptTimeout = timeout);
         Should.Throw<FluentCmsConfigurationException>(() => services.GetRequiredService<IJobRunner>()).Code.ShouldBe("FCMS2506");
     }
+}
+
+// Counts what the runner reports to fluentcms.job.abandoned for one job type, so that tests of other types running at the
+// same time do not count.
+internal sealed class AbandonedCount : IDisposable
+{
+    private readonly MeterListener _listener = new();
+    private readonly ConcurrentQueue<long> _measurements = new();
+
+    public AbandonedCount(string type)
+    {
+        _listener.InstrumentPublished = (instrument, listener) =>
+        {
+            if (instrument.Meter.Name == FluentCmsTelemetry.Name && instrument.Name == FluentCmsTelemetry.Instruments.JobsAbandoned)
+            {
+                listener.EnableMeasurementEvents(instrument);
+            }
+        };
+        _listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            foreach (var tag in tags)
+            {
+                if (tag.Key == FluentCmsTelemetry.Tags.Operation && Equals(tag.Value, type))
+                {
+                    _measurements.Enqueue(value);
+                }
+            }
+        });
+        _listener.Start();
+    }
+
+    public long Count => _measurements.Sum();
+
+    public void Dispose() => _listener.Dispose();
 }

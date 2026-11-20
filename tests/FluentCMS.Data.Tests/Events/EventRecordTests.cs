@@ -181,7 +181,7 @@ public sealed class EventRecordTests
             cms.Events.AddHandler<JobFailedEvent, FailedHandler>();
             cms.Events.AddHandler<JobDeadLetteredEvent, DeadLetteredHandler>();
         });
-        var id = fixture.AddRow("no-such-job", "{}", maxAttempts: 1);
+        var id = fixture.AddFailingRow();
 
         (await instance.GetRequiredService<Core.Jobs.JobExecutor>().RunNextAsync("default", "worker", TestContext.Current.CancellationToken)).ShouldBeTrue();
 
@@ -206,7 +206,7 @@ public sealed class EventRecordTests
             cms.Events.AddHandler<JobFailedEvent, FailedHandler>();
             cms.Events.AddHandler<JobDeadLetteredEvent, DeadLetteredHandler>();
         });
-        var id = fixture.AddRow("no-such-job", "{}", maxAttempts: 1);
+        var id = fixture.AddFailingRow();
 
         await instance.GetRequiredService<Core.Jobs.JobExecutor>().RunNextAsync("default", "worker", TestContext.Current.CancellationToken);
 

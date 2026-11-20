@@ -18,6 +18,9 @@ internal sealed class OidcPruneJob(IOpenIddictTokenManager tokens, IOpenIddictAu
 
     public const string Schedule = "15 4 * * *";
 
+    // Stops a large prune from holding a worker for good; what is left waits for the next run.
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromMinutes(10);
+
     public static readonly TimeSpan MinimumAge = TimeSpan.FromDays(14);
 
     public async Task ExecuteAsync(OidcPrunePayload payload, JobContext jobContext)
