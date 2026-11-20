@@ -73,6 +73,9 @@ internal sealed class FakeContent
     // The server's clock for a preview token, sent as the answer's Date while set; the browser's clock while not, with no Date.
     public DateTimeOffset? PreviewClock { get; set; }
 
+    // The token's lifetime in seconds the answer gives as expiresIn (#3473), while set.
+    public int? PreviewExpiresIn { get; set; }
+
     public int PreviewMints { get; private set; }
 
     // A mint is refused while set.
@@ -185,13 +188,19 @@ internal sealed class FakeContent
             }
 
             var (url, publishedUrl) = Preview?.Invoke(previewedId, write.Body["locale"]?.GetValue<string>()) ?? (null, null);
-            var token = FakeManagementServer.Json(new JsonObject
+            var minting = new JsonObject
             {
                 ["token"] = $"token-{minted}",
                 ["expiresAt"] = (PreviewClock ?? DateTimeOffset.UtcNow) + PreviewLifetime,
                 ["url"] = url?.Replace("{token}", $"token-{minted}", StringComparison.Ordinal),
                 ["publishedUrl"] = publishedUrl,
-            });
+            };
+            if (PreviewExpiresIn is { } seconds)
+            {
+                minting["expiresIn"] = seconds;
+            }
+
+            var token = FakeManagementServer.Json(minting);
             token.Headers.Date = PreviewClock;
             return token;
         }

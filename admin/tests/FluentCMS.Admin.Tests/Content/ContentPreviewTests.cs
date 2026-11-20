@@ -37,6 +37,8 @@ public sealed class ContentPreviewTests : AdminTestContext
         UseNeutralResources();
         Services.AddSingleton<TimeProvider>(_time);
         _content = new FakeContent(Management);
+        // The server's clock is the browser's and its answers carry a Date, as for an admin on the API's origin.
+        _content.PreviewClock = _time.Now;
         Management.SetTypes(MainSite, Type("post", fields: [Field("title")]));
         _preview = JSInterop.SetupModule(PreviewInterop.ModulePath);
         _listener = _preview.SetupModule(invocation => invocation.Identifier == "listen");
@@ -377,6 +379,96 @@ public sealed class ContentPreviewTests : AdminTestContext
         _content.PreviewMints.ShouldBe(1);
     }
 
+    // An admin on another origin sees no Date, and the answer gives no lifetime yet (#3473): there is no end it can trust, so
+    // every save and every Reload mints, and a ready page is loaded with the new token rather than told to refresh.
+    [Fact]
+    public void WithNoDateAndNoLifetimeEverySaveAndReloadMints()
+    {
+        _content.PreviewClock = null;
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Post(app, FrontEnd, Message("ready"));
+
+        SaveChanged(app);
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
+        Button(app, "Reload").Click();
+
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-3"));
+        _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
+    }
+
+    // The lifetime the answer gives counts from when the mint was sent, with no Date and the browser's clock behind.
+    [Fact]
+    public void TheLifetimeTheAnswerGivesIsAnEndWithoutADate()
+    {
+        (_content.PreviewClock, _content.PreviewExpiresIn) = (null, 600);
+        _time.Now -= TimeSpan.FromMinutes(5);
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Post(app, FrontEnd, Message("ready"));
+
+        SaveChanged(app);
+
+        app.WaitForAssertion(() => _preview.Invocations.Count(call => call.Identifier == "post").ShouldBe(1));
+        _content.PreviewMints.ShouldBe(1);
+    }
+
+    // The lifetime the answer gives wins over the Date: here the Date says ten minutes are left and the lifetime one.
+    [Fact]
+    public void TheLifetimeTheAnswerGivesWinsOverTheDate()
+    {
+        _content.PreviewExpiresIn = 60;
+        _time.Now -= TimeSpan.FromMinutes(5);
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Post(app, FrontEnd, Message("ready"));
+        _time.Advance(TimeSpan.FromSeconds(20));
+
+        SaveChanged(app);
+
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
+        _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
+    }
+
+    // A Date later than the token's end leaves no time: the end has passed, so a save mints and loads the page with the new token.
+    [Fact]
+    public void ADateLaterThanTheEndIsAnEndPassed()
+    {
+        _content.PreviewLifetime = TimeSpan.FromMinutes(-1);
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Post(app, FrontEnd, Message("ready"));
+
+        SaveChanged(app);
+
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
+        _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
+    }
+
+    // The two minutes the mint took count against the token: ten and a half minutes after it was sent, eight and a half after
+    // its answer, the token is ending, so a save mints.
+    [Fact]
+    public async Task TheEndCountsFromWhenTheMintWasSent()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/post/{id:D}");
+        var held = new TaskCompletionSource();
+        var mints = 0;
+        Management.HoldPath = path => path.Contains("/preview-token", StringComparison.Ordinal) && ++mints == 1 ? held.Task : null;
+        Button(app, "Preview").Click();
+        app.WaitForAssertion(() => mints.ShouldBe(1));
+        _time.Advance(TimeSpan.FromMinutes(2));
+        await Release(app, held);
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-1"));
+        Post(app, FrontEnd, Message("ready"));
+        _time.Advance(TimeSpan.FromSeconds(510));
+
+        SaveChanged(app);
+
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
+        _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
+    }
+
     // The toggle keeps its name and says by aria-expanded whether the pane is open; the pane's own Close has a name of its
     // own. Opening moves focus to the pane, which comes after the form in the page as on the screen, and closing the pane by
     // its Close puts it back on the toggle.
@@ -708,6 +800,33 @@ public sealed class ContentPreviewTests : AdminTestContext
         pane.WaitForAssertion(() => pane.Find("iframe").GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{second:D}?preview=token-2"));
     }
 
+    // Another entry on the same pane drops the notice of the earlier one at once, before its own mint answers.
+    [Theory]
+    [InlineData("missing", "The site has no preview page for this type.")]
+    [InlineData("refused", "The preview page is not on an origin the admin may show.")]
+    [InlineData("failed", "The preview could not be loaded.")]
+    public async Task AnotherEntryDropsTheNoticeShownAtOnce(string state, string notice)
+    {
+        Start(Previewing);
+        var (first, second) = (_content.Add("post", new JsonObject { ["title"] = "Hello" }), _content.Add("post", new JsonObject { ["title"] = "World" }));
+        _content.Preview = (id, _) => id != first ? ($"{FrontEnd}/posts/{id:D}?preview={{token}}", null)
+            : state == "missing" ? (null, null)
+            : ($"https://elsewhere.example.com/posts/{id:D}?preview={{token}}", null);
+        _content.PreviewUnavailable = state == "failed";
+        var pane = Render<ContentPreview>(parameters => parameters.Add(p => p.Type, "post").Add(p => p.EntryId, first).Add(p => p.Version, 1));
+        pane.WaitForAssertion(() => pane.Find(".content-preview-notice").TextContent.Trim().ShouldBe(notice));
+        _content.PreviewUnavailable = false;
+        var held = new TaskCompletionSource();
+        Management.HoldPath = path => path.Contains("/preview-token", StringComparison.Ordinal) ? held.Task : null;
+
+        pane.Render(parameters => parameters.Add(p => p.EntryId, second));
+
+        pane.WaitForAssertion(() => pane.FindAll(".content-preview-notice").ShouldBeEmpty());
+        pane.Find(".content-preview-notices").TextContent.Trim().ShouldBe("Loading the preview\u2026");
+        await pane.InvokeAsync(held.SetResult);
+        pane.WaitForAssertion(() => pane.Find("iframe").GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{second:D}?preview=token-2"));
+    }
+
     // The form keeps a reference to a closed pane, which holds no token or address of it then.
     [Fact]
     public async Task AClosedPaneLetsGoOfItsTokenAndAddress()
@@ -720,7 +839,7 @@ public sealed class ContentPreviewTests : AdminTestContext
 
         await DisposeComponentsAsync();
 
-        foreach (var name in (string[])["answer", "frameUrl", "frameToken"])
+        foreach (var name in (string[])["answer", "answerDeadline", "frameUrl", "frameToken", "frameDeadline"])
         {
             typeof(ContentPreview).GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(instance).ShouldBeNull(name);
         }

@@ -18,6 +18,7 @@ public sealed class OpenApiContractTests
     private static readonly Dictionary<string, string> Awaited = new(StringComparer.Ordinal)
     {
         ["schema.types[].previewable"] = "#3432",
+        ["content/article/{id}/preview-token.expiresIn"] = "#3473",
     };
 
     [Fact]
@@ -39,6 +40,7 @@ public sealed class OpenApiContractTests
         Check(ManagementJsonContext.Default.ContentEntry, Answer(paths, "/api/management/v1/content/article/{id}/versions/{number}", "get"), "content/article/{id}/versions/{number}", document, gaps);
         Check(ManagementJsonContext.Default.VersionDiffInfo, Answer(paths, "/api/management/v1/content/article/{id}/versions/{from}/diff/{to}", "get"), "content/article/{id}/versions/{from}/diff/{to}", document, gaps);
         Check(ManagementJsonContext.Default.ContentEntry, Answer(paths, "/api/management/v1/content/article/{id}/versions/{number}/restore", "post"), "content/article/{id}/versions/{number}/restore", document, gaps);
+        Check(ManagementJsonContext.Default.PreviewTokenAnswer, Answer(paths, "/api/management/v1/content/article/{id}/preview-token", "post"), "content/article/{id}/preview-token", document, gaps);
         Check(ManagementJsonContext.Default.ItemListMySession, Answer(paths, "/api/management/v1/me/sessions", "get"), "me/sessions", document, gaps);
         Check(ManagementJsonContext.Default.MyTwoFactor, Answer(paths, "/api/management/v1/me/two-factor", "get"), "me/two-factor", document, gaps);
         Check(ManagementJsonContext.Default.AuthenticatorSetup, Answer(paths, "/api/management/v1/me/two-factor/enrol", "post"), "me/two-factor/enrol", document, gaps);
