@@ -165,10 +165,18 @@ public static class ReferenceHost
             return;
         }
 
+        var certificate = LoadKeyRingCertificate(path, configuration[KeyRingCertificatePasswordKey]);
+        services.AddDataProtection().ProtectKeysWithCertificate(certificate);
+    }
+
+    internal static X509Certificate2 LoadKeyRingCertificate(string path, string? password)
+    {
         X509Certificate2 certificate;
         try
         {
-            certificate = X509CertificateLoader.LoadPkcs12FromFile(path, configuration[KeyRingCertificatePasswordKey]);
+            // As the signing certificate is loaded: on Windows no key file is left in the user's profile.
+            var storage = OperatingSystem.IsWindows() ? X509KeyStorageFlags.EphemeralKeySet : X509KeyStorageFlags.DefaultKeySet;
+            certificate = X509CertificateLoader.LoadPkcs12FromFile(path, password, storage);
         }
         catch (Exception exception) when (exception is CryptographicException or IOException or UnauthorizedAccessException)
         {
@@ -185,7 +193,7 @@ public static class ReferenceHost
             }
         }
 
-        services.AddDataProtection().ProtectKeysWithCertificate(certificate);
+        return certificate;
     }
 
     private static bool Is(string provider, string name) => string.Equals(provider, name, StringComparison.OrdinalIgnoreCase);
