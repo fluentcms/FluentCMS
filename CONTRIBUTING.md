@@ -117,10 +117,13 @@ Before pushing a new or changed case, run it once in slow mode, which makes Chro
 $env:FLUENTCMS_E2E_SLOW = '1'; dotnet test --project admin/tests/FluentCMS.Admin.EndToEnd -c Release --no-build
 ```
 
-The cases must pass in any order and one class alone. Run them in another order with a seed, and one class alone by its name:
+The cases must pass in any order and one class alone. xUnit.net runs the classes of one collection in a fixed order that `--seed` does not change, so `FLUENTCMS_E2E_SHUFFLE` set to a number shuffles the classes and the cases of each class by it. Run them shuffled, and one class alone by its name:
+
+```powershell
+$env:FLUENTCMS_E2E_SHUFFLE = '4242'; dotnet test --project admin/tests/FluentCMS.Admin.EndToEnd -c Release --no-build
+```
 
 ```bash
-dotnet test --project admin/tests/FluentCMS.Admin.EndToEnd -c Release --no-build --seed 4242
 dotnet test --project admin/tests/FluentCMS.Admin.EndToEnd -c Release --no-build --filter-class FluentCMS.Admin.EndToEnd.MediaLibraryTests
 ```
 
