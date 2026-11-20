@@ -1,4 +1,7 @@
-@* The schedules of the form's locale (spec 4.10, A-27): a dialog to publish or unpublish at a time, entered in the user's
+            var pathless = errors.Count == 0 ? Message(exception.Problem) ?? L["Content.Schedule.Failed"] : Message(errors.Where(error => error.Path != "at"));
+            if (pathless is not null)
+            {
+                problem = pathless;@* The schedules of the form's locale (spec 4.10, A-27): a dialog to publish or unpublish at a time, entered in the user's
    time zone, which it names, and sent as that wall-clock time with the zone, so the server applies the zone's rules on
    the day; and a move and a cancel for each pending schedule. The pending times themselves are the status badges'. A
    caller who may not publish, or not unpublish, has no control for that action and still sees its badge. *@
@@ -34,19 +37,28 @@
             {
                 <p>@L[$"Content.Schedule.Action.{action}"]</p>
             }
-            <CmsDatePicker Label="@L["Content.Field.Date"]"
+            <CmsDatePicker @ref="dateInput"
+                           Label="@L["Content.Field.Date"]"
                            Required="true"
                            Culture="@Formats.Culture"
                            DescribedBy="@zoneId"
+                           Error="@dateError"
+                           MarkedInvalid="@momentRefused"
                            Value="@day"
-                           ValueChanged="@(value => day = value)" />
-            <CmsTimePicker Label="@L["Content.Field.Time"]"
+                           ValueChanged="@(value => (day, dateError, timeError, momentRefused) = (value, null, null, false))" />
+            <CmsTimePicker @ref="timeInput"
+                           Label="@L["Content.Field.Time"]"
                            Required="true"
                            Culture="@Formats.Culture"
                            DescribedBy="@zoneId"
+                           Error="@timeError"
                            Value="@time"
-                           ValueChanged="@(value => time = value)" />
-            <p id="@zoneId" class="content-schedule-zone">@L["Content.Field.TimeZone", Zone]</p>
+                           ValueChanged="@(value => (time, dateError, timeError, momentRefused) = (value, null, null, false))" />
+            <p id="@zoneId" class="content-schedule-zone">@L["Content.Field.TimeZone", Formats.ZoneId]</p>
+            @if (Twice is { } first)
+            {
+                <p class="content-schedule-note">@L["Content.Schedule.Twice", Formats.ZoneId, Offset(first)]</p>
+            }
             @if (LocaleName is { Length: > 0 } named)
             {
                 <p>@L["Content.Schedule.Locale", named]</p>
@@ -76,13 +88,23 @@
     private bool open;
     private bool busy;
     private bool focusSchedule;
+    private Func<ValueTask>? focusInput;
 
     // The action of the pending schedule the dialog moves; null for a new schedule.
     private string? moving;
     private string action = Publish;
     private DateOnly? day;
     private TimeOnly? time;
+    private CmsDatePicker? dateInput;
+    private CmsTimePicker? timeInput;
+
+    // An error of no input, such as a refusal of the caller; one of the time is on the inputs.
     private string? problem;
+    private string? dateError;
+    private string? timeError;
+
+    // The server refused the moment, whose message is on the time; the date is marked with it.
+    private bool momentRefused;
 
     [Parameter, EditorRequired]
     public string Type { get; set; } = "";
@@ -117,7 +139,11 @@
 
     public bool IsOpen => open;
 
-    private string Zone => ZoneId(Formats.TimeZone);
+    // The offset the server runs a wall time at that the clocks show twice: the first, which has the larger offset.
+    private TimeSpan? Twice =>
+        day is { } date && time is { } clock && Formats.TimeZone.IsAmbiguousTime(date.ToDateTime(clock))
+            ? Formats.TimeZone.GetAmbiguousTimeOffsets(date.ToDateTime(clock)).Max()
+            : null;
 
     // The pending schedules the caller may change.
     private IEnumerable<(string Action, DateTimeOffset At)> Pending
@@ -143,6 +169,12 @@
             focusSchedule = false;
             await scheduleButton.FocusAsync();
         }
+
+        if (focusInput is { } focus)
+        {
+            focusInput = null;
+            await focus();
+        }
     }
 
     // A move starts from the pending time; a new schedule from the next full hour, in the user's time zone.
@@ -157,11 +189,22 @@
         action = pending ?? (MayPublish ? Publish : Unpublish);
         var start = Pending.Where(item => item.Action == pending).Select(item => (DateTimeOffset?)item.At).FirstOrDefault();
         var local = start is { } at ? Formats.Local(at) : NextHour(Formats.Local(Time.GetUtcNow()));
-        (day, time, problem, open) = (DateOnly.FromDateTime(local), TimeOnly.FromDateTime(local), null, true);
+        (day, time, problem, dateError, timeError, momentRefused, open) = (DateOnly.FromDateTime(local), TimeOnly.FromDateTime(local), null, null, null, false, true);
     }
 
-    private static DateTime NextHour(DateTime local) => local.Date.AddHours(local.Hour + 1);
+    // An hour the clocks skip is no time to start from, so the pre-fill steps past it.
+    private DateTime NextHour(DateTime local)
+    {
+        var next = local.Date.AddHours(local.Hour + 1);
+        while (Formats.TimeZone.IsInvalidTime(next))
+        {
+            next = next.AddHours(1);
+        }
 
+        return next;
+    }
+
+    // Nothing is sent while an input holds text it could not read, which its own message names, or is empty.
     private async Task ScheduleAsync()
     {
         if (busy)
@@ -169,27 +212,46 @@
             return;
         }
 
+        if (dateInput?.HasInputError == true || timeInput?.HasInputError == true)
+        {
+            Refuse(dateInput?.HasInputError == true);
+            return;
+        }
+
         if (day is not { } date || time is not { } clock)
         {
-            problem = L["Content.Schedule.Missing"];
-            Announcer.Announce(problem, AnnouncementPoliteness.Assertive);
+            dateError = day is null ? L["Content.Schedule.MissingDate"].Value : null;
+            timeError = time is null ? L["Content.Schedule.MissingTime"].Value : null;
+            Refuse(day is null, dateError ?? timeError);
             return;
         }
 
         busy = true;
-        problem = null;
+        (problem, dateError, timeError, momentRefused) = (null, null, null, false);
         try
         {
-            var answer = await Client.ScheduleEntryAsync(Type, Entry.Id, action, date.ToDateTime(clock), Zone, Site, Locale, CancellationToken.None);
+            var answer = await Client.ScheduleEntryAsync(Type, Entry.Id, action, date.ToDateTime(clock), Formats.ZoneId, Site, Locale, CancellationToken.None);
             var entry = action == Publish ? Entry with { ScheduledPublishAt = answer.RunAt } : Entry with { ScheduledUnpublishAt = answer.RunAt };
             open = false;
-            Announcer.Announce(L[$"Content.Schedule.Done.{action}", Formats.DateTime(answer.RunAt), Zone]);
+            Announcer.Announce(L[$"Content.Schedule.Done.{action}", Formats.DateTime(answer.RunAt), Formats.ZoneId]);
             await OnChanged.InvokeAsync(entry);
         }
         catch (ApiProblemException exception)
         {
-            problem = Message(exception.Problem) ?? L["Content.Schedule.Failed"];
-            Announcer.Announce(problem, AnnouncementPoliteness.Assertive);
+            // A time in the past or one the clocks skip is the moment's, so it goes on the inputs; the rest has no input.
+            var errors = exception.Problem.Errors;
+            if (Message(errors.Where(error => error.Path == "at")) is { } moment)
+            {
+                (timeError, momentRefused) = (moment, true);
+                Refuse(onDate: false, moment);
+            }
+
+            var pathless = errors.Count == 0 ? Message(exception.Problem) ?? L["Content.Schedule.Failed"] : Message(errors.Where(error => error.Path != "at"));
+            if (pathless is not null)
+            {
+                problem = pathless;
+                Announcer.Announce(problem, AnnouncementPoliteness.Assertive);
+            }
         }
         catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException)
         {
@@ -201,6 +263,15 @@
             busy = false;
         }
     }
+
+    private void Refuse(bool onDate, string? message = null)
+    {
+        focusInput = onDate ? () => dateInput?.FocusAsync() ?? ValueTask.CompletedTask : () => timeInput?.FocusAsync() ?? ValueTask.CompletedTask;
+        Announcer.Announce(message ?? L["Content.Schedule.Unreadable"], AnnouncementPoliteness.Assertive);
+    }
+
+    private static string Offset(TimeSpan offset) =>
+        (offset < TimeSpan.Zero ? "-" : "+") + offset.Duration().ToString(@"hh\:mm", System.Globalization.CultureInfo.InvariantCulture);
 
     // The cancel button goes with the schedule, so focus goes to Schedule, which stays.
     private async Task CancelAsync(string pending)
@@ -234,12 +305,10 @@
     }
 
     // The server's own words: a time in the past, one the clocks skip, a zone it does not know.
-    private static string? Message(ApiProblem problem) =>
-        problem.Errors.Select(error => error.Message).Where(text => !string.IsNullOrWhiteSpace(text)).ToList() is { Count: > 0 } messages
-            ? string.Join(' ', messages)
-            : problem.Detail ?? problem.Title;
+    private static string? Message(ApiProblem problem) => Message(problem.Errors) ?? problem.Detail ?? problem.Title;
 
-    // The server takes an IANA id only; a zone found by its Windows id, as on a desktop, is sent by its IANA one.
-    internal static string ZoneId(TimeZoneInfo zone) =>
-        !zone.HasIanaId && TimeZoneInfo.TryConvertWindowsIdToIanaId(zone.Id, out var iana) ? iana : zone.Id;
+    private static string? Message(IEnumerable<ApiProblemError> errors) =>
+        errors.Select(error => error.Message).Where(text => !string.IsNullOrWhiteSpace(text)).ToList() is { Count: > 0 } messages
+            ? string.Join(' ', messages)
+            : null;
 }

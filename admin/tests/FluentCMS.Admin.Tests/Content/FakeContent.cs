@@ -55,7 +55,7 @@ internal sealed class FakeContent
     }
 
     // The clock a schedule must be after.
-    public DateTimeOffset Now { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset Now { get; set; } = new(2026, 11, 19, 12, 20, 0, TimeSpan.Zero);
 
     public DateTimeOffset? Scheduled(Guid id, string action, string locale = DefaultLocale) =>
         _schedules.TryGetValue((id, locale, action), out var at) ? at : null;

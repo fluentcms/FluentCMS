@@ -4,6 +4,7 @@ using Bunit;
 using FluentCMS.Admin.Components;
 using FluentCMS.Admin.Content;
 using FluentCMS.Admin.Localization;
+using FluentCMS.Admin.Tests.Authentication;
 using FluentCMS.Admin.Tests.Shell;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,10 +26,15 @@ public sealed class ContentFormScheduleTests : AdminTestContext
 
     private readonly FakeContent _content;
 
+    // The clock of the dialog and of the server, the same instant: a schedule in 2030 stays in the future.
+    private readonly MovableTime _time = new() { Now = new DateTimeOffset(2026, 11, 19, 12, 20, 0, TimeSpan.Zero) };
+
     public ContentFormScheduleTests()
     {
         UseNeutralResources();
         _content = new FakeContent(Management);
+        _content.Now = _time.Now;
+        Services.AddSingleton<TimeProvider>(_time);
         Management.SetTypes(MainSite, Post());
     }
 
@@ -105,10 +111,107 @@ public sealed class ContentFormScheduleTests : AdminTestContext
         Enter(dialog, new DateOnly(year, month, day), new TimeOnly(hour, 30));
         DialogButton(dialog, "Schedule").Click();
 
-        app.WaitForAssertion(() => dialog.Find(".content-schedule-problem[role=alert]").TextContent.ShouldBe(message));
+        app.WaitForAssertion(() => Message(dialog, "time").ShouldBe(message));
+        dialog.FindComponent<CmsDatePicker>().Find("input").GetAttribute("aria-invalid").ShouldBe("true");
+        dialog.FindAll(".content-schedule-problem").ShouldBeEmpty();
         dialog.Instance.Open.ShouldBeTrue();
         _content.Scheduled(id, "publish").ShouldBeNull();
         ScheduleBadges(app).ShouldBeEmpty();
+    }
+
+    // 12:20 UTC is 13:20 in Berlin's winter, so a new schedule starts at 14:00 there.
+    [Fact]
+    public void ANewScheduleStartsAtTheNextFullHourOfTheUsersZone()
+    {
+        Management.Preferences["timeZone"] = Berlin;
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/post/{id:D}");
+
+        var dialog = OpenNew(app);
+
+        dialog.FindComponent<CmsDatePicker>().Instance.Value.ShouldBe(new DateOnly(2026, 11, 19));
+        dialog.FindComponent<CmsTimePicker>().Instance.Value.ShouldBe(new TimeOnly(14, 0));
+    }
+
+    // At 01:30 on the night Berlin goes to summer time, the next hour, 02:00, does not exist; 03:00 is the next that does.
+    [Fact]
+    public void TheStartingTimeStepsPastAnHourTheClocksSkip()
+    {
+        Management.Preferences["timeZone"] = Berlin;
+        _time.Now = new DateTimeOffset(2030, 3, 31, 0, 30, 0, TimeSpan.Zero);
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/post/{id:D}");
+
+        var dialog = OpenNew(app);
+
+        dialog.FindComponent<CmsDatePicker>().Instance.Value.ShouldBe(new DateOnly(2030, 3, 31));
+        dialog.FindComponent<CmsTimePicker>().Instance.Value.ShouldBe(new TimeOnly(3, 0));
+    }
+
+    // 02:30 happens twice in Berlin as summer time ends; the dialog says the first, at +02:00, is used, as the server does.
+    [Fact]
+    public void AWallTimeThatHappensTwiceSaysWhichOneRuns()
+    {
+        Management.Preferences["timeZone"] = Berlin;
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/post/{id:D}");
+        var dialog = OpenNew(app);
+
+        Enter(dialog, new DateOnly(2030, 10, 27), new TimeOnly(2, 30));
+
+        app.WaitForAssertion(() => dialog.FindAll(".content-schedule-note").Select(note => note.TextContent).ShouldContain(
+            "This time happens twice in Europe/Berlin, as the clocks go back; the schedule runs at the first, at UTC+02:00."));
+        DialogButton(dialog, "Schedule").Click();
+        app.WaitForAssertion(() => _content.Scheduled(id, "publish").ShouldBe(new DateTimeOffset(2030, 10, 27, 0, 30, 0, TimeSpan.Zero)));
+    }
+
+    // Text a picker cannot read leaves its old value bound, so the dialog sends nothing and focuses that input.
+    [Theory]
+    [InlineData("date", "31/02/2030")]
+    [InlineData("time", "half past nine")]
+    public void TextAPickerCannotReadIsNotScheduled(string input, string text)
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/post/{id:D}");
+        var dialog = OpenNew(app);
+
+        Input(dialog, input).Change(text);
+        DialogButton(dialog, "Schedule").Click();
+
+        app.WaitForAssertion(() => app.FindAll(".cms-visually-hidden[role=alert] > div").Select(message => message.TextContent).ShouldContain("The date or the time could not be read. Correct it to schedule."));
+        _content.Writes.ShouldBeEmpty();
+        dialog.Instance.Open.ShouldBeTrue();
+        Input(dialog, input).GetAttribute("aria-invalid").ShouldBe("true");
+        JSInterop.Invocations.Any(call => call.Identifier == "Blazor._internal.domWrapper.focus").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void AnEmptyTimeIsNamedOnItsInput()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/post/{id:D}");
+        var dialog = OpenNew(app);
+
+        Input(dialog, "time").Change("");
+        DialogButton(dialog, "Schedule").Click();
+
+        app.WaitForAssertion(() => Message(dialog, "time").ShouldBe("Enter a time."));
+        _content.Writes.ShouldBeEmpty();
+    }
+
+    // A refusal on no input, such as the caller's access, has the dialog's alert.
+    [Fact]
+    public void ARefusalWithoutAPathIsTheDialogsAlert()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/post/{id:D}");
+        var dialog = OpenNew(app);
+        _content.NextWrite = _ => Problem(System.Net.HttpStatusCode.Forbidden, "FCMS1403");
+
+        DialogButton(dialog, "Schedule").Click();
+
+        app.WaitForAssertion(() => dialog.Find(".content-schedule-problem[role=alert]").TextContent.ShouldNotBeNullOrWhiteSpace());
+        dialog.FindAll(".cms-field-message-error").ShouldBeEmpty();
     }
 
     [Fact]
@@ -139,7 +242,7 @@ public sealed class ContentFormScheduleTests : AdminTestContext
 
         var app = Load($"content/post/{id:D}");
 
-        ScheduleBadges(app).ShouldBe([Normalize($"en Publishes {Formats.DateTime(at)} {EntrySchedule.ZoneId(TimeZoneInfo.Utc)}")]);
+        ScheduleBadges(app).ShouldBe([Normalize($"en Publishes {Formats.DateTime(at)} {FormatService.IanaId(TimeZoneInfo.Utc)}")]);
         app.FindAll(".content-schedule").ShouldBeEmpty();
     }
 
@@ -176,8 +279,8 @@ public sealed class ContentFormScheduleTests : AdminTestContext
     [Fact]
     public void AZoneIsSentByItsIanaId()
     {
-        EntrySchedule.ZoneId(TimeZoneInfo.FindSystemTimeZoneById(Berlin)).ShouldBe(Berlin);
-        EntrySchedule.ZoneId(TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time")).ShouldBe(Berlin);
+        FormatService.IanaId(TimeZoneInfo.FindSystemTimeZoneById(Berlin)).ShouldBe(Berlin);
+        FormatService.IanaId(TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time")).ShouldBe(Berlin);
     }
 
     private static void Enter(IRenderedComponent<CmsDialog> dialog, DateOnly day, TimeOnly time)
@@ -186,6 +289,23 @@ public sealed class ContentFormScheduleTests : AdminTestContext
         date.InvokeAsync(() => date.Instance.ValueChanged.InvokeAsync(day)).GetAwaiter().GetResult();
         var clock = dialog.FindComponent<CmsTimePicker>();
         clock.InvokeAsync(() => clock.Instance.ValueChanged.InvokeAsync(time)).GetAwaiter().GetResult();
+    }
+
+    private static IRenderedComponent<CmsDialog> OpenNew(IRenderedComponent<AdminApp> app)
+    {
+        ScheduleButton(app, "Schedule").Click();
+        var dialog = Dialog(app, "Schedule a publish or an unpublish");
+        app.WaitForAssertion(() => dialog.Instance.Open.ShouldBeTrue());
+        return dialog;
+    }
+
+    private static IElement Input(IRenderedComponent<CmsDialog> dialog, string kind) => dialog.Find($"input.cms-input-{kind}");
+
+    // The message an input is described by.
+    private static string Message(IRenderedComponent<CmsDialog> dialog, string kind)
+    {
+        var input = Input(dialog, kind);
+        return dialog.Find($"#{input.GetAttribute("aria-describedby")!.Split(' ')[0]}").TextContent;
     }
 
     private IRenderedComponent<AdminApp> Load(string route)

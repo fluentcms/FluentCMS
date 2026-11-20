@@ -75,7 +75,7 @@
         }
 
         <span class="content-badge content-badge-schedule">
-            <span class="content-badge-locale">@locale</span> @L[key] <time datetime="@moment.ToString("O", System.Globalization.CultureInfo.InvariantCulture)">@Format.DateTime(moment)</time> <span class="content-badge-zone">@EntrySchedule.ZoneId(Format.TimeZone)</span>
+            <span class="content-badge-locale">@locale</span> @L[key] <time datetime="@moment.ToString("O", System.Globalization.CultureInfo.InvariantCulture)">@Format.DateTime(moment)</time> <span class="content-badge-zone">@Format.ZoneId</span>
         </span>
     };
 }

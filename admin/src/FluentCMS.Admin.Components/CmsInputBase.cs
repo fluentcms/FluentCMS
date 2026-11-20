@@ -92,6 +92,12 @@ public abstract class CmsInputBase<TValue> : ComponentBase
     /// </summary>
     protected string? InputError { get; set; }
 
+    /// <summary>
+    /// Gets whether the input holds text it could not read, or a value outside its range, which it did not raise as
+    /// <see cref="Value"/>: the bound value is then not what the user sees, and a form should not submit it.
+    /// </summary>
+    public bool HasInputError => !string.IsNullOrEmpty(InputError);
+
     /// <summary>Gets the identifier of another element that describes the input, such as a length counter, or <see langword="null"/>.</summary>
     protected virtual string? AdditionalDescriptionId => null;
 

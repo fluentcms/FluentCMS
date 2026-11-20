@@ -1166,8 +1166,17 @@
   <data name="Content.Schedule.SavedDraftUnsaved" xml:space="preserve">
     <value>The draft is published as it is saved now, without the unsaved changes of the form; a later save of this locale cancels the publish.</value>
   </data>
-  <data name="Content.Schedule.Missing" xml:space="preserve">
-    <value>Enter a date and a time.</value>
+  <data name="Content.Schedule.MissingDate" xml:space="preserve">
+    <value>Enter a date.</value>
+  </data>
+  <data name="Content.Schedule.MissingTime" xml:space="preserve">
+    <value>Enter a time.</value>
+  </data>
+  <data name="Content.Schedule.Unreadable" xml:space="preserve">
+    <value>The date or the time could not be read. Correct it to schedule.</value>
+  </data>
+  <data name="Content.Schedule.Twice" xml:space="preserve">
+    <value>This time happens twice in {0}, as the clocks go back; the schedule runs at the first, at UTC{1}.</value>
   </data>
   <data name="Content.Schedule.Submit" xml:space="preserve">
     <value>Schedule</value>
