@@ -608,7 +608,7 @@ The media library is a page of the media plugin's admin half (5.2), described he
 Rows 3.16, 4.2 to 4.9, 4.14 (activity queryable), 8.14 (plugin permissions in role editing), 8.10 and 6.6 (a visible job log), 10.14 (startup report visible in the admin), 8.15, and the members and groups pages of row 4.22, a Should taken early (AQ11).
 
 - **Users.** List with search, detail with roles, deactivate and reactivate, sessions with revoke, external logins, two-factor reset (which needs the caller signed in with a second factor), forced password change; invitations with roles, pending list and revoke.
-- **Roles.** List and editor: name, description, site, `requireTwoFactor`, and grants. The site's Public role is edited here too, which is the public access of row 4.8. A grant picks a permission or pattern from the catalogue, core's and the plugins' (row 8.14), and its constraints: sites, locales, fields and a registered row rule. The editor offers only what the caller holds, since a role must give nothing beyond the caller's grants; the server refuses such a role with a 403 `FCMS3103`. Other refusals are shown by their code: a built-in role changed or deleted (`FCMS3043`), a role still held (`FCMS3044`), the last active Super Admin (`FCMS3052`).
+- **Roles.** List and editor: name, description, site, `requireTwoFactor`, and grants. The site's Public role is edited here too, which is the public access of row 4.8. A grant picks a permission or pattern from the catalogue, core's and the plugins' (row 8.14), and its constraints: sites, locales, fields and a registered row rule, picked from `GET /permissions/row-rules`, which lists each rule by name with the content types it is registered for (null for every type; #3417). The editor offers only what the caller holds, since a role must give nothing beyond the caller's grants; the server refuses such a role with a 403 `FCMS3103`. Other refusals are shown by their code: a built-in role changed or deleted (`FCMS3043`), a role still held (`FCMS3044`), the last active Super Admin (`FCMS3052`).
 - **API keys.** Create with class, role, sites, types, expiry, rate limit and allowed addresses; the secret is shown once with a copy button and is not kept by the admin; rotate with overlap, expire, revoke.
 - **Members and member groups.** Row 4.22 (Should): list with search and filters, detail with sessions, logins and groups, create, deactivate, delete; groups with their role, and group assignment. Its custom profile fields stay a Should without an issue (AQ11).
 - **Plugins.** The plugins of `GET /plugins` with version, SDK range, contributions and enablement per site, with a switch for each site where the caller holds `plugins.manage`.
@@ -620,7 +620,7 @@ Rows 3.16, 4.2 to 4.9, 4.14 (activity queryable), 8.14 (plugin permissions in ro
 | --- | --- | --- |
 | `GET /users` (`search`), `GET` and `PATCH /users/{id}`, `POST /users/{id}/deactivate`, `/reactivate`, `PUT` and `DELETE /users/{id}/roles/{roleId}`, `GET /users/{id}/sessions`, `DELETE /users/{id}/sessions/{sessionId}`, `GET /users/{id}/logins`, `DELETE /users/{id}/logins/{provider}`, `POST /users/{id}/two-factor/reset` | users | exist |
 | `GET` and `POST /invitations`, `DELETE /invitations/{id}` | invitations | exist |
-| `GET` and `POST /roles`, `GET`, `PUT` and `DELETE /roles/{id}`, `GET /permissions` | roles | exist |
+| `GET` and `POST /roles`, `GET`, `PUT` and `DELETE /roles/{id}`, `GET /permissions`, `GET /permissions/row-rules` | roles | exist |
 | `GET` and `POST /api-keys`, `GET` and `DELETE /api-keys/{id}`, `POST /api-keys/{id}/expire`, `/rotate`, `PUT /api-keys/{id}/allowed-addresses` | keys | exist |
 | `/members`, `/members/{id}` and its sessions, logins and groups; `/member-groups` | members | exist |
 | `GET /plugins`, `PUT /plugins/{name}/sites/{site}` | plugins | exist |
@@ -769,9 +769,9 @@ Service accounts are clients from configuration and are neither listed nor chang
 | Contribution | What | Endpoints | Status |
 | --- | --- | --- | --- |
 | Field action on text, long text and rich text fields | a menu of the actions (rewrite, shorten, expand, fix grammar, title, summary, SEO, translate) on the fields the site opted in; the suggestion streams into a panel and is inserted into the draft only when the user accepts it, never saved or published by the action | `POST /ai/actions/{action}` (JSON or `text/event-stream`) | exists |
-| Field action on media fields | alt text for an image | `POST /ai/actions/altText` with `options.mediaId` | exists |
-| Which fields take actions, and whether AI assist is on | so that the actions appear only where they work | `GET /ai/fields` (name open) | [#3101] |
-| Page `/ai/usage` | usage per user and action | `GET /ai/usage` (`ai.usage.read`) | exists |
+| Field action on media fields and in the library | alt text for an image, a suggestion for the asset's own alt text in the locale shown, saved with `PATCH /media/{id}` only when the user accepts it; offered where the caller may update the asset | `POST /ai/actions/altText` with `options.mediaId` and no `type` and `field` | exists |
+| Which fields take actions, and whether AI assist is on | so that the actions appear only where they work; `assets` says whether alt text may be asked for an asset alone | `GET /ai/fields` | [#3101] |
+| Page `/ai/usage` | usage per user and action: each row names its principal by kind and the name it had at the call (`principalName`), and the totals of the filter come in all and per principal and action (`totals.groups`, by kind and id) | `GET /ai/usage` (`ai.usage.read`) | exists |
 | Settings page for `ai` | provider, model, endpoint, key as a secret, opted-in fields | `/settings/ai` | exists |
 
 Waits for #3101 and #3103 (`ai.use` for the built-in roles); its contract tests need #3104.

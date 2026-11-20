@@ -34,6 +34,14 @@ public sealed record McpClientRegistrationPolicy(McpClientRegistrationMode Mode)
 
     /// <summary>How many clients one client address may register in an hour, on each instance.</summary>
     public int RegistrationsPerHour { get; init; } = 10;
+
+    /// <summary>
+    /// How many clients that <see cref="McpClientRegistrationMode.Open"/> approved one user may keep by consenting. A
+    /// consent keeps such a client from the cleanup, so a consent that would keep one more is refused. A client counts
+    /// for as long as it is there, also once the consent is ended; one an administrator approved, registered or gave a
+    /// role does not count.
+    /// </summary>
+    public int MaxConsentsPerUser { get; init; } = 20;
 }
 
 /// <summary>The registration policy of MCP clients.</summary>

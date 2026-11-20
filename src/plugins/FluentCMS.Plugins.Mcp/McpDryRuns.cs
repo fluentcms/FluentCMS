@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using FluentCMS.Agents;
 using FluentCMS.Authorization;
 using FluentCMS.Content;
+using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -20,8 +21,8 @@ internal sealed record McpReach(ContentAccess Access, IReadOnlyList<SchemaType> 
     public string Whole(string type) => Own.Contains(type) ? McpContentTools.Name(type, McpContentTools.Get) : McpContentTools.Query;
 }
 
-// The dry runs of spec 5.4, in front of {type}_delete, unpublish and bulk. A call is a dry run unless it says dryRun false: it
-// changes nothing and answers the plan, which is the entries the call would touch, the references that would break and
+// The dry runs of spec 5.4, in front of {type}_delete, unpublish, the unpublish of schedule and bulk. A call is a dry run
+// unless it says dryRun false: it changes nothing and answers the plan, which is the entries the call would touch, the references that would break and
 // a confirmation token. The run needs that token, and the plan is read again before it: a token that is missing,
 // expired, of another call, principal, client or site, or of a plan that has changed since is refused and nothing runs.
 // Everything is read and written through the content service, as the caller.
@@ -75,8 +76,10 @@ internal sealed class McpDryRuns(
         return McpArguments.Result(new JsonObject { ["type"] = type.Name, ["id"] = id, ["deleted"] = true });
     }
 
-    // An unpublish is of one locale, so the entry counts when it has that locale, as in a bulk unpublish.
-    public async Task<McpToolResult> UnpublishAsync(McpToolCall call, SchemaType type, McpReach reach, CancellationToken cancellationToken)
+    // An unpublish is of one locale, so the entry counts when it has that locale, as in a bulk unpublish. With a schedule
+    // it is the schedule tool's unpublish, which takes the entry down later and is planned alike: its token is of the
+    // arguments, the time among them, so the plan of one time does not confirm another.
+    public async Task<McpToolResult> UnpublishAsync(McpToolCall call, SchemaType type, McpReach reach, ScheduleRequest? schedule, CancellationToken cancellationToken)
     {
         var arguments = call.Arguments;
         var id = McpArguments.Id(arguments);
@@ -96,7 +99,7 @@ internal sealed class McpDryRuns(
         var plan = PlanOf(call, entries);
         if (dryRun)
         {
-            return await DescribeAsync(plan, type, McpContentTools.Unpublish, entries, notFound: [], locale, reach, cancellationToken);
+            return await DescribeAsync(plan, type, McpContentTools.Unpublish, entries, notFound: [], locale, reach, cancellationToken, scheduled: schedule is not null);
         }
 
         if (Refusal(call, confirmations.Check(token, plan)) is { } refused)
@@ -104,7 +107,10 @@ internal sealed class McpDryRuns(
             return refused;
         }
 
-        return McpArguments.Result(surface.ToJson(await content.UnpublishAsync(type.Name, id, new LocaleOptions { Locale = locale }, cancellationToken)));
+        var options = new LocaleOptions { Locale = locale };
+        return McpArguments.Result(schedule is null
+            ? surface.ToJson(await content.UnpublishAsync(type.Name, id, options, cancellationToken))
+            : surface.ToJson(await content.ScheduleAsync(type.Name, id, schedule, options, cancellationToken)));
     }
 
     // The entries are named by ids or by a filter, and never more than the limit the call sets, which the server caps. A
@@ -256,7 +262,7 @@ internal sealed class McpDryRuns(
     // A plan names every entry it would touch, since the token is of them all, so its titles are what holds it to
     // MaxResultBytes: each is shortened as a list shortens a text, and where the plan is still over the limit they are left
     // out. A plan over it even then, of more entries than the limit holds, is answered whole.
-    private async Task<McpToolResult> DescribeAsync(McpPlan plan, SchemaType type, string action, List<PlannedEntry> entries, List<Guid> notFound, string? locale, McpReach reach, CancellationToken cancellationToken)
+    private async Task<McpToolResult> DescribeAsync(McpPlan plan, SchemaType type, string action, List<PlannedEntry> entries, List<Guid> notFound, string? locale, McpReach reach, CancellationToken cancellationToken, bool scheduled = false)
     {
         var limits = options.Value;
         var planned = new JsonArray([.. entries.Select(entry => (JsonNode)entry.Json)]);
@@ -274,6 +280,18 @@ internal sealed class McpDryRuns(
             ["entries"] = planned,
         };
         AddNotFound(described, notFound);
+
+        // The plan of a schedule says when, as the call wrote it.
+        if (scheduled)
+        {
+            foreach (var name in (ReadOnlySpan<string>)["at", "timeZone"])
+            {
+                if (McpArguments.Text(plan.Arguments, name) is { } text)
+                {
+                    described[name] = text;
+                }
+            }
+        }
 
         // A publish breaks nothing. An unpublish takes the entry from the readers of what is published, and a delete
         // from every reader.

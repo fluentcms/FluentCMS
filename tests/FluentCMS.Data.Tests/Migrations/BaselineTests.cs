@@ -46,7 +46,7 @@ public sealed partial class BaselineTests : IDisposable
     // What a preview added to the baseline after the squash, which the chain never made: a preview does not upgrade a
     // database (10.4, H5), so a change of the model goes into the baseline until 1.0.0.
     private static readonly string[] TablesAddedToTheBaseline = ["cms_default_grant", "cms_user_preference"];
-    private static readonly (string Table, string Column)[] ColumnsAddedToTheBaseline = [("cms_version", "author_kind"), ("cms_version", "author_name"), ("cms_media_asset", "owns_file"), ("cms_media_asset", "version"), ("cms_search_entry", "field")];
+    private static readonly (string Table, string Column)[] ColumnsAddedToTheBaseline = [("cms_version", "author_kind"), ("cms_version", "author_name"), ("cms_media_asset", "owns_file"), ("cms_media_asset", "version"), ("cms_search_entry", "field"), ("cms_ai_usage", "principal_name")];
 
     // Indexes added the same way, by the prefix of their catalog lines.
     private static readonly string[] IndexesAddedToTheBaseline = ["index:cms_media_asset.ix_cms_media_asset_site_owns_file:", "index:cms_webhooks_delivery.ix_cms_webhooks_delivery_queued:", "index:cms_job.ix_cms_job_status_completed:", "index:cms_outbox.ix_cms_outbox_failed:", "index:cms_outbox.ix_cms_outbox_handler_pending:"];
@@ -288,6 +288,30 @@ public sealed partial class BaselineTests : IDisposable
         var before = DatabaseCatalog.Of(_database, historyRows: true);
         using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => cms.AddPlugin<MediaPlugin>());
         var refusal = $"FCMS1308: stream media has applied its baseline {BaselineOf<PluginDbContext<MediaPlugin>>(host.Services)} but lacks {table}.{column}; " +
+            "nothing was applied: the database was made by an earlier build of the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again";
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
+
+        exception.Code.ShouldBe("FCMS1308");
+        exception.Message.ShouldBe(refusal);
+        DatabaseCatalog.Of(_database, historyRows: true).ShouldBe(before);
+    }
+
+    // And for the AI usage log of a build before principal_name (#3418), which 1.0.0-preview.1 made.
+    [Fact]
+    public async Task AnAiDatabaseOfAnEarlierBuildOfTheBaselineThatLacksAColumnIsRefused()
+    {
+        using (var built = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => cms.AddPlugin<AiAssistPlugin>()))
+        {
+            await built.StartAsync(Token);
+            await built.StopAsync(Token);
+        }
+
+        var (table, column) = ColumnsAddedToTheBaseline.Last(added => added.Table == "cms_ai_usage");
+        _database.Execute($"alter table {TestProvider.Quote(table)} drop column {TestProvider.Quote(column)}");
+        var before = DatabaseCatalog.Of(_database, historyRows: true);
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production, configure: cms => cms.AddPlugin<AiAssistPlugin>());
+        var refusal = $"FCMS1308: stream ai has applied its baseline {BaselineOf<PluginDbContext<AiAssistPlugin>>(host.Services)} but lacks {table}.{column}; " +
             "nothing was applied: the database was made by an earlier build of the baseline, which a preview does not upgrade, so recreate it (on SQLite, delete its file) and apply the migrations again";
 
         var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));

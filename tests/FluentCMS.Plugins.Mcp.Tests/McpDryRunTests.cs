@@ -13,8 +13,8 @@ using static FluentCMS.Plugins.Mcp.Tests.McpToolsTesting;
 
 namespace FluentCMS.Plugins.Mcp.Tests;
 
-// The dry run in front of {type}_delete and unpublish: a call answers the plan and a confirmation token and changes nothing, and only
-// the same call with that token runs.
+// The dry run in front of {type}_delete, unpublish and a scheduled unpublish: a call answers the plan and a confirmation
+// token and changes nothing, and only the same call with that token runs.
 public sealed class McpDryRunTests(McpToolsFixture fixture) : IClassFixture<McpToolsFixture>
 {
     [Fact]
@@ -282,6 +282,85 @@ public sealed class McpDryRunTests(McpToolsFixture fixture) : IClassFixture<McpT
             using var response = await http.SendAsync(request, Token);
             response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Token));
         }
+    }
+
+    // A scheduled unpublish takes live content down a moment later, so it is planned and confirmed as an unpublish is,
+    // with a token of its time.
+    [Fact]
+    public async Task AScheduledUnpublishWithoutAValidTokenAnswersThePlanAndSchedulesNothing()
+    {
+        using var http = await KeyAsync(fixture.Host);
+        await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+        var writer = (await OkAsync(client, "writer_create_draft", new { fields = new { name = "Ada" } })).GetProperty("id").GetGuid();
+        var post = (await OkAsync(client, "post_create_draft", new { fields = new { title = "By Ada", author = writer } })).GetProperty("id").GetGuid();
+        await OkAsync(client, McpContentTools.Publish, new { type = "writer", id = writer });
+        await OkAsync(client, McpContentTools.Publish, new { type = "post", id = post });
+        var arguments = new { type = "writer", id = writer, action = "unpublish", at = "2999-03-01T09:00:00Z" };
+        var later = new { type = "writer", id = writer, action = "unpublish", at = "2999-03-02T09:00:00Z" };
+
+        var plan = await OkAsync(client, McpContentTools.Schedule, arguments);
+        var asked = await OkAsync(client, McpContentTools.Schedule, new { type = "writer", id = writer, action = "unpublish", at = "2999-03-01T09:00:00Z", dryRun = true });
+        var missing = await CallAsync(client, McpContentTools.Schedule, Confirmed(arguments, null));
+        var forged = await CallAsync(client, McpContentTools.Schedule, Confirmed(arguments, "v1.confirmed"));
+        var ofAnotherTime = await CallAsync(client, McpContentTools.Schedule, Confirmed(later, TokenOf(plan)));
+        var ofAnUnpublish = await CallAsync(client, McpContentTools.Schedule, Confirmed(arguments, TokenOf(await OkAsync(client, McpContentTools.Unpublish, new { type = "writer", id = writer }))));
+        var onAnUnpublish = await CallAsync(client, McpContentTools.Unpublish, Confirmed(new { type = "writer", id = writer }, TokenOf(plan)));
+        var notThere = await CallAsync(client, McpContentTools.Schedule, new { type = "writer", id = Guid.NewGuid(), action = "unpublish", at = "2999-03-01T09:00:00Z" });
+        var inAnotherCase = await CallAsync(client, McpContentTools.Schedule, new { type = "writer", id = writer, action = "Unpublish", at = "2999-03-01T09:00:00Z", dryRun = false });
+        var untouched = await OkAsync(client, "writer_get", new { id = writer });
+        var scheduled = await OkAsync(client, McpContentTools.Schedule, Confirmed(arguments, TokenOf(plan)));
+        var after = await OkAsync(client, "writer_get", new { id = writer });
+
+        plan.GetProperty("dryRun").GetBoolean().ShouldBeTrue();
+        plan.GetProperty("type").GetString().ShouldBe("writer");
+        plan.GetProperty("action").GetString().ShouldBe("unpublish");
+        plan.GetProperty("at").GetString().ShouldBe("2999-03-01T09:00:00Z");
+        plan.TryGetProperty("timeZone", out _).ShouldBeFalse();
+        plan.GetProperty("entries").EnumerateArray().ShouldHaveSingleItem().GetProperty("status").GetString().ShouldBe("published");
+        plan.GetProperty("references").EnumerateArray().ShouldHaveSingleItem().GetProperty("id").GetGuid().ShouldBe(post);
+        asked.GetProperty("dryRun").GetBoolean().ShouldBeTrue();
+        Code(missing).ShouldBe("FCMS1630");
+        Code(forged).ShouldBe("FCMS1631");
+        Code(ofAnotherTime).ShouldBe("FCMS1631");
+        Code(ofAnUnpublish).ShouldBe("FCMS1631");
+        Code(onAnUnpublish).ShouldBe("FCMS1631");
+        Code(notThere).ShouldBe("FCMS3104");
+
+        // An action is read exactly, so one in another case is no publish that would run at once.
+        Code(inAnotherCase).ShouldBe("FCMS2108");
+        Text(inAnotherCase).ShouldContain("- action: ");
+        untouched.GetProperty("status").GetString().ShouldBe("published");
+        untouched.GetProperty("scheduledUnpublishAt").ValueKind.ShouldBe(JsonValueKind.Null);
+        scheduled.GetProperty("action").GetString().ShouldBe("unpublish");
+        scheduled.GetProperty("runAt").GetString().ShouldBe("2999-03-01T09:00:00Z");
+        after.GetProperty("status").GetString().ShouldBe("published");
+        after.GetProperty("scheduledUnpublishAt").GetString().ShouldBe("2999-03-01T09:00:00Z");
+    }
+
+    // A scheduled publish takes nothing from a reader, so it runs at once, and a dry run it is asked for is refused
+    // rather than read as a run.
+    [Fact]
+    public async Task AScheduledPublishRunsAtOnceAndTakesNoDryRun()
+    {
+        using var http = await KeyAsync(fixture.Host);
+        await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+        var id = await PostAsync(client, "Goes live later");
+        var arguments = new { type = "post", id, action = "publish", at = "2999-03-01T09:00:00Z" };
+
+        var withDryRun = await CallAsync(client, McpContentTools.Schedule, new { type = "post", id, action = "publish", at = "2999-03-01T09:00:00Z", dryRun = true });
+        var withToken = await CallAsync(client, McpContentTools.Schedule, Confirmed(arguments, "v1.confirmed"));
+        var before = await OkAsync(client, "post_get", new { id });
+        var scheduled = await OkAsync(client, McpContentTools.Schedule, arguments);
+        var after = await OkAsync(client, "post_get", new { id });
+
+        Code(withDryRun).ShouldBe("FCMS2108");
+        Text(withDryRun).ShouldContain("- dryRun: ");
+        Code(withToken).ShouldBe("FCMS2108");
+        before.GetProperty("scheduledPublishAt").ValueKind.ShouldBe(JsonValueKind.Null);
+        scheduled.GetProperty("action").GetString().ShouldBe("publish");
+        scheduled.GetProperty("runAt").GetString().ShouldBe("2999-03-01T09:00:00Z");
+        scheduled.TryGetProperty("dryRun", out _).ShouldBeFalse();
+        after.GetProperty("scheduledPublishAt").GetString().ShouldBe("2999-03-01T09:00:00Z");
     }
 
     private static async Task<Guid> PostAsync(McpClient client, string title) =>

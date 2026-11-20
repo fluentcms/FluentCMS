@@ -14,6 +14,9 @@ internal sealed class AiUsage
 
     public Guid PrincipalId { get; set; }
 
+    // The name the principal had at the call, as a version keeps its author's.
+    public string PrincipalName { get; set; } = "";
+
     public string Action { get; set; } = "";
 
     public string Type { get; set; } = "";
@@ -40,6 +43,7 @@ internal sealed class AiUsageModel : IPluginModelContributor
     public const string UsageTable = "cms_ai_usage";
 
     public const int KindMaxLength = 32;
+    public const int PrincipalNameMaxLength = 128;
     public const int ActionMaxLength = 32;
     public const int NameMaxLength = 64;
     public const int ProviderMaxLength = 64;
@@ -55,6 +59,7 @@ internal sealed class AiUsageModel : IPluginModelContributor
             usage.Property(item => item.SiteId).HasColumnName("site_id");
             usage.Property(item => item.PrincipalKind).HasColumnName("principal_kind").HasMaxLength(KindMaxLength).IsRequired();
             usage.Property(item => item.PrincipalId).HasColumnName("principal_id");
+            usage.Property(item => item.PrincipalName).HasColumnName("principal_name").HasMaxLength(PrincipalNameMaxLength).IsRequired();
             usage.Property(item => item.Action).HasColumnName("action").HasMaxLength(ActionMaxLength).IsRequired();
             usage.Property(item => item.Type).HasColumnName("type").HasMaxLength(NameMaxLength).IsRequired();
             usage.Property(item => item.Field).HasColumnName("field").HasMaxLength(NameMaxLength).IsRequired();

@@ -36,7 +36,9 @@ public interface IMcpClients
     /// <summary>
     /// Changes the role of an approved client and ends its tokens, access and refresh tokens alike, and the users' consents
     /// to it, so that its next token comes from a new sign-in, where the user consents again, and carries the new role.
-    /// Setting the role it has changes nothing. Raises <see cref="Events.McpClientRoleChangedEvent"/>.
+    /// Setting the role it has ends nothing and raises nothing. Either way a client the open policy approved then names the
+    /// caller as the one who approved it, so that neither <see cref="RemoveUnusedAsync"/> nor
+    /// <see cref="RemoveOpenApprovedAsync"/> removes it. Raises <see cref="Events.McpClientRoleChangedEvent"/>.
     /// </summary>
     /// <param name="id">The id of the client.</param>
     /// <param name="role">The id of a role, or the exact name of an instance-wide role.</param>
@@ -75,6 +77,20 @@ public interface IMcpClients
     /// <param name="cancellationToken">Cancels the work.</param>
     /// <returns>The number of clients removed.</returns>
     Task<int> RemoveUnusedAsync(DateTimeOffset neverUsedBefore, DateTimeOffset unusedBefore, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Removes the clients the open policy approved that registered in a span of time, used or not, each with its sessions
+    /// and tokens as <see cref="RevokeAsync"/> removes one. A client an administrator approved, registered or gave a role
+    /// is never removed, nor is a pending or rejected one. Raises <see cref="Events.McpClientRevokedEvent"/> for each.
+    /// A call removes <paramref name="limit"/> clients at most, since each is a change of its own, so a caller that gets
+    /// that number back calls again for the rest.
+    /// </summary>
+    /// <param name="registeredFrom">The time from which a client registered, or <see langword="null"/> for no start.</param>
+    /// <param name="registeredBefore">The time before which a client registered, or <see langword="null"/> for no end.</param>
+    /// <param name="limit">The most clients the call removes, 1 or more.</param>
+    /// <param name="cancellationToken">Cancels the work; the clients removed before it stay removed.</param>
+    /// <returns>The number of clients removed.</returns>
+    Task<int> RemoveOpenApprovedAsync(DateTimeOffset? registeredFrom, DateTimeOffset? registeredBefore, int limit, CancellationToken cancellationToken = default);
 }
 
 /// <summary>A client an administrator registers.</summary>

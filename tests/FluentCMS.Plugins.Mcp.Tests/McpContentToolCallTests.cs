@@ -209,7 +209,7 @@ public sealed class McpContentToolCallTests(McpToolsFixture fixture) : IClassFix
         await using var delivery = await ConnectAsync(deliveryHttp, protocolVersion: InitializeProtocol);
         var id = (await OkAsync(client, "post_create_draft", new { fields = new { title = "Scheduled" } })).GetProperty("id").GetGuid();
         await OkAsync(client, McpContentTools.Publish, new { type = "post", id });
-        await OkAsync(client, McpContentTools.Schedule, new { type = "post", id, action = "unpublish", at = "2999-03-01T09:00:00Z" });
+        await ConfirmedAsync(client, McpContentTools.Schedule, new { type = "post", id, action = "unpublish", at = "2999-03-01T09:00:00Z" });
 
         var managed = await OkAsync(client, "post_get", new { id });
         var listed = await OkAsync(client, "post_list", new { filter = new { id = new { eq = id } } });
@@ -233,7 +233,7 @@ public sealed class McpContentToolCallTests(McpToolsFixture fixture) : IClassFix
         var published = await OkAsync(client, McpContentTools.Publish, new { type = "post", id, expectedVersion = 1 });
         var edited = await OkAsync(client, "post_update_draft", new { id, expectedVersion = 1, fields = new { title = "Edited" } });
         var discarded = await OkAsync(client, "post_discard_draft", new { id });
-        var scheduled = await OkAsync(client, McpContentTools.Schedule, new { type = "post", id, action = "unpublish", at = "2999-03-01T09:00:00Z" });
+        var scheduled = await ConfirmedAsync(client, McpContentTools.Schedule, new { type = "post", id, action = "unpublish", at = "2999-03-01T09:00:00Z" });
         var badTime = await CallAsync(client, McpContentTools.Schedule, new { type = "post", id, action = "unpublish", at = "tomorrow" });
         var unpublishPlan = await OkAsync(client, McpContentTools.Unpublish, new { type = "post", id });
         var unpublished = await OkAsync(client, McpContentTools.Unpublish, Confirmed(new { type = "post", id }, TokenOf(unpublishPlan)));
