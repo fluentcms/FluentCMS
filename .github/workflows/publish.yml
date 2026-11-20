@@ -339,6 +339,7 @@ jobs:
             echo
             echo "ghcr.io, for $PLATFORMS, the image the Compose smoke test ran, $TESTED:"
             echo
+            echo "- $IMAGE:candidate-$GITHUB_RUN_ID, which names this run and is read back before the version is written"
             for tag in $TAGS; do echo "- $tag"; done
             echo
             if [ "$PREVIEW" = true ]; then kind="a pre-release"; else kind="a release"; fi
@@ -398,7 +399,7 @@ jobs:
             exit 1
           fi
           eng/load-image.sh "$RUNNER_TEMP/image/image.tar" "$REFERENCE"
-          docker tag "$REFERENCE" "$IMAGE:$VERSION"
+          docker tag "$REFERENCE" "$IMAGE:candidate-$GITHUB_RUN_ID"
 
       - name: Sign in to ghcr.io
         env:
@@ -406,10 +407,12 @@ jobs:
         run: echo "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
 
       # A version is never pushed twice with another image: a rerun of the failed jobs pushes the same archive, which the
-      # registry holds already, and a run that built the image again stops here. The push is then read back from the registry.
+      # registry holds already, and a run that built the image again stops here. The archive goes up under candidate-{run id},
+      # a tag no user pulls, and the version tag is written only once the registry is read back with the tested digest there.
       - name: Push the image at its version
         shell: bash
         run: |
+          candidate="$IMAGE:candidate-$GITHUB_RUN_ID"
           registry_digest() {
             if docker buildx imagetools inspect --raw "$1" > "$RUNNER_TEMP/manifest.json" 2> "$RUNNER_TEMP/inspect.txt"; then
               echo "sha256:$(sha256sum < "$RUNNER_TEMP/manifest.json" | cut -d ' ' -f 1)"
@@ -431,12 +434,18 @@ jobs:
               echo "$IMAGE:$VERSION holds $TESTED already, so it is not pushed again."
               ;;
             1)
-              loaded=$(docker image inspect --format '{{.Id}}' "$IMAGE:$VERSION" 2> /dev/null || true)
+              loaded=$(docker image inspect --format '{{.Id}}' "$candidate" 2> /dev/null || true)
               if [ "$loaded" != "$TESTED" ]; then
-                echo "::error::$IMAGE:$VERSION is ${loaded:-not} in Docker, and the smoke test ran $TESTED."
+                echo "::error::$candidate is ${loaded:-not} in Docker, and the smoke test ran $TESTED."
                 exit 1
               fi
-              docker push "$IMAGE:$VERSION"
+              docker push "$candidate"
+              pushed=$(registry_digest "$candidate") || true
+              if [ "$pushed" != "$TESTED" ]; then
+                echo "::error::The registry holds ${pushed:-nothing that can be read} at $candidate, and the smoke test ran $TESTED. $IMAGE:$VERSION is not written."
+                exit 1
+              fi
+              docker buildx imagetools create --tag "$IMAGE:$VERSION" "$IMAGE@$TESTED"
               ;;
             *)
               echo "::error::$IMAGE:$VERSION cannot be read from the registry, so whether it is there already is not known."

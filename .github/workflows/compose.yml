@@ -148,15 +148,22 @@ jobs:
           echo "schema apply finished at $finished, the host started at $started"
           [ "$(date -d "$finished" +%s%N)" -lt "$(date -d "$started" +%s%N)" ]
 
-      # The image the three services ran, which Publish compares with the one it pushes.
+      # The image the three services ran, which Publish compares with the one it pushes. With an archive it must be the digest
+      # the job was given, so that a dry run fails where a release would.
       - name: Record the image that ran
         id: ran
+        env:
+          ARCHIVE: ${{ inputs.archive }}
         run: |
           digest=$(docker inspect -f '{{.Image}}' "$(docker compose ps -q cms)")
           for step in migrate schema-apply; do
             ran=$(docker inspect -f '{{.Image}}' "$(docker compose ps -aq "$step")")
             [ "$ran" = "$digest" ] || { echo "::error::$step ran $ran, and the host $digest"; exit 1; }
           done
+          if [ -n "$ARCHIVE" ] && [ "$digest" != "${FLUENTCMS_IMAGE##*@}" ]; then
+            echo "::error::The services ran $digest, and the archive holds $FLUENTCMS_IMAGE."
+            exit 1
+          fi
           echo "The services ran $FLUENTCMS_IMAGE, whose ID is $digest." | tee -a "$GITHUB_STEP_SUMMARY"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
