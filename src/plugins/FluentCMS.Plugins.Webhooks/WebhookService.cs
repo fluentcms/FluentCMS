@@ -136,8 +136,12 @@ internal sealed partial class WebhookService(
 
         var site = await RequireAsync(cancellationToken);
         var webhook = await FindAsync(site, id, tracked: true, cancellationToken);
-        var valid = await ValidateAsync(request, signing.TryUnprotectHeaders(webhook.Headers) ?? new Dictionary<string, string>(), cancellationToken);
+        var valid = await ValidateAsync(request, signing.TryUnprotectHeaders(webhook.Headers) ?? new Dictionary<string, string>(), cancellationToken, webhook.Url);
         valid.ApplyTo(webhook, signing);
+
+        // Written even when unchanged: the headers were checked against this URL, so a PUT that changed the URL since the
+        // read must not keep its URL beside these headers.
+        database.Entry(webhook).Property(item => item.Url).IsModified = true;
 
         var now = time.GetUtcNow();
         if (webhook.PreviousSecretExpiresAt <= now)
@@ -294,8 +298,9 @@ internal sealed partial class WebhookService(
 
     private static PluginException NameTaken(string name) => new(WebhookErrorCodes.NameTaken, $"The site has a webhook named '{name}'.");
 
-    // Stored holds the headers of the webhook being replaced, whose values a redacted value keeps.
-    private async Task<ValidRequest> ValidateAsync(WebhookRequest request, IReadOnlyDictionary<string, string> stored, CancellationToken cancellationToken)
+    // Stored holds the headers of the webhook being replaced, whose values a redacted value keeps while the URL keeps the
+    // scheme, host and port of storedUrl, so that a caller cannot send them to a host of their own without knowing them.
+    private async Task<ValidRequest> ValidateAsync(WebhookRequest request, IReadOnlyDictionary<string, string> stored, CancellationToken cancellationToken, string? storedUrl = null)
     {
         List<ValidationError> errors = [];
         var name = request.Name?.Trim();
@@ -348,12 +353,15 @@ internal sealed partial class WebhookService(
         }
 
         var named = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var sameOrigin = storedUrl is not null && url is not null && SameOrigin(storedUrl, url);
         foreach (var (header, given) in headers)
         {
-            var value = given == RedactedValue && stored.FirstOrDefault(pair => string.Equals(pair.Key, header, StringComparison.OrdinalIgnoreCase)).Value is { } kept ? kept : given;
+            var storedValue = stored.FirstOrDefault(pair => string.Equals(pair.Key, header, StringComparison.OrdinalIgnoreCase)).Value;
+            var value = given == RedactedValue && sameOrigin && storedValue is { } kept ? kept : given;
             var problem = !HeaderName().IsMatch(header) ? "is not a header name"
                 : !named.TryAdd(header, value) ? "is named twice"
                 : ReservedHeaders.Contains(header) || header.StartsWith("X-FluentCMS-", StringComparison.OrdinalIgnoreCase) ? "is set by the delivery"
+                : value == RedactedValue && storedValue is not null ? $"keeps its stored value for '{RedactedValue}' only while the URL keeps its scheme, host and port, so it needs its value"
                 : value == RedactedValue ? $"has no stored value for '{RedactedValue}' to keep, so it needs its value"
                 : value is null || value.Length > HeaderValueMaxLength || value.AsSpan().IndexOfAny('\r', '\n', '\0') >= 0 ? $"needs a value of at most {HeaderValueMaxLength} characters on one line"
                 : null;
@@ -375,6 +383,15 @@ internal sealed partial class WebhookService(
 
         return new ValidRequest(name!, url!, [.. subscribed.Distinct(StringComparer.Ordinal)], [.. types.Distinct(StringComparer.Ordinal)], named, request.Enabled ?? true);
     }
+
+    // Compares what a URL is sent to, so a change of its path or query keeps the stored headers. The host is compared as
+    // Uri normalizes it, without case and in its punycode form.
+    private static bool SameOrigin(string stored, string url) =>
+        Uri.TryCreate(stored, UriKind.Absolute, out var before)
+        && Uri.TryCreate(url, UriKind.Absolute, out var after)
+        && string.Equals(before.Scheme, after.Scheme, StringComparison.OrdinalIgnoreCase)
+        && string.Equals(before.IdnHost, after.IdnHost, StringComparison.OrdinalIgnoreCase)
+        && before.Port == after.Port;
 
     private static ValidationException Invalid(string path, string message) => new([new ValidationError(path, WebhookErrorCodes.InvalidField, message)]);
 

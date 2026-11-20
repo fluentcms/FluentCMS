@@ -30,7 +30,13 @@ public sealed class AiClientFactoryTests
     public async Task AKeyThatTheSettingsDoNotHoldComesFromTheConfigurationOfItsProvider()
     {
         await using var stub = await StubProvider.StartAsync();
-        using var factory = Factory([stub.Url("v1")], new() { ["FluentCms:Ai:OpenAiCompatible:ApiKey"] = "key-of-the-configuration", ["FluentCms:Ai:AzureOpenAi:ApiKey"] = "key-of-another-provider" });
+        using var factory = Factory([stub.Url("v1")], new()
+        {
+            ["FluentCms:Ai:OpenAiCompatible:ApiKey"] = "key-of-the-configuration",
+            ["FluentCms:Ai:OpenAiCompatible:Endpoint"] = stub.Url("v1"),
+            ["FluentCms:Ai:AzureOpenAi:ApiKey"] = "key-of-another-provider",
+            ["FluentCms:Ai:AzureOpenAi:Endpoint"] = stub.Url("v1"),
+        });
         List<ChatMessage> messages = [new(ChatRole.User, "Ships are big boats.")];
 
         var fromConfiguration = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = stub.Url("v1") }, Token);
@@ -39,6 +45,8 @@ public sealed class AiClientFactoryTests
         await fromSettings!.Client.GetResponseAsync(messages, cancellationToken: Token);
 
         (fromConfiguration.Provider, fromConfiguration.Model).ShouldBe(("openAiCompatible", "a-model"));
+        fromConfiguration.SiteCredential.ShouldBeFalse();
+        fromSettings.SiteCredential.ShouldBeFalse();
         stub.Requests.Select(request => request.Headers["Authorization"]).ShouldBe(["Bearer key-of-the-configuration", "Bearer key-of-the-site"]);
     }
 
@@ -77,6 +85,130 @@ public sealed class AiClientFactoryTests
         elsewhere.Code.ShouldBe("FCMS1685");
         withItsOwnKey.ShouldNotBeNull();
         stub.Requests.ShouldBeEmpty();
+    }
+
+    // As OpenAI's: the key of Azure OpenAI or of an OpenAI-compatible endpoint in the configuration goes to the endpoint it
+    // is configured for, and not to another allowed endpoint a site names. A compatible endpoint is called without it.
+    [Fact]
+    public async Task TheConfigurationsKeyOfEveryProviderGoesToItsOwnEndpointOnly()
+    {
+        await using var own = await StubProvider.StartAsync();
+        await using var other = await StubProvider.StartAsync();
+        using var factory = Factory([own.Url("v1"), other.Url("v1")], new()
+        {
+            ["FluentCms:Ai:AzureOpenAi:ApiKey"] = "key-of-the-azure-account",
+            ["FluentCms:Ai:AzureOpenAi:Endpoint"] = own.Url("v1/"),
+            ["FluentCms:Ai:OpenAiCompatible:ApiKey"] = "key-of-the-gateway",
+            ["FluentCms:Ai:OpenAiCompatible:Endpoint"] = own.Url("v1"),
+        });
+        List<ChatMessage> messages = [new(ChatRole.User, "Ships are big boats.")];
+
+        var azure = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.AzureOpenAi, Model = "a-deployment", Endpoint = own.Url("v1") }, Token);
+        await azure!.Client.GetResponseAsync(messages, cancellationToken: Token);
+        var compatible = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = own.Url("v1") }, Token);
+        await compatible!.Client.GetResponseAsync(messages, cancellationToken: Token);
+        var azureElsewhere = await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.AzureOpenAi, Model = "a-deployment", Endpoint = other.Url("v1") }, Token));
+        var compatibleElsewhere = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = other.Url("v1") }, Token);
+        await compatibleElsewhere!.Client.GetResponseAsync(messages, cancellationToken: Token);
+
+        own.Requests.Select(request => request.Headers["Authorization"]).ShouldBe(["Bearer key-of-the-azure-account", "Bearer key-of-the-gateway"]);
+        azureElsewhere.Code.ShouldBe("FCMS1685");
+        azureElsewhere.Message.ShouldContain("FluentCms:Ai:AzureOpenAi:Endpoint");
+        azureElsewhere.Message.ShouldNotContain("key-of-the-azure-account");
+        other.Requests.ShouldHaveSingleItem().Headers.ShouldNotContainKey("Authorization");
+    }
+
+    // The key of OpenAI may name another endpoint, such as a proxy of the operator's, and then goes there and not to OpenAI.
+    [Fact]
+    public async Task TheConfigurationsKeyForOpenAiMayNameItsEndpoint()
+    {
+        await using var stub = await StubProvider.StartAsync();
+        using var factory = Factory([stub.Url("v1")], new() { ["FluentCms:Ai:OpenAi:ApiKey"] = "key-of-the-operator", ["FluentCms:Ai:OpenAi:Endpoint"] = stub.Url("v1") });
+
+        var atItsEndpoint = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model", Endpoint = stub.Url("v1") }, Token);
+        await atItsEndpoint!.Client.GetResponseAsync([new(ChatRole.User, "Ships are big boats.")], cancellationToken: Token);
+        var atOpenAi = await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model" }, Token));
+
+        stub.Requests.ShouldHaveSingleItem().Headers["Authorization"].ShouldBe("Bearer key-of-the-operator");
+        atOpenAi.Code.ShouldBe("FCMS1685");
+    }
+
+    // The endpoint of a key is compared as the allow-list compares: the case of the host, the default port written out and
+    // a slash at the end do not make another endpoint, and another path or port does.
+    [Theory]
+    [InlineData("https://Models.Example.COM:443/v1/", true)]
+    [InlineData("https://models.example.com/v1", true)]
+    [InlineData("https://models.example.com:8443/v1", false)]
+    [InlineData("https://models.example.com/v2", false)]
+    [InlineData("http://models.example.com/v1", false)]
+    public async Task TheEndpointOfAKeyIsComparedAsTheAllowListCompares(string configured, bool sent)
+    {
+        using var factory = Factory(["https://models.example.com/v1"], new() { ["FluentCms:Ai:AzureOpenAi:ApiKey"] = "key-of-the-azure-account", ["FluentCms:Ai:AzureOpenAi:Endpoint"] = configured });
+        var settings = new AiSettings { Provider = AiProvider.AzureOpenAi, Model = "a-deployment", Endpoint = "https://MODELS.example.com/v1" };
+
+        if (sent)
+        {
+            (await factory.CreateAsync(Site, settings, Token)).ShouldNotBeNull();
+        }
+        else
+        {
+            (await Should.ThrowAsync<PluginException>(async () => await factory.CreateAsync(Site, settings, Token))).Code.ShouldBe("FCMS1685");
+        }
+    }
+
+    [Fact]
+    public async Task TheKeyOfOpenAiGoesToItsOwnEndpointWrittenWithItsDefaultPort()
+    {
+        using var factory = Factory(["https://API.openai.com:443/v1/"], new() { ["FluentCms:Ai:OpenAi:ApiKey"] = "key-of-the-operator" });
+
+        var written = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model", Endpoint = "https://API.openai.com:443/v1/" }, Token);
+
+        written.ShouldNotBeNull();
+    }
+
+    // A key the site set is its own credential only where the endpoint bills the holder of the key: OpenAI's own, or one
+    // of SiteBilledEndpoints. An endpoint the operator runs, such as a local one that reads no key, serves any key a site
+    // types, so the calls there stay the operator's, as do those with the key of the configuration or the defaults.
+    [Fact]
+    public async Task AKeyOfTheSitesIsItsOwnCredentialOnlyAtAnEndpointThatBillsTheHolderOfTheKey()
+    {
+        var operatorRun = "http://ollama.internal:11434/v1";
+        var billed = "https://models.example.com/v1";
+        var options = new AiOptions { AllowedEndpoints = { operatorRun, billed }, SiteBilledEndpoints = { "https://Models.Example.com:443/v1/" } };
+        using var factory = Factory(options, new() { ["FluentCms:Ai:OpenAi:ApiKey"] = "key-of-the-operator" });
+
+        var atTheOperatorsEndpoint = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = operatorRun, ApiKey = "x" }, Token);
+        var atABilledEndpoint = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = billed, ApiKey = "key-of-the-site" }, Token);
+        var atOpenAi = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model", ApiKey = "key-of-the-site" }, Token);
+        var withTheOperatorsKey = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model" }, Token);
+        var keyless = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = billed }, Token);
+
+        atTheOperatorsEndpoint!.SiteCredential.ShouldBeFalse();
+        atABilledEndpoint!.SiteCredential.ShouldBeTrue();
+        atOpenAi!.SiteCredential.ShouldBeTrue();
+        withTheOperatorsKey!.SiteCredential.ShouldBeFalse();
+        keyless!.SiteCredential.ShouldBeFalse();
+        new AiOptions { SiteBilledEndpoints = { "not-a-url" } }.IsValid().ShouldBeFalse();
+        options.IsValid().ShouldBeTrue();
+        new AiOptions { AllowedEndpoints = { billed }, SiteBilledEndpoints = { "https://other.example.com/v1" } }.IsValid().ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("FluentCms:Ai:AzureOpenAi:ApiKey", "a-value")]
+    [InlineData("FluentCms:Ai:OpenAiCompatible:ApiKey", "a-value")]
+    [InlineData("FluentCms:Ai:OpenAiCompatible:Endpoint", "not-a-url")]
+    [InlineData("FluentCms:Ai:OpenAi:Endpoint", "https://user:a-value@models.example.com/v1")]
+    public void AKeyInTheConfigurationWithoutTheEndpointItIsForStopsTheHost(string key, string value)
+    {
+        using var refused = OptionsOf(new() { [key] = value });
+        using var openAi = OptionsOf(new() { ["FluentCms:Ai:OpenAi:ApiKey"] = "a-value" });
+        using var bound = OptionsOf(new() { ["FluentCms:Ai:AzureOpenAi:ApiKey"] = "a-value", ["FluentCms:Ai:AzureOpenAi:Endpoint"] = "https://models.example.com/v1" });
+
+        var failure = Should.Throw<OptionsValidationException>(() => refused.GetRequiredService<IOptions<AiOptions>>().Value);
+        failure.Message.ShouldContain("Endpoint");
+        failure.Message.ShouldNotContain("a-value");
+        openAi.GetRequiredService<IOptions<AiOptions>>().Value.ShouldNotBeNull();
+        bound.GetRequiredService<IOptions<AiOptions>>().Value.ShouldNotBeNull();
     }
 
     // The time a call may take is the plugin's. A timeout of the client's own, even of the same length, races it, and a
@@ -239,7 +371,7 @@ public sealed class AiClientFactoryTests
     public void ConfigurationThatNamesARemovedProviderStopsTheHost(string key)
     {
         using var refused = Services(new() { [key] = "a-value" });
-        using var kept = Services(new() { ["FluentCms:Ai:OpenAiCompatible:ApiKey"] = "a-value" });
+        using var kept = Services(new() { ["FluentCms:Ai:OpenAiCompatible:ApiKey"] = "a-value", ["FluentCms:Ai:OpenAiCompatible:Endpoint"] = "https://models.example.com/v1" });
 
         var failure = Should.Throw<OptionsValidationException>(() => refused.GetRequiredService<IOptions<AiOptions>>().Value);
         failure.Message.ShouldContain("FCMS1692");
@@ -322,6 +454,10 @@ public sealed class AiClientFactoryTests
         var own = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = other.Url("v1"), ApiKey = "key-of-the-site" }, Token);
         await own!.Client.GetResponseAsync(messages, cancellationToken: Token);
 
+        // The key of the defaults is the operator's, and a key the site set itself is not its own credential at an endpoint
+        // the configuration does not say bills the holder of the key.
+        inherited.SiteCredential.ShouldBeFalse();
+        own.SiteCredential.ShouldBeFalse();
         otherEndpoint.Code.ShouldBe("FCMS1685");
         otherProvider.Code.ShouldBe("FCMS1685");
         sameEndpointOtherProvider.Code.ShouldBe("FCMS1685");
@@ -386,6 +522,13 @@ public sealed class AiClientFactoryTests
         other.Requests.ShouldBeEmpty();
     }
 
+    private static ServiceProvider OptionsOf(Dictionary<string, string?> configuration)
+    {
+        var services = new ServiceCollection().AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(configuration).Build());
+        AiAssistPlugin.AddOptions(services);
+        return services.BuildServiceProvider();
+    }
+
     private static TestFactory Factory(string[] allowed, Dictionary<string, string?> configuration, AiSettings? defaults = null)
     {
         var options = new AiOptions();
@@ -394,6 +537,11 @@ public sealed class AiClientFactoryTests
             options.AllowedEndpoints.Add(endpoint);
         }
 
+        return Factory(options, configuration, defaults);
+    }
+
+    private static TestFactory Factory(AiOptions options, Dictionary<string, string?> configuration, AiSettings? defaults = null)
+    {
         var store = new Store(defaults ?? new AiSettings());
         var services = new ServiceCollection().AddSingleton<ISettings<AiSettings>>(store).BuildServiceProvider();
         return new TestFactory(

@@ -10,7 +10,7 @@ internal static partial class AccountLog
     [LoggerMessage(EventId = ResetEmailFailedId, EventName = "ResetEmailFailed", Level = LogLevel.Error, Message = "Could not send the password reset email of user {UserId}; the page answered as it does for an unknown address.")]
     public static partial void ResetEmailFailed(ILogger logger, Guid userId, Exception exception);
 
-    public const int CrossNameCollisionId = 9006;
+    public const int CrossNameCollisionId = 9007;
 
     [LoggerMessage(EventId = CrossNameCollisionId, EventName = "CrossNameCollision", Level = LogLevel.Warning, Message = "The user name of user {NamedUserId} is the email address of user {AddressedUserId}, so a sign-in with it reaches the first; rename one of them.")]
     public static partial void CrossNameCollision(ILogger logger, Guid namedUserId, Guid addressedUserId);

@@ -38,12 +38,33 @@ internal static partial class JobLog
     [LoggerMessage(EventId = 9511, Level = LogLevel.Error, Message = "Recurring job {Name} could not fire; it tries again next time.")]
     public static partial void RecurringFireFailed(ILogger logger, Exception exception, string name);
 
-    [LoggerMessage(EventId = 9512, Level = LogLevel.Information, Message = "Job retention removed {Removed} succeeded jobs.")]
-    public static partial void Retention(ILogger logger, int removed);
+    [LoggerMessage(EventId = 9512, Level = LogLevel.Information, Message = "Job retention removed {Succeeded} succeeded and {DeadLettered} dead-lettered jobs.")]
+    public static partial void Retention(ILogger logger, int succeeded, int deadLettered);
 
-    [LoggerMessage(EventId = 9513, Level = LogLevel.Error, Message = "Could not register the recurring retention of succeeded jobs; they stay until it is registered.")]
+    [LoggerMessage(EventId = 9513, Level = LogLevel.Error, Message = "Could not register the recurring retention of finished jobs; they stay until it is registered.")]
     public static partial void RetentionScheduleFailed(ILogger logger, Exception exception);
 
     [LoggerMessage(EventId = 9514, Level = LogLevel.Warning, Message = "The job runner stopped with jobs still running, whose leases will expire.")]
     public static partial void StoppedWithRunningJobs(ILogger logger);
+
+    [LoggerMessage(EventId = 9515, Level = LogLevel.Error, Message = "Job {JobId} ({Type}) ignored its token for {Limit} during attempt {Attempt} and was abandoned; it may still be running.")]
+    public static partial void Abandoned(ILogger logger, Guid jobId, string type, int attempt, TimeSpan limit);
+
+    [LoggerMessage(EventId = 9516, Level = LogLevel.Warning, Message = "Job {JobId} ({Type}) failed after it was abandoned.")]
+    public static partial void AbandonedJobFailed(ILogger logger, Exception exception, Guid jobId, string type);
+
+    [LoggerMessage(EventId = 9517, Level = LogLevel.Warning, Message = "Job {JobId} has the type {Type}, which this instance does not know, so it is put back for an instance that does.")]
+    public static partial void UnknownTypeReleased(ILogger logger, Guid jobId, string type);
+
+    [LoggerMessage(EventId = 9518, Level = LogLevel.Warning, Message = "{Code}: recurring job {Name} has the type {Type}, which this instance does not know, so this instance does not fire it.")]
+    public static partial void RecurringTypeUnknown(ILogger logger, string code, string name, string type);
+
+    [LoggerMessage(EventId = 9519, Level = LogLevel.Warning, Message = "Job {JobId} ({Type}) ignored its token past its attempt timeout, but {Limit} abandoned jobs are already running, so it keeps its worker until it returns.")]
+    public static partial void AbandonRefused(ILogger logger, Guid jobId, string type, int limit);
+
+    [LoggerMessage(EventId = 9520, Level = LogLevel.Information, Message = "Job {JobId} ({Type}) stopped at its attempt timeout of {Limit}; what is left waits for its next run.")]
+    public static partial void StoppedAtLimit(ILogger logger, Guid jobId, string type, TimeSpan limit);
+
+    [LoggerMessage(EventId = 9521, Level = LogLevel.Warning, Message = "Could not read how long job {JobId} of the unknown type {Type} has waited; it is put back without using an attempt.")]
+    public static partial void UnknownTypeDeferred(ILogger logger, Exception exception, Guid jobId, string type);
 }

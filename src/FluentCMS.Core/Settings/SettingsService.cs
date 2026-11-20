@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
@@ -32,12 +33,15 @@ internal sealed record SettingsAreaInfo(
 // tracked and drops nothing the caller has tracked. It replaces the row with one statement that names the version it read, and
 // starts again when another writer got there first, so two writers never see half of each other's document and the later one
 // stands; a caller that names the version it read is refused instead when the row has moved on.
+// The secrets of a row are protected at rest (SettingsProtection): every read of a row unprotects them first, and every write
+// protects them last.
 internal sealed class SettingsService(
     SystemDbContext context,
     IServiceScopeFactory scopes,
     SettingsRegistry registry,
     PluginRegistry plugins,
     SettingsCache cache,
+    SettingsProtection protection,
     IAuthorizationEvaluator authorization,
     IOperationContextAccessor accessor,
     IEventBus bus,
@@ -106,6 +110,15 @@ internal sealed class SettingsService(
         var rows = await context.Set<SettingRow>().AsNoTracking()
             .Where(row => row.Key == area && (row.SiteId == null || row.SiteId == siteId))
             .ToListAsync(cancellationToken);
+        IReadOnlyDictionary<string, string> unreadable = new Dictionary<string, string>();
+        foreach (var row in rows)
+        {
+            row.Json = protection.Unprotect(descriptor, row.Json, row.SiteId, out var lost);
+            if (row.SiteId is not null)
+            {
+                unreadable = lost;
+            }
+        }
 
         if (site is not null && rows.All(row => row.SiteId is null) && !await context.Set<Site>().AnyAsync(item => item.Id == scope, cancellationToken))
         {
@@ -119,7 +132,7 @@ internal sealed class SettingsService(
         // caller must be able to name it, or it could never save over a row that cannot be read.
         var version = (site is null ? instance : own)?.Version ?? 0;
         var resolved = Pick(descriptor, own, SettingsSource.Site, version, scope) is { } mine
-            ? ReadThrough(descriptor, mine, instance, version)
+            ? ReadThrough(descriptor, mine, instance, version, unreadable.Keys)
             : (Pick(descriptor, instance, SettingsSource.Default, version, SettingsCache.InstanceScope)
                 ?? new ResolvedSetting(descriptor.Write(descriptor.CreateDefault()), SettingsSource.Code, version, []))
                 with { InheritedSecrets = site is null ? [] : descriptor.SecretsInherited(null) };
@@ -182,9 +195,9 @@ internal sealed class SettingsService(
         List<(string Area, string Json)> documents = [];
         foreach (var row in rows.OrderBy(row => row.Key, StringComparer.Ordinal))
         {
-            if (registry.Find(row.Key) is { } descriptor && descriptor.CanRead(row.Json))
+            if (registry.Find(row.Key) is { } descriptor && protection.Unprotect(descriptor, row.Json, site.Value) is var json && descriptor.CanRead(json))
             {
-                documents.Add((row.Key, descriptor.Redact(row.Json).Json));
+                documents.Add((row.Key, descriptor.Redact(json).Json));
             }
         }
 
@@ -211,7 +224,7 @@ internal sealed class SettingsService(
         var stored = await context.Set<SettingRow>().AsNoTracking()
             .Where(row => row.Key == area && row.SiteId == siteId)
             .Select(row => row.Json)
-            .FirstOrDefaultAsync(cancellationToken);
+            .FirstOrDefaultAsync(cancellationToken) is { } found ? protection.Unprotect(descriptor, found, site.Value) : null;
         if (stored is not null
             && descriptor.CanRead(stored)
             && JsonNode.DeepEquals(JsonNode.Parse(descriptor.Redact(stored).Json), JsonNode.Parse(descriptor.Redact(canonical).Json)))
@@ -252,10 +265,11 @@ internal sealed class SettingsService(
     }
 
     // A site's own document, with the secrets it does not hold as the instance row holds them now. An instance row that the
-    // class cannot read gives nothing, so those secrets take their code defaults.
-    private ResolvedSetting ReadThrough(SettingsDescriptor descriptor, ResolvedSetting own, SettingRow? instance, int version)
+    // class cannot read gives nothing, so those secrets take their code defaults. A secret the site holds and the key ring
+    // cannot unprotect is the site's own, not inherited: it takes its code default.
+    private ResolvedSetting ReadThrough(SettingsDescriptor descriptor, ResolvedSetting own, SettingRow? instance, int version, IEnumerable<string> unreadable)
     {
-        var inherited = descriptor.SecretsInherited(own.Json);
+        IReadOnlyList<string> inherited = [.. descriptor.SecretsInherited(own.Json).Except(unreadable)];
         if (inherited.Count > 0 && Pick(descriptor, instance, SettingsSource.Default, version, SettingsCache.InstanceScope) is { } below)
         {
             return own with { Json = SettingsDescriptor.ReadThrough(own.Json, below.Json, inherited), InheritedSecrets = inherited };
@@ -312,6 +326,11 @@ internal sealed class SettingsService(
             var current = await Rows(db, descriptor.Area, site).AsNoTracking()
                 .Select(row => new { row.Json, row.Version })
                 .FirstOrDefaultAsync(cancellationToken);
+            IReadOnlyDictionary<string, string> unreadable = new Dictionary<string, string>();
+            if (current is not null)
+            {
+                current = current with { Json = protection.Unprotect(descriptor, current.Json, site, out unreadable) };
+            }
 
             var version = current?.Version ?? 0;
             if (expectedVersion is { } expected && expected != version)
@@ -324,12 +343,27 @@ internal sealed class SettingsService(
             // A secret of a site that neither the document nor the site's row holds stays out of the row, so that the site goes on
             // reading it from the instance default; it is filled in only for the checks, which see the document a read will give.
             var stored = current is not null && descriptor.CanRead(current.Json) ? current.Json : null;
-            var skipped = current is not null && stored is null ? descriptor.SecretsLeftOut(json, current.Json) : [];
+            // The secrets of a site's skipped row that the key ring cannot unprotect go with the row, as its other secrets do, since
+            // the site inherits them again; the instance row keeps them, which changes nothing a read gives.
+            IReadOnlyList<string> skipped = [];
+            if (current is not null && stored is null)
+            {
+                skipped = descriptor.SecretsLeftOut(json, current.Json);
+                if (site is not null)
+                {
+                    var named = JsonNode.Parse(json, documentOptions: new JsonDocumentOptions { MaxDepth = SettingsJson.MaxDepth })!.AsObject();
+                    skipped = [.. skipped.Union(unreadable.Keys.Where(key => !named.ContainsKey(key))).Order(StringComparer.Ordinal)];
+                    unreadable = new Dictionary<string, string>();
+                }
+            }
+
             IReadOnlyList<string> inherited = [];
             if (site is not null)
             {
                 inherited = descriptor.SecretsLeftToDefault(json, stored);
-                var instance = await Rows(db, descriptor.Area, null).AsNoTracking().Select(row => row.Json).FirstOrDefaultAsync(cancellationToken);
+                var instance = await Rows(db, descriptor.Area, null).AsNoTracking().Select(row => row.Json).FirstOrDefaultAsync(cancellationToken) is { } found
+                    ? protection.Unprotect(descriptor, found, null)
+                    : null;
                 if (instance is not null && descriptor.CanRead(instance))
                 {
                     stored = stored is null ? instance : SettingsDescriptor.ReadThrough(stored, instance, descriptor.SecretsInherited(stored));
@@ -342,12 +376,15 @@ internal sealed class SettingsService(
                 SettingsLog.SecretDropped(logger, descriptor.Area, key, ScopeName(site ?? SettingsCache.InstanceScope));
             }
 
+            // A secret of the row that the key ring cannot unprotect was not shown and is not the writer's to lose: unless the
+            // document names it, the row keeps it as it was, for a key ring that can read it again.
+            var protectedJson = protection.Protect(descriptor, canonical, site, unreadable, json);
             var now = time.GetUtcNow();
             if (current is not null)
             {
                 var updated = await Rows(db, descriptor.Area, site).Where(row => row.Version == version).ExecuteUpdateAsync(
                     set => set
-                        .SetProperty(row => row.Json, canonical)
+                        .SetProperty(row => row.Json, protectedJson)
                         .SetProperty(row => row.Version, version + 1)
                         .SetProperty(row => row.UpdatedAt, now)
                         .SetProperty(row => row.UpdatedBy, actor),
@@ -360,7 +397,7 @@ internal sealed class SettingsService(
             }
             else
             {
-                db.Add(new SettingRow { Id = Guid.CreateVersion7(), SiteId = site, Key = descriptor.Area, Json = canonical, Version = 1, UpdatedAt = now, UpdatedBy = actor });
+                db.Add(new SettingRow { Id = Guid.CreateVersion7(), SiteId = site, Key = descriptor.Area, Json = protectedJson, Version = 1, UpdatedAt = now, UpdatedBy = actor });
                 try
                 {
                     await db.SaveChangesAsync(cancellationToken);

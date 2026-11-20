@@ -798,6 +798,54 @@ public sealed class MemberAccountTests(MemberFixture fixture) : IClassFixture<Me
         left.ShouldBe([verified.Email, recent, contested], ignoreOrder: true);
     }
 
+    [Fact]
+    public async Task TheJobKeepsEachBatchItRemovedWhenItIsStoppedPartWay()
+    {
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(Token);
+        var afterFirstDelete = new StopAfterDelete(stop);
+        await using var host = MemberFixture.NewHost(
+            new HostedPagesTests.CapturedEmails(),
+            configure: cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(afterFirstDelete)));
+        var old = host.Time.GetUtcNow() - TimeSpan.FromDays(30);
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+            for (var member = 0; member <= UnverifiedMembersJob.BatchSize; member++)
+            {
+                var address = MemberFixture.NewAddress();
+                context.Add(new CmsMember { Email = address, NormalizedEmail = address.ToUpperInvariant(), SecurityStamp = Guid.NewGuid().ToString(), CreatedAt = old });
+            }
+
+            await context.SaveChangesAsync(Token);
+        }
+
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var operation = new OperationContext(Principal.System, Origin.Job, new SiteId(DefaultSite.Id), DefaultSite.Locale, null, "cleanup", host.Time.GetUtcNow());
+            await Should.ThrowAsync<OperationCanceledException>(() => scope.ServiceProvider.GetRequiredService<UnverifiedMembersJob>().ExecuteAsync(
+                new UnverifiedMembersPayload(),
+                new JobContext(Guid.CreateVersion7(), UnverifiedMembersJob.Type, "default", 1, 3, operation, stop.Token)));
+        }
+
+        await using var check = host.Services.CreateAsyncScope();
+        (await check.ServiceProvider.GetRequiredService<SystemDbContext>().Set<CmsMember>().CountAsync(member => !member.EmailConfirmed, Token))
+            .ShouldBe(1, "the first batch stays removed, and the stop came before the rest");
+    }
+
+    // Stops the job once its first delete of members has run, as its attempt timeout would.
+    private sealed class StopAfterDelete(CancellationTokenSource stop) : Microsoft.EntityFrameworkCore.Diagnostics.DbCommandInterceptor
+    {
+        public override ValueTask<int> NonQueryExecutedAsync(System.Data.Common.DbCommand command, Microsoft.EntityFrameworkCore.Diagnostics.CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.TrimStart().StartsWith("DELETE", StringComparison.OrdinalIgnoreCase) && command.CommandText.Contains(StorageNames.Member, StringComparison.Ordinal))
+            {
+                stop.Cancel();
+            }
+
+            return ValueTask.FromResult(result);
+        }
+    }
+
     private async Task<CmsMember> MemberAsync(string address)
     {
         await using var scope = fixture.Host.Services.CreateAsyncScope();

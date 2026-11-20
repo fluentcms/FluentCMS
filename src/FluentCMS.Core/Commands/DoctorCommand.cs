@@ -43,7 +43,7 @@ internal sealed class DoctorCommand : HostCommand
         }
 
         var refusals = new List<string>();
-        if (services.GetService<IHostEnvironment>()?.IsProduction() == true)
+        if (services.GetService<IHostEnvironment>()?.IsDevelopment() == false)
         {
             refusals.AddRange(services.GetServices<IProductionStartupCheck>().Select(Refusal).OfType<string>());
         }

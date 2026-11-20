@@ -126,7 +126,7 @@ public sealed class JobRunnerTests : IDisposable
         await runner.StopAsync(Token);
 
         _fixture.Job(bad).Status.ShouldBe(JobStatus.DeadLettered);
-        _fixture.Job(unknown).Status.ShouldBe(JobStatus.DeadLettered);
+        _fixture.Job(unknown).Status.ShouldBe(JobStatus.Pending, "it waits for an instance that knows its type");
         _fixture.Job(unreadable).Status.ShouldBe(JobStatus.DeadLettered);
     }
 

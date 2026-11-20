@@ -19,9 +19,9 @@ public sealed class OutboxOptions
 
     public double RetryJitter { get; set; } = 0.2;
 
-    // How long one delivery may take, from the renewal of its lease, before it is abandoned. Shorter than the lease, so that a
-    // delivery never outlives the claim that lets it run. A handler that started counts a failed attempt; one that never
-    // started counts nothing and waits for a later drain.
+    // How long one delivery may take before it is abandoned. Shorter than the lease, which the drain renews before a delivery
+    // that what is left of it would not cover, so that a delivery never outlives the claim that lets it run. A handler that
+    // started counts a failed attempt; one that never started counts nothing and waits for a later drain.
     public TimeSpan DeliveryTimeout { get; set; } = TimeSpan.FromMinutes(1);
 
     // How long the job runner waits for the in-process handlers of a job event before it goes on. They are not stopped.
@@ -38,9 +38,10 @@ public sealed class OutboxOptions
     // How long a delivered row stays for diagnosis.
     public TimeSpan Retention { get; set; } = TimeSpan.FromDays(7);
 
-    // How long a failed row stays in the dead-letter list, counted from when it failed. Null keeps it until it is retried or
-    // removed, as a dead-lettered job is kept.
-    public TimeSpan? FailedRetention { get; set; }
+    // How long a failed row that ran out of attempts stays in the dead-letter list, counted from when it failed, as
+    // JobRunnerOptions.DeadLetteredRetention keeps a dead-lettered job. Null keeps it until it is retried or removed. A row
+    // moved there because its handler was missing or its plugin disabled is owed to that plugin, and is never removed unseen.
+    public TimeSpan? FailedRetention { get; set; } = TimeSpan.FromDays(30);
 
     public const int MaxPruneBatchSize = 1000;
 

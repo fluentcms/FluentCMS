@@ -241,7 +241,7 @@ public sealed class SearchIndexProviderTests : IDisposable
 
     private async Task<IReadOnlyList<Guid>> MatchAsync(string text, IReadOnlyList<string>? fields)
     {
-        using var system = SystemOperation.Begin(_host.Services.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+        using var system = SystemOperation.Begin(_host.Services.GetRequiredService<IOperationContextAccessor>(), _host.Services.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id));
         var request = new SearchRequest("article", text, 100) { Locale = "en", Site = new SiteId(DefaultSite.Id), Status = QueryStatus.Published, Fields = fields };
         return await _host.Services.GetRequiredService<ISearchIndex>().SearchAsync(request, Token);
     }
@@ -249,7 +249,7 @@ public sealed class SearchIndexProviderTests : IDisposable
     private async Task<T> AsSystemAsync<T>(Func<IContentService, Task<T>> work)
     {
         await using var scope = _host.Services.CreateAsyncScope();
-        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id));
         return await work(scope.ServiceProvider.GetRequiredService<IContentService>());
     }
 
@@ -263,7 +263,7 @@ public sealed class SearchIndexProviderTests : IDisposable
     private async Task<(int Written, int Removed)> RebuildAsync()
     {
         await using var scope = _host.Services.CreateAsyncScope();
-        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Job, new SiteId(DefaultSite.Id));
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Job, new SiteId(DefaultSite.Id));
         return await scope.ServiceProvider.GetRequiredService<SearchIndexer>().RebuildAsync(null, new SiteId(DefaultSite.Id), Token);
     }
 

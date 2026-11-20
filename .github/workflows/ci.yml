@@ -9,6 +9,10 @@ on:
     - cron: "0 7 * * *"
   workflow_dispatch:
     inputs:
+      quick:
+        description: Run what a pull request of a feature branch into main runs (the fast tests on Windows, no SQL Server 2019, no Compose), for a check in the middle of a milestone.
+        type: boolean
+        default: false
       traces:
         description: Keep a masked Playwright trace of each failed end-to-end test in the test results.
         type: boolean
@@ -155,16 +159,19 @@ jobs:
       - name: Build
         run: dotnet build admin/tests/FluentCMS.Admin.EndToEnd -c Release -warnaserror
 
-      # The headless shell is what headless Chromium runs; the system libraries it needs come from apt on every run.
+      # The headless shell is what headless Chromium runs. The runner's image holds every system library it needs, so
+      # --with-deps is left out: all it added through apt was fonts the tests do not read, and the mirror took up to seven
+      # minutes over them in one run of five. A library the image loses fails the launch, and so every browser test.
       - name: Install Chromium
-        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/bin/Release/net10.0/playwright.ps1 install --with-deps --only-shell chromium
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/bin/Release/net10.0/playwright.ps1 install --only-shell chromium
 
-      # A skipped test fails here, so that a browser that did not install cannot pass the job. A manual run with traces on
-      # keeps the masked trace of each failed test in the uploaded results.
+      # A skipped test fails here, so that a browser that did not install cannot pass the job. A failed case is run once more,
+      # and one that passes then is named as flaky in the job summary (spec 7). A manual run with traces on keeps the masked
+      # trace of each failed test in the uploaded results.
       - name: Test
         env:
           FLUENTCMS_E2E_TRACES: ${{ inputs.traces && format('{0}/artifacts/test-results/traces', github.workspace) || '' }}
-        run: dotnet test --project admin/tests/FluentCMS.Admin.EndToEnd -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --fail-skips on --timeout 15m
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 15m -RetryTimeout 6m
 
       - name: Name the tests that were running
         if: failure() || cancelled()
@@ -259,9 +266,9 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 50
     env:
-      # Pull requests and pushes to main run only the fast tests on Windows, because the Linux shards
-      # already run the full suite. Only the nightly and manual runs run the full suite on Windows.
-      FULL_TESTS: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+      # Pull requests, pushes to main and quick manual runs run only the fast tests on Windows, because the Linux shards
+      # already run the full suite. Only the nightly and the other manual runs run the full suite on Windows.
+      FULL_TESTS: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.quick) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -330,7 +337,8 @@ jobs:
 
   # The shards of the data tests. SQLite and PostgreSQL run in every run. SQL Server 2025 runs on pushes to main, on pull
   # requests from feature/* branches, on pull requests that change a data provider, a migration or the data tests, and on
-  # the nightly and manual runs; SQL Server 2019 runs only on the nightly and manual runs. The servers run in two shards.
+  # the nightly and manual runs; SQL Server 2019 runs only on the nightly and on manual runs that are not quick. The
+  # servers run in two shards.
   plan:
     name: Plan
     runs-on: ubuntu-latest
@@ -402,6 +410,7 @@ jobs:
           EVENT: ${{ github.event_name }}
           HEAD_REF: ${{ github.head_ref }}
           SCOPE: ${{ steps.scope.outputs.scope }}
+          QUICK: ${{ inputs.quick }}
         run: |
           if [ "$SCOPE" != all ]; then
             echo 'matrix=[{"shard":"sqlite","provider":"sqlite","skip":true}]' | tee -a "$GITHUB_OUTPUT"
@@ -410,7 +419,10 @@ jobs:
           servers="postgresql"
           case "$EVENT" in
             schedule | workflow_dispatch)
-              servers+=" sqlserver-2019 sqlserver-2025" ;;
+              if [ "$QUICK" != true ]; then
+                servers+=" sqlserver-2019"
+              fi
+              servers+=" sqlserver-2025" ;;
             push)
               servers+=" sqlserver-2025" ;;
             pull_request)
@@ -456,13 +468,18 @@ jobs:
             **/*.csproj
 
       # The first shard of a server runs these namespaces and the second every other, so a new namespace runs without a
-      # change here. A minimum keeps a filter that matches nothing from passing. The timeout is well past the slowest
-      # healthy run of the provider, so that a hang ends with time left to name its tests.
+      # change here. SQL Server takes the migrations in the first shard: its queries and migrations are three times as slow
+      # as PostgreSQL's, and with both in the second shard that one ran 8.5 minutes of tests beside the first's 5. A minimum
+      # keeps a filter that matches nothing from passing. The timeout is well past the slowest healthy run of the provider,
+      # so that a hang ends with time left to name its tests.
       - name: Test
         if: ${{ !matrix.skip }}
         shell: bash
         run: |
-          namespaces=("FluentCMS.Data.Tests.Content*" "FluentCMS.Data.Tests.Jobs*" "FluentCMS.Data.Tests.Events*")
+          case "${{ matrix.provider }}" in
+            sqlserver-*) namespaces=("FluentCMS.Data.Tests.Content*" "FluentCMS.Data.Tests.Migrations*" "FluentCMS.Data.Tests.Events*") ;;
+            *) namespaces=("FluentCMS.Data.Tests.Content*" "FluentCMS.Data.Tests.Jobs*" "FluentCMS.Data.Tests.Events*") ;;
+          esac
           case "${{ matrix.part }}" in
             1) filter=(--filter-namespace "${namespaces[@]}" --minimum-expected-tests 700) ;;
             2) filter=(--filter-not-namespace "${namespaces[@]}" --minimum-expected-tests 1000) ;;
@@ -682,11 +699,11 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  # The compose file of the reference host with its smoke test, on pushes to main and manual runs, not on pull requests or
-  # the nightly run. Pushes to feature branches run it from compose.yml itself.
+  # The compose file of the reference host with its smoke test, on pushes to main and manual runs that are not quick, not
+  # on pull requests or the nightly run. Pushes to feature branches run it from compose.yml itself.
   compose:
     name: Compose
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && !inputs.quick)
     uses: ./.github/workflows/compose.yml
 
   # The M6 sequence from packages on clean Linux and Windows runners (eng/fresh-machine.ps1), on pushes to main, manual runs and

@@ -23,3 +23,26 @@ internal sealed record PublishWarningInfo
 }
 
 internal sealed record PublishedRead(EntryRead Read, IReadOnlyList<PublishWarningInfo> Warnings);
+
+// The answer of POST .../schedule: when the action runs, as an instant.
+internal sealed record ScheduleAnswer
+{
+    public string Action { get; init; } = "";
+
+    public string? Locale { get; init; }
+
+    public DateTimeOffset RunAt { get; init; }
+
+    public string? TimeZone { get; init; }
+}
+
+// The answer of POST .../preview-token (#3099): the front end's page of the draft with the token in it, the published page,
+// null while the locale was never published, and when the token ends. The token is read only as part of the URL.
+internal sealed record PreviewTokenAnswer
+{
+    public string? Url { get; init; }
+
+    public string? PublishedUrl { get; init; }
+
+    public DateTimeOffset ExpiresAt { get; init; }
+}

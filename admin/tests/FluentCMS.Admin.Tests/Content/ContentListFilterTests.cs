@@ -401,7 +401,7 @@ public sealed class ContentListFilterTests : AdminTestContext
         Management.ContentQueries.Single().ShouldNotContain("locale=");
     }
 
-    // A pending schedule shows its time in the user's time zone: 07:30 UTC is 09:30 at UTC+2.
+    // A pending schedule shows its time in the user's time zone, which it names: 07:30 UTC is 09:30 at UTC+2.
     [Fact]
     public void APendingScheduleShowsItsTimeInTheUsersTimeZone()
     {
@@ -413,7 +413,7 @@ public sealed class ContentListFilterTests : AdminTestContext
         var app = Load(zone: TimeZoneInfo.CreateCustomTimeZone("Plus two", TimeSpan.FromHours(2), "Plus two", "Plus two"));
 
         var badges = Rows(app)[0].QuerySelectorAll(".content-badge-schedule");
-        badges.Select(badge => Normalize(badge.TextContent)).ShouldBe(["Publishes 3/1/2027 9:30 AM", "Unpublishes 4/1/2027 9:30 AM"]);
+        badges.Select(badge => Normalize(badge.TextContent)).ShouldBe(["Publishes 3/1/2027 9:30 AM Plus two", "Unpublishes 4/1/2027 9:30 AM Plus two"]);
         badges[0].QuerySelector("time")!.GetAttribute("datetime").ShouldBe("2027-03-01T07:30:00.0000000+00:00");
     }
 

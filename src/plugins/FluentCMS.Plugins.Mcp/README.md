@@ -67,6 +67,9 @@ The policy is the settings area `mcp`, changed with `PUT /api/management/v1/sett
 | `defaultClientRole` | unset | The role a client gets under `open`: the id of a role, or the name of an instance-wide role. |
 | `maxPendingClients` | `100` | How many clients may wait for approval at once. A registration beyond it is answered 503 with `temporarily_unavailable`. |
 | `registrationsPerHour` | `10` | How many clients one client address registers in an hour, on each instance. One beyond it is answered 429 (`FCMS3110`). |
+| `maxClients` | `1000` | How many MCP clients there may be at once, those an administrator registered included. A client's own registration beyond it is answered 503 with `temporarily_unavailable` in every mode; an administrator's is not refused. |
+| `neverUsedClientHours` | `24` | After how many hours a client the `open` policy approved is removed when no user has consented to it. |
+| `unusedClientDays` | `30` | After how many days a client the `open` policy approved is removed when it has no token or authorization left. |
 
 - **`approval`**: a registration creates a pending client. The authorize endpoint refuses it with a hosted error page that says it waits for approval, and no token is issued until an administrator approves it with a role.
 - **`open`**: a registration is approved at once with `defaultClientRole`. While that is unset or names no role, the client waits for approval instead. The startup report lists `mcp-open-client-registration` in Production. Use it only where every client that reaches the instance is trusted.
@@ -91,13 +94,13 @@ The endpoints need `mcp.manage` for the instance, from a grant with no site limi
 
 `{id}` is the `id` of the list, not the OAuth client id. A role is named as for an approval wherever it is given, and need not be one the caller holds, since it only narrows what the user's roles allow.
 
-A client an administrator registers is the client a registration of its own would make: public with no secret, the code flow with PKCE and refresh tokens, the user's consent, and the scopes `mcp`, `openid`, `profile`, `email` and `offline_access`. Its redirect URIs are held to the same rules, and `name` is `MCP client` when left out. It is approved at once with the role, whatever `clientRegistration` says, and neither `maxPendingClients` nor `registrationsPerHour` counts it.
+A client an administrator registers is the client a registration of its own would make: public with no secret, the code flow with PKCE and refresh tokens, the user's consent, and the scopes `mcp`, `openid`, `profile`, `email` and `offline_access`. Its redirect URIs are held to the same rules, and `name` is `MCP client` when left out. It is approved at once with the role, whatever `clientRegistration` says, and neither `maxPendingClients` nor `registrationsPerHour` counts it; `maxClients` counts it but does not refuse it.
 
 The tokens of a client carry its role, so changing the role revokes every token of the client and every user's consent to it: its access tokens are refused from the next request on, and its refresh tokens too. A new role can widen what the client does, so the user signs in through the client again and is asked for consent again, and the new token carries the new role. A pending client is approved instead, and setting the role a client has changes nothing.
 
 The codes are `FCMS1603` for an unknown client, `FCMS1604` for a client that is not pending, `FCMS1605` for a request without a role, `FCMS1606` for an unknown role, `FCMS1607` for a role change of a client that is not approved, `FCMS1608` for a registration whose name or redirect URIs are refused and `FCMS1609` for a role change that crossed another change of the client.
 
-A client registered, approved, rejected, given another role and removed are the events `McpClientRegisteredEvent`, `McpClientApprovedEvent`, `McpClientRejectedEvent`, `McpClientRoleChangedEvent` and `McpClientRevokedEvent`, and the activity rows `mcp.client_registered`, `mcp.client_approved`, `mcp.client_rejected`, `mcp.client_role_changed` and `mcp.client_revoked`. The row of a client an administrator registered has the administrator as its actor and the status `approved`. A client that is not approved within 7 days, a rejected one included, is removed by the daily job `mcp.client-cleanup`.
+A client registered, approved, rejected, given another role and removed are the events `McpClientRegisteredEvent`, `McpClientApprovedEvent`, `McpClientRejectedEvent`, `McpClientRoleChangedEvent` and `McpClientRevokedEvent`, and the activity rows `mcp.client_registered`, `mcp.client_approved`, `mcp.client_rejected`, `mcp.client_role_changed` and `mcp.client_revoked`. The row of a client an administrator registered has the administrator as its actor and the status `approved`. A client that is not approved within 7 days, a rejected one included, is removed by the hourly job `mcp.client-cleanup`, and so is a client the `open` policy approved that no user consented to `neverUsedClientHours` after it registered, or that has no token or authorization `unusedClientDays` after it registered; one an administrator approved, registered or gave another role stays.
 
 ## Content and media tools
 
@@ -121,7 +124,7 @@ A singleton has `{type}_get`, `{type}_update_draft` and `{type}_discard_draft` o
 
 The shared tools take a `type`:
 
-- `publish`, `unpublish` and `schedule`, listed for a caller that holds `content.{type}.publish` or `content.{type}.unpublish` for some exposed type. They are apart from the draft tools, so an agent role with `create` and `update` and without `publish` drafts an entry and cannot publish it. `schedule` takes `action`, `at` and `timeZone` as the schedule route of the Management API does.
+- `publish`, `unpublish` and `schedule`, listed for a caller that holds `content.{type}.publish` or `content.{type}.unpublish` for some exposed type. They are apart from the draft tools, so an agent role with `create` and `update` and without `publish` drafts an entry and cannot publish it. `schedule` takes `action`, `at` and `timeZone` as the schedule route of the Management API does. `unpublish` takes live content down, so it runs after a [dry run](#dry-runs); `publish` and `schedule` run at once, and an unpublish scheduled a moment ahead is not planned yet (#3361).
 - `query`, which lists the entries of any exposed type the caller may read, with the arguments of `{type}_list`.
 - `bulk`, which publishes, unpublishes or deletes several entries at once, after a [dry run](#dry-runs). It is listed for a caller that holds `content.{type}.publish`, `content.{type}.unpublish` or `content.{type}.delete` for some exposed type, with the actions it holds ([Bulk](#bulk)).
 
@@ -172,7 +175,7 @@ An agent acts fast and can be wrong. The tools that remove an entry or change ma
 
 ### Dry runs
 
-`{type}_delete` and `bulk` take `dryRun`, which is true unless the call says false. A dry run changes nothing and answers the plan:
+`{type}_delete`, `unpublish` and `bulk` take `dryRun`, which is true unless the call says false. A dry run changes nothing and answers the plan:
 
 ```json
 {
@@ -187,10 +190,10 @@ An agent acts fast and can be wrong. The tools that remove an entry or change ma
 }
 ```
 
-- `entries` are the entries the call would touch, as the caller reads them: the draft where it may read drafts, in the locale of the connection. The schema names no title, so `title` is the text field called `title` or `name`, or else the first text field.
+- `entries` are the entries the call would touch, as the caller reads them: the draft where it may read drafts, in the `locale` of an `unpublish` or a `bulk` publish or unpublish, and otherwise in the locale of the connection. The schema names no title, so `title` is the text field called `title` or `name`, or else the first text field.
 - A plan names every entry, since the token is of them all, so its titles keep it to `MaxResultBytes`: a title longer than `MaxListTextLength` is shortened as a list shortens a text, and where the plan is still over the limit every title is null and the plan says `"titlesOmitted": true`. A plan over the limit even then is answered whole.
-- `references` are the entries whose relation would break: for a delete the entries that point to one of the plan, for an unpublish the published ones, and none for a publish. They are entries of the exposed types that the caller may read, found by the relation fields of a type itself, in the locale of the connection; a relation inside a component or a block is not looked for. A plan lists 50 at most and says `moreReferences` when there may be more. An entry of the plan is not a reference of it.
-- The same call with `dryRun: false` and the `confirmationToken` runs it. A delete then answers `{ "type", "id", "deleted" }`.
+- `references` are the entries whose relation would break: for a delete the entries that point to one of the plan, for an unpublish the published ones, and none for a publish. They are entries of the exposed types that the caller may read, found by the relation fields of a type itself, in the locale the entries are read in; a relation inside a component or a block is not looked for. A plan lists 50 at most and says `moreReferences` when there may be more. An entry of the plan is not a reference of it.
+- The same call with `dryRun: false` and the `confirmationToken` runs it. A delete then answers `{ "type", "id", "deleted" }`, and an unpublish the entry as the Management API answers it.
 
 The token is an HMAC-SHA256 over the plan: the tool, its arguments (all but `dryRun` and `confirmationToken`, in any order of their keys), the principal, the client, the site and the locale of the connection, the time the token ends, and the id, version and status of each entry. It lasts five minutes. Before a run the server reads the plan again, and refuses the call, with nothing run, when:
 

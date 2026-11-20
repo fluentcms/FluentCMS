@@ -1,5 +1,6 @@
 using System.Net;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
 using Microsoft.AspNetCore.Antiforgery;
@@ -184,6 +185,17 @@ public sealed class HostRegistrationTests : IAsyncDisposable
     }
 
     [Fact]
+    public void AnEmptyValueTurnsTheRetentionOfFailuresOff()
+    {
+        var app = _host.Build(
+            Environments.Development,
+            new Dictionary<string, string?> { ["FluentCms:Jobs:DeadLetteredRetention"] = "", ["FluentCms:Events:Outbox:FailedRetention"] = "" });
+
+        app.Services.GetRequiredService<JobRunnerOptions>().DeadLetteredRetention.ShouldBeNull();
+        app.Services.GetRequiredService<OutboxOptions>().FailedRetention.ShouldBeNull();
+    }
+
+    [Fact]
     public void ThePasswordPolicyAndLockoutOfAdminUsersComeFromTheConfiguration()
     {
         var app = _host.Build(
@@ -205,10 +217,13 @@ public sealed class HostRegistrationTests : IAsyncDisposable
         app.Services.GetRequiredService<IOptions<PasswordResetTokenProviderOptions>>().Value.TokenLifespan.ShouldBe(TimeSpan.FromMinutes(20));
     }
 
-    [Fact]
-    public async Task ProductionRefusesAGeneratedSigningKeyBeforeTouchingTheDatabase()
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    [InlineData("Qa")]
+    public async Task EveryEnvironmentButDevelopmentRefusesAGeneratedSigningKeyBeforeTouchingTheDatabase(string environment)
     {
-        var app = _host.Build(Environments.Production, configure: GeneratedSigningKey);
+        var app = _host.Build(environment, configure: GeneratedSigningKey);
 
         var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => app.StartAsync(Token));
 
@@ -230,12 +245,10 @@ public sealed class HostRegistrationTests : IAsyncDisposable
         File.Exists(_host.DatabaseFile).ShouldBeTrue();
     }
 
-    [Theory]
-    [InlineData("Development")]
-    [InlineData("Staging")]
-    public async Task OnlyProductionRefusesAGeneratedSigningKey(string environment)
+    [Fact]
+    public async Task DevelopmentStartsWithAGeneratedSigningKey()
     {
-        var app = _host.Build(environment, configure: GeneratedSigningKey);
+        var app = _host.Build(Environments.Development, configure: GeneratedSigningKey);
 
         await app.StartAsync(Token);
     }

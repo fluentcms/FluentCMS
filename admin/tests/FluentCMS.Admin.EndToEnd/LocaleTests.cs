@@ -20,19 +20,16 @@ public sealed class LocaleTests(EndToEndHost host) : BrowserTest(host)
     public async Task TheEditorPublishesInTwoLocalesAndCopiesALocale()
     {
         var browser = await OpenBrowserAsync();
-        var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article/new").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        var tab = await SignedInTabAsync(browser, "content/article/new");
 
         // English: created, then published.
-        await Title(tab).FillAsync("Written in two locales");
-        var created = await AnswerAsync(tab, () => Control(tab, "Content.Form.Save").ClickAsync(), "POST", tab.ManagementUrl("content/article"));
-        var location = (await created.HeaderValueAsync("location")).ShouldNotBeNull();
-        var id = Guid.Parse(location[(location.LastIndexOf('/') + 1)..]);
+        await Title(tab).FillAsync($"Written in two locales {Mark}");
+        var created = await tab.AnswerAsync(() => Control(tab, "Content.Form.Save").ClickAsync(), "POST", tab.ManagementUrl("content/article"));
+        var id = await Ui.CreatedIdAsync(created, "content/article");
         var entry = tab.ManagementUrl($"content/article/{id:D}");
         await Expect(tab.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}\\?locale=en$"), Timeout);
         await Expect(Badges(tab)).ToHaveTextAsync([Badge("en", "draft"), Missing("fr")]);
-        (await AnswerAsync(tab, () => Control(tab, "Content.Form.Publish").ClickAsync(), "POST", $"{entry}/publish")).Status.ShouldBe(200);
+        (await tab.AnswerAsync(() => Control(tab, "Content.Form.Publish").ClickAsync(), "POST", $"{entry}/publish")).Status.ShouldBe(200);
         await Expect(Badges(tab)).ToHaveTextAsync([Badge("en", "published"), Missing("fr")]);
 
         // French: no translation yet, started as a copy of the English and added with If-Match "0".
@@ -41,29 +38,29 @@ public sealed class LocaleTests(EndToEndHost host) : BrowserTest(host)
         await Expect(tab.Page.Locator(".content-form-new-locale")).ToBeVisibleAsync();
         await Expect(Title(tab)).ToHaveValueAsync("");
         await tab.Page.Locator(".content-form-new-locale fluent-button").Filter(new LocatorFilterOptions { HasTextRegex = new Regex(@"\ben\s*$") }).ClickAsync();
-        await Expect(Title(tab)).ToHaveValueAsync("Written in two locales");
+        await Expect(Title(tab)).ToHaveValueAsync($"Written in two locales {Mark}");
         await Expect(Title(tab)).ToHaveAttributeAsync("lang", "fr");
-        await Title(tab).FillAsync("Écrit en deux langues");
-        var added = await AnswerAsync(tab, () => Control(tab, "Content.Form.Save").ClickAsync(), "PUT", entry);
+        await Title(tab).FillAsync($"Écrit en deux langues {Mark}");
+        var added = await tab.AnswerAsync(() => Control(tab, "Content.Form.Save").ClickAsync(), "PUT", entry);
         added.Status.ShouldBe(200);
         (await added.Request.HeaderValueAsync("if-match")).ShouldBe("\"0\"");
         (await added.Request.HeaderValueAsync("x-cms-locale")).ShouldBe("fr");
         await Expect(Badges(tab)).ToHaveTextAsync([Badge("en", "published"), Badge("fr", "draft")]);
 
         // Published, changed, the change discarded, then unpublished: each in French alone.
-        (await AnswerAsync(tab, () => Control(tab, "Content.Form.Publish").ClickAsync(), "POST", $"{entry}/publish")).Status.ShouldBe(200);
+        (await tab.AnswerAsync(() => Control(tab, "Content.Form.Publish").ClickAsync(), "POST", $"{entry}/publish")).Status.ShouldBe(200);
         await Expect(Badges(tab)).ToHaveTextAsync([Badge("en", "published"), Badge("fr", "published")]);
-        await Title(tab).FillAsync("Changé");
-        (await AnswerAsync(tab, () => Control(tab, "Content.Form.Save").ClickAsync(), "PUT", entry)).Status.ShouldBe(200);
+        await Title(tab).FillAsync($"Changé {Mark}");
+        (await tab.AnswerAsync(() => Control(tab, "Content.Form.Save").ClickAsync(), "PUT", entry)).Status.ShouldBe(200);
         await Expect(Badges(tab)).ToHaveTextAsync([Badge("en", "published"), Badge("fr", "modified")]);
         await Control(tab, "Content.Form.Discard").ClickAsync();
         await Expect(Shown(tab, DiscardTitle)).ToBeVisibleAsync();
-        (await AnswerAsync(tab, () => DialogButton(tab, DiscardTitle, "Content.Form.Discard").ClickAsync(), "POST", $"{entry}/discard")).Status.ShouldBe(200);
-        await Expect(Title(tab)).ToHaveValueAsync("Écrit en deux langues");
+        (await tab.AnswerAsync(() => DialogButton(tab, DiscardTitle, "Content.Form.Discard").ClickAsync(), "POST", $"{entry}/discard")).Status.ShouldBe(200);
+        await Expect(Title(tab)).ToHaveValueAsync($"Écrit en deux langues {Mark}");
         await Expect(Badges(tab)).ToHaveTextAsync([Badge("en", "published"), Badge("fr", "published")]);
         await Control(tab, "Content.Form.Unpublish").ClickAsync();
         await Expect(Shown(tab, UnpublishTitle)).ToBeVisibleAsync();
-        (await AnswerAsync(tab, () => DialogButton(tab, UnpublishTitle, "Content.Form.Unpublish").ClickAsync(), "POST", $"{entry}/unpublish")).Status.ShouldBe(200);
+        (await tab.AnswerAsync(() => DialogButton(tab, UnpublishTitle, "Content.Form.Unpublish").ClickAsync(), "POST", $"{entry}/unpublish")).Status.ShouldBe(200);
         await Expect(Badges(tab)).ToHaveTextAsync([Badge("en", "published"), Badge("fr", "unpublished")]);
 
         // Back to English with an unsaved change: the form asks, and a leave reads the English.
@@ -72,41 +69,41 @@ public sealed class LocaleTests(EndToEndHost host) : BrowserTest(host)
         await Expect(Shown(tab, LeaveTitle)).ToBeVisibleAsync();
         await DialogButton(tab, LeaveTitle, "Content.Form.Leave.Confirm").ClickAsync();
         await Expect(tab.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}\\?locale=en$"), Timeout);
-        await Expect(Title(tab)).ToHaveValueAsync("Written in two locales");
+        await Expect(Title(tab)).ToHaveValueAsync($"Written in two locales {Mark}");
         await Expect(Badges(tab)).ToHaveTextAsync([Badge("en", "published"), Badge("fr", "unpublished")]);
 
         // English: changed, the change discarded, then unpublished, with French as it was.
-        await Title(tab).FillAsync("Changed in English");
-        (await AnswerAsync(tab, () => Control(tab, "Content.Form.Save").ClickAsync(), "PUT", entry)).Status.ShouldBe(200);
+        await Title(tab).FillAsync($"Changed in English {Mark}");
+        (await tab.AnswerAsync(() => Control(tab, "Content.Form.Save").ClickAsync(), "PUT", entry)).Status.ShouldBe(200);
         await Expect(Badges(tab)).ToHaveTextAsync([Badge("en", "modified"), Badge("fr", "unpublished")]);
         await Control(tab, "Content.Form.Discard").ClickAsync();
         await Expect(Shown(tab, DiscardTitle)).ToBeVisibleAsync();
-        var discarded = await AnswerAsync(tab, () => DialogButton(tab, DiscardTitle, "Content.Form.Discard").ClickAsync(), "POST", $"{entry}/discard");
+        var discarded = await tab.AnswerAsync(() => DialogButton(tab, DiscardTitle, "Content.Form.Discard").ClickAsync(), "POST", $"{entry}/discard");
         (await discarded.Request.HeaderValueAsync("x-cms-locale")).ShouldBeNull();
-        await Expect(Title(tab)).ToHaveValueAsync("Written in two locales");
+        await Expect(Title(tab)).ToHaveValueAsync($"Written in two locales {Mark}");
         await Control(tab, "Content.Form.Unpublish").ClickAsync();
         await Expect(Shown(tab, UnpublishTitle)).ToBeVisibleAsync();
-        (await AnswerAsync(tab, () => DialogButton(tab, UnpublishTitle, "Content.Form.Unpublish").ClickAsync(), "POST", $"{entry}/unpublish")).Status.ShouldBe(200);
+        (await tab.AnswerAsync(() => DialogButton(tab, UnpublishTitle, "Content.Form.Unpublish").ClickAsync(), "POST", $"{entry}/unpublish")).Status.ShouldBe(200);
         await Expect(Badges(tab)).ToHaveTextAsync([Badge("en", "unpublished"), Badge("fr", "unpublished")]);
-        (await AnswerAsync(tab, () => Control(tab, "Content.Form.Publish").ClickAsync(), "POST", $"{entry}/publish")).Status.ShouldBe(200);
+        (await tab.AnswerAsync(() => Control(tab, "Content.Form.Publish").ClickAsync(), "POST", $"{entry}/publish")).Status.ShouldBe(200);
         await Expect(Badges(tab)).ToHaveTextAsync([Badge("en", "published"), Badge("fr", "unpublished")]);
 
         // Side by side: the French, read-only, beside the English.
         await tab.Page.GetByLabel(Repository.AdminText("Content.Form.Compare.Label"), new PageGetByLabelOptions { Exact = true }).SelectOptionAsync("fr");
         var french = tab.Page.Locator("[data-field='title'] .content-form-compare input");
-        await Expect(french).ToHaveValueAsync("Écrit en deux langues");
+        await Expect(french).ToHaveValueAsync($"Écrit en deux langues {Mark}");
         await Expect(french).ToHaveAttributeAsync("lang", "fr");
         await Expect(french).ToHaveAttributeAsync("readonly", "");
 
         // Switches in quick succession end in the last locale.
         await tab.Page.EvaluateAsync($"() => {{ Blazor.navigateTo('content/article/{id:D}?locale=fr'); Blazor.navigateTo('content/article/{id:D}?locale=en'); Blazor.navigateTo('content/article/{id:D}?locale=fr'); }}");
         await Expect(tab.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}\\?locale=fr$"), Timeout);
-        await Expect(Title(tab)).ToHaveValueAsync("Écrit en deux langues");
+        await Expect(Title(tab)).ToHaveValueAsync($"Écrit en deux langues {Mark}");
         await Expect(Title(tab)).ToHaveAttributeAsync("lang", "fr");
 
         // The list in French reads the French and the status of the English by ids.
         await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article?locale=fr").AbsoluteUri);
-        var row = tab.Page.GetByRole(AriaRole.Grid).Locator("tbody tr").Filter(new LocatorFilterOptions { HasText = "Écrit en deux langues" });
+        var row = tab.Page.GetByRole(AriaRole.Grid).Locator("tbody tr").Filter(new LocatorFilterOptions { HasText = $"Écrit en deux langues {Mark}" });
         await Expect(row.Locator(".content-badge")).ToHaveTextAsync([Badge("en", "published"), Badge("fr", "unpublished")]);
         await Expect(row.Locator("a").First).ToHaveAttributeAsync("href", $"content/article/{id:D}?locale=fr");
         browser.PolicyViolations.ShouldBeEmpty();
@@ -130,16 +127,8 @@ public sealed class LocaleTests(EndToEndHost host) : BrowserTest(host)
     private static ILocator Control(AdminTab tab, string resourceKey) =>
         tab.Page.Locator(".content-form-toolbar fluent-button").Filter(new LocatorFilterOptions { HasTextRegex = new Regex($@"^\s*{Regex.Escape(Repository.AdminText(resourceKey))}\s*$") });
 
-    private static ILocator Shown(AdminTab tab, string titleKey) =>
-        tab.Page.GetByRole(AriaRole.Dialog, new PageGetByRoleOptions { Name = Repository.AdminText(titleKey), Exact = true });
+    private static ILocator Shown(AdminTab tab, string titleKey) => tab.ShownDialog(Repository.AdminText(titleKey));
 
     private static ILocator DialogButton(AdminTab tab, string titleKey, string buttonKey) =>
-        tab.Page.Locator($"fluent-dialog[aria-label=\"{Repository.AdminText(titleKey)}\"] fluent-button")
-            .Filter(new LocatorFilterOptions { HasTextRegex = new Regex($@"^\s*{Regex.Escape(Repository.AdminText(buttonKey))}\s*$") });
-
-    private static Task<IResponse> AnswerAsync(AdminTab tab, Func<Task> action, string method, string url) =>
-        tab.Page.RunAndWaitForResponseAsync(
-            action,
-            response => response.Request.Method == method && response.Url == url,
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        Ui.ButtonIn(tab.Dialog(Repository.AdminText(titleKey)), Repository.AdminText(buttonKey));
 }

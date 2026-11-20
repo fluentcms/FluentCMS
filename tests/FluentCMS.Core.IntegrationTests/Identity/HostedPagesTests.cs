@@ -190,7 +190,7 @@ public sealed partial class HostedPagesTests : IClassFixture<HostedPagesFixture>
         await using (var scope = _host.Services.CreateAsyncScope())
         {
             var role = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<Role>().AsNoTracking().SingleAsync(role => role.Name == BuiltInRoles.EditorName && role.SiteId == null, Token);
-            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id));
             await scope.ServiceProvider.GetRequiredService<InvitationService>().InviteAsync("ada@example.com", [role.Id], new Uri("https://localhost/account/accept-invitation"), Token);
         }
 
@@ -602,7 +602,7 @@ public sealed partial class HostedPagesTests : IClassFixture<HostedPagesFixture>
 
         await using (var scope = host.Services.CreateAsyncScope())
         {
-            using var operation = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Cli, new SiteId(DefaultSite.Id));
+            using var operation = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Cli, new SiteId(DefaultSite.Id));
             await scope.ServiceProvider.GetRequiredService<ISettings<BrandingSettings>>().SetDefaultAsync(
                 new BrandingSettings { Name = "Acme Publishing", LogoUrl = "https://cdn.acme.example/logo.svg", PrimaryColor = "#ff5500", BackgroundColor = "#000", TextColor = "#ffffff" },
                 Token);
@@ -622,7 +622,7 @@ public sealed partial class HostedPagesTests : IClassFixture<HostedPagesFixture>
     public async Task BrandingThatCouldBreakOutOfTheStyleSheetIsRefused()
     {
         await using var scope = _host.Services.CreateAsyncScope();
-        using var operation = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Cli, new SiteId(DefaultSite.Id));
+        using var operation = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Cli, new SiteId(DefaultSite.Id));
         var settings = scope.ServiceProvider.GetRequiredService<ISettings<BrandingSettings>>();
 
         await Should.ThrowAsync<ValidationException>(async () => await settings.SetDefaultAsync(new BrandingSettings { PrimaryColor = "red; } body { display: none" }, Token));

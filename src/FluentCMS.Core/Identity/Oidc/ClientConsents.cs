@@ -4,13 +4,21 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace FluentCMS.Core.Identity.Oidc;
 
-// What the consent page shows: the client and the scopes of the request that it may ask for.
-internal sealed record ConsentRequest(string ClientId, string ClientName, IReadOnlyList<string> Scopes);
+// What the consent page shows: the client, the scopes of the request that it may ask for, the hosts of every redirect URI the
+// client registered, the request's first when it names one of them, since a consent is of the user, the client and the
+// scopes and so covers them all, and whether it is an MCP client, whose name was given at its registration, by the client
+// itself or by an administrator, and is not checked against anything.
+internal sealed record ConsentRequest(string ClientId, string ClientName, IReadOnlyList<string> Scopes)
+{
+    public IReadOnlyList<string> RedirectHosts { get; init; } = [];
+
+    public bool McpClient { get; init; }
+}
 
 // A user's consent to a third-party client (ClientRegistration.RequireConsent) is a permanent OpenIddict authorization of
 // the user for the client and the scopes allowed, which the authorize endpoint then issues the client's codes under. Revoking
 // it as a session (UserSessions) takes the consent with it.
-internal sealed class ClientConsents(IOpenIddictApplicationManager applications, IOpenIddictAuthorizationManager authorizations)
+internal sealed class ClientConsents(IOpenIddictApplicationManager applications, IOpenIddictAuthorizationManager authorizations, TimeProvider time)
 {
     // The parameter the consent page adds to the authorize request when the user refuses.
     public const string DecisionParameter = "fcms_consent";
@@ -18,15 +26,20 @@ internal sealed class ClientConsents(IOpenIddictApplicationManager applications,
 
     // Null for a client that does not ask for consent, or does not exist, or registered itself and is not approved, so
     // that no consent is recorded for a client before an administrator has let it in.
-    public async Task<ConsentRequest?> DescribeAsync(string clientId, IEnumerable<string> scopes, CancellationToken cancellationToken = default)
+    public async Task<ConsentRequest?> DescribeAsync(string clientId, IEnumerable<string> scopes, string? redirectUri = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(clientId);
         ArgumentNullException.ThrowIfNull(scopes);
 
         var application = await applications.FindByClientIdAsync(clientId, cancellationToken);
         if (application is null
-            || !await applications.HasConsentTypeAsync(application, ConsentTypes.Explicit, cancellationToken)
-            || McpClientState.Of(await applications.GetPropertiesAsync(application, cancellationToken)) is { IsApproved: false })
+            || !await applications.HasConsentTypeAsync(application, ConsentTypes.Explicit, cancellationToken))
+        {
+            return null;
+        }
+
+        var state = McpClientState.Of(await applications.GetPropertiesAsync(application, cancellationToken));
+        if (state is { IsApproved: false })
         {
             return null;
         }
@@ -40,7 +53,28 @@ internal sealed class ClientConsents(IOpenIddictApplicationManager applications,
             }
         }
 
-        return new ConsentRequest(clientId, await applications.GetDisplayNameAsync(application, cancellationToken) ?? clientId, allowed);
+        // A redirect URI the client does not have is refused by the authorize endpoint, so it is not put first.
+        var registered = await applications.GetRedirectUrisAsync(application, cancellationToken);
+        var first = !string.IsNullOrEmpty(redirectUri) && registered.Contains(redirectUri, StringComparer.Ordinal) ? redirectUri : null;
+        List<string> hosts = [.. (first is null ? registered : registered.Where(uri => uri != first).Prepend(first))
+            .Select(uri => Uri.TryCreate(uri, UriKind.Absolute, out var parsed) ? HostOf(parsed) : null)
+            .OfType<string>()
+            .Distinct(StringComparer.Ordinal)];
+
+        return new ConsentRequest(clientId, await applications.GetDisplayNameAsync(application, cancellationToken) ?? clientId, allowed)
+        {
+            RedirectHosts = hosts,
+            McpClient = state is not null,
+        };
+    }
+
+    // The ASCII form of the host, so that a letter of another script that looks like a Latin one shows as punycode.
+    internal static string HostOf(Uri uri)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+
+        var host = uri.HostNameType == UriHostNameType.IPv6 ? $"[{uri.IdnHost}]" : uri.IdnHost;
+        return uri.IsDefaultPort ? host : $"{host}:{uri.Port}";
     }
 
     // The user's valid consent to the client that covers every scope, or null.
@@ -57,7 +91,7 @@ internal sealed class ClientConsents(IOpenIddictApplicationManager applications,
     // Records that the user allows the client the scopes it may ask for among these; false for a client that asks no consent.
     public async Task<bool> GrantAsync(Guid userId, string clientId, IEnumerable<string> scopes, CancellationToken cancellationToken = default)
     {
-        var request = await DescribeAsync(clientId, scopes, cancellationToken);
+        var request = await DescribeAsync(clientId, scopes, cancellationToken: cancellationToken);
         if (request is null || await applications.FindByClientIdAsync(clientId, cancellationToken) is not { } application)
         {
             return false;
@@ -72,6 +106,31 @@ internal sealed class ClientConsents(IOpenIddictApplicationManager applications,
             AuthorizationTypes.Permanent,
             [.. request.Scopes],
             cancellationToken);
+        await MarkUsedAsync(application, cancellationToken);
         return true;
+    }
+
+    // The first consent to a client that registered itself is its first use, since it asks for consent before any code: the
+    // cleanup removes one never used sooner than one whose tokens are gone. Of two consents at once, the other one writes it.
+    private async Task MarkUsedAsync(object application, CancellationToken cancellationToken)
+    {
+        var properties = await applications.GetPropertiesAsync(application, cancellationToken);
+        if (McpClientState.Of(properties) is not { UsedAt: null } state
+            || !properties.TryGetValue(AuthorizationServer.McpClientProperty, out var stored)
+            || stored.ValueKind != System.Text.Json.JsonValueKind.Object)
+        {
+            return;
+        }
+
+        var descriptor = new OpenIddictApplicationDescriptor();
+        await applications.PopulateAsync(descriptor, application, cancellationToken);
+        descriptor.Properties[AuthorizationServer.McpClientProperty] = (state with { UsedAt = time.GetUtcNow() }).ToProperty();
+        try
+        {
+            await applications.UpdateAsync(application, descriptor, cancellationToken);
+        }
+        catch (OpenIddictExceptions.ConcurrencyException)
+        {
+        }
     }
 }

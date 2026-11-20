@@ -38,13 +38,14 @@ public class AdminRulesTests
 
     // Spec 3.1: the types that may use JavaScript interop, the document module, the tab's sessionStorage of the sign-in,
     // localStorage for the theme's one key and for the column names of the lists, the drop and paste of the media library,
-    // in the media half (A-21), and the rich text editor's bundle (A-24). The component library's script is loaded by the
-    // library's own types, so no type of FluentCMS.Admin.Components is listed. The clipboard module joins the list by name,
-    // in FluentCMS.Admin or FluentCMS.Admin.RichText, with the issue that writes it.
+    // in the media half (A-21), the rich text editor's bundle (A-24), and the messages of the preview frame (A-29). The
+    // component library's script is loaded by the library's own types, so no type of FluentCMS.Admin.Components is listed. The
+    // clipboard module joins the list by name, in FluentCMS.Admin or FluentCMS.Admin.RichText, with the issue that writes it.
     private static readonly string[] InteropTypes =
     [
         "FluentCMS.Admin.Interop.ColumnStorageInterop",
         "FluentCMS.Admin.Interop.DocumentInterop",
+        "FluentCMS.Admin.Interop.PreviewInterop",
         "FluentCMS.Admin.Interop.SessionStorageInterop",
         "FluentCMS.Admin.Interop.TabChannelInterop",
         "FluentCMS.Admin.Interop.ThemeStorageInterop",
@@ -367,6 +368,22 @@ public class AdminRulesTests
             .Where(project => project.Location.StartsWith(AdminFolder, StringComparison.Ordinal))
             .Where(project => !File.Exists(Path.Combine(AppContext.BaseDirectory, project.Name + ".dll")))
             .Select(project => project.Name)
+            .ShouldBeEmpty();
+    }
+
+    // Text before a component's first comment, directive or element compiles as markup and shows on the page, as four
+    // lines of code pasted above the header of EntrySchedule.razor did on every content form.
+    [Fact]
+    public void EveryAdminComponentBeginsWithACommentADirectiveOrAnElement()
+    {
+        var root = ProjectFile.FindRepositoryRoot();
+        var components = Directory.EnumerateFiles(Path.Combine(root, AdminFolder), "*.razor", SearchOption.AllDirectories)
+            .Where(path => !Path.GetRelativePath(root, path).Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(part => part is "bin" or "obj"))
+            .ToList();
+
+        components.Count.ShouldBeGreaterThan(50);
+        components.Where(path => File.ReadAllText(path).TrimStart() is not ['@' or '<', ..])
+            .Select(path => Path.GetRelativePath(root, path).Replace('\\', '/'))
             .ShouldBeEmpty();
     }
 

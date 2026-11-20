@@ -8,7 +8,9 @@ namespace FluentCMS.Admin.Configuration;
 // context, names every member that is wrong, and sees the members it does not know.
 internal static partial class AdminConfigurationReader
 {
-    public static AdminStartup Read(string json)
+    // adminOrigin is the origin the app is served from, which no preview origin may be: a frame of it with scripts and the
+    // same origin allowed would reach the admin's sessionStorage.
+    public static AdminStartup Read(string json, string? adminOrigin = null)
     {
         try
         {
@@ -18,7 +20,7 @@ internal static partial class AdminConfigurationReader
                 return new AdminStartup([new ConfigurationProblem(ConfigurationProblemKind.NotAnObject)], []);
             }
 
-            var context = new Context();
+            var context = new Context { AdminOrigin = adminOrigin };
             var configuration = ReadRoot(document.RootElement, context);
             return configuration is not null && context.Problems.Count == 0
                 ? new AdminStartup(configuration, context.Unknown, context.Insecure)
@@ -325,6 +327,12 @@ internal static partial class AdminConfigurationReader
             }
 
             var origin = uri.GetLeftPart(UriPartial.Authority);
+            if (string.Equals(origin, context.AdminOrigin, StringComparison.OrdinalIgnoreCase))
+            {
+                context.Invalid(member, ConfigurationRule.NotAdminOrigin);
+                continue;
+            }
+
             if (!origins.Contains(origin, StringComparer.Ordinal))
             {
                 origins.Add(origin);
@@ -458,6 +466,8 @@ internal static partial class AdminConfigurationReader
         public List<string> Unknown { get; } = [];
 
         public List<string> Insecure { get; } = [];
+
+        public string? AdminOrigin { get; init; }
 
         public bool HasProblem(string member) => Problems.Exists(problem => problem.Member == member);
 

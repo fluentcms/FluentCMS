@@ -8,14 +8,41 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Diagnostics;
 
-// The report of this start, kept for the diagnostics endpoint. It is null until the host has made one.
+// The report of this start, kept for the diagnostics endpoint. It is null until the host has made one. An insecure default
+// found once requests arrive is kept here too, so that a report set after it, or while it was found, still carries it.
 internal sealed class StartupReportHolder
 {
+    private readonly Lock _gate = new();
+    private readonly List<InsecureDefault> _found = [];
     private volatile StartupReport? _report;
 
     public StartupReport? Current => _report;
 
-    public void Set(StartupReport? report) => _report = report;
+    public void Set(StartupReport? report)
+    {
+        lock (_gate)
+        {
+            _report = report is null ? null : WithFound(report);
+        }
+    }
+
+    // Replaces an earlier item of the same id.
+    public void Add(InsecureDefault item)
+    {
+        lock (_gate)
+        {
+            _found.RemoveAll(existing => existing.Id == item.Id);
+            _found.Add(item);
+            if (_report is { } current)
+            {
+                _report = WithFound(current);
+            }
+        }
+    }
+
+    private StartupReport WithFound(StartupReport report) => _found.Count == 0
+        ? report
+        : report with { InsecureDefaults = [.. report.InsecureDefaults.Where(item => _found.All(found => found.Id != item.Id)), .. _found] };
 }
 
 internal static class StartupReportJson
@@ -99,6 +126,7 @@ internal static class StartupReportEvents
     public const int Report = 9130;
     public const int InsecureDefault = 9131;
     public const int NotMade = 9132;
+    public const int UntrustedForwardedHeaders = 9133;
 }
 
 internal static class StartupReportRegistration

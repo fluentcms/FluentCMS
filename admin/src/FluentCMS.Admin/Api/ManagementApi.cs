@@ -88,7 +88,17 @@ internal sealed class ManagementApi(HttpClient http) : IManagementApi, IDisposab
 
     // The status of the answer is the problem's, whatever its body says. A member of the wrong type loses only itself where
     // it can: a current that is not an object is dropped, and a body that still does not read keeps its text members.
-    private static async Task<ApiProblem> ProblemAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    private static async Task<ApiProblem> ProblemAsync(HttpResponseMessage response, CancellationToken cancellationToken) =>
+        await BodyProblemAsync(response, cancellationToken) with { RetryAfter = RetryAfter(response) };
+
+    private static TimeSpan? RetryAfter(HttpResponseMessage response) => response.Headers.RetryAfter switch
+    {
+        { Delta: { } delta } => delta < TimeSpan.Zero ? TimeSpan.Zero : delta,
+        { Date: { } date } => date > DateTimeOffset.UtcNow ? date - DateTimeOffset.UtcNow : TimeSpan.Zero,
+        _ => null,
+    };
+
+    private static async Task<ApiProblem> BodyProblemAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         var status = (int)response.StatusCode;
         var mediaType = response.Content.Headers.ContentType?.MediaType;

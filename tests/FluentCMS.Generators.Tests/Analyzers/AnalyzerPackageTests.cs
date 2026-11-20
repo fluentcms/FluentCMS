@@ -15,6 +15,15 @@ public sealed partial class AnalyzerPackageTests
     private static IEnumerable<DiagnosticDescriptor> Rules =>
         Analysis.All.SelectMany(analyzer => analyzer.SupportedDiagnostics);
 
+    private static DiagnosticDescriptor[] GeneratorDiagnostics =>
+    [
+        FluentCMS.Generators.Descriptors.TypeSkipped,
+        FluentCMS.Generators.Descriptors.UnknownFieldType,
+        FluentCMS.Generators.Descriptors.MemberNameTaken,
+        FluentCMS.Generators.Descriptors.MissingBuilder,
+        FluentCMS.Generators.Descriptors.BlockNotReachable,
+    ];
+
     [Fact]
     public void TheRulesAreFcms0001ToFcms0099AndEachHasItsHelpPage()
     {
@@ -29,7 +38,24 @@ public sealed partial class AnalyzerPackageTests
             rule.IsEnabledByDefault.ShouldBeTrue(rule.Id);
         }
 
-        pages.ShouldBe(Rules.Select(rule => rule.Id).Order(StringComparer.Ordinal), ignoreOrder: false);
+        pages.ShouldBe(Rules.Concat(GeneratorDiagnostics).Select(rule => rule.Id).Order(StringComparer.Ordinal), ignoreOrder: false);
+    }
+
+    // The diagnostics of the generator are FCMS0100 to FCMS0119, each with its section of the same page.
+    [Fact]
+    public void TheGeneratorDiagnosticsAreFcms0100ToFcms0119AndEachHasItsHelpPage()
+    {
+        GeneratorDiagnostics.Select(rule => rule.Id).ShouldBe(["FCMS0100", "FCMS0101", "FCMS0102", "FCMS0103", "FCMS0104"]);
+        foreach (var rule in GeneratorDiagnostics)
+        {
+            rule.HelpLinkUri.ShouldBe($"https://github.com/fluentcms/FluentCMS/blob/main/docs/analyzers.md#{rule.Id.ToLowerInvariant()}");
+            rule.IsEnabledByDefault.ShouldBeTrue(rule.Id);
+        }
+
+        foreach (var code in GeneratorDiagnostics.Select(rule => rule.Id))
+        {
+            FluentCMS.Generators.Descriptors.For(code).Id.ShouldBe(code);
+        }
     }
 
     [Fact]

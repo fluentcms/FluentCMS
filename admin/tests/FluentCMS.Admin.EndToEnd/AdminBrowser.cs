@@ -27,6 +27,7 @@ public sealed class AdminBrowser
     private readonly EndToEndHost _host;
     private readonly IBrowserContext _context;
     private readonly string? _traces;
+    private readonly SlowMode? _slow;
     private readonly ConcurrentDictionary<IPage, AdminTab> _tabs = new();
     private readonly ConcurrentQueue<string> _violations = new();
     private readonly ConcurrentDictionary<string, bool> _secrets = new(StringComparer.Ordinal);
@@ -39,6 +40,7 @@ public sealed class AdminBrowser
         _context = context;
         _traces = traces;
         _tracing = traces is not null;
+        _slow = SlowMode.For(context);
         context.Request += (_, request) => OnRequest(request);
         context.Response += (_, response) => OnResponse(response);
         context.Console += (_, message) =>
@@ -67,12 +69,12 @@ public sealed class AdminBrowser
         return new AdminBrowser(host, context, traces);
     }
 
-    public async Task<AdminTab> NewTabAsync() => TabOf(await _context.NewPageAsync());
+    public async Task<AdminTab> NewTabAsync() => await ThrottledAsync(await _context.NewPageAsync());
 
     // A tab the admin opened itself, as window.open does, which starts with a copy of the opener's sessionStorage the way a
     // duplicated tab does.
     public async Task<AdminTab> OpenedByAsync(AdminTab opener) =>
-        TabOf(await opener.Page.RunAndWaitForPopupAsync(() => opener.Page.EvaluateAsync("() => { window.open(location.href); }")));
+        await ThrottledAsync(await opener.Page.RunAndWaitForPopupAsync(() => opener.Page.EvaluateAsync("() => { window.open(location.href); }")));
 
     // The hosted login page, filled in and sent as the editor does.
     public async Task SignInOnTheHostedPageAsync(AdminTab tab, Editor editor)
@@ -165,6 +167,17 @@ public sealed class AdminBrowser
             // A request of a worker has no frame.
             return null;
         }
+    }
+
+    // A tab once the slow mode, when it is on, has throttled its page.
+    private async Task<AdminTab> ThrottledAsync(IPage page)
+    {
+        if (_slow is not null)
+        {
+            await _slow.Throttled(page);
+        }
+
+        return TabOf(page);
     }
 
     private AdminTab TabOf(IPage page) => _tabs.GetOrAdd(page, created => new AdminTab(_host, created));
@@ -275,6 +288,7 @@ public sealed class AdminTab
     private readonly ConcurrentQueue<Uri> _authorizeRequests = new();
     private readonly ConcurrentQueue<string> _loginPages = new();
     private readonly ConcurrentQueue<TokenRequest> _tokenRequests = new();
+    private long _lastGrant;
 
     internal AdminTab(EndToEndHost host, IPage page)
     {
@@ -320,13 +334,13 @@ public sealed class AdminTab
     public Task<TokenRequest> ReloadAsync() => TokenRequestOfAsync(() => Page.ReloadAsync());
 
     // Chooses the site and returns the answer of /me/access, the first read of a switch, once it has come: a 401 is followed
-    // by one refresh and the call again, and that answer is the one returned.
+    // by one refresh and the call again, and that answer is the one returned. A read of the site before, such as the shell's
+    // first one on a slow machine, may still be answered after the choice, so the read is the one that names the site.
     public async Task<IResponse> SwitchSiteAsync(Site site)
     {
-        var access = await Page.RunAndWaitForResponseAsync(
+        var access = await this.AnswerAsync(
             () => SiteSwitcher.SelectOptionAsync(new SelectOptionValue { Value = site.Id }),
-            response => response.Url == ManagementUrl("me/access") && response.Status != 401,
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+            response => response.Url == ManagementUrl("me/access") && string.Equals(response.Request.Headers.GetValueOrDefault("x-cms-site"), site.Id, StringComparison.OrdinalIgnoreCase));
         await Expect(Announced(Repository.AdminText("Shell.SiteSwitcher.Switched").Replace("{0}", site.Name, StringComparison.Ordinal))).ToBeAttachedAsync();
         return access;
     }
@@ -349,7 +363,29 @@ public sealed class AdminTab
         }
     }
 
-    internal void Saw(TokenRequest request) => _tokenRequests.Enqueue(request);
+    internal void Saw(TokenRequest request)
+    {
+        if (request.Status == 200)
+        {
+            Interlocked.Exchange(ref _lastGrant, DateTime.UtcNow.Ticks);
+        }
+
+        _tokenRequests.Enqueue(request);
+    }
+
+    // Returns once the tab's access token is due for its refresh on demand, half its lifetime after the last grant, so that
+    // the tab's next call refreshes it. The token's age is waited for; no request is sent meanwhile.
+    public async Task TokenDueAsync()
+    {
+        var granted = Interlocked.Read(ref _lastGrant);
+        granted.ShouldBeGreaterThan(0, "the tab has no token yet");
+        var due = new DateTime(granted, DateTimeKind.Utc) + TimeSpan.Parse(EndToEndHost.AccessTokenLifetime, System.Globalization.CultureInfo.InvariantCulture) / 2 + TimeSpan.FromMilliseconds(250);
+        var wait = due - DateTime.UtcNow;
+        if (wait > TimeSpan.Zero)
+        {
+            await Task.Delay(wait, TestContext.Current.CancellationToken);
+        }
+    }
 }
 
 // The names of a token request's form fields, with the value of grant_type only, and the status of its answer.

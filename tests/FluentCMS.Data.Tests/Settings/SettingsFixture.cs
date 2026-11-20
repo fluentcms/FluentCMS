@@ -55,6 +55,16 @@ internal sealed class MediaSettings
     public string? Passphrase { get; set; }
 }
 
+[Settings("required-secret")]
+internal sealed class RequiredSecret
+{
+    [JsonRequired]
+    [SettingsSecret]
+    public string Token { get; set; } = "code-token";
+
+    public string Name { get; set; } = "n";
+}
+
 [Settings("seo")]
 internal sealed class SeoSettings
 {

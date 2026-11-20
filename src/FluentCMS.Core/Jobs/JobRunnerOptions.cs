@@ -21,6 +21,10 @@ public sealed class JobRunnerOptions
     // on an attempt; a job registration can set its own, or Timeout.InfiniteTimeSpan for none.
     public TimeSpan? AttemptTimeout { get; set; }
 
+    // How many invocations that ignored their token past their attempt timeout an instance leaves running beside its
+    // workers. At the limit, a further one keeps its worker until it returns.
+    public int MaxAbandonedJobs { get; set; } = 4;
+
     public TimeSpan LeaseDuration { get; set; } = TimeSpan.FromMinutes(5);
 
     public TimeSpan HeartbeatInterval { get; set; } = TimeSpan.FromMinutes(1);
@@ -42,8 +46,12 @@ public sealed class JobRunnerOptions
 
     internal static readonly TimeSpan LongestRetention = TimeSpan.FromDays(36500);
 
-    // How long a succeeded job and its attempts stay. Pending, running and dead-lettered jobs are never removed.
+    // How long a succeeded job and its attempts stay. Pending and running jobs are never removed.
     public TimeSpan SucceededRetention { get; set; } = TimeSpan.FromDays(7);
+
+    // How long a dead-lettered job and its attempts stay, counted from when it was dead-lettered, as
+    // OutboxOptions.FailedRetention keeps a failed delivery. Null keeps them until they are retried.
+    public TimeSpan? DeadLetteredRetention { get; set; } = TimeSpan.FromDays(30);
 
     // The most jobs one delete of the retention job takes. The ids of a batch go into one statement as parameters, which
     // is why it is capped.
@@ -60,6 +68,7 @@ public sealed class JobRunnerOptions
             Require(workers >= 0, $"{nameof(Queues)}:{queue} is {workers}; it must not be negative.");
         }
 
+        Require(MaxAbandonedJobs >= 0, $"{nameof(MaxAbandonedJobs)} is {MaxAbandonedJobs}; it must not be negative.");
         Require(DefaultMaxAttempts >= 1, $"{nameof(DefaultMaxAttempts)} is {DefaultMaxAttempts}; it must be at least 1.");
         Require(PollInterval > TimeSpan.Zero, $"{nameof(PollInterval)} must be positive.");
         Require(MaintenanceInterval > TimeSpan.Zero, $"{nameof(MaintenanceInterval)} must be positive.");
@@ -71,6 +80,7 @@ public sealed class JobRunnerOptions
         Require(ShutdownGracePeriod >= TimeSpan.Zero && ReleaseTimeout >= TimeSpan.Zero, $"{nameof(ShutdownGracePeriod)} and {nameof(ReleaseTimeout)} must not be negative.");
 
         Require(SucceededRetention > TimeSpan.Zero && SucceededRetention <= LongestRetention, $"{nameof(SucceededRetention)} must be positive and no longer than {LongestRetention.TotalDays} days.");
+        Require(DeadLetteredRetention is null || (DeadLetteredRetention >= TimeSpan.Zero && DeadLetteredRetention <= LongestRetention), $"{nameof(DeadLetteredRetention)} must not be negative or longer than {LongestRetention.TotalDays} days.");
         Require(RetentionBatchSize is >= 1 and <= MaxRetentionBatchSize, $"{nameof(RetentionBatchSize)} is {RetentionBatchSize}; it must be from 1 to {MaxRetentionBatchSize}.");
         Require(IsCron(RetentionSchedule), $"{nameof(RetentionSchedule)} '{RetentionSchedule}' is not a cron expression that ever occurs.");
 

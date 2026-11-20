@@ -228,6 +228,27 @@ public sealed class CmsInputTests : ComponentTestContext
         picker.Find($"#{element.GetAttribute("aria-describedby")}").TextContent.ShouldBe("Enter a date such as 31.12.2026.");
     }
 
+    // The bound value stays what it was while the text is unreadable, so a form asks the input before it submits.
+    [Fact]
+    public void APickerSaysWhileItHoldsTextItCouldNotRead()
+    {
+        var date = Render<CmsDatePicker>(p => p.Add(x => x.Label, "Day").Add(x => x.Culture, German).Add(x => x.Value, new DateOnly(2030, 1, 2)));
+        var time = Render<CmsTimePicker>(p => p.Add(x => x.Label, "Time").Add(x => x.Culture, German).Add(x => x.Value, new TimeOnly(9, 0)));
+        date.Instance.HasInputError.ShouldBeFalse();
+
+        date.Find("input").Change("31.02.2030");
+        time.Find("input").Change("halb zehn");
+
+        (date.Instance.HasInputError, date.Instance.Value).ShouldBe((true, new DateOnly(2030, 1, 2)));
+        (time.Instance.HasInputError, time.Instance.Value).ShouldBe((true, new TimeOnly(9, 0)));
+
+        date.Find("input").Change("03.01.2030");
+        time.Find("input").Change("10:00");
+
+        date.Instance.HasInputError.ShouldBeFalse();
+        time.Instance.HasInputError.ShouldBeFalse();
+    }
+
     [Fact]
     public void ADateOutsideTheRangeIsNotTaken()
     {

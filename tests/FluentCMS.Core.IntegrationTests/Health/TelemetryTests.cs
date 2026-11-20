@@ -30,15 +30,19 @@ public sealed class TelemetryTests : IAsyncDisposable
     [Fact]
     public async Task AContentOperationEmitsAFluentCmsSpanWithoutContentValues()
     {
-        var spans = new ConcurrentBag<System.Diagnostics.Activity>();
-        using var listener = Listen(spans);
+        var all = new ConcurrentBag<System.Diagnostics.Activity>();
+        using var listener = Listen(all);
         var editor = await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
         var notes = _host.As(editor).Content<Note>();
 
+        // The listener hears every host of the test process, so only the spans of this test's own trace count.
+        using var root = new System.Diagnostics.Activity("telemetry-test").Start();
         var created = await notes.CreateAsync(new Note { Title = Secret }, Token);
         await notes.UpdateAsync(created.Id, new Note { Title = Secret + "!" }, created.Version, Token);
         await notes.PublishAsync(created.Id, cancellationToken: Token);
         await notes.DeleteAsync(created.Id, Token);
+        root.Stop();
+        var spans = all.Where(span => span.TraceId == root.TraceId).ToList();
 
         var site = DefaultSite.Id.ToString("D");
         foreach (var operation in new[] { "create", "update", "publish", "delete" })

@@ -6,7 +6,8 @@ namespace FluentCMS.Events;
 /// Hears events of one type and never misses one. The event is recorded in the transaction that raised it and a job
 /// delivers it, so a handler runs after a crash too, at least once and possibly more than once: use
 /// <see cref="EventDelivery.Key"/> to ignore a repeat. Register it with <c>cms.Events.AddOutboxHandler</c>.
-/// Deliveries start in <see cref="Hooks.HookOrderAttribute"/> order and in the order the events were recorded, but a failed delivery is retried later and instances deliver at the same time, so do not depend on order.
+/// On one instance, the outbox handlers of one plugin (or all of core's) are delivered one after another in the order the events were recorded, whatever their types; the handlers of different plugins run side by side.
+/// A failed delivery waits for its retry while later events go on, and another instance may deliver the next events of the same plugin at the same time, so do not depend on order.
 /// </summary>
 /// <typeparam name="TEvent">The type of the event, which is matched exactly.</typeparam>
 [SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "It is the outbox counterpart of IEventHandler.")]

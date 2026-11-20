@@ -27,8 +27,9 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
         authorize["code_challenge"]!.Length.ShouldBe(43);
         authorize["scope"]!.Split(' ').ShouldBe(["openid", "profile", "email", "offline_access", "management"], ignoreOrder: true);
 
-        var me = tab.Page.WaitForResponseAsync(response => response.Url == tab.ManagementUrl("me") && response.Status != 401, new PageWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
-        var exchange = await tab.TokenRequestOfAsync(() => browser.SignInOnTheHostedPageAsync(tab, Host.Editor));
+        var editor = await EditorAsync();
+        var me = tab.NextAnswerAsync(response => response.Url == tab.ManagementUrl("me"));
+        var exchange = await tab.TokenRequestOfAsync(() => browser.SignInOnTheHostedPageAsync(tab, editor));
         exchange.ShouldBeGranted("authorization_code");
         exchange.Fields.ShouldContain("code_verifier");
 
@@ -69,7 +70,7 @@ public sealed class SignInTests(EndToEndHost host) : BrowserTest(host)
 
         // The admin gives the revocation 3 seconds at most before it goes to the logout page.
         await tab.Page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = editor.Email }).ClickAsync();
-        var revoked = tab.Page.WaitForResponseAsync(response => response.Url == new Uri(Host.Origin, "connect/revoke").AbsoluteUri, new PageWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        var revoked = tab.NextAnswerAsync(response => response.Url == new Uri(Host.Origin, "connect/revoke").AbsoluteUri);
         await tab.Page.GetByRole(AriaRole.Menuitem, new PageGetByRoleOptions { Name = Repository.AdminText("Shell.UserMenu.SignOut"), Exact = true }).ClickAsync();
         var revocation = await revoked;
         revocation.Status.ShouldBe(200);

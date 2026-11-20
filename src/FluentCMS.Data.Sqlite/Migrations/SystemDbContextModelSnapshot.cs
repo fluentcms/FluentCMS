@@ -1021,6 +1021,10 @@ namespace FluentCMS.Data.Sqlite.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Status", "CompletedAt", "Id")
+                        .IsDescending(false, true, false)
+                        .HasDatabaseName("ix_cms_job_status_completed");
+
                     b.HasIndex("Status", "LeaseUntil")
                         .HasDatabaseName("ix_cms_job_status_lease");
 
@@ -1170,6 +1174,13 @@ namespace FluentCMS.Data.Sqlite.Migrations
                     b.HasIndex("DeliveredAt")
                         .HasDatabaseName("ix_cms_outbox_delivered")
                         .HasFilter("status = 'delivered'");
+
+                    b.HasIndex(new[] { "Handler", "Sequence", "Id" }, "ix_cms_outbox_handler_pending")
+                        .HasFilter("status = 'pending'");
+
+                    b.HasIndex(new[] { "Sequence", "Id" }, "ix_cms_outbox_failed")
+                        .IsDescending(true, false)
+                        .HasFilter("status = 'failed'");
 
                     b.HasIndex("EventId", "Handler")
                         .IsUnique()

@@ -14,9 +14,7 @@ public sealed class ListTests(EndToEndHost host) : BrowserTest(host)
     public async Task TheEditorChoosesColumnsSortsByTwoKeysPagesAndOpensAnArticleByKeyboard()
     {
         var browser = await OpenBrowserAsync();
-        var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article?pageSize=3").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        var tab = await SignedInTabAsync(browser, "content/article?pageSize=3");
 
         var grid = tab.Page.GetByRole(AriaRole.Grid, new PageGetByRoleOptions { Name = "Article", Exact = true });
         await Expect(grid.Locator("tbody tr")).ToHaveCountAsync(3);
@@ -42,8 +40,7 @@ public sealed class ListTests(EndToEndHost host) : BrowserTest(host)
         await SortButton(grid, "Title").ClickAsync(new LocatorClickOptions { Modifiers = [KeyboardModifier.Shift] });
         await Expect(SortButton(grid, "Title")).ToContainTextAsync(Text("Components.GridSortLevel", "2", "2"));
         // The second toggle of Title is made by keyboard: Shift with Enter on its header.
-        await SortButton(grid, "Title").FocusAsync();
-        read = await ListReadOfAsync(tab, () => tab.Page.Keyboard.PressAsync("Shift+Enter"), "sort=category,-title&");
+        read = await ListReadOfAsync(tab, () => Ui.PressAsync(SortButton(grid, "Title"), "Shift+Enter"), "sort=category,-title&");
         await Expect(tab.Page).ToHaveURLAsync(new Regex("sort=category%2C-title"));
         read.ShouldStartWith("?sort=category,-title&page=1&pageSize=3&");
         await Expect(grid.Locator("th[aria-sort=ascending]")).ToHaveTextAsync(new Regex("^Category"));
@@ -65,8 +62,7 @@ public sealed class ListTests(EndToEndHost host) : BrowserTest(host)
         // By keyboard alone: a row's checkbox, then its button that opens it in a side panel (A-15), and the next row's checkbox,
         // which the arrows also move to; Space selects and Enter opens.
         var rows = grid.Locator("tbody tr");
-        await rows.Nth(0).Locator("input[type=checkbox]").FocusAsync();
-        await tab.Page.Keyboard.PressAsync("Tab");
+        await Ui.PressAsync(rows.Nth(0).Locator("input[type=checkbox]"), "Tab");
         await tab.Page.WaitForFunctionAsync("() => document.activeElement?.closest('tbody tr td:last-child fluent-button') != null", null, new PageWaitForFunctionOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         await tab.Page.Keyboard.PressAsync("Tab");
         await Expect(rows.Nth(1).Locator("input[type=checkbox]")).ToBeFocusedAsync();
@@ -98,7 +94,7 @@ public sealed class ListTests(EndToEndHost host) : BrowserTest(host)
         var tab = await browser.NewTabAsync();
         await tab.Page.SetViewportSizeAsync(800, 900);
         await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        await browser.SignInOnTheHostedPageAsync(tab, await EditorAsync());
 
         await tab.Page.Locator(".shell-open-navigation fluent-button").ClickAsync();
         var drawer = tab.Page.GetByRole(AriaRole.Navigation, new PageGetByRoleOptions { Name = Repository.AdminText("Shell.Sidebar.Label"), Exact = true }).Last;
@@ -155,11 +151,6 @@ public sealed class ListTests(EndToEndHost host) : BrowserTest(host)
     private static string Text(string key, params string[] arguments)
     {
         var text = key.StartsWith("Components.", StringComparison.Ordinal) ? Repository.ComponentText(key["Components.".Length..]) : Repository.AdminText(key);
-        for (var index = 0; index < arguments.Length; index++)
-        {
-            text = text.Replace($"{{{index}}}", arguments[index], StringComparison.Ordinal);
-        }
-
-        return text;
+        return Ui.Format(text, arguments);
     }
 }

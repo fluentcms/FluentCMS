@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
 using System.Net.Sockets;
@@ -22,6 +23,9 @@ public sealed class EndToEndHost : IAsyncLifetime
 
     public const string AccessTokenLifetime = "00:00:05";
 
+    // The front end of PreviewTests, which no server holds: the case's browser answers its requests itself.
+    public const string PreviewOrigin = "https://preview.test";
+
     // Under the load of the Windows full run, beside every other test app, the publish has taken from 6 to more than 10
     // minutes. It is bounded below the job's --timeout of 25 minutes, which counts from the start of this test app, with the
     // few minutes the host's start and the tests take on Windows, where the browser tests are skipped.
@@ -32,6 +36,9 @@ public sealed class EndToEndHost : IAsyncLifetime
     private static readonly TimeSpan StaleAfter = TimeSpan.FromDays(1);
 
     private const string RootPrefix = "fluentcms-e2e-";
+
+    // Requests a minute, per address and per user, far above what the serial suite sends.
+    private const string TestLimit = "100000";
     private const string ReaderRole = "Reader";
     private const string EditorRoleId = "00000000-0000-7000-8000-000000000002";
     private static readonly TimeSpan CommandTimeout = TimeSpan.FromMinutes(3);
@@ -39,6 +46,7 @@ public sealed class EndToEndHost : IAsyncLifetime
 
     private readonly DirectoryInfo _root = Directory.CreateTempSubdirectory(RootPrefix);
     private readonly Dictionary<string, string?> _environment = [];
+    private readonly ConcurrentDictionary<Type, Lazy<Task<Editor>>> _classEditors = new();
     private ChildProcess? _host;
     private TestCertificates? _certificates;
     private IPlaywright? _playwright;
@@ -68,7 +76,13 @@ public sealed class EndToEndHost : IAsyncLifetime
     // Why the browser tests are skipped: Chromium is not installed for this version of Playwright.
     public string? BrowserMissing { get; private set; }
 
-    private string PublishDirectory => Path.Combine(_root.FullName, "host");
+    // FLUENTCMS_E2E_PUBLISHED names a folder the publish is kept in and taken from by a later run, as the retry of the CI job's
+    // failed cases does; without it the publish is the run's own and goes with it.
+    public const string PublishedVariable = "FLUENTCMS_E2E_PUBLISHED";
+
+    private const string PublishedMark = "published.ok";
+
+    private string PublishDirectory => Environment.GetEnvironmentVariable(PublishedVariable) is { Length: > 0 } kept ? kept : Path.Combine(_root.FullName, "host");
 
     private string DataDirectory => Path.Combine(_root.FullName, "data");
 
@@ -174,6 +188,10 @@ public sealed class EndToEndHost : IAsyncLifetime
         return editor;
     }
 
+    // The editor of one test class, made once for it.
+    internal Task<Editor> EditorOfAsync(Type testClass) =>
+        _classEditors.GetOrAdd(testClass, _ => new Lazy<Task<Editor>>(() => CreateEditorAsync())).Value;
+
     // Sets a new password as an operator does with the host's command, which ends the user's sessions.
     public async Task<Editor> ResetPasswordAsync(Editor editor)
     {
@@ -194,6 +212,16 @@ public sealed class EndToEndHost : IAsyncLifetime
         return new HttpClient(handler) { BaseAddress = Origin, Timeout = TimeSpan.FromSeconds(30) };
     }
 
+    // A client of the Management API with a management key of its own, for a case that makes its data before the browser
+    // acts on it. The key goes with the host's database at the end of the run.
+    public async Task<HttpClient> ManagementClientAsync()
+    {
+        var key = (await CommandAsync(null, secretOutput: true, "apikey", "create", "--name", $"end-to-end-{Guid.NewGuid():N}", "--class", "management", "--role", "Super Admin")).Trim();
+        var client = Client();
+        client.DefaultRequestHeaders.Add("X-Api-Key", key);
+        return client;
+    }
+
     // The fingerprint the browser context accepts, which is this certificate's alone.
     public string ServerCertificateHash => Convert.ToBase64String(SHA256.HashData(_certificates!.Server.PublicKey.ExportSubjectPublicKeyInfo()));
 
@@ -212,6 +240,12 @@ public sealed class EndToEndHost : IAsyncLifetime
     // runners, the publish would otherwise relink the WebAssembly runtime, which no image does.
     private async Task PublishAsync()
     {
+        var mark = Path.Combine(PublishDirectory, PublishedMark);
+        if (File.Exists(mark))
+        {
+            return;
+        }
+
         var (exitCode, _, tail) = await ChildProcess.RunAsync(
             "dotnet",
             ["publish", Repository.HostProject, "-c", Repository.Configuration, "--no-build", "-o", PublishDirectory, "-p:UseAppHost=false", "-p:WasmBuildNative=false", "-nologo", "-nodeReuse:false"],
@@ -224,12 +258,17 @@ public sealed class EndToEndHost : IAsyncLifetime
         {
             throw new InvalidOperationException($"Publishing the reference host ({Repository.Configuration}, with no build) exited with {exitCode}; build the solution in that configuration first.{Environment.NewLine}{tail}");
         }
+
+        // Written last, so that a publish cut short is not taken by a later run.
+        await File.WriteAllTextAsync(mark, Repository.Configuration, Token);
     }
 
-    // The settings of a production deployment, as few as the image needs, with four that only a test host has: its address
-    // is a port of the loopback address; its certificates are the run's own; every browser of the tests signs in from that one
-    // address, so the sign-in's limit per client address is raised from 20 a minute; and an access token lasts five seconds, so
-    // that the admin refreshes it on demand, two and a half seconds after it was issued, at the next call of a test's action.
+    // The settings of a production deployment, as few as the image needs, with five that only a test host has: its address
+    // is a port of the loopback address; its certificates are the run's own; every browser of the tests calls from that one
+    // address, one case after another for minutes, so the request limits per address and per user are raised to what such a
+    // suite cannot reach (no case is about the limiter, whose tests are the host's own); and an access token lasts five
+    // seconds, so that the admin refreshes it on demand, two and a half seconds after it was issued, at the next call of a
+    // test's action; and the preview origin of PreviewTests, which no server holds.
     private void Configure()
     {
         var certificates = _certificates!;
@@ -247,12 +286,17 @@ public sealed class EndToEndHost : IAsyncLifetime
             ["FluentCms__PublicOrigin"] = origin,
             ["AllowedHosts"] = IPAddress.Loopback.ToString(),
             ["FluentCms__Admin__Enabled"] = "true",
+            ["FluentCms__Admin__PreviewOrigins__0"] = PreviewOrigin,
             ["FluentCms__Security__SigningCertificate__Path"] = certificates.SigningPath,
             ["FluentCms__Security__SigningCertificate__Password"] = certificates.Password,
             ["FluentCms__DataProtection__Certificate__Path"] = certificates.SigningPath,
             ["FluentCms__DataProtection__Certificate__Password"] = certificates.Password,
             ["FluentCms__Media__Local__Root"] = Path.Combine(DataDirectory, "media"),
-            ["FluentCms__RateLimits__Auth__PermitLimit"] = "1000",
+            ["FluentCms__RateLimits__Auth__PermitLimit"] = TestLimit,
+            ["FluentCms__RateLimits__Management__PermitLimit"] = TestLimit,
+            ["FluentCms__RateLimits__Delivery__PermitLimit"] = TestLimit,
+            ["FluentCms__RateLimits__Delivery__MaxKeyLimit"] = TestLimit,
+            ["FluentCms__RateLimits__PreAuth__PermitLimit"] = TestLimit,
             ["FluentCms__Clients__AccessTokenLifetime"] = AccessTokenLifetime,
             ["Kestrel__Endpoints__Https__Url"] = origin,
             ["Kestrel__Endpoints__Https__Certificate__Path"] = certificates.ServerPath,
