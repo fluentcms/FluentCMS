@@ -115,7 +115,7 @@ public sealed class ContentServiceAuditTests : IDisposable
         using var scope = _database.Database.NewScope();
         var accessor = scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>();
 
-        using (SystemOperation.Begin(accessor, Origin.Job, SiteA))
+        using (SystemOperation.Begin(accessor, scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Job, SiteA))
         {
             accessor.Current!.Actor.ShouldBeNull();
             accessor.Current.AuditPrincipal.ShouldBeSameAs(Principal.System);

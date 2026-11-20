@@ -15,7 +15,7 @@ public sealed class SeedContext
         Services = services;
         AppliedVersion = appliedVersion;
         _accessor = Get<IOperationContextAccessor>();
-        Time = services.GetService(typeof(TimeProvider)) as TimeProvider ?? TimeProvider.System;
+        Time = Get<TimeProvider>();
     }
 
     /// <summary>

@@ -215,6 +215,21 @@ public sealed class ReverseProxyTests(CmsWebHosts hosts) : IClassFixture<CmsWebH
         redirect.Headers.Location!.ToString().ShouldBe("https://localhost/api/delivery/v1/probe");
     }
 
+    // The probes call the container's own http port, where nothing answers https, so they are never redirected.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("/cms")]
+    public async Task TheHealthProbesAreNotRedirected(string? pathBase)
+    {
+        var client = await Start(Environments.Production, new() { [Section + "HttpsRedirection:Enabled"] = "true", [Section + "HttpsRedirection:Port"] = "443", [Section + "PathBase"] = pathBase });
+
+        using var health = await Get(client, $"{pathBase}/health/probe");
+        using var api = await Get(client, $"{pathBase}/api/delivery/v1/probe");
+
+        health.StatusCode.ShouldBe(HttpStatusCode.OK);
+        api.StatusCode.ShouldBe(HttpStatusCode.TemporaryRedirect);
+    }
+
     [Fact]
     public async Task TheHttpsPortOfTheEnvironmentIsHonouredWhenNoPortIsSet()
     {

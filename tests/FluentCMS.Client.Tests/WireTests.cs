@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Nodes;
 using FluentCMS.Client.Tests.Blog;
@@ -91,16 +92,16 @@ public sealed class WireTests
     }
 
     // A success the client cannot read is a problem with the status, no code and the reason, and not an exception of the
-    // JSON reader. An empty one answers nothing, also when it ends at once without saying its length.
+    // JSON reader, a delete's too. A delete returns nothing, so an empty answer to it is no problem.
     [Fact]
-    public async Task ASuccessThatIsNotJsonIsAProblemAndAnEmptyOneAnswersNothing()
+    public async Task ASuccessThatIsNotJsonIsAProblemAndAnEmptyDeleteIsNot()
     {
         var proxy = new FluentCmsClient(new HttpClient(new Recording(HttpStatusCode.OK, "text/html", "<html>a proxy</html>")) { BaseAddress = new Uri("https://cms.example.com/") });
         var chunked = new FluentCmsClient(new HttpClient(new Recording(HttpStatusCode.OK, "application/json", "", chunked: true)) { BaseAddress = new Uri("https://cms.example.com/") });
 
         var problem = await Should.ThrowAsync<FluentCmsProblemException>(() => proxy.GetAsync<Article>(Guid.Empty, cancellationToken: Token));
+        (await Should.ThrowAsync<FluentCmsProblemException>(() => proxy.DeleteAsync<Article>(Guid.Empty, Token))).Detail.ShouldBe("The answer is not JSON.");
         await chunked.DeleteAsync<Article>(Guid.Empty, Token);
-        (await chunked.GetAsync<Article>(Guid.Empty, cancellationToken: Token)).ShouldBeNull();
 
         problem.Status.ShouldBe(HttpStatusCode.OK);
         problem.Code.ShouldBeNull();
@@ -109,7 +110,116 @@ public sealed class WireTests
         problem.InnerException.ShouldBeAssignableTo<System.Text.Json.JsonException>();
     }
 
-    private sealed class Recording(HttpStatusCode status, string mediaType, string answer, bool chunked = false) : HttpMessageHandler
+    // Every call but a delete returns a result, so an empty answer, also one that ends at once without saying its length,
+    // a 204 or a literal null is a problem with no code, and not a null the caller would read later.
+    [Theory]
+    [InlineData(HttpStatusCode.OK, "", false, "The answer is empty.")]
+    [InlineData(HttpStatusCode.OK, "", true, "The answer is empty.")]
+    [InlineData(HttpStatusCode.NoContent, "", false, "The answer is empty.")]
+    [InlineData(HttpStatusCode.OK, "null", false, "The answer is null.")]
+    public async Task ASuccessWithNoResultIsAProblemWhereTheCallReturnsOne(HttpStatusCode status, string answer, bool chunked, string detail)
+    {
+        var client = new FluentCmsClient(new HttpClient(new Recording(status, "application/json", answer, chunked)) { BaseAddress = new Uri("https://cms.example.com/") });
+        var article = new Article { Title = "Hello" };
+
+        Func<Task>[] calls =
+        [
+            () => client.ListAsync<Article>(cancellationToken: Token),
+            () => client.GetAsync<Article>(Guid.Empty, cancellationToken: Token),
+            () => client.GetByAsync<Article>("slug", "hello", cancellationToken: Token),
+            () => client.GetSingletonAsync<Article>(cancellationToken: Token),
+            () => client.CreateAsync(article, cancellationToken: Token),
+            () => client.UpdateAsync(Guid.Empty, article, 1, cancellationToken: Token),
+            () => client.PublishAsync<Article>(Guid.Empty, cancellationToken: Token),
+            () => client.UnpublishAsync<Article>(Guid.Empty, cancellationToken: Token),
+        ];
+        foreach (var call in calls)
+        {
+            var problem = await Should.ThrowAsync<FluentCmsProblemException>(call);
+            problem.Status.ShouldBe(status);
+            problem.Code.ShouldBeNull();
+            problem.Detail.ShouldBe(detail);
+        }
+
+        await client.DeleteAsync<Article>(Guid.Empty, Token);
+    }
+
+    // . and .. would be removed as the address is resolved and reach another route with the client's key.
+    [Theory]
+    [InlineData(".")]
+    [InlineData("..")]
+    [InlineData("")]
+    public async Task ADotSegmentIsRefusedInEveryPartOfThePath(string segment)
+    {
+        var handler = new Recording(HttpStatusCode.OK, "application/json", "{}");
+        var client = new FluentCmsClient(new HttpClient(handler) { BaseAddress = new Uri("https://cms.example.com/") });
+
+        Func<Task>[] calls =
+        [
+            () => client.ListAsync<Article>(segment, cancellationToken: Token),
+            () => client.GetAsync<Article>(segment, Guid.Empty, cancellationToken: Token),
+            () => client.GetByAsync<Article>(segment, "slug", "hello", cancellationToken: Token),
+            () => client.GetByAsync<Article>("article", segment, "hello", cancellationToken: Token),
+            () => client.GetByAsync<Article>("article", "slug", segment, cancellationToken: Token),
+            () => client.GetSingletonAsync<Article>(segment, cancellationToken: Token),
+            () => client.CreateAsync(segment, new Article(), cancellationToken: Token),
+            () => client.UpdateAsync(segment, Guid.Empty, new Article(), 1, cancellationToken: Token),
+            () => client.DeleteAsync(segment, Guid.Empty, Token),
+            () => client.PublishAsync<Article>(segment, Guid.Empty, cancellationToken: Token),
+            () => client.UnpublishAsync<Article>(segment, Guid.Empty, cancellationToken: Token),
+        ];
+        foreach (var call in calls)
+        {
+            await Should.ThrowAsync<ArgumentException>(call);
+        }
+
+        handler.Request.ShouldBeNull();
+    }
+
+    // Any other value is escaped, its % too, so an escaped dot reaches the server as the text it is.
+    [Theory]
+    [InlineData("%2e%2e", "%252e%252e")]
+    [InlineData("%2E", "%252E")]
+    [InlineData("...", "...")]
+    [InlineData("a/../b", "a%2F..%2Fb")]
+    public async Task AnyOtherSegmentIsSentEscaped(string value, string sent)
+    {
+        var handler = new Recording(HttpStatusCode.OK, "application/json", "{}");
+        var client = new FluentCmsClient(new HttpClient(handler) { BaseAddress = new Uri("https://cms.example.com/") });
+
+        await client.GetByAsync<Article>("slug", value, cancellationToken: Token);
+
+        handler.Request!.RequestUri!.AbsoluteUri.ShouldBe($"https://cms.example.com/api/delivery/v1/article/by/slug/{sent}");
+    }
+
+    // Seconds as the API sends them, or a date read against the Date of the same answer.
+    [Fact]
+    public async Task AProblemHasTheRetryAfterOfTheAnswer()
+    {
+        var noon = new DateTimeOffset(2026, 11, 19, 12, 0, 0, TimeSpan.Zero);
+        var seconds = new Recording(HttpStatusCode.TooManyRequests, "application/problem+json", """{ "code": "FCMS3101" }""", retryAfter: new RetryConditionHeaderValue(TimeSpan.FromSeconds(30)));
+        var date = new Recording(HttpStatusCode.ServiceUnavailable, "text/plain", "busy", retryAfter: new RetryConditionHeaderValue(noon.AddMinutes(1)), date: noon);
+        var past = new Recording(HttpStatusCode.ServiceUnavailable, "text/plain", "busy", retryAfter: new RetryConditionHeaderValue(noon.AddMinutes(-1)), date: noon);
+        var undated = new Recording(HttpStatusCode.ServiceUnavailable, "text/plain", "busy", retryAfter: new RetryConditionHeaderValue(noon.AddMinutes(1)));
+        var none = new Recording(HttpStatusCode.TooManyRequests, "text/plain", "slow down");
+
+        var limited = await Problem(seconds);
+        limited.RetryAfter.ShouldBe(TimeSpan.FromSeconds(30));
+        limited.Code.ShouldBe("FCMS3101");
+        (await Problem(date)).RetryAfter.ShouldBe(TimeSpan.FromMinutes(1));
+        (await Problem(past)).RetryAfter.ShouldBe(TimeSpan.Zero);
+        (await Problem(undated)).RetryAfter.ShouldBeNull();
+        (await Problem(none)).RetryAfter.ShouldBeNull();
+        foreach (var malformed in new[] { "-5", "1.5", "+30", "30s", "soon" })
+        {
+            (await Problem(new Recording(HttpStatusCode.TooManyRequests, "text/plain", "slow down", date: noon, rawRetryAfter: malformed))).RetryAfter.ShouldBeNull(malformed);
+        }
+
+        static Task<FluentCmsProblemException> Problem(Recording handler) =>
+            Should.ThrowAsync<FluentCmsProblemException>(() => new FluentCmsClient(new HttpClient(handler) { BaseAddress = new Uri("https://cms.example.com/") }).ListAsync<Article>(cancellationToken: Token));
+    }
+
+    private sealed class Recording(HttpStatusCode status, string mediaType, string answer, bool chunked = false, RetryConditionHeaderValue? retryAfter = null, DateTimeOffset? date = null, string? rawRetryAfter = null) : HttpMessageHandler
     {
         public HttpRequestMessage? Request { get; private set; }
 
@@ -120,8 +230,16 @@ public sealed class WireTests
             Request = request;
             Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
             HttpContent content = chunked ? new StreamContent(new Unseekable(Encoding.UTF8.GetBytes(answer))) : new StringContent(answer, Encoding.UTF8, mediaType);
-            content.Headers.ContentType ??= new System.Net.Http.Headers.MediaTypeHeaderValue(mediaType);
-            return new HttpResponseMessage(status) { Content = content };
+            content.Headers.ContentType ??= new MediaTypeHeaderValue(mediaType);
+            var response = new HttpResponseMessage(status) { Content = content };
+            response.Headers.RetryAfter = retryAfter;
+            response.Headers.Date = date;
+            if (rawRetryAfter is not null)
+            {
+                response.Headers.TryAddWithoutValidation("Retry-After", rawRetryAfter);
+            }
+
+            return response;
         }
     }
 

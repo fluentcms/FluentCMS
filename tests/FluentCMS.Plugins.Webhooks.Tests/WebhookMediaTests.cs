@@ -24,7 +24,7 @@ public sealed class WebhookMediaTests(WebhookFixture hosts) : IClassFixture<Webh
         var folder = Guid.CreateVersion7();
 
         await using (var scope = host.Services.CreateAsyncScope())
-        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Job, new SiteId(DefaultSite.Id)))
+        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Job, new SiteId(DefaultSite.Id)))
         {
             var events = scope.ServiceProvider.GetRequiredService<IEventBus>();
             await events.PublishAsync(new MediaAssetUploadedEvent(asset, folder, "photo.jpg", "image/jpeg", 10), Token);
@@ -51,7 +51,7 @@ public sealed class WebhookMediaTests(WebhookFixture hosts) : IClassFixture<Webh
         var asset = Guid.CreateVersion7();
 
         await using (var scope = host.Services.CreateAsyncScope())
-        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Job, new SiteId(DefaultSite.Id)))
+        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Job, new SiteId(DefaultSite.Id)))
         {
             await scope.ServiceProvider.GetRequiredService<IEventBus>().PublishAsync(new MediaAssetReplacedEvent(asset, null, "new.png", "image/png", 20), Token);
         }

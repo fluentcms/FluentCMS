@@ -281,7 +281,7 @@ public sealed partial class AuthorizationServerTests
         await using (var scope = host.Services.CreateAsyncScope())
         {
             var keys = scope.ServiceProvider.GetRequiredService<ApiKeyService>();
-            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id));
             (await keys.RevokeAsync(revoked.Id, Token)).ShouldBeTrue();
             await keys.ExpireAsync(expired.Id, host.Time.GetUtcNow().AddMinutes(1), Token);
         }
