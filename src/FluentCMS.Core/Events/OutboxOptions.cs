@@ -19,8 +19,8 @@ public sealed class OutboxOptions
 
     public double RetryJitter { get; set; } = 0.2;
 
-    // How long one delivery may take, from the renewal of its lease, before it is abandoned. Shorter than the lease, so that a
-    // delivery never outlives the claim that lets it run. A handler that started counts a failed attempt; one that never
+    // How long one delivery may take before it is abandoned. Shorter than the lease, which the drain renews before a delivery
+    // that what is left of it would not cover, so that a delivery never outlives the claim that lets it run. A handler that started counts a failed attempt; one that never
     // started counts nothing and waits for a later drain.
     public TimeSpan DeliveryTimeout { get; set; } = TimeSpan.FromMinutes(1);
 

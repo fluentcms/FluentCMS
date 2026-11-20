@@ -16,10 +16,10 @@ internal static partial class EventLog
     [LoggerMessage(EventId = 9603, Level = LogLevel.Warning, Message = "Could not write the outcome of outbox delivery {Id}; it is delivered again when its lease ends.")]
     public static partial void SettleFailed(ILogger logger, Exception exception, Guid id);
 
-    [LoggerMessage(EventId = 9604, Level = LogLevel.Warning, Message = "Could not ask for the outbox to be drained; the next scheduled drain delivers what was recorded.")]
+    [LoggerMessage(EventId = 9604, Level = LogLevel.Warning, Message = "Could not ask for the outbox to be drained; the next sweep of the outbox delivers what was recorded.")]
     public static partial void KickFailed(ILogger logger, Exception exception);
 
-    [LoggerMessage(EventId = 9605, Level = LogLevel.Error, Message = "Could not register the recurring drain of the outbox; events are delivered only after a write asks for it.")]
+    [LoggerMessage(EventId = 9605, Level = LogLevel.Error, Message = "Could not store the schedule of the outbox prune; it is tried again.")]
     public static partial void RecurringFailed(ILogger logger, Exception exception);
 
     [LoggerMessage(EventId = 9612, Level = LogLevel.Error, Message = "The handlers of {EventType} {EventId} could not be built, so none of them ran; the write stands.")]
@@ -55,8 +55,8 @@ internal static partial class EventLog
     [LoggerMessage(EventId = 9618, Level = LogLevel.Warning, Message = "The scope of the handlers of {EventType} {EventId} failed while it was disposed; the write stands.")]
     public static partial void HandlerScopeFailed(ILogger logger, Exception exception, string eventType, Guid eventId);
 
-    [LoggerMessage(EventId = 9610, Level = LogLevel.Error, Message = "The drain of the outbox hit an error.")]
-    public static partial void DrainFailed(ILogger logger, Exception exception);
+    [LoggerMessage(EventId = 9610, Level = LogLevel.Error, Message = "The sweep of the outbox hit an error; it runs again at its next interval.")]
+    public static partial void SweepFailed(ILogger logger, Exception exception);
 
     [LoggerMessage(EventId = 9619, Level = LogLevel.Error, Message = "Outbox delivery {Id} to {Handler} waited longer than {OrphanAfter} for its handler or the handler's plugin, so it is left as failed.")]
     public static partial void Orphaned(ILogger logger, Guid id, string handler, TimeSpan orphanAfter);

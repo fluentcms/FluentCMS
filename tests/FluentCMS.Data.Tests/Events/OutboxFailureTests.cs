@@ -199,6 +199,16 @@ public sealed class OutboxFailureTests
         }
     }
 
+    // The time of day moved on by hand, with the timers of the system.
+    private sealed class ShiftedClock : TimeProvider
+    {
+        private long _ticks;
+
+        public void Shift(TimeSpan by) => Interlocked.Add(ref _ticks, by.Ticks);
+
+        public override DateTimeOffset GetUtcNow() => System.GetUtcNow() + TimeSpan.FromTicks(Interlocked.Read(ref _ticks));
+    }
+
     // Holds back every work item the drain hands off, as a starved thread pool would, until the test lets them all run late.
     private sealed class HeldHandOffs
     {
@@ -383,17 +393,19 @@ public sealed class OutboxFailureTests
             throw new InvalidOperationException("The slow worker fails when it finally ends.");
         };
 
-        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast()));
+        // The wall clock moves past the lease while the timers of the cut-offs keep real time.
+        var clock = new ShiftedClock();
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms => cms.Services.AddSingleton<TimeProvider>(clock))));
         for (var index = 0; index < 3; index++)
         {
             await database.CreateAsync(Editor, Titled($"T{index}"));
         }
 
-        using var other = database.Database.NewInstance(EventRegistrations.With(seen, Fast()));
+        using var other = database.Database.NewInstance(EventRegistrations.With(seen, Fast(cms => cms.Services.AddSingleton<TimeProvider>(clock))));
         var slow = Task.Run(() => DrainAsync(database.Database.Services), Token);
         await entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
 
-        ExpireLeases(database);
+        clock.Shift(new OutboxOptions().LeaseDuration + TimeSpan.FromSeconds(1));
         (await DrainAsync(other)).ShouldBe(3);
 
         gate.SetResult();
@@ -425,6 +437,7 @@ public sealed class OutboxFailureTests
             .SetProperty(column => column.Attempts, 3)));
 
         (await DrainAsync(database.Database.Services)).ShouldBe(0);
+        (await database.Database.Services.GetRequiredService<OutboxDrainer>().SweepAsync(Token)).ShouldBeFalse();
 
         seen.Events.ShouldBeEmpty();
         var row = database.Rows().Single();

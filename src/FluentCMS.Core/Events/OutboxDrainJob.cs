@@ -4,6 +4,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Jobs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -15,6 +16,7 @@ internal sealed class OutboxDrainJob(OutboxDrainer drainer) : IJob<OutboxDrainPa
 {
     public const string Type = "events.outbox.drain";
 
+    // The name of the recurring drain that earlier versions stored, which OutboxScheduleService removes.
     public const string RecurringName = "events.outbox.drain";
 
     // Its own queue, so that a handler that hangs holds up other deliveries and no other job.
@@ -81,12 +83,24 @@ internal sealed class OutboxPruneJob(SystemDbContext context, OutboxOptions opti
     }
 }
 
-// The drain is the safety net for a crash between a commit and its kick, which leaves rows nothing has asked to deliver, and
-// the prune keeps the table to what is still owed or still kept. It does nothing when no outbox handler is registered, since
-// then there are never rows, and it keeps trying until both schedules are stored, since a database that is down at startup
-// would otherwise leave the host without them for good.
-internal sealed class OutboxScheduleService(IJobScheduler scheduler, OutboxRegistry registry, TimeProvider time, ILogger<OutboxScheduleService> logger) : BackgroundService
+// The sweep is the safety net for a crash between a commit and its kick, which leaves rows nothing has asked to deliver, and
+// for a worker that stopped on the last attempt of a delivery: every SweepInterval it leaves such deliveries as failed and,
+// when rows are due, kicks the drain. It reads before it writes, so an idle instance adds no row and takes no write lock,
+// where a recurring drain added a job and an attempt every minute. The prune keeps the table to what is still owed or still
+// kept. It does nothing when no outbox handler is registered, since then there are never rows, and it keeps trying until
+// the prune's schedule is stored, since a database that is down at startup would otherwise leave the host without it for
+// good. The recurring drain of earlier versions is removed when the schedule is stored.
+internal sealed class OutboxScheduleService(
+    IJobScheduler scheduler,
+    OutboxRegistry registry,
+    OutboxDrainer drainer,
+    OutboxKick kick,
+    IServiceScopeFactory scopes,
+    TimeProvider time,
+    ILogger<OutboxScheduleService> logger) : BackgroundService
 {
+    public static readonly TimeSpan SweepInterval = TimeSpan.FromMinutes(1);
+
     private static readonly TimeSpan Retry = TimeSpan.FromSeconds(30);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -96,27 +110,72 @@ internal sealed class OutboxScheduleService(IJobScheduler scheduler, OutboxRegis
             return;
         }
 
+        if (!await ScheduleAsync(stoppingToken))
+        {
+            return;
+        }
+
+        while (await WaitAsync(SweepInterval, stoppingToken))
+        {
+            try
+            {
+                if (await drainer.SweepAsync(stoppingToken))
+                {
+                    await kick.KickAsync();
+                }
+            }
+            catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
+            {
+                EventLog.SweepFailed(logger, exception);
+            }
+        }
+    }
+
+    private async Task<bool> ScheduleAsync(CancellationToken stoppingToken)
+    {
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                await scheduler.AddRecurringAsync<OutboxDrainJob, OutboxDrainPayload>(OutboxDrainJob.RecurringName, "* * * * *", new OutboxDrainPayload(), OutboxDrainJob.Queue, stoppingToken);
                 await scheduler.AddRecurringAsync<OutboxPruneJob, OutboxPrunePayload>(OutboxPruneJob.RecurringName, OutboxPruneJob.Schedule, new OutboxPrunePayload(), JobRunnerOptions.DefaultQueue, stoppingToken);
-                return;
+                await RemoveRecurringDrainAsync(stoppingToken);
+                return true;
             }
             catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
             {
                 EventLog.RecurringFailed(logger, exception);
             }
 
-            try
+            if (!await WaitAsync(Retry, stoppingToken))
             {
-                await Task.Delay(Retry, time, stoppingToken);
+                return false;
             }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
+        }
+
+        return false;
+    }
+
+    private async Task RemoveRecurringDrainAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        var recurring = context.Set<RecurringJob>().Where(job => job.Name == OutboxDrainJob.RecurringName);
+        if (await recurring.AnyAsync(cancellationToken))
+        {
+            await recurring.ExecuteDeleteAsync(cancellationToken);
+        }
+    }
+
+    private async Task<bool> WaitAsync(TimeSpan delay, CancellationToken stoppingToken)
+    {
+        try
+        {
+            await Task.Delay(delay, time, stoppingToken);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
         }
     }
 }
