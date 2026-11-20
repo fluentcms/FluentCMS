@@ -236,8 +236,8 @@ public sealed class PublishingTransitionTests : IDisposable
         _database.Document(id).Status.ShouldBe(EntryStatus.Modified);
         _database.Document(id, "fr").Status.ShouldBe(EntryStatus.Modified);
 
-        // The save decides the status of fr, the recompute that of en.
-        (await _database.PatchAsync(Editor, id, new() { ["views"] = 1 }, 1, locale: "fr"))["status"].ShouldBe(EntryStatus.Published);
+        // The save decides the status of fr, the recompute that of en. The shared edit in en advanced fr to version 2 (#3265).
+        (await _database.PatchAsync(Editor, id, new() { ["views"] = 1 }, 2, locale: "fr"))["status"].ShouldBe(EntryStatus.Published);
         _database.Document(id).Status.ShouldBe(EntryStatus.Published);
         _database.Document(id, "fr").Status.ShouldBe(EntryStatus.Published);
 
@@ -245,9 +245,9 @@ public sealed class PublishingTransitionTests : IDisposable
         var french = await _database.DiscardAsync(Editor, id, "fr");
 
         english["status"].ShouldBe(EntryStatus.Published);
-        english["version"].ShouldBe(2);
+        english["version"].ShouldBe(3);
         french["status"].ShouldBe(EntryStatus.Published);
-        french["version"].ShouldBe(2);
+        french["version"].ShouldBe(3);
         _database.PublishedRow("cms_article", id)!["views"].ShouldBe(1L);
     }
 

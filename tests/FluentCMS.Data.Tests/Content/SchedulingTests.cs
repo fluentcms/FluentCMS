@@ -735,9 +735,10 @@ public sealed class SchedulingTests : IDisposable
         await Database.UpdateAsync(Editor, id, new() { ["title"] = "Un" }, 0, locale: "fr");
         await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)), "en");
 
-        // views is not localizable, so this text would go out with the English publish although its draft version stays.
+        // views is not localizable, so this text would go out with the English publish. The English draft takes it as a
+        // version of its own (#3265), and the shared hash stops the schedule as well.
         await Database.PatchAsync(updater, id, new() { ["views"] = 900 }, 1, locale: "fr");
-        Database.Document(id, "en").DraftVersion.ShouldBe(1);
+        Database.Document(id, "en").DraftVersion.ShouldBe(2);
 
         var row = _fixture.Schedules(id).Single();
         row.Status.ShouldBe(ScheduleRow.Skipped);
