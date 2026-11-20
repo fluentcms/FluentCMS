@@ -322,7 +322,6 @@ public sealed class AdminHostingTests : IAsyncDisposable
     [InlineData("Branding:Name", " Acme")]
     [InlineData("Cultures:Default", "de")]
     [InlineData("PreviewOrigins:0", "https://www.example.com/preview")]
-    [InlineData("PreviewOrigins:0", "https://localhost/")]
     public async Task AValueTheAdminWouldRefuseStopsTheHost(string key, string value)
     {
         var settings = AdminSettings();
@@ -334,6 +333,20 @@ public sealed class AdminHostingTests : IAsyncDisposable
         var refusal = Refusals(exception).ShouldHaveSingleItem();
         refusal.Code.ShouldBe("FCMS1101");
         refusal.Message.ShouldContain($"FluentCms:Admin:{key.Split(':')[0]}");
+    }
+
+    // A frame of the admin's own origin with scripts and the same origin allowed would reach its sessionStorage.
+    [Fact]
+    public async Task APreviewOriginThatIsTheAdminsOwnStopsTheHost()
+    {
+        var settings = AdminSettings();
+        settings["FluentCms:Admin:PreviewOrigins:0"] = "https://localhost/";
+
+        var exception = await Should.ThrowAsync<Exception>(() => _host.StartAsync(settings));
+
+        var refusal = Refusals(exception).ShouldHaveSingleItem();
+        refusal.Code.ShouldBe("FCMS1101");
+        refusal.Message.ShouldBe("FCMS1101: FluentCms:Admin:PreviewOrigins:0 is 'https://localhost/', the admin's own origin; serve the preview pages from another origin.");
     }
 
     // A logo whose URL carries a query is allowed by img-src, as config.json carries it.

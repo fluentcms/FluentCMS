@@ -242,7 +242,8 @@ public sealed class ContentPreviewTests : AdminTestContext
         app.Find("[data-field='title'] input").Input("Changed");
         Save(app);
 
-        app.WaitForAssertion(() => app.Find(".content-preview-notice").TextContent.ShouldBe("The preview could not be refreshed; Reload tries again."));
+        // The page said no ready, so the note of a silent page may be there too, by the clock.
+        app.WaitForAssertion(() => Notices(app).ShouldContain("The preview could not be refreshed; Reload tries again."));
         Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-1");
     }
 
@@ -251,6 +252,8 @@ public sealed class ContentPreviewTests : AdminTestContext
     {
         var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
         var app = Open(Load($"content/post/{id:D}"));
+        Post(app, FrontEnd, Message("ready"));
+        app.WaitForAssertion(() => Pane(app).GetAttribute("data-ready").ShouldBe("true"));
 
         Post(app, FrontEnd, Message("navigated", url: "https://elsewhere.example.com/about"));
         Post(app, FrontEnd, Message("navigated", url: "javascript:alert(1)"));
@@ -311,6 +314,9 @@ public sealed class ContentPreviewTests : AdminTestContext
 
     private static IElement Button(IRenderedComponent<AdminApp> app, string text) =>
         app.FindAll("fluent-button").First(button => button.TextContent.Trim() == text);
+
+    private static string[] Notices(IRenderedComponent<AdminApp> app) =>
+        [.. app.FindAll(".content-preview-notice").Select(notice => notice.TextContent.Trim())];
 
     private static IElement Pane(IRenderedComponent<AdminApp> app) => app.Find(".content-preview");
 
