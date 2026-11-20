@@ -137,6 +137,29 @@ public sealed class WebhookDeliveryTests(WebhookFixture hosts) : IClassFixture<W
         newest["durationMs"].ShouldNotBeNull();
     }
 
+    // PostgreSQL refuses a NUL in a text column, and a strict UTF-8 encoder half a surrogate pair, so an answer holding one
+    // failed the write after a 2xx, and the delivery was sent again until it died.
+    [Fact]
+    public async Task AnAnswerWithControlCharactersOrAPairCutAtTheLimitIsOneSuccessfulDelivery()
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        var kept = "ok\tdone\r\n" + new string('a', 1014);
+        receiver.Answer = "ok\0\u0007\tdone\r\n\u007F" + new string('a', 1014) + "\U0001F600 and more";
+        var host = await hosts.HostAsync();
+        using var client = await AdminAsync(host);
+        var webhook = Id(await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
+        var articles = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).Content<Article>();
+        await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "Odd answer" }, Token)).Id, cancellationToken: Token);
+
+        await PumpAsync(host);
+        host.Time.Advance(TimeSpan.FromDays(2));
+        (await RunDueJobsAsync(host)).ShouldBe(0);
+
+        receiver.Requests.ShouldHaveSingleItem();
+        var attempt = (await DeliveriesAsync(host, webhook)).ShouldHaveSingleItem();
+        (attempt.State, attempt.StatusCode, attempt.ResponseExcerpt).ShouldBe((DeliveryStates.Succeeded, 200, kept));
+    }
+
     [Fact]
     public async Task AWebhookDisabledBeforeItsRetryGetsNoMoreAttemptsAndItsDeliveryIsDead()
     {

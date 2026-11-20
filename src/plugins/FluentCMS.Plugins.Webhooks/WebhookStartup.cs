@@ -82,11 +82,12 @@ internal sealed class WebhookStartup(
                 try
                 {
                     await scheduler.AddRecurringAsync<WebhookRetentionJob, WebhookRetentionPayload>(WebhookRetentionJob.Type, WebhookRetentionJob.Schedule, new WebhookRetentionPayload(), queue: null, cancellationToken: stoppingToken);
+                    await scheduler.AddRecurringAsync<WebhookQueueJob, WebhookQueuePayload>(WebhookQueueJob.Type, WebhookQueueJob.Schedule, new WebhookQueuePayload(), queue: null, cancellationToken: stoppingToken);
                     scheduled = true;
                 }
                 catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
                 {
-                    WebhookLog.RetentionNotScheduled(logger, exception);
+                    WebhookLog.RecurringNotScheduled(logger, exception);
                 }
             }
 

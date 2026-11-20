@@ -11,9 +11,11 @@ using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Plugins.Webhooks;
 
-[FluentCmsPlugin("webhooks", SdkRange = "[1.0.0,2.0.0)")]
+[FluentCmsPlugin(Name, SdkRange = "[1.0.0,2.0.0)")]
 public sealed class WebhooksPlugin : IPlugin
 {
+    internal const string Name = "webhooks";
+
     public void ConfigureServices(IPluginServiceBuilder plugin)
     {
         ArgumentNullException.ThrowIfNull(plugin);
@@ -38,6 +40,7 @@ public sealed class WebhooksPlugin : IPlugin
             .AddJob<WebhookDeliveryJob, WebhookAttempt>(WebhookDeliveryJob.Type)
             .AddJobQueue(WebhookDeliveryJob.Queue, services => services.GetRequiredService<IOptions<WebhooksOptions>>().Value.Workers)
             .AddJob<WebhookRetentionJob, WebhookRetentionPayload>(WebhookRetentionJob.Type, WebhookRetentionJob.AttemptTimeout)
+            .AddJob<WebhookQueueJob, WebhookQueuePayload>(WebhookQueueJob.Type)
             .AddOutboxHandler<SiteDeletedEvent, DeletedSiteWebhooks>("webhooks.cleanup.site.deleted")
             .AddErrorCode(WebhookErrorCodes.InvalidField, 422, "Invalid webhook")
             .AddErrorCode(WebhookErrorCodes.InvalidUrl, 422, "Invalid webhook URL")

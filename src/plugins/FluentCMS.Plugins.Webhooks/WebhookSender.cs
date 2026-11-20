@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -16,6 +17,9 @@ internal sealed class WebhookSender : IDisposable
     public const string SignatureHeader = "X-FluentCMS-Signature";
 
     private const int ResponseBytes = 4096;
+
+    private static readonly SearchValues<char> Controls = SearchValues.Create(
+        [.. Enumerable.Range(0, 0x20).Where(code => code is not ('\t' or '\n' or '\r')).Select(code => (char)code), (char)0x7F]);
 
     private readonly HttpClient _client;
     private readonly WebhooksOptions _options;
@@ -72,7 +76,7 @@ internal sealed class WebhookSender : IDisposable
         }
         catch (IOException exception)
         {
-            return new WebhookResult(false, null, Elapsed(started), null, Cut($"The answer could not be read: {exception.Message}", WebhookModel.ErrorMaxLength));
+            return new WebhookResult(false, null, Elapsed(started), null, Storable($"The answer could not be read: {exception.Message}", WebhookModel.ErrorMaxLength));
         }
     }
 
@@ -90,7 +94,7 @@ internal sealed class WebhookSender : IDisposable
             }
         }
 
-        return Cut($"The request failed: {exception.Message}", WebhookModel.ErrorMaxLength);
+        return Storable($"The request failed: {exception.Message}", WebhookModel.ErrorMaxLength);
     }
 
     private static async Task<string?> ExcerptAsync(HttpResponseMessage response, CancellationToken cancellationToken)
@@ -103,8 +107,15 @@ internal sealed class WebhookSender : IDisposable
             read += count;
         }
 
-        return read == 0 ? null : Cut(Encoding.UTF8.GetString(buffer, 0, read), WebhookModel.ResponseExcerptMaxLength);
+        return read == 0 ? null : Storable(Encoding.UTF8.GetString(buffer, 0, read), WebhookModel.ResponseExcerptMaxLength);
     }
 
-    private static string Cut(string text, int length) => text.Length <= length ? text : text[..length];
+    // What the log stores of a text a receiver can shape: without control characters other than tab and line breaks, and
+    // at most length characters, never cut between the halves of a surrogate pair. PostgreSQL refuses a NUL in text and a
+    // strict UTF-8 encoder a lone surrogate, and a write that fails after a 2xx would send the attempt again.
+    internal static string Storable(string text, int length)
+    {
+        var printable = text.AsSpan().ContainsAny(Controls) ? string.Concat(text.Where(character => !Controls.Contains(character))) : text;
+        return printable.Length <= length ? printable : printable[..(char.IsHighSurrogate(printable[length - 1]) ? length - 1 : length)];
+    }
 }

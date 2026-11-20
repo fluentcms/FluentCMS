@@ -103,14 +103,20 @@ public sealed class WebhookClaimTests(WebhookFixture hosts) : IClassFixture<Webh
         await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "After a crash" }, Token)).Id, cancellationToken: Token);
 
         await PumpAsync(host);
-        host.Time.Set(crashed.CreatedAt + SendTimeout + WebhookDeliveryJob.Busy);
-        (await RunDueJobsAsync(host)).ShouldBe(1, "the delivery waits until the claim's send must have ended");
-        host.Time.Advance(WebhookDeliveryJob.Busy - TimeSpan.FromSeconds(1));
-        (await RunDueJobsAsync(host)).ShouldBe(0, "and then at least a little longer each time");
+        (await DeliveriesAsync(host, webhook)).Single(delivery => delivery.Id != crashed.Id).State.ShouldBe(DeliveryStates.Queued);
+        var scheduler = host.Services.GetRequiredService<IJobScheduler>();
+        host.Time.Set(crashed.CreatedAt + Abandoned - TimeSpan.FromSeconds(1));
+        await scheduler.EnqueueAsync<WebhookQueueJob, WebhookQueuePayload>(new WebhookQueuePayload(), cancellationToken: Token);
+        (await RunDueJobsAsync(host)).ShouldBe(1, "the queue job leaves a queue alone while its claim is in flight");
         receiver.Requests.ShouldBeEmpty("the claim of another attempt is in flight until it is abandoned");
 
-        host.Time.Advance(Abandoned);
-        (await RunDueJobsAsync(host)).ShouldBe(1);
+        // No job of the claim wakes the delivery, so the queue job does once the queue has stalled.
+        host.Time.Set(crashed.CreatedAt + Abandoned);
+        await scheduler.EnqueueAsync<WebhookQueueJob, WebhookQueuePayload>(new WebhookQueuePayload(), cancellationToken: Token);
+        (await RunDueJobsAsync(host)).ShouldBe(1, "an abandoned claim alone is not a stalled queue");
+        host.Time.Set(crashed.CreatedAt + WebhookQueueJob.StalledAfter + TimeSpan.FromSeconds(1));
+        await scheduler.EnqueueAsync<WebhookQueueJob, WebhookQueuePayload>(new WebhookQueuePayload(), cancellationToken: Token);
+        (await RunDueJobsAsync(host)).ShouldBe(2);
         var request = receiver.Requests.ShouldHaveSingleItem();
         request.Headers[WebhookSender.DeliveryHeader].ShouldNotBe(crashed.DeliveryId.ToString("D"));
         var taken = (await DeliveriesAsync(host, webhook)).Single(delivery => delivery.Id == crashed.Id);
