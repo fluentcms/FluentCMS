@@ -188,6 +188,7 @@ internal sealed class ContentSchema(ContentModel model, int defaultPageSize)
             descriptor.Field("page").Type<IntType>().Cost(0).Resolve(context => context.Parent<EntryList>().Page);
             descriptor.Field("pageSize").Type<NonNullType<IntType>>().Cost(0).Resolve(context => context.Parent<EntryList>().PageSize);
             descriptor.Field("nextCursor").Type<StringType>().Description("The cursor of the next page, to send back as it came.").Cost(0).Resolve(context => context.Parent<EntryList>().NextCursor);
+            descriptor.Field("searchTruncated").Type<NonNullType<BooleanType>>().Description("True when the search returned the most matches the search index gives, so that entries beyond them may be missing from the list and its total.").Cost(0).Resolve(context => context.Parent<EntryList>().SearchTruncated);
         }));
 
         var filter = Filter(type);

@@ -324,6 +324,23 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         one.ShouldContain("#/components/parameters/fields");
     }
 
+    // A member a client may ignore: optional, and said only of a search the index cut (#3302).
+    [Fact]
+    public void AContentListSaysWhenItsSearchWasCut()
+    {
+        foreach (var path in new[] { "/api/delivery/v1/article", $"{Management}/content/article", $"{Management}/content/article/trash" })
+        {
+            var list = Response(Paths[path]!["get"]!, "200");
+            var truncated = list["properties"]!["searchTruncated"]!;
+
+            truncated["type"]!.GetValue<string>().ShouldBe("boolean", path);
+            truncated["description"]!.GetValue<string>().ShouldContain("MaxSearchResults");
+            list["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["items", "pageSize"]);
+        }
+
+        Parameters["q"]!["description"]!.GetValue<string>().ShouldContain("searchTruncated");
+    }
+
     [Fact]
     public void ContentRoutesAreWrittenOncePerType()
     {

@@ -36,9 +36,15 @@ public sealed class SearchIndexProviderTests : IDisposable
     private readonly TestDatabase _database = TestDatabase.Create();
     private readonly IHost _host;
 
+    // A limit of three matches, so that a test can reach it.
     public SearchIndexProviderTests()
     {
-        _host = _database.CreateHost(Schema, "Production", GeneratedMigrations.CompileFirst(Schema), configure: cms => cms.AddPlugin<SearchPlugin>());
+        _host = _database.CreateHost(
+            Schema,
+            "Production",
+            GeneratedMigrations.CompileFirst(Schema),
+            settings: new() { ["FluentCms:Query:MaxSearchResults"] = "3" },
+            configure: cms => cms.AddPlugin<SearchPlugin>());
     }
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -155,6 +161,66 @@ public sealed class SearchIndexProviderTests : IDisposable
         (await FindAsync("quarterly")).ShouldBe([article]);
     }
 
+    // More matches than the limit: the most recently indexed are listed and counted, and the list says it was cut (#3302).
+    [Fact]
+    public async Task AListWithMoreMatchesThanTheLimitSaysItsSearchWasCut()
+    {
+        await MigrateAsync();
+        for (var index = 0; index < 4; index++)
+        {
+            await CreateAsync("Common words", $"Entry {index}", publish: true);
+        }
+
+        await CreateAsync("Rare words", "Alone", publish: true);
+        await DrainAsync();
+
+        var cut = await PageAsync("common");
+        var whole = await PageAsync("rare");
+
+        cut.Items.Count.ShouldBe(3);
+        cut.Total.ShouldBe(3);
+        cut.SearchTruncated.ShouldBeTrue();
+        whole.Items.ShouldHaveSingleItem();
+        whole.SearchTruncated.ShouldBeFalse();
+    }
+
+    // Rows of another site, locale, type or state, all newer than the matches of the query, take no place in the limit and
+    // do not make the list say it was cut, so they tell the caller nothing (#3302).
+    [Fact]
+    public async Task OnlyTheRowsOfTheTypeLocaleSiteAndStateOfTheQueryTakePlacesInTheLimit()
+    {
+        await MigrateAsync();
+        var first = await CreateAsync("Common words", "One", publish: true);
+        var second = await CreateAsync("Common words", "Two", publish: true);
+        await CreateAsync("Common words", "Draft only", publish: false);
+        await CreateAsync("Common words", "Another draft", publish: false);
+        await DrainAsync();
+
+        var later = DateTimeOffset.UtcNow.AddDays(1);
+        SearchEntry Row(string type, string locale, int state, Guid? site) =>
+            new() { DocumentId = Guid.CreateVersion7(), Locale = locale, State = state, Type = type, SiteId = site, Field = type == "tag" ? "name" : "title", Text = "common words", UpdatedAt = later };
+        await using (var scope = _host.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<SearchPlugin>>();
+            database.AddRange(
+                Row("article", "en", SearchStates.Published, Guid.CreateVersion7()),
+                Row("article", "en", SearchStates.Published, Guid.CreateVersion7()),
+                Row("article", "fr", SearchStates.Published, DefaultSite.Id),
+                Row("article", "fr", SearchStates.Published, DefaultSite.Id),
+                Row("tag", "", SearchStates.Published, null),
+                Row("tag", "", SearchStates.Published, null));
+            await database.SaveChangesAsync(Token);
+        }
+
+        var published = await PageAsync("common");
+        var drafts = await PageAsync("common", QueryStatus.Draft);
+
+        published.Items.Select(item => (Guid)item["id"]!).ShouldBe([first, second], ignoreOrder: true);
+        published.SearchTruncated.ShouldBeFalse();
+        drafts.Items.Count.ShouldBe(3);
+        drafts.SearchTruncated.ShouldBeTrue();
+    }
+
     [Fact]
     public async Task TheRebuildWritesTheIndexAgainAndASecondRunChangesNothing()
     {
@@ -199,6 +265,9 @@ public sealed class SearchIndexProviderTests : IDisposable
         var page = await content.QueryAsync("article", new ContentQuery { Search = text, Status = status, Locale = "en" }, Token);
         return page.Items.Select(item => (Guid)item["id"]!).ToList();
     });
+
+    private async Task<PagedResult<ContentDocument>> PageAsync(string text, QueryStatus status = QueryStatus.Published) => await AsSystemAsync(async content =>
+        await content.QueryAsync("article", new ContentQuery { Search = text, Status = status, Locale = "en", Page = new PageRequest { WithTotal = true } }, Token));
 
     private async Task<Guid> RoleAsync(PermissionConstraints? constraints)
     {

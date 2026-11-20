@@ -829,6 +829,8 @@ FluentCMS.Content.PagedResult<T>.NextCursor.get -> string?
 FluentCMS.Content.PagedResult<T>.Page.get -> int?
 FluentCMS.Content.PagedResult<T>.PageSize.get -> int
 FluentCMS.Content.PagedResult<T>.PagedResult(System.Collections.Generic.IReadOnlyList<T>! items, long? total, int? page, int pageSize, string? nextCursor) -> void
+FluentCMS.Content.PagedResult<T>.SearchTruncated.get -> bool
+FluentCMS.Content.PagedResult<T>.SearchTruncated.init -> void
 FluentCMS.Content.PagedResult<T>.Total.get -> long?
 FluentCMS.Content.Principal
 FluentCMS.Content.Principal.Claim(string! type) -> string?

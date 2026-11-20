@@ -35,4 +35,10 @@ public sealed class PagedResult<T>
 
     /// <summary>The cursor of the next page, or <see langword="null"/> on the last page.</summary>
     public string? NextCursor { get; }
+
+    /// <summary>
+    /// Whether the search of the list returned the most matches the search index gives, so that entries beyond them may be
+    /// missing from the list and its total. Always <see langword="false"/> for a list without a search.
+    /// </summary>
+    public bool SearchTruncated { get; init; }
 }

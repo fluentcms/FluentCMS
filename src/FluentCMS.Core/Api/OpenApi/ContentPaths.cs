@@ -239,6 +239,7 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
                     ["page"] = new JsonObject { ["type"] = "integer", ["format"] = "int32" },
                     ["pageSize"] = new JsonObject { ["type"] = "integer", ["format"] = "int32" },
                     ["nextCursor"] = new JsonObject { ["type"] = "string", ["description"] = "The cursor of the next page, when there is one. Send it back as it came: it is neither opaque nor signed, and its form may change." },
+                    ["searchTruncated"] = new JsonObject { ["type"] = "boolean", ["description"] = "True when the search of q returned the most matches the search index gives (FluentCms:Query:MaxSearchResults, 1,000 by default), so that entries beyond them may be missing from the list and its total, whatever the filter; a search of more words reaches them. Left out otherwise." },
                 },
                 ["required"] = new JsonArray("items", "pageSize"),
             },
