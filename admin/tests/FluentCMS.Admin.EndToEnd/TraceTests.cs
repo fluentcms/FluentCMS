@@ -108,10 +108,9 @@ public sealed class TraceTests(EndToEndHost host) : BrowserTest(host)
     public async Task TheTraceOfASignInHoldsNoPasswordOrToken()
     {
         var trace = Path.Combine(_directory.FullName, "sign-in.zip");
+        var editor = await EditorAsync();
         var browser = await OpenBrowserAsync(traces: _directory.FullName);
-        var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        var tab = await SignedInTabAsync(browser, "", editor);
         await Expect(tab.Sidebar).ToBeVisibleAsync();
         await tab.ReloadAsync();
         await Expect(tab.Sidebar).ToBeVisibleAsync();
@@ -134,7 +133,7 @@ public sealed class TraceTests(EndToEndHost host) : BrowserTest(host)
         // The context saw the tokens of the sign-in and of the reload in the token endpoint's answers, not only the password.
         var secrets = await browser.SecretsAsync();
         secrets.Any(secret => secret.StartsWith("eyJ", StringComparison.Ordinal)).ShouldBeTrue();
-        secrets.Count(secret => secret != Host.Editor.Password).ShouldBeGreaterThan(3);
+        secrets.Count(secret => secret != editor.Password).ShouldBeGreaterThan(3);
         TraceScrubber.Leaks(trace, secrets).ShouldBeNull();
         browser.PolicyViolations.ShouldBeEmpty();
     }

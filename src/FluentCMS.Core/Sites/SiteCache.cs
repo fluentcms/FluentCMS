@@ -5,7 +5,7 @@ using FluentCMS.Events;
 namespace FluentCMS.Core.Sites;
 
 // What site resolution and the locale registry read for every request of this instance: the default site, the site of a
-// slug, that a site exists, and its locales. A write through SiteManager, and a SiteUpdatedEvent raised on this instance,
+// slug, that a site exists, and its locales; and the default locale of a site, which every delivery and job run reads. A write through SiteManager, and a SiteUpdatedEvent raised on this instance,
 // drop all of it at once, and a read that was under way then is not kept, because it may have read the old rows. No signal
 // reaches another instance, so it sees a change when its copy expires, CacheDuration at the most. What is not found is not
 // kept, so a site that another instance created is found at once; only that the site of a host name is gone is, since that
@@ -30,6 +30,8 @@ internal sealed class SiteCache(TimeProvider time)
     public static string SiteKey(Guid site) => "site:" + site.ToString("N");
 
     public static string LocalesKey(Guid site) => "locales:" + site.ToString("N");
+
+    public static string DefaultLocaleKey(Guid site) => "default-locale:" + site.ToString("N");
 
     public bool TryGet<T>(string key, [MaybeNullWhen(false)] out T value)
     {

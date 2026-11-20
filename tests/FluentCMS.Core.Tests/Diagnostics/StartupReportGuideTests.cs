@@ -16,6 +16,7 @@ public sealed class StartupReportGuideTests
         guide.ShouldContain($"(event id {Id(StartupReportEvents.Report)}, Information)");
         guide.ShouldContain($"(event id {Id(StartupReportEvents.InsecureDefault)})");
         guide.ShouldContain($"(event id {Id(StartupReportEvents.NotMade)},");
+        guide.ShouldContain($"(event id {Id(StartupReportEvents.UntrustedForwardedHeaders)})");
     }
 
     private static string Id(int id) => id.ToString(CultureInfo.InvariantCulture);

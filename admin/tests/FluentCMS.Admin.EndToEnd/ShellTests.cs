@@ -11,17 +11,15 @@ namespace FluentCMS.Admin.EndToEnd;
 // their names are checked, not a page behind them.
 public sealed class ShellTests(EndToEndHost host) : BrowserTest(host)
 {
-    // The Blog sample's collections and the host's landing of BlockTests, which name no display name, so the shell shows the
-    // name with a capital first letter.
-    private static readonly string[] BlogTypes = ["article", "author", "tag", "landing"];
+    // The Blog sample's collections and the host's memo of BulkTests, showcase of PreviewTests and landing of BlockTests, which name no display name, so
+    // the shell shows the name with a capital first letter.
+    private static readonly string[] BlogTypes = ["article", "author", "tag", "memo", "showcase", "landing"];
 
     [Fact]
     public async Task TheSidebarListsTheTypesTheEditorMayReadAndNoAdministration()
     {
         var browser = await OpenBrowserAsync();
-        var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        var tab = await SignedInTabAsync(browser, "");
 
         await SidebarShouldListTheBlogTypesAsync(tab);
         await Expect(tab.Sidebar.GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = Repository.AdminText("Shell.Sidebar.Home"), Exact = true }))
@@ -35,9 +33,7 @@ public sealed class ShellTests(EndToEndHost host) : BrowserTest(host)
     public async Task TheEditorSwitchesSiteAndTheTabKeepsTheChosenSite()
     {
         var browser = await OpenBrowserAsync();
-        var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(Host.Admin.AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        var tab = await SignedInTabAsync(browser, "");
         await Expect(tab.SiteSwitcher).ToHaveValueAsync(Host.Sites[0].Id);
 
         // The reads of the switch name the chosen site, and the switch is announced.
@@ -50,7 +46,7 @@ public sealed class ShellTests(EndToEndHost host) : BrowserTest(host)
 
         // The tab keeps the site across a reload, whose refresh token, if rotated just before, is taken within the server's
         // 30-second reuse leeway.
-        var schema = tab.Page.WaitForResponseAsync(response => response.Url == tab.ManagementUrl("schema"), new PageWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        var schema = tab.NextAnswerAsync(response => response.Url == tab.ManagementUrl("schema"));
         await tab.ReloadAsync();
         (await (await schema).Request.HeaderValueAsync("x-cms-site")).ShouldBe(second.Id, StringCompareShould.IgnoreCase);
         await Expect(tab.SiteSwitcher).ToHaveValueAsync(second.Id);

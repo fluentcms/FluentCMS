@@ -14,6 +14,6 @@ internal sealed class GeneratedSigningKeyCheck(SecurityOptions options, ISigning
     public StartupRefusal? Check() => signingKey?.IsGenerated == true && !options.AllowGeneratedSigningKey
         ? new StartupRefusal(
             HostErrorCodes.GeneratedSigningKeyInProduction,
-            $"Production signs tokens with a generated key. Configure a signing certificate, or set {Key} to true to accept the generated key.")
+            $"The host signs tokens with a generated key. Configure a signing certificate, or set {Key} to true to accept the generated key.")
         : null;
 }

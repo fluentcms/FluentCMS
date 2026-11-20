@@ -15,15 +15,17 @@ public static class SystemOperation
 
     /// <summary>Sets the ambient operation to the system principal until the result is disposed, which puts back the operation before it.</summary>
     /// <param name="accessor">The ambient operation.</param>
+    /// <param name="time">The clock of the host, which stamps the operation.</param>
     /// <param name="origin">Where the work comes from: <see cref="Origin.Job"/>, <see cref="Origin.Cli"/> or <see cref="Origin.Seed"/>.</param>
     /// <param name="site">The site to work in.</param>
     /// <param name="locale">The locale to work in, or empty for the default locale of the site.</param>
     /// <param name="correlationId">An id that ties the work together, or <see langword="null"/> for a new one.</param>
     /// <returns>What ends the operation.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="origin"/> is that of a client.</exception>
-    public static IDisposable Begin(IOperationContextAccessor accessor, Origin origin, SiteId site, string locale = "", string? correlationId = null)
+    public static IDisposable Begin(IOperationContextAccessor accessor, TimeProvider time, Origin origin, SiteId site, string locale = "", string? correlationId = null)
     {
         ArgumentNullException.ThrowIfNull(accessor);
+        ArgumentNullException.ThrowIfNull(time);
         ArgumentNullException.ThrowIfNull(locale);
 
         if (!Allows(origin))
@@ -39,7 +41,7 @@ public static class SystemOperation
             locale,
             null,
             correlationId ?? Guid.CreateVersion7().ToString(),
-            DateTimeOffset.UtcNow);
+            time.GetUtcNow());
         return scope;
     }
 

@@ -49,7 +49,19 @@ public sealed partial class BaselineTests : IDisposable
     private static readonly (string Table, string Column)[] ColumnsAddedToTheBaseline = [("cms_version", "author_kind"), ("cms_version", "author_name"), ("cms_media_asset", "owns_file"), ("cms_media_asset", "version"), ("cms_search_entry", "field")];
 
     // Indexes added the same way, by the prefix of their catalog lines.
-    private static readonly string[] IndexesAddedToTheBaseline = ["index:cms_media_asset.ix_cms_media_asset_site_owns_file:", "index:cms_webhooks_delivery.ix_cms_webhooks_delivery_queued:"];
+    private static readonly string[] IndexesAddedToTheBaseline = ["index:cms_media_asset.ix_cms_media_asset_site_owns_file:", "index:cms_webhooks_delivery.ix_cms_webhooks_delivery_queued:", "index:cms_job.ix_cms_job_status_completed:", "index:cms_outbox.ix_cms_outbox_failed:", "index:cms_outbox.ix_cms_outbox_handler_pending:"];
+
+    // The keys, in order with their directions, and the filter of the core indexes added to the baseline, as every provider's
+    // catalog line reads once quotes, brackets, parentheses, casts and spaces are taken out.
+    private static readonly (string Index, string Keys, string? Filter)[] AddedIndexShapes =
+    [
+        ("index:cms_job.ix_cms_job_status_completed:", "status,completed_atdesc,id", null),
+        ("index:cms_outbox.ix_cms_outbox_failed:", "sequencedesc,id", "status='failed'"),
+        ("index:cms_outbox.ix_cms_outbox_handler_pending:", "handler,sequence,id", "status='pending'"),
+    ];
+
+    private static string Normalized(string line) =>
+        new([.. line.Replace("::text", "", StringComparison.Ordinal).ToLowerInvariant().Where(character => character is not ('"' or '[' or ']' or '(' or ')' or ' ' or '`'))]);
 
     // Indexes whose columns the baseline changed, each with a column the baseline's has and the chain's does not.
     private static readonly (string Index, string Column)[] IndexesChangedInTheBaseline = [("index:cms_search_entry.ux_cms_search_entry_document:", "field")];
@@ -107,6 +119,22 @@ public sealed partial class BaselineTests : IDisposable
         chain.Except(built).ShouldBeEmpty("made by the chain and not by the baseline");
         built.Except(chain).ShouldBeEmpty("made by the baseline and not by the chain");
         chain.ShouldBe(built);
+
+        // The indexes the baseline added are left out of that comparison, so their shape is checked here.
+        var all = DatabaseCatalog.Of(baseline, historyRows: false);
+        foreach (var (index, keys, filter) in AddedIndexShapes)
+        {
+            var line = Normalized(all.Single(item => item.StartsWith(index, StringComparison.Ordinal)));
+            line.ShouldContain(keys, Case.Sensitive, index);
+            if (filter is null)
+            {
+                line.ShouldNotContain("status='", Case.Sensitive, index);
+            }
+            else
+            {
+                line.ShouldContain(filter, Case.Sensitive, index);
+            }
+        }
 
         // What no scaffold writes, which the baseline carries by hand.
         if (TestProvider.IsSqlite)

@@ -108,7 +108,7 @@ internal static class Identities
         await using var scope = services.CreateAsyncScope();
         var keys = scope.ServiceProvider.GetRequiredService<ApiKeyService>();
         CreatedApiKey created;
-        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id)))
+        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id)))
         {
             created = await keys.CreateAsync(new ApiKeyRequest(keyName, ClassOf(keyClass), stored.Id), cancellationToken);
         }

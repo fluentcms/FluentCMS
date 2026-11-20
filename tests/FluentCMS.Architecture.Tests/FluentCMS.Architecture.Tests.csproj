@@ -7,6 +7,8 @@
     <PackageReference Include="Shouldly" />
     <PackageReference Include="TngTech.ArchUnitNET" />
     <PackageReference Include="TngTech.ArchUnitNET.xUnitV3" />
+    <!-- For the syntax of the end-to-end tests, which their rules read. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
   </ItemGroup>
 
   <ItemGroup>

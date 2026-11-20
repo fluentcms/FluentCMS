@@ -512,7 +512,7 @@ public sealed class HttpProtectionHardeningTests(CmsWebHosts hosts) : IClassFixt
     private async Task<string> CreateKey(string name, int? rateLimit)
     {
         await using var scope = _app!.Services.CreateAsyncScope();
-        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id));
         var keys = scope.ServiceProvider.GetRequiredService<ApiKeyService>();
         var created = await keys.CreateAsync(new ApiKeyRequest(name, ApiKeyClass.Delivery, BuiltInRoles.Public) { RateLimit = rateLimit }, Token);
         return created.Secret;

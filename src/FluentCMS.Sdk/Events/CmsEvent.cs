@@ -6,7 +6,6 @@ namespace FluentCMS.Events;
 /// </summary>
 public abstract record CmsEvent
 {
-    private readonly DateTimeOffset _created = DateTimeOffset.UtcNow;
     private EventSource? _source;
 
     /// <summary>Creates an event with no source, which <see cref="IEventBus"/> fills from the current operation when it is published.</summary>
@@ -19,11 +18,12 @@ public abstract record CmsEvent
 
     /// <summary>
     /// Where and when the event happened. Set it from an operation with <see cref="EventSource.From"/>, or leave it
-    /// for <see cref="IEventBus"/> to set from the operation that publishes the event, or from the system when none is running.
+    /// for <see cref="IEventBus"/> to set from the operation that publishes the event, or from the system and the clock of
+    /// the host when none is running. Until then it is the system's at <see cref="DateTimeOffset.MinValue"/>.
     /// </summary>
     public EventSource Source
     {
-        get => _source ?? EventSource.FromSystem(_created);
+        get => _source ?? EventSource.FromSystem(DateTimeOffset.MinValue);
         init => _source = value;
     }
 

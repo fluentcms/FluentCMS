@@ -71,6 +71,8 @@ internal sealed class OutboxRegistry
 
     public bool Any => _byName.Values.Any(registration => registration.Active());
 
+    public IEnumerable<string> Names => _byName.Keys;
+
     public OutboxRegistration? Find(string name) => _byName.GetValueOrDefault(name);
 
     public IReadOnlyList<OutboxRegistration> ForEvent(Type eventType) =>

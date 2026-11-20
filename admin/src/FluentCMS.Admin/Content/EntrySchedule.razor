@@ -1,0 +1,311 @@
+@* The schedules of the form's locale (spec 4.10, A-27): a dialog to publish or unpublish at a time, entered in the user's
+   time zone, which it names, and sent as that wall-clock time with the zone, so the server applies the zone's rules on
+   the day; and a move and a cancel for each pending schedule. The pending times themselves are the status badges'. A
+   caller who may not publish, or not unpublish, has no control for that action and still sees its badge. *@
+@inject ManagementClient Client
+@inject FormatService Formats
+@inject TimeProvider Time
+@inject IAnnouncer Announcer
+@inject IStringLocalizer<AdminResources> L
+
+@if (MayPublish || MayUnpublish)
+{
+    <div class="content-schedule">
+        <CmsButton @ref="scheduleButton" OnClick="@(() => Open(null))">@L["Content.Schedule.Open"]</CmsButton>
+        @foreach (var (action, _) in Pending)
+        {
+            <CmsButton @key="@($"move-{action}")" OnClick="@(() => Open(action))">@L[$"Content.Schedule.Move.{action}"]</CmsButton>
+            <CmsButton @key="@($"cancel-{action}")" OnClick="@(() => CancelAsync(action))">@L[$"Content.Schedule.Cancel.{action}"]</CmsButton>
+        }
+    </div>
+}
+
+<CmsDialog Title="@(moving is { } moved ? L[$"Content.Schedule.MoveTitle.{moved}"] : L["Content.Schedule.Title"])" Open="@open" OpenChanged="@(value => open = value)">
+    <ChildContent>
+        <div class="content-schedule-form">
+            @if (moving is null && MayPublish && MayUnpublish)
+            {
+                <CmsSelect Label="@L["Content.Schedule.Action"]"
+                           Options="@([new CmsOption(Publish, L["Content.Schedule.Action.publish"]), new CmsOption(Unpublish, L["Content.Schedule.Action.unpublish"])])"
+                           Value="@action"
+                           ValueChanged="@(value => action = value ?? Publish)" />
+            }
+            else if (moving is null)
+            {
+                <p>@L[$"Content.Schedule.Action.{action}"]</p>
+            }
+            <CmsDatePicker @ref="dateInput"
+                           Label="@L["Content.Field.Date"]"
+                           Required="true"
+                           Culture="@Formats.Culture"
+                           DescribedBy="@zoneId"
+                           Error="@dateError"
+                           MarkedInvalid="@momentRefused"
+                           Value="@day"
+                           ValueChanged="@(value => (day, dateError, timeError, momentRefused) = (value, null, null, false))" />
+            <CmsTimePicker @ref="timeInput"
+                           Label="@L["Content.Field.Time"]"
+                           Required="true"
+                           Culture="@Formats.Culture"
+                           DescribedBy="@zoneId"
+                           Error="@timeError"
+                           Value="@time"
+                           ValueChanged="@(value => (time, dateError, timeError, momentRefused) = (value, null, null, false))" />
+            <p id="@zoneId" class="content-schedule-zone">@L["Content.Field.TimeZone", Formats.ZoneId]</p>
+            @if (Twice is { } first)
+            {
+                <p class="content-schedule-note">@L["Content.Schedule.Twice", Formats.ZoneId, Offset(first)]</p>
+            }
+            @if (LocaleName is { Length: > 0 } named)
+            {
+                <p>@L["Content.Schedule.Locale", named]</p>
+            }
+            @if (action == Publish)
+            {
+                <p class="content-schedule-note">@L[Unsaved ? "Content.Schedule.SavedDraftUnsaved" : "Content.Schedule.SavedDraft"]</p>
+            }
+            @if (problem is not null)
+            {
+                <p class="content-schedule-problem" role="alert">@problem</p>
+            }
+        </div>
+    </ChildContent>
+    <Actions>
+        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="ScheduleAsync">@L[moving is null ? "Content.Schedule.Submit" : "Content.Schedule.MoveSubmit"]</CmsButton>
+        <CmsButton OnClick="@(() => open = false)">@L["Content.Schedule.Close"]</CmsButton>
+    </Actions>
+</CmsDialog>
+
+@code {
+    private const string Publish = "publish";
+    private const string Unpublish = "unpublish";
+
+    private readonly string zoneId = ElementIds.Next("schedule-zone");
+    private CmsButton? scheduleButton;
+    private bool open;
+    private bool busy;
+    private bool focusSchedule;
+    private Func<ValueTask>? focusInput;
+
+    // The action of the pending schedule the dialog moves; null for a new schedule.
+    private string? moving;
+    private string action = Publish;
+    private DateOnly? day;
+    private TimeOnly? time;
+    private CmsDatePicker? dateInput;
+    private CmsTimePicker? timeInput;
+
+    // An error of no input, such as a refusal of the caller; one of the time is on the inputs.
+    private string? problem;
+    private string? dateError;
+    private string? timeError;
+
+    // The server refused the moment, whose message is on the time; the date is marked with it.
+    private bool momentRefused;
+
+    [Parameter, EditorRequired]
+    public string Type { get; set; } = "";
+
+    // The entry as the form read it, in the site and the locale each request is pinned to.
+    [Parameter, EditorRequired]
+    public ContentEntry Entry { get; set; } = null!;
+
+    [Parameter]
+    public string? Site { get; set; }
+
+    [Parameter]
+    public string? Locale { get; set; }
+
+    [Parameter]
+    public bool MayPublish { get; set; }
+
+    [Parameter]
+    public bool MayUnpublish { get; set; }
+
+    // A scheduled publish publishes the draft as saved, so the dialog says when the form holds more.
+    [Parameter]
+    public bool Unsaved { get; set; }
+
+    // The locale the schedules are in, for a localized type.
+    [Parameter]
+    public string? LocaleName { get; set; }
+
+    // Raised with the entry as it is once a schedule is set, moved or cancelled.
+    [Parameter]
+    public EventCallback<ContentEntry> OnChanged { get; set; }
+
+    public bool IsOpen => open;
+
+    // The offset the server runs a wall time at that the clocks show twice: the first, which has the larger offset.
+    private TimeSpan? Twice =>
+        day is { } date && time is { } clock && Formats.TimeZone.IsAmbiguousTime(date.ToDateTime(clock))
+            ? Formats.TimeZone.GetAmbiguousTimeOffsets(date.ToDateTime(clock)).Max()
+            : null;
+
+    // The pending schedules the caller may change.
+    private IEnumerable<(string Action, DateTimeOffset At)> Pending
+    {
+        get
+        {
+            if (MayPublish && Entry.ScheduledPublishAt is { } publishAt)
+            {
+                yield return (Publish, publishAt);
+            }
+
+            if (MayUnpublish && Entry.ScheduledUnpublishAt is { } unpublishAt)
+            {
+                yield return (Unpublish, unpublishAt);
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusSchedule && scheduleButton is not null)
+        {
+            focusSchedule = false;
+            await scheduleButton.FocusAsync();
+        }
+
+        if (focusInput is { } focus)
+        {
+            focusInput = null;
+            await focus();
+        }
+    }
+
+    // A move starts from the pending time; a new schedule from the next full hour, in the user's time zone.
+    private void Open(string? pending)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        moving = pending;
+        action = pending ?? (MayPublish ? Publish : Unpublish);
+        var start = Pending.Where(item => item.Action == pending).Select(item => (DateTimeOffset?)item.At).FirstOrDefault();
+        var local = start is { } at ? Formats.Local(at) : NextHour(Formats.Local(Time.GetUtcNow()));
+        (day, time, problem, dateError, timeError, momentRefused, open) = (DateOnly.FromDateTime(local), TimeOnly.FromDateTime(local), null, null, null, false, true);
+    }
+
+    // An hour the clocks skip is no time to start from, so the pre-fill steps past it.
+    private DateTime NextHour(DateTime local)
+    {
+        var next = local.Date.AddHours(local.Hour + 1);
+        while (Formats.TimeZone.IsInvalidTime(next))
+        {
+            next = next.AddHours(1);
+        }
+
+        return next;
+    }
+
+    // Nothing is sent while an input holds text it could not read, which its own message names, or is empty.
+    private async Task ScheduleAsync()
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        if (dateInput?.HasInputError == true || timeInput?.HasInputError == true)
+        {
+            Refuse(dateInput?.HasInputError == true);
+            return;
+        }
+
+        if (day is not { } date || time is not { } clock)
+        {
+            dateError = day is null ? L["Content.Schedule.MissingDate"].Value : null;
+            timeError = time is null ? L["Content.Schedule.MissingTime"].Value : null;
+            Refuse(day is null, dateError ?? timeError);
+            return;
+        }
+
+        busy = true;
+        (problem, dateError, timeError, momentRefused) = (null, null, null, false);
+        try
+        {
+            var answer = await Client.ScheduleEntryAsync(Type, Entry.Id, action, date.ToDateTime(clock), Formats.ZoneId, Site, Locale, CancellationToken.None);
+            var entry = action == Publish ? Entry with { ScheduledPublishAt = answer.RunAt } : Entry with { ScheduledUnpublishAt = answer.RunAt };
+            open = false;
+            Announcer.Announce(L[$"Content.Schedule.Done.{action}", Formats.DateTime(answer.RunAt), Formats.ZoneId]);
+            await OnChanged.InvokeAsync(entry);
+        }
+        catch (ApiProblemException exception)
+        {
+            // A time in the past or one the clocks skip is the moment's, so it goes on the inputs; the rest has no input.
+            var errors = exception.Problem.Errors;
+            if (Message(errors.Where(error => error.Path == "at")) is { } moment)
+            {
+                (timeError, momentRefused) = (moment, true);
+                Refuse(onDate: false, moment);
+            }
+
+            var pathless = errors.Count == 0 ? Message(exception.Problem) ?? L["Content.Schedule.Failed"] : Message(errors.Where(error => error.Path != "at"));
+            if (pathless is not null)
+            {
+                problem = pathless;
+                Announcer.Announce(problem, AnnouncementPoliteness.Assertive);
+            }
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            problem = L["Content.Schedule.Failed"];
+            Announcer.Announce(problem, AnnouncementPoliteness.Assertive);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private void Refuse(bool onDate, string? message = null)
+    {
+        focusInput = onDate ? () => dateInput?.FocusAsync() ?? ValueTask.CompletedTask : () => timeInput?.FocusAsync() ?? ValueTask.CompletedTask;
+        Announcer.Announce(message ?? L["Content.Schedule.Unreadable"], AnnouncementPoliteness.Assertive);
+    }
+
+    private static string Offset(TimeSpan offset) =>
+        (offset < TimeSpan.Zero ? "-" : "+") + offset.Duration().ToString(@"hh\:mm", System.Globalization.CultureInfo.InvariantCulture);
+
+    // The cancel button goes with the schedule, so focus goes to Schedule, which stays.
+    private async Task CancelAsync(string pending)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            await Client.CancelScheduleAsync(Type, Entry.Id, pending, Site, Locale, CancellationToken.None);
+            var entry = pending == Publish ? Entry with { ScheduledPublishAt = null } : Entry with { ScheduledUnpublishAt = null };
+            focusSchedule = true;
+            Announcer.Announce(L[$"Content.Schedule.Cancelled.{pending}"]);
+            await OnChanged.InvokeAsync(entry);
+        }
+        catch (ApiProblemException exception)
+        {
+            Announcer.Announce(Message(exception.Problem) ?? L["Content.Schedule.NotCancelled"], AnnouncementPoliteness.Assertive);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+        {
+            Announcer.Announce(L["Content.Schedule.NotCancelled"], AnnouncementPoliteness.Assertive);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    // The server's own words: a time in the past, one the clocks skip, a zone it does not know.
+    private static string? Message(ApiProblem problem) => Message(problem.Errors) ?? problem.Detail ?? problem.Title;
+
+    private static string? Message(IEnumerable<ApiProblemError> errors) =>
+        errors.Select(error => error.Message).Where(text => !string.IsNullOrWhiteSpace(text)).ToList() is { Count: > 0 } messages
+            ? string.Join(' ', messages)
+            : null;
+}

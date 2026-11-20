@@ -170,6 +170,72 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
         return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), basedOn.Site, basedOn.Locale);
     }
 
+    // One chunk of POST /content/{type}/bulk by ids, in the site and locale the run started in. The key is the chunk's, so
+    // that a resent chunk is the same request and is answered once.
+    public async Task<BulkAnswer> BulkAsync(string type, BulkOperation operation, IReadOnlyList<Guid> ids, UserAction action, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        ArgumentNullException.ThrowIfNull(action);
+        var body = new JsonObject
+        {
+            ["operation"] = JsonNamingPolicy.CamelCase.ConvertName(operation.ToString()),
+            ["items"] = new JsonArray([.. ids.Select(id => (JsonNode)new JsonObject { ["id"] = id.ToString("D") })]),
+        };
+        var request = Pinned(HttpMethod.Post, $"{Content(type)}/bulk", action.Site, action.Locale, body, idempotencyKey: action.IdempotencyKey);
+        return (await api.SendAsync(request, Json.BulkAnswer, cancellationToken)).Value;
+    }
+
+    // The versions of the entry in the locale of the read, newest first (spec 4.11); the server answers them all at once.
+    public async Task<IReadOnlyList<EntryVersionInfo>> GetVersionsAsync(string type, Guid id, string? site, string? locale, CancellationToken cancellationToken) =>
+        (await api.SendAsync(Pinned(HttpMethod.Get, $"{Entry(type, id)}/versions", site, locale), Json.ItemListEntryVersionInfo, cancellationToken)).Value.Items;
+
+    // A version's values as a read gives them, without what the caller may not read today.
+    public async Task<ContentEntry> GetVersionAsync(string type, Guid id, int number, string? site, string? locale, CancellationToken cancellationToken) =>
+        (await api.SendAsync(Pinned(HttpMethod.Get, Version(type, id, number), site, locale), Json.ContentEntry, cancellationToken)).Value;
+
+    public async Task<VersionDiffInfo> DiffVersionsAsync(string type, Guid id, int from, int to, string? site, string? locale, CancellationToken cancellationToken) =>
+        (await api.SendAsync(Pinned(HttpMethod.Get, $"{Version(type, id, from)}/diff/{to.ToString(System.Globalization.CultureInfo.InvariantCulture)}", site, locale), Json.VersionDiffInfo, cancellationToken)).Value;
+
+    // A new draft from the version, on the tag of the read, in its site and locale; a draft saved since is a 412.
+    public async Task<EntryRead> RestoreVersionAsync(string type, Guid id, int number, EntryRead basedOn, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(basedOn);
+        var request = Pinned(HttpMethod.Post, $"{Version(type, id, number)}/restore", basedOn.Site, basedOn.Locale, ifMatch: basedOn.EntityTag);
+        return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), basedOn.Site, basedOn.Locale);
+    }
+
+    // A wall-clock time in a time zone, which the server turns into an instant by the zone's rules on that day, in the site
+    // and locale named. A second schedule of the same action replaces the first, which is how one is moved.
+    public async Task<ScheduleAnswer> ScheduleEntryAsync(string type, Guid id, string action, DateTime at, string timeZone, string? site, string? locale, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(timeZone);
+        var body = new JsonObject
+        {
+            ["action"] = action,
+            ["at"] = at.ToString("yyyy-MM-dd'T'HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),
+            ["timeZone"] = timeZone,
+        };
+        var request = Pinned(HttpMethod.Post, $"{Entry(type, id)}/schedule", site, locale, body);
+        return (await api.SendAsync(request, Json.ScheduleAnswer, cancellationToken)).Value;
+    }
+
+    public async Task CancelScheduleAsync(string type, Guid id, string action, string? site, string? locale, CancellationToken cancellationToken) =>
+        await api.SendAsync(Pinned(HttpMethod.Delete, $"{Entry(type, id)}/schedule/{Uri.EscapeDataString(action)}", site, locale), cancellationToken);
+
+    // A token of the default lifetime for the draft of the entry in the site and locale of the read; tokenLocale binds it to
+    // one locale, and is null for a type that is not localized.
+    public async Task<PreviewTokenAnswer> MintPreviewTokenAsync(string type, Guid id, string? site, string? locale, string? tokenLocale, CancellationToken cancellationToken)
+    {
+        var body = new JsonObject();
+        if (tokenLocale is not null)
+        {
+            body["locale"] = tokenLocale;
+        }
+
+        var request = Pinned(HttpMethod.Post, $"{Entry(type, id)}/preview-token", site, locale, body);
+        return (await api.SendAsync(request, Json.PreviewTokenAnswer, cancellationToken)).Value;
+    }
+
     // The entry as it is now, which a 412 of a save holds, as a read in the site and locale of the save; its version is the
     // tag a save on it sends. Null when the answer holds none that reads.
     public static EntryRead? CurrentOf(ApiProblem problem, EntryRead basedOn)
@@ -235,4 +301,7 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
     }
 
     private static string Entry(string type, Guid id) => $"{Content(type)}/{id:D}";
+
+    private static string Version(string type, Guid id, int number) =>
+        $"{Entry(type, id)}/versions/{number.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
 }

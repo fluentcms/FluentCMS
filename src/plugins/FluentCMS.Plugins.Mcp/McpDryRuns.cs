@@ -20,7 +20,7 @@ internal sealed record McpReach(ContentAccess Access, IReadOnlyList<SchemaType> 
     public string Whole(string type) => Own.Contains(type) ? McpContentTools.Name(type, McpContentTools.Get) : McpContentTools.Query;
 }
 
-// The dry runs of spec 5.4, in front of {type}_delete and bulk. A call is a dry run unless it says dryRun false: it
+// The dry runs of spec 5.4, in front of {type}_delete, unpublish and bulk. A call is a dry run unless it says dryRun false: it
 // changes nothing and answers the plan, which is the entries the call would touch, the references that would break and
 // a confirmation token. The run needs that token, and the plan is read again before it: a token that is missing,
 // expired, of another call, principal, client or site, or of a plan that has changed since is refused and nothing runs.
@@ -63,7 +63,7 @@ internal sealed class McpDryRuns(
         var plan = PlanOf(call, entries);
         if (dryRun)
         {
-            return await DescribeAsync(plan, type, Delete, entries, notFound: [], reach, cancellationToken);
+            return await DescribeAsync(plan, type, Delete, entries, notFound: [], locale: null, reach, cancellationToken);
         }
 
         if (Refusal(call, confirmations.Check(token, plan)) is { } refused)
@@ -73,6 +73,38 @@ internal sealed class McpDryRuns(
 
         await content.DeleteAsync(type.Name, id, cancellationToken);
         return McpArguments.Result(new JsonObject { ["type"] = type.Name, ["id"] = id, ["deleted"] = true });
+    }
+
+    // An unpublish is of one locale, so the entry counts when it has that locale, as in a bulk unpublish.
+    public async Task<McpToolResult> UnpublishAsync(McpToolCall call, SchemaType type, McpReach reach, CancellationToken cancellationToken)
+    {
+        var arguments = call.Arguments;
+        var id = McpArguments.Id(arguments);
+        var locale = McpArguments.Text(arguments, "locale");
+        var (dryRun, token) = Run(arguments);
+        if (!dryRun && token is null)
+        {
+            return Refusal(call, McpConfirmation.Missing)!;
+        }
+
+        var entries = await EntriesAsync(type, reach, new FieldFilter("id", FilterOperator.Equal, id), locale, LocaleFallback.None, max: 1, cancellationToken);
+        if (entries.Count == 0)
+        {
+            throw new EntryNotFoundException(type.Name, id);
+        }
+
+        var plan = PlanOf(call, entries);
+        if (dryRun)
+        {
+            return await DescribeAsync(plan, type, McpContentTools.Unpublish, entries, notFound: [], locale, reach, cancellationToken);
+        }
+
+        if (Refusal(call, confirmations.Check(token, plan)) is { } refused)
+        {
+            return refused;
+        }
+
+        return McpArguments.Result(surface.ToJson(await content.UnpublishAsync(type.Name, id, new LocaleOptions { Locale = locale }, cancellationToken)));
     }
 
     // The entries are named by ids or by a filter, and never more than the limit the call sets, which the server caps. A
@@ -151,7 +183,7 @@ internal sealed class McpDryRuns(
         var plan = PlanOf(call, entries);
         if (dryRun)
         {
-            return await DescribeAsync(plan, type, action, entries, notFound, reach, cancellationToken);
+            return await DescribeAsync(plan, type, action, entries, notFound, locale, reach, cancellationToken);
         }
 
         if (Refusal(call, confirmations.Check(token, plan)) is { } refused)
@@ -224,7 +256,7 @@ internal sealed class McpDryRuns(
     // A plan names every entry it would touch, since the token is of them all, so its titles are what holds it to
     // MaxResultBytes: each is shortened as a list shortens a text, and where the plan is still over the limit they are left
     // out. A plan over it even then, of more entries than the limit holds, is answered whole.
-    private async Task<McpToolResult> DescribeAsync(McpPlan plan, SchemaType type, string action, List<PlannedEntry> entries, List<Guid> notFound, McpReach reach, CancellationToken cancellationToken)
+    private async Task<McpToolResult> DescribeAsync(McpPlan plan, SchemaType type, string action, List<PlannedEntry> entries, List<Guid> notFound, string? locale, McpReach reach, CancellationToken cancellationToken)
     {
         var limits = options.Value;
         var planned = new JsonArray([.. entries.Select(entry => (JsonNode)entry.Json)]);
@@ -247,7 +279,7 @@ internal sealed class McpDryRuns(
         // from every reader.
         var (references, more) = action == McpContentTools.Publish || entries.Count == 0
             ? ([], false)
-            : await ReferencesAsync(type, entries, published: action == McpContentTools.Unpublish, reach, cancellationToken);
+            : await ReferencesAsync(type, entries, published: action == McpContentTools.Unpublish, locale, reach, cancellationToken);
         foreach (var reference in references.OfType<JsonObject>())
         {
             ShortenTitle(reference, reference["type"]!.GetValue<string>(), reach, limits.MaxListTextLength);
@@ -327,8 +359,8 @@ internal sealed class McpDryRuns(
 
     // The entries of the exposed types the caller may read whose relation points to an entry of the plan: the fields of a
     // type itself, and not the relations inside its components and blocks. An entry of the plan is left out, since it goes
-    // with the others.
-    private async Task<(JsonArray References, bool More)> ReferencesAsync(SchemaType target, List<PlannedEntry> entries, bool published, McpReach reach, CancellationToken cancellationToken)
+    // with the others. They are read in the locale of the call, as the entries are, or of the connection when it names none.
+    private async Task<(JsonArray References, bool More)> ReferencesAsync(SchemaType target, List<PlannedEntry> entries, bool published, string? locale, McpReach reach, CancellationToken cancellationToken)
     {
         JsonArray references = [];
         var more = false;
@@ -349,6 +381,7 @@ internal sealed class McpDryRuns(
                     Select = title is null ? ["id"] : ["id", title],
                     Sort = [new SortField("id")],
                     Status = published || !reach.Drafts(type) ? QueryStatus.Published : QueryStatus.Draft,
+                    Locale = type.Localized ? locale : null,
                     Page = new PageRequest { Size = Math.Min(surface.MaxPageSize, MaxReferences + planned.Count), WithTotal = false },
                 };
 

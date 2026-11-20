@@ -26,11 +26,16 @@ internal sealed class FluentCmsDocumentTransformer(SchemaModel schema, OpenApiDo
         var schemas = new ContentSchemas(schema, options);
         var paths = new ContentPaths(schema, schemas);
 
-        // With a public origin the server, and so the authorization server's URLs, are at it as the issuer is, so a forged
-        // Host cannot name itself there; without one they follow the request.
+        // With a public origin the server, and so the authorization server's URLs, are at it as the issuer is. Without one
+        // the server is the request's path base alone, relative to where the document was fetched, so that no Host the
+        // request named reaches the document and one cached copy serves every host.
         if (origin.Base is { } publicBase)
         {
             document.Servers = [new OpenApiServer { Url = publicBase }];
+        }
+        else if (document.Servers is [{ Url: { } requested }] && Uri.TryCreate(requested, UriKind.Absolute, out var absolute))
+        {
+            document.Servers = [new OpenApiServer { Url = absolute.AbsolutePath.TrimEnd('/') is { Length: > 0 } path ? path : "/" }];
         }
 
         document.Info ??= new OpenApiInfo();

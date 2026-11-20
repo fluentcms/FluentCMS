@@ -30,6 +30,18 @@ internal sealed partial class AdminClientRegistration(
         }
 
         var origins = Origins();
+        // A preview frame of the admin's own origin, with scripts and the same origin allowed, would reach its sessionStorage.
+        var own = origins.Select(address => new Uri(address).GetLeftPart(UriPartial.Authority)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        for (var index = 0; index < admin.PreviewOrigins.Count; index++)
+        {
+            if (AdminOptions.Origin(admin.PreviewOrigins[index]) is { } preview && own.Contains(preview))
+            {
+                throw new FluentCmsConfigurationException(
+                    HostErrorCodes.InvalidOption,
+                    $"{FluentCmsOptions.Section}:{AdminOptions.Section}:{nameof(AdminOptions.PreviewOrigins)}:{index} is '{admin.PreviewOrigins[index]}', the admin's own origin; serve the preview pages from another origin.");
+            }
+        }
+
         if (!AdminOptions.ClientIdPattern().IsMatch(options.AdminClientId))
         {
             throw new FluentCmsConfigurationException(

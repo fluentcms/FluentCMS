@@ -11,7 +11,7 @@ Two first-party plugins. The MCP plugin makes FluentCMS a first-class tool for a
 | 5 | Publish as a separate tool and permission | Must | `publish` and `unpublish` exist but require the publish permission; by default agent principals draft only. Scheduling available through the same tool. |
 | 6 | Media tools | Must | List, search, get metadata, upload from URL or base64, update alt and caption; delete requires confirmation. |
 | 7 | Schema resources | Must | Content types, fields, validation rules and relations exposed as MCP resources in a compact form, filtered by permissions, so agents model content correctly without trial and error. |
-| 8 | Safety pattern on destructive tools | Must | `dryRun` default on delete and bulk operations, returning what would change; confirmation token required to execute; no bulk delete by filter without an explicit cap. |
+| 8 | Safety pattern on destructive tools | Must | `dryRun` default on delete, unpublish and bulk operations, returning what would change; confirmation token required to execute; no bulk delete by filter without an explicit cap. |
 | 9 | Origin tagging | Must | Every write made through MCP carries origin `Mcp`, the client ID and the principal, into versions, the activity log, hooks and webhooks. |
 | 10 | Per-type agent instructions | Must | Authoring guidelines per content type and site (tone, required sections, do-not-touch fields) stored in the CMS and served as MCP resources and tool descriptions. |
 | 11 | Prompts | Must | Reusable MCP prompts for common tasks (draft an article from notes, summarize for SEO, translate a draft) defined by plugins and editors. |

@@ -25,7 +25,7 @@ internal static class TransferCommands
         }
 
         var site = await Refusing(() => context.Services.GetRequiredService<ISiteResolver>().ResolveAsync(new SiteRequest { Header = named }, cancellationToken).AsTask());
-        return SystemOperation.Begin(context.Services.GetRequiredService<IOperationContextAccessor>(), Origin.Cli, site);
+        return SystemOperation.Begin(context.Services.GetRequiredService<IOperationContextAccessor>(), context.Services.GetRequiredService<TimeProvider>(), Origin.Cli, site);
     }
 
     // A refusal of the whole transfer, such as a package that is no package or a schema the instance cannot hold, with the

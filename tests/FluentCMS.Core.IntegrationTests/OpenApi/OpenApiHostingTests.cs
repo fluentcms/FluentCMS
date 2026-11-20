@@ -52,9 +52,9 @@ public sealed partial class OpenApiHostingTests : IAsyncDisposable
         using var unprefixed = await client.GetAsync(new Uri("/openapi/v1.json", UriKind.Relative), Token);
 
         unprefixed.StatusCode.ShouldBe(HttpStatusCode.OK);
-        document["servers"]![0]!["url"]!.GetValue<string>().TrimEnd('/').ShouldBe("http://localhost/cms");
+        document["servers"]![0]!["url"]!.GetValue<string>().ShouldBe("/cms");
         document["components"]!["securitySchemes"]!["oauth2"]!["flows"]!["authorizationCode"]!["authorizationUrl"]!.GetValue<string>()
-            .ShouldBe("http://localhost/cms/connect/authorize");
+            .ShouldBe("/cms/connect/authorize");
         page.ShouldContain("\"url\":\"openapi/v1.json\"");
     }
 
@@ -63,7 +63,7 @@ public sealed partial class OpenApiHostingTests : IAsyncDisposable
     [InlineData("https://cms.example.com", null, "https://cms.example.com")]
     [InlineData("https://cms.example.com", "/cms", "https://cms.example.com/cms")]
     [InlineData("https://cms.example.com/cms/", "/cms", "https://cms.example.com/cms")]
-    [InlineData(null, "/cms", "http://elsewhere.example/cms")]
+    [InlineData(null, "/cms", "/cms")]
     public async Task WithAPublicOriginTheServerAndTheAuthorizationServerAreAtIt(string? origin, string? pathBase, string expected)
     {
         using var client = await StartAsync(Environments.Development, new() { ["FluentCms:PublicOrigin"] = origin, ["FluentCms:ReverseProxy:PathBase"] = pathBase }, app => app.MapFluentCmsOpenApi());
@@ -166,22 +166,42 @@ public sealed partial class OpenApiHostingTests : IAsyncDisposable
         second.ShouldBe(first);
     }
 
-    // Without a public origin the document names the host it was asked on, so each host has a copy of its own.
+    // The document never names the Host it was asked on, so forged hosts share one copy and cost no build of their own.
     [Theory]
-    [InlineData(null, 2)]
-    [InlineData("https://cms.example.com", 1)]
-    public async Task EachHostHasACopyOnlyWhenTheDocumentNamesIt(string? origin, int expected)
+    [InlineData(null, "/")]
+    [InlineData("https://cms.example.com", "https://cms.example.com")]
+    public async Task EveryHostSharesOneCopy(string? origin, string expected)
     {
         var builds = new Builds();
         using var client = await StartAsync(Environments.Development, new() { ["FluentCms:PublicOrigin"] = origin }, app => app.MapFluentCmsOpenApi(), builds.Count);
 
-        var first = JsonNode.Parse(await client.GetStringAsync(new Uri("http://one.example/openapi/v1.json"), Token))!;
-        var second = JsonNode.Parse(await client.GetStringAsync(new Uri("http://two.example/openapi/v1.json"), Token))!;
-        _ = await client.GetStringAsync(new Uri("http://two.example/openapi/v1.json"), Token);
+        var first = await client.GetStringAsync(new Uri("http://one.example/openapi/v1.json"), Token);
+        var second = await client.GetStringAsync(new Uri("http://two.example/openapi/v1.json"), Token);
+        var third = await client.GetStringAsync(new Uri("http://three.example/openapi/v1.json"), Token);
 
-        builds.Value.ShouldBe(expected);
-        Server(first).ShouldBe(origin ?? "http://one.example");
-        Server(second).ShouldBe(origin ?? "http://two.example");
+        builds.Value.ShouldBe(1);
+        second.ShouldBe(first);
+        third.ShouldBe(first);
+        first.ShouldNotContain("one.example");
+        JsonNode.Parse(first)!["servers"]![0]!["url"]!.GetValue<string>().ShouldBe(expected);
+    }
+
+    // The path base is the pipeline's, so a document with it and one without are the only two copies.
+    [Fact]
+    public async Task WithoutAPublicOriginEachPathBaseHasACopyOfItsOwn()
+    {
+        var builds = new Builds();
+        using var client = await StartAsync(Environments.Development, new() { ["FluentCms:ReverseProxy:PathBase"] = "/cms" }, app => app.MapFluentCmsOpenApi(), builds.Count);
+
+        var prefixed = JsonNode.Parse(await client.GetStringAsync(new Uri("http://one.example/cms/openapi/v1.json"), Token))!;
+        var bare = JsonNode.Parse(await client.GetStringAsync(new Uri("http://two.example/openapi/v1.json"), Token))!;
+        _ = await client.GetStringAsync(new Uri("http://three.example/cms/openapi/v1.json"), Token);
+
+        builds.Value.ShouldBe(2);
+        Server(prefixed).ShouldBe("/cms");
+        prefixed["components"]!["securitySchemes"]!["oauth2"]!["flows"]!["clientCredentials"]!["tokenUrl"]!.GetValue<string>().ShouldBe("/cms/connect/token");
+        bare["servers"]![0]!["url"]!.GetValue<string>().ShouldBe("/");
+        bare["components"]!["securitySchemes"]!["oauth2"]!["flows"]!["clientCredentials"]!["tokenUrl"]!.GetValue<string>().ShouldBe("/connect/token");
     }
 
     // UseFluentCms authorizes before the output cache, so the kept copy reaches only a caller the policy lets through.

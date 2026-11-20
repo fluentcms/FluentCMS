@@ -1,5 +1,6 @@
 using FluentCMS.Agents;
 using FluentCMS.Jobs;
+using FluentCMS.Settings;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -8,11 +9,14 @@ namespace FluentCMS.Plugins.Mcp;
 internal sealed record McpClientCleanupPayload;
 
 // Removes the clients that registered themselves and were not approved within PendingLifetime, the rejected ones
-// included, so that a registration nobody answers does not hold a place of the pending cap for good.
-internal sealed class McpClientCleanupJob(IMcpClients clients, TimeProvider time, ILogger<McpClientCleanupJob> logger) : IJob<McpClientCleanupPayload>
+// included, so that a registration nobody answers does not hold a place of the pending cap for good; and the clients the
+// open policy approved that no user consented to within NeverUsedClientHours, or that have no token or authorization left
+// once UnusedClientDays have passed, so that they do not fill MaxClients. It runs every hour, so that the short period
+// holds to within an hour.
+internal sealed class McpClientCleanupJob(IMcpClients clients, ISettings<McpSettings> settings, TimeProvider time, ILogger<McpClientCleanupJob> logger) : IJob<McpClientCleanupPayload>
 {
     public const string Type = "mcp.client-cleanup";
-    public const string Schedule = "45 4 * * *";
+    public const string Schedule = "45 * * * *";
 
     public static readonly TimeSpan PendingLifetime = TimeSpan.FromDays(7);
 
@@ -20,10 +24,18 @@ internal sealed class McpClientCleanupJob(IMcpClients clients, TimeProvider time
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        var removed = await clients.RemoveUnapprovedAsync(time.GetUtcNow() - PendingLifetime, context.CancellationToken);
+        var now = time.GetUtcNow();
+        var removed = await clients.RemoveUnapprovedAsync(now - PendingLifetime, context.CancellationToken);
         if (removed > 0)
         {
             McpLog.UnapprovedClientsRemoved(logger, removed, PendingLifetime.TotalDays);
+        }
+
+        var current = await settings.GetDefaultAsync(context.CancellationToken);
+        var unused = await clients.RemoveUnusedAsync(now - TimeSpan.FromHours(current.NeverUsedClientHours), now - TimeSpan.FromDays(current.UnusedClientDays), context.CancellationToken);
+        if (unused > 0)
+        {
+            McpLog.UnusedClientsRemoved(logger, unused, current.NeverUsedClientHours, current.UnusedClientDays);
         }
     }
 }

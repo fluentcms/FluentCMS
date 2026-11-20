@@ -86,6 +86,8 @@ jobs:
                 FluentCms__Clients__Applications__smoke__Scopes__0: openid
                 FluentCms__Clients__Applications__smoke__Scopes__1: management
                 FluentCms__Admin__Enabled: "true"
+                FluentCms__Security__AllowGeneratedSigningKey: "true"
+                FluentCms__Security__AllowUnencryptedKeyRing: "true"
           YAML
           echo "COMPOSE_FILE=compose.yaml:$RUNNER_TEMP/compose.ci.yaml" >> "$GITHUB_ENV"
 

@@ -121,7 +121,8 @@ Set the configuration in the environment of the host, and no key in a file of th
 | `ConnectionStrings__FluentCms` | `Data Source=<run>/verify.db`, in a directory of the run |
 | `FluentCms__Media__Local__Root` | `<run>/media` |
 | `FluentCms__Ai__AllowedEndpoints__0` | the endpoint, such as `http://127.0.0.1:11434/v1`; not needed for `openAi` at its own endpoint |
-| `FluentCms__Ai__OpenAi__ApiKey` or `FluentCms__Ai__OpenAiCompatible__ApiKey` | the key of a paid run, from a secret store; unset for Ollama, since a keyless `openAiCompatible` site gets this key too |
+| `FluentCms__Ai__OpenAi__ApiKey` or `FluentCms__Ai__OpenAiCompatible__ApiKey` | the key of a paid run, from a secret store; unset for Ollama |
+| `FluentCms__Ai__OpenAiCompatible__Endpoint` | the endpoint that key is for, the same as the allowed one; a key of `OpenAiCompatible` needs it |
 | `Logging__LogLevel__Default` | `Debug` |
 
 Build the host, apply the migrations, create a management key and start the host from the directory of the run:
@@ -149,7 +150,7 @@ The settings of the site name `openAiCompatible`, the model, the endpoint, `"api
 
 ### A paid endpoint
 
-OpenAI itself is `openAi` with `FluentCms__Ai__OpenAi__ApiKey` and no endpoint. Another OpenAI-compatible endpoint is `openAiCompatible` with its endpoint in `FluentCms__Ai__AllowedEndpoints__0` and its key in `FluentCms__Ai__OpenAiCompatible__ApiKey`. Either way the settings of the site hold no key, so the key stays in the environment, and the model is a small one of that provider that reads images, so that one model serves every step.
+OpenAI itself is `openAi` with `FluentCms__Ai__OpenAi__ApiKey` and no endpoint. Another OpenAI-compatible endpoint is `openAiCompatible` with its endpoint in `FluentCms__Ai__AllowedEndpoints__0` and its key in `FluentCms__Ai__OpenAiCompatible__ApiKey` with that endpoint in `FluentCms__Ai__OpenAiCompatible__Endpoint`. Either way the settings of the site hold no key, so the key stays in the environment, and the model is a small one of that provider that reads images, so that one model serves every step.
 
 ### The steps
 
