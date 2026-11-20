@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using FluentCMS.Admin.Actions;
+using FluentCMS.Admin.Content;
 using FluentCMS.Admin.Fields;
 using FluentCMS.Admin.Lists;
 using FluentCMS.Admin.Shell;
@@ -45,6 +46,9 @@ internal sealed class AdminPlugins(
     AdminServiceDescriptors descriptors,
     ILogger<AdminPlugins> logger) : IAdminPluginServices
 {
+    // Any base does: only the query string of a route is read for its locale.
+    private static readonly Uri RouteBase = new("https://admin.invalid/");
+
     private const string KeptWhole = "An admin half is loaded lazily and kept whole by the app's partial trimming, which trims only the assemblies that opt in (spec 2.6).";
 
     // Keyed by the plugin's name, which GET /plugins gives in lower-case kebab case and is compared as it is.
@@ -174,6 +178,7 @@ internal sealed class AdminPlugins(
                 await context.StartAsync();
             }
 
+            await UseLocaleOfAsync(route);
             var allowed = Gate(route);
             _navigated = (route, allowed);
             if (allowed == PluginPageGate.Allowed && administration.Loaded is null)
@@ -200,6 +205,7 @@ internal sealed class AdminPlugins(
             await context.StartAsync();
         }
 
+        await UseLocaleOfAsync(route);
         var gate = Gate(route);
         _navigated = (route, gate);
         if (gate == PluginPageGate.Allowed && !IsLoaded(half))
@@ -207,6 +213,11 @@ internal sealed class AdminPlugins(
             await TryLoadAsync(half, cancellationToken);
         }
     }
+
+    // The server narrows the access by the content locale, so the gate of a route that names another locale waits for the
+    // access of that locale, and the router keeps the page before meanwhile: the page of the route would otherwise be shown,
+    // and read, with what the locale before allowed. A content page sets its locale itself before it reads.
+    private Task UseLocaleOfAsync(string route) => context.UseLocaleAsync(ContentRoutes.LocaleOf(new Uri(RouteBase, route)));
 
     // Whether a half's route that the last navigation answered as not found or no access is allowed now, as when the shell's
     // first reads failed or a site switch was in flight then, so that the not-found page navigates to it again. The new

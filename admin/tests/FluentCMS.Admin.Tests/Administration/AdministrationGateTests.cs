@@ -177,6 +177,75 @@ public sealed class AdministrationGateTests : AdministrationTestContext
         Links(app).ShouldBe([""]);
     }
 
+    // While the shell reads the new site its access and plugins are empty, which the gate of the page must not answer from,
+    // and a change of the gate replaces the page in the layout and not the layout: the header, the site switcher, the
+    // sidebar and the focus in them stay. The reads of the new site are held, as a server that does not answer at once.
+    [Theory]
+    [InlineData("roles", true)]
+    [InlineData("roles", false)]
+    [InlineData("reviews", true)]
+    [InlineData("reviews", false)]
+    public void ASiteSwitchOnTheRouteOfAnAreaOrAHalfKeepsTheLayoutAndItsSiteSwitcher(string route, bool allowedThere)
+    {
+        var permission = route == "reviews" ? "reviews.notes.manage" : "roles.manage";
+        Management.AddSite(Shop, "Shop", "shop");
+        if (route == "reviews")
+        {
+            UseTheSampleHalf(MainSite, Shop);
+        }
+
+        Grant(MainSite, [permission]);
+        Grant(Shop, allowedThere ? [permission] : []);
+        var app = Load(route);
+        app.WaitForAssertion(() => Shows(app, route).ShouldBeTrue());
+        var layout = app.FindComponent<AdminLayout>().Instance;
+        var switcher = app.FindComponent<SiteSwitcher>().Instance;
+        var held = Management.HoldSite[Shop] = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        app.Find(".site-switcher select").Change(Shop.ToString("D"));
+
+        app.WaitForAssertion(() => Context.Status.ShouldBe(ShellStatus.Loading));
+        app.FindComponent<AdminLayout>().Instance.ShouldBeSameAs(layout);
+        app.FindComponent<SiteSwitcher>().Instance.ShouldBeSameAs(switcher);
+
+        held.SetResult();
+
+        app.WaitForAssertion(() => (allowedThere ? Shows(app, route) : Heading(app) == "No access").ShouldBeTrue());
+        app.WaitForAssertion(() => Context.Site!.Id.ShouldBe(Shop));
+        app.FindComponent<AdminLayout>().Instance.ShouldBeSameAs(layout);
+        app.FindComponent<SiteSwitcher>().Instance.ShouldBeSameAs(switcher);
+        Navigation.Uri.ShouldEndWith("/" + route);
+    }
+
+    // The access of a content locale is read when the address names it; the gate of an area's route waits for it, and the
+    // page before stays meanwhile, so that the page is neither shown nor read with what the locale before allowed.
+    [Fact]
+    public void AnAreasRouteThatNamesAnotherContentLocaleWaitsForItsAccess()
+    {
+        Management.AddLocale(MainSite, "fr", 1);
+        Grant(["roles.manage"]);
+        var french = Management.Access[MainSite].DeepClone().AsObject();
+        french["permissions"] = new System.Text.Json.Nodes.JsonArray("schema.read");
+        Management.LocaleAccess[(MainSite, "fr")] = french;
+        var app = Load();
+        var home = Heading(app);
+        var held = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Management.HoldPath = path => path.EndsWith("/me/access", StringComparison.Ordinal) ? held.Task : null;
+        var reads = Management.Count("me/access");
+
+        Navigation.NavigateTo("roles?locale=fr");
+
+        app.WaitForAssertion(() => Management.Count("me/access").ShouldBeGreaterThan(reads));
+        Heading(app).ShouldBe(home);
+        Loader.Loads.ShouldBe(0);
+
+        held.SetResult();
+
+        app.WaitForAssertion(() => Heading(app).ShouldBe("No access"));
+        Loader.Loads.ShouldBe(0);
+        Context.ContentLocale.ShouldBe("fr");
+    }
+
     [Fact]
     public void AfterASwitchToASiteWhereTheCallerHoldsThePermissionTheRouteShowsItsPage()
     {
@@ -504,6 +573,21 @@ public sealed class AdministrationGateTests : AdministrationTestContext
 
     private static string[] Trail(IRenderedComponent<AdminApp> app) =>
         [.. app.Find("main .cms-breadcrumb").QuerySelectorAll("li").Select(item => item.TextContent.Trim())];
+
+    // Whether the page of the route shows: the area's, or the sample half's card.
+    private static bool Shows(IRenderedComponent<AdminApp> app, string route) =>
+        route == "reviews" ? app.FindAll("main .cms-card").Count > 0 : Shown(app) == "/" + route;
+
+    // The sample half as the app's one half, enabled in the sites named.
+    private void UseTheSampleHalf(params Guid[] sites)
+    {
+        var sample = AdminPluginManifestJson.Read(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, AdminPluginManifest.FileName)));
+        Services.AddSingleton(new AdminPluginCatalog([sample with { Widgets = [] }], []));
+        foreach (var site in sites)
+        {
+            Management.Plugins[site] = [Plugin("reviews", enabled: true)];
+        }
+    }
 
     private void UseTheSampleHalfWithItsPageInstanceOnly(string? permission = "reviews.notes.manage")
     {

@@ -22,6 +22,9 @@
     <value>Nothing here yet.</value>
   </data>
   <data name="Common.List.NoMatch" xml:space="preserve">
+    <value>Nothing matches the search.</value>
+  </data>
+  <data name="Common.List.NoMatchFilters" xml:space="preserve">
     <value>Nothing matches the search and filters.</value>
   </data>
   <data name="Common.List.Found" xml:space="preserve">

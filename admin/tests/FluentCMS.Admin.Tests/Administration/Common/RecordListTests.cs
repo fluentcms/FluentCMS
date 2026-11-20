@@ -97,7 +97,7 @@ public sealed class RecordListTests : AdminTestContext
 
         Navigation.NavigateTo("users?q=nobody");
 
-        list.WaitForAssertion(() => list.Find(".cms-data-grid-message").TextContent.Trim().ShouldBe("Nothing matches the search and filters."));
+        list.WaitForAssertion(() => list.Find(".cms-data-grid-message").TextContent.Trim().ShouldBe("Nothing matches the search."));
     }
 
     [Fact]
@@ -234,6 +234,29 @@ public sealed class RecordListTests : AdminTestContext
         list.Render();
         reads.Count.ShouldBe(1);
     }
+
+    // A page at /users/{Id} is one instance for every id, so the list is rendered again at another path and reads afresh,
+    // with the page and the filters of that address.
+    [Fact]
+    public void AListThatThePageRendersAtAnotherPathReadsThatPathsRecords()
+    {
+        Navigation.NavigateTo("users/a?page=2&status=failed");
+        answer = query => new([new($"{new Uri(Navigation.Uri).AbsolutePath} {query.Filter("status")} page {query.Page}")], 60);
+        var list = RenderList(filters: ["status"]);
+        list.WaitForAssertion(() => Names(list).ShouldBe(["/users/a failed page 2"]));
+
+        Navigation.NavigateTo("users/b");
+        list.Render();
+
+        list.WaitForAssertion(() => Names(list).ShouldBe(["/users/b  page 1"]));
+        reads.Count.ShouldBe(2);
+    }
+
+    [Theory]
+    [InlineData("q")]
+    [InlineData("page")]
+    public void AFilterCannotTakeTheQueryParameterOfTheSearchOrThePage(string name) =>
+        Should.Throw<ArgumentException>(() => RenderList(filters: ["status", name])).Message.ShouldContain($"'{name}'");
 
     [Fact]
     public async Task AReloadReadsTheSamePageAgain()

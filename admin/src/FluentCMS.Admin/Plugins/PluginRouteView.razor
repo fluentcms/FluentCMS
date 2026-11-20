@@ -1,7 +1,9 @@
 @* The page the router found, or the not-found page in its place for a page of an admin half or of an area of administration
    that the site or the user may not see, by the half that owns the page's assembly: after a site switch, a half loaded in
-   the site before still has its routes, and the switch navigates to the route again. NotFoundPage tells a page the user lacks the permission of. A page the
-   renderer cannot create shows an error in the layout instead, as no error boundary catches that. *@
+   the site before still has its routes, and the switch navigates to the route again. NotFoundPage tells a page the user
+   lacks the permission of. Both are drawn by one RouteView, so that a change of the gate replaces the page and keeps the
+   layout, with its header, its site switcher, its sidebar and the focus in them. A page the renderer cannot create shows an
+   error in the layout instead, as no error boundary catches that. *@
 @attribute [UnconditionalSuppressMessage("Trimming", "IL2111", Justification = "NotFoundPage is kept by the DynamicDependency of AdminApp's constructor.")]
 @implements IDisposable
 @using System.Reflection
@@ -10,20 +12,13 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<AdminResources> L
 
-@if ((shown = Gate) is PluginPageGate.None or PluginPageGate.Allowed)
+@if ((shown = Gate) is PluginPageGate.None or PluginPageGate.Allowed && !Creatable)
 {
-    if (Creatable)
-    {
-        <RouteView RouteData="RouteData" DefaultLayout="typeof(AdminLayout)" />
-    }
-    else
-    {
-        @Failure
-    }
+    @Failure
 }
 else
 {
-    <RouteView RouteData="NotFound" DefaultLayout="typeof(AdminLayout)" />
+    <RouteView RouteData="@(shown is PluginPageGate.None or PluginPageGate.Allowed ? RouteData : NotFound)" DefaultLayout="typeof(AdminLayout)" />
 }
 
 @code {
@@ -42,10 +37,11 @@ else
     public void Dispose() => Context.Changed -= OnContextChanged;
 
     // What the user may do changes without a navigation too, as with a content locale whose access lacks the page: the gate
-    // is asked again, and the page drawn again only when its answer changed.
+    // is asked again, and the page drawn again only when its answer changed. Not while the shell reads a site, whose access
+    // and plugins are then empty: the layout shows its loading state meanwhile, and the switch navigates to the route again.
     private void OnContextChanged() => _ = InvokeAsync(() =>
     {
-        if (Gate != shown)
+        if (Context.Status == ShellStatus.Ready && Gate != shown)
         {
             StateHasChanged();
         }

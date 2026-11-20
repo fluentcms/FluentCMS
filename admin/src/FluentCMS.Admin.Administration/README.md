@@ -23,6 +23,6 @@ Each area is a folder of its own: `Users/`, `Roles/`, `ApiKeys/`, `Members/`, `S
 - its resource file, `{Area}Resources.resx`, read through `IStringLocalizer<{Area}Resources>`, with keys `{Area}.{View}.{Text}`;
 - a `_Imports.razor` of its own for the namespaces only it needs.
 
-`Common/` holds what several areas use: `RoleReads` and `RoleSelect`, and `RecordList`, the frame of a list of records. A list with filters of its own names their query parameters in `Filters`, draws their controls itself, sets one with `SetFilter` and reads them from the `RecordQuery` its `Read` is given.
+`Common/` holds what several areas use: `RoleReads` and `RoleSelect`, and `RecordList`, the frame of a list of records. A list with filters of its own names their query parameters in `Filters` (any but `q` and `page`), draws their controls itself, sets one with `SetFilter` and reads them from the `RecordQuery` its `Read` is given.
 
 The area's sidebar entry, its permission and its breadcrumb are declared once, in `AdministrationAreas` of `FluentCMS.Admin`. Its component tests go in a folder of its own under `admin/tests/FluentCMS.Admin.Tests/Administration/`, on `AdministrationTestContext`; `{Area}LocalizationTests` there is the area's own check that no text of its pages is hard-coded, to which its issue adds each route with the answers the page reads (`LoadLocalized`).
