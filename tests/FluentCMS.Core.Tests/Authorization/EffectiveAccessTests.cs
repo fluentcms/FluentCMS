@@ -243,7 +243,7 @@ public class EffectiveAccessTests
     public async Task TheSystemPrincipalMayDoEverything()
     {
         var accessor = new OperationContextAccessor();
-        using var system = SystemOperation.Begin(accessor, Origin.Seed, Site);
+        using var system = SystemOperation.Begin(accessor, TimeProvider.System, Origin.Seed, Site);
         var access = new EffectiveAccess(Model, new Evaluator([]), accessor, new NoSearchIndex());
 
         var content = await access.ContentAsync(Token);

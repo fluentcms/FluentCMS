@@ -87,7 +87,7 @@ internal sealed class TrashPurgeJob(CmsDbContext database, SchemaModel schema, C
             foreach (var entry in page.Where(entry => tried.Add(entry.DocumentId)))
             {
                 var site = entry.SiteId is { } owner ? new SiteId(owner) : context.Operation.Site;
-                using (SystemOperation.Begin(accessor, Origin.Job, site, correlationId: context.Operation.CorrelationId))
+                using (SystemOperation.Begin(accessor, time, Origin.Job, site, correlationId: context.Operation.CorrelationId))
                 {
                     try
                     {

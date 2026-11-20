@@ -5,6 +5,18 @@
   <PropertyGroup>
     <Description>A minimal typed HTTP client for FluentCMS: Delivery reads, content management, typed filters, paging and problems.</Description>
     <PackageTags>$(PackageTags) client</PackageTags>
+    <!-- Each call has an overload that names the type and one that takes it from the class, both with the same optional
+         query, options and token; the baseline still fails the build on any change of a signature. -->
+    <NoWarn>$(NoWarn);RS0026</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+    <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+  </ItemGroup>
 
 </Project>

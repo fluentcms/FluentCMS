@@ -88,7 +88,7 @@ public sealed class SearchHost : IAsyncDisposable
     public async Task DisableLocaleAsync(Guid site, string locale)
     {
         await using var scope = Services.CreateAsyncScope();
-        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id));
         await scope.ServiceProvider.GetRequiredService<SiteManager>().UpdateLocaleAsync(site, locale, new SiteLocaleChange { Enabled = false }, Token);
     }
 
@@ -117,7 +117,7 @@ public sealed class SearchHost : IAsyncDisposable
     public async Task SetEnabledAsync(Guid site, bool enabled)
     {
         await using var scope = Services.CreateAsyncScope();
-        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id));
         await scope.ServiceProvider.GetRequiredService<PluginAdministration>().SetEnabledAsync(SearchPlugin.Name, site, enabled, Token);
     }
 

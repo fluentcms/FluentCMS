@@ -102,7 +102,7 @@ public sealed class CacheTagHeaderTests : IAsyncDisposable
         await topics.PatchAsync(topic, new ContentDocument { ["name"] = "Baking" }, current!.Version, Token);
         await topics.PublishAsync(topic, cancellationToken: Token);
         await using (var scope = _host.Services.CreateAsyncScope())
-        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Cli, new SiteId(DefaultSite.Id)))
+        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Cli, new SiteId(DefaultSite.Id)))
         {
             await scope.ServiceProvider.GetRequiredService<SiteManager>().UpdateAsync(DefaultSite.Id, new SiteChange { Name = "Renamed" }, Token);
         }
