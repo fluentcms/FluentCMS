@@ -1,0 +1,227 @@
+@* The dialog of one bulk operation (spec 4.13): a progress bar, the results as a table that can be narrowed to the failures,
+   and cancel, which stops after the chunk in flight. Closing it or leaving the page during the run asks first; stopping then
+   lets the chunk in flight end. Closing the tab asks too, through the browser. *@
+@using FluentCMS.Admin.Actions
+@using FluentCMS.Admin.Forms
+@implements IDisposable
+@inject NavigationManager Navigation
+@inject DocumentInterop Document
+@inject FormDrafts Drafts
+@inject IStringLocalizer<AdminResources> L
+
+<CmsDialog Title="@Progress.Title" Open="@open" OpenChanged="OnOpenChangedAsync" OnClosed="OnClosed">
+    <ChildContent>
+        <div class="bulk-progress">
+            @if (Progress.Counted)
+            {
+                <progress max="@Progress.Total" value="@Progress.Processed" aria-label="@L["Content.Bulk.Bar"]"></progress>
+                <p>@L["Content.Bulk.Count", Progress.Processed, Progress.Total]</p>
+            }
+            else if (!Progress.Ended)
+            {
+                <progress aria-label="@L["Content.Bulk.Bar"]"></progress>
+                <p>@L["Content.Bulk.Waiting"]</p>
+            }
+
+            @if (Progress.Ended)
+            {
+                <p class="bulk-progress-summary">@Progress.Summary()</p>
+            }
+            else if (Progress.Stopping)
+            {
+                <p>@L["Content.Bulk.Stopping"]</p>
+            }
+
+            @if (Progress.Problem is { } problem)
+            {
+                <p class="bulk-progress-problem" role="alert">@problem</p>
+            }
+
+            @if (Progress.Asking is { } question)
+            {
+                <div class="bulk-progress-question" role="alert">
+                    <p>@question</p>
+                    <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => Progress.Answer(true))">@L["Content.Bulk.TryAgain"]</CmsButton>
+                    <CmsButton OnClick="@(() => Progress.Answer(false))">@L["Content.Bulk.Stop"]</CmsButton>
+                </div>
+            }
+            else if (asking)
+            {
+                <div class="bulk-progress-question" role="alert">
+                    <p>@L["Content.Bulk.StopQuestion"]</p>
+                    <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="StopAsked">@L["Content.Bulk.Stop"]</CmsButton>
+                    <CmsButton OnClick="KeepRunning">@L["Content.Bulk.KeepRunning"]</CmsButton>
+                </div>
+            }
+
+            @if (Progress.Results.Count > 0)
+            {
+                <CmsCheckbox Label="@L["Content.Bulk.FailuresOnly"]" Value="@failuresOnly" ValueChanged="@(value => failuresOnly = value)" />
+                <table class="bulk-progress-results">
+                    <caption>@L["Content.Bulk.Results"]</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">@L["Content.Bulk.Column.Entry"]</th>
+                            <th scope="col">@L["Content.Bulk.Column.Result"]</th>
+                            <th scope="col">@L["Content.Bulk.Column.Warnings"]</th>
+                            <th scope="col">@L["Content.Bulk.Column.Problem"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var result in Progress.Results.Where(item => !failuresOnly || item.Problem is not null))
+                        {
+                            <tr class="@(result.Problem is null ? null : "bulk-progress-failed")">
+                                <th scope="row">@(Progress.Labels.GetValueOrDefault(result.Id) ?? result.Id.ToString("D"))</th>
+                                <td>@StatusText(result)</td>
+                                <td>@string.Join(" ", result.Warnings)</td>
+                                <td>@ProblemText(result.Problem)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </ChildContent>
+    <Actions>
+        @if (Progress.Ended)
+        {
+            <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => open = false)">@L["Content.Bulk.Close"]</CmsButton>
+        }
+        else
+        {
+            <CmsButton Disabled="@Progress.Stopping" OnClick="@(() => Progress.Cancel())">@L["Content.Bulk.Cancel"]</CmsButton>
+        }
+    </Actions>
+</CmsDialog>
+
+@code {
+    private bool open = true;
+    private bool asking;
+    private bool failuresOnly;
+    private bool guarded;
+    private IDisposable? leaveGuard;
+
+    // A navigation the user agreed to while the run went on, which then stops after its chunk.
+    private TaskCompletionSource<bool>? leaveAnswer;
+
+    // The service's own progress; the parameter is of the contract's type, since a parameter is public.
+    [Parameter, EditorRequired]
+    public IBulkProgress State { get; set; } = null!;
+
+    private BulkProgress Progress => (BulkProgress)State;
+
+    protected override void OnInitialized()
+    {
+        Progress.Changed += OnChanged;
+        leaveGuard = Navigation.RegisterLocationChangingHandler(OnLocationChanging);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // The browser asks before the tab closes while the run goes on; once it ended, only an unsaved form keeps it asking.
+        if (guarded != !Progress.Ended)
+        {
+            guarded = !Progress.Ended;
+            await Document.GuardUnloadAsync(guarded || Drafts.HasTracked);
+        }
+    }
+
+    public void Dispose()
+    {
+        Progress.Changed -= OnChanged;
+        leaveGuard?.Dispose();
+        leaveAnswer?.TrySetResult(true);
+    }
+
+    private void OnChanged()
+    {
+        if (Progress.Ended)
+        {
+            asking = false;
+            leaveAnswer?.TrySetResult(true);
+        }
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    // Escape closes the library's dialog at once, so during the run it is shown again with the question.
+    private async Task OnOpenChangedAsync(bool value)
+    {
+        if (value || Progress.Ended)
+        {
+            open = value;
+            return;
+        }
+
+        open = false;
+        asking = true;
+        StateHasChanged();
+        await Task.Yield();
+        open = true;
+    }
+
+    private void OnClosed()
+    {
+        if (Progress.Ended && !open)
+        {
+            Progress.Close();
+        }
+    }
+
+    private void StopAsked()
+    {
+        asking = false;
+        Progress.Cancel();
+        leaveAnswer?.TrySetResult(true);
+    }
+
+    private void KeepRunning()
+    {
+        asking = false;
+        leaveAnswer?.TrySetResult(false);
+    }
+
+    private async ValueTask OnLocationChanging(LocationChangingContext context)
+    {
+        if (Progress.Ended)
+        {
+            return;
+        }
+
+        leaveAnswer?.TrySetResult(false);
+        var answer = leaveAnswer = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        asking = true;
+        await InvokeAsync(StateHasChanged);
+        bool leave;
+        using (context.CancellationToken.Register(() => answer.TrySetResult(false)))
+        {
+            leave = await answer.Task;
+        }
+
+        if (leaveAnswer == answer)
+        {
+            leaveAnswer = null;
+        }
+
+        if (!leave && !context.CancellationToken.IsCancellationRequested)
+        {
+            context.PreventNavigation();
+        }
+    }
+
+    private string StatusText(BulkItemResult result) => result.Status switch
+    {
+        { } status when BulkStatuses.Known.Contains(status) => L[$"Content.Bulk.Status.{status}"],
+        { Length: > 0 } status => status,
+        _ => L[result.Problem is null ? "Content.Bulk.Status.done" : "Content.Bulk.Status.failed"],
+    };
+
+    private string? ProblemText(ApiProblem? problem) => problem switch
+    {
+        null => null,
+        { Detail: { Length: > 0 } detail } => detail,
+        { Title: { Length: > 0 } title } => title,
+        { Code: { Length: > 0 } code } => code,
+        _ => L["Content.Bulk.Unreachable"],
+    };
+}

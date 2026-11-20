@@ -170,6 +170,26 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
         return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), basedOn.Site, basedOn.Locale);
     }
 
+    // One call of POST /content/{type}/bulk, in the site and locale the run started in, by ids or by the list's filter, in
+    // the query string the list reads with, and its cap. The key is the caller's, so that a resent chunk is the same request and is answered once.
+    public async Task<BulkAnswer> BulkAsync(string type, BulkOperation operation, IReadOnlyList<Guid>? ids, string? filterQuery, int? cap, UserAction action, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        var body = new JsonObject { ["operation"] = JsonNamingPolicy.CamelCase.ConvertName(operation.ToString()) };
+        if (ids is not null)
+        {
+            body["items"] = new JsonArray([.. ids.Select(id => (JsonNode)new JsonObject { ["id"] = id.ToString("D") })]);
+        }
+        else
+        {
+            body["cap"] = cap;
+        }
+
+        var path = string.IsNullOrEmpty(filterQuery) ? $"{Content(type)}/bulk" : $"{Content(type)}/bulk?{filterQuery}";
+        var request = Pinned(HttpMethod.Post, path, action.Site, action.Locale, body, idempotencyKey: action.IdempotencyKey);
+        return (await api.SendAsync(request, Json.BulkAnswer, cancellationToken)).Value;
+    }
+
     // The entry as it is now, which a 412 of a save holds, as a read in the site and locale of the save; its version is the
     // tag a save on it sends. Null when the answer holds none that reads.
     public static EntryRead? CurrentOf(ApiProblem problem, EntryRead basedOn)

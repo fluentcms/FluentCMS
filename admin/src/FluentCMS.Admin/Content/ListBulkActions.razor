@@ -1,0 +1,258 @@
+@* The actions on the selection of a list (spec 4.13): publish, unpublish and delete to the trash for what the caller may do
+   with the type in the content locale, and the bulk actions of the admin halves for the type and the caller. Each is
+   confirmed with its name, the type and the count, or the filter of a selection of all that match, then runs in the dialog
+   of the bulk progress service. A half's action takes the ids of the selection, so it is offered for a selection of rows. *@
+@using FluentCMS.Admin.Actions
+@using Microsoft.Extensions.Logging
+@implements IDisposable
+@inject AdminContext Context
+@inject AdminPlugins Plugins
+@inject ManagementClient Client
+@inject BulkProgressService Bulk
+@inject BulkRunner Runner
+@inject DocumentInterop Document
+@inject ILogger<ListBulkActions> Logger
+@inject IStringLocalizer<AdminResources> L
+
+@if (Note is { } note)
+{
+    <span class="content-list-bulk-note">@note</span>
+}
+else if (Offered.Count > 0)
+{
+    <CmsMenu Label="@L["Content.Bulk.Menu"]">
+        @foreach (var item in Offered)
+        {
+            <CmsMenuItem @key="item.Key" OnClick="@(() => Ask(item))">@item.Label</CmsMenuItem>
+        }
+    </CmsMenu>
+}
+
+<CmsDialog Title="@(asked?.Label ?? L["Content.Bulk.Menu"])" Open="@(asked is not null)" OpenChanged="@(open => { if (!open) asked = null; })">
+    <ChildContent>
+        @if (asked is { } item)
+        {
+            <p>@Confirmation(item)</p>
+            @if (AllMatching)
+            {
+                @if (FilterSummaries.Count > 0)
+                {
+                    <ul aria-label="@L["Content.Filter.Applied"]">
+                        @foreach (var summary in FilterSummaries)
+                        {
+                            <li>@summary</li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p>@L["Content.Bulk.NoFilter"]</p>
+                }
+            }
+        }
+    </ChildContent>
+    <Actions>
+        @if (asked is { } item)
+        {
+            <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => RunAsync(item))">@item.Label</CmsButton>
+            <CmsButton OnClick="@(() => asked = null)">@L["Content.Bulk.ConfirmCancel"]</CmsButton>
+        }
+    </Actions>
+</CmsDialog>
+
+@code {
+    private string? pluginsOf;
+    private IReadOnlyList<(PluginBulkAction Declared, BulkActionBase Action)> pluginActions = [];
+    private BulkItem? asked;
+
+    // The run's dialog outlives a page the user left, which is then not read again.
+    private bool disposed;
+
+    private sealed record BulkItem(string Key, string Label, BulkOperation? Operation, PluginBulkAction? Declared = null, BulkActionBase? Action = null);
+
+    [Parameter, EditorRequired]
+    public SchemaTypeDescription Type { get; set; } = null!;
+
+    // The selected rows, in the order selected, with their labels.
+    [Parameter]
+    public IReadOnlyList<(Guid Id, string Label)> Selected { get; set; } = [];
+
+    // All that match the list's filter, which the server selects itself.
+    [Parameter]
+    public bool AllMatching { get; set; }
+
+    [Parameter]
+    public long Total { get; set; }
+
+    // The filter of the list as its query string, empty for none.
+    [Parameter]
+    public string? FilterQuery { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<string> FilterSummaries { get; set; } = [];
+
+    // A search the server's bulk call cannot take, since it takes a filter only.
+    [Parameter]
+    public bool Searching { get; set; }
+
+    // Once the run's dialog is closed: the ids to keep selected, those that failed or did not run, none for a selection of
+    // all that match.
+    [Parameter]
+    public EventCallback<IReadOnlyList<Guid>> OnRan { get; set; }
+
+    private int Count => AllMatching ? (int)Math.Min(Total, BulkRunner.MaxCap) : Selected.Count;
+
+    private string? Note => AllMatching switch
+    {
+        true when Searching => L["Content.Bulk.NotWithSearch"].Value,
+        true when Total > BulkRunner.MaxCap => L["Content.Bulk.TooMany", BulkRunner.MaxCap].Value,
+        _ => null,
+    };
+
+    private IReadOnlyList<BulkItem> Offered
+    {
+        get
+        {
+            List<BulkItem> items = [];
+            if (Context.ForType(Type.Name) is { } access)
+            {
+                if (access.Publish)
+                {
+                    items.Add(new("publish", L["Content.Bulk.Publish"], BulkOperation.Publish));
+                }
+
+                if (access.Unpublish)
+                {
+                    items.Add(new("unpublish", L["Content.Bulk.Unpublish"], BulkOperation.Unpublish));
+                }
+
+                if (access.Delete)
+                {
+                    items.Add(new("delete", L["Content.Bulk.Delete"], BulkOperation.Delete));
+                }
+            }
+
+            if (!AllMatching)
+            {
+                items.AddRange(pluginActions.Select(plugin => new BulkItem($"{plugin.Declared.Half.Name}/{plugin.Declared.Declared.Name}", plugin.Action.Label, null, plugin.Declared, plugin.Action)));
+            }
+
+            return items;
+        }
+    }
+
+    // A half's actions are made once the type has a selection, which loads their halves; one that cannot be made is left out.
+    protected override async Task OnParametersSetAsync()
+    {
+        var scope = $"{Context.Site?.Id}/{Context.ContentLocale}/{Type.Name}";
+        if (pluginsOf == scope || (Selected.Count == 0 && !AllMatching))
+        {
+            return;
+        }
+
+        pluginsOf = scope;
+        pluginActions = [];
+        List<(PluginBulkAction, BulkActionBase)> made = [];
+        foreach (var declared in Plugins.BulkActions(Type.Name))
+        {
+            try
+            {
+                made.Add((declared, await Plugins.BulkActionAsync(declared, CancellationToken.None)));
+            }
+#pragma warning disable CA1031 // A half's action that cannot be made leaves the others and the list's own.
+            catch (Exception exception)
+#pragma warning restore CA1031
+            {
+                PluginLog.BulkActionNotCreated(Logger, declared.Half.Name, declared.Declared.Type, exception);
+            }
+        }
+
+        if (pluginsOf == scope)
+        {
+            pluginActions = made;
+        }
+    }
+
+    public void Dispose() => disposed = true;
+
+    private void Ask(BulkItem item) => asked = item;
+
+    private string Confirmation(BulkItem item)
+    {
+        var type = AdminLabels.Type(Type, L);
+        if (item.Action is { } action && action.ConfirmationText(ActionContext(item)) is { Length: > 0 } own)
+        {
+            return own;
+        }
+
+        var name = item.Operation?.ToString() ?? "Plugin";
+        return AllMatching
+            ? L[$"Content.Bulk.ConfirmFilter.{name}", Count, type, item.Label]
+            : L[$"Content.Bulk.Confirm.{name}", Count, type, item.Label];
+    }
+
+    private BulkActionContext ActionContext(BulkItem item) => new()
+    {
+        Type = Type,
+        Ids = [.. Selected.Select(row => row.Id)],
+        ContentLocale = Type.Localized ? Context.ContentLocale : null,
+    };
+
+    private async Task RunAsync(BulkItem item)
+    {
+        asked = null;
+        var labels = Selected.GroupBy(row => row.Id).ToDictionary(group => group.Key, group => group.First().Label);
+        var ids = Selected.Select(row => row.Id).Distinct().ToList();
+        var title = L["Content.Bulk.Title", item.Label, AdminLabels.Type(Type, L)];
+        var progress = Bulk.Begin(title, Count, labels, counted: !AllMatching);
+        try
+        {
+            if (item.Action is { } action)
+            {
+                await RunPluginAsync(item, action, progress);
+            }
+            else
+            {
+                // The site and the locale are fixed as the run starts, so a switch meanwhile does not move its later chunks.
+                var start = Client.StartAction();
+                await (AllMatching
+                    ? Runner.RunAsync(Type.Name, item.Operation!.Value, FilterQuery, Count, start.Site, start.Locale, progress)
+                    : Runner.RunAsync(Type.Name, item.Operation!.Value, ids, start.Site, start.Locale, progress));
+            }
+        }
+        finally
+        {
+            progress.Dispose();
+        }
+
+        await progress.Closed;
+        if (disposed)
+        {
+            return;
+        }
+
+        IReadOnlyList<Guid> kept = AllMatching
+            ? []
+            : [.. progress.Results.Where(result => result.Problem is not null || result.Status == BulkStatuses.NotRun).Select(result => result.Id).Distinct()];
+        await OnRan.InvokeAsync(kept);
+        await Document.FocusHeadingAsync(afterDialog: true);
+    }
+
+    private async Task RunPluginAsync(BulkItem item, BulkActionBase action, BulkProgress progress)
+    {
+        try
+        {
+            await action.RunAsync(ActionContext(item), progress, progress.Cancelled);
+        }
+        catch (OperationCanceledException) when (progress.Stopping)
+        {
+        }
+#pragma warning disable CA1031 // What a half's action throws is shown in its dialog, and the list goes on.
+        catch (Exception exception)
+#pragma warning restore CA1031
+        {
+            PluginLog.BulkActionFailed(Logger, item.Declared!.Half.Name, item.Declared.Declared.Type, exception);
+            progress.Fail(exception is ApiProblemException problem && problem.Problem.Detail is { Length: > 0 } detail ? detail : L["Content.Bulk.PluginFailed"]);
+        }
+    }
+}
