@@ -26,6 +26,7 @@ public class McpClientContractTests
         policy.DefaultRole.ShouldBeNull();
         policy.MaxPendingClients.ShouldBe(100);
         policy.RegistrationsPerHour.ShouldBe(10);
+        policy.MaxClients.ShouldBe(1000);
     }
 
     [Fact]
