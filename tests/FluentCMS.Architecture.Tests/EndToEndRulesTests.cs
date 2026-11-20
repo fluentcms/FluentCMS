@@ -8,7 +8,8 @@ namespace FluentCMS.Architecture.Tests;
 
 // The rules of the admin's browser tests (spec 7, CONTRIBUTING.md): a test waits on the page's state through the shared
 // helpers of the end-to-end project, never by a timer or a clock of its own, and reads an answer by its request, status and
-// headers, never by a body read after the fact, which Chromium may no longer hold. Each failure class these rules name has
+// headers, never by a body read after the fact, which Chromium may no longer hold, and through the shared waits, which skip
+// the 401 the admin answers with a refresh. Each failure class these rules name has
 // turned CI red on a slow runner. They hold every file of the project but the harness's own, named below, and they read the
 // syntax, so a name is found however it is written: on two lines, as a method group, through `using static` or in a lambda.
 // They also run on a file that breaks each of them.
@@ -26,6 +27,7 @@ public class EndToEndRulesTests
     private const string Clock = "reads a clock of its own, as a hand-rolled poll does, which spins requests; use Ui.UntilAsync, or wait on the timed event (tab.TokenDueAsync)";
     private const string Drag = "drags without waiting for the drop target; use Ui.DragAsync";
     private const string Copy = "declares its own PressAsync, FocusAsync or FocusReturnedAsync; use the one of Ui";
+    private const string Answer = "waits for an answer by itself, and takes the 401 before a token refresh for it; use tab.AnswerAsync or tab.NextAnswerAsync";
 
     private static readonly Dictionary<string, string> Names = new(StringComparer.Ordinal)
     {
@@ -43,6 +45,8 @@ public class EndToEndRulesTests
         ["TickCount64"] = Clock,
         ["GetTimestamp"] = Clock,
         ["DragToAsync"] = Drag,
+        ["RunAndWaitForResponseAsync"] = Answer,
+        ["WaitForResponseAsync"] = Answer,
     };
 
     private static readonly string[] Copies = ["PressAsync", "FocusAsync", "FocusReturnedAsync"];
@@ -91,6 +95,8 @@ public class EndToEndRulesTests
                     // A comment may name setTimeout, TextAsync or Task.Delay without breaking a rule.
                     var text = await page.Locator("p").InnerTextAsync();
                     await page.Locator("li").First.DragToAsync(page.Locator("li").Last);
+                    var saved = await page.RunAndWaitForResponseAsync(() => page.Keyboard.PressAsync("Enter"), "**/content/article");
+                    var read = page.WaitForResponseAsync("**/schema");
                 }
 
                 private static async ValueTask PressAsync(ILocator target, string key) => await target.PressAsync(key);
@@ -111,7 +117,8 @@ public class EndToEndRulesTests
         found.Count(violation => violation.Contains(Clock, StringComparison.Ordinal)).ShouldBe(3);
         found.Count(violation => violation.Contains(Copy, StringComparison.Ordinal)).ShouldBe(3);
         found.Count(violation => violation.Contains(Drag, StringComparison.Ordinal)).ShouldBe(1);
-        found.Count.ShouldBe(16);
+        found.Count(violation => violation.Contains(Answer, StringComparison.Ordinal)).ShouldBe(2);
+        found.Count.ShouldBe(18);
     }
 
     // Each name that breaks a rule (but in a using directive, which names a namespace or a type to import), each string that

@@ -1,7 +1,4 @@
-            var pathless = errors.Count == 0 ? Message(exception.Problem) ?? L["Content.Schedule.Failed"] : Message(errors.Where(error => error.Path != "at"));
-            if (pathless is not null)
-            {
-                problem = pathless;@* The schedules of the form's locale (spec 4.10, A-27): a dialog to publish or unpublish at a time, entered in the user's
+@* The schedules of the form's locale (spec 4.10, A-27): a dialog to publish or unpublish at a time, entered in the user's
    time zone, which it names, and sent as that wall-clock time with the zone, so the server applies the zone's rules on
    the day; and a move and a cancel for each pending schedule. The pending times themselves are the status badges'. A
    caller who may not publish, or not unpublish, has no control for that action and still sees its badge. *@
