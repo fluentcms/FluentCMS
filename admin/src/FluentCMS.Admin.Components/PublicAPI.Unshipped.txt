@@ -20,8 +20,12 @@ FluentCMS.Admin.Components.CmsButton.Appearance.set -> void
 FluentCMS.Admin.Components.CmsButton.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
 FluentCMS.Admin.Components.CmsButton.ChildContent.set -> void
 FluentCMS.Admin.Components.CmsButton.CmsButton() -> void
+FluentCMS.Admin.Components.CmsButton.Controls.get -> string?
+FluentCMS.Admin.Components.CmsButton.Controls.set -> void
 FluentCMS.Admin.Components.CmsButton.Disabled.get -> bool
 FluentCMS.Admin.Components.CmsButton.Disabled.set -> void
+FluentCMS.Admin.Components.CmsButton.Expanded.get -> bool?
+FluentCMS.Admin.Components.CmsButton.Expanded.set -> void
 FluentCMS.Admin.Components.CmsButton.FocusAsync() -> System.Threading.Tasks.ValueTask
 FluentCMS.Admin.Components.CmsButton.Icon.get -> FluentCMS.Admin.Components.CmsIconName?
 FluentCMS.Admin.Components.CmsButton.Icon.set -> void
@@ -185,6 +189,7 @@ FluentCMS.Admin.Components.CmsInputBase<TValue>.Element.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Error.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Error.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.FocusAsync() -> System.Threading.Tasks.ValueTask
+FluentCMS.Admin.Components.CmsInputBase<TValue>.HasInputError.get -> bool
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Help.get -> string?
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Help.set -> void
 FluentCMS.Admin.Components.CmsInputBase<TValue>.Id.get -> string?

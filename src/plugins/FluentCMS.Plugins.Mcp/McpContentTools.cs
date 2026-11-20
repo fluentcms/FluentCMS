@@ -96,7 +96,7 @@ internal sealed class McpContentTools(
             case Publish:
                 return await PublishAsync(arguments, cancellationToken);
             case Unpublish:
-                return await UnpublishAsync(arguments, cancellationToken);
+                return await UnpublishAsync(request, cancellationToken);
             case Schedule:
                 return await ScheduleAsync(arguments, cancellationToken);
             case Query:
@@ -232,7 +232,10 @@ internal sealed class McpContentTools(
         var unpublishable = Types(may => may.Unpublish);
         if (unpublishable.Count > 0)
         {
-            tools.Add(new McpToolDescriptor(Unpublish, "Takes an entry out of what is published. Its draft stays.", McpToolSchemas.Unpublish(unpublishable))
+            tools.Add(new McpToolDescriptor(
+                Unpublish,
+                "Takes an entry out of what is published. Its draft stays. A confirmation is needed: a call answers the plan first, which is the entry and the published references that would break, with a confirmationToken, and changes nothing. The same call with dryRun false and that token, within five minutes, unpublishes the entry.",
+                McpToolSchemas.Unpublish(unpublishable))
             {
                 Title = "Unpublish",
                 Annotations = Changes,
@@ -438,16 +441,13 @@ internal sealed class McpContentTools(
         return McpArguments.Result(surface.ToJson(await content.PublishAsync(type.Name, McpArguments.Id(arguments), options, cancellationToken)));
     }
 
-    private async Task<McpToolResult> UnpublishAsync(JsonElement arguments, CancellationToken cancellationToken)
+    private async Task<McpToolResult> UnpublishAsync(McpToolCall request, CancellationToken cancellationToken)
     {
-        McpArguments.Only(arguments, "type", "id", "locale");
-        if (await AvailableAsync(arguments, cancellationToken) is not { } type)
-        {
-            return NotAvailable(arguments);
-        }
-
-        var options = new LocaleOptions { Locale = McpArguments.Text(arguments, "locale") };
-        return McpArguments.Result(surface.ToJson(await content.UnpublishAsync(type.Name, McpArguments.Id(arguments), options, cancellationToken)));
+        McpArguments.Only(request.Arguments, "type", "id", "locale", McpConfirmations.DryRun, McpConfirmations.Token);
+        var described = await access.ContentAsync(cancellationToken);
+        return Available(described, request.Arguments) is { } type
+            ? await dryRuns.UnpublishAsync(request, type, Reach(described), cancellationToken)
+            : NotAvailable(request.Arguments);
     }
 
     private async Task<McpToolResult> ScheduleAsync(JsonElement arguments, CancellationToken cancellationToken)

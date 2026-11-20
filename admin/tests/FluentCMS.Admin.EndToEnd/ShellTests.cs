@@ -11,9 +11,9 @@ namespace FluentCMS.Admin.EndToEnd;
 // their names are checked, not a page behind them.
 public sealed class ShellTests(EndToEndHost host) : BrowserTest(host)
 {
-    // The Blog sample's collections and the host's landing of BlockTests, which name no display name, so the shell shows the
-    // name with a capital first letter.
-    private static readonly string[] BlogTypes = ["article", "author", "tag", "landing"];
+    // The Blog sample's collections and the host's memo of BulkTests, showcase of PreviewTests and landing of BlockTests, which name no display name, so
+    // the shell shows the name with a capital first letter.
+    private static readonly string[] BlogTypes = ["article", "author", "tag", "memo", "showcase", "landing"];
 
     [Fact]
     public async Task TheSidebarListsTheTypesTheEditorMayReadAndNoAdministration()

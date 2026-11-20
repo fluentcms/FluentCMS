@@ -142,6 +142,7 @@ public sealed class AiSiteTests : IClassFixture<AiHost>
     [InlineData("""{ "maxOutputTokens": 0 }""")]
     [InlineData("""{ "requestTimeout": 0 }""")]
     [InlineData("""{ "callsPerMinute": 0 }""")]
+    [InlineData("""{ "dailyTokenBudget": -1 }""")]
     [InlineData("""{ "legacyMaxTokens": "yes" }""")]
     [InlineData("""{ "legacyMaxTokens": null }""")]
     [InlineData("""{ "provider": 7 }""")]

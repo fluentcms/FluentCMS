@@ -1,4 +1,7 @@
 using System.Net;
+using FluentCMS.Content;
+using FluentCMS.Sites;
+using FluentCMS.Testing;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Plugins.AiAssist.Tests.AiTesting;
@@ -96,6 +99,103 @@ public sealed class AiLimitTests : IClassFixture<AiHost>
         await SuggestAsync(admin, "rewrite", body);
         using var stillOver = await ActAsync(admin, "rewrite", body);
         (await RefusedAsync(stillOver, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1687");
+    }
+
+    // The limit is asked before the draft is read or an image decoded, so a caller over it gets no work done for it: an
+    // entry or an image that is not there is not found only once the caller is under the limit again.
+    [Fact]
+    public async Task ACallerOverTheLimitIsRefusedBeforeTheDraftIsReadOrAnImageDecoded()
+    {
+        var site = await _ai.SiteAsync(settings => settings.CallsPerMinute = 1);
+        using var admin = await _ai.AdminAsync(site);
+
+        await SuggestAsync(admin, "rewrite", new { type = "article", field = "summary", text = "Ships are big boats." });
+        using var draft = await ActAsync(admin, "rewrite", new { type = "article", field = "summary", documentId = Guid.NewGuid() });
+        using var image = await ActAsync(admin, "altText", new { type = "article", field = "summary", options = new { mediaId = Guid.NewGuid() } });
+        _ai.Host.Time.Advance(TimeSpan.FromSeconds(61));
+        using var underAgain = await ActAsync(admin, "rewrite", new { type = "article", field = "summary", documentId = Guid.NewGuid() });
+
+        (await RefusedAsync(draft, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1687");
+        (await RefusedAsync(image, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1687");
+        underAgain.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        _ai.Chat.Calls.ShouldHaveSingleItem();
+    }
+
+    // The call is taken when it is let through, so that calls sent together cannot all pass while each is still reading
+    // its draft or its image, and given back when it is refused before it is sent. The host's factory holds each call that
+    // passed until the test lets it go.
+    [Fact]
+    public async Task CallsSentTogetherPassTheLimitOnlyAsOftenAsItAllows()
+    {
+        var site = await _ai.SiteAsync(settings => settings.CallsPerMinute = 2);
+        using var admin = await _ai.AdminAsync(site);
+        var body = new { type = "article", field = "summary", text = "Ships are big boats." };
+        _ai.Chat.FactoryGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var calls = Enumerable.Range(0, 6).Select(_ => ActAsync(admin, "rewrite", body)).ToList();
+        var refused = new List<HttpResponseMessage>();
+        while (refused.Count < 4)
+        {
+            var done = await Task.WhenAny(calls).WaitAsync(TimeSpan.FromSeconds(30), Token);
+            calls.Remove(done);
+            refused.Add(await done);
+        }
+
+        _ai.Chat.FactoryCalls.ShouldBe(2);
+        _ai.Chat.FactoryGate.SetResult();
+        var passed = await Task.WhenAll(calls);
+
+        foreach (var response in refused)
+        {
+            (await RefusedAsync(response, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1687");
+            response.Dispose();
+        }
+
+        passed.ShouldAllBe(response => response.StatusCode == HttpStatusCode.OK);
+        _ai.Chat.Calls.Count.ShouldBe(2);
+        foreach (var response in passed)
+        {
+            response.Dispose();
+        }
+    }
+
+    // A call refused after it was taken, here for an entry that is not there, gives its call back.
+    [Fact]
+    public async Task ACallRefusedBeforeItIsSentGivesItsCallBack()
+    {
+        var site = await _ai.SiteAsync(settings => settings.CallsPerMinute = 1);
+        using var admin = await _ai.AdminAsync(site);
+
+        using var missing = await ActAsync(admin, "rewrite", new { type = "article", field = "summary", documentId = Guid.NewGuid() });
+        using var tooLong = await ActAsync(admin, "rewrite", new { type = "article", field = "summary", text = new string('a', 20_001) });
+        await SuggestAsync(admin, "rewrite", new { type = "article", field = "summary", text = "Ships are big boats." });
+        using var over = await ActAsync(admin, "rewrite", new { type = "article", field = "summary", text = "Ships are big boats." });
+
+        missing.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await RefusedAsync(tooLong, HttpStatusCode.RequestEntityTooLarge)).ShouldBe("FCMS1686");
+        (await RefusedAsync(over, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1687");
+    }
+
+    // A call given back after its bucket has been full again, which ended its charge, does not take the charge of a later
+    // call off the bucket.
+    [Fact]
+    public void ACallGivenBackAfterItsBucketWasFullAgainLeavesTheLaterCallsCharged()
+    {
+        var time = new ControllableTimeProvider();
+        var limits = new AiCallLimits(time);
+        var site = new SiteId(Guid.CreateVersion7());
+        var principal = new Principal(PrincipalKind.ApiKey, Guid.CreateVersion7(), "key");
+
+        limits.Take(site, principal, 1, out var slow).ShouldBeNull();
+        time.Advance(TimeSpan.FromSeconds(61));
+        limits.Take(site, principal, 1, out var later).ShouldBeNull();
+        AiCallLimits.GiveBack(slow, 1);
+        var refused = limits.Take(site, principal, 1, out _);
+        AiCallLimits.GiveBack(later, 1);
+        var afterTheLaterIsGivenBack = limits.Take(site, principal, 1, out _);
+
+        refused.ShouldNotBeNull();
+        afterTheLaterIsGivenBack.ShouldBeNull();
     }
 
     [Fact]
