@@ -184,8 +184,8 @@ public sealed class SearchIndexProviderTests : IDisposable
         whole.SearchTruncated.ShouldBeFalse();
     }
 
-    // Rows of another site, locale, type or state, all newer than the matches of the query, take no place in the limit and
-    // do not make the list say it was cut, so they tell the caller nothing (#3302).
+    // Rows that differ from a match of the query in one of site, locale, type or state alone, all newer than the matches,
+    // take no place in the limit and do not make the list say it was cut, so they tell the caller nothing (#3302).
     [Fact]
     public async Task OnlyTheRowsOfTheTypeLocaleSiteAndStateOfTheQueryTakePlacesInTheLimit()
     {
@@ -198,7 +198,7 @@ public sealed class SearchIndexProviderTests : IDisposable
 
         var later = DateTimeOffset.UtcNow.AddDays(1);
         SearchEntry Row(string type, string locale, int state, Guid? site) =>
-            new() { DocumentId = Guid.CreateVersion7(), Locale = locale, State = state, Type = type, SiteId = site, Field = type == "tag" ? "name" : "title", Text = "common words", UpdatedAt = later };
+            new() { DocumentId = Guid.CreateVersion7(), Locale = locale, State = state, Type = type, SiteId = site, Field = "title", Text = "common words", UpdatedAt = later };
         await using (var scope = _host.Services.CreateAsyncScope())
         {
             var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<SearchPlugin>>();
@@ -207,8 +207,8 @@ public sealed class SearchIndexProviderTests : IDisposable
                 Row("article", "en", SearchStates.Published, Guid.CreateVersion7()),
                 Row("article", "fr", SearchStates.Published, DefaultSite.Id),
                 Row("article", "fr", SearchStates.Published, DefaultSite.Id),
-                Row("tag", "", SearchStates.Published, null),
-                Row("tag", "", SearchStates.Published, null));
+                Row("tag", "en", SearchStates.Published, DefaultSite.Id),
+                Row("tag", "en", SearchStates.Published, DefaultSite.Id));
             await database.SaveChangesAsync(Token);
         }
 
@@ -219,6 +219,30 @@ public sealed class SearchIndexProviderTests : IDisposable
         published.SearchTruncated.ShouldBeFalse();
         drafts.Items.Count.ShouldBe(3);
         drafts.SearchTruncated.ShouldBeTrue();
+    }
+
+    // A read of the trash asks the index for drafts, which are not those of the trash, so their count says nothing there.
+    [Fact]
+    public async Task AReadOfTheTrashNeverSaysItsSearchWasCut()
+    {
+        await MigrateAsync();
+        for (var index = 0; index < 4; index++)
+        {
+            await CreateAsync("Common words", $"Entry {index}", publish: false);
+        }
+
+        var trashed = await CreateAsync("Common words", "Trashed", publish: false);
+        await AsSystemAsync(async content =>
+        {
+            await content.DeleteAsync("article", trashed, Token);
+            return true;
+        });
+        await DrainAsync();
+
+        (await PageAsync("common", QueryStatus.Draft)).SearchTruncated.ShouldBeTrue();
+        var trash = await AsSystemAsync(async content => await content.QueryTrashAsync("article", new ContentQuery { Search = "common", Locale = "en" }, Token));
+        trash.Items.ShouldBeEmpty();
+        trash.SearchTruncated.ShouldBeFalse();
     }
 
     [Fact]

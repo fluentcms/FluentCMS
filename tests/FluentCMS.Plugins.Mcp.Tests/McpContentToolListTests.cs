@@ -47,7 +47,11 @@ public sealed class McpContentToolListTests(McpToolsFixture fixture) : IClassFix
         using var http = await RoleAsync(host, Grant("content.post.read"));
         await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
 
+        var tools = await ToolsAsync(client);
+        tools["post_search"].Description!.ShouldContain("searchTruncated true");
+        tools[McpContentTools.Query].Description!.ShouldContain("searchTruncated true");
         (await OkAsync(client, "post_search", new { q = "harbour" })).GetProperty("searchTruncated").GetBoolean().ShouldBeTrue();
+        (await OkAsync(client, McpContentTools.Query, new { type = "post", q = "harbour" })).GetProperty("searchTruncated").GetBoolean().ShouldBeTrue();
         (await OkAsync(client, "post_list")).TryGetProperty("searchTruncated", out _).ShouldBeFalse();
     }
 

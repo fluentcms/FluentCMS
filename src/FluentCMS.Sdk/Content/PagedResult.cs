@@ -38,7 +38,7 @@ public sealed class PagedResult<T>
 
     /// <summary>
     /// Whether the search of the list returned the most matches the search index gives, so that entries beyond them may be
-    /// missing from the list and its total. Always <see langword="false"/> for a list without a search.
+    /// missing from the list and its total. Always <see langword="false"/> for a list without a search and for a read of the trash.
     /// </summary>
     public bool SearchTruncated { get; init; }
 }

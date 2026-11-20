@@ -101,7 +101,9 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             // then nothing matches, whatever it found, and nothing is said to be cut either.
             var ids = await search.SearchAsync(hits.Request, cancellationToken);
             hits.Ids = hits.Request.Fields is { Count: 0 } ? [] : [.. ids.Take(hits.Request.Limit)];
-            hits.Truncated = hits.Ids.Length >= hits.Request.Limit;
+            // A read of the trash asks for drafts, and the search plugin keeps none of an entry in the trash, so there the
+            // count of the index says nothing of what the list could miss.
+            hits.Truncated = !compiled.Scope.ReachesTrash && hits.Ids.Length >= hits.Request.Limit;
         }
     }
 

@@ -101,6 +101,43 @@ public sealed class SearchSeamTests : IAsyncLifetime
         unsearched.AsObject().ContainsKey("searchTruncated").ShouldBeFalse();
     }
 
+    // A page read by cursor, a list in every locale and the typed service say it as the first page does.
+    [Fact]
+    public async Task EveryReadOfACutSearchSaysSo()
+    {
+        Index.Hits["everything"] = [_first.Id, _second.Id, _third.Id];
+        Index.Full.Add("everything");
+        const string Path = "/api/management/v1/content/note?q=everything&sort=title&pageSize=1";
+
+        var (_, first) = await GetAsync(_management, Path);
+        var (status, next) = await GetAsync(_management, $"{Path}&cursor={Uri.EscapeDataString(first["nextCursor"]!.GetValue<string>())}");
+        var (everyStatus, every) = await GetAsync(_management, $"{Path}&locale=all");
+        var typed = await _host.As(await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token)).Content<Note>().QueryAsync(new ContentQuery { Search = "everything" }, Token);
+
+        status.ShouldBe(HttpStatusCode.OK);
+        Titles(next).ShouldBe(["Second"]);
+        next["searchTruncated"]!.GetValue<bool>().ShouldBeTrue();
+        everyStatus.ShouldBe(HttpStatusCode.OK);
+        every["searchTruncated"]!.GetValue<bool>().ShouldBeTrue();
+        typed.Items.Count.ShouldBe(3);
+        typed.SearchTruncated.ShouldBeTrue();
+    }
+
+    // The index is asked for the drafts out of the trash, so their count says nothing of the trash.
+    [Fact]
+    public async Task AReadOfTheTrashNeverSaysItsSearchWasCut()
+    {
+        Index.Hits["everything"] = [_first.Id, _second.Id, _third.Id];
+        Index.Full.Add("everything");
+        await _host.As(await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token)).Content<Note>().DeleteAsync(_first.Id, Token);
+
+        var (status, trash) = await GetAsync(_management, "/api/management/v1/content/note/trash?q=everything");
+
+        status.ShouldBe(HttpStatusCode.OK);
+        Titles(trash).ShouldBe(["First"]);
+        trash.AsObject().ContainsKey("searchTruncated").ShouldBeFalse();
+    }
+
     [Theory]
     [InlineData("/api/delivery/v1/note/{0}?q=x")]
     [InlineData("/api/management/v1/content/note/{0}?q=x")]

@@ -328,13 +328,14 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
     [Fact]
     public void AContentListSaysWhenItsSearchWasCut()
     {
-        foreach (var path in new[] { "/api/delivery/v1/article", $"{Management}/content/article", $"{Management}/content/article/trash" })
+        foreach (var path in new[] { "/api/delivery/v1/article", $"{Management}/content/article" })
         {
             var list = Response(Paths[path]!["get"]!, "200");
             var truncated = list["properties"]!["searchTruncated"]!;
 
             truncated["type"]!.GetValue<string>().ShouldBe("boolean", path);
             truncated["description"]!.GetValue<string>().ShouldContain("MaxSearchResults");
+            truncated["description"]!.GetValue<string>().ShouldContain("never sent on the trash list");
             list["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["items", "pageSize"]);
         }
 
