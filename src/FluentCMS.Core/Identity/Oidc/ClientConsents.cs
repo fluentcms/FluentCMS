@@ -1,5 +1,10 @@
 using System.Collections.Immutable;
+using FluentCMS.Agents;
+using FluentCMS.Core.Storage;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
+using OpenIddict.EntityFrameworkCore.Models;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace FluentCMS.Core.Identity.Oidc;
@@ -18,7 +23,13 @@ internal sealed record ConsentRequest(string ClientId, string ClientName, IReadO
 // A user's consent to a third-party client (ClientRegistration.RequireConsent) is a permanent OpenIddict authorization of
 // the user for the client and the scopes allowed, which the authorize endpoint then issues the client's codes under. Revoking
 // it as a session (UserSessions) takes the consent with it.
-internal sealed class ClientConsents(IOpenIddictApplicationManager applications, IOpenIddictAuthorizationManager authorizations, TimeProvider time)
+internal sealed class ClientConsents(
+    IOpenIddictApplicationManager applications,
+    IOpenIddictAuthorizationManager authorizations,
+    SystemDbContext context,
+    TimeProvider time,
+    ILogger<ClientConsents> logger,
+    IMcpClientRegistrationPolicy? policy = null)
 {
     // The parameter the consent page adds to the authorize request when the user refuses.
     public const string DecisionParameter = "fcms_consent";
@@ -68,10 +79,17 @@ internal sealed class ClientConsents(IOpenIddictApplicationManager applications,
         };
     }
 
-    // The ASCII form of the host, so that a letter of another script that looks like a Latin one shows as punycode.
+    // The ASCII form of the host, so that a letter of another script that looks like a Latin one shows as punycode. A
+    // redirect URI of a scheme an application registered for itself, such as com.example.app:/cb, has no host, and its
+    // scheme is what says where the code goes.
     internal static string HostOf(Uri uri)
     {
         ArgumentNullException.ThrowIfNull(uri);
+
+        if (uri.IdnHost.Length == 0)
+        {
+            return uri.Scheme + ":";
+        }
 
         var host = uri.HostNameType == UriHostNameType.IPv6 ? $"[{uri.IdnHost}]" : uri.IdnHost;
         return uri.IsDefaultPort ? host : $"{host}:{uri.Port}";
@@ -88,7 +106,8 @@ internal sealed class ClientConsents(IOpenIddictApplicationManager applications,
         return null;
     }
 
-    // Records that the user allows the client the scopes it may ask for among these; false for a client that asks no consent.
+    // Records that the user allows the client the scopes it may ask for among these; false for a client that asks no
+    // consent, and for a consent that would keep one client more than a user may keep.
     public async Task<bool> GrantAsync(Guid userId, string clientId, IEnumerable<string> scopes, CancellationToken cancellationToken = default)
     {
         var request = await DescribeAsync(clientId, scopes, cancellationToken: cancellationToken);
@@ -98,21 +117,84 @@ internal sealed class ClientConsents(IOpenIddictApplicationManager applications,
         }
 
         var subject = userId.ToString("D");
+        var applicationId = await applications.GetIdAsync(application, cancellationToken) ?? "";
+        if (await CapReachedAsync(userId, application, applicationId, cancellationToken) is { } max)
+        {
+            OidcLog.ConsentLimitReached(logger, userId, clientId, max);
+            return false;
+        }
+
         var identity = TokenClaims.Identity().SetClaim(Claims.Subject, subject);
         await authorizations.CreateAsync(
             identity,
             subject,
-            await applications.GetIdAsync(application, cancellationToken) ?? "",
+            applicationId,
             AuthorizationTypes.Permanent,
             [.. request.Scopes],
             cancellationToken);
-        await MarkUsedAsync(application, cancellationToken);
+        await MarkUsedAsync(application, userId, cancellationToken);
         return true;
     }
 
+    // A consent keeps a client the open policy approved from the cleanup, so a user who could consent to any number of
+    // them could fill MaxClients for good with clients nobody uses (#3397). A user therefore takes a place for each such
+    // client they keep, MaxConsentsPerUser at most: the answer is that number when this consent would take one more, and
+    // null when it may be given. A place is taken by a permanent authorization of the user, whatever its status, and by
+    // being the user whose consent first used the client, for as long as the client is there. Ending a consent therefore
+    // frees no place: the client it kept stays for the cleanup's period, first with the revoked authorization and, once
+    // that is pruned, with its state alone. A consent to a client the user has a place for takes none, so a user who
+    // changes the password allows the same clients again. A client an administrator approved, registered or gave a role
+    // is neither counted nor held back, since the cleanup keeps it whoever consents.
+    private async Task<int?> CapReachedAsync(Guid userId, object application, string applicationId, CancellationToken cancellationToken)
+    {
+        if (!await IsOpenApprovedAsync(application, cancellationToken))
+        {
+            return null;
+        }
+
+        HashSet<string> places = new(StringComparer.Ordinal);
+        await foreach (var authorization in authorizations.FindBySubjectAsync(userId.ToString("D"), cancellationToken))
+        {
+            if (await authorizations.HasTypeAsync(authorization, AuthorizationTypes.Permanent, cancellationToken)
+                && await authorizations.GetApplicationIdAsync(authorization, cancellationToken) is { } id)
+            {
+                places.Add(id);
+            }
+        }
+
+        var marker = McpClientState.UsedByMarker(userId);
+        var firstUsed = await context.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>().AsNoTracking()
+            .Where(used => used.Properties != null && used.Properties.Contains(marker))
+            .Select(used => used.Id)
+            .ToListAsync(cancellationToken);
+        places.UnionWith(firstUsed.Select(id => id.ToString("D")));
+
+        if (places.Contains(applicationId))
+        {
+            return null;
+        }
+
+        var max = (policy is null ? new McpClientRegistrationPolicy(McpClientRegistrationMode.Off) : await policy.GetAsync(cancellationToken)).MaxConsentsPerUser;
+        var taken = 0;
+        foreach (var id in places)
+        {
+            if (await applications.FindByIdAsync(id, cancellationToken) is { } other && await IsOpenApprovedAsync(other, cancellationToken))
+            {
+                taken++;
+            }
+        }
+
+        return taken >= max ? max : null;
+    }
+
+    private async Task<bool> IsOpenApprovedAsync(object application, CancellationToken cancellationToken) =>
+        McpClientState.Of(await applications.GetPropertiesAsync(application, cancellationToken)) is { IsApproved: true, ApprovedBy: null };
+
     // The first consent to a client that registered itself is its first use, since it asks for consent before any code: the
-    // cleanup removes one never used sooner than one whose tokens are gone. Of two consents at once, the other one writes it.
-    private async Task MarkUsedAsync(object application, CancellationToken cancellationToken)
+    // cleanup removes one never used sooner than one whose tokens are gone. A write that crosses another write of the
+    // client, a second consent or a change by an administrator, is not tried again: the cleanup writes the first use
+    // of a client that holds a consent and has none (McpClients.RemoveUnusedAsync).
+    private async Task MarkUsedAsync(object application, Guid userId, CancellationToken cancellationToken)
     {
         var properties = await applications.GetPropertiesAsync(application, cancellationToken);
         if (McpClientState.Of(properties) is not { UsedAt: null } state
@@ -124,7 +206,7 @@ internal sealed class ClientConsents(IOpenIddictApplicationManager applications,
 
         var descriptor = new OpenIddictApplicationDescriptor();
         await applications.PopulateAsync(descriptor, application, cancellationToken);
-        descriptor.Properties[AuthorizationServer.McpClientProperty] = (state with { UsedAt = time.GetUtcNow() }).ToProperty();
+        descriptor.Properties[AuthorizationServer.McpClientProperty] = (state with { UsedAt = time.GetUtcNow(), UsedBy = userId }).ToProperty();
         try
         {
             await applications.UpdateAsync(application, descriptor, cancellationToken);

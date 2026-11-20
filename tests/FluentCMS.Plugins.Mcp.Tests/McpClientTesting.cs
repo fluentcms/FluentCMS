@@ -11,7 +11,11 @@ using FluentCMS.Activity;
 using FluentCMS.Agents;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Identity;
+using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Sites;
+using FluentCMS.Core.Storage;
+using FluentCMS.Jobs;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
 using FluentCMS.Testing;
@@ -19,8 +23,10 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
 using OpenIddict.Core;
@@ -52,6 +58,7 @@ public sealed class McpClientHookFixture : IAsyncDisposable
             // The manager of the interface is resolved by its closed type, which comes before OpenIddict's open registration.
             services.AddSingleton(Hooks);
             services.AddScoped<OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>, HookedApplicationManager>();
+            services.AddSingleton<ILoggerProvider>(Logs);
         });
     }
 
@@ -59,33 +66,58 @@ public sealed class McpClientHookFixture : IAsyncDisposable
 
     public ApplicationManagerHooks Hooks { get; } = new();
 
+    internal LogCapture Logs { get; } = new();
+
     public ValueTask DisposeAsync() => Host.DisposeAsync();
 }
 
 // What runs, once, in place of the next call of the application manager: work before the next read of a client's
 // properties, which then answers what it read before the work, as a request that read them just before a change does;
-// or a refusal of the next update, as when another change of the application got there first.
+// a refusal of the next update, as when another change of the application got there first; or a refusal of the next
+// delete, by the database, as when a consent to the application arrived while it was deleted, or because the
+// application changed since it was read.
 public sealed class ApplicationManagerHooks
 {
     private Func<Task>? _beforeRead;
     private int _failUpdate;
+    private int _failDelete;
 
     public void BeforeNextPropertiesRead(Func<Task> work) => _beforeRead = work;
 
     public void FailNextUpdate() => _failUpdate = 1;
 
+    public void FailNextDelete(bool changedMeanwhile = false) => _failDelete = changedMeanwhile ? 2 : 1;
+
     internal Func<Task>? TakeBeforeRead() => Interlocked.Exchange(ref _beforeRead, null);
 
     internal bool TakeFailUpdate() => Interlocked.Exchange(ref _failUpdate, 0) == 1;
+
+    internal int TakeFailDelete() => Interlocked.Exchange(ref _failDelete, 0);
 }
 
-public sealed class HookedApplicationManager(
+internal sealed class HookedApplicationManager(
     IOpenIddictApplicationCache<OpenIddictEntityFrameworkCoreApplication<Guid>> cache,
     ILogger<OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>> logger,
     IOptionsMonitor<OpenIddictCoreOptions> options,
     IOpenIddictApplicationStore<OpenIddictEntityFrameworkCoreApplication<Guid>> store,
-    ApplicationManagerHooks hooks) : OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>(cache, logger, options, store)
+    ApplicationManagerHooks hooks,
+    SystemDbContext context) : OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>(cache, logger, options, store)
 {
+    // The store marks the application deleted before it saves, and a save the database refuses leaves it so.
+    public override ValueTask DeleteAsync(OpenIddictEntityFrameworkCoreApplication<Guid> application, CancellationToken cancellationToken = default)
+    {
+        switch (hooks.TakeFailDelete())
+        {
+            case 0:
+                return base.DeleteAsync(application, cancellationToken);
+            case 2:
+                return ValueTask.FromException(new OpenIddictExceptions.ConcurrencyException("The application was changed by another request."));
+            default:
+                context.Remove(application);
+                return ValueTask.FromException(new DbUpdateException("The delete crossed an insert that refers to the application."));
+        }
+    }
+
     public override async ValueTask<ImmutableDictionary<string, JsonElement>> GetPropertiesAsync(OpenIddictEntityFrameworkCoreApplication<Guid> application, CancellationToken cancellationToken = default)
     {
         var properties = await base.GetPropertiesAsync(application, cancellationToken);
@@ -303,12 +335,12 @@ internal static class McpClientTesting
     public const string ClientsPath = "/api/management/v1/mcp/clients";
 
     // The instance defaults of the settings area, written as the host's own code.
-    public static async Task SetPolicyAsync(FluentCmsTestHost host, McpClientRegistrationMode mode, string? defaultRole = null, int maxPending = 100, int perHour = 100, int maxClients = 1000)
+    public static async Task SetPolicyAsync(FluentCmsTestHost host, McpClientRegistrationMode mode, string? defaultRole = null, int maxPending = 100, int perHour = 100, int maxClients = 1000, int maxConsents = 20)
     {
         await using var scope = host.Services.CreateAsyncScope();
         using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id));
         await scope.ServiceProvider.GetRequiredService<ISettings<McpSettings>>().SetDefaultAsync(
-            new McpSettings { ClientRegistration = mode, DefaultClientRole = defaultRole, MaxPendingClients = maxPending, RegistrationsPerHour = perHour, MaxClients = maxClients },
+            new McpSettings { ClientRegistration = mode, DefaultClientRole = defaultRole, MaxPendingClients = maxPending, RegistrationsPerHour = perHour, MaxClients = maxClients, MaxConsentsPerUser = maxConsents },
             Token);
     }
 
@@ -337,6 +369,13 @@ internal static class McpClientTesting
 
     public static Task<HttpResponseMessage> RevokeAsync(HttpClient admin, Guid id) =>
         admin.DeleteAsync(new Uri($"{ClientsPath}/{id:D}", UriKind.Relative), Token);
+
+    // The bulk removal of the clients the open policy approved, with the body as it is given.
+    public static async Task<HttpResponseMessage> RemoveAsync(HttpClient admin, object body)
+    {
+        using var content = new StringContent(JsonSerializer.Serialize(body, JsonSerializerOptions.Web), Encoding.UTF8, "application/json");
+        return await admin.PostAsync(new Uri($"{ClientsPath}/remove", UriKind.Relative), content, Token);
+    }
 
     // The body of an administrator's registration; a null leaves the member out.
     public static string Registration(string? name, string? role, params string[] redirectUris)
@@ -401,5 +440,85 @@ internal static class McpClientTesting
         using var approved = await ApproveAsync(admin, id, role);
         approved.StatusCode.ShouldBe(HttpStatusCode.OK, await approved.Content.ReadAsStringAsync(Token));
         return (clientId, id);
+    }
+
+    // The job as the runner runs it: as the system, in a scope of its own.
+    public static async Task RunCleanupAsync(FluentCmsTestHost host)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        var accessor = scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>();
+        using var system = SystemOperation.Begin(accessor, scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Job, new SiteId(DefaultSite.Id));
+        var job = ActivatorUtilities.CreateInstance<McpClientCleanupJob>(scope.ServiceProvider);
+        await job.ExecuteAsync(new McpClientCleanupPayload(), new JobContext(Guid.CreateVersion7(), McpClientCleanupJob.Type, "default", 1, 1, accessor.Current!, Token));
+    }
+
+    // As the prune of the authorization server leaves a client once its tokens and authorizations have expired.
+    public static async Task ForgetGrantsAsync(FluentCmsTestHost host, Guid application)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        await context.Set<OpenIddictEntityFrameworkCoreToken<Guid>>().Where(token => token.Application!.Id == application).ExecuteDeleteAsync(Token);
+        await context.Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>().Where(authorization => authorization.Application!.Id == application).ExecuteDeleteAsync(Token);
+    }
+
+    public static async Task<McpClientState> StateAsync(FluentCmsTestHost host, Guid id)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        var applications = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        var application = (await applications.FindByIdAsync(id.ToString("D"), Token)).ShouldNotBeNull();
+        return McpClientState.Of(await applications.GetPropertiesAsync(application, Token)).ShouldNotBeNull();
+    }
+
+    // The state of a client that registered before its first use was recorded: the same, without usedAt and usedBy.
+    public static async Task ForgetFirstUseAsync(FluentCmsTestHost host, Guid id)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        var applications = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        var application = (await applications.FindByIdAsync(id.ToString("D"), Token)).ShouldNotBeNull();
+        var state = McpClientState.Of(await applications.GetPropertiesAsync(application, Token)).ShouldNotBeNull();
+        var descriptor = new OpenIddictApplicationDescriptor();
+        await applications.PopulateAsync(descriptor, application, Token);
+        descriptor.Properties[AuthorizationServer.McpClientProperty] = (state with { UsedAt = null, UsedBy = null }).ToProperty();
+        await applications.UpdateAsync(application, descriptor, Token);
+    }
+
+    public const string ConfiguredClient = "consent-app";
+
+    // The start of the host again, with the clients it lists and this one, which asks for consent, so that it removes
+    // none of them.
+    public static async Task RegisterConfiguredAsync(FluentCmsTestHost host, string redirectUri, string name)
+    {
+        var options = new ClientOptions();
+        foreach (var (id, client) in host.Services.GetRequiredService<ClientOptions>().Applications.Where(item => item.Key != ConfiguredClient))
+        {
+            options.Applications[id] = client;
+        }
+
+        var registration = new ClientRegistration { DisplayName = name, RequireConsent = true };
+        registration.RedirectUris.Add(redirectUri);
+        options.Applications[ConfiguredClient] = registration;
+        await new ClientRegistrationService(host.Services.GetRequiredService<IServiceScopeFactory>(), options, NullLogger<ClientRegistrationService>.Instance).StartAsync(Token);
+    }
+
+    public static async Task GrantAsync(FluentCmsTestHost host, Guid user)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        (await scope.ServiceProvider.GetRequiredService<ClientConsents>().GrantAsync(user, ConfiguredClient, ["openid"], Token)).ShouldBeTrue();
+    }
+
+    // The user's consent to the configured client, or null.
+    public static async Task<object?> ConsentAsync(FluentCmsTestHost host, Guid user)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        var applications = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        var application = await applications.FindByClientIdAsync(ConfiguredClient, Token);
+        return await scope.ServiceProvider.GetRequiredService<ClientConsents>().FindAsync(user, (await applications.GetIdAsync(application!, Token))!, ["openid"], Token);
+    }
+
+    public static async Task<IReadOnlyList<string>> ConfiguredRedirectUrisAsync(FluentCmsTestHost host)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        var applications = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        return [.. await applications.GetRedirectUrisAsync((await applications.FindByClientIdAsync(ConfiguredClient, Token)).ShouldNotBeNull(), Token)];
     }
 }

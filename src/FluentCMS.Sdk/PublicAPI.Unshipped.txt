@@ -1650,6 +1650,7 @@ FluentCMS.Media.IMediaService.MoveFolderAsync(System.Guid id, System.Guid? paren
 FluentCMS.Media.IMediaService.OpenImageAsync(System.Guid id, FluentCMS.Media.MediaImageOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaImage!>!
 FluentCMS.Media.IMediaService.RenameFolderAsync(System.Guid id, string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaFolder!>!
 FluentCMS.Media.IMediaService.ReplaceAsync(System.Guid id, FluentCMS.Media.MediaUploadFile! file, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaAsset!>!
+FluentCMS.Media.IMediaService.RequireUpdateAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Media.IMediaService.SetPresetAsync(string! name, FluentCMS.Media.MediaImageOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaPreset!>!
 FluentCMS.Media.IMediaService.UpdateAsync(System.Guid id, FluentCMS.Media.MediaAssetChanges! changes, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaAsset!>!
 FluentCMS.Media.IMediaService.UploadAsync(FluentCMS.Media.MediaUpload! upload, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Media.MediaAsset!>!>!
@@ -3952,3 +3953,6 @@ static FluentCMS.Events.MemberLoginUnlinkedEvent.operator ==(FluentCMS.Events.Me
 FluentCMS.Agents.McpClientRegistrationPolicy.MaxClients.get -> int
 FluentCMS.Agents.McpClientRegistrationPolicy.MaxClients.init -> void
 FluentCMS.Agents.IMcpClients.RemoveUnusedAsync(System.DateTimeOffset neverUsedBefore, System.DateTimeOffset unusedBefore, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+FluentCMS.Agents.IMcpClients.RemoveOpenApprovedAsync(System.DateTimeOffset? registeredFrom, System.DateTimeOffset? registeredBefore, int limit, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+FluentCMS.Agents.McpClientRegistrationPolicy.MaxConsentsPerUser.get -> int
+FluentCMS.Agents.McpClientRegistrationPolicy.MaxConsentsPerUser.init -> void
