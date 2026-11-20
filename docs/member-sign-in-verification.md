@@ -84,7 +84,7 @@ Set the configuration in the environment of the host, from a file outside the re
 
 | Variable | Value |
 | --- | --- |
-| `ASPNETCORE_ENVIRONMENT` | `Development`. In Production the host also needs `FluentCms__Security__AllowGeneratedSigningKey=true` and `FluentCms__Security__AllowUnencryptedKeyRing=true`, or a certificate and an encryptor (see [production refusals](host-configuration.md#production-refusals)). |
+| `ASPNETCORE_ENVIRONMENT` | `Development`. In any other environment the host also needs `FluentCms__Security__AllowGeneratedSigningKey=true` and `FluentCms__Security__AllowUnencryptedKeyRing=true`, or a certificate and an encryptor (see [startup refusals](host-configuration.md#startup-refusals)). |
 | `ASPNETCORE_URLS` | `http://localhost:5080`, where the tunnel points |
 | `FluentCms__PublicOrigin` | `https://<origin>` |
 | `FluentCms__ReverseProxy__ForwardedHeaders__Enabled` | `true` |

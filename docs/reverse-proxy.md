@@ -23,7 +23,7 @@ A FluentCMS host often sits behind a proxy that ends TLS, a CDN, or a path prefi
 
 With no proxy and no network listed, only the loopback addresses are trusted, which is the framework's default. A proxy that is not on the list is ignored: its headers change nothing, and the address the host sees is the proxy's. Listing `0.0.0.0/0` trusts every caller, which lets any client choose its own address and scheme, and the startup report names it as an insecure default.
 
-The client address matters beyond logs: the rate limits partition by it, so a host behind a proxy without forwarded headers puts every caller in one partition.
+The client address matters beyond logs: the rate limits partition by it, so a host behind a proxy without forwarded headers puts every caller in one partition. The first request that carries `X-Forwarded-For` or `X-Forwarded-Proto` from an address the host does not trust (any address while forwarded headers are off) is logged as a warning (event id 9133), once per process, naming the address, and the startup report lists `forwarded-headers-untrusted` from then on. A client that sends the headers itself to an instance with no proxy is reported the same way, because the host cannot tell it from a proxy.
 
 ## Host names and the public origin
 
@@ -37,7 +37,7 @@ Environment variables use `__`, for example `FluentCms__ReverseProxy__ForwardedH
 
 ## TLS and the redirect
 
-When the proxy ends TLS, every request reaches the host as http. Turn on `ForwardedHeaders` with `ForwardProto` so the host sees https, and either leave `HttpsRedirection` off and let the proxy redirect, or turn it on once the scheme is forwarded. Turning the redirect on without forwarding the scheme redirects every request, including the ones that came in over https, in a loop. The startup report lists the redirect being off in Production as an insecure default, so a proxy that redirects for the host is a known and visible choice.
+When the proxy ends TLS, every request reaches the host as http. Turn on `ForwardedHeaders` with `ForwardProto` so the host sees https, and either leave `HttpsRedirection` off and let the proxy redirect, or turn it on once the scheme is forwarded. Turning the redirect on without forwarding the scheme redirects every request, including the ones that came in over https, in a loop. `/health/live` and `/health/ready` are never redirected, since the image's `HEALTHCHECK` and an orchestrator's probes call the container's own http port. The startup report lists the redirect being off in Production as an insecure default, so a proxy that redirects for the host is a known and visible choice.
 
 HSTS is sent only on https responses, so it needs the forwarded scheme as well. Browsers remember it for `MaxAge`: start short, and set `Preload` only when `IncludeSubDomains` is on, the age is at least a year, and the whole domain is ready to stay on https.
 

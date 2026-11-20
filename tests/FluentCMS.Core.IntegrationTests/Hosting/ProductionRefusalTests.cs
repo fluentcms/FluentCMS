@@ -12,7 +12,7 @@ using Xunit;
 
 namespace FluentCMS.Core.IntegrationTests.Hosting;
 
-// The refusals of an unset public origin and an unencrypted key ring. CmsWebHost lifts both, so each test sets what it is about.
+// The refusals of an unset public origin and an unencrypted key ring, outside Development. CmsWebHost lifts both, so each test sets what it is about.
 public sealed class ProductionRefusalTests : IAsyncDisposable
 {
     private const string AllowRequestOrigin = "FluentCms:Security:AllowRequestOrigin";
@@ -113,12 +113,28 @@ public sealed class ProductionRefusalTests : IAsyncDisposable
         exception.InnerExceptions.OfType<FluentCmsConfigurationException>().Select(error => error.Code).ShouldBe(["FCMS1105", "FCMS1106"], ignoreOrder: true);
     }
 
+    // Staging and a name of the host's own are reached from outside as Production is.
     [Theory]
-    [InlineData("Development")]
     [InlineData("Staging")]
-    public async Task OtherEnvironmentsStartAndKeepTheirReportLines(string environment)
+    [InlineData("Qa")]
+    public async Task EveryEnvironmentButDevelopmentRefusesAndNamesWhatIsMissing(string environment)
     {
         var app = _host.Build(environment, new() { [AllowRequestOrigin] = "false", [AllowUnencryptedKeyRing] = "false" });
+
+        var exception = await Should.ThrowAsync<AggregateException>(() => app.StartAsync(Token));
+
+        exception.Message.ShouldStartWith("FluentCMS refuses to start outside Development.");
+        var refusals = exception.InnerExceptions.OfType<FluentCmsConfigurationException>().ToDictionary(error => error.Code, error => error.Message);
+        refusals.Keys.ShouldBe(["FCMS1105", "FCMS1106"], ignoreOrder: true);
+        refusals["FCMS1105"].ShouldContain("FluentCms:PublicOrigin");
+        refusals["FCMS1106"].ShouldContain(AllowUnencryptedKeyRing);
+        File.Exists(_host.DatabaseFile).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task DevelopmentStartsAndKeepsItsReportLines()
+    {
+        var app = _host.Build(Environments.Development, new() { [AllowRequestOrigin] = "false", [AllowUnencryptedKeyRing] = "false" });
 
         await app.StartAsync(Token);
 

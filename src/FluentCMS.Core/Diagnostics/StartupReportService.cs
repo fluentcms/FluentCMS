@@ -99,6 +99,7 @@ internal static class StartupReportEvents
     public const int Report = 9130;
     public const int InsecureDefault = 9131;
     public const int NotMade = 9132;
+    public const int UntrustedForwardedHeaders = 9133;
 }
 
 internal static class StartupReportRegistration

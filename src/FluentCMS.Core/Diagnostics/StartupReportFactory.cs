@@ -97,7 +97,7 @@ internal sealed class StartupReportFactory(
         }
     }
 
-    // The checks that refuse a start in Production are the first source, so that the report and the refusal never disagree.
+    // The checks that refuse a start outside Development are the first source, so that the report and the refusal never disagree.
     private List<InsecureDefault> InsecureDefaults(DatabaseStartup startup)
     {
         List<InsecureDefault> found = [.. checks
@@ -131,14 +131,19 @@ internal sealed class StartupReportFactory(
             found.Add(new InsecureDefault { Id = "allowed-hosts-any", Message = $"AllowedHosts is '*' or not set in Production, so the instance answers a request with any Host header{links}. Set AllowedHosts to the host names of the instance." });
         }
 
-        if (environment?.IsProduction() == true && origin.Base is null && found.All(item => item.Id != HostErrorCodes.PublicOriginUnsetInProduction))
+        if (environment?.IsDevelopment() == false && origin.Base is null && found.All(item => item.Id != HostErrorCodes.PublicOriginUnsetInProduction))
         {
-            found.Add(new InsecureDefault { Id = "public-origin-unset", Message = $"{FluentCmsOptions.Section}:{PublicOrigin.Key} is not set in Production and {PublicOriginCheck.Key} accepts it, so links in password reset and invitation emails and the issuer of the authorization server follow the request's scheme, host and path base. Set it to the address users reach the instance at, such as https://cms.example.com." });
+            found.Add(new InsecureDefault { Id = "public-origin-unset", Message = $"{FluentCmsOptions.Section}:{PublicOrigin.Key} is not set outside Development and {PublicOriginCheck.Key} accepts it, so links in password reset and invitation emails and the issuer of the authorization server follow the request's scheme, host and path base. Set it to the address users reach the instance at, such as https://cms.example.com." });
         }
 
         if (startup.MigrateOnStartup && startup.SchemaSync == SchemaSyncMode.Auto && environment?.IsDevelopment() != true)
         {
             found.Add(new InsecureDefault { Id = "schema-sync-outside-development", Message = "Content tables follow the schema at start outside Development: additive changes apply with no reviewed migration, and destructive ones are logged and left undone. The host allowed it with AllowSchemaSyncOutsideDevelopment." });
+        }
+
+        if (services.GetService<UntrustedForwardedHeaders>()?.Item is { } untrusted)
+        {
+            found.Add(untrusted);
         }
 
         if (proxy.ForwardedHeaders is { Enabled: true } forwarded && forwarded.TrustsEveryAddress)

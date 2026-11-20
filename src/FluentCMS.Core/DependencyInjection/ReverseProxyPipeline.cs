@@ -14,6 +14,7 @@ internal static class ReverseProxyPipeline
 {
     public static void AddReverseProxyHttpsPolicy(this IServiceCollection services)
     {
+        services.AddSingleton<UntrustedForwardedHeaders>();
         services.AddOptions<HstsOptions>().Configure<ReverseProxyOptions>((hsts, proxy) =>
         {
             hsts.MaxAge = proxy.Hsts.MaxAge;
@@ -34,12 +35,25 @@ internal static class ReverseProxyPipeline
         options.Hsts.Enabled ?? environment?.IsDevelopment() != true;
 
     // The order is the point: forwarded headers first, so that what comes after, from the redirect to the limit per client
-    // address, sees the scheme and address the proxy forwarded; then the path base, then HSTS and the redirect.
+    // address, sees the scheme and address the proxy forwarded; then the path base, then HSTS and the redirect. Headers
+    // from an address that is not trusted are looked for before the middleware changes the address.
     public static void Use(IApplicationBuilder app, ReverseProxyOptions options)
     {
-        if (options.ForwardedHeaders.Enabled)
+        var forwarded = options.ForwardedHeaders.Enabled
+            ? Forwarded(options.ForwardedHeaders, app.ApplicationServices.GetService<IOptions<HostFilteringOptions>>()?.Value)
+            : null;
+        if (app.ApplicationServices.GetService<UntrustedForwardedHeaders>() is { } untrusted)
         {
-            app.UseForwardedHeaders(Forwarded(options.ForwardedHeaders, app.ApplicationServices.GetService<IOptions<HostFilteringOptions>>()?.Value));
+            app.Use((context, next) =>
+            {
+                untrusted.Inspect(context, forwarded);
+                return next(context);
+            });
+        }
+
+        if (forwarded is not null)
+        {
+            app.UseForwardedHeaders(forwarded);
         }
 
         if (!string.IsNullOrEmpty(options.PathBase))
@@ -52,9 +66,12 @@ internal static class ReverseProxyPipeline
             app.UseHsts();
         }
 
+        // The probes are left on http: the image's HEALTHCHECK and an orchestrator call the container's own http port, where
+        // nothing answers https, and a probe holds no credential to protect.
         if (options.HttpsRedirection.Enabled)
         {
-            app.UseHttpsRedirection();
+            var health = FluentCmsEndpointGroups.PrefixOf(FluentCmsEndpointGroup.Health);
+            app.UseWhen(context => !context.Request.Path.StartsWithSegments(health, StringComparison.OrdinalIgnoreCase), branch => branch.UseHttpsRedirection());
         }
     }
 
