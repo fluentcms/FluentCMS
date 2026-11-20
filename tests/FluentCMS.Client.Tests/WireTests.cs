@@ -210,12 +210,16 @@ public sealed class WireTests
         (await Problem(past)).RetryAfter.ShouldBe(TimeSpan.Zero);
         (await Problem(undated)).RetryAfter.ShouldBeNull();
         (await Problem(none)).RetryAfter.ShouldBeNull();
+        foreach (var malformed in new[] { "-5", "1.5", "+30", "30s", "soon" })
+        {
+            (await Problem(new Recording(HttpStatusCode.TooManyRequests, "text/plain", "slow down", date: noon, rawRetryAfter: malformed))).RetryAfter.ShouldBeNull(malformed);
+        }
 
         static Task<FluentCmsProblemException> Problem(Recording handler) =>
             Should.ThrowAsync<FluentCmsProblemException>(() => new FluentCmsClient(new HttpClient(handler) { BaseAddress = new Uri("https://cms.example.com/") }).ListAsync<Article>(cancellationToken: Token));
     }
 
-    private sealed class Recording(HttpStatusCode status, string mediaType, string answer, bool chunked = false, RetryConditionHeaderValue? retryAfter = null, DateTimeOffset? date = null) : HttpMessageHandler
+    private sealed class Recording(HttpStatusCode status, string mediaType, string answer, bool chunked = false, RetryConditionHeaderValue? retryAfter = null, DateTimeOffset? date = null, string? rawRetryAfter = null) : HttpMessageHandler
     {
         public HttpRequestMessage? Request { get; private set; }
 
@@ -230,6 +234,11 @@ public sealed class WireTests
             var response = new HttpResponseMessage(status) { Content = content };
             response.Headers.RetryAfter = retryAfter;
             response.Headers.Date = date;
+            if (rawRetryAfter is not null)
+            {
+                response.Headers.TryAddWithoutValidation("Retry-After", rawRetryAfter);
+            }
+
             return response;
         }
     }

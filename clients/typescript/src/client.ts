@@ -257,7 +257,8 @@ function body(entry: object): Record<string, unknown> {
 }
 
 // Seconds as the API sends them, or a date, which is read against the Date of the same answer so that no clock of this
-// process is involved; a date with no Date header gives nothing.
+// process is involved. A date has the name of its month; any other value that is not a whole number of seconds, such as
+// -5 or 1.5, gives nothing, as a date with no Date header does, rather than what Date.parse would make of it.
 function retryAfter(headers: Headers): number | undefined {
   const value = headers.get("Retry-After")?.trim();
   if (value === undefined || value.length === 0) {
@@ -266,6 +267,10 @@ function retryAfter(headers: Headers): number | undefined {
 
   if (/^\d+$/.test(value)) {
     return Number(value);
+  }
+
+  if (!/[a-z]/i.test(value)) {
+    return undefined;
   }
 
   const at = Date.parse(value);

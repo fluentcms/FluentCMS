@@ -167,20 +167,21 @@ public class LayeringRulesTests
 
     // Spec 2.4: the client that generated C# compiles against references no other FluentCMS package, neither in its project
     // nor in its assembly, so an application in another process gets none of the host's types; it needs no package at all, and
-    // only the public API analyzer, which ships nothing, builds it.
+    // only the public API analyzer, private to its build, is referenced.
     [Fact]
     public void TheClientReferencesNoOtherFluentCmsPackage()
     {
         var client = ProjectFile.SourceProjects.Single(project => project.Name == ClientProject);
 
         client.ProjectReferences.ShouldBeEmpty();
-        client.PackageReferences.Where(package => !package.DevelopmentOnly).ShouldBeEmpty();
+        client.PackageReferences.ShouldBe([new PackageDependency("Microsoft.CodeAnalysis.PublicApiAnalyzers", DevelopmentOnly: true)]);
         Assembly.Load(ClientProject).GetReferencedAssemblies().Select(reference => reference.Name)
             .Where(name => name!.StartsWith("FluentCMS.", StringComparison.Ordinal))
             .ShouldBeEmpty();
     }
 
-    // The SDK stamps time with the TimeProvider of the host, so a host that freezes or offsets its clock is obeyed.
+    // The SDK stamps time with the TimeProvider of the host, never the system clock, so a host that freezes or offsets its
+    // clock is obeyed.
     [Fact]
     public void TheSdkReadsNoClockOfItsOwn()
     {
@@ -188,7 +189,7 @@ public class LayeringRulesTests
 
         Directory.EnumerateFiles(sdk, "*.cs", SearchOption.AllDirectories)
             .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-            .Where(file => File.ReadAllText(file) is var text && (text.Contains("DateTimeOffset.UtcNow", StringComparison.Ordinal) || text.Contains("DateTimeOffset.Now", StringComparison.Ordinal) || text.Contains("DateTime.UtcNow", StringComparison.Ordinal) || text.Contains("DateTime.Now", StringComparison.Ordinal)))
+            .Where(file => File.ReadAllText(file) is var text && (text.Contains("DateTimeOffset.UtcNow", StringComparison.Ordinal) || text.Contains("DateTimeOffset.Now", StringComparison.Ordinal) || text.Contains("DateTime.UtcNow", StringComparison.Ordinal) || text.Contains("DateTime.Now", StringComparison.Ordinal) || text.Contains("TimeProvider.System", StringComparison.Ordinal)))
             .Select(file => Path.GetRelativePath(sdk, file))
             .ShouldBeEmpty();
     }

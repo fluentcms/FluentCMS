@@ -219,4 +219,7 @@ test("a problem has the Retry-After of the answer, in seconds", async () => {
   assert.equal((await problem({ "Retry-After": "Thu, 19 Nov 2026 11:59:00 GMT", Date: "Thu, 19 Nov 2026 12:00:00 GMT" })).retryAfter, 0);
   assert.equal((await problem({ "Retry-After": "Thu, 19 Nov 2026 12:01:00 GMT" })).retryAfter, undefined);
   assert.equal((await problem({})).retryAfter, undefined);
+  for (const malformed of ["-5", "1.5", "+30", "30s", "soon"]) {
+    assert.equal((await problem({ "Retry-After": malformed, Date: "Thu, 19 Nov 2026 12:00:00 GMT" })).retryAfter, undefined, malformed);
+  }
 });
