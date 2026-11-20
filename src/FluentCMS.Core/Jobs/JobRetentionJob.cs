@@ -12,11 +12,10 @@ internal sealed record JobRetentionPayload;
 // Removes the jobs that succeeded longer ago than SucceededRetention and, when DeadLetteredRetention is set, the jobs that
 // were dead-lettered longer ago than it, with their attempts. Pending and running jobs and the recurring definitions stay.
 // The jobs go in batches, each taken from the index on status and completed_at without an order, since an order would sort
-// every finished job. A removed job does not
-// come back, so the next batch is the next jobs due. Each batch removes the attempts and the jobs in one transaction, and
-// checks the conditions again in the delete, so that two instances running at once remove a job once and a run after a
-// failed one takes up where it stopped.
-internal sealed class JobRetentionJob(SystemDbContext context, JobRunnerOptions options, TimeProvider time, ILogger<JobRetentionJob> logger) : IJob<JobRetentionPayload>
+// every finished job. A removed job does not come back, so the next batch is the next jobs due. Each batch removes the
+// attempts and the jobs in one transaction, and checks the conditions again in the delete, so that two instances running
+// at once remove a job once and a run after a failed one takes up where it stopped.
+internal sealed class JobRetentionJob(SystemDbContext context, JobRunnerOptions options, TimeProvider time, ILogger<JobRetentionJob> logger) : IJob<JobRetentionPayload>, IResumableJob
 {
     public const string Type = "jobs.retention";
 

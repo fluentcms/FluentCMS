@@ -285,16 +285,117 @@ public sealed class JobExecutionTests : IDisposable
     }
 
     [Fact]
-    public async Task AnUnknownTypeFailsTheAttemptWithAClearError()
+    public async Task AnUnknownTypeIsPutBackWithoutUsingAnAttemptForAnInstanceThatKnowsIt()
     {
-        var id = _fixture.AddRow("gone-with-a-plugin", "{}", maxAttempts: 1);
+        var poll = new JobRunnerOptions().PollInterval;
+        var id = _fixture.AddRow("added-by-a-new-version", """{"key":"new"}""", maxAttempts: 1);
 
+        // The wait grows with the time the job has waited since its first release.
+        foreach (var wait in new[] { poll, poll, 2 * poll })
+        {
+            (await RunNextAsync()).ShouldBeTrue();
+
+            var job = _fixture.Job(id);
+            job.Status.ShouldBe(JobStatus.Pending);
+            job.Attempts.ShouldBe(1, "only the first release counts, and it is given back");
+            job.MaxAttempts.ShouldBe(2);
+            job.LastError.ShouldBeNull();
+            job.RunAt.ShouldBe(_fixture.Clock.GetUtcNow() + wait);
+            _fixture.Attempts(id).ShouldHaveSingleItem().Error.ShouldNotBeNull().ShouldStartWith("FCMS2501");
+            _fixture.Clock.Advance(wait);
+        }
+
+        _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Released));
+        _fixture.Events.Failed.ShouldBeEmpty();
+        _fixture.Logs.Count(nameof(JobLog.UnknownTypeReleased)).ShouldBe(3);
+
+        var newer = _fixture.NewInstance(cms: cms => cms.Jobs.AddJob<TimedJob, ProbePayload>("added-by-a-new-version"));
+        (await newer.GetRequiredService<JobExecutor>().RunNextAsync(Queue, OtherOwner, TestContext.Current.CancellationToken)).ShouldBeTrue();
+
+        _fixture.Job(id).Status.ShouldBe(JobStatus.Succeeded);
+        _fixture.Probe.Runs.ShouldHaveSingleItem().Context.Attempt.ShouldBe(2);
+        _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Released), (2, JobAttemptOutcome.Succeeded));
+    }
+
+    [Fact]
+    public async Task AnUnknownTypeIsDeadLetteredWithAClearErrorOnceItHasWaitedTheOrphanAgeSinceItWasFirstPutBack()
+    {
+        var id = _fixture.AddRow("gone-with-a-plugin", "{}", maxAttempts: 5);
+
+        // The row is hours old when it is first claimed; the age counts from the first release.
+        _fixture.Clock.Advance(TimeSpan.FromHours(3));
+        (await RunNextAsync()).ShouldBeTrue();
+        _fixture.Job(id).Status.ShouldBe(JobStatus.Pending);
+
+        _fixture.Clock.Advance(JobExecutor.OrphanAge - TimeSpan.FromSeconds(1));
+        (await RunNextAsync()).ShouldBeTrue();
+        _fixture.Job(id).Status.ShouldBe(JobStatus.Pending, "it is put back until the orphan age has passed since the first release");
+
+        _fixture.Job(id).RunAt.ShouldBe(_fixture.Clock.GetUtcNow() + JobExecutor.LongestOrphanWait);
+
+        _fixture.Clock.Advance(JobExecutor.LongestOrphanWait);
         (await RunNextAsync()).ShouldBeTrue();
 
         var job = _fixture.Job(id);
-        job.Status.ShouldBe(JobStatus.DeadLettered);
+        job.Status.ShouldBe(JobStatus.DeadLettered, "another attempt would fail the same way");
         job.LastError.ShouldBe("FCMS2501: no job is registered for the type 'gone-with-a-plugin'.");
-        _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Failed));
+        _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Released), (2, JobAttemptOutcome.Failed));
+        _fixture.Events.DeadLettered.ShouldHaveSingleItem().Attempts.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task ABacklogOfUnknownTypesDoesNotHoldUpJobsThisInstanceKnows()
+    {
+        var poll = new JobRunnerOptions().PollInterval;
+        var orphans = Enumerable.Range(0, 20).Select(_ => _fixture.AddRow("gone-with-a-plugin", "{}")).ToList();
+        var claims = 0;
+
+        // Half an hour of polls on an instance that knows none of them.
+        for (var elapsed = TimeSpan.Zero; elapsed < JobExecutor.OrphanAge / 2; elapsed += poll)
+        {
+            while (await RunNextAsync())
+            {
+                claims++;
+            }
+
+            _fixture.Clock.Advance(poll);
+        }
+
+        claims.ShouldBeLessThan(orphans.Count * 20, "each is claimed a few times, not once a poll");
+        orphans.ShouldAllBe(id => _fixture.Job(id).Attempts == 1);
+
+        // Due after the orphans' last release, and before they are due again.
+        while (await RunNextAsync())
+        {
+        }
+
+        _fixture.Clock.Advance(2 * poll);
+        var known = await _fixture.EnqueueAsync("known");
+        (await RunNextAsync()).ShouldBeTrue();
+
+        _fixture.Job(known).Status.ShouldBe(JobStatus.Succeeded, "it is the first job claimed");
+        (await RunNextAsync()).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task AnUnknownTypeWhoseWaitCannotBeReadIsPutBackWithoutUsingAnAttempt()
+    {
+        var faults = new JobFaults();
+        var executor = _fixture.NewInstance(faults: faults).GetRequiredService<JobExecutor>();
+        var id = _fixture.AddRow("gone-with-a-plugin", "{}", maxAttempts: 1);
+
+        faults.Fail(command => command.CommandText.TrimStart().StartsWith("SELECT", StringComparison.OrdinalIgnoreCase)
+            && command.CommandText.Contains("cms_job_attempt", StringComparison.Ordinal));
+        (await executor.RunNextAsync(Queue, Owner, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        faults.Recover();
+
+        var job = _fixture.Job(id);
+        job.Status.ShouldBe(JobStatus.Pending, "it was never run, so its last attempt is not used up");
+        (job.MaxAttempts - job.Attempts).ShouldBe(1);
+        job.RunAt.ShouldBe(_fixture.Clock.GetUtcNow() + new JobRunnerOptions().PollInterval);
+        _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.Released));
+        _fixture.Events.DeadLettered.ShouldBeEmpty();
+        _fixture.Logs.Count(nameof(JobLog.UnknownTypeDeferred)).ShouldBe(1);
     }
 
     [Theory]

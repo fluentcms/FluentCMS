@@ -1,5 +1,6 @@
 using System.Data.Common;
 using System.Text;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Jobs;
@@ -50,28 +51,31 @@ public sealed class DeadLetterPlanTests : IDisposable
         plan.ShouldNotContain("TEMP B-TREE");
     }
 
-    // The shape of the outbox drain's read of one handler's candidates (#3404), which seeks that handler's pending rows in
-    // event order and never walks another handler's backlog.
+    // The drain's read of one handler's candidates seeks that handler's pending rows in event order and never walks another
+    // handler's backlog.
     [SqliteFact("SQLite's query plans")]
     public void TheClaimOfOneHandlerSeeksItsPendingRowsInEventOrder()
     {
         using var scope = _fixture.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
-        var now = DateTimeOffset.UtcNow;
-        var handler = "webhooks.content.published";
-        var limit = 8;
-        List<Guid> skipped = [Guid.CreateVersion7()];
+        var drainer = _fixture.Services.GetRequiredService<OutboxDrainer>();
 
-        var plan = QueryPlanTests.Plan(context.Set<OutboxMessage>().AsNoTracking()
-            .Where(message => message.Status == OutboxStatus.Pending && message.AvailableAt <= now && (message.LeaseUntil == null || message.LeaseUntil <= now))
-            .Where(message => message.Attempts < limit)
-            .Where(message => message.Handler == handler)
-            .Where(message => !skipped.Contains(message.Id))
-            .OrderBy(message => message.Sequence).ThenBy(message => message.Id)
-            .Take(50)
-            .Select(message => new { message.Id, message.Sequence, message.LeaseOwner }));
+        var plan = QueryPlanTests.Plan(drainer.CandidatesOf(context, "webhooks.content.published", DateTimeOffset.UtcNow, [Guid.CreateVersion7()]));
 
         plan.ShouldContain("ix_cms_outbox_handler_pending (handler=?)");
+        plan.ShouldNotContain("TEMP B-TREE");
+    }
+
+    // The prune of failed rows walks the failed rows only, never the delivered or pending ones.
+    [SqliteFact("SQLite's query plans")]
+    public void ThePruneOfFailedRowsWalksTheFailedIndex()
+    {
+        using var scope = _fixture.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+
+        var plan = QueryPlanTests.Plan(OutboxPruneJob.Batch(context, OutboxPruneJob.FailedBefore(DateTimeOffset.UtcNow, 8), 500));
+
+        plan.ShouldContain("ix_cms_outbox_failed");
         plan.ShouldNotContain("TEMP B-TREE");
     }
 

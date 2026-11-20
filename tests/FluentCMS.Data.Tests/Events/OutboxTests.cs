@@ -8,6 +8,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Content;
 using FluentCMS.Data.Tests.Jobs;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Sites;
@@ -27,6 +28,37 @@ public sealed class OutboxTests
 
     private static Task<int> DrainAsync(IServiceProvider instance) =>
         instance.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
+
+    private static async Task RunDrainJobAsync(IServiceProvider instance)
+    {
+        using var scope = instance.CreateScope();
+        var operation = new OperationContext(Principal.System, Origin.Job, new SiteId(Guid.Empty), "en", null, "drain", DateTimeOffset.UtcNow);
+        await scope.ServiceProvider.GetRequiredService<OutboxDrainJob>().ExecuteAsync(
+            new OutboxDrainPayload(),
+            new JobContext(Guid.CreateVersion7(), OutboxDrainJob.Type, OutboxDrainJob.Queue, 1, 3, operation, Token));
+    }
+
+    // Counts the reads of cms_outbox that name one handler.
+    private sealed class HandlerReads(string handler) : DbCommandInterceptor
+    {
+        private int _count;
+
+        public int Count => Volatile.Read(ref _count);
+
+        public override ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command, CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("cms_outbox", StringComparison.Ordinal) && command.Parameters.Cast<DbParameter>().Any(parameter => Equals(parameter.Value, handler)))
+            {
+                Interlocked.Increment(ref _count);
+            }
+
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    // Each handler its own owner, as handlers of different plugins are.
+    private static void OwnedApart(ServiceDatabase database) =>
+        database.Database.Services.GetRequiredService<OutboxDrainer>().OwnerOf = name => name;
 
     // Each drain claims a batch while the drains before it hold theirs, then all of them carry on at once and share out the
     // rows that are left.
@@ -60,19 +92,63 @@ public sealed class OutboxTests
             new JobContext(Guid.CreateVersion7(), OutboxPruneJob.Type, JobRunnerOptions.DefaultQueue, 1, 3, operation, Token));
     }
 
-    // The update that claims a batch is the only one on cms_outbox that does not name the attempts.
+    // The update that claims a batch is the only one on cms_outbox that adds to the attempts.
     private sealed class ClaimCounter : DbCommandInterceptor
     {
         private int _claims;
+        private int _writes;
 
         public int Claims => Volatile.Read(ref _claims);
+
+        public int Writes => Volatile.Read(ref _writes);
 
         public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
         {
             var text = command.CommandText;
-            if (text.StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase) && text.Contains("cms_outbox", StringComparison.Ordinal) && !text.Contains("attempts", StringComparison.Ordinal))
+            if (text.StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase) && text.Contains("cms_outbox", StringComparison.Ordinal))
             {
-                Interlocked.Increment(ref _claims);
+                Interlocked.Increment(ref _writes);
+                if (text.Contains($"{TestProvider.Quote("attempts")} + 1", StringComparison.Ordinal))
+                {
+                    Interlocked.Increment(ref _claims);
+                }
+            }
+
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    // Counts the reads of cms_outbox, which on an instance with nothing else running are the sweep's.
+    private sealed class SweepReads : DbCommandInterceptor
+    {
+        private int _count;
+
+        public int Count => Volatile.Read(ref _count);
+
+        public override ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command, CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains("cms_outbox", StringComparison.Ordinal))
+            {
+                Interlocked.Increment(ref _count);
+            }
+
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    // Counts the reads of the default locale of a site.
+    private sealed class LocaleReads : DbCommandInterceptor
+    {
+        private int _count;
+
+        public int Count => Volatile.Read(ref _count);
+
+        public override ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command, CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = default)
+        {
+            var text = command.CommandText;
+            if (text.Contains(TestProvider.Quote("default_locale"), StringComparison.Ordinal) && !text.Contains("cms_site_locale", StringComparison.Ordinal))
+            {
+                Interlocked.Increment(ref _count);
             }
 
             return ValueTask.FromResult(result);
@@ -226,6 +302,281 @@ public sealed class OutboxTests
     }
 
     [Fact]
+    public async Task ABatchOfEventsIsClaimedAndSettledWithOneWriteEach()
+    {
+        var seen = new Seen();
+        var claims = new ClaimCounter();
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(seen, cms =>
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(claims))));
+        for (var index = 0; index < 8; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        (await DrainAsync(database.Database.Services)).ShouldBe(8);
+
+        claims.Claims.ShouldBe(1);
+        claims.Writes.ShouldBe(2);
+        database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Delivered && row.Attempts == 1 && row.LeaseOwner == null);
+    }
+
+    [Fact]
+    public async Task AHandlerThatBlocksDoesNotHoldBackTheDeliveriesOfAnotherOwner()
+    {
+        var seen = new Seen();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        HashSet<Guid> firsts = [];
+        var blocked = 0;
+
+        // The first delivery of the first owner hangs; which lane gets to run first is the scheduler's business.
+        seen.Behavior = (_, delivery) =>
+        {
+            if (firsts.Contains(delivery!.Key) && Interlocked.CompareExchange(ref blocked, 1, 0) == 0)
+            {
+                entered.TrySetResult();
+                return gate.Task;
+            }
+
+            return Task.CompletedTask;
+        };
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
+        {
+            cms.Events.AddOutboxHandler<EntryDraftSavedEvent, OutboxFirst>("first");
+            cms.Events.AddOutboxHandler<EntryDraftSavedEvent, OutboxSecond>("second");
+        }));
+        for (var index = 0; index < 3; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        firsts.UnionWith(database.Rows().Where(row => row.Handler == "first").Select(row => row.Id));
+        OwnedApart(database);
+        var drain = DrainAsync(database.Database.Services);
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+            await Eventually.HoldsAsync(() => database.Rows().Count(row => row.Handler == "second" && row.Status == OutboxStatus.Delivered) == 3);
+            seen.Calls.Count(call => call == "outbox-1").ShouldBe(1);
+            database.Rows().Where(row => row.Handler == "first").ShouldAllBe(row => row.Status == OutboxStatus.Pending);
+        }
+        finally
+        {
+            gate.TrySetResult();
+        }
+
+        (await drain).ShouldBe(6);
+        database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Delivered);
+    }
+
+    [Fact]
+    public async Task AKickStartsALaneForAnIdleOwnerWhileAnotherOwnerHangs()
+    {
+        var seen = new Seen();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        seen.Behavior = (_, _) => seen.Calls.Last() == "outbox-1" ? gate.Task : Task.CompletedTask;
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
+        {
+            cms.Events.AddOutboxHandler<EntryDraftSavedEvent, OutboxFirst>("first");
+            cms.Events.AddOutboxHandler<EntryTrashedEvent, TrashedOutbox>("trashed");
+        }));
+        var entry = await database.CreateAsync(Editor, Titled("T"));
+
+        OwnedApart(database);
+        var drain = DrainAsync(database.Database.Services);
+        try
+        {
+            await Eventually.HoldsAsync(() => seen.Calls.Contains("outbox-1"));
+            await database.DeleteAsync(Editor, IdOf(entry));
+
+            await Eventually.HoldsAsync(() => database.Rows().Any(row => row.Handler == "trashed" && row.Status == OutboxStatus.Delivered));
+            database.Rows().Single(row => row.Handler == "first").Status.ShouldBe(OutboxStatus.Pending);
+        }
+        finally
+        {
+            gate.TrySetResult();
+        }
+
+        (await drain).ShouldBe(2);
+    }
+
+    // Core's handlers are one owner, so the draft saved, then the trash of an entry reach it in that order though the first
+    // handler is slow.
+    [Fact]
+    public async Task OneOwnerGetsTheEventsOfDifferentTypesInTheOrderTheyHappened()
+    {
+        var seen = new Seen();
+        seen.Behavior = (heard, _) => heard is EntryDraftSavedEvent ? Task.Delay(200, Token) : Task.CompletedTask;
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
+        {
+            cms.Events.AddOutboxHandler<EntryDraftSavedEvent, SavedOutbox>("saved");
+            cms.Events.AddOutboxHandler<EntryTrashedEvent, TrashedOutbox>("trashed");
+        }));
+        var entry = await database.CreateAsync(Editor, Titled("T"));
+        await database.DeleteAsync(Editor, IdOf(entry));
+
+        (await DrainAsync(database.Database.Services)).ShouldBe(2);
+
+        seen.Calls.ShouldBe(["outbox", "trashed-outbox"]);
+    }
+
+    [Fact]
+    public async Task AnOwnerWhoseLaneFailsDoesNotHoldBackAnotherAndIsDeliveredOnALaterDrain()
+    {
+        var seen = new Seen();
+        var faults = new JobFaults();
+        var logs = new RecordingLogs();
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
+        {
+            cms.Events.AddOutboxHandler<EntryDraftSavedEvent, OutboxFirst>("first");
+            cms.Events.AddOutboxHandler<EntryDraftSavedEvent, OutboxSecond>("second");
+            cms.Services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(logs);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(faults));
+        }));
+        await database.CreateAsync(Editor, Titled("T"));
+        OwnedApart(database);
+
+        // As a locked database would, for every read of the first owner's rows.
+        faults.Fail(command => command.CommandText.Contains("cms_outbox", StringComparison.Ordinal)
+            && command.Parameters.Cast<DbParameter>().Any(parameter => Equals(parameter.Value, "first")));
+        (await DrainAsync(database.Database.Services)).ShouldBe(1);
+        faults.Recover();
+
+        logs.Count("LaneFailed").ShouldBeGreaterThanOrEqualTo(1);
+        database.Rows().ToDictionary(row => row.Handler, row => row.Status).ShouldBe(new Dictionary<string, string>
+        {
+            ["first"] = OutboxStatus.Pending,
+            ["second"] = OutboxStatus.Delivered,
+        });
+
+        (await DrainAsync(database.Database.Services)).ShouldBe(1);
+        database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Delivered);
+    }
+
+    // A second worker of the outbox queue on one instance would run a second lane for the same owner and break its order.
+    [Fact]
+    public async Task ASecondDrainJobOnOneInstanceOnlySignalsTheDrainThatRuns()
+    {
+        var seen = new Seen();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        seen.Behavior = (_, _) => gate.Task;
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(seen, cms => cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 2));
+        await database.CreateAsync(Editor, Titled("T"));
+
+        var first = RunDrainJobAsync(database.Database.Services);
+        try
+        {
+            await Eventually.HoldsAsync(() => !seen.Deliveries.IsEmpty);
+            await RunDrainJobAsync(database.Database.Services).WaitAsync(TimeSpan.FromSeconds(30), Token);
+            seen.Deliveries.Count.ShouldBe(1);
+        }
+        finally
+        {
+            gate.TrySetResult();
+        }
+
+        await first;
+        database.Rows().Single().Status.ShouldBe(OutboxStatus.Delivered);
+    }
+
+    // Kicks while a lane is busy look only at the owners with no lane, so none reads the busy lane's backlog, and they add
+    // no drain job while one waits.
+    [Fact]
+    public async Task ABurstOfKicksWhileALaneIsBusyAddsNoJobAndNeverReadsTheBusyLanesRows()
+    {
+        var seen = new Seen();
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reads = new HandlerReads("first");
+        seen.Behavior = (_, _) => seen.Calls.Last() == "outbox-1" ? gate.Task : Task.CompletedTask;
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
+        {
+            cms.Events.AddOutboxHandler<EntryDraftSavedEvent, OutboxFirst>("first");
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(reads));
+        }));
+        await database.CreateAsync(Editor, Titled("T0"));
+        OwnedApart(database);
+
+        var drain = DrainAsync(database.Database.Services);
+        try
+        {
+            await Eventually.HoldsAsync(() => seen.Calls.Contains("outbox-1"));
+            var before = reads.Count;
+            for (var index = 1; index <= 5; index++)
+            {
+                await database.CreateAsync(Editor, Titled($"T{index}"));
+            }
+
+            reads.Count.ShouldBe(before);
+            database.Read(context => context.Set<Job>().AsNoTracking().Count(job => job.Type == OutboxDrainJob.Type)).ShouldBe(1);
+        }
+        finally
+        {
+            gate.TrySetResult();
+        }
+
+        (await drain).ShouldBe(6);
+    }
+
+    [Fact]
+    public void ADeferralLastsMissingHandlerDelayAndThenTheRowIsTriedAgain()
+    {
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var deferrals = new OutboxDrainer.Deferrals(clock, TimeSpan.FromMinutes(5));
+        var id = Guid.CreateVersion7();
+
+        deferrals.Add(id);
+        clock.Advance(TimeSpan.FromMinutes(5) - TimeSpan.FromSeconds(1));
+        deferrals.Current().ShouldBe([id]);
+
+        clock.Advance(TimeSpan.FromSeconds(1));
+        deferrals.Current().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task TheEventsOfOneHandlerAreDeliveredInTheOrderTheyHappened()
+    {
+        var seen = new Seen();
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
+        {
+            cms.Events.AddOutboxHandler<EntryDraftSavedEvent, OutboxFirst>("first");
+            cms.Events.AddOutboxHandler<EntryDraftSavedEvent, OutboxSecond>("second");
+            cms.Events.Outbox.BatchSize = 2;
+        }));
+        for (var index = 0; index < 5; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        (await DrainAsync(database.Database.Services)).ShouldBe(10);
+
+        var rows = database.Rows();
+        var handlerOf = rows.ToDictionary(row => row.Id, row => row.Handler);
+        foreach (var handler in new[] { "first", "second" })
+        {
+            seen.Deliveries.Select(delivery => delivery.Key).Where(key => handlerOf[key] == handler)
+                .ShouldBe(rows.Where(row => row.Handler == handler).Select(row => row.Id));
+        }
+    }
+
+    [Fact]
+    public async Task ABatchReadsTheDefaultLocaleOfItsSiteOnce()
+    {
+        var seen = new Seen();
+        var reads = new LocaleReads();
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(seen, cms =>
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(reads))));
+        for (var index = 0; index < 4; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        var before = reads.Count;
+        (await DrainAsync(database.Database.Services)).ShouldBe(4);
+
+        (reads.Count - before).ShouldBe(1);
+    }
+
+    [Fact]
     public async Task AFailingHandlerIsCalledAgainWithTheSameKeyUntilItSucceeds()
     {
         var seen = new Seen();
@@ -286,8 +637,9 @@ public sealed class OutboxTests
         });
     }
 
+    // Each handler has a lane of its own, so their order holds for the rows of an event, and not for the calls.
     [Fact]
-    public async Task OutboxHandlersAreDeliveredInHookOrder()
+    public async Task OutboxHandlersAreRecordedInHookOrder()
     {
         var seen = new Seen();
         using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
@@ -301,7 +653,7 @@ public sealed class OutboxTests
         database.Rows().Select(row => row.Handler).ShouldBe(["first", "second", "third"]);
         await DrainAsync(database.Database.Services);
 
-        seen.Calls.ShouldBe(["outbox-1", "outbox-2", "outbox-3"]);
+        seen.Calls.ShouldBe(["outbox-1", "outbox-2", "outbox-3"], ignoreOrder: true);
     }
 
     [Fact]
@@ -316,9 +668,10 @@ public sealed class OutboxTests
         }));
         await database.CreateAsync(Editor, Titled("T"));
 
+        database.Rows().Select(row => row.Handler).ShouldBe(["registered-last", "registered-first"]);
         await DrainAsync(database.Database.Services);
 
-        seen.Calls.ShouldBe(["plugin-outbox", "outbox"]);
+        seen.Calls.ShouldBe(["plugin-outbox", "outbox"], ignoreOrder: true);
     }
 
     [Fact]
@@ -513,26 +866,153 @@ public sealed class OutboxTests
     }
 
     [Fact]
-    public async Task StartupSchedulesTheRecurringDrainThatCatchesWhatNothingAskedFor()
+    public async Task AKickAfterAFailedDrainAsksForADrainThatIsDueNow()
+    {
+        var seen = new Seen();
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(seen));
+
+        // The retry of a drain that failed waits for its backoff.
+        database.Read(context =>
+        {
+            context.Add(new Job
+            {
+                Type = OutboxDrainJob.Type,
+                Payload = "{}",
+                Queue = OutboxDrainJob.Queue,
+                RunAt = DateTimeOffset.UtcNow.AddMinutes(7),
+                MaxAttempts = 5,
+                Attempts = 1,
+                CreatedAt = DateTimeOffset.UtcNow,
+                Origin = Origin.Job,
+            });
+            return context.SaveChanges();
+        });
+
+        await database.CreateAsync(Editor, Titled("T"));
+
+        var now = DateTimeOffset.UtcNow;
+        database.Read(context => context.Set<Job>().AsNoTracking().Count(job => job.Type == OutboxDrainJob.Type && job.RunAt <= now)).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task StartupStoresThePruneAndRemovesTheRecurringDrainOfEarlierVersions()
     {
         using var database = new ServiceDatabase(EventRegistrations.Outbox(new Seen()));
+        await database.Database.Services.GetRequiredService<IJobScheduler>().AddRecurringAsync<OutboxDrainJob, OutboxDrainPayload>(
+            OutboxDrainJob.RecurringName, "* * * * *", new OutboxDrainPayload(), OutboxDrainJob.Queue, Token);
 
         var schedule = database.Database.Services.GetServices<IHostedService>().OfType<OutboxScheduleService>().Single();
         await schedule.StartAsync(Token);
-        await schedule.ExecuteTask!;
+        try
+        {
+            await Eventually.HoldsAsync(() => database.Read(context => context.Set<RecurringJob>().AsNoTracking().Select(job => job.Name).ToList()) is [OutboxPruneJob.RecurringName]);
+        }
+        finally
+        {
+            await schedule.StopAsync(Token);
+        }
 
-        var recurring = database.Read(context => context.Set<RecurringJob>().AsNoTracking().Single(job => job.Name == OutboxDrainJob.RecurringName));
-        recurring.Type.ShouldBe(OutboxDrainJob.Type);
-        recurring.Cron.ShouldBe("* * * * *");
-        recurring.Queue.ShouldBe(OutboxDrainJob.Queue);
-        recurring.Payload.ShouldBe("{}");
-        recurring.Enabled.ShouldBeTrue();
-
-        var prune = database.Read(context => context.Set<RecurringJob>().AsNoTracking().Single(job => job.Name == OutboxPruneJob.RecurringName));
+        var prune = database.Read(context => context.Set<RecurringJob>().AsNoTracking().Single());
         prune.Type.ShouldBe(OutboxPruneJob.Type);
         prune.Cron.ShouldBe("0 * * * *");
         prune.Queue.ShouldBe(JobRunnerOptions.DefaultQueue);
         prune.Enabled.ShouldBeTrue();
+    }
+
+    // The sweep reads and asks for a drain only when rows are due, where a recurring drain added a job every minute.
+    [Fact]
+    public async Task AnIdleInstanceAddsNoJobForTheOutboxAndTheSweepCatchesWhatNothingAskedFor()
+    {
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var sweeps = new SweepReads();
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(new Seen(), cms =>
+        {
+            cms.Services.AddSingleton<TimeProvider>(clock);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(sweeps));
+        }));
+        var schedule = database.Database.Services.GetServices<IHostedService>().OfType<OutboxScheduleService>().Single();
+        await schedule.StartAsync(Token);
+        try
+        {
+            await Eventually.HoldsAsync(() => database.Read(context => context.Set<RecurringJob>().AsNoTracking().Count()) == 1);
+
+            // Each sweep reads cms_outbox twice, for exhausted rows and for due ones; five sweeps, and still no job.
+            await Eventually.HoldsAsync(() => sweeps.Count >= 10, () => clock.Advance(OutboxScheduleService.SweepInterval));
+
+            database.Read(context => context.Set<Job>().AsNoTracking().Count()).ShouldBe(0);
+
+            // A row that nothing asked to deliver, as after a crash between the commit and the kick.
+            database.Read(context =>
+            {
+                context.Add(new OutboxMessage
+                {
+                    EventId = Guid.CreateVersion7(),
+                    EventType = typeof(EntryDraftSavedEvent).FullName!,
+                    Handler = "saved-outbox",
+                    Payload = "{}",
+                    OccurredAt = clock.GetUtcNow(),
+                    Sequence = 1,
+                    AvailableAt = clock.GetUtcNow(),
+                });
+                return context.SaveChanges();
+            });
+
+            await Eventually.HoldsAsync(
+                () => database.Read(context => context.Set<Job>().AsNoTracking().Count(job => job.Type == OutboxDrainJob.Type)) == 1,
+                () => clock.Advance(OutboxScheduleService.SweepInterval));
+        }
+        finally
+        {
+            await schedule.StopAsync(Token);
+        }
+    }
+
+    [Fact]
+    public async Task TheSweepLeavesADeliveryWhoseWorkerDiedOnItsLastAttemptAsFailed()
+    {
+        var logs = new RecordingLogs();
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(new Seen(), cms =>
+        {
+            cms.Events.Outbox.MaxAttempts = 2;
+            cms.Services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(logs);
+        }));
+        await database.CreateAsync(Editor, Titled("T"));
+        database.Read(context => context.Set<OutboxMessage>().ExecuteUpdate(row => row
+            .SetProperty(column => column.LeaseOwner, "dead/worker")
+            .SetProperty(column => column.LeaseUntil, DateTimeOffset.UtcNow.AddMinutes(-1))
+            .SetProperty(column => column.Attempts, 2)));
+        var drainer = database.Database.Services.GetRequiredService<OutboxDrainer>();
+
+        (await drainer.SweepAsync(Token)).ShouldBeFalse();
+        (await drainer.SweepAsync(Token)).ShouldBeFalse();
+
+        database.Rows().Single().Status.ShouldBe(OutboxStatus.Failed);
+        logs.Count("Exhausted").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ADeliveryTakenOverFromAWorkerWhoseLeaseLapsedIsClaimedAlone()
+    {
+        var seen = new Seen();
+        var claims = new ClaimCounter();
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(seen, cms =>
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(claims))));
+        for (var index = 0; index < 3; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        // A worker took the first two and died, perhaps of the first one's delivery.
+        var first = database.Rows().Take(2).Select(row => row.Id).ToList();
+        database.Read(context => context.Set<OutboxMessage>().Where(row => first.Contains(row.Id)).ExecuteUpdate(row => row
+            .SetProperty(column => column.LeaseOwner, "dead/worker")
+            .SetProperty(column => column.LeaseUntil, DateTimeOffset.UtcNow.AddMinutes(-1))
+            .SetProperty(column => column.Attempts, 1)));
+
+        (await DrainAsync(database.Database.Services)).ShouldBe(3);
+
+        claims.Claims.ShouldBe(3);
+        database.Rows().Select(row => row.Attempts).ShouldBe([2, 2, 1]);
     }
 
     [Fact]
@@ -563,14 +1043,22 @@ public sealed class OutboxTests
 
         var schedule = database.Database.Services.GetServices<IHostedService>().OfType<OutboxScheduleService>().Single();
         await schedule.StartAsync(Token);
-        await Eventually.HoldsAsync(() => logs.Count("RecurringFailed") >= 1);
+        await Eventually.HoldsAsync(() => logs.Count("PruneScheduleFailed") >= 1);
         database.Read(context => context.Set<RecurringJob>().AsNoTracking().Count()).ShouldBe(0);
 
         faults.Recover();
-        clock.Advance(TimeSpan.FromSeconds(30));
-        await Eventually.CompletesAsync(schedule.ExecuteTask!, () => clock.Advance(TimeSpan.FromSeconds(30)));
+        try
+        {
+            await Eventually.HoldsAsync(
+                () => database.Read(context => context.Set<RecurringJob>().AsNoTracking().Count()) == 1,
+                () => clock.Advance(TimeSpan.FromSeconds(30)));
+        }
+        finally
+        {
+            await schedule.StopAsync(Token);
+        }
 
-        database.Read(context => context.Set<RecurringJob>().AsNoTracking().Count()).ShouldBe(2);
+        database.Read(context => context.Set<RecurringJob>().AsNoTracking().Single()).Name.ShouldBe(OutboxPruneJob.RecurringName);
     }
 
     [Fact]

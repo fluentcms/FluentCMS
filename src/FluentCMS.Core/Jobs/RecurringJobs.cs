@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Cronos;
 using FluentCMS.Content;
 using FluentCMS.Core.Storage;
@@ -8,9 +9,13 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Jobs;
 
-internal sealed class RecurringJobs(IServiceScopeFactory scopes, JobRunnerOptions options, TimeProvider time, ILogger<RecurringJobs> logger)
+// A row whose type this instance does not know is left due, neither fired nor moved on, so that an instance that knows it,
+// as after a rolling deploy, still fires the occurrence, and a plugin that was removed makes no jobs.
+internal sealed class RecurringJobs(IServiceScopeFactory scopes, JobRegistry registry, JobRunnerOptions options, TimeProvider time, ILogger<RecurringJobs> logger)
 {
     private const int NameMaxLength = 128;
+
+    private readonly ConcurrentDictionary<string, string> _unknown = new(StringComparer.Ordinal);
 
     public async Task AddAsync(string name, string cron, string type, string payload, string queue, CancellationToken cancellationToken)
     {
@@ -57,6 +62,20 @@ internal sealed class RecurringJobs(IServiceScopeFactory scopes, JobRunnerOption
 
         foreach (var job in due)
         {
+            if (registry.Find(job.Type) is null)
+            {
+                // Logged once a row and type, since the row stays due and is read again on every turn.
+                if (!_unknown.TryGetValue(job.Name, out var logged) || logged != job.Type)
+                {
+                    _unknown[job.Name] = job.Type;
+                    JobLog.RecurringTypeUnknown(logger, JobErrorCodes.UnknownJobType, job.Name, job.Type);
+                }
+
+                continue;
+            }
+
+            _unknown.TryRemove(job.Name, out _);
+
             if (Next(job, now) is not { } next)
             {
                 continue;

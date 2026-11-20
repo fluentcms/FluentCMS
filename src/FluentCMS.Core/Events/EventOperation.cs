@@ -1,11 +1,7 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Sites;
-using FluentCMS.Core.Storage;
-using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Events;
 using FluentCMS.Sites;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.Events;
 
@@ -16,10 +12,7 @@ internal static class EventOperation
     public static async Task<OperationContext> CreateAsync(IServiceProvider services, EventSource source, Guid eventId, Guid? rowSite, DateTimeOffset now)
     {
         var site = rowSite ?? (source.SiteId == Guid.Empty ? DefaultSite.Id : source.SiteId);
-        var locale = await services.GetRequiredService<SystemDbContext>().Set<Site>()
-            .Where(row => row.Id == site)
-            .Select(row => row.DefaultLocale)
-            .FirstOrDefaultAsync();
+        var locale = await SiteDefaultLocale.ReadAsync(services, site);
 
         return new OperationContext(
             Principal.System,

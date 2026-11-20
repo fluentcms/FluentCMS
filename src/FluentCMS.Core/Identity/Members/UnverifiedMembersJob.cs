@@ -1,3 +1,4 @@
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using FluentCMS.Jobs;
 using Microsoft.EntityFrameworkCore;
@@ -11,13 +12,19 @@ internal sealed record UnverifiedMembersPayload;
 // Removes the members that never verified their address: a registration nobody answered, or a member an administrator
 // created who never chose a password. Such a member never signed in, so it has no session to end, and the job raises no
 // event for it.
-internal sealed class UnverifiedMembersJob(SystemDbContext context, MemberOptions options, TimeProvider time, ILogger<UnverifiedMembersJob> logger) : IJob<UnverifiedMembersPayload>
+internal sealed class UnverifiedMembersJob(SystemDbContext context, MemberOptions options, TimeProvider time, ILogger<UnverifiedMembersJob> logger) : IJob<UnverifiedMembersPayload>, IResumableJob
 {
     public const string Type = "members.remove_unverified";
 
     public const string RecurringName = "members.remove_unverified";
 
     public const string Schedule = "45 3 * * *";
+
+    // Stops a large prune from holding a worker for good; what is left waits for the next run.
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromMinutes(10);
+
+    // Each batch is its own delete, so that a run stopped at its timeout keeps what it removed.
+    public const int BatchSize = 500;
 
     // From when the job may remove a member, which is when a link sent to it stops working; null for a verified member.
     public static DateTimeOffset? RemovableAt(CmsMember member, MemberOptions options) =>
@@ -27,13 +34,40 @@ internal sealed class UnverifiedMembersJob(SystemDbContext context, MemberOption
     {
         ArgumentNullException.ThrowIfNull(jobContext);
 
+        var cancellationToken = jobContext.CancellationToken;
         var threshold = time.GetUtcNow() - options.UnverifiedMemberLifetime;
-        var removed = await context.Set<CmsMember>()
-            .Where(member => !member.EmailConfirmed && member.CreatedAt < threshold)
-            .ExecuteDeleteAsync(jobContext.CancellationToken);
-        if (removed > 0)
+        var members = context.Set<CmsMember>();
+        var removed = 0;
+        try
         {
-            MemberLog.UnverifiedMembersRemoved(logger, removed, threshold);
+            while (true)
+            {
+                var ids = await members.AsNoTracking()
+                    .Where(member => !member.EmailConfirmed && member.CreatedAt < threshold)
+                    .OrderBy(member => member.CreatedAt)
+                    .Select(member => member.Id)
+                    .Take(BatchSize)
+                    .ToListAsync(cancellationToken);
+                if (ids.Count == 0)
+                {
+                    break;
+                }
+
+                removed += await members
+                    .Where(member => ids.Contains(member.Id) && !member.EmailConfirmed && member.CreatedAt < threshold)
+                    .ExecuteDeleteAsync(cancellationToken);
+                if (ids.Count < BatchSize)
+                {
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            if (removed > 0)
+            {
+                MemberLog.UnverifiedMembersRemoved(logger, removed, threshold);
+            }
         }
     }
 }
