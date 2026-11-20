@@ -1,34 +1,78 @@
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 
 namespace FluentCMS.Plugins.Media;
 
 // An SVG read as XML with no DTD, no external resolution, no processing instructions and no comments. A file that is not
-// well-formed, has a DTD or whose root is not <svg> is not an SVG. Sanitising is a conservative pass that keeps drawing and
-// drops whatever can run or reach out: script and foreignObject, elements of other vocabularies such as XHTML, event
-// handler attributes, attributes of other namespaces and xml:base, animations that set a link or a handler, a link that is
-// not to a fragment of the document or a PNG, JPEG, GIF or WebP data: URL, and any value that holds a javascript:,
-// vbscript: or other data: URL, a url() to anything else, or CSS that imports, evaluates or names an image by a string.
-// Values are compared as a browser reads them as CSS, with comments and escapes undone.
-internal static class SvgDocument
+// well-formed, has a DTD or whose root is not <svg> is not an SVG. Sanitising keeps drawing and nothing else, by lists of
+// the elements and attributes it keeps: names are compared in their exact case, so that no element or attribute turns into
+// something else when an HTML page inlines the SVG and reads its names in lower case. An <a> becomes a <g>; <title> and
+// <desc> keep their text only, since an HTML page parses their content as HTML. A link (href or xlink:href) stays only when
+// it is a #fragment of name characters, as written. A value read as CSS, the style attribute, a <style> element and every
+// other attribute kept, goes when it holds a url() to anything but a #fragment, @import, expression(, image(, image-set(
+// or src(, in the value with its CSS comments kept or with them taken out, after CSS escapes are undone; the two forms
+// cover a comment that a string hides and a string that a comment hides. An animation of a link or a handler goes.
+internal static partial class SvgDocument
 {
     public static readonly XNamespace SvgNamespace = "http://www.w3.org/2000/svg";
 
     private static readonly XNamespace XLinkNamespace = "http://www.w3.org/1999/xlink";
 
-    private static readonly HashSet<string> ActiveElements = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> Elements = new(StringComparer.Ordinal)
     {
-        "script", "foreignObject", "iframe", "embed", "object", "handler", "listener",
+        "svg", "g", "defs", "symbol", "use", "switch", "view", "title", "desc", "style",
+        "path", "rect", "circle", "ellipse", "line", "polyline", "polygon", "text", "tspan", "textPath",
+        "linearGradient", "radialGradient", "stop", "pattern", "clipPath", "mask", "marker",
+        "filter", "feBlend", "feColorMatrix", "feComponentTransfer", "feComposite", "feConvolveMatrix", "feDiffuseLighting",
+        "feDisplacementMap", "feDistantLight", "feDropShadow", "feFlood", "feFuncA", "feFuncB", "feFuncG", "feFuncR",
+        "feGaussianBlur", "feMerge", "feMergeNode", "feMorphology", "feOffset", "fePointLight", "feSpecularLighting",
+        "feSpotLight", "feTile", "feTurbulence",
+        "animate", "animateMotion", "animateTransform", "set", "mpath",
     };
 
-    private static readonly HashSet<string> Animations = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> Animations = new(StringComparer.Ordinal) { "animate", "animateMotion", "animateTransform", "set" };
+
+    // Elements whose content an HTML page that inlines the SVG parses as HTML.
+    private static readonly HashSet<string> TextOnly = new(StringComparer.Ordinal) { "title", "desc" };
+
+    private static readonly HashSet<string> Attributes = new(StringComparer.Ordinal)
     {
-        "animate", "set", "animateMotion", "animateTransform",
+        "id", "class", "style", "lang", "role", "aria-label", "aria-labelledby", "aria-describedby", "aria-hidden", "focusable",
+        "x", "y", "x1", "y1", "x2", "y2", "cx", "cy", "r", "rx", "ry", "fx", "fy", "fr", "width", "height", "d", "points",
+        "pathLength", "transform", "viewBox", "preserveAspectRatio", "version", "baseProfile",
+        "fill", "fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit",
+        "stroke-dasharray", "stroke-dashoffset", "stroke-opacity", "opacity", "color", "display", "visibility", "overflow",
+        "clip", "clip-path", "clip-rule", "mask", "mask-type", "filter", "marker-start", "marker-mid", "marker-end",
+        "paint-order", "vector-effect", "shape-rendering", "text-rendering", "image-rendering", "color-interpolation",
+        "color-interpolation-filters", "isolation", "mix-blend-mode", "transform-origin", "stop-color", "stop-opacity",
+        "flood-color", "flood-opacity", "lighting-color",
+        "font-family", "font-size", "font-size-adjust", "font-style", "font-variant", "font-weight", "font-stretch",
+        "text-anchor", "dominant-baseline", "alignment-baseline", "baseline-shift", "letter-spacing", "word-spacing",
+        "text-decoration", "writing-mode", "direction", "unicode-bidi", "dx", "dy", "rotate", "textLength", "lengthAdjust",
+        "startOffset", "method", "spacing", "side",
+        "offset", "gradientUnits", "gradientTransform", "spreadMethod", "patternUnits", "patternContentUnits",
+        "patternTransform", "clipPathUnits", "maskUnits", "maskContentUnits", "markerUnits", "markerWidth", "markerHeight",
+        "refX", "refY", "orient",
+        "filterUnits", "primitiveUnits", "in", "in2", "result", "stdDeviation", "mode", "operator", "k1", "k2", "k3", "k4",
+        "values", "type", "tableValues", "slope", "intercept", "amplitude", "exponent", "baseFrequency", "numOctaves", "seed",
+        "stitchTiles", "scale", "xChannelSelector", "yChannelSelector", "radius", "kernelMatrix", "order", "divisor", "bias",
+        "targetX", "targetY", "edgeMode", "kernelUnitLength", "preserveAlpha", "surfaceScale", "diffuseConstant",
+        "specularConstant", "specularExponent", "azimuth", "elevation", "z", "pointsAtX", "pointsAtY", "pointsAtZ",
+        "limitingConeAngle",
+        "requiredFeatures", "requiredExtensions", "systemLanguage",
+        "attributeName", "attributeType", "begin", "dur", "end", "min", "max", "restart", "repeatCount", "repeatDur",
+        "calcMode", "keyTimes", "keySplines", "keyPoints", "from", "to", "by", "additive", "accumulate", "path",
+        "href",
     };
 
-    private static readonly string[] SafeDataUrls = ["data:image/png", "data:image/jpeg", "data:image/gif", "data:image/webp"];
+    // The attributes that carry a URL, which an animation may not set.
+    private static readonly HashSet<string> LinkAttributes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "href", "src", "srcset", "poster", "action", "formaction", "background", "base", "data", "codebase", "cite", "longdesc", "ping",
+    };
 
     // CSS that reaches out without url(): an import, an expression, and the functions that take an image or a source as a string.
     private static readonly string[] ActiveCss = ["@import", "expression(", "image(", "image-set(", "src("];
@@ -69,15 +113,25 @@ internal static class SvgDocument
                 continue;
             }
 
-            if (IsActive(element))
+            if (element.Name.LocalName == "a" && IsSvg(element.Name))
+            {
+                element.Name = element.Name.Namespace + "g";
+            }
+
+            if (!IsKept(element))
             {
                 element.Remove();
                 continue;
             }
 
+            if (TextOnly.Contains(element.Name.LocalName))
+            {
+                element.Elements().Remove();
+            }
+
             foreach (var attribute in element.Attributes().ToList())
             {
-                if (!attribute.IsNamespaceDeclaration && IsActive(attribute))
+                if (!attribute.IsNamespaceDeclaration && !IsKept(attribute))
                 {
                     attribute.Remove();
                 }
@@ -96,80 +150,58 @@ internal static class SvgDocument
         return output.ToArray();
     }
 
-    private static bool IsActive(XElement element)
+    private static bool IsSvg(XName name) => name.Namespace == SvgNamespace || name.Namespace == XNamespace.None;
+
+    private static bool IsKept(XElement element)
     {
-        if (element.Name.Namespace != SvgNamespace && element.Name.Namespace != XNamespace.None)
-        {
-            return true;
-        }
-
         var name = element.Name.LocalName;
-        if (ActiveElements.Contains(name))
+        if (!IsSvg(element.Name) || !Elements.Contains(name))
         {
-            return true;
+            return false;
         }
 
-        if (name.Equals("style", StringComparison.OrdinalIgnoreCase) && IsActiveCss(element.Value))
+        if (name == "style")
         {
-            return true;
+            return !element.HasElements && !IsActiveCss(element.Value);
         }
 
-        return Animations.Contains(name)
-            && element.Attribute("attributeName")?.Value.Trim() is { } target
-            && (target.StartsWith("on", StringComparison.OrdinalIgnoreCase) || target.EndsWith("href", StringComparison.OrdinalIgnoreCase));
+        return !Animations.Contains(name)
+            || element.Attribute("attributeName")?.Value.Trim() is not { } target
+            || !(target.StartsWith("on", StringComparison.OrdinalIgnoreCase) || LinkAttributes.Contains(target[(target.LastIndexOf(':') + 1)..]));
     }
 
-    private static bool IsActive(XAttribute attribute)
+    private static bool IsKept(XAttribute attribute)
     {
         var name = attribute.Name;
-        if (name.Namespace != XNamespace.None && name.Namespace != XLinkNamespace && name.Namespace != XNamespace.Xml)
+        if (name.Namespace == XNamespace.Xml)
         {
-            return true;
+            return name.LocalName is "space" or "lang";
         }
 
-        // The base that every reference, a fragment's too, is resolved against.
-        if (name == XNamespace.Xml + "base" || name.LocalName.StartsWith("on", StringComparison.OrdinalIgnoreCase))
+        if (name.Namespace == XLinkNamespace || (name.Namespace == XNamespace.None && name.LocalName == "href"))
         {
-            return true;
+            return name.LocalName == "href" && Fragment().IsMatch(attribute.Value.Trim());
         }
 
-        // An HTML page that inlines the SVG reads the names of attributes in any case.
-        if (name.LocalName.Equals("href", StringComparison.OrdinalIgnoreCase) && !IsLocalReference(attribute.Value))
-        {
-            return true;
-        }
-
-        return IsActiveValue(attribute.Value) || (name.LocalName.Equals("style", StringComparison.OrdinalIgnoreCase) && IsActiveCss(attribute.Value));
+        return name.Namespace == XNamespace.None && Attributes.Contains(name.LocalName) && !IsActiveCss(attribute.Value);
     }
 
-    // Nothing, a fragment of the document, or an image in a data: URL.
-    private static bool IsLocalReference(string value)
-    {
-        var compact = Compact(value);
-        return compact.Length == 0 || compact[0] == '#' || IsSafeData(compact, 0);
-    }
+    private static bool IsActiveCss(string css) => HoldsActiveCss(Compact(css, keepComments: true)) || HoldsActiveCss(Compact(css, keepComments: false));
 
-    private static bool IsActiveValue(string value)
+    private static bool HoldsActiveCss(ReadOnlySpan<char> compact)
     {
-        var compact = Compact(value);
-        if (compact.Contains("javascript:", StringComparison.Ordinal) || compact.Contains("vbscript:", StringComparison.Ordinal))
+        foreach (var active in ActiveCss)
         {
-            return true;
-        }
-
-        for (var data = compact.IndexOf("data:", StringComparison.Ordinal); data >= 0; data = compact.IndexOf("data:", data + 5, StringComparison.Ordinal))
-        {
-            if (!IsSafeData(compact, data))
+            if (compact.Contains(active, StringComparison.Ordinal))
             {
                 return true;
             }
         }
 
-        // url( takes its target bare or quoted; a data: URL in it was checked above.
-        for (var url = compact.IndexOf("url(", StringComparison.Ordinal); url >= 0; url = compact.IndexOf("url(", url + 4, StringComparison.Ordinal))
+        for (var url = compact.IndexOf("url(", StringComparison.Ordinal); url >= 0; url = compact.IndexOf("url(", StringComparison.Ordinal))
         {
-            var target = compact.AsSpan(url + 4).TrimStart("\"'");
-            if (target.IsEmpty || (target[0] != '#' && !target.StartsWith("data:", StringComparison.Ordinal)))
+            compact = compact[(url + 4)..];
+            if (!CssFragment().IsMatch(compact))
             {
                 return true;
             }
@@ -178,24 +210,15 @@ internal static class SvgDocument
         return false;
     }
 
-    private static bool IsActiveCss(string css)
-    {
-        var compact = Compact(css);
-        return ActiveCss.Any(active => compact.Contains(active, StringComparison.Ordinal)) || IsActiveValue(css);
-    }
-
-    private static bool IsSafeData(string compact, int at) =>
-        SafeDataUrls.Any(safe => compact.AsSpan(at).StartsWith(safe, StringComparison.Ordinal)) && !compact.AsSpan(at).StartsWith("data:image/svg", StringComparison.Ordinal);
-
-    // A value as a browser compares it: CSS comments and escapes undone, as in a style sheet or a presentation attribute,
-    // without the white space and control characters that browsers ignore inside a scheme, and in lower case.
-    private static string Compact(string value)
+    // A value as CSS reads it: escapes undone, with or without its comments, without white space and control characters,
+    // and in lower case.
+    private static string Compact(string value, bool keepComments)
     {
         var text = new StringBuilder(value.Length);
         for (var index = 0; index < value.Length; index++)
         {
             var character = value[index];
-            if (character == '/' && index + 1 < value.Length && value[index + 1] == '*')
+            if (!keepComments && character == '/' && index + 1 < value.Length && value[index + 1] == '*')
             {
                 var end = value.IndexOf("*/", index + 2, StringComparison.Ordinal);
                 if (end < 0)
@@ -242,4 +265,12 @@ internal static class SvgDocument
         text.Append(code is 0 or > 0x10FFFF or (>= 0xD800 and <= 0xDFFF) ? "\uFFFD" : char.ConvertFromUtf32(code));
         return end < value.Length && char.IsWhiteSpace(value[end]) ? end : end - 1;
     }
+
+    // A link as written: a # and name characters, nothing else.
+    [GeneratedRegex(@"^#[\p{L}\p{N}_.:-]+$")]
+    private static partial Regex Fragment();
+
+    // What follows url( in the compact form: a #fragment, bare or quoted, and the parenthesis that closes it.
+    [GeneratedRegex(@"^(['""]?)#[\p{L}\p{N}_.:-]+\1\)")]
+    private static partial Regex CssFragment();
 }

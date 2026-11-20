@@ -105,11 +105,10 @@ public sealed class MediaFileTests
 
         text.ShouldContain("rect { fill: red; }");
         text.ShouldContain("<rect width=\"5\" height=\"5\" />");
-        text.ShouldContain("<text>link</text>");
-        text.ShouldContain("data:image/png");
+        text.ShouldContain("<g><text>link</text></g>");
         text.ShouldContain("attributeName=\"opacity\"");
         text.ShouldContain("<circle r=\"1\"");
-        foreach (var gone in (string[])["@import", "javascript", "onmouseover", "OnLoad", "data:image/svg", "onclick", "alert(6)", "inkscape:label"])
+        foreach (var gone in (string[])["@import", "javascript", "onmouseover", "OnLoad", "<image", "data:image", "onclick", "alert(6)", "inkscape:label"])
         {
             text.ShouldNotContain(gone);
         }
@@ -153,7 +152,7 @@ public sealed class MediaFileTests
     }
 
     [Fact]
-    public void AFragmentOfTheDocumentAndAnImageInADataUrlStay()
+    public void AFragmentOfTheDocumentStaysAndAnImageInADataUrlGoes()
     {
         var svg = SvgDocument.Parse(new MemoryStream(Files.Svg("""
             <defs><linearGradient id="g"><stop offset="0"/></linearGradient><circle id="dot" r="1"/></defs>
@@ -169,7 +168,73 @@ public sealed class MediaFileTests
         text.ShouldContain("""<use href="#dot" />""");
         text.ShouldContain("xlink:href=\" #dot\"");
         text.ShouldContain("fill=\"url(#g)\" style=\"stroke: url('#g')\"");
-        text.ShouldContain("href=\"data:image/png;base64,iVBORw0KGgo=\"");
+        text.ShouldNotContain("data:image");
+    }
+
+    // What the review of #3309 found past a pass by names it drops: a string that hides a comment, a comment that hides a
+    // url(), a link that is a fragment only once CSS reads it, HTML elements and attributes that load a URL, and each of
+    // those inside <title> and <desc>, whose content an HTML page that inlines the SVG parses as HTML.
+    public static TheoryData<string, string> Found
+    {
+        get
+        {
+            (string Body, string Gone)[] found =
+            [
+                ("""<style>rect{--a:"/*"}rect{fill:url(https://evil.example/p.svg#p)}rect{--b:"*/"}</style>""", "evil.example"),
+                ("""<rect width="1" height="1" style='--a:"/*";fill:url(https://evil.example/p.svg#p);--b:"*/"'/>""", "evil.example"),
+                ("""<style>@charset "/*";@import "https://evil.example/x.css";/*"*/</style>""", "evil.example"),
+                ("""<animate attributeName="fill" values="red;/*;url(https://evil.example/p#p);*/" dur="1s"/>""", "evil.example"),
+                ("""<use href="/*x*/#a"/>""", "/*x*/"),
+                ("""<use href="\23 x"/>""", "\\23"),
+                ("""<rect width="1" height="1" fill="url(/*x*/#a)"/>""", "/*x*/"),
+                ("""<img src="https://evil.example/a.png"/>""", "evil.example"),
+                ("""<meta http-equiv="refresh" content="0;url=https://evil.example/"/>""", "evil.example"),
+                ("""<table background="https://evil.example/a.png"/>""", "evil.example"),
+                ("""<rect width="1" height="1" srcset="https://evil.example/a.png 1x"/>""", "evil.example"),
+                ("""<rect width="1" height="1" mask="image-set('https://evil.example/a.png' 1x)"/>""", "evil.example"),
+            ];
+
+            var data = new TheoryData<string, string>();
+            foreach (var (body, gone) in found)
+            {
+                data.Add(body, gone);
+                data.Add($"<title>{body}</title>", gone);
+                data.Add($"<desc>{body}</desc>", gone);
+            }
+
+            return data;
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(Found))]
+    public void SanitisingKeepsOnlyWhatItsListsName(string body, string gone)
+    {
+        var svg = SvgDocument.Parse(new MemoryStream(Files.Svg(body + """<circle id="kept" r="1"/>"""))).ShouldNotBeNull();
+
+        SvgDocument.Sanitize(svg);
+        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg));
+
+        text.ShouldContain("""<circle id="kept" r="1" />""");
+        text.ShouldNotContain(gone, Case.Insensitive);
+    }
+
+    // An element of no list goes whatever its case, since an HTML page that inlines the SVG reads SCRIPT as script, and the
+    // text of a <title> stays.
+    [Fact]
+    public void AnElementOrAttributeOfNoListGoesInAnyCaseAndTitlesKeepTheirText()
+    {
+        var svg = SvgDocument.Parse(new MemoryStream(Files.Svg("""<SCRIPT>alert(1)</SCRIPT><Style>rect{}</Style><rect width="1" height="1" Fill="red" ONCLICK="alert(2)"/><title>A &lt;b&gt;logo&lt;/b&gt;</title>"""))).ShouldNotBeNull();
+
+        SvgDocument.Sanitize(svg);
+        var text = Encoding.UTF8.GetString(SvgDocument.Save(svg));
+
+        text.ShouldContain("""<rect width="1" height="1" />""");
+        text.ShouldContain("<title>A &lt;b&gt;logo&lt;/b&gt;</title>");
+        foreach (var removed in (string[])["SCRIPT", "alert", "Style", "Fill", "ONCLICK"])
+        {
+            text.ShouldNotContain(removed);
+        }
     }
 
     // @import in capitals, with CSS escapes of hex digits, short and long, ended by a space or not, of a letter that is

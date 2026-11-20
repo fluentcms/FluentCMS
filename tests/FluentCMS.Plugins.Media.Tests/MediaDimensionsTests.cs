@@ -38,8 +38,9 @@ public sealed class MediaDimensionsTests(MediaHost media) : IClassFixture<MediaH
         (asset.Width, asset.Height).ShouldBe((60, 300));
     }
 
-    // Two images stored with the size of their header and one stored right. A run reads one image and enqueues the next, so
-    // three runs go through them; nothing but the size changes, and running it again changes nothing.
+    // Three JPEGs stored with the size of their header, one of them with its type in capitals as a database may hold it, and
+    // one stored right. A run reads one image and enqueues the next until a run finds none and marks the check done; nothing
+    // but the size changes, and a run after that reads nothing.
     [Fact]
     public async Task TheBackfillGivesImagesStoredBeforeTheSizeTheyAreShownAtAndNothingElse()
     {
@@ -49,35 +50,77 @@ public sealed class MediaDimensionsTests(MediaHost media) : IClassFixture<MediaH
         await RunJobsAsync();
         var first = await UploadAsync(admin, TurnedJpeg(400, 100), "first.jpg");
         var second = await UploadAsync(admin, TurnedJpeg(200, 50), "second.jpg");
-        var plain = await UploadAsync(admin, Bands(40, 20), "plain.png");
+        var capitals = await UploadAsync(admin, TurnedJpeg(300, 60), "capitals.jpg");
+        var plain = await UploadAsync(admin, Bands(40, 20, SkiaSharp.SKEncodedImageFormat.Jpeg), "plain.jpg");
         await StoreAsync(first.Id, 400, 100);
         await StoreAsync(second.Id, 200, 50);
-        var before = await RowsAsync(first.Id, second.Id, plain.Id);
+        await StoreAsync(capitals.Id, 300, 60, "IMAGE/JPEG");
+        var before = await RowsAsync(first.Id, second.Id, capitals.Id, plain.Id);
         (await DeliveredAsync(anonymous, first.Id)).ShouldBe((400, 100));
+        await StateAsync("");
 
-        await media.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<MediaDimensionsJob, MediaDimensionsPayload>(new MediaDimensionsPayload(null, BatchSize: 1), cancellationToken: Token);
-        (await RunJobsAsync()).ShouldBeGreaterThanOrEqualTo(3);
+        await media.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<MediaDimensionsJob, MediaDimensionsPayload>(new MediaDimensionsPayload(BatchSize: 1), cancellationToken: Token);
+        (await RunJobsAsync()).ShouldBeGreaterThanOrEqualTo(5);
 
-        var after = await RowsAsync(first.Id, second.Id, plain.Id);
-        after.Select(asset => (asset.Width ?? 0, asset.Height ?? 0)).ShouldBe([(100, 400), (50, 200), (40, 20)]);
+        var after = await RowsAsync(first.Id, second.Id, capitals.Id, plain.Id);
+        after.Select(asset => (asset.Width ?? 0, asset.Height ?? 0)).ShouldBe([(100, 400), (50, 200), (60, 300), (40, 20)]);
         after.Select(asset => (asset.Version, asset.UpdatedAt, asset.UpdatedBy)).ShouldBe(before.Select(asset => (asset.Version, asset.UpdatedAt, asset.UpdatedBy)));
+        (await StateAsync()).ShouldBe(MediaDimensionsJob.Done);
         (await DeliveredAsync(anonymous, first.Id)).ShouldBe((100, 400));
         await media.DrainOutboxAsync();
         var actions = (await GetAsync(admin, $"/api/management/v1/activity?targetType=media&targetId={first.Id:D}"))["items"]!.AsArray().Select(row => row!["action"]!.GetValue<string>());
         actions.ShouldBe(["media.uploaded"]);
 
-        await media.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<MediaDimensionsJob, MediaDimensionsPayload>(new MediaDimensionsPayload(null), cancellationToken: Token);
+        await StoreAsync(second.Id, 200, 50);
+        await media.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<MediaDimensionsJob, MediaDimensionsPayload>(new MediaDimensionsPayload(), cancellationToken: Token);
         await RunJobsAsync();
 
-        (await RowsAsync(first.Id, second.Id, plain.Id)).Select(asset => (asset.Width, asset.Height, asset.Version)).ShouldBe(after.Select(asset => (asset.Width, asset.Height, asset.Version)));
+        (await RowsAsync(second.Id)).Single().Width.ShouldBe(200);
+    }
+
+    // A start enqueues a chain only when none claimed the check within the lease, as one that failed for good, and never
+    // once the library was gone over.
+    [Fact]
+    public async Task AStartEnqueuesOneChainAndNoneOnceTheCheckIsDone()
+    {
+        await media.Services.GetServices<IHostedService>().OfType<MediaStartup>().Single().ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        await RunJobsAsync();
+        await using var scope = media.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
+        var scheduler = media.Services.GetRequiredService<IJobScheduler>();
+        await database.Set<SigningKey>().Where(row => row.Id == MediaDimensionsJob.StateId).ExecuteDeleteAsync(Token);
+
+        var fresh = await MediaDimensionsJob.StartAsync(database, scheduler, media.Host.Time, Token);
+        var claimed = await MediaDimensionsJob.StartAsync(database, scheduler, media.Host.Time, Token);
+        media.Host.Time.Advance(MediaDimensionsJob.Lease + TimeSpan.FromMinutes(1));
+        var stale = await MediaDimensionsJob.StartAsync(database, scheduler, media.Host.Time, Token);
+        await StateAsync(MediaDimensionsJob.Done);
+        media.Host.Time.Advance(MediaDimensionsJob.Lease + TimeSpan.FromMinutes(1));
+        var done = await MediaDimensionsJob.StartAsync(database, scheduler, media.Host.Time, Token);
+
+        (fresh, claimed, stale, done).ShouldBe((true, false, true, false));
+        (await RunJobsAsync()).ShouldBe(2);
+        (await StateAsync()).ShouldBe(MediaDimensionsJob.Done);
+    }
+
+    private async Task<string?> StateAsync(string? set = null)
+    {
+        await using var scope = media.Services.CreateAsyncScope();
+        var states = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<SigningKey>().Where(row => row.Id == MediaDimensionsJob.StateId);
+        if (set is not null)
+        {
+            await states.ExecuteUpdateAsync(row => row.SetProperty(item => item.Key, set), Token);
+        }
+
+        return await states.Select(row => row.Key).SingleOrDefaultAsync(Token);
     }
 
     // The size an image had before it was read through the processor: that of its header, before the orientation.
-    private async Task StoreAsync(Guid id, int width, int height)
+    private async Task StoreAsync(Guid id, int width, int height, string mimeType = "image/jpeg")
     {
         await using var scope = media.Services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().Where(asset => asset.Id == id)
-            .ExecuteUpdateAsync(set => set.SetProperty(asset => asset.Width, width).SetProperty(asset => asset.Height, height), Token);
+            .ExecuteUpdateAsync(set => set.SetProperty(asset => asset.Width, width).SetProperty(asset => asset.Height, height).SetProperty(asset => asset.MimeType, mimeType), Token);
     }
 
     private async Task<List<Asset>> RowsAsync(params Guid[] ids)
