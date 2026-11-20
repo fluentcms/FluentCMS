@@ -92,6 +92,7 @@
     private bool asking;
     private bool failuresOnly;
     private bool guarded;
+    private int renderQueued;
     private IDisposable? leaveGuard;
 
     // A navigation the user agreed to while the run went on, which then stops after its chunk.
@@ -134,7 +135,19 @@
             leaveAnswer?.TrySetResult(true);
         }
 
-        _ = InvokeAsync(StateHasChanged);
+        // A chunk's answer reports each of its entries in one go, outside any event: rendering for each would draw the
+        // growing table once per entry, so the changes until the dispatcher is free make one render.
+        if (Interlocked.Exchange(ref renderQueued, 1) == 1)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            await Task.Yield();
+            Volatile.Write(ref renderQueued, 0);
+            StateHasChanged();
+        });
     }
 
     // Escape closes the library's dialog at once, so during the run it is shown again with the question.

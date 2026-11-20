@@ -179,10 +179,15 @@ public sealed class ContentListBulkTests : AdminTestContext
         // The list's own run waits for its chunk in flight however long it takes: no grace ends it before.
         time.GraceWaiting.ShouldBeFalse();
         ProgressDialog(app).FindAll("fluent-button").Select(button => button.TextContent.Trim()).ShouldNotContain("Close");
+        var renders = app.RenderCount;
         Management.Hold.SetResult();
         Management.Hold = null;
 
         app.WaitForAssertion(() => ProgressDialog(app).Markup.ShouldContain("bulk-progress-summary"), TimeSpan.FromSeconds(5));
+
+        // The answer comes outside any event, as in the browser: its 50 results and the 70 not run make a few renders, not
+        // one each.
+        (app.RenderCount - renders).ShouldBeLessThan(50);
         Summary(app).ShouldBe("Stopped: 50 of 120 done, 0 failed.");
         sent.Count.ShouldBe(1);
         ResultRow(app, "Entry 51").TextContent.ShouldContain("Not run");
@@ -636,7 +641,9 @@ public sealed class ContentListBulkTests : AdminTestContext
     private static IElement MenuItem(IRenderedComponent<AdminApp> app, string text) =>
         app.FindAll(".content-list-selection fluent-menu-item").Single(item => item.TextContent.Trim() == text);
 
-    private static void Choose(IElement item) => item.TriggerEvent("onmenuitemchange", new MenuItemEventArgs { Id = item.Id });
+    // TriggerEvent does not wait while the renderer is busy, such as with the focus of the ask before, so the next look could
+    // miss the dialog the choice opens.
+    private static void Choose(IElement item) => item.TriggerEventAsync("onmenuitemchange", new MenuItemEventArgs { Id = item.Id }).GetAwaiter().GetResult();
 
     private static IRenderedComponent<CmsDialog> Dialog(IRenderedComponent<AdminApp> app, string title) =>
         app.FindComponents<CmsDialog>().Single(found => found.Instance.Title == title);
