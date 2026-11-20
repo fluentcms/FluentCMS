@@ -95,9 +95,9 @@ else if (view is { } shownView)
                                  Selected="@picked"
                                  AllMatching="@allMatching"
                                  Total="@total"
-                                 FilterQuery="@(shownQuery?.Filter is { } filter ? new ContentQuery { Filter = filter }.ToQueryString() : null)"
                                  FilterSummaries="@(allMatching ? toolbar?.Summaries() ?? [] : [])"
-                                 Searching="@(search is not null)"
+                                 Search="@search"
+                                 ReadMatching="ReadMatchingAsync"
                                  OnRan="RanAsync" />
             </div>
         }
@@ -601,12 +601,46 @@ else if (view is { } shownView)
         allMatching = false;
     }
 
-    // The list is read again with its filters and sort, and the selection keeps the entries that failed or did not run.
-    private async Task RanAsync(IReadOnlyList<Guid> kept)
+    // The list is read again with its filters and sort, and the selection holds the entries that failed, did not run or are
+    // not confirmed.
+    private async Task RanAsync(IReadOnlyList<(Guid Id, string Label)> kept)
     {
-        picked = [.. picked.Where(row => kept.Contains(row.Id))];
+        picked = [.. kept];
         allMatching = false;
         await TryAgainAsync();
+    }
+
+    // All that match as ids with their labels, in the list's order, by pages of the most the server reads, up to the most a
+    // bulk run takes. Under locale=all the engine matches in the site's default locale, which is then the content locale, so
+    // the read of that locale alone matches the same entries.
+    private async Task<IReadOnlyList<(Guid Id, string Label)>> ReadMatchingAsync(CancellationToken cancellationToken)
+    {
+        if (shownQuery is not { } query || Described is not { } type || view is not { } list)
+        {
+            return [];
+        }
+
+        List<(Guid, string)> found = [];
+        for (var number = 1; found.Count < BulkRunner.MaxEntries; number++)
+        {
+            var read = query with
+            {
+                Page = number,
+                PageSize = ListView.MaxPageSize,
+                Fields = [.. new[] { "id", list.Label.Name }.Distinct(StringComparer.Ordinal)],
+                Populate = [],
+                WithTotal = false,
+                Locale = query.Locale == ListView.EveryLocale ? null : query.Locale,
+            };
+            var items = (await Client.ListEntriesAsync(Type, read, cancellationToken)).Items;
+            found.AddRange(items.Take(BulkRunner.MaxEntries - found.Count).Select(entry => (entry.Id, AdminLabels.Entry(type, entry))));
+            if (items.Count < ListView.MaxPageSize)
+            {
+                break;
+            }
+        }
+
+        return found;
     }
 
     private void SelectAllMatching()

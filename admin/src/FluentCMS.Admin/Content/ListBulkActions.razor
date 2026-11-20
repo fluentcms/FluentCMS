@@ -1,7 +1,8 @@
 @* The actions on the selection of a list (spec 4.13): publish, unpublish and delete to the trash for what the caller may do
-   with the type in the content locale, and the bulk actions of the admin halves for the type and the caller. Each is
-   confirmed with its name, the type and the count, or the filter of a selection of all that match, then runs in the dialog
-   of the bulk progress service. A half's action takes the ids of the selection, so it is offered for a selection of rows. *@
+   with the type in the content locale, and the bulk actions of the admin halves for the type and the caller. A selection of
+   all that match is read as ids first, at most 1000 in the list's order, so that the confirmation names exactly what is
+   acted on and every run goes in chunks. Each action is confirmed with its name, the type, the count and the locales it
+   acts in, the safe choice first and focused, then runs in the dialog of the bulk progress service. *@
 @using FluentCMS.Admin.Actions
 @using Microsoft.Extensions.Logging
 @implements IDisposable
@@ -14,16 +15,12 @@
 @inject ILogger<ListBulkActions> Logger
 @inject IStringLocalizer<AdminResources> L
 
-@if (Note is { } note)
-{
-    <span class="content-list-bulk-note">@note</span>
-}
-else if (Offered.Count > 0)
+@if (Offered.Count > 0)
 {
     <CmsMenu Label="@L["Content.Bulk.Menu"]">
         @foreach (var item in Offered)
         {
-            <CmsMenuItem @key="item.Key" OnClick="@(() => Ask(item))">@item.Label</CmsMenuItem>
+            <CmsMenuItem @key="item.Key" OnClick="@(() => AskAsync(item))">@item.Label</CmsMenuItem>
         }
     </CmsMenu>
 }
@@ -32,21 +29,42 @@ else if (Offered.Count > 0)
     <ChildContent>
         @if (asked is { } item)
         {
-            <p>@Confirmation(item)</p>
-            @if (AllMatching)
+            @if (matching is null && AllMatching)
             {
-                @if (FilterSummaries.Count > 0)
+                <p role="status">@(readFailed ? L["Content.Bulk.ReadFailed"] : L["Content.Bulk.Reading"])</p>
+            }
+            else
+            {
+                <p>@Confirmation(item)</p>
+                @if (LocaleText(item) is { } locale)
                 {
-                    <ul aria-label="@L["Content.Filter.Applied"]">
-                        @foreach (var summary in FilterSummaries)
-                        {
-                            <li>@summary</li>
-                        }
-                    </ul>
+                    <p>@locale</p>
                 }
-                else
+
+                @if (AllMatching)
                 {
-                    <p>@L["Content.Bulk.NoFilter"]</p>
+                    @if (Total > Targets.Count)
+                    {
+                        <p>@L["Content.Bulk.FirstOnly", Number(Targets.Count), Number(Total)]</p>
+                    }
+
+                    @if (FilterSummaries.Count > 0 || Search is not null)
+                    {
+                        <ul aria-label="@L["Content.Filter.Applied"]">
+                            @foreach (var summary in FilterSummaries)
+                            {
+                                <li>@summary</li>
+                            }
+                            @if (Search is { } search)
+                            {
+                                <li>@L["Content.Bulk.Search", search]</li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p>@L["Content.Bulk.NoFilter"]</p>
+                    }
                 }
             }
         }
@@ -54,8 +72,8 @@ else if (Offered.Count > 0)
     <Actions>
         @if (asked is { } item)
         {
-            <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => RunAsync(item))">@item.Label</CmsButton>
-            <CmsButton OnClick="@(() => asked = null)">@L["Content.Bulk.ConfirmCancel"]</CmsButton>
+            <CmsButton @ref="cancelButton" OnClick="@(() => asked = null)">@L["Content.Bulk.ConfirmCancel"]</CmsButton>
+            <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(Targets.Count == 0)" OnClick="@(() => RunAsync(item))">@item.Label</CmsButton>
         }
     </Actions>
 </CmsDialog>
@@ -64,6 +82,12 @@ else if (Offered.Count > 0)
     private string? pluginsOf;
     private IReadOnlyList<(PluginBulkAction Declared, BulkActionBase Action)> pluginActions = [];
     private BulkItem? asked;
+    private CmsButton? cancelButton;
+    private bool focusCancel;
+
+    // The ids of all that match, read when an action on them is asked for.
+    private IReadOnlyList<(Guid Id, string Label)>? matching;
+    private bool readFailed;
 
     // The run's dialog outlives a page the user left, which is then not read again.
     private bool disposed;
@@ -77,37 +101,28 @@ else if (Offered.Count > 0)
     [Parameter]
     public IReadOnlyList<(Guid Id, string Label)> Selected { get; set; } = [];
 
-    // All that match the list's filter, which the server selects itself.
+    // All that match the list's filters and search, which ReadMatching reads as ids.
     [Parameter]
     public bool AllMatching { get; set; }
 
     [Parameter]
     public long Total { get; set; }
 
-    // The filter of the list as its query string, empty for none.
-    [Parameter]
-    public string? FilterQuery { get; set; }
-
     [Parameter]
     public IReadOnlyList<string> FilterSummaries { get; set; } = [];
 
-    // A search the server's bulk call cannot take, since it takes a filter only.
     [Parameter]
-    public bool Searching { get; set; }
+    public string? Search { get; set; }
 
-    // Once the run's dialog is closed: the ids to keep selected, those that failed or did not run, none for a selection of
-    // all that match.
+    // The ids and labels of all that match, in the list's order, at most BulkRunner.MaxEntries.
     [Parameter]
-    public EventCallback<IReadOnlyList<Guid>> OnRan { get; set; }
+    public Func<CancellationToken, Task<IReadOnlyList<(Guid Id, string Label)>>>? ReadMatching { get; set; }
 
-    private int Count => AllMatching ? (int)Math.Min(Total, BulkRunner.MaxCap) : Selected.Count;
+    // Once the run's dialog is closed: the entries to keep selected, those that failed, did not run or are not confirmed.
+    [Parameter]
+    public EventCallback<IReadOnlyList<(Guid Id, string Label)>> OnRan { get; set; }
 
-    private string? Note => AllMatching switch
-    {
-        true when Searching => L["Content.Bulk.NotWithSearch"].Value,
-        true when Total > BulkRunner.MaxCap => L["Content.Bulk.TooMany", BulkRunner.MaxCap].Value,
-        _ => null,
-    };
+    private IReadOnlyList<(Guid Id, string Label)> Targets => AllMatching ? matching ?? [] : Selected;
 
     private IReadOnlyList<BulkItem> Offered
     {
@@ -132,11 +147,7 @@ else if (Offered.Count > 0)
                 }
             }
 
-            if (!AllMatching)
-            {
-                items.AddRange(pluginActions.Select(plugin => new BulkItem($"{plugin.Declared.Half.Name}/{plugin.Declared.Declared.Name}", plugin.Action.Label, null, plugin.Declared, plugin.Action)));
-            }
-
+            items.AddRange(pluginActions.Select(plugin => new BulkItem($"{plugin.Declared.Half.Name}/{plugin.Declared.Declared.Name}", plugin.Action.Label, null, plugin.Declared, plugin.Action)));
             return items;
         }
     }
@@ -173,51 +184,96 @@ else if (Offered.Count > 0)
         }
     }
 
+    // The library's dialog focuses itself as it opens; the safe choice takes focus once it has, as in the form.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusCancel && asked is { } shown && cancelButton is { } cancel)
+        {
+            focusCancel = false;
+            await Task.Delay(DocumentInterop.DialogFocusDelay);
+            if (asked == shown)
+            {
+                await cancel.FocusAsync();
+            }
+        }
+    }
+
     public void Dispose() => disposed = true;
 
-    private void Ask(BulkItem item) => asked = item;
+    private async Task AskAsync(BulkItem item)
+    {
+        (asked, focusCancel, matching, readFailed) = (item, true, null, false);
+        if (!AllMatching || ReadMatching is null)
+        {
+            return;
+        }
+
+        StateHasChanged();
+        try
+        {
+            var read = await ReadMatching(CancellationToken.None);
+            if (asked == item)
+            {
+                matching = read;
+            }
+        }
+        catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            readFailed = true;
+        }
+    }
 
     private string Confirmation(BulkItem item)
     {
         var type = AdminLabels.Type(Type, L);
-        if (item.Action is { } action && action.ConfirmationText(ActionContext(item)) is { Length: > 0 } own)
+        if (item.Action is { } action && action.ConfirmationText(ActionContext()) is { Length: > 0 } own)
         {
             return own;
         }
 
         var name = item.Operation?.ToString() ?? "Plugin";
         return AllMatching
-            ? L[$"Content.Bulk.ConfirmFilter.{name}", Count, type, item.Label]
-            : L[$"Content.Bulk.Confirm.{name}", Count, type, item.Label];
+            ? L[$"Content.Bulk.ConfirmFilter.{name}", Number(Targets.Count), type, item.Label]
+            : L[$"Content.Bulk.Confirm.{name}", Number(Targets.Count), type, item.Label];
     }
 
-    private BulkActionContext ActionContext(BulkItem item) => new()
+    private static string Number(long value) => value.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+
+    // Publish and unpublish act in the content locale, a delete in every locale of the entries.
+    private string? LocaleText(BulkItem item) => (Type.Localized, item.Operation) switch
+    {
+        (true, BulkOperation.Delete) => L["Content.Bulk.EveryLocale"].Value,
+        (true, BulkOperation.Publish or BulkOperation.Unpublish) when Context.ContentLocale is { Length: > 0 } locale => L["Content.Bulk.OneLocale", locale].Value,
+        _ => null,
+    };
+
+    private BulkActionContext ActionContext() => new()
     {
         Type = Type,
-        Ids = [.. Selected.Select(row => row.Id)],
+        Ids = [.. Targets.Select(row => row.Id).Distinct()],
         ContentLocale = Type.Localized ? Context.ContentLocale : null,
     };
 
     private async Task RunAsync(BulkItem item)
     {
         asked = null;
-        var labels = Selected.GroupBy(row => row.Id).ToDictionary(group => group.Key, group => group.First().Label);
-        var ids = Selected.Select(row => row.Id).Distinct().ToList();
+        var targets = Targets.DistinctBy(row => row.Id).ToList();
+        var labels = targets.ToDictionary(row => row.Id, row => row.Label);
+        var ids = targets.Select(row => row.Id).ToList();
         var title = L["Content.Bulk.Title", item.Label, AdminLabels.Type(Type, L)];
-        var progress = Bulk.Begin(title, Count, labels, counted: !AllMatching);
+        var progress = Bulk.Begin(title, ids.Count, labels, chunked: item.Action is null);
         try
         {
             if (item.Action is { } action)
             {
-                await RunPluginAsync(item, action, progress);
+                // An action that ignores its cancel is ended by the progress after its grace, and the list goes on without it.
+                await Task.WhenAny(RunPluginAsync(item, action, ActionContext(), progress), progress.Closed);
             }
             else
             {
                 // The site and the locale are fixed as the run starts, so a switch meanwhile does not move its later chunks.
                 var start = Client.StartAction();
-                await (AllMatching
-                    ? Runner.RunAsync(Type.Name, item.Operation!.Value, FilterQuery, Count, start.Site, start.Locale, progress)
-                    : Runner.RunAsync(Type.Name, item.Operation!.Value, ids, start.Site, start.Locale, progress));
+                await Runner.RunAsync(Type.Name, item.Operation!.Value, ids, start.Site, start.Locale, progress);
             }
         }
         finally
@@ -231,18 +287,24 @@ else if (Offered.Count > 0)
             return;
         }
 
-        IReadOnlyList<Guid> kept = AllMatching
-            ? []
-            : [.. progress.Results.Where(result => result.Problem is not null || result.Status == BulkStatuses.NotRun).Select(result => result.Id).Distinct()];
-        await OnRan.InvokeAsync(kept);
+        var left = progress.Results
+            .Where(result => result.Problem is not null || result.Status is BulkStatuses.NotRun or BulkStatuses.NotConfirmed)
+            .Select(result => result.Id)
+            .ToHashSet();
+        foreach (var id in ids.Where(id => !progress.Results.Any(result => result.Id == id)))
+        {
+            left.Add(id);
+        }
+
+        await OnRan.InvokeAsync([.. targets.Where(row => left.Contains(row.Id))]);
         await Document.FocusHeadingAsync(afterDialog: true);
     }
 
-    private async Task RunPluginAsync(BulkItem item, BulkActionBase action, BulkProgress progress)
+    private async Task RunPluginAsync(BulkItem item, BulkActionBase action, BulkActionContext context, BulkProgress progress)
     {
         try
         {
-            await action.RunAsync(ActionContext(item), progress, progress.Cancelled);
+            await action.RunAsync(context, progress, progress.Cancelled);
         }
         catch (OperationCanceledException) when (progress.Stopping)
         {

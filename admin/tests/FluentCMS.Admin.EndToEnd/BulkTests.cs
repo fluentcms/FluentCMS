@@ -23,7 +23,18 @@ public sealed class BulkTests(EndToEndHost host) : BrowserTest(host)
         var mark = $"bulk{Guid.NewGuid():N}"[..14];
         using var api = await Host.ManagementClientAsync();
         await CreateArticlesAsync(api, mark);
+        try
+        {
+            await PublishInTheListAsync(api, mark);
+        }
+        finally
+        {
+            await DeleteArticlesAsync(api, mark);
+        }
+    }
 
+    private async Task PublishInTheListAsync(HttpClient api, string mark)
+    {
         var browser = await OpenBrowserAsync();
         var tab = await browser.NewTabAsync();
         List<(string? Key, IResponse Response)> chunks = [];
@@ -58,13 +69,14 @@ public sealed class BulkTests(EndToEndHost host) : BrowserTest(host)
         var confirmation = tab.Page.GetByRole(AriaRole.Dialog, new PageGetByRoleOptions { Name = Text("Content.Bulk.Publish"), Exact = true });
         await Expect(confirmation).ToBeVisibleAsync();
         await Expect(DialogHost(tab, Text("Content.Bulk.Publish"))).ToContainTextAsync(Text("Content.Bulk.Confirm.Publish", "200", "Article"));
+        await Expect(DialogHost(tab, Text("Content.Bulk.Publish"))).ToContainTextAsync(Text("Content.Bulk.OneLocale", "en"));
         await DialogButton(tab, Text("Content.Bulk.Publish"), Text("Content.Bulk.Publish")).ClickAsync();
 
         var progressTitle = Text("Content.Bulk.Title", Text("Content.Bulk.Publish"), "Article");
         var shown = tab.Page.GetByRole(AriaRole.Dialog, new PageGetByRoleOptions { Name = progressTitle, Exact = true });
         await Expect(shown).ToBeVisibleAsync();
         var progress = DialogHost(tab, progressTitle);
-        await Expect(progress.Locator(".bulk-progress-summary")).ToHaveTextAsync(Text("Content.Bulk.Ended", "199", "1"), new LocatorAssertionsToHaveTextOptions { Timeout = Wait });
+        await Expect(progress.Locator(".bulk-progress-summary")).ToHaveTextAsync(Text("Content.Bulk.Ended", "199", "1"), new LocatorAssertionsToHaveTextOptions { Timeout = Wait * (Count / 50) });
         await Expect(progress.Locator("progress")).ToHaveAttributeAsync("value", "200");
         await Expect(tab.Announced(Text("Content.Bulk.Progress", "150", "200", "1"))).ToBeAttachedAsync();
 
@@ -89,6 +101,14 @@ public sealed class BulkTests(EndToEndHost host) : BrowserTest(host)
         published.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await published.Content.ReadFromJsonAsync<JsonObject>(TestContext.Current.CancellationToken))!["total"]!.GetValue<long>().ShouldBe(Count - 1);
         browser.PolicyViolations.ShouldBeEmpty();
+    }
+
+    // The host is shared and the list sorts the newest first, so the case's articles go to the trash at its end, where they
+    // leave the first page of the article list to the Blog sample's that other cases look for.
+    private static async Task DeleteArticlesAsync(HttpClient api, string mark)
+    {
+        using var deleted = await api.PostAsJsonAsync(new Uri($"api/management/v1/content/article/bulk?filter[title][startsWith]={mark}", UriKind.Relative), new JsonObject { ["operation"] = "delete", ["cap"] = Count }, TestContext.Current.CancellationToken);
+        deleted.StatusCode.ShouldBe(HttpStatusCode.OK, await deleted.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
     // One bulk create of the case's articles; the failing one is a video without its URL, which a draft may lack and a

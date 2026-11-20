@@ -1,6 +1,7 @@
 @* The dialog of one bulk operation (spec 4.13): a progress bar, the results as a table that can be narrowed to the failures,
    and cancel, which stops after the chunk in flight. Closing it or leaving the page during the run asks first; stopping then
-   lets the chunk in flight end. Closing the tab asks too, through the browser. *@
+   lets the chunk in flight end. Closing the tab asks too, through the browser. The dialog is modal, so the site switcher and
+   the user menu cannot be reached during the run; Back and Forward go through the question. *@
 @using FluentCMS.Admin.Actions
 @using FluentCMS.Admin.Forms
 @implements IDisposable
@@ -12,16 +13,8 @@
 <CmsDialog Title="@Progress.Title" Open="@open" OpenChanged="OnOpenChangedAsync" OnClosed="OnClosed">
     <ChildContent>
         <div class="bulk-progress">
-            @if (Progress.Counted)
-            {
-                <progress max="@Progress.Total" value="@Progress.Processed" aria-label="@L["Content.Bulk.Bar"]"></progress>
-                <p>@L["Content.Bulk.Count", Progress.Processed, Progress.Total]</p>
-            }
-            else if (!Progress.Ended)
-            {
-                <progress aria-label="@L["Content.Bulk.Bar"]"></progress>
-                <p>@L["Content.Bulk.Waiting"]</p>
-            }
+            <progress max="@Progress.Total" value="@Progress.Processed" aria-label="@L["Content.Bulk.Bar"]"></progress>
+            <p>@L["Content.Bulk.Count", Progress.Processed, Progress.Total]</p>
 
             @if (Progress.Ended)
             {

@@ -1677,25 +1677,19 @@
     <value>{2}: the selected entries of {1} ({0})?</value>
   </data>
   <data name="Content.Bulk.ConfirmFilter.Publish" xml:space="preserve">
-    <value>Publish every entry of {1} that matches the filter ({0})?</value>
+    <value>Publish the entries of {1} that match ({0})?</value>
   </data>
   <data name="Content.Bulk.ConfirmFilter.Unpublish" xml:space="preserve">
-    <value>Unpublish every entry of {1} that matches the filter ({0})?</value>
+    <value>Unpublish the entries of {1} that match ({0})?</value>
   </data>
   <data name="Content.Bulk.ConfirmFilter.Delete" xml:space="preserve">
-    <value>Move every entry of {1} that matches the filter ({0}) to the trash?</value>
+    <value>Move the entries of {1} that match ({0}) to the trash?</value>
   </data>
   <data name="Content.Bulk.NoFilter" xml:space="preserve">
     <value>No filter: every entry of the type.</value>
   </data>
   <data name="Content.Bulk.ConfirmCancel" xml:space="preserve">
     <value>Cancel</value>
-  </data>
-  <data name="Content.Bulk.NotWithSearch" xml:space="preserve">
-    <value>A search cannot be acted on as a whole. Select rows, or use filters instead.</value>
-  </data>
-  <data name="Content.Bulk.TooMany" xml:space="preserve">
-    <value>An action takes at most {0} entries that match. Narrow the filter, or select rows.</value>
   </data>
   <data name="Content.Bulk.Title" xml:space="preserve">
     <value>{0}: {1}</value>
@@ -1705,9 +1699,6 @@
   </data>
   <data name="Content.Bulk.Count" xml:space="preserve">
     <value>{0} of {1}</value>
-  </data>
-  <data name="Content.Bulk.Waiting" xml:space="preserve">
-    <value>Working. The results show when the server has done all of them.</value>
   </data>
   <data name="Content.Bulk.Stopping" xml:space="preserve">
     <value>Stopping after the entries being sent now.</value>
@@ -1726,9 +1717,6 @@
   </data>
   <data name="Content.Bulk.ChunkOfIds" xml:space="preserve">
     <value>Entries {0} to {1}</value>
-  </data>
-  <data name="Content.Bulk.ChunkOfFilter" xml:space="preserve">
-    <value>The entries that match the filter</value>
   </data>
   <data name="Content.Bulk.ChunkFailed" xml:space="preserve">
     <value>{0} could not be sent: {1} Try again, or stop here?</value>
@@ -1798,5 +1786,35 @@
   </data>
   <data name="Content.Bulk.Status.done" xml:space="preserve">
     <value>Done</value>
+  </data>
+  <data name="Content.Bulk.ConfirmFilter.Plugin" xml:space="preserve">
+    <value>{2}: the entries of {1} that match ({0})?</value>
+  </data>
+  <data name="Content.Bulk.Reading" xml:space="preserve">
+    <value>Reading the entries that match.</value>
+  </data>
+  <data name="Content.Bulk.ReadFailed" xml:space="preserve">
+    <value>The entries that match could not be read. Close this and try again.</value>
+  </data>
+  <data name="Content.Bulk.FirstOnly" xml:space="preserve">
+    <value>Only the first {0} of the {1} that match, in the list's order, are acted on: an action takes at most {0}.</value>
+  </data>
+  <data name="Content.Bulk.Search" xml:space="preserve">
+    <value>Search: {0}</value>
+  </data>
+  <data name="Content.Bulk.OneLocale" xml:space="preserve">
+    <value>In {0} only. The other locales stay as they are.</value>
+  </data>
+  <data name="Content.Bulk.EveryLocale" xml:space="preserve">
+    <value>In every locale: each entry goes to the trash with all its translations.</value>
+  </data>
+  <data name="Content.Bulk.Unconfirmed" xml:space="preserve">
+    <value>{0} were sent without an answer and may have been done; check them before acting on them again.</value>
+  </data>
+  <data name="Content.Bulk.DidNotStop" xml:space="preserve">
+    <value>The action did not stop within 10 seconds of the cancel. What it does from now on is not shown here.</value>
+  </data>
+  <data name="Content.Bulk.Status.notConfirmed" xml:space="preserve">
+    <value>Not confirmed</value>
   </data>
 </root>
