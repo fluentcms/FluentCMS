@@ -111,7 +111,7 @@ dotnet <repo>/src/FluentCMS.Host/bin/Release/net10.0/FluentCMS.Host.dll fluentcm
 dotnet <repo>/src/FluentCMS.Host/bin/Release/net10.0/FluentCMS.Host.dll > host.log 2>&1 &
 ```
 
-`https://<origin>/account/members/login` then shows one "Continue with ..." button per provider. The startup report in `host.log` (event 9130) checks the public origin only in Production, where it lists `public-origin-unset` when none is set, so in Development check the origin on the provider's page instead (step 9). Open the pages through the tunnel only: the antiforgery cookie is always `Secure`, so a page with a form asked for over plain http, such as `http://localhost:5080`, is answered 403 with a page that says it needs https (`FCMS3108`, [#3159](https://github.com/fluentcms/FluentCMS/issues/3159)).
+`https://<origin>/account/members/login` then shows one "Continue with ..." button per provider. The startup report in `host.log` (event 9130) checks the public origin in every environment but Development, where it lists `public-origin-unset` when none is set and `AllowRequestOrigin` lets the host start, so in Development check the origin on the provider's page instead (step 9). Open the pages through the tunnel only: the antiforgery cookie is always `Secure`, so a page with a form asked for over plain http, such as `http://localhost:5080`, is answered 403 with a page that says it needs https (`FCMS3108`, [#3159](https://github.com/fluentcms/FluentCMS/issues/3159)).
 
 ### The steps
 

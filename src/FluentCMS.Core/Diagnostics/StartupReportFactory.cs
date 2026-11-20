@@ -141,11 +141,6 @@ internal sealed class StartupReportFactory(
             found.Add(new InsecureDefault { Id = "schema-sync-outside-development", Message = "Content tables follow the schema at start outside Development: additive changes apply with no reviewed migration, and destructive ones are logged and left undone. The host allowed it with AllowSchemaSyncOutsideDevelopment." });
         }
 
-        if (services.GetService<UntrustedForwardedHeaders>()?.Item is { } untrusted)
-        {
-            found.Add(untrusted);
-        }
-
         if (proxy.ForwardedHeaders is { Enabled: true } forwarded && forwarded.TrustsEveryAddress)
         {
             found.Add(new InsecureDefault { Id = "forwarded-headers-trust-any", Message = "Forwarded headers are trusted from every address, so any caller can choose the scheme and client address the host sees. List the proxies or networks." });
