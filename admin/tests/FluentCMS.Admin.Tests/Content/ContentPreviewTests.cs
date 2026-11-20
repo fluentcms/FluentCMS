@@ -493,6 +493,54 @@ public sealed class ContentPreviewTests : AdminTestContext
         Member(pane, "frameDraft").ShouldBe(false);
     }
 
+    // A lifetime that is not a number, endless, negative, nothing or past what a TimeSpan holds does not break the pane: what
+    // is not a number or below nothing is none, and the rest is held to whole seconds up to int.MaxValue. A save of a ready
+    // page then mints for an ended token and refreshes for a lasting one.
+    [Theory]
+    [InlineData(double.NaN, false)]
+    [InlineData(double.PositiveInfinity, true)]
+    [InlineData(double.NegativeInfinity, false)]
+    [InlineData(-10d, false)]
+    [InlineData(0d, false)]
+    [InlineData(1e300, true)]
+    public void AnyLifetimeIsHeldToWholeSecondsItCanCount(double seconds, bool lasts)
+    {
+        _content.PreviewExpiresIn = seconds;
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-1");
+        Post(app, FrontEnd, Message("ready"));
+
+        SaveChanged(app);
+
+        if (lasts)
+        {
+            app.WaitForAssertion(() => _preview.Invocations.Count(call => call.Identifier == "post").ShouldBe(1));
+            _content.PreviewMints.ShouldBe(1);
+        }
+        else
+        {
+            app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
+            _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
+        }
+    }
+
+    // A sleep may stop the monotonic clock while the computer's goes on: the computer's clock past the lifetime with no
+    // monotonic time passed ends the token, so a save mints.
+    [Fact]
+    public void ASleepPastTheLifetimeEndsTheToken()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        Post(app, FrontEnd, Message("ready"));
+        _time.Now += TimeSpan.FromMinutes(10);
+
+        SaveChanged(app);
+
+        app.WaitForAssertion(() => Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2"));
+        _preview.Invocations.ShouldNotContain(call => call.Identifier == "post");
+    }
+
     // A Date later than the token's end leaves no time: the end has passed, so a save mints and loads the page with the new token.
     [Fact]
     public void ADateLaterThanTheEndIsAnEndPassed()

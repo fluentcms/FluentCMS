@@ -84,7 +84,7 @@
     private bool listened;
     private bool disposed;
     private PreviewTokenAnswer? answer;
-    // When the answer's token ends, on the browser's monotonic clock.
+    // When the answer's token ends.
     private TokenEnd? answerDeadline;
     // A mint failed after the answer was taken, so the published page it offers may have come or gone.
     private bool stale;
@@ -112,9 +112,8 @@
     private (string Type, Guid Id, string? Site, string? Locale)? shown;
     private (int Version, string? Status)? saved;
 
-    // A token's lifetime from the moment, on the monotonic clock, its mint was sent; a change of the computer's clock does not
-    // move it.
-    private readonly record struct TokenEnd(long Sent, TimeSpan Lifetime);
+    // A token's lifetime from the moment its mint was sent, on the monotonic clock and on the computer's clock.
+    private readonly record struct TokenEnd(long Sent, DateTimeOffset SentAt, TimeSpan Lifetime);
 
     private enum Mint
     {
@@ -167,7 +166,18 @@
 
     private bool Framed => frameUrl is not null && listened;
 
-    private bool Expired(TokenEnd? deadline) => deadline is not { } end || Time.GetElapsedTime(end.Sent) >= end.Lifetime - ReuseMargin;
+    // A token has ended when either clock has run its lifetime, less the margin: the monotonic clock, which a change of the
+    // computer's clock does not move, or the computer's, which goes on while the monotonic clock may stop in a sleep.
+    private bool Expired(TokenEnd? deadline)
+    {
+        if (deadline is not { } end)
+        {
+            return true;
+        }
+
+        var (elapsed, wall) = (Time.GetElapsedTime(end.Sent), Time.GetUtcNow() - end.SentAt);
+        return (wall > elapsed ? wall : elapsed) >= end.Lifetime - ReuseMargin;
+    }
 
     // The answer has the page to show, and the token in it still lasts.
     private bool Loadable => answer is not null && (showingPublished ? answer.PublishedUrl is not null : !Expired(answerDeadline));
@@ -319,7 +329,7 @@
     private async Task<Mint> MintAsync()
     {
         var mint = ++mints;
-        var sent = Time.GetTimestamp();
+        var (sent, sentAt) = (Time.GetTimestamp(), Time.GetUtcNow());
         try
         {
             var minted = await Client.MintPreviewTokenAsync(Type, EntryId, Site, Locale, TokenLocale, CancellationToken.None);
@@ -328,7 +338,7 @@
                 return Mint.Dropped;
             }
 
-            (answer, answerDeadline, stale) = (minted, DeadlineOf(minted, sent), false);
+            (answer, answerDeadline, stale) = (minted, DeadlineOf(minted, sent, sentAt), false);
             showingPublished &= minted.PublishedUrl is not null;
             return Mint.Applied;
         }
@@ -345,15 +355,16 @@
     }
 
     // The server checks a token's end by its own clock, which the browser's may be behind or ahead of, and the lifetime is
-    // the operator's; so the end is counted on the browser's monotonic clock from when the mint was sent: by the lifetime the
-    // answer gives (#3473, whole seconds), or else by the time the token had left by the server's clock in the Date the
-    // browser received, which a reverse proxy in front may have written by its own clock. With neither, as for an admin on
-    // another origin, which does not see the Date, only the shortest lifetime the server issues can be trusted.
-    private static TokenEnd DeadlineOf(PreviewTokenAnswer minted, long sent) => minted switch
+    // the operator's; so the end is counted on the browser's clocks from when the mint was sent: by the lifetime the answer
+    // gives (#3473, whole seconds; one that is not a number counts as none), or else by the time the token had left by the
+    // server's clock in the Date the browser received, which a reverse proxy in front may have written by its own clock. With
+    // neither, as for an admin on another origin, which does not see the Date, only the shortest lifetime the server issues
+    // can be trusted.
+    private static TokenEnd DeadlineOf(PreviewTokenAnswer minted, long sent, DateTimeOffset sentAt) => minted switch
     {
-        { ExpiresIn: { } seconds } => new(sent, TimeSpan.FromSeconds(Math.Clamp(Math.Floor(seconds), 0, int.MaxValue))),
-        { AnsweredAt: { } answered } => new(sent, minted.ExpiresAt - answered),
-        _ => new(sent, ShortestLifetime),
+        { ExpiresIn: { } seconds } => new(sent, sentAt, TimeSpan.FromSeconds(double.IsNaN(seconds) ? 0 : Math.Clamp(Math.Floor(seconds), 0, int.MaxValue))),
+        { AnsweredAt: { } answered } => new(sent, sentAt, minted.ExpiresAt - answered),
+        _ => new(sent, sentAt, ShortestLifetime),
     };
 
     private void Load()

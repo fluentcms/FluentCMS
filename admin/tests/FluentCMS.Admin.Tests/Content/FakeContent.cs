@@ -197,7 +197,8 @@ internal sealed class FakeContent
             };
             if (PreviewExpiresIn is { } seconds)
             {
-                minting["expiresIn"] = seconds;
+                // JSON has no NaN or infinity: they go as the strings a reader that takes numbers from strings reads.
+                minting["expiresIn"] = double.IsFinite(seconds) ? seconds : seconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
             }
 
             var token = FakeManagementServer.Json(minting);
