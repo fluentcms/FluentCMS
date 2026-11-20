@@ -13,7 +13,9 @@ internal sealed record ContentWrite(HttpMethod Method, string Path, JsonObject B
 // else its X-Cms-Locale, else en; a read of a locale the entry lacks is a 404, locale=all answers every locale it has, and a
 // save with If-Match "0" adds a locale. A test can answer the next write itself. A list reads every field of its entries in
 // its locale, in the order they were added, and takes filter[id][in], filter[field][contains], q on every text, pageSize
-// and a cursor, which is the number of entries before the page.
+// and a cursor, which is the number of entries before the page. Versions are what a test adds, listed newest first and read
+// one by one; a diff answers the changes a test set for its pair, and a restore with a current tag makes the version's fields
+// the draft as a new version.
 internal sealed class FakeContent
 {
     public const string DefaultLocale = "en";
@@ -38,6 +40,26 @@ internal sealed class FakeContent
 
     // Answers the next write instead of the store, when it returns an answer, or fails it by throwing.
     public Func<ContentWrite, HttpResponseMessage?>? NextWrite { get; set; }
+
+    public Dictionary<(Guid Id, string Locale), List<(JsonObject Item, JsonObject Fields)>> Versions { get; } = [];
+
+    public Dictionary<(int From, int To), JsonArray> Diffs { get; } = [];
+
+    public void AddVersion(Guid id, int number, JsonObject fields, string authorName = "Ada", string authorKind = "adminUser", string origin = "admin", string locale = DefaultLocale)
+    {
+        var item = new JsonObject
+        {
+            ["number"] = number,
+            ["locale"] = locale,
+            ["status"] = "draft",
+            ["authorId"] = Guid.Empty,
+            ["authorKind"] = authorKind,
+            ["authorName"] = authorName,
+            ["origin"] = origin,
+            ["createdAt"] = new DateTimeOffset(2026, 11, 1, 9, 0, 0, TimeSpan.Zero).AddMinutes(number),
+        };
+        (Versions.TryGetValue((id, locale), out var list) ? list : Versions[(id, locale)] = []).Add((item, fields));
+    }
 
     // What the next publish warns about, as the server writes its warnings.
     public JsonArray Warnings { get; set; } = [];
@@ -98,6 +120,18 @@ internal sealed class FakeContent
                     ["locales"] = new JsonObject(Locales(key).Select(code => KeyValuePair.Create<string, JsonNode?>(code, Document(key, code)))),
                 }),
                 [var id] when Guid.TryParse(id, out var key) && _entries.ContainsKey((key, locale)) => Entry(key, locale, HttpStatusCode.OK),
+                [var id, "versions"] when Guid.TryParse(id, out var key) && _entries.ContainsKey((key, locale)) => FakeManagementServer.Json(new JsonObject
+                {
+                    ["items"] = new JsonArray([.. VersionsOf(key, locale).AsEnumerable().Reverse().Select(version => (JsonNode)version.Item.DeepClone())]),
+                }),
+                [var id, "versions", var number] when Guid.TryParse(id, out var key) && VersionsOf(key, locale).FirstOrDefault(version => version.Item["number"]!.ToString() == number) is { Fields: not null } version =>
+                    FakeManagementServer.Json(VersionDocument(key, locale, version.Item, version.Fields)),
+                [_, "versions", var left, "diff", var right] => FakeManagementServer.Json(new JsonObject
+                {
+                    ["from"] = int.Parse(left, System.Globalization.CultureInfo.InvariantCulture),
+                    ["to"] = int.Parse(right, System.Globalization.CultureInfo.InvariantCulture),
+                    ["changes"] = Diffs.GetValueOrDefault((int.Parse(left, System.Globalization.CultureInfo.InvariantCulture), int.Parse(right, System.Globalization.CultureInfo.InvariantCulture)))?.DeepClone() ?? new JsonArray(),
+                }),
                 _ => FakeManagementServer.Problem(HttpStatusCode.NotFound, "FCMS3104"),
             };
         }
@@ -162,6 +196,11 @@ internal sealed class FakeContent
             }
 
             return Entry(savedId, locale, HttpStatusCode.OK);
+        }
+
+        if (request.Method == HttpMethod.Post && rest is [var restoredId, "versions", var restoredNumber, "restore"] && Guid.TryParse(restoredId, out var restoredKey))
+        {
+            return Restore(restoredKey, locale, restoredNumber, write);
         }
 
         if (request.Method == HttpMethod.Post && rest is [var acted, var action] && Guid.TryParse(acted, out var actedId))
@@ -248,6 +287,37 @@ internal sealed class FakeContent
                 _states[(id, locale)] = ("published", published);
                 return Entry(id, locale, HttpStatusCode.OK);
         }
+    }
+
+    private List<(JsonObject Item, JsonObject Fields)> VersionsOf(Guid id, string locale) => Versions.GetValueOrDefault((id, locale)) ?? [];
+
+    private static JsonObject VersionDocument(Guid id, string locale, JsonObject item, JsonObject fields)
+    {
+        var document = fields.DeepClone().AsObject();
+        document["id"] = id;
+        document["status"] = item["status"]!.DeepClone();
+        document["locale"] = locale;
+        document["version"] = item["number"]!.DeepClone();
+        return document;
+    }
+
+    private HttpResponseMessage Restore(Guid id, string locale, string number, ContentWrite write)
+    {
+        if (!_entries.TryGetValue((id, locale), out var stored)
+            || VersionsOf(id, locale).FirstOrDefault(version => version.Item["number"]!.ToString() == number) is not { Fields: not null } version)
+        {
+            return FakeManagementServer.Problem(HttpStatusCode.NotFound, "FCMS3104");
+        }
+
+        var (type, current, _) = stored;
+        if (write.IfMatch is { } tag && tag != $"\"{current}\"")
+        {
+            return Problem(HttpStatusCode.PreconditionFailed, new JsonObject { ["status"] = 412, ["code"] = "FCMS3105", ["title"] = "The entry was changed", ["current"] = Document(id, locale) });
+        }
+
+        _entries[(id, locale)] = (type, current + 1, version.Fields.DeepClone().AsObject());
+        AddVersion(id, current + 1, version.Fields.DeepClone().AsObject(), locale: locale);
+        return Entry(id, locale, HttpStatusCode.OK);
     }
 
     private List<string> Locales(Guid id) => [.. _entries.Keys.Where(key => key.Id == id).Select(key => key.Locale)];

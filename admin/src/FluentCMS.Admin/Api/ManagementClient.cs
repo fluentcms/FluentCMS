@@ -170,6 +170,25 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
         return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), basedOn.Site, basedOn.Locale);
     }
 
+    // The versions of the entry in the locale of the read, newest first (spec 4.11); the server answers them all at once.
+    public async Task<IReadOnlyList<EntryVersionInfo>> GetVersionsAsync(string type, Guid id, string? site, string? locale, CancellationToken cancellationToken) =>
+        (await api.SendAsync(Pinned(HttpMethod.Get, $"{Entry(type, id)}/versions", site, locale), Json.ItemListEntryVersionInfo, cancellationToken)).Value.Items;
+
+    // A version's values as a read gives them, without what the caller may not read today.
+    public async Task<ContentEntry> GetVersionAsync(string type, Guid id, int number, string? site, string? locale, CancellationToken cancellationToken) =>
+        (await api.SendAsync(Pinned(HttpMethod.Get, Version(type, id, number), site, locale), Json.ContentEntry, cancellationToken)).Value;
+
+    public async Task<VersionDiffInfo> DiffVersionsAsync(string type, Guid id, int from, int to, string? site, string? locale, CancellationToken cancellationToken) =>
+        (await api.SendAsync(Pinned(HttpMethod.Get, $"{Version(type, id, from)}/diff/{to.ToString(System.Globalization.CultureInfo.InvariantCulture)}", site, locale), Json.VersionDiffInfo, cancellationToken)).Value;
+
+    // A new draft from the version, on the tag of the read, in its site and locale; a draft saved since is a 412.
+    public async Task<EntryRead> RestoreVersionAsync(string type, Guid id, int number, EntryRead basedOn, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(basedOn);
+        var request = Pinned(HttpMethod.Post, $"{Version(type, id, number)}/restore", basedOn.Site, basedOn.Locale, ifMatch: basedOn.EntityTag);
+        return Read(await api.SendAsync(request, Json.ContentEntry, cancellationToken), basedOn.Site, basedOn.Locale);
+    }
+
     // The entry as it is now, which a 412 of a save holds, as a read in the site and locale of the save; its version is the
     // tag a save on it sends. Null when the answer holds none that reads.
     public static EntryRead? CurrentOf(ApiProblem problem, EntryRead basedOn)
@@ -235,4 +254,7 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
     }
 
     private static string Entry(string type, Guid id) => $"{Content(type)}/{id:D}";
+
+    private static string Version(string type, Guid id, int number) =>
+        $"{Entry(type, id)}/versions/{number.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
 }
