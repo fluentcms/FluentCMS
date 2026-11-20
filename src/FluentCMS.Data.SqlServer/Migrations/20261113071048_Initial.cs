@@ -1021,7 +1021,8 @@ namespace FluentCMS.Data.SqlServer.Migrations
             migrationBuilder.CreateIndex(
                 name: "ix_cms_job_status_completed",
                 table: "cms_job",
-                columns: new[] { "status", "completed_at" });
+                columns: new[] { "status", "completed_at", "id" },
+                descending: new[] { false, true, false });
 
             migrationBuilder.CreateIndex(
                 name: "ix_cms_job_status_lease",
@@ -1105,7 +1106,8 @@ namespace FluentCMS.Data.SqlServer.Migrations
             migrationBuilder.CreateIndex(
                 name: "ix_cms_outbox_failed",
                 table: "cms_outbox",
-                column: "sequence",
+                columns: new[] { "sequence", "id" },
+                descending: new[] { true, false },
                 filter: "status = 'failed'");
 
             migrationBuilder.CreateIndex(

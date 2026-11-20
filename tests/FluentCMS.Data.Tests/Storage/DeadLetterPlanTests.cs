@@ -1,51 +1,90 @@
-using FluentCMS.Core.Jobs;
+using System.Data.Common;
+using System.Text;
 using FluentCMS.Core.Storage;
-using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Jobs;
 using FluentCMS.Data.Tests.Providers;
+using FluentCMS.Events;
+using FluentCMS.Jobs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
+using Xunit;
 
 namespace FluentCMS.Data.Tests.Storage;
 
-// The dead-letter lists page newest first over rows that are kept for weeks, so each walks an index of its own rows in that
-// order rather than sorting every job or every outbox row.
+// The dead-letter lists page newest first over rows that are kept for weeks, so each walks an index of its own rows in the
+// whole order of the list rather than sorting every job or every outbox row.
 public sealed class DeadLetterPlanTests : IDisposable
 {
     private readonly JobFixture _fixture = new();
 
+    private static CancellationToken Token => TestContext.Current.CancellationToken;
+
     public void Dispose() => _fixture.Dispose();
 
     [SqliteFact("SQLite's query plans")]
-    public void TheListOfDeadLetteredJobsWalksTheIndexOnStatusAndCompletion()
+    public async Task TheListOfDeadLetteredJobsWalksTheIndexOnStatusAndCompletion()
     {
-        using var scope = _fixture.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        var plans = new PlanCollector("FROM \"cms_job\"");
+        using var instance = _fixture.NewInstance(cms: cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(plans)));
 
-        var plan = QueryPlanTests.Plan(context.Set<Job>().AsNoTracking()
-            .Where(job => job.Status == JobStatus.DeadLettered)
-            .OrderByDescending(job => job.CompletedAt)
-            .Skip(50)
-            .Take(50));
+        await instance.GetRequiredService<IJobDeadLetters>().ListAsync(50, 50, Token);
 
+        var plan = plans.Plans.ShouldHaveSingleItem();
         plan.ShouldContain("ix_cms_job_status_completed");
         plan.ShouldNotContain("TEMP B-TREE");
     }
 
     [SqliteFact("SQLite's query plans")]
-    public void TheListOfFailedDeliveriesWalksTheFailedIndex()
+    public async Task TheListOfFailedDeliveriesWalksTheFailedIndex()
     {
-        using var scope = _fixture.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        var plans = new PlanCollector("FROM \"cms_outbox\"");
+        using var instance = _fixture.NewInstance(cms: cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(plans)));
 
-        var plan = QueryPlanTests.Plan(context.Set<OutboxMessage>().AsNoTracking()
-            .Where(message => message.Status == OutboxStatus.Failed)
-            .OrderByDescending(message => message.Sequence)
-            .Skip(50)
-            .Take(50));
+        await instance.GetRequiredService<IEventDeadLetters>().ListAsync(50, 50, Token);
 
+        var plan = plans.Plans.ShouldHaveSingleItem();
         plan.ShouldContain("ix_cms_outbox_failed");
         plan.ShouldNotContain("TEMP B-TREE");
+    }
+
+    // Asks SQLite how it runs each list query, with the parameters the list gave it.
+    private sealed class PlanCollector(string table) : DbCommandInterceptor
+    {
+        public List<string> Plans { get; } = [];
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains(table, StringComparison.Ordinal) && command.CommandText.Contains("ORDER BY", StringComparison.Ordinal))
+            {
+                using var explain = command.Connection!.CreateCommand();
+                explain.Transaction = command.Transaction;
+#pragma warning disable CA2100 // The text of a command EF built.
+                explain.CommandText = "EXPLAIN QUERY PLAN " + command.CommandText;
+#pragma warning restore CA2100
+                foreach (DbParameter parameter in command.Parameters)
+                {
+                    var copy = explain.CreateParameter();
+                    copy.ParameterName = parameter.ParameterName;
+                    copy.Value = parameter.Value;
+                    explain.Parameters.Add(copy);
+                }
+
+                using var reader = explain.ExecuteReader();
+                var plan = new StringBuilder();
+                while (reader.Read())
+                {
+                    plan.AppendLine(reader.GetString(3));
+                }
+
+                lock (Plans)
+                {
+                    Plans.Add(plan.ToString());
+                }
+            }
+
+            return ValueTask.FromResult(result);
+        }
     }
 }

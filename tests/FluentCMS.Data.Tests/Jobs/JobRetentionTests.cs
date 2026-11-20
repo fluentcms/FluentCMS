@@ -371,10 +371,15 @@ public sealed class JobRetentionTests : IDisposable
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    public void ARetentionThatIsNotPositiveIsRefused(int days)
-    {
+    public void ARetentionThatIsNotPositiveIsRefused(int days) =>
         Refused(options => options.SucceededRetention = TimeSpan.FromDays(days));
-        Refused(options => options.DeadLetteredRetention = TimeSpan.FromDays(days));
+
+    // As OutboxOptions.FailedRetention does, zero removes dead-lettered jobs on the next run.
+    [Fact]
+    public void ADeadLetteredRetentionOfZeroIsAcceptedAndANegativeOneRefused()
+    {
+        Should.NotThrow(new JobRunnerOptions { DeadLetteredRetention = TimeSpan.Zero }.Validate);
+        Refused(options => options.DeadLetteredRetention = TimeSpan.FromDays(-1));
     }
 
     [Fact]

@@ -405,6 +405,39 @@ public sealed class OutboxTests
         database.Rows().ShouldBeEmpty();
     }
 
+    // A row moved to the dead-letter list because its handler was missing or its plugin disabled never used up its attempts.
+    [Fact]
+    public async Task TheFailedRetentionNeverRemovesARowOwedToAMissingOrDisabledPlugin()
+    {
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(new Seen()));
+        var longAgo = DateTimeOffset.UtcNow.AddDays(-400);
+        OutboxMessage Failed(int attempts) => new()
+        {
+            EventId = Guid.CreateVersion7(),
+            EventType = "Acme.Thing",
+            Handler = "acme-plugin",
+            Payload = "{}",
+            OccurredAt = longAgo,
+            Sequence = attempts + 1,
+            Status = OutboxStatus.Failed,
+            Attempts = attempts,
+            AvailableAt = longAgo,
+            LastError = "No handler is registered as 'acme-plugin'.",
+        };
+        var owed = Failed(attempts: 0);
+        var partly = Failed(attempts: 3);
+        var exhausted = Failed(attempts: new OutboxOptions().MaxAttempts);
+        database.Read(context =>
+        {
+            context.AddRange(owed, partly, exhausted);
+            return context.SaveChanges();
+        });
+
+        await PruneAsync(database.Database.Services);
+
+        database.Rows().Select(row => row.Id).ShouldBe([owed.Id, partly.Id], ignoreOrder: true);
+    }
+
     [Fact]
     public void FailedRowsAreKeptThirtyDaysByDefault() =>
         new OutboxOptions().FailedRetention.ShouldBe(TimeSpan.FromDays(30));

@@ -541,8 +541,10 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.HasIndex(job => new { job.Status, job.LeaseUntil })
             .HasDatabaseName("ix_cms_job_status_lease");
 
-        // For the dead-letter list, newest first, and for the retention of succeeded and dead-lettered jobs.
-        entity.HasIndex(job => new { job.Status, job.CompletedAt })
+        // In the order of the dead-letter list, newest first and then by id, and for the retention of succeeded and
+        // dead-lettered jobs.
+        entity.HasIndex(job => new { job.Status, job.CompletedAt, job.Id })
+            .IsDescending(false, true, false)
             .HasDatabaseName("ix_cms_job_status_completed");
     }
 
@@ -605,10 +607,11 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
             .HasFilter("status = 'delivered'")
             .HasDatabaseName("ix_cms_outbox_delivered");
 
-        // Over failed rows only, in the order of the dead-letter list, which its purge and the prune walk too.
-        entity.HasIndex(message => message.Sequence)
-            .HasFilter("status = 'failed'")
-            .HasDatabaseName("ix_cms_outbox_failed");
+        // Over failed rows only, in the order of the dead-letter list, newest first and then by id, which its purge and the
+        // prune walk too. Named, since ix_cms_outbox_pending has the same columns and an unnamed one would configure that.
+        entity.HasIndex(message => new { message.Sequence, message.Id }, "ix_cms_outbox_failed")
+            .IsDescending(true, false)
+            .HasFilter("status = 'failed'");
     }
 
     private void MapActivity(EntityTypeBuilder<ActivityRow> entity)

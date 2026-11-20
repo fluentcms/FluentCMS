@@ -29,13 +29,14 @@ internal sealed class JobRetentionJob(SystemDbContext context, JobRunnerOptions 
     {
         var cancellationToken = jobContext.CancellationToken;
         var now = time.GetUtcNow();
-        var removed = await RemoveAsync(JobStatus.Succeeded, now - options.SucceededRetention, cancellationToken);
+        var succeeded = await RemoveAsync(JobStatus.Succeeded, now - options.SucceededRetention, cancellationToken);
+        var deadLettered = 0;
         if (options.DeadLetteredRetention is { } retention)
         {
-            removed += await RemoveAsync(JobStatus.DeadLettered, now - retention, cancellationToken);
+            deadLettered = await RemoveAsync(JobStatus.DeadLettered, now - retention, cancellationToken);
         }
 
-        JobLog.Retention(logger, removed);
+        JobLog.Retention(logger, succeeded, deadLettered);
     }
 
     private async Task<int> RemoveAsync(string status, DateTimeOffset before, CancellationToken cancellationToken)
