@@ -13,6 +13,11 @@ public sealed class AiOptions
     // that a site administrator cannot point the server at an address inside the network.
     public IList<string> AllowedEndpoints { get; } = [];
 
+    // The endpoints of AllowedEndpoints that bill the holder of the key, such as a public provider's, where a key a site
+    // sets is the site's own account and its calls are not held by DailyTokenBudget. OpenAI's own endpoint is one without
+    // being named. An endpoint the operator runs, such as a local Ollama, is not listed here.
+    public IList<string> SiteBilledEndpoints { get; } = [];
+
     // The most characters of text an action takes.
     public int MaxInputLength { get; set; } = 20_000;
 
@@ -27,7 +32,7 @@ public sealed class AiOptions
         MaxInputLength is >= 1 and <= 1_000_000
         && UsageRetention > TimeSpan.Zero
         && DailyTokenBudget >= 0
-        && AllowedEndpoints.All(endpoint => AiProviderEndpoints.Parse(endpoint) is not null);
+        && AllowedEndpoints.Concat(SiteBilledEndpoints).All(endpoint => AiProviderEndpoints.Parse(endpoint) is not null);
 }
 
 // An endpoint is an absolute http or https URL with no user, query or fragment. Two are the same when their scheme, host,

@@ -209,10 +209,12 @@ internal sealed class AiAssistService(
 
             // Before the draft is read, a call is reckoned at the most text it may send.
             var image = action == AiActions.AltText;
-            var reckoned = AiBudgets.InstructionTokens + AiBudgets.Tokens(request.Text?.Length ?? options.Value.MaxInputLength) + (image ? AiBudgets.ImageTokens : 0);
+            var richText = field.FieldType == RichTextFieldType;
+            var instructions = AiActions.Instructions(action, type.Name, field.Name, richText, field.MaxLength, locale, targetLocale);
+            var sent = AiBudgets.Tokens(instructions) + (image ? AiBudgets.ImageTokens : 0);
+            var reckoned = sent + (request.Text is { } given ? AiBudgets.Tokens(given) : (long)options.Value.MaxInputLength * AiBudgets.MaxBytesPerChar);
             reservation = await ReserveAsync(site, current, client, reckoned + current.MaxOutputTokens, cancellationToken);
 
-            var richText = field.FieldType == RichTextFieldType;
             var text = request.DocumentId is { } id ? await ReadFieldAsync(type, field, id, locale, richText, cancellationToken) : request.Text;
             if (action != AiActions.AltText && string.IsNullOrWhiteSpace(text))
             {
@@ -235,8 +237,7 @@ internal sealed class AiAssistService(
                 message.Add(new TextContent(text));
             }
 
-            var instructions = AiActions.Instructions(action, type.Name, field.Name, richText, field.MaxLength, locale, targetLocale);
-            var prompt = AiBudgets.Tokens(instructions.Length + (text?.Length ?? 0)) + (image ? AiBudgets.ImageTokens : 0);
+            var prompt = sent + AiBudgets.Tokens(text);
             reservation?.Change(prompt + current.MaxOutputTokens);
             return new AiCall(
                 action,
@@ -278,6 +279,7 @@ internal sealed class AiAssistService(
         Exception? refused = null;
         object? suggestion = null;
         var used = new UsageDetails();
+        var produced = false;
         try
         {
             string text;
@@ -290,6 +292,7 @@ internal sealed class AiAssistService(
                 }
 
                 text = response.Text;
+                produced = text.Length > 0;
             }
             else
             {
@@ -305,6 +308,7 @@ internal sealed class AiAssistService(
                     if (update.Text is { Length: > 0 } delta)
                     {
                         answer.Append(delta);
+                        produced = true;
                         if (call.Action != AiActions.Seo)
                         {
                             await SendAsync(onDelta, delta, linked.Token);
@@ -353,17 +357,23 @@ internal sealed class AiAssistService(
 
         // A call with the operator's credential that ends before its provider reports what it used, or with a provider
         // that reports nothing, is counted at its estimate, so that a budget over that credential cannot be passed by
-        // leaving before the usage arrives. The answer still says what the provider reported.
+        // leaving before the usage arrives. A prompt is never empty, and an answer with text used tokens, so a count of 0
+        // for them is no count. The answer still says what the provider reported.
         var counted = call.Client.SiteCredential
             ? info
             : info with
             {
-                PromptTokens = used.InputTokenCount ?? call.PromptEstimate,
-                CompletionTokens = used.OutputTokenCount ?? call.Options.MaxOutputTokens ?? 0,
+                PromptTokens = used.InputTokenCount is > 0 and var prompt ? prompt : call.PromptEstimate,
+                CompletionTokens = used.OutputTokenCount is > 0 and var completion ? completion
+                    : used.OutputTokenCount is 0 && !produced ? 0
+                    : call.Options.MaxOutputTokens ?? 0,
             };
         try
         {
-            await RecordAsync(call, counted, outcome, code);
+            if (!await RecordAsync(call, counted, outcome, code) && call.Reservation is not null)
+            {
+                budgets.Unrecorded(call.Site, DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime), counted.PromptTokens + counted.CompletionTokens);
+            }
         }
         finally
         {
@@ -395,13 +405,14 @@ internal sealed class AiAssistService(
             return null;
         }
 
-        var reservation = budgets.Reserve(site, estimate);
         var now = time.GetUtcNow();
+        var day = DateOnly.FromDateTime(now.UtcDateTime);
         var today = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero);
-        long used;
+        var reservation = budgets.Reserve(site, day, estimate);
+        long written;
         try
         {
-            used = await usage.TokensSinceAsync(site.Value, today, cancellationToken) + reservation.Before;
+            written = await usage.TokensSinceAsync(site.Value, today, cancellationToken);
         }
         catch
         {
@@ -409,16 +420,19 @@ internal sealed class AiAssistService(
             throw;
         }
 
+        var used = written + reservation.Before;
         if (used >= budget)
         {
             reservation.Release();
             var resets = today.AddDays(1).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
-            if (budgets.ReportOverBudget(site, DateOnly.FromDateTime(now.UtcDateTime)))
+            if (budgets.ReportOverBudget(site, day))
             {
                 AiLog.BudgetExceeded(logger, site.Value, budget, used, resets);
             }
 
-            throw new PluginException(AiErrorCodes.BudgetExceeded, $"The site has used its daily budget of {budget} AI tokens. It resets at {resets}.");
+            throw new PluginException(AiErrorCodes.BudgetExceeded, written >= budget
+                ? $"The site has used its daily budget of {budget} AI tokens. It resets at {resets}."
+                : $"The AI calls the site has made today and those it has in flight reach its daily budget of {budget} AI tokens. Try again when they end; the budget resets at {resets}.");
         }
 
         return reservation;
@@ -582,8 +596,10 @@ internal sealed class AiAssistService(
         element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String && value.GetString()!.Trim() is { Length: > 0 } text ? text : null;
 
     // A row that cannot be written must not take the suggestion from a caller whose call was paid for.
-    private async Task RecordAsync(AiCall call, AiUsageInfo info, string outcome, string? code)
+    // False when the row could not be written.
+    private async Task<bool> RecordAsync(AiCall call, AiUsageInfo info, string outcome, string? code)
     {
+        var written = true;
         try
         {
             await usage.RecordAsync(new AiUsage
@@ -606,10 +622,12 @@ internal sealed class AiAssistService(
         }
         catch (Exception exception)
         {
+            written = false;
             AiLog.UsageNotRecorded(logger, exception, call.Action, call.Principal.Kind, call.Principal.Id, call.Site.Value);
         }
 
         AiLog.Called(logger, call.Action, call.Type, call.Field, call.Principal.Kind, call.Principal.Id, call.Site.Value, info.Provider, info.Model, outcome, code, info.DurationMs, info.PromptTokens, info.CompletionTokens);
+        return written;
     }
 
     private static string Limit(string value, int length) => value.Length <= length ? value : value[..length];

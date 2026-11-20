@@ -63,7 +63,7 @@ public sealed class AiAssistPlugin : IPlugin
             .BindConfiguration(AiOptions.Section)
             .Validate(
                 options => options.IsValid(),
-                $"{AiOptions.Section}: AllowedEndpoints holds absolute http or https URLs with no user, query or fragment, MaxInputLength is from 1 to 1000000, UsageRetention is positive and DailyTokenBudget is 0 or more.")
+                $"{AiOptions.Section}: AllowedEndpoints and SiteBilledEndpoints hold absolute http or https URLs with no user, query or fragment, MaxInputLength is from 1 to 1000000, UsageRetention is positive and DailyTokenBudget is 0 or more.")
             .Validate<IConfiguration>(
                 (_, configuration) => !AiProviders.AreNamedIn(configuration),
                 $"{AiOptions.Section}: Anthropic and Ollama are no longer providers of the plugin ({AiErrorCodes.ProviderRemoved}), so their sections are refused. {AiProviders.Instead}")

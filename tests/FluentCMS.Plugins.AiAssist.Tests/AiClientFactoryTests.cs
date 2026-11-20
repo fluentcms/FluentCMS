@@ -46,7 +46,7 @@ public sealed class AiClientFactoryTests
 
         (fromConfiguration.Provider, fromConfiguration.Model).ShouldBe(("openAiCompatible", "a-model"));
         fromConfiguration.SiteCredential.ShouldBeFalse();
-        fromSettings.SiteCredential.ShouldBeTrue();
+        fromSettings.SiteCredential.ShouldBeFalse();
         stub.Requests.Select(request => request.Headers["Authorization"]).ShouldBe(["Bearer key-of-the-configuration", "Bearer key-of-the-site"]);
     }
 
@@ -164,6 +164,31 @@ public sealed class AiClientFactoryTests
         var written = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model", Endpoint = "https://API.openai.com:443/v1/" }, Token);
 
         written.ShouldNotBeNull();
+    }
+
+    // A key the site set is its own credential only where the endpoint bills the holder of the key: OpenAI's own, or one
+    // of SiteBilledEndpoints. An endpoint the operator runs, such as a local one that reads no key, serves any key a site
+    // types, so the calls there stay the operator's, as do those with the key of the configuration or the defaults.
+    [Fact]
+    public async Task AKeyOfTheSitesIsItsOwnCredentialOnlyAtAnEndpointThatBillsTheHolderOfTheKey()
+    {
+        var operatorRun = "http://ollama.internal:11434/v1";
+        var billed = "https://models.example.com/v1";
+        var options = new AiOptions { AllowedEndpoints = { operatorRun, billed }, SiteBilledEndpoints = { "https://Models.Example.com:443/v1/" } };
+        using var factory = Factory(options, new() { ["FluentCms:Ai:OpenAi:ApiKey"] = "key-of-the-operator" });
+
+        var atTheOperatorsEndpoint = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = operatorRun, ApiKey = "x" }, Token);
+        var atABilledEndpoint = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = billed, ApiKey = "key-of-the-site" }, Token);
+        var atOpenAi = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model", ApiKey = "key-of-the-site" }, Token);
+        var withTheOperatorsKey = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAi, Model = "a-model" }, Token);
+        var keyless = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = billed }, Token);
+
+        atTheOperatorsEndpoint!.SiteCredential.ShouldBeFalse();
+        atABilledEndpoint!.SiteCredential.ShouldBeTrue();
+        atOpenAi!.SiteCredential.ShouldBeTrue();
+        withTheOperatorsKey!.SiteCredential.ShouldBeFalse();
+        keyless!.SiteCredential.ShouldBeFalse();
+        new AiOptions { SiteBilledEndpoints = { "not-a-url" } }.IsValid().ShouldBeFalse();
     }
 
     [Theory]
@@ -427,9 +452,10 @@ public sealed class AiClientFactoryTests
         var own = await factory.CreateAsync(Site, new AiSettings { Provider = AiProvider.OpenAiCompatible, Model = "a-model", Endpoint = other.Url("v1"), ApiKey = "key-of-the-site" }, Token);
         await own!.Client.GetResponseAsync(messages, cancellationToken: Token);
 
-        // The key of the defaults is the operator's, and only a key the site set itself is its own credential.
+        // The key of the defaults is the operator's, and a key the site set itself is not its own credential at an endpoint
+        // the configuration does not say bills the holder of the key.
         inherited.SiteCredential.ShouldBeFalse();
-        own.SiteCredential.ShouldBeTrue();
+        own.SiteCredential.ShouldBeFalse();
         otherEndpoint.Code.ShouldBe("FCMS1685");
         otherProvider.Code.ShouldBe("FCMS1685");
         sameEndpointOtherProvider.Code.ShouldBe("FCMS1685");
@@ -509,6 +535,11 @@ public sealed class AiClientFactoryTests
             options.AllowedEndpoints.Add(endpoint);
         }
 
+        return Factory(options, configuration, defaults);
+    }
+
+    private static TestFactory Factory(AiOptions options, Dictionary<string, string?> configuration, AiSettings? defaults = null)
+    {
         var store = new Store(defaults ?? new AiSettings());
         var services = new ServiceCollection().AddSingleton<ISettings<AiSettings>>(store).BuildServiceProvider();
         return new TestFactory(

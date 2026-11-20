@@ -73,7 +73,14 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
                     : $"hold an API key, and the key of {AiOptions.Section}:{provider}:ApiKey is sent to {AiOptions.Section}:{provider}:Endpoint only");
             }
         }
-        else if (!(siteCredential = await IsTheSitesOwnAsync(site, key, cancellationToken)) && !await IsForTheDefaultsAsync(settings, endpoint, cancellationToken))
+        else if (await IsTheSitesOwnAsync(site, key, cancellationToken))
+        {
+            // A key the site set is its own credential only where the endpoint bills the holder of the key. An endpoint
+            // the operator runs, such as a local one that reads no key, serves any key the site types on the operator's
+            // compute.
+            siteCredential = IsBilledToTheKey(endpoint ?? OpenAiEndpoint);
+        }
+        else if (!await IsForTheDefaultsAsync(settings, endpoint, cancellationToken))
         {
             throw NotConfigured("hold an API key of the site's own: the key it inherits from the instance defaults is used with the provider and the endpoint of the defaults only");
         }
@@ -112,6 +119,11 @@ internal sealed class AiClientFactory(IOptions<AiOptions> options, IConfiguratio
             : AiProviderEndpoints.Canonical(theirs) == AiProviderEndpoints.Canonical(endpoint);
         return defaults.Provider == settings.Provider && sameEndpoint;
     }
+
+    // OpenAI's own endpoint, and those the configuration names in SiteBilledEndpoints.
+    private bool IsBilledToTheKey(Uri endpoint) =>
+        AiProviderEndpoints.Canonical(endpoint) == AiProviderEndpoints.Canonical(OpenAiEndpoint)
+        || AiProviderEndpoints.IsAllowed(endpoint, options.Value.SiteBilledEndpoints);
 
     // Against the list the host started with: a call is checked, not only a save, so an endpoint that was saved while it
     // was on the list is refused once the host runs with a list that no longer holds it.

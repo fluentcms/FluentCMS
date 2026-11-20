@@ -1,4 +1,5 @@
 using System.Net;
+using FluentCMS.Sites;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Plugins.AiAssist.Tests.AiTesting;
@@ -91,13 +92,15 @@ public sealed class AiBudgetTests
         var others = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => ActAsync(admin, "rewrite", Body)));
         foreach (var refused in others)
         {
-            (await RefusedAsync(refused, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1693");
+            var problem = await JsonAsync(refused, HttpStatusCode.TooManyRequests);
+            problem["code"]!.GetValue<string>().ShouldBe("FCMS1693");
+            problem["detail"]!.GetValue<string>().ShouldContain("in flight");
             refused.Dispose();
         }
 
         var written = ai.Logs.NextAsync(9360);
         await caller.CancelAsync();
-        await Should.ThrowAsync<Exception>(() => first);
+        await Should.ThrowAsync<OperationCanceledException>(() => first.WaitAsync(TimeSpan.FromSeconds(30), Token));
         await written.WaitAsync(TimeSpan.FromSeconds(30), Token);
 
         var row = (await ai.UsageAsync(site)).ShouldHaveSingleItem();
@@ -130,6 +133,52 @@ public sealed class AiBudgetTests
         var row = (await ai.UsageAsync(site)).ShouldHaveSingleItem();
         (row.PromptTokens, row.CompletionTokens).ShouldBe((12, 250));
         (await RefusedAsync(after, HttpStatusCode.TooManyRequests)).ShouldBe("FCMS1693");
+    }
+
+    // A prompt is never empty and an answer with text used tokens, so a provider or a gateway that reports 0 for them has
+    // reported nothing, and a call with the operator's credential is counted at its estimate: a token for each UTF-8 byte
+    // of what it sent, so a text in a script of several bytes a character is not counted short.
+    [Fact]
+    public async Task AUsageOfZeroForACallThatAnsweredIsCountedAtItsEstimate()
+    {
+        await using var ai = new AiHost();
+        var site = await ai.SiteAsync(settings => settings.MaxOutputTokens = 300);
+        using var admin = await ai.AdminAsync(site);
+        (ai.Chat.PromptTokens, ai.Chat.CompletionTokens) = (0, 0);
+        const string Text = "船は大きな舟です。🚢";
+
+        var answer = await SuggestAsync(admin, "rewrite", new { type = "article", field = "summary", text = Text });
+        ai.Chat.SiteCredential = true;
+        await SuggestAsync(admin, "rewrite", new { type = "article", field = "summary", text = Text });
+
+        (answer["usage"]!["promptTokens"]!.GetValue<long>(), answer["usage"]!["completionTokens"]!.GetValue<long>()).ShouldBe((0, 0));
+        var rows = await ai.UsageAsync(site);
+        rows[0].PromptTokens.ShouldBeGreaterThan(System.Text.Encoding.UTF8.GetByteCount(Text));
+        rows[0].CompletionTokens.ShouldBe(300);
+        (rows[1].PromptTokens, rows[1].CompletionTokens).ShouldBe((0, 0));
+    }
+
+    [Fact]
+    public void AnEstimateIsATokenForEachUtf8ByteAndARowThatCouldNotBeWrittenStillCountsForItsDay()
+    {
+        AiBudgets.Tokens("Ships").ShouldBe(5);
+        AiBudgets.Tokens("船").ShouldBe(3);
+        AiBudgets.Tokens("🚢").ShouldBe(4);
+        AiBudgets.Tokens(null).ShouldBe(0);
+
+        var budgets = new AiBudgets();
+        var site = new SiteId(Guid.CreateVersion7());
+        var day = new DateOnly(2026, 11, 19);
+        budgets.Unrecorded(site, day, 100);
+        budgets.Unrecorded(site, day, 20);
+        var first = budgets.Reserve(site, day, 7);
+        var second = budgets.Reserve(site, day, 5);
+        first.Release();
+        var nextDay = budgets.Reserve(site, day.AddDays(1), 1);
+
+        first.Before.ShouldBe(120);
+        second.Before.ShouldBe(127);
+        nextDay.Before.ShouldBe(5);
     }
 
     // A call with the site's own credential keeps what its provider reported, 0 when it reported nothing.
