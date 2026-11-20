@@ -36,7 +36,7 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
             return route.FulfillAsync(new RouteFulfillOptions { Status = 200, ContentType = "text/html", Body = Page(admin) });
         });
 
-        var open = tab.Page.Locator(".content-form-history fluent-button").Filter(new LocatorFilterOptions { HasTextRegex = new Regex($@"^\s*{Regex.Escape(Repository.AdminText("Content.Preview.Open"))}\s*$") });
+        var open = Ui.ButtonIn(tab.Page.Locator(".content-form-history"), Repository.AdminText("Content.Preview.Open"));
         await Ui.PressAsync(open, "Enter");
 
         var pane = tab.Page.Locator(".content-preview");
@@ -108,7 +108,7 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
             Body = route.Request.Url.EndsWith("/nested", StringComparison.Ordinal) ? Nested(admin) : """<!doctype html><title>Showcase</title><iframe src="/nested"></iframe>""",
         }));
 
-        var open = tab.Page.Locator(".content-form-history fluent-button").Filter(new LocatorFilterOptions { HasTextRegex = new Regex($@"^\s*{Regex.Escape(Repository.AdminText("Content.Preview.Open"))}\s*$") });
+        var open = Ui.ButtonIn(tab.Page.Locator(".content-form-history"), Repository.AdminText("Content.Preview.Open"));
         await Ui.PressAsync(open, "Enter");
 
         var pane = tab.Page.Locator(".content-preview");
