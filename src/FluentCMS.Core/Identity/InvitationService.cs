@@ -99,10 +99,13 @@ internal sealed class InvitationService(
         await changes.RunAsync(
             async () =>
             {
-                // Read in the transaction, so that the invitations checked are the ones ended.
-                var superseded = await Pending(normalized).AsNoTracking().Select(row => row.RoleIds).ToListAsync(cancellationToken);
-                await roleService.RequireAssignableAsync([.. superseded.SelectMany(ids => JsonSerializer.Deserialize<List<Guid>>(ids) ?? [])], cancellationToken);
-                await Pending(normalized).ExecuteUpdateAsync(setters => setters.SetProperty(row => row.RevokedAt, now), cancellationToken);
+                // Only the ones that could still be accepted hold the caller to their roles, and exactly those are ended; an
+                // expired one, which the list does not show, is ended unchecked. The expiry is compared here, as in the list.
+                var pending = await Pending(normalized).AsNoTracking().Select(row => new { row.Id, row.RoleIds, row.ExpiresAt }).ToListAsync(cancellationToken);
+                var live = pending.Where(row => row.ExpiresAt > now).ToList();
+                await roleService.RequireAssignableAsync([.. live.SelectMany(row => JsonSerializer.Deserialize<List<Guid>>(row.RoleIds) ?? [])], cancellationToken);
+                List<Guid> ended = [.. pending.Select(row => row.Id)];
+                await Pending(normalized).Where(row => ended.Contains(row.Id)).ExecuteUpdateAsync(setters => setters.SetProperty(row => row.RevokedAt, now), cancellationToken);
                 context.Add(invitation);
                 await context.SaveChangesAsync(cancellationToken);
                 return true;

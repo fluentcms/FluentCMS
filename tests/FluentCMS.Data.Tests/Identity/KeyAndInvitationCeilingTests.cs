@@ -108,9 +108,31 @@ public sealed class KeyAndInvitationCeilingTests : IDisposable
         await Should.ThrowAsync<ManagementAccessDeniedException>(() => InvitationsAsync(caller, invitations => invitations.InviteAsync("bob@example.com", [callerRole], AcceptUrl, Token)));
         _fixture.Invitations().ShouldHaveSingleItem().RevokedAt.ShouldBeNull();
 
+        // The address is matched as users are, so a change of case does not get around the check.
+        await Should.ThrowAsync<ManagementAccessDeniedException>(() => InvitationsAsync(caller, invitations => invitations.InviteAsync("Bob@Example.com", [], AcceptUrl, Token)));
+        _fixture.Invitations().ShouldHaveSingleItem().RevokedAt.ShouldBeNull();
+
         await _fixture.WithAsync(services => services.GetRequiredService<InvitationService>().InviteAsync("carl@example.com", [callerRole], AcceptUrl, Token));
         await InvitationsAsync(caller, invitations => invitations.InviteAsync("carl@example.com", [], AcceptUrl, Token));
         _fixture.Invitations().Single(row => row.Email == "carl@example.com" && row.RoleIds != "[]").RevokedAt.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task AnExpiredInvitationAboveTheCallersRolesDoesNotHoldBackANewOne()
+    {
+        var caller = await OperatorAsync("people", CorePermissions.UsersManage);
+        var callerRole = _fixture.Read(context => context.Set<CmsUserRole>().AsNoTracking().Single()).RoleId;
+        await _fixture.WithAsync(services => services.GetRequiredService<InvitationService>().InviteAsync("bob@example.com", [BuiltInRoles.SuperAdmin], AcceptUrl, Token));
+        _fixture.Clock.Advance(TimeSpan.FromDays(8));
+
+        var token = await InviteAsync(caller, callerRole);
+
+        var rows = _fixture.Invitations();
+        rows.Count.ShouldBe(2);
+        rows.ShouldAllBe(row => row.AcceptedAt == null);
+        rows.Single(row => row.RoleIds.Contains(BuiltInRoles.SuperAdmin.ToString("D"), StringComparison.OrdinalIgnoreCase)).RevokedAt.ShouldNotBeNull();
+        IdentityFixture.Succeeded(await AcceptAsync(token));
+        (await _fixture.UsersAsync(async users => await users.GetRoleIdsAsync((await users.FindByEmailAsync("bob@example.com"))!))).ShouldBe([callerRole]);
     }
 
     [Fact]
