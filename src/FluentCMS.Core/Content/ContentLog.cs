@@ -1,4 +1,5 @@
 using FluentCMS.Content;
+using FluentCMS.Core.Content.Hooks;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Content;
@@ -20,4 +21,10 @@ internal static partial class ContentLog
 
     [LoggerMessage(EventId = 9405, Level = LogLevel.Warning, Message = "A write of {Type} {Id} in locale '{Locale}' stored {Field} without a URL with the scheme '{Scheme}', which rich text does not allow; it was stored before that rule.")]
     public static partial void UnsafeUrlStripped(ILogger logger, string type, Guid id, string locale, string field, string scheme);
+
+    [LoggerMessage(EventId = 9406, Level = LogLevel.Error, Message = "The {Kind} hook {Hook} of {Type} did not end within {Timeout}; the write was refused and rolled back.")]
+    public static partial void HookTimedOut(ILogger logger, HookKind kind, string hook, string type, TimeSpan timeout);
+
+    [LoggerMessage(EventId = 9407, Level = LogLevel.Warning, Message = "The {Kind} hook {Hook} of {Type} took {Elapsed}, inside the transaction of the write.")]
+    public static partial void SlowHook(ILogger logger, HookKind kind, string hook, string type, TimeSpan elapsed);
 }

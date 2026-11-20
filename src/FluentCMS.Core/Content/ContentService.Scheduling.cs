@@ -345,8 +345,10 @@ internal sealed partial class ContentService
     private static JobActor? ActorOf(OperationContext operation) =>
         operation.AuditPrincipal is { IsSystem: false } actor ? new JobActor(actor.Kind, actor.Id, actor.Name) : null;
 
+    // A hook that timed out may not the next time, so the job runs again for it.
     private static bool IsRefusal(Exception exception) =>
-        exception is ContentAccessDeniedException or EntryNotFoundException or ValidationException or HookRejectedException;
+        exception is ContentAccessDeniedException or EntryNotFoundException or ValidationException
+        || exception is HookRejectedException { Code: not ContentErrorCodes.HookTimedOut };
 
     // Codes and paths, never a message: a rule's message can quote a value of the entry.
     private static string ErrorText(Exception exception) => exception switch

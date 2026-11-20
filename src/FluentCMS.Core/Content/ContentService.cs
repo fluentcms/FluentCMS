@@ -14,6 +14,7 @@ using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Telemetry;
+using FluentCMS.Hooks;
 using FluentCMS.Jobs;
 using FluentCMS.Localization;
 using FluentCMS.Publishing;
@@ -536,6 +537,13 @@ internal sealed partial class ContentService(
                 // victim runs again a few times, each after a jittered pause, which lets one of them commit (#2959).
                 tracked.Restore();
                 await PauseAfterDeadlockAsync(++deadlocks, cancellationToken);
+            }
+            catch (HookRejectedException rejected) when (rejected.Code == ContentErrorCodes.HookTimedOut)
+            {
+                // The hook that ran too long may still be running and may yet save on this context: what the write left
+                // tracked goes, so that such a save cannot write the half of an entry the rollback took back.
+                tracked.Restore();
+                throw;
             }
         }
     }

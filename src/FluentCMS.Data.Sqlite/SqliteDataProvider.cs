@@ -97,6 +97,27 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
         return rows.FirstOrDefault();
     }
 
+    // A deferred transaction reads one snapshot from its first read on, and in WAL mode the writer goes on beside it. In the
+    // rollback journal a reader keeps every commit waiting, and a database in memory has no WAL, so neither gets one.
+    public async Task<IDbContextTransaction?> BeginSnapshotAsync(DbContext context, CancellationToken cancellationToken)
+    {
+        await context.Database.OpenConnectionAsync(cancellationToken);
+        var connection = (SqliteConnection)context.Database.GetDbConnection();
+        using (var mode = connection.CreateCommand())
+        {
+            mode.CommandText = "PRAGMA journal_mode";
+            if (await mode.ExecuteScalarAsync(cancellationToken) is not string journal || !string.Equals(journal, "wal", StringComparison.OrdinalIgnoreCase))
+            {
+                await context.Database.CloseConnectionAsync();
+                return null;
+            }
+        }
+
+        var transaction = connection.BeginTransaction(deferred: true);
+        var used = await context.Database.UseTransactionAsync(transaction, cancellationToken);
+        return new SqliteSnapshot(context, used!, transaction);
+    }
+
     void IDatabaseFile.Snapshot(string destination) => _file.Snapshot(destination);
 
     bool IDatabaseFile.IsInUse() => _file.IsInUse();
@@ -104,4 +125,32 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
     string? IDatabaseFile.Check(string snapshot) => _file.Check(snapshot);
 
     void IDatabaseFile.Restore(string snapshot) => _file.Restore(snapshot);
+}
+
+// EF does not own a transaction it was given, so this ends it and gives the connection back.
+internal sealed class SqliteSnapshot(DbContext context, IDbContextTransaction used, SqliteTransaction transaction) : IDbContextTransaction
+{
+    public Guid TransactionId => used.TransactionId;
+
+    public void Commit() => used.Commit();
+
+    public Task CommitAsync(CancellationToken cancellationToken = default) => used.CommitAsync(cancellationToken);
+
+    public void Rollback() => used.Rollback();
+
+    public Task RollbackAsync(CancellationToken cancellationToken = default) => used.RollbackAsync(cancellationToken);
+
+    public void Dispose()
+    {
+        used.Dispose();
+        transaction.Dispose();
+        context.Database.CloseConnection();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await used.DisposeAsync();
+        await transaction.DisposeAsync();
+        await context.Database.CloseConnectionAsync();
+    }
 }

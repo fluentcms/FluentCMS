@@ -1,9 +1,11 @@
+using System.Data;
 using System.Linq.Expressions;
 using System.Reflection;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace FluentCMS.Data.SqlServer;
 
@@ -48,6 +50,26 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
 
     // EF's migrations lock is an application lock of the session, which ends with it.
     public Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
+
+    // A locking read, which READ_COMMITTED_SNAPSHOT leaves to the hints: shared locks do not block each other, and the
+    // exclusive one waits for them all. A lock that waited for a deletion finds no row.
+    public async Task<bool> LockSiteAsync(DbContext context, Guid site, bool exclusive, CancellationToken cancellationToken)
+    {
+        var rows = exclusive
+            ? await context.Database.SqlQuery<int>($"SELECT 1 AS [Value] FROM cms_site WITH (XLOCK, ROWLOCK, HOLDLOCK) WHERE id = {site}").ToListAsync(cancellationToken)
+            : await context.Database.SqlQuery<int>($"SELECT 1 AS [Value] FROM cms_site WITH (REPEATABLEREAD, ROWLOCK) WHERE id = {site}").ToListAsync(cancellationToken);
+        return rows.Count > 0;
+    }
+
+    // SNAPSHOT isolation, where the database allows it. The migrations turn on READ_COMMITTED_SNAPSHOT, whose reads are each
+    // a snapshot of their own statement; a whole transaction needs ALLOW_SNAPSHOT_ISOLATION, which an administrator turns on.
+    public async Task<IDbContextTransaction?> BeginSnapshotAsync(DbContext context, CancellationToken cancellationToken)
+    {
+        var state = await context.Database
+            .SqlQueryRaw<byte>("SELECT snapshot_isolation_state AS [Value] FROM sys.databases WHERE database_id = DB_ID()")
+            .ToListAsync(cancellationToken);
+        return state is [1] ? await context.Database.BeginTransactionAsync(IsolationLevel.Snapshot, cancellationToken) : null;
+    }
 
     // Under a case-insensitive collation of its own, so that a database whose default compares case does not change it.
     public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment)

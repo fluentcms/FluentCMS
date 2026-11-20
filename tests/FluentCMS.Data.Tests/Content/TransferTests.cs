@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.IO.Compression;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -12,6 +13,7 @@ using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Core.Tests.Transfer;
 using FluentCMS.Core.Transfer;
 using FluentCMS.Data.Tests.Authorization;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Hooks;
 using FluentCMS.Providers;
 using FluentCMS.Publishing;
@@ -19,6 +21,7 @@ using FluentCMS.Schema;
 using FluentCMS.Settings;
 using FluentCMS.Transfer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -59,6 +62,104 @@ public sealed class TransferTests : IDisposable
         result.Total.Errors.ShouldBe(0);
         await ShouldReadAlikeAsync(_source, target, ids);
         target.Read(context => context.Versions.AsNoTracking().Select(version => version.Origin).Distinct().ToList()).ShouldBe([Origin.Import]);
+    }
+
+    // #3305: a batch of entries is read in a fixed number of queries, so the export of 150 entries costs one batch more than
+    // the export of three, where it read each entry's rows one by one before.
+    [Fact]
+    public async Task AnExportReadsItsEntriesInQueriesThatGrowWithTheBatchesNotTheEntries()
+    {
+        var trips = new RoundTrips();
+        var source = Source(trips);
+        var request = new TransferExportRequest { Types = ["author"] };
+
+        async Task<int> ReadsAsync(int count)
+        {
+            for (var index = 0; index < count; index++)
+            {
+                await CreateAsSystemAsync(source, "author", new ContentDocument { ["name"] = $"Author {index}" });
+            }
+
+            await trips.CountAsync(() => ExportAsync(source, request));
+            return trips.Sent.Count(sql => sql.Contains("cms_document", StringComparison.Ordinal) || sql.Contains("cms_author", StringComparison.Ordinal) || sql.Contains("cms_reference", StringComparison.Ordinal));
+        }
+
+        var few = await ReadsAsync(3);
+        var many = await ReadsAsync(147);
+
+        few.ShouldBeLessThanOrEqualTo(5, string.Join('\n', trips.Sent));
+        many.ShouldBeLessThanOrEqualTo(few + 4, string.Join('\n', trips.Sent));
+    }
+
+    // #3305: the entries of an export are read from one snapshot, so a save made while it reads changes nothing in the
+    // package: neither the entry it changes nor the one it adds.
+    [Fact]
+    public async Task ASaveDuringAnExportDoesNotChangeWhatThePackageHolds()
+    {
+        var save = new SaveDuringExport();
+        var source = Source(save);
+        if (TestProvider.IsSqlServer)
+        {
+            // The migrations turn on READ_COMMITTED_SNAPSHOT only; SNAPSHOT isolation is the administrator's to allow.
+            source.Read(context => context.Database.ExecuteSqlRaw("ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON"));
+        }
+
+        var ada = IdOf(await CreateAsSystemAsync(source, "author", new ContentDocument { ["name"] = "Ada" }));
+        var grace = IdOf(await CreateAsSystemAsync(source, "author", new ContentDocument { ["name"] = "Grace" }));
+        var before = Entries(await ExportAsync(source, new TransferExportRequest { Types = ["author"] }))[TransferPackage.ContentPath("author")];
+
+        save.Run = async () =>
+        {
+            var version = source.Read(context => context.Documents.AsNoTracking().Single(document => document.DocumentId == ada).DraftVersion);
+            await source.AsAsync(Principal.System, services => services.GetRequiredService<IContentService>().PatchAsync("author", ada, new ContentDocument { ["name"] = "Ada changed" }, version, Token), origin: Origin.Seed);
+            await CreateAsSystemAsync(source, "author", new ContentDocument { ["name"] = "Hopper" });
+        };
+        var during = Entries(await ExportAsync(source, new TransferExportRequest { Types = ["author"] }))[TransferPackage.ContentPath("author")];
+
+        save.Run.ShouldBeNull();
+        during.ShouldBe(before);
+        during.ShouldContain(grace.ToString("D"));
+        Entries(await ExportAsync(source, new TransferExportRequest { Types = ["author"] }))[TransferPackage.ContentPath("author")].ShouldContain("Ada changed");
+    }
+
+    // #3305: a line of a type that is not localized names a locale only in a package made by hand; it is reported as an
+    // invalid item, not as an unexpected failure, and the other lines are imported.
+    [Fact]
+    public async Task ALocaleOnAnEntryOfATypeThatIsNotLocalizedIsAnInvalidItem()
+    {
+        await SeedAsync();
+        var exported = await ExportAsync(_source);
+        var lines = Entries(exported)[TransferPackage.ContentPath("author")].Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var line = JsonNode.Parse(lines[0])!;
+        line["locales"]![0]!["locale"] = "en";
+        var target = Target();
+
+        var result = await ImportAsync(target, Rewrite(exported, TransferPackage.ContentPath("author"), string.Join('\n', [line.ToJsonString(), .. lines.Skip(1)])));
+
+        var item = result.Items.Single(item => item.Section == "author");
+        (item.Id, item.Outcome, item.Code).ShouldBe((line["id"]!.GetValue<string>(), TransferOutcome.Error, TransferErrorCodes.InvalidItem));
+        item.Message.ShouldNotBeNull().ShouldContain("not localized");
+        result.Sections["author"].ShouldBe(TransferCounts.None with { Created = lines.Length - 1, Errors = 1 });
+    }
+
+    // #3305: authors=importer records whoever imports as the creator and updater of what the import writes; by default the
+    // package's authors are kept.
+    [Fact]
+    public async Task AuthorsImporterRecordsTheImporterAsCreatorAndUpdater()
+    {
+        await SeedAsync();
+        var package = await ExportAsync(_source);
+        var kept = Target();
+        var mine = Target();
+
+        await ImportAsync(kept, package);
+        await ImportAsync(mine, package, new TransferImportRequest { AuthorsFromImporter = true });
+
+        var source = _source.Read(context => context.Documents.AsNoTracking().Select(document => new { document.CreatedBy, document.UpdatedBy }).Distinct().ToList());
+        source.ShouldNotContain(row => row.CreatedBy == Admin.Id || row.UpdatedBy == Admin.Id);
+        kept.Read(context => context.Documents.AsNoTracking().Select(document => new { document.CreatedBy, document.UpdatedBy }).Distinct().ToList()).ShouldBe(source, ignoreOrder: true);
+        mine.Read(context => context.Documents.AsNoTracking().Select(document => new { document.CreatedBy, document.UpdatedBy }).Distinct().ToList())
+            .ShouldHaveSingleItem().ShouldBe(new { CreatedBy = Admin.Id, UpdatedBy = Admin.Id });
     }
 
     [Fact]
@@ -1026,6 +1127,36 @@ public sealed class TransferTests : IDisposable
         var source = new ServiceDatabase(Configure, schema);
         _targets.Add(source);
         return source;
+    }
+
+    private ServiceDatabase Source(IInterceptor interceptor)
+    {
+        var source = new ServiceDatabase(cms =>
+        {
+            Configure(cms);
+            cms.Services.ConfigureDbContext<CmsDbContext>(options => options.AddInterceptors(interceptor));
+        });
+        _targets.Add(source);
+        return source;
+    }
+
+    // Runs a save, once, just before the second read of cms_document, when the export has read the ids of the entries.
+    private sealed class SaveDuringExport : DbCommandInterceptor
+    {
+        private int _reads;
+
+        public Func<Task>? Run { get; set; }
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (Run is { } run && command.CommandText.Contains("cms_document", StringComparison.Ordinal) && ++_reads == 2)
+            {
+                Run = null;
+                await run();
+            }
+
+            return result;
+        }
     }
 
     private ServiceDatabase Target(SchemaModel? schema = null, Action<FluentCmsBuilder>? configure = null)

@@ -14,12 +14,12 @@ internal sealed class LocaleRegistry(CmsDbContext context, SiteCache cache)
     {
         var id = site.Value;
         var key = SiteCache.LocalesKey(id);
-        if (cache.TryGet<SiteLocales>(key, out var cached))
-        {
-            return cached;
-        }
+        return await cache.GetOrLoadAsync(key, token => ReadAsync(site, token), _ => true, cancellationToken);
+    }
 
-        var generation = cache.Generation;
+    private async Task<SiteLocales> ReadAsync(SiteId site, CancellationToken cancellationToken)
+    {
+        var id = site.Value;
         var defaultLocale = await context.Set<Site>().AsNoTracking()
             .Where(item => item.Id == id)
             .Select(item => item.DefaultLocale)
@@ -27,8 +27,6 @@ internal sealed class LocaleRegistry(CmsDbContext context, SiteCache cache)
             ?? throw new ValidationException([new ValidationError("site", SiteErrorCodes.SiteNotFound, $"There is no site {site}.")]);
 
         var rows = await context.Set<SiteLocale>().AsNoTracking().Where(item => item.SiteId == id).ToListAsync(cancellationToken);
-        var locales = new SiteLocales(defaultLocale, rows);
-        cache.Set(key, locales, generation);
-        return locales;
+        return new SiteLocales(defaultLocale, rows);
     }
 }

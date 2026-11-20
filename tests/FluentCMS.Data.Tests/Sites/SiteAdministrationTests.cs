@@ -31,6 +31,7 @@ public sealed class SiteAdministrationTests : IDisposable
                 cms.Services.AddSingleton(_events);
                 cms.Events.AddHandler<SiteCreatedEvent, Heard<SiteCreatedEvent>>();
                 cms.Events.AddHandler<SiteDeletedEvent, Heard<SiteDeletedEvent>>();
+                cms.Events.AddOutboxHandler<SiteDeletedEvent, CleanUp>(CleanUp.Name);
             });
             using var scope = _services.CreateScope();
             scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
@@ -93,6 +94,26 @@ public sealed class SiteAdministrationTests : IDisposable
         (await AsAsync(SuperAdmin(), sites => sites.FindAsync(new SiteId(site.Id), Token))).ShouldBeNull();
     }
 
+    // #3306: the event of a deletion goes into the outbox with the deletion, so that the cleanups of the plugins run even
+    // when the process stops right after the commit; a deletion that is refused leaves no row.
+    [Fact]
+    public async Task TheOutboxRowOfADeletionCommitsWithItAndARefusedOneLeavesNone()
+    {
+        var site = await AsAsync(SuperAdmin(), sites => sites.CreateAsync("Docs", "docs", "en", Token));
+        (await RefusalAsync(sites => sites.DeleteAsync(new SiteId(DefaultSite.Id), Token))).ShouldBe("FCMS2302");
+        Outbox().ShouldBeEmpty();
+
+        await AsAsync(SuperAdmin(), async sites =>
+        {
+            await sites.DeleteAsync(new SiteId(site.Id), Token);
+            return true;
+        });
+
+        var row = Outbox().ShouldHaveSingleItem();
+        row.Handler.ShouldBe(CleanUp.Name);
+        row.Payload.ShouldContain(site.Id.ToString());
+    }
+
     // sites.manage for the instance: a role of a site and a grant limited to a site do not hold it, and nothing is allowed
     // outside an operation.
     [Fact]
@@ -128,6 +149,19 @@ public sealed class SiteAdministrationTests : IDisposable
         (await Should.ThrowAsync<InvalidOperationException>(() => outside.ServiceProvider.GetRequiredService<ISiteAdministration>().FindAsync(new SiteId(DefaultSite.Id), Token)))
             .Message.ShouldStartWith("FCMS1408");
         _events.ShouldBeEmpty();
+    }
+
+    private List<OutboxMessage> Outbox()
+    {
+        using var scope = _services.CreateScope();
+        return [.. scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OutboxMessage>().AsNoTracking().Where(row => row.Handler == CleanUp.Name)];
+    }
+
+    private sealed class CleanUp : IOutboxEventHandler<SiteDeletedEvent>
+    {
+        public const string Name = "test.cleanup.site.deleted";
+
+        public ValueTask HandleAsync(SiteDeletedEvent message, EventDelivery delivery, CancellationToken cancellationToken) => ValueTask.CompletedTask;
     }
 
     private static Principal SuperAdmin() => User(BuiltInRoles.SuperAdmin);

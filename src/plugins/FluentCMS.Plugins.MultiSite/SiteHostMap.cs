@@ -10,12 +10,16 @@ namespace FluentCMS.Plugins.MultiSite;
 // cms_multi_site_host are read whole and kept for every request of this instance for CacheDuration; a write through
 // SiteHostService drops them at once, and another instance sees it when its copy expires, as core's SiteCache does. The map
 // is the instance's and is not gated per site, since a host name is read before any site is known. A read that fails fails
-// the request: answering with the default site would serve one site's host name another site's content.
+// the request: answering with the default site would serve one site's host name another site's content. The requests that
+// find the copy expired or dropped at once share one read of the rows.
 internal sealed class SiteHostMap(IServiceScopeFactory scopes, TimeProvider time) : ISiteHostResolver
 {
     public static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(30);
 
+    private readonly Lock _gate = new();
     private Snapshot? _snapshot;
+    private Task<Snapshot>? _reading;
+    private long _readingGeneration;
     private long _generation;
 
     public async ValueTask<SiteId?> ResolveAsync(string host, CancellationToken cancellationToken = default)
@@ -39,15 +43,36 @@ internal sealed class SiteHostMap(IServiceScopeFactory scopes, TimeProvider time
             return snapshot.Sites;
         }
 
+        // One read for every request that finds the copy out of date at once, on a scope of its own and with no request's
+        // token, so that one that goes away does not fail the others. A read begun before a write is not shared after it.
+        Task<Snapshot> reading;
+        lock (_gate)
+        {
+            if (_reading is null || _reading.IsCompleted || _readingGeneration != generation)
+            {
+                _readingGeneration = generation;
+                _reading = ReadAsync(generation);
+            }
+
+            reading = _reading;
+        }
+
+        return (await reading.WaitAsync(cancellationToken)).Sites;
+    }
+
+    private async Task<Snapshot> ReadAsync(long generation)
+    {
+        await Task.Yield();
         await using var scope = scopes.CreateAsyncScope();
         var rows = await scope.ServiceProvider.GetRequiredService<PluginDbContext<MultiSitePlugin>>().Set<SiteHost>().AsNoTracking()
             .Select(host => new { host.Hostname, host.SiteId })
-            .ToListAsync(cancellationToken);
+            .ToListAsync(CancellationToken.None);
         var sites = rows.ToFrozenDictionary(row => row.Hostname, row => row.SiteId, StringComparer.Ordinal);
 
         // A write during the read leaves this copy a generation behind, so the next reader reads again.
-        Volatile.Write(ref _snapshot, new Snapshot(sites, generation, time.GetUtcNow() + CacheDuration));
-        return sites;
+        var snapshot = new Snapshot(sites, generation, time.GetUtcNow() + CacheDuration);
+        Volatile.Write(ref _snapshot, snapshot);
+        return snapshot;
     }
 
     private sealed record Snapshot(FrozenDictionary<string, Guid> Sites, long Generation, DateTimeOffset Expires);

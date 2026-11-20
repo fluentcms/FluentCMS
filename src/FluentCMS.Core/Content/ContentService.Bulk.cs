@@ -133,8 +133,9 @@ internal sealed partial class ContentService
         new(step.Index, (Guid)entry["id"]!, BulkItemStatus.Succeeded) { Version = entry["version"] as int? };
 
     // The engine selects the drafts the principal may read and that the row rule of the operation lets through, both in
-    // one query, and each is then checked as the single call checks it. Selecting runs to the end before anything is
-    // written, so the cap is never met partway; what it skips is bounded too, so a broad filter cannot walk the table.
+    // one query, and each page is then checked as the single call checks an entry, a page at a time, so the number of
+    // queries grows with the pages and not with the entries. Selecting runs to the end before anything is written, so the
+    // cap is never met partway; what it skips is bounded too, so a broad filter cannot walk the table.
     private async Task<List<BulkStep>> SelectAsync(WriteScope write, BulkRequest request, CancellationToken cancellationToken)
     {
         var operation = OperationOf(request.Operation);
@@ -158,10 +159,11 @@ internal sealed partial class ContentService
             };
 
             var page = await engine.ExecuteWithRuleAsync(write.Type.Name, query, rule, cancellationToken);
+            var accessible = await evaluator.AccessibleEntriesAsync(write.Operation, write.Type, operation, [.. page.Items.Select(entry => (Guid)entry["id"]!)], write.Target, QueryStatus.Draft, cancellationToken);
             foreach (var entry in page.Items)
             {
                 var id = (Guid)entry["id"]!;
-                if (!await evaluator.CanAccessEntryAsync(write.Operation, write.Type, operation, id, write.Target, QueryStatus.Draft, cancellationToken))
+                if (!accessible.Contains(id))
                 {
                     if (++skipped > SkippedPerCapped * cap)
                     {

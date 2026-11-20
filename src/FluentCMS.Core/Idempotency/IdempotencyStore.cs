@@ -139,6 +139,28 @@ internal sealed class IdempotencyStore(IServiceScopeFactory scopes, IDataProvide
         throw InProgress();
     }
 
+    // Moves the lease of a claim on while its request runs. False when the claim is no longer this request's: it answered,
+    // was released, or was taken over after a renewal failed for longer than the lease.
+    public async Task<bool> RenewAsync(IdempotencyClaim claim, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(claim);
+
+        await using var scope = scopes.CreateAsyncScope();
+        var lease = time.GetUtcNow() + options.InProgressTimeout;
+        return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<IdempotencyRow>()
+            .Where(row => row.Id == claim.Id && row.Owner == claim.Owner && row.ResponseStatus == null)
+            .ExecuteUpdateAsync(set => set.SetProperty(row => row.LeaseUntil, lease), cancellationToken) == 1;
+    }
+
+    // Renews the lease of the claim every third of InProgressTimeout until it is disposed, so that a request that runs
+    // longer than the lease is not taken over and run a second time while it works. The lease of a request that stopped
+    // runs out InProgressTimeout after its last renewal.
+    public IAsyncDisposable Hold(IdempotencyClaim claim)
+    {
+        ArgumentNullException.ThrowIfNull(claim);
+        return new LeaseKeeper(this, claim, options.InProgressTimeout / 3, time, logger);
+    }
+
     // Not canceled: the work is done, and a repeat should find its answer.
     public async Task CompleteAsync(IdempotencyClaim claim, StoredResponse response)
     {
@@ -194,6 +216,49 @@ internal sealed class IdempotencyStore(IServiceScopeFactory scopes, IDataProvide
         Refused(IdempotencyErrorCodes.InProgress, $"A request with this {Header} is still running; repeat it once that one has answered.");
 
     private static ValidationException Refused(string code, string message) => new([new ValidationError(Header, code, message)]);
+
+    private sealed class LeaseKeeper : IAsyncDisposable
+    {
+        private readonly CancellationTokenSource _stop = new();
+        private readonly Task _renewing;
+
+        public LeaseKeeper(IdempotencyStore store, IdempotencyClaim claim, TimeSpan every, TimeProvider time, ILogger logger) =>
+            _renewing = RenewAsync(store, claim, every, time, logger, _stop.Token);
+
+        public async ValueTask DisposeAsync()
+        {
+            await _stop.CancelAsync();
+            await _renewing;
+            _stop.Dispose();
+        }
+
+        // A renewal that fails is tried again at the next turn; one that finds the claim gone ends the renewals.
+        private static async Task RenewAsync(IdempotencyStore store, IdempotencyClaim claim, TimeSpan every, TimeProvider time, ILogger logger, CancellationToken stop)
+        {
+            try
+            {
+                while (true)
+                {
+                    await Task.Delay(every, time, stop);
+                    try
+                    {
+                        if (!await store.RenewAsync(claim, stop))
+                        {
+                            IdempotencyLog.NotRenewed(logger, claim.Id, null);
+                            return;
+                        }
+                    }
+                    catch (Exception exception) when (exception is not OperationCanceledException)
+                    {
+                        IdempotencyLog.NotRenewed(logger, claim.Id, exception);
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (stop.IsCancellationRequested)
+            {
+            }
+        }
+    }
 }
 
 internal static partial class IdempotencyLog
@@ -209,4 +274,7 @@ internal static partial class IdempotencyLog
 
     [LoggerMessage(EventId = 9143, Level = LogLevel.Error, Message = "Could not register the recurring retention job of the idempotency keys; expired keys stay until it is registered.")]
     public static partial void ScheduleFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 9144, Level = LogLevel.Warning, Message = "The lease of the Idempotency-Key {Id} was not renewed while its request runs; without a renewal a repeat may take the key over once the lease runs out.")]
+    public static partial void NotRenewed(ILogger logger, Guid id, Exception? exception);
 }

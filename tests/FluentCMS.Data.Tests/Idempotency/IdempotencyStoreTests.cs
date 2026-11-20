@@ -104,6 +104,55 @@ public sealed class IdempotencyStoreTests : IDisposable
         (await BeginAsync()).Stored!.Body.ShouldBe(Created.Body);
     }
 
+    // #3307: while the first request runs its lease is renewed, so a repeat long after the lease would have run out is still
+    // refused and nothing runs twice; once it stops, the lease runs out InProgressTimeout after the last renewal.
+    [Fact]
+    public async Task AHeldClaimIsRenewedSoARepeatPastTheLeaseIsStillRefused()
+    {
+        var claim = (await BeginAsync()).Claim!;
+
+        await using (Store.Hold(claim))
+        {
+            for (var turn = 0; turn < 6; turn++)
+            {
+                _clock.Advance(TimeSpan.FromMinutes(5) / 3);
+                await RenewedAsync(_clock.GetUtcNow() + TimeSpan.FromMinutes(5));
+            }
+
+            (await RefusedAsync(() => BeginAsync())).ShouldBe(IdempotencyErrorCodes.InProgress);
+        }
+
+        _clock.Advance(TimeSpan.FromMinutes(4));
+        (await RefusedAsync(() => BeginAsync())).ShouldBe(IdempotencyErrorCodes.InProgress);
+        _clock.Advance(TimeSpan.FromMinutes(1));
+        (await BeginAsync()).Claim.ShouldNotBeNull().Owner.ShouldNotBe(claim.Owner);
+    }
+
+    [Fact]
+    public async Task AClaimThatAnsweredOrWasTakenOverIsNotRenewed()
+    {
+        var first = (await BeginAsync()).Claim!;
+        _clock.Advance(TimeSpan.FromMinutes(5));
+        var second = (await BeginAsync()).Claim!;
+
+        (await Store.RenewAsync(first, Token)).ShouldBeFalse();
+        (await Store.RenewAsync(second, Token)).ShouldBeTrue();
+
+        await Store.CompleteAsync(second, Created);
+        (await Store.RenewAsync(second, Token)).ShouldBeFalse();
+    }
+
+    // The renewal runs on the clock's timer, after the turn that fired it.
+    private async Task RenewedAsync(DateTimeOffset lease)
+    {
+        for (var attempt = 0; attempt < 500 && Rows().Single().LeaseUntil < lease; attempt++)
+        {
+            await Task.Delay(10, Token);
+        }
+
+        Rows().Single().LeaseUntil.ShouldBe(lease);
+    }
+
     [Fact]
     public async Task OfManyRequestsThatSendOneKeyAtOnceOneRunsAndTheOthersAreRefused()
     {

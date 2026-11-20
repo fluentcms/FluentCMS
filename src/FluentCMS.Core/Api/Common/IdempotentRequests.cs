@@ -11,7 +11,7 @@ namespace FluentCMS.Core.Api.Common;
 // Runs a write that may carry an Idempotency-Key. A request without one runs as it is. With one, the request is hashed
 // with its method, path, query, locale, content type, body and principal, the key is claimed, and the response is kept
 // for a repeat. Only a response below 500 is kept; a refused request, which throws, and a failure release the key, so
-// that a repeat runs again.
+// that a repeat runs again. The lease of the key is renewed while the request runs, however long it takes.
 internal static class IdempotentRequests
 {
     public const string ReplayedHeader = "Idempotent-Replayed";
@@ -40,12 +40,16 @@ internal static class IdempotentRequests
         StoredResponse response;
         try
         {
-            response = await CaptureAsync(httpContext, await handler());
+            await using (store.Hold(claim))
+            {
+                response = await CaptureAsync(httpContext, await handler());
+            }
         }
         catch (OperationCanceledException) when (httpContext.RequestAborted.IsCancellationRequested)
         {
-            // The client went away, perhaps after the work committed: the key stays held until its lease runs out, so
-            // that a retry never runs it a second time while the first may have succeeded.
+            // The client went away, perhaps after the work committed: the key stays held until its lease runs out, which is
+            // renewed for as long as the work ran, so that a retry never runs it a second time while the first may have
+            // succeeded or may still be running.
             throw;
         }
         catch

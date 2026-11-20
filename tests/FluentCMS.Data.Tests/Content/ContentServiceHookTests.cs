@@ -1,5 +1,7 @@
 using FluentCMS.Content;
+using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Core.Tests.Schema.Samples;
 using FluentCMS.Hooks;
@@ -348,5 +350,56 @@ public sealed class ContentServiceHookTests
         updated["title"].ShouldBe("Hello and more");
         updated["category"].ShouldBe("opinion");
         updated["slug"].ShouldBe("other");
+    }
+
+    // #3307: a hook that holds the write past FluentCms:Content:HookTimeout fails it with FCMS2410, a 503 that names the hook,
+    // and the write rolls back whole, whether the hook stops on its token or ignores it and is left to end on its own.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AHookOverTheTimeoutFailsTheWriteNamingItAndNothingIsWritten(bool observesToken)
+    {
+        var stuck = new StuckHook(observesToken);
+        using var database = new ServiceDatabase(cms => cms.Services
+            .Configure<ContentWriteOptions>(options => options.HookTimeout = TimeSpan.FromMilliseconds(200))
+            .AddSingleton(stuck)
+            .AddScoped<IBeforeCreateHook<ContentDocument>>(services => services.GetRequiredService<StuckHook>()));
+        var before = database.Footprint();
+
+        var refused = await Should.ThrowAsync<HookRejectedException>(() => database.CreateAsync(Editor, Titled("Stuck")));
+
+        refused.Code.ShouldBe("FCMS2410");
+        refused.Message.ShouldContain(typeof(StuckHook).FullName!);
+        ProblemMapper.Map(refused, authenticated: true).Status.ShouldBe(503);
+        database.Footprint().ShouldBe(before);
+
+        stuck.Release.TrySetResult();
+        await stuck.Ended.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        database.Footprint().ShouldBe(before);
+        IdOf(await database.CreateAsync(Editor, Titled("Quick"))).ShouldNotBe(Guid.Empty);
+    }
+
+    private sealed class StuckHook(bool observesToken) : IBeforeCreateHook<ContentDocument>
+    {
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Ended { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async ValueTask BeforeCreateAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
+        {
+            if (!Equals(context.Entry["title"], "Stuck"))
+            {
+                return;
+            }
+
+            try
+            {
+                await Release.Task.WaitAsync(observesToken ? cancellationToken : CancellationToken.None);
+            }
+            finally
+            {
+                Ended.TrySetResult();
+            }
+        }
     }
 }

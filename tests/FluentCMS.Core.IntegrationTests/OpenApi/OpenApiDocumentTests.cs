@@ -132,7 +132,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         var import = Paths[$"{Management}/transfer/import"]!["post"]!;
         import["responses"]!["200"]!["content"]!["application/x-ndjson"].ShouldNotBeNull();
         QueryParameters(import).Select(parameter => parameter["name"]!.GetValue<string>())
-            .ShouldBe(["site", "locale", "dryRun", "overwrite", "missingLocales", "webhooks", "roles", "types", "options"], ignoreOrder: true);
+            .ShouldBe(["site", "locale", "dryRun", "overwrite", "missingLocales", "authors", "webhooks", "roles", "types", "options"], ignoreOrder: true);
     }
 
     [Fact]

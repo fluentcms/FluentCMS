@@ -11,24 +11,14 @@ internal static class SiteDefaultLocale
 {
     public static async Task<string?> ReadAsync(IServiceProvider services, Guid site)
     {
-        var cache = services.GetRequiredService<SiteCache>();
-        var key = SiteCache.DefaultLocaleKey(site);
-        if (cache.TryGet<string>(key, out var cached))
-        {
-            return cached;
-        }
-
-        var generation = cache.Generation;
-        var locale = await services.GetRequiredService<SystemDbContext>().Set<Site>().AsNoTracking()
-            .Where(row => row.Id == site)
-            .Select(row => row.DefaultLocale)
-            .FirstOrDefaultAsync();
-
-        if (locale is not null)
-        {
-            cache.Set(key, locale, generation);
-        }
-
-        return locale;
+        var context = services.GetRequiredService<SystemDbContext>();
+        return await services.GetRequiredService<SiteCache>().GetOrLoadAsync(
+            SiteCache.DefaultLocaleKey(site),
+            token => context.Set<Site>().AsNoTracking()
+                .Where(row => row.Id == site)
+                .Select(row => row.DefaultLocale)
+                .FirstOrDefaultAsync(token),
+            locale => locale is not null,
+            CancellationToken.None);
     }
 }
