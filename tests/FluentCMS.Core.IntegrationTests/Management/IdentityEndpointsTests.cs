@@ -102,6 +102,37 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
         (await fixture.DeleteAsync($"roles/{BuiltInRoles.Author:D}")).Json["code"]!.GetValue<string>().ShouldBe("FCMS3043");
     }
 
+    // #3417: the rules a grant may name, read by whoever reads the catalogue, and refused as the catalogue refuses.
+    [Theory]
+    [InlineData(CorePermissions.RolesManage)]
+    [InlineData(CorePermissions.UsersManage)]
+    [InlineData(CorePermissions.ApiKeysManage)]
+    [InlineData(CorePermissions.MembersManage)]
+    public async Task EachReaderOfTheCatalogueReadsTheRowRules(string permission)
+    {
+        using var reader = await fixture.ClientWithAsync(permission);
+
+        var rules = await fixture.GetAsync("permissions/row-rules", reader);
+
+        rules.Status.ShouldBe(HttpStatusCode.OK, rules.Body?.ToJsonString());
+        rules.Json.ToJsonString().ShouldBe($$"""{"items":[{"name":"{{AdminFixture.NewsRule}}","typeNames":["page"]},{"name":"{{BuiltInRoles.OwnEntriesRule}}","typeNames":null}]}""");
+        (await fixture.GetAsync("permissions", reader)).Status.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task ACallerWhoMayNotReadTheCatalogueIsRefusedTheRowRulesAlike()
+    {
+        using var reader = await fixture.ClientWithAsync(CorePermissions.SchemaRead, CorePermissions.SitesManage, "content.*.read");
+
+        var catalogue = await fixture.GetAsync("permissions", reader);
+        var rules = await fixture.GetAsync("permissions/row-rules", reader);
+
+        catalogue.Status.ShouldBe(HttpStatusCode.Forbidden);
+        rules.Status.ShouldBe(catalogue.Status, rules.Body?.ToJsonString());
+        rules.Json["code"]!.GetValue<string>().ShouldBe(catalogue.Json["code"]!.GetValue<string>());
+        rules.Json["items"].ShouldBeNull();
+    }
+
     [Fact]
     public async Task AnInvitedUserGetsItsRolesAndIsManagedEndToEnd()
     {
