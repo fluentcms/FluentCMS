@@ -192,11 +192,19 @@ public sealed class EndToEndHost : IAsyncLifetime
     internal Task<Editor> EditorOfAsync(Type testClass) =>
         _classEditors.GetOrAdd(testClass, _ => new Lazy<Task<Editor>>(() => CreateEditorAsync())).Value;
 
-    // Sets a new password as an operator does with the host's command, which ends the user's sessions.
+    // Sets a new password as an operator does with the host's command, which ends the user's sessions. The command also has
+    // the user choose a new password at the next sign-in; the operator here takes that back, so that the next sign-in goes
+    // back to where it started, as the cases that end a session check.
     public async Task<Editor> ResetPasswordAsync(Editor editor)
     {
         var changed = editor with { Password = NewPassword() };
         await CommandAsync(changed.Password, "user", "reset-password", "--email", editor.Email, "--password-stdin");
+
+        using var client = await ManagementClientAsync();
+        var found = await client.GetFromJsonAsync<JsonObject>(new Uri($"api/management/v1/users?search={Uri.EscapeDataString(editor.Email)}", UriKind.Relative), Token);
+        var id = found!["items"]!.AsArray().Single(user => (string?)user!["email"] == editor.Email)!["id"]!.GetValue<string>();
+        using var kept = await client.PatchAsJsonAsync(new Uri($"api/management/v1/users/{id}", UriKind.Relative), new { mustChangePassword = false }, Token);
+        kept.EnsureSuccessStatusCode();
         return changed;
     }
 
