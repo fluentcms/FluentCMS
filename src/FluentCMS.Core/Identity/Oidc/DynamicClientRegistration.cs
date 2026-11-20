@@ -71,16 +71,27 @@ internal static class DynamicClientRegistration
             }
 
             var address = context.Connection.RemoteIpAddress is { } remote ? (remote.IsIPv4MappedToIPv6 ? remote.MapToIPv4() : remote).ToString() : null;
-            var registered = await services.GetRequiredService<McpClients>().RegisterAsync(metadata, policy, Source(context), address, context.RequestAborted);
+            var (registered, cap) = await services.GetRequiredService<McpClients>().RegisterAsync(metadata, policy, Source(context), address, context.RequestAborted);
             if (registered is null)
             {
-                OidcLog.ClientRegistrationCapped(services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(DynamicClientRegistration)), policy.MaxPendingClients);
+                var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(DynamicClientRegistration));
+                if (cap == RegistrationCap.Clients)
+                {
+                    OidcLog.ClientLimitReached(logger, policy.MaxClients);
+                }
+                else
+                {
+                    OidcLog.ClientRegistrationCapped(logger, policy.MaxPendingClients);
+                }
+
                 context.Response.Headers.RetryAfter = "3600";
                 return Results.Json(
                     new Dictionary<string, object?>
                     {
                         [Parameters.Error] = Errors.TemporarilyUnavailable,
-                        [Parameters.ErrorDescription] = "Too many clients wait for approval; try again once an administrator has gone through them.",
+                        [Parameters.ErrorDescription] = cap == RegistrationCap.Clients
+                            ? "This server holds as many clients as it takes; try again once an administrator has removed some."
+                            : "Too many clients wait for approval; try again once an administrator has gone through them.",
                     },
                     statusCode: StatusCodes.Status503ServiceUnavailable);
             }
