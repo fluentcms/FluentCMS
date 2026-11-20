@@ -325,8 +325,21 @@ public sealed class OutboxTests
     {
         var seen = new Seen();
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        HashSet<Guid> firsts = [];
         var blocked = 0;
-        seen.Behavior = (_, _) => seen.Calls.Contains("outbox-1") && Interlocked.CompareExchange(ref blocked, 1, 0) == 0 ? gate.Task : Task.CompletedTask;
+
+        // The first delivery of the first owner hangs; which lane gets to run first is the scheduler's business.
+        seen.Behavior = (_, delivery) =>
+        {
+            if (firsts.Contains(delivery!.Key) && Interlocked.CompareExchange(ref blocked, 1, 0) == 0)
+            {
+                entered.TrySetResult();
+                return gate.Task;
+            }
+
+            return Task.CompletedTask;
+        };
         using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
         {
             cms.Events.AddOutboxHandler<EntryDraftSavedEvent, OutboxFirst>("first");
@@ -337,12 +350,15 @@ public sealed class OutboxTests
             await database.CreateAsync(Editor, Titled($"T{index}"));
         }
 
+        firsts.UnionWith(database.Rows().Where(row => row.Handler == "first").Select(row => row.Id));
         OwnedApart(database);
         var drain = DrainAsync(database.Database.Services);
         try
         {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
             await Eventually.HoldsAsync(() => database.Rows().Count(row => row.Handler == "second" && row.Status == OutboxStatus.Delivered) == 3);
             seen.Calls.Count(call => call == "outbox-1").ShouldBe(1);
+            database.Rows().Where(row => row.Handler == "first").ShouldAllBe(row => row.Status == OutboxStatus.Pending);
         }
         finally
         {
