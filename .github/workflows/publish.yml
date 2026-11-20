@@ -5,11 +5,13 @@ name: Publish
 # with the version and preview (latest for a release that is not a preview); @fluentcms/client on npm when the repository
 # variable NPM_SCOPE_OWNED is true, attached to the GitHub release otherwise; and the GitHub release, a pre-release for a
 # preview. It refuses a tag that is not on main, a commit without a successful CI and Fresh machine, and a version that the
-# version prefix of Directory.Build.props does not lead to. Only the publish job holds credentials: it runs in the release
-# environment, after its reviewer approves, and signs in to nuget.org with trusted publishing.
+# version prefix of Directory.Build.props does not lead to. The image is built once, into an archive of the run that the
+# Compose smoke test loads and runs, and the publish job pushes that archive and checks that the registry holds the digest the
+# smoke test ran. Only the publish job holds credentials: it runs in the release environment, after its reviewer approves, and
+# signs in to nuget.org with trusted publishing.
 #
 # A manual run, and a pull request that changes the packaging, is a dry run: it checks, packs and builds what a release would,
-# lists what it would push, and pushes nothing. A pull request runs with no environment and no secret.
+# runs the smoke test on the image, lists what it would push, and pushes nothing. A pull request runs with no environment and no secret.
 on:
   push:
     tags: ["v*"]
@@ -28,6 +30,8 @@ on:
       - "admin/src/**/*.csproj"
       - src/FluentCMS.Host/Dockerfile
       - .dockerignore
+      - .github/workflows/compose.yml
+      - eng/load-image.sh
       - nuget.config
       - templates/FluentCMS.Templates.csproj
       - clients/typescript/package.json
@@ -233,7 +237,8 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # The Dockerfile compiles on the build platform for each target, so no emulation is needed for linux/arm64.
+  # The Dockerfile compiles on the build platform for each target, so no emulation is needed for linux/arm64. The image is built
+  # once, into an OCI archive of both platforms that the smoke test and the publish job load; reference names it by digest.
   image:
     name: Image
     needs: check
@@ -243,7 +248,8 @@ jobs:
       contents: read
     env:
       VERSION: ${{ needs.check.outputs.version }}
-      TAGS: ${{ needs.check.outputs.tags }}
+    outputs:
+      reference: ${{ steps.build.outputs.reference }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -252,15 +258,44 @@ jobs:
         run: docker buildx create --name fluentcms --driver docker-container --use --bootstrap
 
       - name: Build for linux/amd64 and linux/arm64
+        id: build
         run: |
-          read -ra tags <<< "$TAGS"
+          mkdir -p "$RUNNER_TEMP/image"
           docker buildx build --file src/FluentCMS.Host/Dockerfile --platform "$PLATFORMS" --build-arg VERSION="$VERSION" \
             --label org.opencontainers.image.version="$VERSION" --label org.opencontainers.image.revision="$GITHUB_SHA" \
-            "${tags[@]/#/--tag=}" .
+            --output "type=oci,dest=$RUNNER_TEMP/image/image.tar,name=$IMAGE:$VERSION" --metadata-file "$RUNNER_TEMP/build.json" .
+          digest=$(jq -r '."containerimage.digest"' "$RUNNER_TEMP/build.json")
+          if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::The build named no digest of the image: $digest"
+            exit 1
+          fi
+          echo "reference=$IMAGE@$digest" >> "$GITHUB_OUTPUT"
+          echo "The image $IMAGE:$VERSION is $digest." | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # Kept as long as a release may wait for its approval and be rerun, a dry run's for a day. The layers are compressed already.
+      - name: Upload the image archive
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: image
+          path: ${{ runner.temp }}/image/image.tar
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: ${{ needs.check.outputs.dry-run == 'true' && 1 || 30 }}
+
+  # The smoke test of compose.yml on the image of the archive, with no credential: the publish job pushes this digest only.
+  smoke:
+    name: Compose
+    needs: [check, image]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/compose.yml
+    with:
+      image: ${{ needs.image.outputs.reference }}
+      archive: image
 
   list:
     name: What a release pushes
-    needs: [check, pack, image]
+    needs: [check, pack, image, smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
@@ -272,6 +307,7 @@ jobs:
       DRY_RUN: ${{ needs.check.outputs.dry-run }}
       NPM_TAG: ${{ needs.check.outputs.npm-tag }}
       NPM: ${{ vars.NPM_SCOPE_OWNED == 'true' }}
+      TESTED: ${{ needs.smoke.outputs.digest }}
     steps:
       - name: Download the packages
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -301,8 +337,9 @@ jobs:
               fi
             done
             echo
-            echo "ghcr.io, for $PLATFORMS:"
+            echo "ghcr.io, for $PLATFORMS, the image the Compose smoke test ran, $TESTED:"
             echo
+            echo "- $IMAGE:candidate-$GITHUB_RUN_ID, which names this run and is read back before the version is written"
             for tag in $TAGS; do echo "- $tag"; done
             echo
             if [ "$PREVIEW" = true ]; then kind="a pre-release"; else kind="a release"; fi
@@ -311,10 +348,10 @@ jobs:
 
   # Only this job holds credentials, in the release environment, and it runs for a tag after the environment's reviewer approves.
   # The image goes first at its version: a package on nuget.org can be unlisted but never deleted. The channel tag moves last,
-  # so that a failed push leaves it on the release before.
+  # so that a failed push leaves it on the release before. The image is the archive the smoke test ran, never built again.
   publish:
     name: Publish
-    needs: [check, pack, image, list]
+    needs: [check, pack, image, smoke, list]
     if: github.event_name == 'push' && needs.check.outputs.dry-run == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -327,6 +364,8 @@ jobs:
       VERSION: ${{ needs.check.outputs.version }}
       CHANNEL: ${{ needs.check.outputs.channel }}
       NPM_TAG: ${{ needs.check.outputs.npm-tag }}
+      REFERENCE: ${{ needs.image.outputs.reference }}
+      TESTED: ${{ needs.smoke.outputs.digest }}
     steps:
       # The check job refused a release environment without a reviewer; this stops before any push when it has no secret.
       - name: Check the release environment
@@ -346,19 +385,79 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Set up a builder for both platforms
-        run: docker buildx create --name fluentcms --driver docker-container --use --bootstrap
+      - name: Download the image archive
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: image
+          path: ${{ runner.temp }}/image
+
+      # Before the sign-in: the load may restart Docker.
+      - name: Load the image the smoke test ran
+        run: |
+          if [ "${REFERENCE##*@}" != "$TESTED" ]; then
+            echo "::error::The archive holds $REFERENCE, and the smoke test ran $TESTED."
+            exit 1
+          fi
+          eng/load-image.sh "$RUNNER_TEMP/image/image.tar" "$REFERENCE"
+          docker tag "$REFERENCE" "$IMAGE:candidate-$GITHUB_RUN_ID"
 
       - name: Sign in to ghcr.io
         env:
           GH_TOKEN: ${{ github.token }}
         run: echo "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
 
-      - name: Build and push the image at its version
+      # A version is never pushed twice with another image: a rerun of the failed jobs pushes the same archive, which the
+      # registry holds already, and a run that built the image again stops here. The archive goes up under candidate-{run id},
+      # a tag no user pulls, and the version tag is written only once the registry is read back with the tested digest there.
+      - name: Push the image at its version
+        shell: bash
         run: |
-          docker buildx build --file src/FluentCMS.Host/Dockerfile --platform "$PLATFORMS" --build-arg VERSION="$VERSION" \
-            --label org.opencontainers.image.version="$VERSION" --label org.opencontainers.image.revision="$GITHUB_SHA" \
-            --tag "$IMAGE:$VERSION" --push .
+          candidate="$IMAGE:candidate-$GITHUB_RUN_ID"
+          registry_digest() {
+            if docker buildx imagetools inspect --raw "$1" > "$RUNNER_TEMP/manifest.json" 2> "$RUNNER_TEMP/inspect.txt"; then
+              echo "sha256:$(sha256sum < "$RUNNER_TEMP/manifest.json" | cut -d ' ' -f 1)"
+            elif grep -qiE 'not found|manifest unknown|name unknown' "$RUNNER_TEMP/inspect.txt"; then
+              return 1
+            else
+              cat "$RUNNER_TEMP/inspect.txt" >&2
+              return 2
+            fi
+          }
+          status=0
+          held=$(registry_digest "$IMAGE:$VERSION") || status=$?
+          case $status in
+            0)
+              if [ "$held" != "$TESTED" ]; then
+                echo "::error::$IMAGE:$VERSION holds $held already, and this run tested $TESTED. A version is never pushed again with another image, so release the next version."
+                exit 1
+              fi
+              echo "$IMAGE:$VERSION holds $TESTED already, so it is not pushed again."
+              ;;
+            1)
+              loaded=$(docker image inspect --format '{{.Id}}' "$candidate" 2> /dev/null || true)
+              if [ "$loaded" != "$TESTED" ]; then
+                echo "::error::$candidate is ${loaded:-not} in Docker, and the smoke test ran $TESTED."
+                exit 1
+              fi
+              docker push "$candidate"
+              pushed=$(registry_digest "$candidate") || true
+              if [ "$pushed" != "$TESTED" ]; then
+                echo "::error::The registry holds ${pushed:-nothing that can be read} at $candidate, and the smoke test ran $TESTED. $IMAGE:$VERSION is not written."
+                exit 1
+              fi
+              docker buildx imagetools create --tag "$IMAGE:$VERSION" "$IMAGE@$TESTED"
+              ;;
+            *)
+              echo "::error::$IMAGE:$VERSION cannot be read from the registry, so whether it is there already is not known."
+              exit 1
+              ;;
+          esac
+          pushed=$(registry_digest "$IMAGE:$VERSION") || true
+          if [ "$pushed" != "$TESTED" ]; then
+            echo "::error::The registry holds ${pushed:-nothing that can be read} at $IMAGE:$VERSION, and the smoke test ran $TESTED."
+            exit 1
+          fi
+          echo "$IMAGE:$VERSION is $pushed, the image the smoke test ran." | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Download the packages
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -399,8 +498,18 @@ jobs:
             npm publish "artifacts/packages/fluentcms-client-$VERSION.tgz" --access public --tag "$NPM_TAG" --provenance
           fi
 
+      # A copy of the index the version holds, by its digest, so that the channel names the same digest.
       - name: Move the channel tag of the image
-        run: docker buildx imagetools create --tag "$CHANNEL" "$IMAGE:$VERSION"
+        shell: bash
+        run: |
+          docker buildx imagetools create --tag "$CHANNEL" "$IMAGE@$TESTED"
+          docker buildx imagetools inspect --raw "$CHANNEL" > "$RUNNER_TEMP/channel.json"
+          moved="sha256:$(sha256sum < "$RUNNER_TEMP/channel.json" | cut -d ' ' -f 1)"
+          if [ "$moved" != "$TESTED" ]; then
+            echo "::error::$CHANNEL is $moved, not $TESTED."
+            exit 1
+          fi
+          echo "$CHANNEL is $moved." | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Sign out of ghcr.io
         if: always()
