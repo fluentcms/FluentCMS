@@ -238,10 +238,15 @@ public sealed class ContentListBulkTests : AdminTestContext
 
         DialogButton(ProgressDialog(app), "Stop").Click();
 
-        app.WaitForAssertion(() => Summary(app).ShouldBe("Stopped: 0 of 120 done, 0 failed. 50 were sent without an answer and may have been done; check them before acting on them again."));
-        app.Find(".bulk-progress-problem").TextContent.ShouldContain("The run stopped. Entries 1 to 50 could not be sent");
-        ResultRow(app, "Entry 1").TextContent.ShouldContain("Not confirmed");
-        ResultRow(app, "Entry 51").TextContent.ShouldContain("Not run");
+        // Read in one wait, on the renderer's dispatcher: the 120 results are each a render of the dialog, and some are
+        // still under way when the summary shows, so a read from the test's thread can find the markup half replaced.
+        app.WaitForAssertion(() =>
+        {
+            Summary(app).ShouldBe("Stopped: 0 of 120 done, 0 failed. 50 were sent without an answer and may have been done; check them before acting on them again.");
+            app.Find(".bulk-progress-problem").TextContent.ShouldContain("The run stopped. Entries 1 to 50 could not be sent");
+            ResultRow(app, "Entry 1").TextContent.ShouldContain("Not confirmed");
+            ResultRow(app, "Entry 51").TextContent.ShouldContain("Not run");
+        });
         CloseProgress(app);
         app.WaitForAssertion(() => app.Find(".content-list-selection").TextContent.ShouldContain("120 selected on this page."));
     }
