@@ -83,7 +83,9 @@ public sealed class FieldEditorTests : AdminTestContext
         }
 
         editors.Find("relation")!.Editor.ShouldBe(typeof(RelationFieldEditor));
-        foreach (var type in new[] { "richText", "component", "blocks", "media" })
+        editors.Find("component")!.Editor.ShouldBe(typeof(NestedFieldEditor));
+        editors.Find("blocks")!.Editor.ShouldBe(typeof(NestedFieldEditor));
+        foreach (var type in new[] { "richText", "media" })
         {
             editors.Find(type).ShouldBeNull(type);
         }

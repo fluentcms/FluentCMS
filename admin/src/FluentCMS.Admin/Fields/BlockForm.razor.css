@@ -1,0 +1,5 @@
+.block-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cms-space-m);
+}

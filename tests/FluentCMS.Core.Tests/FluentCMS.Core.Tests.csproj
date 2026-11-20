@@ -19,6 +19,9 @@
 
   <ItemGroup>
     <None Update="ProseMirror/Snapshots/**" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The round trip set of the admin's rich text editor and its content contract, which its schema test reads too (admin spec 4.7). -->
+    <None Include="../../admin/src/FluentCMS.Admin.RichText/js/test/documents/*.json" LinkBase="ProseMirror/EditorDocuments" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../admin/src/FluentCMS.Admin.RichText/js/test/content.json" Link="ProseMirror/EditorContent.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

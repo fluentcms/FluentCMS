@@ -1,13 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
+  <!-- The rich text editor, which an app loads lazily the first time a form has a rich text field (spec 2.6, 4.7). It is not
+       trimmable, so the app's partial trimming keeps the editor, which the admin finds by name once the assembly is loaded. -->
   <PropertyGroup>
     <Description>The rich text editor of the FluentCMS admin, loaded the first time a form has a rich text field.</Description>
     <PackageTags>$(PackageTags) admin blazor richtext</PackageTags>
-    <IsTrimmable>true</IsTrimmable>
+    <!-- The npm project of the bundle (AQ7), which the build neither needs nor packs. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);js/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
     <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Localization" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FluentCMS.Admin.RichText.Tests" />
   </ItemGroup>
 
   <ItemGroup>

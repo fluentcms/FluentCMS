@@ -25,6 +25,7 @@ internal static class ManagementApiServiceCollectionExtensions
         services.TryAddScoped<IManagementApi>(provider => new ManagementApi(CreateClient(provider)));
         services.TryAddScoped<ManagementClient>();
         services.TryAddScoped<SiteMetadata>();
+        services.TryAddScoped<IAdminSchema>(provider => provider.GetRequiredService<SiteMetadata>());
         return services;
     }
 

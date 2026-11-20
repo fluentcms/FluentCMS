@@ -1,0 +1,42 @@
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "Plain, " },
+        { "type": "text", "marks": [{ "type": "bold" }], "text": "bold" },
+        { "type": "text", "text": ", " },
+        { "type": "text", "marks": [{ "type": "italic" }], "text": "italic" },
+        { "type": "text", "text": ", " },
+        { "type": "text", "marks": [{ "type": "underline" }], "text": "underlined" },
+        { "type": "text", "text": ", " },
+        { "type": "text", "marks": [{ "type": "strike" }], "text": "struck" },
+        { "type": "text", "text": " and " },
+        { "type": "text", "marks": [{ "type": "code" }], "text": "code" },
+        { "type": "text", "text": "." }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "marks": [{ "type": "bold" }, { "type": "italic" }, { "type": "underline" }, { "type": "strike" }], "text": "Every mark at once" },
+        { "type": "hardBreak" },
+        { "type": "text", "marks": [{ "type": "bold" }, { "type": "code" }], "text": "bold code" }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "A " },
+        { "type": "text", "marks": [{ "type": "link", "attrs": { "href": "https://example.com/a?b=c#d" } }], "text": "link" },
+        { "type": "text", "text": ", a " },
+        { "type": "text", "marks": [{ "type": "link", "attrs": { "href": "/articles/hello", "target": "_blank", "title": "Hello" } }, { "type": "bold" }], "text": "bold relative link" },
+        { "type": "text", "text": ", " },
+        { "type": "text", "marks": [{ "type": "link", "attrs": { "href": "mailto:editor@example.com" } }], "text": "mail" },
+        { "type": "text", "text": " and " },
+        { "type": "text", "marks": [{ "type": "link", "attrs": { "href": "tel:+15550100" } }], "text": "a phone" }
+      ]
+    }
+  ]
+}
