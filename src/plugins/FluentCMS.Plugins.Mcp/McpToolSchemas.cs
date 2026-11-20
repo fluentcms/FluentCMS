@@ -154,6 +154,7 @@ internal sealed class McpToolSchemas(SchemaModel schema, IFieldTypeRegistry fiel
             ["id"] = Id("The id of the entry."),
             ["locale"] = Locale(),
         };
+        AddDryRun(properties);
         return Tool(properties, ["type", "id"]);
     }
 

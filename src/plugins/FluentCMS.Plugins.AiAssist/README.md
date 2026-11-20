@@ -13,11 +13,12 @@ The settings area `ai` (`GET` and `PUT /api/management/v1/settings/ai`, permissi
 | `provider` | `none` | `openAi`, `azureOpenAi`, `openAiCompatible`, or `none`, which leaves AI assist off. |
 | `model` | unset | The model, or for Azure OpenAI the deployment. |
 | `endpoint` | unset | The endpoint of the provider, one of `FluentCms:Ai:AllowedEndpoints`. OpenAI uses its own when it is unset; the other providers need one. |
-| `apiKey` | unset | The key, a secret: it is written and never returned. Unset, the key is `FluentCms:Ai:{Provider}:ApiKey`. `openAiCompatible` also works with no key at all. |
+| `apiKey` | unset | The key, a secret: it is written and never returned. Unset, the key is `FluentCms:Ai:{Provider}:ApiKey`, for the endpoint it is configured for. `openAiCompatible` also works with no key at all. |
 | `maxOutputTokens` | `1024` | The most tokens an answer has, from 1 to 32000. |
 | `legacyMaxTokens` | `false` | Sends `maxOutputTokens` as the older `max_tokens` instead of `max_completion_tokens`, for an endpoint that reads only that one, such as Ollama's. |
 | `requestTimeout` | `60` | How long a call may take, in seconds, from 1 to 600. |
 | `callsPerMinute` | `20` | The calls a principal may make in a minute in the site, counted on each instance. |
+| `dailyTokenBudget` | `0` | The prompt and completion tokens the site may use in a day, from midnight UTC. 0 sets no budget. A call that does not go with a credential of the site's own is also held by `FluentCms:Ai:DailyTokenBudget`, which this may lower and not raise. |
 | `fields` | empty | The opt-in: a map of content type to the fields that take actions, such as `{ "article": ["title", "summary", "body"] }`. |
 
 A field that takes actions is a text, long text or rich text field of a content type. A rich text field is sent and answered as Markdown.
@@ -52,7 +53,7 @@ and name it in the settings of the site:
 
 When the instance defaults hold a key, a site that saves its settings without `apiKey` inherits that key (see below), and the call is refused with `FCMS1685` because the key belongs to the endpoint of the defaults. Send `"apiKey": null` to save the site with no key and inherit none.
 
-A site with no key of its own gets `FluentCms:Ai:OpenAiCompatible:ApiKey` from the configuration, and so does every `openAiCompatible` site, a keyless Ollama site included: a site cannot decline it. An operator who serves Ollama sites therefore sets no configuration key for `OpenAiCompatible`, and gives each site that needs a key its own.
+A site with no key of its own gets `FluentCms:Ai:OpenAiCompatible:ApiKey` from the configuration when it names `FluentCms:Ai:OpenAiCompatible:Endpoint`, the endpoint that key is for. An `openAiCompatible` site at another endpoint, such as a keyless Ollama, is called with no key.
 
 ### Other models
 
@@ -71,12 +72,15 @@ The options are in `FluentCms:Ai`:
 | --- | --- | --- |
 | `AllowedEndpoints` | empty | The endpoints a site may name in its settings, each an absolute `http` or `https` URL with no user, query or fragment. Empty leaves a site OpenAI at its own endpoint. |
 | `{Provider}:ApiKey` | unset | The key of a provider for the sites whose settings hold none, such as `FluentCms:Ai:OpenAi:ApiKey`. Keep it in a secret store, not in a file of the repository. |
+| `{Provider}:Endpoint` | OpenAI's own for `OpenAi` | The endpoint the key of the provider is sent to, and to no other. `AzureOpenAi` and `OpenAiCompatible` need it beside a key, or the host does not start. |
+| `SiteBilledEndpoints` | empty | The endpoints of `AllowedEndpoints` that bill the holder of the key, such as a public provider's. There a key a site sets is its own account, and its calls are held by its own `dailyTokenBudget` only. OpenAI's own endpoint is one without being named. Leave out every endpoint you run yourself. |
+| `DailyTokenBudget` | `0` | The tokens a day of each site for its calls with the operator's credential: every call the factory does not say goes with the site's own. A site's `dailyTokenBudget` may lower it and cannot raise it or turn it off. 0 sets none. |
 | `MaxInputLength` | `20000` | The most characters of text an action takes. |
 | `UsageRetention` | `90.00:00:00` | How long the usage log keeps a row. |
 
 The allow-list is a security control. A site administrator who could name any endpoint could make the server call an address inside the network, so an endpoint is used only when it is on the list: the same scheme, host, port and path, whatever the case of the host and with or without a slash at the end. The list is read when the host starts, so a change to it applies after a restart. An endpoint is checked against it at every call and not only when the settings are saved, so an endpoint that was saved while it was on the list is refused once the host runs with a list that no longer holds it. Redirects are not followed, and a refusal is `FCMS1684`.
 
-The key of the configuration for `OpenAi` is the operator's account with OpenAI, so it is sent to OpenAI's own endpoint only. A site that names another endpoint for it holds its own key. The key of the configuration for `AzureOpenAi` or `OpenAiCompatible` goes to whichever allowed endpoint a site names for that provider, so give each site its own key when the list holds endpoints of more than one party.
+The key of a provider in the configuration is the operator's account at one endpoint, so it is sent to `{Provider}:Endpoint` only: OpenAI's own endpoint for `OpenAi` unless the configuration names another. A site that names another endpoint, even an allowed one, holds its own key; `openAi` and `azureOpenAi` are refused without one (`FCMS1685`), and `openAiCompatible` is called with no key.
 
 A key in the instance defaults of the settings is the operator's as well. A site with no settings of its own follows the defaults whole, and a site that saves its settings without a key inherits the key of the defaults, as for every secret of every settings area: the site's settings do not hold it, and each call reads it from the defaults. The settings read shows this as `secretsInherited`. The plugin sends an inherited key only to the provider and the endpoint the defaults name: a site that names another provider or endpoint sets a key of its own, and is refused with `FCMS1685` until it does. A key replaced in the defaults reaches every site that inherits it at its next call, and a site that inherits it is held to the defaults just the same. A site that has set a key of its own, or `"apiKey": null`, keeps it when it saves without `apiKey`; it inherits again once its `ai` settings are reset (`DELETE /api/management/v1/settings/ai` with the version read as `If-Match`, or `ISettings<AiSettings>.ResetAsync` in the host's code).
 
@@ -163,7 +167,9 @@ The answer holds nothing of the provider's configuration: not the provider, the 
 - The text has at most `MaxInputLength` characters (`FCMS1686`).
 - The answer has at most `maxOutputTokens` tokens, sent as `max_completion_tokens`, or with `legacyMaxTokens` as `max_tokens` alone. Ollama reads only `max_tokens`, so an Ollama site turns it on; it stays off elsewhere, since OpenAI's reasoning models refuse `max_tokens`, also through a gateway.
 - A call ends at `requestTimeout` (`FCMS1688`) or when the caller goes away.
-- A principal makes at most `callsPerMinute` calls in a site (`FCMS1687`). The count is kept in memory on each instance, and a refused call takes nothing from it. The Management rate limit holds beside it.
+- A principal makes at most `callsPerMinute` calls in a site (`FCMS1687`). The count is kept in memory on each instance. A call is counted before its draft is read or its image decoded, so calls sent together pass only as often as the limit allows, and a call refused before it is sent is not counted.
+- A site's daily token budget is the lower of its `dailyTokenBudget` and, for a call with the operator's credential, `FluentCms:Ai:DailyTokenBudget`. The default factory says a call goes with the site's own credential only for a key the site set itself at an endpoint that bills the holder of the key: OpenAI's own, or one of `FluentCms:Ai:SiteBilledEndpoints`. At an endpoint the operator runs, such as a local Ollama, any key the site types stays under the ceiling. A factory of the host's own counts as the operator's unless it sets `SiteCredential`. It is counted from the site's usage rows since midnight UTC and the calls in flight (`FCMS1693`, whose detail says when it resets, logged as event 9369 once a day for the site on each instance). The `dailyTokenBudget` of the instance defaults holds the sites that follow the defaults, not a site that saved settings of its own.
+- A budgeted call reserves an estimate while it is in flight: a token for each UTF-8 byte of its instructions and text, 25,600 for an image (gpt-4o-mini's count of the 1024 by 1024 copy at high detail, the most of the models whose formula is published: an estimate, not a bound for any model) and `maxOutputTokens`. A call with the operator's credential that ends before the provider reports its usage, whose provider reports none, or that is reported at 0 for a prompt or for an answer with text, is written to the usage log at that estimate; the answer gives what the provider reported. So a site passes its budget by at most one call on each instance, of at most that estimate, as long as the provider counts no more than that. A row is written within five seconds; one that fails or takes longer is not written (event 9365) and still counts for its day on the instance. A call with the site's own credential is written as its provider reported it. The Management rate limit holds beside it.
 - A call is one request to the provider: the retries of the client package are off.
 
 ### The text is content
@@ -212,13 +218,13 @@ builder.Services.AddFluentCms(cms =>
 });
 ```
 
-The factory is a singleton and owns its clients: the plugin calls a client and does not dispose it. Returning `null` leaves AI assist off for that site (`FCMS1682`). The plugin does not ask the factory for a site whose `provider` is `none`, or a removed one, and refuses the call itself, so such a site is off whatever the factory would give. The allow-list is the default factory's, so a factory of the host's own decides itself which endpoints it calls. The permission, the opt-in, the limits and the usage log stay the plugin's.
+The factory is a singleton and owns its clients: the plugin calls a client and does not dispose it. Returning `null` leaves AI assist off for that site (`FCMS1682`). The plugin does not ask the factory for a site whose `provider` is `none`, or a removed one, and refuses the call itself, so such a site is off whatever the factory would give. The allow-list is the default factory's, so a factory of the host's own decides itself which endpoints it calls. The permission, the opt-in, the limits and the usage log stay the plugin's. A client the factory gives is counted as the operator's for the budget of `FluentCms:Ai:DailyTokenBudget` unless the factory sets `SiteCredential = true` on the `AiClient`, which it does only when the client calls with a credential the site holds and pays for.
 
 The plugin ends a call at the site's `requestTimeout`, and when the caller goes away, through the cancellation token it passes to the client, so the host's client must honour that token: one that ignores it can run past `requestTimeout`. The client must also have no network timeout of its own that is shorter than `requestTimeout`, which goes up to 600 seconds. The clients built on `System.ClientModel`, such as OpenAI's, stop a request after 100 seconds unless told otherwise, and a call that such a timeout ends is answered as a failure of the provider (`FCMS1689`), not as a timeout (`FCMS1688`). The default factory gives its client no timeout of its own.
 
 ## Telemetry
 
-A call is a span of the `FluentCMS` activity source named `ai {action}`, with `fluentcms.operation`, `fluentcms.site`, `fluentcms.type`, `fluentcms.provider` and `fluentcms.outcome` (`succeeded`, `failed`, `timeout` or `cancelled`), and for a failure the Error status and `fluentcms.code`. The counter `fluentcms.ai.calls` of the `FluentCMS` meter counts the calls by `fluentcms.operation`, `fluentcms.provider` and `fluentcms.outcome`. Log event ids 9360 to 9368.
+A call is a span of the `FluentCMS` activity source named `ai {action}`, with `fluentcms.operation`, `fluentcms.site`, `fluentcms.type`, `fluentcms.provider` and `fluentcms.outcome` (`succeeded`, `failed`, `timeout` or `cancelled`), and for a failure the Error status and `fluentcms.code`. The counter `fluentcms.ai.calls` of the `FluentCMS` meter counts the calls by `fluentcms.operation`, `fluentcms.provider` and `fluentcms.outcome`. Log event ids 9360 to 9369; 9369, a site over its daily budget, is written once a day for the site on each instance.
 
 ## Verification
 
@@ -241,5 +247,6 @@ CI calls no provider. [Verifying AI assist against real endpoints](../../../docs
 | `FCMS1690` | 502 | The provider answered with no text, or for `seo` with no title and description. |
 | `FCMS1691` | 422 | The media asset is not an image, or the site has no media library. |
 | `FCMS1692` | 409 | The settings of the site name `anthropic` or `ollama`, which are no longer providers of the plugin. |
+| `FCMS1693` | 429 | The site has used its daily token budget. |
 
 Where the plugin is disabled for a site, its endpoints answer 404 (`FCMS1550`).

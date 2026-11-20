@@ -124,7 +124,7 @@ A singleton has `{type}_get`, `{type}_update_draft` and `{type}_discard_draft` o
 
 The shared tools take a `type`:
 
-- `publish`, `unpublish` and `schedule`, listed for a caller that holds `content.{type}.publish` or `content.{type}.unpublish` for some exposed type. They are apart from the draft tools, so an agent role with `create` and `update` and without `publish` drafts an entry and cannot publish it. `schedule` takes `action`, `at` and `timeZone` as the schedule route of the Management API does.
+- `publish`, `unpublish` and `schedule`, listed for a caller that holds `content.{type}.publish` or `content.{type}.unpublish` for some exposed type. They are apart from the draft tools, so an agent role with `create` and `update` and without `publish` drafts an entry and cannot publish it. `schedule` takes `action`, `at` and `timeZone` as the schedule route of the Management API does. `unpublish` takes live content down, so it runs after a [dry run](#dry-runs); `publish` and `schedule` run at once, and an unpublish scheduled a moment ahead is not planned yet (#3361).
 - `query`, which lists the entries of any exposed type the caller may read, with the arguments of `{type}_list`.
 - `bulk`, which publishes, unpublishes or deletes several entries at once, after a [dry run](#dry-runs). It is listed for a caller that holds `content.{type}.publish`, `content.{type}.unpublish` or `content.{type}.delete` for some exposed type, with the actions it holds ([Bulk](#bulk)).
 
@@ -175,7 +175,7 @@ An agent acts fast and can be wrong. The tools that remove an entry or change ma
 
 ### Dry runs
 
-`{type}_delete` and `bulk` take `dryRun`, which is true unless the call says false. A dry run changes nothing and answers the plan:
+`{type}_delete`, `unpublish` and `bulk` take `dryRun`, which is true unless the call says false. A dry run changes nothing and answers the plan:
 
 ```json
 {
@@ -190,10 +190,10 @@ An agent acts fast and can be wrong. The tools that remove an entry or change ma
 }
 ```
 
-- `entries` are the entries the call would touch, as the caller reads them: the draft where it may read drafts, in the locale of the connection. The schema names no title, so `title` is the text field called `title` or `name`, or else the first text field.
+- `entries` are the entries the call would touch, as the caller reads them: the draft where it may read drafts, in the `locale` of an `unpublish` or a `bulk` publish or unpublish, and otherwise in the locale of the connection. The schema names no title, so `title` is the text field called `title` or `name`, or else the first text field.
 - A plan names every entry, since the token is of them all, so its titles keep it to `MaxResultBytes`: a title longer than `MaxListTextLength` is shortened as a list shortens a text, and where the plan is still over the limit every title is null and the plan says `"titlesOmitted": true`. A plan over the limit even then is answered whole.
-- `references` are the entries whose relation would break: for a delete the entries that point to one of the plan, for an unpublish the published ones, and none for a publish. They are entries of the exposed types that the caller may read, found by the relation fields of a type itself, in the locale of the connection; a relation inside a component or a block is not looked for. A plan lists 50 at most and says `moreReferences` when there may be more. An entry of the plan is not a reference of it.
-- The same call with `dryRun: false` and the `confirmationToken` runs it. A delete then answers `{ "type", "id", "deleted" }`.
+- `references` are the entries whose relation would break: for a delete the entries that point to one of the plan, for an unpublish the published ones, and none for a publish. They are entries of the exposed types that the caller may read, found by the relation fields of a type itself, in the locale the entries are read in; a relation inside a component or a block is not looked for. A plan lists 50 at most and says `moreReferences` when there may be more. An entry of the plan is not a reference of it.
+- The same call with `dryRun: false` and the `confirmationToken` runs it. A delete then answers `{ "type", "id", "deleted" }`, and an unpublish the entry as the Management API answers it.
 
 The token is an HMAC-SHA256 over the plan: the tool, its arguments (all but `dryRun` and `confirmationToken`, in any order of their keys), the principal, the client, the site and the locale of the connection, the time the token ends, and the id, version and status of each entry. It lasts five minutes. Before a run the server reads the plan again, and refuses the call, with nothing run, when:
 

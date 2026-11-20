@@ -1,5 +1,8 @@
+using System.Net;
+using System.Text;
 using System.Text.Json;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Sites;
 using FluentCMS.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Client;
@@ -10,7 +13,7 @@ using static FluentCMS.Plugins.Mcp.Tests.McpToolsTesting;
 
 namespace FluentCMS.Plugins.Mcp.Tests;
 
-// The dry run in front of {type}_delete: a call answers the plan and a confirmation token and changes nothing, and only
+// The dry run in front of {type}_delete and unpublish: a call answers the plan and a confirmation token and changes nothing, and only
 // the same call with that token runs.
 public sealed class McpDryRunTests(McpToolsFixture fixture) : IClassFixture<McpToolsFixture>
 {
@@ -189,6 +192,95 @@ public sealed class McpDryRunTests(McpToolsFixture fixture) : IClassFixture<McpT
         finally
         {
             directory.Delete(recursive: true);
+        }
+    }
+
+    // An unpublish takes live content down, so it is planned and confirmed as a delete is; a publish stays direct.
+    [Fact]
+    public async Task AnUnpublishWithoutAValidTokenAnswersThePlanAndChangesNothing()
+    {
+        using var http = await KeyAsync(fixture.Host);
+        using var otherHttp = await KeyAsync(fixture.Host);
+        await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+        await using var other = await ConnectAsync(otherHttp, protocolVersion: InitializeProtocol);
+        var writer = (await OkAsync(client, "writer_create_draft", new { fields = new { name = "Ada" } })).GetProperty("id").GetGuid();
+        var post = (await OkAsync(client, "post_create_draft", new { fields = new { title = "By Ada", author = writer } })).GetProperty("id").GetGuid();
+        var second = await PostAsync(client, "Live too");
+        await OkAsync(client, McpContentTools.Publish, new { type = "writer", id = writer });
+        await OkAsync(client, McpContentTools.Publish, new { type = "post", id = post });
+        await OkAsync(client, McpContentTools.Publish, new { type = "post", id = second });
+        var arguments = new { type = "writer", id = writer };
+
+        var plan = await OkAsync(client, McpContentTools.Unpublish, arguments);
+        var asked = await OkAsync(client, McpContentTools.Unpublish, new { type = "writer", id = writer, dryRun = true });
+        var missing = await CallAsync(client, McpContentTools.Unpublish, Confirmed(arguments, null));
+        var forged = await CallAsync(client, McpContentTools.Unpublish, Confirmed(arguments, "v1.confirmed"));
+        var ofAnotherClient = await CallAsync(other, McpContentTools.Unpublish, Confirmed(arguments, TokenOf(plan)));
+        var ofAnotherEntry = await CallAsync(client, McpContentTools.Unpublish, Confirmed(new { type = "post", id = second }, TokenOf(plan)));
+        var ofADelete = await CallAsync(client, McpContentTools.Unpublish, Confirmed(new { type = "post", id = second }, TokenOf(await OkAsync(client, "post_delete", new { id = second }))));
+        var stillLive = await OkAsync(client, "writer_get", new { id = writer, status = "published" });
+        var secondLive = await OkAsync(client, "post_get", new { id = second, status = "published" });
+        var unpublished = await OkAsync(client, McpContentTools.Unpublish, Confirmed(arguments, TokenOf(plan)));
+
+        plan.GetProperty("dryRun").GetBoolean().ShouldBeTrue();
+        plan.GetProperty("action").GetString().ShouldBe("unpublish");
+        plan.GetProperty("entries").EnumerateArray().ShouldHaveSingleItem().GetProperty("status").GetString().ShouldBe("published");
+        plan.GetProperty("references").EnumerateArray().ShouldHaveSingleItem().GetProperty("id").GetGuid().ShouldBe(post);
+        asked.GetProperty("dryRun").GetBoolean().ShouldBeTrue();
+        Code(missing).ShouldBe("FCMS1630");
+        Code(forged).ShouldBe("FCMS1631");
+        Code(ofAnotherClient).ShouldBe("FCMS1631");
+        Code(ofAnotherEntry).ShouldBe("FCMS1631");
+        Code(ofADelete).ShouldBe("FCMS1631");
+        stillLive.GetProperty("id").GetGuid().ShouldBe(writer);
+        secondLive.GetProperty("id").GetGuid().ShouldBe(second);
+        unpublished.GetProperty("status").GetString().ShouldBe("unpublished");
+    }
+
+    // The plan of an unpublish reads its entry and the references in the locale of the call, and its token is of that
+    // locale: the same call in another locale is another call. The chapter is published in French only, so only the plan
+    // in French names it.
+    [Fact]
+    public async Task ThePlanOfAnUnpublishIsOfTheLocaleOfTheCall()
+    {
+        await using var host = Host(Path.GetTempPath(), new FakeDownloads()).WithContentTypes(typeof(Guide), typeof(Chapter));
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<SiteManager>().EnsureLocaleAsync(DefaultSite.Id, "fr", Token);
+        }
+
+        using var http = await KeyAsync(host);
+        await using var client = await ConnectAsync(http, protocolVersion: InitializeProtocol);
+        var guide = (await OkAsync(client, "guide_create_draft", new { fields = new { name = "Guide" } })).GetProperty("id").GetGuid();
+        await PatchAsync(http, $"guide/{guide:D}?locale=fr", """{ "name": "Guide" }""");
+        var chapter = (await OkAsync(client, "chapter_create_draft", new { fields = new { title = "On its own" } })).GetProperty("id").GetGuid();
+        await PatchAsync(http, $"chapter/{chapter:D}?locale=fr", $$"""{ "title": "Dans le guide", "guide": "{{guide:D}}" }""");
+        await OkAsync(client, McpContentTools.Publish, new { type = "guide", id = guide });
+        await OkAsync(client, McpContentTools.Publish, new { type = "guide", id = guide, locale = "fr" });
+        await OkAsync(client, McpContentTools.Publish, new { type = "chapter", id = chapter, locale = "fr" });
+
+        var french = await OkAsync(client, McpContentTools.Unpublish, new { type = "guide", id = guide, locale = "fr" });
+        var english = await OkAsync(client, McpContentTools.Unpublish, new { type = "guide", id = guide, locale = "en" });
+        var otherLocale = await CallAsync(client, McpContentTools.Unpublish, Confirmed(new { type = "guide", id = guide, locale = "en" }, TokenOf(french)));
+        var noLocale = await CallAsync(client, McpContentTools.Unpublish, Confirmed(new { type = "guide", id = guide }, TokenOf(french)));
+        var unpublished = await OkAsync(client, McpContentTools.Unpublish, Confirmed(new { type = "guide", id = guide, locale = "fr" }, TokenOf(french)));
+
+        french.GetProperty("references").EnumerateArray().ShouldHaveSingleItem().GetProperty("id").GetGuid().ShouldBe(chapter);
+        english.GetProperty("references").GetArrayLength().ShouldBe(0);
+        Code(otherLocale).ShouldBe("FCMS1631");
+        Code(noLocale).ShouldBe("FCMS1631");
+        unpublished.GetProperty("status").GetString().ShouldBe("unpublished");
+        (await OkAsync(client, "guide_get", new { id = guide, status = "published" })).GetProperty("id").GetGuid().ShouldBe(guide);
+
+        static async Task PatchAsync(HttpClient http, string path, string body)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Patch, new Uri($"/api/management/v1/content/{path}", UriKind.Relative))
+            {
+                Content = new StringContent(body, Encoding.UTF8, "application/merge-patch+json"),
+            };
+            request.Headers.TryAddWithoutValidation("If-Match", "\"0\"");
+            using var response = await http.SendAsync(request, Token);
+            response.StatusCode.ShouldBe(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Token));
         }
     }
 

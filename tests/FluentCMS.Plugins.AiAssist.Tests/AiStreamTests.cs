@@ -104,7 +104,9 @@ public sealed class AiStreamTests : IClassFixture<AiHost>
             new AiClient(_ai.Chat, ScriptedFactory.Provider, "test-model"),
             [new ChatMessage(ChatRole.User, "Ships are big boats.")],
             new ChatOptions(),
-            TimeSpan.FromSeconds(30));
+            TimeSpan.FromSeconds(30),
+            PromptEstimate: 10,
+            Reservation: null);
 
         await Should.ThrowAsync<OperationCanceledException>(() => service.RunAsync(call, (_, _) => throw new OperationCanceledException("The connection was aborted."), Token));
         await Should.ThrowAsync<OperationCanceledException>(() => service.RunAsync(call, (_, _) => throw new IOException("The connection was reset."), Token));
