@@ -10,9 +10,9 @@ using static Microsoft.Playwright.Assertions;
 
 namespace FluentCMS.Admin.EndToEnd;
 
-// The preview of A-29 for the built-in Editor: a draft of showcase, the one type with a preview template, is shown in the
-// pane at phone width from the preview origin of config.json, which the browser answers with a page that speaks version 1
-// of the postMessage contract; a save tells the page to refresh, and the page shows it without loading again.
+// The preview of A-29 for the class's editor: a draft of showcase, the one type with a preview template, is shown in the pane
+// at phone, tablet and full width from the preview origin of config.json, which the browser answers with a page that speaks
+// version 1 of the postMessage contract; a save tells the page to refresh, and the page shows it without loading again.
 public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
 {
     private const string Template = EndToEndHost.PreviewOrigin + "/showcase/{id}?preview={token}";
@@ -52,6 +52,19 @@ public sealed class PreviewTests(EndToEndHost host) : BrowserTest(host)
 
         await Expect(page.Locator("#state")).ToHaveTextAsync("refresh 2");
         Volatile.Read(ref loads).ShouldBe(1);
+
+        // The tablet width sits beside the form as the phone's does; full width puts the pane above it, as wide as it.
+        var width = tab.Page.GetByLabel(Repository.AdminText("Content.Preview.Width"), new PageGetByLabelOptions { Exact = true });
+        var layout = tab.Page.Locator(".content-form-layout");
+        await width.SelectOptionAsync("tablet");
+        await Expect(frame).ToHaveCSSAsync("width", "820px");
+        await Expect(layout).ToHaveAttributeAsync("data-preview", "beside");
+        await width.SelectOptionAsync("full");
+        await Expect(layout).ToHaveAttributeAsync("data-preview", "full");
+        var full = (await frame.BoundingBoxAsync()).ShouldNotBeNull();
+        var area = (await layout.BoundingBoxAsync()).ShouldNotBeNull();
+        full.Width.ShouldBeGreaterThan(820);
+        full.Width.ShouldBe(area.Width, 2);
         browser.PolicyViolations.ShouldBeEmpty();
     }
 

@@ -1,7 +1,7 @@
 {
   // Beside the Blog sample: the smallest type with blocks and components to depth 3 (decision 20), for BlockTests, and memo,
   // whose entries BulkTests makes by the hundred, so that they crowd no list another case reads, and showcase, the one type with
-  // a preview template, for PreviewTests, so that no other case's form mints a token.
+  // a preview template, for PreviewTests, so that no other case's form shows a Preview button (every form still mints a token).
   "collections": [
     {
       "name": "memo",

@@ -72,6 +72,9 @@ internal sealed class FakeContent
 
     public int PreviewMints { get; private set; }
 
+    // A mint is refused while set.
+    public bool PreviewUnavailable { get; set; }
+
     // What the next publish warns about, as the server writes its warnings.
     public JsonArray Warnings { get; set; } = [];
 
@@ -173,6 +176,11 @@ internal sealed class FakeContent
         if (request.Method == HttpMethod.Post && rest is [var previewed, "preview-token"] && Guid.TryParse(previewed, out var previewedId))
         {
             var minted = ++PreviewMints;
+            if (PreviewUnavailable)
+            {
+                return FakeManagementServer.Problem(HttpStatusCode.Forbidden, "FCMS1000");
+            }
+
             var (url, publishedUrl) = Preview?.Invoke(previewedId, write.Body["locale"]?.GetValue<string>()) ?? (null, null);
             return FakeManagementServer.Json(new JsonObject
             {

@@ -322,6 +322,7 @@ public sealed class AdminHostingTests : IAsyncDisposable
     [InlineData("Branding:Name", " Acme")]
     [InlineData("Cultures:Default", "de")]
     [InlineData("PreviewOrigins:0", "https://www.example.com/preview")]
+    [InlineData("PreviewOrigins:0", "https://localhost/")]
     public async Task AValueTheAdminWouldRefuseStopsTheHost(string key, string value)
     {
         var settings = AdminSettings();

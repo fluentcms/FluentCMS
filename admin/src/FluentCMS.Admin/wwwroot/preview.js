@@ -20,7 +20,8 @@ export function listen(pane, target) {
         }
 
         if (typeof message === "string") {
-            target.invokeMethodAsync("ReceiveAsync", event.origin, message);
+            // The app may be gone, or the message refused there; neither is the page's to see.
+            target.invokeMethodAsync("ReceiveAsync", event.origin, message).catch(() => { });
         }
     };
     window.addEventListener("message", receive);

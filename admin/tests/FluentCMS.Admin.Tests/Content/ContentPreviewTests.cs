@@ -171,6 +171,97 @@ public sealed class ContentPreviewTests : AdminTestContext
     }
 
     [Fact]
+    public void APublishWithThePaneClosedOffersThePublishedPageWhenItOpens()
+    {
+        _content.Preview = (id, _) => ($"{FrontEnd}/posts/{id:D}?preview={{token}}", _content.Status(id) == "published" ? $"{FrontEnd}/posts/{id:D}" : null);
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/post/{id:D}");
+        app.WaitForAssertion(() => Buttons(app).ShouldContain("Preview"));
+
+        app.FindAll(".content-form-toolbar fluent-button").Single(button => button.TextContent.Trim() == "Publish").Click();
+        app.WaitForAssertion(() => _content.PreviewMints.ShouldBe(2));
+        Open(app);
+
+        Published(app).Instance.Disabled.ShouldBeFalse();
+        _content.PreviewMints.ShouldBe(2);
+    }
+
+    [Fact]
+    public void ThePaneIsControlledByItsToggleAndClosingItReturnsFocusThere()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        var toggle = Button(app, "Close preview");
+        toggle.GetAttribute("aria-expanded").ShouldBe("true");
+        toggle.GetAttribute("aria-controls").ShouldBe(Pane(app).Id);
+
+        app.FindAll(".content-preview fluent-button").Single(button => button.TextContent.Trim() == "Close preview").Click();
+
+        app.WaitForAssertion(() => app.FindAll(".content-preview").ShouldBeEmpty());
+        var opener = Button(app, "Preview");
+        opener.GetAttribute("aria-expanded").ShouldBe("false");
+        opener.HasAttribute("aria-controls").ShouldBeFalse();
+        var button = app.FindComponents<Microsoft.FluentUI.AspNetCore.Components.FluentButton>().Single(found => found.Nodes.OfType<IElement>().First().TextContent.Trim() == "Preview");
+        app.WaitForAssertion(() => JSInterop.Invocations.Where(call => call.Identifier == "Blazor._internal.domWrapper.focus")
+            .Select(call => ((ElementReference)call.Arguments[0]!).Id).LastOrDefault().ShouldBe(button.Instance.Element.Id));
+    }
+
+    // A frame of the admin's own origin with scripts and the same origin allowed would reach its sessionStorage.
+    [Fact]
+    public void APageOfTheAdminsOwnOriginIsRefused()
+    {
+        _content.Preview = (id, _) => ($"http://localhost/posts/{id:D}?preview={{token}}", null);
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Load($"content/post/{id:D}", """{ "apiBaseUrl": "https://cms.example.com", "previewOrigins": ["http://localhost"] }""");
+        app.WaitForAssertion(() => Buttons(app).ShouldContain("Preview"));
+
+        Button(app, "Preview").Click();
+
+        app.WaitForAssertion(() => app.Find(".content-preview-notice").TextContent.ShouldBe("The preview page is not on an origin the admin may show."));
+        app.FindAll(".content-preview iframe").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ATokenCloseToItsEndIsNotReused()
+    {
+        _content.PreviewLifetime = TimeSpan.FromSeconds(30);
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+
+        var app = Open(Load($"content/post/{id:D}"));
+
+        Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-2");
+    }
+
+    [Fact]
+    public void AFailedMintAfterASaveKeepsThePageWithANote()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+        _content.PreviewUnavailable = true;
+
+        app.Find("[data-field='title'] input").Input("Changed");
+        Save(app);
+
+        app.WaitForAssertion(() => app.Find(".content-preview-notice").TextContent.ShouldBe("The preview could not be refreshed; Reload tries again."));
+        Frame(app).GetAttribute("src").ShouldBe($"{FrontEnd}/posts/{id:D}?preview=token-1");
+    }
+
+    [Fact]
+    public void ANavigatedAddressIsShownOnTheFramesOriginOnlyAndWithoutItsQuery()
+    {
+        var id = _content.Add("post", new JsonObject { ["title"] = "Hello" });
+        var app = Open(Load($"content/post/{id:D}"));
+
+        Post(app, FrontEnd, Message("navigated", url: "https://elsewhere.example.com/about"));
+        Post(app, FrontEnd, Message("navigated", url: "javascript:alert(1)"));
+        app.FindAll(".content-preview-notice").ShouldBeEmpty();
+
+        Post(app, FrontEnd, Message("navigated", url: $"{FrontEnd}/about?preview=secret#top"));
+
+        app.WaitForAssertion(() => app.Find(".content-preview-notice").TextContent.ShouldBe($"Showing {FrontEnd}/about"));
+    }
+
+    [Fact]
     public void APageThatSaysNoReadyIsShownWithANote()
     {
         Start(Previewing);

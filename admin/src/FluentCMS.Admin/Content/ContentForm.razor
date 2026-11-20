@@ -105,7 +105,8 @@
                         <CmsButton OnClick="@(() => historyOpen = true)">@L["Content.Versions.Open"]</CmsButton>
                         @if (MayPreview && previewAnswer?.Url is not null)
                         {
-                            <CmsButton Icon="CmsIconName.Open" OnClick="@(() => previewOpen = !previewOpen)">@L[previewOpen ? "Content.Preview.Close" : "Content.Preview.Open"]</CmsButton>
+                            <CmsButton @ref="previewButton" Icon="CmsIconName.Open" Expanded="@PreviewShown" Controls="@(PreviewShown ? ContentPreview.PaneId : null)"
+                                       OnClick="@(() => previewOpen = !previewOpen)">@L[previewOpen ? "Content.Preview.Close" : "Content.Preview.Open"]</CmsButton>
                         }
                     </div>
                 }
@@ -248,7 +249,7 @@
     {
         <ContentPreview Type="@type!.Name" EntryId="@entryId!.Value" Site="@read!.Site" Locale="@read.Locale" TokenLocale="@PreviewLocale" Version="@read.Entry!.Version" Status="@read.Entry.Status"
                         FirstUrl="@previewAnswer!.Url" FirstPublishedUrl="@previewAnswer.PublishedUrl" FirstExpiresAt="@previewAnswer.ExpiresAt"
-                        Width="@previewWidth" WidthChanged="@(value => previewWidth = value)" OnClose="@(() => previewOpen = false)" />
+                        Width="@previewWidth" WidthChanged="@(value => previewWidth = value)" OnClose="ClosePreview" />
     }
 </div>
 <CmsDialog Title="@L["Content.Form.Leave.Title"]" Open="@(leaveAnswer is not null)" OpenChanged="@(open => { if (!open) AnswerLeave(false); })">
@@ -405,6 +406,9 @@
     // The answer of a token minted as the form read the entry, which says whether the type has a preview page (A-29).
     private PreviewTokenAnswer? previewAnswer;
     private bool previewOpen;
+    private CmsButton? previewButton;
+    // The pane's own Close goes with the pane, so focus goes back to the form's toggle.
+    private bool focusPreviewButton;
     private string previewWidth = ContentPreview.Phone;
 
     // The name of the content type, as the route has it.
@@ -551,6 +555,12 @@
         if (firstRender && !InPanel)
         {
             await ListenForShortcutsAsync();
+        }
+
+        if (focusPreviewButton && previewButton is not null)
+        {
+            focusPreviewButton = false;
+            await previewButton.FocusAsync();
         }
 
         if (focusPanelHeading && state != FormState.Loading)
@@ -883,6 +893,8 @@
 
     private static bool IsFailure(Exception exception) =>
         exception is ApiProblemException or HttpRequestException or TaskCanceledException or JsonException;
+
+    private void ClosePreview() => (previewOpen, focusPreviewButton) = (false, true);
 
     // The backend tells whether a type has a preview template only in a token's answer, so the form mints one as it reads a
     // saved locale; the pane uses it while it lasts. A failed mint leaves the form without the preview button.
@@ -1222,6 +1234,15 @@
                 fields = answer.Entry!.Fields.DeepClone().AsObject();
                 await DropChangesAsync();
             }
+
+            // The published page of the locale may have come or gone, so the answer the pane opens with is minted again; an open
+            // pane mints again itself and keeps its button meanwhile.
+            if (!PreviewShown)
+            {
+                previewAnswer = null;
+            }
+
+            _ = ProbePreviewAsync(current);
 
             warnings = found;
             done = action switch

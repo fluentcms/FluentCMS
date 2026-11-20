@@ -84,6 +84,9 @@
   <data name="Configuration.Error.RuleOriginList" xml:space="preserve">
     <value>{0} must be a list of origins.</value>
   </data>
+  <data name="Configuration.Error.RuleNotAdminOrigin" xml:space="preserve">
+    <value>{0} must not be the admin's own origin, which a preview frame could reach into.</value>
+  </data>
   <data name="Configuration.Error.RuleObject" xml:space="preserve">
     <value>{0} must be an object.</value>
   </data>
@@ -2131,6 +2134,9 @@
   </data>
   <data name="Content.Preview.Silent" xml:space="preserve">
     <value>This page does not answer the preview, so each save loads it again.</value>
+  </data>
+  <data name="Content.Preview.NotRefreshed" xml:space="preserve">
+    <value>The preview could not be refreshed; Reload tries again.</value>
   </data>
   <data name="Content.Preview.Showing" xml:space="preserve">
     <value>Showing {0}</value>

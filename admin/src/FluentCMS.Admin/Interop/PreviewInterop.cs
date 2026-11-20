@@ -59,9 +59,9 @@ internal sealed class PreviewInterop(IJSRuntime js) : IAsyncDisposable
                 await listener.InvokeVoidAsync("dispose");
                 await listener.DisposeAsync();
             }
-            catch (JSDisconnectedException)
+            catch (Exception exception) when (exception is JSDisconnectedException or JSException)
             {
-                // The page is gone, and its listener with it.
+                // The page or the module is gone, and the listener with it.
             }
             finally
             {

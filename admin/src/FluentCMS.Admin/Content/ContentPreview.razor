@@ -1,6 +1,7 @@
 @* The preview pane of the form (spec 4.12, A-29): the front end's page of the entry in a frame, at phone, tablet or full
    width, with a switch between the draft and the published page. The draft's URL comes with a preview token of the form's
-   locale, minted again when the frame loads after the token ended; a URL of an origin config.json does not list is refused.
+   locale, minted again when the frame loads after the token ended; a URL of an origin config.json does not list, or of the
+   admin's own origin, is refused.
    A page that speaks version 1 of the postMessage contract says ready and is told to refresh after a save; a page that says
    nothing within five seconds is shown as it is, and a save loads it again. *@
 @implements IAsyncDisposable
@@ -9,10 +10,11 @@
 @inject AdminConfiguration Configuration
 @inject PreviewInterop Interop
 @inject TimeProvider Time
+@inject NavigationManager Navigation
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<AdminResources> L
 
-<section @ref="pane" class="content-preview" data-width="@Width" data-ready="@(ready ? "true" : null)" aria-label="@L["Content.Preview.Title"]">
+<section @ref="pane" id="@PaneId" class="content-preview" data-width="@Width" data-ready="@(ready ? "true" : null)" aria-label="@L["Content.Preview.Title"]">
     <div class="content-preview-toolbar">
         <CmsSelect Label="@L["Content.Preview.Width"]" Options="@Widths" Value="@Width" ValueChanged="@(value => WidthChanged.InvokeAsync(value ?? Phone))" />
         <CmsSwitch Label="@L["Content.Preview.Published"]" Value="@showingPublished" ValueChanged="ShowPublishedAsync" Disabled="@(answer?.PublishedUrl is null)" />
@@ -29,6 +31,10 @@
     }
     else if (frameUrl is not null && listened)
     {
+        @if (refreshFailed)
+        {
+            <p class="content-preview-notice">@L["Content.Preview.NotRefreshed"]</p>
+        }
         @if (silent)
         {
             <p class="content-preview-notice"><CmsIcon Name="CmsIconName.Info" />@L["Content.Preview.Silent"]</p>
@@ -52,6 +58,11 @@
 
     public const string Full = "full";
 
+    public const string PaneId = "content-preview";
+
+    // A token is not reused this close to its end, so that a page loaded with it can still read the draft.
+    private static readonly TimeSpan ReuseMargin = TimeSpan.FromSeconds(45);
+
     private ElementReference pane;
     private IAsyncDisposable? listening;
     // The frame is drawn once the pane listens, so that the page's ready is not posted before.
@@ -61,6 +72,7 @@
     private bool showingPublished;
     private bool failed;
     private bool refused;
+    private bool refreshFailed;
     private string? frameUrl;
     private string? frameOrigin;
     // When the token of the page in the frame ends; null for the published page, which needs none.
@@ -127,7 +139,7 @@
         new(Full, L["Content.Preview.Full"]),
     ];
 
-    private bool Expired(DateTimeOffset? at) => at is { } end && end <= Time.GetUtcNow();
+    private bool Expired(DateTimeOffset? at) => at is { } end && end - ReuseMargin <= Time.GetUtcNow();
 
     public async ValueTask DisposeAsync()
     {
@@ -191,7 +203,8 @@
     private async Task SavedAsync()
     {
         var refresh = !showingPublished && ready && !Expired(frameExpires) && frameOrigin is not null;
-        if (!await MintAsync())
+        var minted = await MintAsync(keepFrame: true);
+        if (!minted && !refresh)
         {
             return;
         }
@@ -201,6 +214,7 @@
             try
             {
                 await Interop.PostAsync(pane, frameOrigin!, PreviewMessages.Refresh(Type, EntryId, TokenLocale, Version));
+                refreshFailed = false;
                 return;
             }
             catch (Microsoft.JSInterop.JSException)
@@ -228,7 +242,8 @@
         await ShowAsync(mint: !showingPublished && (answer is null || Expired(answer.ExpiresAt)));
     }
 
-    private async Task<bool> MintAsync()
+    // A failed mint that may keep the frame leaves a usable page shown, with a note.
+    private async Task<bool> MintAsync(bool keepFrame = false)
     {
         var current = shown;
         try
@@ -239,13 +254,18 @@
                 return false;
             }
 
-            (answer, failed) = (minted, false);
+            (answer, failed, refreshFailed) = (minted, false, false);
             showingPublished &= minted.PublishedUrl is not null;
             return true;
         }
         catch (Exception exception) when (exception is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            if (current == shown && !disposed)
+            if (current == shown && !disposed && keepFrame && frameUrl is not null)
+            {
+                refreshFailed = true;
+                Announcer.Announce(L["Content.Preview.NotRefreshed"], AnnouncementPoliteness.Assertive);
+            }
+            else if (current == shown && !disposed)
             {
                 (failed, frameUrl) = (true, null);
                 Announcer.Announce(L["Content.Preview.Failed"], AnnouncementPoliteness.Assertive);
@@ -257,12 +277,14 @@
 
     private void Load()
     {
-        var url = showingPublished ? answer?.PublishedUrl : answer?.Url;
-        var origin = PreviewMessages.OriginOf(url);
-        refused = origin is null || !Configuration.PreviewOrigins.Contains(origin, StringComparer.Ordinal);
-        (frameUrl, frameOrigin) = refused ? (null, null) : (url, origin);
+        var uri = PreviewMessages.HttpUri(showingPublished ? answer?.PublishedUrl : answer?.Url);
+        var origin = uri?.GetLeftPart(UriPartial.Authority);
+        refused = origin is null
+            || !Configuration.PreviewOrigins.Contains(origin, StringComparer.Ordinal)
+            || string.Equals(origin, PreviewMessages.OriginOf(Navigation.BaseUri), StringComparison.OrdinalIgnoreCase);
+        (frameUrl, frameOrigin) = refused ? (null, null) : (uri!.AbsoluteUri, origin);
         frameExpires = showingPublished ? null : answer?.ExpiresAt;
-        (ready, silent, navigated, failed) = (false, false, null, false);
+        (ready, silent, navigated, failed, refreshFailed) = (false, false, null, false, false);
         ++frameLoad;
         RestartReadyWait();
     }
@@ -297,9 +319,10 @@
         {
             (ready, silent) = (true, false);
         }
-        else
+        else if (PreviewMessages.HttpUri(message.Url) is { } address && address.GetLeftPart(UriPartial.Authority) == frameOrigin)
         {
-            navigated = message.Url;
+            // Without its query and fragment, where a token may be.
+            navigated = address.GetLeftPart(UriPartial.Path);
         }
 
         return InvokeAsync(StateHasChanged);

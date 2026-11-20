@@ -21,11 +21,11 @@ internal static class PreviewMessages
 
     public const int Version = 1;
 
+    public static Uri? HttpUri(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps) ? uri : null;
+
     // The origin of an absolute http or https URL, as a browser writes it in a message's origin; null for any other.
-    public static string? OriginOf(string? url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
-            ? uri.GetLeftPart(UriPartial.Authority)
-            : null;
+    public static string? OriginOf(string? url) => HttpUri(url)?.GetLeftPart(UriPartial.Authority);
 
     public static PreviewMessage? Read(string origin, string json, string expectedOrigin)
     {
