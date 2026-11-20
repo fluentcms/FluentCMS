@@ -12,7 +12,8 @@ internal sealed record SecretSettingsReprotected(int Documents, IReadOnlyList<Se
 
 // Protects every stored secret again under the current default key of the key ring, so that an older key or certificate can
 // be retired without losing a secret setting. Each row is written back only over the version it was read at, which goes up
-// as with any write, and is read again when another writer got there first. The values do not change, so nothing is raised.
+// as with any write, and is read again when another writer got there first; a row whose secrets are all under the current
+// key already is not written. The values do not change, so nothing is raised.
 internal sealed class SecretSettingsReprotection(SystemDbContext context, SettingsRegistry registry, SettingsProtection protection)
 {
     private const int Attempts = 100;

@@ -1,11 +1,14 @@
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Settings;
+using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Diagnostics;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
 using FluentCMS.Transfer;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -326,6 +329,23 @@ public sealed class SettingsProtectionTests
         (await RedactedAsync(database, "required-secret", SiteA)).SecretsSet.ShouldBe(["token"]);
     }
 
+    // The instance row cannot be read without its required secret, so both of its unreadable secrets hold their code defaults,
+    // and the site takes the default of the one it inherits.
+    [Fact]
+    public async Task ASecretASiteInheritsFromAnInstanceRowTheKeyRingCannotReadIsNotListedAsSet()
+    {
+        using var database = new SettingsDatabase(cms => cms.Settings.Add<RequiredSecretAndAccount>());
+        await WriteAsync(database, SiteA, """{"name":"a","token":"site-token"}""", "required-and-account");
+        database.AddRow(null, "required-and-account", Foreign($$"""{"token":"{{Secret}}","account":"{{Secret}}-account","name":"i"}""", null, "required-and-account", typeof(RequiredSecretAndAccount)));
+
+        var site = await RedactedAsync(database, "required-and-account", SiteA);
+
+        site.Source.ShouldBe(SettingsSource.Site);
+        site.SecretsSet.ShouldBe(["token"]);
+        site.SecretsInherited.ShouldBe(["account"]);
+        (await RedactedAsync(database, "required-and-account", null)).SecretsSet.ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task AnImportOfAnAreaThatRequiresASecretKeepsTheSitesOwnValue()
     {
@@ -353,6 +373,34 @@ public sealed class SettingsProtectionTests
         (error.Path, error.Code).ShouldBe(("token", "FCMS2805"));
         error.Message.ShouldBe("The settings area 'required-secret' requires the secret 'token', which a package never carries and the site does not hold; set it in the site, then import again.");
         database.Rows().ShouldHaveSingleItem().SiteId.ShouldBeNull();
+    }
+
+    // A reset of the site's area lands after the import has checked the site's row and before it writes.
+    [Fact]
+    public async Task AnImportOfAnAreaThatRequiresASecretChecksTheRowItWritesOver()
+    {
+        var check = new InterruptingCheck("required-secret");
+        using var database = new SettingsDatabase(cms =>
+        {
+            cms.Settings.Add<RequiredSecret>();
+            cms.Services.AddSingleton<ISettingsCheck>(check);
+        });
+        await WriteAsync(database, null, """{"name":"i","token":"instance-token"}""", "required-secret");
+        await WriteAsync(database, SiteA, """{"name":"a","token":"site-token"}""", "required-secret");
+        check.Arm(() =>
+        {
+            using var scope = database.Inner.Database.NewScope();
+            scope.ServiceProvider.GetRequiredService<CmsDbContext>().Set<SettingRow>()
+                .Where(row => row.Key == "required-secret" && row.SiteId == SiteA.Value)
+                .ExecuteDelete();
+        });
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(database, "required-secret", SiteA, """{"name":"imported"}"""));
+
+        (refused.Errors.ShouldHaveSingleItem().Path, refused.Errors.Single().Code).ShouldBe(("token", "FCMS2805"));
+        database.Rows().ShouldHaveSingleItem().SiteId.ShouldBeNull();
+        var read = await database.AsAsync(Admin, async (IServiceProvider services) => await services.GetRequiredService<ISettings<RequiredSecret>>().GetAsync(SiteA, Token));
+        (read.Name, read.Token).ShouldBe(("i", "instance-token"));
     }
 
     [Fact]

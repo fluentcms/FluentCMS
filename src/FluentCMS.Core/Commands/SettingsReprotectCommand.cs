@@ -28,8 +28,21 @@ internal sealed class SettingsReprotectCommand : HostCommand
                 : $"The settings area '{left.Area}' for {scope} is left as it is: no settings class of this host has that area, so its secrets are not known.");
         }
 
+        var unreadable = result.Left.Count(left => left.Keys.Count > 0);
+        var unregistered = result.Left.Count - unreadable;
+        List<string> advice = [];
+        if (unreadable > 0)
+        {
+            advice.Add($"{unreadable} hold secrets the key ring cannot unprotect: restore the key or certificate that protected them, or set those secrets again");
+        }
+
+        if (unregistered > 0)
+        {
+            advice.Add($"{unregistered} are of areas no settings class of this host has: run the command in a host that registers them, such as with the plugin that owns the area");
+        }
+
         throw new CommandException(
             CommandErrorCodes.SecretsNotReprotected,
-            $"{result.Left.Count} stored settings documents were left as they are and still need the key that protected them; restore that key or certificate, or set those secrets again, and run 'fluentcms settings reprotect' again before retiring a key");
+            $"{result.Left.Count} stored settings documents were left as they are and still need the key that protected them; {string.Join("; ", advice)}; then run 'fluentcms settings reprotect' again before retiring a key");
     }
 }

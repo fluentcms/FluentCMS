@@ -145,7 +145,7 @@ internal sealed class SettingsService(
         {
             UnreadableSecrets = resolved.Source switch
             {
-                SettingsSource.Site => [.. unreadable.Keys.Order(StringComparer.Ordinal)],
+                SettingsSource.Site => [.. unreadable.Keys.Union(resolved.InheritedSecrets.Intersect(instanceUnreadable.Keys)).Order(StringComparer.Ordinal)],
                 SettingsSource.Default => [.. instanceUnreadable.Keys.Order(StringComparer.Ordinal)],
                 _ => [],
             },
@@ -254,7 +254,7 @@ internal sealed class SettingsService(
         if (!dryRun)
         {
             var operation = await AuthorizeAsync(descriptor, site, cancellationToken);
-            await StoreAsync(descriptor, site, document, expectedVersion: null, operation.AuditPrincipal.Id, cancellationToken);
+            await StoreAsync(descriptor, site, document, expectedVersion: null, operation.AuditPrincipal.Id, cancellationToken, requireOwnSecrets: true);
             await ChangedAsync(descriptor, site, operation, "changed", cancellationToken);
         }
 
@@ -372,7 +372,9 @@ internal sealed class SettingsService(
         }
     }
 
-    private async Task StoreAsync(SettingsDescriptor descriptor, SiteId? siteId, string json, int? expectedVersion, Guid actor, CancellationToken cancellationToken)
+    // With requireOwnSecrets, as for an import, a secret the class requires must be held by the row this write replaces, checked
+    // on the row as each round reads it, so that a reset in between cannot leave a site's row without it.
+    private async Task StoreAsync(SettingsDescriptor descriptor, SiteId? siteId, string json, int? expectedVersion, Guid actor, CancellationToken cancellationToken, bool requireOwnSecrets = false)
     {
         var site = siteId?.Value;
         await using var scope = scopes.CreateAsyncScope();
@@ -401,6 +403,11 @@ internal sealed class SettingsService(
             // A secret of a site that neither the document nor the site's row holds stays out of the row, so that the site goes on
             // reading it from the instance default; it is filled in only for the checks, which see the document a read will give.
             var stored = current is not null && descriptor.CanRead(current.Json) ? current.Json : null;
+            if (requireOwnSecrets)
+            {
+                WithRequiredSecrets(descriptor, json, stored);
+            }
+
             // The secrets of a site's skipped row that the key ring cannot unprotect go with the row, as its other secrets do, since
             // the site inherits them again; the instance row keeps them, which changes nothing a read gives.
             IReadOnlyList<string> skipped = [];

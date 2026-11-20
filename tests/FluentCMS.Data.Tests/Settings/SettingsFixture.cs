@@ -65,6 +65,36 @@ internal sealed class RequiredSecret
     public string Name { get; set; } = "n";
 }
 
+[Settings("required-and-account")]
+internal sealed class RequiredSecretAndAccount
+{
+    [JsonRequired]
+    [SettingsSecret]
+    public string Token { get; set; } = "code-token";
+
+    [SettingsSecret]
+    public string? Account { get; set; } = "code-account";
+
+    public string Name { get; set; } = "n";
+}
+
+// Runs what it is armed with once, the next time the area is checked, so that a test can land a change between the check
+// and the write that follows it.
+internal sealed class InterruptingCheck(string area) : ISettingsCheck
+{
+    private Action? _pending;
+
+    public string Area => area;
+
+    public void Arm(Action action) => _pending = action;
+
+    public IEnumerable<ValidationError> Check(object value)
+    {
+        Interlocked.Exchange(ref _pending, null)?.Invoke();
+        return [];
+    }
+}
+
 [Settings("seo")]
 internal sealed class SeoSettings
 {
