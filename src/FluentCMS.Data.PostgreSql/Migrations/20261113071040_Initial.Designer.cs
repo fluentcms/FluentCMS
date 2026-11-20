@@ -1164,6 +1164,9 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                         .HasDatabaseName("ix_cms_outbox_delivered")
                         .HasFilter("status = 'delivered'");
 
+                    b.HasIndex(new[] { "Handler", "Sequence", "Id" }, "ix_cms_outbox_handler_pending")
+                        .HasFilter("status = 'pending'");
+
                     b.HasIndex(new[] { "Sequence", "Id" }, "ix_cms_outbox_failed")
                         .IsDescending(true, false)
                         .HasFilter("status = 'failed'");

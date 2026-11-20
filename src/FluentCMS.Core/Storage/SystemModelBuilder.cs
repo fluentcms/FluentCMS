@@ -602,6 +602,11 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
             .HasFilter("status = 'pending'")
             .HasDatabaseName("ix_cms_outbox_pending");
 
+        // Over rows still to deliver, by handler in the order the drain takes them, so that the claim of one handler's
+        // rows seeks them and never walks the backlog of another.
+        entity.HasIndex(message => new { message.Handler, message.Sequence, message.Id }, "ix_cms_outbox_handler_pending")
+            .HasFilter("status = 'pending'");
+
         // For the prune of delivered rows.
         entity.HasIndex(message => message.DeliveredAt)
             .HasFilter("status = 'delivered'")

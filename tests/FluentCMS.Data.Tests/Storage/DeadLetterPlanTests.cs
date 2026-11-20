@@ -1,6 +1,7 @@
 using System.Data.Common;
 using System.Text;
 using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Jobs;
 using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Events;
@@ -46,6 +47,31 @@ public sealed class DeadLetterPlanTests : IDisposable
 
         var plan = plans.Plans.ShouldHaveSingleItem();
         plan.ShouldContain("ix_cms_outbox_failed");
+        plan.ShouldNotContain("TEMP B-TREE");
+    }
+
+    // The shape of the outbox drain's read of one handler's candidates (#3404), which seeks that handler's pending rows in
+    // event order and never walks another handler's backlog.
+    [SqliteFact("SQLite's query plans")]
+    public void TheClaimOfOneHandlerSeeksItsPendingRowsInEventOrder()
+    {
+        using var scope = _fixture.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        var now = DateTimeOffset.UtcNow;
+        var handler = "webhooks.content.published";
+        var limit = 8;
+        List<Guid> skipped = [Guid.CreateVersion7()];
+
+        var plan = QueryPlanTests.Plan(context.Set<OutboxMessage>().AsNoTracking()
+            .Where(message => message.Status == OutboxStatus.Pending && message.AvailableAt <= now && (message.LeaseUntil == null || message.LeaseUntil <= now))
+            .Where(message => message.Attempts < limit)
+            .Where(message => message.Handler == handler)
+            .Where(message => !skipped.Contains(message.Id))
+            .OrderBy(message => message.Sequence).ThenBy(message => message.Id)
+            .Take(50)
+            .Select(message => new { message.Id, message.Sequence, message.LeaseOwner }));
+
+        plan.ShouldContain("ix_cms_outbox_handler_pending (handler=?)");
         plan.ShouldNotContain("TEMP B-TREE");
     }
 

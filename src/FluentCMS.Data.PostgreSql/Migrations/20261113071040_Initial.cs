@@ -1070,6 +1070,12 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                 filter: "status = 'delivered'");
 
             migrationBuilder.CreateIndex(
+                name: "ix_cms_outbox_handler_pending",
+                table: "cms_outbox",
+                columns: new[] { "handler", "sequence", "id" },
+                filter: "status = 'pending'");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_cms_outbox_failed",
                 table: "cms_outbox",
                 columns: new[] { "sequence", "id" },
