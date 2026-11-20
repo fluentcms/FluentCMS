@@ -118,11 +118,11 @@ public sealed class OpenApiContractTests
         parameters["if-match"]!["description"]!.GetValue<string>().ShouldContain(ApiRequest.NewLocale);
     }
 
-    private static JsonNode Answer(JsonNode paths, string path, string method, string status = "200") =>
+    internal static JsonNode Answer(JsonNode paths, string path, string method, string status = "200") =>
         paths[path]?[method]?["responses"]?[status]?["content"]?["application/json"]?["schema"]
         ?? throw new InvalidOperationException($"{method} {path} answers no {status} in the document.");
 
-    private static void Check(JsonTypeInfo record, JsonNode schema, string where, JsonObject document, List<string> gaps) =>
+    internal static void Check(JsonTypeInfo record, JsonNode schema, string where, JsonObject document, List<string> gaps) =>
         Check(record, schema, where, document, gaps, []);
 
     // A record is checked where it first comes, so that one inside itself, as a condition of conditions, ends.

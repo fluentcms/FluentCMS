@@ -1,0 +1,22 @@
+{
+  "manifestVersion": 1,
+  "name": "mcp",
+  "version": "1.0.0",
+  "adminRange": "[1.0.0,2.0.0)",
+  "assembly": "FluentCMS.Plugins.Mcp.Admin",
+  "pages": [
+    { "type": "FluentCMS.Plugins.Mcp.Admin.McpClientsPage", "route": "/mcp/clients", "permission": "mcp.manage", "instanceOnly": true }
+  ],
+  "menuItems": [
+    {
+      "type": "FluentCMS.Plugins.Mcp.Admin.McpClientsPage",
+      "label": "Mcp.Clients.Menu",
+      "labels": { "en": "MCP clients" },
+      "route": "/mcp/clients",
+      "section": "administration",
+      "order": 80,
+      "permission": "mcp.manage",
+      "instanceOnly": true
+    }
+  ]
+}

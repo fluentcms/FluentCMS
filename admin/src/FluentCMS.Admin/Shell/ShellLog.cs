@@ -13,4 +13,7 @@ internal static partial class ShellLog
 
     [LoggerMessage(EventId = 22, EventName = "ColumnsNotKept", Level = LogLevel.Warning, Message = "The browser's storage could not be used for the columns of a list; the choice lasts until the page is left.")]
     public static partial void ColumnsNotKept(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 23, EventName = "AdministrationNotLoaded", Level = LogLevel.Error, Message = "The assembly of the administration pages could not be loaded.")]
+    public static partial void AdministrationNotLoaded(ILogger logger, Exception exception);
 }

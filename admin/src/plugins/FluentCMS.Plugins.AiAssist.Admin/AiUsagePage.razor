@@ -1,0 +1,7 @@
+@* The first page of the half (spec 5.5), which shows its heading until its issue writes it. *@
+@page "/ai/usage"
+@attribute [AdminPage("/ai/usage", Permission = "ai.usage.read")]
+@attribute [AdminMenuItem("Ai.Usage.Menu", Section = AdminSection.Administration, Order = 90)]
+@inject IStringLocalizer<AiAssistResources> L
+
+<h1 tabindex="-1">@L["Ai.Usage.Page.Heading"]</h1>

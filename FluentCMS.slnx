@@ -49,12 +49,18 @@
     <Project Path="admin/src/FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj" />
     <Project Path="admin/src/FluentCMS.Admin.Components/FluentCMS.Admin.Components.csproj" />
     <Project Path="admin/src/FluentCMS.Admin/FluentCMS.Admin.csproj" />
+    <Project Path="admin/src/FluentCMS.Admin.Administration/FluentCMS.Admin.Administration.csproj" />
     <Project Path="admin/src/FluentCMS.Admin.RichText/FluentCMS.Admin.RichText.csproj" />
     <Project Path="admin/src/FluentCMS.Admin.App/FluentCMS.Admin.App.csproj" />
     <Project Path="admin/src/FluentCMS.Admin.Hosting/FluentCMS.Admin.Hosting.csproj" />
   </Folder>
   <Folder Name="/admin/src/plugins/">
+    <Project Path="admin/src/plugins/FluentCMS.Plugins.AiAssist.Admin/FluentCMS.Plugins.AiAssist.Admin.csproj" />
+    <Project Path="admin/src/plugins/FluentCMS.Plugins.Mcp.Admin/FluentCMS.Plugins.Mcp.Admin.csproj" />
     <Project Path="admin/src/plugins/FluentCMS.Plugins.Media.Admin/FluentCMS.Plugins.Media.Admin.csproj" />
+    <Project Path="admin/src/plugins/FluentCMS.Plugins.MultiSite.Admin/FluentCMS.Plugins.MultiSite.Admin.csproj" />
+    <Project Path="admin/src/plugins/FluentCMS.Plugins.Search.Admin/FluentCMS.Plugins.Search.Admin.csproj" />
+    <Project Path="admin/src/plugins/FluentCMS.Plugins.Webhooks.Admin/FluentCMS.Plugins.Webhooks.Admin.csproj" />
   </Folder>
   <Folder Name="/admin/tests/">
     <Project Path="admin/tests/FluentCMS.Admin.Tests/FluentCMS.Admin.Tests.csproj" />
@@ -64,7 +70,12 @@
     <Project Path="admin/tests/FluentCMS.Admin.Plugins.Careless/FluentCMS.Admin.Plugins.Careless.csproj" />
     <Project Path="admin/tests/FluentCMS.Admin.Plugins.Sample/FluentCMS.Admin.Plugins.Sample.csproj" />
     <Project Path="admin/tests/FluentCMS.Admin.RichText.Tests/FluentCMS.Admin.RichText.Tests.csproj" />
+    <Project Path="admin/tests/FluentCMS.Plugins.AiAssist.Admin.Tests/FluentCMS.Plugins.AiAssist.Admin.Tests.csproj" />
+    <Project Path="admin/tests/FluentCMS.Plugins.Mcp.Admin.Tests/FluentCMS.Plugins.Mcp.Admin.Tests.csproj" />
     <Project Path="admin/tests/FluentCMS.Plugins.Media.Admin.Tests/FluentCMS.Plugins.Media.Admin.Tests.csproj" />
+    <Project Path="admin/tests/FluentCMS.Plugins.MultiSite.Admin.Tests/FluentCMS.Plugins.MultiSite.Admin.Tests.csproj" />
+    <Project Path="admin/tests/FluentCMS.Plugins.Search.Admin.Tests/FluentCMS.Plugins.Search.Admin.Tests.csproj" />
+    <Project Path="admin/tests/FluentCMS.Plugins.Webhooks.Admin.Tests/FluentCMS.Plugins.Webhooks.Admin.Tests.csproj" />
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/Blog/Blog.csproj" />

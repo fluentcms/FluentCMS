@@ -30,6 +30,13 @@ internal static class Repository
     public static string MediaText(string key) =>
         MediaTexts.TryGetValue(key, out var text) ? text : throw new KeyNotFoundException($"MediaResources.resx has no key {key}.");
 
+    // The texts of an area of the administration pages, from the resource file in the area's folder, read once.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, IReadOnlyDictionary<string, string>> AdministrationTexts = new(StringComparer.Ordinal);
+
+    public static string AdministrationText(string area, string key) =>
+        AdministrationTexts.GetOrAdd(area, name => ReadTexts(Path.Combine(Root, "admin", "src", "FluentCMS.Admin.Administration", name, $"{name}Resources.resx")))
+            .TryGetValue(key, out var text) ? text : throw new KeyNotFoundException($"{area}Resources.resx has no key {key}.");
+
     public static IReadOnlyDictionary<string, string> RichTextTexts { get; } = ReadTexts(Path.Combine(Root, "admin", "src", "FluentCMS.Admin.RichText", "RichTextResources.resx"));
 
     public static string RichTextText(string key) =>

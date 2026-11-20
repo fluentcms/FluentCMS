@@ -1,6 +1,6 @@
 # FluentCMS.Admin
 
-The [FluentCMS](https://github.com/fluentcms/FluentCMS) admin for a Blazor WebAssembly app: the shell, sign-in, the Management API client, the generated lists and forms, and the pages of core's groups. It reaches the server only over HTTP.
+The [FluentCMS](https://github.com/fluentcms/FluentCMS) admin for a Blazor WebAssembly app: the shell, sign-in, the Management API client, and the generated lists and forms. It reaches the server only over HTTP.
 
 ```csharp
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -30,6 +30,15 @@ A plugin's admin half is in the app because the app references it, and it loads 
 <ItemGroup>
   <PackageReference Include="FluentCMS.Plugins.Media.Admin" />
   <BlazorWebAssemblyLazyLoad Include="FluentCMS.Plugins.Media.Admin.wasm" />
+</ItemGroup>
+```
+
+The pages of administration (users, roles, keys, members, sites, settings, plugins, jobs and diagnostics) are in `FluentCMS.Admin.Administration`, which the app references and lists as lazy too, so that it is fetched on the first visit of one of them; the build stops when it is referenced and not lazy:
+
+```xml
+<ItemGroup>
+  <PackageReference Include="FluentCMS.Admin.Administration" />
+  <BlazorWebAssemblyLazyLoad Include="FluentCMS.Admin.Administration.wasm" />
 </ItemGroup>
 ```
 

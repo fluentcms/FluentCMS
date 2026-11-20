@@ -173,6 +173,33 @@ internal sealed class AdminContext(
 
     public bool Allows(string permission) => AccessInfo is { } access && Holds(access, permission);
 
+    public bool AllowsForInstance(string permission) => AccessInfo is { } access && access.InstancePermissions.Contains(permission, StringComparer.Ordinal);
+
+    // Whether the user may open an area of core's administration pages: it holds the area's permission, for the instance
+    // when the area is instance-only. A permission with a star, as the settings menu's, is held with any name in its place.
+    public bool Allows(AdministrationArea area)
+    {
+        ArgumentNullException.ThrowIfNull(area);
+        if (AccessInfo is not { } access)
+        {
+            return false;
+        }
+
+        var held = area.InstanceOnly ? access.InstancePermissions : [.. access.Permissions, .. access.InstancePermissions];
+        var star = area.Permission.IndexOf('*', StringComparison.Ordinal);
+        if (star < 0)
+        {
+            return held.Contains(area.Permission, StringComparer.Ordinal);
+        }
+
+        var (start, end) = (area.Permission[..star], area.Permission[(star + 1)..]);
+        return held.Any(name => name.Length > start.Length + end.Length && name.StartsWith(start, StringComparison.Ordinal) && name.EndsWith(end, StringComparison.Ordinal));
+    }
+
+    // Whether the user holds the permission of a page of an admin half, for the instance when the page is instance-only.
+    public bool Allows(string? permission, bool instanceOnly) =>
+        permission is null || (instanceOnly ? AllowsForInstance(permission) : Allows(permission));
+
     public TypeAccessInfo? ForType(string type) => AccessInfo is { } access && access.Types.TryGetValue(type, out var found) ? found : null;
 
     // /schema shows only the types the user may read; the access says so too, and both are asked.

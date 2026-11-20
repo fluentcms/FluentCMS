@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!-- The admin half of the MCP plugin, which an app loads lazily on the first use of one of its contributions (spec 5.4).
+       It is not trimmable, so the app's partial trimming keeps the types its manifest names (spec 2.6). -->
+  <PropertyGroup>
+    <Description>The admin half of the FluentCMS MCP plugin: the MCP clients, instructions and prompts in the admin.</Description>
+    <PackageTags>$(PackageTags) admin blazor fluentcms-plugin</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- IStringLocalizer<T> over the half's own resources, which the admin's container gives a component (spec 5.1). -->
+    <PackageReference Include="Microsoft.Extensions.Localization" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FluentCMS.Plugins.Mcp.Admin.Tests" />
+    <InternalsVisibleTo Include="FluentCMS.Admin.ApiTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../FluentCMS.Admin.Abstractions/FluentCMS.Admin.Abstractions.csproj" />
+    <ProjectReference Include="../../FluentCMS.Admin.Components/FluentCMS.Admin.Components.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,21 @@
+{
+  "manifestVersion": 1,
+  "name": "webhooks",
+  "version": "1.0.0",
+  "adminRange": "[1.0.0,2.0.0)",
+  "assembly": "FluentCMS.Plugins.Webhooks.Admin",
+  "pages": [
+    { "type": "FluentCMS.Plugins.Webhooks.Admin.WebhooksPage", "route": "/webhooks", "permission": "webhooks.manage" }
+  ],
+  "menuItems": [
+    {
+      "type": "FluentCMS.Plugins.Webhooks.Admin.WebhooksPage",
+      "label": "Webhooks.Menu",
+      "labels": { "en": "Webhooks" },
+      "route": "/webhooks",
+      "section": "settings",
+      "order": 30,
+      "permission": "webhooks.manage"
+    }
+  ]
+}

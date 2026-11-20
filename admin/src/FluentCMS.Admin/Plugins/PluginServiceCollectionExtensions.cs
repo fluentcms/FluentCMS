@@ -7,13 +7,14 @@ namespace FluentCMS.Admin.Plugins;
 
 internal static class PluginServiceCollectionExtensions
 {
-    // The halves of the catalog registered before, or none. Their menu items join the sidebar's menu.
+    // The halves of the catalog registered before, or none. Their menu items join the sidebar's menu, with core's.
     public static IServiceCollection AddAdminPlugins(this IServiceCollection services)
     {
         services.TryAddSingleton(AdminPluginCatalog.Empty);
-        services.TryAddSingleton(provider => new AdminMenu { Entries = [.. MenuEntries(provider.GetRequiredService<AdminPluginCatalog>())] });
+        services.TryAddSingleton(provider => new AdminMenu { Entries = [.. AdminMenu.Core, .. MenuEntries(provider.GetRequiredService<AdminPluginCatalog>())] });
         services.TryAddSingleton<LazyAssemblyLoader>();
         services.TryAddScoped<IAdminAssemblyLoader, LazyAdminAssemblyLoader>();
+        services.TryAddScoped<AdministrationAssembly>();
         services.AddSingleton(new AdminServiceDescriptors(services));
         services.AddScoped<AdminPlugins>();
         services.AddScoped<IAdminPluginServices>(provider => provider.GetRequiredService<AdminPlugins>());

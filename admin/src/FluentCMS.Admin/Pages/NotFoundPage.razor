@@ -7,8 +7,8 @@
 @inject NavigationManager Navigation
 @inject IServiceProvider Services
 
-@* A page of an admin half that the user lacks the permission of, or whose half did not load, says so; any other address
-   has no page. *@
+@* A page of an admin half or of an area of administration that the user lacks the permission of, or whose assembly did not
+   load, says so; any other address has no page. *@
 @switch (State)
 {
     case PageState.NoAccess:
@@ -47,7 +47,7 @@
             return plugins.Gate(route) switch
             {
                 PluginPageGate.NoAccess => PageState.NoAccess,
-                PluginPageGate.Allowed when plugins.Catalog.HalfOfRoute(route) is { } half && plugins.LoadFailed(half) => PageState.LoadFailed,
+                PluginPageGate.Allowed when plugins.LoadFailed(route) => PageState.LoadFailed,
                 _ => PageState.NotFound,
             };
         }

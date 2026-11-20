@@ -582,6 +582,7 @@ FluentCMS.Admin.Forms.IUnsavedForm
 FluentCMS.Admin.Forms.IUnsavedForm.CaptureDraft() -> FluentCMS.Admin.Forms.FormDraft!
 FluentCMS.Admin.IAdminAccess
 FluentCMS.Admin.IAdminAccess.Allows(string! permission) -> bool
+FluentCMS.Admin.IAdminAccess.AllowsForInstance(string! permission) -> bool
 FluentCMS.Admin.IAdminAccess.ForType(string! type) -> FluentCMS.Admin.Api.TypeAccessInfo?
 FluentCMS.Admin.IAdminContext
 FluentCMS.Admin.IAdminContext.Access.get -> FluentCMS.Admin.IAdminAccess!
@@ -724,6 +725,8 @@ FluentCMS.Admin.Plugins.AdminManifestMenuItem.AdminManifestMenuItem() -> void
 FluentCMS.Admin.Plugins.AdminManifestMenuItem.Equals(FluentCMS.Admin.Plugins.AdminManifestMenuItem? other) -> bool
 FluentCMS.Admin.Plugins.AdminManifestMenuItem.Icon.get -> string?
 FluentCMS.Admin.Plugins.AdminManifestMenuItem.Icon.init -> void
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.InstanceOnly.get -> bool
+FluentCMS.Admin.Plugins.AdminManifestMenuItem.InstanceOnly.init -> void
 FluentCMS.Admin.Plugins.AdminManifestMenuItem.Label.get -> string!
 FluentCMS.Admin.Plugins.AdminManifestMenuItem.Label.init -> void
 FluentCMS.Admin.Plugins.AdminManifestMenuItem.Order.get -> int
@@ -740,6 +743,8 @@ FluentCMS.Admin.Plugins.AdminManifestPage
 FluentCMS.Admin.Plugins.AdminManifestPage.<Clone>$() -> FluentCMS.Admin.Plugins.AdminManifestPage!
 FluentCMS.Admin.Plugins.AdminManifestPage.AdminManifestPage() -> void
 FluentCMS.Admin.Plugins.AdminManifestPage.Equals(FluentCMS.Admin.Plugins.AdminManifestPage? other) -> bool
+FluentCMS.Admin.Plugins.AdminManifestPage.InstanceOnly.get -> bool
+FluentCMS.Admin.Plugins.AdminManifestPage.InstanceOnly.init -> void
 FluentCMS.Admin.Plugins.AdminManifestPage.Permission.get -> string?
 FluentCMS.Admin.Plugins.AdminManifestPage.Permission.init -> void
 FluentCMS.Admin.Plugins.AdminManifestPage.Route.get -> string!
@@ -789,6 +794,8 @@ FluentCMS.Admin.Plugins.AdminMenuItemAttribute.Section.get -> FluentCMS.Admin.Pl
 FluentCMS.Admin.Plugins.AdminMenuItemAttribute.Section.set -> void
 FluentCMS.Admin.Plugins.AdminPageAttribute
 FluentCMS.Admin.Plugins.AdminPageAttribute.AdminPageAttribute(string! route) -> void
+FluentCMS.Admin.Plugins.AdminPageAttribute.InstanceOnly.get -> bool
+FluentCMS.Admin.Plugins.AdminPageAttribute.InstanceOnly.set -> void
 FluentCMS.Admin.Plugins.AdminPageAttribute.Permission.get -> string?
 FluentCMS.Admin.Plugins.AdminPageAttribute.Permission.set -> void
 FluentCMS.Admin.Plugins.AdminPageAttribute.Route.get -> string!

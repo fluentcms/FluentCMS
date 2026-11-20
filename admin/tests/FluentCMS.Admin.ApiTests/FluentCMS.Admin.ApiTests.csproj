@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/FluentCMS.Admin/FluentCMS.Admin.csproj" />
+    <!-- The typed calls and records of the administration pages, held to their routes. -->
+    <ProjectReference Include="../../src/FluentCMS.Admin.Administration/FluentCMS.Admin.Administration.csproj" />
     <!-- For the config.json the hosting package builds, which the tests read with the admin's own reader. -->
     <ProjectReference Include="../../src/FluentCMS.Admin.Hosting/FluentCMS.Admin.Hosting.csproj" />
     <!-- The media half's own client and records, held to the media routes. -->

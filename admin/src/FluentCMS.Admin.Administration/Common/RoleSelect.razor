@@ -1,0 +1,102 @@
+@* A select of the roles the caller may hand out, read once from GET /roles when it first shows. A page that has read the
+   roles gives them, and none is read. *@
+@implements IDisposable
+@inject IManagementApi Api
+@inject IStringLocalizer<CommonResources> L
+
+@if (failed)
+{
+    <p role="alert">@L["Common.Roles.Failed"] <CmsButton OnClick="ReadAsync">@L["Common.Roles.TryAgain"]</CmsButton></p>
+}
+else if (roles is null)
+{
+    <p role="status">@L["Common.Roles.Loading"]</p>
+}
+else
+{
+    <CmsSelect Label="@Label"
+               Options="@Options"
+               Value="@Value?.ToString("D")"
+               ValueChanged="@OnChangedAsync"
+               Placeholder="@L["Common.Roles.Placeholder"]"
+               Required="@Required"
+               Disabled="@Disabled"
+               Error="@Error"
+               Help="@Help" />
+}
+
+@code {
+    private IReadOnlyList<RoleSummary>? roles;
+    private bool failed;
+    private CancellationTokenSource? reading;
+
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter]
+    public Guid? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid?> ValueChanged { get; set; }
+
+    // The roles to offer, when the page has read them; read here otherwise.
+    [Parameter]
+    public IReadOnlyList<RoleSummary>? Roles { get; set; }
+
+    // Narrows the roles offered, such as to those a user does not hold yet.
+    [Parameter]
+    public Func<RoleSummary, bool>? Offers { get; set; }
+
+    [Parameter]
+    public bool Required { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public string? Error { get; set; }
+
+    [Parameter]
+    public string? Help { get; set; }
+
+    private IReadOnlyList<CmsOption> Options =>
+        [.. (roles ?? []).Where(role => Offers?.Invoke(role) != false).Select(role => new CmsOption(role.Id.ToString("D"), role.Name))];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Roles is not null)
+        {
+            (roles, failed) = (Roles, false);
+        }
+        else if (roles is null && !failed && reading is null)
+        {
+            await ReadAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        reading?.Dispose();
+        var current = reading = new CancellationTokenSource();
+        failed = false;
+        try
+        {
+            roles = await Api.GetRolesAsync(current.Token);
+        }
+        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        {
+        }
+        catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or JsonException)
+        {
+            failed = true;
+        }
+    }
+
+    private Task OnChangedAsync(string? value) => ValueChanged.InvokeAsync(Guid.TryParse(value, out var id) ? id : null);
+}

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <Description>The FluentCMS admin: the shell, sign-in, the Management API client, the generated lists and forms, and the pages of core's groups, for a Blazor WebAssembly app.</Description>
+    <Description>The FluentCMS admin: the shell, sign-in, the Management API client, and the generated lists and forms, for a Blazor WebAssembly app.</Description>
     <PackageTags>$(PackageTags) admin blazor webassembly</PackageTags>
     <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
@@ -32,6 +32,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Core's administration pages, the part of the admin that an app loads lazily (spec 2.6). -->
+    <InternalsVisibleTo Include="FluentCMS.Admin.Administration" />
     <InternalsVisibleTo Include="FluentCMS.Admin.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Admin.ApiTests" />
     <InternalsVisibleTo Include="FluentCMS.Admin.RichText.Tests" />

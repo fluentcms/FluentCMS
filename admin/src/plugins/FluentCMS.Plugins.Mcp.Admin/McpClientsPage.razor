@@ -1,0 +1,7 @@
+@* The first page of the half (spec 5.4), which shows its heading until its issue writes it. *@
+@page "/mcp/clients"
+@attribute [AdminPage("/mcp/clients", Permission = "mcp.manage", InstanceOnly = true)]
+@attribute [AdminMenuItem("Mcp.Clients.Menu", Section = AdminSection.Administration, Order = 80)]
+@inject IStringLocalizer<McpResources> L
+
+<h1 tabindex="-1">@L["Mcp.Clients.Page.Heading"]</h1>
