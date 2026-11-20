@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 namespace FluentCMS.Core.Events;
 
 // Asks the job runner to drain the outbox now, after the commit that recorded rows, and a drain already running on this
-// instance to start a lane for a handler that has none. Whether it works or not nothing is lost: the rows are committed, and
+// instance to start a lane for an owner of handlers that has none. Whether it works or not nothing is lost: the rows are committed, and
 // the sweep of OutboxScheduleService finds them. A drain job already pending and due is not added again, but an idle outbox
 // worker of this instance is still woken for it; one that waits for a later retry does not count. The check reads cms_job,
 // so it dedupes only for the built-in runner; an IJobRunner that keeps its jobs elsewhere gets a drain job per kick, and the

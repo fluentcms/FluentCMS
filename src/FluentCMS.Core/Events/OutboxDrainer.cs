@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Data.Common;
 using FluentCMS.Content;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
@@ -53,7 +54,11 @@ internal sealed class OutboxDrainer(
 
     private readonly string _instance = $"{Environment.MachineName}/{Guid.NewGuid():N}";
 
+    private static readonly TimeSpan[] BusyRetries = [TimeSpan.FromMilliseconds(50), TimeSpan.FromMilliseconds(200), TimeSpan.FromSeconds(1)];
+
     private long _claims;
+
+    private int _draining;
 
     private TaskCompletionSource _wake = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -102,7 +107,7 @@ internal sealed class OutboxDrainer(
                 {
                     if (!cancellationToken.IsCancellationRequested)
                     {
-                        EventLog.LaneFailed(logger, exception, "(looking for owners)");
+                        LaneFailed(exception, null);
                     }
 
                     if (running.Count == 0)
@@ -137,19 +142,57 @@ internal sealed class OutboxDrainer(
                         failed[key] = Volatile.Read(ref _wake).Task;
                     }
                 }
-                catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+                catch (Exception exception)
                 {
-                    EventLog.LaneFailed(logger, exception, Lanes.Display(key));
-                    failed[key] = Volatile.Read(ref _wake).Task;
-                }
-                catch (OperationCanceledException)
-                {
+                    // Every lane is observed before the drain ends, whatever a stopping host made its provider throw.
+                    if (!cancellationToken.IsCancellationRequested)
+                    {
+                        LaneFailed(exception, key);
+                        failed[key] = Volatile.Read(ref _wake).Task;
+                    }
                 }
             }
         }
 
         return delivered;
     }
+
+    // Runs a drain unless one already runs on this instance, which is then asked to look again, so that an outbox queue with
+    // more than one worker still gives one lane to each owner here and keeps the order of its events.
+    public async Task<int> DrainOnceAsync(CancellationToken cancellationToken = default)
+    {
+        if (Interlocked.CompareExchange(ref _draining, 1, 0) != 0)
+        {
+            Signal();
+            return 0;
+        }
+
+        try
+        {
+            return await DrainAsync(cancellationToken);
+        }
+        finally
+        {
+            Volatile.Write(ref _draining, 0);
+        }
+    }
+
+    // SQLite takes one writer at a time, so lanes that claim together find it busy; that is retried in the lane and, when it
+    // lasts, logged below an error.
+    private void LaneFailed(Exception exception, string? key)
+    {
+        var owner = key is null ? "(looking for owners)" : Lanes.Display(key);
+        if (IsBusy(exception))
+        {
+            EventLog.LaneBusy(logger, exception, owner);
+        }
+        else
+        {
+            EventLog.LaneFailed(logger, exception, owner);
+        }
+    }
+
+    private static bool IsBusy(Exception exception) => exception is DbException { IsTransient: true } || exception.InnerException is DbException { IsTransient: true };
 
     // Leaves the rows whose attempts are used up and whose worker is gone as failed, and says whether any row is due to be
     // delivered. Each is read first, so that an idle outbox takes no write lock.
@@ -200,7 +243,7 @@ internal sealed class OutboxDrainer(
             }
             catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
-                EventLog.LaneFailed(logger, exception, Lanes.Display(key));
+                LaneFailed(exception, key);
                 failed[key] = wake;
             }
         }
@@ -238,7 +281,7 @@ internal sealed class OutboxDrainer(
         var delivered = 0;
         while (!cancellationToken.IsCancellationRequested)
         {
-            var claim = await ClaimAsync(lanesOf, key, deferred, cancellationToken);
+            var claim = await ClaimWithRetryAsync(lanesOf, key, deferred, cancellationToken);
             if (claim.Rows.Count == 0)
             {
                 break;
@@ -253,6 +296,21 @@ internal sealed class OutboxDrainer(
         }
 
         return (delivered, false);
+    }
+
+    private async Task<Claim> ClaimWithRetryAsync(Lanes lanesOf, string key, Deferrals deferred, CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await ClaimAsync(lanesOf, key, deferred, cancellationToken);
+            }
+            catch (Exception exception) when (attempt < BusyRetries.Length + 1 && IsBusy(exception) && !cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(BusyRetries[attempt - 1], time, cancellationToken);
+            }
+        }
     }
 
     private async Task<Claim> ClaimAsync(Lanes lanesOf, string key, Deferrals deferred, CancellationToken cancellationToken)
@@ -392,7 +450,7 @@ internal sealed class OutboxDrainer(
         }
         catch (Exception exception)
         {
-            EventLog.SettleFailed(logger, exception, ids[0]);
+            EventLog.RenewFailed(logger, exception, left[0].Handler, ids.Count);
             return null;
         }
     }
@@ -713,7 +771,7 @@ internal sealed class OutboxDrainer(
 
     // The rows whose handler did not start in time, left out of this drain for a while so that a starved thread pool does not
     // keep one drain going, and tried again after it.
-    private sealed class Deferrals(TimeProvider time, TimeSpan span)
+    internal sealed class Deferrals(TimeProvider time, TimeSpan span)
     {
         private readonly ConcurrentDictionary<Guid, DateTimeOffset> _until = new();
 

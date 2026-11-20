@@ -19,10 +19,11 @@ internal sealed class OutboxDrainJob(OutboxDrainer drainer) : IJob<OutboxDrainPa
     // The name of the recurring drain that earlier versions stored, which OutboxScheduleService removes.
     public const string RecurringName = "events.outbox.drain";
 
-    // Its own queue, so that a handler that hangs holds up other deliveries and no other job.
+    // Its own queue, so that a handler that hangs holds up only the deliveries of its owner, in their lane, and no other job.
+    // A second worker of the queue on one instance finds the drain running and only signals it.
     public const string Queue = "outbox";
 
-    public Task ExecuteAsync(OutboxDrainPayload payload, JobContext context) => drainer.DrainAsync(context.CancellationToken);
+    public Task ExecuteAsync(OutboxDrainPayload payload, JobContext context) => drainer.DrainOnceAsync(context.CancellationToken);
 }
 
 internal sealed record OutboxPrunePayload;
@@ -143,7 +144,7 @@ internal sealed class OutboxScheduleService(
             }
             catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
             {
-                EventLog.RecurringFailed(logger, exception);
+                EventLog.PruneScheduleFailed(logger, exception);
             }
 
             if (!await WaitAsync(Retry, stoppingToken))
