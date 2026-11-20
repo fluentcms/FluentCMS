@@ -11,9 +11,11 @@ namespace FluentCMS.Plugins.AiAssist;
 // one after the other.
 internal sealed class AiBudgets
 {
-    // What a call that sends an image is reckoned to use for it: the copy fits 1024 by 1024 pixels, which OpenAI counts as
-    // 765 tokens at the most and Anthropic's formula as about 1400.
-    public const int ImageTokens = 1600;
+    // What a call that sends an image is reckoned to use for it. The copy fits 1024 by 1024 pixels and is sent with no
+    // detail, so the provider's default applies: at high detail gpt-4o-mini counts such an image as 25,501 tokens, the
+    // most of the models whose formula is published (gpt-4o 765, Anthropic's about 1,400). It is an estimate for those
+    // models, not a bound for any model.
+    public const int ImageTokens = 25_600;
 
     // The most UTF-8 bytes a character of .NET's strings takes: three for a character of the Basic Multilingual Plane, and
     // four for the pair of two that is any other.
@@ -32,7 +34,7 @@ internal sealed class AiBudgets
         var held = _reserved.GetOrAdd(site.Value, static _ => new StrongBox<long>());
         var before = Interlocked.Add(ref held.Value, tokens) - tokens;
         var unrecorded = _unrecorded.TryGetValue(site.Value, out var lost) && lost.Day == day ? lost.Tokens : 0;
-        return new AiReservation(held, tokens, before + unrecorded);
+        return new AiReservation(held, tokens, before + unrecorded, unrecorded);
     }
 
     // A call that was sent and whose row could not be written still counts for the rest of its day on this instance.
@@ -48,13 +50,16 @@ internal sealed class AiBudgets
     }
 }
 
-// Before is what the site's other calls in flight and its unwritten rows held when this one reserved.
-internal sealed class AiReservation(StrongBox<long> held, long tokens, long before)
+// Before is what the site's other calls in flight and its unwritten rows held when this one reserved; Unrecorded is the
+// part of it that is unwritten rows.
+internal sealed class AiReservation(StrongBox<long> held, long tokens, long before, long unrecorded)
 {
     private long _tokens = tokens;
     private int _released;
 
     public long Before => before;
+
+    public long Unrecorded => unrecorded;
 
     // To the estimate of the call once what it sends is known.
     public void Change(long tokens)

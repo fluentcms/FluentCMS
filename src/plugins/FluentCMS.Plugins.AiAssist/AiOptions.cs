@@ -32,7 +32,8 @@ public sealed class AiOptions
         MaxInputLength is >= 1 and <= 1_000_000
         && UsageRetention > TimeSpan.Zero
         && DailyTokenBudget >= 0
-        && AllowedEndpoints.Concat(SiteBilledEndpoints).All(endpoint => AiProviderEndpoints.Parse(endpoint) is not null);
+        && AllowedEndpoints.Concat(SiteBilledEndpoints).All(endpoint => AiProviderEndpoints.Parse(endpoint) is not null)
+        && SiteBilledEndpoints.All(endpoint => AiProviderEndpoints.IsAllowed(AiProviderEndpoints.Parse(endpoint)!, AllowedEndpoints));
 }
 
 // An endpoint is an absolute http or https URL with no user, query or fragment. Two are the same when their scheme, host,

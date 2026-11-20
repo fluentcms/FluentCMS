@@ -78,6 +78,9 @@ internal sealed class AiAssistService(
     // The longer side of the copy of an image that altText sends.
     public const int MaxImageSide = 1024;
 
+    // How long the usage row of a call may take to write before it counts as not written.
+    public static readonly TimeSpan UsageWriteTimeout = TimeSpan.FromSeconds(5);
+
     public const string Succeeded = "succeeded";
     public const string Failed = "failed";
     public const string TimedOut = "timeout";
@@ -351,8 +354,8 @@ internal sealed class AiAssistService(
         var info = new AiUsageInfo(
             call.Client.Provider,
             call.Client.Model,
-            used.InputTokenCount ?? 0,
-            used.OutputTokenCount ?? 0,
+            Math.Max(used.InputTokenCount ?? 0, 0),
+            Math.Max(used.OutputTokenCount ?? 0, 0),
             (long)time.GetElapsedTime(started).TotalMilliseconds);
 
         // A call with the operator's credential that ends before its provider reports what it used, or with a provider
@@ -430,7 +433,7 @@ internal sealed class AiAssistService(
                 AiLog.BudgetExceeded(logger, site.Value, budget, used, resets);
             }
 
-            throw new PluginException(AiErrorCodes.BudgetExceeded, written >= budget
+            throw new PluginException(AiErrorCodes.BudgetExceeded, written + reservation.Unrecorded >= budget
                 ? $"The site has used its daily budget of {budget} AI tokens. It resets at {resets}."
                 : $"The AI calls the site has made today and those it has in flight reach its daily budget of {budget} AI tokens. Try again when they end; the budget resets at {resets}.");
         }
@@ -600,6 +603,7 @@ internal sealed class AiAssistService(
     private async Task<bool> RecordAsync(AiCall call, AiUsageInfo info, string outcome, string? code)
     {
         var written = true;
+        using var bound = new CancellationTokenSource(UsageWriteTimeout, time);
         try
         {
             await usage.RecordAsync(new AiUsage
@@ -618,7 +622,7 @@ internal sealed class AiAssistService(
                 DurationMs = info.DurationMs,
                 Succeeded = outcome == Succeeded,
                 CreatedAt = time.GetUtcNow(),
-            });
+            }, bound.Token);
         }
         catch (Exception exception)
         {

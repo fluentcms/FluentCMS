@@ -189,6 +189,8 @@ public sealed class AiClientFactoryTests
         withTheOperatorsKey!.SiteCredential.ShouldBeFalse();
         keyless!.SiteCredential.ShouldBeFalse();
         new AiOptions { SiteBilledEndpoints = { "not-a-url" } }.IsValid().ShouldBeFalse();
+        options.IsValid().ShouldBeTrue();
+        new AiOptions { AllowedEndpoints = { billed }, SiteBilledEndpoints = { "https://other.example.com/v1" } }.IsValid().ShouldBeFalse();
     }
 
     [Theory]

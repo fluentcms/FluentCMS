@@ -42,14 +42,14 @@ internal sealed partial class AiUsageService(
 
     public static string KindOf(PrincipalKind kind) => JsonNamingPolicy.CamelCase.ConvertName(kind.ToString());
 
-    // Not cancelled with the request: a call that was sent is logged even when its caller has gone. The row is let go
-    // again, so that one that could not be written is not tried with the next.
-    public async Task RecordAsync(AiUsage usage)
+    // Not cancelled with the request: a call that was sent is logged even when its caller has gone, within a bound of its
+    // own. The row is let go again, so that one that could not be written is not tried with the next.
+    public async Task RecordAsync(AiUsage usage, CancellationToken cancellationToken)
     {
         database.Add(usage);
         try
         {
-            await database.SaveChangesAsync(CancellationToken.None);
+            await database.SaveChangesAsync(cancellationToken).WaitAsync(cancellationToken);
         }
         finally
         {

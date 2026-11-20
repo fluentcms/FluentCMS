@@ -1,5 +1,8 @@
 using System.Net;
 using FluentCMS.Sites;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Plugins.AiAssist.Tests.AiTesting;
@@ -148,14 +151,57 @@ public sealed class AiBudgetTests
         const string Text = "船は大きな舟です。🚢";
 
         var answer = await SuggestAsync(admin, "rewrite", new { type = "article", field = "summary", text = Text });
+        await SuggestAsync(admin, "rewrite", new { type = "article", field = "summary", text = new string('x', Text.Length) });
         ai.Chat.SiteCredential = true;
         await SuggestAsync(admin, "rewrite", new { type = "article", field = "summary", text = Text });
+        (ai.Chat.PromptTokens, ai.Chat.CompletionTokens) = (-5, -5);
+        var negative = await SuggestAsync(admin, "rewrite", new { type = "article", field = "summary", text = Text });
 
         (answer["usage"]!["promptTokens"]!.GetValue<long>(), answer["usage"]!["completionTokens"]!.GetValue<long>()).ShouldBe((0, 0));
+        (negative["usage"]!["promptTokens"]!.GetValue<long>(), negative["usage"]!["completionTokens"]!.GetValue<long>()).ShouldBe((0, 0));
         var rows = await ai.UsageAsync(site);
-        rows[0].PromptTokens.ShouldBeGreaterThan(System.Text.Encoding.UTF8.GetByteCount(Text));
+
+        // The same instructions and as many characters, so the rows differ by the bytes the text has beyond one a character.
+        (rows[0].PromptTokens - rows[1].PromptTokens).ShouldBe(System.Text.Encoding.UTF8.GetByteCount(Text) - Text.Length);
         rows[0].CompletionTokens.ShouldBe(300);
-        (rows[1].PromptTokens, rows[1].CompletionTokens).ShouldBe((0, 0));
+        (rows[2].PromptTokens, rows[2].CompletionTokens).ShouldBe((0, 0));
+        (rows[3].PromptTokens, rows[3].CompletionTokens).ShouldBe((0, 0));
+    }
+
+    // A usage row is written within a bound of its own. One that fails or does not end in time is a row not written
+    // (event 9365): the answer is given, the reservation let go, and the call still counts for its day, so the refusal it
+    // causes says the site has used its budget.
+    [Fact]
+    public async Task AUsageWriteThatFailsOrHangsIsNotWrittenAndStillCounts()
+    {
+        var writes = new UsageWrites();
+        await using var ai = new AiHost();
+        ai.Host.WithServices(services => services.ConfigureDbContext<PluginDbContext<AiAssistPlugin>>(options => options.AddInterceptors(writes)));
+        var site = await ai.SiteAsync(settings => settings.DailyTokenBudget = 30);
+        var other = await ai.SiteAsync(settings => settings.DailyTokenBudget = 1000);
+        using var admin = await ai.AdminAsync(site);
+        using var elsewhere = await ai.AdminAsync(other);
+
+        writes.Fail = true;
+        await SuggestAsync(admin, "rewrite", Body);
+        await SuggestAsync(admin, "rewrite", Body);
+        using var over = await ActAsync(admin, "rewrite", Body);
+        writes.Fail = false;
+
+        writes.Hang = true;
+        var hanging = SuggestAsync(elsewhere, "rewrite", Body);
+        await writes.Entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        ai.Host.Time.Advance(AiAssistService.UsageWriteTimeout + TimeSpan.FromSeconds(1));
+        await hanging.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        writes.Hang = false;
+        await SuggestAsync(elsewhere, "rewrite", Body);
+
+        var problem = await JsonAsync(over, HttpStatusCode.TooManyRequests);
+        problem["code"]!.GetValue<string>().ShouldBe("FCMS1693");
+        problem["detail"]!.GetValue<string>().ShouldContain("has used its daily budget");
+        (await ai.UsageAsync(site)).ShouldBeEmpty();
+        (await ai.UsageAsync(other)).Count.ShouldBe(1);
+        ai.Logs.Of(9365).Count.ShouldBe(3);
     }
 
     [Fact]
@@ -238,5 +284,32 @@ public sealed class AiBudgetTests
         }
 
         return (most, null);
+    }
+
+    private sealed class UsageWrites : SaveChangesInterceptor
+    {
+        public volatile bool Fail;
+        public volatile bool Hang;
+
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (eventData.Context?.ChangeTracker.Entries<AiUsage>().Any() == true)
+            {
+                if (Fail)
+                {
+                    throw new InvalidOperationException("The usage table is gone.");
+                }
+
+                if (Hang)
+                {
+                    Entered.TrySetResult();
+                    await Task.Delay(Timeout.Infinite, cancellationToken);
+                }
+            }
+
+            return result;
+        }
     }
 }
