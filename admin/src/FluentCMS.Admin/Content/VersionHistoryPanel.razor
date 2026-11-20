@@ -130,8 +130,16 @@
     // The comparison shown: the two versions, and the fields that changed, or null while it is read or when it failed.
     private (int From, int To)? compared;
     private IReadOnlyList<DiffField>? diff;
+    private DiffValueText? values;
     private bool comparing;
     private bool compareFailed;
+
+    // The reads of the panel while it is open on one entry and locale, cancelled as it closes or moves on; a compare has its
+    // own, cancelled by the next.
+    private CancellationTokenSource? session;
+    private CancellationTokenSource? comparison;
+    private int comparisons;
+    private (Guid Id, string? Site, string? Locale) openedFor;
 
     [Parameter, EditorRequired]
     public SchemaTypeDescription Type { get; set; } = null!;
@@ -178,6 +186,14 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        var key = (EntryId, Site, Locale);
+        if (Open && wasOpen && key != openedFor)
+        {
+            openedFor = key;
+            await LoadAsync();
+            return;
+        }
+
         if (Open == wasOpen)
         {
             return;
@@ -187,9 +203,11 @@
         if (!Open)
         {
             (shown, asking) = (false, null);
+            Stop();
             return;
         }
 
+        openedFor = key;
         opener = await RememberOpenerAsync();
         shown = true;
         await LoadAsync();
@@ -217,7 +235,7 @@
 
     public async ValueTask DisposeAsync()
     {
-        generation++;
+        Stop();
         if (opener is not null)
         {
             await opener.DisposeAsync();
@@ -260,14 +278,28 @@
         }
     }
 
+    // Whatever the panel still reads is no longer wanted, and its answer or failure is dropped.
+    private void Stop()
+    {
+        generation++;
+        comparisons++;
+        (comparing, comparison) = (false, null);
+        session?.Cancel();
+        session?.Dispose();
+        session = null;
+    }
+
     // Each opening reads the versions again, since a save of the form adds one.
     private async Task LoadAsync()
     {
-        var current = ++generation;
+        Stop();
+        var current = generation;
+        session = new CancellationTokenSource();
+        var token = session.Token;
         (versions, failed, showing, compared, diff, compareFailed) = (null, false, PageSize, null, null, false);
         try
         {
-            var read = await Client.GetVersionsAsync(Type.Name, EntryId, Site, Locale, CancellationToken.None);
+            var read = await Client.GetVersionsAsync(Type.Name, EntryId, Site, Locale, token);
             if (current != generation)
             {
                 return;
@@ -280,14 +312,19 @@
         {
             failed = true;
         }
+        catch (Exception exception) when (IsFailure(exception))
+        {
+            // A read the panel no longer waits for, which closing it cancelled.
+        }
     }
 
     private void ShowMore() => showing += PageSize;
 
     // The diff, and both versions as read for the names of blocks and the text of rich text; the earlier of the two first.
+    // A compare started while another runs takes its place, and the earlier one's answer is dropped.
     private async Task CompareAsync()
     {
-        if (comparing || !int.TryParse(from, out var left) || !int.TryParse(to, out var right))
+        if (session is null || !int.TryParse(from, out var left) || !int.TryParse(to, out var right))
         {
             return;
         }
@@ -297,38 +334,79 @@
             (left, right) = (right, left);
         }
 
-        var current = generation;
+        comparison?.Cancel();
+        comparison = CancellationTokenSource.CreateLinkedTokenSource(session.Token);
+        var token = comparison.Token;
+        var mine = ++comparisons;
         (comparing, compareFailed, compared, diff) = (true, false, (left, right), null);
         try
         {
-            var reading = Client.DiffVersionsAsync(Type.Name, EntryId, left, right, Site, Locale, CancellationToken.None);
-            var before = Client.GetVersionAsync(Type.Name, EntryId, left, Site, Locale, CancellationToken.None);
-            var after = Client.GetVersionAsync(Type.Name, EntryId, right, Site, Locale, CancellationToken.None);
+            var reading = Client.DiffVersionsAsync(Type.Name, EntryId, left, right, Site, Locale, token);
+            var before = Client.GetVersionAsync(Type.Name, EntryId, left, Site, Locale, token);
+            var after = Client.GetVersionAsync(Type.Name, EntryId, right, Site, Locale, token);
             var changes = await reading;
-            var schema = await Metadata.GetSchemaAsync(CancellationToken.None);
+            var schema = await Metadata.GetSchemaAsync(token);
             var rows = VersionDiffRows.Build(schema, Type, changes.Changes, (await before).Fields, (await after).Fields);
-            if (current != generation || compared != (left, right))
+            var text = await NamesAsync(schema, rows, token);
+            if (mine != comparisons)
             {
                 return;
             }
 
-            diff = rows;
+            (diff, values, comparing) = (rows, text, false);
             Announcer.Announce(rows.Count == 0 ? L["Content.Versions.NoChanges"] : L["Content.Versions.Changed", rows.Count]);
             focusDiff = true;
         }
-        catch (Exception exception) when (IsFailure(exception) && current == generation)
+        catch (Exception exception) when (IsFailure(exception) && mine == comparisons)
         {
-            compareFailed = true;
+            (compareFailed, comparing) = (true, false);
             Announcer.Announce(L["Content.Versions.CompareFailed"], AnnouncementPoliteness.Assertive);
         }
-        finally
+        catch (Exception exception) when (IsFailure(exception))
         {
-            comparing = false;
+            // A compare another one, or closing the panel, took the place of.
         }
     }
 
+    // The labels of the entries the shown values relate to, one read per target for the ids of this diff only; an id whose
+    // read failed stays an id, and one the read did not answer is named as an entry the caller may not read.
+    private async Task<DiffValueText> NamesAsync(SchemaDescription schema, IReadOnlyList<DiffField> rows, CancellationToken token)
+    {
+        var text = new DiffValueText(
+            schema,
+            L["Content.Versions.ValueSeparator"],
+            L["Content.Versions.ListSeparator"],
+            (label, value) => L["Content.Versions.FieldValue", label, value],
+            id => L["Content.Versions.Unreadable", id.ToString("D")]);
+        foreach (var row in rows.SelectMany(field => field.Rows))
+        {
+            text.Describe(row.Before, row.Field, row.Holder);
+            text.Describe(row.After, row.Field, row.Holder);
+        }
+
+        foreach (var (target, ids) in text.Wanted)
+        {
+            var type = schema.Types.First(item => item.Name == target);
+            try
+            {
+                foreach (var (id, entry) in await RelationReads.LabelsAsync(Client, type, ids, ContentLocale, token))
+                {
+                    text.Names[id] = AdminLabels.Entry(type, entry);
+                }
+
+                text.Read.Add(target);
+            }
+            catch (Exception exception) when (IsFailure(exception) && !token.IsCancellationRequested)
+            {
+                // The ids stay as they are.
+            }
+        }
+
+        return text;
+    }
+
     private static bool IsFailure(Exception exception) =>
-        exception is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException;
+        exception is ApiProblemException or HttpRequestException or OperationCanceledException or System.Text.Json.JsonException;
 
     private void AskRestore(EntryVersionInfo version) => (asking, named, shown, focusStay) = (version, version, false, true);
 
@@ -353,7 +431,10 @@
     private async Task FinishAsync()
     {
         shown = false;
-        generation++;
+        Stop();
+
+        // The opener hears of the close before focus is back on its button, so that the button opens the panel again at once.
+        await OnClose.InvokeAsync();
         if (opener is { } handle)
         {
             opener = null;
@@ -361,11 +442,9 @@
             await Task.Delay(DocumentInterop.DialogFocusDelay);
             await handle.DisposeAsync();
         }
-
-        await OnClose.InvokeAsync();
     }
 
-    private string Where(IReadOnlyList<DiffStep> steps) => string.Join(" › ", steps.Select(step => step.Kind switch
+    private string Where(IReadOnlyList<DiffStep> steps) => string.Join(L["Content.Versions.PathSeparator"], steps.Select(step => step.Kind switch
     {
         DiffStepKind.Block => L["Content.Versions.Block", AdminLabels.Type(step.Block!, L), step.Position].Value,
         DiffStepKind.Item => L["Content.Versions.Item", step.Position].Value,
@@ -464,6 +543,6 @@
             return;
         }
 
-        @VersionDiffRows.Text(value)
+        @values?.Describe(value, row.Field, row.Holder)
     };
 }

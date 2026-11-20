@@ -1823,4 +1823,19 @@
   <data name="Content.Form.NotRestored" xml:space="preserve">
     <value>The version was not restored.</value>
   </data>
+  <data name="Content.Versions.PathSeparator" xml:space="preserve">
+    <value> › </value>
+  </data>
+  <data name="Content.Versions.ValueSeparator" xml:space="preserve">
+    <value> · </value>
+  </data>
+  <data name="Content.Versions.ListSeparator" xml:space="preserve">
+    <value>, </value>
+  </data>
+  <data name="Content.Versions.FieldValue" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="Content.Versions.Unreadable" xml:space="preserve">
+    <value>an entry you may not read ({0})</value>
+  </data>
 </root>

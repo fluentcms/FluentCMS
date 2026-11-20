@@ -447,8 +447,9 @@
     private bool MayDiscard =>
         access?.Update == true && entryId is not null && (Status == EntryStatuses.Modified || (Status == EntryStatuses.Published && IsDirty));
 
-    // The history of a saved locale (A-28), from the page's form only, since a panel's form is a dialog already.
-    private bool MayShowHistory => !InPanel && entryId is not null && read?.Entry is not null && type is not null;
+    // The history of a saved locale (A-28), from the page's form only, since a panel's form is a dialog already. Versions
+    // hold drafts, so the server reads them only for a caller who may read the type's drafts.
+    private bool MayShowHistory => !InPanel && entryId is not null && read?.Entry is not null && type is not null && access?.Drafts == true;
 
     private bool Busy => saving || running is not null || copying;
 

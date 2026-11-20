@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using FluentCMS.Admin.Api;
 using FluentCMS.Admin.Fields;
+using FluentCMS.Admin.Shell;
 
 namespace FluentCMS.Admin.Content;
 
@@ -30,7 +31,8 @@ internal sealed record DiffStep(DiffStepKind Kind, string Name, SchemaFieldDescr
 internal sealed record TextPiece(string Text, DiffKind? Kind);
 
 // A row of a field's changes. A moved block has its positions; a changed paragraph its words; a change of rich text that
-// left its text alone is Formatting.
+// left its text alone is Formatting. Field is the field the values are of, and Holder the type of the block or component the
+// values are, so that they read by their labels.
 internal sealed record DiffRow(IReadOnlyList<DiffStep> Where, DiffKind Kind, JsonNode? Before, JsonNode? After)
 {
     public int FromPosition { get; init; }
@@ -40,14 +42,21 @@ internal sealed record DiffRow(IReadOnlyList<DiffStep> Where, DiffKind Kind, Jso
     public IReadOnlyList<TextPiece>? Words { get; init; }
 
     public bool Formatting { get; init; }
+
+    public SchemaFieldDescription? Field { get; init; }
+
+    public SchemaTypeDescription? Holder { get; init; }
 }
 
 internal sealed record DiffField(SchemaFieldDescription Field, IReadOnlyList<DiffRow> Rows);
 
-// The changes of a diff (spec 4.11) as rows per field, in the order of the type's fields. Paths are walked in the versions as
-// read, so a block is named by its type and position; a block the server lists as added at one index and removed at another
-// with the same id is one move; rich text, at any depth, is compared by the text of its paragraphs and their words. A field
-// the type does not describe, which the schema leaves out when the caller may not read it, or that is hidden, is not shown.
+// The changes of a diff (spec 4.11) as rows per field, in the order of the type's fields. The server pairs the blocks of a
+// list by id and compares a kept block where it is in the later version, so every step of a path is a position in the later
+// version, except the last of a removed item, which is where it was. Paths are walked in the later version, so a block is
+// named by its type and position, and the earlier version's counterpart of a path is found by the ids at each step. A block
+// the server lists as added at one index and removed at another with the same id is one move; rich text, at any depth, is
+// compared by the text of its paragraphs and their words. A field the type does not describe, which the schema leaves out
+// when the caller may not read it, or that is hidden, is not shown.
 internal static class VersionDiffRows
 {
     private const string RichText = "richText";
@@ -72,24 +81,36 @@ internal static class VersionDiffRows
             }
 
             // Rows keep the order of the changes they come from; a rich text field's rows stand where its first change does.
+            // One whose earlier counterpart cannot be found shows the server's own fragments instead.
             List<(int Order, DiffRow Row)> rows = [];
-            HashSet<string> richTextDone = new(StringComparer.Ordinal);
-            List<(VersionChangeInfo Change, List<DiffStep> Where, string Path, int Order)> plain = [];
+            Dictionary<string, bool> richText = new(StringComparer.Ordinal);
+            List<(VersionChangeInfo Change, WalkResult Walk, string Path, int Order)> plain = [];
             for (var order = 0; order < own.Count; order++)
             {
                 var change = own[order];
-                var walk = Walk(schema, field, Segments(change.Path), change.Kind == "removed" ? from : to);
+                var walk = Walk(schema, field, Segments(change.Path), to, change.Kind == "removed" ? change.Before : change.After);
                 if (walk.RichText is { } prefix)
                 {
-                    if (richTextDone.Add(prefix.Path))
+                    if (!richText.TryGetValue(prefix.Path, out var resolved))
                     {
-                        rows.AddRange(TextRows(prefix.Where, Locate(from, prefix.Path), Locate(to, prefix.Path)).Select(row => (order, row)));
+                        var earlier = Counterpart(to, from, prefix.Path);
+                        richText[prefix.Path] = resolved = earlier is not null;
+                        if (earlier is not null)
+                        {
+                            var at = order;
+                            rows.AddRange(TextRows(prefix.Where, Locate(from, earlier), Locate(to, prefix.Path)).Select(row => (at, row)));
+                        }
+                    }
+
+                    if (!resolved)
+                    {
+                        rows.Add((order, new DiffRow(prefix.Where, KindOf(change), change.Before, change.After)));
                     }
 
                     continue;
                 }
 
-                plain.Add((change, walk.Where, change.Path, order));
+                plain.Add((change, walk, change.Path, order));
             }
 
             rows.AddRange(PlainRows(plain));
@@ -102,25 +123,23 @@ internal static class VersionDiffRows
         return fields;
     }
 
-    // The words of a value, as the diff shows a value that is not text: the text a block or a component holds, the plain
-    // text of rich text, the items of a list.
-    public static string Text(JsonNode? value) => value switch
-    {
-        null => "",
-        JsonValue scalar when scalar.TryGetValue<string>(out var text) => text,
-        JsonValue scalar => scalar.ToJsonString(),
-        JsonObject document when NestedValues.TypeOf(document) == "doc" => string.Join(" ", Paragraphs(document)),
-        JsonObject item => string.Join(" · ", item.Where(member => member.Key is not ("id" or "type")).Select(member => Text(member.Value)).Where(text => text.Length > 0)),
-        JsonArray items => string.Join(", ", items.Select(Text).Where(text => text.Length > 0)),
-        _ => value.ToJsonString(),
-    };
+    // The text of each top-level node of rich text; a list or a quote is one paragraph of all it holds.
+    public static List<string> Paragraphs(JsonObject document) =>
+        document["content"] is JsonArray content ? [.. content.Select(node => Flatten(node).Trim())] : [];
 
     private sealed record Segment(string Key, int Index)
     {
         public bool IsIndex => Index >= 0;
     }
 
-    private sealed record WalkResult(List<DiffStep> Where, (string Path, List<DiffStep> Where)? RichText);
+    private sealed record WalkResult(List<DiffStep> Where, (string Path, List<DiffStep> Where)? RichText, SchemaFieldDescription? Field, SchemaTypeDescription? Holder);
+
+    private static DiffKind KindOf(VersionChangeInfo change) => change.Kind switch
+    {
+        "added" => DiffKind.Added,
+        "removed" => DiffKind.Removed,
+        _ => DiffKind.Changed,
+    };
 
     private static List<Segment> Segments(string path)
     {
@@ -174,19 +193,22 @@ internal static class VersionDiffRows
         return path.ToString();
     }
 
-    // The steps of a path, named from the schema and the version it is read in. A rich text field ends the walk: its changes
-    // are shown together, by text.
-    private static WalkResult Walk(SchemaDescription schema, SchemaFieldDescription field, List<Segment> segments, JsonObject? document)
+    // The steps of a path, named from the schema and the later version; the item at its last index is the change's own
+    // value, since a removed one is not in the later version. A rich text field ends the walk: its changes are shown
+    // together, by text.
+    private static WalkResult Walk(SchemaDescription schema, SchemaFieldDescription field, List<Segment> segments, JsonObject? later, JsonNode? last)
     {
         List<DiffStep> where = [];
-        JsonNode? node = document?[field.Name];
+        JsonNode? node = later?[field.Name];
         SchemaFieldDescription? current = field;
         SchemaTypeDescription? holder = null;
+        var leafField = (SchemaFieldDescription?)field;
+        SchemaTypeDescription? leafHolder = field.Type == "component" && !field.Multiple ? NestedValues.ComponentOf(schema, field) : null;
         for (var index = 1; index <= segments.Count; index++)
         {
             if (current?.Type == RichText)
             {
-                return new WalkResult(where, (PathOf(segments.Take(index)), [.. where]));
+                return new WalkResult(where, (PathOf(segments.Take(index)), [.. where]), null, null);
             }
 
             if (index == segments.Count)
@@ -197,8 +219,9 @@ internal static class VersionDiffRows
             var segment = segments[index];
             if (segment.IsIndex)
             {
-                node = node is JsonArray list && segment.Index < list.Count ? list[segment.Index] : null;
+                node = index == segments.Count - 1 ? last : node is JsonArray list && segment.Index < list.Count ? list[segment.Index] : null;
                 var position = segment.Index + 1;
+                var listField = current;
 
                 // A block names itself, so the list it is in is not named before it: Section 1 › Card 2.
                 if (current?.Type is "blocks" or "component" && where.Count > 0 && where[^1].Field == current)
@@ -222,6 +245,8 @@ internal static class VersionDiffRows
                     holder = null;
                 }
 
+                leafField = holder is null ? listField : null;
+                leafHolder = holder;
                 current = null;
                 continue;
             }
@@ -234,9 +259,57 @@ internal static class VersionDiffRows
             node = node is JsonObject item ? item[segment.Key] : null;
             current = holder?.Fields.FirstOrDefault(nested => nested.Name == segment.Key);
             where.Add(current is null ? new DiffStep(DiffStepKind.Field, segment.Key) : new DiffStep(DiffStepKind.Field, segment.Key, Field: current));
+            leafField = current;
+            leafHolder = current is { Type: "component", Multiple: false } ? NestedValues.ComponentOf(schema, current) : null;
         }
 
-        return new WalkResult(where, null);
+        return new WalkResult(where, null, leafField, leafHolder);
+    }
+
+    // The path in the other version of what a path names in this one: by the id of the item at each step of a list whose
+    // items have one, by position otherwise; null when the other version does not have it.
+    private static string? Counterpart(JsonObject? source, JsonObject? target, string path)
+    {
+        JsonNode? here = source, there = target;
+        List<Segment> found = [];
+        foreach (var segment in Segments(path))
+        {
+            if (!segment.IsIndex)
+            {
+                (here, there) = (here is JsonObject left ? left[segment.Key] : null, there is JsonObject right ? right[segment.Key] : null);
+                found.Add(segment);
+                continue;
+            }
+
+            if (here is not JsonArray items || segment.Index >= items.Count || there is not JsonArray others)
+            {
+                return null;
+            }
+
+            here = items[segment.Index];
+            var at = -1;
+            if (NestedValues.IdOf(here) is { } id)
+            {
+                for (var index = 0; index < others.Count && at < 0; index++)
+                {
+                    at = NestedValues.IdOf(others[index]) == id ? index : -1;
+                }
+            }
+            else if (segment.Index < others.Count)
+            {
+                at = segment.Index;
+            }
+
+            if (at < 0)
+            {
+                return null;
+            }
+
+            there = others[at];
+            found.Add(segment with { Index = at });
+        }
+
+        return PathOf(found);
     }
 
     private static JsonNode? Locate(JsonObject? document, string path)
@@ -254,26 +327,20 @@ internal static class VersionDiffRows
 
     // An item with an id added at one index and removed at another of the same list is a move; its own changes, if it has
     // any, are listed under it by its fields.
-    private static IEnumerable<(int Order, DiffRow Row)> PlainRows(List<(VersionChangeInfo Change, List<DiffStep> Where, string Path, int Order)> changes)
+    private static IEnumerable<(int Order, DiffRow Row)> PlainRows(List<(VersionChangeInfo Change, WalkResult Walk, string Path, int Order)> changes)
     {
         var removed = changes
             .Where(item => item.Change.Kind == "removed" && NestedValues.IdOf(item.Change.Before) is not null)
             .ToDictionary(item => (ListOf(item.Path), NestedValues.IdOf(item.Change.Before)!), item => item);
         HashSet<string> moved = new(StringComparer.Ordinal);
-        foreach (var (change, where, path, order) in changes)
+        foreach (var (change, walk, path, order) in changes)
         {
-            var kind = change.Kind switch
-            {
-                "added" => DiffKind.Added,
-                "removed" => DiffKind.Removed,
-                _ => DiffKind.Changed,
-            };
-
+            var kind = KindOf(change);
             if (kind == DiffKind.Added && NestedValues.IdOf(change.After) is { } id && removed.TryGetValue((ListOf(path), id), out var old))
             {
                 moved.Add(old.Path);
-                yield return (order, new DiffRow(where, DiffKind.Moved, null, null) { FromPosition = PositionOf(old.Path), ToPosition = PositionOf(path) });
-                foreach (var row in MovedChanges(where, old.Change.Before as JsonObject, change.After as JsonObject))
+                yield return (order, new DiffRow(walk.Where, DiffKind.Moved, null, null) { FromPosition = PositionOf(old.Path), ToPosition = PositionOf(path) });
+                foreach (var row in MovedChanges(walk.Where, old.Change.Before as JsonObject, change.After as JsonObject))
                 {
                     yield return (order, row);
                 }
@@ -292,7 +359,7 @@ internal static class VersionDiffRows
                 continue;
             }
 
-            yield return (order, new DiffRow(where, kind, change.Before, change.After));
+            yield return (order, new DiffRow(walk.Where, kind, change.Before, change.After) { Field = walk.Field, Holder = walk.Holder });
         }
     }
 
@@ -324,7 +391,7 @@ internal static class VersionDiffRows
             }
             else
             {
-                yield return new DiffRow([.. where, step], kind, before[key], after[key]);
+                yield return new DiffRow([.. where, step], kind, before[key], after[key]) { Field = field };
             }
         }
     }
@@ -366,10 +433,6 @@ internal static class VersionDiffRows
         }
     }
 
-    // The text of each top-level node; a list or a quote is one paragraph of all it holds.
-    private static List<string> Paragraphs(JsonObject document) =>
-        document["content"] is JsonArray content ? [.. content.Select(node => Flatten(node).Trim())] : [];
-
     private static string Flatten(JsonNode? node)
     {
         if (node is not JsonObject item)
@@ -403,12 +466,16 @@ internal static class VersionDiffRows
             return steps;
         }
 
-        var lengths = new int[left.Count + 1, right.Count + 1];
+        // The longest common run from each pair of positions on, in one array of rows of right.Count + 1.
+        var width = right.Count + 1;
+        var lengths = new int[(left.Count + 1) * width];
         for (var i = left.Count - 1; i >= 0; i--)
         {
             for (var j = right.Count - 1; j >= 0; j--)
             {
-                lengths[i, j] = string.Equals(left[i], right[j], StringComparison.Ordinal) ? lengths[i + 1, j + 1] + 1 : Math.Max(lengths[i + 1, j], lengths[i, j + 1]);
+                lengths[(i * width) + j] = string.Equals(left[i], right[j], StringComparison.Ordinal)
+                    ? lengths[((i + 1) * width) + j + 1] + 1
+                    : Math.Max(lengths[((i + 1) * width) + j], lengths[(i * width) + j + 1]);
             }
         }
 
@@ -419,7 +486,7 @@ internal static class VersionDiffRows
             {
                 steps.Add((null, l++, r++));
             }
-            else if (r < right.Count && (l == left.Count || lengths[l, r + 1] >= lengths[l + 1, r]))
+            else if (r < right.Count && (l == left.Count || lengths[(l * width) + r + 1] >= lengths[((l + 1) * width) + r]))
             {
                 steps.Add((DiffKind.Added, -1, r++));
             }
@@ -534,5 +601,79 @@ internal static class VersionDiffRows
         }
 
         return tokens;
+    }
+}
+
+// The words of a value that is not text, with the separators and the label format of the interface's resources: a block or
+// a component as the label and value of each field it has, rich text as its plain text, a list as its items, and a relation
+// as the labels of its entries once they are read. The ids of relations it met without a label are in Wanted, by target.
+internal sealed class DiffValueText(SchemaDescription schema, string valueSeparator, string listSeparator, Func<string, string, string> labelled, Func<Guid, string> unreadable)
+{
+    public Dictionary<string, HashSet<Guid>> Wanted { get; } = new(StringComparer.Ordinal);
+
+    // The label of each entry read, by id, and the targets whose read is done, so that an id of one not in Names is an entry
+    // the caller may not read.
+    public Dictionary<Guid, string> Names { get; } = [];
+
+    public HashSet<string> Read { get; } = new(StringComparer.Ordinal);
+
+    public string Describe(JsonNode? value, SchemaFieldDescription? field, SchemaTypeDescription? holder)
+    {
+        if (value is null)
+        {
+            return "";
+        }
+
+        if (field is { Type: "relation", Relation.Target: var target })
+        {
+            return string.Join(listSeparator, RelationReads.Ids(value).Select(id => Entry(target, id)));
+        }
+
+        switch (value)
+        {
+            case JsonValue scalar when scalar.TryGetValue<string>(out var text):
+                return text;
+            case JsonValue scalar:
+                return scalar.ToJsonString();
+            case JsonArray items:
+                return string.Join(listSeparator, items.Select(item => Describe(item, field is { Type: "blocks" or "component" } ? null : field, field?.Type == "component" ? holder : null)).Where(text => text.Length > 0));
+            case JsonObject document when NestedValues.TypeOf(document) == "doc":
+                return string.Join(" ", VersionDiffRows.Paragraphs(document).Where(text => text.Length > 0));
+        }
+
+        var item = (JsonObject)value;
+        var type = holder
+            ?? (field is { Type: "component" } ? NestedValues.ComponentOf(schema, field) : null)
+            ?? schema.Blocks.FirstOrDefault(block => block.Name == NestedValues.TypeOf(item));
+        if (type is null)
+        {
+            return string.Join(valueSeparator, item.Where(member => member.Key is not ("id" or "type")).Select(member => Describe(member.Value, null, null)).Where(text => text.Length > 0));
+        }
+
+        return string.Join(valueSeparator, type.Fields
+            .Where(nested => !nested.Hidden && item.ContainsKey(nested.Name))
+            .Select(nested => (Label: AdminLabels.Field(nested), Text: Describe(item[nested.Name], nested, null)))
+            .Where(pair => pair.Text.Length > 0)
+            .Select(pair => labelled(pair.Label, pair.Text)));
+    }
+
+    private string Entry(string target, Guid id)
+    {
+        if (Names.TryGetValue(id, out var name))
+        {
+            return name;
+        }
+
+        if (Read.Contains(target))
+        {
+            return unreadable(id);
+        }
+
+        if (schema.Types.Any(type => type.Name == target))
+        {
+            (Wanted.TryGetValue(target, out var ids) ? ids : Wanted[target] = []).Add(id);
+        }
+
+        return id.ToString("D");
     }
 }

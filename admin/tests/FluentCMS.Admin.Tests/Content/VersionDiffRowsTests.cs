@@ -89,6 +89,83 @@ public sealed class VersionDiffRowsTests
         (row.Formatting, string.Join(" ", Steps(row))).ShouldBe((true, "section 1 card 1 body"));
     }
 
+    [Fact]
+    public void RichTextOfABlockWhosePositionMovedIsComparedWithTheSameBlock()
+    {
+        // A section inserted before the one whose card's body changed, and whose title went: the server names both at the
+        // later position, and the earlier version has the section one place up.
+        var before = new JsonObject { ["sections"] = new JsonArray(Section("s1", "Kept", Card("c1", "Ada", Doc("Old")))) };
+        var after = new JsonObject { ["sections"] = new JsonArray(Section("s0", "New"), Section("s1", "Kept", Card("c1", "Ada", Doc("New")))) };
+        after["sections"]![1]!.AsObject().Remove("title");
+
+        var rows = VersionDiffRows.Build(Schema, Page,
+        [
+            Change("sections[0]", "added", null, after["sections"]![0]!.DeepClone()),
+            Change("sections[1].title", "removed", "Kept", null),
+            Change("sections[1].cards[0].body.content[0].content[0].text", "changed", "Old", "New"),
+        ], before, after).ShouldHaveSingleItem().Rows;
+
+        rows.Select(row => (string.Join(" ", Steps(row)), row.Kind)).ShouldBe([
+            ("section 1", DiffKind.Added),
+            ("section 2 title", DiffKind.Removed),
+            ("section 2 card 1 body paragraph 1", DiffKind.Changed),
+        ]);
+        (rows[2].Before!.GetValue<string>(), rows[2].After!.GetValue<string>()).ShouldBe(("Old", "New"));
+    }
+
+    [Fact]
+    public void RichTextAfterARemovedBlockAndInANestedListThatMovedIsComparedWithTheSameBlock()
+    {
+        // The first section is removed, so the second is one place down; in it a card is inserted before the changed one.
+        var before = new JsonObject { ["sections"] = new JsonArray(Section("s0", "Gone"), Section("s1", "Kept", Card("c1", "Ada", Doc("Old")))) };
+        var after = new JsonObject { ["sections"] = new JsonArray(Section("s1", "Kept", Card("c0", "Grace", Doc("Other")), Card("c1", "Ada", Doc("New")))) };
+
+        var rows = VersionDiffRows.Build(Schema, Page,
+        [
+            Change("sections[0].cards[0]", "added", null, after["sections"]![0]!["cards"]![0]!.DeepClone()),
+            Change("sections[0].cards[1].body.content[0].content[0].text", "changed", "Old", "New"),
+            Change("sections[0]", "removed", before["sections"]![0]!.DeepClone(), null),
+        ], before, after).ShouldHaveSingleItem().Rows;
+
+        rows.Select(row => (string.Join(" ", Steps(row)), row.Kind)).ShouldBe([
+            ("section 1 card 1", DiffKind.Added),
+            ("section 1 card 2 body paragraph 1", DiffKind.Changed),
+            ("section 1", DiffKind.Removed),
+        ]);
+        (rows[1].Before!.GetValue<string>(), rows[1].After!.GetValue<string>()).ShouldBe(("Old", "New"));
+        rows[2].Before!["title"]!.GetValue<string>().ShouldBe("Gone");
+    }
+
+    [Fact]
+    public void RichTextWhoseEarlierBlockCannotBeFoundShowsTheServersFragments()
+    {
+        var before = new JsonObject { ["sections"] = new JsonArray(Section("other", "Kept", Card("c9", "Ada", Doc("Old")))) };
+        var after = new JsonObject { ["sections"] = new JsonArray(Section("s1", "Kept", Card("c1", "Ada", Doc("New")))) };
+
+        var row = VersionDiffRows.Build(Schema, Page, [Change("sections[0].cards[0].body.content[0].content[0].text", "changed", "Old", "New")], before, after)
+            .ShouldHaveSingleItem().Rows.ShouldHaveSingleItem();
+
+        (string.Join(" ", Steps(row)), row.Kind, row.Before!.GetValue<string>(), row.After!.GetValue<string>()).ShouldBe(("section 1 card 1 body", DiffKind.Changed, "Old", "New"));
+    }
+
+    [Fact]
+    public void AValueReadsByTheLabelsOfItsFieldsAndARelationByItsEntries()
+    {
+        var known = Guid.CreateVersion7();
+        var unread = Guid.CreateVersion7();
+        var schema = Schema with { Types = [Type("author", Field("name"))] };
+        var text = new DiffValueText(schema, " | ", "; ", (label, value) => $"{label}={value}", id => $"hidden {id:D}");
+        var related = Field("related", "relation") with { Relation = new FieldRelationDescription { Target = "author" } };
+
+        text.Describe(Card("c1", "Ada", Doc("One", "Two")), null, null).ShouldBe("Title=Ada | Body=One Two");
+        text.Describe(new JsonArray(known.ToString("D"), unread.ToString("D")), related, null).ShouldBe($"{known:D}; {unread:D}");
+        text.Wanted["author"].ShouldBe([known, unread], ignoreOrder: true);
+
+        text.Names[known] = "Ada Lovelace";
+        text.Read.Add("author");
+        text.Describe(new JsonArray(known.ToString("D"), unread.ToString("D")), related, null).ShouldBe($"Ada Lovelace; hidden {unread:D}");
+    }
+
     private static string[] Steps(DiffRow row) => [.. row.Where.Select(step => step.Kind switch
     {
         DiffStepKind.Block => $"{step.Block!.Name} {step.Position}",

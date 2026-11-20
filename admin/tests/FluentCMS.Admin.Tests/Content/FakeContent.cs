@@ -14,8 +14,8 @@ internal sealed record ContentWrite(HttpMethod Method, string Path, JsonObject B
 // save with If-Match "0" adds a locale. A test can answer the next write itself. A list reads every field of its entries in
 // its locale, in the order they were added, and takes filter[id][in], filter[field][contains], q on every text, pageSize
 // and a cursor, which is the number of entries before the page. Versions are what a test adds, listed newest first and read
-// one by one; a diff answers the changes a test set for its pair, and a restore with a current tag makes the version's fields
-// the draft as a new version.
+// one by one, each in its locale; a diff answers the changes a test set for its locale and pair, and a restore with a current
+// tag makes the version's fields the draft as a new version.
 internal sealed class FakeContent
 {
     public const string DefaultLocale = "en";
@@ -43,7 +43,7 @@ internal sealed class FakeContent
 
     public Dictionary<(Guid Id, string Locale), List<(JsonObject Item, JsonObject Fields)>> Versions { get; } = [];
 
-    public Dictionary<(int From, int To), JsonArray> Diffs { get; } = [];
+    public Dictionary<(string Locale, int From, int To), JsonArray> Diffs { get; } = [];
 
     public void AddVersion(Guid id, int number, JsonObject fields, string authorName = "Ada", string authorKind = "adminUser", string origin = "admin", string locale = DefaultLocale)
     {
@@ -130,7 +130,7 @@ internal sealed class FakeContent
                 {
                     ["from"] = int.Parse(left, System.Globalization.CultureInfo.InvariantCulture),
                     ["to"] = int.Parse(right, System.Globalization.CultureInfo.InvariantCulture),
-                    ["changes"] = Diffs.GetValueOrDefault((int.Parse(left, System.Globalization.CultureInfo.InvariantCulture), int.Parse(right, System.Globalization.CultureInfo.InvariantCulture)))?.DeepClone() ?? new JsonArray(),
+                    ["changes"] = Diffs.GetValueOrDefault((locale, int.Parse(left, System.Globalization.CultureInfo.InvariantCulture), int.Parse(right, System.Globalization.CultureInfo.InvariantCulture)))?.DeepClone() ?? new JsonArray(),
                 }),
                 _ => FakeManagementServer.Problem(HttpStatusCode.NotFound, "FCMS3104"),
             };
