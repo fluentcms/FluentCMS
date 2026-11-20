@@ -249,12 +249,22 @@ public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fix
         app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("public-origin-unset");
     }
 
-    [Fact]
-    public async Task AMissingPublicOriginIsNotReportedOutsideProduction()
+    [Theory]
+    [InlineData("Staging", true)]
+    [InlineData("Development", false)]
+    public async Task AMissingPublicOriginIsReportedOutsideDevelopment(string environment, bool reported)
     {
-        var app = await StartAsync(Environments.Staging);
+        var app = await StartAsync(environment);
 
-        app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("public-origin-unset");
+        var ids = app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ToList();
+        if (reported)
+        {
+            ids.ShouldContain("public-origin-unset");
+        }
+        else
+        {
+            ids.ShouldNotContain("public-origin-unset");
+        }
     }
 
     [Fact]
@@ -357,7 +367,7 @@ public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fix
         string secret;
         await using (var scope = host.Services.CreateAsyncScope())
         {
-            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(FluentCMS.Core.Sites.DefaultSite.Id));
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(FluentCMS.Core.Sites.DefaultSite.Id));
             var created = await scope.ServiceProvider.GetRequiredService<FluentCMS.Core.Identity.ApiKeys.ApiKeyService>().CreateAsync(
                 new FluentCMS.Core.Identity.ApiKeys.ApiKeyRequest("bound", FluentCMS.Core.Identity.ApiKeys.ApiKeyClass.Management, role) { SiteIds = [FluentCMS.Core.Sites.DefaultSite.Id] },
                 Token);

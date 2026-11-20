@@ -36,11 +36,11 @@ public static class ErrorCodeRegistry
     [
         // 11xx host, found when the host starts
         Startup(HostErrorCodes.InvalidOption, "Invalid option"),
-        Startup(HostErrorCodes.GeneratedSigningKeyInProduction, "Generated signing key in Production"),
+        Startup(HostErrorCodes.GeneratedSigningKeyInProduction, "Generated signing key outside Development"),
         Startup(HostErrorCodes.NotRegistered, "FluentCMS not registered"),
         Startup(HostErrorCodes.PipelineMissing, "FluentCMS pipeline missing"),
-        Startup(HostErrorCodes.PublicOriginUnsetInProduction, "Public origin unset in Production"),
-        Startup(HostErrorCodes.UnencryptedKeyRingInProduction, "Unencrypted key ring in Production"),
+        Startup(HostErrorCodes.PublicOriginUnsetInProduction, "Public origin unset outside Development"),
+        Startup(HostErrorCodes.UnencryptedKeyRingInProduction, "Unencrypted key ring outside Development"),
 
         // 12xx schema, found when the host starts
         Startup(SchemaErrorCodes.DuplicateType, "Duplicate content type"),

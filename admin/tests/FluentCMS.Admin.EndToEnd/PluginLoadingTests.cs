@@ -22,7 +22,7 @@ public sealed class PluginLoadingTests(EndToEndHost host) : BrowserTest(host)
         var browser = await OpenBrowserAsync();
         var tab = await browser.NewTabAsync();
         var fetched = HalfRequests(tab);
-        await SignInOnTheGalleryAsync(browser, tab, Host.Editor);
+        await SignInOnTheGalleryAsync(browser, tab, await EditorAsync());
         await Expect(tab.SiteSwitcher).ToHaveValueAsync(Host.Sites[0].Id);
 
         var media = tab.Sidebar.GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = "Media", Exact = true });
@@ -55,7 +55,7 @@ public sealed class PluginLoadingTests(EndToEndHost host) : BrowserTest(host)
         var browser = await OpenBrowserAsync();
         var tab = await browser.NewTabAsync();
         var fetched = HalfRequests(tab);
-        await SignInOnTheGalleryAsync(browser, tab, Host.Editor);
+        await SignInOnTheGalleryAsync(browser, tab, await EditorAsync());
         await tab.SwitchSiteAsync(Host.Sites[1]);
         await Expect(tab.SiteSwitcher).ToHaveValueAsync(Host.Sites[1].Id);
         await Expect(tab.Sidebar.GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = "Article", Exact = true })).ToBeVisibleAsync();

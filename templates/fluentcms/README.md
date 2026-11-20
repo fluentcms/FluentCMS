@@ -101,11 +101,11 @@ docker build -t fluentcms-app .
 docker run --rm fluentcms-app fluentcms migrate
 ```
 
-The image runs the commands of the tool too, so the migrate step of a deployment, such as an init container, is the same image with `fluentcms migrate`. In Production the host stops at start until a signing certificate, `FluentCms__PublicOrigin` and an encryptor of the Data Protection key ring are set, and names each with its setting; set `AllowedHosts` too.
+The image runs the commands of the tool too, so the migrate step of a deployment, such as an init container, is the same image with `fluentcms migrate`. In Production, as in every environment but Development, the host stops at start until a signing certificate, `FluentCms__PublicOrigin` and an encryptor of the Data Protection key ring are set, and names each with its setting; set `AllowedHosts` too.
 
 ## More
 
-- [Host configuration](https://github.com/fluentcms/FluentCMS/blob/main/docs/host-configuration.md): the `FluentCms` options, authentication, the production checks
+- [Host configuration](https://github.com/fluentcms/FluentCMS/blob/main/docs/host-configuration.md): the `FluentCms` options, authentication, the startup refusals
 - [Content migrations](https://github.com/fluentcms/FluentCMS/blob/main/docs/content-migrations.md): schema sync, `migrations add` and `migrate`
 - [Analyzer rules](https://github.com/fluentcms/FluentCMS/blob/main/docs/analyzers.md): the `FCMS0xxx` codes of the build
 - [Docker](https://github.com/fluentcms/FluentCMS/blob/main/docs/docker.md): the production settings of an image

@@ -300,7 +300,7 @@ public sealed class SearchApiTests
 
         await using (var scope = search.Services.CreateAsyncScope())
         {
-            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id));
             await scope.ServiceProvider.GetRequiredService<ISiteAdministration>().DeleteAsync(new SiteId(site), Token);
         }
 

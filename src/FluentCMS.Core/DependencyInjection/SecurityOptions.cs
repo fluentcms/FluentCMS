@@ -73,12 +73,16 @@ public sealed class SigningCertificateOptions
 
     internal bool IsConfigured => !string.IsNullOrWhiteSpace(Path);
 
+    // Windows otherwise writes the private key to the user's key folder until the certificate is disposed, and leaves it
+    // there when the process is killed. Linux writes nothing either way, and macOS does not support an ephemeral key.
+    internal static X509KeyStorageFlags KeyStorage => OperatingSystem.IsWindows() ? X509KeyStorageFlags.EphemeralKeySet : X509KeyStorageFlags.DefaultKeySet;
+
     internal X509Certificate2 Load()
     {
         X509Certificate2 certificate;
         try
         {
-            certificate = X509CertificateLoader.LoadPkcs12FromFile(Path!, Password);
+            certificate = X509CertificateLoader.LoadPkcs12FromFile(Path!, Password, KeyStorage);
         }
         catch (Exception exception) when (exception is CryptographicException or IOException or UnauthorizedAccessException)
         {

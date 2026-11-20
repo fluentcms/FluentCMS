@@ -44,7 +44,7 @@ public class ManagementAuthorityTests
 
         foreach (var origin in new[] { Origin.Job, Origin.Cli, Origin.Seed })
         {
-            using (SystemOperation.Begin(accessor, origin, Site))
+            using (SystemOperation.Begin(accessor, TimeProvider.System, origin, Site))
             {
                 foreach (var check in Checks(authority, checker))
                 {

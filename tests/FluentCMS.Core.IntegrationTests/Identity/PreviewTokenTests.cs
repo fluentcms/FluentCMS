@@ -33,7 +33,7 @@ public sealed class PreviewTokenTests : IAsyncLifetime
     {
         await using (var scope = _host.Services.CreateAsyncScope())
         {
-            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id));
             var sites = scope.ServiceProvider.GetRequiredService<SiteManager>();
             await sites.AddLocaleAsync(DefaultSite.Id, "fr", null, true, null, Token);
             _otherSite = (await sites.CreateAsync("Other", "other", "en", Token)).Id;

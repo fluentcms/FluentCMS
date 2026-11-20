@@ -113,7 +113,7 @@ internal static class McpTesting
     public static async Task SetEnabledAsync(FluentCmsTestHost host, string plugin, Guid site, bool enabled)
     {
         await using var scope = host.Services.CreateAsyncScope();
-        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), scope.ServiceProvider.GetRequiredService<TimeProvider>(), Origin.Seed, new SiteId(DefaultSite.Id));
         await scope.ServiceProvider.GetRequiredService<PluginAdministration>().SetEnabledAsync(plugin, site, enabled, Token);
     }
 

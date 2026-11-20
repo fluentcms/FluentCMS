@@ -14,9 +14,7 @@ public sealed class FilterTests(EndToEndHost host) : BrowserTest(host)
     public async Task TheEditorFindsAnArticleBySearchAndByFiltersOnATextADateAndASelectField()
     {
         var browser = await OpenBrowserAsync();
-        var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(new Uri(Host.Admin, "content/article").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
+        var tab = await SignedInTabAsync(browser, "content/article");
         var grid = tab.Page.GetByRole(AriaRole.Grid, new PageGetByRoleOptions { Name = "Article", Exact = true });
         await Expect(grid.Locator("tbody tr").First).ToBeVisibleAsync();
 
@@ -32,17 +30,20 @@ public sealed class FilterTests(EndToEndHost host) : BrowserTest(host)
         await search.FillAsync("tour");
         await search.PressAsync("Enter");
         await Expect(tab.Page).ToHaveURLAsync(new Regex(@"content/article\?locale=en&q=tour$"));
-        for (var attempt = 0; ; attempt++)
-        {
-            await Expect(tab.Page.Locator("table[aria-busy]")).ToHaveCountAsync(0);
-            if (attempt == 20 || (await Row(grid, "A tour of the blog sample").CountAsync() == 1 && await Row(grid, "Welcome to FluentCMS").CountAsync() == 0))
+        var first = true;
+        await Ui.UntilAsync(
+            async () =>
             {
-                break;
-            }
+                if (!first)
+                {
+                    await tab.ReloadAsync();
+                }
 
-            await tab.Page.WaitForTimeoutAsync(500);
-            await tab.ReloadAsync();
-        }
+                first = false;
+                await Expect(tab.Page.Locator("table[aria-busy]")).ToHaveCountAsync(0);
+                return await Row(grid, "A tour of the blog sample").CountAsync() == 1 && await Row(grid, "Welcome to FluentCMS").CountAsync() == 0;
+            },
+            "the search index never found the tour alone");
 
         await ExpectSeedAsync(grid, "A tour of the blog sample");
         await search.FillAsync("");
@@ -72,9 +73,13 @@ public sealed class FilterTests(EndToEndHost host) : BrowserTest(host)
         await ExpectSeedAsync(grid, "Welcome to FluentCMS");
         await Expect(tab.Page.Locator(".content-filter")).ToHaveCountAsync(1);
 
-        // Back goes through the addresses before: no filter, then the select filter alone.
+        // Back goes through the addresses before: no filter, then the select filter alone. The entry before the reload is a page
+        // load of its own, so the next Back waits until that page has started and read its list.
         await tab.Page.GoBackAsync();
         await Expect(tab.Page).ToHaveURLAsync(new Regex(@"content/article\?locale=en$"));
+        await Expect(grid.Locator("tbody tr").First).ToBeVisibleAsync();
+        await Expect(grid.Locator("[aria-busy]")).ToHaveCountAsync(0);
+        await Expect(tab.Page.Locator(".content-filter")).ToHaveCountAsync(0);
         await tab.Page.GoBackAsync();
         await Expect(tab.Page).ToHaveURLAsync(new Regex(@"\?locale=en&filter\[category\]\[eq\]=opinion$"));
         await ExpectSeedAsync(grid, "Typed content, no magic");
@@ -108,12 +113,6 @@ public sealed class FilterTests(EndToEndHost host) : BrowserTest(host)
 
     private static string Text(string key, params string[] arguments)
     {
-        var text = Repository.AdminText(key);
-        for (var index = 0; index < arguments.Length; index++)
-        {
-            text = text.Replace($"{{{index}}}", arguments[index], StringComparison.Ordinal);
-        }
-
-        return text;
+        return Ui.Format(Repository.AdminText(key), arguments);
     }
 }
