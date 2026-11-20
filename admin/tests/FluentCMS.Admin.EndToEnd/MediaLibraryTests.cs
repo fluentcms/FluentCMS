@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using Shouldly;
 using Xunit;
+using static FluentCMS.Admin.EndToEnd.MediaUi;
 using static Microsoft.Playwright.Assertions;
 
 namespace FluentCMS.Admin.EndToEnd;
@@ -11,24 +12,17 @@ namespace FluentCMS.Admin.EndToEnd;
 // a folder round trip, and assets moved to another folder. The host is shared, so every name a case makes is its own.
 public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
 {
-    // A PNG of one pixel.
-    private const string Png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
-
     // The start of a Windows program, which the server never stores (FCMS1583).
     private static readonly byte[] Program = [0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00];
 
     [Fact]
     public async Task TheEditorUploadsByButtonSearchesFiltersAndSwitchesToTheList()
     {
-        var mark = Mark();
+        var mark = Mark;
         var browser = await OpenBrowserAsync();
-        var tab = await OpenLibraryAsync(browser, Host.Editor);
+        var tab = await OpenLibraryAsync(browser);
 
-        await UploadInput(tab).SetInputFilesAsync(
-        [
-            new FilePayload { Name = $"{mark}-photo.png", MimeType = "image/png", Buffer = Convert.FromBase64String(Png) },
-            new FilePayload { Name = $"{mark}-setup.exe", MimeType = "application/octet-stream", Buffer = Program },
-        ]);
+        await UploadAsync(tab.Page.Locator("main"), 1, PngFile($"{mark}-photo.png"), new FilePayload { Name = $"{mark}-setup.exe", MimeType = "application/octet-stream", Buffer = Program });
 
         await Expect(UploadItem(tab, $"{mark}-photo.png")).ToContainTextAsync(Text("Media.Upload.State.Done"));
         await Expect(UploadItem(tab, $"{mark}-setup.exe")).ToContainTextAsync(Text("Media.Upload.Refused.FCMS1583"));
@@ -36,29 +30,28 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
         await Expect(tab.Page.GetByRole(AriaRole.Alert).GetByText(Text("Media.Upload.FinishedWithRefused", "1", "1"), new LocatorGetByTextOptions { Exact = true }).Last).ToBeAttachedAsync();
 
         // The search is in the address and finds the upload; the type filter keeps it.
-        await Content(tab).GetByLabel(Text("Media.Search.Label"), new LocatorGetByLabelOptions { Exact = true }).FillAsync(mark);
-        await MediaButton(tab, "Media.Search.Submit").ClickAsync();
+        await SearchAsync(Content(tab), mark);
         await Expect(tab.Page).ToHaveURLAsync(new Regex($"q={mark}"));
         await Expect(Tiles(tab)).ToHaveTextAsync([$"{mark}-photo.png"]);
         await Content(tab).GetByLabel(Text("Media.Type.Label"), new LocatorGetByLabelOptions { Exact = true }).SelectOptionAsync("image/*");
         await Expect(tab.Page).ToHaveURLAsync(new Regex("type=image"));
         await Expect(Tiles(tab)).ToHaveTextAsync([$"{mark}-photo.png"]);
 
-        await MediaButton(tab, "Media.View.List").ClickAsync();
+        await Button(tab, "Media.View.List").ClickAsync();
         var grid = tab.Page.GetByRole(AriaRole.Grid, new PageGetByRoleOptions { Name = Text("Media.Results.Label"), Exact = true });
         await Expect(grid.Locator("tbody tr")).ToHaveCountAsync(1);
         await Expect(grid.Locator("tbody tr")).ToContainTextAsync("image/png");
         await Expect(tab.Page).ToHaveURLAsync(new Regex("view=list"));
 
         // The editor may not manage folders, so none of their actions shows.
-        await Expect(MediaButton(tab, "Media.Folder.New")).ToHaveCountAsync(0);
+        await Expect(Button(tab, "Media.Folder.New")).ToHaveCountAsync(0);
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
     [Fact]
     public async Task TenFilesDroppedUploadWithAStateEachAPastedImageJoinsThemAndAnAssetMovesToAnotherFolder()
     {
-        var mark = Mark();
+        var mark = Mark;
         var browser = await OpenBrowserAsync();
         var admin = await Host.CreateEditorAsync("Super Admin");
         var tab = await OpenLibraryAsync(browser, admin);
@@ -90,9 +83,7 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
 
         // One asset moves to the other folder, by its checkbox and the move dialog.
         await Content(tab).GetByLabel(Text("Media.Asset.Select", $"{mark}-1.png"), new LocatorGetByLabelOptions { Exact = true }).CheckAsync();
-        await MediaButton(tab, "Media.Move.Assets", "1").ClickAsync();
-        await tab.Page.GetByLabel(Text("Media.Move.Target"), new PageGetByLabelOptions { Exact = true }).SelectOptionAsync(new SelectOptionValue { Value = target.ToString("D") });
-        await MediaButton(tab, "Media.Move.Save").ClickAsync();
+        await MoveAsync(tab, () => Button(tab, "Media.Move.Assets", "1").ClickAsync(), "Media.Move.AssetsTitle", target);
         await Expect(Tiles(tab)).ToHaveCountAsync(9);
         await Expect(tab.Announced(Text("Media.Move.Moved", "1"))).ToBeAttachedAsync();
 
@@ -104,7 +95,7 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
     [Fact]
     public async Task AFolderIsCreatedRenamedMovedAndDeletedOnceEmptyAndANonEmptyOneSaysWhyNot()
     {
-        var mark = Mark();
+        var mark = Mark;
         var browser = await OpenBrowserAsync();
         var admin = await Host.CreateEditorAsync("Super Admin");
         var tab = await OpenLibraryAsync(browser, admin);
@@ -114,41 +105,32 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
         await OpenFolderAsync(tab, trip);
 
         // The create dialog's input is the same element, still holding the name, so its value says nothing until this is shown.
-        await MediaButton(tab, "Media.Folder.Rename").ClickAsync();
-        await Expect(tab.Page.GetByRole(AriaRole.Dialog, new PageGetByRoleOptions { Name = Text("Media.Folder.RenameTitle"), Exact = true })).ToBeVisibleAsync();
-        var name = tab.Page.GetByLabel(Text("Media.Folder.Name"));
+        var rename = await tab.OpenDialogAsync(() => Button(tab, "Media.Folder.Rename").ClickAsync(), Text("Media.Folder.RenameTitle"));
+        var name = rename.GetByLabel(Text("Media.Folder.Name"));
         await Expect(name).ToHaveValueAsync($"{mark}-trip");
         await name.FillAsync($"{mark}-renamed");
-        // A 401 of an expired token is sent again by the admin after a refresh; the answer that counts is the one after it.
-        var renamed = await tab.Page.RunAndWaitForResponseAsync(
-            () => MediaButton(tab, "Media.Folder.RenameSave").ClickAsync(),
-            response => response.Url == tab.ManagementUrl($"media/folders/{trip:D}") && response.Request.Method == "PATCH" && response.Status != 401,
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        var renamed = await tab.AnswerAsync(() => Button(tab, "Media.Folder.RenameSave").ClickAsync(), "PATCH", tab.ManagementUrl($"media/folders/{trip:D}"));
         JsonNode.Parse(renamed.Request.PostData!)!["name"]!.GetValue<string>().ShouldBe($"{mark}-renamed");
         renamed.Status.ShouldBe(200);
         await Expect(TreeItem(tab, trip)).ToContainTextAsync($"{mark}-renamed");
 
-        await MediaButton(tab, "Media.Folder.Move").ClickAsync();
-        await tab.Page.GetByLabel(Text("Media.Move.Target"), new PageGetByLabelOptions { Exact = true }).SelectOptionAsync(new SelectOptionValue { Value = parent.ToString("D") });
-        await MediaButton(tab, "Media.Move.Save").ClickAsync();
+        await MoveAsync(tab, () => Button(tab, "Media.Folder.Move").ClickAsync(), "Media.Folder.MoveTitle", parent);
         await Expect(TreeItem(tab, parent).Locator($"fluent-tree-item[id='{trip:D}']")).ToHaveCountAsync(1);
 
         // With a file in it, the folder is not deleted, and the dialog says why.
-        await UploadInput(tab).SetInputFilesAsync(new FilePayload { Name = $"{mark}-kept.png", MimeType = "image/png", Buffer = Convert.FromBase64String(Png) });
+        await UploadAsync(tab.Page.Locator("main"), PngFile($"{mark}-kept.png"));
         await Expect(Tiles(tab)).ToHaveCountAsync(1);
-        await MediaButton(tab, "Media.Folder.Delete").ClickAsync();
-        await MediaButton(tab, "Media.Folder.DeleteConfirm").ClickAsync();
+        await tab.OpenDialogAsync(() => Button(tab, "Media.Folder.Delete").ClickAsync(), Text("Media.Folder.DeleteTitle"));
+        await Button(tab, "Media.Folder.DeleteConfirm").ClickAsync();
         await Expect(tab.Page.GetByRole(AriaRole.Alert).Filter(new LocatorFilterOptions { HasText = Text("Media.Folder.NotEmpty") })).ToBeVisibleAsync();
-        await MediaButton(tab, "Media.Dialog.Cancel").ClickAsync();
+        await Button(tab, "Media.Dialog.Cancel").ClickAsync();
 
         // Emptied, it goes, and the library opens its parent.
         await Content(tab).GetByLabel(Text("Media.Asset.Select", $"{mark}-kept.png"), new LocatorGetByLabelOptions { Exact = true }).CheckAsync();
-        await MediaButton(tab, "Media.Move.Assets", "1").ClickAsync();
-        await tab.Page.GetByLabel(Text("Media.Move.Target"), new PageGetByLabelOptions { Exact = true }).SelectOptionAsync(new SelectOptionValue { Value = parent.ToString("D") });
-        await MediaButton(tab, "Media.Move.Save").ClickAsync();
+        await MoveAsync(tab, () => Button(tab, "Media.Move.Assets", "1").ClickAsync(), "Media.Move.AssetsTitle", parent);
         await Expect(Tiles(tab)).ToHaveCountAsync(0);
-        await MediaButton(tab, "Media.Folder.Delete").ClickAsync();
-        await MediaButton(tab, "Media.Folder.DeleteConfirm").ClickAsync();
+        await tab.OpenDialogAsync(() => Button(tab, "Media.Folder.Delete").ClickAsync(), Text("Media.Folder.DeleteTitle"));
+        await Button(tab, "Media.Folder.DeleteConfirm").ClickAsync();
         await Expect(tab.Page).ToHaveURLAsync(new Regex($"folder={parent:D}"));
         await Expect(TreeItem(tab, trip)).ToHaveCountAsync(0);
         await Expect(Tiles(tab)).ToHaveTextAsync([$"{mark}-kept.png"]);
@@ -158,120 +140,79 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
     [Fact]
     public async Task AFolderRoundTripAndAnUploadByTheButtonWorkByKeyboardAlone()
     {
-        var mark = Mark();
+        var mark = Mark;
         var browser = await OpenBrowserAsync();
         var admin = await Host.CreateEditorAsync("Super Admin");
         var tab = await OpenLibraryAsync(browser, admin);
         var keyboard = tab.Page.Keyboard;
 
         // A folder is created: the button by Enter, the name typed, the dialog submitted by Enter.
-        await PressAsync(MediaButton(tab, "Media.Folder.New"), "Enter");
-        await PressAsync(tab.Page.GetByLabel(Text("Media.Folder.Name")), "Control+a");
+        await Ui.PressAsync(Button(tab, "Media.Folder.New"), "Enter");
+        await Expect(tab.ShownDialog(Text("Media.Folder.NewTitle"))).ToBeVisibleAsync();
+        await Ui.PressAsync(tab.Page.GetByLabel(Text("Media.Folder.Name")), "Control+a");
         await keyboard.TypeAsync($"{mark}-keys");
-        var created = await tab.Page.RunAndWaitForResponseAsync(
-            () => keyboard.PressAsync("Enter"),
-            response => response.Url == tab.ManagementUrl("media/folders") && response.Request.Method == "POST" && response.Status != 401,
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
-        var folder = await CreatedFolderAsync(created);
+        var folder = await Ui.CreatedIdAsync(await tab.AnswerAsync(() => keyboard.PressAsync("Enter"), "POST", tab.ManagementUrl("media/folders")), "media/folders");
         await Expect(TreeItem(tab, folder)).ToHaveCountAsync(1);
-        await FocusReturnedAsync(MediaButton(tab, "Media.Folder.New"));
+        await Ui.FocusReturnedAsync(Button(tab, "Media.Folder.New"));
 
         // Opened from the tree by Enter on its item, once the tree's focus group has made it focusable.
         await Expect(TreeItem(tab, folder)).ToHaveAttributeAsync("tabindex", new Regex("^-?[0-9]+$"));
-        await PressAsync(TreeItem(tab, folder), "Enter");
+        await Ui.PressAsync(TreeItem(tab, folder), "Enter");
         await Expect(tab.Page).ToHaveURLAsync(new Regex($"folder={folder:D}"));
 
         // The upload's button opens the file chooser by Space.
-        var chooser = await tab.Page.RunAndWaitForFileChooserAsync(() => PressAsync(UploadInput(tab), "Space"));
-        await chooser.SetFilesAsync(new FilePayload { Name = $"{mark}-keys.png", MimeType = "image/png", Buffer = Convert.FromBase64String(Png) });
+        var chooser = await tab.Page.RunAndWaitForFileChooserAsync(() => Ui.PressAsync(UploadInput(tab.Page.Locator("main")), "Space"));
+        await chooser.SetFilesAsync(PngFile($"{mark}-keys.png"));
         await Expect(Tiles(tab)).ToHaveTextAsync([$"{mark}-keys.png"]);
 
         // The tile opens its detail by Enter, and Escape closes it.
-        await PressAsync(Content(tab).Locator(".media-tile-open"), "Enter");
+        await Ui.PressAsync(Content(tab).Locator(".media-tile-open"), "Enter");
         await Expect(tab.Page.Locator(".media-panel-facts")).ToBeVisibleAsync();
         await keyboard.PressAsync("Escape");
         await Expect(tab.Page.Locator(".media-panel-facts")).ToBeHiddenAsync();
-        await FocusReturnedAsync(Content(tab).Locator(".media-tile-open"));
+        await Ui.FocusReturnedAsync(Content(tab).Locator(".media-tile-open"));
 
         // Renamed by keyboard.
-        await PressAsync(MediaButton(tab, "Media.Folder.Rename"), "Enter");
-        await PressAsync(tab.Page.GetByLabel(Text("Media.Folder.Name")), "Control+a");
+        await Ui.PressAsync(Button(tab, "Media.Folder.Rename"), "Enter");
+        await Expect(tab.ShownDialog(Text("Media.Folder.RenameTitle"))).ToBeVisibleAsync();
+        await Ui.PressAsync(tab.Page.GetByLabel(Text("Media.Folder.Name")), "Control+a");
         await keyboard.TypeAsync($"{mark}-renamed");
         await keyboard.PressAsync("Enter");
         await Expect(TreeItem(tab, folder)).ToContainTextAsync($"{mark}-renamed");
-        await FocusReturnedAsync(MediaButton(tab, "Media.Folder.Rename"));
+        await Ui.FocusReturnedAsync(Button(tab, "Media.Folder.Rename"));
 
         // Not deleted while it holds the file; Escape closes the dialog.
-        await PressAsync(MediaButton(tab, "Media.Folder.Delete"), "Enter");
-        await PressAsync(MediaButton(tab, "Media.Folder.DeleteConfirm"), "Enter");
+        await Ui.PressAsync(Button(tab, "Media.Folder.Delete"), "Enter");
+        await Ui.PressAsync(Button(tab, "Media.Folder.DeleteConfirm"), "Enter");
         await Expect(tab.Page.GetByRole(AriaRole.Alert).Filter(new LocatorFilterOptions { HasText = Text("Media.Folder.NotEmpty") })).ToBeVisibleAsync();
         await keyboard.PressAsync("Escape");
-        await FocusReturnedAsync(MediaButton(tab, "Media.Folder.Delete"));
+        await Ui.FocusReturnedAsync(Button(tab, "Media.Folder.Delete"));
 
         // The file is selected by Space and moved to the root, and the empty folder goes.
         var check = Content(tab).GetByLabel(Text("Media.Asset.Select", $"{mark}-keys.png"), new LocatorGetByLabelOptions { Exact = true });
-        await PressAsync(check, "Space");
+        await Ui.PressAsync(check, "Space");
         await Expect(check).ToBeCheckedAsync();
-        await PressAsync(MediaButton(tab, "Media.Move.Assets", "1"), "Enter");
-        await tab.Page.GetByLabel(Text("Media.Move.Target"), new PageGetByLabelOptions { Exact = true }).FocusAsync();
-        await keyboard.PressAsync("ArrowDown");
-        await Expect(tab.Page.GetByLabel(Text("Media.Move.Target"), new PageGetByLabelOptions { Exact = true })).ToHaveValueAsync("root");
-        await PressAsync(MediaButton(tab, "Media.Move.Save"), "Enter");
+        await Ui.PressAsync(Button(tab, "Media.Move.Assets", "1"), "Enter");
+        var target = tab.Page.GetByLabel(Text("Media.Move.Target"), new PageGetByLabelOptions { Exact = true });
+        await Ui.PressAsync(target, "ArrowDown");
+        await Expect(target).ToHaveValueAsync("root");
+        await Ui.PressAsync(Button(tab, "Media.Move.Save"), "Enter");
         await Expect(Tiles(tab)).ToHaveCountAsync(0);
-        await PressAsync(MediaButton(tab, "Media.Folder.Delete"), "Enter");
-        await PressAsync(MediaButton(tab, "Media.Folder.DeleteConfirm"), "Enter");
+        await Ui.PressAsync(Button(tab, "Media.Folder.Delete"), "Enter");
+        await Ui.PressAsync(Button(tab, "Media.Folder.DeleteConfirm"), "Enter");
         await Expect(tab.Page).Not.ToHaveURLAsync(new Regex($"folder={folder:D}"));
         await Expect(TreeItem(tab, folder)).ToHaveCountAsync(0);
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
-    // A dialog gives focus back to its opener as it closes, and the component library does it again 25 ms later
-    // (FocusOnPreviousActiveElement), which would take it from the next control; the admin waits 100 ms for the same reason
-    // (DocumentInterop.DialogFocusDelay).
-    private static async Task FocusReturnedAsync(ILocator opener)
+    private async Task<AdminTab> OpenLibraryAsync(AdminBrowser browser, Editor? user = null)
     {
-        await Expect(opener).ToBeFocusedAsync();
-        await opener.Page.WaitForTimeoutAsync(150);
-    }
-
-    // Focus as Tab would give it, then a key: no pointer is used. A control in a dialog that is not shown yet cannot take
-    // focus, and the dialog does not give it to the control as it opens, so focus waits for the control to show.
-    private static async Task PressAsync(ILocator target, string key)
-    {
-        await Expect(target).ToBeVisibleAsync();
-        await target.FocusAsync();
-        await Expect(target).ToBeFocusedAsync();
-        await target.Page.Keyboard.PressAsync(key);
-    }
-
-    private static string Mark() => "m" + Guid.NewGuid().ToString("N")[..8];
-
-    private static string Text(string key, params string[] arguments)
-    {
-        var text = Repository.MediaText(key);
-        for (var index = 0; index < arguments.Length; index++)
-        {
-            text = text.Replace($"{{{index}}}", arguments[index], StringComparison.Ordinal);
-        }
-
-        return text;
-    }
-
-    private async Task<AdminTab> OpenLibraryAsync(AdminBrowser browser, Editor user)
-    {
-        var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(new Uri(Host.Admin, "media").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, user);
+        var tab = await SignedInTabAsync(browser, "media", user);
         await Expect(Content(tab).GetByRole(AriaRole.Heading, new LocatorGetByRoleOptions { Name = Text("Media.Page.Heading"), Exact = true })).ToBeVisibleAsync();
         return tab;
     }
 
     private static ILocator Content(AdminTab tab) => tab.Page.Locator("main");
-
-    private static ILocator MediaButton(AdminTab tab, string key, params string[] arguments) =>
-        tab.Page.Locator("fluent-button").Filter(new LocatorFilterOptions { HasTextRegex = new Regex($@"^\s*{Regex.Escape(Text(key, arguments))}\s*$"), Visible = true });
-
-    private static ILocator UploadInput(AdminTab tab) => tab.Page.Locator("[data-media-upload] input[type=file]");
 
     private static ILocator UploadItem(AdminTab tab, string name) =>
         tab.Page.Locator(".media-upload-item").Filter(new LocatorFilterOptions { Has = tab.Page.Locator(".media-upload-name", new PageLocatorOptions { HasTextString = name }) });
@@ -280,30 +221,23 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
 
     private static ILocator TreeItem(AdminTab tab, Guid folder) => tab.Page.Locator($"fluent-tree-item[id='{folder:D}']");
 
-    // Creates a folder in the open one and answers its id, from the server's answer.
+    // Creates a folder in the open one and answers its id, from the Location of the server's answer.
     private static async Task<Guid> CreateFolderAsync(AdminTab tab, string name)
     {
-        await MediaButton(tab, "Media.Folder.New").ClickAsync();
-        await tab.Page.GetByLabel(Text("Media.Folder.Name")).FillAsync(name);
-        var created = await tab.Page.RunAndWaitForResponseAsync(
-            () => MediaButton(tab, "Media.Folder.Create").ClickAsync(),
-            response => response.Url == tab.ManagementUrl("media/folders") && response.Request.Method == "POST" && response.Status != 401,
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
-        var id = await CreatedFolderAsync(created);
+        var dialog = await tab.OpenDialogAsync(() => Button(tab, "Media.Folder.New").ClickAsync(), Text("Media.Folder.NewTitle"));
+        await dialog.GetByLabel(Text("Media.Folder.Name")).FillAsync(name);
+        var created = await tab.AnswerAsync(() => Button(tab, "Media.Folder.Create").ClickAsync(), "POST", tab.ManagementUrl("media/folders"));
+        var id = await Ui.CreatedIdAsync(created, "media/folders");
         await Expect(TreeItem(tab, id)).ToHaveCountAsync(1);
         return id;
     }
 
-    // The id of a created folder from the Location of the 201, since the browser may no longer hold the answer's body when a
-    // test asks for it.
-    private static async Task<Guid> CreatedFolderAsync(IResponse created)
+    // Moves the selection or the open folder to a folder through the move dialog that the action opens.
+    private static async Task MoveAsync(AdminTab tab, Func<Task> open, string titleKey, Guid folder)
     {
-        created.Status.ShouldBe(201);
-        var location = await created.HeaderValueAsync("location");
-        location.ShouldNotBeNull();
-        var match = Regex.Match(location, "(?:^|/)media/folders/(?<id>[0-9a-f-]{36})$");
-        match.Success.ShouldBeTrue($"the Location of a created folder was '{location}'");
-        return Guid.Parse(match.Groups["id"].Value);
+        var dialog = await tab.OpenDialogAsync(open, Text(titleKey));
+        await dialog.GetByLabel(Text("Media.Move.Target"), new LocatorGetByLabelOptions { Exact = true }).SelectOptionAsync(new SelectOptionValue { Value = folder.ToString("D") });
+        await Button(tab, "Media.Move.Save").ClickAsync();
     }
 
     // Opens a folder from the tree, as a user does.
