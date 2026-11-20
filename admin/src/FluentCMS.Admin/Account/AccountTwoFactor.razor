@@ -208,6 +208,10 @@
         {
             await ShowAsync(L["Account.TwoFactor.AlreadyOn"]);
         }
+        catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.RecentSignInRequired))
+        {
+            await ShowAsync(L["Account.TwoFactor.SignInAgainFirst"]);
+        }
         catch (Exception exception) when (AccountProblems.IsFailure(exception))
         {
             await ShowAsync(L["Account.TwoFactor.ActionFailed"]);
@@ -271,8 +275,8 @@
         }
     }
 
-    // The answer, or null with the reason shown and announced: a wrong code stays on the step, any other refusal reads the
-    // status again.
+    // The answer, or null with the reason shown and announced: a wrong code stays on the step, a sign-in too old to turn it
+    // on closes the step, any other refusal reads the status again.
     private async Task<IReadOnlyList<string>?> RunWithCodeAsync(Func<string, CancellationToken, Task<IReadOnlyList<string>>> call)
     {
         if (string.IsNullOrWhiteSpace(code))
@@ -290,6 +294,11 @@
         catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.InvalidTwoFactorCode))
         {
             CodeError(L["Account.TwoFactor.WrongCode"]);
+            return null;
+        }
+        catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.RecentSignInRequired))
+        {
+            CloseStep(L["Account.TwoFactor.SignInAgainFirst"]);
             return null;
         }
         catch (Exception exception) when (AccountProblems.Has(exception, AccountProblems.NoAuthenticator)

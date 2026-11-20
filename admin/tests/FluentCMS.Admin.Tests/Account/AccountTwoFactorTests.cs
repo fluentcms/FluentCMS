@@ -14,6 +14,7 @@ public sealed class AccountTwoFactorTests : AccountTestContext
     private const string Heading = "Two-factor sign-in";
     private const string SharedKey = "JBSWY3DPEHPK3PXP";
     private const string AuthenticatorUri = "otpauth://totp/FluentCMS:ada%40example.com?secret=" + SharedKey + "&issuer=FluentCMS&digits=6";
+    private const string SignInAgainFirst = "Setting up two-factor sign-in needs a recent sign-in, and yours is more than a few minutes old. Sign out, sign in again, then set it up.";
     private static readonly string[] Codes = ["A1B2C-3D4E5", "F6G7H-8J9K0"];
 
     [Fact]
@@ -183,6 +184,37 @@ public sealed class AccountTwoFactorTests : AccountTestContext
 
         app.WaitForAssertion(() => Message(app, Heading).ShouldBe("Two-factor sign-in was changed meanwhile, so nothing was done. Its status is shown again."));
         Management.Count("me/two-factor").ShouldBe(reads + 1);
+        AssertNoSecretShown(app);
+    }
+
+    // The server asks for a sign-in of the last minutes before it enrols an authenticator or turns two-factor on (#3372).
+    [Fact]
+    public void AnEnrolmentWithASignInTooOldSaysToSignInAgain()
+    {
+        Management.Answer = (method, path) => path == "me/two-factor/enrol" ? Problem(HttpStatusCode.Forbidden, "FCMS3065") : null;
+        var app = Load();
+
+        Button(Section(app, Heading), "Set up two-factor sign-in").Click();
+
+        app.WaitForAssertion(() => Message(app, Heading).ShouldBe(SignInAgainFirst));
+        app.WaitForAssertion(() => ShouldBeFocused<AccountTwoFactor>(app, "messageElement"));
+        Section(app, Heading).QuerySelector("input").ShouldBeNull();
+    }
+
+    [Fact]
+    public void ATurnOnWithASignInTooOldClosesTheStepAndSaysToSignInAgain()
+    {
+        EnrolAnswers();
+        var enrol = Management.Answer!;
+        Management.Answer = (method, called) => called == "me/two-factor/verify" ? Problem(HttpStatusCode.Forbidden, "FCMS3065") : enrol(method, called);
+        var app = Load();
+        Button(Section(app, Heading), "Set up two-factor sign-in").Click();
+        app.WaitForAssertion(() => Section(app, Heading).QuerySelector("input").ShouldNotBeNull());
+
+        Section(app, Heading).QuerySelector("input")!.Input("123456");
+        Button(Section(app, Heading), "Turn on").Click();
+
+        app.WaitForAssertion(() => Message(app, Heading).ShouldBe(SignInAgainFirst));
         AssertNoSecretShown(app);
     }
 
