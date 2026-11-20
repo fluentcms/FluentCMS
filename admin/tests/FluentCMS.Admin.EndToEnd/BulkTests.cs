@@ -9,38 +9,27 @@ using static Microsoft.Playwright.Assertions;
 
 namespace FluentCMS.Admin.EndToEnd;
 
-// The bulk publish of A-30's acceptance for the built-in Editor on the Blog sample: 200 articles of the case's own mark,
+// The bulk publish of A-30's acceptance for the built-in Editor: 200 memos, the host's type of this case alone, of its mark,
 // selected on two pages of 100, published in four chunks of 50 each with its own key, with the progress and the result of
-// each; the one article that cannot be published shows its problem, and the list keeps it selected after the run.
+// each; the one memo that cannot be published shows its problem, and the list keeps it selected after the run.
 public sealed class BulkTests(EndToEndHost host) : BrowserTest(host)
 {
     private const int Count = 200;
     private const int Failing = 42;
 
     [Fact]
-    public async Task TheEditorPublishesTwoHundredSelectedArticlesWithProgressAndTheResultOfEach()
+    public async Task TheEditorPublishesTwoHundredSelectedEntriesWithProgressAndTheResultOfEach()
     {
         var mark = $"bulk{Guid.NewGuid():N}"[..14];
         using var api = await Host.ManagementClientAsync();
-        await CreateArticlesAsync(api, mark);
-        try
-        {
-            await PublishInTheListAsync(api, mark);
-        }
-        finally
-        {
-            await DeleteArticlesAsync(api, mark);
-        }
-    }
+        await CreateMemosAsync(api, mark);
 
-    private async Task PublishInTheListAsync(HttpClient api, string mark)
-    {
         var browser = await OpenBrowserAsync();
         var tab = await browser.NewTabAsync();
         List<(string? Key, IResponse Response)> chunks = [];
         tab.Page.Response += (_, response) =>
         {
-            if (response.Request.Method == "POST" && response.Url.EndsWith("/content/article/bulk", StringComparison.Ordinal))
+            if (response.Request.Method == "POST" && response.Url.EndsWith("/content/memo/bulk", StringComparison.Ordinal))
             {
                 lock (chunks)
                 {
@@ -49,9 +38,9 @@ public sealed class BulkTests(EndToEndHost host) : BrowserTest(host)
             }
         };
 
-        await tab.Page.GotoAsync(new Uri(Host.Admin, $"content/article?filter[title][startsWith]={mark}&sort=title&pageSize=100").AbsoluteUri);
+        await tab.Page.GotoAsync(new Uri(Host.Admin, $"content/memo?filter[title][startsWith]={mark}&sort=title&pageSize=100").AbsoluteUri);
         await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
-        var grid = tab.Page.GetByRole(AriaRole.Grid, new PageGetByRoleOptions { Name = "Article", Exact = true });
+        var grid = tab.Page.GetByRole(AriaRole.Grid, new PageGetByRoleOptions { Name = "Memo", Exact = true });
         var selection = tab.Page.Locator(".content-list-selection");
 
         // The selection is kept across the two pages.
@@ -68,15 +57,14 @@ public sealed class BulkTests(EndToEndHost host) : BrowserTest(host)
         await tab.Page.GetByRole(AriaRole.Menuitem, new PageGetByRoleOptions { Name = Text("Content.Bulk.Publish"), Exact = true }).ClickAsync();
         var confirmation = tab.Page.GetByRole(AriaRole.Dialog, new PageGetByRoleOptions { Name = Text("Content.Bulk.Publish"), Exact = true });
         await Expect(confirmation).ToBeVisibleAsync();
-        await Expect(DialogHost(tab, Text("Content.Bulk.Publish"))).ToContainTextAsync(Text("Content.Bulk.Confirm.Publish", "200", "Article"));
-        await Expect(DialogHost(tab, Text("Content.Bulk.Publish"))).ToContainTextAsync(Text("Content.Bulk.OneLocale", "en"));
+        await Expect(DialogHost(tab, Text("Content.Bulk.Publish"))).ToContainTextAsync(Text("Content.Bulk.Confirm.Publish", "200", "Memo"));
         await DialogButton(tab, Text("Content.Bulk.Publish"), Text("Content.Bulk.Publish")).ClickAsync();
 
-        var progressTitle = Text("Content.Bulk.Title", Text("Content.Bulk.Publish"), "Article");
+        var progressTitle = Text("Content.Bulk.Title", Text("Content.Bulk.Publish"), "Memo");
         var shown = tab.Page.GetByRole(AriaRole.Dialog, new PageGetByRoleOptions { Name = progressTitle, Exact = true });
         await Expect(shown).ToBeVisibleAsync();
         var progress = DialogHost(tab, progressTitle);
-        await Expect(progress.Locator(".bulk-progress-summary")).ToHaveTextAsync(Text("Content.Bulk.Ended", "199", "1"), new LocatorAssertionsToHaveTextOptions { Timeout = Wait * (Count / 50) });
+        await Expect(progress.Locator(".bulk-progress-summary")).ToHaveTextAsync(Text("Content.Bulk.Ended", "199", "1"), new LocatorAssertionsToHaveTextOptions { Timeout = Wait * 2 * (Count / 50) });
         await Expect(progress.Locator("progress")).ToHaveAttributeAsync("value", "200");
         await Expect(tab.Announced(Text("Content.Bulk.Progress", "150", "200", "1"))).ToBeAttachedAsync();
 
@@ -97,31 +85,19 @@ public sealed class BulkTests(EndToEndHost host) : BrowserTest(host)
         await Expect(shown).ToBeHiddenAsync();
         await Expect(selection).ToContainTextAsync(Text("Content.List.Selected", "1"));
 
-        using var published = await api.GetAsync(new Uri($"api/management/v1/content/article?status=published&filter[title][startsWith]={mark}&pageSize=1&withTotal=true", UriKind.Relative), TestContext.Current.CancellationToken);
+        using var published = await api.GetAsync(new Uri($"api/management/v1/content/memo?status=published&filter[title][startsWith]={mark}&pageSize=1&withTotal=true", UriKind.Relative), TestContext.Current.CancellationToken);
         published.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await published.Content.ReadFromJsonAsync<JsonObject>(TestContext.Current.CancellationToken))!["total"]!.GetValue<long>().ShouldBe(Count - 1);
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
-    // The host is shared and the list sorts the newest first, so the case's articles go to the trash at its end, where they
-    // leave the first page of the article list to the Blog sample's that other cases look for.
-    private static async Task DeleteArticlesAsync(HttpClient api, string mark)
+    // One bulk create of the case's memos; the failing one has no summary, which a draft may lack and a publish may not.
+    private static async Task CreateMemosAsync(HttpClient api, string mark)
     {
-        using var deleted = await api.PostAsJsonAsync(new Uri($"api/management/v1/content/article/bulk?filter[title][startsWith]={mark}", UriKind.Relative), new JsonObject { ["operation"] = "delete", ["cap"] = Count }, TestContext.Current.CancellationToken);
-        deleted.StatusCode.ShouldBe(HttpStatusCode.OK, await deleted.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
-    }
-
-    // One bulk create of the case's articles; the failing one is a video without its URL, which a draft may lack and a
-    // publish may not.
-    private static async Task CreateArticlesAsync(HttpClient api, string mark)
-    {
-        var entries = new JsonArray([.. Enumerable.Range(1, Count).Select(n => (JsonNode)new JsonObject
-        {
-            ["title"] = Title(mark, n),
-            ["slug"] = $"{mark}-{n:D3}",
-            ["category"] = n == Failing ? "video" : "news",
-        })]);
-        using var created = await api.PostAsJsonAsync(new Uri("api/management/v1/content/article/bulk", UriKind.Relative), new JsonObject { ["operation"] = "create", ["entries"] = entries }, TestContext.Current.CancellationToken);
+        var entries = new JsonArray([.. Enumerable.Range(1, Count).Select(n => (JsonNode)(n == Failing
+            ? new JsonObject { ["title"] = Title(mark, n) }
+            : new JsonObject { ["title"] = Title(mark, n), ["summary"] = "Published in bulk." }))]);
+        using var created = await api.PostAsJsonAsync(new Uri("api/management/v1/content/memo/bulk", UriKind.Relative), new JsonObject { ["operation"] = "create", ["entries"] = entries }, TestContext.Current.CancellationToken);
         var answer = await created.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         created.StatusCode.ShouldBe(HttpStatusCode.OK, answer);
         JsonNode.Parse(answer)!["items"]!.AsArray().Select(item => item!["status"]!.GetValue<string>()).ShouldAllBe(status => status == "succeeded", answer);

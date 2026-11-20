@@ -610,9 +610,10 @@ else if (view is { } shownView)
         await TryAgainAsync();
     }
 
-    // All that match as ids with their labels, in the list's order, by pages of the most the server reads, up to the most a
-    // bulk run takes. Under locale=all the engine matches in the site's default locale, which is then the content locale, so
-    // the read of that locale alone matches the same entries.
+    // All that match as ids with their labels, in the list's order, one more than a bulk run takes, so that the confirmation
+    // can tell a set the limit cut. It pages by the engine's cursor, which goes on after the last row read, so an edit between
+    // two pages neither skips nor repeats an entry. Under locale=all the engine matches in the site's default locale, which is
+    // then the content locale, so the read of that locale alone matches the same entries.
     private async Task<IReadOnlyList<(Guid Id, string Label)>> ReadMatchingAsync(CancellationToken cancellationToken)
     {
         if (shownQuery is not { } query || Described is not { } type || view is not { } list)
@@ -621,24 +622,24 @@ else if (view is { } shownView)
         }
 
         List<(Guid, string)> found = [];
-        for (var number = 1; found.Count < BulkRunner.MaxEntries; number++)
+        string? cursor = null;
+        do
         {
             var read = query with
             {
-                Page = number,
+                Page = null,
+                Cursor = cursor,
                 PageSize = ListView.MaxPageSize,
                 Fields = [.. new[] { "id", list.Label.Name }.Distinct(StringComparer.Ordinal)],
                 Populate = [],
                 WithTotal = false,
                 Locale = query.Locale == ListView.EveryLocale ? null : query.Locale,
             };
-            var items = (await Client.ListEntriesAsync(Type, read, cancellationToken)).Items;
-            found.AddRange(items.Take(BulkRunner.MaxEntries - found.Count).Select(entry => (entry.Id, AdminLabels.Entry(type, entry))));
-            if (items.Count < ListView.MaxPageSize)
-            {
-                break;
-            }
+            var answer = await Client.ListEntriesAsync(Type, read, cancellationToken);
+            found.AddRange(answer.Items.Take(BulkRunner.MaxEntries + 1 - found.Count).Select(entry => (entry.Id, AdminLabels.Entry(type, entry))));
+            cursor = answer.NextCursor;
         }
+        while (cursor is not null && found.Count <= BulkRunner.MaxEntries);
 
         return found;
     }

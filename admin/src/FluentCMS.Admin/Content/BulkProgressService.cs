@@ -30,8 +30,10 @@ internal sealed class BulkProgressService(IAdminOverlays overlays, IAnnouncer an
 
 // One operation's progress. Progress is announced once per chunk of results, not per item, and once at the end, so that a
 // run of hundreds of entries does not flood the live region (WCAG 4.1.3), which keeps the last five. Disposing it ends the
-// operation; the dialog stays until the user closes it, which Closed then tells. An operation that has not ended within
-// StopGrace of a cancel, such as a half's action that ignores its token, is ended here, so the dialog can always be closed.
+// operation; the dialog stays until the user closes it, which Closed then tells. A half's operation that has not ended within
+// StopGrace of a cancel, one that ignores its token, is ended here, so the dialog can always be closed; what it reports or
+// fails later is dropped. The list's own chunked run is never ended so: it waits for the chunk in flight, which answers or
+// times out within the pipeline's attempt timeout, so that each of its entries gets its result.
 internal sealed class BulkProgress : IBulkProgress
 {
     public static readonly TimeSpan StopGrace = TimeSpan.FromSeconds(10);
@@ -119,12 +121,21 @@ internal sealed class BulkProgress : IBulkProgress
 
         _cancel.Cancel();
         _question?.TrySetResult(false);
-        _grace ??= _time.CreateTimer(_ => Abandon(), null, StopGrace, Timeout.InfiniteTimeSpan);
+        if (!_chunked)
+        {
+            _grace ??= _time.CreateTimer(_ => Abandon(), null, StopGrace, Timeout.InfiniteTimeSpan);
+        }
+
         Changed?.Invoke();
     }
 
     public void Fail(string problem)
     {
+        if (Ended)
+        {
+            return;
+        }
+
         Problem = problem;
         _cancel.Cancel();
         Changed?.Invoke();
@@ -133,7 +144,7 @@ internal sealed class BulkProgress : IBulkProgress
     // Whether to send a chunk that failed as a whole again; false once the user stops, or cancels the run.
     public Task<bool> AskToContinueAsync(string question)
     {
-        if (Stopping)
+        if (Stopping || Ended)
         {
             return Task.FromResult(false);
         }
@@ -146,6 +157,11 @@ internal sealed class BulkProgress : IBulkProgress
 
     public void Answer(bool again)
     {
+        if (Ended)
+        {
+            return;
+        }
+
         Asking = null;
         if (!again)
         {
@@ -205,7 +221,7 @@ internal sealed class BulkProgress : IBulkProgress
     {
         if (!Ended)
         {
-            Problem = _localizer["Content.Bulk.DidNotStop"];
+            Problem = _localizer["Content.Bulk.DidNotStop", StopGrace.TotalSeconds];
             Dispose();
         }
     }

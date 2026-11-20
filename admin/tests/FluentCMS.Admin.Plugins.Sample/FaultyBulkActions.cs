@@ -26,3 +26,23 @@ public sealed class HangingBulkAction : BulkActionBase
         await Task.Delay(Timeout.Infinite, CancellationToken.None);
     }
 }
+
+// Reports one entry, then waits for the test, whatever its token says, and reports the second entry or throws.
+public sealed class LateBulkAction : BulkActionBase
+{
+    // Set by the test: true reports the second entry, false throws.
+    public static TaskCompletionSource<bool> Outcome { get; set; } = new();
+
+    public override string Label => "Late";
+
+    public override async Task RunAsync(BulkActionContext context, IBulkProgress progress, CancellationToken cancellationToken)
+    {
+        progress.Report(new BulkItemResult { Id = context.Ids[0], Status = "approved" });
+        if (!await Outcome.Task)
+        {
+            throw new InvalidOperationException("The sample's action failed late.");
+        }
+
+        progress.Report(new BulkItemResult { Id = context.Ids[1], Status = "approved" });
+    }
+}

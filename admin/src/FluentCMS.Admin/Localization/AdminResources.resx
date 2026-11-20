@@ -1878,7 +1878,7 @@
     <value>The entries that match could not be read. Close this and try again.</value>
   </data>
   <data name="Content.Bulk.FirstOnly" xml:space="preserve">
-    <value>Only the first {0} of the {1} that match, in the list's order, are acted on: an action takes at most {0}.</value>
+    <value>More than {0} entries match. Only the first {0}, in the list's order, are acted on: an action takes at most {0}.</value>
   </data>
   <data name="Content.Bulk.Search" xml:space="preserve">
     <value>Search: {0}</value>
@@ -1893,9 +1893,12 @@
     <value>{0} were sent without an answer and may have been done; check them before acting on them again.</value>
   </data>
   <data name="Content.Bulk.DidNotStop" xml:space="preserve">
-    <value>The action did not stop within 10 seconds of the cancel. What it does from now on is not shown here.</value>
+    <value>The action did not stop within {0} seconds of the cancel. What it does from now on is not shown here.</value>
   </data>
   <data name="Content.Bulk.Status.notConfirmed" xml:space="preserve">
     <value>Not confirmed</value>
+  </data>
+  <data name="Content.Bulk.FixedSet" xml:space="preserve">
+    <value>These are the entries that match now: one that stops matching before its turn is still acted on.</value>
   </data>
 </root>

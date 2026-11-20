@@ -50,6 +50,9 @@ public sealed class ContentListBulkTests : AdminTestContext
     // The entries a read of ids pages through, as the server would for all that match.
     private int Matching { get; set; } = 120;
 
+    // The read of ids, counted from 1, that the server fails, or 0 for none.
+    private int FailingPage { get; set; }
+
     [Fact]
     public void ThePublishOfASelectionGoesInChunksOfFiftyEachWithItsKeyAndShowsEachResult()
     {
@@ -172,6 +175,10 @@ public sealed class ContentListBulkTests : AdminTestContext
         app.WaitForAssertion(() => Management.Calls.Count(call => call.Path == Bulk).ShouldBe(1));
         DialogButton(ProgressDialog(app), "Cancel").Click();
         app.WaitForAssertion(() => app.Find(".bulk-progress").TextContent.ShouldContain("Stopping after the entries being sent now."));
+
+        // The list's own run waits for its chunk in flight however long it takes: no grace ends it before.
+        time.GraceWaiting.ShouldBeFalse();
+        ProgressDialog(app).FindAll("fluent-button").Select(button => button.TextContent.Trim()).ShouldNotContain("Close");
         Management.Hold.SetResult();
         Management.Hold = null;
 
@@ -235,6 +242,21 @@ public sealed class ContentListBulkTests : AdminTestContext
     }
 
     [Fact]
+    public void AChunkThatTimesOutIsResentWithTheSameKey()
+    {
+        Management.Entries["article"] = [.. Enumerable.Range(1, 10).Select(n => (JsonNode)Entry(n))];
+        Failures.Enqueue(() => throw new TaskCanceledException("The attempt timed out.", new TimeoutException()));
+        var app = Load();
+
+        SelectPage(app);
+        RunAndConfirm(app, "Publish", "Publish the selected entries of Article (10)?");
+
+        app.WaitForAssertion(() => Summary(app).ShouldBe("Done: 10 succeeded, 0 failed."));
+        keys.Count.ShouldBe(2);
+        keys.Distinct().Count().ShouldBe(1);
+    }
+
+    [Fact]
     public void AnEntryTheCallerMayNotChangeShowsAsRefusedAndTheRunGoesOn()
     {
         Outcomes[2] = Failed(403, "FCMS2001", "Your roles do not let you delete this entry.");
@@ -251,7 +273,7 @@ public sealed class ContentListBulkTests : AdminTestContext
     }
 
     [Fact]
-    public void AllThatMatchAreReadAsIdsAtMostAThousandShownWithTheFilterAndSentInChunks()
+    public void AllThatMatchAreReadAsIdsByTheCursorAndCutAtAThousandWithTheFilterShown()
     {
         Matching = 1001;
         Management.Total = 1001;
@@ -263,17 +285,54 @@ public sealed class ContentListBulkTests : AdminTestContext
 
         var confirmation = Dialog(app, "Publish");
         app.WaitForAssertion(() => confirmation.Find("p").TextContent.ShouldBe("Publish the entries of Article that match (1,000)?"));
-        confirmation.FindAll("p").Select(text => text.TextContent).ShouldContain("Only the first 1,000 of the 1,001 that match, in the list's order, are acted on: an action takes at most 1,000.");
+        confirmation.FindAll("p").Select(text => text.TextContent).ShouldContain("More than 1,000 entries match. Only the first 1,000, in the list's order, are acted on: an action takes at most 1,000.");
+        confirmation.FindAll("p").Select(text => text.TextContent).ShouldContain("These are the entries that match now: one that stops matching before its turn is still acted on.");
         confirmation.Find("li").TextContent.ShouldBe("Title starts with Entry");
-        idReads.Count.ShouldBe(10);
-        idReads.ShouldAllBe(query => query.Contains("filter[title][startsWith]=Entry", StringComparison.Ordinal) && query.Contains("pageSize=100", StringComparison.Ordinal) && query.Contains("fields=id,title", StringComparison.Ordinal));
-        idReads[^1].ShouldContain("page=10");
-        DialogButton(confirmation, "Publish").Click();
+        idReads.Count.ShouldBe(11);
+        idReads.ShouldAllBe(query => query.Contains("filter[title][startsWith]=Entry", StringComparison.Ordinal) && query.Contains("pageSize=100", StringComparison.Ordinal) && !query.Contains("page=", StringComparison.Ordinal));
+        idReads[0].ShouldNotContain("cursor=");
+        idReads[^1].ShouldContain("cursor=1000");
 
-        app.WaitForAssertion(() => Summary(app).ShouldBe("Done: 1000 succeeded, 0 failed."), TimeSpan.FromSeconds(10));
-        sent.Count.ShouldBe(20);
-        sent.SelectMany(call => Ids(call.Body)).Distinct().Count().ShouldBe(1000);
-        ResultRow(app, "Entry 1000").TextContent.ShouldContain("Published");
+        DialogButton(confirmation, "Cancel").Click();
+        sent.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AFailedPageOfTheReadOfAllThatMatchSaysSoAndRunsNothing()
+    {
+        Matching = 250;
+        Management.Total = 250;
+        FailingPage = 2;
+        var app = Load();
+
+        SelectPage(app);
+        app.FindAll("fluent-button").First(button => button.TextContent.Trim() == "Select all 250 that match").Click();
+        Choose(MenuItem(app, "Publish"));
+
+        app.WaitForAssertion(() => Dialog(app, "Publish").Find("p").TextContent.ShouldBe("The entries that match could not be read. Close this and try again."));
+        DialogButton(Dialog(app, "Publish"), "Publish").HasAttribute("disabled").ShouldBeTrue();
+        sent.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AllThatMatchASearchAreReadWithTheSearchAndItIsShown()
+    {
+        var title = Field("title", required: true);
+        title["searchable"] = true;
+        Management.SetTypes(MainSite, Type("article", fields: [title]));
+        Matching = 130;
+        Management.Total = 130;
+        var app = Load("content/article?q=entry");
+
+        SelectPage(app);
+        app.FindAll("fluent-button").First(button => button.TextContent.Trim() == "Select all 130 that match").Click();
+        Choose(MenuItem(app, "Publish"));
+
+        app.WaitForAssertion(() => Dialog(app, "Publish").Find("li").TextContent.ShouldBe("Search: entry"));
+        idReads.ShouldAllBe(query => query.Contains("q=entry", StringComparison.Ordinal));
+        DialogButton(Dialog(app, "Publish"), "Publish").Click();
+        app.WaitForAssertion(() => Summary(app).ShouldBe("Done: 130 succeeded, 0 failed."));
+        sent.Select(call => Ids(call.Body).Count).ShouldBe([50, 50, 30]);
     }
 
     [Fact]
@@ -404,6 +463,63 @@ public sealed class ContentListBulkTests : AdminTestContext
         app.Find(".content-list-selection").TextContent.ShouldContain("1 selected on this page.");
     }
 
+    [Fact]
+    public void AFailureAfterTheGraceEndedTheRunIsDropped()
+    {
+        LateBulkAction.Outcome = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var app = LoadReviews(Reviews with { BulkActions = [Action("LateBulkAction", "late")] }, permitted: true);
+        RunLateAndEndTheGrace(app);
+
+        LateBulkAction.Outcome.SetResult(false);
+
+        app.WaitForAssertion(() => ProgressDialog(app, "Late: Review").FindAll(".bulk-progress-problem").Single().TextContent.ShouldStartWith("The action did not stop within 10 seconds"));
+        ProgressDialog(app, "Late: Review").FindAll(".bulk-progress-results tbody tr").Count.ShouldBe(1);
+        CloseProgress(app, "Late: Review");
+        app.WaitForAssertion(() => app.FindAll(".bulk-progress").ShouldBeEmpty());
+    }
+
+    [Fact]
+    public void ASuccessAfterTheDialogClosedIsDropped()
+    {
+        LateBulkAction.Outcome = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var app = LoadReviews(Reviews with { BulkActions = [Action("LateBulkAction", "late")] }, permitted: true);
+        RunLateAndEndTheGrace(app);
+        CloseProgress(app, "Late: Review");
+        app.WaitForAssertion(() => app.Find(".content-list-selection").TextContent.ShouldContain("1 selected on this page."));
+
+        LateBulkAction.Outcome.SetResult(true);
+
+        app.WaitForAssertion(() => app.FindAll(".bulk-progress").ShouldBeEmpty());
+        app.Find(".content-list-selection").TextContent.ShouldContain("1 selected on this page.");
+    }
+
+    [Fact]
+    public void AFailureAfterTheDialogClosedIsDropped()
+    {
+        LateBulkAction.Outcome = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var app = LoadReviews(Reviews with { BulkActions = [Action("LateBulkAction", "late")] }, permitted: true);
+        RunLateAndEndTheGrace(app);
+        CloseProgress(app, "Late: Review");
+        app.WaitForAssertion(() => app.Find(".content-list-selection").TextContent.ShouldContain("1 selected on this page."));
+
+        LateBulkAction.Outcome.SetResult(false);
+
+        app.WaitForAssertion(() => app.FindAll(".bulk-progress").ShouldBeEmpty());
+        app.Find(".content-list-selection").TextContent.ShouldContain("1 selected on this page.");
+    }
+
+    private void RunLateAndEndTheGrace(IRenderedComponent<AdminApp> app)
+    {
+        SelectPage(app);
+        app.WaitForAssertion(() => MenuItems(app).ShouldContain("Late"));
+        RunAndConfirm(app, "Late", "Late: the selected entries of Review (2)?", title: "Late: Review");
+        app.WaitForAssertion(() => ResultRow(app, "Entry 1", "Late: Review"));
+        DialogButton(ProgressDialog(app, "Late: Review"), "Cancel").Click();
+        app.WaitForAssertion(() => time.GraceWaiting.ShouldBeTrue());
+        time.EndGrace();
+        app.WaitForAssertion(() => DialogButton(ProgressDialog(app, "Late: Review"), "Close"));
+    }
+
     private static AdminPluginManifest Reviews => AdminPluginManifestJson.Read(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, AdminPluginManifest.FileName)));
 
     private static AdminManifestAction Action(string type, string name) =>
@@ -447,7 +563,8 @@ public sealed class ContentListBulkTests : AdminTestContext
         return Json(new JsonObject { ["items"] = new JsonArray([.. answered]), ["cancelled"] = false });
     }
 
-    // A read of the ids of all that match, a page of Matching entries.
+    // A read of the ids of all that match, by the cursor, which here is the number of entries read before; FailingPage fails
+    // that page of the read.
     private HttpResponseMessage? IdRead(HttpRequestMessage request, string path)
     {
         var query = Uri.UnescapeDataString(request.RequestUri!.Query.TrimStart('?'));
@@ -457,9 +574,21 @@ public sealed class ContentListBulkTests : AdminTestContext
         }
 
         idReads.Add(query);
-        var page = int.Parse(query.Split('&').Single(pair => pair.StartsWith("page=", StringComparison.Ordinal))[5..], System.Globalization.CultureInfo.InvariantCulture);
-        var rows = Enumerable.Range(((page - 1) * 100) + 1, Math.Max(0, Math.Min(100, Matching - ((page - 1) * 100)))).Select(n => (JsonNode)Entry(n));
-        return Json(new JsonObject { ["items"] = new JsonArray([.. rows]), ["page"] = page, ["pageSize"] = 100 });
+        var cursor = query.Split('&').FirstOrDefault(pair => pair.StartsWith("cursor=", StringComparison.Ordinal));
+        var from = cursor is null ? 0 : int.Parse(cursor["cursor=".Length..], System.Globalization.CultureInfo.InvariantCulture);
+        if (FailingPage == idReads.Count)
+        {
+            return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+        }
+
+        var count = Math.Max(0, Math.Min(100, Matching - from));
+        var rows = Enumerable.Range(from + 1, count).Select(n => (JsonNode)Entry(n));
+        return Json(new JsonObject
+        {
+            ["items"] = new JsonArray([.. rows]),
+            ["pageSize"] = 100,
+            ["nextCursor"] = from + count < Matching ? (from + count).ToString(System.Globalization.CultureInfo.InvariantCulture) : null,
+        });
     }
 
     private static JsonObject Failed(int status, string code, string detail) => new()

@@ -25,7 +25,7 @@
     </CmsMenu>
 }
 
-<CmsDialog Title="@(asked?.Label ?? L["Content.Bulk.Menu"])" Open="@(asked is not null)" OpenChanged="@(open => { if (!open) asked = null; })">
+<CmsDialog Title="@(asked?.Label ?? L["Content.Bulk.Menu"])" Open="@(asked is not null)" OpenChanged="@(open => { if (!open) CloseAsk(); })">
     <ChildContent>
         @if (asked is { } item)
         {
@@ -43,9 +43,10 @@
 
                 @if (AllMatching)
                 {
-                    @if (Total > Targets.Count)
+                    <p>@L["Content.Bulk.FixedSet"]</p>
+                    @if (more)
                     {
-                        <p>@L["Content.Bulk.FirstOnly", Number(Targets.Count), Number(Total)]</p>
+                        <p>@L["Content.Bulk.FirstOnly", Number(BulkRunner.MaxEntries)]</p>
                     }
 
                     @if (FilterSummaries.Count > 0 || Search is not null)
@@ -72,7 +73,7 @@
     <Actions>
         @if (asked is { } item)
         {
-            <CmsButton @ref="cancelButton" OnClick="@(() => asked = null)">@L["Content.Bulk.ConfirmCancel"]</CmsButton>
+            <CmsButton @ref="cancelButton" OnClick="CloseAsk">@L["Content.Bulk.ConfirmCancel"]</CmsButton>
             <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@(Targets.Count == 0)" OnClick="@(() => RunAsync(item))">@item.Label</CmsButton>
         }
     </Actions>
@@ -87,7 +88,11 @@
 
     // The ids of all that match, read when an action on them is asked for.
     private IReadOnlyList<(Guid Id, string Label)>? matching;
+    private bool more;
     private bool readFailed;
+
+    // The read of the ask shown; closing the ask cancels it, and a read of an earlier ask is dropped.
+    private CancellationTokenSource? reading;
 
     // The run's dialog outlives a page the user left, which is then not read again.
     private bool disposed;
@@ -122,7 +127,7 @@
     [Parameter]
     public EventCallback<IReadOnlyList<(Guid Id, string Label)>> OnRan { get; set; }
 
-    private IReadOnlyList<(Guid Id, string Label)> Targets => AllMatching ? matching ?? [] : Selected;
+    private IReadOnlyList<(Guid Id, string Label)> Targets => AllMatching ? matching ?? [] : [.. Selected.DistinctBy(row => row.Id)];
 
     private IReadOnlyList<BulkItem> Offered
     {
@@ -198,28 +203,54 @@
         }
     }
 
-    public void Dispose() => disposed = true;
+    public void Dispose()
+    {
+        disposed = true;
+        CancelRead();
+    }
+
+    private void CloseAsk()
+    {
+        asked = null;
+        CancelRead();
+    }
+
+    private void CancelRead()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+        reading = null;
+    }
 
     private async Task AskAsync(BulkItem item)
     {
-        (asked, focusCancel, matching, readFailed) = (item, true, null, false);
+        CancelRead();
+        (asked, focusCancel, matching, more, readFailed) = (item, true, null, false, false);
         if (!AllMatching || ReadMatching is null)
         {
             return;
         }
 
+        var current = reading = new CancellationTokenSource();
         StateHasChanged();
         try
         {
-            var read = await ReadMatching(CancellationToken.None);
-            if (asked == item)
+            var read = await ReadMatching(current.Token);
+            if (reading == current)
             {
-                matching = read;
+                more = read.Count > BulkRunner.MaxEntries;
+                matching = [.. read.Take(BulkRunner.MaxEntries).DistinctBy(row => row.Id)];
             }
+        }
+        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        {
         }
         catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
-            readFailed = true;
+            if (reading == current)
+            {
+                readFailed = true;
+            }
         }
     }
 
@@ -256,7 +287,7 @@
 
     private async Task RunAsync(BulkItem item)
     {
-        asked = null;
+        CloseAsk();
         var targets = Targets.DistinctBy(row => row.Id).ToList();
         var labels = targets.ToDictionary(row => row.Id, row => row.Label);
         var ids = targets.Select(row => row.Id).ToList();
