@@ -10,7 +10,7 @@
    a switcher and the status of every locale of the site; a locale the entry has no translation in starts empty or as a copy
    of another and is added by its first save, and a second locale can be shown read-only beside each field. In a side panel
    (A-15) it creates and saves without leaving the page: it raises OnSaved instead of moving to the entry's route, and its
-   heading is the panel's. *@
+   heading is the panel's. Its version history (A-28) is a side panel, whose restore the form runs as a status action. *@
 @implements IUnsavedForm
 @implements IAsyncDisposable
 @using System.Net
@@ -94,6 +94,12 @@
                                Unsaved="@IsDirty"
                                LocaleName="@(type?.Localized == true ? ContentCode : null)"
                                OnChanged="@ScheduleChanged" />
+            }
+            @if (MayShowHistory)
+            {
+                <div class="content-form-history">
+                    <CmsButton OnClick="@(() => historyOpen = true)">@L["Content.Versions.Open"]</CmsButton>
+                </div>
             }
             @if (!MaySave)
             {
@@ -222,6 +228,11 @@
             </CmsDialog>
             @Confirmation(EntryAction.Discard, "Content.Form.Discard")
             @Confirmation(EntryAction.Unpublish, "Content.Form.Unpublish")
+            @if (MayShowHistory)
+            {
+                <VersionHistoryPanel Type="@type" EntryId="@entryId!.Value" Site="@read!.Site" Locale="@read.Locale" DraftVersion="@read.Entry!.Version" ContentLocale="@ContentCode" Open="@historyOpen" Unsaved="@IsDirty" MayRestore="@(access?.Update == true)"
+                                     OnClose="@(() => historyOpen = false)" OnRestore="RestoreVersionAsync" />
+            }
             break;
     }
 </div>
@@ -279,6 +290,7 @@
         Publish,
         Unpublish,
         Discard,
+        Restore,
     }
 
     // Where focus goes once an action is done: a shortcut leaves it, the control that ran is gone with the status it changed.
@@ -371,6 +383,9 @@
     private Dictionary<string, bool> keepMine = new(StringComparer.Ordinal);
     private ElementReference panelHeading;
     private bool focusPanelHeading;
+    private bool historyOpen;
+    // The version a restore makes the draft from, while it runs.
+    private int restoring;
     private EntrySchedule? schedule;
 
     // The name of the content type, as the route has it.
@@ -446,12 +461,17 @@
     private bool MayDiscard =>
         access?.Update == true && entryId is not null && (Status == EntryStatuses.Modified || (Status == EntryStatuses.Published && IsDirty));
 
+    // The history of a saved locale (A-28), from the page's form only, since a panel's form is a dialog already. Versions
+    // hold drafts, so the server reads them only for a caller who may read the type's drafts.
+    private bool MayShowHistory => !InPanel && entryId is not null && read?.Entry is not null && type is not null && access?.Drafts == true;
+
     private bool Busy => saving || running is not null || copying;
 
     // The form's own tracking may have been given up by a confirmed site switch or sign-out.
     private bool IsDirty => tracking is not null && Drafts.HasUnsavedForms;
 
-    private bool DialogOpen => leaveAnswer is not null || conflictOpen || showingShortcuts || confirming is not null || copyAsked is not null || schedule?.IsOpen == true;
+    private bool DialogOpen =>
+        leaveAnswer is not null || conflictOpen || showingShortcuts || confirming is not null || copyAsked is not null || schedule?.IsOpen == true || historyOpen;
 
     private string Heading => state switch
     {
@@ -580,7 +600,7 @@
         (type, access, tabs, tabbed, read, entryId, activeTab) = (null, null, [], [], null, null, null);
         (restored, done, saveFailure, pendingCreate, publishTried) = (false, null, null, null, false);
         (warnings, confirming) = ([], null);
-        (conflict, conflictOpen, comparing) = (null, false, false);
+        (conflict, conflictOpen, comparing, historyOpen) = (null, false, false, false);
         (locales, compare, compareFailed, compareChoice, copying, copyAsked, readableLocales) = (null, null, null, null, false, null, []);
         ClearErrors();
         try
@@ -1080,6 +1100,18 @@
         }
     }
 
+    // The panel asked first, naming the version and that unsaved changes go; a 412 is shown as for discard.
+    private Task RestoreVersionAsync(int version)
+    {
+        if (Busy)
+        {
+            return Task.CompletedTask;
+        }
+
+        restoring = version;
+        return RunAsync(EntryAction.Restore, FocusAfter.Dialog);
+    }
+
     private async Task ConfirmAsync(EntryAction action)
     {
         confirming = null;
@@ -1114,6 +1146,9 @@
                 case EntryAction.Discard:
                     answer = await Client.DiscardDraftAsync(Type, id, basedOn, CancellationToken.None);
                     break;
+                case EntryAction.Restore:
+                    answer = await Client.RestoreVersionAsync(Type, id, restoring, basedOn, CancellationToken.None);
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(action), action, null);
             }
@@ -1124,7 +1159,7 @@
             }
 
             read = answer;
-            if (action == EntryAction.Discard || !IsDirty)
+            if (action is EntryAction.Discard or EntryAction.Restore || !IsDirty)
             {
                 ClearErrors();
                 fields = answer.Entry!.Fields.DeepClone().AsObject();
@@ -1137,6 +1172,7 @@
                 EntryAction.Publish when found.Count > 0 => L["Content.Form.PublishedWithWarnings"],
                 EntryAction.Publish => L["Content.Form.Published"],
                 EntryAction.Unpublish => L["Content.Form.Unpublished"],
+                EntryAction.Restore => L["Content.Form.RestoredVersion", restoring],
                 _ => L["Content.Form.Discarded"],
             };
             Announcer.Announce(done);
@@ -1177,6 +1213,7 @@
         EntryAction.Publish => L["Content.Form.NotPublished"],
         EntryAction.Unpublish => L["Content.Form.NotUnpublished"],
         EntryAction.Discard => L["Content.Form.NotDiscarded"],
+        EntryAction.Restore => L["Content.Form.NotRestored"],
         _ => L["Content.Form.NotSaved"],
     };
 
