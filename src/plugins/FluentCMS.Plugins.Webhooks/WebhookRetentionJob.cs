@@ -7,7 +7,8 @@ namespace FluentCMS.Plugins.Webhooks;
 
 internal sealed record WebhookRetentionPayload;
 
-// Removes the attempts older than WebhooksOptions.Retention, in batches.
+// Removes the attempts older than WebhooksOptions.Retention, in batches. A queued attempt waits to be sent, and stays unless
+// its webhook is gone.
 internal sealed class WebhookRetentionJob(PluginDbContext<WebhooksPlugin> database, IOptions<WebhooksOptions> options, TimeProvider time, ILogger<WebhookRetentionJob> logger)
     : IJob<WebhookRetentionPayload>
 {
@@ -26,7 +27,7 @@ internal sealed class WebhookRetentionJob(PluginDbContext<WebhooksPlugin> databa
         while (true)
         {
             var ids = await database.Set<WebhookDelivery>()
-                .Where(delivery => delivery.CreatedAt < cutoff)
+                .Where(delivery => delivery.CreatedAt < cutoff && (delivery.State != DeliveryStates.Queued || !database.Set<Webhook>().Any(webhook => webhook.Id == delivery.WebhookId)))
                 .OrderBy(delivery => delivery.CreatedAt)
                 .Select(delivery => delivery.Id)
                 .Take(BatchSize)

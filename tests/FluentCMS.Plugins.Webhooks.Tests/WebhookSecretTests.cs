@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -7,6 +8,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -228,6 +230,96 @@ public sealed class WebhookSecretTests
         Verifies(request.Headers[WebhookSender.SignatureHeader], New, request.Body, host.Time.GetUtcNow()).ShouldBeTrue();
     }
 
+    // A redacted value used to keep the stored one whatever the URL, so a caller who may manage the webhook but does not know
+    // its headers could point it at a host of their own and receive them.
+    [Fact]
+    public async Task ARedactedHeaderIsKeptOnlyWhileTheUrlKeepsItsSchemeHostAndPort()
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        await using var other = await TestReceiver.StartAsync();
+        await using var host = Host();
+        using var client = await AdminAsync(host);
+        var url = receiver.Url();
+        var webhook = $"{Root}/{Id(await CreateAsync(client, new { name = "builds", url = url.ToString(), events = new List<string> { "content.published" }, headers = new Dictionary<string, string> { ["Authorization"] = Token1 } })):D}";
+
+        object Replaced(string to, string value) => new { name = "builds", url = to, events = new List<string> { "content.published" }, headers = new Dictionary<string, string> { ["Authorization"] = value } };
+        foreach (var moved in (string[])[$"http://localhost:{url.Port}/hook", other.Url().ToString()])
+        {
+            using var refused = await client.PutAsJsonAsync(new Uri(webhook, UriKind.Relative), Replaced(moved, WebhookService.RedactedValue), Token);
+            var text = await TextAsync(refused);
+            refused.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity, text);
+            var error = JsonNode.Parse(text)!["errors"]!.AsArray().ShouldHaveSingleItem()!;
+            (error["path"]!.GetValue<string>(), error["code"]!.GetValue<string>()).ShouldBe(("headers.Authorization", WebhookErrorCodes.InvalidField));
+            error["message"]!.GetValue<string>().ShouldContain("host");
+        }
+
+        // Another path, query or case of the scheme keeps it.
+        using (var kept = await client.PutAsJsonAsync(new Uri(webhook, UriKind.Relative), Replaced($"HTTP://127.0.0.1:{url.Port}/other?build=1", WebhookService.RedactedValue), Token))
+        {
+            kept.StatusCode.ShouldBe(HttpStatusCode.OK, await TextAsync(kept));
+        }
+
+        var articles = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).Content<Article>();
+        await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "Kept" }, Token)).Id, cancellationToken: Token);
+        await PumpAsync(host);
+        var request = receiver.Requests.ShouldHaveSingleItem();
+        (request.Path, request.Headers["Authorization"]).ShouldBe(("/other", Token1));
+
+        // Sent again, the value goes with the new host.
+        using (var moved = await client.PutAsJsonAsync(new Uri(webhook, UriKind.Relative), Replaced(other.Url().ToString(), Token2), Token))
+        {
+            moved.StatusCode.ShouldBe(HttpStatusCode.OK, await TextAsync(moved));
+        }
+
+        await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "Moved" }, Token)).Id, cancellationToken: Token);
+        await PumpAsync(host);
+        other.Requests.ShouldHaveSingleItem().Headers["Authorization"].ShouldBe(Token2);
+        receiver.Requests.Count.ShouldBe(1);
+
+        // A host name compares without case, and the scheme alone is a change too.
+        var port = other.Url().Port;
+        foreach (var (to, value, status) in ((string, string, HttpStatusCode)[])
+        [
+            ($"http://localhost:{port}/a", Token2, HttpStatusCode.OK),
+            ($"http://LocalHost:{port}/b", WebhookService.RedactedValue, HttpStatusCode.OK),
+            ($"https://localhost:{port}/b", WebhookService.RedactedValue, HttpStatusCode.UnprocessableEntity),
+        ])
+        {
+            using var response = await client.PutAsJsonAsync(new Uri(webhook, UriKind.Relative), Replaced(to, value), Token);
+            response.StatusCode.ShouldBe(status, $"{to}: {await TextAsync(response)}");
+        }
+    }
+
+    // A PUT that kept the URL it read wrote only the headers, so a PUT that moved the webhook in between kept its URL beside
+    // headers that were checked against the old one.
+    [Fact]
+    public async Task AKeptHeaderIsWrittenWithTheUrlItWasCheckedAgainst()
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        var moved = new MoveBeforeUpdate("https://elsewhere.example/hook");
+        await using var host = Host().Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<WebhooksPlugin>>(options => options.AddInterceptors(moved)));
+        using var client = await AdminAsync(host);
+        var url = receiver.Url().ToString();
+        var id = Id(await CreateAsync(client, new { name = "builds", url, events = new List<string> { "content.published" }, headers = new Dictionary<string, string> { ["Authorization"] = Token1 } }));
+
+        moved.Armed = true;
+        using var kept = await client.PutAsJsonAsync(new Uri($"{Root}/{id:D}", UriKind.Relative), new { name = "builds", url, events = new List<string> { "content.published" }, headers = new Dictionary<string, string> { ["Authorization"] = WebhookService.RedactedValue } }, Token);
+        kept.StatusCode.ShouldBe(HttpStatusCode.OK, await TextAsync(kept));
+        moved.Armed.ShouldBeFalse("the other write ran before this one's update");
+
+        await using var scope = host.Services.CreateAsyncScope();
+        (await scope.ServiceProvider.GetRequiredService<PluginDbContext<WebhooksPlugin>>().Set<Webhook>().AsNoTracking().SingleAsync(webhook => webhook.Id == id, Token)).Url.ShouldBe(url);
+    }
+
+    [Fact]
+    public void WhatTheLogStoresOfAnAnswerHasNoControlCharacterOrHalfAPair()
+    {
+        WebhookSender.Storable("a\0b\u0001c\td\r\ne\u007F", 100).ShouldBe("abc\td\r\ne");
+        WebhookSender.Storable("ab\U0001F600", 3).ShouldBe("ab");
+        WebhookSender.Storable("ab\U0001F600", 4).ShouldBe("ab\U0001F600");
+        WebhookSender.Storable("\0abc", 2).ShouldBe("ab");
+    }
+
     // The column as the database holds it, of the only webhook or of the one named.
     private static async Task<string?> RawAsync(FluentCmsTestHost host, string column, Guid? id = null)
     {
@@ -252,5 +344,37 @@ public sealed class WebhookSecretTests
         public string Headers { get; set; } = "";
 
         public string? PreviousSecret { get; set; }
+    }
+
+    // Moves the webhook to another URL just before the next update of it, as a PUT that commits in between would.
+    private sealed class MoveBeforeUpdate(string url) : DbCommandInterceptor
+    {
+        public bool Armed { get; set; }
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            await MoveAsync(command, cancellationToken);
+            return result;
+        }
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            await MoveAsync(command, cancellationToken);
+            return result;
+        }
+
+        private async Task MoveAsync(DbCommand command, CancellationToken cancellationToken)
+        {
+            if (!Armed || !command.CommandText.Contains("UPDATE \"cms_webhooks_subscription\"", StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            Armed = false;
+            await using var other = command.Connection!.CreateCommand();
+            other.Transaction = command.Transaction;
+            other.CommandText = $"UPDATE cms_webhooks_subscription SET url = '{url}'";
+            await other.ExecuteNonQueryAsync(cancellationToken);
+        }
     }
 }

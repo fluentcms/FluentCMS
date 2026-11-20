@@ -220,6 +220,8 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddFluentCmsOpenApi(builder.OpenApi);
 
         services.AddSingleton<SettingsCache>();
+        services.AddSingleton<SettingsProtection>();
+        services.AddSingleton<FluentCMS.Diagnostics.IInsecureDefaultSource, SecretSettingsReport>();
         services.AddScoped<SettingsService>();
         services.TryAddScoped(typeof(ISettings<>), typeof(Settings<>));
 

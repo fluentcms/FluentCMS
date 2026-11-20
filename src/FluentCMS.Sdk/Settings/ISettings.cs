@@ -42,8 +42,8 @@ public interface ISettings<T>
     /// Replaces the settings of a site, which then no longer follow the instance defaults. The write is the whole document, it is
     /// atomic, and when two writes meet the last one stands. Every secret property of the value, a <see langword="null"/> one
     /// included, is the site's own from then on; since a read gives the secrets a site inherits, writing back a value that was
-    /// read makes them its own. <see cref="ResetAsync"/> makes a site inherit them again. Raises <c>SettingsChangedEvent</c>
-    /// and records an activity row.
+    /// read makes them its own. <see cref="ResetAsync"/> makes a site inherit them again. A stored secret that the Data
+    /// Protection key ring cannot unprotect is replaced too. Raises <c>SettingsChangedEvent</c> and records an activity row.
     /// </summary>
     /// <param name="site">The site.</param>
     /// <param name="value">The new settings.</param>
@@ -54,7 +54,10 @@ public interface ISettings<T>
     /// <exception cref="InvalidOperationException">There is no operation, or the caller is inside a transaction that it owns.</exception>
     ValueTask SetAsync(SiteId site, T value, CancellationToken cancellationToken = default);
 
-    /// <summary>Replaces the instance defaults. It needs <c>settings.{area}.manage</c> from a grant with no site limit.</summary>
+    /// <summary>
+    /// Replaces the instance defaults. It needs <c>settings.{area}.manage</c> from a grant with no site limit. Every secret
+    /// property of the value is written, so a stored secret that the Data Protection key ring cannot unprotect is replaced too.
+    /// </summary>
     /// <param name="value">The new defaults.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>A task that completes when the defaults are stored and readers have been told.</returns>

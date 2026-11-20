@@ -27,6 +27,9 @@ public sealed class TestReceiver : IAsyncDisposable
 
     public string? RedirectTo { get; set; }
 
+    // The body of the answer, in place of the default.
+    public string? Answer { get; set; }
+
     public Uri Root { get; private set; } = null!;
 
     public IReadOnlyList<ReceivedRequest> Requests => [.. _requests];
@@ -109,7 +112,7 @@ public sealed class TestReceiver : IAsyncDisposable
             }
 
             context.Response.StatusCode = Status;
-            await context.Response.WriteAsync(Status < 300 ? "ok" : "receiver failed", context.RequestAborted);
+            await context.Response.WriteAsync(Answer ?? (Status < 300 ? "ok" : "receiver failed"), context.RequestAborted);
         }
         finally
         {
