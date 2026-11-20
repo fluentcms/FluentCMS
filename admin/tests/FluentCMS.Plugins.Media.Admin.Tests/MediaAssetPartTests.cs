@@ -250,13 +250,13 @@ public sealed class MediaAssetPartTests : MediaTestContext
         }
 
         cut.Find(".media-focal-marker").GetAttribute("style").ShouldBe("left:53%;top:50%");
-        cut.WaitForAssertion(() => asset.FocalPoint.ShouldBe(new MediaPoint { X = 0.53, Y = 0.5 }), TimeSpan.FromSeconds(3));
+        cut.WaitForAssertion(() => asset.FocalPoint.ShouldBe(new MediaPoint { X = 0.53, Y = 0.5 }));
         Patches.ShouldBe(1);
 
         // The holder gives the part the asset it raised, which the next save is based on.
         cut.Render(parameters => parameters.Add(part => part.Asset, asset));
         cut.FindAll(".media-focal-sliders input")[1].Change("20");
-        cut.WaitForAssertion(() => asset.FocalPoint.ShouldBe(new MediaPoint { X = 0.53, Y = 0.2 }), TimeSpan.FromSeconds(3));
+        cut.WaitForAssertion(() => asset.FocalPoint.ShouldBe(new MediaPoint { X = 0.53, Y = 0.2 }));
         cut.Find(".media-focal-preview img").GetAttribute("style").ShouldBe("object-position:53% 20%");
     }
 

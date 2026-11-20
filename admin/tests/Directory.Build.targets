@@ -1,0 +1,8 @@
+<Project>
+
+  <!-- The thread pool floor and the wait of bUnit, the same for every admin component test project (spec 7). -->
+  <ItemGroup Condition="'@(PackageReference->WithMetadataValue('Identity', 'bunit'))' != ''">
+    <Compile Include="$(MSBuildThisFileDirectory)Shared/ComponentTestSetup.cs" Link="ComponentTestSetup.cs" />
+  </ItemGroup>
+
+</Project>

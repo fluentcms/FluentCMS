@@ -159,12 +159,13 @@ jobs:
       - name: Install Chromium
         run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/bin/Release/net10.0/playwright.ps1 install --with-deps --only-shell chromium
 
-      # A skipped test fails here, so that a browser that did not install cannot pass the job. A manual run with traces on
-      # keeps the masked trace of each failed test in the uploaded results.
+      # A skipped test fails here, so that a browser that did not install cannot pass the job. A failed case is run once more,
+      # and one that passes then is named as flaky in the job summary (spec 7). A manual run with traces on keeps the masked
+      # trace of each failed test in the uploaded results.
       - name: Test
         env:
           FLUENTCMS_E2E_TRACES: ${{ inputs.traces && format('{0}/artifacts/test-results/traces', github.workspace) || '' }}
-        run: dotnet test --project admin/tests/FluentCMS.Admin.EndToEnd -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results --fail-skips on --timeout 15m
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 15m -RetryTimeout 6m
 
       - name: Name the tests that were running
         if: failure() || cancelled()

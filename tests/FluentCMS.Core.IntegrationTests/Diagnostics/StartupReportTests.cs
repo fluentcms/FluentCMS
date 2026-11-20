@@ -249,12 +249,22 @@ public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fix
         app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("public-origin-unset");
     }
 
-    [Fact]
-    public async Task AMissingPublicOriginIsNotReportedOutsideProduction()
+    [Theory]
+    [InlineData("Staging", true)]
+    [InlineData("Development", false)]
+    public async Task AMissingPublicOriginIsReportedOutsideDevelopment(string environment, bool reported)
     {
-        var app = await StartAsync(Environments.Staging);
+        var app = await StartAsync(environment);
 
-        app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("public-origin-unset");
+        var ids = app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ToList();
+        if (reported)
+        {
+            ids.ShouldContain("public-origin-unset");
+        }
+        else
+        {
+            ids.ShouldNotContain("public-origin-unset");
+        }
     }
 
     [Fact]
