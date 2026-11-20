@@ -18,6 +18,7 @@ public class EndToEndRulesTests
     [
         ("reads a response's body (TextAsync, JsonAsync or BodyAsync); read the request, the status and the headers", new(@"\.(TextAsync|JsonAsync|BodyAsync)\s*(<[^>()]*>)?\s*\(", RegexOptions.CultureInvariant)),
         ("waits by a fixed delay; wait on the page's state, or use Ui.UntilAsync or Ui.FocusReturnedAsync", new(@"\b(WaitForTimeoutAsync|Task\s*\.\s*Delay|Thread\s*\.\s*Sleep|setTimeout)\s*\(", RegexOptions.CultureInvariant)),
+        ("polls against a deadline of its own, which spins requests as fast as the runner allows; use Ui.UntilAsync, or wait on the timed event itself", new(@"(DateTime|DateTimeOffset)\s*\.\s*(UtcNow|Now)", RegexOptions.CultureInvariant)),
         ("declares its own PressAsync, FocusAsync or FocusReturnedAsync; use the one of Ui", new(@"\bTask(<[^>]*>)?\s+(PressAsync|FocusAsync|FocusReturnedAsync)\s*\(", RegexOptions.CultureInvariant)),
     ];
 
@@ -50,6 +51,7 @@ public class EndToEndRulesTests
                     await Task.Delay(100);
                     Thread.Sleep(100);
                     await page.EvaluateAsync("() => new Promise(resolve => setTimeout(resolve, 50))");
+                    var deadline = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(30);
                     // A comment may name setTimeout( or TextAsync( without breaking a rule.
                     var text = await page.Locator("p").InnerTextAsync();
                 }
@@ -64,8 +66,9 @@ public class EndToEndRulesTests
 
         found.Count(violation => violation.Contains("body", StringComparison.Ordinal)).ShouldBe(3);
         found.Count(violation => violation.Contains("fixed delay", StringComparison.Ordinal)).ShouldBe(4);
-        found.Count(violation => violation.Contains("its own", StringComparison.Ordinal)).ShouldBe(2);
-        found.Count.ShouldBe(9);
+        found.Count(violation => violation.Contains("declares its own", StringComparison.Ordinal)).ShouldBe(2);
+        found.Count(violation => violation.Contains("deadline", StringComparison.Ordinal)).ShouldBe(1);
+        found.Count.ShouldBe(10);
     }
 
     // Each line that breaks a rule, but the comments, which may name what they explain.

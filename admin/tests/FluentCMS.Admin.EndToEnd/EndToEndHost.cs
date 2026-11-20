@@ -33,6 +33,9 @@ public sealed class EndToEndHost : IAsyncLifetime
     private static readonly TimeSpan StaleAfter = TimeSpan.FromDays(1);
 
     private const string RootPrefix = "fluentcms-e2e-";
+
+    // Requests a minute, per address and per user, far above what the serial suite sends.
+    private const string TestLimit = "100000";
     private const string ReaderRole = "Reader";
     private const string EditorRoleId = "00000000-0000-7000-8000-000000000002";
     private static readonly TimeSpan CommandTimeout = TimeSpan.FromMinutes(3);
@@ -233,9 +236,11 @@ public sealed class EndToEndHost : IAsyncLifetime
     }
 
     // The settings of a production deployment, as few as the image needs, with four that only a test host has: its address
-    // is a port of the loopback address; its certificates are the run's own; every browser of the tests signs in from that one
-    // address, so the sign-in's limit per client address is raised from 20 a minute; and an access token lasts five seconds, so
-    // that the admin refreshes it on demand, two and a half seconds after it was issued, at the next call of a test's action.
+    // is a port of the loopback address; its certificates are the run's own; every browser of the tests calls from that one
+    // address, one case after another for minutes, so the request limits per address and per user are raised to what such a
+    // suite cannot reach (no case is about the limiter, whose tests are the host's own); and an access token lasts five
+    // seconds, so that the admin refreshes it on demand, two and a half seconds after it was issued, at the next call of a
+    // test's action.
     private void Configure()
     {
         var certificates = _certificates!;
@@ -258,7 +263,11 @@ public sealed class EndToEndHost : IAsyncLifetime
             ["FluentCms__DataProtection__Certificate__Path"] = certificates.SigningPath,
             ["FluentCms__DataProtection__Certificate__Password"] = certificates.Password,
             ["FluentCms__Media__Local__Root"] = Path.Combine(DataDirectory, "media"),
-            ["FluentCms__RateLimits__Auth__PermitLimit"] = "1000",
+            ["FluentCms__RateLimits__Auth__PermitLimit"] = TestLimit,
+            ["FluentCms__RateLimits__Management__PermitLimit"] = TestLimit,
+            ["FluentCms__RateLimits__Delivery__PermitLimit"] = TestLimit,
+            ["FluentCms__RateLimits__Delivery__MaxKeyLimit"] = TestLimit,
+            ["FluentCms__RateLimits__PreAuth__PermitLimit"] = TestLimit,
             ["FluentCms__Clients__AccessTokenLifetime"] = AccessTokenLifetime,
             ["Kestrel__Endpoints__Https__Url"] = origin,
             ["Kestrel__Endpoints__Https__Certificate__Path"] = certificates.ServerPath,

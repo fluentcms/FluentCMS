@@ -288,6 +288,7 @@ public sealed class AdminTab
     private readonly ConcurrentQueue<Uri> _authorizeRequests = new();
     private readonly ConcurrentQueue<string> _loginPages = new();
     private readonly ConcurrentQueue<TokenRequest> _tokenRequests = new();
+    private long _lastGrant;
 
     internal AdminTab(EndToEndHost host, IPage page)
     {
@@ -362,7 +363,29 @@ public sealed class AdminTab
         }
     }
 
-    internal void Saw(TokenRequest request) => _tokenRequests.Enqueue(request);
+    internal void Saw(TokenRequest request)
+    {
+        if (request.Status == 200)
+        {
+            Interlocked.Exchange(ref _lastGrant, DateTime.UtcNow.Ticks);
+        }
+
+        _tokenRequests.Enqueue(request);
+    }
+
+    // Returns once the tab's access token is due for its refresh on demand, half its lifetime after the last grant, so that
+    // the tab's next call refreshes it. The token's age is waited for; no request is sent meanwhile.
+    public async Task TokenDueAsync()
+    {
+        var granted = Interlocked.Read(ref _lastGrant);
+        granted.ShouldBeGreaterThan(0, "the tab has no token yet");
+        var due = new DateTime(granted, DateTimeKind.Utc) + TimeSpan.Parse(EndToEndHost.AccessTokenLifetime, System.Globalization.CultureInfo.InvariantCulture) / 2 + TimeSpan.FromMilliseconds(250);
+        var wait = due - DateTime.UtcNow;
+        if (wait > TimeSpan.Zero)
+        {
+            await Task.Delay(wait, TestContext.Current.CancellationToken);
+        }
+    }
 }
 
 // The names of a token request's form fields, with the value of grant_type only, and the status of its answer.

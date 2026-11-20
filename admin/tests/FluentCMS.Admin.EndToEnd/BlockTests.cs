@@ -17,16 +17,15 @@ public sealed partial class BlockTests(EndToEndHost host) : BrowserTest(host)
     public async Task TheEditorBuildsOrdersAndSavesBlocksToDepthThree()
     {
         var browser = await OpenBrowserAsync();
-        var tab = await browser.NewTabAsync();
-        await tab.Page.GotoAsync(new Uri(Host.Admin, "content/landing/new").AbsoluteUri);
-        await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
-        await tab.Page.Locator("[data-field='title'] input").FillAsync("Blocks in the browser");
+        var tab = await SignedInTabAsync(browser, "content/landing/new");
+        var title = $"Blocks in the browser {Mark}";
+        await tab.Page.Locator("[data-field='title'] input").FillAsync(title);
 
         // A band with a card and its link, then a note; focus goes to each new block's title.
         await AddAsync(tab, "band", "Band");
         await Expect(Toggle(Item(tab, 0))).ToBeFocusedAsync();
         await Item(tab, 0).Locator("input").First.FillAsync("Team");
-        await PressAsync(Item(tab, 0).Locator("fluent-button").Filter(Exactly("Content.Nested.Add", "Card")), "Enter");
+        await Ui.PressAsync(Item(tab, 0).Locator("fluent-button").Filter(Exactly("Content.Nested.Add", "Card")), "Enter");
         var card = Item(tab, 0).Locator(".nested-items > li").First;
         await Expect(Toggle(card)).ToBeFocusedAsync();
         await card.Locator("input").Nth(0).FillAsync("Ada");
@@ -38,9 +37,9 @@ public sealed partial class BlockTests(EndToEndHost host) : BrowserTest(host)
 
         // A link of the band, collapsed, stays collapsed while the band's title is typed in.
         var links = Item(tab, 0).Locator(":scope > .nested-body > .block-form > div:nth-of-type(3) > fieldset");
-        await PressAsync(links.Locator(":scope > .nested-actions fluent-button").Filter(Exactly("Content.Nested.Add", "Link")), "Enter");
+        await Ui.PressAsync(links.Locator(":scope > .nested-actions fluent-button").Filter(Exactly("Content.Nested.Add", "Link")), "Enter");
         await links.Locator(":scope > ul > li input").First.FillAsync("Home");
-        await PressAsync(Toggle(links.Locator(":scope > ul > li")), "Enter");
+        await Ui.PressAsync(Toggle(links.Locator(":scope > ul > li")), "Enter");
         await Expect(Toggle(links.Locator(":scope > ul > li"))).ToHaveAttributeAsync("aria-expanded", "false");
         await Item(tab, 0).Locator("input").First.FillAsync("Team and friends");
         await Expect(Item(tab, 0).Locator("input").First).ToHaveValueAsync("Team and friends");
@@ -50,20 +49,19 @@ public sealed partial class BlockTests(EndToEndHost host) : BrowserTest(host)
         await Item(tab, 1).Locator("input").FillAsync("Hello");
 
         // Alt with an arrow moves the note up, and focus stays on its title.
-        await Toggle(Item(tab, 1)).FocusAsync();
-        await tab.Page.Keyboard.PressAsync("Alt+ArrowUp");
+        await Ui.PressAsync(Toggle(Item(tab, 1)), "Alt+ArrowUp");
         await Expect(Titles(tab)).ToHaveTextAsync([Text("Content.Nested.Item", "Note", "1"), Text("Content.Nested.Item", "Band", "2")]);
         await Expect(Toggle(Item(tab, 0))).ToBeFocusedAsync();
 
         // The band collapses to its first text, is duplicated, and the note is removed, each by its control and Enter.
-        await PressAsync(Toggle(Item(tab, 1)), "Enter");
+        await Ui.PressAsync(Toggle(Item(tab, 1)), "Enter");
         await Expect(Toggle(Item(tab, 1))).ToHaveAttributeAsync("aria-expanded", "false");
         await Expect(Toggle(Item(tab, 1)).Locator(".nested-preview")).ToHaveTextAsync("Team and friends");
-        await PressAsync(Action(tab, "Content.Nested.Duplicate", "Band", "2"), "Enter");
+        await Ui.PressAsync(Action(tab, "Content.Nested.Duplicate", "Band", "2"), "Enter");
         await Expect(Titles(tab)).ToHaveCountAsync(3);
         await Expect(Toggle(Item(tab, 2))).ToBeFocusedAsync();
         await Expect(Toggle(Item(tab, 2))).ToHaveAttributeAsync("aria-expanded", "true");
-        await PressAsync(Action(tab, "Content.Nested.Remove", "Note", "1"), "Enter");
+        await Ui.PressAsync(Action(tab, "Content.Nested.Remove", "Note", "1"), "Enter");
         await Expect(Titles(tab)).ToHaveTextAsync([Text("Content.Nested.Item", "Band", "1"), Text("Content.Nested.Item", "Band", "2")]);
         await Expect(Toggle(Item(tab, 0))).ToBeFocusedAsync();
 
@@ -72,7 +70,7 @@ public sealed partial class BlockTests(EndToEndHost host) : BrowserTest(host)
         await Expect(Toggle(Item(tab, 0))).ToHaveAttributeAsync("aria-expanded", "true");
         await Expect(Toggle(Item(tab, 1))).ToHaveAttributeAsync("aria-expanded", "false");
 
-        var created = await AnswerAsync(tab, () => tab.Page.Keyboard.PressAsync("Control+s"), "POST", tab.ManagementUrl("content/landing"));
+        var created = await tab.AnswerAsync(() => tab.Page.Keyboard.PressAsync("Control+s"), "POST", tab.ManagementUrl("content/landing"));
         created.Status.ShouldBe(201);
         var sent = JsonNode.Parse(created.Request.PostData!)!["sections"]!.AsArray();
         sent.Select(block => (string)block!["type"]!).ShouldBe(["band", "band"]);
@@ -89,14 +87,12 @@ public sealed partial class BlockTests(EndToEndHost host) : BrowserTest(host)
         // Read again, the entry has the blocks as they were sent, with their ids, and a save sends them back unchanged.
         await Expect(tab.Page).ToHaveURLAsync(new Regex("content/landing/[0-9a-f-]{36}"));
         await tab.ReloadAsync();
-        await Expect(tab.Page.Locator("[data-field='title'] input")).ToHaveValueAsync("Blocks in the browser");
+        await Expect(tab.Page.Locator("[data-field='title'] input")).ToHaveValueAsync(title);
         await Expect(Titles(tab)).ToHaveCountAsync(2);
         await Expect(Item(tab, 0).Locator(".media-field")).ToBeVisibleAsync();
         await Expect(Item(tab, 0).Locator(".relation-field")).ToBeVisibleAsync();
-        await tab.Page.Locator("[data-field='title'] input").FocusAsync();
-        var location = (await created.HeaderValueAsync("location")).ShouldNotBeNull();
-        var id = location[(location.LastIndexOf('/') + 1)..].Split('?')[0];
-        var saved = await AnswerAsync(tab, () => tab.Page.Keyboard.PressAsync("Control+s"), "PUT", tab.ManagementUrl($"content/landing/{id}"));
+        var id = await Ui.CreatedIdAsync(created);
+        var saved = await tab.AnswerAsync(() => Ui.PressAsync(tab.Page.Locator("[data-field='title'] input"), "Control+s"), "PUT", tab.ManagementUrl($"content/landing/{id:D}"));
         saved.Status.ShouldBe(200);
         JsonNode.DeepEquals(JsonNode.Parse(saved.Request.PostData!)!["sections"], sent).ShouldBeTrue();
         browser.PolicyViolations.ShouldBeEmpty();
@@ -105,19 +101,9 @@ public sealed partial class BlockTests(EndToEndHost host) : BrowserTest(host)
     [GeneratedRegex("^[A-Za-z0-9_-]{12}$")]
     private static partial Regex IdPattern();
 
-    private static string Text(string key, params string[] arguments)
-    {
-        var text = Repository.AdminText(key);
-        for (var index = 0; index < arguments.Length; index++)
-        {
-            text = text.Replace("{" + index + "}", arguments[index], StringComparison.Ordinal);
-        }
+    private static string Text(string key, params string[] arguments) => Ui.Format(Repository.AdminText(key), arguments);
 
-        return text;
-    }
-
-    private static LocatorFilterOptions Exactly(string key, params string[] arguments) =>
-        new() { HasTextRegex = new Regex($@"^\s*{Regex.Escape(Text(key, arguments))}\s*$") };
+    private static LocatorFilterOptions Exactly(string key, params string[] arguments) => Ui.Exactly(Text(key, arguments));
 
     private static ILocator Field(AdminTab tab) => tab.Page.Locator("[data-field='sections'] > fieldset");
 
@@ -134,18 +120,6 @@ public sealed partial class BlockTests(EndToEndHost host) : BrowserTest(host)
     private static async Task AddAsync(AdminTab tab, string type, string label)
     {
         await Field(tab).Locator(":scope > .nested-actions select").SelectOptionAsync(type);
-        await PressAsync(Field(tab).Locator(":scope > .nested-actions fluent-button").Filter(Exactly("Content.Nested.Add", label)), "Enter");
+        await Ui.PressAsync(Field(tab).Locator(":scope > .nested-actions fluent-button").Filter(Exactly("Content.Nested.Add", label)), "Enter");
     }
-
-    private static async Task PressAsync(ILocator control, string key)
-    {
-        await control.FocusAsync();
-        await control.PressAsync(key);
-    }
-
-    private static Task<IResponse> AnswerAsync(AdminTab tab, Func<Task> action, string method, string url) =>
-        tab.Page.RunAndWaitForResponseAsync(
-            action,
-            response => response.Request.Method == method && response.Url == url,
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
 }

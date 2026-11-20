@@ -76,19 +76,17 @@ public sealed class TwoTabsTests(EndToEndHost host) : BrowserTest(host)
     private static Task<string?> StoredSessionAsync(AdminTab tab) =>
         tab.Page.EvaluateAsync<string?>("() => sessionStorage.getItem('fluentcms-admin/session')");
 
-    // Each switch reads the schema, the plugins and the access with the tab's access token, which the tab refreshes first
-    // once half its lifetime is over; the loop ends at the first refresh, and the wait of each switch is bounded.
+    // A switch reads the schema, the plugins and the access with the tab's access token, which the tab refreshes first once
+    // half its lifetime is over. The test waits for that moment, then switches once: a loop of switches until a refresh would
+    // spend the user's request budget as fast as the runner allows.
     private async Task RefreshOnDemandAsync(AdminTab tab)
     {
         var before = tab.TokenRequests.Count;
-        var deadline = DateTimeOffset.UtcNow + AdminBrowser.Wait;
-        for (var index = 1; tab.TokenRequests.Skip(before).All(request => request.GrantType != "refresh_token"); index++)
-        {
-            DateTimeOffset.UtcNow.ShouldBeLessThan(deadline, "the tab did not refresh its token");
-            var access = await tab.SwitchSiteAsync(Host.Sites[index % 2]);
-            access.Status.ShouldBe(200);
-        }
-
+        await tab.TokenDueAsync();
+        var current = await tab.SiteSwitcher.InputValueAsync();
+        var access = await tab.SwitchSiteAsync(Host.Sites.First(site => !string.Equals(site.Id, current, StringComparison.OrdinalIgnoreCase)));
+        access.Status.ShouldBe(200);
+        await Ui.UntilAsync(() => tab.TokenRequests.Skip(before).Any(request => request.GrantType == "refresh_token"), "the tab did not refresh its token");
         tab.TokenRequests.Skip(before).ShouldAllBe(request => request.GrantType == "refresh_token" && request.Status == 200);
     }
 }
