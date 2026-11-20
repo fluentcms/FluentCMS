@@ -15,7 +15,8 @@ internal sealed record ContentWrite(HttpMethod Method, string Path, JsonObject B
 // its locale, in the order they were added, and takes filter[id][in], filter[field][contains], q on every text, pageSize
 // and a cursor, which is the number of entries before the page. Versions are what a test adds, listed newest first and read
 // one by one, each in its locale; a diff answers the changes a test set for its locale and pair, and a restore with a current
-// tag makes the version's fields the draft as a new version.
+// tag makes the version's fields the draft as a new version. A preview token's answer has the URLs a test gives for the entry
+// and locale, each draft URL with a token of its own, and none by default, as for a type without a template.
 internal sealed class FakeContent
 {
     public const string DefaultLocale = "en";
@@ -63,6 +64,13 @@ internal sealed class FakeContent
         };
         (Versions.TryGetValue((id, locale), out var list) ? list : Versions[(id, locale)] = []).Add((item, fields));
     }
+
+    // The draft and published URLs of a preview, by entry and the token's locale; {token} is filled in.
+    public Func<Guid, string?, (string? Url, string? PublishedUrl)>? Preview { get; set; }
+
+    public TimeSpan PreviewLifetime { get; set; } = TimeSpan.FromMinutes(10);
+
+    public int PreviewMints { get; private set; }
 
     // What the next publish warns about, as the server writes its warnings.
     public JsonArray Warnings { get; set; } = [];
@@ -160,6 +168,19 @@ internal sealed class FakeContent
         if (next?.Invoke(write) is { } answer)
         {
             return answer;
+        }
+
+        if (request.Method == HttpMethod.Post && rest is [var previewed, "preview-token"] && Guid.TryParse(previewed, out var previewedId))
+        {
+            var minted = ++PreviewMints;
+            var (url, publishedUrl) = Preview?.Invoke(previewedId, write.Body["locale"]?.GetValue<string>()) ?? (null, null);
+            return FakeManagementServer.Json(new JsonObject
+            {
+                ["token"] = $"token-{minted}",
+                ["expiresAt"] = DateTimeOffset.UtcNow + PreviewLifetime,
+                ["url"] = url?.Replace("{token}", $"token-{minted}", StringComparison.Ordinal),
+                ["publishedUrl"] = publishedUrl,
+            });
         }
 
         if (request.Method == HttpMethod.Post && rest is [])

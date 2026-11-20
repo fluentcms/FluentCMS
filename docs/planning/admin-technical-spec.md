@@ -559,6 +559,8 @@ A page that sends no `ready` within five seconds is shown as it is, with a note 
 | `url` and `publishedUrl` in its answer, from the per-type template | the frame's URL, draft and published | [#3099] |
 | populated relations under a token | the page as it will look | [#3095] (M7) |
 
+**As built (A-29, [#3368]).** `ContentPreview` is a pane of the routed form, beside it at phone (390 pixels) and tablet (820) width and above it at full width, and above it too on a narrow screen; a form in a side panel offers none. The backend says whether a type has a template only in a token's answer, so the form mints a token as it reads a saved locale, for a caller who may read the type's drafts and while `config.json` lists a preview origin, and shows the Preview button when the answer has a `url`; the pane uses that answer while its token lasts. The frame is sandboxed (`allow-scripts allow-same-origin allow-forms allow-popups`, so the page cannot navigate the admin), drawn once the pane listens for messages, and a URL whose origin `previewOrigins` does not list is refused with a note. A `ready` is taken only from the frame's window and the origin of the URL loaded, of the protocol `fluentcms-preview` and version 1, in `PreviewMessages`; `navigated` shows the page's address. A save, publish, discard or restore mints a token again, for the published URL of a first publish, and posts `refresh` to a ready page whose token still lasts, or loads the frame again; Reload and the switch to the draft mint again after the token ended. The published page needs no token. The reference host's Development settings list `http://localhost:3000`. Component tests cover the button, the widths, the switch, a refused origin, the message checks, the refresh and the reload; an end-to-end case previews a draft of a test type against a page the browser serves on the preview origin, and a save refreshes it without a reload.
+
 ### 4.13 Bulk actions
 
 Rows 3.14, 8.8, 2.14.
@@ -1167,4 +1169,5 @@ The draft asked sixteen questions, each with a recommendation. All were decided 
 [#3350]: https://github.com/fluentcms/FluentCMS/pull/3350
 [#3366]: https://github.com/fluentcms/FluentCMS/issues/3366
 [#3367]: https://github.com/fluentcms/FluentCMS/issues/3367
+[#3368]: https://github.com/fluentcms/FluentCMS/issues/3368
 [#3369]: https://github.com/fluentcms/FluentCMS/issues/3369

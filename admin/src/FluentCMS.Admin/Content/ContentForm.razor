@@ -10,10 +10,12 @@
    a switcher and the status of every locale of the site; a locale the entry has no translation in starts empty or as a copy
    of another and is added by its first save, and a second locale can be shown read-only beside each field. In a side panel
    (A-15) it creates and saves without leaving the page: it raises OnSaved instead of moving to the entry's route, and its
-   heading is the panel's. Its version history (A-28) is a side panel, whose restore the form runs as a status action. *@
+   heading is the panel's. Its version history (A-28) is a side panel, whose restore the form runs as a status action, and
+   its preview (A-29) a pane beside it or above it. *@
 @implements IUnsavedForm
 @implements IAsyncDisposable
 @using System.Net
+@using FluentCMS.Admin.Configuration
 @using FluentCMS.Admin.Forms
 @inject ManagementClient Client
 @inject SiteMetadata Metadata
@@ -27,213 +29,226 @@
 @inject NavigationManager Navigation
 @inject NavigationFocus NavigationFocus
 @inject DocumentInterop Document
+@inject AdminConfiguration Configuration
 @inject IStringLocalizer<AdminResources> L
 
-<div class="content-form">
-    @if (InPanel)
-    {
-        <h2 @ref="panelHeading" tabindex="-1">@Heading</h2>
-    }
-    else
-    {
-        <h1 tabindex="-1">@Heading</h1>
-    }
-    @if (OwnsAddress && localizedType == Type)
-    {
-        <ContentLocaleSwitcher />
-    }
-    @switch (state)
-    {
-        case FormState.Loading:
-            <p role="status">@L["Content.Form.Loading"]</p>
-            break;
-        case FormState.TypeNotFound:
-            <p>@L["Content.Form.TypeNotFound"]</p>
-            break;
-        case FormState.EntryNotFound:
-            <p>@L["Content.Form.EntryNotFound"]</p>
-            break;
-        case FormState.Failed:
-            <p>@L["Content.Form.ReadFailed"]</p>
-            <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="ReloadAsync">@L["Shell.Start.TryAgain"]</CmsButton>
-            break;
-        default:
-            @* The actions of the entry. None is disabled while one runs, which would take focus from it; a click meanwhile is ignored. *@
-            <div class="content-form-toolbar">
-                @StatusBadge()
-                @if (MaySave)
-                {
-                    <CmsButton Appearance="@(MayPublish ? CmsButtonAppearance.Default : CmsButtonAppearance.Primary)" Icon="CmsIconName.Save" OnClick="SaveAsync">@L["Content.Form.Save"]</CmsButton>
-                }
-                @if (MayPublish)
-                {
-                    <CmsButton Appearance="CmsButtonAppearance.Primary" Icon="CmsIconName.Checkmark" OnClick="@(() => PublishAsync(fromButton: true))">@L["Content.Form.Publish"]</CmsButton>
-                }
-                @if (MayDiscard)
-                {
-                    <CmsButton OnClick="@(() => Ask(EntryAction.Discard))">@L["Content.Form.Discard"]</CmsButton>
-                }
-                @if (MayUnpublish)
-                {
-                    <CmsButton OnClick="@(() => Ask(EntryAction.Unpublish))">@L["Content.Form.Unpublish"]</CmsButton>
-                }
-                @if (done is not null)
-                {
-                    <span class="content-form-saved">@done</span>
-                }
-            </div>
-            @if (entryId is not null && read is { IsNewLocale: false, Entry: { } current } && access is not null)
-            {
-                <EntrySchedule @ref="schedule"
-                               Type="@Type"
-                               Entry="@current"
-                               Site="@read.Site"
-                               Locale="@read.Locale"
-                               MayPublish="@(access.Publish && (Status != EntryStatuses.Published || current.ScheduledPublishAt is not null))"
-                               MayUnpublish="@access.Unpublish"
-                               Unsaved="@IsDirty"
-                               LocaleName="@(type?.Localized == true ? ContentCode : null)"
-                               OnChanged="@ScheduleChanged" />
-            }
-            @if (MayShowHistory)
-            {
-                <div class="content-form-history">
-                    <CmsButton OnClick="@(() => historyOpen = true)">@L["Content.Versions.Open"]</CmsButton>
-                </div>
-            }
-            @if (!MaySave)
-            {
-                <p class="content-form-notice"><CmsIcon Name="CmsIconName.Info" />@L["Content.Form.MayNotChange"]</p>
-            }
-            @if (restored)
-            {
-                <p class="content-form-notice"><CmsIcon Name="CmsIconName.Info" />@L["Content.Form.Restored"]</p>
-            }
-            @if (read?.IsNewLocale == true)
-            {
-                <div class="content-form-new-locale">
-                    <p class="content-form-notice"><CmsIcon Name="CmsIconName.Info" />@L[MaySave ? "Content.Form.NewLocale" : "Content.Form.NoLocale", ContentCode ?? ""]</p>
-                    @if (MaySave && CopySources.Count > 0)
+<div class="content-form-layout" data-preview="@(PreviewShown ? (previewWidth == ContentPreview.Full ? "full" : "beside") : null)">
+    <div class="content-form">
+        @if (InPanel)
+        {
+            <h2 @ref="panelHeading" tabindex="-1">@Heading</h2>
+        }
+        else
+        {
+            <h1 tabindex="-1">@Heading</h1>
+        }
+        @if (OwnsAddress && localizedType == Type)
+        {
+            <ContentLocaleSwitcher />
+        }
+        @switch (state)
+        {
+            case FormState.Loading:
+                <p role="status">@L["Content.Form.Loading"]</p>
+                break;
+            case FormState.TypeNotFound:
+                <p>@L["Content.Form.TypeNotFound"]</p>
+                break;
+            case FormState.EntryNotFound:
+                <p>@L["Content.Form.EntryNotFound"]</p>
+                break;
+            case FormState.Failed:
+                <p>@L["Content.Form.ReadFailed"]</p>
+                <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="ReloadAsync">@L["Shell.Start.TryAgain"]</CmsButton>
+                break;
+            default:
+                @* The actions of the entry. None is disabled while one runs, which would take focus from it; a click meanwhile is ignored. *@
+                <div class="content-form-toolbar">
+                    @StatusBadge()
+                    @if (MaySave)
                     {
-                        <div class="content-form-toolbar">
-                            @foreach (var source in CopySources)
-                            {
-                                <CmsButton @key="source" OnClick="@(() => AskCopy(source))">@L["Content.Form.CopyFrom", source]</CmsButton>
-                            }
-                        </div>
+                        <CmsButton Appearance="@(MayPublish ? CmsButtonAppearance.Default : CmsButtonAppearance.Primary)" Icon="CmsIconName.Save" OnClick="SaveAsync">@L["Content.Form.Save"]</CmsButton>
+                    }
+                    @if (MayPublish)
+                    {
+                        <CmsButton Appearance="CmsButtonAppearance.Primary" Icon="CmsIconName.Checkmark" OnClick="@(() => PublishAsync(fromButton: true))">@L["Content.Form.Publish"]</CmsButton>
+                    }
+                    @if (MayDiscard)
+                    {
+                        <CmsButton OnClick="@(() => Ask(EntryAction.Discard))">@L["Content.Form.Discard"]</CmsButton>
+                    }
+                    @if (MayUnpublish)
+                    {
+                        <CmsButton OnClick="@(() => Ask(EntryAction.Unpublish))">@L["Content.Form.Unpublish"]</CmsButton>
+                    }
+                    @if (done is not null)
+                    {
+                        <span class="content-form-saved">@done</span>
                     }
                 </div>
-            }
-            @if (CompareChoices.Count > 0)
-            {
-                <div class="content-form-compare-choice">
-                    <CmsSelect Label="@L["Content.Form.Compare.Label"]"
-                               Options="@([new CmsOption("", L["Content.Form.Compare.None"]), .. CompareChoices.Select(code => new CmsOption(code, code))])"
-                               Value="@(compare?.Locale ?? compareFailed ?? "")"
-                               ValueChanged="@CompareWithAsync" />
-                    @if (compareFailed is { } failedLocale)
-                    {
-                        <p class="content-form-notice">@L["Content.Form.Compare.Failed", failedLocale]</p>
-                    }
-                </div>
-            }
-            @if (saveFailure is not null)
-            {
-                <div @ref="summary" class="content-form-problem" tabindex="-1">
-                    @if (saveFailure.Kind == SaveFailureKind.Invalid)
-                    {
-                        <p>@NotDoneErrors(saveFailure.Action)</p>
-                        @if (formErrors.Count > 0)
+                @if (entryId is not null && read is { IsNewLocale: false, Entry: { } current } && access is not null)
+                {
+                    <EntrySchedule @ref="schedule"
+                                   Type="@Type"
+                                   Entry="@current"
+                                   Site="@read.Site"
+                                   Locale="@read.Locale"
+                                   MayPublish="@(access.Publish && (Status != EntryStatuses.Published || current.ScheduledPublishAt is not null))"
+                                   MayUnpublish="@access.Unpublish"
+                                   Unsaved="@IsDirty"
+                                   LocaleName="@(type?.Localized == true ? ContentCode : null)"
+                                   OnChanged="@ScheduleChanged" />
+                }
+                @if (MayShowHistory)
+                {
+                    <div class="content-form-history">
+                        <CmsButton OnClick="@(() => historyOpen = true)">@L["Content.Versions.Open"]</CmsButton>
+                        @if (MayPreview && previewAnswer?.Url is not null)
                         {
-                            <ul>
-                                @foreach (var error in formErrors)
-                                {
-                                    <li>@error.Message</li>
-                                }
-                            </ul>
+                            <CmsButton Icon="CmsIconName.Open" OnClick="@(() => previewOpen = !previewOpen)">@L[previewOpen ? "Content.Preview.Close" : "Content.Preview.Open"]</CmsButton>
                         }
-                    }
-                    else if (saveFailure.Kind == SaveFailureKind.Unreachable && saveFailure.Action == EntryAction.Save)
-                    {
-                        <p>@L["Content.Form.NotSavedUnreachable"]</p>
-                    }
-                    else if (saveFailure.Kind == SaveFailureKind.Unreachable)
-                    {
-                        <p><strong>@NotDone(saveFailure.Action)</strong></p>
-                        <p>@L["Content.Form.Unreachable"]</p>
-                    }
-                    else
-                    {
-                        <p><strong>@(saveFailure.Problem?.Title ?? NotDone(saveFailure.Action))</strong></p>
-                        @if (saveFailure.Problem?.Detail is { } detail)
-                        {
-                            <p>@detail</p>
-                        }
-                        @if (saveFailure.Kind == SaveFailureKind.Conflict)
+                    </div>
+                }
+                @if (!MaySave)
+                {
+                    <p class="content-form-notice"><CmsIcon Name="CmsIconName.Info" />@L["Content.Form.MayNotChange"]</p>
+                }
+                @if (restored)
+                {
+                    <p class="content-form-notice"><CmsIcon Name="CmsIconName.Info" />@L["Content.Form.Restored"]</p>
+                }
+                @if (read?.IsNewLocale == true)
+                {
+                    <div class="content-form-new-locale">
+                        <p class="content-form-notice"><CmsIcon Name="CmsIconName.Info" />@L[MaySave ? "Content.Form.NewLocale" : "Content.Form.NoLocale", ContentCode ?? ""]</p>
+                        @if (MaySave && CopySources.Count > 0)
                         {
                             <div class="content-form-toolbar">
-                                @if (conflict is not null)
+                                @foreach (var source in CopySources)
                                 {
-                                    <CmsButton OnClick="ReopenConflict">@L["Content.Form.Conflict.Show"]</CmsButton>
+                                    <CmsButton @key="source" OnClick="@(() => AskCopy(source))">@L["Content.Form.CopyFrom", source]</CmsButton>
                                 }
-                                <CmsButton OnClick="ReloadAsync">@L["Content.Form.Reload"]</CmsButton>
                             </div>
                         }
-                    }
-                </div>
-            }
-            @if (warnings.Count > 0)
-            {
-                <div class="content-form-warnings">
-                    <p><CmsIcon Name="CmsIconName.Warning" />@L["Content.Form.Warnings"]</p>
-                    <ul>
-                        @foreach (var warning in warnings)
+                    </div>
+                }
+                @if (CompareChoices.Count > 0)
+                {
+                    <div class="content-form-compare-choice">
+                        <CmsSelect Label="@L["Content.Form.Compare.Label"]"
+                                   Options="@([new CmsOption("", L["Content.Form.Compare.None"]), .. CompareChoices.Select(code => new CmsOption(code, code))])"
+                                   Value="@(compare?.Locale ?? compareFailed ?? "")"
+                                   ValueChanged="@CompareWithAsync" />
+                        @if (compareFailed is { } failedLocale)
                         {
-                            <li>
-                                @if (warning is { TargetType: { } targetType, TargetId: { } targetId })
-                                {
-                                    <a href="@ContentRoutes.Entry(targetType, targetId)">@warning.Message</a>
-                                }
-                                else
-                                {
-                                    @warning.Message
-                                }
-                            </li>
+                            <p class="content-form-notice">@L["Content.Form.Compare.Failed", failedLocale]</p>
                         }
-                    </ul>
-                </div>
-            }
-            @if (Untabbed is { } main)
-            {
-                @Groups(main)
-            }
-            @if (ShownTabs.Any())
-            {
-                <CmsTabs ActiveTabId="@ActiveTab" ActiveTabIdChanged="@(id => activeTab = id)">
-                    @foreach (var index in ShownTabs)
-                    {
-                        <CmsTab @key="index" Id="@TabId(index)" Title="@(tabbed[index].Name!)">@Groups(tabbed[index])</CmsTab>
-                    }
-                </CmsTabs>
-            }
-            @ConflictDialog()
-            <CmsDialog Title="@L["Content.Form.Copy.Title"]" Open="@(copyAsked is not null)" OpenChanged="@(open => { if (!open) copyAsked = null; })">
-                <ChildContent>
-                    <p>@L["Content.Form.Copy.Text", copyAsked ?? ""]</p>
-                </ChildContent>
-                <Actions>
-                    <CmsButton OnClick="@(() => copyAsked = null)">@L["Content.Form.Copy.Cancel"]</CmsButton>
-                    <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="ConfirmCopyAsync">@L["Content.Form.Copy.Confirm", copyAsked ?? ""]</CmsButton>
-                </Actions>
-            </CmsDialog>
-            @Confirmation(EntryAction.Discard, "Content.Form.Discard")
-            @Confirmation(EntryAction.Unpublish, "Content.Form.Unpublish")
-            @if (MayShowHistory)
-            {
-                <VersionHistoryPanel Type="@type" EntryId="@entryId!.Value" Site="@read!.Site" Locale="@read.Locale" DraftVersion="@read.Entry!.Version" ContentLocale="@ContentCode" Open="@historyOpen" Unsaved="@IsDirty" MayRestore="@(access?.Update == true)"
-                                     OnClose="@(() => historyOpen = false)" OnRestore="RestoreVersionAsync" />
-            }
-            break;
+                    </div>
+                }
+                @if (saveFailure is not null)
+                {
+                    <div @ref="summary" class="content-form-problem" tabindex="-1">
+                        @if (saveFailure.Kind == SaveFailureKind.Invalid)
+                        {
+                            <p>@NotDoneErrors(saveFailure.Action)</p>
+                            @if (formErrors.Count > 0)
+                            {
+                                <ul>
+                                    @foreach (var error in formErrors)
+                                    {
+                                        <li>@error.Message</li>
+                                    }
+                                </ul>
+                            }
+                        }
+                        else if (saveFailure.Kind == SaveFailureKind.Unreachable && saveFailure.Action == EntryAction.Save)
+                        {
+                            <p>@L["Content.Form.NotSavedUnreachable"]</p>
+                        }
+                        else if (saveFailure.Kind == SaveFailureKind.Unreachable)
+                        {
+                            <p><strong>@NotDone(saveFailure.Action)</strong></p>
+                            <p>@L["Content.Form.Unreachable"]</p>
+                        }
+                        else
+                        {
+                            <p><strong>@(saveFailure.Problem?.Title ?? NotDone(saveFailure.Action))</strong></p>
+                            @if (saveFailure.Problem?.Detail is { } detail)
+                            {
+                                <p>@detail</p>
+                            }
+                            @if (saveFailure.Kind == SaveFailureKind.Conflict)
+                            {
+                                <div class="content-form-toolbar">
+                                    @if (conflict is not null)
+                                    {
+                                        <CmsButton OnClick="ReopenConflict">@L["Content.Form.Conflict.Show"]</CmsButton>
+                                    }
+                                    <CmsButton OnClick="ReloadAsync">@L["Content.Form.Reload"]</CmsButton>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+                @if (warnings.Count > 0)
+                {
+                    <div class="content-form-warnings">
+                        <p><CmsIcon Name="CmsIconName.Warning" />@L["Content.Form.Warnings"]</p>
+                        <ul>
+                            @foreach (var warning in warnings)
+                            {
+                                <li>
+                                    @if (warning is { TargetType: { } targetType, TargetId: { } targetId })
+                                    {
+                                        <a href="@ContentRoutes.Entry(targetType, targetId)">@warning.Message</a>
+                                    }
+                                    else
+                                    {
+                                        @warning.Message
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+                @if (Untabbed is { } main)
+                {
+                    @Groups(main)
+                }
+                @if (ShownTabs.Any())
+                {
+                    <CmsTabs ActiveTabId="@ActiveTab" ActiveTabIdChanged="@(id => activeTab = id)">
+                        @foreach (var index in ShownTabs)
+                        {
+                            <CmsTab @key="index" Id="@TabId(index)" Title="@(tabbed[index].Name!)">@Groups(tabbed[index])</CmsTab>
+                        }
+                    </CmsTabs>
+                }
+                @ConflictDialog()
+                <CmsDialog Title="@L["Content.Form.Copy.Title"]" Open="@(copyAsked is not null)" OpenChanged="@(open => { if (!open) copyAsked = null; })">
+                    <ChildContent>
+                        <p>@L["Content.Form.Copy.Text", copyAsked ?? ""]</p>
+                    </ChildContent>
+                    <Actions>
+                        <CmsButton OnClick="@(() => copyAsked = null)">@L["Content.Form.Copy.Cancel"]</CmsButton>
+                        <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="ConfirmCopyAsync">@L["Content.Form.Copy.Confirm", copyAsked ?? ""]</CmsButton>
+                    </Actions>
+                </CmsDialog>
+                @Confirmation(EntryAction.Discard, "Content.Form.Discard")
+                @Confirmation(EntryAction.Unpublish, "Content.Form.Unpublish")
+                @if (MayShowHistory)
+                {
+                    <VersionHistoryPanel Type="@type" EntryId="@entryId!.Value" Site="@read!.Site" Locale="@read.Locale" DraftVersion="@read.Entry!.Version" ContentLocale="@ContentCode" Open="@historyOpen" Unsaved="@IsDirty" MayRestore="@(access?.Update == true)"
+                                         OnClose="@(() => historyOpen = false)" OnRestore="RestoreVersionAsync" />
+                }
+                break;
+        }
+    </div>
+    @if (PreviewShown)
+    {
+        <ContentPreview Type="@type!.Name" EntryId="@entryId!.Value" Site="@read!.Site" Locale="@read.Locale" TokenLocale="@PreviewLocale" Version="@read.Entry!.Version" Status="@read.Entry.Status"
+                        FirstUrl="@previewAnswer!.Url" FirstPublishedUrl="@previewAnswer.PublishedUrl" FirstExpiresAt="@previewAnswer.ExpiresAt"
+                        Width="@previewWidth" WidthChanged="@(value => previewWidth = value)" OnClose="@(() => previewOpen = false)" />
     }
 </div>
 <CmsDialog Title="@L["Content.Form.Leave.Title"]" Open="@(leaveAnswer is not null)" OpenChanged="@(open => { if (!open) AnswerLeave(false); })">
@@ -387,6 +402,10 @@
     // The version a restore makes the draft from, while it runs.
     private int restoring;
     private EntrySchedule? schedule;
+    // The answer of a token minted as the form read the entry, which says whether the type has a preview page (A-29).
+    private PreviewTokenAnswer? previewAnswer;
+    private bool previewOpen;
+    private string previewWidth = ContentPreview.Phone;
 
     // The name of the content type, as the route has it.
     [Parameter, EditorRequired]
@@ -464,6 +483,14 @@
     // The history of a saved locale (A-28), from the page's form only, since a panel's form is a dialog already. Versions
     // hold drafts, so the server reads them only for a caller who may read the type's drafts.
     private bool MayShowHistory => !InPanel && entryId is not null && read?.Entry is not null && type is not null && access?.Drafts == true;
+
+    // The preview of a saved locale, from the page's form only, while config.json lists a preview origin. The token reads
+    // the draft, so it is minted only for a caller who may read the type's drafts.
+    private bool MayPreview => MayShowHistory && Configuration.PreviewEnabled;
+
+    private bool PreviewShown => previewOpen && MayPreview && previewAnswer?.Url is not null;
+
+    private string? PreviewLocale => type?.Localized == true ? ContentCode : null;
 
     private bool Busy => saving || running is not null || copying;
 
@@ -600,7 +627,7 @@
         (type, access, tabs, tabbed, read, entryId, activeTab) = (null, null, [], [], null, null, null);
         (restored, done, saveFailure, pendingCreate, publishTried) = (false, null, null, null, false);
         (warnings, confirming) = ([], null);
-        (conflict, conflictOpen, comparing, historyOpen) = (null, false, false, false);
+        (conflict, conflictOpen, comparing, historyOpen, previewAnswer) = (null, false, false, false, null);
         (locales, compare, compareFailed, compareChoice, copying, copyAsked, readableLocales) = (null, null, null, null, false, null, []);
         ClearErrors();
         try
@@ -661,6 +688,7 @@
             if (current == generation)
             {
                 state = FormState.Ready;
+                _ = ProbePreviewAsync(current);
             }
         }
         catch (ApiProblemException problem) when (problem.Problem.Status == (int)HttpStatusCode.NotFound && current == generation)
@@ -856,6 +884,30 @@
     private static bool IsFailure(Exception exception) =>
         exception is ApiProblemException or HttpRequestException or TaskCanceledException or JsonException;
 
+    // The backend tells whether a type has a preview template only in a token's answer, so the form mints one as it reads a
+    // saved locale; the pane uses it while it lasts. A failed mint leaves the form without the preview button.
+    private async Task ProbePreviewAsync(int current)
+    {
+        if (!MayPreview || entryId is not { } id || read is not { } basedOn)
+        {
+            return;
+        }
+
+        try
+        {
+            var answer = await Client.MintPreviewTokenAsync(Type, id, basedOn.Site, basedOn.Locale, PreviewLocale, CancellationToken.None);
+            if (current == generation && !disposed)
+            {
+                previewAnswer = answer;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception exception) when (IsFailure(exception))
+        {
+            // No preview.
+        }
+    }
+
     private Task ReloadAsync()
     {
         tracking?.Dispose();
@@ -1017,6 +1069,11 @@
             {
                 NavigationFocus.KeepNext();
                 NavigateAway(ContentRoutes.InLocale(RouteOf(saved), locale), replace: true);
+            }
+
+            if (previewAnswer is null)
+            {
+                _ = ProbePreviewAsync(current);
             }
 
             await OnSaved.InvokeAsync(saved.Entry);
