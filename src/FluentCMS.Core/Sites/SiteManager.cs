@@ -165,10 +165,9 @@ internal sealed partial class SiteManager(
 
     // The foreign keys delete the site's locales, its roles with their grants, its settings and its plugin rows. A site with documents stays, because
     // they would be left in a site that no longer exists; trashed ones count, since restoring one needs its site.
-    // The site's row is locked first, so the deletion waits for every write that is adding an entry to it, and such a write
-    // that comes later waits and then finds no site (EntryStore.WriteDraftAsync). The deletion is then one statement that
-    // sees the entries those writes committed. SiteDeletedEvent goes into the outbox in the same transaction, so that the
-    // plugins' cleanups of the site run even when the process stops right after the commit.
+    // The deletion waits for every write that is adding an entry to the site, and a later one finds no site (SiteRows).
+    // SiteDeletedEvent goes into the outbox in the same transaction, so that the plugins' cleanups of the site run even
+    // when the process stops right after the commit.
     public Task<Site> DeleteAsync(Guid id, CancellationToken cancellationToken = default) => DeleteAsync(id, null, cancellationToken);
 
     // With source, SiteDeletedEvent is raised with it, in the transaction of the deletion.
@@ -182,51 +181,42 @@ internal sealed partial class SiteManager(
             throw new ValidationException([new ValidationError("site", SiteErrorCodes.DefaultSiteProtected, "The default site cannot be deleted.")]);
         }
 
-        bool found;
-        var deleted = 0;
-        await using (var transaction = await context.Database.BeginTransactionAsync(cancellationToken))
+        SiteDeletion outcome;
+        events.Open();
+        try
         {
-            events.Open();
-            try
-            {
-                found = await provider.LockSiteAsync(context, id, exclusive: true, cancellationToken);
-                if (found)
-                {
-                    deleted = await context.Set<Site>()
-                        .Where(item => item.Id == id && !item.IsDefault && !context.Documents.IgnoreQueryFilters().Any(document => document.SiteId == id))
-                        .ExecuteDeleteAsync(cancellationToken);
-                }
-
-                if (deleted == 1)
+            outcome = await SiteRows.DeleteAsync(
+                context,
+                provider,
+                id,
+                async () =>
                 {
                     if (source is not null)
                     {
                         await bus.PublishAsync(new SiteDeletedEvent(site.Id, site.Slug) { Source = source }, cancellationToken);
                         await events.StageAsync(context, cancellationToken);
                     }
-
-                    await transaction.CommitAsync(CancellationToken.None);
-                }
-            }
-            catch
-            {
-                events.Clear();
-                throw;
-            }
-            finally
-            {
-                events.Close();
-            }
+                },
+                cancellationToken);
+        }
+        catch
+        {
+            events.Clear();
+            throw;
+        }
+        finally
+        {
+            events.Close();
         }
 
         settings.InvalidateSite(id);
         sites.Invalidate();
-        if (!found)
+        if (outcome == SiteDeletion.NotFound)
         {
             throw new ValidationException([new ValidationError("site", SiteErrorCodes.SiteNotFound, $"There is no site {id}.")]);
         }
 
-        if (deleted == 0)
+        if (outcome == SiteDeletion.HasContent)
         {
             throw new ValidationException([new ValidationError("site", SiteErrorCodes.SiteHasContent, $"The site '{site.Slug}' still has content. Delete it first.")]);
         }
