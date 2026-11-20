@@ -25,7 +25,7 @@ public sealed class ScheduleTests(EndToEndHost host) : BrowserTest(host)
         await browser.SignInOnTheHostedPageAsync(tab, Host.Editor);
         var mark = $"Scheduled {Guid.NewGuid():N}";
         await tab.Page.Locator("[data-field='title'] input").FillAsync(mark);
-        var created = await AnswerAsync(tab, () => tab.Page.Keyboard.PressAsync("Control+s"), "POST", tab.ManagementUrl("content/article"));
+        var created = await tab.AnswerAsync(() => tab.Page.Keyboard.PressAsync("Control+s"), "POST", tab.ManagementUrl("content/article"));
         created.Status.ShouldBe(201);
         var location = (await created.HeaderValueAsync("location")).ShouldNotBeNull();
         var entry = tab.ManagementUrl($"content/article/{location[(location.LastIndexOf('/') + 1)..]}");
@@ -34,11 +34,11 @@ public sealed class ScheduleTests(EndToEndHost host) : BrowserTest(host)
         var zone = await tab.Page.EvaluateAsync<string>("() => Intl.DateTimeFormat().resolvedOptions().timeZone");
         var day = new DateOnly(2099, 6, 1);
 
-        await Control(tab, "Content.Schedule.Open").PressAsync("Enter");
+        await Ui.PressAsync(Control(tab, "Content.Schedule.Open"), "Enter");
         await Expect(Shown(tab, NewTitle)).ToBeVisibleAsync();
         await Expect(Content(tab, NewTitle).Locator(".content-schedule-zone")).ToHaveTextAsync(Text("Content.Field.TimeZone", zone));
         await EnterAsync(tab, NewTitle, culture, day, new TimeOnly(9, 0));
-        var scheduled = await AnswerAsync(tab, () => DialogButton(tab, NewTitle, "Content.Schedule.Submit").PressAsync("Enter"), "POST", $"{entry}/schedule");
+        var scheduled = await tab.AnswerAsync(() => Ui.PressAsync(DialogButton(tab, NewTitle, "Content.Schedule.Submit"), "Enter"), "POST", $"{entry}/schedule");
         scheduled.Status.ShouldBe(200);
         var sent = JsonNode.Parse(scheduled.Request.PostData!)!;
         (sent["action"]!.GetValue<string>(), sent["at"]!.GetValue<string>(), sent["timeZone"]!.GetValue<string>()).ShouldBe(("publish", "2099-06-01T09:00:00", zone));
@@ -53,15 +53,15 @@ public sealed class ScheduleTests(EndToEndHost host) : BrowserTest(host)
         await Expect(FormSchedule(tab)).ToHaveTextAsync(Pending(culture, day, "9:00", zone));
 
         // A move is the same POST again, which replaces the pending publish.
-        await Control(tab, "Content.Schedule.Move.publish").PressAsync("Enter");
+        await Ui.PressAsync(Control(tab, "Content.Schedule.Move.publish"), "Enter");
         await Expect(Shown(tab, MoveTitle)).ToBeVisibleAsync();
         await EnterAsync(tab, MoveTitle, culture, day, new TimeOnly(10, 0));
-        var moved = await AnswerAsync(tab, () => DialogButton(tab, MoveTitle, "Content.Schedule.MoveSubmit").PressAsync("Enter"), "POST", $"{entry}/schedule");
+        var moved = await tab.AnswerAsync(() => Ui.PressAsync(DialogButton(tab, MoveTitle, "Content.Schedule.MoveSubmit"), "Enter"), "POST", $"{entry}/schedule");
         moved.Status.ShouldBe(200);
         JsonNode.Parse(moved.Request.PostData!)!["at"]!.GetValue<string>().ShouldBe("2099-06-01T10:00:00");
         await Expect(FormSchedule(tab)).ToHaveTextAsync(Pending(culture, day, "10:00", zone));
 
-        var cancelled = await AnswerAsync(tab, () => Control(tab, "Content.Schedule.Cancel.publish").PressAsync("Enter"), "DELETE", $"{entry}/schedule/publish");
+        var cancelled = await tab.AnswerAsync(() => Ui.PressAsync(Control(tab, "Content.Schedule.Cancel.publish"), "Enter"), "DELETE", $"{entry}/schedule/publish");
         cancelled.Status.ShouldBe(204);
         await Expect(FormSchedule(tab)).ToHaveCountAsync(0);
         await Expect(tab.Announced(Repository.AdminText("Content.Schedule.Cancelled.publish"))).ToBeAttachedAsync();
@@ -73,10 +73,10 @@ public sealed class ScheduleTests(EndToEndHost host) : BrowserTest(host)
     {
         var date = Content(tab, titleKey).Locator("input.cms-input-date");
         await date.FillAsync(day.ToString("d", culture));
-        await date.PressAsync("Tab");
+        await Ui.PressAsync(date, "Tab");
         var clock = Content(tab, titleKey).Locator("input.cms-input-time");
         await clock.FillAsync(time.ToString(culture.DateTimeFormat.ShortTimePattern, culture));
-        await clock.PressAsync("Tab");
+        await Ui.PressAsync(clock, "Tab");
     }
 
     // The badge of the English publish: its date, its time and the zone it names.
@@ -100,10 +100,4 @@ public sealed class ScheduleTests(EndToEndHost host) : BrowserTest(host)
     private static ILocator DialogButton(AdminTab tab, string titleKey, string buttonKey) =>
         Content(tab, titleKey).Locator("fluent-button")
             .Filter(new LocatorFilterOptions { HasTextRegex = new Regex($@"^\s*{Regex.Escape(Repository.AdminText(buttonKey))}\s*$") });
-
-    private static Task<IResponse> AnswerAsync(AdminTab tab, Func<Task> action, string method, string url) =>
-        tab.Page.RunAndWaitForResponseAsync(
-            action,
-            response => response.Request.Method == method && response.Url == url,
-            new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
 }
