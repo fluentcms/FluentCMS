@@ -999,13 +999,13 @@ internal sealed class MediaService(
         ArgumentNullException.ThrowIfNull(file);
 
         var name = FileNameOf(file.FileName) ?? throw Invalid($"files[{index}].fileName", $"A file needs a name of at most {MediaModel.FileNameMaxLength} characters, without control characters.");
-        return PrepareAsync(name, file.Content, rules, requestLeft, Math.Min(rules.MaxRequestSize, options.Value.MaxRequestBodySize), cancellationToken);
+        return PrepareAsync(name, file.Content, rules, requestLeft, Math.Min(rules.MaxRequestSize, options.Value.MaxRequestBodySize), processor, cancellationToken);
     }
 
     // The checks of an upload, which a replace and an import (MediaTransfer) run too. Read once to a temporary file, counting
     // and hashing on the way, so that a file over its limit is refused without reading it to the end, and its type and image
     // size are read from the bytes as stored.
-    internal static async Task<Upload> PrepareAsync(string name, Stream source, MediaSettings rules, long requestLeft, long requestLimit, CancellationToken cancellationToken)
+    internal static async Task<Upload> PrepareAsync(string name, Stream source, MediaSettings rules, long requestLeft, long requestLimit, IImageProcessor processor, CancellationToken cancellationToken)
     {
         Stream content = TemporaryFile();
         try
@@ -1066,7 +1066,7 @@ internal sealed class MediaService(
                 throw new PluginException(MediaErrorCodes.TypeNotAllowed, $"The file '{name}' is not of a type the site allows: {string.Join(", ", allowed)}{(rules.Svg == SvgHandling.Sanitize ? ", " + MediaTypes.Svg.MimeType : "")}.");
             }
 
-            var dimensions = type.IsImage ? await ImageSize.ReadAsync(content, type, cancellationToken) : null;
+            var dimensions = type.IsImage ? await DimensionsAsync(processor, content, type, cancellationToken) : null;
             return new Upload(name, type, content, size, checksum, checksum, dimensions);
         }
         catch
@@ -1074,6 +1074,22 @@ internal sealed class MediaService(
             await content.DisposeAsync();
             throw;
         }
+    }
+
+    // The size of an image as it is shown, after its EXIF orientation, as the processor reads it and its transforms make it;
+    // for a type the processor does not read, or bytes it does not take, the size the header states.
+    internal static async Task<(int Width, int Height)?> DimensionsAsync(IImageProcessor processor, Stream content, MediaType type, CancellationToken cancellationToken)
+    {
+        if (processor.CanDecode(type.MimeType))
+        {
+            content.Position = 0;
+            if (await processor.IdentifyAsync(content, cancellationToken) is { Width: > 0, Height: > 0 } header)
+            {
+                return (header.Width, header.Height);
+            }
+        }
+
+        return await ImageSize.ReadAsync(content, type, cancellationToken);
     }
 
     private async Task ForgetAsync(string key)

@@ -5,8 +5,8 @@ using Microsoft.Extensions.Logging;
 namespace FluentCMS.Plugins.Media;
 
 // Once the host has started, which is after the migrations: makes sure of the signing key, so that the instances that start
-// together share the one they create first, and stores the daily schedule of the variant cleanup. Each step is tried again
-// while the database is out of reach.
+// together share the one they create first, stores the daily schedule of the variant cleanup and enqueues the check of the
+// image sizes (MediaDimensionsJob). Each step is tried again while the database is out of reach.
 internal sealed class MediaStartup(
     MediaSigning signing,
     IJobScheduler scheduler,
@@ -34,6 +34,7 @@ internal sealed class MediaStartup(
 
         var keyReady = false;
         var scheduled = false;
+        var checking = false;
         while (!stoppingToken.IsCancellationRequested)
         {
             if (!keyReady)
@@ -62,7 +63,20 @@ internal sealed class MediaStartup(
                 }
             }
 
-            if (keyReady && scheduled)
+            if (!checking)
+            {
+                try
+                {
+                    await scheduler.EnqueueAsync<MediaDimensionsJob, MediaDimensionsPayload>(new MediaDimensionsPayload(null), cancellationToken: stoppingToken);
+                    checking = true;
+                }
+                catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
+                {
+                    MediaLog.DimensionsNotEnqueued(logger, exception);
+                }
+            }
+
+            if (keyReady && scheduled && checking)
             {
                 return;
             }
