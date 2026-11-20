@@ -72,7 +72,7 @@ A key the configuration sets wins over what the host set in code inside `AddFlue
 
 A CORS origin is an `http` or `https` origin with no path, such as `https://app.example.com`. The lists are empty by default, which allows no browser origin, and a wildcard is refused.
 
-To keep dead-lettered jobs or failed outbox deliveries until they are retried, set `FluentCms:Jobs:DeadLetteredRetention` or `FluentCms:Events:Outbox:FailedRetention` to an empty value: `""` in `appsettings.json`, or an empty environment variable such as `FluentCms__Jobs__DeadLetteredRetention=` where the platform keeps one. Windows drops an environment variable set to an empty value, so there use `appsettings.json`, or set `cms.Jobs.Options.DeadLetteredRetention = null` and `cms.Events.Outbox.FailedRetention = null` in code, which the configuration overrides only when it names the key.
+To keep dead-lettered jobs or failed outbox deliveries until they are retried, set `FluentCms:Jobs:DeadLetteredRetention` or `FluentCms:Events:Outbox:FailedRetention` to an empty value: `""` in `appsettings.json`, or an empty environment variable such as `FluentCms__Jobs__DeadLetteredRetention=` where the platform keeps one. Windows drops an environment variable set to an empty value, so there use `appsettings.json`, or set `cms.Jobs.Options.DeadLetteredRetention = null` and `cms.Events.Outbox.FailedRetention = null` in code, which the configuration overrides only when it names the key. Each run of `jobs.retention` logs how many succeeded and dead-lettered jobs it removed (event id 9512, Information); a retention schedule that cannot be stored is event id 9513 (Error).
 
 ## Health and telemetry
 
