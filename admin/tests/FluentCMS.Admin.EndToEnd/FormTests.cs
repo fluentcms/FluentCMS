@@ -24,7 +24,7 @@ public sealed class FormTests(EndToEndHost host) : BrowserTest(host)
         var create = await SaveAsync(tab, "POST", tab.ManagementUrl("content/article"));
 
         (await create.Request.HeaderValueAsync("idempotency-key")).ShouldNotBeNullOrEmpty();
-        var id = await Ui.CreatedIdAsync(create);
+        var id = await Ui.CreatedIdAsync(create, "content/article");
         // The admin moves to the entry's route within the page. The address is polled: a wait for a navigation can start after
         // Playwright has taken that move in and then waits for one that does not come.
         await Expect(tab.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}\\?locale=en$"), new PageAssertionsToHaveURLOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });

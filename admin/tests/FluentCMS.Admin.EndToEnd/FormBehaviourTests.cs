@@ -25,7 +25,7 @@ public sealed class FormBehaviourTests(EndToEndHost host) : BrowserTest(host)
         var first = await SignedInTabAsync(browser, "content/article/new");
         await Title(first).FillAsync($"Read by two tabs {Mark}");
         var create = await SaveAsync(first, () => first.Button("Content.Form.Save").ClickAsync(), "POST", first.ManagementUrl("content/article"));
-        var id = await Ui.CreatedIdAsync(create);
+        var id = await Ui.CreatedIdAsync(create, "content/article");
         var entry = first.ManagementUrl($"content/article/{id:D}");
         await Expect(first.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}\\?locale=en$"), UrlWait);
 

@@ -22,7 +22,7 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
         var browser = await OpenBrowserAsync();
         var tab = await OpenLibraryAsync(browser);
 
-        await UploadAsync(tab.Page.Locator("main"), PngFile($"{mark}-photo.png"), new FilePayload { Name = $"{mark}-setup.exe", MimeType = "application/octet-stream", Buffer = Program });
+        await UploadAsync(tab.Page.Locator("main"), 1, PngFile($"{mark}-photo.png"), new FilePayload { Name = $"{mark}-setup.exe", MimeType = "application/octet-stream", Buffer = Program });
 
         await Expect(UploadItem(tab, $"{mark}-photo.png")).ToContainTextAsync(Text("Media.Upload.State.Done"));
         await Expect(UploadItem(tab, $"{mark}-setup.exe")).ToContainTextAsync(Text("Media.Upload.Refused.FCMS1583"));
@@ -151,7 +151,7 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
         await Expect(tab.ShownDialog(Text("Media.Folder.NewTitle"))).ToBeVisibleAsync();
         await Ui.PressAsync(tab.Page.GetByLabel(Text("Media.Folder.Name")), "Control+a");
         await keyboard.TypeAsync($"{mark}-keys");
-        var folder = await Ui.CreatedIdAsync(await tab.AnswerAsync(() => keyboard.PressAsync("Enter"), "POST", tab.ManagementUrl("media/folders")));
+        var folder = await Ui.CreatedIdAsync(await tab.AnswerAsync(() => keyboard.PressAsync("Enter"), "POST", tab.ManagementUrl("media/folders")), "media/folders");
         await Expect(TreeItem(tab, folder)).ToHaveCountAsync(1);
         await Ui.FocusReturnedAsync(Button(tab, "Media.Folder.New"));
 
@@ -227,7 +227,7 @@ public sealed class MediaLibraryTests(EndToEndHost host) : BrowserTest(host)
         var dialog = await tab.OpenDialogAsync(() => Button(tab, "Media.Folder.New").ClickAsync(), Text("Media.Folder.NewTitle"));
         await dialog.GetByLabel(Text("Media.Folder.Name")).FillAsync(name);
         var created = await tab.AnswerAsync(() => Button(tab, "Media.Folder.Create").ClickAsync(), "POST", tab.ManagementUrl("media/folders"));
-        var id = await Ui.CreatedIdAsync(created);
+        var id = await Ui.CreatedIdAsync(created, "media/folders");
         await Expect(TreeItem(tab, id)).ToHaveCountAsync(1);
         return id;
     }

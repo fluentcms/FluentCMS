@@ -91,7 +91,7 @@ public sealed partial class BlockTests(EndToEndHost host) : BrowserTest(host)
         await Expect(Titles(tab)).ToHaveCountAsync(2);
         await Expect(Item(tab, 0).Locator(".media-field")).ToBeVisibleAsync();
         await Expect(Item(tab, 0).Locator(".relation-field")).ToBeVisibleAsync();
-        var id = await Ui.CreatedIdAsync(created);
+        var id = await Ui.CreatedIdAsync(created, "content/landing");
         var saved = await tab.AnswerAsync(() => Ui.PressAsync(tab.Page.Locator("[data-field='title'] input"), "Control+s"), "PUT", tab.ManagementUrl($"content/landing/{id:D}"));
         saved.Status.ShouldBe(200);
         JsonNode.DeepEquals(JsonNode.Parse(saved.Request.PostData!)!["sections"], sent).ShouldBeTrue();

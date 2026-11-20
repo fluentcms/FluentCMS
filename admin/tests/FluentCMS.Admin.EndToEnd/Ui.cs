@@ -6,8 +6,9 @@ using static Microsoft.Playwright.Assertions;
 
 namespace FluentCMS.Admin.EndToEnd;
 
-// The one copy of what the browser tests do the same way. It is the only file of the tests that waits by a timer, and the
-// architecture tests hold the test classes to it (spec 7).
+// The one copy of what the browser tests do the same way. It is one of the few files of the harness that may wait by a timer
+// or read a clock, which the architecture tests name (EndToEndRulesTests), and they hold every other file to these helpers
+// (spec 7).
 public static class Ui
 {
     // Past the component library's second focus move, 25 ms after a dialog closes (FocusOnPreviousActiveElement), and the
@@ -17,24 +18,36 @@ public static class Ui
 
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(250);
 
-    // Focus as Tab would give it. A control in a dialog that is not shown yet cannot take focus, and the dialog does not give
-    // it to the control as it opens, so focus is asked for once the control shows, and again until the control has it.
+    // How long a control that shows may take to take focus and keep it.
+    private static readonly TimeSpan FocusWindow = TimeSpan.FromSeconds(2);
+
+    // Focus as Tab would give it. A control in a dialog that has just shown may not take focus yet, and the dialog's own focus
+    // move may take it once, so focus is asked for once the control shows, and again until the control has it and still has
+    // it after the page's next timers, for two seconds at most. A control that loses focus again and again fails, by name: a
+    // keyboard user could not use it either.
     public static async Task FocusAsync(ILocator target)
     {
         await Expect(target).ToBeVisibleAsync();
-        var deadline = DateTime.UtcNow + AdminBrowser.Wait;
+        var deadline = DateTime.UtcNow + FocusWindow;
         while (true)
         {
             await target.FocusAsync();
-            if (await target.EvaluateAsync<bool>("element => element === document.activeElement || element.contains(document.activeElement)") || DateTime.UtcNow > deadline)
+            if (await HasFocusAsync(target))
             {
-                break;
+                await PageTimerAsync(target.Page, FocusSettle);
+                if (await HasFocusAsync(target))
+                {
+                    return;
+                }
+            }
+
+            if (DateTime.UtcNow > deadline)
+            {
+                throw new ShouldAssertException($"{target} did not take focus and keep it within {FocusWindow.TotalSeconds:0} s of showing.");
             }
 
             await PageTimerAsync(target.Page, 50);
         }
-
-        await Expect(target).ToBeFocusedAsync();
     }
 
     // Focus, then a key: no pointer is used.
@@ -54,24 +67,47 @@ public static class Ui
     }
 
     // Runs the action and returns the answer that matches, once it has come. A 401 is skipped: the host's access tokens last
-    // five seconds, and the admin sends the call again after a refresh, whose answer is the one that counts. The answer is
-    // read by its request, status and headers only: Chromium does not always keep a body for the test to read after the fact.
-    public static Task<IResponse> AnswerAsync(this AdminTab tab, Func<Task> action, Func<IResponse, bool> match) =>
-        tab.Page.RunAndWaitForResponseAsync(action, response => response.Status != 401 && match(response), new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+    // five seconds, and the admin sends the call again after a refresh, whose answer is the one that counts; a wait that ends
+    // with a 401 seen and no call after it says so. The answer is read by its request, status and headers only: Chromium does
+    // not always keep a body for the test to read after the fact.
+    public static async Task<IResponse> AnswerAsync(this AdminTab tab, Func<Task> action, Func<IResponse, bool> match)
+    {
+        var refused = new RefusedCount();
+        try
+        {
+            return await tab.Page.RunAndWaitForResponseAsync(action, refused.Skipping(match), new PageRunAndWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        }
+        catch (Exception exception) when (exception is TimeoutException or PlaywrightException && refused.Count > 0)
+        {
+            throw refused.Explained(exception);
+        }
+    }
 
     public static Task<IResponse> AnswerAsync(this AdminTab tab, Func<Task> action, string method, string url) =>
         tab.AnswerAsync(action, response => response.Request.Method == method && response.Url == url);
 
     // An answer waited for from now on, for an action whose call comes later or from another tab; a 401 is skipped as above.
-    public static Task<IResponse> NextAnswerAsync(this AdminTab tab, Func<IResponse, bool> match) =>
-        tab.Page.WaitForResponseAsync(response => response.Status != 401 && match(response), new PageWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+    public static async Task<IResponse> NextAnswerAsync(this AdminTab tab, Func<IResponse, bool> match)
+    {
+        var refused = new RefusedCount();
+        try
+        {
+            return await tab.Page.WaitForResponseAsync(refused.Skipping(match), new PageWaitForResponseOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
+        }
+        catch (Exception exception) when (exception is TimeoutException or PlaywrightException && refused.Count > 0)
+        {
+            throw refused.Explained(exception);
+        }
+    }
 
-    // The id at the end of a 201's Location.
-    public static async Task<Guid> CreatedIdAsync(IResponse created)
+    // The id of a 201's Location, which names the created item under path, such as "content/article" or "media/folders".
+    public static async Task<Guid> CreatedIdAsync(IResponse created, string path)
     {
         created.Status.ShouldBe(201);
         var location = (await created.HeaderValueAsync("location")).ShouldNotBeNull();
-        return Guid.Parse(location[(location.LastIndexOf('/') + 1)..].Split('?')[0]);
+        var match = Regex.Match(location, $@"(?:^|/){Regex.Escape(path)}/(?<id>[0-9a-fA-F-]{{36}})(?:\?|$)");
+        match.Success.ShouldBeTrue($"the Location of the created item was '{location}', not {path}/{{id}}");
+        return Guid.Parse(match.Groups["id"].Value);
     }
 
     // The dialog as the accessibility tree has it, named by its title: its host element has no box of its own, the library shows
@@ -122,8 +158,38 @@ public static class Ui
         return text;
     }
 
+    private static Task<bool> HasFocusAsync(ILocator target) =>
+        target.EvaluateAsync<bool>("element => element === document.activeElement || element.contains(document.activeElement)");
+
     private static async Task PageTimerAsync(IPage page, int milliseconds) =>
         await page.EvaluateAsync("milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))", milliseconds);
+}
+
+// The 401s a wait skipped, for the message of a wait that found nothing after them.
+internal sealed class RefusedCount
+{
+    private int _count;
+
+    public int Count => Volatile.Read(ref _count);
+
+    public Func<IResponse, bool> Skipping(Func<IResponse, bool> match) => response =>
+    {
+        if (!match(response))
+        {
+            return false;
+        }
+
+        if (response.Status == 401)
+        {
+            Interlocked.Increment(ref _count);
+            return false;
+        }
+
+        return true;
+    };
+
+    public Exception Explained(Exception timeout) =>
+        new TimeoutException($"The call was answered 401 {Count} time(s), and the admin did not send it again after a refresh within {AdminBrowser.Wait.TotalSeconds:0} s.", timeout);
 }
 
 // The media library's controls, which the library, the detail panel and the picker share.
@@ -142,15 +208,20 @@ public static class MediaUi
 
     public static ILocator UploadInput(ILocator scope) => scope.Locator("[data-media-upload] input[type=file]");
 
-    // Uploads into the open folder of the scope, the page or a picker, and returns once each file has a state, done or refused,
-    // so that a read after it sees what was stored.
-    public static async Task UploadAsync(ILocator scope, params FilePayload[] files)
+    // Uploads into the open folder of the scope, the page or a picker, and returns once every file is stored, so that a read
+    // after it sees them; a refused file fails here, by the count.
+    public static Task UploadAsync(ILocator scope, params FilePayload[] files) => UploadAsync(scope, 0, files);
+
+    // The same with the number of files that are to be refused, each with its refusal shown.
+    public static async Task UploadAsync(ILocator scope, int refused, params FilePayload[] files)
     {
-        var states = scope.Locator(".media-upload-done, .media-upload-refused");
-        var before = await states.CountAsync();
+        var done = scope.Locator(".media-upload-done");
+        var refusals = scope.Locator(".media-upload-refused");
+        var (doneBefore, refusedBefore) = (await done.CountAsync(), await refusals.CountAsync());
         await Expect(UploadInput(scope)).ToBeEnabledAsync();
         await UploadInput(scope).SetInputFilesAsync(files);
-        await Expect(states).ToHaveCountAsync(before + files.Length);
+        await Expect(refusals).ToHaveCountAsync(refusedBefore + refused);
+        await Expect(done).ToHaveCountAsync(doneBefore + files.Length - refused);
     }
 
     // Searches the scope's library, the page or a picker, and returns once no read of it is under way. The same search again

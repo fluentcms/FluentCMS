@@ -165,7 +165,7 @@ jobs:
       - name: Test
         env:
           FLUENTCMS_E2E_TRACES: ${{ inputs.traces && format('{0}/artifacts/test-results/traces', github.workspace) || '' }}
-        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 15m
+        run: pwsh admin/tests/FluentCMS.Admin.EndToEnd/run-with-retry.ps1 -ResultsDirectory artifacts/test-results -Timeout 15m -RetryTimeout 6m
 
       - name: Name the tests that were running
         if: failure() || cancelled()

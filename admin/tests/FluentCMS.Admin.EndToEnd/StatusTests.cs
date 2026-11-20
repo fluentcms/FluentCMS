@@ -22,7 +22,7 @@ public sealed class StatusTests(EndToEndHost host) : BrowserTest(host)
 
         // The new entry is created first, then published on the tag of its create.
         var publishing = tab.NextAnswerAsync(response => response.Request.Method == "POST" && response.Url.EndsWith("/publish", StringComparison.Ordinal));
-        var id = await Ui.CreatedIdAsync(await tab.AnswerAsync(() => Control(tab, "Content.Form.Publish").ClickAsync(), "POST", tab.ManagementUrl("content/article")));
+        var id = await Ui.CreatedIdAsync(await tab.AnswerAsync(() => Control(tab, "Content.Form.Publish").ClickAsync(), "POST", tab.ManagementUrl("content/article")), "content/article");
         var entry = tab.ManagementUrl($"content/article/{id:D}");
         var published = await publishing;
         published.Url.ShouldBe($"{entry}/publish");

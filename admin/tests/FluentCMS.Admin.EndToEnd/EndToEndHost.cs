@@ -73,7 +73,13 @@ public sealed class EndToEndHost : IAsyncLifetime
     // Why the browser tests are skipped: Chromium is not installed for this version of Playwright.
     public string? BrowserMissing { get; private set; }
 
-    private string PublishDirectory => Path.Combine(_root.FullName, "host");
+    // FLUENTCMS_E2E_PUBLISHED names a folder the publish is kept in and taken from by a later run, as the retry of the CI job's
+    // failed cases does; without it the publish is the run's own and goes with it.
+    public const string PublishedVariable = "FLUENTCMS_E2E_PUBLISHED";
+
+    private const string PublishedMark = "published.ok";
+
+    private string PublishDirectory => Environment.GetEnvironmentVariable(PublishedVariable) is { Length: > 0 } kept ? kept : Path.Combine(_root.FullName, "host");
 
     private string DataDirectory => Path.Combine(_root.FullName, "data");
 
@@ -221,6 +227,12 @@ public sealed class EndToEndHost : IAsyncLifetime
     // runners, the publish would otherwise relink the WebAssembly runtime, which no image does.
     private async Task PublishAsync()
     {
+        var mark = Path.Combine(PublishDirectory, PublishedMark);
+        if (File.Exists(mark))
+        {
+            return;
+        }
+
         var (exitCode, _, tail) = await ChildProcess.RunAsync(
             "dotnet",
             ["publish", Repository.HostProject, "-c", Repository.Configuration, "--no-build", "-o", PublishDirectory, "-p:UseAppHost=false", "-p:WasmBuildNative=false", "-nologo", "-nodeReuse:false"],
@@ -233,6 +245,9 @@ public sealed class EndToEndHost : IAsyncLifetime
         {
             throw new InvalidOperationException($"Publishing the reference host ({Repository.Configuration}, with no build) exited with {exitCode}; build the solution in that configuration first.{Environment.NewLine}{tail}");
         }
+
+        // Written last, so that a publish cut short is not taken by a later run.
+        await File.WriteAllTextAsync(mark, Repository.Configuration, Token);
     }
 
     // The settings of a production deployment, as few as the image needs, with four that only a test host has: its address

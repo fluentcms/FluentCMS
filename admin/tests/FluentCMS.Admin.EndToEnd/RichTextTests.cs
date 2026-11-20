@@ -109,7 +109,7 @@ public sealed class RichTextTests(EndToEndHost host) : BrowserTest(host)
         pasted.ShouldNotContain("table");
 
         // Read back: the reloaded form holds the body the server read, which the next save sends as it is.
-        var id = await Ui.CreatedIdAsync(create);
+        var id = await Ui.CreatedIdAsync(create, "content/article");
         await Expect(tab.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}\\?locale=en$"), new PageAssertionsToHaveURLOptions { Timeout = (float)AdminBrowser.Wait.TotalMilliseconds });
         await tab.Page.ReloadAsync();
         await Expect(body).ToContainTextAsync("slanted");

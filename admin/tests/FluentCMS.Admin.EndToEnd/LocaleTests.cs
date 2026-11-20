@@ -25,7 +25,7 @@ public sealed class LocaleTests(EndToEndHost host) : BrowserTest(host)
         // English: created, then published.
         await Title(tab).FillAsync($"Written in two locales {Mark}");
         var created = await tab.AnswerAsync(() => Control(tab, "Content.Form.Save").ClickAsync(), "POST", tab.ManagementUrl("content/article"));
-        var id = await Ui.CreatedIdAsync(created);
+        var id = await Ui.CreatedIdAsync(created, "content/article");
         var entry = tab.ManagementUrl($"content/article/{id:D}");
         await Expect(tab.Page).ToHaveURLAsync(new Regex($"/admin/content/article/{id:D}\\?locale=en$"), Timeout);
         await Expect(Badges(tab)).ToHaveTextAsync([Badge("en", "draft"), Missing("fr")]);

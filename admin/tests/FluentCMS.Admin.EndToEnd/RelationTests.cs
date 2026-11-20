@@ -65,7 +65,7 @@ public sealed class RelationTests(EndToEndHost host) : BrowserTest(host)
         var panel = tab.Page.Locator("fluent-drawer[aria-label=\"Author\"]");
         await Expect(panel.Locator("h2")).ToHaveTextAsync(Text("Content.Form.NewHeading", "Author"));
         await panel.Locator("[data-field='name'] input").FillAsync(author);
-        var hedy = await Ui.CreatedIdAsync(await tab.AnswerAsync(() => PanelButton(panel, "Content.Form.Save").ClickAsync(), "POST", tab.ManagementUrl("content/author")));
+        var hedy = await Ui.CreatedIdAsync(await tab.AnswerAsync(() => PanelButton(panel, "Content.Form.Save").ClickAsync(), "POST", tab.ManagementUrl("content/author")), "content/author");
         await Expect(Labels(tab, "author")).ToHaveTextAsync([author]);
         await PanelButton(panel, "Content.Panel.Close").ClickAsync();
         await Expect(tab.Page.GetByRole(AriaRole.Dialog, new PageGetByRoleOptions { Name = "Author", Exact = true })).ToBeHiddenAsync();
