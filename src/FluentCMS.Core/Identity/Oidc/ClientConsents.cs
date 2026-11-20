@@ -1,7 +1,10 @@
 using System.Collections.Immutable;
 using FluentCMS.Agents;
+using FluentCMS.Core.Storage;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
+using OpenIddict.EntityFrameworkCore.Models;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace FluentCMS.Core.Identity.Oidc;
@@ -23,6 +26,7 @@ internal sealed record ConsentRequest(string ClientId, string ClientName, IReadO
 internal sealed class ClientConsents(
     IOpenIddictApplicationManager applications,
     IOpenIddictAuthorizationManager authorizations,
+    SystemDbContext context,
     TimeProvider time,
     ILogger<ClientConsents> logger,
     IMcpClientRegistrationPolicy? policy = null)
@@ -114,7 +118,7 @@ internal sealed class ClientConsents(
 
         var subject = userId.ToString("D");
         var applicationId = await applications.GetIdAsync(application, cancellationToken) ?? "";
-        if (await CapReachedAsync(subject, application, applicationId, cancellationToken) is { } max)
+        if (await CapReachedAsync(userId, application, applicationId, cancellationToken) is { } max)
         {
             OidcLog.ConsentLimitReached(logger, userId, clientId, max);
             return false;
@@ -128,50 +132,59 @@ internal sealed class ClientConsents(
             AuthorizationTypes.Permanent,
             [.. request.Scopes],
             cancellationToken);
-        await MarkUsedAsync(application, cancellationToken);
+        await MarkUsedAsync(application, userId, cancellationToken);
         return true;
     }
 
-    // A consent keeps a client the open policy approved from the cleanup for as long as it stands, so a user who could
-    // consent to any number of them could fill MaxClients for good with clients nobody uses (#3397). A user therefore
-    // holds consents to MaxConsentsPerUser such clients at most: the answer is that number when this consent would be
-    // one more, and null when it may be given. A client an administrator approved, registered or gave a role is not
-    // counted and not held back, since the cleanup keeps it whoever consents, and neither is another consent to a client
-    // the user already keeps.
-    private async Task<int?> CapReachedAsync(string subject, object application, string applicationId, CancellationToken cancellationToken)
+    // A consent keeps a client the open policy approved from the cleanup, so a user who could consent to any number of
+    // them could fill MaxClients for good with clients nobody uses (#3397). A user therefore takes a place for each such
+    // client they keep, MaxConsentsPerUser at most: the answer is that number when this consent would take one more, and
+    // null when it may be given. A place is taken by a permanent authorization of the user, whatever its status, and by
+    // being the user whose consent first used the client, for as long as the client is there. Ending a consent therefore
+    // frees no place: the client it kept stays for the cleanup's period, first with the revoked authorization and, once
+    // that is pruned, with its state alone. A consent to a client the user has a place for takes none, so a user who
+    // changes the password allows the same clients again. A client an administrator approved, registered or gave a role
+    // is neither counted nor held back, since the cleanup keeps it whoever consents.
+    private async Task<int?> CapReachedAsync(Guid userId, object application, string applicationId, CancellationToken cancellationToken)
     {
         if (!await IsOpenApprovedAsync(application, cancellationToken))
         {
             return null;
         }
 
-        HashSet<string> consented = new(StringComparer.Ordinal);
-        await foreach (var authorization in authorizations.FindBySubjectAsync(subject, cancellationToken))
+        HashSet<string> places = new(StringComparer.Ordinal);
+        await foreach (var authorization in authorizations.FindBySubjectAsync(userId.ToString("D"), cancellationToken))
         {
             if (await authorizations.HasTypeAsync(authorization, AuthorizationTypes.Permanent, cancellationToken)
-                && await authorizations.HasStatusAsync(authorization, Statuses.Valid, cancellationToken)
                 && await authorizations.GetApplicationIdAsync(authorization, cancellationToken) is { } id)
             {
-                consented.Add(id);
+                places.Add(id);
             }
         }
 
-        if (consented.Contains(applicationId))
+        var marker = McpClientState.UsedByMarker(userId);
+        var firstUsed = await context.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>().AsNoTracking()
+            .Where(used => used.Properties != null && used.Properties.Contains(marker))
+            .Select(used => used.Id)
+            .ToListAsync(cancellationToken);
+        places.UnionWith(firstUsed.Select(id => id.ToString("D")));
+
+        if (places.Contains(applicationId))
         {
             return null;
         }
 
         var max = (policy is null ? new McpClientRegistrationPolicy(McpClientRegistrationMode.Off) : await policy.GetAsync(cancellationToken)).MaxConsentsPerUser;
-        var kept = 0;
-        foreach (var id in consented)
+        var taken = 0;
+        foreach (var id in places)
         {
             if (await applications.FindByIdAsync(id, cancellationToken) is { } other && await IsOpenApprovedAsync(other, cancellationToken))
             {
-                kept++;
+                taken++;
             }
         }
 
-        return kept >= max ? max : null;
+        return taken >= max ? max : null;
     }
 
     private async Task<bool> IsOpenApprovedAsync(object application, CancellationToken cancellationToken) =>
@@ -181,7 +194,7 @@ internal sealed class ClientConsents(
     // cleanup removes one never used sooner than one whose tokens are gone. A write that crosses another write of the
     // client, a second consent or a change by an administrator, is not tried again: the cleanup writes the first use
     // of a client that holds a consent and has none (McpClients.RemoveUnusedAsync).
-    private async Task MarkUsedAsync(object application, CancellationToken cancellationToken)
+    private async Task MarkUsedAsync(object application, Guid userId, CancellationToken cancellationToken)
     {
         var properties = await applications.GetPropertiesAsync(application, cancellationToken);
         if (McpClientState.Of(properties) is not { UsedAt: null } state
@@ -193,7 +206,7 @@ internal sealed class ClientConsents(
 
         var descriptor = new OpenIddictApplicationDescriptor();
         await applications.PopulateAsync(descriptor, application, cancellationToken);
-        descriptor.Properties[AuthorizationServer.McpClientProperty] = (state with { UsedAt = time.GetUtcNow() }).ToProperty();
+        descriptor.Properties[AuthorizationServer.McpClientProperty] = (state with { UsedAt = time.GetUtcNow(), UsedBy = userId }).ToProperty();
         try
         {
             await applications.UpdateAsync(application, descriptor, cancellationToken);

@@ -82,12 +82,15 @@ public interface IMcpClients
     /// Removes the clients the open policy approved that registered in a span of time, used or not, each with its sessions
     /// and tokens as <see cref="RevokeAsync"/> removes one. A client an administrator approved, registered or gave a role
     /// is never removed, nor is a pending or rejected one. Raises <see cref="Events.McpClientRevokedEvent"/> for each.
+    /// A call removes <paramref name="limit"/> clients at most, since each is a change of its own, so a caller that gets
+    /// that number back calls again for the rest.
     /// </summary>
     /// <param name="registeredFrom">The time from which a client registered, or <see langword="null"/> for no start.</param>
     /// <param name="registeredBefore">The time before which a client registered, or <see langword="null"/> for no end.</param>
+    /// <param name="limit">The most clients the call removes, 1 or more.</param>
     /// <param name="cancellationToken">Cancels the work; the clients removed before it stay removed.</param>
     /// <returns>The number of clients removed.</returns>
-    Task<int> RemoveOpenApprovedAsync(DateTimeOffset? registeredFrom, DateTimeOffset? registeredBefore, CancellationToken cancellationToken = default);
+    Task<int> RemoveOpenApprovedAsync(DateTimeOffset? registeredFrom, DateTimeOffset? registeredBefore, int limit, CancellationToken cancellationToken = default);
 }
 
 /// <summary>A client an administrator registers.</summary>

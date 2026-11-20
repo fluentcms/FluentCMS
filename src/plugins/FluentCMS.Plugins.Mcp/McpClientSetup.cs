@@ -26,6 +26,6 @@ internal static class McpClientSetup
             .AddErrorCode(McpErrorCodes.ClientNotApproved, 409, "MCP client is not approved")
             .AddErrorCode(McpErrorCodes.ClientRegistrationInvalid, 422, "MCP client registration refused")
             .AddErrorCode(McpErrorCodes.ClientChangedMeanwhile, 409, "MCP client changed meanwhile")
-            .AddErrorCode(McpErrorCodes.ClientRemovalInvalid, 422, "MCP client removal names no time");
+            .AddErrorCode(McpErrorCodes.ClientRemovalInvalid, 422, "MCP client removal span invalid");
     }
 }

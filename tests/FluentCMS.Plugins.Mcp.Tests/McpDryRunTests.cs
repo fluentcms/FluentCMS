@@ -306,6 +306,7 @@ public sealed class McpDryRunTests(McpToolsFixture fixture) : IClassFixture<McpT
         var ofAnUnpublish = await CallAsync(client, McpContentTools.Schedule, Confirmed(arguments, TokenOf(await OkAsync(client, McpContentTools.Unpublish, new { type = "writer", id = writer }))));
         var onAnUnpublish = await CallAsync(client, McpContentTools.Unpublish, Confirmed(new { type = "writer", id = writer }, TokenOf(plan)));
         var notThere = await CallAsync(client, McpContentTools.Schedule, new { type = "writer", id = Guid.NewGuid(), action = "unpublish", at = "2999-03-01T09:00:00Z" });
+        var inAnotherCase = await CallAsync(client, McpContentTools.Schedule, new { type = "writer", id = writer, action = "Unpublish", at = "2999-03-01T09:00:00Z", dryRun = false });
         var untouched = await OkAsync(client, "writer_get", new { id = writer });
         var scheduled = await OkAsync(client, McpContentTools.Schedule, Confirmed(arguments, TokenOf(plan)));
         var after = await OkAsync(client, "writer_get", new { id = writer });
@@ -324,6 +325,10 @@ public sealed class McpDryRunTests(McpToolsFixture fixture) : IClassFixture<McpT
         Code(ofAnUnpublish).ShouldBe("FCMS1631");
         Code(onAnUnpublish).ShouldBe("FCMS1631");
         Code(notThere).ShouldBe("FCMS3104");
+
+        // An action is read exactly, so one in another case is no publish that would run at once.
+        Code(inAnotherCase).ShouldBe("FCMS2108");
+        Text(inAnotherCase).ShouldContain("- action: ");
         untouched.GetProperty("status").GetString().ShouldBe("published");
         untouched.GetProperty("scheduledUnpublishAt").ValueKind.ShouldBe(JsonValueKind.Null);
         scheduled.GetProperty("action").GetString().ShouldBe("unpublish");

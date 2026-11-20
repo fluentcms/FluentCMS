@@ -58,6 +58,7 @@ public sealed class McpClientHookFixture : IAsyncDisposable
             // The manager of the interface is resolved by its closed type, which comes before OpenIddict's open registration.
             services.AddSingleton(Hooks);
             services.AddScoped<OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>, HookedApplicationManager>();
+            services.AddSingleton<ILoggerProvider>(Logs);
         });
     }
 
@@ -65,13 +66,16 @@ public sealed class McpClientHookFixture : IAsyncDisposable
 
     public ApplicationManagerHooks Hooks { get; } = new();
 
+    internal LogCapture Logs { get; } = new();
+
     public ValueTask DisposeAsync() => Host.DisposeAsync();
 }
 
 // What runs, once, in place of the next call of the application manager: work before the next read of a client's
 // properties, which then answers what it read before the work, as a request that read them just before a change does;
 // a refusal of the next update, as when another change of the application got there first; or a refusal of the next
-// delete by the database, as when a consent to the application arrived while it was deleted.
+// delete, by the database, as when a consent to the application arrived while it was deleted, or because the
+// application changed since it was read.
 public sealed class ApplicationManagerHooks
 {
     private Func<Task>? _beforeRead;
@@ -82,13 +86,13 @@ public sealed class ApplicationManagerHooks
 
     public void FailNextUpdate() => _failUpdate = 1;
 
-    public void FailNextDelete() => _failDelete = 1;
+    public void FailNextDelete(bool changedMeanwhile = false) => _failDelete = changedMeanwhile ? 2 : 1;
 
     internal Func<Task>? TakeBeforeRead() => Interlocked.Exchange(ref _beforeRead, null);
 
     internal bool TakeFailUpdate() => Interlocked.Exchange(ref _failUpdate, 0) == 1;
 
-    internal bool TakeFailDelete() => Interlocked.Exchange(ref _failDelete, 0) == 1;
+    internal int TakeFailDelete() => Interlocked.Exchange(ref _failDelete, 0);
 }
 
 internal sealed class HookedApplicationManager(
@@ -102,13 +106,16 @@ internal sealed class HookedApplicationManager(
     // The store marks the application deleted before it saves, and a save the database refuses leaves it so.
     public override ValueTask DeleteAsync(OpenIddictEntityFrameworkCoreApplication<Guid> application, CancellationToken cancellationToken = default)
     {
-        if (!hooks.TakeFailDelete())
+        switch (hooks.TakeFailDelete())
         {
-            return base.DeleteAsync(application, cancellationToken);
+            case 0:
+                return base.DeleteAsync(application, cancellationToken);
+            case 2:
+                return ValueTask.FromException(new OpenIddictExceptions.ConcurrencyException("The application was changed by another request."));
+            default:
+                context.Remove(application);
+                return ValueTask.FromException(new DbUpdateException("The delete crossed an insert that refers to the application."));
         }
-
-        context.Remove(application);
-        return ValueTask.FromException(new DbUpdateException("The delete crossed an insert that refers to the application."));
     }
 
     public override async ValueTask<ImmutableDictionary<string, JsonElement>> GetPropertiesAsync(OpenIddictEntityFrameworkCoreApplication<Guid> application, CancellationToken cancellationToken = default)
@@ -462,7 +469,7 @@ internal static class McpClientTesting
         return McpClientState.Of(await applications.GetPropertiesAsync(application, Token)).ShouldNotBeNull();
     }
 
-    // The state of a client that registered before its first use was recorded: the same, without usedAt.
+    // The state of a client that registered before its first use was recorded: the same, without usedAt and usedBy.
     public static async Task ForgetFirstUseAsync(FluentCmsTestHost host, Guid id)
     {
         await using var scope = host.Services.CreateAsyncScope();
@@ -471,7 +478,7 @@ internal static class McpClientTesting
         var state = McpClientState.Of(await applications.GetPropertiesAsync(application, Token)).ShouldNotBeNull();
         var descriptor = new OpenIddictApplicationDescriptor();
         await applications.PopulateAsync(descriptor, application, Token);
-        descriptor.Properties[AuthorizationServer.McpClientProperty] = (state with { UsedAt = null }).ToProperty();
+        descriptor.Properties[AuthorizationServer.McpClientProperty] = (state with { UsedAt = null, UsedBy = null }).ToProperty();
         await applications.UpdateAsync(application, descriptor, Token);
     }
 

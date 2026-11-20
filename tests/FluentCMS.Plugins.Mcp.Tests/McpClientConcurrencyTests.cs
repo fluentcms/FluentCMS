@@ -2,6 +2,7 @@ using System.Net;
 using FluentCMS.Agents;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Plugins.Sample;
+using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using Shouldly;
 using Xunit;
@@ -111,7 +112,7 @@ public sealed class McpClientConcurrencyTests(McpClientHookFixture fixture) : IC
     }
 
     // A consent that arrives while the cleanup deletes its client makes the database refuse the delete. The run goes on
-    // to the other clients, and the one it could not delete is left for the next run.
+    // to the other clients, and the one it could not delete is left for the next run and named in the log.
     [Fact]
     public async Task ADeleteTheDatabaseRefusesDoesNotEndTheCleanup()
     {
@@ -125,11 +126,44 @@ public sealed class McpClientConcurrencyTests(McpClientHookFixture fixture) : IC
         fixture.Hooks.FailNextDelete();
         await RunCleanupAsync(host);
         var afterTheRefusal = (await ListAsync(admin)).Select(item => item!["clientId"]!.GetValue<string>()).Where(fillers.Contains).ToList();
+        var skipped = await IdOfAsync(admin, afterTheRefusal[0]);
         await RunCleanupAsync(host);
         var afterTheNextRun = (await ListAsync(admin)).Select(item => item!["clientId"]!.GetValue<string>()).Where(fillers.Contains).ToList();
 
         afterTheRefusal.Count.ShouldBe(1);
         afterTheNextRun.ShouldBeEmpty();
+        fixture.Logs.Lines.Count(line => line.Id == 9009 && line.Level == LogLevel.Warning && line.Message.Contains(skipped.ToString("D"), StringComparison.Ordinal)).ShouldBe(1);
+    }
+
+    // The bulk removal goes on past a client it cannot delete, whether the database refused the delete, which is logged
+    // with the client's id, or the client changed since it was read; either is left for the next call.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ADeleteThatFailsDoesNotEndTheBulkRemoval(bool changedMeanwhile)
+    {
+        var host = fixture.Host;
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName);
+        using var agent = new McpAgent(host, changedMeanwhile ? "10.5.0.6" : "10.5.0.5");
+        using var admin = await KeyAsync(host);
+        host.Time.Advance(TimeSpan.FromMinutes(1));
+        var from = host.Time.GetUtcNow();
+        string[] fillers = [await agent.RegisteredAsync(), await agent.RegisteredAsync()];
+        var ids = new[] { await IdOfAsync(admin, fillers[0]), await IdOfAsync(admin, fillers[1]) };
+        var logged = fixture.Logs.Lines.Count(line => line.Id == 9009);
+
+        fixture.Hooks.FailNextDelete(changedMeanwhile);
+        using var crossed = await RemoveAsync(admin, new { registeredFrom = from });
+        var left = (await ListAsync(admin)).Where(item => fillers.Contains(item!["clientId"]!.GetValue<string>())).Select(item => item!["id"]!.GetValue<Guid>()).ToList();
+        using var again = await RemoveAsync(admin, new { registeredFrom = from });
+
+        crossed.StatusCode.ShouldBe(HttpStatusCode.OK, await crossed.Content.ReadAsStringAsync(Token));
+        (await JsonAsync(crossed))["removed"]!.GetValue<int>().ShouldBe(1);
+        var skipped = left.ShouldHaveSingleItem();
+        ids.ShouldContain(skipped);
+        (await JsonAsync(again))["removed"]!.GetValue<int>().ShouldBe(1);
+        fixture.Logs.Lines.Count(line => line.Id == 9009).ShouldBe(changedMeanwhile ? logged : logged + 1);
+        fixture.Logs.Lines.Any(line => line.Id == 9009 && line.Message.Contains(skipped.ToString("D"), StringComparison.Ordinal)).ShouldBe(!changedMeanwhile);
     }
 
     // The consents go before the client is written, so a start that fails on the write leaves the old redirect URIs with

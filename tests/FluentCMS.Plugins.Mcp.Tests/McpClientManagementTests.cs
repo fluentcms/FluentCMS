@@ -499,7 +499,9 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         adoptedBefore["approvedBy"].ShouldNotBeNull();
         adoptedBefore["approvedAt"]!.GetValue<DateTimeOffset>().ShouldBe(from.AddMinutes(1));
         removed.StatusCode.ShouldBe(HttpStatusCode.OK, await removed.Content.ReadAsStringAsync(Token));
-        (await JsonAsync(removed))["removed"]!.GetValue<int>().ShouldBe(2);
+        var answer = await JsonAsync(removed);
+        answer["removed"]!.GetValue<int>().ShouldBe(2);
+        answer["more"]!.GetValue<bool>().ShouldBeFalse();
         var left = (await ListAsync(admin)).Select(item => item!["clientId"]!.GetValue<string>()).ToList();
         left.ShouldNotContain(filler);
         left.ShouldNotContain(consented);
@@ -545,13 +547,32 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         using var unsigned = await RemoveAsync(anonymous, new { registeredBefore = now });
         using var noTime = await RemoveAsync(admin, new { });
         using var noBody = await admin.PostAsync(new Uri($"{ClientsPath}/remove", UriKind.Relative), null, Token);
-        using var backwards = await RemoveAsync(admin, new { registeredFrom = now, registeredBefore = now });
+        using var empty = await RemoveAsync(admin, new { registeredFrom = now, registeredBefore = now });
+        using var backwards = await RemoveAsync(admin, new { registeredFrom = now, registeredBefore = now.AddHours(-1) });
+
+        // A time without an offset would be read in the zone of the server, and name another span.
+        using var noOffset = await RemoveAsync(admin, new { registeredBefore = "2999-03-01T09:00:00" });
+        using var noOffsetFrom = await RemoveAsync(admin, new { registeredFrom = "2000-03-01T09:00:00", registeredBefore = now });
+        using var notATime = await RemoveAsync(admin, new { registeredBefore = "tomorrow" });
 
         unsigned.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        foreach (var invalid in new[] { noTime, noBody, backwards })
+        (string Name, HttpResponseMessage Response, string Says)[] refusals =
+        [
+            (nameof(noTime), noTime, "'registeredFrom', 'registeredBefore' or both"),
+            (nameof(noBody), noBody, "'registeredFrom', 'registeredBefore' or both"),
+            (nameof(empty), empty, "must be earlier than 'registeredBefore'"),
+            (nameof(backwards), backwards, "must be earlier than 'registeredBefore'"),
+            (nameof(noOffset), noOffset, "'registeredBefore' is an ISO 8601 date and time with an offset"),
+            (nameof(noOffsetFrom), noOffsetFrom, "'registeredFrom' is an ISO 8601 date and time with an offset"),
+            (nameof(notATime), notATime, "'registeredBefore' is an ISO 8601 date and time with an offset"),
+        ];
+        foreach (var (name, response, says) in refusals)
         {
-            invalid.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
-            (await CodeAsync(invalid)).ShouldBe("FCMS1610");
+            response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity, name);
+            var problem = await JsonAsync(response);
+            problem["code"]!.GetValue<string>().ShouldBe("FCMS1610", name);
+            problem["title"]!.GetValue<string>().ShouldBe("MCP client removal span invalid", name);
+            problem["detail"]!.GetValue<string>().ShouldContain(says, customMessage: name);
         }
 
         (await FindAsync(admin, filler)).ShouldNotBeNull();
@@ -613,6 +634,73 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         (await agent.AuthorizeAsync(fifth)).Code.ShouldNotBeNull();
     }
 
+    // Ending a consent frees no place while the client it kept is there: not while the revoked authorization is, and not
+    // once the prune has taken it and only the client's state says whose it was. Otherwise a user would consent, end the
+    // consent and consent to the next clients, each of which stays for the cleanup's long period.
+    [Fact]
+    public async Task EndingAConsentFreesNoPlaceWhileTheClientItKeptIsThere()
+    {
+        var host = fixture.Host;
+        using var agent = new McpAgent(host, "10.3.0.26");
+        using var admin = await KeyAsync(host);
+        var user = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName, maxConsents: 2);
+        var first = await agent.RegisteredAsync("First");
+        var second = await agent.RegisteredAsync("Second");
+        var third = await agent.RegisteredAsync("Third");
+        await agent.TokensAsync(first, user);
+        await agent.TokensAsync(second, user);
+
+        // As a change of the password, or the end of each session, ends them.
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<UserSessions>().RevokeAllAsync(user.Id, Token);
+        }
+
+        var afterTheRevoke = await agent.AuthorizeAsync(third);
+        var sameClient = await agent.AuthorizeAsync(first);
+
+        await ForgetGrantsAsync(await IdOfAsync(admin, first));
+        await ForgetGrantsAsync(await IdOfAsync(admin, second));
+        var afterThePrune = await agent.AuthorizeAsync(third);
+        var sameClientAgain = await agent.AuthorizeAsync(first);
+
+        afterTheRevoke.Code.ShouldBeNull();
+        afterTheRevoke.StoppedAt.ShouldBe("/account/error");
+        sameClient.Code.ShouldNotBeNull();
+        afterThePrune.Code.ShouldBeNull();
+        afterThePrune.StoppedAt.ShouldBe("/account/error");
+        sameClientAgain.Code.ShouldNotBeNull();
+
+        // The place is free once the client is gone.
+        using var revoked = await RevokeAsync(admin, await IdOfAsync(admin, second));
+        (await agent.AuthorizeAsync(third)).Code.ShouldNotBeNull();
+    }
+
+    // One call removes so many clients, each in a transaction of its own, and says that it stopped there.
+    [Fact]
+    public async Task ABulkRemovalStopsAtItsCeilingAndSaysThatMoreRemain()
+    {
+        var host = fixture.Host;
+        using var agent = new McpAgent(host, "10.3.0.27");
+        using var admin = await KeyAsync(host);
+        host.Time.Advance(TimeSpan.FromMinutes(1));
+        var from = host.Time.GetUtcNow();
+        await SetPolicyAsync(host, McpClientRegistrationMode.Open, BuiltInRoles.EditorName, perHour: 1000);
+        for (var index = 0; index <= McpClientService.MaxRemovedPerCall; index++)
+        {
+            await agent.RegisteredAsync();
+        }
+
+        using var first = await RemoveAsync(admin, new { registeredFrom = from });
+        using var second = await RemoveAsync(admin, new { registeredFrom = from });
+        using var third = await RemoveAsync(admin, new { registeredFrom = from });
+
+        var answers = new[] { await JsonAsync(first), await JsonAsync(second), await JsonAsync(third) };
+        answers.Select(answer => answer["removed"]!.GetValue<int>()).ShouldBe([McpClientService.MaxRemovedPerCall, 1, 0]);
+        answers.Select(answer => answer["more"]!.GetValue<bool>()).ShouldBe([true, false, false]);
+    }
+
     // A client that registered before its first use was recorded has no usedAt. While it holds a consent the cleanup
     // writes one, so that it is kept for UnusedClientDays once its grants are gone; one whose grants were gone already
     // cannot be told from a client never used, and goes after NeverUsedClientHours.
@@ -638,6 +726,7 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         host.Time.Advance(TimeSpan.FromMinutes(5));
         await RunCleanupAsync();
         var marked = (await StateAsync(host, heldId)).UsedAt;
+        var markedBy = (await StateAsync(host, heldId)).UsedBy;
         var unmarked = (await StateAsync(host, bareId)).UsedAt;
 
         await ForgetGrantsAsync(heldId);
@@ -648,8 +737,9 @@ public sealed class McpClientManagementTests(McpClientFixture fixture) : IClassF
         host.Time.Advance(TimeSpan.FromDays(new McpSettings().UnusedClientDays));
         await RunCleanupAsync();
 
-        // The time of the first consent, not of the run that wrote it.
+        // The time of the first consent, not of the run that wrote it, and the user who gave it.
         (marked.ShouldNotBeNull() - consentedAt).Duration().ShouldBeLessThan(TimeSpan.FromSeconds(1));
+        markedBy.ShouldBe(user.Id);
         unmarked.ShouldBeNull();
         afterTheShortPeriod.ShouldContain(held);
         afterTheShortPeriod.ShouldNotContain(bare);

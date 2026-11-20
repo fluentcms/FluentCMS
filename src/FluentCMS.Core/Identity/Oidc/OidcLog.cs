@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Identity.Oidc;
 
-// 90xx, the event ids of the identity family (FCMS30xx); the authorization server has 9001 to 9003, 9005, 9006 and 9008.
+// 90xx, the event ids of the identity family (FCMS30xx); the authorization server has 9001 to 9003, 9005, 9006, 9008 and 9009.
 internal static partial class OidcLog
 {
     public const int PruneScheduleFailedId = 9001;
@@ -11,6 +11,7 @@ internal static partial class OidcLog
     public const int ClientRegistrationCappedId = 9005;
     public const int ClientLimitReachedId = 9006;
     public const int ConsentLimitReachedId = 9008;
+    public const int ClientDeleteRefusedId = 9009;
 
     [LoggerMessage(EventId = PruneScheduleFailedId, EventName = "OidcPruneScheduleFailed", Level = LogLevel.Error, Message = "Could not register the recurring prune job of the authorization server; used tokens stay until it is registered.")]
     public static partial void PruneScheduleFailed(ILogger logger, Exception exception);
@@ -27,6 +28,9 @@ internal static partial class OidcLog
     [LoggerMessage(EventId = ClientLimitReachedId, EventName = "OidcClientLimitReached", Level = LogLevel.Warning, Message = "Refused the registration of an MCP client: there are {MaxClients} MCP clients already. Delete the ones not in use, or raise MaxClients.")]
     public static partial void ClientLimitReached(ILogger logger, int maxClients);
 
-    [LoggerMessage(EventId = ConsentLimitReachedId, EventName = "OidcConsentLimitReached", Level = LogLevel.Warning, Message = "Refused the consent of the user {UserId} to the MCP client {ClientId}: the user has allowed {MaxConsentsPerUser} clients that the open policy approved already. Remove the ones not in use, or raise MaxConsentsPerUser.")]
+    [LoggerMessage(EventId = ConsentLimitReachedId, EventName = "OidcConsentLimitReached", Level = LogLevel.Warning, Message = "Refused the consent of the user {UserId} to the MCP client {ClientId}: the user keeps {MaxConsentsPerUser} clients that the open policy approved already, those whose consent was ended included while they are there. Remove the ones not in use, or raise MaxConsentsPerUser.")]
     public static partial void ConsentLimitReached(ILogger logger, Guid userId, string clientId, int maxConsentsPerUser);
+
+    [LoggerMessage(EventId = ClientDeleteRefusedId, EventName = "OidcClientDeleteRefused", Level = LogLevel.Warning, Message = "Could not delete the MCP client {Id}: the database refused the delete, as it does when a consent or a token arrives while the client is deleted. The client is left for the next run or call.")]
+    public static partial void ClientDeleteRefused(ILogger logger, Exception exception, Guid id);
 }
