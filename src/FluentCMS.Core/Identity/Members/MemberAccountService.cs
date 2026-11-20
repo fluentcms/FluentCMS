@@ -191,10 +191,12 @@ internal sealed class MemberAccountService(
             throw WrongPassword();
         }
 
+        // A save that failed left the member detached, and what is stored may be another request's by now, so the count
+        // comes back only when the change was refused before its save.
         var failures = member.AccessFailedCount;
         member.AccessFailedCount = 0;
         var changed = await members.ChangePasswordAsync(member, currentPassword, newPassword);
-        if (!changed.Succeeded && member.AccessFailedCount == 0)
+        if (!changed.Succeeded && context.Entry(member).State != EntityState.Detached)
         {
             member.AccessFailedCount = failures;
         }

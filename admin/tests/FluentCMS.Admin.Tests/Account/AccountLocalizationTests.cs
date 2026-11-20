@@ -20,6 +20,7 @@ public sealed class AccountLocalizationTests : AdminTestContext
         "Lists", "Empty", "Enrol", "KeyOnly", "WrongCode", "EmptyCode", "Codes", "Cancelled", "On", "NewCodes", "NewCodesShown",
         "Disable", "DisableRequired", "RequiredAndPending", "Refused", "Failed", "ThisTabEnded", "Ended", "AlreadyEnded",
         "EndFailed", "Removed", "LastWayIn", "AlreadyRemoved", "RemoveFailed", "AlreadyOn", "Changed", "SignInFailed",
+        "RecentSignIn",
     ];
 
     public static TheoryData<string, string> States()
@@ -62,6 +63,7 @@ public sealed class AccountLocalizationTests : AdminTestContext
             ("LastWayIn", _) when method == HttpMethod.Delete => Problem(HttpStatusCode.Conflict, "FCMS3090", "provider"),
             ("AlreadyRemoved", _) when method == HttpMethod.Delete => Problem(HttpStatusCode.UnprocessableEntity, "FCMS3091", "provider"),
             ("AlreadyOn", "me/two-factor/enrol") => Problem(HttpStatusCode.Conflict, "FCMS3060", "twoFactor"),
+            ("RecentSignIn", "me/two-factor/enrol") => Problem(HttpStatusCode.Forbidden, "FCMS3065"),
             ("Changed", "me/two-factor/verify") => Problem(HttpStatusCode.UnprocessableEntity, "FCMS3062", "code"),
             (_, "me/two-factor/enrol") => Json(new JsonObject { ["sharedKey"] = key, ["authenticatorUri"] = uri }),
             ("WrongCode", "me/two-factor/verify") => Problem(HttpStatusCode.UnprocessableEntity, "FCMS3063", "code"),
@@ -119,7 +121,7 @@ public sealed class AccountLocalizationTests : AdminTestContext
                     _ => ".account-key",
                 }));
                 break;
-            case "AlreadyOn":
+            case "AlreadyOn" or "RecentSignIn":
                 Click(app, 1, 0);
                 app.WaitForAssertion(() => app.Find(".account-message:not(:empty)"));
                 break;
