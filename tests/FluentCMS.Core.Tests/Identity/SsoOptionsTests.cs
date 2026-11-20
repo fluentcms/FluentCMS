@@ -57,6 +57,14 @@ public sealed class SsoOptionsTests
             (new SsoProvider { Preset = SsoPreset.EntraId, ClientId = "cms" }, "TenantId is required"),
             (new SsoProvider { Preset = SsoPreset.EntraId, TenantId = "common", ClientId = "cms" }, "name one tenant"),
             (new SsoProvider { Preset = SsoPreset.EntraId, TenantId = "Organizations", ClientId = "cms" }, "name one tenant"),
+            (new SsoProvider { Authority = "https://login.microsoftonline.com/common/v2.0", ClientId = "cms" }, "is a shared Microsoft endpoint"),
+            (new SsoProvider { Preset = SsoPreset.EntraId, Authority = "https://LOGIN.microsoftonline.com/organizations/v2.0/", ClientId = "cms" }, "is a shared Microsoft endpoint"),
+            (new SsoProvider { Preset = SsoPreset.EntraId, TenantId = "contoso.onmicrosoft.com", Authority = "https://login.microsoftonline.us/consumers", ClientId = "cms" }, "is a shared Microsoft endpoint"),
+            (new SsoProvider { Preset = SsoPreset.EntraId, TenantId = "9188040d-6c67-4c5b-b112-36a304b66dad", ClientId = "cms" }, "name one tenant"),
+            (new SsoProvider { Authority = "https://login.microsoftonline.com/9188040D-6C67-4C5B-B112-36A304B66DAD/v2.0", ClientId = "cms" }, "is a shared Microsoft endpoint"),
+            (new SsoProvider { Authority = "https://login.microsoftonline.com./common/v2.0", ClientId = "cms" }, "is a shared Microsoft endpoint"),
+            (new SsoProvider { Authority = "https://login-us.microsoftonline.com/organizations/v2.0", ClientId = "cms" }, "is a shared Microsoft endpoint"),
+            (new SsoProvider { Authority = "https://login.microsoftonline.de/common/v2.0", ClientId = "cms" }, "is a shared Microsoft endpoint"),
             (new SsoProvider { Preset = SsoPreset.Okta, ClientId = "cms" }, "Domain is required"),
             (new SsoProvider { Preset = SsoPreset.Keycloak, BaseUrl = "https://kc.example.com", ClientId = "cms" }, "Realm are required"),
             (new SsoProvider { Preset = (SsoPreset)42, Authority = "https://id.example.com", ClientId = "cms" }, "Preset is not one of"),
@@ -74,6 +82,16 @@ public sealed class SsoOptionsTests
             refused.Detail.ShouldStartWith("Providers:corp", customMessage: message);
             refused.Detail.ShouldContain(message);
         }
+    }
+
+    [Fact]
+    public void AnAuthoritySetByHandForOneTenantOrAnotherProviderPasses()
+    {
+        var options = new SsoOptions();
+        options.Providers["entra"] = new SsoProvider { Preset = SsoPreset.EntraId, Authority = "https://login.microsoftonline.com/contoso.onmicrosoft.com/v2.0", ClientId = "cms" };
+        options.Providers["other"] = new SsoProvider { Authority = "https://id.example.com/common", ClientId = "cms" };
+
+        options.Validate();
     }
 
     private static SsoProvider WithMapping(SsoRoleMapping mapping)
