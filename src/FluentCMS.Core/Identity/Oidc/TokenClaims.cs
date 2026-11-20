@@ -25,6 +25,10 @@ internal static class TokenClaims
     // carries the sid of the cookie's session needs no confirmation.
     public const string ServerSession = "sid";
 
+    // The server session a token of a consent was issued in, with no destination: a consent is no session's, so no token a
+    // client reads names it, and its codes and refresh tokens keep it for SingleFactorTokenHandler.
+    public const string ConsentSession = "fcms_session";
+
     // The authentication method reference Identity gives a sign-in with a second factor.
     public const string MultiFactor = "mfa";
 
@@ -80,6 +84,9 @@ internal static class TokenClaims
 
     public static ClaimsIdentity ForServerSession(ClaimsIdentity identity, string serverSession) =>
         identity.SetClaim(ServerSession, serverSession).SetDestinations(Destinations);
+
+    public static ClaimsIdentity ForConsentSession(ClaimsIdentity identity, string serverSession) =>
+        identity.SetClaim(ConsentSession, serverSession).SetDestinations(Destinations);
 
     public static ClaimsIdentity ForServiceAccount(ClaimsIdentity identity, Guid applicationId, string name, IEnumerable<Guid> roles, IEnumerable<string> scopes)
     {

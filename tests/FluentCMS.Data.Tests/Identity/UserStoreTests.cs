@@ -389,6 +389,125 @@ public sealed class UserStoreTests : IDisposable
         (await _fixture.FindAsync(user.Id)).MustChangePassword.ShouldBeTrue();
     }
 
+    // A password an operator sets, as `user reset-password --password-stdin` does, gives a new stamp in the same save and
+    // the forced change, since the user did not choose it.
+    [Fact]
+    public async Task APasswordAnOperatorSetsGivesANewStampAndTheForcedChange()
+    {
+        var user = await _fixture.CreateUserAsync("ann");
+        var before = (await _fixture.FindAsync(user.Id)).SecurityStamp;
+
+        (await _fixture.UsersAsync(async users => await users.SetPasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, "short"))).Succeeded.ShouldBeFalse();
+        var refused = await _fixture.FindAsync(user.Id);
+        refused.SecurityStamp.ShouldBe(before);
+        refused.MustChangePassword.ShouldBeFalse();
+
+        Succeeded(await _fixture.UsersAsync(async users => await users.SetPasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, "Temporary-horse-3")));
+        var stored = await _fixture.FindAsync(user.Id);
+        stored.MustChangePassword.ShouldBeTrue();
+        stored.SecurityStamp.ShouldNotBe(before);
+        (await _fixture.UsersAsync(users => users.CheckPasswordAsync(stored, "Temporary-horse-3"))).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task AWrongCurrentPasswordCountsTowardsTheLockoutAndARightOneStartsTheCountAgain()
+    {
+        var user = await _fixture.CreateUserAsync("ann");
+        var attempts = new AdminUserOptions().Lockout.MaxFailedAccessAttempts;
+        Task<IdentityResult> ChangeAsync(string current, string next) =>
+            _fixture.UsersAsync(async users => await users.ChangePasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, current, next));
+
+        (await ChangeAsync("wrong", "Another-horse-2")).Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.PasswordMismatch));
+        Succeeded(await ChangeAsync(Password, "Another-horse-2"));
+        (await _fixture.FindAsync(user.Id)).AccessFailedCount.ShouldBe(0);
+
+        for (var attempt = 0; attempt < attempts; attempt++)
+        {
+            (await ChangeAsync("wrong", "Third-horse-3")).Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.PasswordMismatch));
+        }
+
+        (await _fixture.UsersAsync(async users => await users.IsLockedOutAsync((await users.FindByIdAsync(user.Id.ToString("D")))!))).ShouldBeTrue();
+        (await ChangeAsync("Another-horse-2", "Third-horse-3")).Errors.ShouldHaveSingleItem().Code.ShouldBe(CmsUserManager.LockedOutCode);
+        var kept = await _fixture.FindAsync(user.Id);
+        (await _fixture.UsersAsync(users => users.CheckPasswordAsync(kept, "Another-horse-2"))).ShouldBeTrue();
+    }
+
+    // A user of a provider only has no password to guess, so its attempts count nothing.
+    [Fact]
+    public async Task AChangeOfAUserWithoutAPasswordCountsNoFailure()
+    {
+        var user = await _fixture.CreateUserAsync("ann", password: null);
+
+        for (var attempt = 0; attempt < new AdminUserOptions().Lockout.MaxFailedAccessAttempts; attempt++)
+        {
+            (await _fixture.UsersAsync(async users => await users.ChangePasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, "anything", "Another-horse-2"))).Succeeded.ShouldBeFalse();
+        }
+
+        var stored = await _fixture.FindAsync(user.Id);
+        stored.AccessFailedCount.ShouldBe(0);
+        stored.LockoutEnd.ShouldBeNull();
+    }
+
+    // A pair that collided before the check existed: neither user's other saves fail, the lockout among them, a rename into
+    // the collision still does, and the startup check names the pair.
+    [Fact]
+    public async Task APairThatCollidedBeforeTheCheckKeepsItsOtherSavesAndIsReported()
+    {
+        var ann = await _fixture.CreateUserAsync("ann");
+        var bob = await _fixture.CreateUserAsync("bob");
+        _fixture.Read(context => context.Set<CmsUser>().Where(row => row.Id == bob.Id)
+            .ExecuteUpdate(setters => setters.SetProperty(row => row.UserName, ann.Email).SetProperty(row => row.NormalizedUserName, ann.Email!.ToUpperInvariant())));
+
+        foreach (var id in new[] { ann.Id, bob.Id })
+        {
+            Succeeded(await _fixture.UsersAsync(async users => await users.AccessFailedAsync((await users.FindByIdAsync(id.ToString("D")))!)));
+            Succeeded(await _fixture.UsersAsync(async users => await users.ChangePasswordAsync((await users.FindByIdAsync(id.ToString("D")))!, Password, "Another-horse-2")));
+        }
+
+        (await _fixture.FindAsync(bob.Id)).AccessFailedCount.ShouldBe(0);
+        await _fixture.WithAsync(async services =>
+        {
+            await new CrossNameStartupCheck(services.GetRequiredService<IServiceScopeFactory>(), services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<CrossNameStartupCheck>>()).StartAsync(Token);
+            return true;
+        });
+        _fixture.Logs.Messages.ShouldContain(message => message.Contains(bob.Id.ToString(), StringComparison.Ordinal) && message.Contains(ann.Id.ToString(), StringComparison.Ordinal));
+
+        var renamed = await _fixture.UsersAsync(async users =>
+        {
+            var stored = (await users.FindByIdAsync(ann.Id.ToString("D")))!;
+            stored.UserName = "carol@example.com";
+            Succeeded(await users.UpdateAsync(stored));
+            stored.Email = "bob-again@example.com";
+            Succeeded(await users.UpdateAsync(stored));
+            stored.UserName = bob.Email;
+            return await users.UpdateAsync(stored);
+        });
+        renamed.Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.DuplicateUserName));
+
+    }
+
+    // Sign-in takes a name or an address, so neither may be another user's other one; a user's own name may be its address.
+    [Fact]
+    public async Task ANameOrAnAddressThatIsTheOtherOneOfAnotherUserIsRefused()
+    {
+        var ann = await _fixture.CreateUserAsync("ann");
+
+        var name = await _fixture.UsersAsync(users => users.CreateAsync(new CmsUser { UserName = ann.Email!.ToUpperInvariant(), Email = "mallory@example.com" }, Password));
+        name.Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.DuplicateUserName));
+
+        Succeeded(await _fixture.UsersAsync(users => users.CreateAsync(new CmsUser { UserName = "alias@example.org", Email = "carol@example.com" }, Password)));
+        var email = await _fixture.UsersAsync(users => users.CreateAsync(new CmsUser { UserName = "mallory", Email = "Alias@example.org" }, Password));
+        email.Errors.ShouldHaveSingleItem().Code.ShouldBe(nameof(IdentityErrorDescriber.DuplicateEmail));
+
+        Succeeded(await _fixture.UsersAsync(users => users.CreateAsync(new CmsUser { UserName = "dave@example.com", Email = "dave@example.com" }, Password)));
+        Succeeded(await _fixture.UsersAsync(async users =>
+        {
+            var stored = (await users.FindByIdAsync(ann.Id.ToString("D")))!;
+            stored.UserName = ann.Email;
+            return await users.UpdateAsync(stored);
+        }));
+    }
+
     [Fact]
     public async Task AUserIsDeactivatedNotDeleted()
     {

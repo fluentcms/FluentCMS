@@ -139,7 +139,7 @@ public sealed partial class HostedPagesTests
         using var back = await SignInWithProviderAsync(browser, idp, kim);
         var challenge = await ExternalLoginAsync(browser, back);
         challenge.ShouldStartWith("/account/two-factor");
-        using (var passed = await browser.SubmitAsync(challenge, new Dictionary<string, string> { ["Input.Code"] = Totp(key) }))
+        using (var passed = await browser.SubmitAsync(challenge, new Dictionary<string, string> { ["Input.Code"] = Totp(host, key) }))
         {
             passed.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         }
@@ -181,7 +181,7 @@ public sealed partial class HostedPagesTests
         {
         }
 
-        using (var passed = await browser.SubmitAsync(challenge, new Dictionary<string, string> { ["Input.Code"] = Totp(key) }))
+        using (var passed = await browser.SubmitAsync(challenge, new Dictionary<string, string> { ["Input.Code"] = Totp(host, key) }))
         {
             passed.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         }
@@ -213,7 +213,7 @@ public sealed partial class HostedPagesTests
         var stored = (await scope.ServiceProvider.GetRequiredService<CmsUserManager>().FindByLoginAsync(Corp, user.Subject)).ShouldNotBeNull();
         var twoFactor = scope.ServiceProvider.GetRequiredService<TwoFactorService>();
         var key = (await twoFactor.EnrolAsync(stored, "FluentCMS")).SharedKey;
-        await twoFactor.VerifyAsync(stored, Totp(key));
+        await twoFactor.VerifyAsync(stored, Totp(host, key));
         return key;
     }
 

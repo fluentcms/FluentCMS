@@ -219,6 +219,19 @@ public sealed class AdminCommandTests(AdminCommandFixture fixture) : IClassFixtu
         browser.HasCookie(".AspNetCore.Identity.Application").ShouldBeTrue();
     }
 
+    // The operator chose the password, not the user, so the user must change it (#3296).
+    [Fact]
+    public async Task SettingThePasswordMakesTheUserChangeIt()
+    {
+        var user = await Host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+
+        var reset = await RunAsync(new TextCommandInput(new StringReader("A-New-Longer-Passphrase-7\n"), terminal: false), "user", "reset-password", "--email", user.Email, "--password-stdin");
+
+        reset.ExitCode.ShouldBe(0, reset.Error);
+        await using var scope = Host.Services.CreateAsyncScope();
+        (await scope.ServiceProvider.GetRequiredService<CmsUserManager>().FindByIdAsync(user.Id.ToString()))!.MustChangePassword.ShouldBeTrue();
+    }
+
     [Fact]
     public async Task SettingThePasswordRevokesTheUsersAccessTokens()
     {

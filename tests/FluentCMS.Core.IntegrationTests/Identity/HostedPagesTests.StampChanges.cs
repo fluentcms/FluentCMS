@@ -116,7 +116,7 @@ public sealed partial class HostedPagesTests
 
         // Enrolling keeps the stamp, so the sessions go on until a code turns two-factor on.
         (await MeAsync(_host, other.AccessToken)).ShouldBe(HttpStatusCode.OK);
-        var verified = await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/verify", Code(Totp(key)));
+        var verified = await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/verify", Code(Totp(_host, key)));
         verified.Status.ShouldBe(HttpStatusCode.OK, verified.Body?.ToJsonString());
 
         (await AdminFixture.SendAsync(client, HttpMethod.Get, "me")).Status.ShouldBe(HttpStatusCode.Unauthorized);
@@ -140,7 +140,7 @@ public sealed partial class HostedPagesTests
         await SignInAsync(browser, editor.Email);
 
         var key = SharedKeyOf(await browser.PageAsync("/account/enable-two-factor")).Replace(" ", "", StringComparison.Ordinal);
-        using (var enabled = await browser.SubmitAsync("/account/enable-two-factor", new Dictionary<string, string> { ["Input.Code"] = Totp(key) }))
+        using (var enabled = await browser.SubmitAsync("/account/enable-two-factor", new Dictionary<string, string> { ["Input.Code"] = Totp(_host, key) }))
         {
             enabled.StatusCode.ShouldBe(HttpStatusCode.OK);
         }

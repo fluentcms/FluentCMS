@@ -173,20 +173,49 @@ internal sealed class CmsSignInManager(
         return await base.CheckPasswordSignInAsync(user, password, lockoutOnFailure);
     }
 
-    // Every sign-in that makes a new cookie comes here; a renewal passes the cookie's properties, which keep the time.
+    // Every sign-in that makes a new cookie comes here; a renewal passes the cookie's properties, which keep the time. One
+    // with the second factor ends what its server session was issued without it.
     public override async Task SignInWithClaimsAsync(CmsUser user, AuthenticationProperties? authenticationProperties, IEnumerable<Claim> additionalClaims)
     {
         ArgumentNullException.ThrowIfNull(user);
 
+        List<Claim> claims = [.. additionalClaims ?? []];
         var properties = authenticationProperties ?? new AuthenticationProperties();
         await TakeOverAsync(Context, IdentityConstants.ApplicationScheme, user.Id.ToString("D"), properties, UserManager.GetUserId);
         if (properties.IssuedUtc is null && !properties.Items.ContainsKey(SignedInAtItem))
         {
-            await KeepSsoSessionAsync(user, properties, additionalClaims);
+            await KeepSsoSessionAsync(user, properties, claims);
         }
 
         MarkSignIn(properties, time);
-        await base.SignInWithClaimsAsync(user, properties, additionalClaims);
+        if (claims.Exists(claim => claim.Type == Claims.AuthenticationMethodReference && claim.Value == TokenClaims.MultiFactor))
+        {
+            await Context.RequestServices.GetRequiredService<UserSessions>().EndSingleFactorAsync(user.Id.ToString("D"), ServerSession(properties), CancellationToken.None);
+        }
+
+        await base.SignInWithClaimsAsync(user, properties, claims);
+    }
+
+    // Identity's refresh keeps the first amr only, which after the enable-two-factor page is pwd and drops mfa; every one is
+    // kept here, with the provider.
+    public override async Task RefreshSignInAsync(CmsUser user)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+
+        var auth = await Context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        if (!auth.Succeeded || auth.Principal is null)
+        {
+            return;
+        }
+
+        if (UserManager.GetUserId(auth.Principal) != await UserManager.GetUserIdAsync(user))
+        {
+            throw new InvalidOperationException("The cookie belongs to another user, so it cannot be renewed for this one.");
+        }
+
+        List<Claim> methods = [.. auth.Principal.FindAll(claim => claim.Type is Claims.AuthenticationMethodReference or ClaimTypes.AuthenticationMethod)
+            .Select(claim => new Claim(claim.Type, claim.Value))];
+        await SignInWithClaimsAsync(user, auth.Properties, methods);
     }
 
     public override async Task<SignInResult> TwoFactorAuthenticatorSignInAsync(string code, bool isPersistent, bool rememberClient)

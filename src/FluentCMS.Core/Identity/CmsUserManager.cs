@@ -1,4 +1,7 @@
+using FluentCMS.Core.Storage;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -8,7 +11,11 @@ namespace FluentCMS.Core.Identity;
 // deactivation, the forced password change, and the lockout on the host's clock.
 public sealed class CmsUserManager : UserManager<CmsUser>
 {
+    // The code of a change refused while the user is locked out, which only the hosted page shows, so no FCMS code.
+    internal const string LockedOutCode = "UserLockedOut";
+
     private readonly TimeProvider _time;
+    private readonly IServiceProvider _services;
 
     public CmsUserManager(
         IUserStore<CmsUser> store,
@@ -24,6 +31,7 @@ public sealed class CmsUserManager : UserManager<CmsUser>
         : base(store, optionsAccessor, passwordHasher, userValidators, passwordValidators, keyNormalizer, errors, services, logger)
     {
         _time = time;
+        _services = services;
     }
 
     private CmsUserStore RoleStore => Store as CmsUserStore
@@ -216,19 +224,87 @@ public sealed class CmsUserManager : UserManager<CmsUser>
         return await UpdateUserAsync(user);
     }
 
-    public override Task<IdentityResult> ChangePasswordAsync(CmsUser user, string currentPassword, string newPassword) =>
-        ClearingPasswordChangeAsync(user, () => base.ChangePasswordAsync(user, currentPassword, newPassword));
+    // A wrong current password counts towards the lockout, as at sign-in, so that a session that leaked is no way to guess
+    // it; while the user is locked out the change is refused unchecked, and a right one starts the count again. A user with
+    // no password, one of a provider only, has nothing to guess, so nothing is counted.
+    public override async Task<IdentityResult> ChangePasswordAsync(CmsUser user, string currentPassword, string newPassword)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(user);
+
+        if (SupportsUserLockout && await IsLockedOutAsync(user))
+        {
+            return IdentityResult.Failed(new IdentityError { Code = LockedOutCode, Description = "The account is locked out for now; try again later." });
+        }
+
+        // The count starts again in the save of the new password, and comes back if that fails, unless a failed save
+        // reloaded the user with what another request stored since.
+        var failures = user.AccessFailedCount;
+        user.AccessFailedCount = 0;
+        var result = await ClearingPasswordChangeAsync(user, () => base.ChangePasswordAsync(user, currentPassword, newPassword));
+        if (result.Succeeded)
+        {
+            return result;
+        }
+
+        if (user.AccessFailedCount == 0)
+        {
+            user.AccessFailedCount = failures;
+        }
+
+        if (SupportsUserLockout && result.Errors.Any(error => error.Code == nameof(IdentityErrorDescriber.PasswordMismatch)) && await HasPasswordAsync(user))
+        {
+            await AccessFailedAsync(user);
+        }
+
+        return result;
+    }
+
+    // A password an operator sets, with a new security stamp in the same save, and the forced change, since the user did not
+    // choose it.
+    public async Task<IdentityResult> SetPasswordAsync(CmsUser user, string newPassword)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(user);
+        ArgumentNullException.ThrowIfNull(newPassword);
+
+        var required = user.MustChangePassword;
+        user.MustChangePassword = true;
+        var result = await UpdatePasswordHash(user, newPassword, validatePassword: true);
+        result = result.Succeeded ? await UpdateUserAsync(user) : result;
+        if (!result.Succeeded)
+        {
+            user.MustChangePassword = required;
+        }
+
+        return result;
+    }
 
     public override Task<IdentityResult> ResetPasswordAsync(CmsUser user, string token, string newPassword) =>
         ClearingPasswordChangeAsync(user, () => base.ResetPasswordAsync(user, token, newPassword));
 
-    // Every Identity call that stages rows of the user saves them here, so a failure here is where they are dropped.
+    // Every Identity call that stages rows of the user saves them here, so a failure here is where they are dropped. Two
+    // saves that add the same token row of the user at once, as two requests taking the first authenticator code a user
+    // gives do, meet on its key unless the user's concurrency stamp stops the second first: either way it is a concurrency
+    // failure, whatever order the commands run in.
     protected override async Task<IdentityResult> UpdateUserAsync(CmsUser user)
     {
-        var result = await base.UpdateUserAsync(user);
-        if (!result.Succeeded && Store is CmsUserStore store)
+        var store = Store as CmsUserStore;
+        var addsToken = store?.StagesTokenRow(user) == true;
+        IdentityResult result;
+        try
+        {
+            result = await base.UpdateUserAsync(user);
+        }
+        catch (DbUpdateException exception) when (addsToken && _services.GetService<IDataProvider>()?.IsUniqueViolation(exception) == true)
+        {
+            result = IdentityResult.Failed(ErrorDescriber.ConcurrencyFailure());
+        }
+
+        if (!result.Succeeded && store is not null)
         {
             store.DiscardStaged(user);
+            await store.ReattachAsync(user, CancellationToken);
         }
 
         return result;

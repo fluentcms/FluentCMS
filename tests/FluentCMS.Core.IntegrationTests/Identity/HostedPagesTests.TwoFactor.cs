@@ -39,11 +39,11 @@ public sealed partial class HostedPagesTests
         enrolled.Json["authenticatorUri"]!.GetValue<string>().ShouldBe($"otpauth://totp/FluentCMS:{Uri.EscapeDataString(editor.Email)}?secret={key}&issuer=FluentCMS&digits=6");
         (await AdminFixture.SendAsync(client, HttpMethod.Get, "me/two-factor")).Json["pending"]!.GetValue<bool>().ShouldBeTrue();
 
-        var wrong = await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/verify", Code(WrongCode(key)));
+        var wrong = await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/verify", Code(WrongCode(host, key)));
         wrong.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
         wrong.Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.InvalidTwoFactorCode);
 
-        var verified = await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/verify", Code(Totp(key)));
+        var verified = await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/verify", Code(Totp(host, key)));
         verified.Status.ShouldBe(HttpStatusCode.OK, verified.Body?.ToJsonString());
         verified.Json["recoveryCodes"]!.AsArray().Count.ShouldBe(TwoFactorService.RecoveryCodeCount);
 
@@ -133,7 +133,7 @@ public sealed partial class HostedPagesTests
         (await browser.PageAsync(enable)).ShouldContain(SharedKeyOf(page));
         var key = SharedKeyOf(page).Replace(" ", "", StringComparison.Ordinal);
 
-        using var turnedOn = await browser.PostAsync(enable, page, new Dictionary<string, string> { ["Input.Code"] = Totp(key) });
+        using var turnedOn = await browser.PostAsync(enable, page, new Dictionary<string, string> { ["Input.Code"] = Totp(host, key) });
         turnedOn.StatusCode.ShouldBe(HttpStatusCode.OK);
         var shown = await turnedOn.Content.ReadAsStringAsync(Token);
         shown.ShouldContain("Two-factor sign-in is on.");
@@ -141,7 +141,9 @@ public sealed partial class HostedPagesTests
 
         using var done = await browser.FollowAsync(await browser.GetAsync(request.Url));
         var tokens = await request.ExchangeAsync(host, done);
-        Amr(tokens.GetProperty("access_token").GetString()!).ShouldBe(["mfa"]);
+
+        // The sign-in keeps its method beside the second factor it now has.
+        Amr(tokens.GetProperty("access_token").GetString()!).ShouldBe(["pwd", "mfa"], ignoreOrder: true);
     }
 
     [Fact]
@@ -157,7 +159,7 @@ public sealed partial class HostedPagesTests
         using (var browser = new HostedPagesBrowser(host, "10.2.4.1"))
         {
             using var password = await browser.SubmitAsync("/account/login?ReturnUrl=" + Uri.EscapeDataString(request.Url), Credentials(secured.Email, Password));
-            using var challenged = await browser.SubmitAsync(password.Headers.Location!.OriginalString, new Dictionary<string, string> { ["Input.Code"] = Totp(key) });
+            using var challenged = await browser.SubmitAsync(password.Headers.Location!.OriginalString, new Dictionary<string, string> { ["Input.Code"] = Totp(host, key) });
             using var done = await browser.FollowAsync(challenged);
             tokens = await request.ExchangeAsync(host, done);
         }
@@ -193,7 +195,7 @@ public sealed partial class HostedPagesTests
         {
             var twoFactor = password.Headers.Location!.OriginalString;
             (await browser.PageAsync(twoFactor)).ShouldContain("Do not ask again on this device");
-            using var remembered = await browser.SubmitAsync(twoFactor, new Dictionary<string, string> { ["Input.Code"] = Totp(key), ["Input.RememberMachine"] = "true" });
+            using var remembered = await browser.SubmitAsync(twoFactor, new Dictionary<string, string> { ["Input.Code"] = Totp(host, key), ["Input.RememberMachine"] = "true" });
             remembered.StatusCode.ShouldBe(HttpStatusCode.Redirect);
             browser.HasCookie(IdentityConstants.TwoFactorRememberMeScheme).ShouldBeTrue();
         }
@@ -235,7 +237,7 @@ public sealed partial class HostedPagesTests
         page.ShouldStartWith("/account/two-factor?");
         (await browser.PageAsync(page)).ShouldNotContain("Do not ask again on this device");
 
-        using var passed = await browser.SubmitAsync(page, new Dictionary<string, string> { ["Input.Code"] = Totp(key), ["Input.RememberMachine"] = "true" });
+        using var passed = await browser.SubmitAsync(page, new Dictionary<string, string> { ["Input.Code"] = Totp(host, key), ["Input.RememberMachine"] = "true" });
         using var done = await browser.FollowAsync(passed);
         var final = await second.ExchangeAsync(host, done);
         Amr(final.GetProperty("access_token").GetString()!).ShouldBe(["mfa"]);
@@ -274,7 +276,7 @@ public sealed partial class HostedPagesTests
 
         using var browser = new HostedPagesBrowser(host, "10.2.7.1");
         using (var password = await browser.SubmitAsync("/account/login", Credentials(editor.Email, Password)))
-        using (var passed = await browser.SubmitAsync(password.Headers.Location!.OriginalString, new Dictionary<string, string> { ["Input.Code"] = Totp(key) }))
+        using (var passed = await browser.SubmitAsync(password.Headers.Location!.OriginalString, new Dictionary<string, string> { ["Input.Code"] = Totp(host, key) }))
         {
             passed.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         }
@@ -333,7 +335,7 @@ public sealed partial class HostedPagesTests
         var wrong = await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/recovery-codes", Code(codes[0]));
         wrong.Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.InvalidTwoFactorCode, "a recovery code does not replace the recovery codes");
 
-        var replaced = await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/recovery-codes", Code(Totp(key)));
+        var replaced = await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/recovery-codes", Code(Totp(host, key)));
         replaced.Status.ShouldBe(HttpStatusCode.OK, replaced.Body?.ToJsonString());
         var fresh = replaced.Json["recoveryCodes"]!.AsArray().Select(code => code!.GetValue<string>()).ToList();
         fresh.ShouldNotContain(codes[0]);
@@ -348,8 +350,8 @@ public sealed partial class HostedPagesTests
         var status = await AdminFixture.SendAsync(signedInAgain, HttpMethod.Get, "me/two-factor");
         status.Json["enabled"]!.GetValue<bool>().ShouldBeFalse();
         status.Json["pending"]!.GetValue<bool>().ShouldBeFalse("the key goes with it");
-        (await AdminFixture.SendAsync(signedInAgain, HttpMethod.Post, "me/two-factor/disable", Code(Totp(key)))).Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.TwoFactorNotEnabled);
-        (await AdminFixture.SendAsync(signedInAgain, HttpMethod.Post, "me/two-factor/verify", Code(Totp(key)))).Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.NoAuthenticator);
+        (await AdminFixture.SendAsync(signedInAgain, HttpMethod.Post, "me/two-factor/disable", Code(Totp(host, key)))).Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.TwoFactorNotEnabled);
+        (await AdminFixture.SendAsync(signedInAgain, HttpMethod.Post, "me/two-factor/verify", Code(Totp(host, key)))).Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.NoAuthenticator);
 
         using var browser = new HostedPagesBrowser(host, "10.2.6.1");
         using var password = await browser.SubmitAsync("/account/login", Credentials(editor.Email, Password));
@@ -371,7 +373,7 @@ public sealed partial class HostedPagesTests
         var twoFactor = scope.ServiceProvider.GetRequiredService<TwoFactorService>();
         var stored = (await users.FindByIdAsync(user.Id.ToString()))!;
         var setup = await twoFactor.EnrolAsync(stored, "FluentCMS");
-        return (setup.SharedKey, await twoFactor.VerifyAsync(stored, Totp(setup.SharedKey)));
+        return (setup.SharedKey, await twoFactor.VerifyAsync(stored, Totp(host, setup.SharedKey)));
     }
 
     private static async Task<string> GuardedRoleAsync(HttpClient admin)
@@ -411,7 +413,11 @@ public sealed partial class HostedPagesTests
 
     private static string Code(string code) => JsonSerializer.Serialize(new { code });
 
-    private static string WrongCode(string key) => Totp(key) == "000000" ? "111111" : "000000";
+    private static string WrongCode(FluentCmsTestHost host, string key)
+    {
+        var now = host.Time.GetUtcNow().ToUnixTimeSeconds() / 30;
+        return ((string[])["000000", "111111", "222222"]).First(code => !Enumerable.Range(-2, 5).Any(offset => TotpAt(key, now + offset) == code));
+    }
 
     private static string SharedKeyOf(string page) => WebUtility.HtmlDecode(SharedKey().Match(page).Groups[1].Value);
 

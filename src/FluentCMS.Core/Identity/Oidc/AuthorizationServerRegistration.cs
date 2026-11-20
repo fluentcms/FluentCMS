@@ -99,6 +99,7 @@ internal static class AuthorizationServerRegistration
                 server.DisableResourceValidation().IgnoreResourcePermissions();
                 server.AddEventHandler(ResourceIndicatorHandler.AuthorizationDescriptor);
                 server.AddEventHandler(ResourceIndicatorHandler.TokenDescriptor);
+                server.AddEventHandler(SingleFactorTokenHandler.Descriptor);
 
                 // An error of authorize or logout that cannot go back to the client reaches the endpoint, which shows the error page.
                 server.UseAspNetCore()

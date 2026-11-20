@@ -28,10 +28,10 @@ public sealed class AccountTests
         QrCode.Encode(setup.AuthenticatorUri).Version.ShouldBeLessThanOrEqualTo(QrCode.MaxVersion);
         (await account.GetTwoFactorAsync(Token)).Pending.ShouldBeTrue();
 
-        var wrong = await Should.ThrowAsync<ApiProblemException>(() => account.VerifyAuthenticatorAsync(WrongCode(setup.SharedKey), Token));
+        var wrong = await Should.ThrowAsync<ApiProblemException>(() => account.VerifyAuthenticatorAsync(WrongCode(admin, setup.SharedKey), Token));
         AccountProblems.Has(wrong, AccountProblems.InvalidTwoFactorCode).ShouldBeTrue();
 
-        var codes = await account.VerifyAuthenticatorAsync(Totp(setup.SharedKey, DateTimeOffset.UtcNow), Token);
+        var codes = await account.VerifyAuthenticatorAsync(NextCode(admin, setup.SharedKey), Token);
         codes.Count.ShouldBe(10);
 
         // The new security stamp revoked the user's sessions, this one among them (#3202).
@@ -45,9 +45,9 @@ public sealed class AccountTests
         var again = await Should.ThrowAsync<ApiProblemException>(() => account.EnrolAuthenticatorAsync(Token));
         AccountProblems.Has(again, AccountProblems.TwoFactorEnabled).ShouldBeTrue();
 
-        var wrongForNewCodes = await Should.ThrowAsync<ApiProblemException>(() => account.NewRecoveryCodesAsync(WrongCode(setup.SharedKey), Token));
+        var wrongForNewCodes = await Should.ThrowAsync<ApiProblemException>(() => account.NewRecoveryCodesAsync(WrongCode(admin, setup.SharedKey), Token));
         AccountProblems.Has(wrongForNewCodes, AccountProblems.InvalidTwoFactorCode).ShouldBeTrue();
-        var fresh = await account.NewRecoveryCodesAsync(Totp(setup.SharedKey, DateTimeOffset.UtcNow), Token);
+        var fresh = await account.NewRecoveryCodesAsync(NextCode(admin, setup.SharedKey), Token);
         fresh.Count.ShouldBe(10);
         fresh.ShouldNotContain(codes[0]);
 
@@ -99,10 +99,18 @@ public sealed class AccountTests
         return value.ToString("D6", System.Globalization.CultureInfo.InvariantCulture);
     }
 
-    // A code no window of the key around now gives.
-    private static string WrongCode(string key)
+    // The server checks codes on the host's clock and takes a code of each 30-second step once, so each code the test gives
+    // is of the next step.
+    private static string NextCode(AdminHost admin, string key)
     {
-        var now = DateTimeOffset.UtcNow;
+        admin.Host.Time.Advance(TimeSpan.FromSeconds(30));
+        return Totp(key, admin.Host.Time.GetUtcNow());
+    }
+
+    // A code no window of the key around the host's now gives.
+    private static string WrongCode(AdminHost admin, string key)
+    {
+        var now = admin.Host.Time.GetUtcNow();
         var valid = Enumerable.Range(-2, 5).Select(step => Totp(key, now.AddSeconds(step * 30))).ToHashSet(StringComparer.Ordinal);
         return Enumerable.Range(0, 1_000_000).Select(code => code.ToString("D6", System.Globalization.CultureInfo.InvariantCulture)).First(code => !valid.Contains(code));
     }

@@ -71,13 +71,13 @@ internal static class MemberConnect
         return Results.SignIn(new ClaimsPrincipal(identity), properties: null, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 
-    // The code or refresh token keeps its scopes and session; the member is read again, so one who is deactivated, locked
-    // out or deleted, or whose password changed since, gets no new token.
+    // The code or refresh token keeps its scopes and session; the member is read again, so one who is deactivated or
+    // deleted, or whose password changed since, gets no new token. Lockout is no reason, as in the admin pool (#3271).
     public static async Task<IResult> RedeemAsync(HttpContext context, OpenIddictRequest request, ClaimsPrincipal token)
     {
         var signIn = context.RequestServices.GetRequiredService<MemberSignInManager>();
         var member = token.GetClaim(Claims.Subject) is { } subject ? await signIn.UserManager.FindByIdAsync(subject) : null;
-        if (member is null || !await signIn.MaySignInAsync(member))
+        if (member is null || !await signIn.CanSignInAsync(member))
         {
             return ConnectEndpoints.Refuse(Errors.InvalidGrant, "The member can no longer sign in.");
         }

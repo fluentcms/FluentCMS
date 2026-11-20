@@ -105,14 +105,14 @@ internal sealed class UserAdministration(
         return await InfoAsync(user, cancellationToken);
     }
 
-    // Sets the password as a reset does, which ends the user's sessions with a new security stamp. For the command line only.
+    // Sets the password with a new security stamp, which ends the user's sessions, and the forced change: a password the
+    // operator chose is not one the user chose. For the command line only.
     public async Task<UserInfo> SetPasswordAsync(Guid id, string password, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(password);
 
         var user = await TargetAsync(id, cancellationToken);
-        var token = await users.GeneratePasswordResetTokenAsync(user);
-        UserViews.Check(await users.ResetPasswordAsync(user, token, password));
+        UserViews.Check(await users.SetPasswordAsync(user, password));
         return await InfoAsync(user, cancellationToken);
     }
 
@@ -123,7 +123,7 @@ internal sealed class UserAdministration(
     }
 
     // An address an admin sets counts as confirmed, as an invitation's does. A new name or address ends the user's sessions
-    // with a new security stamp, as a new password does.
+    // with a new security stamp, as a new password does, in the same save, so the change never stands without it.
     public async Task<UserInfo> UpdateAsync(Guid id, UserChange change, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(change);
@@ -145,11 +145,9 @@ internal sealed class UserAdministration(
             user.MustChangePassword = mustChange;
         }
 
-        UserViews.Check(await users.UpdateAsync(user));
-        if (user.UserName != oldName || user.Email != oldEmail)
-        {
-            UserViews.Check(await users.UpdateSecurityStampAsync(user));
-        }
+        UserViews.Check(user.UserName != oldName || user.Email != oldEmail
+            ? await users.UpdateSecurityStampAsync(user)
+            : await users.UpdateAsync(user));
 
         return await InfoAsync(user, cancellationToken);
     }

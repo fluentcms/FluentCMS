@@ -289,6 +289,25 @@ public sealed class MemberTokenTests(MemberFixture fixture) : IClassFixture<Memb
         failures.Count(row => row.Details!.Contains(LoginFailureReasons.InvalidCredentials, StringComparison.Ordinal)).ShouldBe(4);
     }
 
+    // Anyone who knows the address can lock the member out, so that ends no session the member has (#3271).
+    [Fact]
+    public async Task ALockedOutMemberKeepsTheSessionsItHas()
+    {
+        var address = await fixture.RegisterVerifiedAsync();
+        var hosted = await fixture.Host.SignInAsync(new TestMember(await fixture.MemberIdAsync(address), address, Principal.Anonymous));
+
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            (await fixture.DirectLoginAsync(address, $"Wrong-Password-Number-{attempt}")).Status.ShouldBe(HttpStatusCode.BadRequest);
+        }
+
+        (await fixture.DirectLoginAsync(address, Password)).Status.ShouldBe(HttpStatusCode.BadRequest);
+        var refreshed = await fixture.RefreshAsync(hosted.RefreshToken!, FluentCmsTestHost.OAuthMemberClientId);
+        refreshed.Status.ShouldBe(HttpStatusCode.OK, refreshed.Body?.ToJsonString());
+        using var client = fixture.Bearer(hosted.AccessToken);
+        (await fixture.MembersAsync(HttpMethod.Get, "me", client: client)).Status.ShouldBe(HttpStatusCode.OK);
+    }
+
     // On a host of its own, since it moves the clock past the lockout. The lockout is Identity's rule on the host's clock:
     // still on at its end, and over a tick later.
     [Fact]

@@ -16,8 +16,12 @@ internal sealed class UserSessions(IOpenIddictAuthorizationManager authorization
     // The property of an authorization that names the server session, the sign-in cookie, it was issued in.
     public const string ServerSessionProperty = "fcms_server_session";
 
+    // Set on an authorization issued from a sign-in with the second factor (amr=mfa).
+    public const string MultiFactorProperty = "fcms_mfa";
+
     // The ad-hoc authorization that OpenIddict would make for a code of the client, marked with the server session the
-    // user signed in with, so that the logout of that session finds it. Returns its id.
+    // user signed in with, so that the logout of that session finds it, and with whether that sign-in had the second
+    // factor. Returns its id.
     public async Task<string> BeginAsync(ClaimsPrincipal principal, object application, string serverSession, CancellationToken cancellationToken = default)
     {
         var descriptor = new OpenIddictAuthorizationDescriptor
@@ -31,6 +35,10 @@ internal sealed class UserSessions(IOpenIddictAuthorizationManager authorization
         };
         descriptor.Scopes.UnionWith(principal.GetScopes());
         descriptor.Properties[ServerSessionProperty] = JsonSerializer.SerializeToElement(serverSession);
+        if (principal.HasClaim(Claims.AuthenticationMethodReference, TokenClaims.MultiFactor))
+        {
+            descriptor.Properties[MultiFactorProperty] = JsonSerializer.SerializeToElement(true);
+        }
 
         var authorization = await authorizations.CreateAsync(descriptor, cancellationToken);
         return await authorizations.GetIdAsync(authorization, cancellationToken)
@@ -40,7 +48,55 @@ internal sealed class UserSessions(IOpenIddictAuthorizationManager authorization
     // The end of a server session of the user: every valid authorization of the user issued in it, with its tokens. The
     // user's other sessions, and a consent, which is no session's, stay. Without a session id, as for a sign-in from
     // before sessions were marked, nothing ends here.
-    public async Task EndAsync(string? userId, string? serverSession, CancellationToken cancellationToken = default)
+    public Task EndAsync(string? userId, string? serverSession, CancellationToken cancellationToken = default) =>
+        EndAsync(userId, serverSession, singleFactorOnly: false, cancellationToken);
+
+    // A sign-in with the second factor in a server session ends what the session was issued without it (#3228), so that a
+    // role that has come to require two-factor holds for the session's access tokens from then on, not only once they
+    // expire. What was issued with the second factor stays, as do the user's other sessions.
+    // A client with RequireConsent has its codes issued under the consent, so the session's tokens of it are found by the
+    // mark SingleFactorTokenHandler gives them and revoked on their own, the consent left.
+    public async Task EndSingleFactorAsync(string? userId, string? serverSession, CancellationToken cancellationToken = default)
+    {
+        await EndAsync(userId, serverSession, singleFactorOnly: true, cancellationToken);
+        if (string.IsNullOrEmpty(serverSession) || !Guid.TryParse(userId, out var user))
+        {
+            return;
+        }
+
+        List<string> consents = [];
+        await foreach (var authorization in authorizations.FindBySubjectAsync(user.ToString("D"), cancellationToken))
+        {
+            if (await authorizations.HasTypeAsync(authorization, AuthorizationTypes.Permanent, cancellationToken)
+                && await authorizations.HasStatusAsync(authorization, Statuses.Valid, cancellationToken)
+                && await authorizations.GetIdAsync(authorization, cancellationToken) is { } id)
+            {
+                consents.Add(id);
+            }
+        }
+
+        foreach (var consent in consents)
+        {
+            List<object> marked = [];
+            await foreach (var token in tokens.FindByAuthorizationIdAsync(consent, cancellationToken))
+            {
+                if (await tokens.HasStatusAsync(token, Statuses.Valid, cancellationToken)
+                    && (await tokens.GetPropertiesAsync(token, cancellationToken)).TryGetValue(ServerSessionProperty, out var value)
+                    && value.ValueKind == JsonValueKind.String
+                    && value.GetString() == serverSession)
+                {
+                    marked.Add(token);
+                }
+            }
+
+            foreach (var token in marked)
+            {
+                await tokens.TryRevokeAsync(token, cancellationToken);
+            }
+        }
+    }
+
+    private async Task EndAsync(string? userId, string? serverSession, bool singleFactorOnly, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(serverSession) || !Guid.TryParse(userId, out var user))
         {
@@ -50,10 +106,16 @@ internal sealed class UserSessions(IOpenIddictAuthorizationManager authorization
         List<string> ids = [];
         await foreach (var authorization in authorizations.FindBySubjectAsync(user.ToString("D"), cancellationToken))
         {
-            if (await authorizations.HasStatusAsync(authorization, Statuses.Valid, cancellationToken)
-                && (await authorizations.GetPropertiesAsync(authorization, cancellationToken)).TryGetValue(ServerSessionProperty, out var value)
+            if (!await authorizations.HasStatusAsync(authorization, Statuses.Valid, cancellationToken))
+            {
+                continue;
+            }
+
+            var properties = await authorizations.GetPropertiesAsync(authorization, cancellationToken);
+            if (properties.TryGetValue(ServerSessionProperty, out var value)
                 && value.ValueKind == JsonValueKind.String
                 && value.GetString() == serverSession
+                && !(singleFactorOnly && properties.TryGetValue(MultiFactorProperty, out var multiFactor) && multiFactor.ValueKind == JsonValueKind.True)
                 && await authorizations.GetIdAsync(authorization, cancellationToken) is { } id)
             {
                 ids.Add(id);
