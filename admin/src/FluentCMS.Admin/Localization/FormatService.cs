@@ -16,6 +16,9 @@ internal sealed class FormatService(CultureInfo culture, TimeZoneInfo timeZone)
 
     public TimeZoneInfo TimeZone { get; private set; } = timeZone;
 
+    // The IANA id of the zone, which the server takes and every view names.
+    public string ZoneId => IanaId(TimeZone);
+
     public string Date(DateTimeOffset value) => Local(value).ToString("d", Culture);
 
     // A date has no time zone: it is the same day everywhere.
@@ -33,6 +36,10 @@ internal sealed class FormatService(CultureInfo culture, TimeZoneInfo timeZone)
 
     // The moment in the user's time zone, as a clock there shows it.
     public DateTime Local(DateTimeOffset value) => TimeZoneInfo.ConvertTime(value, TimeZone).DateTime;
+
+    // A zone found by its Windows id, as on a desktop, goes by its IANA one.
+    internal static string IanaId(TimeZoneInfo zone) =>
+        !zone.HasIanaId && TimeZoneInfo.TryConvertWindowsIdToIanaId(zone.Id, out var iana) ? iana : zone.Id;
 
     public void Apply(string? dateCulture, string? numberCulture, string? timeZone)
     {
