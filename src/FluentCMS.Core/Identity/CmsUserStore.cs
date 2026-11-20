@@ -13,6 +13,8 @@ namespace FluentCMS.Core.Identity;
 // described from what was stored before it and raised as the identity events of the catalogue. Users are deactivated,
 // never deleted: versions, schedules and the activity log name them. A save that gives the user a new security stamp also
 // revokes every session of the user, in the same transaction, so its access tokens stop with its cookie and refresh tokens.
+// A save that gives the user a name or an address runs under the lock of the names and checks the pair again inside its
+// transaction (IdentityChanges.RunNamingAsync).
 internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges changes, UserSessions sessions, ILookupNormalizer normalizer, TimeProvider time, SsoOptions sso, IdentityErrorDescriber? describer = null)
     : UserOnlyStore<CmsUser, SystemDbContext, Guid, IdentityUserClaim<Guid>, IdentityUserLogin<Guid>, IdentityUserToken<Guid>>(context, describer),
       IUserRoleStore<CmsUser>
@@ -31,12 +33,13 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
             user.CreatedAt = time.GetUtcNow();
         }
 
-        return changes.RunAsync(
+        return changes.RunNamingAsync(
             async () =>
             {
                 var (added, removed) = RoleChanges(user);
                 var logins = LoginChanges(user);
-                var result = await base.CreateAsync(user, cancellationToken);
+                var result = await CrossNameValidator.CheckAsync(Users, ErrorDescriber, user, user.NormalizedUserName, user.NormalizedEmail, cancellationToken);
+                result = result.Succeeded ? await base.CreateAsync(user, cancellationToken) : result;
                 if (result.Succeeded)
                 {
                     await changes.RaiseAsync(new UserCreatedEvent(user.Id, user.UserName ?? ""), cancellationToken);
@@ -54,12 +57,16 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
         ArgumentNullException.ThrowIfNull(user);
 
         var before = await StoredAsync(user, cancellationToken);
-        return await changes.RunAsync(
+        var name = before is not null && before.NormalizedUserName != user.NormalizedUserName ? user.NormalizedUserName : null;
+        var email = before is not null && before.NormalizedEmail != user.NormalizedEmail ? user.NormalizedEmail : null;
+        Func<Func<Task<IdentityResult>>, CancellationToken, Task<IdentityResult>> run = name is null && email is null ? changes.RunAsync : changes.RunNamingAsync;
+        return await run(
             async () =>
             {
                 var (added, removed) = RoleChanges(user);
                 var logins = LoginChanges(user);
-                var result = await base.UpdateAsync(user, cancellationToken);
+                var result = await CrossNameValidator.CheckAsync(Users, ErrorDescriber, user, name, email, cancellationToken);
+                result = result.Succeeded ? await base.UpdateAsync(user, cancellationToken) : result;
                 if (!result.Succeeded || before is null)
                 {
                     return result;
@@ -209,18 +216,29 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
     public bool StagesTokenRow(CmsUser user) =>
         Context.ChangeTracker.Entries<IdentityUserToken<Guid>>().Any(entry => entry.State == EntityState.Added && entry.Entity.UserId == user.Id);
 
+    // Whether the unique key a save broke is the token table's. SQLite names the table with its columns, PostgreSQL and SQL
+    // Server the key, whose name carries the table's.
+    public bool IsTokenKeyViolation(DbUpdateException exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        return Context.Model.FindEntityType(typeof(IdentityUserToken<Guid>))?.GetTableName() is { } table
+            && exception.InnerException?.Message.Contains(table, StringComparison.OrdinalIgnoreCase) == true;
+    }
+
     // A failed save of IdentityChanges clears the context, which leaves the caller's user detached, so that the next save of
     // it, such as the failed attempt Identity counts after a refused code, would meet the copy a validator loads. The user is
-    // tracked again with what is stored.
-    public async Task ReattachAsync(CmsUser user, CancellationToken cancellationToken)
+    // tracked again with what is stored, and the answer is whether it was.
+    public async Task<bool> ReattachAsync(CmsUser user, CancellationToken cancellationToken)
     {
         if (Context.Entry(user).State != EntityState.Detached || Context.ChangeTracker.Entries<CmsUser>().Any(entry => entry.Entity.Id == user.Id))
         {
-            return;
+            return false;
         }
 
         Context.Attach(user);
         await Context.Entry(user).ReloadAsync(cancellationToken);
+        return true;
     }
 
     public async Task RemoveRoleAsync(CmsUser user, Guid roleId, CancellationToken cancellationToken)
