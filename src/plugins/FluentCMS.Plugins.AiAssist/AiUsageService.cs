@@ -25,8 +25,10 @@ public sealed record AiUsageRow(
     bool Succeeded,
     DateTimeOffset CreatedAt);
 
-// The tokens of every row the filter matches, not only of the page.
-public sealed record AiUsageTotals(long Calls, long PromptTokens, long CompletionTokens);
+// The tokens of every row the filter matches, not only of the page, in all and by principal and action.
+public sealed record AiUsageTotals(long Calls, long PromptTokens, long CompletionTokens, IReadOnlyList<AiUsageGroup> Groups);
+
+public sealed record AiUsageGroup(string PrincipalKind, Guid PrincipalId, string Action, long Calls, long PromptTokens, long CompletionTokens);
 
 public sealed record AiUsagePage(IReadOnlyList<AiUsageRow> Items, long Total, int Page, int PageSize, AiUsageTotals Totals);
 
@@ -115,11 +117,15 @@ internal sealed partial class AiUsageService(
             rows = rows.Where(usage => usage.CreatedAt < until);
         }
 
-        var total = await rows.LongCountAsync(cancellationToken);
-        var totals = new AiUsageTotals(
-            total,
-            await rows.SumAsync(usage => usage.PromptTokens, cancellationToken),
-            await rows.SumAsync(usage => usage.CompletionTokens, cancellationToken));
+        // One grouping over the rows the filter matches, by the same index, and the totals are its sums. Ordered here, since
+        // the providers order ids differently.
+        var groups = await rows
+            .GroupBy(usage => new { usage.PrincipalKind, usage.PrincipalId, usage.Action })
+            .Select(group => new AiUsageGroup(group.Key.PrincipalKind, group.Key.PrincipalId, group.Key.Action, group.LongCount(), group.Sum(usage => usage.PromptTokens), group.Sum(usage => usage.CompletionTokens)))
+            .ToListAsync(cancellationToken);
+        groups = [.. groups.OrderBy(group => group.PrincipalKind, StringComparer.Ordinal).ThenBy(group => group.PrincipalId).ThenBy(group => group.Action, StringComparer.Ordinal)];
+        var total = groups.Sum(group => group.Calls);
+        var totals = new AiUsageTotals(total, groups.Sum(group => group.PromptTokens), groups.Sum(group => group.CompletionTokens), groups);
         var items = await rows
             .OrderByDescending(usage => usage.CreatedAt)
             .ThenByDescending(usage => usage.Id)

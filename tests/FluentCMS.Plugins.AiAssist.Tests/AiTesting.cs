@@ -246,13 +246,18 @@ internal static class AiTesting
 
     public static string Text(ChatMessage message) => string.Concat(message.Contents.OfType<TextContent>().Select(content => content.Text));
 
-    // A file uploaded to the media library of the site of the client, and its id.
-    public static async Task<Guid> UploadAsync(HttpClient client, string name, byte[] bytes)
+    // A file uploaded to the media library of the site of the client, in the root or a folder, and its id.
+    public static async Task<Guid> UploadAsync(HttpClient client, string name, byte[] bytes, Guid? folder = null)
     {
         using var form = new MultipartFormDataContent();
         var content = new ByteArrayContent(bytes);
         content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
         form.Add(content, "files", name);
+        if (folder is { } id)
+        {
+            form.Add(new StringContent(id.ToString("D")), "folderId");
+        }
+
         using var response = await client.PostAsync(new Uri("/api/management/v1/media", UriKind.Relative), form, Token);
         return Guid.Parse((await JsonAsync(response, HttpStatusCode.Created))["items"]![0]!["id"]!.GetValue<string>());
     }

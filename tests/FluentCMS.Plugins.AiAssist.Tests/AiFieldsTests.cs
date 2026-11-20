@@ -144,7 +144,7 @@ public sealed class AiFieldsTests : IClassFixture<AiHost>
         var raw = await response.Content.ReadAsStringAsync(Token);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK, raw);
-        JsonNode.Parse(raw)!.AsObject().Select(property => property.Key).ShouldBe(["enabled", "locale", "fields"]);
+        JsonNode.Parse(raw)!.AsObject().Select(property => property.Key).ShouldBe(["enabled", "locale", "fields", "assets"]);
         foreach (var held in (string[])["model-of-the-site", "models.example.com", "key-that-is-never-returned", "openAiCompatible", "provider", "model", "endpoint", "apiKey"])
         {
             raw.ShouldNotContain(held, Case.Insensitive);
@@ -159,7 +159,32 @@ public sealed class AiFieldsTests : IClassFixture<AiHost>
 
         var answer = document["paths"]![Fields]!["get"]!["responses"]!["200"]!["content"]!["application/json"]!["schema"]!;
         answer["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/AiFields");
-        document["components"]!["schemas"]!["AiFields"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["enabled", "locale", "fields"]);
+        document["components"]!["schemas"]!["AiFields"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["enabled", "locale", "fields", "assets"]);
+        document["components"]!["schemas"]!["AiUsageTotals"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["calls", "promptTokens", "completionTokens", "groups"]);
+        document["components"]!["schemas"]!["AiUsageGroup"]!["properties"]!.AsObject().Select(property => property.Key).ShouldBe(["principalKind", "principalId", "action", "calls", "promptTokens", "completionTokens"]);
+    }
+
+    // altText for an asset alone needs the media library and media.read and media.update in some folder.
+    [Fact]
+    public async Task AssetsSaysWhetherTheCallerMayAskForTheAltTextOfAnAssetAlone()
+    {
+        var site = await _ai.SiteAsync();
+        var noMedia = await _ai.SiteAsync();
+        var off = await _ai.SiteAsync(settings => settings.Provider = AiProvider.None);
+        await _ai.SetEnabledAsync("media", noMedia, false);
+        using var admin = await _ai.AdminAsync(site);
+        using var limited = await _ai.CallerAsync(site, (AiPermissions.Use, null), ("media.read", null), ("media.update", new PermissionConstraints { Resources = [Guid.CreateVersion7().ToString("D")] }));
+        using var readers = await _ai.CallerAsync(site, (AiPermissions.Use, null), ("media.read", null));
+        using var writers = await _ai.CallerAsync(site, (AiPermissions.Use, null), ("media.update", null));
+        using var withoutMedia = await _ai.AdminAsync(noMedia);
+        using var withoutProvider = await _ai.AdminAsync(off);
+
+        (await FieldsAsync(admin))["assets"]!.GetValue<bool>().ShouldBeTrue();
+        (await FieldsAsync(limited))["assets"]!.GetValue<bool>().ShouldBeTrue();
+        (await FieldsAsync(readers))["assets"]!.GetValue<bool>().ShouldBeFalse();
+        (await FieldsAsync(writers))["assets"]!.GetValue<bool>().ShouldBeFalse();
+        (await FieldsAsync(withoutMedia))["assets"]!.GetValue<bool>().ShouldBeFalse();
+        (await FieldsAsync(withoutProvider))["assets"]!.GetValue<bool>().ShouldBeFalse();
     }
 
     private static async Task<JsonNode> FieldsAsync(HttpClient client, string? locale = null)

@@ -103,6 +103,7 @@ A key in the instance defaults of the settings is the operator's as well. A site
 - `locale` is the locale the suggestion is for, an enabled locale of the site: the draft is read in it and the right to update is asked in it. Left out, it is the locale of the request.
 - `translate` takes `options.targetLocale`, an enabled locale of the site.
 - `altText` takes `options.mediaId`, an image of the media library, and needs no text. The plugin sends a copy of the image that fits 1024 by 1024 pixels and carries no metadata, read through the media service as the caller.
+- `altText` with neither `type` nor `field` is for the asset alone: its own alt text in `locale`, as the media field and the library edit it with `PATCH /media/{id}`. It takes no `documentId`. The plugin never writes the asset; the caller saves the suggestion if it keeps it.
 
 The answer:
 
@@ -142,6 +143,8 @@ The checks run in this order:
 
 With `documentId` the content service decides whether the caller may read the draft, and with `mediaId` the media service whether it may read the image.
 
+For `altText` on an asset alone, steps 2 and 3 give way to the check of `PATCH /media/{id}`, made by the media service itself after the body is read: without `media.update` in the site the call is refused with `FCMS3103`, and an asset outside the folders of a limited grant is not found (`FCMS1585`), as an asset that does not exist is.
+
 The first time the plugin starts on an instance, the built-in Editor and Author get `ai.use` with no constraints. The default is given once, so a grant you take away later is not given back at the next start, and a role that already holds a limited grant of an AI permission does not get it. `ai.usage.read` goes to no role by default.
 
 ### Which fields take actions
@@ -152,13 +155,15 @@ The first time the plugin starts on an instance, the built-in Editor and Author 
 {
   "enabled": true,
   "locale": "en",
-  "fields": { "article": ["title", "summary"] }
+  "fields": { "article": ["title", "summary"] },
+  "assets": true
 }
 ```
 
 - `enabled` is whether the site names a provider the plugin has. A site whose `provider` is `none`, or a removed one (`anthropic`, `ollama`), is off and lists no field, and its actions are refused (`FCMS1682`, `FCMS1692`).
 - `locale` is the locale of the request, which `?locale=` or `X-Cms-Locale` names.
 - `fields` maps each content type to the fields, in the order of the schema, that pass the checks above for the caller in that locale: opted in, a field that takes actions, and one the caller may update. A type the caller may not read is left out, and so is a field it may set on a new entry only, which an action refuses too.
+- `assets` is whether the caller may ask for the alt text of an asset alone: the site is on, the media plugin is enabled for it, and the caller holds `media.read` and `media.update` there, for every folder or some. Whether a given asset is in those folders is learnt at the call.
 
 The answer holds nothing of the provider's configuration: not the provider, the model, the endpoint or the key, nor whether a key is set. A provider that is not configured well enough to answer is learnt at the call (`FCMS1684`, `FCMS1685`).
 
@@ -189,7 +194,7 @@ Every call that is sent to a provider writes one row to `cms_ai_usage`: the site
 | `from`, `to` | The rows from a time and before a time, each with an offset, such as `2026-11-01T00:00:00Z`. |
 | `page`, `pageSize` | The page, from 1, and its size, 50 and at most 100. |
 
-It answers `{ "items", "total", "page", "pageSize", "totals" }`, where `totals` is `{ "calls", "promptTokens", "completionTokens" }` over every row the filter matches. There are no budgets and no billing.
+It answers `{ "items", "total", "page", "pageSize", "totals" }`, where `totals` is `{ "calls", "promptTokens", "completionTokens", "groups" }` over every row the filter matches, and `groups` gives the same three for each principal and action, with `principalKind`, `principalId` and `action`. A row of `altText` for an asset alone has an empty `type` and `field`. There are no budgets and no billing.
 
 The recurring job `ai.usage-retention` (daily at 04:30 UTC) removes the rows older than `UsageRetention`.
 

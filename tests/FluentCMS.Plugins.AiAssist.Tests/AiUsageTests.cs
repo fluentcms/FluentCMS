@@ -151,9 +151,12 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
         (newest["provider"]!.GetValue<string>(), newest["model"]!.GetValue<string>()).ShouldBe((ScriptedFactory.Provider, "test-model"));
         newest["createdAt"]!.GetValue<DateTimeOffset>().ShouldBe(later);
         Totals(all).ShouldBe((4, 30, 9));
+        var (adminId, editorId) = (_ai.PrincipalOf(admin), _ai.PrincipalOf(editor));
+        Groups(all).ShouldBe([("apiKey", adminId, "rewrite", 1, 10, 3), ("apiKey", editorId, "rewrite", 1, 10, 3), ("apiKey", editorId, "shorten", 2, 10, 3)], ignoreOrder: true);
 
         ofEditor["total"]!.GetValue<long>().ShouldBe(3);
         Totals(ofEditor).ShouldBe((3, 20, 6));
+        Groups(ofEditor).ShouldBe([("apiKey", editorId, "rewrite", 1, 10, 3), ("apiKey", editorId, "shorten", 2, 10, 3)], ignoreOrder: true);
         shortened["total"]!.GetValue<long>().ShouldBe(2);
         Totals(shortened).ShouldBe((2, 10, 3));
         since["items"]!.AsArray().Select(item => item!["action"]!.GetValue<string>()).ShouldBe(["shorten", "shorten"]);
@@ -161,6 +164,7 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
         before["items"]!.AsArray().Select(item => item!["action"]!.GetValue<string>()).ShouldBe(["rewrite", "rewrite"]);
         paged["items"]!.AsArray().ShouldHaveSingleItem()!["action"]!.GetValue<string>().ShouldBe("rewrite");
         Totals(paged).ShouldBe((4, 30, 9));
+        Groups(paged).Count.ShouldBe(3);
 
         // The caller who may run actions may not read the log, and a parameter that cannot be read is refused.
         using var refused = await editor.GetAsync(new Uri(Usage, UriKind.Relative), Token);
@@ -180,4 +184,13 @@ public sealed class AiUsageTests : IClassFixture<AiHost>
 
     private static (long Calls, long PromptTokens, long CompletionTokens) Totals(JsonNode page) =>
         (page["totals"]!["calls"]!.GetValue<long>(), page["totals"]!["promptTokens"]!.GetValue<long>(), page["totals"]!["completionTokens"]!.GetValue<long>());
+
+    private static List<(string Kind, Guid Principal, string Action, long Calls, long PromptTokens, long CompletionTokens)> Groups(JsonNode page) =>
+        [.. page["totals"]!["groups"]!.AsArray().Select(group => (
+            group!["principalKind"]!.GetValue<string>(),
+            group["principalId"]!.GetValue<Guid>(),
+            group["action"]!.GetValue<string>(),
+            group["calls"]!.GetValue<long>(),
+            group["promptTokens"]!.GetValue<long>(),
+            group["completionTokens"]!.GetValue<long>()))];
 }

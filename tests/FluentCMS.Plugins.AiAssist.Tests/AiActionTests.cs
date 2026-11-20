@@ -240,6 +240,73 @@ public sealed class AiActionTests : IClassFixture<AiHost>
     }
 
     [Fact]
+    public async Task AltTextForAnAssetAloneNamesNoFieldAndWritesNothingToTheAsset()
+    {
+        var site = await _ai.SiteAsync(null, "fr");
+        using var admin = await _ai.AdminAsync(site);
+        var image = await UploadAsync(admin, "harbour.png", Picture(40, 20));
+        var before = await AssetVersionAsync(admin, image);
+        _ai.Chat.Answer = "Un port à l'aube.";
+
+        var answer = await SuggestAsync(admin, "altText", new { locale = "fr", text = "The harbour page.", options = new { mediaId = image } });
+        using var withDocument = await ActAsync(admin, "altText", new { documentId = Guid.CreateVersion7(), options = new { mediaId = image } });
+        using var withoutMedia = await ActAsync(admin, "altText", new { locale = "fr" });
+        using var typeOnly = await ActAsync(admin, "altText", new { type = "article", options = new { mediaId = image } });
+        using var otherAction = await ActAsync(admin, "rewrite", new { text = "Ships are big boats." });
+
+        answer["suggestion"]!.GetValue<string>().ShouldBe("Un port à l'aube.");
+        var call = _ai.Chat.Calls.ShouldHaveSingleItem();
+        Text(call.Messages[0]).ShouldContain("alternative text of an image of the media library");
+        Text(call.Messages[0]).ShouldContain("locale \"fr\"");
+        Text(call.Messages[0]).ShouldNotContain("the field");
+        call.Messages[1].Contents.OfType<DataContent>().ShouldHaveSingleItem().MediaType.ShouldBe("image/png");
+        Text(call.Messages[1]).ShouldBe("The harbour page.");
+
+        // The call counts as any other, and the asset is as it was.
+        var row = (await _ai.UsageAsync(site)).ShouldHaveSingleItem();
+        (row.Action, row.Type, row.Field, row.Succeeded).ShouldBe(("altText", "", "", true));
+        (await AssetVersionAsync(admin, image)).ShouldBe(before);
+
+        (await JsonAsync(withDocument, HttpStatusCode.UnprocessableEntity))["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("documentId");
+        (await JsonAsync(withoutMedia, HttpStatusCode.UnprocessableEntity))["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("options.mediaId");
+        (await JsonAsync(typeOnly, HttpStatusCode.UnprocessableEntity))["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("field");
+        (await JsonAsync(otherAction, HttpStatusCode.UnprocessableEntity))["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("type");
+        _ai.Chat.Calls.Count.ShouldBe(1);
+    }
+
+    // The check of PATCH /media/{id}: no right to update is a 403 whatever the id, and an asset outside the folders of a
+    // limited grant is not found, as an asset that does not exist is.
+    [Fact]
+    public async Task AltTextForAnAssetAloneNeedsTheRightToUpdateTheAssetAndDoesNotTellWhetherItExists()
+    {
+        var site = await _ai.SiteAsync();
+        using var admin = await _ai.AdminAsync(site);
+        var harbour = await FolderAsync(admin, "harbour");
+        var fields = await FolderAsync(admin, "fields");
+        var image = await UploadAsync(admin, "harbour.png", Picture(40, 20), harbour);
+        var missing = Guid.CreateVersion7();
+        using var noAi = await _ai.CallerAsync(site, ("media.read", null), ("media.update", null));
+        using var readers = await _ai.CallerAsync(site, (AiPermissions.Use, null), ("media.read", null));
+        using var elsewhere = await _ai.CallerAsync(site, (AiPermissions.Use, null), ("media.read", null), ("media.update", new PermissionConstraints { Resources = [fields.ToString("D")] }));
+        using var inTheFolder = await _ai.CallerAsync(site, (AiPermissions.Use, null), ("media.read", null), ("media.update", new PermissionConstraints { Resources = [harbour.ToString("D")] }));
+
+        foreach (var (caller, status, code) in new[] { (noAi, HttpStatusCode.Forbidden, "FCMS3103"), (readers, HttpStatusCode.Forbidden, "FCMS3103"), (elsewhere, HttpStatusCode.NotFound, "FCMS1585") })
+        {
+            using var existing = await ActAsync(caller, "altText", new { options = new { mediaId = image } });
+            using var absent = await ActAsync(caller, "altText", new { options = new { mediaId = missing } });
+            var (one, other) = (await JsonAsync(existing, status), await JsonAsync(absent, status));
+            one["code"]!.GetValue<string>().ShouldBe(code);
+            other["code"]!.GetValue<string>().ShouldBe(code);
+            one["detail"]!.GetValue<string>().Replace(image.ToString("D"), "{id}", StringComparison.Ordinal)
+                .ShouldBe(other["detail"]!.GetValue<string>().Replace(missing.ToString("D"), "{id}", StringComparison.Ordinal));
+        }
+
+        _ai.Chat.Calls.ShouldBeEmpty();
+        (await _ai.UsageAsync(site)).ShouldBeEmpty();
+        (await SuggestAsync(inTheFolder, "altText", new { options = new { mediaId = image } }))["suggestion"]!.GetValue<string>().ShouldBe("A suggestion.");
+    }
+
+    [Fact]
     public async Task AltTextIsRefusedWhereTheMediaPluginIsDisabled()
     {
         var site = await _ai.SiteAsync();
@@ -262,6 +329,19 @@ public sealed class AiActionTests : IClassFixture<AiHost>
         using var response = await ActAsync(admin, "paraphrase", new { type = "article", field = "summary", text = "Ships are big boats." });
 
         (await RefusedAsync(response, HttpStatusCode.NotFound)).ShouldBe("FCMS1681");
+    }
+
+    private static async Task<Guid> FolderAsync(HttpClient client, string name)
+    {
+        using var response = await client.PostAsJsonAsync(new Uri("/api/management/v1/media/folders", UriKind.Relative), new { name }, Token);
+        return Guid.Parse((await JsonAsync(response, HttpStatusCode.Created))["id"]!.GetValue<string>());
+    }
+
+    private static async Task<string> AssetVersionAsync(HttpClient client, Guid id)
+    {
+        using var response = await client.GetAsync(new Uri($"/api/management/v1/media/{id:D}", UriKind.Relative), Token);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        return response.Headers.ETag!.Tag;
     }
 
     private static async Task<string> EntryAsync(HttpClient client, Guid id)
