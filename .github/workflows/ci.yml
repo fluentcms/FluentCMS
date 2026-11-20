@@ -468,18 +468,15 @@ jobs:
             **/*.csproj
 
       # The first shard of a server runs these namespaces and the second every other, so a new namespace runs without a
-      # change here. SQL Server takes the migrations in the first shard: its queries and migrations are three times as slow
-      # as PostgreSQL's, and with both in the second shard that one ran 8.5 minutes of tests beside the first's 5. A minimum
-      # keeps a filter that matches nothing from passing. The timeout is well past the slowest healthy run of the provider,
-      # so that a hang ends with time left to name its tests.
+      # change here. On SQL Server the two took a median of 7.4 and 7.7 minutes over 87 runs; one run does not show the
+      # balance, since a runner may be half as fast as the one beside it. A minimum keeps a filter that matches nothing
+      # from passing. The timeout is well past the slowest healthy run of the provider, so that a hang ends with time left
+      # to name its tests.
       - name: Test
         if: ${{ !matrix.skip }}
         shell: bash
         run: |
-          case "${{ matrix.provider }}" in
-            sqlserver-*) namespaces=("FluentCMS.Data.Tests.Content*" "FluentCMS.Data.Tests.Migrations*" "FluentCMS.Data.Tests.Events*") ;;
-            *) namespaces=("FluentCMS.Data.Tests.Content*" "FluentCMS.Data.Tests.Jobs*" "FluentCMS.Data.Tests.Events*") ;;
-          esac
+          namespaces=("FluentCMS.Data.Tests.Content*" "FluentCMS.Data.Tests.Jobs*" "FluentCMS.Data.Tests.Events*")
           case "${{ matrix.part }}" in
             1) filter=(--filter-namespace "${namespaces[@]}" --minimum-expected-tests 700) ;;
             2) filter=(--filter-not-namespace "${namespaces[@]}" --minimum-expected-tests 1000) ;;
