@@ -66,7 +66,7 @@ public sealed partial class BlockTests(EndToEndHost host) : BrowserTest(host)
         await Expect(Toggle(Item(tab, 0))).ToBeFocusedAsync();
 
         // The copy is dragged above the band, and the band stays collapsed; the assertions wait for the drop to land.
-        await Item(tab, 1).Locator(":scope > .nested-head").DragToAsync(Item(tab, 0));
+        await Ui.DragAsync(Item(tab, 1).Locator(":scope > .nested-head"), Item(tab, 0), "nested-drop");
         await Expect(Toggle(Item(tab, 0))).ToHaveAttributeAsync("aria-expanded", "true");
         await Expect(Toggle(Item(tab, 1))).ToHaveAttributeAsync("aria-expanded", "false");
 

@@ -24,6 +24,7 @@ public class EndToEndRulesTests
     private const string Body = "reads a response's body after the fact; read its request, status and headers";
     private const string Timer = "waits by a timer; wait on the page's state, or use Ui.UntilAsync or Ui.FocusReturnedAsync";
     private const string Clock = "reads a clock of its own, as a hand-rolled poll does, which spins requests; use Ui.UntilAsync, or wait on the timed event (tab.TokenDueAsync)";
+    private const string Drag = "drags without waiting for the drop target; use Ui.DragAsync";
     private const string Copy = "declares its own PressAsync, FocusAsync or FocusReturnedAsync; use the one of Ui";
 
     private static readonly Dictionary<string, string> Names = new(StringComparer.Ordinal)
@@ -41,6 +42,7 @@ public class EndToEndRulesTests
         ["TickCount"] = Clock,
         ["TickCount64"] = Clock,
         ["GetTimestamp"] = Clock,
+        ["DragToAsync"] = Drag,
     };
 
     private static readonly string[] Copies = ["PressAsync", "FocusAsync", "FocusReturnedAsync"];
@@ -88,6 +90,7 @@ public class EndToEndRulesTests
                     var ticks = Environment.TickCount64;
                     // A comment may name setTimeout, TextAsync or Task.Delay without breaking a rule.
                     var text = await page.Locator("p").InnerTextAsync();
+                    await page.Locator("li").First.DragToAsync(page.Locator("li").Last);
                 }
 
                 private static async ValueTask PressAsync(ILocator target, string key) => await target.PressAsync(key);
@@ -107,7 +110,8 @@ public class EndToEndRulesTests
         found.Count(violation => violation.Contains(Timer, StringComparison.Ordinal)).ShouldBe(6);
         found.Count(violation => violation.Contains(Clock, StringComparison.Ordinal)).ShouldBe(3);
         found.Count(violation => violation.Contains(Copy, StringComparison.Ordinal)).ShouldBe(3);
-        found.Count.ShouldBe(15);
+        found.Count(violation => violation.Contains(Drag, StringComparison.Ordinal)).ShouldBe(1);
+        found.Count.ShouldBe(16);
     }
 
     // Each name that breaks a rule (but in a using directive, which names a namespace or a type to import), each string that

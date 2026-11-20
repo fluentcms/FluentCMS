@@ -66,6 +66,19 @@ public static class Ui
         await Expect(opener).ToBeFocusedAsync();
     }
 
+    // Drags the source onto the target with the pointer and lets go only once the target shows, by its class, that the editor
+    // would drop there: a drag let go before the editor has seen it over the target drops nothing on a slow machine.
+    public static async Task DragAsync(ILocator source, ILocator target, string dropClass)
+    {
+        var page = source.Page;
+        await source.HoverAsync();
+        await page.Mouse.DownAsync();
+        var box = (await target.BoundingBoxAsync()).ShouldNotBeNull();
+        await page.Mouse.MoveAsync(box.X + (box.Width / 2), box.Y + (box.Height / 2), new MouseMoveOptions { Steps = 10 });
+        await Expect(target).ToHaveClassAsync(new Regex($@"(^|\s){Regex.Escape(dropClass)}(\s|$)"));
+        await page.Mouse.UpAsync();
+    }
+
     // Runs the action and returns the answer that matches, once it has come. A 401 is skipped: the host's access tokens last
     // five seconds, and the admin sends the call again after a refresh, whose answer is the one that counts; a wait that ends
     // with a 401 seen and no call after it says so. The answer is read by its request, status and headers only: Chromium does
