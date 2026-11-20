@@ -13,6 +13,13 @@ namespace FluentCMS.Admin.ApiTests;
 // a record reads is in the schema of the answer it reads, and every member it requires the schema requires too.
 public sealed class OpenApiContractTests
 {
+    // Members the admin reads before the backend sends them, each with the issue that adds them; one that is in the document
+    // is a gap, so that its entry goes when the issue merges.
+    private static readonly Dictionary<string, string> Awaited = new(StringComparer.Ordinal)
+    {
+        ["schema.types[].previewable"] = "#3432",
+    };
+
     [Fact]
     public async Task EveryRecordTheAdminReadsMatchesTheOpenApiDocument()
     {
@@ -148,18 +155,29 @@ public sealed class OpenApiContractTests
                 // A member with no setter is computed by the record and never read from an answer.
                 foreach (var property in record.Properties.Where(property => property.Set is not null))
                 {
+                    var path = $"{where}.{property.Name}";
+                    if (Awaited.TryGetValue(path, out var issue))
+                    {
+                        if (properties[property.Name] is not null)
+                        {
+                            gaps.Add($"{path} is in the document: {issue} is merged, so it is awaited no longer");
+                        }
+
+                        continue;
+                    }
+
                     if (properties[property.Name] is not { } member)
                     {
-                        gaps.Add($"{where}.{property.Name} is not in the document");
+                        gaps.Add($"{path} is not in the document");
                         continue;
                     }
 
                     if (property.IsRequired && !required.Contains(property.Name))
                     {
-                        gaps.Add($"{where}.{property.Name} is required by the admin but not by the document");
+                        gaps.Add($"{path} is required by the admin but not by the document");
                     }
 
-                    Check(record.Options.GetTypeInfo(property.PropertyType), member, $"{where}.{property.Name}", document, gaps, checkedRecords);
+                    Check(record.Options.GetTypeInfo(property.PropertyType), member, path, document, gaps, checkedRecords);
                 }
 
                 break;
