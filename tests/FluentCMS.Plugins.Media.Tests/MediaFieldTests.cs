@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
@@ -9,6 +10,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Media;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -412,6 +414,58 @@ public sealed class MediaFieldTests(StoryHost media) : IClassFixture<StoryHost>
         using var response = await admin.GetAsync(new Uri($"{Stories}?populate=sections.image", UriKind.Relative), Token);
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest, await response.Content.ReadAsStringAsync(Token));
+    }
+
+    // Twenty blocks, each with a media field that has accept, and the poster beside them: one read of the types for the save,
+    // whether it is taken or refused at the block whose asset is a PDF.
+    [Fact]
+    public async Task ASaveReadsTheTypesOfTheAssetsOfEveryFieldWithAcceptOnce()
+    {
+        var reads = new TypeReads();
+        await using var host = new StoryHost();
+        host.Host.Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<MediaPlugin>>(options => options.AddInterceptors(reads)));
+        using var admin = await host.AdminAsync();
+        List<Guid> images = [];
+        for (var index = 0; index < 20; index++)
+        {
+            images.Add(await AssetAsync(admin, $"{index}.png"));
+        }
+
+        var pdf = await AssetAsync(admin, "terms.pdf", Files.Pdf());
+        JsonObject Entry(Guid? refused)
+        {
+            var entry = Story(null);
+            entry["poster"] = images[0].ToString("D");
+            entry["sections"] = new JsonArray([.. images.Select((image, index) => (JsonNode)new JsonObject { ["type"] = "banner", ["heading"] = $"Banner {index}", ["image"] = (index == 7 && refused is { } other ? other : image).ToString("D") })]);
+            return entry;
+        }
+
+        reads.Count = 0;
+        await CreateAsync(admin, Entry(null));
+        var taken = reads.Count;
+        reads.Count = 0;
+        using var response = await PostAsync(admin, Entry(pdf));
+        var refused = reads.Count;
+
+        (taken, refused).ShouldBe((1, 1));
+        NotAccepted(await JsonAsync(response, HttpStatusCode.UnprocessableEntity)).ShouldBe(["sections[7].image"]);
+    }
+
+    // The queries of the media assets that read their types and nothing else of them, as the accept check does.
+    private sealed class TypeReads : DbCommandInterceptor
+    {
+        public int Count { get; set; }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            var text = command.CommandText;
+            if (text.Contains(MediaModel.AssetTable, StringComparison.Ordinal) && text.Contains("mime_type", StringComparison.Ordinal) && !text.Contains("file_name", StringComparison.Ordinal))
+            {
+                Count++;
+            }
+
+            return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        }
     }
 
     private static async Task<Guid> AssetAsync(HttpClient admin, string name, byte[]? bytes = null, Guid? folderId = null) =>

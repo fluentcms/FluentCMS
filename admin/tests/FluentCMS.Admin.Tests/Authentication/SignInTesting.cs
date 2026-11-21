@@ -388,15 +388,21 @@ internal sealed class SignedInTestSession : IAdminSession
     }
 }
 
-// A clock a test moves. Its timers fire only when Advance passes their time.
+// A clock a test moves. Its timers fire only when Advance passes their time. Its monotonic clock moves only by Advance too:
+// setting Now moves the wall clock alone, as a change of the computer's clock does.
 internal sealed class MovableTime : TimeProvider
 {
     private readonly Lock _gate = new();
     private readonly List<ManualTimer> _timers = [];
+    private long _elapsed;
 
     public DateTimeOffset Now { get; set; } = DateTimeOffset.UtcNow;
 
+    public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
     public override DateTimeOffset GetUtcNow() => Now;
+
+    public override long GetTimestamp() => Interlocked.Read(ref _elapsed);
 
     public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
     {
@@ -413,6 +419,7 @@ internal sealed class MovableTime : TimeProvider
     public void Advance(TimeSpan by)
     {
         Now += by;
+        Interlocked.Add(ref _elapsed, by.Ticks);
         List<ManualTimer> due;
         lock (_gate)
         {

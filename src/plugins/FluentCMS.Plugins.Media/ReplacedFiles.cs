@@ -49,6 +49,17 @@ internal sealed class ReplacedFiles
 #pragma warning restore CA1304, CA1311
     }
 
+    // For the variants of an asset that is gone, whose site and owner are not known: the keys that any asset names, as its
+    // file or a variant's of another asset.
+    internal static IQueryable<string> NamedByAny(PluginDbContext<MediaPlugin> database, Guid gone, IEnumerable<string> keys)
+    {
+        var lowered = keys.Select(key => key.ToLowerInvariant()).ToList();
+#pragma warning disable CA1304, CA1311 // The database lowers the column, where lower() takes no culture.
+        return database.Set<Asset>().Where(asset => lowered.Contains(asset.StorageKey.ToLower())).Select(asset => asset.StorageKey)
+            .Concat(database.Set<Variant>().Where(variant => variant.AssetId != gone && lowered.Contains(variant.StorageKey.ToLower())).Select(variant => variant.StorageKey));
+#pragma warning restore CA1304, CA1311
+    }
+
     // After the save, with the asset as saved.
     public async Task DeleteAsync(Asset saved, MediaStorage storages, ILogger logger)
     {
