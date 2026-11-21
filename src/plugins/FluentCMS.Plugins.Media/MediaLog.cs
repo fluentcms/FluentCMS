@@ -50,4 +50,13 @@ internal static partial class MediaLog
 
     [LoggerMessage(EventId = 9274, Level = LogLevel.Warning, Message = "{Code}: the item {Id} of {Section} of an import failed in the database or the storage; the import goes on.")]
     public static partial void TransferItemFailed(ILogger logger, Exception exception, string code, string section, Guid id);
+
+    [LoggerMessage(EventId = 9275, Level = LogLevel.Information, Message = "The image size check read {Count} media images and corrected the width and height of {Corrected}.")]
+    public static partial void DimensionsChecked(ILogger logger, int count, int corrected);
+
+    [LoggerMessage(EventId = 9276, Level = LogLevel.Warning, Message = "The file {Key} of the {Storage} storage, of the media asset {AssetId}, could not be read to check its image size; the asset keeps the size it has.")]
+    public static partial void DimensionsNotRead(ILogger logger, Guid assetId, string storage, string key, Exception? exception);
+
+    [LoggerMessage(EventId = 9277, Level = LogLevel.Warning, Message = "The check of the image size of the media assets could not be started; it is tried again.")]
+    public static partial void DimensionsNotEnqueued(ILogger logger, Exception exception);
 }
