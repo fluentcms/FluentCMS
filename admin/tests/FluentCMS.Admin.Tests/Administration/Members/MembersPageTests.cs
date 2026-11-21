@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json.Nodes;
 using Bunit;
+using FluentCMS.Admin.Administration.Members;
 using Microsoft.AspNetCore.Components.Web;
 using Shouldly;
 using Xunit;
@@ -99,6 +100,26 @@ public sealed class MembersPageTests : MembersTestContext
         app.WaitForAssertion(() => Navigation.Uri.ShouldEndWith($"/members/{Ada:D}"));
         app.WaitForAssertion(() => Heading(app).ShouldBe("Ada"));
     }
+
+    // The address a member's page goes back to after a delete comes from its history entry, which any script of the origin
+    // may write, so only an address of the members list itself is taken.
+    [Theory]
+    [InlineData("https://evil.example/")]
+    [InlineData("//evil.example")]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("members/groups")]
+    [InlineData("membersx")]
+    [InlineData(" members?active=true")]
+    [InlineData("")]
+    [InlineData(null)]
+    public void AnAddressThatIsNotTheMembersListGoesBackToThePlainList(string? opened) =>
+        MembersPage.ListAddress(opened).ShouldBe("members");
+
+    [Theory]
+    [InlineData("members")]
+    [InlineData("members?group=0193a1b2-0000-7000-8000-0000000000f1&active=true&page=2")]
+    public void TheMembersListIsGoneBackToAsItWasOpened(string opened) =>
+        MembersPage.ListAddress(opened).ShouldBe(opened);
 
     [Fact]
     public void AMemberIsAddedAndItsPageOpens()

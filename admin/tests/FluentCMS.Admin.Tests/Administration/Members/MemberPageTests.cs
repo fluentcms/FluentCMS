@@ -1,8 +1,11 @@
 using System.Net;
 using System.Text.Json.Nodes;
 using Bunit;
+using Bunit.TestDoubles;
 using FluentCMS.Admin.Administration.Members;
 using FluentCMS.Admin.Localization;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -38,6 +41,15 @@ public sealed class MemberPageTests : MembersTestContext
 
     private static string[] Options(IRenderedComponent<AdminApp> app) =>
         [.. Section(app, "Groups").QuerySelectorAll("option").Select(option => option.TextContent)];
+
+    private static string NameInput(IRenderedComponent<AdminApp> app) => Section(app, "Account").QuerySelector("input")!.GetAttribute("value") ?? "";
+
+    private static void ConfirmDelete(IRenderedComponent<AdminApp> app)
+    {
+        Button(Section(app, "Account"), "Delete").Click();
+        app.WaitForAssertion(() => Button(Section(app, "Account"), "Delete the member"));
+        Button(Section(app, "Account"), "Delete the member").Click();
+    }
 
     [Fact]
     public void TheMemberShowsItsAccountItsGroupsItsSessionsAndItsLogins()
@@ -194,20 +206,52 @@ public sealed class MemberPageTests : MembersTestContext
         app.WaitForAssertion(() => app.FindAll("main table tbody tr").Select(row => row.QuerySelector("td")!.TextContent.Trim()).ShouldBe(["grace@example.com"]));
     }
 
-    [Fact]
-    public void ADeleteGoesBackToTheListAsItWasOpened()
+    // The member is opened by Enter on its row or by a click on its address; the list it goes back to takes the place of the
+    // member's entry of the history, so that Back does not reach the address of a member that is gone.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ADeleteGoesBackToTheListAsItWasOpenedInPlaceOfTheMember(bool byKeyboard)
     {
-        var app = Load($"members?group={Readers:D}&active=true");
+        var list = $"members?group={Readers:D}&active=true";
+        var app = Load(list);
         app.WaitForAssertion(() => app.FindAll("main table tbody tr").Count.ShouldBe(1));
-        app.Find("main table tbody tr").KeyDown(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Enter" });
+        if (byKeyboard)
+        {
+            app.Find("main table tbody tr").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+        }
+        else
+        {
+            app.Find("main table tbody tr a").Click();
+        }
+
+        app.WaitForAssertion(() => Section(app, "Groups").QuerySelector("select").ShouldNotBeNull());
+        Navigation.Uri.ShouldEndWith($"/members/{Ada:D}");
+
+        ConfirmDelete(app);
+
+        app.WaitForAssertion(() => Navigation.Uri.ShouldEndWith($"/{list}"));
+        app.WaitForAssertion(() => app.Find("main table").TextContent.ShouldContain("Nothing matches the search and filters."));
+        var history = Services.GetRequiredService<BunitNavigationManager>().History;
+        history.First().Uri.ShouldBe(list);
+        history.First().Options.ReplaceHistoryEntry.ShouldBeTrue();
+        history.ShouldNotContain(entry => entry.Uri == $"members/{Ada:D}");
+    }
+
+    // The history entry may hold anything a script of the page's origin put there, so an address that is not the members
+    // list's goes back to the plain list.
+    [Fact]
+    public void AForeignAddressInTheHistoryEntryGoesBackToThePlainList()
+    {
+        var app = Load("members");
+        app.WaitForAssertion(() => app.FindAll("main table tbody tr").Count.ShouldBe(2));
+        Navigation.NavigateTo($"members/{Ada:D}", new NavigationOptions { HistoryEntryState = "https://evil.example/" });
         app.WaitForAssertion(() => Section(app, "Groups").QuerySelector("select").ShouldNotBeNull());
 
-        Button(Section(app, "Account"), "Delete").Click();
-        app.WaitForAssertion(() => Button(Section(app, "Account"), "Delete the member"));
-        Button(Section(app, "Account"), "Delete the member").Click();
+        ConfirmDelete(app);
 
-        app.WaitForAssertion(() => Navigation.Uri.ShouldEndWith($"/members?group={Readers:D}&active=true"));
-        app.WaitForAssertion(() => app.Find("main table").TextContent.ShouldContain("Nothing matches the search and filters."));
+        app.WaitForAssertion(() => Navigation.Uri.ShouldBe("http://localhost/members"));
+        app.WaitForAssertion(() => app.FindAll("main table tbody tr").Select(row => row.QuerySelector("td")!.TextContent.Trim()).ShouldBe(["grace@example.com"]));
     }
 
     [Fact]
@@ -217,12 +261,32 @@ public sealed class MemberPageTests : MembersTestContext
         var app = Open(Ada);
         MemberOf(Ada)["displayName"] = "Ada L.";
 
-        Button(Section(app, "Account"), "Delete").Click();
-        app.WaitForAssertion(() => Button(Section(app, "Account"), "Delete the member"));
-        Button(Section(app, "Account"), "Delete the member").Click();
+        ConfirmDelete(app);
 
         app.WaitForAssertion(() => Message(app, "Account").ShouldBe("The member changed meanwhile; it is shown as it now stands."));
         app.WaitForAssertion(() => Heading(app).ShouldBe("Ada L."));
+        NameInput(app).ShouldBe("Ada L.");
+    }
+
+    // An input left as it was follows the server, so a name another administrator saved meanwhile is not sent back over.
+    [Fact]
+    public void AnUntouchedNameTakesTheNameSavedMeanwhileAndASaveSendsIt()
+    {
+        var app = Open(Ada);
+        MemberOf(Ada)["displayName"] = "Ada L.";
+
+        Button(Section(app, "Account"), "Deactivate").Click();
+        app.WaitForAssertion(() => Button(Section(app, "Account"), "Deactivate the member"));
+        Button(Section(app, "Account"), "Deactivate the member").Click();
+
+        app.WaitForAssertion(() => Message(app, "Account").ShouldBe("The member was deactivated."));
+        Heading(app).ShouldBe("Ada L.");
+        NameInput(app).ShouldBe("Ada L.");
+
+        Section(app, "Account").QuerySelector("form")!.Submit();
+
+        app.WaitForAssertion(() => Message(app, "Account").ShouldBe("The display name was saved."));
+        JsonNode.Parse(BodyOf(HttpMethod.Patch, $"members/{Ada:D}")!)!.ToJsonString().ShouldBe("""{"displayName":"Ada L."}""");
     }
 
     // Only the save of the name puts the server's name in the input; another answer keeps what was typed and not saved.
@@ -272,12 +336,14 @@ public sealed class MemberPageTests : MembersTestContext
         var app = Open(Ada);
         var name = Section(app, "Account").QuerySelector("input")!;
 
-        name.Input("Ada L.");
+        // The input takes the name the save answered, not the text as typed.
+        name.Input("  Ada L.  ");
         Section(app, "Account").QuerySelector("form")!.Submit();
 
         app.WaitForAssertion(() => Message(app, "Account").ShouldBe("The display name was saved."));
         JsonNode.Parse(BodyOf(HttpMethod.Patch, $"members/{Ada:D}")!)!.ToJsonString().ShouldBe("""{"displayName":"Ada L."}""");
         Heading(app).ShouldBe("Ada L.");
+        NameInput(app).ShouldBe("Ada L.");
 
         Section(app, "Account").QuerySelector("input")!.Input("");
         Section(app, "Account").QuerySelector("form")!.Submit();

@@ -69,13 +69,14 @@ public sealed class MembersTests(EndToEndHost host) : BrowserTest(host)
         await Expect(takeOut).ToHaveCountAsync(0);
         await Expect(groups.Locator(".members-message")).ToBeFocusedAsync();
 
-        // Deleted after the question that names it.
+        // Deleted after the question that names it, back on the list filtered by the group it was opened from.
         var account = Region(tab, "Members.Detail.Account");
         await Ui.PressAsync(Ui.ButtonIn(account, Text("Members.Detail.Delete")), "Enter");
         await Expect(account.GetByText(Ui.Format(Text("Members.Detail.DeleteQuestion"), address))).ToBeFocusedAsync();
         var deleted = await tab.AnswerAsync(() => Ui.PressAsync(Ui.ButtonIn(account, Text("Members.Detail.DeleteConfirm")), "Enter"), "DELETE", tab.ManagementUrl($"members/{memberId:D}"));
         deleted.Status.ShouldBe(204);
         await Expect(Heading(tab)).ToBeVisibleAsync();
+        await Expect(tab.Page).ToHaveURLAsync(new Uri(Host.Admin, $"members?group={groupId:D}").AbsoluteUri);
 
         using var management = await Host.ManagementClientAsync();
         var token = TestContext.Current.CancellationToken;

@@ -260,11 +260,12 @@ else
         }
     }
 
-    // The member as the server answered it. The name's input takes its name when the member is first shown and when the
-    // save of the name answered; any other answer keeps what the user typed and has not saved.
+    // The member as the server answered it. The name's input takes its name when the member is first shown, when the save
+    // of the name answered, and while it still holds the name shown before, so that a save does not send a stale name back;
+    // a name the user typed and has not saved is kept.
     private void Show(MemberRecord shown, bool takeName = false)
     {
-        if (takeName || member is null)
+        if (takeName || member is null || displayName == member.DisplayName)
         {
             displayName = shown.DisplayName;
         }
@@ -346,7 +347,8 @@ else
         focusAfterRender = () => accountElement;
     }
 
-    // The member's sessions end with it, and the list is shown as it was when the member was opened from it.
+    // The member's sessions end with it, and the list is shown as it was when the member was opened from it, in place of the
+    // member's entry of the history, so that Back does not land on an address that finds nothing.
     private async Task DeleteAsync()
     {
         if (busy || member is not { } deleted)
@@ -359,7 +361,7 @@ else
         {
             await Api.DeleteMemberAsync(Id, Closing);
             Announcer.Announce(L["Members.Detail.Deleted", MemberTexts.Named(deleted, L)]);
-            Navigation.NavigateTo(MembersPage.ListAddress(Navigation.HistoryEntryState));
+            Navigation.NavigateTo(MembersPage.ListAddress(Navigation.HistoryEntryState), replace: true);
             return;
         }
         catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.MemberNotFound))

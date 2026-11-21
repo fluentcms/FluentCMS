@@ -186,6 +186,7 @@
         catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.GroupNotFound))
         {
             listMessage = L["Members.GroupList.AlreadyDeleted", group.Name];
+            ResetIfEditing(group);
             await ReadAsync();
             focusAfterRender = () => listElement.FocusAsync();
         }
@@ -214,6 +215,15 @@
     {
         (editing, name, description, role) = (null, null, null, null);
         ClearErrors();
+    }
+
+    // A group that is gone is no longer the form's to change.
+    private void ResetIfEditing(MemberGroupRecord group)
+    {
+        if (editing?.Id == group.Id)
+        {
+            Reset();
+        }
     }
 
     private void ClearErrors() => (nameError, descriptionError, roleError) = (null, null, null);
@@ -325,11 +335,7 @@
         {
             await Api.DeleteMemberGroupAsync(group.Id, Closing);
             listMessage = L["Members.GroupList.Deleted", group.Name];
-            if (editing?.Id == group.Id)
-            {
-                Reset();
-            }
-
+            ResetIfEditing(group);
             await ReadAsync();
         }
         catch (Exception exception) when (MemberProblems.IsAboveReach(exception))
@@ -339,6 +345,7 @@
         catch (Exception exception) when (MemberProblems.Has(exception, MemberProblems.GroupNotFound))
         {
             listMessage = L["Members.GroupList.AlreadyDeleted", group.Name];
+            ResetIfEditing(group);
             await ReadAsync();
         }
         catch (OperationCanceledException) when (closing.IsCancellationRequested)

@@ -154,6 +154,56 @@ public sealed class MemberGroupsPageTests : MembersTestContext
         JsonNode.Parse(BodyOf(HttpMethod.Put, $"member-groups/{Readers:D}")!)!["description"]!.GetValue<string>().ShouldBe("Changed elsewhere");
     }
 
+    // A group deleted elsewhere since the list was read is said to be gone and the list is read again; the form, which was
+    // changing that group, is new again.
+    [Fact]
+    public void AChangeOfAGroupDeletedMeanwhileSaysSoAndTheFormStopsChangingIt()
+    {
+        var app = Open();
+        Button(Section(app, "Groups"), "Change the group writers").Click();
+        app.WaitForAssertion(() => Form(app).QuerySelector("h2")!.TextContent.ShouldBe("Change the group writers"));
+        Groups.Remove(GroupOf(Writers));
+
+        Button(Section(app, "Groups"), "Change the group writers").Click();
+
+        app.WaitForAssertion(() => Message(app, "Groups").ShouldBe("The group writers had been deleted already."));
+        Items(Section(app, "Groups")).ShouldBe(["readers Role: Reader 1 member in the group readers"]);
+        Form(app).QuerySelector("h2")!.TextContent.ShouldBe("New group");
+        Form(app).QuerySelectorAll("input")[0].GetAttribute("value").ShouldBeNullOrEmpty();
+        app.WaitForAssertion(() => ShouldBeFocused<MemberGroupsPage>(app, "listElement"));
+    }
+
+    [Fact]
+    public void ADeleteOfTheGroupTheFormChangesThatIsGoneAlreadyMakesTheFormNewAgain()
+    {
+        var app = Open();
+        Button(Section(app, "Groups"), "Change the group writers").Click();
+        app.WaitForAssertion(() => Form(app).QuerySelector("h2")!.TextContent.ShouldBe("Change the group writers"));
+        Groups.Remove(GroupOf(Writers));
+
+        Button(Section(app, "Groups"), "Delete the group writers").Click();
+        app.WaitForAssertion(() => Button(Section(app, "Groups"), "Delete the group"));
+        Button(Section(app, "Groups"), "Delete the group").Click();
+
+        app.WaitForAssertion(() => Message(app, "Groups").ShouldBe("The group writers had been deleted already."));
+        Items(Section(app, "Groups")).ShouldBe(["readers Role: Reader 1 member in the group readers"]);
+        Form(app).QuerySelector("h2")!.TextContent.ShouldBe("New group");
+    }
+
+    [Fact]
+    public void AChangeWhoseReadFailsSaysSoAndLeavesTheFormAsItWas()
+    {
+        var app = Open();
+        Management.Answer = (method, path) => method == HttpMethod.Get && path == $"member-groups/{Readers:D}" ? new HttpResponseMessage(HttpStatusCode.InternalServerError) : null;
+
+        Button(Section(app, "Groups"), "Change the group readers").Click();
+
+        app.WaitForAssertion(() => Message(app, "Groups").ShouldBe("The group readers could not be read to change it. Try again."));
+        Form(app).QuerySelector("h2")!.TextContent.ShouldBe("New group");
+        Items(Section(app, "Groups")).Length.ShouldBe(2);
+        app.WaitForAssertion(() => ShouldBeFocused<MemberGroupsPage>(app, "listElement"));
+    }
+
     [Fact]
     public void TheFormCannotBeTypedInWhileItsSaveRuns()
     {
