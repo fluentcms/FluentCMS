@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Plugins.GraphQL;
 
-internal sealed record EntryList(IReadOnlyList<JsonObject> Items, long? Total, int? Page, int PageSize, string? NextCursor);
+internal sealed record EntryList(IReadOnlyList<JsonObject> Items, long? Total, int? Page, int PageSize, string? NextCursor, bool SearchTruncated);
 
 internal sealed record PublishPayload(JsonObject Entry, IReadOnlyList<PublishWarning> Warnings);
 
@@ -99,7 +99,7 @@ internal static class ContentResolvers
         var result = await Content(context).QueryAsync(type.SchemaName, query, context.RequestAborted);
         var surface = Surface(context);
         Share(context, plan.Access);
-        return new EntryList([.. result.Items.Select(surface.ToJson)], result.Total, result.Page, result.PageSize, result.NextCursor);
+        return new EntryList([.. result.Items.Select(surface.ToJson)], result.Total, result.Page, result.PageSize, result.NextCursor, result.SearchTruncated);
     }
 
     // By id, or by the value of one unique field, as the by/ route of the Delivery API.

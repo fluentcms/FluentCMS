@@ -233,7 +233,8 @@ internal sealed class ManagementClient(IManagementApi api, ICurrentSite currentS
         }
 
         var request = Pinned(HttpMethod.Post, $"{Entry(type, id)}/preview-token", site, locale, body);
-        return (await api.SendAsync(request, Json.PreviewTokenAnswer, cancellationToken)).Value;
+        var answer = await api.SendAsync(request, Json.PreviewTokenAnswer, cancellationToken);
+        return answer.Value with { AnsweredAt = answer.Date };
     }
 
     // The entry as it is now, which a 412 of a save holds, as a read in the site and locale of the save; its version is the

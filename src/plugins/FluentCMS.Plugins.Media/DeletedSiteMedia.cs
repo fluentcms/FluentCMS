@@ -11,7 +11,9 @@ namespace FluentCMS.Plugins.Media;
 // keeps its asset as a deleted row, which the cleanup purges with the file after FluentCms:Media:DeletedRetention, and the
 // site's deletion stands. A run cut short, or a second delivery, goes on with what is left; a library too large for the
 // outbox's attempts is left to the cleanup in the same way, since every asset was marked first. A shared library is the default
-// site's, which cannot be deleted, so only rows a site kept while the library was per site are found.
+// site's, which cannot be deleted, so only rows a site kept while the library was per site are found. Files go as after a
+// replace (ReplacedFiles): only the rows of an asset whose key a line named, which go first, so that the asset that owns the
+// key then finds no other that names it.
 internal sealed class DeletedSiteMedia(PluginDbContext<MediaPlugin> database, MediaStorage storages, TimeProvider time, ILogger<DeletedSiteMedia> logger)
     : IOutboxEventHandler<SiteDeletedEvent>
 {
@@ -32,7 +34,7 @@ internal sealed class DeletedSiteMedia(PluginDbContext<MediaPlugin> database, Me
         {
             var batch = await database.Set<Asset>().AsNoTracking()
                 .Where(asset => asset.SiteId == site)
-                .OrderBy(asset => asset.Id)
+                .OrderBy(asset => asset.OwnsFile).ThenBy(asset => asset.Id)
                 .Skip(left)
                 .Take(BatchSize)
                 .ToListAsync(cancellationToken);
@@ -60,10 +62,17 @@ internal sealed class DeletedSiteMedia(PluginDbContext<MediaPlugin> database, Me
         }
     }
 
-    // The variants, then the original, then the row. A file that cannot be deleted leaves the asset, and its variant rows
-    // that were not deleted, for the cleanup.
+    // The variants, then the original, then the row. A file that cannot be deleted, or that another asset names, leaves the
+    // asset, and its variant rows that were not deleted, for the cleanup.
     private async Task<bool> RemoveAsync(Asset asset, CancellationToken cancellationToken)
     {
+        if (!asset.OwnsFile)
+        {
+            await database.Set<Variant>().Where(variant => variant.AssetId == asset.Id).ExecuteDeleteAsync(cancellationToken);
+            await database.Set<Asset>().Where(item => item.Id == asset.Id).ExecuteDeleteAsync(cancellationToken);
+            return true;
+        }
+
         if (storages.Find(asset.StorageProvider) is not { } storage)
         {
             MediaLog.SiteFileNotDeleted(logger, asset.StorageProvider, asset.StorageKey, asset.Id, asset.SiteId, null);
@@ -71,10 +80,16 @@ internal sealed class DeletedSiteMedia(PluginDbContext<MediaPlugin> database, Me
         }
 
         var variants = await database.Set<Variant>().AsNoTracking().Where(variant => variant.AssetId == asset.Id).ToListAsync(cancellationToken);
-        var kept = false;
+        var named = (await ReplacedFiles.NamedByOthers(database, asset, [asset.StorageKey, .. variants.Select(variant => variant.StorageKey)]).ToListAsync(cancellationToken))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var kept = named.Contains(asset.StorageKey);
         foreach (var variant in variants)
         {
-            if (await DeletedAsync(storage, variant.StorageKey, asset, cancellationToken))
+            if (named.Contains(variant.StorageKey))
+            {
+                kept = true;
+            }
+            else if (await DeletedAsync(storage, variant.StorageKey, asset, cancellationToken))
             {
                 await database.Set<Variant>().Where(item => item.AssetId == variant.AssetId && item.ParamsHash == variant.ParamsHash).ExecuteDeleteAsync(cancellationToken);
             }

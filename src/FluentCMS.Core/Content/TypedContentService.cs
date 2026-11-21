@@ -32,7 +32,7 @@ internal sealed class TypedContentService<T>(ContentService documents, SchemaMod
         ThrowIfUnfit(query.Locale, query.RichTextFormat);
 
         var page = await documents.QueryAsync(_type, query, everySystemField: true, cancellationToken);
-        return new PagedResult<T>(page.Items.Select(Map).ToList(), page.Total, page.Page, page.PageSize, page.NextCursor);
+        return new PagedResult<T>(page.Items.Select(Map).ToList(), page.Total, page.Page, page.PageSize, page.NextCursor) { SearchTruncated = page.SearchTruncated };
     }
 
     public async Task<T> CreateAsync(T entry, CancellationToken cancellationToken = default)
@@ -64,7 +64,7 @@ internal sealed class TypedContentService<T>(ContentService documents, SchemaMod
         ThrowIfUnfit(query.Locale, query.RichTextFormat);
 
         var page = await documents.QueryTrashAsync(_type, query, everySystemField: true, cancellationToken);
-        return new PagedResult<T>(page.Items.Select(Map).ToList(), page.Total, page.Page, page.PageSize, page.NextCursor);
+        return new PagedResult<T>(page.Items.Select(Map).ToList(), page.Total, page.Page, page.PageSize, page.NextCursor) { SearchTruncated = page.SearchTruncated };
     }
 
     public async Task<PublishResult<T>> PublishAsync(Guid id, LocaleWriteOptions? options = null, CancellationToken cancellationToken = default)

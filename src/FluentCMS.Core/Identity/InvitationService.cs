@@ -126,7 +126,8 @@ internal sealed class InvitationService(
         return new InvitationSent(invitation.Id, invitation.Email, invitation.ExpiresAt);
     }
 
-    // The invitations that could still be accepted, the newest first.
+    // The invitations that could still be accepted, the newest first. One whose sender no longer stands is left out, by the
+    // check accept makes, once per sender and set of roles; the list only reads, so the row stays as it is (#3391).
     public async Task<IReadOnlyList<InvitationInfo>> ListPendingAsync(CancellationToken cancellationToken = default)
     {
         await authority.RequireAsync(CorePermissions.UsersManage, site: null, cancellationToken);
@@ -136,9 +137,15 @@ internal sealed class InvitationService(
             .Where(row => row.AcceptedAt == null && row.RevokedAt == null)
             .ToListAsync(cancellationToken);
 
-        return [.. rows.Where(row => row.ExpiresAt > now)
-            .OrderByDescending(row => row.CreatedAt).ThenByDescending(row => row.Id)
-            .Select(row => new InvitationInfo(row.Id, row.Email, JsonSerializer.Deserialize<List<Guid>>(row.RoleIds) ?? [], row.CreatedAt, row.CreatedBy, row.ExpiresAt))];
+        List<InvitationInfo> pending = [];
+        foreach (var sent in rows.Where(row => row.ExpiresAt > now).GroupBy(row => (row.CreatedByKind, row.CreatedBy)))
+        {
+            var invitations = sent.Select(row => new InvitationInfo(row.Id, row.Email, JsonSerializer.Deserialize<List<Guid>>(row.RoleIds) ?? [], row.CreatedAt, row.CreatedBy, row.ExpiresAt)).ToList();
+            var stands = await InviterStandsAsync(sent.Key.CreatedByKind, sent.Key.CreatedBy, [.. invitations.Select(invitation => invitation.RoleIds)], cancellationToken);
+            pending.AddRange(invitations.Where((_, index) => stands[index]));
+        }
+
+        return [.. pending.OrderByDescending(row => row.CreatedAt).ThenByDescending(row => row.Id)];
     }
 
     // False when no invitation with this id could still be accepted. Revoking one needs what sending it would, so a caller
@@ -272,17 +279,22 @@ internal sealed class InvitationService(
     // the service account's client still configured, and each of them still holding users.manage for the instance and every
     // grant of the roles it names, as its roles are now. Deactivating a user or revoking a key also revokes what it sent; this holds when that was missed and
     // when the inviter was only demoted. Only the system, the command line tool, is not checked again; any other kind fails.
-    private async Task<bool> InviterStandsAsync(Invitation invitation, IReadOnlyCollection<Guid> roleIds, CancellationToken cancellationToken)
+    private async Task<bool> InviterStandsAsync(Invitation invitation, IReadOnlyCollection<Guid> roleIds, CancellationToken cancellationToken) =>
+        (await InviterStandsAsync(invitation.CreatedByKind, invitation.CreatedBy, [roleIds], cancellationToken))[0];
+
+    // For each set of roles, whether the inviter stands for an invitation that names it. The inviter is read and its grants
+    // resolved once, and each distinct set is checked once.
+    private async Task<bool[]> InviterStandsAsync(PrincipalKind kind, Guid id, IReadOnlyList<IReadOnlyCollection<Guid>> roleSets, CancellationToken cancellationToken)
     {
-        if (invitation.CreatedByKind == PrincipalKind.System && invitation.CreatedBy == Principal.System.Id)
+        if (kind == PrincipalKind.System && id == Principal.System.Id)
         {
-            return true;
+            return [.. roleSets.Select(_ => true)];
         }
 
-        var inviter = await InviterAsync(invitation, cancellationToken);
+        var inviter = await InviterAsync(kind, id, cancellationToken);
         if (inviter is null)
         {
-            return false;
+            return new bool[roleSets.Count];
         }
 
         var previous = accessor.Current;
@@ -291,15 +303,24 @@ internal sealed class InvitationService(
         {
             if (!await authority.AllowsAsync(CorePermissions.UsersManage, site: null, cancellationToken))
             {
-                return false;
+                return new bool[roleSets.Count];
             }
 
-            await roleService.RequireAssignableAsync(roleIds, cancellationToken);
-            return true;
-        }
-        catch (ManagementAccessDeniedException)
-        {
-            return false;
+            Dictionary<string, bool> checkedSets = [];
+            var stands = new bool[roleSets.Count];
+            for (var index = 0; index < roleSets.Count; index++)
+            {
+                var set = string.Join(' ', roleSets[index].Distinct().Order());
+                if (!checkedSets.TryGetValue(set, out var assignable))
+                {
+                    assignable = await AssignableAsync(roleSets[index], cancellationToken);
+                    checkedSets[set] = assignable;
+                }
+
+                stands[index] = assignable;
+            }
+
+            return stands;
         }
         finally
         {
@@ -307,26 +328,39 @@ internal sealed class InvitationService(
         }
     }
 
+    private async Task<bool> AssignableAsync(IReadOnlyCollection<Guid> roleIds, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await roleService.RequireAssignableAsync(roleIds, cancellationToken);
+            return true;
+        }
+        catch (ManagementAccessDeniedException)
+        {
+            return false;
+        }
+    }
+
     // The inviter as a principal of the management scope, whose roles the evaluator reads as they are now; null when it is gone.
-    private async Task<Principal?> InviterAsync(Invitation invitation, CancellationToken cancellationToken)
+    private async Task<Principal?> InviterAsync(PrincipalKind kind, Guid id, CancellationToken cancellationToken)
     {
         Dictionary<string, string> management = new() { [TokenScopes.Claim] = TokenScopes.Management };
-        switch (invitation.CreatedByKind)
+        switch (kind)
         {
             case PrincipalKind.AdminUser:
-                return await context.Set<CmsUser>().AsNoTracking().FirstOrDefaultAsync(user => user.Id == invitation.CreatedBy && user.DeactivatedAt == null, cancellationToken) is { } user
+                return await context.Set<CmsUser>().AsNoTracking().FirstOrDefaultAsync(user => user.Id == id && user.DeactivatedAt == null, cancellationToken) is { } user
                     ? new Principal(PrincipalKind.AdminUser, user.Id, user.UserName ?? "", management)
                     : null;
             case PrincipalKind.ApiKey:
-                return await keys.ActiveAsync(invitation.CreatedBy, cancellationToken) is { } key ? ApiKeyClaims.PrincipalOf(key) : null;
+                return await keys.ActiveAsync(id, cancellationToken) is { } key ? ApiKeyClaims.PrincipalOf(key) : null;
             case PrincipalKind.ServiceAccount:
-                if (await ServiceAccountRolesAsync(invitation.CreatedBy, cancellationToken) is not { } roles)
+                if (await ServiceAccountRolesAsync(id, cancellationToken) is not { } roles)
                 {
                     return null;
                 }
 
                 management[CmsClaimTypes.Roles] = string.Join(' ', roles.Select(role => role.ToString("D")));
-                return new Principal(PrincipalKind.ServiceAccount, invitation.CreatedBy, "", management);
+                return new Principal(PrincipalKind.ServiceAccount, id, "", management);
             default:
                 return null;
         }

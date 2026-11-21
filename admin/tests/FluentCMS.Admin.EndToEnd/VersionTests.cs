@@ -28,7 +28,8 @@ public sealed class VersionTests(EndToEndHost host) : BrowserTest(host)
         await Title(tab).FillAsync(second);
         (await tab.AnswerAsync(() => Ui.PressAsync(Save(tab), "Enter"), "PUT", entry)).Status.ShouldBe(200);
 
-        var history = tab.Page.Locator(".content-form-history fluent-button");
+        // By its name: the Preview toggle shares the container while config.json lists a preview origin.
+        var history = Ui.ButtonIn(tab.Page.Locator(".content-form-history"), Repository.AdminText("Content.Versions.Open"));
         var listed = await tab.AnswerAsync(() => Ui.PressAsync(history, "Enter"), "GET", $"{entry}/versions");
         listed.Status.ShouldBe(200);
         var panel = tab.Page.Locator($"fluent-drawer[aria-label=\"{Repository.AdminText("Content.Versions.Title")}\"]");

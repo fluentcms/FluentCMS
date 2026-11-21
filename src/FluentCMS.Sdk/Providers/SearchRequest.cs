@@ -6,7 +6,10 @@ namespace FluentCMS.Providers;
 /// <summary>A search that the query engine asks of an <see cref="ISearchIndex"/> for one list query.</summary>
 /// <param name="Type">The content type of the query.</param>
 /// <param name="Text">The search text as the client sent it.</param>
-/// <param name="Limit">The most ids to return; the engine reads no more than these.</param>
+/// <param name="Limit">
+/// The most ids to return; the engine reads no more than these, and a list for which the index returns this many says its
+/// search may be cut.
+/// </param>
 public sealed record SearchRequest(string Type, string Text, int Limit)
 {
     /// <summary>The locale the query reads, or empty for a type that is not localized.</summary>
