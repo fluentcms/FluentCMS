@@ -136,7 +136,7 @@ public sealed class WebhookRecoveryTests(WebhookFixture hosts) : IClassFixture<W
         var second = new WebhookAttempt(webhook, Guid.CreateVersion7(), Guid.CreateVersion7(), "content.published", 1, Manual: false, """{"n":2}""", now - TimeSpan.FromMinutes(29));
 
         await scheduler.EnqueueAsync<WebhookDeliveryJob, WebhookAttempt>(second, WebhookDeliveryJob.Options(DefaultSite.Id), Token);
-        (await RunDueJobsAsync(host)).ShouldBe(3, "the second event's job, the head's job it enqueued, and the second event's again, which that wakes");
+        (await RunDueJobsAsync(host)).ShouldBe(3, "the second event's job, the head's job it enqueued, and the second event's again, which the head's wakes");
         receiver.Requests.Select(request => request.Body).ShouldBe([head.RequestBody, second.Body]);
 
         // The head's own job, which queued it, then finds its attempt recorded.

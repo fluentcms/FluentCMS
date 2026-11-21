@@ -59,14 +59,14 @@ internal static class WebhookTesting
 
     public static Guid Id(JsonNode node, string name = "id") => Guid.Parse(node[name]!.GetValue<string>());
 
-    // Rounds of the outbox and the due jobs until neither has anything left. Counts as RunDueJobsAsync does.
-    public static async Task<int> PumpAsync(FluentCmsTestHost host, params string[] types)
+    // Rounds of the outbox and the due jobs until neither has anything left. Counts the deliveries, as RunDueJobsAsync does.
+    public static async Task<int> PumpAsync(FluentCmsTestHost host)
     {
         var jobs = 0;
         for (var round = 0; round < 20; round++)
         {
             var delivered = await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
-            var (ran, counted) = await RunDueAsync(host, types);
+            var (ran, counted) = await RunDueAsync(host, []);
             jobs += counted;
             if (delivered == 0 && ran == 0)
             {
