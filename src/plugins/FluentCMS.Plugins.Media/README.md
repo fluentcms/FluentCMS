@@ -115,6 +115,10 @@ The first time the plugin starts on an instance, the built-in Editor gets `media
 curl -H "Authorization: ApiKey $KEY" -F folderId=$FOLDER -F files=@photo.jpg -F files=@report.pdf https://cms.example.com/api/management/v1/media
 ```
 
+An image's `width` and `height` are those the image processor reads, the size it is shown at after its EXIF orientation. The job `media.dimensions.backfill` gives the JPEG, WebP and AVIF images stored before the same size once per database, starting at a start of an instance, and then records that it is done in the row with id 2 of `cms_media_signing_key`. An image uploaded by an instance of an earlier version that still runs during a rolling upgrade can keep the size of its header after that. To run the check again, delete the row with id 2 of `cms_media_signing_key` (`DELETE FROM cms_media_signing_key WHERE id = 2`) and start an instance.
+
+With `svg` set to `sanitize`, a value read as CSS that holds anything the plugin removes, such as one `url(data:…)` or an `@font-face` whose `src` is a `url(…)`, goes whole: the whole `<style>` element or `style` attribute. A `<style>` that stays applies to the whole page when a page inlines the SVG.
+
 ## Image transforms
 
 `GET /media/{id}/{fileName}` serves an image of a public asset, resized and encoded as its query asks. It is open to anyone: the signature is the authority. The file name is there for the reader and is ignored, so `/media/{id}/hero.jpg` and `/media/{id}/x.webp` are the same image. A private or deleted asset is never served, even with a valid signature.
@@ -212,7 +216,7 @@ A signed URL with `preset=hero` then serves that size.
 
 A signature is the HMAC-SHA256 of the asset id and the URL's parameters, sorted by name, without `sig`, `site` and the file name. The key is `FluentCms:Media:SigningKey` when it is set. Otherwise the plugin generates one 256-bit key at its first start, and stores it in `cms_media_signing_key`, protected by Data Protection. Instances that start together share one key, created under a lock. Data Protection protects the key only at rest, so signed URLs keep working when its key ring rotates.
 
-Download URLs and the URLs of original files and thumbnails are signed with the same key. Replacing the key invalidates every URL signed before, in content and in CDN caches. To replace it, set `SigningKey`, or delete the row of `cms_media_signing_key`, and restart every instance. Keep the Data Protection key ring in backups: without the key that protected the signing key, the instance cannot read it, and only setting `SigningKey` or deleting the row brings transforms back.
+Download URLs and the URLs of original files and thumbnails are signed with the same key. Replacing the key invalidates every URL signed before, in content and in CDN caches. To replace it, set `SigningKey`, or delete the row with id 1 of `cms_media_signing_key`, and restart every instance. Keep the Data Protection key ring in backups: without the key that protected the signing key, the instance cannot read it, and only setting `SigningKey` or deleting the row with id 1 brings transforms back.
 
 ## Media fields
 

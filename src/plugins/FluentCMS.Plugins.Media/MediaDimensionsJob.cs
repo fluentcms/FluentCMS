@@ -12,17 +12,19 @@ internal sealed record MediaDimensionsPayload(int BatchSize = 100);
 // orientation. Only types that carry one are read: JPEG, WebP and AVIF, of those the processor reads. One chain of runs
 // goes over the library once per database. Where it stands is a row of its own in cms_media_signing_key (StateId, beside
 // the signing key's row 1, which is the only row the signing reads): its key is the id of the last image read, empty
-// before the first, or "done", and its created_at the time a run last claimed it. The media startup enqueues the first run
-// only when the row is missing, or names no end and was last claimed longer ago than Lease, as after a chain whose run
-// failed for good; it claims the row first, so that instances that start together start one chain. A run reads the next
-// BatchSize images that are not deleted, in the order of their ids, writes the width and height that differ, and moves
-// the row on only from where it read it, so that a second chain stops at its first run; then it enqueues the next run, or
-// writes "done". Only the width and height change: not the version or the time and author of the last update, and no event
-// of the asset is raised, so no webhook hears of it; the copies of the Delivery API that name a corrected asset are evicted.
-// A JPEG is identified from the first PrefixLength bytes of its file, where its EXIF and frame header are, and from the whole
-// file only when those are not enough; WebP and AVIF can put their orientation after the image, so the whole file is read.
-// An image whose file cannot be read keeps its size and is logged, and one replaced since the run read it keeps the size
-// of its new file.
+// before the first, or "done", and its created_at the time a start last claimed it. A start of the host claims the check
+// only when the row is missing, or names no end and was claimed longer ago than Lease, as after a chain whose run failed
+// for good, and then enqueues the first run (MediaDimensionsStart), so that instances that start together start one chain.
+// A run reads the next BatchSize images that are not deleted, in the order of their ids, writes the width and height that
+// differ, and moves the row on from where it read it, then enqueues the next run, or writes "done"; two chains, which a
+// stale claim can leave, take turns on the row. Deleting the row runs the check again at the next start. Only the width
+// and height change: not the version or the time and author of the last update, and no event of the asset is raised, so
+// no webhook hears of it; the copies of the Delivery API that name a corrected asset are evicted. A JPEG is identified from
+// the first PrefixLength bytes of its file, where its EXIF and frame header are, and from the whole file only when those
+// are not enough; WebP and AVIF can put their orientation after the image, so the whole file is read. An image whose file
+// is missing, or whose bytes the processor does not take, keeps its size and is logged; a failure of the storage fails
+// the run, which the runner tries again from the same place. One replaced since the run read it keeps the size of its new
+// file.
 internal sealed class MediaDimensionsJob(
     PluginDbContext<MediaPlugin> database,
     MediaStorage storages,
@@ -41,44 +43,45 @@ internal sealed class MediaDimensionsJob(
 
     private static readonly MediaType[] Oriented = [MediaTypes.Jpeg, MediaTypes.WebP, MediaTypes.Avif];
 
-    // At a start of the host: enqueues the first run of a chain unless the library was gone over or a chain claimed it
-    // within Lease. Answers whether it enqueued one.
-    public static async Task<bool> StartAsync(PluginDbContext<MediaPlugin> database, IJobScheduler scheduler, TimeProvider time, CancellationToken cancellationToken)
+    // At a start of the host: claims the check unless the library was gone over or a chain claimed it within Lease, by adding
+    // the row or by moving the time of a stale claim. Answers the claim, which MediaDimensionsStart enqueues a run for, or
+    // null. The time is cut to milliseconds, which every provider stores as it is, so that the claim reads back equal.
+    public static async Task<DateTimeOffset?> ClaimAsync(PluginDbContext<MediaPlugin> database, TimeProvider time, CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
+        now = now.AddTicks(-(now.Ticks % TimeSpan.TicksPerMillisecond));
         var state = await database.Set<SigningKey>().AsNoTracking().FirstOrDefaultAsync(row => row.Id == StateId, cancellationToken);
         if (state is null)
         {
-            database.Add(new SigningKey { Id = StateId, Key = "", CreatedAt = now });
+            var claim = new SigningKey { Id = StateId, Key = "", CreatedAt = now };
+            database.Add(claim);
             try
             {
                 await database.SaveChangesAsync(cancellationToken);
+                return now;
             }
             catch (DbUpdateException)
             {
-                // Another instance claimed it at the same start.
-                return false;
+                database.Entry(claim).State = EntityState.Detached;
+
+                // Another instance claimed it at the same start; a failure of the database is no claim.
+                if (!await database.Set<SigningKey>().AsNoTracking().AnyAsync(row => row.Id == StateId, cancellationToken))
+                {
+                    throw;
+                }
+
+                return null;
             }
         }
-        else if (state.Key == Done || state.CreatedAt > now - Lease
-            || await database.Set<SigningKey>().Where(row => row.Id == StateId && row.Key == state.Key && row.CreatedAt == state.CreatedAt)
-                .ExecuteUpdateAsync(set => set.SetProperty(row => row.CreatedAt, now), cancellationToken) == 0)
+
+        if (state.Key == Done || state.CreatedAt > now - Lease)
         {
-            return false;
+            return null;
         }
 
-        try
-        {
-            await scheduler.EnqueueAsync<MediaDimensionsJob, MediaDimensionsPayload>(new MediaDimensionsPayload(), cancellationToken: cancellationToken);
-            return true;
-        }
-        catch
-        {
-            // Released, so that the start tries again rather than wait out the lease.
-            await database.Set<SigningKey>().Where(row => row.Id == StateId && row.Key != Done)
-                .ExecuteUpdateAsync(set => set.SetProperty(row => row.CreatedAt, DateTimeOffset.UnixEpoch), CancellationToken.None);
-            throw;
-        }
+        var moved = await database.Set<SigningKey>().Where(row => row.Id == StateId && row.Key == state.Key && row.CreatedAt == state.CreatedAt)
+            .ExecuteUpdateAsync(set => set.SetProperty(row => row.CreatedAt, now), cancellationToken);
+        return moved > 0 ? now : null;
     }
 
     public async Task ExecuteAsync(MediaDimensionsPayload payload, JobContext context)
@@ -141,65 +144,78 @@ internal sealed class MediaDimensionsJob(
         }
     }
 
-    // The size the processor reads, or null, which keeps the asset's: a type of no list, a file that is missing or cannot be
-    // read, or bytes the processor does not take.
+    // The size the processor reads, or null, which keeps the asset's: a type of no list, a storage the instance no longer
+    // has, a file that is missing, or bytes the processor does not take, each logged. A failure of the storage fails the run,
+    // so that the runner tries the batch again and the cursor stays where it was.
     private async Task<(int Width, int Height)?> ReadAsync(Guid id, string provider, string key, MediaType? type, CancellationToken cancellationToken)
+    {
+        if (type is null)
+        {
+            return null;
+        }
+
+        if (storages.Find(provider) is not { } storage)
+        {
+            MediaLog.DimensionsNotRead(logger, id, provider, key, null);
+            return null;
+        }
+
+        if (type == MediaTypes.Jpeg)
+        {
+            var prefix = new byte[PrefixLength];
+            int read;
+            await using (var content = await storage.OpenReadAsync(key, cancellationToken))
+            {
+                if (content is null)
+                {
+                    MediaLog.DimensionsNotRead(logger, id, provider, key, null);
+                    return null;
+                }
+
+                read = await content.ReadAtLeastAsync(prefix, prefix.Length, throwOnEndOfStream: false, cancellationToken);
+            }
+
+            using var head = new MemoryStream(prefix, 0, read, writable: false);
+            var (identified, failure) = await IdentifyAsync(head, cancellationToken);
+            if (identified is not null)
+            {
+                return identified;
+            }
+
+            if (read < prefix.Length)
+            {
+                MediaLog.DimensionsNotRead(logger, id, provider, key, failure);
+                return null;
+            }
+        }
+
+        await using var whole = await storage.OpenReadAsync(key, cancellationToken);
+        if (whole is null)
+        {
+            MediaLog.DimensionsNotRead(logger, id, provider, key, null);
+            return null;
+        }
+
+        await using var source = await MediaTransforms.SpoolAsync(whole, MediaService.TemporaryFile, cancellationToken);
+        var (size, error) = await IdentifyAsync(source, cancellationToken);
+        if (size is null)
+        {
+            MediaLog.DimensionsNotRead(logger, id, provider, key, error);
+        }
+
+        return size;
+    }
+
+    // Bytes the processor does not take answer null, with what it threw, if anything.
+    private async Task<((int Width, int Height)? Size, Exception? Failure)> IdentifyAsync(Stream image, CancellationToken cancellationToken)
     {
         try
         {
-            if (type is null)
-            {
-                return null;
-            }
-
-            if (storages.Find(provider) is not { } storage)
-            {
-                MediaLog.DimensionsNotRead(logger, id, provider, key, null);
-                return null;
-            }
-
-            if (type == MediaTypes.Jpeg)
-            {
-                var prefix = new byte[PrefixLength];
-                int read;
-                await using (var content = await storage.OpenReadAsync(key, cancellationToken))
-                {
-                    if (content is null)
-                    {
-                        MediaLog.DimensionsNotRead(logger, id, provider, key, null);
-                        return null;
-                    }
-
-                    read = await content.ReadAtLeastAsync(prefix, prefix.Length, throwOnEndOfStream: false, cancellationToken);
-                }
-
-                using var head = new MemoryStream(prefix, 0, read, writable: false);
-                if (await processor.IdentifyAsync(head, cancellationToken) is { Width: > 0, Height: > 0 } header)
-                {
-                    return (header.Width, header.Height);
-                }
-
-                if (read < prefix.Length)
-                {
-                    return null;
-                }
-            }
-
-            await using var whole = await storage.OpenReadAsync(key, cancellationToken);
-            if (whole is null)
-            {
-                MediaLog.DimensionsNotRead(logger, id, provider, key, null);
-                return null;
-            }
-
-            await using var source = await MediaTransforms.SpoolAsync(whole, MediaService.TemporaryFile, cancellationToken);
-            return await processor.IdentifyAsync(source, cancellationToken) is { Width: > 0, Height: > 0 } size ? (size.Width, size.Height) : null;
+            return (await processor.IdentifyAsync(image, cancellationToken) is { Width: > 0, Height: > 0 } size ? (size.Width, size.Height) : null, null);
         }
-        // A storage's own timeout is a failure of that file; only the job's token stops the run.
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            MediaLog.DimensionsNotRead(logger, id, provider, key, exception);
-            return null;
+            return (null, exception);
         }
     }
 }

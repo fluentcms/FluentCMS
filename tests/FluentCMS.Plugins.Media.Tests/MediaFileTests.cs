@@ -139,6 +139,7 @@ public sealed class MediaFileTests
     [InlineData("""<style>rect { background: image-set("https://evil.example/a.png" 1x) }</style>""")]
     [InlineData("""<animate attributeName="fill" values="red;url(https://evil.example/p.svg#p)" dur="1s"/>""")]
     [InlineData("""<g xml:base="https://evil.example/"><use href="#kept"/></g>""")]
+    [InlineData("""<use href="&#xA0;#evil.example"/>""")]
     [InlineData("""<?xml-stylesheet href="https://evil.example/x.css"?><rect width="1" height="1"/>""")]
     public void SanitisingLeavesNoReferenceOutOfTheDocument(string body)
     {
@@ -192,6 +193,7 @@ public sealed class MediaFileTests
                 ("""<table background="https://evil.example/a.png"/>""", "evil.example"),
                 ("""<rect width="1" height="1" srcset="https://evil.example/a.png 1x"/>""", "evil.example"),
                 ("""<rect width="1" height="1" mask="image-set('https://evil.example/a.png' 1x)"/>""", "evil.example"),
+                ("""<set attributeName="x:onclick" to="alert(1)"/>""", "x:onclick"),
             ];
 
             var data = new TheoryData<string, string>();

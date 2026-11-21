@@ -74,6 +74,9 @@ internal static partial class SvgDocument
         "href", "src", "srcset", "poster", "action", "formaction", "background", "base", "data", "codebase", "cite", "longdesc", "ping",
     };
 
+    // The white space a URL parser takes off the ends of a link; a no-break space is not, so "&#xA0;#a" is a path.
+    private static readonly char[] UrlWhiteSpace = [' ', '\t', '\n', '\r', '\f'];
+
     // CSS that reaches out without url(): an import, an expression, and the functions that take an image or a source as a string.
     private static readonly string[] ActiveCss = ["@import", "expression(", "image(", "image-set(", "src("];
 
@@ -165,9 +168,13 @@ internal static partial class SvgDocument
             return !element.HasElements && !IsActiveCss(element.Value);
         }
 
-        return !Animations.Contains(name)
-            || element.Attribute("attributeName")?.Value.Trim() is not { } target
-            || !(target.StartsWith("on", StringComparison.OrdinalIgnoreCase) || LinkAttributes.Contains(target[(target.LastIndexOf(':') + 1)..]));
+        if (!Animations.Contains(name) || element.Attribute("attributeName")?.Value.Trim() is not { } target)
+        {
+            return true;
+        }
+
+        var local = target[(target.LastIndexOf(':') + 1)..];
+        return !local.StartsWith("on", StringComparison.OrdinalIgnoreCase) && !LinkAttributes.Contains(local);
     }
 
     private static bool IsKept(XAttribute attribute)
@@ -180,7 +187,7 @@ internal static partial class SvgDocument
 
         if (name.Namespace == XLinkNamespace || (name.Namespace == XNamespace.None && name.LocalName == "href"))
         {
-            return name.LocalName == "href" && Fragment().IsMatch(attribute.Value.Trim());
+            return name.LocalName == "href" && Fragment().IsMatch(attribute.Value.Trim(UrlWhiteSpace));
         }
 
         return name.Namespace == XNamespace.None && Attributes.Contains(name.LocalName) && !IsActiveCss(attribute.Value);

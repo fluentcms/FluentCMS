@@ -38,6 +38,7 @@ internal sealed class MediaStartup(
         var keyReady = false;
         var scheduled = false;
         var checking = false;
+        var start = new MediaDimensionsStart(scheduler, time);
         while (!stoppingToken.IsCancellationRequested)
         {
             if (!keyReady)
@@ -71,7 +72,7 @@ internal sealed class MediaStartup(
                 try
                 {
                     await using var scope = scopes.CreateAsyncScope();
-                    await MediaDimensionsJob.StartAsync(scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>(), scheduler, time, stoppingToken);
+                    await start.RunAsync(scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>(), stoppingToken);
                     checking = true;
                 }
                 catch (Exception exception) when (!stoppingToken.IsCancellationRequested)

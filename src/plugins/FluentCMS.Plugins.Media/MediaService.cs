@@ -1089,15 +1089,23 @@ internal sealed class MediaService(
     }
 
     // The size of an image as it is shown, after its EXIF orientation, as the processor reads it and its transforms make it;
-    // for a type the processor does not read, or bytes it does not take, the size the header states.
+    // for a type the processor does not read, or bytes it does not take or throws on, the size the header states, so that
+    // a processor never fails an upload that the checks passed.
     internal static async Task<(int Width, int Height)?> DimensionsAsync(IImageProcessor processor, Stream content, MediaType type, CancellationToken cancellationToken)
     {
         if (processor.CanDecode(type.MimeType))
         {
             content.Position = 0;
-            if (await processor.IdentifyAsync(content, cancellationToken) is { Width: > 0, Height: > 0 } header)
+            try
             {
-                return (header.Width, header.Height);
+                if (await processor.IdentifyAsync(content, cancellationToken) is { Width: > 0, Height: > 0 } header)
+                {
+                    return (header.Width, header.Height);
+                }
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                // The header below.
             }
         }
 
