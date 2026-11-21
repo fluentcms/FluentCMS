@@ -1,9 +1,13 @@
+using System.Data;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace FluentCMS.Data.SqlServer;
 
@@ -48,6 +52,63 @@ public sealed class SqlServerDataProvider(string connectionString) : IDataProvid
 
     // EF's migrations lock is an application lock of the session, which ends with it.
     public Task<string?> ReadMigrationsLockAsync(DbContext context, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
+
+    // EF's sp_getapplock has no lock timeout, so its wait for another session ends at the command timeout with an error that
+    // names nothing (#3192). An application lock of the session is taken again by the same session at once, so EF's own
+    // request then succeeds, and its release leaves this one held until the handle releases it.
+    public async Task<IAsyncDisposable?> TakeMigrationsLockAsync(DbContext context, CancellationToken cancellationToken)
+    {
+        if (!await context.GetService<IRelationalDatabaseCreator>().ExistsAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        await context.Database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            var result = await RunAsync(
+                context,
+                "DECLARE @result int; EXEC @result = sp_getapplock @Resource = '__EFMigrationsLock', @LockOwner = 'Session', @LockMode = 'Exclusive', @LockTimeout = -1; SELECT @result",
+                cancellationToken);
+            return result >= 0 ? new MigrationsLock(context) : throw new InvalidOperationException($"sp_getapplock answered {result} for __EFMigrationsLock.");
+        }
+        catch
+        {
+            await context.Database.CloseConnectionAsync();
+            throw;
+        }
+    }
+
+    // With no command timeout: the runner bounds the wait.
+    private static async Task<int> RunAsync(DbContext context, string sql, CancellationToken cancellationToken)
+    {
+        await using var command = context.Database.GetDbConnection().CreateCommand();
+#pragma warning disable CA2100 // Constants of this class.
+        command.CommandText = sql;
+#pragma warning restore CA2100
+        command.CommandTimeout = 0;
+        return Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken), CultureInfo.InvariantCulture);
+    }
+
+    // A pooled connection keeps its session, and with it the lock, until it is used again, so the lock is released first. A
+    // connection that broke has lost its session, and the lock with it.
+    private sealed class MigrationsLock(DbContext context) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync()
+        {
+            try
+            {
+                if (context.Database.GetDbConnection().State == ConnectionState.Open)
+                {
+                    await RunAsync(context, "DECLARE @result int; EXEC @result = sp_releaseapplock @Resource = '__EFMigrationsLock', @LockOwner = 'Session'; SELECT @result", CancellationToken.None);
+                }
+            }
+            finally
+            {
+                await context.Database.CloseConnectionAsync();
+            }
+        }
+    }
 
     // Under a case-insensitive collation of its own, so that a database whose default compares case does not change it.
     public Expression<Func<string?, bool>> ContainsIgnoringCase(string fragment)
