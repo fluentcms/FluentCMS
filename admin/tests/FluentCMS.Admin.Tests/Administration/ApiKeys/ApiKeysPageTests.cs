@@ -205,9 +205,19 @@ public sealed class ApiKeysPageTests : AdministrationTestContext
         app.WaitForAssertion(() => SecretDialog(app).Secret.ShouldBeNull());
         app.Markup.ShouldNotContain(ApiKeysFake.RotatedSecret);
 
-        // Rotate was disabled while the rotation ran, so focus goes back to it once the dialog has closed.
+        // Rotate was disabled while the rotation ran, so focus goes back to it once the dialog has closed, after the render
+        // that the close causes, so that the target is one that render put in the page.
+        var page = app.FindComponent<ApiKeyPage>();
+        var rendersBefore = page.RenderCount;
+        int? rendersAtFocus = null;
+        JSInterop.SetupVoid(Focus, _ =>
+        {
+            rendersAtFocus ??= page.RenderCount;
+            return false;
+        });
         await ClosedByTheBrowserAsync(app);
         app.WaitForAssertion(() => Focused().ShouldBe(ElementId(app, Localized<ApiKeysResources>("ApiKeys.Key.Rotate"))));
+        rendersAtFocus.ShouldNotBeNull().ShouldBeGreaterThan(rendersBefore);
         Holders(app, ApiKeysFake.RotatedSecret).ShouldBeEmpty();
         app.WaitForAssertion(() => app.Find(".api-key-facts").TextContent.ShouldContain(
             Localized<ApiKeysResources>("ApiKeys.Status.Overlap", Formats().DateTime(DateTimeOffset.Parse("2999-01-01T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture)))));
@@ -266,15 +276,14 @@ public sealed class ApiKeysPageTests : AdministrationTestContext
         app.Find("form.api-key-form").Submit();
         app.WaitForAssertion(() => SecretDialog(app).Secret.ShouldBe(ApiKeysFake.Secret));
         var page = app.FindComponent<ApiKeyNewPage>().Instance;
-        var ended = navigation.History.Count;
+        var ended = navigation.Records().Length;
 
         _ = app.InvokeAsync(() => Navigation.NavigateTo(ApiKeyRoutes.List));
         app.WaitForAssertion(() => app.Find(".cms-secret-leave"));
         Button(app, Text("SecretLeave")).Click();
 
-        await navigation.EndedAsync(ended, NavigationState.Succeeded);
-        navigation.History.Count.ShouldBe(ended + 1);
-        navigation.History.First().Uri.ShouldBe(ApiKeyRoutes.List);
+        (await navigation.EndedAsync(ended, NavigationState.Succeeded)).Uri.ShouldBe(ApiKeyRoutes.List);
+        navigation.Records().Length.ShouldBe(ended + 1);
         typeof(ApiKeyNewPage).GetField("secret", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(page).ShouldBeNull();
         Holders(app, ApiKeysFake.Secret).ShouldBeEmpty();
     }

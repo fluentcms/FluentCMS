@@ -94,6 +94,24 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
         dialog.Markup.ShouldNotContain("fcms_dk_another");
     }
 
+    // A secret the caller puts in place of the shown one, without Done, starts hidden and without the message of the one before.
+    [Fact]
+    public void ASecretTheCallerSwapsStartsHiddenAndWithoutTheLastMessage()
+    {
+        const string next = "fcms_dk_swapped0123456789abcdefghijkl";
+        JSInterop.SetupVoid(WriteText, Secret).SetVoidResult();
+        var dialog = RenderBound();
+        Button(dialog, "SecretShow").Click();
+        Button(dialog, "SecretCopy").Click();
+        dialog.WaitForAssertion(() => dialog.Find("[role=status]").TextContent.ShouldBe(Text("SecretCopied")));
+
+        dialog.Render(parameters => parameters.Add(item => item.Secret, next));
+
+        dialog.Markup.ShouldNotContain(next);
+        dialog.Find(".cms-secret-value").TextContent.ShouldContain(Text("SecretHidden"));
+        dialog.Find("[role=status]").TextContent.ShouldBeEmpty();
+    }
+
     // A secret closed by mistake cannot be read again, so Escape or a click outside shows the dialog again.
     [Fact]
     public async Task EscapeDoesNotCloseIt()
@@ -154,8 +172,7 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
         Button(dialog, "SecretLeave").Click();
 
         // The record of a navigation is written once the question's handler has returned, so the secret was dropped before.
-        await navigation.EndedAsync(1, NavigationState.Succeeded);
-        navigation.History.First().Uri.ShouldBe("elsewhere");
+        (await navigation.EndedAsync(1, NavigationState.Succeeded)).Uri.ShouldBe("elsewhere");
         bound.ShouldBeNull();
     }
 
@@ -203,8 +220,7 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
         Button(dialog, "SecretDone").Click();
         await dialog.InvokeAsync(() => navigation.NavigateTo("elsewhere"));
 
-        await navigation.EndedAsync(0, NavigationState.Succeeded);
-        navigation.History.First().Uri.ShouldBe("elsewhere");
+        (await navigation.EndedAsync(0, NavigationState.Succeeded)).Uri.ShouldBe("elsewhere");
         dialog.FindAll(".cms-secret-leave").ShouldBeEmpty();
     }
 
@@ -231,6 +247,56 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
         await navigation.EndedAsync(0, NavigationState.Prevented);
     }
 
+    // Done released the first secret only: the next one, shown straight from @bind-Secret:after and then dropped by the
+    // caller without Done, does not tell the caller the user is done.
+    [Fact]
+    public async Task ASecretShownStraightAfterDoneAndDroppedByTheCallerRaisesNoOnClosed()
+    {
+        const string next = "fcms_dk_next0123456789abcdefghijklmno";
+        var dialog = Render<CmsSecretDialog>(parameters => parameters
+            .Add(item => item.Title, "Copy the new key")
+            .Add(item => item.Label, "Secret")
+            .Add(item => item.Secret, bound)
+            .Add(item => item.SecretChanged, value => bound = value ?? next)
+            .Add(item => item.OnClosed, () => closed++));
+
+        Button(dialog, "SecretDone").Click();
+        dialog.Render(parameters => parameters.Add(item => item.Secret, bound));
+        dialog.Render(parameters => parameters.Add(item => item.Secret, null));
+        await ClosedByTheBrowserAsync(dialog);
+
+        closed.ShouldBe(0);
+    }
+
+    // Done cannot be pressed while the question is asked: it is disabled, so out of reach of the keyboard too, and a click
+    // that reaches it anyway does nothing. Stay or Leave answers, so that the route change and OnClosed, as the new key's page,
+    // do not race. Answered Stay, Done closes the dialog again.
+    [Fact]
+    public async Task DoneWaitsForTheAnswerToTheQuestion()
+    {
+        var navigation = Navigation();
+        var dialog = RenderBound();
+        _ = dialog.InvokeAsync(() => navigation.NavigateTo("elsewhere"));
+        dialog.WaitForAssertion(() => dialog.Find(".cms-secret-leave"));
+
+        Button(dialog, "SecretDone").HasAttribute("disabled").ShouldBeTrue();
+        var done = dialog.FindComponents<CmsButton>().Single(button => button.FindAll("fluent-button") is [var host, ..] && host.TextContent.Trim() == Text("SecretDone"));
+        await dialog.InvokeAsync(() => done.Instance.OnClick.InvokeAsync());
+
+        bound.ShouldBe(Secret);
+        dialog.FindAll(".cms-secret-leave").ShouldHaveSingleItem();
+        navigation.Records().ShouldBeEmpty();
+
+        Button(dialog, "SecretStay").Click();
+        await navigation.EndedAsync(0, NavigationState.Prevented);
+        Button(dialog, "SecretDone").HasAttribute("disabled").ShouldBeFalse();
+        Button(dialog, "SecretDone").Click();
+        bound.ShouldBeNull();
+        dialog.Render(parameters => parameters.Add(item => item.Secret, bound));
+        await ClosedByTheBrowserAsync(dialog);
+        closed.ShouldBe(1);
+    }
+
     // OnClosed follows Done alone: the dialog also closes when the caller drops the secret itself, as when its page reads
     // another key, and then the caller is not told the user is done.
     [Fact]
@@ -250,7 +316,8 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
         closed.ShouldBe(1);
     }
 
-    // A dialog removed while it asks, as when its page goes, lets the route change go on and holds no lock afterwards.
+    // A dialog removed while it asks, as when its page goes, lets the route change go on, raises nothing once it is gone and
+    // holds no lock afterwards.
     [Fact]
     public async Task ADialogRemovedWhileItAsksLetsTheRouteChangeGoOn()
     {
@@ -262,9 +329,9 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
         await DisposeComponentsAsync();
 
         await navigation.EndedAsync(0, NavigationState.Succeeded);
+        bound.ShouldBe(Secret);
         await Renderer.Dispatcher.InvokeAsync(() => navigation.NavigateTo("again"));
-        await navigation.EndedAsync(1, NavigationState.Succeeded);
-        navigation.History.First().Uri.ShouldBe("again");
+        (await navigation.EndedAsync(1, NavigationState.Succeeded)).Uri.ShouldBe("again");
     }
 
     [Fact]
