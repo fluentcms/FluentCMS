@@ -1,5 +1,41 @@
-@* The users of the instance and their invitations (spec 4.15). The page shows its heading until its issue writes it. *@
+@* The users of the instance, read in pages with a search by name and address, and their invitations (spec 4.15). Every
+   call needs users.manage for the instance, which the shell's gate asks for before the page shows. *@
 @page "/users"
+@inject IManagementApi Api
+@inject NavigationManager Navigation
+@inject AdminContext Context
+@inject FormatService Formats
+@inject TimeProvider Time
 @inject IStringLocalizer<UsersResources> L
+@inject IStringLocalizer<CommonResources> Common
 
 <h1 tabindex="-1">@L["Users.Page.Heading"]</h1>
+
+<RecordList TItem="UserRecord"
+            Label="@L["Users.Page.Heading"]"
+            Read="@Api.GetUsersAsync"
+            SearchLabel="@L["Users.List.Search"]"
+            EmptyText="@L["Users.List.Empty"]"
+            RowLabel="@(user => user.UserName)"
+            OnRowActivated="@Open">
+    <Columns>
+        <CmsDataGridColumn TItem="UserRecord" Name="userName" Title="@L["Users.List.Name"]" Order="0">
+            <a href="@Route(context)" tabindex="-1">@context.UserName</a>
+        </CmsDataGridColumn>
+        <CmsDataGridColumn TItem="UserRecord" Name="email" Title="@L["Users.List.Email"]" Order="1" Value="@(user => user.Email)" />
+        <CmsDataGridColumn TItem="UserRecord" Name="roles" Title="@L["Users.List.Roles"]" Order="2" Value="@Roles" />
+        <CmsDataGridColumn TItem="UserRecord" Name="state" Title="@L["Users.List.State"]" Order="3" Value="@State" />
+    </Columns>
+</RecordList>
+
+<UserInvitations />
+
+@code {
+    private static string Route(UserRecord user) => $"users/{user.Id:D}";
+
+    private void Open(UserRecord user) => Navigation.NavigateTo(Route(user));
+
+    private string Roles(UserRecord user) => string.Join(", ", user.Roles.Select(role => UserTexts.Role(role.Name, role.SiteId, Common, Context)));
+
+    private string State(UserRecord user) => string.Join(", ", UserTexts.States(user, L, Formats, Time.GetUtcNow()));
+}

@@ -1,0 +1,302 @@
+@* Invitations of the users page (spec 4.15): one is sent by email with the roles the new user gets, listed while it can be
+   accepted, and revoked. Sending or revoking one needs every grant of its roles, and a new invitation to an address ends the
+   pending one to it, whose roles the caller must hold too (FCMS3103). The list leaves out an invitation whose sender no
+   longer stands, which accept would refuse (#3391). *@
+@implements IDisposable
+@inject IManagementApi Api
+@inject AdminContext Context
+@inject FormatService Formats
+@inject IStringLocalizer<UsersResources> L
+@inject IStringLocalizer<CommonResources> Common
+
+<CmsCard Title="@L["Users.Invite.Heading"]">
+    <form @onsubmit="SendAsync">
+        <CmsStack>
+            <CmsTextInput Type="CmsTextInputType.Email"
+                          Label="@L["Users.Invite.Email"]"
+                          Required="true"
+                          Autocomplete="off"
+                          Value="@email"
+                          ValueChanged="@(value => email = value)"
+                          Error="@emailError" />
+            @if (chosen.Count > 0)
+            {
+                <ul aria-label="@L["Users.Invite.Chosen"]">
+                    @foreach (var role in chosen)
+                    {
+                        <li @key="role.Id">
+                            @Name(role)
+                            <CmsButton Disabled="@busy" OnClick="@(() => Unchoose(role))">
+                                @L["Users.Invite.RemoveRole"]<span class="cms-visually-hidden">@L["Users.Invite.RemoveWhich", Name(role)]</span>
+                            </CmsButton>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>@L["Users.Invite.NoRole"]</p>
+            }
+            @if (roles is null)
+            {
+                <p role="@(rolesFailed ? "alert" : "status")">
+                    @(rolesFailed ? L["Users.Invite.RolesFailed"] : L["Users.Invite.RolesLoading"])
+                    @if (rolesFailed)
+                    {
+                        <CmsButton OnClick="ReadRolesAsync">@L["Users.Invite.RolesTryAgain"]</CmsButton>
+                    }
+                </p>
+            }
+            else
+            {
+                <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                    <RoleSelect Label="@L["Users.Invite.Role"]"
+                                Roles="@roles"
+                                Value="@roleToAdd"
+                                ValueChanged="@(id => roleToAdd = id)"
+                                Offers="@(role => chosen.All(item => item.Id != role.Id))"
+                                Disabled="@busy" />
+                    <CmsButton Disabled="@(busy || roleToAdd is null)" OnClick="Choose">@L["Users.Invite.AddRole"]</CmsButton>
+                </CmsStack>
+            }
+            <div>
+                <CmsButton Submit="true" Appearance="CmsButtonAppearance.Primary" Disabled="@busy">@L["Users.Invite.Send"]</CmsButton>
+            </div>
+        </CmsStack>
+    </form>
+    <p class="users-message" tabindex="-1" @ref="sentElement">@sentMessage</p>
+</CmsCard>
+
+<CmsCard Title="@L["Users.Invitations.Heading"]">
+    @if (state == State.Loading)
+    {
+        <p role="status">@L["Users.Invitations.Loading"]</p>
+    }
+    else if (state == State.Failed)
+    {
+        <p role="alert">@L["Users.Invitations.Failed"] <CmsButton OnClick="ReadAsync">@L["Users.Invitations.TryAgain"]</CmsButton></p>
+    }
+    else if (invitations.Count == 0)
+    {
+        <p>@L["Users.Invitations.None"]</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var invitation in invitations)
+            {
+                <li @key="invitation.Id">
+                    <strong>@invitation.Email</strong>
+                    <span>@(invitation.RoleIds.Count == 0 ? L["Users.Invitations.NoRole"] : L["Users.Invitations.Roles", string.Join(", ", invitation.RoleIds.Select(id => Name(id)))])</span>
+                    <span>@L["Users.Invitations.Sent", Formats.DateTime(invitation.CreatedAt), Formats.DateTime(invitation.ExpiresAt)]</span>
+                    <CmsButton Disabled="@busy" OnClick="@(() => RevokeAsync(invitation))">
+                        @L["Users.Invitations.Revoke"]<span class="cms-visually-hidden">@L["Users.Invitations.RevokeWhich", invitation.Email]</span>
+                    </CmsButton>
+                </li>
+            }
+        </ul>
+    }
+    <p class="users-message" tabindex="-1" @ref="listElement">@listMessage</p>
+</CmsCard>
+
+@code {
+    private readonly List<RoleSummary> chosen = [];
+    private IReadOnlyList<RoleSummary>? roles;
+    private bool rolesFailed;
+    private IReadOnlyList<InvitationRecord> invitations = [];
+    private State state = State.Loading;
+    private string? email;
+    private string? emailError;
+    private Guid? roleToAdd;
+    private bool busy;
+    private string? sentMessage;
+    private string? listMessage;
+    private ElementReference sentElement;
+    private ElementReference listElement;
+    private ElementReference? focusAfterRender;
+    private readonly CancellationTokenSource closing = new();
+
+    // A call made once the component is gone, as the read after a change, is cancelled before it starts.
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    private enum State
+    {
+        Loading,
+        Ready,
+        Failed,
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(ReadRolesAsync(), ReadAsync());
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender is { } element)
+        {
+            focusAfterRender = null;
+            await element.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    // The roles name those of each invitation and are offered to a new one.
+    private async Task ReadRolesAsync()
+    {
+        (roles, rolesFailed) = (null, false);
+        try
+        {
+            roles = await Api.GetRolesAsync(Closing);
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (UserProblems.IsFailure(exception))
+        {
+            rolesFailed = true;
+        }
+    }
+
+    private async Task ReadAsync()
+    {
+        state = State.Loading;
+        try
+        {
+            invitations = await Api.GetInvitationsAsync(Closing);
+            state = State.Ready;
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (UserProblems.IsFailure(exception))
+        {
+            state = State.Failed;
+        }
+    }
+
+    private void Choose()
+    {
+        if (roleToAdd is { } id && roles?.FirstOrDefault(role => role.Id == id) is { } role && chosen.All(item => item.Id != id))
+        {
+            chosen.Add(role);
+        }
+
+        roleToAdd = null;
+    }
+
+    private void Unchoose(RoleSummary role) => chosen.Remove(role);
+
+    private async Task SendAsync()
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            emailError = L["Users.Invite.EmailRequired"];
+            return;
+        }
+
+        (busy, emailError) = (true, null);
+        try
+        {
+            var sent = await Api.InviteAsync(email.Trim(), chosen.Select(role => role.Id), Closing);
+            sentMessage = L["Users.Invite.Sent", sent.Email, Formats.DateTime(sent.ExpiresAt)];
+            (email, roleToAdd) = (null, null);
+            chosen.Clear();
+        }
+        catch (Exception exception) when (UserProblems.Has(exception, UserProblems.InvalidEmail, "email"))
+        {
+            (emailError, sentMessage) = (L["Users.Invite.EmailInvalid"], null);
+        }
+        catch (Exception exception) when (UserProblems.Has(exception, UserProblems.EmailTaken))
+        {
+            (emailError, sentMessage) = (L["Users.Invite.EmailTaken"], null);
+        }
+        catch (Exception exception) when (UserProblems.Has(exception, UserProblems.UnknownRole))
+        {
+            sentMessage = L["Users.Invite.UnknownRole"];
+            chosen.Clear();
+            await ReadRolesAsync();
+        }
+        catch (Exception exception) when (UserProblems.IsAboveReach(exception))
+        {
+            sentMessage = L["Users.Invite.AboveReach"];
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (UserProblems.IsFailure(exception))
+        {
+            sentMessage = L["Users.Invite.Failed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        // A send ends the pending invitations to the address before the mail goes, and a mail that fails does not bring them
+        // back, so the list is read again whatever the answer.
+        await ReadAsync();
+        if (sentMessage is not null)
+        {
+            focusAfterRender = sentElement;
+        }
+    }
+
+    private async Task RevokeAsync(InvitationRecord invitation)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            await Api.RevokeInvitationAsync(invitation.Id, Closing);
+            listMessage = L["Users.Invitations.Revoked", invitation.Email];
+            await ReadAsync();
+        }
+        catch (Exception exception) when (UserProblems.Has(exception, UserProblems.InvitationNotFound))
+        {
+            listMessage = L["Users.Invitations.Gone", invitation.Email];
+            await ReadAsync();
+        }
+        catch (Exception exception) when (UserProblems.IsAboveReach(exception))
+        {
+            listMessage = L["Users.Invitations.AboveReach", invitation.Email];
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (UserProblems.IsFailure(exception))
+        {
+            listMessage = L["Users.Invitations.RevokeFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        // The row revoked is gone, and its button with it, so focus goes to the result.
+        focusAfterRender = listElement;
+    }
+
+    private string Name(RoleSummary role) => UserTexts.Role(role.Name, role.SiteId, Common, Context);
+
+    // A role the caller may not read is named as such.
+    private string Name(Guid id) => roles?.FirstOrDefault(role => role.Id == id) is { } role ? Name(role) : L["Users.Invitations.UnreadRole"];
+}

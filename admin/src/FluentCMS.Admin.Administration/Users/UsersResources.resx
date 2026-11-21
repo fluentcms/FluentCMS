@@ -15,4 +15,382 @@
   <data name="Users.Page.Heading" xml:space="preserve">
     <value>Users</value>
   </data>
+  <data name="Users.List.Search" xml:space="preserve">
+    <value>Search by name or email address</value>
+  </data>
+  <data name="Users.List.Empty" xml:space="preserve">
+    <value>There are no users yet.</value>
+  </data>
+  <data name="Users.List.Name" xml:space="preserve">
+    <value>User name</value>
+  </data>
+  <data name="Users.List.Email" xml:space="preserve">
+    <value>Email address</value>
+  </data>
+  <data name="Users.List.Roles" xml:space="preserve">
+    <value>Roles</value>
+  </data>
+  <data name="Users.List.State" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="Users.State.Active" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="Users.State.Deactivated" xml:space="preserve">
+    <value>Deactivated</value>
+  </data>
+  <data name="Users.State.LockedOut" xml:space="preserve">
+    <value>Locked out until {0}</value>
+  </data>
+  <data name="Users.State.TwoFactor" xml:space="preserve">
+    <value>Two-factor sign-in on</value>
+  </data>
+  <data name="Users.State.MustChangePassword" xml:space="preserve">
+    <value>Must change the password</value>
+  </data>
+  <data name="Users.Invite.Heading" xml:space="preserve">
+    <value>Invite a user</value>
+  </data>
+  <data name="Users.Invite.Email" xml:space="preserve">
+    <value>Email address</value>
+  </data>
+  <data name="Users.Invite.EmailRequired" xml:space="preserve">
+    <value>Enter the email address to send the invitation to.</value>
+  </data>
+  <data name="Users.Invite.EmailInvalid" xml:space="preserve">
+    <value>This is not a valid email address.</value>
+  </data>
+  <data name="Users.Invite.EmailTaken" xml:space="preserve">
+    <value>A user has this email address already.</value>
+  </data>
+  <data name="Users.Invite.Chosen" xml:space="preserve">
+    <value>Roles of the new user</value>
+  </data>
+  <data name="Users.Invite.NoRole" xml:space="preserve">
+    <value>No role chosen: the new user gets no role until one is added.</value>
+  </data>
+  <data name="Users.Invite.Role" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="Users.Invite.AddRole" xml:space="preserve">
+    <value>Add the role</value>
+  </data>
+  <data name="Users.Invite.RemoveRole" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Users.Invite.RemoveWhich" xml:space="preserve">
+    <value> the role {0} from the invitation</value>
+  </data>
+  <data name="Users.Invite.RolesLoading" xml:space="preserve">
+    <value>Loading the roles…</value>
+  </data>
+  <data name="Users.Invite.RolesFailed" xml:space="preserve">
+    <value>The roles could not be loaded.</value>
+  </data>
+  <data name="Users.Invite.RolesTryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Users.Invite.Send" xml:space="preserve">
+    <value>Send the invitation</value>
+  </data>
+  <data name="Users.Invite.Sent" xml:space="preserve">
+    <value>An invitation was sent to {0}. It can be accepted until {1}.</value>
+  </data>
+  <data name="Users.Invite.UnknownRole" xml:space="preserve">
+    <value>Not sent: one of the roles no longer exists. Choose the roles again.</value>
+  </data>
+  <data name="Users.Invite.AboveReach" xml:space="preserve">
+    <value>Not sent: a role of the invitation, or of a pending invitation to this address, gives a permission you do not hold. Sending an invitation needs every grant of its roles.</value>
+  </data>
+  <data name="Users.Invite.Failed" xml:space="preserve">
+    <value>The invitation could not be sent. Try again.</value>
+  </data>
+  <data name="Users.Invitations.Heading" xml:space="preserve">
+    <value>Pending invitations</value>
+  </data>
+  <data name="Users.Invitations.Loading" xml:space="preserve">
+    <value>Loading the invitations…</value>
+  </data>
+  <data name="Users.Invitations.Failed" xml:space="preserve">
+    <value>The invitations could not be loaded.</value>
+  </data>
+  <data name="Users.Invitations.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Users.Invitations.None" xml:space="preserve">
+    <value>No invitation is waiting to be accepted.</value>
+  </data>
+  <data name="Users.Invitations.Roles" xml:space="preserve">
+    <value>Roles: {0}</value>
+  </data>
+  <data name="Users.Invitations.NoRole" xml:space="preserve">
+    <value>No role</value>
+  </data>
+  <data name="Users.Invitations.UnreadRole" xml:space="preserve">
+    <value>a role you may not read</value>
+  </data>
+  <data name="Users.Invitations.Sent" xml:space="preserve">
+    <value>Sent {0}, open until {1}</value>
+  </data>
+  <data name="Users.Invitations.Revoke" xml:space="preserve">
+    <value>Revoke</value>
+  </data>
+  <data name="Users.Invitations.RevokeWhich" xml:space="preserve">
+    <value> the invitation to {0}</value>
+  </data>
+  <data name="Users.Invitations.Revoked" xml:space="preserve">
+    <value>The invitation to {0} was revoked.</value>
+  </data>
+  <data name="Users.Invitations.Gone" xml:space="preserve">
+    <value>The invitation to {0} is no longer pending: it was accepted, revoked or has expired.</value>
+  </data>
+  <data name="Users.Invitations.AboveReach" xml:space="preserve">
+    <value>The invitation to {0} was not revoked: one of its roles gives a permission you do not hold. Revoking an invitation needs every grant of its roles.</value>
+  </data>
+  <data name="Users.Invitations.RevokeFailed" xml:space="preserve">
+    <value>The invitation could not be revoked. Try again.</value>
+  </data>
+  <data name="Users.Detail.Heading" xml:space="preserve">
+    <value>User</value>
+  </data>
+  <data name="Users.Detail.Loading" xml:space="preserve">
+    <value>Loading the user…</value>
+  </data>
+  <data name="Users.Detail.NotFound" xml:space="preserve">
+    <value>User not found</value>
+  </data>
+  <data name="Users.Detail.BackToList" xml:space="preserve">
+    <value>Back to the users</value>
+  </data>
+  <data name="Users.Detail.Failed" xml:space="preserve">
+    <value>The user could not be loaded.</value>
+  </data>
+  <data name="Users.Detail.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Users.Detail.Account" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="Users.Detail.Email" xml:space="preserve">
+    <value>Email address</value>
+  </data>
+  <data name="Users.Detail.NoEmail" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Users.Detail.Created" xml:space="preserve">
+    <value>Created</value>
+  </data>
+  <data name="Users.Detail.State" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="Users.Detail.DeactivatedOn" xml:space="preserve">
+    <value>Deactivated on {0}</value>
+  </data>
+  <data name="Users.Detail.Lockout" xml:space="preserve">
+    <value>Lockout</value>
+  </data>
+  <data name="Users.Detail.LockedOutUntil" xml:space="preserve">
+    <value>Locked out until {0}. A lockout ends by itself; no action ends it early.</value>
+  </data>
+  <data name="Users.Detail.TwoFactor" xml:space="preserve">
+    <value>Two-factor sign-in</value>
+  </data>
+  <data name="Users.Detail.TwoFactorOn" xml:space="preserve">
+    <value>On</value>
+  </data>
+  <data name="Users.Detail.TwoFactorOff" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="Users.Detail.Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Users.Detail.MustChange" xml:space="preserve">
+    <value>Must be changed at the next sign-in</value>
+  </data>
+  <data name="Users.Detail.NoChangeAsked" xml:space="preserve">
+    <value>No change asked for</value>
+  </data>
+  <data name="Users.Detail.Deactivate" xml:space="preserve">
+    <value>Deactivate</value>
+  </data>
+  <data name="Users.Detail.DeactivateQuestion" xml:space="preserve">
+    <value>Deactivate {0}? The user's sessions end and it cannot sign in until it is reactivated.</value>
+  </data>
+  <data name="Users.Detail.DeactivateConfirm" xml:space="preserve">
+    <value>Deactivate the user</value>
+  </data>
+  <data name="Users.Detail.Deactivated" xml:space="preserve">
+    <value>The user was deactivated.</value>
+  </data>
+  <data name="Users.Detail.Reactivate" xml:space="preserve">
+    <value>Reactivate</value>
+  </data>
+  <data name="Users.Detail.Reactivated" xml:space="preserve">
+    <value>The user was reactivated.</value>
+  </data>
+  <data name="Users.Detail.ResetTwoFactor" xml:space="preserve">
+    <value>Reset two-factor sign-in</value>
+  </data>
+  <data name="Users.Detail.ResetQuestion" xml:space="preserve">
+    <value>Reset the two-factor sign-in of {0}? Its authenticator and recovery codes are removed and its sessions end; a role that requires two-factor sign-in asks it to enrol again.</value>
+  </data>
+  <data name="Users.Detail.ResetConfirm" xml:space="preserve">
+    <value>Reset two-factor sign-in</value>
+  </data>
+  <data name="Users.Detail.TwoFactorReset" xml:space="preserve">
+    <value>The two-factor sign-in of the user was reset.</value>
+  </data>
+  <data name="Users.Detail.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Users.Detail.NothingChanged" xml:space="preserve">
+    <value>Nothing was changed.</value>
+  </data>
+  <data name="Users.Detail.RequireChange" xml:space="preserve">
+    <value>Require a password change</value>
+  </data>
+  <data name="Users.Detail.RequireChangeNote" xml:space="preserve">
+    <value>The user is asked for a new password at its next sign-in. This needs a password: a user who signs in through a provider only has none and is refused.</value>
+  </data>
+  <data name="Users.Detail.ChangeRequired" xml:space="preserve">
+    <value>The user must change its password at its next sign-in.</value>
+  </data>
+  <data name="Users.Detail.WithdrawChange" xml:space="preserve">
+    <value>Withdraw the password change</value>
+  </data>
+  <data name="Users.Detail.ChangeWithdrawn" xml:space="preserve">
+    <value>The user no longer has to change its password.</value>
+  </data>
+  <data name="Users.Detail.NoPassword" xml:space="preserve">
+    <value>Not changed: the user has no password, since it signs in through a provider only.</value>
+  </data>
+  <data name="Users.Detail.NoTwoFactor" xml:space="preserve">
+    <value>Not reset: the user has no two-factor sign-in any more.</value>
+  </data>
+  <data name="Users.Detail.LastSuperAdmin" xml:space="preserve">
+    <value>Not changed: this is the last active Super Admin, and the instance would be left without one.</value>
+  </data>
+  <data name="Users.Detail.SecondFactorRequired" xml:space="preserve">
+    <value>Not reset: resetting another user's two-factor sign-in needs you signed in with a second factor. Turn two-factor sign-in on in your account if it is off, then sign out and sign in again with it.</value>
+  </data>
+  <data name="Users.Detail.YourAccount" xml:space="preserve">
+    <value>Your account</value>
+  </data>
+  <data name="Users.Detail.SignOut" xml:space="preserve">
+    <value>Sign out</value>
+  </data>
+  <data name="Users.Detail.AboveReach" xml:space="preserve">
+    <value>Not changed: the user holds a role that gives a permission you do not hold. A change of a user needs every grant of its roles.</value>
+  </data>
+  <data name="Users.Detail.ChangeFailed" xml:space="preserve">
+    <value>The change could not be made. Try again.</value>
+  </data>
+  <data name="Users.Roles.Heading" xml:space="preserve">
+    <value>Roles</value>
+  </data>
+  <data name="Users.Roles.None" xml:space="preserve">
+    <value>The user has no role.</value>
+  </data>
+  <data name="Users.Roles.Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Users.Roles.RemoveWhich" xml:space="preserve">
+    <value> the role {0}</value>
+  </data>
+  <data name="Users.Roles.Add" xml:space="preserve">
+    <value>Role to add</value>
+  </data>
+  <data name="Users.Roles.AddButton" xml:space="preserve">
+    <value>Add the role</value>
+  </data>
+  <data name="Users.Roles.Added" xml:space="preserve">
+    <value>The role was added.</value>
+  </data>
+  <data name="Users.Roles.Removed" xml:space="preserve">
+    <value>The role {0} was removed.</value>
+  </data>
+  <data name="Users.Roles.Changed" xml:space="preserve">
+    <value>The roles of the user changed meanwhile; they are shown as they now stand.</value>
+  </data>
+  <data name="Users.Roles.LastSuperAdmin" xml:space="preserve">
+    <value>Not removed: this is the last active Super Admin, and the instance would be left without one.</value>
+  </data>
+  <data name="Users.Roles.AboveReach" xml:space="preserve">
+    <value>Not changed: the role gives a permission you do not hold. Giving or taking a role needs every grant of it.</value>
+  </data>
+  <data name="Users.Roles.Failed" xml:space="preserve">
+    <value>The role could not be changed. Try again.</value>
+  </data>
+  <data name="Users.Sessions.Heading" xml:space="preserve">
+    <value>Sessions</value>
+  </data>
+  <data name="Users.Sessions.Loading" xml:space="preserve">
+    <value>Loading the sessions…</value>
+  </data>
+  <data name="Users.Sessions.Failed" xml:space="preserve">
+    <value>The sessions could not be loaded.</value>
+  </data>
+  <data name="Users.Sessions.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Users.Sessions.None" xml:space="preserve">
+    <value>The user is signed in nowhere.</value>
+  </data>
+  <data name="Users.Sessions.Started" xml:space="preserve">
+    <value>{0}, signed in {1}</value>
+  </data>
+  <data name="Users.Sessions.UnknownApp" xml:space="preserve">
+    <value>An unnamed app</value>
+  </data>
+  <data name="Users.Sessions.End" xml:space="preserve">
+    <value>End</value>
+  </data>
+  <data name="Users.Sessions.EndWhich" xml:space="preserve">
+    <value> the session of {0}</value>
+  </data>
+  <data name="Users.Sessions.EndWhichStarted" xml:space="preserve">
+    <value> the session of {0} signed in {1}</value>
+  </data>
+  <data name="Users.Sessions.Ended" xml:space="preserve">
+    <value>The session of {0} was ended.</value>
+  </data>
+  <data name="Users.Sessions.AlreadyEnded" xml:space="preserve">
+    <value>That session had ended already.</value>
+  </data>
+  <data name="Users.Sessions.EndFailed" xml:space="preserve">
+    <value>The session could not be ended. Try again.</value>
+  </data>
+  <data name="Users.Logins.Heading" xml:space="preserve">
+    <value>External logins</value>
+  </data>
+  <data name="Users.Logins.Loading" xml:space="preserve">
+    <value>Loading the external logins…</value>
+  </data>
+  <data name="Users.Logins.Failed" xml:space="preserve">
+    <value>The external logins could not be loaded.</value>
+  </data>
+  <data name="Users.Logins.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Users.Logins.None" xml:space="preserve">
+    <value>The user signs in through no provider.</value>
+  </data>
+  <data name="Users.Logins.Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="Users.Logins.RemoveWhich" xml:space="preserve">
+    <value> the login through {0}</value>
+  </data>
+  <data name="Users.Logins.Removed" xml:space="preserve">
+    <value>The login through {0} was removed.</value>
+  </data>
+  <data name="Users.Logins.LastWayIn" xml:space="preserve">
+    <value>Not removed: the login through {0} is the user's last way to sign in.</value>
+  </data>
+  <data name="Users.Logins.AlreadyRemoved" xml:space="preserve">
+    <value>That login had been removed already.</value>
+  </data>
+  <data name="Users.Logins.RemoveFailed" xml:space="preserve">
+    <value>The login could not be removed. Try again.</value>
+  </data>
 </root>

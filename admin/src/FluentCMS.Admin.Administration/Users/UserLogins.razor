@@ -1,0 +1,136 @@
+@* The external logins of a user (spec 4.15), each removable unless it is the user's last way to sign in (FCMS3090).
+   Removing one needs every grant of the user's roles (FCMS3103). *@
+@implements IDisposable
+@inject IManagementApi Api
+@inject IStringLocalizer<UsersResources> L
+
+<CmsCard Title="@L["Users.Logins.Heading"]">
+    @if (state == UserSectionState.Loading)
+    {
+        <p role="status">@L["Users.Logins.Loading"]</p>
+    }
+    else if (state == UserSectionState.Failed)
+    {
+        <p role="alert">@L["Users.Logins.Failed"] <CmsButton OnClick="ReadAsync">@L["Users.Logins.TryAgain"]</CmsButton></p>
+    }
+    else if (logins.Count == 0)
+    {
+        <p>@L["Users.Logins.None"]</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var login in logins)
+            {
+                <li @key="login.Provider">
+                    @Name(login)
+                    <CmsButton Disabled="@busy" OnClick="@(() => RemoveAsync(login))">
+                        @L["Users.Logins.Remove"]<span class="cms-visually-hidden">@L["Users.Logins.RemoveWhich", Name(login)]</span>
+                    </CmsButton>
+                </li>
+            }
+        </ul>
+    }
+    <p class="users-message" tabindex="-1" @ref="messageElement">@message</p>
+</CmsCard>
+
+@code {
+    private IReadOnlyList<UserLoginRecord> logins = [];
+    private UserSectionState state = UserSectionState.Loading;
+    private string? message;
+    private bool busy;
+    private bool focusMessage;
+    private ElementReference messageElement;
+    private readonly CancellationTokenSource closing = new();
+
+    // A call made once the component is gone, as the read after a change, is cancelled before it starts.
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    [Parameter, EditorRequired]
+    public Guid UserId { get; set; }
+
+    // Raised when a login was removed, which gives the user a new security stamp and so ends its sessions.
+    [Parameter]
+    public EventCallback OnRemoved { get; set; }
+
+    protected override Task OnInitializedAsync() => ReadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusMessage)
+        {
+            focusMessage = false;
+            await messageElement.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        state = UserSectionState.Loading;
+        try
+        {
+            logins = await Api.GetLoginsAsync(UserId, Closing);
+            state = UserSectionState.Ready;
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (UserProblems.IsFailure(exception))
+        {
+            state = UserSectionState.Failed;
+        }
+    }
+
+    private async Task RemoveAsync(UserLoginRecord login)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            await Api.RemoveLoginAsync(UserId, login.Provider, Closing);
+            message = L["Users.Logins.Removed", Name(login)];
+            await OnRemoved.InvokeAsync();
+            await ReadAsync();
+        }
+        catch (Exception exception) when (UserProblems.Has(exception, UserProblems.LastWayIn))
+        {
+            message = L["Users.Logins.LastWayIn", Name(login)];
+        }
+        catch (Exception exception) when (UserProblems.Has(exception, UserProblems.LoginNotFound))
+        {
+            message = L["Users.Logins.AlreadyRemoved"];
+            await ReadAsync();
+        }
+        catch (Exception exception) when (UserProblems.IsAboveReach(exception))
+        {
+            message = L["Users.Detail.AboveReach"];
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (UserProblems.IsFailure(exception))
+        {
+            message = L["Users.Logins.RemoveFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        focusMessage = true;
+    }
+
+    private static string Name(UserLoginRecord login) => string.IsNullOrWhiteSpace(login.DisplayName) ? login.Provider : login.DisplayName;
+}
