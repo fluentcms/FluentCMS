@@ -473,9 +473,16 @@ internal sealed partial class ContentService(
         return new WriteScope(operation, type, operation.Site, resolved, target, permissions, new FieldAccess(permissions, schema));
     }
 
-    // A flow joins only the write it started, so work it left running after that write cannot join a later one.
+    // A flow joins only the write it started, so work it left running after that write cannot join a later one. Once a hook
+    // of the scope has timed out it may still be running on the scope's context and may call back in here, joining whatever
+    // write runs then, so no write runs in the scope after it.
     private async Task<T> OneAtATimeAsync<T>(Func<Task<T>> write)
     {
+        if (hooks.TimedOut)
+        {
+            throw new HookRejectedException(ContentErrorCodes.HookTimedOut, "A hook of this scope did not end within its time and may still be running, so no further write runs in this scope.");
+        }
+
         if (Volatile.Read(ref _write) is { } running && ReferenceEquals(_writeOfFlow.Value, running))
         {
             return await write();

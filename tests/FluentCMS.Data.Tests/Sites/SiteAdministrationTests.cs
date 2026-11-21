@@ -1,3 +1,4 @@
+using System.Data.Common;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Sites;
@@ -8,6 +9,7 @@ using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Events;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -20,6 +22,7 @@ public sealed class SiteAdministrationTests : IDisposable
 {
     private readonly TestDatabase _database = TestDatabase.Create(forSystemTables: true);
     private readonly List<CmsEvent> _events = [];
+    private readonly BrokenOutbox _outbox = new();
     private readonly ServiceProvider _services;
 
     public SiteAdministrationTests()
@@ -32,6 +35,7 @@ public sealed class SiteAdministrationTests : IDisposable
                 cms.Events.AddHandler<SiteCreatedEvent, Heard<SiteCreatedEvent>>();
                 cms.Events.AddHandler<SiteDeletedEvent, Heard<SiteDeletedEvent>>();
                 cms.Events.AddOutboxHandler<SiteDeletedEvent, CleanUp>(CleanUp.Name);
+                cms.Services.ConfigureDbContext<CmsDbContext>(options => options.AddInterceptors(_outbox));
             });
             using var scope = _services.CreateScope();
             scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
@@ -114,6 +118,26 @@ public sealed class SiteAdministrationTests : IDisposable
         row.Payload.ShouldContain(site.Id.ToString());
     }
 
+    // The row commits in the transaction of the deletion: when it cannot be written, the site is not deleted either.
+    [Fact]
+    public async Task ADeletionWhoseOutboxRowFailsLeavesTheSite()
+    {
+        var site = await AsAsync(SuperAdmin(), sites => sites.CreateAsync("Docs", "docs", "en", Token));
+        _events.Clear();
+        _outbox.Broken = true;
+
+        await Should.ThrowAsync<Exception>(() => AsAsync(SuperAdmin(), async sites =>
+        {
+            await sites.DeleteAsync(new SiteId(site.Id), Token);
+            return true;
+        }));
+
+        _outbox.Broken = false;
+        (await AsAsync(SuperAdmin(), sites => sites.FindAsync(new SiteId(site.Id), Token))).ShouldNotBeNull();
+        Outbox().ShouldBeEmpty();
+        _events.ShouldBeEmpty();
+    }
+
     // sites.manage for the instance: a role of a site and a grant limited to a site do not hold it, and nothing is allowed
     // outside an operation.
     [Fact]
@@ -155,6 +179,20 @@ public sealed class SiteAdministrationTests : IDisposable
     {
         using var scope = _services.CreateScope();
         return [.. scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OutboxMessage>().AsNoTracking().Where(row => row.Handler == CleanUp.Name)];
+    }
+
+    // Fails the writes of cms_outbox on core's context while broken.
+    private sealed class BrokenOutbox : DbCommandInterceptor
+    {
+        public bool Broken { get; set; }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default) =>
+            Fail(command) ? throw new InvalidOperationException("The outbox cannot be written.") : ValueTask.FromResult(result);
+
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default) =>
+            Fail(command) ? throw new InvalidOperationException("The outbox cannot be written.") : ValueTask.FromResult(result);
+
+        private bool Fail(DbCommand command) => Broken && command.CommandText.Contains("cms_outbox", StringComparison.Ordinal);
     }
 
     private sealed class CleanUp : IOutboxEventHandler<SiteDeletedEvent>

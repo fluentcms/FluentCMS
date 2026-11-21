@@ -21,7 +21,9 @@ namespace FluentCMS.Core.Content.Hooks;
 // Only before hooks change the entry: an after hook works on a copy. A hook of a plugin disabled in the operation's site does not run.
 // Each hook runs for FluentCms:Content:HookTimeout at most, since it holds the write's transaction, and on SQLite the
 // database's one writer: one that runs longer has its token cancelled and is no longer waited for, and the write fails with
-// FCMS2410 naming it and rolls back. A hook that ignores its token is left to end on its own, as an event handler is.
+// FCMS2410 naming it and rolls back. A hook that ignores its token is left to end on its own, as an event handler is, still
+// holding the scope's services, so the content service of the scope then refuses every further write (TimedOut). A hook
+// starts on the thread pool, so that one that blocks before its first await is bounded too.
 public sealed class HookPipeline(IServiceProvider services)
 {
     private static readonly ConcurrentDictionary<Type, int> Orders = new();
@@ -32,6 +34,11 @@ public sealed class HookPipeline(IServiceProvider services)
     // The hooks of a scope do not change, so each kind is resolved and ordered once per content class and scope, not on every
     // call. A hook registered as transient therefore lives as long as the scope, as a scoped one does.
     private readonly Dictionary<(HookKind Kind, Type? ClrType), List<BoundHook>> _resolved = [];
+
+    private volatile bool _timedOut;
+
+    // A hook of this scope ran past the timeout and may still be running on the scope's services.
+    internal bool TimedOut => _timedOut;
 
     public async ValueTask RunAsync(
         HookKind kind,
@@ -122,7 +129,7 @@ public sealed class HookPipeline(IServiceProvider services)
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(_options.HookTimeout);
         var started = Stopwatch.GetTimestamp();
-        var running = hook.InvokeAsync(session, mutable, timeout.Token).AsTask();
+        var running = Task.Run(() => hook.InvokeAsync(session, mutable, timeout.Token).AsTask(), CancellationToken.None);
         try
         {
             await running.WaitAsync(timeout.Token);
@@ -131,6 +138,7 @@ public sealed class HookPipeline(IServiceProvider services)
         {
             // What the hook does from here on is not waited for, and a failure of it is not left unobserved.
             _ = running.ContinueWith(static task => _ = task.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+            _timedOut = true;
             var name = hook.ImplementationType.FullName ?? hook.ImplementationType.Name;
             ContentLog.HookTimedOut(_logger, kind, name, type.Name, _options.HookTimeout);
             throw new HookRejectedException(ContentErrorCodes.HookTimedOut, $"The {kind} hook {name} did not end within {_options.HookTimeout}; the write was refused and nothing of it was saved.");

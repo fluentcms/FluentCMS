@@ -9,6 +9,9 @@ public sealed class ContentWriteOptions
 
     public const int DefaultMaxItems = 1000;
 
+    // A day holds the write's transaction far longer than any hook should, and stays well inside what a timer takes.
+    internal static readonly TimeSpan MaxHookTimeout = TimeSpan.FromDays(1);
+
     // The most items of a multiple field or of blocks that declares no maximum of its own; one that does, higher or lower,
     // is held to its own.
     public int MaxItems { get; set; } = DefaultMaxItems;
@@ -23,7 +26,7 @@ public sealed class ContentWriteOptions
     internal void Validate()
     {
         Require(MaxItems > 0, $"{nameof(MaxItems)} is {MaxItems}; it must be positive.");
-        Require(HookTimeout > TimeSpan.Zero, $"{nameof(HookTimeout)} is {HookTimeout}; it must be positive.");
+        Require(HookTimeout > TimeSpan.Zero && HookTimeout <= MaxHookTimeout, $"{nameof(HookTimeout)} is {HookTimeout}; it must be more than 00:00:00 and at most {MaxHookTimeout.Days} day.");
         Require(SlowHookThreshold > TimeSpan.Zero, $"{nameof(SlowHookThreshold)} is {SlowHookThreshold}; it must be positive.");
     }
 

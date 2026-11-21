@@ -379,6 +379,101 @@ public sealed class ContentServiceHookTests
         IdOf(await database.CreateAsync(Editor, Titled("Quick"))).ShouldNotBe(Guid.Empty);
     }
 
+    // A hook that ignores its token and writes through the content service after its timeout joins no write: the scope runs
+    // none after the timeout, so a bulk stops at that item and reports the rest as not run, and nothing of the late write commits.
+    [Fact]
+    public async Task AfterAHookTimedOutTheScopeWritesNothingMoreAndABulkStopsThere()
+    {
+        var late = new LateWriter();
+        using var database = new ServiceDatabase(cms => cms.Services
+            .Configure<ContentWriteOptions>(options => options.HookTimeout = TimeSpan.FromMilliseconds(200))
+            .AddSingleton(late)
+            .AddScoped<IBeforeCreateHook<ContentDocument>, LateWritingHook>());
+        var before = database.Footprint();
+
+        var result = await database.AsAsync(Editor, async services =>
+        {
+            var bulk = await services.GetRequiredService<IContentService>().BulkAsync(
+                "article",
+                new BulkRequest { Operation = BulkOperation.Create, Entries = [Titled("Stuck"), Titled("Second")] },
+                Token);
+
+            // The hook goes on in the same scope while it is still open.
+            late.Release.TrySetResult();
+            await late.Ended.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+            return bulk;
+        });
+
+        result.Items[0].Status.ShouldBe(BulkItemStatus.Failed);
+        result.Items[0].Problem!.Code.ShouldBe("FCMS2410");
+        result.Items[1].Status.ShouldBe(BulkItemStatus.NotRun);
+        late.Refused.ShouldBeOfType<HookRejectedException>().Code.ShouldBe("FCMS2410");
+        database.Footprint().ShouldBe(before);
+    }
+
+    // A hook that blocks its thread before it first awaits is held to the timeout too.
+    [Fact]
+    public async Task AHookThatBlocksBeforeItsFirstAwaitIsTimedOut()
+    {
+        using var database = new ServiceDatabase(cms => cms.Services
+            .Configure<ContentWriteOptions>(options => options.HookTimeout = TimeSpan.FromMilliseconds(200))
+            .AddScoped<IBeforeCreateHook<ContentDocument>, SleepingHook>());
+        var before = database.Footprint();
+
+        var refused = await Should.ThrowAsync<HookRejectedException>(() => database.CreateAsync(Editor, Titled("Sleep")));
+
+        refused.Code.ShouldBe("FCMS2410");
+        refused.Message.ShouldContain(typeof(SleepingHook).FullName!);
+        database.Footprint().ShouldBe(before);
+    }
+
+    private sealed class SleepingHook : IBeforeCreateHook<ContentDocument>
+    {
+        public ValueTask BeforeCreateAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
+        {
+            if (Equals(context.Entry["title"], "Sleep"))
+            {
+                Thread.Sleep(TimeSpan.FromSeconds(2));
+            }
+
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class LateWriter
+    {
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Ended { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Exception? Refused { get; set; }
+    }
+
+    private sealed class LateWritingHook(LateWriter late, IContentService content) : IBeforeCreateHook<ContentDocument>
+    {
+        public async ValueTask BeforeCreateAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
+        {
+            if (!Equals(context.Entry["title"], "Stuck"))
+            {
+                return;
+            }
+
+            try
+            {
+                await late.Release.Task;
+                await content.CreateAsync("article", Titled("Late"), CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                late.Refused = exception;
+            }
+            finally
+            {
+                late.Ended.TrySetResult();
+            }
+        }
+    }
+
     private sealed class StuckHook(bool observesToken) : IBeforeCreateHook<ContentDocument>
     {
         public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);

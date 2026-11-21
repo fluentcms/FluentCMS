@@ -11,7 +11,8 @@ namespace FluentCMS.Core.Api.Common;
 // Runs a write that may carry an Idempotency-Key. A request without one runs as it is. With one, the request is hashed
 // with its method, path, query, locale, content type, body and principal, the key is claimed, and the response is kept
 // for a repeat. Only a response below 500 is kept; a refused request, which throws, and a failure release the key, so
-// that a repeat runs again. The lease of the key is renewed while the request runs, however long it takes.
+// that a repeat runs again. The lease of the key is renewed while the request runs, however long it takes, and a request
+// whose key a repeat took over all the same, after renewals failed for a whole lease, is cancelled.
 internal static class IdempotentRequests
 {
     public const string ReplayedHeader = "Idempotent-Replayed";
@@ -37,20 +38,36 @@ internal static class IdempotentRequests
         }
 
         var claim = start.Claim!;
+        var aborted = httpContext.RequestAborted;
+        var lease = store.Hold(claim);
+        var lost = lease.Lost;
         StoredResponse response;
         try
         {
-            await using (store.Hold(claim))
+            // The work stops when the client goes away, and when a repeat took the key over, so that it never runs beside it.
+            using var stop = CancellationTokenSource.CreateLinkedTokenSource(aborted, lost);
+            httpContext.RequestAborted = stop.Token;
+            try
             {
                 response = await CaptureAsync(httpContext, await handler());
             }
+            finally
+            {
+                httpContext.RequestAborted = aborted;
+                await lease.DisposeAsync();
+            }
         }
-        catch (OperationCanceledException) when (httpContext.RequestAborted.IsCancellationRequested)
+        catch (OperationCanceledException) when (aborted.IsCancellationRequested)
         {
             // The client went away, perhaps after the work committed: the key stays held until its lease runs out, which is
             // renewed for as long as the work ran, so that a retry never runs it a second time while the first may have
             // succeeded or may still be running.
             throw;
+        }
+        catch (OperationCanceledException) when (lost.IsCancellationRequested)
+        {
+            // The key is the repeat's now, so it is not this request's to free.
+            throw IdempotencyStore.TakenOver();
         }
         catch
         {
