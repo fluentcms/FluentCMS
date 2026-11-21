@@ -638,6 +638,37 @@ public sealed class SchedulingTests : IDisposable
         _fixture.Schedules(id).Single().Status.ShouldBe(ScheduleRow.Pending);
     }
 
+    // A crash between the dead-lettering and its handler leaves the schedule pending, and the retention then removes its job.
+    [Fact]
+    public async Task APendingScheduleWhoseDeadLetteredJobIsPrunedEndsAsFailed()
+    {
+        var other = await _fixture.DraftAsync("Other");
+        var id = await _fixture.DraftAsync();
+        await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)));
+        await _fixture.ScheduleAsync(Editor, other, At(Start.AddHours(1)));
+        var job = _fixture.Schedules(id).Single().JobId!.Value;
+
+        Database.Read(context => context.Set<Job>().Where(item => item.Id == job).ExecuteUpdate(set => set
+            .SetProperty(item => item.Status, JobStatus.DeadLettered)
+            .SetProperty(item => item.CompletedAt, Start.AddHours(1))));
+        _fixture.AdvanceTo(Start.AddHours(1) + new JobRunnerOptions().DeadLetteredRetention!.Value + TimeSpan.FromSeconds(1));
+
+        using (var scope = Database.Database.NewScope())
+        {
+            var operation = new OperationContext(Principal.System, Origin.Job, SiteA, "en", null, "retention", _fixture.Clock.GetUtcNow());
+            await scope.ServiceProvider.GetRequiredService<JobRetentionJob>().ExecuteAsync(new JobRetentionPayload(), new JobContext(Guid.CreateVersion7(), JobRetentionJob.Type, JobRunnerOptions.DefaultQueue, 1, 3, operation, Token));
+        }
+
+        _fixture.Jobs().ShouldNotContain(item => item.Id == job);
+        var row = _fixture.Schedules(id).Single();
+        row.Status.ShouldBe(ScheduleRow.Failed);
+        row.Error.ShouldBe(JobRetentionJob.ScheduleJobRemoved);
+        row.CompletedAt.ShouldBe(_fixture.Clock.GetUtcNow());
+        Database.Document(id).SchedulePublishAt.ShouldBeNull();
+        _fixture.Schedules(other).Single().Status.ShouldBe(ScheduleRow.Pending);
+        Database.Document(other).SchedulePublishAt.ShouldBe(Start.AddHours(1));
+    }
+
     [Fact]
     public async Task AFailedScheduleIsFinalEvenIfItsJobIsRunAgain()
     {

@@ -32,7 +32,7 @@ public sealed class AiAssistPlugin : IPlugin
             .AddSettings<AiSettings>()
             .AddModel<AiUsageModel>()
             .AddMigrations(typeof(AiAssistPlugin).Assembly)
-            .AddJob<AiUsageRetentionJob, AiUsageRetentionPayload>(AiUsageRetentionJob.Type, AiUsageRetentionJob.AttemptTimeout)
+            .AddJob<AiUsageRetentionJob, AiUsageRetentionPayload>(AiUsageRetentionJob.Type, AiUsageRetentionJob.AttemptTimeout, resumable: true)
             .AddErrorCode(AiErrorCodes.InvalidRequest, 422, "Invalid AI request")
             .AddErrorCode(AiErrorCodes.UnknownAction, 404, "Unknown AI action")
             .AddErrorCode(AiErrorCodes.NoProvider, 409, "No AI provider")

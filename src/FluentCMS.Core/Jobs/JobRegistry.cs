@@ -10,11 +10,11 @@ namespace FluentCMS.Core.Jobs;
 
 internal sealed class JobRegistration
 {
-    private JobRegistration(string type, Type job, Type payload, TimeSpan? attemptTimeout, Func<string, object?> read, Func<IServiceProvider, object, JobContext, Task> invoke)
+    private JobRegistration(string type, Type job, Type payload, TimeSpan? attemptTimeout, bool resumable, Func<string, object?> read, Func<IServiceProvider, object, JobContext, Task> invoke)
     {
         Type = type;
         Job = job;
-        Resumable = typeof(IResumableJob).IsAssignableFrom(job);
+        Resumable = resumable || typeof(IResumableJob).IsAssignableFrom(job);
         Payload = payload;
         AttemptTimeout = attemptTimeout;
         Read = read;
@@ -35,19 +35,21 @@ internal sealed class JobRegistration
 
     public Func<IServiceProvider, object, JobContext, Task> Invoke { get; }
 
-    public static JobRegistration Create<TJob, TPayload>(string type, TimeSpan? attemptTimeout)
+    public static JobRegistration Create<TJob, TPayload>(string type, TimeSpan? attemptTimeout, bool resumable)
         where TJob : class, IJob<TPayload> =>
         new(
             type,
             typeof(TJob),
             typeof(TPayload),
             attemptTimeout,
+            resumable,
             JobJson.Deserialize<TPayload>,
             (services, payload, context) => services.GetRequiredService<TJob>().ExecuteAsync((TPayload)payload, context));
 }
 
 // A job that stops at its token wherever it is and leaves what is left for its next run, such as a batched delete. Stopped
 // at its attempt timeout, it has succeeded rather than failed, so that a long backlog is never dead-lettered for its size.
+// A plugin, which cannot see this, registers its job with resumable: true instead.
 internal interface IResumableJob;
 
 internal static class JobJson
