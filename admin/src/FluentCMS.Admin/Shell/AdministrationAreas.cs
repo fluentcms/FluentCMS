@@ -1,3 +1,7 @@
+using System.Collections.Concurrent;
+using System.Reflection;
+using Microsoft.AspNetCore.Components;
+
 namespace FluentCMS.Admin.Shell;
 
 // An area of core's administration pages (spec 4.15, 4.16): the route its pages are at or below, the label of its sidebar
@@ -28,6 +32,19 @@ internal static class AdministrationAreas
         new("settings", "Administration.Menu.Settings", AdminMenuSection.Settings, 10, AnySettingsArea),
         new("sites", "Administration.Menu.Sites", AdminMenuSection.Settings, 20, "sites.manage"),
     ];
+
+    private static readonly ConcurrentDictionary<Type, AdministrationArea?> Pages = new();
+
+    // The area of a page of the administration assembly: that of the first of its route templates that is in an area, or
+    // none. The gate of the page asks this, so that it depends on the page alone and not on an address, which the router
+    // may have changed before it renders the page of that address, or after it rendered the page of the address before.
+    public static AdministrationArea? OfPage(Type page)
+    {
+        ArgumentNullException.ThrowIfNull(page);
+        return Pages.GetOrAdd(page, type => type.GetCustomAttributes<RouteAttribute>(inherit: false)
+            .Select(route => OfRoute(route.Template))
+            .FirstOrDefault(area => area is not null));
+    }
 
     // The area a route relative to the app's base is in: the area's own route, or one below it, in any case, as the router
     // matches.

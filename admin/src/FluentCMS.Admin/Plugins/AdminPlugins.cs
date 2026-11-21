@@ -115,20 +115,23 @@ internal sealed class AdminPlugins(
     public async Task<Type> ComponentAsync(AdminPluginManifest half, string typeName, CancellationToken cancellationToken) =>
         (await LoadAsync(half, cancellationToken)).Type(typeName);
 
-    // The gate of a page the router found: a page of a loaded half by its own assembly, so that a half's route outside its
-    // segment is gated too, a page of the administration assembly by the area of the route, so that one outside every area
-    // has no page, and a page of the admin by the route, which answers for what is not loaded yet.
+    // The gate of a page the router found, by the page itself: a page of the administration assembly by the area of its own
+    // routes, so that one outside every area has no page, and a page of a loaded half by its own assembly and the manifest's
+    // pages of its class, so that a half's route outside its segment is gated too, and a route the class has not is no page.
+    // A page of the admin's own is not gated here. The router may render a page while the address is another page's, so the
+    // address picks among the pages of the class only, and an administration page does not read it at all.
     public PluginPageGate Gate(RouteData routeData, string route)
     {
         ArgumentNullException.ThrowIfNull(routeData);
         if (routeData.PageType.Assembly == administration.Loaded)
         {
-            return AdministrationAreas.OfRoute(route) is null ? PluginPageGate.NotFound : Gate(route);
+            return AdministrationAreas.OfPage(routeData.PageType) is not { } area ? PluginPageGate.NotFound
+                : context.Allows(area) ? PluginPageGate.Allowed : PluginPageGate.NoAccess;
         }
 
         if (_loaded.Values.FirstOrDefault(loaded => loaded.Assembly == routeData.PageType.Assembly) is not { } owner)
         {
-            return Gate(route);
+            return PluginPageGate.None;
         }
 
         var pages = owner.Manifest.Pages.Where(page => page.Type == routeData.PageType.FullName);
@@ -164,26 +167,12 @@ internal sealed class AdminPlugins(
     public bool LoadFailed(string route) =>
         AdministrationAreas.OfRoute(route) is not null ? administration.Failed : catalog.HalfOfRoute(route) is { } half && LoadFailed(half);
 
-    // The route of the last navigation the router ended, relative to the app's base, which is the route of the page it
-    // renders: it renders a route only once its OnNavigateAsync has ended, and not for a navigation it cancelled. While it
-    // holds a later navigation the address is already that one's, and it renders this route's page again whenever an ancestor
-    // renders, so a page's gate asks about this route and not about the address. Null before the first navigation.
-    public string? Settled { get; private set; }
-
     // The router's OnNavigateAsync: a page of a half loads the half, and a page of an area of administration its assembly,
-    // once the shell knows the site, if the user may see it. A navigation tries a failed load again.
+    // once the shell knows the site, if the user may see it. A navigation tries a failed load again. What the user sees is
+    // decided by the gate of the page the router renders, which does not trust that a route is rendered only once this ends.
     public async Task NavigateAsync(string route, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(route);
-        await PrepareAsync(route, cancellationToken);
-        if (!cancellationToken.IsCancellationRequested)
-        {
-            Settled = route;
-        }
-    }
-
-    private async Task PrepareAsync(string route, CancellationToken cancellationToken)
-    {
         _failed.Clear();
         administration.TryAgain();
         _navigated = null;

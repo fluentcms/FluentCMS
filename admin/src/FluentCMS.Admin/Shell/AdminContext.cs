@@ -39,6 +39,9 @@ internal sealed class AdminContext(
     private Task _localeReads = Task.CompletedTask;
     private Task<IReadOnlyDictionary<string, MyAccessInfo>>? _localeAccess;
 
+    // The content locale AccessInfo was read in, null for the site's default.
+    private string? _accessLocale;
+
     public event Action? Changed;
 
     public ShellStatus Status { get; private set; } = ShellStatus.Loading;
@@ -61,6 +64,10 @@ internal sealed class AdminContext(
     public IAdminAccess Access => this;
 
     public MyAccessInfo? AccessInfo { get; private set; }
+
+    // Whether AccessInfo is that of the content locale: not after a change of the locale until its access is read, nor while
+    // a site is read, so what the user may do in the locale is not known meanwhile, and a gate holds what it decides.
+    public bool AccessCurrent => AccessInfo is not null && string.Equals(_accessLocale, site.ContentLocale, StringComparison.Ordinal);
 
     // Null when the user may not read the schema of the site; SchemaRefused says so.
     public SchemaDescription? Schema { get; private set; }
@@ -278,7 +285,8 @@ internal sealed class AdminContext(
 
     private async Task SiteReadsAsync(int generation)
     {
-        var access = await client.GetMyAccessAsync(site.Site, site.Locale, CancellationToken.None);
+        var locale = site.ContentLocale;
+        var access = await client.GetMyAccessAsync(site.Site, locale, CancellationToken.None);
         var plugins = metadata.GetPluginsAsync(CancellationToken.None);
         SchemaDescription? schema = null;
         var refused = !Holds(access, SchemaRead);
@@ -300,7 +308,7 @@ internal sealed class AdminContext(
             return;
         }
 
-        (AccessInfo, Schema, SchemaRefused, Plugins) = (access, schema, refused, installed);
+        (AccessInfo, _accessLocale, Schema, SchemaRefused, Plugins) = (access, locale, schema, refused, installed);
         Status = ShellStatus.Ready;
     }
 

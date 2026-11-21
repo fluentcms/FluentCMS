@@ -248,10 +248,9 @@ public sealed class AdministrationGateTests : AdministrationTestContext
         Context.ContentLocale.ShouldBe("fr");
     }
 
-    // While the router holds a navigation, the address is the new one and the page is still the one before. The gate is
-    // asked about the route the page was matched for, so the users page, which the caller may not open, is not shown at the
-    // address of the roles page when the access of the new address's locale is read: no frame of the main region shows its
-    // heading, and it sends nothing.
+    // While the router holds a navigation, the address is the new one and the router may render the page before again. The
+    // gate asks about the page itself, so the users page, which the caller may not open, is not drawn at the address of the
+    // roles page when the access of the new address's locale is read: no frame draws it, nor shows its heading.
     [Fact]
     public void ThePageBeforeIsNeverShownAtTheAddressOfANavigationTheRouterStillHolds()
     {
@@ -267,7 +266,15 @@ public sealed class AdministrationGateTests : AdministrationTestContext
         Management.HoldPath = path => path.EndsWith("/me/access", StringComparison.Ordinal) ? held.Task : null;
         var reads = Management.Count("me/access");
         var headings = new System.Collections.Concurrent.ConcurrentQueue<string>();
-        app.OnMarkupUpdated += (_, _) => headings.Enqueue(string.Join("|", app.FindAll("main h1").Select(heading => heading.TextContent)));
+        var pages = new System.Collections.Concurrent.ConcurrentQueue<Type>();
+        app.OnMarkupUpdated += (_, _) =>
+        {
+            headings.Enqueue(string.Join("|", app.FindAll("main h1").Select(heading => heading.TextContent)));
+            foreach (var view in app.FindComponents<RouteView>())
+            {
+                pages.Enqueue(view.Instance.RouteData.PageType);
+            }
+        };
 
         Navigation.NavigateTo("roles?locale=fr");
         app.WaitForAssertion(() => Management.Count("me/access").ShouldBeGreaterThan(reads));
@@ -276,7 +283,7 @@ public sealed class AdministrationGateTests : AdministrationTestContext
         app.WaitForAssertion(() => headings.ShouldContain("Roles"));
         Shown(app).ShouldBe("/roles");
         headings.ShouldNotContain("Users");
-        Management.Count("users").ShouldBe(0);
+        pages.ShouldNotContain(typeof(UsersPage));
     }
 
     // The router cancels a navigation that a later one overtakes. One that waits for the access of its locale does nothing
