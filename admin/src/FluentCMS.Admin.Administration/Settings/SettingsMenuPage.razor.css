@@ -1,0 +1,27 @@
+.settings-group {
+    margin-block-end: var(--cms-space-l);
+}
+
+.settings-areas {
+    display: grid;
+    gap: var(--cms-space-s);
+    padding-inline-start: 0;
+    list-style: none;
+}
+
+.settings-areas li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cms-space-s);
+    align-items: baseline;
+}
+
+.settings-area-scope {
+    color: var(--cms-color-text-muted);
+}
+
+.settings-problem {
+    padding: var(--cms-space-m);
+    border-inline-start: 3px solid var(--cms-color-error);
+    background: var(--cms-color-surface);
+}

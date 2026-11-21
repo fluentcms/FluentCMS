@@ -1,0 +1,10 @@
+@* The defaults of the instance of an area (spec 4.16), a page of its own so that the scope is the route's and not read
+   from the address. *@
+@page "/settings/{Area}/defaults"
+
+<SettingsArea Area="@Area" Defaults="true" />
+
+@code {
+    [Parameter]
+    public string Area { get; set; } = string.Empty;
+}
