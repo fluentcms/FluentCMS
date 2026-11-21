@@ -13,6 +13,10 @@ public interface ISearchIndex
     /// <returns>
     /// The document ids of the best matches, at most <see cref="SearchRequest.Limit"/>. The query is narrowed to them and
     /// keeps its own filter, row rule, site, locale, status and sort, so an id the caller may not read is never returned.
+    /// The ids are to be of the request's type, locale, site and state only: another's would take the place of an entry the
+    /// caller may read. When the index returns <see cref="SearchRequest.Limit"/> ids, the list says that its search may be
+    /// cut (<see cref="Content.PagedResult{T}.SearchTruncated"/>); an index that stops short of the limit on its own while
+    /// more entries match is not reported as cut.
     /// </returns>
     Task<IReadOnlyList<Guid>> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default);
 

@@ -122,6 +122,38 @@ public sealed class SearchQueryTests : IDisposable
         index.Requests.ShouldHaveSingleItem().Limit.ShouldBe(1);
     }
 
+    // As many ids as asked for may leave matches out, which the list says; fewer, or no search, say nothing.
+    [Fact]
+    public async Task AListSaysItsSearchIsCutWhenTheIndexReturnsTheMostIdsItWasAskedFor()
+    {
+        var first = _database.AddArticle("First");
+        var second = _database.AddArticle("Second");
+        var options = new ContentQueryOptions { MaxSearchResults = 2 };
+
+        var cut = await _database.RunAsync("locale=en&q=x&filter[title][eq]=First&withTotal=true", options: options, search: new FakeSearchIndex(second, first, Guid.CreateVersion7()));
+        var whole = await _database.RunAsync("locale=en&q=x", options: options, search: new FakeSearchIndex(first));
+        var unsearched = await _database.RunAsync("locale=en", options: options);
+
+        Ids(cut).ShouldBe([first]);
+        cut.Total.ShouldBe(1);
+        cut.SearchTruncated.ShouldBeTrue();
+        whole.SearchTruncated.ShouldBeFalse();
+        unsearched.SearchTruncated.ShouldBeFalse();
+    }
+
+    // What the index found in fields the caller may not read must not show, not even as a cut.
+    [Fact]
+    public async Task ACallerWhoMayReadNoSearchableFieldIsNeverToldOfACut()
+    {
+        var first = _database.AddArticle("First");
+        var index = new FakeSearchIndex(first, Guid.CreateVersion7());
+
+        var result = await _database.RunAsync("locale=en&q=x", new QueryAccess { DeniedFields = { "article.title", "article.subtitle" } }, new ContentQueryOptions { MaxSearchResults = 2 }, search: index);
+
+        result.Items.ShouldBeEmpty();
+        result.SearchTruncated.ShouldBeFalse();
+    }
+
     [Fact]
     public async Task ACountIsNarrowedToo()
     {
