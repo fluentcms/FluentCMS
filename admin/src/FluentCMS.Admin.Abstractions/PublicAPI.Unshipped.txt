@@ -124,6 +124,8 @@ FluentCMS.Admin.Api.ApiRequest.Site.get -> string?
 FluentCMS.Admin.Api.ApiRequest.Site.init -> void
 FluentCMS.Admin.Api.ApiResponse
 FluentCMS.Admin.Api.ApiResponse.ApiResponse(System.Net.HttpStatusCode status, string? entityTag) -> void
+FluentCMS.Admin.Api.ApiResponse.Date.get -> System.DateTimeOffset?
+FluentCMS.Admin.Api.ApiResponse.Date.init -> void
 FluentCMS.Admin.Api.ApiResponse.EntityTag.get -> string?
 FluentCMS.Admin.Api.ApiResponse.Location.get -> System.Uri?
 FluentCMS.Admin.Api.ApiResponse.Location.init -> void
@@ -433,6 +435,8 @@ FluentCMS.Admin.Api.SchemaTypeDescription.MaxVersions.get -> int?
 FluentCMS.Admin.Api.SchemaTypeDescription.MaxVersions.init -> void
 FluentCMS.Admin.Api.SchemaTypeDescription.Name.get -> string!
 FluentCMS.Admin.Api.SchemaTypeDescription.Name.init -> void
+FluentCMS.Admin.Api.SchemaTypeDescription.Previewable.get -> bool?
+FluentCMS.Admin.Api.SchemaTypeDescription.Previewable.init -> void
 FluentCMS.Admin.Api.SchemaTypeDescription.ReverseRelations.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Admin.Api.ReverseRelationDescription!>!
 FluentCMS.Admin.Api.SchemaTypeDescription.ReverseRelations.init -> void
 FluentCMS.Admin.Api.SchemaTypeDescription.SchemaTypeDescription() -> void

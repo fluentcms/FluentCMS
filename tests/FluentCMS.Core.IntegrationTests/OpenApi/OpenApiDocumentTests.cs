@@ -324,6 +324,24 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         one.ShouldContain("#/components/parameters/fields");
     }
 
+    // A member a client may ignore: optional, and said only of a search the index cut (#3302).
+    [Fact]
+    public void AContentListSaysWhenItsSearchWasCut()
+    {
+        foreach (var path in new[] { "/api/delivery/v1/article", $"{Management}/content/article" })
+        {
+            var list = Response(Paths[path]!["get"]!, "200");
+            var truncated = list["properties"]!["searchTruncated"]!;
+
+            truncated["type"]!.GetValue<string>().ShouldBe("boolean", path);
+            truncated["description"]!.GetValue<string>().ShouldContain("MaxSearchResults");
+            truncated["description"]!.GetValue<string>().ShouldContain("never sent on the trash list");
+            list["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["items", "pageSize"]);
+        }
+
+        Parameters["q"]!["description"]!.GetValue<string>().ShouldContain("searchTruncated");
+    }
+
     [Fact]
     public void ContentRoutesAreWrittenOncePerType()
     {
@@ -501,6 +519,22 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         var disable = Paths[$"{Management}/me/two-factor/disable"]!["post"]!;
         disable["responses"]!["204"]!["content"].ShouldBeNull();
         disable["requestBody"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/TwoFactorCodeRequest");
+    }
+
+    // The row rules a grant may name, beside the catalogue (#3417): names and types, nothing of what a rule compares.
+    [Fact]
+    public void TheRowRulesHaveTheirSchema()
+    {
+        var operation = Paths[$"{Management}/permissions/row-rules"]!["get"]!;
+        operation["operationId"]!.GetValue<string>().ShouldBe("getPermissionsRowRules");
+
+        var rule = Resolve(Response(operation, "200")["properties"]!["items"]!["items"]!);
+        rule["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["name", "typeNames"]);
+        rule["properties"]!["name"]!["type"]!.GetValue<string>().ShouldBe("string");
+        var types = rule["properties"]!["typeNames"]!;
+        types["type"]!.ToJsonString().ShouldBe("""["null","array"]""");
+        types["items"]!["type"]!.GetValue<string>().ShouldBe("string");
+        types["description"]!.GetValue<string>().ShouldContain("every type");
     }
 
     // What the admin draws itself from (#3096): the caller's access, the locales of its sites and its preferences.

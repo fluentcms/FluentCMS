@@ -256,6 +256,10 @@ public sealed class McpClientAdministrationTests(McpClientFixture fixture) : ICl
         register.Metadata.OfType<IAcceptsMetadata>().ShouldContain(accepted => accepted.RequestType == typeof(McpClientRegistrationRequest));
         role.Metadata.OfType<IProducesResponseTypeMetadata>().ShouldContain(produced => produced.Type == typeof(McpClientInfo) && produced.StatusCode == StatusCodes.Status200OK);
         role.Metadata.OfType<IAcceptsMetadata>().ShouldContain(accepted => accepted.RequestType == typeof(McpClientRoleChange));
+
+        var remove = Route(endpoints, HttpMethods.Post, ClientsPath + "/remove");
+        remove.Metadata.OfType<IProducesResponseTypeMetadata>().ShouldContain(produced => produced.Type == typeof(McpClientRemovalResult) && produced.StatusCode == StatusCodes.Status200OK);
+        remove.Metadata.OfType<IAcceptsMetadata>().ShouldContain(accepted => accepted.RequestType == typeof(McpClientRemoval));
     }
 
     private static RouteEndpoint Route(IEnumerable<RouteEndpoint> endpoints, string method, string pattern) =>

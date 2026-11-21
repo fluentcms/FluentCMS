@@ -184,7 +184,7 @@ internal sealed class SsoSignIn(
         }
 
         var user = new CmsUser { UserName = email, Email = email, EmailConfirmed = true };
-        var result = await changes.RunAsync(
+        var result = await changes.RunNamingAsync(
             async () =>
             {
                 if (await users.CreateAsync(user) is { Succeeded: false } created)

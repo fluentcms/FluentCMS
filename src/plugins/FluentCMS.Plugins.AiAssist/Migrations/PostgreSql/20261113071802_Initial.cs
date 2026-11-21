@@ -20,6 +20,7 @@ namespace FluentCMS.Plugins.AiAssist.Migrations.PostgreSql
                     site_id = table.Column<Guid>(type: "uuid", nullable: false),
                     principal_kind = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     principal_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    principal_name = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
                     action = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     type = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     field = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),

@@ -25,17 +25,28 @@ internal sealed class CrossNameValidator : IUserValidator<CmsUser>
             .Select(other => new { other.NormalizedUserName, other.NormalizedEmail })
             .FirstOrDefaultAsync();
 
+        return await CheckAsync(
+            manager.Users,
+            manager.ErrorDescriber,
+            user,
+            name != stored?.NormalizedUserName ? name : null,
+            email != stored?.NormalizedEmail ? email : null,
+            CancellationToken.None);
+    }
+
+    // The normalized name and address to check, each null when it did not change. CmsUserStore asks again inside the
+    // transaction of the save, under the lock of the names, where no other save can pass at the same time.
+    public static async Task<IdentityResult> CheckAsync(IQueryable<CmsUser> users, IdentityErrorDescriber describer, CmsUser user, string? name, string? email, CancellationToken cancellationToken)
+    {
         List<IdentityError> errors = [];
-        if (!string.IsNullOrEmpty(name) && name != stored?.NormalizedUserName
-            && await manager.Users.AnyAsync(other => other.Id != user.Id && other.NormalizedEmail == name))
+        if (!string.IsNullOrEmpty(name) && await users.AnyAsync(other => other.Id != user.Id && other.NormalizedEmail == name, cancellationToken))
         {
-            errors.Add(manager.ErrorDescriber.DuplicateUserName(user.UserName!));
+            errors.Add(describer.DuplicateUserName(user.UserName!));
         }
 
-        if (!string.IsNullOrEmpty(email) && email != stored?.NormalizedEmail
-            && await manager.Users.AnyAsync(other => other.Id != user.Id && other.NormalizedUserName == email))
+        if (!string.IsNullOrEmpty(email) && await users.AnyAsync(other => other.Id != user.Id && other.NormalizedUserName == email, cancellationToken))
         {
-            errors.Add(manager.ErrorDescriber.DuplicateEmail(user.Email!));
+            errors.Add(describer.DuplicateEmail(user.Email!));
         }
 
         return errors.Count == 0 ? IdentityResult.Success : IdentityResult.Failed([.. errors]);

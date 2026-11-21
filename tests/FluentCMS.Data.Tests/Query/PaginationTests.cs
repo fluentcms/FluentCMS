@@ -7,6 +7,9 @@ namespace FluentCMS.Data.Tests.Query;
 
 public sealed class PaginationTests : IDisposable
 {
+    // In code point order, which a language's collation changes for case, punctuation and accents.
+    private static readonly string[] ByCodePoint = ["Banana", "_cherry", "apple", "zebra", "Éclair"];
+
     private readonly QueryDatabase _database = new();
 
     public void Dispose() => _database.Dispose();
@@ -156,6 +159,31 @@ public sealed class PaginationTests : IDisposable
         Ids(await _database.RunAsync("sort=-id&locale=en")).ShouldBe(byId.AsEnumerable().Reverse());
         Titles(await _database.RunAsync("sort=seo.metaTitle,title&locale=en")).ShouldBe(["A", "B"]);
         Titles(await _database.RunAsync("sort=-createdAt,title&locale=en")).Length.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task TextSortsByCodePointOnEveryProvider()
+    {
+        foreach (var title in ByCodePoint.AsEnumerable().Reverse())
+        {
+            Add(title);
+        }
+
+        Titles(await _database.RunAsync("sort=title&locale=en")).ShouldBe(ByCodePoint);
+        Titles(await _database.RunAsync("sort=-title&locale=en")).ShouldBe(ByCodePoint.AsEnumerable().Reverse());
+    }
+
+    // A cursor continues a text key with > and <, which compare as the sort does.
+    [Fact]
+    public async Task ACursorComparesTextByCodePointOnEveryProvider()
+    {
+        foreach (var title in ByCodePoint)
+        {
+            Add(title);
+        }
+
+        (await AllByCursor("sort=title")).ShouldBe(ByCodePoint);
+        (await AllByCursor("sort=-title")).ShouldBe(ByCodePoint.AsEnumerable().Reverse());
     }
 
     [Fact]

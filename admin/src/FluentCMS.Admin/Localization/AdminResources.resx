@@ -740,6 +740,9 @@
   <data name="Account.TwoFactor.AlreadyOn" xml:space="preserve">
     <value>Two-factor sign-in is on already.</value>
   </data>
+  <data name="Account.TwoFactor.SignInAgainFirst" xml:space="preserve">
+    <value>Setting up two-factor sign-in needs a recent sign-in, and yours is more than a few minutes old. Sign out, sign in again, then set it up.</value>
+  </data>
   <data name="Account.TwoFactor.Changed" xml:space="preserve">
     <value>Two-factor sign-in was changed meanwhile, so nothing was done. Its status is shown again.</value>
   </data>
@@ -2131,6 +2134,9 @@
   </data>
   <data name="Content.Preview.Refused" xml:space="preserve">
     <value>The preview page is not on an origin the admin may show.</value>
+  </data>
+  <data name="Content.Preview.None" xml:space="preserve">
+    <value>The site has no preview page for this type.</value>
   </data>
   <data name="Content.Preview.Silent" xml:space="preserve">
     <value>This page does not answer the preview, so each save loads it again.</value>

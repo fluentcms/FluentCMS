@@ -40,6 +40,9 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         public SearchRequest Request { get; } = request;
 
         public Guid[] Ids { get; set; } = [];
+
+        // The index returned as many ids as it was asked for, so matches beyond them may have been left out.
+        public bool Truncated { get; set; }
     }
 
     public Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, CancellationToken cancellationToken = default) =>
@@ -95,9 +98,12 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         if (compiled.Hits is { } hits)
         {
             // Asked even when the caller may read no searchable field, so that the index refuses as it refuses others; and
-            // then nothing matches, whatever it found.
+            // then nothing matches, whatever it found, and nothing is said to be cut either.
             var ids = await search.SearchAsync(hits.Request, cancellationToken);
             hits.Ids = hits.Request.Fields is { Count: 0 } ? [] : [.. ids.Take(hits.Request.Limit)];
+            // A read of the trash asks for drafts, and the search plugin keeps none of an entry in the trash, so there the
+            // count of the index says nothing of what the list could miss.
+            hits.Truncated = !compiled.Scope.ReachesTrash && hits.Ids.Length >= hits.Request.Limit;
         }
     }
 
@@ -138,7 +144,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         var last = hasMore ? rows[^1] : null;
         var nextCursor = last is null ? null : SortKeys.Encode(compiled.Keys, compiled.KeyColumns.Select(column => last[column]).ToList());
 
-        return new(entries.Select(entry => entry.Document).ToList(), total, compiled.PageNumber, compiled.PageSize, nextCursor);
+        return new(entries.Select(entry => entry.Document).ToList(), total, compiled.PageNumber, compiled.PageSize, nextCursor, compiled.Hits?.Truncated ?? false);
     }
 
     // The query reads one entry by id, which is the caller's to match with the row, and has nothing else to filter it by.

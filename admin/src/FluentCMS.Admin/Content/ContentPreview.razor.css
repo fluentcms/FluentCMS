@@ -21,6 +21,7 @@
 
 .content-preview iframe {
     inline-size: 100%;
+    max-inline-size: 100%;
     block-size: calc(100dvh - 12rem);
     min-block-size: 24rem;
     border: 1px solid var(--cms-color-border);
@@ -36,4 +37,22 @@
 
 .content-preview[data-width="full"] {
     position: static;
+}
+
+/* Below the form, at the widths of ContentForm.razor.css, the pane scrolls with it. */
+@media (max-width: 68rem) {
+    .content-preview {
+        position: static;
+    }
+}
+
+@media (max-width: 95rem) {
+    .content-preview[data-width="tablet"] {
+        position: static;
+    }
+}
+
+/* The live region stays in the page while it is empty, so that a notice added to it is read; it then takes no gap. */
+.content-preview-notices:empty {
+    margin-block-start: calc(-1 * var(--cms-space-m));
 }

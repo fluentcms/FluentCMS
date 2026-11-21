@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
@@ -12,7 +13,7 @@ namespace FluentCMS.Core.Identity.Oidc;
 
 // The claims of FluentCMS tokens, on the way out and on the way in. A token carries sub, name, fcms_kind and, for a
 // service account, the roles of its client; the user's roles are read from cms_user_role on each request instead. A user's
-// tokens carry amr, how the user signed in on the hosted pages, and its identity token auth_time, when.
+// tokens carry amr, how the user signed in on the hosted pages, and auth_time, when.
 internal static class TokenClaims
 {
     // Kept in codes and refresh tokens only, which the server alone reads, so that a password change or reset ends them.
@@ -113,6 +114,7 @@ internal static class TokenClaims
         Add(identity, CmsClaimTypes.Kind, token.GetClaim(CmsClaimTypes.Kind));
         Add(identity, CmsClaimTypes.ClientId, token.GetClaim(Claims.ClientId) ?? token.GetPresenters().FirstOrDefault());
         Add(identity, CmsClaimTypes.ClientRole, token.GetClaim(CmsClaimTypes.ClientRole));
+        Add(identity, CmsClaimTypes.AuthenticationTime, token.GetClaim(Claims.AuthenticationTime));
 
         var scopes = token.GetScopes();
         Add(identity, CmsClaimTypes.Scope, scopes.IsDefaultOrEmpty ? null : string.Join(' ', scopes));
@@ -134,12 +136,18 @@ internal static class TokenClaims
     public static bool SignedInWithSecondFactor(Principal principal) =>
         principal.Claim(CmsClaimTypes.AuthenticationMethods)?.Split(' ').Contains(MultiFactor, StringComparer.Ordinal) == true;
 
+    // When the user of a bearer token signed in on the hosted pages. A token from before access tokens carried it has none.
+    public static DateTimeOffset? SignedInAt(Principal principal) =>
+        long.TryParse(principal.Claim(CmsClaimTypes.AuthenticationTime), NumberStyles.None, CultureInfo.InvariantCulture, out var seconds)
+            ? DateTimeOffset.FromUnixTimeSeconds(seconds)
+            : null;
+
     private static IEnumerable<string> Destinations(Claim claim) => claim.Type switch
     {
         Claims.Name when claim.Subject?.HasScope(Scopes.Profile) == true => [OpenIddictConstants.Destinations.AccessToken, OpenIddictConstants.Destinations.IdentityToken],
         Claims.Email when claim.Subject?.HasScope(Scopes.Email) == true => [OpenIddictConstants.Destinations.IdentityToken],
-        Claims.AuthenticationMethodReference => [OpenIddictConstants.Destinations.AccessToken, OpenIddictConstants.Destinations.IdentityToken],
-        Claims.AuthenticationTime or ServerSession => [OpenIddictConstants.Destinations.IdentityToken],
+        Claims.AuthenticationMethodReference or Claims.AuthenticationTime => [OpenIddictConstants.Destinations.AccessToken, OpenIddictConstants.Destinations.IdentityToken],
+        ServerSession => [OpenIddictConstants.Destinations.IdentityToken],
         Claims.Name or CmsClaimTypes.Kind or CmsClaimTypes.Roles or CmsClaimTypes.ClientRole => [OpenIddictConstants.Destinations.AccessToken],
         _ => [],
     };

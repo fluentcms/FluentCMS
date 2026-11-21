@@ -73,6 +73,7 @@ internal sealed class ApiKeyService(
     RoleService roles,
     ApiKeyOptions options,
     ApiKeyRefusals refusals,
+    ApiKeyPrincipals principals,
     TimeProvider time)
 {
     // last_used_at says whether a key is still in use, which needs minutes, not every request.
@@ -150,8 +151,6 @@ internal sealed class ApiKeyService(
             throw new ValidationException(errors);
         }
 
-        await roles.RequireKeyRoleAsync(request.RoleId, sites, types, cancellationToken);
-
         var secret = ApiKeyFormat.Generate(request.Class);
         var key = new ApiKey
         {
@@ -173,6 +172,7 @@ internal sealed class ApiKeyService(
         await changes.RunAsync(
             async () =>
             {
+                await RequireNowAsync(request.RoleId, sites, types, cancellationToken);
                 context.Add(key);
                 await context.SaveChangesAsync(cancellationToken);
                 await changes.RaiseAsync(new ApiKeyCreatedEvent(key.Id, key.Name, ApiKeyFormat.Scope(key.Class)), cancellationToken);
@@ -220,11 +220,11 @@ internal sealed class ApiKeyService(
     // pending end with it.
     public async Task<bool> RevokeAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        await ControlledAsync(id, cancellationToken);
+        await ManagedAsync(id, cancellationToken);
         return await changes.RunAsync(
             async () =>
             {
-                var key = await StoredAsync(id, cancellationToken);
+                var key = await ControlledAsync(id, cancellationToken);
                 var revoked = await context.Set<ApiKey>()
                     .Where(row => row.Id == id && row.RevokedAt == null)
                     .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.RevokedAt, time.GetUtcNow()), cancellationToken);
@@ -246,11 +246,11 @@ internal sealed class ApiKeyService(
     public async Task ExpireAsync(Guid id, DateTimeOffset? at = null, CancellationToken cancellationToken = default)
     {
         var expires = at ?? time.GetUtcNow();
-        await ControlledAsync(id, cancellationToken);
+        await ManagedAsync(id, cancellationToken);
         await changes.RunAsync(
             async () =>
             {
-                var key = await StoredAsync(id, cancellationToken);
+                var key = await ControlledAsync(id, cancellationToken);
                 var changed = await context.Set<ApiKey>()
                     .Where(row => row.Id == id && (row.ExpiresAt == null || row.ExpiresAt >= expires))
                     .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.ExpiresAt, expires), cancellationToken);
@@ -283,11 +283,11 @@ internal sealed class ApiKeyService(
                 $"The overlap is from 0 to {(long)options.RotationOverlap.TotalSeconds} seconds, the configured RotationOverlap.")]);
         }
 
-        await ControlledAsync(id, cancellationToken);
+        await ManagedAsync(id, cancellationToken);
         return await changes.RunAsync(
             async () =>
             {
-                var key = await StoredAsync(id, cancellationToken);
+                var key = await ControlledAsync(id, cancellationToken);
                 var now = time.GetUtcNow();
                 if (!key.IsActive(now))
                 {
@@ -344,13 +344,11 @@ internal sealed class ApiKeyService(
             throw new ValidationException([new ValidationError("id", ApiKeyErrorCodes.NotRotatable, "A revoked key is not changed.")]);
         }
 
-        await RequireKeyRoleAsync(stored, cancellationToken);
-
         var json = addresses is null ? null : JsonSerializer.Serialize(addresses);
         return await changes.RunAsync(
             async () =>
             {
-                var key = await StoredAsync(id, cancellationToken);
+                var key = await ControlledAsync(id, cancellationToken);
                 var changed = await context.Set<ApiKey>()
                     .Where(row => row.Id == id && row.RevokedAt == null)
                     .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.AllowedAddresses, json), cancellationToken);
@@ -476,13 +474,38 @@ internal sealed class ApiKeyService(
         return key;
     }
 
-    // Rotating, revoking or expiring a key needs what creating it would: a caller below its role neither takes over its
-    // secret nor cuts off the clients of a key above it. A key's role and binding never change, so the stored row decides.
-    private async Task ControlledAsync(Guid id, CancellationToken cancellationToken) =>
-        await RequireKeyRoleAsync(await ManagedAsync(id, cancellationToken), cancellationToken);
+    // Rotating, revoking or expiring a key, or changing its addresses, needs what creating it would: a caller below its role
+    // neither takes over its secret nor cuts off the clients of a key above it. A key's role and binding never change, so the
+    // stored row decides. Inside the transaction of the change.
+    private async Task<ApiKey> ControlledAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var key = await StoredAsync(id, cancellationToken);
+        await RequireNowAsync(key.RoleId, ApiKeyClaims.SitesOf(key), ApiKeyClaims.TypesOf(key), cancellationToken);
+        return key;
+    }
 
-    private Task RequireKeyRoleAsync(ApiKey key, CancellationToken cancellationToken) =>
-        roles.RequireKeyRoleAsync(key.RoleId, ApiKeyClaims.SitesOf(key), ApiKeyClaims.TypesOf(key), cancellationToken);
+    // apikeys.manage where the key reaches and the role ceiling, checked again in the transaction of the change with the
+    // caller's grants read there, not as the request resolved them before it, so that grants cut in between refuse the change
+    // (#3391). A calling key is read again as well, since the request holds the row it authenticated.
+    private async Task RequireNowAsync(Guid roleId, IReadOnlyCollection<Guid>? sites, IReadOnlyCollection<string>? types, CancellationToken cancellationToken)
+    {
+        var operation = accessor.Current;
+        if (operation?.Principal is { Kind: PrincipalKind.ApiKey } caller && await principals.ActiveAsync(caller.Id, cancellationToken) is null)
+        {
+            throw new ManagementAccessDeniedException("The key that made this request was revoked or has expired.");
+        }
+
+        accessor.Current = operation is null ? null : operation with { };
+        try
+        {
+            await RequireManageAsync(sites, cancellationToken);
+            await roles.RequireKeyRoleAsync(roleId, sites, types, cancellationToken);
+        }
+        finally
+        {
+            accessor.Current = operation;
+        }
+    }
 
     private async Task<bool> ManagesAsync(IReadOnlyCollection<Guid>? sites, CancellationToken cancellationToken)
     {
