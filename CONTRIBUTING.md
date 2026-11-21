@@ -74,6 +74,10 @@ A new NuGet package or GitHub Action is named in its issue, with the version, be
 
 Workflows pin every action to a full commit SHA, with its version tag in a trailing comment. Restore takes every package from nuget.org alone, through the `nuget.config` at the root, which the image build copies too. Dependabot proposes weekly updates for actions, NuGet packages, the npm projects (`clients/typescript` and the `js` folder of an admin project), the base images of the two Dockerfiles and the images of the two compose files, grouping minor and patch updates per ecosystem. Images are pinned by tag and digest, so that Dependabot can move both; it leaves out a new major of .NET and of PostgreSQL. The data and media tests and the workflows' services pin the PostgreSQL and MinIO digests too, which an update of the compose files changes with them. CI fails when a direct or transitive package has a known vulnerability, and deprecated packages only raise a warning.
 
+## Third-party code
+
+Code taken in from another work, whole or in part, gets its notice in `THIRD-PARTY-NOTICES.md` at the root: the source and its commit, where the code is used and the licence kept verbatim, and the file that holds the code says so in a comment. That file and `LICENSE` travel with every copy of the compiled code, so keep the two names: the `FluentCMS.Admin` package packs the notices, the image holds both in `/app`, and the published admin holds both as static files next to the app, copied by `admin/src/FluentCMS.Admin.App/FluentCMS.Admin.App.csproj`. A new place that ships compiled code, such as an archive of the admin, copies both files too.
+
 ## Pull requests
 
 The description contains, in this order:

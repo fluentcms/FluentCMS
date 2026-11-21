@@ -167,6 +167,17 @@ jobs:
           echo "The services ran $FLUENTCMS_IMAGE, whose ID is $digest." | tee -a "$GITHUB_STEP_SUMMARY"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
+      # The licence and the third-party notices sit in the application folder (#3215). The image has no shell, so they are copied
+      # out of the running container.
+      - name: Check that the image carries the licence and the third-party notices
+        run: |
+          for file in LICENSE THIRD-PARTY-NOTICES.md; do
+            docker compose cp "cms:/app/$file" "$RUNNER_TEMP/$file"
+            [ -s "$RUNNER_TEMP/$file" ] || { echo "::error::/app/$file is missing or empty in the image"; exit 1; }
+          done
+          grep -q "^# MIT License" "$RUNNER_TEMP/LICENSE"
+          grep -q "Project Nayuki" "$RUNNER_TEMP/THIRD-PARTY-NOTICES.md"
+
       - name: Make the administrator and a management key with the CLI
         run: |
           password="Aa1!$(openssl rand -hex 16)"
