@@ -290,6 +290,21 @@ FluentCMS.Admin.Components.CmsOption.Text.get -> string!
 FluentCMS.Admin.Components.CmsOption.Text.init -> void
 FluentCMS.Admin.Components.CmsOption.Value.get -> string!
 FluentCMS.Admin.Components.CmsOption.Value.init -> void
+FluentCMS.Admin.Components.CmsSecretDialog
+FluentCMS.Admin.Components.CmsSecretDialog.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
+FluentCMS.Admin.Components.CmsSecretDialog.ChildContent.set -> void
+FluentCMS.Admin.Components.CmsSecretDialog.CmsSecretDialog() -> void
+FluentCMS.Admin.Components.CmsSecretDialog.Dispose() -> void
+FluentCMS.Admin.Components.CmsSecretDialog.Label.get -> string!
+FluentCMS.Admin.Components.CmsSecretDialog.Label.set -> void
+FluentCMS.Admin.Components.CmsSecretDialog.OnClosed.get -> Microsoft.AspNetCore.Components.EventCallback
+FluentCMS.Admin.Components.CmsSecretDialog.OnClosed.set -> void
+FluentCMS.Admin.Components.CmsSecretDialog.Secret.get -> string?
+FluentCMS.Admin.Components.CmsSecretDialog.Secret.set -> void
+FluentCMS.Admin.Components.CmsSecretDialog.SecretChanged.get -> Microsoft.AspNetCore.Components.EventCallback<string?>
+FluentCMS.Admin.Components.CmsSecretDialog.SecretChanged.set -> void
+FluentCMS.Admin.Components.CmsSecretDialog.Title.get -> string!
+FluentCMS.Admin.Components.CmsSecretDialog.Title.set -> void
 FluentCMS.Admin.Components.CmsSelect
 FluentCMS.Admin.Components.CmsSelect.Clearable.get -> bool
 FluentCMS.Admin.Components.CmsSelect.Clearable.set -> void
@@ -451,6 +466,8 @@ override FluentCMS.Admin.Components.CmsNavigationLink.OnInitialized() -> void
 override FluentCMS.Admin.Components.CmsOption.Equals(object? obj) -> bool
 override FluentCMS.Admin.Components.CmsOption.GetHashCode() -> int
 override FluentCMS.Admin.Components.CmsOption.ToString() -> string!
+override FluentCMS.Admin.Components.CmsSecretDialog.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
+override FluentCMS.Admin.Components.CmsSecretDialog.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsSortKey.Equals(object? obj) -> bool
 override FluentCMS.Admin.Components.CmsSortKey.GetHashCode() -> int
 override FluentCMS.Admin.Components.CmsSortKey.ToString() -> string!
@@ -494,6 +511,7 @@ virtual FluentCMS.Admin.Components.CmsInputBase<TValue>.AdditionalDescriptionId.
 ~override FluentCMS.Admin.Components.CmsNavigationLink.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsNavigationSection.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsNumberInput.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+~override FluentCMS.Admin.Components.CmsSecretDialog.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsSelect.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsStack.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override FluentCMS.Admin.Components.CmsSwitch.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void

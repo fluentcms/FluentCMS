@@ -1,0 +1,191 @@
+@* A new API key (spec 4.15): its class, role, sites, types, expiry, rate limit and allowed addresses. The server checks
+   apikeys.manage where the key reaches before it checks that the role and the sites exist, so a caller without it is shown
+   the refusal and no field errors. The secret is shown once by CmsSecretDialog and held in one field until the dialog
+   closes, which then goes to the key's page; it is in no draft, log, storage or address. *@
+@page "/api-keys/new"
+@inject IManagementApi Api
+@inject AdminContext Context
+@inject IAnnouncer Announcer
+@inject NavigationManager Navigation
+@inject IStringLocalizer<ApiKeysResources> L
+@inject IStringLocalizer<AdminResources> AdminTexts
+
+<PageCrumb Text="@L["ApiKeys.New.Heading"]" />
+<h1 tabindex="-1">@L["ApiKeys.New.Heading"]</h1>
+
+<form class="api-key-form" @onsubmit="CreateAsync">
+    <CmsStack>
+        <CmsTextInput Label="@L["ApiKeys.New.Name"]" Help="@L["ApiKeys.New.NameHelp"]" Required="true" MaxLength="128" Autocomplete="off"
+                      Error="@(nameError ?? Field("name"))" Value="@name" ValueChanged="@(value => (name, nameError) = (value, null))" />
+        <CmsSelect Label="@L["ApiKeys.New.Class"]" Help="@L["ApiKeys.New.ClassHelp"]" Required="true" Options="@Classes"
+                   Error="@Field("class")" Value="@keyClass" ValueChanged="@(value => keyClass = value ?? Delivery)" />
+        <RoleSelect Label="@L["ApiKeys.New.Role"]" Help="@L["ApiKeys.New.RoleHelp"]" Required="true"
+                    Error="@(roleError ?? Field("roleId"))" Value="@roleId" ValueChanged="@(value => (roleId, roleError) = (value, null))" />
+
+        <fieldset>
+            <legend>@L["ApiKeys.New.Sites"]</legend>
+            <p class="api-key-note">@L["ApiKeys.New.SitesHelp"]</p>
+            @if (MayBindToNoSite)
+            {
+                <CmsCheckbox Label="@L["ApiKeys.New.EverySite"]" Value="@everySite" ValueChanged="@(value => (everySite, sitesError) = (value, null))" />
+            }
+            @foreach (var site in Context.Sites)
+            {
+                <CmsCheckbox Label="@site.Name" Disabled="@everySite" Value="@sites.Contains(site.Id)" ValueChanged="@(value => Choose(sites, site.Id, value))" />
+            }
+            @if ((sitesError ?? Field("siteIds")) is { } siteError)
+            {
+                <p class="cms-field-message cms-field-message-error">@siteError</p>
+            }
+        </fieldset>
+
+        @if (Context.Schema?.Types is { Count: > 0 } schemaTypes)
+        {
+            <fieldset>
+                <legend>@L["ApiKeys.New.Types"]</legend>
+                <p class="api-key-note">@L["ApiKeys.New.TypesHelp"]</p>
+                @foreach (var type in schemaTypes)
+                {
+                    <CmsCheckbox Label="@AdminLabels.Type(type, AdminTexts)" Value="@types.Contains(type.Name)" ValueChanged="@(value => Choose(types, type.Name, value))" />
+                }
+                @if (Field("typeNames") is { } typeError)
+                {
+                    <p class="cms-field-message cms-field-message-error">@typeError</p>
+                }
+            </fieldset>
+        }
+
+        <ApiKeyExpiry Legend="@L["ApiKeys.New.Expiry"]" Help="@L["ApiKeys.New.ExpiryHelp"]" Error="@Field("expiresAt")" ValueChanged="@(value => expiresAt = value)" />
+        <CmsNumberInput Label="@L["ApiKeys.New.RateLimit"]" Help="@L["ApiKeys.New.RateLimitHelp"]" WholeNumbers="true" AllowNegative="false"
+                        Error="@Field("rateLimit")" Value="@rateLimit" ValueChanged="@(value => rateLimit = value)" />
+        <CmsTextArea Label="@L["ApiKeys.New.Addresses"]" Help="@L["ApiKeys.New.AddressesHelp"]" Spellcheck="false" Rows="3"
+                     Error="@Field("allowedAddresses")" Value="@addresses" ValueChanged="@(value => addresses = value)" />
+
+        @if (formError is { } refusal)
+        {
+            <p class="api-key-problem" role="alert">@refusal</p>
+        }
+        <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+            <CmsButton Appearance="CmsButtonAppearance.Primary" Submit="true" Disabled="@busy">@L["ApiKeys.New.Create"]</CmsButton>
+            <a href="@ApiKeyRoutes.List">@L["ApiKeys.New.Cancel"]</a>
+        </CmsStack>
+    </CmsStack>
+</form>
+
+<CmsSecretDialog Title="@L["ApiKeys.Secret.CreatedTitle"]" Label="@L["ApiKeys.Secret.Label"]" @bind-Secret="secret" @bind-Secret:after="OpenCreated">
+    <p>@L["ApiKeys.Secret.Text"]</p>
+</CmsSecretDialog>
+
+@code {
+    private const string Delivery = "delivery";
+    private const string Permission = "apikeys.manage";
+
+    private string? name;
+    private string keyClass = Delivery;
+    private Guid? roleId;
+    private bool everySite;
+    private readonly HashSet<Guid> sites = [];
+    private readonly HashSet<string> types = new(StringComparer.Ordinal);
+    private DateTimeOffset? expiresAt;
+    private decimal? rateLimit;
+    private string? addresses;
+    private string? nameError;
+    private string? roleError;
+    private string? sitesError;
+    private ApiProblem? problem;
+    private string? formError;
+    private bool busy;
+    private string? secret;
+    private Guid created;
+
+    // A key bound to no site reaches every one, which needs the permission for the instance.
+    private bool MayBindToNoSite => Context.Access.AllowsForInstance(Permission);
+
+    private IReadOnlyList<CmsOption> Classes =>
+        [.. new[] { Delivery, "preview", "management" }.Select(value => new CmsOption(value, L[$"ApiKeys.Class.{value}"]))];
+
+    protected override void OnInitialized()
+    {
+        if (Context.Site is { } current)
+        {
+            sites.Add(current.Id);
+        }
+    }
+
+    private string? Field(string path) => ApiKeyProblems.FieldError(problem, path, L);
+
+    private void Choose<T>(HashSet<T> chosen, T value, bool on)
+    {
+        if (on)
+        {
+            chosen.Add(value);
+        }
+        else
+        {
+            chosen.Remove(value);
+        }
+
+        sitesError = null;
+    }
+
+    private async Task CreateAsync()
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        (problem, formError) = (null, null);
+        nameError = string.IsNullOrWhiteSpace(name) ? L["ApiKeys.New.NameRequired"].Value : null;
+        roleError = roleId is null ? L["ApiKeys.New.RoleRequired"].Value : null;
+        sitesError = !everySite && sites.Count == 0 ? L["ApiKeys.Error.Sites"].Value : null;
+        if ((nameError ?? roleError ?? sitesError) is { } first)
+        {
+            Announcer.Announce(first, AnnouncementPoliteness.Assertive);
+            return;
+        }
+
+        var draft = new ApiKeyDraft(name!.Trim(), keyClass, roleId!.Value)
+        {
+            SiteIds = everySite ? null : [.. sites],
+            TypeNames = types.Count == 0 ? null : [.. types],
+            ExpiresAt = expiresAt,
+            RateLimit = rateLimit is { } limit ? (int)Math.Clamp(limit, 0, int.MaxValue) : null,
+            AllowedAddresses = ApiKeyAddresses.Parse(addresses),
+        };
+
+        busy = true;
+        try
+        {
+            var answer = await Api.CreateApiKeyAsync(draft, CancellationToken.None);
+            (created, secret) = (answer.Id, answer.Secret);
+            Announcer.Announce(L["ApiKeys.New.Created", draft.Name]);
+        }
+        catch (ApiProblemException failure) when (ApiKeyProblems.IsRefused(failure.Problem))
+        {
+            Refuse(L["ApiKeys.New.Refused"]);
+        }
+        catch (ApiProblemException failure) when (ApiKeyProblems.HasFieldErrors(failure.Problem, "name", "class", "roleId", "siteIds", "typeNames", "expiresAt", "rateLimit", "allowedAddresses"))
+        {
+            problem = failure.Problem;
+            Announcer.Announce(L["ApiKeys.New.Failed"], AnnouncementPoliteness.Assertive);
+        }
+        catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            Refuse(L["ApiKeys.New.Failed"]);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private void Refuse(string text)
+    {
+        formError = text;
+        Announcer.Announce(text, AnnouncementPoliteness.Assertive);
+    }
+
+    // The secret is gone with the dialog; the key's page shows the rest.
+    private void OpenCreated() => Navigation.NavigateTo(ApiKeyRoutes.Key(created));
+}
