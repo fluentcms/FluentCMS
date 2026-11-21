@@ -48,6 +48,7 @@ public sealed class DeadLetterPlanTests : IDisposable
 
         var plan = plans.Plans.ShouldHaveSingleItem();
         plan.ShouldContain("ix_cms_outbox_failed");
+        plan.ShouldNotContain("ix_cms_outbox_failed_");
         plan.ShouldNotContain("TEMP B-TREE");
     }
 
@@ -66,17 +67,61 @@ public sealed class DeadLetterPlanTests : IDisposable
         plan.ShouldNotContain("TEMP B-TREE");
     }
 
-    // The prune of failed rows walks the failed rows only, never the delivered or pending ones.
+    // The prune of failed rows seeks those that failed before its time, so a burst of recent failures within the retention is
+    // never read, and passes over the old rows it keeps by their attempts in the index. Planned over a large failed set, with
+    // the statistics of ANALYZE.
     [SqliteFact("SQLite's query plans")]
-    public void ThePruneOfFailedRowsWalksTheFailedIndex()
+    public void ThePruneOfFailedRowsSeeksThoseThatFailedBeforeItsTime()
     {
         using var scope = _fixture.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        var now = DateTimeOffset.UtcNow;
+        AddFailedRows(context, now);
 
-        var plan = QueryPlanTests.Plan(OutboxPruneJob.Batch(context, OutboxPruneJob.FailedBefore(DateTimeOffset.UtcNow, 8), 500));
+        var plan = QueryPlanTests.Plan(OutboxPruneJob.Batch(context, OutboxPruneJob.FailedBefore(now - TimeSpan.FromDays(30), 8), 500));
 
-        plan.ShouldContain("ix_cms_outbox_failed");
+        plan.ShouldContain("ix_cms_outbox_failed_available_at (available_at<?)");
         plan.ShouldNotContain("TEMP B-TREE");
+    }
+
+    // The purge of one handler's failed rows seeks that handler's, rather than read every failed row for them.
+    [SqliteFact("SQLite's query plans")]
+    public void ThePurgeOfAHandlersFailedRowsSeeksThatHandler()
+    {
+        using var scope = _fixture.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        AddFailedRows(context, DateTimeOffset.UtcNow);
+
+        var plan = QueryPlanTests.Plan(OutboxPruneJob.Batch(context, OutboxPruneJob.FailedOf("acme.old"), 500));
+
+        plan.ShouldContain("ix_cms_outbox_failed_handler (handler=?)");
+        plan.ShouldNotContain("TEMP B-TREE");
+    }
+
+    // A receiver down for days: thousands of recent failures of one handler, a few hundred that ran out of attempts long ago,
+    // and old rows owed to a plugin that is gone, which the prune keeps.
+    private static void AddFailedRows(SystemDbContext context, DateTimeOffset now)
+    {
+        OutboxMessage Failed(string handler, DateTimeOffset failedAt, int attempts, long sequence) => new()
+        {
+            EventId = Guid.CreateVersion7(),
+            EventType = "Acme.Thing",
+            Handler = handler,
+            Payload = "{}",
+            OccurredAt = failedAt,
+            Sequence = sequence,
+            Status = OutboxStatus.Failed,
+            Attempts = attempts,
+            AvailableAt = failedAt,
+            LastError = "Down.",
+        };
+
+        var sequence = 0L;
+        context.AddRange(Enumerable.Range(0, 3000).Select(index => Failed("webhooks.receiver", now - TimeSpan.FromMinutes(index), 8, ++sequence)));
+        context.AddRange(Enumerable.Range(0, 300).Select(index => Failed($"acme.handler{index % 5}", now - TimeSpan.FromDays(40 + (index % 20)), 8, ++sequence)));
+        context.AddRange(Enumerable.Range(0, 200).Select(index => Failed("acme.old", now - TimeSpan.FromDays(60), 0, ++sequence)));
+        context.SaveChanges();
+        context.Database.ExecuteSqlRaw("ANALYZE");
     }
 
     // Asks SQLite how it runs each list query, with the parameters the list gave it.
