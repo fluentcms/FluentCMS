@@ -1,0 +1,134 @@
+@* The sessions of a user (spec 4.15): a row is a sign-in through a client, and ending it stops that sign-in at its next
+   request. Ending one needs every grant of the user's roles (FCMS3103). *@
+@implements IDisposable
+@inject IManagementApi Api
+@inject FormatService Formats
+@inject IStringLocalizer<UsersResources> L
+
+<CmsCard Title="@L["Users.Sessions.Heading"]">
+    @if (state == UserSectionState.Loading)
+    {
+        <p role="status">@L["Users.Sessions.Loading"]</p>
+    }
+    else if (state == UserSectionState.Failed)
+    {
+        <p role="alert">@L["Users.Sessions.Failed"] <CmsButton OnClick="ReadAsync">@L["Users.Sessions.TryAgain"]</CmsButton></p>
+    }
+    else if (sessions.Count == 0)
+    {
+        <p>@L["Users.Sessions.None"]</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var session in sessions)
+            {
+                <li @key="session.Id">
+                    @(session.CreatedAt is { } created ? L["Users.Sessions.Started", Name(session), Formats.DateTime(created)] : Name(session))
+                    <CmsButton Disabled="@busy" OnClick="@(() => EndAsync(session))">
+                        @L["Users.Sessions.End"]<span class="cms-visually-hidden">@Which(session)</span>
+                    </CmsButton>
+                </li>
+            }
+        </ul>
+    }
+    <p class="users-message" tabindex="-1" @ref="messageElement">@message</p>
+</CmsCard>
+
+@code {
+    private IReadOnlyList<UserSessionRecord> sessions = [];
+    private UserSectionState state = UserSectionState.Loading;
+    private string? message;
+    private bool busy;
+    private bool focusMessage;
+    private ElementReference messageElement;
+    private readonly CancellationTokenSource closing = new();
+
+    // A call made once the component is gone, as the read after a change, is cancelled before it starts.
+    private CancellationToken Closing => closing.IsCancellationRequested ? new CancellationToken(canceled: true) : closing.Token;
+
+    [Parameter, EditorRequired]
+    public Guid UserId { get; set; }
+
+    protected override Task OnInitializedAsync() => ReadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusMessage)
+        {
+            focusMessage = false;
+            await messageElement.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        closing.Cancel();
+        closing.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        state = UserSectionState.Loading;
+        try
+        {
+            sessions = await Api.GetSessionsAsync(UserId, Closing);
+            state = UserSectionState.Ready;
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (UserProblems.IsFailure(exception))
+        {
+            state = UserSectionState.Failed;
+        }
+    }
+
+    private async Task EndAsync(UserSessionRecord session)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            await Api.RevokeSessionAsync(UserId, session.Id, Closing);
+            message = L["Users.Sessions.Ended", Name(session)];
+            await ReadAsync();
+        }
+        catch (Exception exception) when (UserProblems.Has(exception, UserProblems.SessionNotFound))
+        {
+            message = L["Users.Sessions.AlreadyEnded"];
+            await ReadAsync();
+        }
+        catch (Exception exception) when (UserProblems.IsAboveReach(exception))
+        {
+            message = L["Users.Detail.AboveReach"];
+        }
+        catch (OperationCanceledException) when (closing.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception) when (UserProblems.IsFailure(exception))
+        {
+            message = L["Users.Sessions.EndFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        // The row ended is gone, and its button with it, so focus goes to the result.
+        focusMessage = true;
+    }
+
+    private string Name(UserSessionRecord session) => session.ClientName ?? session.ClientId ?? L["Users.Sessions.UnknownApp"];
+
+    // Two sign-ins of one app are told apart by their time.
+    private string Which(UserSessionRecord session) => session.CreatedAt is { } created
+        ? L["Users.Sessions.EndWhichStarted", Name(session), Formats.DateTime(created)]
+        : L["Users.Sessions.EndWhich", Name(session)];
+}

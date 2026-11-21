@@ -47,6 +47,7 @@ public sealed class EndToEndHost : IAsyncLifetime
     private readonly DirectoryInfo _root = Directory.CreateTempSubdirectory(RootPrefix);
     private readonly Dictionary<string, string?> _environment = [];
     private readonly ConcurrentDictionary<Type, Lazy<Task<Editor>>> _classEditors = new();
+    private readonly SmtpSink _smtp = new();
     private ChildProcess? _host;
     private TestCertificates? _certificates;
     private IPlaywright? _playwright;
@@ -122,6 +123,7 @@ public sealed class EndToEndHost : IAsyncLifetime
         {
             _playwright?.Dispose();
             _host?.Dispose();
+            _smtp.Dispose();
             _certificates?.Server.Dispose();
             TryDelete(_root);
         }
@@ -273,12 +275,13 @@ public sealed class EndToEndHost : IAsyncLifetime
         await File.WriteAllTextAsync(mark, Repository.Configuration, Token);
     }
 
-    // The settings of a production deployment, as few as the image needs, with five that only a test host has: its address
+    // The settings of a production deployment, as few as the image needs, with six that only a test host has: its address
     // is a port of the loopback address; its certificates are the run's own; every browser of the tests calls from that one
     // address, one case after another for minutes, so the request limits per address and per user are raised to what such a
     // suite cannot reach (no case is about the limiter, whose tests are the host's own); and an access token lasts five
     // seconds, so that the admin refreshes it on demand, two and a half seconds after it was issued, at the next call of a
-    // test's action; and the preview origin of PreviewTests, which no server holds.
+    // test's action; the preview origin of PreviewTests, which no server holds; and a mail server of the run's own
+    // (SmtpSink), which takes the invitations the users page sends and keeps none.
     private void Configure()
     {
         var certificates = _certificates!;
@@ -308,6 +311,10 @@ public sealed class EndToEndHost : IAsyncLifetime
             ["FluentCms__RateLimits__Delivery__MaxKeyLimit"] = TestLimit,
             ["FluentCms__RateLimits__PreAuth__PermitLimit"] = TestLimit,
             ["FluentCms__Clients__AccessTokenLifetime"] = AccessTokenLifetime,
+            ["FluentCms__Email__Smtp__Host"] = IPAddress.Loopback.ToString(),
+            ["FluentCms__Email__Smtp__Port"] = _smtp.Port.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["FluentCms__Email__Smtp__Security"] = "None",
+            ["FluentCms__Email__Smtp__From"] = "cms@example.com",
             ["Kestrel__Endpoints__Https__Url"] = origin,
             ["Kestrel__Endpoints__Https__Certificate__Path"] = certificates.ServerPath,
             ["Kestrel__Endpoints__Https__Certificate__Password"] = certificates.Password,

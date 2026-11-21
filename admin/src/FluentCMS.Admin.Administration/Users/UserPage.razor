@@ -1,0 +1,348 @@
+@* A user of the instance (spec 4.15): its state, deactivate and reactivate, the forced password change, the two-factor reset,
+   its roles, its sessions and its external logins. A change of the user needs every grant of its roles, and giving or taking
+   a role every grant of that role (FCMS3103); the last active Super Admin keeps its state and its role (FCMS3052). The page
+   offers what the server may refuse and names the refusal: the caller's reach over the user's roles is the server's to
+   decide. The caller's own user is offered neither deactivate nor the two-factor reset, which the server refuses it. *@
+@page "/users/{Id:guid}"
+@implements IDisposable
+@using FluentCMS.Admin.Authentication
+@inject IManagementApi Api
+@inject AdminContext Context
+@inject IAdminSession Session
+@inject FormatService Formats
+@inject TimeProvider Time
+@inject IStringLocalizer<UsersResources> L
+@inject IStringLocalizer<CommonResources> Common
+
+@if (user is null)
+{
+    <h1 tabindex="-1">@(state == State.NotFound ? L["Users.Detail.NotFound"] : L["Users.Detail.Heading"])</h1>
+    @if (state == State.Loading)
+    {
+        <p role="status">@L["Users.Detail.Loading"]</p>
+    }
+    else if (state == State.NotFound)
+    {
+        <p><a href="users">@L["Users.Detail.BackToList"]</a></p>
+    }
+    else
+    {
+        <p role="alert">@L["Users.Detail.Failed"] <CmsButton OnClick="ReadAsync">@L["Users.Detail.TryAgain"]</CmsButton></p>
+    }
+}
+else
+{
+    <PageCrumb Text="@user.UserName" />
+    <h1 tabindex="-1">@user.UserName</h1>
+
+    <CmsCard Title="@L["Users.Detail.Account"]">
+        <dl>
+            <dt>@L["Users.Detail.Email"]</dt>
+            <dd>@(user.Email ?? L["Users.Detail.NoEmail"])</dd>
+            <dt>@L["Users.Detail.Created"]</dt>
+            <dd>@Formats.DateTime(user.CreatedAt)</dd>
+            <dt>@L["Users.Detail.State"]</dt>
+            <dd>@(user.DeactivatedAt is { } deactivated ? L["Users.Detail.DeactivatedOn", Formats.DateTime(deactivated)] : L["Users.State.Active"])</dd>
+            @if (UserTexts.LockedOut(user, Time.GetUtcNow()) is { } lockout)
+            {
+                <dt>@L["Users.Detail.Lockout"]</dt>
+                <dd>@L["Users.Detail.LockedOutUntil", Formats.DateTime(lockout)]</dd>
+            }
+            <dt>@L["Users.Detail.TwoFactor"]</dt>
+            <dd>@(user.TwoFactorEnabled ? L["Users.Detail.TwoFactorOn"] : L["Users.Detail.TwoFactorOff"])</dd>
+            <dt>@L["Users.Detail.Password"]</dt>
+            <dd>@(user.MustChangePassword ? L["Users.Detail.MustChange"] : L["Users.Detail.NoChangeAsked"])</dd>
+        </dl>
+
+        @if (asking is { } question)
+        {
+            <div role="group" aria-labelledby="@QuestionId">
+                <p id="@QuestionId" tabindex="-1" @ref="questionElement">@(question == Question.Deactivate ? L["Users.Detail.DeactivateQuestion", user.UserName] : L["Users.Detail.ResetQuestion", user.UserName])</p>
+                <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                    <CmsButton Appearance="CmsButtonAppearance.Primary" Disabled="@busy" OnClick="@(() => ConfirmAsync(question))">
+                        @(question == Question.Deactivate ? L["Users.Detail.DeactivateConfirm"] : L["Users.Detail.ResetConfirm"])
+                    </CmsButton>
+                    <CmsButton Disabled="@busy" OnClick="Cancel">@L["Users.Detail.Cancel"]</CmsButton>
+                </CmsStack>
+            </div>
+        }
+        else
+        {
+            <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+                @if (user.DeactivatedAt is not null)
+                {
+                    <CmsButton Disabled="@busy" OnClick="ReactivateAsync">@L["Users.Detail.Reactivate"]</CmsButton>
+                }
+                else if (!Self)
+                {
+                    <CmsButton Disabled="@busy" OnClick="@(() => Ask(Question.Deactivate))">@L["Users.Detail.Deactivate"]</CmsButton>
+                }
+                @if (user.TwoFactorEnabled && !Self)
+                {
+                    <CmsButton Disabled="@busy" OnClick="@(() => Ask(Question.ResetTwoFactor))">@L["Users.Detail.ResetTwoFactor"]</CmsButton>
+                }
+                <CmsButton Disabled="@busy" OnClick="ToggleMustChangeAsync">
+                    @(user.MustChangePassword ? L["Users.Detail.WithdrawChange"] : L["Users.Detail.RequireChange"])
+                </CmsButton>
+            </CmsStack>
+            @if (!user.MustChangePassword)
+            {
+                <p>@L["Users.Detail.RequireChangeNote"]</p>
+            }
+        }
+
+        <p class="users-message" tabindex="-1" @ref="accountElement">@accountMessage</p>
+        @if (signInWithSecondFactor)
+        {
+            <p>
+                <a href="account">@L["Users.Detail.YourAccount"]</a>
+                <CmsButton OnClick="SignOutAsync">@L["Users.Detail.SignOut"]</CmsButton>
+            </p>
+        }
+    </CmsCard>
+
+    <CmsCard Title="@L["Users.Roles.Heading"]">
+        @if (user.Roles.Count == 0)
+        {
+            <p>@L["Users.Roles.None"]</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var role in user.Roles)
+                {
+                    <li @key="role.Id">
+                        @RoleName(role)
+                        <CmsButton Disabled="@busy" OnClick="@(() => RemoveRoleAsync(role))">
+                            @L["Users.Roles.Remove"]<span class="cms-visually-hidden">@L["Users.Roles.RemoveWhich", RoleName(role)]</span>
+                        </CmsButton>
+                    </li>
+                }
+            </ul>
+        }
+        <CmsStack Orientation="CmsStackOrientation.Horizontal" Wrap="true">
+            <RoleSelect Label="@L["Users.Roles.Add"]"
+                        Value="@roleToAdd"
+                        ValueChanged="@(id => roleToAdd = id)"
+                        Offers="@(role => user.Roles.All(held => held.Id != role.Id))"
+                        Disabled="@busy" />
+            <CmsButton Disabled="@(busy || roleToAdd is null)" OnClick="AddRoleAsync">@L["Users.Roles.AddButton"]</CmsButton>
+        </CmsStack>
+        <p class="users-message" tabindex="-1" @ref="rolesElement">@rolesMessage</p>
+    </CmsCard>
+
+    <UserSessions UserId="@Id" />
+    <UserLogins UserId="@Id" />
+}
+
+@code {
+    private const string QuestionId = "users-detail-question";
+
+    private UserRecord? user;
+    private Guid? shownId;
+    private State state = State.Loading;
+    private Question? asking;
+    private Guid? roleToAdd;
+    private bool busy;
+    private bool signInWithSecondFactor;
+    private string? accountMessage;
+    private string? rolesMessage;
+    private ElementReference accountElement;
+    private ElementReference rolesElement;
+    private ElementReference questionElement;
+    private Func<ElementReference>? focusAfterRender;
+    private CancellationTokenSource? reading;
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private enum State
+    {
+        Loading,
+        Ready,
+        NotFound,
+        Failed,
+    }
+
+    private enum Question
+    {
+        Deactivate,
+        ResetTwoFactor,
+    }
+
+    private bool Self => Context.User?.Id == Id;
+
+    // The page is one instance for every id, so another id reads its user afresh.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (shownId != Id)
+        {
+            shownId = Id;
+            (user, asking, roleToAdd, accountMessage, rolesMessage, signInWithSecondFactor) = (null, null, null, null, null, false);
+            await ReadAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (focusAfterRender?.Invoke() is { Id: not null } element)
+        {
+            focusAfterRender = null;
+            await element.FocusAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+    }
+
+    private async Task ReadAsync()
+    {
+        reading?.Cancel();
+        reading?.Dispose();
+        var current = reading = new CancellationTokenSource();
+        state = State.Loading;
+        try
+        {
+            user = await Api.GetUserAsync(Id, current.Token);
+            state = State.Ready;
+        }
+        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (UserProblems.Has(exception, UserProblems.UserNotFound))
+        {
+            state = State.NotFound;
+        }
+        catch (Exception exception) when (UserProblems.IsFailure(exception))
+        {
+            state = State.Failed;
+        }
+    }
+
+    private void Ask(Question question)
+    {
+        (asking, accountMessage, signInWithSecondFactor) = (question, null, false);
+        focusAfterRender = () => questionElement;
+    }
+
+    private void Cancel()
+    {
+        asking = null;
+        accountMessage = L["Users.Detail.NothingChanged"];
+        focusAfterRender = () => accountElement;
+    }
+
+    private Task ConfirmAsync(Question question) => question == Question.Deactivate
+        ? ChangeAsync(Api.DeactivateAsync, L["Users.Detail.Deactivated"])
+        : ChangeAsync(Api.ResetTwoFactorAsync, L["Users.Detail.TwoFactorReset"]);
+
+    private Task ReactivateAsync() => ChangeAsync(Api.ReactivateAsync, L["Users.Detail.Reactivated"]);
+
+    private Task ToggleMustChangeAsync()
+    {
+        var mustChange = !user!.MustChangePassword;
+        return ChangeAsync(
+            (id, token) => Api.SetMustChangePasswordAsync(id, mustChange, token),
+            mustChange ? L["Users.Detail.ChangeRequired"] : L["Users.Detail.ChangeWithdrawn"]);
+    }
+
+    // A change of the account card, whose answer is the user as it now stands.
+    private async Task ChangeAsync(Func<Guid, CancellationToken, Task<UserRecord>> change, string done)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        (busy, asking, signInWithSecondFactor) = (true, null, false);
+        try
+        {
+            user = await change(Id, CancellationToken.None);
+            accountMessage = done;
+        }
+        catch (Exception exception) when (UserProblems.Has(exception, UserProblems.LastSuperAdmin))
+        {
+            accountMessage = L["Users.Detail.LastSuperAdmin"];
+        }
+        catch (Exception exception) when (UserProblems.Has(exception, UserProblems.SecondFactorRequired))
+        {
+            (accountMessage, signInWithSecondFactor) = (L["Users.Detail.SecondFactorRequired"], true);
+        }
+        catch (Exception exception) when (UserProblems.Has(exception, UserProblems.InvalidUser, "mustChangePassword"))
+        {
+            accountMessage = L["Users.Detail.NoPassword"];
+        }
+        catch (Exception exception) when (UserProblems.Has(exception, UserProblems.TwoFactorNotEnabled))
+        {
+            accountMessage = L["Users.Detail.NoTwoFactor"];
+            await ReadAsync();
+        }
+        catch (Exception exception) when (UserProblems.IsAboveReach(exception))
+        {
+            accountMessage = L["Users.Detail.AboveReach"];
+        }
+        catch (Exception exception) when (UserProblems.IsFailure(exception))
+        {
+            accountMessage = L["Users.Detail.ChangeFailed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        focusAfterRender = () => accountElement;
+    }
+
+    private Task AddRoleAsync() =>
+        roleToAdd is { } role ? RoleChangeAsync((id, token) => Api.AddRoleAsync(id, role, token), L["Users.Roles.Added"]) : Task.CompletedTask;
+
+    private Task RemoveRoleAsync(UserRoleRecord role) =>
+        RoleChangeAsync((id, token) => Api.RemoveRoleAsync(id, role.Id, token), L["Users.Roles.Removed", RoleName(role)]);
+
+    private async Task RoleChangeAsync(Func<Guid, CancellationToken, Task<UserRecord>> change, string done)
+    {
+        if (busy)
+        {
+            return;
+        }
+
+        busy = true;
+        try
+        {
+            user = await change(Id, CancellationToken.None);
+            (rolesMessage, roleToAdd) = (done, null);
+        }
+        catch (Exception exception) when (UserProblems.Has(exception, UserProblems.LastSuperAdmin))
+        {
+            rolesMessage = L["Users.Roles.LastSuperAdmin"];
+        }
+        catch (Exception exception) when (UserProblems.Has(exception, UserProblems.RoleAlreadyHeld) || UserProblems.Has(exception, UserProblems.RoleNotHeld))
+        {
+            (rolesMessage, roleToAdd) = (L["Users.Roles.Changed"], null);
+            await ReadAsync();
+        }
+        catch (Exception exception) when (UserProblems.IsAboveReach(exception))
+        {
+            rolesMessage = L["Users.Roles.AboveReach"];
+        }
+        catch (Exception exception) when (UserProblems.IsFailure(exception))
+        {
+            rolesMessage = L["Users.Roles.Failed"];
+        }
+        finally
+        {
+            busy = false;
+        }
+
+        // A role removed takes its button with it, so focus goes to the result.
+        focusAfterRender = () => rolesElement;
+    }
+
+    // The tab signs in again with its second factor after the sign-out; the account page turns two-factor sign-in on.
+    private Task SignOutAsync() => Session.SignOutAsync(CancellationToken.None);
+
+    private string RoleName(UserRoleRecord role) => UserTexts.Role(role.Name, role.SiteId, Common, Context);
+}
