@@ -20,7 +20,8 @@ public static class AdminHostingExtensions
 
     // The admin of admin spec 6.1, with FluentCms:Admin from configuration winning over what configure sets. While
     // FluentCms:Admin:Enabled is true it registers the admin's client under cms.Clients.AdminClientId, unless the host or
-    // FluentCms:Clients lists one there, which then wins whole; while it is false it deletes the client it registered before.
+    // FluentCms:Clients lists one there, which then wins whole. While it is false and the options list no client, it deletes
+    // the client it registered before; while they list any, the host deletes it, as any client they no longer list.
     public static FluentCmsBuilder AddAdmin(this FluentCmsBuilder cms, Action<AdminOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(cms);

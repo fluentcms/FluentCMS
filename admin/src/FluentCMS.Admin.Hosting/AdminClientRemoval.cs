@@ -50,8 +50,9 @@ internal sealed partial class AdminClientRemoval(
         }
         catch (DbUpdateException exception)
         {
-            // A consent or a token arrived during the delete, as from an instance with the admin still on in a rolling
-            // deploy, which its foreign key refuses.
+            // Any failure of the save, as Core's removal of MCP clients takes it: a consent or a token that arrived during the
+            // delete, as from an instance with the admin still on in a rolling deploy, which its foreign key refuses, or a
+            // database that cannot be written. The row and its tokens stay until a start whose delete succeeds.
             DeleteRefused(logger, exception, clients.AdminClientId);
             return;
         }

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using FluentCMS.Admin.Hosting;
 using FluentCMS.Core.DependencyInjection;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using Shouldly;
 using Xunit;
@@ -102,6 +104,28 @@ public sealed class HostingStartTests : IAsyncDisposable
         await StartAsync(Settings(enabled: false));
 
         (await AdminClientAsync()).ShouldBe(client);
+    }
+
+    // A delete the database refuses, as a token arriving meanwhile makes it, leaves the row and lets the host start.
+    [Fact]
+    public async Task ADeleteTheDatabaseRefusesLeavesTheClientAndTheHostStarts()
+    {
+        await StartAsync(Settings(enabled: true));
+        var client = (await AdminClientAsync()).ShouldNotBeNull();
+        await StopAsync();
+        await using (var connection = new SqliteConnection(ConnectionString))
+        {
+            await connection.OpenAsync(AdminHost.Token);
+            await using var command = connection.CreateCommand();
+            command.CommandText = "CREATE TRIGGER refuse BEFORE DELETE ON cms_oidc_application BEGIN SELECT RAISE(ABORT, 'refused'); END;";
+            await command.ExecuteNonQueryAsync(AdminHost.Token);
+        }
+
+        var logs = new LogCapture();
+        await StartAsync(Settings(enabled: false), logs);
+
+        (await AdminClientAsync()).ShouldBe(client);
+        logs.Entries.ShouldContain(entry => entry.Id == 40 && entry.Level == LogLevel.Warning);
     }
 
     // With another client listed the host deletes the admin's itself, and keeps the one listed.
@@ -230,8 +254,10 @@ public sealed class HostingStartTests : IAsyncDisposable
         _app = null;
     }
 
+    private string ConnectionString => $"Data Source={Path.Combine(_directory.FullName, "cms.db")}";
+
     // Stops the host a test started before, if any, and starts it again on the same database.
-    private async Task<HttpClient> StartAsync(Dictionary<string, string?> settings)
+    private async Task<HttpClient> StartAsync(Dictionary<string, string?> settings, LogCapture? logs = null)
     {
         await StopAsync();
 
@@ -244,7 +270,12 @@ public sealed class HostingStartTests : IAsyncDisposable
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Production", ContentRootPath = _directory.FullName });
         builder.WebHost.UseTestServer();
         builder.Configuration.AddInMemoryCollection(settings);
-        builder.Services.AddFluentCms(cms => cms.UseSqlite($"Data Source={Path.Combine(_directory.FullName, "cms.db")}").AddAdmin());
+        if (logs is not null)
+        {
+            builder.Logging.AddProvider(logs);
+        }
+
+        builder.Services.AddFluentCms(cms => cms.UseSqlite(ConnectionString).AddAdmin());
 
         _app = builder.Build();
         _app.UseFluentCms();
@@ -255,5 +286,27 @@ public sealed class HostingStartTests : IAsyncDisposable
         var client = _app.GetTestClient();
         client.BaseAddress = new Uri("https://localhost/");
         return client;
+    }
+
+    private sealed class LogCapture : ILoggerProvider
+    {
+        public ConcurrentQueue<(int Id, LogLevel Level)> Entries { get; } = new();
+
+        public ILogger CreateLogger(string categoryName) => new Logger(this);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class Logger(LogCapture capture) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state)
+                where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+                capture.Entries.Enqueue((eventId.Id, logLevel));
+        }
     }
 }
