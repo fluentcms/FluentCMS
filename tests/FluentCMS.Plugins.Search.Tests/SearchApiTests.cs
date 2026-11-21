@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Sites;
 using FluentCMS.Sites;
 using FluentCMS.Testing;
@@ -36,6 +37,30 @@ public sealed class SearchApiTests
         (await IdsAsync(management, $"{Management}?q=beta&status=draft")).ShouldBe([article.Id]);
         (await IdsAsync(management, $"{Management}?q=alpha&status=draft")).ShouldBeEmpty();
         (await IdsAsync(management, $"{Management}?q=alpha&status=published")).ShouldBe([article.Id]);
+    }
+
+    // A key whose role is limited to the title matches on no other field, a word of a hidden field that a stale row still
+    // holds included, and a key that may read every field finds the words of the readable ones only.
+    [Fact]
+    public async Task AKeyWithAFieldLimitedRoleCannotMatchOnAHiddenOrUnreadableFieldOverHttp()
+    {
+        await using var search = new SearchHost();
+        var articles = (await search.EditorAsync()).Content<Article>();
+        var article = await articles.CreateAsync(new Article { Title = "Quarterly report", Body = Paragraphs("merger talks"), Tagline = "confidential" }, Token);
+        await articles.PublishAsync(article.Id, cancellationToken: Token);
+        await search.PumpAsync();
+        await search.AddRowAsync(new SearchEntry { DocumentId = article.Id, Locale = "en", State = SearchStates.Published, Type = "article", SiteId = DefaultSite.Id, Field = "secret", Text = "classified", UpdatedAt = DateTimeOffset.UnixEpoch });
+        using var limited = await search.ReaderClientAsync(new PermissionConstraints { Fields = ["title"] });
+        using var unlimited = await search.ClientAsync(ApiKeyClass.Delivery);
+
+        (await IdsAsync(limited, $"{Delivery}?q=quarterly")).ShouldBe([article.Id]);
+        (await IdsAsync(limited, $"{Delivery}?q=merger")).ShouldBeEmpty();
+        (await IdsAsync(limited, $"{Delivery}?q=confidential")).ShouldBeEmpty();
+        (await IdsAsync(limited, $"{Delivery}?q=quarterly%20merger")).ShouldBeEmpty();
+        (await IdsAsync(limited, $"{Delivery}?q=classified")).ShouldBeEmpty();
+
+        (await IdsAsync(unlimited, $"{Delivery}?q=quarterly%20merger")).ShouldBe([article.Id]);
+        (await IdsAsync(unlimited, $"{Delivery}?q=classified")).ShouldBeEmpty();
     }
 
     [Fact]

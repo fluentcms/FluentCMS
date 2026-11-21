@@ -23,7 +23,10 @@ public sealed record SearchRequest(string Type, string Text, int Limit)
 
     /// <summary>
     /// The searchable fields the caller may read, which alone may match, or <see langword="null"/> when the caller may
-    /// read every one of them. Only an index whose <see cref="ISearchIndex.MatchesByField"/> is true is given a list.
+    /// read every one of them. A null list means the searchable fields that are not hidden, not every row of the index: an
+    /// index that holds rows of a field that is hidden, no longer searchable or gone from the type, which it may until the
+    /// entry is written again, must not match them, whatever the list. Only an index whose
+    /// <see cref="ISearchIndex.MatchesByField"/> is true is given a list.
     /// </summary>
     public IReadOnlyList<string>? Fields { get; init; }
 }

@@ -22,7 +22,9 @@ public interface ISearchIndex
 
     /// <summary>
     /// Whether the index matches only the fields of <see cref="SearchRequest.Fields"/> when a request names them. The engine
-    /// refuses a search to a caller who may not read every searchable field unless the index says it does.
+    /// refuses a search to a caller who may not read every searchable field unless the index says it does. A request whose
+    /// list is null does not ask for every row of the index but for the searchable fields that are not hidden, so an index
+    /// that holds rows of another field, such as a hidden one, never matches them for any caller.
     /// </summary>
     bool MatchesByField => false;
 }
