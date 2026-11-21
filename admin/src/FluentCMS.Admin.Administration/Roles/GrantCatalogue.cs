@@ -79,10 +79,10 @@ public sealed class GrantCatalogue
     public IReadOnlyList<PermissionRecord> Matches(string grant) =>
         grant == Everything ? Entries : [.. Entries.Where(entry => Matches(grant, entry.Name))];
 
-    // Whether the caller's access shows that it holds what the grant names, with no limit, in the role's site, or for the
-    // instance for a role of every site. A Super Admin holds every permission. Of the content permissions, the access shows
-    // those of the role's site when it is the shell's, and not restore and purge; for the rest the editor cannot tell, and
-    // marks the grant.
+    // Whether the caller's access shows that it holds what the grant names, with no limit it shows, in the role's site, or
+    // for the instance for a role of every site. A Super Admin holds every permission. Of the content permissions, the
+    // access shows those of the role's site when it is the shell's, and not restore and purge; for the rest the editor
+    // cannot tell, and marks the grant. A mark never stops a save.
     public bool Holds(string grant, Guid? roleSite)
     {
         if (_context.User?.Roles.Any(role => role.Id == RoleScope.SuperAdmin && role.SiteId is null) == true)
@@ -116,12 +116,11 @@ public sealed class GrantCatalogue
             return inShellSite && ContentParts(entry.Name) is var (type, operation)
                 && access.Types.TryGetValue(type, out var may)
                 && !may.Conditional.Contains(operation, StringComparer.Ordinal)
-                && !LimitedToFields(type, may)
                 && operation switch
                 {
                     "read" => true,
-                    "create" => may.Create,
-                    "update" => may.Update,
+                    "create" => may.Create && !LimitedToFields(type, may.CreatableFields),
+                    "update" => may.Update && !LimitedToFields(type, may.UpdatableFields),
                     "delete" => may.Delete,
                     "publish" => may.Publish,
                     "unpublish" => may.Unpublish,
@@ -133,19 +132,23 @@ public sealed class GrantCatalogue
             || (inShellSite && access.Permissions.Contains(entry.Name, StringComparer.Ordinal));
     }
 
-    // Whether the caller's grants of the type are limited to some of its fields: it creates or changes some of the fields of
-    // the schema only. Conditional names row rules and locales only, so this is read from the fields the access lists. Any
-    // grant of such a type goes beyond what the caller holds when it is not limited as narrowly, and a type the schema does
-    // not show counts as limited.
-    private bool LimitedToFields(string type, TypeAccessInfo may)
+    // Whether the caller creates or changes only some of the fields the schema shows of the type, as the access lists them
+    // (Conditional names row rules and locales only). The server checks each grant on its own, so a limit of create or
+    // update says nothing of the other operations, and only a grant of create or update is marked for it. A type the schema
+    // does not show counts as limited, which happens without the schema only (no schema.read in the site, or /schema
+    // answered 403), since a type the caller may not read is missing from the access too and is marked already; then every
+    // grant of create or update is marked. The client cannot see a field limit on read, delete, publish or unpublish, nor a
+    // limit of create or update to the very fields the caller reads, since /schema and /me/access both show the readable
+    // fields only: content.article.*{fields:[title]} shows article as {title} with nothing limited. Such a grant is not
+    // marked, and the server refuses it with FCMS3103.
+    private bool LimitedToFields(string type, IReadOnlyList<string> writable)
     {
         if (_context.Schema?.Types.FirstOrDefault(item => item.Name == type) is not { } described)
         {
             return true;
         }
 
-        var fields = described.Fields.Select(field => field.Name).ToHashSet(StringComparer.Ordinal);
-        return (may.Create && !fields.IsSubsetOf(may.CreatableFields)) || (may.Update && !fields.IsSubsetOf(may.UpdatableFields));
+        return !described.Fields.Select(field => field.Name).ToHashSet(StringComparer.Ordinal).IsSubsetOf(writable);
     }
 
     // content.{type}.{operation}, or null for any other name.

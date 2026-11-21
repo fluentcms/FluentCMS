@@ -1,7 +1,11 @@
+using System.Reflection;
 using Bunit;
+using FluentCMS.Admin.Administration.Roles;
+using FluentCMS.Admin.Shell;
 using Microsoft.AspNetCore.Components.Web;
 using Shouldly;
 using Xunit;
+using static FluentCMS.Admin.Tests.Shell.FakeManagementServer;
 
 namespace FluentCMS.Admin.Tests.Administration.Roles;
 
@@ -48,7 +52,7 @@ public sealed class RolesPageTests : RolesTestContext
         Writes.ShouldBeEmpty();
     }
 
-    // A site switch on the route keeps the page, which narrows the roles again with the grants of the new site.
+    // The roles of the new site, narrowed with its grants.
     [Fact]
     public void ASiteSwitchShowsTheRolesOfTheNewSite()
     {
@@ -59,6 +63,29 @@ public sealed class RolesPageTests : RolesTestContext
         app.Find(".site-switcher select").Change(Shop.ToString("D"));
 
         app.WaitForAssertion(() => Rows(app).ShouldBe(["Shop editors|Shop|Made by an administrator"]));
+    }
+
+    // The list reads again on a change of the access only while it is shown: one left for another page reads nothing on a
+    // later change, as of the content locale, and no longer listens to the shell. A disposed list could not read anyway,
+    // its cancellation being disposed, so what listens is checked too.
+    [Fact]
+    public async Task AListLeftForAnotherPageDoesNotReadOnALaterChangeOfTheAccess()
+    {
+        Management.AddLocale(MainSite, "fr", 1);
+        var app = Open("roles");
+        Management.LocaleAccess[(MainSite, "fr")] = Management.Access[MainSite].DeepClone().AsObject();
+        app.WaitForAssertion(() => Rows(app).Length.ShouldBe(6));
+        Listeners().Count(target => target is RolesPage).ShouldBe(1);
+        Navigation.NavigateTo($"roles/{Reviewers:D}");
+        app.WaitForAssertion(() => Heading(app).ShouldBe("Reviewers"));
+        var reads = Management.Count("roles");
+
+        await app.InvokeAsync(() => Context.UseLocaleAsync("fr"));
+
+        Listeners().ShouldNotContain(target => target is RolesPage);
+        Navigation.NavigateTo("roles");
+        app.WaitForAssertion(() => Rows(app).Length.ShouldBe(6));
+        Management.Count("roles").ShouldBe(reads + 1);
     }
 
     [Fact]
@@ -81,6 +108,10 @@ public sealed class RolesPageTests : RolesTestContext
 
         app.WaitForAssertion(() => Heading(app).ShouldBe("Reviewers"));
     }
+
+    // The target of each handler of the shell's Changed.
+    private object?[] Listeners() =>
+        [.. ((Delegate?)typeof(AdminContext).GetField(nameof(AdminContext.Changed), BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(Context))?.GetInvocationList().Select(handler => handler.Target) ?? []];
 
     // Name, site and kind of each row.
     private static string[] Rows(IRenderedComponent<AdminApp> app) =>

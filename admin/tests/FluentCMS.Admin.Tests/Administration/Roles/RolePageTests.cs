@@ -49,9 +49,10 @@ public sealed class RolePageTests : RolesTestContext
     }
 
     // EffectiveAccess's conditional operations are those of row rules and locales; a grant limited to fields shows as the
-    // fields the access lists.
+    // fields the access lists. The server checks each grant on its own, so a limit of update marks the grants of update
+    // only, and read and create, which the caller holds with no limit, are not marked.
     [Fact]
-    public void TheGrantsOfATypeTheCallerHoldsForSomeFieldsOnlyAreMarked()
+    public void TheGrantsOfAnOperationTheCallerHoldsForSomeFieldsOnlyAreMarked()
     {
         Permissions.Add(Permission("content.article.update", "Edit article entries.", "content"));
         Management.SetTypes(MainSite, Type("article", fields: [Shell.FakeManagementServer.Field("title"), Shell.FakeManagementServer.Field("body")]));
@@ -63,7 +64,27 @@ public sealed class RolePageTests : RolesTestContext
 
         app.WaitForAssertion(() => Options(Field(app, "Permission or pattern")).ShouldContain("content.article.update: Edit article entries. (not among your permissions)"));
         Options(Field(app, "Permission or pattern")).ShouldContain("content.*.update: Matches 1 permission of the catalogue. (not among your permissions)");
-        Options(Field(app, "Permission or pattern")).ShouldContain("content.article.read: Read article entries. (not among your permissions)");
+        Options(Field(app, "Permission or pattern")).ShouldContain("content.article.read: Read article entries.");
+        Options(Field(app, "Permission or pattern")).ShouldContain("content.*.read: Matches 1 permission of the catalogue.");
+        Options(Field(app, "Permission or pattern")).ShouldContain("content.article.create: Create article entries.");
+    }
+
+    // Without the schema, as when /schema answers 403, the fields of a type are not known, so every grant of create or update
+    // is marked; read is not. A type the caller may not read is missing from the access too, and is marked with or without.
+    [Fact]
+    public void WithoutTheSchemaTheGrantsOfCreateAndUpdateAreMarked()
+    {
+        Permissions.Add(Permission("content.article.update", "Edit article entries.", "content"));
+        Management.RefusesSchema = true;
+        var app = Open("roles/new");
+        app.WaitForAssertion(() => Field(app, "Kind of permission"));
+
+        Field(app, "Kind of permission").Change(GrantCatalogue.Content);
+
+        app.WaitForAssertion(() => Options(Field(app, "Permission or pattern")).ShouldContain("content.article.create: Create article entries. (not among your permissions)"));
+        Options(Field(app, "Permission or pattern")).ShouldContain("content.article.update: Edit article entries. (not among your permissions)");
+        Options(Field(app, "Permission or pattern")).ShouldContain("content.*.create: Matches 1 permission of the catalogue. (not among your permissions)");
+        Options(Field(app, "Permission or pattern")).ShouldContain("content.article.read: Read article entries.");
     }
 
     [Fact]
@@ -84,7 +105,7 @@ public sealed class RolePageTests : RolesTestContext
         RoleOf(Reviewers)["requireTwoFactor"]!.GetValue<bool>().ShouldBeTrue();
     }
 
-    // A site switch on the route keeps the page, which reads the role again in the new site.
+    // In the new site the caller manages that site's roles only, and the role of the site before shows no form.
     [Fact]
     public void ASiteSwitchToASiteWhereTheCallerDoesNotManageTheRoleTakesItsFormAway()
     {
@@ -96,6 +117,76 @@ public sealed class RolePageTests : RolesTestContext
 
         app.WaitForAssertion(() => Heading(app).ShouldBe("Role not managed here"));
         app.FindAll("main form").ShouldBeEmpty();
+    }
+
+    // In the app a site switch drops the page while the new site loads and builds it again once the shell is ready: the role
+    // and the catalogue are read in the new site, with its plugins, and what the user typed in the site before is gone. The
+    // new site's reads are held, as a server that does not answer at once.
+    [Fact]
+    public void ASiteSwitchBuildsThePageAgainWithTheRoleAsTheNewSiteReadsIt()
+    {
+        Grant(Shop, [], Held);
+        var app = Open($"roles/{Reviewers:D}");
+        app.WaitForAssertion(() => Field(app, "Name"));
+        var page = app.FindComponent<RolePage>().Instance;
+        app.Find("main [data-grant='media.read']").TextContent.ShouldContain("Plugin: media");
+        Field(app, "Name").Input("Mine");
+        var held = Management.HoldSite[Shop] = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        app.Find(".site-switcher select").Change(Shop.ToString("D"));
+
+        app.WaitForAssertion(() => app.FindComponents<RolePage>().ShouldBeEmpty());
+        held.SetResult();
+
+        app.WaitForAssertion(() => Field(app, "Name").GetAttribute("value").ShouldBe("Reviewers"));
+        app.FindComponent<RolePage>().Instance.ShouldNotBeSameAs(page);
+        ReadsInShop($"roles/{Reviewers:D}").ShouldBe(1);
+        ReadsInShop("permissions").ShouldBe(1);
+        app.Find("main [data-grant='media.read']").TextContent.ShouldNotContain("Plugin: media");
+    }
+
+    // The fake answers a switch at once, so the page outlives it here, which the layout does not let happen in the app. The
+    // page then reads the role, the catalogue and the draft again in the new site, as a new page would.
+    [Fact]
+    public void APageThatOutlivesASiteSwitchReadsTheRoleTheCatalogueAndTheDraftAgain()
+    {
+        Grant(Shop, [], Held);
+        var app = Open($"roles/{Reviewers:D}");
+        app.WaitForAssertion(() => Field(app, "Name"));
+        var page = app.FindComponent<RolePage>().Instance;
+        Field(app, "Name").Input("Mine");
+
+        app.Find(".site-switcher select").Change(Shop.ToString("D"));
+
+        app.WaitForAssertion(() => Field(app, "Name").GetAttribute("value").ShouldBe("Reviewers"));
+        app.FindComponent<RolePage>().Instance.ShouldBeSameAs(page);
+        ReadsInShop($"roles/{Reviewers:D}").ShouldBe(1);
+        ReadsInShop("permissions").ShouldBe(1);
+        app.Find("main [data-grant='media.read']").TextContent.ShouldNotContain("Plugin: media");
+    }
+
+    // A change of the content locale changes the access and not the site: the marks follow the access of the new locale, and
+    // the role is not read again, so what the user typed stays.
+    [Fact]
+    public async Task AChangeOfTheContentLocaleKeepsWhatTheUserTypedAndMarksWithItsAccess()
+    {
+        Management.AddLocale(MainSite, "fr", 1);
+        var app = Open($"roles/{Reviewers:D}");
+        var french = Management.Access[MainSite].DeepClone().AsObject();
+        french["permissions"] = new JsonArray("schema.read", "roles.manage");
+        french["instancePermissions"] = new JsonArray("schema.read", "roles.manage");
+        Management.LocaleAccess[(MainSite, "fr")] = french;
+        app.WaitForAssertion(() => Field(app, "Name"));
+        Marked(app).ShouldBeEmpty();
+        Field(app, "Name").Input("Mine");
+        var (roleReads, catalogueReads) = (Management.Count($"roles/{Reviewers:D}"), Management.Count("permissions"));
+
+        await app.InvokeAsync(() => Context.UseLocaleAsync("fr"));
+
+        app.WaitForAssertion(() => Marked(app).ShouldBe(["media.read"]));
+        Field(app, "Name").GetAttribute("value").ShouldBe("Mine");
+        Management.Count($"roles/{Reviewers:D}").ShouldBe(roleReads);
+        Management.Count("permissions").ShouldBe(catalogueReads);
     }
 
     [Fact]
@@ -278,6 +369,9 @@ public sealed class RolePageTests : RolesTestContext
         app.FindAll("main select").ShouldBeEmpty();
         app.FindAll("main fluent-button").Select(button => button.TextContent.Trim()).ShouldBe(["Save"]);
     }
+
+    private int ReadsInShop(string path) =>
+        Management.Requests.Count(request => request.Path == path && Guid.TryParse(request.Site, out var site) && site == Shop);
 
     private static string[] Marked(IRenderedComponent<AdminApp> app) =>
         [.. app.FindAll("main [data-grant]").Where(row => row.TextContent.Contains("Not among your permissions", StringComparison.Ordinal)).Select(row => row.GetAttribute("data-grant")!)];

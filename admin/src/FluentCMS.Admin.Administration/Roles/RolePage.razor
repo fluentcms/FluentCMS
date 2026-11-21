@@ -2,8 +2,10 @@
    replaces every grant (PUT), so each grant goes back with its constraints as read. A role has no ETag: a save that met
    another's change is refused with FCMS3045, and the page reads the role again and puts back on it what the user changed.
    The page edits a role the caller manages only, as the list shows them; the server stays the authority, and its refusals
-   are shown on the role by their code. A site switch on this route leaves the page in place, so the page reads the role
-   again in the new site, where what the caller manages and holds differs. *@
+   are shown on the role by their code. A site switch drops the page while the new site loads, since the layout shows no
+   page until the shell is ready, and builds it again then: the role is read in the new site, where what the caller manages
+   and holds differs, and what was not saved is gone. A change of the content locale keeps the page and changes the access,
+   so the marks only. *@
 @page "/roles/new"
 @page "/roles/{Id:guid}"
 @implements IDisposable
@@ -199,8 +201,8 @@ else
         return ReadAsync();
     }
 
-    // Another site reads the role and the catalogue's plugins again; another access, as of another content locale, changes
-    // the marks only.
+    // Another access, as of another content locale, changes the marks only. A page that outlives a site switch, which the
+    // layout does not let happen, reads the role and the catalogue's plugins again as a new page would.
     private void OnContextChanged()
     {
         if (Context.Status != ShellStatus.Ready || Context.AccessInfo is not { } access || ReferenceEquals(access, readWith))
@@ -238,6 +240,8 @@ else
         reading?.Dispose();
     }
 
+    // A read that a later one overtook, or that ends after the page is gone, shows nothing, even when it was answered before
+    // it was cancelled; the catalogue it read goes with it.
     private async Task ReadAsync()
     {
         reading?.Cancel();
@@ -247,12 +251,23 @@ else
         try
         {
             var role = Id is { } id ? Api.GetRoleAsync(id, current.Token) : null;
-            catalogue ??= new GrantCatalogue(await Api.GetPermissionsAsync(current.Token), Context);
-            read = role is null ? null : await role;
+            var permissions = catalogue is null ? await Api.GetPermissionsAsync(current.Token) : null;
+            var found = role is null ? null : await role;
+            if (Overtaken(current))
+            {
+                return;
+            }
+
+            if (permissions is not null)
+            {
+                catalogue = new GrantCatalogue(permissions, Context);
+            }
+
+            read = found;
             draft = read is null ? new RoleDraft() : RoleDraft.From(read);
             state = State.Ready;
         }
-        catch (OperationCanceledException) when (current.IsCancellationRequested)
+        catch (Exception exception) when (Overtaken(current) && (exception is OperationCanceledException || RoleProblems.IsFailure(exception)))
         {
         }
         catch (Exception exception) when (RoleProblems.Has(exception, RoleProblems.RoleNotFound))
@@ -264,6 +279,8 @@ else
             state = State.Failed;
         }
     }
+
+    private bool Overtaken(CancellationTokenSource read) => read.IsCancellationRequested || read != reading;
 
     private async Task SaveAsync()
     {
