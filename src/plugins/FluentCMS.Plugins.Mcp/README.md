@@ -118,7 +118,7 @@ Each exposed content type the caller may read has tools of its own:
 | --- | --- | --- |
 | `{type}_list` | `content.{type}.read` | Lists entries, with `filter`, `sort`, `page` and `pageSize` or `cursor`, `withTotal`, `fields`, `populate`, `depth`, `status` and `locale`. |
 | `{type}_get` | `content.{type}.read` | Reads one entry by `id`. |
-| `{type}_search` | `content.{type}.read` | Lists the entries that match the text `q`. It is listed only while the `ISearchIndex` slot is filled, since core refuses a search without an index (`FCMS2211`). |
+| `{type}_search` | `content.{type}.read` | Lists the entries that match the text `q`. It is listed only while the `ISearchIndex` slot is filled, since core refuses a search without an index (`FCMS2211`). An answer whose search reached the most matches the index gives holds `"searchTruncated": true`, as in REST, and the tool's description says so, as that of `query` does. |
 | `{type}_create_draft` | `content.{type}.create` | Creates a draft from `fields`. |
 | `{type}_update_draft` | `content.{type}.update` | Changes the `fields` it is sent on the draft of `id` and keeps the others, as a merge patch does; `null` clears a field. It needs `expectedVersion`, and a draft changed since is a conflict (`FCMS3105`). |
 | `{type}_discard_draft` | `content.{type}.update` | Goes back to what is published. |
@@ -138,7 +138,7 @@ The shared tools take a `type`:
 
 The input schema of a write tool is generated from the schema as the caller may read it. `fields` holds the fields the caller may write, each as its field type describes it for the OpenAPI document, so the lengths, ranges and patterns, the options of a select, the ids of a relation, and the components and blocks (under `$defs`) follow the schema. A field the caller may not read or write, a hidden one and a read-only one are left out. A required field is marked in its description and not in `required`, since a draft may leave it out. The server does not check the arguments against the schema: the service validates them.
 
-The answers are the JSON of the Management API: an entry, `{ "items", "total", "page", "pageSize", "nextCursor" }` for a list, `{ "entry", "warnings" }` for a publish, the schedule for `schedule`, and `{ "type", "id", "deleted" }` for a delete that ran. A validation failure is an error result with its code and each error by field path.
+The answers are the JSON of the Management API: an entry, `{ "items", "total", "page", "pageSize", "nextCursor" }` for a list, with `"searchTruncated": true` when its search `q` reached the most matches the search index gives, `{ "entry", "warnings" }` for a publish, the schedule for `schedule`, and `{ "type", "id", "deleted" }` for a delete that ran. A validation failure is an error result with its code and each error by field path.
 
 Which types the tools reach is set in `FluentCms:Mcp`:
 

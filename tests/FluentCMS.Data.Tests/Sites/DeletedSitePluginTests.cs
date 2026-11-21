@@ -141,7 +141,7 @@ public sealed class DeletedSitePluginTests : IDisposable
         var media = services.GetRequiredService<PluginDbContext<MediaPlugin>>();
         var folder = new Folder { Id = Guid.CreateVersion7(), SiteId = site, Name = "Photos" };
         folder.Path = $"/{folder.Id:D}/";
-        var asset = new Asset { Id = Guid.CreateVersion7(), SiteId = site, FolderId = folder.Id, FileName = "photo.png", StorageProvider = LocalFileStorage.ProviderName, StorageKey = $"{site:N}/photo.png", MimeType = "image/png", Size = 3, Checksum = new string('a', 64), CreatedAt = now, CreatedBy = actor, UpdatedAt = now, UpdatedBy = actor };
+        var asset = new Asset { Id = Guid.CreateVersion7(), SiteId = site, FolderId = folder.Id, FileName = "photo.png", StorageProvider = LocalFileStorage.ProviderName, StorageKey = $"{site:N}/photo.png", OwnsFile = true, MimeType = "image/png", Size = 3, Checksum = new string('a', 64), CreatedAt = now, CreatedBy = actor, UpdatedAt = now, UpdatedBy = actor };
         var variant = new Variant { AssetId = asset.Id, ParamsHash = new string('b', 64), StorageKey = $"{site:N}/photo-small.png", Size = 3, CreatedAt = now };
         media.AddRange(folder, new Preset { SiteId = site, Name = "small", Params = """{"w":"100"}""" }, asset, variant);
         await media.SaveChangesAsync(Token);

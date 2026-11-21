@@ -344,7 +344,7 @@ internal sealed partial class ContentService(
         {
             var ids = id is { } single ? [single] : found.Select(entry => (Guid)entry["id"]!).ToList();
             var items = await ReadEveryLocaleAsync(type, bound, ids, site, operation, access, cancellationToken);
-            return new PagedResult<ContentDocument>(items, page?.Total, page?.Page, page?.PageSize ?? 1, page?.NextCursor);
+            return new PagedResult<ContentDocument>(items, page?.Total, page?.Page, page?.PageSize ?? 1, page?.NextCursor) { SearchTruncated = page?.SearchTruncated ?? false };
         }
 
         var target = new AccessTarget(type.Scope == ContentScope.Global ? operation.Site : site, locale);
@@ -363,7 +363,7 @@ internal sealed partial class ContentService(
             await richText.ApplyAsync(type, found, query.RichTextFormat!, resolvers, locale, cancellationToken);
         }
 
-        return new PagedResult<ContentDocument>(found, page?.Total, page?.Page, page?.PageSize ?? found.Count, page?.NextCursor);
+        return new PagedResult<ContentDocument>(found, page?.Total, page?.Page, page?.PageSize ?? found.Count, page?.NextCursor) { SearchTruncated = page?.SearchTruncated ?? false };
     }
 
     private async Task<IReadOnlyList<ContentDocument>> ApplyFallbackAsync(SchemaType type, ContentQuery query, IReadOnlyList<ContentDocument> found, Guid? id, SiteId site, string locale, FieldAccess access, AccessTarget target, CancellationToken cancellationToken)

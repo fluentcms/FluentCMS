@@ -30,6 +30,7 @@ public sealed class ValidationPipeline(SchemaModel model, IServiceProvider servi
 
         var visits = new List<FieldVisit>();
         _declarative.Validate(type, values, context, visits);
+        context = context.WithFields([.. visits.Select(visit => new ValidatedField(visit.Field, visit.Path, visit.Value))]);
 
         foreach (var visit in visits)
         {

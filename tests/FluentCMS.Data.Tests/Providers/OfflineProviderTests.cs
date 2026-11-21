@@ -326,18 +326,28 @@ public partial class OfflineProviderTests
     public void SqlServerComparesContentTextUnderABinaryCollation()
     {
         using var sqlServer = SqlServer();
-        using var postgreSql = PostgreSql();
-        using var sqlServerScope = sqlServer.CreateScope();
-        using var postgreSqlScope = postgreSql.CreateScope();
-        var model = DesignModel(sqlServerScope.ServiceProvider);
+        using var scope = sqlServer.CreateScope();
+        var model = DesignModel(scope.ServiceProvider);
 
         model.FindEntityType("cms_post")!.FindProperty("contact")!.GetCollation().ShouldBe("Latin1_General_100_BIN2");
         model.FindEntityType("cms_brand")!.FindProperty("name")!.GetCollation().ShouldBe("Latin1_General_100_BIN2");
         model.FindEntityType("cms_post")!.FindProperty("metadata")!.GetCollation().ShouldBeNull();
         model.FindEntityType(typeof(Document).FullName!)!.FindProperty(nameof(Document.Type))!.GetCollation().ShouldBeNull();
         ContentScript(sqlServer).ShouldContain("[contact] nvarchar(254) COLLATE Latin1_General_100_BIN2 NULL");
+    }
 
-        DesignModel(postgreSqlScope.ServiceProvider).FindEntityType("cms_post")!.FindProperty("contact")!.GetCollation().ShouldBeNull();
+    [Fact]
+    public void PostgreSqlComparesContentTextUnderTheCCollation()
+    {
+        using var postgreSql = PostgreSql();
+        using var scope = postgreSql.CreateScope();
+        var model = DesignModel(scope.ServiceProvider);
+
+        model.FindEntityType("cms_post")!.FindProperty("contact")!.GetCollation().ShouldBe("C");
+        model.FindEntityType("cms_brand")!.FindProperty("name")!.GetCollation().ShouldBe("C");
+        model.FindEntityType("cms_post")!.FindProperty("metadata")!.GetCollation().ShouldBeNull();
+        model.FindEntityType(typeof(Document).FullName!)!.FindProperty(nameof(Document.Type))!.GetCollation().ShouldBeNull();
+        ContentScript(postgreSql).ShouldContain("contact character varying(254) COLLATE \"C\"");
     }
 
     [Fact]
