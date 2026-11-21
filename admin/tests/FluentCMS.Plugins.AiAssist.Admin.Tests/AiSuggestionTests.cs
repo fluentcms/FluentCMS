@@ -112,33 +112,8 @@ public sealed class AiSuggestionTests : AiTestContext
     }
 
     [Fact]
-    public async Task TranslateAsksForAnEnabledLocaleOfTheSiteAndWritesInIt()
+    public async Task ATextActionIsNotOfferedOnAnEmptyField()
     {
-        Admin.Site = Admin.Site! with { Locales = [.. Admin.Site.Locales, new MySiteLocale { Code = "es", Position = 3, Enabled = true }] };
-        var action = new TranslateAction(Overlays, Texts, Admin);
-        var context = Context("title", new JsonObject { ["title"] = "Ships" });
-        (await action.AppliesToAsync(context, Token)).ShouldBeTrue();
-
-        var (result, panel) = Run(action, context);
-        panel.WaitForAssertion(() => panel.FindAll("select option").Select(option => option.TextContent).ShouldBe(["", "fr", "es"]));
-        Server.Requests.ShouldBeEmpty();
-        panel.Find("select").Change("es");
-        Button(panel, "Suggest").Click();
-        Server.Done("Barcos");
-        panel.WaitForAssertion(() => panel.Find(".ai-suggestion").GetAttribute("lang").ShouldBe("es"));
-        Button(panel, "Accept").Click();
-        await ClosedAsync(panel);
-
-        (await result).Value!.GetValue<string>().ShouldBe("Barcos");
-        Server.Requests.ShouldHaveSingleItem().Body!["options"]!["targetLocale"]!.GetValue<string>().ShouldBe("es");
-    }
-
-    [Fact]
-    public async Task TranslateIsNotOfferedWithoutAnotherEnabledLocaleAndATextActionNotOnAnEmptyField()
-    {
-        Admin.Site = Admin.Site! with { Locales = [new MySiteLocale { Code = "en", Position = 0, Enabled = true }, new MySiteLocale { Code = "fr", Position = 1, Enabled = false }] };
-
-        (await new TranslateAction(Overlays, Texts, Admin).AppliesToAsync(Context("title", new JsonObject { ["title"] = "Ships" }), Token)).ShouldBeFalse();
         (await new RewriteAction(Overlays, Texts).AppliesToAsync(Context("title", new JsonObject { ["title"] = " " }), Token)).ShouldBeFalse();
         (await new RewriteAction(Overlays, Texts).AppliesToAsync(Context("title", []), Token)).ShouldBeFalse();
     }
@@ -206,5 +181,31 @@ public sealed class AiSuggestionTests : AiTestContext
         var saved = Server.Requests.Single(request => request.Method == HttpMethod.Patch);
         (saved.Path, saved.Locale, saved.IfMatch).ShouldBe(($"media/{hero:D}", "fr", "\"3\""));
         Announcer.Messages.ShouldContain("The alt text of hero.png is saved.");
+    }
+
+    // An asset changed since the panel read it is read again, its alt text shown, and the next accept is over that version.
+    [Fact]
+    public async Task AnAssetChangedSinceItWasReadIsReadAgainAndTheNextAcceptIsOverItsNewVersion()
+    {
+        var hero = Server.AddImage("hero.png", alt: "Old");
+        var (result, panel) = Run(new AssetAltTextAction(Overlays, Texts), Context("hero", new JsonObject { ["hero"] = hero.ToString("D") }));
+        Server.Done("A ship at sea.");
+        panel.WaitForAssertion(() => Buttons(panel).ShouldContain("Accept"));
+        Server.Assets[hero]["alt"] = "Changed elsewhere";
+        Server.Assets[hero]["version"] = 4;
+
+        Button(panel, "Accept").Click();
+
+        panel.WaitForAssertion(() => panel.Find(".ai-panel-problem").TextContent.ShouldContain("Its alt text is now: Changed elsewhere"));
+        panel.Find(".ai-panel-problem strong").TextContent.ShouldBe("The alt text of hero.png was changed since it was read. Accept again to replace it.");
+        Server.Assets[hero]["alt"]!.GetValue<string>().ShouldBe("Changed elsewhere");
+        result.IsCompleted.ShouldBeFalse();
+
+        Button(panel, "Accept").Click();
+        await ClosedAsync(panel);
+
+        (await result).ShouldBeSameAs(FieldActionResult.Unchanged);
+        Server.Assets[hero]["alt"]!.GetValue<string>().ShouldBe("A ship at sea.");
+        Server.Requests.Where(request => request.Method == HttpMethod.Patch).Select(request => request.IfMatch).ShouldBe(["\"3\"", "\"4\""]);
     }
 }

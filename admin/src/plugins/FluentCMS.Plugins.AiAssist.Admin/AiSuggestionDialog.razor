@@ -1,8 +1,7 @@
-@* The panel of one suggestion (spec 5.5). Translate asks for the locale to write in first, and altText for the image when the
-   entry has several. The suggestion streams in as the server sends it; the text is not a live region, and the start, the end
+@* The panel of one suggestion (spec 5.5). Alt text asks for the image first when the entry has several. The suggestion streams in as the server sends it; the text is not a live region, and the start, the end
    and a failure are announced once each, politely. Accept is offered only once the stream has ended with its suggestion: a
    refusal, an error within the stream, a stop or a close leave the draft as it was. An alt text for the asset is saved on
-   the asset when it is accepted. *@
+   the asset when it is accepted, over the version of the asset it last read: one changed since is read again and shown. *@
 @using System.Text
 @using System.Text.Json.Nodes
 @using FluentCMS.Plugins.AiAssist.Admin.Api
@@ -16,11 +15,7 @@
     <ChildContent>
         @if (step == Step.Choose)
         {
-            @if (Request.Action == AiActionNames.Translate)
-            {
-                <CmsSelect Label="@L["Ai.Panel.TargetLocale"]" Options="@([.. Request.TargetLocales.Select(code => new CmsOption(code, code))])" Value="@target" ValueChanged="@(value => target = value)" />
-            }
-            else if (images is null)
+            @if (images is null)
             {
                 <p role="status">@L["Ai.Panel.ReadingImages"]</p>
             }
@@ -35,7 +30,7 @@
         }
         else
         {
-            <div class="ai-suggestion" aria-busy="@(step == Step.Streaming ? "true" : "false")" lang="@SuggestionLocale" dir="auto">
+            <div class="ai-suggestion" aria-busy="@(step == Step.Streaming ? "true" : "false")" lang="@Request.Locale" dir="auto">
                 @if (seo is { } meta)
                 {
                     <dl>
@@ -104,9 +99,9 @@
     private sealed record Shown(string Title, string? Detail);
 
     private readonly CancellationTokenSource stopping = new();
+    private CancellationToken token;
     private readonly StringBuilder streamed = new();
     private Step step;
-    private string? target;
     private IReadOnlyList<AiMediaAsset>? images;
     private Guid? image;
     private string? suggestion;
@@ -128,9 +123,7 @@
 
     private bool AsksForImage => Request.Action == AiActionNames.AltText;
 
-    private bool Chosen => Request.Action == AiActionNames.Translate ? target is not null : image is not null;
-
-    private string? SuggestionLocale => Request.Action == AiActionNames.Translate ? target : Request.Locale;
+    private bool Chosen => image is not null;
 
     public void Dispose()
     {
@@ -139,18 +132,11 @@
         stopping.Dispose();
     }
 
+    // Taken once, so that a call after the panel went reads a cancelled token and not a disposed source.
     protected override async Task OnInitializedAsync()
     {
-        if (Request.Action == AiActionNames.Translate)
-        {
-            target = Request.TargetLocales.Count == 1 ? Request.TargetLocales[0] : null;
-            step = Step.Choose;
-            if (target is null)
-            {
-                return;
-            }
-        }
-        else if (AsksForImage)
+        token = stopping.Token;
+        if (AsksForImage)
         {
             step = Step.Choose;
             images = await ImagesAsync();
@@ -173,13 +159,17 @@
         {
             try
             {
-                if (await Ai.AssetAsync(id, Request.Locale, stopping.Token) is { IsImage: true } asset)
+                if (await Ai.AssetAsync(id, Request.Locale, token) is { IsImage: true } asset)
                 {
                     found.Add(asset);
                 }
             }
-            catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or System.Text.Json.JsonException || (failure is TaskCanceledException && !stopping.IsCancellationRequested))
+            catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or System.Text.Json.JsonException || (failure is TaskCanceledException && !token.IsCancellationRequested))
             {
+            }
+            catch (Exception failure) when (Stopped(failure))
+            {
+                break;
             }
         }
 
@@ -198,7 +188,7 @@
             {
                 streamed.Append(delta);
                 _ = InvokeAsync(StateHasChanged);
-            }, stopping.Token);
+            }, token);
             if (outcome.Problem is { } refused)
             {
                 Fail(refused.Title, refused.Detail);
@@ -213,7 +203,7 @@
                 Fail(null, null);
             }
         }
-        catch (OperationCanceledException) when (stopping.IsCancellationRequested)
+        catch (Exception failure) when (Stopped(failure))
         {
         }
         catch (ApiProblemException refused)
@@ -234,7 +224,6 @@
         Text = AsksForImage ? null : Request.Text,
         Options = Request.Action switch
         {
-            AiActionNames.Translate => new AiActionOptions { TargetLocale = target },
             AiActionNames.AltText => new AiActionOptions { MediaId = image },
             _ => null,
         },
@@ -284,12 +273,16 @@
         (saving, problem) = (true, null);
         try
         {
-            await Ai.SetAltAsync(asset, text, stopping.Token);
+            await Ai.SetAltAsync(asset, text, token);
             Announcer.Announce(L["Ai.Panel.AltSaved", asset.Name]);
             Close(text);
         }
-        catch (OperationCanceledException) when (stopping.IsCancellationRequested)
+        catch (Exception failure) when (Stopped(failure))
         {
+        }
+        catch (ApiProblemException refused) when (refused.Problem.Status == 412)
+        {
+            await ReadAgainAsync(asset);
         }
         catch (ApiProblemException refused)
         {
@@ -304,6 +297,32 @@
             saving = false;
         }
     }
+
+    // The asset changed since it was read: the next accept is over the version read now, which shows its alt text.
+    private async Task ReadAgainAsync(AiMediaAsset stale)
+    {
+        Shown shown;
+        try
+        {
+            var current = await Ai.AssetAsync(stale.Id, stale.Locale, token);
+            images = [.. images!.Select(asset => asset.Id == current.Id ? current : asset)];
+            shown = new Shown(L["Ai.Panel.AltChanged", current.Name], string.IsNullOrWhiteSpace(current.Alt) ? null : L["Ai.Panel.AltNow", current.Alt].Value);
+        }
+        catch (Exception failure) when (Stopped(failure))
+        {
+            return;
+        }
+        catch (Exception failure) when (failure is ApiProblemException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
+        {
+            shown = new Shown(L["Ai.Panel.NotSaved"], null);
+        }
+
+        problem = shown;
+        Announcer.Announce(shown.Title);
+    }
+
+    private bool Stopped(Exception failure) =>
+        token.IsCancellationRequested && failure is OperationCanceledException or ObjectDisposedException;
 
     // A close stops a stream that runs, which the server then ends as cancelled. The answer goes once the dialog has closed
     // and given focus back to the control that opened it.

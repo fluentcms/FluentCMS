@@ -29,6 +29,9 @@ internal static partial class PluginLog
     [LoggerMessage(EventId = 37, EventName = "PluginFieldActionFailed", Level = LogLevel.Error, Message = "The field action {Type} of the admin half {Name} failed.")]
     public static partial void FieldActionFailed(ILogger logger, string name, string type, Exception exception);
 
+    [LoggerMessage(EventId = 39, EventName = "PluginFieldActionValueRefused", Level = LogLevel.Error, Message = "The field action {Type} of the admin half {Name} gave a value that is not one of a {FieldType} field, so the draft is left as it was.")]
+    public static partial void FieldActionValueRefused(ILogger logger, string name, string type, string fieldType);
+
     [LoggerMessage(EventId = 38, EventName = "PluginFieldsNotRead", Level = LogLevel.Warning, Message = "The fields of the field actions of {Path} could not be read, so they are offered on none.")]
     public static partial void FieldsNotRead(ILogger logger, string path, Exception exception);
 }

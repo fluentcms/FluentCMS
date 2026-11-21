@@ -22,10 +22,9 @@ internal sealed record AiActionBody
     public AiActionOptions? Options { get; init; }
 }
 
+// The image of altText; the half sends no other option.
 internal sealed record AiActionOptions
 {
-    public string? TargetLocale { get; init; }
-
     public Guid? MediaId { get; init; }
 }
 

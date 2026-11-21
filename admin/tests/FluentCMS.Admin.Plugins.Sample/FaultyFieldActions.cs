@@ -32,3 +32,30 @@ public sealed class NeverFieldAction : FieldActionBase
     public override Task<FieldActionResult> RunAsync(FieldActionContext context, CancellationToken cancellationToken) =>
         Task.FromResult(FieldActionResult.Unchanged);
 }
+
+// Gives an object, which no text field takes.
+public sealed class ObjectFieldAction : FieldActionBase
+{
+    public override string Label => "Object";
+
+    public override Task<FieldActionResult> RunAsync(FieldActionContext context, CancellationToken cancellationToken) =>
+        Task.FromResult(FieldActionResult.Replace(new System.Text.Json.Nodes.JsonObject { ["a"] = 1 }));
+}
+
+// Answers when the test releases it, whatever its token says, with a text for the field.
+public sealed class HeldFieldAction : FieldActionBase
+{
+    public static TaskCompletionSource Release { get; set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    // Set as the action answers.
+    public static TaskCompletionSource Answered { get; set; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public override string Label => "Held";
+
+    public override async Task<FieldActionResult> RunAsync(FieldActionContext context, CancellationToken cancellationToken)
+    {
+        await Release.Task;
+        Answered.TrySetResult();
+        return FieldActionResult.Replace(System.Text.Json.Nodes.JsonValue.Create("late"));
+    }
+}

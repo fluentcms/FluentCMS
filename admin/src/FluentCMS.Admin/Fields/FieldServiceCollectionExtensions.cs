@@ -47,6 +47,7 @@ internal static class FieldServiceCollectionExtensions
         services.TryAddScoped<IBulkProgressService>(provider => provider.GetRequiredService<BulkProgressService>());
         services.TryAddScoped<PreviewInterop>();
         services.TryAddScoped<BulkRunner>();
+        services.TryAddScoped<FieldActionOffers>();
         services.TryAddScoped(provider =>
         {
             var cells = new ListCellRegistry();

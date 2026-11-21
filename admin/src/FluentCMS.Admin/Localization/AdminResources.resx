@@ -1763,6 +1763,9 @@
   <data name="Content.FieldActions.Changed" xml:space="preserve">
     <value>{0} changed {1}. The change is not saved yet.</value>
   </data>
+  <data name="Content.FieldActions.WrongValue" xml:space="preserve">
+    <value>The action gave a value this field does not take. The field is unchanged.</value>
+  </data>
   <data name="Content.FieldActions.Failed" xml:space="preserve">
     <value>The action failed. The browser's console has the cause.</value>
   </data>

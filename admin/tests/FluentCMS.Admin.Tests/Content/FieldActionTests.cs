@@ -25,11 +25,13 @@ public sealed class FieldActionTests : AdminTestContext
 {
     private const string Sample = "FluentCMS.Admin.Plugins.Sample.";
     private const string Fields = "reviews/fields";
+    private const string FieldsPath = "/api/management/v1/" + Fields;
 
     private readonly FakeContent _content;
     private readonly SampleLoader _loader = new();
     private readonly List<(string Query, string? Locale)> _fieldReads = [];
     private readonly Guid _review;
+    private readonly Guid _other;
 
     public FieldActionTests()
     {
@@ -37,6 +39,7 @@ public sealed class FieldActionTests : AdminTestContext
         _content = new FakeContent(Management);
         Management.SetTypes(MainSite, Type("review", fields: [Field("title"), Field("body", "longText"), Field("rating", "integer")]));
         _review = _content.Add("review", new JsonObject { ["title"] = "great", ["body"] = "A fine place.", ["rating"] = 4 });
+        _other = _content.Add("review", new JsonObject { ["title"] = "poor", ["body"] = "Cold soup.", ["rating"] = 1 });
         var content = Management.Respond!;
         Management.Respond = (request, path, body) => path == Fields ? FieldsAnswer(request) : content(request, path, body);
     }
@@ -143,7 +146,7 @@ public sealed class FieldActionTests : AdminTestContext
     {
         var app = LoadReview(Reviews with { FieldActions = [Declared("ShoutAction", "shout", fieldsFrom: Fields + "#fields")] });
 
-        Toggles(app).ShouldBe(["body"]);
+        app.WaitForAssertion(() => Toggles(app).ShouldBe(["body"]));
         _fieldReads.ShouldHaveSingleItem();
         _loader.Loads.ShouldBe(0);
     }
@@ -159,7 +162,8 @@ public sealed class FieldActionTests : AdminTestContext
 
         var app = LoadReview(Reviews with { FieldActions = [Declared("ShoutAction", "shout", fieldsFrom: $"{Fields}#{member}")] });
 
-        Toggles(app).ShouldBe(offered);
+        app.WaitForAssertion(() => _fieldReads.ShouldHaveSingleItem());
+        app.WaitForAssertion(() => Toggles(app).ShouldBe(offered));
         _loader.Loads.ShouldBe(0);
     }
 
@@ -171,6 +175,105 @@ public sealed class FieldActionTests : AdminTestContext
         var app = LoadReview(Reviews);
 
         Toggles(app).ShouldBe(["body"]);
+    }
+
+    // The form shows at once, and adds the actions FieldsFrom gates once the read answers; the answer is kept for the site
+    // and locale, so the next form does not read it again.
+    [Fact]
+    public void TheFormDoesNotWaitForFieldsFromAndTheAnswerIsKeptForTheSession()
+    {
+        var held = new TaskCompletionSource();
+        Management.HoldPath = path => path.StartsWith(FieldsPath, StringComparison.Ordinal) ? held.Task : null;
+
+        var app = LoadReview(Reviews with { FieldActions = [Declared("ShoutAction", "shout", fieldsFrom: Fields + "#fields")] });
+
+        Toggles(app).ShouldBeEmpty();
+        held.SetResult();
+        app.WaitForAssertion(() => Toggles(app).ShouldBe(["body"]));
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo($"content/review/{_other:D}");
+        app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("poor"));
+        app.WaitForAssertion(() => Toggles(app).ShouldBe(["body"]));
+        _fieldReads.ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public void ACallerWhoMayNotChangeTheEntryReadsNoFieldsFrom()
+    {
+        Management.Access[MainSite]["types"]!["review"]!["update"] = false;
+
+        var app = LoadReview(Reviews with { FieldActions = [Declared("ShoutAction", "shout", fieldsFrom: Fields + "#fields")] });
+
+        Toggles(app).ShouldBeEmpty();
+        _fieldReads.ShouldBeEmpty();
+    }
+
+    // A source the client would refuse, as one that leads out of the Management API, offers the action on no field, and the
+    // form works without it.
+    [Theory]
+    [InlineData("../reviews/fields#fields")]
+    [InlineData("reviews/%2E%2E/../x#fields")]
+    public void AFieldsFromTheClientWouldRefuseOffersNothingAndTheFormStillWorks(string fieldsFrom)
+    {
+        var app = LoadReview(Reviews with { FieldActions = [Declared("ShoutAction", "shout", fieldsFrom: fieldsFrom), Declared("ClearFieldAction", "clear")] });
+
+        app.WaitForAssertion(() => Toggles(app).ShouldBe(["title", "body"]));
+        Open(app, "title");
+        app.WaitForAssertion(() => ActionButtons(app, "title").ShouldBe(["Clear"]));
+        _fieldReads.ShouldBeEmpty();
+    }
+
+    // The result of an action asked on one entry never reaches the next entry the form shows.
+    [Fact]
+    public async Task AResultThatComesAfterTheFormLoadedAnotherEntryIsDropped()
+    {
+        HeldFieldAction.Release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        HeldFieldAction.Answered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var app = LoadReview(Reviews with { FieldActions = [Declared("HeldFieldAction", "held")] });
+        Open(app, "title");
+        app.WaitForAssertion(() => ActionButtons(app, "title").ShouldBe(["Held"]));
+        ActionButton(app, "title", "Held").Click();
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo($"content/review/{_other:D}");
+        app.WaitForAssertion(() => Input(app, "title").GetAttribute("value").ShouldBe("poor"));
+        HeldFieldAction.Release.SetResult();
+        await HeldFieldAction.Answered.Task.WaitAsync(Xunit.TestContext.Current.CancellationToken);
+
+        // The menu's continuation after the action is posted to the renderer, which these calls let run first.
+        await app.InvokeAsync(() => { });
+        await app.InvokeAsync(() => { });
+        Announced(app).ShouldNotContain(text => text.StartsWith("Held changed", StringComparison.Ordinal));
+        Input(app, "title").GetAttribute("value").ShouldBe("poor");
+        Form(app).HasUnsavedChanges.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void AResultThatDoesNotFitTheFieldsTypeIsRefusedAndLeavesTheDraft()
+    {
+        var app = LoadReview(Reviews with { FieldActions = [Declared("ObjectFieldAction", "object")] });
+        Open(app, "title");
+        app.WaitForAssertion(() => ActionButtons(app, "title").ShouldBe(["Object"]));
+
+        ActionButton(app, "title", "Object").Click();
+
+        app.WaitForAssertion(() => Wrapper(app, "title").QuerySelector(".field-actions-problem")!.TextContent.ShouldBe("The action gave a value this field does not take. The field is unchanged."));
+        Input(app, "title").GetAttribute("value").ShouldBe("great");
+        Form(app).HasUnsavedChanges.ShouldBeFalse();
+        Announced(app).ShouldContain("The action gave a value this field does not take. The field is unchanged.");
+    }
+
+    // Escape closes the list from its button too, and what the list says without actions is announced.
+    [Fact]
+    public void EscapeOnTheButtonClosesTheListAndNoActionIsAnnounced()
+    {
+        var app = LoadReview(Reviews with { FieldActions = [Declared("NeverFieldAction", "never")] });
+        Open(app, "title");
+        app.WaitForAssertion(() => Announced(app).ShouldContain("No action applies to this field as it is now."));
+        Announced(app).ShouldContain("Loading the actions…");
+
+        Toggle(app, "title").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+
+        app.WaitForAssertion(() => Wrapper(app, "title").QuerySelector(".field-actions-list").ShouldBeNull());
     }
 
     private static AdminPluginManifest Reviews => AdminPluginManifestJson.Read(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, AdminPluginManifest.FileName)));

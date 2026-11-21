@@ -48,9 +48,6 @@
   <data name="Ai.Action.assetAltText" xml:space="preserve">
     <value>Suggest the image's alt text</value>
   </data>
-  <data name="Ai.Panel.TargetLocale" xml:space="preserve">
-    <value>Translate into</value>
-  </data>
   <data name="Ai.Panel.ReadingImages" xml:space="preserve">
     <value>Reading the images…</value>
   </data>
@@ -104,6 +101,12 @@
   </data>
   <data name="Ai.Panel.AltSaved" xml:space="preserve">
     <value>The alt text of {0} is saved.</value>
+  </data>
+  <data name="Ai.Panel.AltChanged" xml:space="preserve">
+    <value>The alt text of {0} was changed since it was read. Accept again to replace it.</value>
+  </data>
+  <data name="Ai.Panel.AltNow" xml:space="preserve">
+    <value>Its alt text is now: {0}</value>
   </data>
   <data name="Ai.Panel.NotSaved" xml:space="preserve">
     <value>The alt text could not be saved.</value>

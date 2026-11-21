@@ -129,23 +129,6 @@ public sealed class SeoAction(IAdminOverlays overlays, IStringLocalizer<AiAssist
     private protected override string Name => AiActionNames.Seo;
 }
 
-// Into another enabled locale of the site, which the panel asks for; the suggestion goes into this field, as any other.
-[FieldAction(AiActionNames.Translate, FieldTypes = [AiActionNames.Text, AiActionNames.LongText], Permission = AiActionNames.Use, FieldsFrom = AiActionNames.OptedInFields)]
-public sealed class TranslateAction(IAdminOverlays overlays, IStringLocalizer<AiAssistResources> texts, IAdminContext admin) : AiFieldAction(overlays, texts)
-{
-    private protected override string Name => AiActionNames.Translate;
-
-    private protected override bool Applies(FieldActionContext context) => base.Applies(context) && Targets(context).Count > 0;
-
-    private protected override AiSuggestionRequest Request(FieldActionContext context) => base.Request(context) with { TargetLocales = Targets(context) };
-
-    private List<string> Targets(FieldActionContext context)
-    {
-        var current = context.ContentLocale ?? admin.Site?.DefaultLocale;
-        return [.. (admin.Site?.Locales ?? []).Where(locale => locale.Enabled && !string.Equals(locale.Code, current, StringComparison.OrdinalIgnoreCase)).OrderBy(locale => locale.Position).Select(locale => locale.Code)];
-    }
-}
-
 // Alt text for one of the images of the entry's media fields, into this text field; the panel asks which when there are several.
 [FieldAction(AiActionNames.AltText, FieldTypes = [AiActionNames.Text, AiActionNames.LongText], Permission = AiActionNames.Use, FieldsFrom = AiActionNames.OptedInFields)]
 public sealed class AltTextAction(IAdminOverlays overlays, IStringLocalizer<AiAssistResources> texts) : AiFieldAction(overlays, texts)

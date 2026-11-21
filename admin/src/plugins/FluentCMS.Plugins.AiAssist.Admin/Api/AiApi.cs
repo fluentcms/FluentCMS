@@ -10,7 +10,8 @@ internal sealed record AiOutcome(JsonNode? Suggestion, AiStreamProblem? Problem)
 
 // The AI routes of the Management API (spec 5.5) over the admin's one client, and the media routes the alt text of an asset
 // needs. A refusal before the provider is asked is the client's ApiProblemException, which is not sent again, a 429 included.
-internal sealed class AiApi(IManagementApi api, IManagementEvents events)
+// A client that only reads, as the usage page, needs no event stream.
+internal sealed class AiApi(IManagementApi api, IManagementEvents? events = null)
 {
     // Each piece of the suggestion goes to onDelta as it arrives. The stream ends with its done or its error event; one that
     // ends with neither, as when the connection drops, is a failure of the answer.
@@ -23,7 +24,8 @@ internal sealed class AiApi(IManagementApi api, IManagementEvents events)
             Body = JsonSerializer.SerializeToNode(body, AiJsonContext.Default.AiActionBody),
         };
 
-        await foreach (var sent in events.ReadAsync(request, cancellationToken))
+        var stream = events ?? throw new InvalidOperationException("An action streams its suggestion, so its client needs IManagementEvents.");
+        await foreach (var sent in stream.ReadAsync(request, cancellationToken))
         {
             switch (sent.Name)
             {

@@ -310,7 +310,7 @@ public sealed class AdminPluginManifestTests
             $"entry action 'careless' of {Types}CarelessAction: the class does not derive from EntryActionBase",
             $"bulk action 'careless' of {Types}CarelessAction: the class does not derive from BulkActionBase",
             $"field action 'careless' of {Types}CarelessAction: the class does not derive from FieldActionBase",
-            $"field action 'careless' of {Types}CarelessAction: FieldsFrom '/ai/fields' is not a read of the Management API and a member of its answer, such as ai/fields#fields",
+            $"field action 'careless' of {Types}CarelessAction: FieldsFrom '../ai/fields#fields' is not a read of the Management API and a member of its answer, such as ai/fields#fields",
             $"service 'System.IDisposable' of {Types}CarelessAction: the class does not implement it",
             $"menu item 'Careless.Menu' of {Types}CarelessMenuItem: the component declares no [AdminPage] for it to link to",
             $"field editor 'careless' of {Types}CarelessMenuItem: the class does not derive from FieldEditorBase",
