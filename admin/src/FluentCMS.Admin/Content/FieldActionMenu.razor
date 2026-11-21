@@ -1,6 +1,8 @@
 @* The actions of the admin halves on one field of a form (spec 5.1): a button that shows and hides them, which loads their
    halves the first time it opens and keeps those whose AppliesToAsync answers true. An action is confirmed when it asks, then
-   runs with the field as the draft holds it; its result goes into the draft through OnResult, as an unsaved change. *@
+   runs with the field as the draft holds it; its result goes into the draft through OnResult, as an unsaved change. The form
+   makes a new menu for each entry and locale it loads, so a result that comes after the draft changed is dropped with the
+   menu it was asked from. *@
 @using FluentCMS.Admin.Actions
 @using Microsoft.Extensions.Logging
 @implements IDisposable
@@ -42,18 +44,21 @@
         </div>
     }
 </div>
-<CmsDialog Title="@(asked?.Action.Label ?? L["Content.FieldActions.Menu"])" Open="@(asked is not null)" OpenChanged="@(isOpen => { if (!isOpen) asked = null; })">
-    <ChildContent>
-        <p>@askedText</p>
-    </ChildContent>
-    <Actions>
-        @if (asked is { } item)
-        {
-            <CmsButton OnClick="@(() => asked = null)">@L["Content.FieldActions.Cancel"]</CmsButton>
-            <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => RunAsync(item))">@item.Action.Label</CmsButton>
-        }
-    </Actions>
-</CmsDialog>
+@if (items is { Count: > 0 })
+{
+    <CmsDialog Title="@(asked?.Action.Label ?? L["Content.FieldActions.Menu"])" Open="@(asked is not null)" OpenChanged="@(isOpen => { if (!isOpen) asked = null; })">
+        <ChildContent>
+            <p>@askedText</p>
+        </ChildContent>
+        <Actions>
+            @if (asked is { } item)
+            {
+                <CmsButton OnClick="@(() => asked = null)">@L["Content.FieldActions.Cancel"]</CmsButton>
+                <CmsButton Appearance="CmsButtonAppearance.Primary" OnClick="@(() => RunAsync(item))">@item.Action.Label</CmsButton>
+            }
+        </Actions>
+    </CmsDialog>
+}
 
 @code {
     private readonly string ListId = ElementIds.Next("field-actions");
@@ -211,6 +216,7 @@
         {
             PluginLog.FieldActionFailed(Logger, item.Declared.Half.Name, item.Declared.Declared.Type, exception);
             problem = exception is ApiProblemException { Problem.Detail: { Length: > 0 } detail } ? detail : L["Content.FieldActions.Failed"];
+            Announcer.Announce(problem);
         }
         finally
         {

@@ -1630,7 +1630,7 @@
                 @Editor(field)
                 @if (Changeable(field) && fieldActions.GetValueOrDefault(field.Name) is { } actions)
                 {
-                    <FieldActionMenu Actions="@([.. actions.Select(action => (action.Half, action.Declared))])" FieldLabel="@FieldEditorBase.LabelOf(field)" Context="@(() => ActionContext(field))" OnResult="@(value => Change(field, value))" />
+                    <FieldActionMenu @key="generation" Actions="@([.. actions.Select(action => (action.Half, action.Declared))])" FieldLabel="@FieldEditorBase.LabelOf(field)" Context="@(() => ActionContext(field))" OnResult="@(value => Change(field, value))" />
                 }
                 @if (compare is { } other)
                 {
