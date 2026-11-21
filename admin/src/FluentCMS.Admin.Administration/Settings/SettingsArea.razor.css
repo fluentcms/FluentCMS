@@ -1,0 +1,21 @@
+.settings-scopes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cms-space-m);
+    margin-block-end: var(--cms-space-m);
+}
+
+.settings-scopes a {
+    padding-block: var(--cms-space-s);
+}
+
+.settings-scopes a[aria-current="page"] {
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.settings-problem {
+    padding: var(--cms-space-m);
+    border-inline-start: 3px solid var(--cms-color-error);
+    background: var(--cms-color-surface);
+}
