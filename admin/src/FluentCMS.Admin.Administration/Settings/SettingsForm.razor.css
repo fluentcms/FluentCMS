@@ -1,0 +1,36 @@
+.settings-fields {
+    display: grid;
+    gap: var(--cms-space-m);
+    max-inline-size: 40rem;
+}
+
+.settings-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cms-space-s);
+    margin-block-start: var(--cms-space-l);
+}
+
+.settings-problem {
+    padding: var(--cms-space-m);
+    border-inline-start: 3px solid var(--cms-color-error);
+    background: var(--cms-color-surface);
+    margin-block-end: var(--cms-space-m);
+}
+
+.settings-message:empty {
+    display: none;
+}
+
+.settings-conflict {
+    border-collapse: collapse;
+    inline-size: 100%;
+}
+
+.settings-conflict th,
+.settings-conflict td {
+    padding: var(--cms-space-s);
+    text-align: start;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+}

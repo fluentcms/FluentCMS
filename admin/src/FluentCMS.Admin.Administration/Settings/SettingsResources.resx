@@ -15,4 +15,202 @@
   <data name="Settings.Page.Heading" xml:space="preserve">
     <value>Settings</value>
   </data>
+  <data name="Settings.Menu.Loading" xml:space="preserve">
+    <value>Reading the settings areasâ€¦</value>
+  </data>
+  <data name="Settings.Menu.Forbidden" xml:space="preserve">
+    <value>Your roles do not let you manage any settings here.</value>
+  </data>
+  <data name="Settings.Menu.Failed" xml:space="preserve">
+    <value>The settings areas could not be read.</value>
+  </data>
+  <data name="Settings.Menu.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Settings.Menu.None" xml:space="preserve">
+    <value>There is no settings area you may manage in this site.</value>
+  </data>
+  <data name="Settings.Menu.Core" xml:space="preserve">
+    <value>Core</value>
+  </data>
+  <data name="Settings.Menu.Plugin" xml:space="preserve">
+    <value>Plugin {0}</value>
+  </data>
+  <data name="Settings.Menu.SiteAndDefaults" xml:space="preserve">
+    <value>This site and the defaults of the instance</value>
+  </data>
+  <data name="Settings.Menu.SiteOnly" xml:space="preserve">
+    <value>This site</value>
+  </data>
+  <data name="Settings.Menu.DefaultsOnlyGranted" xml:space="preserve">
+    <value>The defaults of the instance</value>
+  </data>
+  <data name="Settings.Menu.DefaultsOnly" xml:space="preserve">
+    <value>The defaults of the instance, which every site reads</value>
+  </data>
+  <data name="Settings.Area.Name.branding" xml:space="preserve">
+    <value>Branding</value>
+  </data>
+  <data name="Settings.Area.Name.preview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="Settings.Area.Name.media" xml:space="preserve">
+    <value>Media</value>
+  </data>
+  <data name="Settings.Area.Name.ai" xml:space="preserve">
+    <value>AI assist</value>
+  </data>
+  <data name="Settings.Area.Name.mcp" xml:space="preserve">
+    <value>MCP</value>
+  </data>
+  <data name="Settings.Area.Loading" xml:space="preserve">
+    <value>Reading the settingsâ€¦</value>
+  </data>
+  <data name="Settings.Area.ReadFailed" xml:space="preserve">
+    <value>The settings areas could not be read.</value>
+  </data>
+  <data name="Settings.Area.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Settings.Area.Missing" xml:space="preserve">
+    <value>There is no such settings area, or your roles do not let you manage it here.</value>
+  </data>
+  <data name="Settings.Area.Back" xml:space="preserve">
+    <value>Back to the settings</value>
+  </data>
+  <data name="Settings.Area.Scopes" xml:space="preserve">
+    <value>Whose settings</value>
+  </data>
+  <data name="Settings.Area.Site" xml:space="preserve">
+    <value>This site</value>
+  </data>
+  <data name="Settings.Area.Defaults" xml:space="preserve">
+    <value>Defaults of the instance</value>
+  </data>
+  <data name="Settings.Area.DefaultsCrumb" xml:space="preserve">
+    <value>{0}: defaults of the instance</value>
+  </data>
+  <data name="Settings.Area.DefaultsOnly" xml:space="preserve">
+    <value>These are the defaults of the instance.</value>
+  </data>
+  <data name="Settings.Half.Loading" xml:space="preserve">
+    <value>Loading the settings pageâ€¦</value>
+  </data>
+  <data name="Settings.Half.Failed" xml:space="preserve">
+    <value>The settings page of the plugin {0} could not be shown.</value>
+  </data>
+  <data name="Settings.Form.Loading" xml:space="preserve">
+    <value>Reading the settingsâ€¦</value>
+  </data>
+  <data name="Settings.Form.ReadFailed" xml:space="preserve">
+    <value>The settings could not be read.</value>
+  </data>
+  <data name="Settings.Form.TryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Settings.Form.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Settings.Form.Saved" xml:space="preserve">
+    <value>The settings are saved.</value>
+  </data>
+  <data name="Settings.Form.NotSaved" xml:space="preserve">
+    <value>The settings are not saved: some values are not valid.</value>
+  </data>
+  <data name="Settings.Form.SaveFailed" xml:space="preserve">
+    <value>The settings could not be saved.</value>
+  </data>
+  <data name="Settings.Source.Site" xml:space="preserve">
+    <value>These are this site's own settings.</value>
+  </data>
+  <data name="Settings.Source.Default" xml:space="preserve">
+    <value>This site follows the defaults of the instance. Saving makes the settings the site's own.</value>
+  </data>
+  <data name="Settings.Source.Code" xml:space="preserve">
+    <value>This site follows the code's defaults, since the instance sets none. Saving makes the settings the site's own.</value>
+  </data>
+  <data name="Settings.Source.Instance" xml:space="preserve">
+    <value>These are the defaults the instance sets.</value>
+  </data>
+  <data name="Settings.Source.InstanceCode" xml:space="preserve">
+    <value>The instance follows the code's defaults. Saving makes them the instance's own.</value>
+  </data>
+  <data name="Settings.Source.Other" xml:space="preserve">
+    <value>The settings come from: {0}.</value>
+  </data>
+  <data name="Settings.Secret.Set" xml:space="preserve">
+    <value>Set. A value typed here replaces it.</value>
+  </data>
+  <data name="Settings.Secret.SetInherited" xml:space="preserve">
+    <value>Set in the defaults of the instance, which this site inherits. A value typed here becomes the site's own.</value>
+  </data>
+  <data name="Settings.Secret.NotSet" xml:space="preserve">
+    <value>Not set. A value typed here sets it.</value>
+  </data>
+  <data name="Settings.Secret.NotSetInherited" xml:space="preserve">
+    <value>Not set in the defaults of the instance, which this site inherits. A value typed here becomes the site's own.</value>
+  </data>
+  <data name="Settings.Secret.Unreadable" xml:space="preserve">
+    <value>A value the key ring can no longer read shows as not set too; the startup report on the diagnostics page lists such areas under settings-secrets-unreadable.</value>
+  </data>
+  <data name="Settings.Reset.Site" xml:space="preserve">
+    <value>Reset to the defaults</value>
+  </data>
+  <data name="Settings.Reset.Defaults" xml:space="preserve">
+    <value>Reset to the code's defaults</value>
+  </data>
+  <data name="Settings.Reset.Title" xml:space="preserve">
+    <value>Reset the settings</value>
+  </data>
+  <data name="Settings.Reset.SiteText" xml:space="preserve">
+    <value>This site's own values and secrets of this area are removed, and the site follows the defaults of the instance again.</value>
+  </data>
+  <data name="Settings.Reset.DefaultsText" xml:space="preserve">
+    <value>The defaults of the instance of this area are removed, and every site that follows them follows the code's defaults.</value>
+  </data>
+  <data name="Settings.Reset.Confirm" xml:space="preserve">
+    <value>Reset</value>
+  </data>
+  <data name="Settings.Reset.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Settings.Reset.Done" xml:space="preserve">
+    <value>The settings are reset.</value>
+  </data>
+  <data name="Settings.Reset.Conflict" xml:space="preserve">
+    <value>The settings changed since you opened them, so nothing was reset. They are shown as they are now.</value>
+  </data>
+  <data name="Settings.Reset.Failed" xml:space="preserve">
+    <value>The settings could not be reset.</value>
+  </data>
+  <data name="Settings.Conflict.Title" xml:space="preserve">
+    <value>Changed elsewhere</value>
+  </data>
+  <data name="Settings.Conflict.Text" xml:space="preserve">
+    <value>Someone saved these settings since you opened them. Keep your changes over theirs, or take theirs and drop yours.</value>
+  </data>
+  <data name="Settings.Conflict.Field" xml:space="preserve">
+    <value>Setting</value>
+  </data>
+  <data name="Settings.Conflict.Mine" xml:space="preserve">
+    <value>Yours</value>
+  </data>
+  <data name="Settings.Conflict.Theirs" xml:space="preserve">
+    <value>Theirs</value>
+  </data>
+  <data name="Settings.Conflict.NoValue" xml:space="preserve">
+    <value>(none)</value>
+  </data>
+  <data name="Settings.Conflict.Secrets" xml:space="preserve">
+    <value>The secrets you typed are saved with your changes, and dropped with theirs.</value>
+  </data>
+  <data name="Settings.Conflict.KeepMine" xml:space="preserve">
+    <value>Keep mine</value>
+  </data>
+  <data name="Settings.Conflict.TakeTheirs" xml:space="preserve">
+    <value>Take theirs</value>
+  </data>
+  <data name="Settings.Conflict.TookTheirs" xml:space="preserve">
+    <value>Your changes are dropped; the settings are shown as they are now.</value>
+  </data>
 </root>
