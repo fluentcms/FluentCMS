@@ -13,7 +13,7 @@
 @inject IStringLocalizer<ApiKeysResources> L
 
 <PageCrumb Text="@key?.Name" />
-<h1 tabindex="-1">@(key?.Name ?? L["ApiKeys.Page.Heading"])</h1>
+<h1 tabindex="-1" @ref="heading">@(key?.Name ?? L["ApiKeys.Page.Heading"])</h1>
 
 @if (state == State.Loading)
 {
@@ -72,7 +72,7 @@ else
             <p>@L["ApiKeys.Key.RotateText"]</p>
             <CmsNumberInput Label="@L["ApiKeys.Key.Overlap"]" Help="@L["ApiKeys.Key.OverlapHelp"]" AllowNegative="false" Culture="@Formats.NumberCulture"
                             Error="@ApiKeyProblems.FieldError(problem, "overlapSeconds", L)" Value="@overlapHours" ValueChanged="@(value => overlapHours = value)" />
-            <CmsButton Disabled="@busy" OnClick="@(() => Ask(Change.Rotate))">@L["ApiKeys.Key.Rotate"]</CmsButton>
+            <CmsButton @ref="rotateButton" Disabled="@busy" OnClick="@(() => Ask(Change.Rotate))">@L["ApiKeys.Key.Rotate"]</CmsButton>
         </section>
 
         <section aria-labelledby="api-key-addresses">
@@ -109,7 +109,7 @@ else
     </Actions>
 </CmsDialog>
 
-<CmsSecretDialog Title="@L["ApiKeys.Secret.RotatedTitle"]" Label="@L["ApiKeys.Secret.Label"]" @bind-Secret="secret">
+<CmsSecretDialog Title="@L["ApiKeys.Secret.RotatedTitle"]" Label="@L["ApiKeys.Secret.Label"]" @bind-Secret="secret" OnClosed="ReturnFocusAsync">
     <p>@L["ApiKeys.Secret.Text"]</p>
 </CmsSecretDialog>
 
@@ -143,6 +143,8 @@ else
     private string? actionError;
     private string? secret;
     private CancellationTokenSource? reading;
+    private ElementReference heading;
+    private CmsButton? rotateButton;
 
     [Parameter]
     public Guid Id { get; set; }
@@ -295,6 +297,20 @@ else
         finally
         {
             busy = false;
+        }
+    }
+
+    // The Rotate button was disabled while the rotation ran, so the dialog had no control to give focus back to; it goes back
+    // to Rotate, or to the heading when the key can no longer be rotated.
+    private async Task ReturnFocusAsync()
+    {
+        if (key is { Revoked: false } && rotateButton is not null)
+        {
+            await rotateButton.FocusAsync();
+        }
+        else
+        {
+            await heading.FocusAsync();
         }
     }
 

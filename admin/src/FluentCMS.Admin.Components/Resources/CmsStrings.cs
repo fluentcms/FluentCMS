@@ -37,6 +37,9 @@ internal sealed class CmsStrings : ICmsTextSource
     public const string SecretCopied = nameof(SecretCopied);
     public const string SecretNotCopied = nameof(SecretNotCopied);
     public const string SecretDone = nameof(SecretDone);
+    public const string SecretLeaveQuestion = nameof(SecretLeaveQuestion);
+    public const string SecretStay = nameof(SecretStay);
+    public const string SecretLeave = nameof(SecretLeave);
 
     private static readonly ResourceManager Manager = new("FluentCMS.Admin.Components.Resources.CmsStrings", typeof(CmsStrings).Assembly);
 

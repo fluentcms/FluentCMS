@@ -112,6 +112,32 @@ public sealed class ApiKeysPageTests : AdministrationTestContext
         body["allowedAddresses"]!.AsArray().Select(address => address!.GetValue<string>()).ShouldBe(["203.0.113.0/24", "198.51.100.7"]);
     }
 
+    // A key bound to no site reaches every one, which needs apikeys.manage for the instance.
+    [Fact]
+    public void ACallerWhoManagesKeysInTheSiteOnlyIsNotOfferedEverySite()
+    {
+        var app = OpenForm();
+
+        var labels = app.FindComponents<FluentCMS.Admin.Components.CmsCheckbox>().Select(box => box.Instance.Label).ToList();
+        labels.ShouldContain("Main");
+        labels.ShouldNotContain(Localized<ApiKeysResources>("ApiKeys.New.EverySite"));
+    }
+
+    [Fact]
+    public void ACallerWhoManagesKeysForTheInstanceMayBindAKeyToNoSite()
+    {
+        Grant([], Permission);
+        var app = OpenForm();
+        Fill(app);
+
+        EverySite(app).Change(true);
+        app.Find("form.api-key-form").Submit();
+
+        app.WaitForAssertion(() => keys.Calls.ShouldContain(call => call.Method == HttpMethod.Post && call.Path == "api-keys"));
+        var body = JsonNode.Parse(keys.Calls.Single(call => call.Method == HttpMethod.Post).Body!)!.AsObject();
+        body.ContainsKey("siteIds").ShouldBeFalse();
+    }
+
     [Fact]
     public void ANameARoleAndASiteAreAskedForBeforeAnythingIsSent()
     {
@@ -169,6 +195,14 @@ public sealed class ApiKeysPageTests : AdministrationTestContext
         Button(app, Text("SecretDone")).Click();
         app.WaitForAssertion(() => SecretDialog(app).Secret.ShouldBeNull());
         app.Markup.ShouldNotContain(ApiKeysFake.RotatedSecret);
+
+        // Rotate was disabled while the rotation ran, so focus goes back to it once the dialog has closed.
+        var host = app.FindComponent<FluentCMS.Admin.Components.CmsSecretDialog>().Find("fluent-dialog");
+        host.TriggerEvent("ondialogtoggle", new Microsoft.FluentUI.AspNetCore.Components.DialogToggleEventArgs { Id = host.Id, OldState = "open", NewState = "closed" });
+        var rotate = app.FindComponents<Microsoft.FluentUI.AspNetCore.Components.FluentButton>()
+            .Single(button => button.FindAll("fluent-button") is [var host, ..] && host.TextContent.Trim() == Localized<ApiKeysResources>("ApiKeys.Key.Rotate")).Instance.Element.Id;
+        app.WaitForAssertion(() => JSInterop.Invocations.Last(invocation => invocation.Identifier == "Blazor._internal.domWrapper.focus").Arguments[0]
+            .ShouldBeOfType<Microsoft.AspNetCore.Components.ElementReference>().Id.ShouldBe(rotate));
         Holders(app, ApiKeysFake.RotatedSecret).ShouldBeEmpty();
         app.WaitForAssertion(() => app.Find(".api-key-facts").TextContent.ShouldContain(
             Localized<ApiKeysResources>("ApiKeys.Status.Overlap", Formats().DateTime(DateTimeOffset.Parse("2999-01-01T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture)))));
@@ -270,6 +304,9 @@ public sealed class ApiKeysPageTests : AdministrationTestContext
     // The control a label names, by the label's text without its required mark.
     private static AngleSharp.Dom.IElement Labelled(IRenderedComponent<AdminApp> app, string label) =>
         app.Find("#" + app.FindAll("label[for]").First(element => element.TextContent.Trim().StartsWith(label, StringComparison.Ordinal)).GetAttribute("for"));
+
+    private AngleSharp.Dom.IElement EverySite(IRenderedComponent<AdminApp> app) =>
+        app.FindComponents<FluentCMS.Admin.Components.CmsCheckbox>().Single(box => box.Instance.Label == Localized<ApiKeysResources>("ApiKeys.New.EverySite")).Find("fluent-checkbox");
 
     private static void Fill(IRenderedComponent<AdminApp> app)
     {

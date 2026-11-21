@@ -1,5 +1,7 @@
 using Bunit;
 using FluentCMS.Admin.Components;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -27,7 +29,9 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
         JSInterop.Invocations.ShouldContain(invocation => invocation.Identifier == Show);
         dialog.Markup.ShouldNotContain(Secret);
         dialog.Find(".cms-secret-value").TextContent.ShouldContain(Text("SecretHidden"));
-        dialog.Find(".cms-secret-value").GetAttribute("aria-labelledby").ShouldBe(dialog.Find(".cms-secret-label").Id);
+        // A group named by the label: the code element itself may not be named (WAI-ARIA 1.2).
+        dialog.Find(".cms-secret[role=group]").GetAttribute("aria-labelledby").ShouldBe(dialog.Find(".cms-secret-label").Id);
+        dialog.Find(".cms-secret-value").HasAttribute("aria-labelledby").ShouldBeFalse();
 
         Button(dialog, "SecretShow").Click();
 
@@ -98,6 +102,63 @@ public sealed class CmsSecretDialogTests : ComponentTestContext
 
         dialog.WaitForAssertion(() => JSInterop.Invocations.Count(invocation => invocation.Identifier == Show).ShouldBe(2));
         bound.ShouldBe(Secret);
+    }
+
+    // A secret passed one way would give a dialog that Done never closes.
+    [Fact]
+    public void ASecretWithoutItsBindingIsRefused() =>
+        Should.Throw<InvalidOperationException>(() => Render<CmsSecretDialog>(p => p.Add(x => x.Title, "New key").Add(x => x.Label, "Secret").Add(x => x.Secret, Secret)))
+            .Message.ShouldContain("SecretChanged");
+
+    // While it is open, the browser asks before a reload, a close or another site; once it is closed, nothing asks.
+    [Fact]
+    public void WhileOpenTheBrowserAsksBeforeLeavingThePage()
+    {
+        var dialog = RenderBound();
+
+        dialog.FindComponent<NavigationLock>().Instance.ConfirmExternalNavigation.ShouldBeTrue();
+
+        Button(dialog, "SecretDone").Click();
+        dialog.Render(parameters => parameters.Add(item => item.Secret, bound));
+
+        dialog.FindComponents<NavigationLock>().ShouldBeEmpty();
+    }
+
+    // A route change, Back included, asks with Stay and Leave, since the page that holds the secret goes with it.
+    [Fact]
+    public void ARouteChangeAsksFirstAndStayKeepsThePage()
+    {
+        var navigation = Services.GetRequiredService<NavigationManager>();
+        var dialog = RenderBound();
+        var start = navigation.Uri;
+
+        _ = dialog.InvokeAsync(() => navigation.NavigateTo("elsewhere"));
+        dialog.WaitForAssertion(() => dialog.Find(".cms-secret-leave[role=alert]").TextContent.ShouldContain(Text("SecretLeaveQuestion")));
+        Button(dialog, "SecretStay").Click();
+
+        dialog.WaitForAssertion(() => dialog.FindAll(".cms-secret-leave").ShouldBeEmpty());
+        navigation.Uri.ShouldBe(start);
+        bound.ShouldBe(Secret);
+
+        _ = dialog.InvokeAsync(() => navigation.NavigateTo("elsewhere"));
+        dialog.WaitForAssertion(() => dialog.Find(".cms-secret-leave"));
+        Button(dialog, "SecretLeave").Click();
+
+        dialog.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/elsewhere"));
+    }
+
+    // The caller's own navigation after Done, as to the new key's page, is not asked about.
+    [Fact]
+    public void ANavigationAfterDoneIsNotAskedAbout()
+    {
+        var navigation = Services.GetRequiredService<NavigationManager>();
+        var dialog = RenderBound();
+
+        Button(dialog, "SecretDone").Click();
+        dialog.InvokeAsync(() => navigation.NavigateTo("elsewhere"));
+
+        dialog.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/elsewhere"));
+        dialog.FindAll(".cms-secret-leave").ShouldBeEmpty();
     }
 
     [Fact]

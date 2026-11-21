@@ -294,8 +294,11 @@ FluentCMS.Admin.Components.CmsSecretDialog
 FluentCMS.Admin.Components.CmsSecretDialog.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
 FluentCMS.Admin.Components.CmsSecretDialog.ChildContent.set -> void
 FluentCMS.Admin.Components.CmsSecretDialog.CmsSecretDialog() -> void
+FluentCMS.Admin.Components.CmsSecretDialog.Dispose() -> void
 FluentCMS.Admin.Components.CmsSecretDialog.Label.get -> string!
 FluentCMS.Admin.Components.CmsSecretDialog.Label.set -> void
+FluentCMS.Admin.Components.CmsSecretDialog.OnClosed.get -> Microsoft.AspNetCore.Components.EventCallback
+FluentCMS.Admin.Components.CmsSecretDialog.OnClosed.set -> void
 FluentCMS.Admin.Components.CmsSecretDialog.Secret.get -> string?
 FluentCMS.Admin.Components.CmsSecretDialog.Secret.set -> void
 FluentCMS.Admin.Components.CmsSecretDialog.SecretChanged.get -> Microsoft.AspNetCore.Components.EventCallback<string?>
@@ -463,6 +466,7 @@ override FluentCMS.Admin.Components.CmsNavigationLink.OnInitialized() -> void
 override FluentCMS.Admin.Components.CmsOption.Equals(object? obj) -> bool
 override FluentCMS.Admin.Components.CmsOption.GetHashCode() -> int
 override FluentCMS.Admin.Components.CmsOption.ToString() -> string!
+override FluentCMS.Admin.Components.CmsSecretDialog.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
 override FluentCMS.Admin.Components.CmsSecretDialog.OnParametersSet() -> void
 override FluentCMS.Admin.Components.CmsSortKey.Equals(object? obj) -> bool
 override FluentCMS.Admin.Components.CmsSortKey.GetHashCode() -> int
