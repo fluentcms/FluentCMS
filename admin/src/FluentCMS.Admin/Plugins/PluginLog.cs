@@ -22,4 +22,13 @@ internal static partial class PluginLog
 
     [LoggerMessage(EventId = 35, EventName = "PluginBulkActionFailed", Level = LogLevel.Error, Message = "The bulk action {Type} of the admin half {Name} failed.")]
     public static partial void BulkActionFailed(ILogger logger, string name, string type, Exception exception);
+
+    [LoggerMessage(EventId = 36, EventName = "PluginFieldActionNotCreated", Level = LogLevel.Error, Message = "The field action {Type} of the admin half {Name} could not be created.")]
+    public static partial void FieldActionNotCreated(ILogger logger, string name, string type, Exception exception);
+
+    [LoggerMessage(EventId = 37, EventName = "PluginFieldActionFailed", Level = LogLevel.Error, Message = "The field action {Type} of the admin half {Name} failed.")]
+    public static partial void FieldActionFailed(ILogger logger, string name, string type, Exception exception);
+
+    [LoggerMessage(EventId = 38, EventName = "PluginFieldsNotRead", Level = LogLevel.Warning, Message = "The fields of the field actions of {Path} could not be read, so they are offered on none.")]
+    public static partial void FieldsNotRead(ILogger logger, string path, Exception exception);
 }

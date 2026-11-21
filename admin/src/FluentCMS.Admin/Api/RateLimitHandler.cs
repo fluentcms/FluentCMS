@@ -19,7 +19,8 @@ internal sealed class RateLimitHandler(TimeProvider time, IRateLimitNotice notic
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var response = await AttemptAsync(request, cancellationToken);
-        if (response.StatusCode != HttpStatusCode.TooManyRequests)
+        if (response.StatusCode != HttpStatusCode.TooManyRequests
+            || (request.Options.TryGetValue(ManagementHeaders.Once, out var once) && once))
         {
             return response;
         }

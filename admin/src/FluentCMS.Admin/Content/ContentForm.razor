@@ -31,6 +31,9 @@
 @inject DocumentInterop Document
 @inject AdminConfiguration Configuration
 @inject IStringLocalizer<AdminResources> L
+@inject AdminPlugins Plugins
+@inject IManagementApi Api
+@inject Microsoft.Extensions.Logging.ILogger<ContentForm> Logger
 
 <div class="content-form-layout" data-preview="@(PreviewShown ? (previewWidth == ContentPreview.Full ? "full" : "beside") : null)" data-width="@(PreviewShown ? previewWidth : null)">
     <div class="content-form">
@@ -324,8 +327,13 @@
 
     private sealed record ConflictRow(SchemaFieldDescription Field, bool ChangedByUser);
 
+    private static readonly IReadOnlyDictionary<string, IReadOnlyList<PluginFieldAction>> Empty = new Dictionary<string, IReadOnlyList<PluginFieldAction>>();
+
     private readonly Dictionary<string, FieldEditorBase> editors = new(StringComparer.Ordinal);
     private FormState state;
+
+    // The actions of the admin halves on each field, by its name (spec 5.1).
+    private IReadOnlyDictionary<string, IReadOnlyList<PluginFieldAction>> fieldActions = Empty;
     private SchemaTypeDescription? type;
     private TypeAccessInfo? access;
     private IReadOnlyList<FormTab> tabs = [];
@@ -642,7 +650,7 @@
         tracking = null;
         state = FormState.Loading;
         focusPanelHeading = InPanel;
-        (type, access, tabs, tabbed, read, entryId, activeTab) = (null, null, [], [], null, null, null);
+        (type, access, tabs, tabbed, read, entryId, activeTab, fieldActions) = (null, null, [], [], null, null, null, Empty);
         (restored, done, saveFailure, pendingCreate, publishTried) = (false, null, null, null, false);
         (warnings, confirming) = ([], null);
         (conflict, conflictOpen, comparing, historyOpen) = (null, false, false, false);
@@ -671,6 +679,7 @@
 
             var several = found.Localized && Context.ContentLocales.Count > 1;
             var readable = several ? Context.ReadableLocalesAsync(found.Name) : null;
+            var offers = FieldActionOffers.ReadAsync(Plugins, Api, found, CurrentSite.Site, Locale ?? ContentLocaleSource.Locale, Logger);
             var id = Id;
             if (id is null && found.Kind == "singleton")
             {
@@ -687,12 +696,13 @@
             }
 
             var readableNow = readable is null ? [] : await readable;
+            var offered = await offers;
             if (current != generation)
             {
                 return;
             }
 
-            (type, access, tabs, read, entryId) = (found, Access.ForType(found.Name), ContentFormLayout.Build(found), entry, id);
+            (type, access, tabs, read, entryId, fieldActions) = (found, Access.ForType(found.Name), ContentFormLayout.Build(found), entry, id, offered);
             previewOpen &= id is not null && id == previewEntry;
             (locales, readableLocales) = (everyLocale, readableNow);
             tabbed = [.. tabs.Where(tab => tab.Name is not null)];
@@ -932,6 +942,17 @@
         && (entryId is null ? access!.CreatableFields : access!.UpdatableFields).Contains(field.Name, StringComparer.Ordinal);
 
     private bool Shows(SchemaFieldDescription field) => FormConditions.Shows(field, fields);
+
+    // The field as the draft holds it now, for an action of a half, which reads it and changes nothing.
+    private Actions.FieldActionContext ActionContext(SchemaFieldDescription field) => new()
+    {
+        Type = type!,
+        Field = field,
+        Value = fields[field.Name],
+        Document = new System.Collections.ObjectModel.ReadOnlyDictionary<string, JsonNode?>(fields),
+        EntryId = entryId,
+        ContentLocale = type!.Localized ? ContentCode : null,
+    };
 
     private void Change(SchemaFieldDescription field, JsonNode? value)
     {
@@ -1607,6 +1628,10 @@
         {
             <div class="@(compare is null ? "content-form-field" : "content-form-field content-form-field-compared") content-form-span-@ContentFormLayout.Span(field)" data-field="@field.Name" @key="field.Name">
                 @Editor(field)
+                @if (Changeable(field) && fieldActions.GetValueOrDefault(field.Name) is { } actions)
+                {
+                    <FieldActionMenu Actions="@([.. actions.Select(action => (action.Half, action.Declared))])" FieldLabel="@FieldEditorBase.LabelOf(field)" Context="@(() => ActionContext(field))" OnResult="@(value => Change(field, value))" />
+                }
                 @if (compare is { } other)
                 {
                     <div class="content-form-compare" lang="@other.Locale">

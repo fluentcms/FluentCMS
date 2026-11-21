@@ -23,6 +23,8 @@ internal static class ManagementApiServiceCollectionExtensions
         services.TryAddScoped<IRateLimitNotice>(provider => provider.GetRequiredService<SignedOutSession>());
 
         services.TryAddScoped<IManagementApi>(provider => new ManagementApi(CreateClient(provider)));
+        services.TryAddScoped<IManagementEvents>(provider => provider.GetRequiredService<IManagementApi>() as IManagementEvents
+            ?? throw new InvalidOperationException("The IManagementApi of the container reads no server-sent events; register an IManagementEvents beside it."));
         services.TryAddScoped<ManagementClient>();
         services.TryAddScoped<SiteMetadata>();
         services.TryAddScoped<IAdminSchema>(provider => provider.GetRequiredService<SiteMetadata>());

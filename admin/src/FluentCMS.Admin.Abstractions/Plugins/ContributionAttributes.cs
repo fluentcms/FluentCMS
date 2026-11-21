@@ -214,6 +214,16 @@ public sealed class FieldActionAttribute : Attribute
 
     /// <summary>Gets or sets the permission a user needs to see the action; none when <see langword="null"/>.</summary>
     public string? Permission { get; set; }
+
+    /// <summary>
+    /// Gets or sets where the form learns, before the half loads, which fields of its field types the action is offered on:
+    /// a read of the Management API, relative to its base, and a member of its answer after a <c>#</c>, such as
+    /// <c>ai/fields#fields</c>. The member is an object of content type names, each with an array of field names, and the
+    /// action is offered on those fields; or <see langword="true"/>, and it is offered on every field. Any other member, or a
+    /// read that fails, offers it on none. The form reads it once it opens, in its site and locale. Every field when
+    /// <see langword="null"/>.
+    /// </summary>
+    public string? FieldsFrom { get; set; }
 }
 
 /// <summary>

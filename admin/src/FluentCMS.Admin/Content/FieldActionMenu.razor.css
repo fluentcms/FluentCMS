@@ -1,0 +1,20 @@
+.field-actions {
+    margin-block-start: var(--cms-space-s);
+}
+
+.field-actions-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cms-space-s);
+    margin-block-start: var(--cms-space-s);
+}
+
+.field-actions-list p {
+    margin: 0;
+    color: var(--cms-color-text-muted);
+}
+
+.field-actions-list .field-actions-problem {
+    color: var(--cms-color-error);
+}
