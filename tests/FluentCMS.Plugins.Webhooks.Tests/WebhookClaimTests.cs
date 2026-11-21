@@ -91,6 +91,37 @@ public sealed class WebhookClaimTests(WebhookFixture hosts) : IClassFixture<Webh
         (row.DeliveryId, row.Attempt, row.State).ShouldBe((attempt.DeliveryId, 1, DeliveryStates.Succeeded));
     }
 
+    // A second job for the attempt claims it just before the job reads the webhook's attempt in flight, or just before it
+    // reads the head of the queue, so that the claim lands between the two reads whichever comes first. Either way the job
+    // waits for the claim (#3416).
+    [Theory]
+    [InlineData(DeliveryStates.Pending)]
+    [InlineData(DeliveryStates.Queued)]
+    public async Task AJobWhoseAttemptIsClaimedBetweenItsReadsWaitsForTheClaim(string before)
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        var claim = new ClaimBefore(before);
+        await using var host = Host().Configure(cms => cms.Services.ConfigureDbContext<PluginDbContext<WebhooksPlugin>>(options => options.AddInterceptors(claim)));
+        using var client = await AdminAsync(host);
+        var webhook = Id(await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
+        var attempt = new WebhookAttempt(webhook, Guid.CreateVersion7(), Guid.CreateVersion7(), "content.published", 1, Manual: false, """{"id":1}""");
+        await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<WebhookDeliveryJob, WebhookAttempt>(attempt, WebhookDeliveryJob.Options(DefaultSite.Id), Token);
+
+        claim.Armed = true;
+        (await RunDueJobsAsync(host)).ShouldBe(1);
+        claim.Armed.ShouldBeFalse("the other job claimed the attempt");
+        (await DeliveriesAsync(host, webhook)).ShouldHaveSingleItem().State.ShouldBe(DeliveryStates.Pending);
+
+        // The other job never records the claim, so the job that waited for it takes it over once it is abandoned.
+        host.Time.Advance(Abandoned - TimeSpan.FromSeconds(1));
+        (await RunDueJobsAsync(host)).ShouldBe(0);
+        host.Time.Advance(TimeSpan.FromSeconds(1));
+        (await RunDueJobsAsync(host)).ShouldBe(1);
+        var taken = (await DeliveriesAsync(host, webhook)).ShouldHaveSingleItem();
+        (taken.Attempt, taken.State, taken.Error).ShouldBe((1, DeliveryStates.Failed, WebhookDeliveryJob.Interrupted));
+        receiver.Requests.ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task AnAbandonedClaimIsTakenOverAndItsDeliveryGoesOn()
     {
@@ -197,6 +228,30 @@ public sealed class WebhookClaimTests(WebhookFixture hosts) : IClassFixture<Webh
             }
 
             return base.NonQueryExecutingAsync(command, eventData, result, cancellationToken);
+        }
+    }
+
+    // Claims the queued attempt, as a second job for it would, just before the job reads the webhook's attempts in the state
+    // given: pending for its read of the attempt in flight, queued for its read of the head of the queue.
+    private sealed class ClaimBefore(string state) : DbCommandInterceptor
+    {
+        public bool Armed { get; set; }
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (Armed
+                && command.CommandText.StartsWith("SELECT", StringComparison.Ordinal)
+                && command.CommandText.Contains("FROM \"cms_webhooks_delivery\"", StringComparison.Ordinal)
+                && command.CommandText.Contains($"\"state\" = '{state}'", StringComparison.Ordinal)
+                && !command.CommandText.Contains("\"delivery_id\" =", StringComparison.Ordinal))
+            {
+                Armed = false;
+                await using var other = command.Connection!.CreateCommand();
+                other.CommandText = $"UPDATE cms_webhooks_delivery SET state = '{DeliveryStates.Pending}' WHERE state = '{DeliveryStates.Queued}'";
+                await other.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            return result;
         }
     }
 }

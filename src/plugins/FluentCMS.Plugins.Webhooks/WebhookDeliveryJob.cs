@@ -182,6 +182,9 @@ internal sealed class WebhookDeliveryJob(
         var deliveries = database.Set<WebhookDelivery>();
         while (true)
         {
+            // The head first: a claim of own between the two reads then shows as busy, where the other order would show
+            // neither a head nor an attempt in flight, and the job would end without waiting for the claim (#3416).
+            var head = await Head(deliveries.AsNoTracking(), webhook.Id).FirstOrDefaultAsync(cancellationToken);
             var busy = await deliveries.AsNoTracking().FirstOrDefaultAsync(item => item.WebhookId == webhook.Id && item.State == DeliveryStates.Pending, cancellationToken);
             if (busy is not null && IsAbandoned(busy, time.GetUtcNow()))
             {
@@ -189,7 +192,6 @@ internal sealed class WebhookDeliveryJob(
                 continue;
             }
 
-            var head = await Head(deliveries.AsNoTracking(), webhook.Id).FirstOrDefaultAsync(cancellationToken);
             if (busy is not null)
             {
                 if (busy.Id == own)
