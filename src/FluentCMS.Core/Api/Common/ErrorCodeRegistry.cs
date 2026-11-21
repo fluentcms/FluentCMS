@@ -372,6 +372,7 @@ public static class ErrorCodeRegistry
         Startup(CommandErrorCodes.UnknownMigration, "Unknown migration"),
         Startup(CommandErrorCodes.ScriptNotSupported, "Script not supported by the provider"),
         Startup(CommandErrorCodes.OutputNotWritten, "Output not written"),
+        Startup(CommandErrorCodes.SecretsNotReprotected, "Secret settings left under an older key"),
         Startup("FCMS3310", "Host project not built"),
         Startup("FCMS3311", "Host assembly not found"),
         Startup("FCMS3312", "Host not started"),

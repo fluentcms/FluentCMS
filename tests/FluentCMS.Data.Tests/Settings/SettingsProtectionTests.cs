@@ -1,11 +1,14 @@
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Settings;
+using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Diagnostics;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
 using FluentCMS.Transfer;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -307,6 +310,146 @@ public sealed class SettingsProtectionTests
         var written = await database.AsAsync(Admin, async (IServiceProvider services) => await services.GetRequiredService<ISettings<RequiredSecret>>().GetAsync(SiteA, Token));
         (written.Name, written.Token).ShouldBe(("b", "set-again"));
     }
+
+    [Fact]
+    public async Task ARequiredSecretTheKeyRingCannotReadIsNotListedAsSet()
+    {
+        using var database = new SettingsDatabase(cms => cms.Settings.Add<RequiredSecret>());
+        database.AddRow(SiteA.Value, "required-secret", Foreign($$"""{"token":"{{Secret}}","name":"a"}""", SiteA.Value, "required-secret", typeof(RequiredSecret)));
+        database.AddRow(null, "required-secret", Foreign($$"""{"token":"{{Secret}}","name":"i"}""", null, "required-secret", typeof(RequiredSecret)));
+
+        var site = await RedactedAsync(database, "required-secret", SiteA);
+        (site.Source, site.SecretsSet.Count, site.SecretsInherited.Count).ShouldBe((SettingsSource.Site, 0, 0));
+        site.Json.ShouldContain("\"name\":\"a\"");
+        var instance = await RedactedAsync(database, "required-secret", null);
+        (instance.Source, instance.SecretsSet.Count).ShouldBe((SettingsSource.Default, 0));
+        (await RedactedAsync(database, "required-secret", SiteB)).SecretsSet.ShouldBeEmpty();
+
+        await WriteAsync(database, SiteA, """{"name":"b","token":"set-again"}""", "required-secret");
+        (await RedactedAsync(database, "required-secret", SiteA)).SecretsSet.ShouldBe(["token"]);
+    }
+
+    // The instance row cannot be read without its required secret, so both of its unreadable secrets hold their code defaults,
+    // and the site takes the default of the one it inherits.
+    [Fact]
+    public async Task ASecretASiteInheritsFromAnInstanceRowTheKeyRingCannotReadIsNotListedAsSet()
+    {
+        using var database = new SettingsDatabase(cms => cms.Settings.Add<RequiredSecretAndAccount>());
+        await WriteAsync(database, SiteA, """{"name":"a","token":"site-token"}""", "required-and-account");
+        database.AddRow(null, "required-and-account", Foreign($$"""{"token":"{{Secret}}","account":"{{Secret}}-account","name":"i"}""", null, "required-and-account", typeof(RequiredSecretAndAccount)));
+
+        var site = await RedactedAsync(database, "required-and-account", SiteA);
+
+        site.Source.ShouldBe(SettingsSource.Site);
+        site.SecretsSet.ShouldBe(["token"]);
+        site.SecretsInherited.ShouldBe(["account"]);
+        (await RedactedAsync(database, "required-and-account", null)).SecretsSet.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AnImportOfAnAreaThatRequiresASecretKeepsTheSitesOwnValue()
+    {
+        using var database = new SettingsDatabase(cms => cms.Settings.Add<RequiredSecret>());
+        await WriteAsync(database, SiteA, """{"name":"a","token":"site-token"}""", "required-secret");
+
+        (await ImportAsync(database, "required-secret", SiteA, """{"name":"imported"}""")).ShouldBe(TransferOutcome.Updated);
+
+        var read = await database.AsAsync(Admin, async (IServiceProvider services) => await services.GetRequiredService<ISettings<RequiredSecret>>().GetAsync(SiteA, Token));
+        (read.Name, read.Token).ShouldBe(("imported", "site-token"));
+        (await ImportAsync(database, "required-secret", SiteA, """{"name":"imported"}""")).ShouldBe(TransferOutcome.Skipped);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AnImportOfAnAreaThatRequiresASecretTheSiteDoesNotHoldIsRefusedAndMakesNoValueUp(bool dryRun)
+    {
+        using var database = new SettingsDatabase(cms => cms.Settings.Add<RequiredSecret>());
+        await WriteAsync(database, null, """{"name":"i","token":"instance-token"}""", "required-secret");
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(database, "required-secret", SiteA, $$"""{"name":"imported","token":"{{Secret}}"}""", dryRun));
+
+        var error = refused.Errors.ShouldHaveSingleItem();
+        (error.Path, error.Code).ShouldBe(("token", "FCMS2805"));
+        error.Message.ShouldBe("The settings area 'required-secret' requires the secret 'token', which a package never carries and the site does not hold; set it in the site, then import again.");
+        database.Rows().ShouldHaveSingleItem().SiteId.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task AnImportOfAnAreaWithASecretRequiredByAnAttributeUsesTheSitesOwnValueOrIsRefused()
+    {
+        using var database = new SettingsDatabase(cms => cms.Settings.Add<RequiredAttributeSecret>());
+        await WriteAsync(database, null, """{"name":"i","apiKey":"instance-key"}""", "required-attribute-secret");
+        await WriteAsync(database, SiteA, """{"name":"a","apiKey":"site-key"}""", "required-attribute-secret");
+
+        (await ImportAsync(database, "required-attribute-secret", SiteA, """{"name":"imported"}""")).ShouldBe(TransferOutcome.Updated);
+        var read = await database.AsAsync(Admin, async (IServiceProvider services) => await services.GetRequiredService<ISettings<RequiredAttributeSecret>>().GetAsync(SiteA, Token));
+        (read.Name, read.ApiKey).ShouldBe(("imported", "site-key"));
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(database, "required-attribute-secret", SiteB, $$"""{"name":"imported","apiKey":"{{Secret}}"}"""));
+        var error = refused.Errors.ShouldHaveSingleItem();
+        (error.Path, error.Code).ShouldBe(("apiKey", "FCMS2805"));
+        error.Message.ShouldNotContain(Secret);
+        database.Rows().ShouldNotContain(row => row.SiteId == SiteB.Value);
+    }
+
+    // A reset of the site's area lands after the import has checked the site's row and before it writes.
+    [Fact]
+    public async Task AnImportOfAnAreaThatRequiresASecretChecksTheRowItWritesOver()
+    {
+        var check = new InterruptingCheck("required-secret");
+        using var database = new SettingsDatabase(cms =>
+        {
+            cms.Settings.Add<RequiredSecret>();
+            cms.Services.AddSingleton<ISettingsCheck>(check);
+        });
+        await WriteAsync(database, null, """{"name":"i","token":"instance-token"}""", "required-secret");
+        await WriteAsync(database, SiteA, """{"name":"a","token":"site-token"}""", "required-secret");
+        check.Arm(() =>
+        {
+            using var scope = database.Inner.Database.NewScope();
+            scope.ServiceProvider.GetRequiredService<CmsDbContext>().Set<SettingRow>()
+                .Where(row => row.Key == "required-secret" && row.SiteId == SiteA.Value)
+                .ExecuteDelete();
+        });
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => ImportAsync(database, "required-secret", SiteA, """{"name":"imported"}"""));
+
+        (refused.Errors.ShouldHaveSingleItem().Path, refused.Errors.Single().Code).ShouldBe(("token", "FCMS2805"));
+        database.Rows().ShouldHaveSingleItem().SiteId.ShouldBeNull();
+        var read = await database.AsAsync(Admin, async (IServiceProvider services) => await services.GetRequiredService<ISettings<RequiredSecret>>().GetAsync(SiteA, Token));
+        (read.Name, read.Token).ShouldBe(("i", "instance-token"));
+    }
+
+    [Fact]
+    public async Task ASecretThatAPackageNamesIsNotWrittenByAnImport()
+    {
+        using var database = new SettingsDatabase();
+        await database.SetDefaultAsync(new MediaSettings { ApiKey = "instance-key" });
+        await database.SetAsync(SiteA, new MediaSettings { ApiKey = "site-key" });
+
+        (await ImportAsync(database, "media", SiteA, $$"""{"provider":"gcs","apiKey":"{{Secret}}"}""")).ShouldBe(TransferOutcome.Updated);
+        (await ImportAsync(database, "media", SiteB, $$"""{"provider":"gcs","apiKey":"{{Secret}}","passphrase":null}""")).ShouldBe(TransferOutcome.Created);
+
+        var a = await database.GetAsync(SiteA);
+        (a.Provider, a.ApiKey).ShouldBe(("gcs", "site-key"));
+        var b = await database.GetAsync(SiteB);
+        (b.Provider, b.ApiKey).ShouldBe(("gcs", "instance-key"));
+        var row = JsonNode.Parse(database.Rows().Single(row => row.SiteId == SiteB.Value).Json)!.AsObject();
+        row.ContainsKey("apiKey").ShouldBeFalse();
+        row.ContainsKey("passphrase").ShouldBeFalse();
+    }
+
+    private static Task<RedactedSetting> RedactedAsync(SettingsDatabase database, string area, SiteId? site) =>
+        database.AsAsync(Admin, async (IServiceProvider services) =>
+        {
+            var service = services.GetRequiredService<SettingsService>();
+            return await service.ResolveRedactedAsync(service.Require(area), site, Token);
+        });
+
+    private static Task<TransferOutcome> ImportAsync(SettingsDatabase database, string area, SiteId site, string json, bool dryRun = false) =>
+        database.AsAsync(Admin, async (IServiceProvider services) =>
+            await services.GetRequiredService<SettingsService>().ImportAsync(area, site, json, dryRun, services.GetRequiredService<IOperationContextAccessor>().Current!, Token));
 
     private static string Foreign(string json, Guid? site, string area = "media", Type? type = null) =>
         new SettingsProtection(new EphemeralDataProtectionProvider(), NullLogger<SettingsProtection>.Instance).Protect(new SettingsDescriptor(area, type ?? typeof(MediaSettings)), json, site);
