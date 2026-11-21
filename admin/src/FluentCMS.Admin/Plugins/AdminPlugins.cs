@@ -44,6 +44,7 @@ internal sealed class AdminPlugins(
     IAdminAssemblyLoader loader,
     IServiceProvider services,
     AdminServiceDescriptors descriptors,
+    NavigationProgress progress,
     ILogger<AdminPlugins> logger) : IAdminPluginServices
 {
     // Any base does: only the query string of a route is read for its locale.
@@ -183,7 +184,7 @@ internal sealed class AdminPlugins(
         {
             if (administration.Loaded is null)
             {
-                await context.StartAsync();
+                await WaitingForAsync(context.StartAsync());
             }
 
             if (!await UseLocaleOfAsync(route, cancellationToken))
@@ -195,7 +196,7 @@ internal sealed class AdminPlugins(
             _navigated = (route, allowed);
             if (allowed == PluginPageGate.Allowed && administration.Loaded is null)
             {
-                await administration.TryLoadAsync(cancellationToken);
+                await WaitingForAsync(administration.TryLoadAsync(cancellationToken));
             }
 
             // Also the assembly of a load that ended after the navigation that started it was overtaken.
@@ -214,7 +215,7 @@ internal sealed class AdminPlugins(
 
         if (!IsLoaded(half))
         {
-            await context.StartAsync();
+            await WaitingForAsync(context.StartAsync());
         }
 
         if (!await UseLocaleOfAsync(route, cancellationToken))
@@ -226,7 +227,22 @@ internal sealed class AdminPlugins(
         _navigated = (route, gate);
         if (gate == PluginPageGate.Allowed && !IsLoaded(half))
         {
-            await TryLoadAsync(half, cancellationToken);
+            await WaitingForAsync(TryLoadAsync(half, cancellationToken));
+        }
+    }
+
+    // The layout shows that the navigation waits while what it waits for has not ended (#3446).
+    private async Task WaitingForAsync(Task task)
+    {
+        if (task.IsCompleted)
+        {
+            await task;
+            return;
+        }
+
+        using (progress.Wait())
+        {
+            await task;
         }
     }
 
@@ -240,7 +256,7 @@ internal sealed class AdminPlugins(
     {
         try
         {
-            await context.UseLocaleAsync(ContentRoutes.LocaleOf(new Uri(RouteBase, route))).WaitAsync(cancellationToken);
+            await WaitingForAsync(context.UseLocaleAsync(ContentRoutes.LocaleOf(new Uri(RouteBase, route))).WaitAsync(cancellationToken));
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

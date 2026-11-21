@@ -106,6 +106,39 @@ public sealed class AdministrationTests(EndToEndHost host) : BrowserTest(host)
         browser.PolicyViolations.ShouldBeEmpty();
     }
 
+    // A reload of an area's route draws the shell with a loading state while the assembly downloads, and the page after it
+    // (#3446). The download is held until the loading state shows, so that a fast machine does not skip it.
+    [Fact]
+    public async Task AReloadOfAnAdministrationRouteShowsTheShellAndALoadingStateBeforeThePage()
+    {
+        var browser = await OpenBrowserAsync();
+        var tab = await browser.NewTabAsync();
+        await tab.Page.GotoAsync(new Uri(Host.Admin, "users").AbsoluteUri);
+        await browser.SignInOnTheHostedPageAsync(tab, await Host.CreateEditorAsync("Super Admin"));
+        await Expect(Heading(tab, "Users")).ToBeVisibleAsync();
+        var download = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fetched = Requests(tab, Administration);
+        await tab.Page.RouteAsync(url => Administration.IsMatch(new Uri(url).AbsolutePath), async route =>
+        {
+            await download.Task;
+            await route.ContinueAsync();
+        });
+
+        await tab.ReloadAsync();
+
+        var loading = tab.Page.Locator("main").GetByRole(AriaRole.Status).GetByText(Repository.AdminText("Shell.Layout.LoadingPage"), new LocatorGetByTextOptions { Exact = true });
+        await Expect(loading).ToBeVisibleAsync();
+        await Expect(Entry(tab, "Users")).ToBeVisibleAsync();
+        await Expect(Heading(tab, "Users")).ToHaveCountAsync(0);
+
+        download.SetResult();
+
+        await Expect(Heading(tab, "Users")).ToBeVisibleAsync();
+        await Expect(loading).ToHaveCountAsync(0);
+        fetched.Count.ShouldBe(1);
+        browser.PolicyViolations.ShouldBeEmpty();
+    }
+
     private static ILocator Entry(AdminTab tab, string area) =>
         tab.Sidebar.GetByRole(AriaRole.Link, new LocatorGetByRoleOptions { Name = Repository.AdminText($"Administration.Menu.{area}"), Exact = true });
 
