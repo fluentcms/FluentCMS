@@ -12,7 +12,7 @@
 @inject IAnnouncer Announcer
 @inject IStringLocalizer<AiAssistResources> L
 
-<CmsDialog Title="@Request.Label" Open="true" OpenChanged="@(open => { if (!open) Close(null); })">
+<CmsDialog Title="@Request.Label" Open="@open" OpenChanged="@(value => { if (!value) Close(null); })" OnClosed="Closed">
     <ChildContent>
         @if (step == Step.Choose)
         {
@@ -113,7 +113,9 @@
     private (string Title, string Description)? seo;
     private Shown? problem;
     private bool saving;
+    private bool open = true;
     private bool closed;
+    private string? answer;
 
     [Parameter, EditorRequired]
     public AiSuggestionRequest Request { get; set; } = null!;
@@ -132,7 +134,7 @@
 
     public void Dispose()
     {
-        closed = true;
+        open = false;
         stopping.Cancel();
         stopping.Dispose();
     }
@@ -303,16 +305,25 @@
         }
     }
 
-    // A close stops a stream that runs, which the server then ends as cancelled.
+    // A close stops a stream that runs, which the server then ends as cancelled. The answer goes once the dialog has closed
+    // and given focus back to the control that opened it.
     private void Close(string? accepted)
     {
-        if (closed)
+        if (!open)
         {
             return;
         }
 
-        closed = true;
+        (answer, open) = (accepted, false);
         stopping.Cancel();
-        OnDone(accepted);
+    }
+
+    private void Closed()
+    {
+        if (!closed)
+        {
+            closed = true;
+            OnDone(answer);
+        }
     }
 }

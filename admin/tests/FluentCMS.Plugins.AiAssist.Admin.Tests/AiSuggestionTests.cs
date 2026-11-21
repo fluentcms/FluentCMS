@@ -1,0 +1,210 @@
+using System.Text.Json.Nodes;
+using Bunit;
+using FluentCMS.Admin.Actions;
+using FluentCMS.Admin.Api;
+using FluentCMS.Admin.Components;
+using Shouldly;
+using Xunit;
+
+namespace FluentCMS.Plugins.AiAssist.Admin.Tests;
+
+// The actions of the half on a field (spec 5.5): the panel the suggestion streams into, the draft changed only by an
+// acceptance, and every other end, a decline, a stop, a refusal before the stream and an error within it, leaving it.
+public sealed class AiSuggestionTests : AiTestContext
+{
+    [Fact]
+    public async Task TheSuggestionArrivesInPartsAndGoesIntoTheDraftOnlyWhenAccepted()
+    {
+        var (result, panel) = Run(new RewriteAction(Overlays, Texts), Context("summary", new JsonObject { ["summary"] = "Ships are big boats." }));
+        panel.WaitForAssertion(() => panel.Markup.ShouldContain("Writing the suggestion…"));
+        Buttons(panel).ShouldBe(["Stop"]);
+
+        Server.Delta("Ships are ");
+        panel.WaitForAssertion(() => panel.Find(".ai-suggestion").TextContent.Trim().ShouldBe("Ships are"));
+        panel.Find(".ai-suggestion").GetAttribute("aria-busy").ShouldBe("true");
+        Server.Delta("large vessels.");
+        panel.WaitForAssertion(() => panel.Find(".ai-suggestion").TextContent.Trim().ShouldBe("Ships are large vessels."));
+        Buttons(panel).ShouldNotContain("Accept");
+        result.IsCompleted.ShouldBeFalse();
+
+        Server.Done("Ships are large vessels.");
+        panel.WaitForAssertion(() => Buttons(panel).ShouldBe(["Accept", "Decline"]));
+        Button(panel, "Accept").Click();
+        await ClosedAsync(panel);
+
+        var done = await result;
+        done.Replaces.ShouldBeTrue();
+        done.Value!.GetValue<string>().ShouldBe("Ships are large vessels.");
+        Overlays.Shown.ShouldBeEmpty();
+
+        // Announced once as it starts and once as it ends, never piece by piece.
+        Announcer.Messages.ShouldBe(["Writing a suggestion.", "The suggestion is ready. Accept it to put it into the field, or decline it."]);
+        var sent = Server.Requests.ShouldHaveSingleItem();
+        sent.Path.ShouldBe("ai/actions/rewrite");
+        JsonNode.DeepEquals(sent.Body, new JsonObject { ["type"] = "article", ["field"] = "summary", ["locale"] = "en", ["text"] = "Ships are big boats." }).ShouldBeTrue(sent.Body!.ToJsonString());
+    }
+
+    [Fact]
+    public async Task ADeclinedSuggestionLeavesTheDraft()
+    {
+        var (result, panel) = Run(new ShortenAction(Overlays, Texts), Context("title", new JsonObject { ["title"] = "A long title" }));
+        Server.Done("A title");
+        panel.WaitForAssertion(() => Buttons(panel).ShouldContain("Decline"));
+
+        Button(panel, "Decline").Click();
+        await ClosedAsync(panel);
+
+        (await result).ShouldBeSameAs(FieldActionResult.Unchanged);
+    }
+
+    [Fact]
+    public async Task AStopEndsTheStreamAndLeavesTheDraft()
+    {
+        var (result, panel) = Run(new ExpandAction(Overlays, Texts), Context("title", new JsonObject { ["title"] = "Ships" }));
+        Server.Delta("Ships are");
+        panel.WaitForAssertion(() => panel.Find(".ai-suggestion").TextContent.Trim().ShouldBe("Ships are"));
+
+        Button(panel, "Stop").Click();
+        await ClosedAsync(panel);
+
+        (await result).ShouldBeSameAs(FieldActionResult.Unchanged);
+        Server.StreamCancelled.ShouldBeTrue();
+    }
+
+    // What came before the error is not a suggestion: it goes, and nothing can be accepted.
+    [Fact]
+    public async Task AnErrorWithinTheStreamShowsItsReasonAndLeavesTheDraft()
+    {
+        var (result, panel) = Run(new RewriteAction(Overlays, Texts), Context("title", new JsonObject { ["title"] = "Ships" }));
+        Server.Delta("Ships are ");
+        Server.Error("FCMS1689", "The AI provider failed", "The AI provider failed the call.");
+
+        panel.WaitForAssertion(() => panel.Find(".ai-panel-problem").TextContent.ShouldContain("The AI provider failed the call."));
+        panel.Find(".ai-panel-problem strong").TextContent.ShouldBe("The AI provider failed");
+        panel.Find(".ai-suggestion").TextContent.Trim().ShouldBeEmpty();
+        Buttons(panel).ShouldBe(["Close"]);
+        Announcer.Messages.ShouldContain("The AI provider failed");
+
+        Button(panel, "Close").Click();
+        await ClosedAsync(panel);
+        (await result).ShouldBeSameAs(FieldActionResult.Unchanged);
+    }
+
+    // The daily budget is a 429 the client does not send again: its own text is shown, and the action is asked once.
+    [Theory]
+    [InlineData(429, "FCMS1693", "AI token budget used", "The site has used its daily budget of 1000 AI tokens. It resets at 2026-11-21T00:00:00Z.")]
+    [InlineData(403, "FCMS1683", "Field not opted in", "The AI settings of the site do not opt this field in.")]
+    public async Task ARefusalBeforeTheStreamShowsItsReasonAndLeavesTheDraft(int status, string code, string title, string detail)
+    {
+        Server.Refusal = new ApiProblem { Status = status, Code = code, Title = title, Detail = detail };
+
+        var (result, panel) = Run(new RewriteAction(Overlays, Texts), Context("title", new JsonObject { ["title"] = "Ships" }));
+
+        panel.WaitForAssertion(() => panel.Find(".ai-panel-problem strong").TextContent.ShouldBe(title));
+        panel.Find(".ai-panel-problem").TextContent.ShouldContain(detail);
+        Buttons(panel).ShouldBe(["Close"]);
+        Server.Requests.Count.ShouldBe(1);
+
+        Button(panel, "Close").Click();
+        await ClosedAsync(panel);
+        (await result).ShouldBeSameAs(FieldActionResult.Unchanged);
+        Server.Requests.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task TranslateAsksForAnEnabledLocaleOfTheSiteAndWritesInIt()
+    {
+        Admin.Site = Admin.Site! with { Locales = [.. Admin.Site.Locales, new MySiteLocale { Code = "es", Position = 3, Enabled = true }] };
+        var action = new TranslateAction(Overlays, Texts, Admin);
+        var context = Context("title", new JsonObject { ["title"] = "Ships" });
+        (await action.AppliesToAsync(context, Token)).ShouldBeTrue();
+
+        var (result, panel) = Run(action, context);
+        panel.WaitForAssertion(() => panel.FindAll("select option").Select(option => option.TextContent).ShouldBe(["", "fr", "es"]));
+        Server.Requests.ShouldBeEmpty();
+        panel.Find("select").Change("es");
+        Button(panel, "Suggest").Click();
+        Server.Done("Barcos");
+        panel.WaitForAssertion(() => panel.Find(".ai-suggestion").GetAttribute("lang").ShouldBe("es"));
+        Button(panel, "Accept").Click();
+        await ClosedAsync(panel);
+
+        (await result).Value!.GetValue<string>().ShouldBe("Barcos");
+        Server.Requests.ShouldHaveSingleItem().Body!["options"]!["targetLocale"]!.GetValue<string>().ShouldBe("es");
+    }
+
+    [Fact]
+    public async Task TranslateIsNotOfferedWithoutAnotherEnabledLocaleAndATextActionNotOnAnEmptyField()
+    {
+        Admin.Site = Admin.Site! with { Locales = [new MySiteLocale { Code = "en", Position = 0, Enabled = true }, new MySiteLocale { Code = "fr", Position = 1, Enabled = false }] };
+
+        (await new TranslateAction(Overlays, Texts, Admin).AppliesToAsync(Context("title", new JsonObject { ["title"] = "Ships" }), Token)).ShouldBeFalse();
+        (await new RewriteAction(Overlays, Texts).AppliesToAsync(Context("title", new JsonObject { ["title"] = " " }), Token)).ShouldBeFalse();
+        (await new RewriteAction(Overlays, Texts).AppliesToAsync(Context("title", []), Token)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task SeoOffersItsMetaTitleAndItsMetaDescriptionForTheField()
+    {
+        var (result, panel) = Run(new SeoAction(Overlays, Texts), Context("summary", new JsonObject { ["summary"] = "Ships are big boats." }));
+        Server.Done(new JsonObject { ["metaTitle"] = "Ships at sea", ["metaDescription"] = "Where ships sail." });
+
+        panel.WaitForAssertion(() => Buttons(panel).ShouldBe(["Use the meta title", "Use the meta description", "Decline"]));
+        panel.FindAll(".ai-suggestion dd").Select(item => item.TextContent).ShouldBe(["Ships at sea", "Where ships sail."]);
+        Button(panel, "Use the meta description").Click();
+        await ClosedAsync(panel);
+
+        (await result).Value!.GetValue<string>().ShouldBe("Where ships sail.");
+    }
+
+    [Fact]
+    public async Task AltTextIsSuggestedForAnImageOfTheEntryChosenAmongItsMediaFields()
+    {
+        var hero = Server.AddImage("hero.png");
+        var photo = Server.AddImage("photo.jpg", mimeType: "image/jpeg");
+        var paper = Server.AddImage("paper.pdf", mimeType: "application/pdf");
+        var document = new JsonObject { ["title"] = "", ["hero"] = hero.ToString("D"), ["gallery"] = new JsonArray(photo.ToString("D"), paper.ToString("D")) };
+        var action = new AltTextAction(Overlays, Texts);
+        (await action.AppliesToAsync(Context("title", document), Token)).ShouldBeTrue();
+        (await action.AppliesToAsync(Context("title", new JsonObject { ["title"] = "Ships" }), Token)).ShouldBeFalse();
+
+        var (result, panel) = Run(action, Context("title", document));
+        panel.WaitForAssertion(() => panel.FindAll("select option").Select(option => option.TextContent).ShouldBe(["", "hero.png", "photo.jpg"]));
+        panel.Find("select").Change(photo.ToString("D"));
+        Button(panel, "Suggest").Click();
+        Server.Done("A ship at sea.");
+        panel.WaitForAssertion(() => Buttons(panel).ShouldContain("Accept"));
+        Button(panel, "Accept").Click();
+        await ClosedAsync(panel);
+
+        (await result).Value!.GetValue<string>().ShouldBe("A ship at sea.");
+        var sent = Server.Requests.Single(request => request.Path == "ai/actions/altText");
+        JsonNode.DeepEquals(sent.Body, new JsonObject { ["type"] = "article", ["field"] = "title", ["locale"] = "en", ["options"] = new JsonObject { ["mediaId"] = photo } }).ShouldBeTrue(sent.Body!.ToJsonString());
+    }
+
+    // The asset's own alt text is the asset's, saved on it as the media field saves it; the entry's draft stays as it was.
+    [Fact]
+    public async Task TheAltTextOfAnAssetIsSavedOnTheAssetWhenAcceptedAndNotInTheDraft()
+    {
+        var hero = Server.AddImage("hero.png", alt: "Old");
+        var action = new AssetAltTextAction(Overlays, Texts);
+        var context = Context("hero", new JsonObject { ["hero"] = hero.ToString("D") }, locale: "fr");
+        action.Label.ShouldBe("Suggest the image's alt text");
+        (await action.AppliesToAsync(context, Token)).ShouldBeTrue();
+        (await action.AppliesToAsync(Context("hero", []), Token)).ShouldBeFalse();
+
+        var (result, panel) = Run(action, context);
+        Server.Done("A ship at sea.");
+        panel.WaitForAssertion(() => Buttons(panel).ShouldContain("Accept"));
+        Button(panel, "Accept").Click();
+        await ClosedAsync(panel);
+
+        (await result).ShouldBeSameAs(FieldActionResult.Unchanged);
+        Server.Assets[hero]["alt"]!.GetValue<string>().ShouldBe("A ship at sea.");
+        var asked = Server.Requests.Single(request => request.Path == "ai/actions/altText");
+        JsonNode.DeepEquals(asked.Body, new JsonObject { ["locale"] = "fr", ["options"] = new JsonObject { ["mediaId"] = hero } }).ShouldBeTrue(asked.Body!.ToJsonString());
+        var saved = Server.Requests.Single(request => request.Method == HttpMethod.Patch);
+        (saved.Path, saved.Locale, saved.IfMatch).ShouldBe(($"media/{hero:D}", "fr", "\"3\""));
+        Announcer.Messages.ShouldContain("The alt text of hero.png is saved.");
+    }
+}
